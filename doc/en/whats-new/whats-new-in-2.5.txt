@@ -28,6 +28,13 @@ will change the way the pulled revisions are displayed (the default log
 format is ``long``). This a work in progress and only some options are
 supported so far.
 
+Working on a posix system without a locale
+******************************************
+
+Previously bzr needed a valid locale set to work with branches containing
+non-ascii filenames. It will now use utf-8 rather than ascii as a fallback
+encoding for interacting with the filesystem. This makes creating a working
+tree and commiting to it possible for such branches in most environments.
 
 Further information
 *******************

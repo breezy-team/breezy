@@ -21,7 +21,7 @@ from bzrlib import (
     gpg,
     tests,
     )
-from bzrlib.tests.matchers import NoVfsCalls
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 
 
 class SignMyCommits(tests.TestCaseWithTransport):
@@ -165,9 +165,8 @@ class TestSmartServerSignMyCommits(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(50, self.hpss_calls)
-        self.expectFailure("signing commits requires VFS access",
-            self.assertThat, self.hpss_calls, NoVfsCalls)
+        self.assertLength(15, self.hpss_calls)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
     def test_verify_commits(self):
         self.setup_smart_server_with_call_log()
@@ -186,4 +185,4 @@ class TestSmartServerSignMyCommits(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(10, self.hpss_calls)
-        self.assertThat(self.hpss_calls, NoVfsCalls)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

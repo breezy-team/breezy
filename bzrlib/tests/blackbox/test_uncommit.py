@@ -22,7 +22,7 @@ from bzrlib import uncommit
 from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.errors import BoundBranchOutOfDate
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tests.matchers import NoVfsCalls
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 from bzrlib.tests.script import (
     run_script,
     ScriptRunner,
@@ -312,4 +312,4 @@ class TestSmartServerUncommit(TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(14, self.hpss_calls)
-        self.assertThat(self.hpss_calls, NoVfsCalls)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

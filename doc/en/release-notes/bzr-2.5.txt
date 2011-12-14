@@ -15,6 +15,10 @@ External Compatibility Breaks
 
 .. These may require users to change the way they use Bazaar.
 
+* The '.bzr/branch/email' file is no longer read to determine the users'
+  identity. Instead, the 'email' setting in '.bzr/branch/branch.conf'
+  should be used. (Jelmer Vernooij, #903894)
+
 New Features
 ************
 
@@ -31,6 +35,11 @@ Improvements
    or memory usage, or better results.
 
 * New HPSS call for ``Repository.reconcile``. (Jelmer Vernooij, #894455)
+
+* Override the value returned by ``sys.getfilesystemencoding()`` for the bzr
+  script to utf-8 when it would otherwise be ascii on a posix system. This
+  will mean bzr works with non-ascii files when no locale or an incorrect
+  locale is set. (Martin Packman, #794353)
 
 Bug Fixes
 *********
@@ -82,6 +91,9 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* New matcher ``ContainsNoVfsCalls`` which filters a list of HPSS
+  calls for VFS requests. (Jelmer Vernooij)
+
 
 bzr 2.5b4
 #########
@@ -97,7 +109,8 @@ the colocated branches, optimizations for revision specifiers to avoid
 history sized operations, enhancements to the config framework, bug fixes
 related to unicode paths and more.
 
-This release includes all bug fixed in previous series known at the time of
+All bug fixed in previous series known at the time of this release are
+included.
 
 External Compatibility Breaks
 *****************************
@@ -260,13 +273,13 @@ Internals
   ``Repository.get_revision_signature_text``.
   (Jelmer Vernooij)
 
-* Add HPSS calls for ``Repository.iter_files_bytes``, speeding up
-  several commands including ``bzr export`` and ``bzr co --lightweight``.
-  (Jelmer Vernooij, #608640)
-
 * Add HPSS call for ``Branch.get_checkout_format``. (Jelmer Vernooij, #894459)
 
 * Add HPSS call for ``Repository.pack``. (Jelmer Vernooij, #894461)
+
+* Add HPSS calls for ``Repository.iter_files_bytes``, speeding up
+  several commands including ``bzr export`` and ``bzr co --lightweight``.
+  (Jelmer Vernooij, #608640)
 
 * Custom HPSS error handlers can now be installed in the smart server client
   using the ``error_translators`` and ``no_context_error_translators``

@@ -29,7 +29,7 @@ assertions in Test Case objects, so they are recommended for new testing work.
 __all__ = [
     'HasLayout',
     'MatchesAncestry',
-    'NoVfsCalls',
+    'ContainsNoVfsCalls',
     'ReturnsUnlockable',
     ]
 
@@ -196,11 +196,11 @@ class _NoVfsCallsMismatch(Mismatch):
                 ", ".join([repr(a) for a in c.args])) for c in self.vfs_calls])
 
 
-class NoVfsCalls(Matcher):
+class ContainsNoVfsCalls(Matcher):
     """Ensure that none of the specified calls are HPSS calls."""
 
     def __str__(self):
-        return 'NoVfsCalls()'
+        return 'ContainsNoVfsCalls()'
 
     @classmethod
     def match(cls, hpss_calls):

@@ -33,7 +33,7 @@ from bzrlib.tests import (
     features,
     TestCaseWithTransport,
     )
-from bzrlib.tests.matchers import NoVfsCalls
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 
 
 class TestExport(TestCaseWithTransport):
@@ -449,4 +449,4 @@ class TestSmartServerExport(TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(7, self.hpss_calls)
-        self.assertThat(self.hpss_calls, NoVfsCalls)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
