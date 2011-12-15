@@ -27,6 +27,7 @@ import errno
 import subprocess
 
 from bzrlib import (
+    config as _mod_config,
     errors,
     trace,
     ui,
@@ -181,8 +182,11 @@ class GPGStrategy(object):
             return False
 
     def _command_line(self):
+        key = self._config_stack.get('gpg_signing_key')
+        if key is None:
+            key = _mod_config.extract_email_address(self._config_stack.get('email'))
         return [self._config_stack.get('gpg_signing_command'), '--clearsign',
-                '-u', self._config_stack.get('gpg_signing_key')]
+                '-u', key]
 
     def sign(self, content):
         if isinstance(content, unicode):
