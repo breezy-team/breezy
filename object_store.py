@@ -468,7 +468,8 @@ class BazaarObjectStore(BaseObjectStore):
         rev = self.repository.get_revision(revid)
         tree = self.tree_cache.revision_tree(rev.revision_id)
         updater = self._get_updater(rev)
-        for path, obj, ie in self._revision_to_objects(rev, tree, lossy=False):
+        # FIXME JRV 2011-12-15: Shouldn't we try both values for lossy ?
+        for path, obj, ie in self._revision_to_objects(rev, tree, lossy=(not self.mapping.roundtripping)):
             if isinstance(obj, Commit):
                 if getattr(StrictTestament3, "from_revision_tree", None):
                     testament3 = StrictTestament3(rev, tree)
@@ -651,8 +652,9 @@ class BazaarObjectStore(BaseObjectStore):
                     trace.mutter('entry for %s %s in shamap: %r, but not '
                                  'found in repository', kind, sha, type_data)
                     raise KeyError(sha)
+                # FIXME: the type data should say whether conversion was lossless
                 commit = self._reconstruct_commit(rev, tree_sha,
-                    lossy=False, verifiers=verifiers)
+                    lossy=(not self.mapping.roundtripping), verifiers=verifiers)
                 _check_expected_sha(sha, commit)
                 return commit
             elif kind == "blob":

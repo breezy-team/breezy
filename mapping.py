@@ -38,6 +38,7 @@ from bzrlib.foreign import (
 from bzrlib.revision import (
     NULL_REVISION,
     )
+from bzrlib.plugins.git.errors import NoPushSupport
 from bzrlib.plugins.git.hg import (
     format_hg_metadata,
     extract_hg_metadata,
@@ -299,9 +300,12 @@ class BzrGitMapping(foreign.VcsMapping):
             for k, v in rev.properties.iteritems():
                 if not k in mapping_properties:
                     metadata.properties[k] = v
-        if self.roundtripping:
-            commit.message = inject_bzr_metadata(commit.message, metadata, 
-                                                 encoding)
+        if not lossy:
+            if self.roundtripping:
+                commit.message = inject_bzr_metadata(commit.message, metadata, 
+                                                     encoding)
+            else:
+                raise NoPushSupport()
         assert type(commit.message) == str
         return commit
 

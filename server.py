@@ -93,7 +93,7 @@ class BzrBackendRepo(BackendRepo):
             if wants is None:
                 return
             return self.object_store.generate_pack_contents(have, wants, progress,
-                get_tagged)
+                get_tagged, lossy=(not self.mapping.roundtripping))
         finally:
             self.object_store.unlock()
 
