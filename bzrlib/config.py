@@ -3470,18 +3470,43 @@ class _CompatibleStack(Stack):
 
 
 class GlobalStack(_CompatibleStack):
-    """Global options only stack."""
+    """Global options only stack.
+
+    The following sections are queried:
+
+    * command-line overrides,
+
+    * the 'DEFAULT' section in bazaar.conf
+
+    This stack will use the ``DEFAULT`` section in bazaar.conf as its
+    MutableSection.
+    """
 
     def __init__(self):
-        # Get a GlobalStore
         gstore = GlobalStore()
         super(GlobalStack, self).__init__(
-            [self._get_overrides, NameMatcher(gstore, 'DEFAULT').get_sections],
+            [self._get_overrides,
+             NameMatcher(gstore, 'DEFAULT').get_sections],
             gstore, mutable_section_id='DEFAULT')
 
 
 class LocationStack(_CompatibleStack):
-    """Per-location options falling back to global options stack."""
+    """Per-location options falling back to global options stack.
+
+
+    The following sections are queried:
+
+    * command-line overrides,
+
+    * the sections matching ``location`` in ``locations.conf``, the order being
+      defined by the number of path components in the section glob, higher
+      numbers first (from most specific section to most generic).
+
+    * the 'DEFAULT' section in bazaar.conf
+
+    This stack will use the ``location`` section in locations.conf as its
+    MutableSection.
+    """
 
     def __init__(self, location):
         """Make a new stack for a location and global configuration.
@@ -3490,25 +3515,41 @@ class LocationStack(_CompatibleStack):
         lstore = LocationStore()
         if location.startswith('file://'):
             location = urlutils.local_path_from_url(location)
-        matcher = LocationMatcher(lstore, location)
         gstore = GlobalStore()
         super(LocationStack, self).__init__(
             [self._get_overrides,
-             matcher.get_sections, NameMatcher(gstore, 'DEFAULT').get_sections],
+             LocationMatcher(lstore, location).get_sections,
+             NameMatcher(gstore, 'DEFAULT').get_sections],
             lstore, mutable_section_id=location)
 
 
 class BranchStack(_CompatibleStack):
-    """Per-location options falling back to branch then global options stack."""
+    """Per-location options falling back to branch then global options stack.
+
+    The following sections are queried:
+
+    * command-line overrides,
+
+    * the sections matching ``location`` in ``locations.conf``, the order being
+      defined by the number of path components in the section glob, higher
+      numbers first (from most specific section to most generic),
+
+    * the no-name section in branch.conf,
+
+    * the ``DEFAULT`` section in ``bazaar.conf``.
+
+    This stack will use the no-name section in ``branch.conf`` as its
+    MutableSection.
+    """
 
     def __init__(self, branch):
-        bstore = branch._get_config_store()
         lstore = LocationStore()
-        matcher = LocationMatcher(lstore, branch.base)
+        bstore = branch._get_config_store()
         gstore = GlobalStore()
         super(BranchStack, self).__init__(
             [self._get_overrides,
-             matcher.get_sections, bstore.get_sections,
+             LocationMatcher(lstore, branch.base).get_sections,
+             NameMatcher(bstore, None).get_sections,
              NameMatcher(gstore, 'DEFAULT').get_sections],
             bstore)
         self.branch = branch
@@ -3524,7 +3565,7 @@ class RemoteControlStack(_CompatibleStack):
     def __init__(self, bzrdir):
         cstore = bzrdir._get_config_store()
         super(RemoteControlStack, self).__init__(
-            [cstore.get_sections],
+            [NameMatcher(cstore, None).get_sections],
             cstore)
         self.bzrdir = bzrdir
 
@@ -3539,7 +3580,7 @@ class RemoteBranchStack(_CompatibleStack):
     def __init__(self, branch):
         bstore = branch._get_config_store()
         super(RemoteBranchStack, self).__init__(
-            [bstore.get_sections],
+            [NameMatcher(bstore, None).get_sections],
             bstore)
         self.branch = branch
 
