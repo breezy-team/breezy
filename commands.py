@@ -85,7 +85,6 @@ class cmd_git_import(Command):
             )
         from bzrlib.plugins.git.refs import (
             ref_to_branch_name,
-            ref_to_tag_name,
             )
         from bzrlib.plugins.git.repository import GitRepository
 
