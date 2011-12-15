@@ -440,8 +440,9 @@ def post_commit_update_cache(local_branch, master_branch, old_revno, old_revid,
 
 
 def loggerhead_git_hook(branch_app, environ):
+    from bzrlib.config import GlobalConfig
     branch = branch_app.branch
-    if branch.get_config().get_user_option('http_git') != 'True':
+    if GlobalConfig().get_user_option('http_git') != 'True':
         return None
     from bzrlib.plugins.git.server import git_http_hook
     return git_http_hook(branch, environ['REQUEST_METHOD'],
