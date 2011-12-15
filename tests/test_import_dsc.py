@@ -1889,6 +1889,18 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.build()
         self.db1.import_package(builder.dsc_name())
 
+    def test_parsechangelog_with_latin1(self):
+        self.build_tree_contents(
+            [('unstable/debian/',),
+             ('unstable/debian/changelog', u'''\
+package (1.0-1) UNRELEASED; urgency=low
+
+  * Lots of work.
+
+ -- Jo\xe9 Master <joe@example.com>  Thu,  2 Dec 2004 16:59:43 +0100
+'''.encode('latin_1'))])
+        cl = self.db1.get_changelog_from_source(self.db1.tree.basedir)
+
 
 class OneZeroSourceExtractorTests(tests.TestCaseInTempDir):
 
