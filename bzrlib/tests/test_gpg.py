@@ -252,7 +252,7 @@ kRk=
         #untrusted by gpg but listed as acceptable_keys by user
         self.requireFeature(features.gpgme)
         self.import_keys()
-            
+
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
@@ -283,7 +283,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
     def test_verify_unacceptable_key(self):
         self.requireFeature(features.gpgme)
         self.import_keys()
-            
+
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
@@ -314,7 +314,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
     def test_verify_valid_but_untrusted(self):
         self.requireFeature(features.gpgme)
         self.import_keys()
-            
+
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
@@ -344,7 +344,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
     def test_verify_bad_testament(self):
         self.requireFeature(features.gpgme)
         self.import_keys()
-            
+
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
@@ -376,7 +376,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
     def test_verify_revoked_signature(self):
         self.requireFeature(features.gpgme)
         self.import_keys()
-            
+
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
