@@ -1639,6 +1639,9 @@ def _get_default_mail_domain():
 
 
 def default_email():
+    v = os.environ.get('BZR_EMAIL')
+    if value:
+        return v.decode(osutils.get_user_encoding())
     v = os.environ.get('EMAIL')
     if v:
         return v.decode(osutils.get_user_encoding())
