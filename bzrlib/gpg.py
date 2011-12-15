@@ -184,6 +184,8 @@ class GPGStrategy(object):
     def _command_line(self):
         key = self._config_stack.get('gpg_signing_key')
         if key is None or key == 'default':
+            # 'default' or not setting gpg_signing_key at all means we should
+            # use the user email address
             key = config.extract_email_address(self._config_stack.get('email'))
         return [self._config_stack.get('gpg_signing_command'), '--clearsign',
                 '-u', key]
