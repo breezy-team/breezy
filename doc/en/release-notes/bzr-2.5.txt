@@ -56,6 +56,10 @@ Bug Fixes
 * Create obsolete_packs directory when repacking if it does not
   exist. (Jonathan Riddell, Jelmer Vernooij, #314314)
 
+* Fallback to the slower ``bzr log`` implementation when displaying a range
+  of revisions whose ancestry is not obviously on the same developement
+  line. (Vincent Ladeuil, #904744)
+
 * Not setting ``gpg_signing_key`` or setting it to ``default`` will use the
   user email (obtained from the ``email`` configuration option or its
   default value). (Vincent Ladeuil, Jelmer Vernooij, #904550)
