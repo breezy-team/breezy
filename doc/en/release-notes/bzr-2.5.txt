@@ -100,6 +100,12 @@ Internals
   branches themselves. The active branch uses the key None.
   (Neil Martinsen-Burrell)
 
+* Helper ``win32utils.get_environ_unicode`` added for avoiding encoding
+  problems with ``os.environ.get`` use. (Martin Packman, #262874) 
+
+* Helper ``osutils.path_from_environ`` added for extracting a unicode path
+  from an environment variable. (Martin Packman, #832028)
+
 * New HPSS call ``BzrDir.checkout_metadir``. (Jelmer Vernooij, #894459)
 
 * New HPSS call ``VersionedFileRepository.get_inventories``,
@@ -229,7 +235,7 @@ Bug Fixes
   unreserved characters are unquoted in URLs. (Martin Packman, #842223)
 
 * Split segments from URLs for colocated branches without assuming the
-  combined form is a valid. (Martin Packman, #842233)
+  combined form is valid. (Martin Packman, #842233)
 
 * Support looking up revision numbers by revision id in empty branches.
   (Jelmer Vernooij, #535031)
