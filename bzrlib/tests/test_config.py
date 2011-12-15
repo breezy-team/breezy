@@ -4539,7 +4539,7 @@ class TestAutoUserId(tests.TestCase):
 
     def test_auto_user_id(self):
         """Automatic inference of user name.
-        
+
         This is a bit hard to test in an isolated way, because it depends on
         system functions that go direct to /etc or perhaps somewhere else.
         But it's reasonable to say that on Unix, with an /etc/mailname, we ought
@@ -4555,3 +4555,25 @@ class TestAutoUserId(tests.TestCase):
         else:
             self.assertEquals((None, None), (realname, address))
 
+
+class EmailOptionTests(tests.TestCase):
+
+    def test_default_email_uses_BZR_EMAIL(self):
+        # BZR_EMAIL takes precedence over EMAIL
+        self.overrideEnv('BZR_EMAIL', 'jelmer@samba.org')
+        self.overrideEnv('EMAIL', 'jelmer@apache.org')
+        self.assertEquals('jelmer@samba.org', config.default_email())
+
+    def test_default_email_uses_EMAIL(self):
+        self.overrideEnv('BZR_EMAIL', None)
+        self.overrideEnv('EMAIL', 'jelmer@apache.org')
+        self.assertEquals('jelmer@apache.org', config.default_email())
+
+    def test_BZR_EMAIL_overrides(self):
+        self.overrideEnv('BZR_EMAIL', 'jelmer@apache.org')
+        self.assertEquals('jelmer@apache.org',
+            config.email_from_store('jelmer@debian.org'))
+        self.overrideEnv('BZR_EMAIL', None)
+        self.overrideEnv('EMAIL', 'jelmer@samba.org')
+        self.assertEquals('jelmer@debian.org',
+            config.email_from_store('jelmer@debian.org'))
