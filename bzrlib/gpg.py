@@ -114,7 +114,7 @@ class LoopbackGPGStrategy(object):
 
     def valid_commits_message(self, count):
         return gettext(u"{0} commits with valid signatures").format(
-                                        count[SIGNATURE_VALID])            
+                                        count[SIGNATURE_VALID])
 
     def unknown_key_message(self, count):
         return ngettext(u"{0} commit with unknown key",
@@ -235,7 +235,6 @@ class GPGStrategy(object):
 
         signature = StringIO(content)
         plain_output = StringIO()
-        
         try:
             result = self.context.verify(signature, None, plain_output)
         except gpgme.GpgmeError,error:
@@ -245,16 +244,16 @@ class GPGStrategy(object):
         # test_verify_invalid()
         if len(result) == 0:
             return SIGNATURE_NOT_VALID, None
-        # User has specified a list of acceptable keys, check our result is in it.
-        # test_verify_unacceptable_key()
+        # User has specified a list of acceptable keys, check our result is in
+        # it.  test_verify_unacceptable_key()
         fingerprint = result[0].fpr
         if self.acceptable_keys is not None:
-            if not fingerprint in self.acceptable_keys:                
+            if not fingerprint in self.acceptable_keys:
                 return SIGNATURE_KEY_MISSING, fingerprint[-8:]
         # Check the signature actually matches the testament.
         # test_verify_bad_testament()
         if testament != plain_output.getvalue():
-            return SIGNATURE_NOT_VALID, None 
+            return SIGNATURE_NOT_VALID, None
         # Yay gpgme set the valid bit.
         # Can't write a test for this one as you can't set a key to be
         # trusted using gpgme.
@@ -271,12 +270,12 @@ class GPGStrategy(object):
         # test_verify_unknown_key()
         if result[0].summary & gpgme.SIGSUM_KEY_MISSING:
             return SIGNATURE_KEY_MISSING, fingerprint[-8:]
-        # Summary isn't set if sig is valid but key is untrusted
-        # but if user has explicity set the key as acceptable we can validate it.
+        # Summary isn't set if sig is valid but key is untrusted but if user
+        # has explicity set the key as acceptable we can validate it.
         if result[0].summary == 0 and self.acceptable_keys is not None:
             if fingerprint in self.acceptable_keys:
                 # test_verify_untrusted_but_accepted()
-                return SIGNATURE_VALID, None 
+                return SIGNATURE_VALID, None
         # test_verify_valid_but_untrusted()
         if result[0].summary == 0 and self.acceptable_keys is None:
             return SIGNATURE_NOT_VALID, None
@@ -312,12 +311,13 @@ class GPGStrategy(object):
             if isinstance(acceptable_keys_config, unicode):
                 acceptable_keys_config = str(acceptable_keys_config)
         except UnicodeEncodeError:
-            #gpg Context.keylist(pattern) does not like unicode
-            raise errors.BzrCommandError(gettext('Only ASCII permitted in option names'))
+            # gpg Context.keylist(pattern) does not like unicode
+            raise errors.BzrCommandError(
+                gettext('Only ASCII permitted in option names'))
 
         if acceptable_keys_config is not None:
             key_patterns = acceptable_keys_config
-        if command_line_input is not None: #command line overrides config
+        if command_line_input is not None: # command line overrides config
             key_patterns = command_line_input
         if key_patterns is not None:
             patterns = key_patterns.split(",")
@@ -375,7 +375,7 @@ class GPGStrategy(object):
                 signers[uid] += 1
         result = []
         for uid, number in signers.items():
-             result.append( ngettext(u"{0} signed {1} commit", 
+             result.append( ngettext(u"{0} signed {1} commit",
                              u"{0} signed {1} commits",
                              number).format(uid, number) )
         return result
@@ -392,7 +392,7 @@ class GPGStrategy(object):
                 signers[authors] += 1
         result = []
         for authors, number in signers.items():
-            result.append( ngettext(u"{0} commit by author {1}", 
+            result.append( ngettext(u"{0} commit by author {1}",
                                  u"{0} commits by author {1}",
                                  number).format(number, authors) )
         return result
@@ -408,7 +408,7 @@ class GPGStrategy(object):
                 signers[authors] += 1
         result = []
         for authors, number in signers.items():
-            result.append( ngettext(u"{0} commit by author {1}", 
+            result.append( ngettext(u"{0} commit by author {1}",
                                  u"{0} commits by author {1}",
                                  number).format(number, authors) )
         return result
@@ -422,7 +422,7 @@ class GPGStrategy(object):
                 signers[fingerprint] += 1
         result = []
         for fingerprint, number in signers.items():
-            result.append( ngettext(u"Unknown key {0} signed {1} commit", 
+            result.append( ngettext(u"Unknown key {0} signed {1} commit",
                                  u"Unknown key {0} signed {1} commits",
                                  number).format(fingerprint, number) )
         return result
@@ -440,12 +440,11 @@ class GPGStrategy(object):
                 fingerprint_to_authors[fingerprint] = authors
         result = []
         for fingerprint, number in signers.items():
-            result.append(ngettext(u"{0} commit by author {1} with "\
-                                    "key {2} now expired", 
-                                   u"{0} commits by author {1} with key {2} now "\
-                                    "expired",
-                                    number).format(number,
-                            fingerprint_to_authors[fingerprint], fingerprint) )
+            result.append(
+                ngettext(u"{0} commit by author {1} with key {2} now expired",
+                         u"{0} commits by author {1} with key {2} now expired",
+                         number).format(
+                    number, fingerprint_to_authors[fingerprint], fingerprint) )
         return result
 
     def valid_commits_message(self, count):
