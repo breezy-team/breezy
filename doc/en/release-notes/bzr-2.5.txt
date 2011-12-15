@@ -59,6 +59,10 @@ Bug Fixes
 * Properly ignore '\n' in an option reference since this cannot be part of a
   config option identifier. (Vincent Ladeuil, #902125)
 
+* Not setting ``gpg_signing_key`` or setting it to ``default`` will use the
+  user email (obtained from the ``email`` configuration option or its
+  default value). (Vincent Ladeuil, Jelmer Vernooij, #904550)
+
 Documentation
 *************
 

@@ -27,7 +27,7 @@ import errno
 import subprocess
 
 from bzrlib import (
-    config as _mod_config,
+    config,
     errors,
     trace,
     ui,
@@ -183,8 +183,8 @@ class GPGStrategy(object):
 
     def _command_line(self):
         key = self._config_stack.get('gpg_signing_key')
-        if key is None:
-            key = _mod_config.extract_email_address(self._config_stack.get('email'))
+        if key is None or key == 'default':
+            key = config.extract_email_address(self._config_stack.get('email'))
         return [self._config_stack.get('gpg_signing_command'), '--clearsign',
                 '-u', key]
 
