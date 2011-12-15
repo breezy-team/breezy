@@ -175,11 +175,12 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
     def test_remote_branch_set_append_revisions_only(self):
         # Make a format 1.9 branch, which supports append_revisions_only
         branch = self.make_branch('branch', format='1.9')
-        config = branch.get_config_stack()
         branch.set_append_revisions_only(True)
+        config = branch.get_config_stack()
         self.assertEqual(
             True, config.get('append_revisions_only'))
         branch.set_append_revisions_only(False)
+        config = branch.get_config_stack()
         self.assertEqual(
             False, config.get('append_revisions_only'))
 

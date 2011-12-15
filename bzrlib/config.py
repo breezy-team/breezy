@@ -2537,7 +2537,7 @@ option_registry = OptionRegistry()
 
 option_registry.register(
     Option('append_revisions_only',
-           default=None, from_unicode=bool_from_store,
+           default=None, from_unicode=bool_from_store, invalid='warning',
            help='''\
 Whether to only append revisions to the mainline.
 
