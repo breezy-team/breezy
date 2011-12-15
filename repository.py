@@ -58,7 +58,6 @@ from bzrlib.plugins.git.tree import (
 
 from dulwich.objects import (
     Commit,
-    Tag,
     ZERO_SHA,
     )
 from dulwich.object_store import (
@@ -414,15 +413,17 @@ class LocalGitRepository(GitRepository):
     def lookup_foreign_revision_id(self, foreign_revid, mapping=None):
         """Lookup a revision id.
 
+        :param foreign_revid: Foreign revision id to look up
+        :param mapping: Mapping to use (use default mapping if not specified)
+        :raise KeyError: If foreign revision was not found
+        :return: bzr revision id
         """
         assert type(foreign_revid) is str
         if mapping is None:
             mapping = self.get_mapping()
         if foreign_revid == ZERO_SHA:
             return revision.NULL_REVISION
-        commit = self._git.object_store[foreign_revid]
-        while isinstance(commit, Tag):
-            commit = self._git[commit.object[1]]
+        commit = self._git.object_store.peel_sha(foreign_revid)
         if not isinstance(commit, Commit):
             raise NotCommitError(commit.id)
         rev, roundtrip_revid, verifiers = mapping.import_commit(commit,
