@@ -589,6 +589,8 @@ class InterGitNonGitRepository(InterFromGitRepository):
         potential = set()
         for k, v in refs.as_dict().iteritems():
             # For non-git target repositories, only worry about peeled
+            if v == ZERO_SHA:
+                continue
             potential.add(self.source.bzrdir.get_peeled(k))
         return list(potential - self._target_has_shas(potential))
 
@@ -599,6 +601,8 @@ class InterGitNonGitRepository(InterFromGitRepository):
             if include_tags:
                 for k, unpeeled in refs.as_dict().iteritems():
                     if not is_tag(k):
+                        continue
+                    if unpeeled == ZERO_SHA:
                         continue
                     potential.add(self.source.bzrdir.get_peeled(k))
             return list(potential - self._target_has_shas(potential))
@@ -865,7 +869,7 @@ class InterGitGitRepository(InterFromGitRepository):
             include_tags=include_tags)
 
     def determine_wants_all(self, refs):
-        potential = set(refs.as_dict().values())
+        potential = set([v for v in refs.as_dict().values() if not v == ZERO_SHA])
         return list(potential - self._target_has_shas(potential))
 
     def get_determine_wants_heads(self, wants, include_tags=False):
@@ -875,6 +879,8 @@ class InterGitGitRepository(InterFromGitRepository):
             if include_tags:
                 for k, unpeeled in refs.as_dict().iteritems():
                     if not is_tag(k):
+                        continue
+                    if unpeeled == ZERO_SHA:
                         continue
                     potential.add(unpeeled)
             return list(potential - self._target_has_shas(potential))

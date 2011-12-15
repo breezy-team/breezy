@@ -633,7 +633,7 @@ class GitBranchPullResult(branch.PullResult):
 
     def _lookup_revno(self, revid):
         return _quick_lookup_revno(self.target_branch, self.source_branch,
-                revid)
+            revid)
 
     def _get_old_revno(self):
         if self._old_revno is not None:
@@ -1093,7 +1093,7 @@ class InterToGitBranch(branch.GenericInterBranch):
                         update_refs, lossy=False)
                 except NoPushSupport:
                     raise errors.NoRoundtrippingSupport(self.source, self.target)
-                (result.old_revid, old_sha1) = old_refs.get(main_ref, (ZERO_SHA, NULL_REVISION))
+                (old_sha1, result.old_revid) = old_refs.get(main_ref, (ZERO_SHA, NULL_REVISION))
                 if result.old_revid is None:
                     result.old_revid = self.target.lookup_foreign_revision_id(old_sha1)
                 result.new_revid = new_refs[main_ref][1]
