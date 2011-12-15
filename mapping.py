@@ -232,21 +232,21 @@ class BzrGitMapping(foreign.VcsMapping):
         b.set_raw_chunks(serialize_fileid_map(fileid_map))
         return b
 
-    def export_commit(self, rev, tree_sha, parent_lookup, roundtrip,
+    def export_commit(self, rev, tree_sha, parent_lookup, lossy,
                       verifiers):
         """Turn a Bazaar revision in to a Git commit
 
         :param tree_sha: Tree sha for the commit
         :param parent_lookup: Function for looking up the GIT sha equiv of a
             bzr revision
-        :param roundtrip: Whether to store roundtripping information.
+        :param lossy: Whether to store roundtripping information.
         :param verifiers: Verifiers info
         :return dulwich.objects.Commit represent the revision:
         """
         from dulwich.objects import Commit
         commit = Commit()
         commit.tree = tree_sha
-        if roundtrip:
+        if not lossy:
             metadata = CommitSupplement()
             metadata.verifiers = verifiers
         else:

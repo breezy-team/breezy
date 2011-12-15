@@ -381,12 +381,12 @@ class BazaarObjectStore(BaseObjectStore):
         self._update_sha_map()
         return iter(self._cache.idmap.sha1s())
 
-    def _reconstruct_commit(self, rev, tree_sha, roundtrip, verifiers):
+    def _reconstruct_commit(self, rev, tree_sha, lossy, verifiers):
         """Reconstruct a Commit object.
 
         :param rev: Revision object
         :param tree_sha: SHA1 of the root tree object
-        :param roundtrip: Whether or not to roundtrip bzr metadata
+        :param lossy: Whether or not to roundtrip bzr metadata
         :param verifiers: Verifiers for the commits
         :return: Commit object
         """
@@ -396,7 +396,7 @@ class BazaarObjectStore(BaseObjectStore):
             except errors.NoSuchRevision:
                 return None
         return self.mapping.export_commit(rev, tree_sha, parent_lookup,
-            roundtrip, verifiers)
+            lossy, verifiers)
 
     def _create_fileid_map_blob(self, tree):
         # FIXME: This can probably be a lot more efficient, 
@@ -407,12 +407,12 @@ class BazaarObjectStore(BaseObjectStore):
                 file_ids[path] = ie.file_id
         return self.mapping.export_fileid_map(file_ids)
 
-    def _revision_to_objects(self, rev, tree, roundtrip):
+    def _revision_to_objects(self, rev, tree, lossy):
         """Convert a revision to a set of git objects.
 
         :param rev: Bazaar revision object
         :param tree: Bazaar revision tree
-        :param roundtrip: Whether to roundtrip all Bazaar revision data
+        :param lossy: Whether to not roundtrip all Bazaar revision data
         """
         unusual_modes = extract_unusual_modes(rev)
         present_parents = self.repository.has_revisions(rev.parent_ids)
@@ -435,14 +435,14 @@ class BazaarObjectStore(BaseObjectStore):
                 base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
                 root_tree = self[self[base_sha1].tree]
             root_ie = tree.inventory.root
-        if roundtrip and self.mapping.BZR_FILE_IDS_FILE is not None:
+        if not lossy and self.mapping.BZR_FILE_IDS_FILE is not None:
             b = self._create_fileid_map_blob(tree)
             if b is not None:
                 root_tree[self.mapping.BZR_FILE_IDS_FILE] = (
                     (stat.S_IFREG | 0644), b.id)
                 yield self.mapping.BZR_FILE_IDS_FILE, b, None
         yield "", root_tree, root_ie
-        if roundtrip:
+        if not lossy:
             if getattr(StrictTestament3, "from_revision_tree", None):
                 testament3 = StrictTestament3(rev, tree)
             else: # bzr < 2.4
@@ -451,7 +451,7 @@ class BazaarObjectStore(BaseObjectStore):
         else:
             verifiers = {}
         commit_obj = self._reconstruct_commit(rev, root_tree.id,
-            roundtrip=roundtrip, verifiers=verifiers)
+            lossy=lossy, verifiers=verifiers)
         try:
             foreign_revid, mapping = mapping_registry.parse_revision_id(
                 rev.revision_id)
@@ -468,8 +468,7 @@ class BazaarObjectStore(BaseObjectStore):
         rev = self.repository.get_revision(revid)
         tree = self.tree_cache.revision_tree(rev.revision_id)
         updater = self._get_updater(rev)
-        for path, obj, ie in self._revision_to_objects(rev, tree,
-            roundtrip=True):
+        for path, obj, ie in self._revision_to_objects(rev, tree, lossy=False):
             if isinstance(obj, Commit):
                 if getattr(StrictTestament3, "from_revision_tree", None):
                     testament3 = StrictTestament3(rev, tree)
@@ -653,7 +652,7 @@ class BazaarObjectStore(BaseObjectStore):
                                  'found in repository', kind, sha, type_data)
                     raise KeyError(sha)
                 commit = self._reconstruct_commit(rev, tree_sha,
-                    roundtrip=True, verifiers=verifiers)
+                    lossy=False, verifiers=verifiers)
                 _check_expected_sha(sha, commit)
                 return commit
             elif kind == "blob":
@@ -725,8 +724,7 @@ class BazaarObjectStore(BaseObjectStore):
                 except errors.NoSuchRevision:
                     continue
                 tree = self.tree_cache.revision_tree(revid)
-                for path, obj, ie in self._revision_to_objects(rev, tree,
-                    roundtrip=not lossy):
+                for path, obj, ie in self._revision_to_objects(rev, tree, lossy=lossy):
                     ret.add(obj.id, path)
             return ret
         finally:

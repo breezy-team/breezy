@@ -27,6 +27,11 @@ from bzrlib.tests import (
     TestCaseWithTransport,
     )
 
+from bzrlib.plugins.git.mapping import (
+    BzrGitMappingExperimental,
+    BzrGitMappingv1,
+    )
+from bzrlib.plugins.git.errors import NoPushSupport
 from bzrlib.plugins.git.push import (
     InterToGitRepository,
     )
@@ -40,16 +45,24 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
                 format=format_registry.make_bzrdir("git"))
         self.bzr_repo = self.make_repository("bzr", shared=True)
 
-    def _get_interrepo(self):
+    def _get_interrepo(self, mapping=None):
         self.bzr_repo.lock_read()
         self.addCleanup(self.bzr_repo.unlock)
-        return InterRepository.get(self.bzr_repo, self.git_repo)
+        interrepo = InterRepository.get(self.bzr_repo, self.git_repo)
+        if mapping is not None:
+            interrepo.mapping = mapping
+        return interrepo
 
     def test_instance(self):
         self.assertIsInstance(self._get_interrepo(), InterToGitRepository)
 
+    def test_pointless_fetch_refs_old_mapping(self):
+        interrepo = self._get_interrepo(mapping=BzrGitMappingv1())
+        self.assertRaises(NoPushSupport, interrepo.fetch_refs, lambda x: {}, lossy=False)
+
     def test_pointless_fetch_refs(self):
-        revidmap, old_refs, new_refs = self._get_interrepo().fetch_refs(lambda x: {}, lossy=False)
+        interrepo = self._get_interrepo(mapping=BzrGitMappingExperimental())
+        revidmap, old_refs, new_refs = interrepo.fetch_refs(lambda x: {}, lossy=False)
         self.assertEquals(old_refs, {'HEAD': ('ref: refs/heads/master', None)})
         self.assertEquals(new_refs, {})
 

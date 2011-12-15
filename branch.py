@@ -1073,7 +1073,7 @@ class InterToGitBranch(branch.GenericInterBranch):
             for k, v in self.source.tags.get_tag_dict().iteritems():
                 ret.append((None, v))
         ret.append((None, stop_revision))
-        self.interrepo.fetch_objects(ret, roundtrip=(not lossy))
+        self.interrepo.fetch_objects(ret, lossy=lossy)
 
     def pull(self, overwrite=False, stop_revision=None, local=False,
              possible_transports=None, run_hooks=True):
