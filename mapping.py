@@ -440,6 +440,11 @@ mapping_registry.register_lazy('git-v1', "bzrlib.plugins.git.mapping",
     "BzrGitMappingv1")
 mapping_registry.register_lazy('git-experimental',
     "bzrlib.plugins.git.mapping", "BzrGitMappingExperimental")
+# Uncomment the next line to enable the experimental bzr-git mappings.
+# This will make sure all bzr metadata is pushed into git, allowing for
+# full roundtripping later.
+# NOTE: THIS IS EXPERIMENTAL. IT MAY EAT YOUR DATA OR CORRUPT
+# YOUR BZR OR GIT REPOSITORIES. USE WITH CARE.
 #mapping_registry.set_default('git-experimental')
 mapping_registry.set_default('git-v1')
 
