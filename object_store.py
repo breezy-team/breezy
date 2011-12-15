@@ -50,7 +50,6 @@ from bzrlib.plugins.git.mapping import (
     directory_to_tree,
     extract_unusual_modes,
     mapping_registry,
-    object_mode,
     symlink_to_blob,
     )
 from bzrlib.plugins.git.unpeel_map import (
