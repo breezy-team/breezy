@@ -537,7 +537,9 @@ class TestConfig(tests.TestCase):
 
     def test_log_format_default(self):
         my_config = config.Config()
-        self.assertEqual('long', my_config.log_format())
+        self.assertEqual('long',
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                                              my_config.log_format))
 
     def test_acceptable_keys_default(self):
         my_config = config.Config()
@@ -1321,7 +1323,9 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
 
     def test_configured_logformat(self):
         my_config = self._get_sample_config()
-        self.assertEqual("short", my_config.log_format())
+        self.assertEqual("short",
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                                              my_config.log_format))
 
     def test_configured_acceptable_keys(self):
         my_config = self._get_sample_config()

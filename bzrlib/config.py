@@ -491,6 +491,7 @@ class Config(object):
         """See gpg_signing_command()."""
         return None
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def log_format(self):
         """What log format should be used"""
         result = self._log_format()
@@ -2570,7 +2571,8 @@ List of GPG key patterns which are acceptable for verification.
 option_registry.register(
     Option('add.maximum_file_size',
            default=u'20MB', from_unicode=int_SI_from_store,
-           help="""Size above which files should be added manually.
+           help="""\
+Size above which files should be added manually.
 
 Files below this size are added automatically when using ``bzr add`` without
 arguments.
