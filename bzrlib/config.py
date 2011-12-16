@@ -2455,6 +2455,25 @@ def int_from_store(unicode_str):
     return int(unicode_str)
 
 
+_unit_sfxs = dict(K=10**3, M=10**6, G=10**9)
+
+def int_SI_from_store(unicode_str):
+    regexp = "^(\d+)(([" + ''.join(_unit_sfxs) + "])b?)?$"
+    p = re.compile(regexp, re.IGNORECASE)
+    m = p.match(unicode_str)
+    val = None
+    if m is not None:
+        val, _, unit = m.groups()
+        val = int(val)
+        if unit:
+            try:
+                coeff = _unit_sfxs[unit.upper()]
+            except KeyError:
+                raise ValueError(gettext('{0} is not an SI unit.').format(unit))
+            val *= coeff
+    return val
+
+
 def float_from_store(unicode_str):
     return float(unicode_str)
 

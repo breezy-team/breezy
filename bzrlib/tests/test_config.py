@@ -1080,6 +1080,7 @@ si_gb = 5gB,
         self.assertEqual(None, get_si('non-exist'))
         self.assertEqual(42, get_si('non-exist-with-default',  42))
 
+
 class TestSupressWarning(TestIniConfig):
 
     def make_warnings_config(self, s):
@@ -2358,7 +2359,8 @@ class TestOption(tests.TestCase):
 class TestOptionConverterMixin(object):
 
     def assertConverted(self, expected, opt, value):
-        self.assertEquals(expected, opt.convert_from_unicode(value))
+        self.assertEquals(expected, opt.convert_from_unicode(value),
+                          'Expecting %s, got %s' % (expected, value,))
 
     def assertWarns(self, opt, value):
         warnings = []
@@ -2377,7 +2379,8 @@ class TestOptionConverterMixin(object):
 
     def assertConvertInvalid(self, opt, invalid_value):
         opt.invalid = None
-        self.assertEquals(None, opt.convert_from_unicode(invalid_value))
+        self.assertEquals(None, opt.convert_from_unicode(invalid_value),
+                          '%s is not None' % (invalid_value,))
         opt.invalid = 'warning'
         self.assertWarns(opt, invalid_value)
         opt.invalid = 'error'
@@ -2420,6 +2423,31 @@ class TestOptionWithIntegerConverter(tests.TestCase, TestOptionConverterMixin):
     def test_convert_valid(self):
         opt = self.get_option()
         self.assertConverted(16, opt, u'16')
+
+
+class TestOptionWithSIUnitConverter(tests.TestCase, TestOptionConverterMixin):
+
+    def get_option(self):
+        return config.Option('foo', help='An integer in SI units.',
+                             from_unicode=config.int_SI_from_store)
+
+    def test_convert_invalid(self):
+        opt = self.get_option()
+        self.assertConvertInvalid(opt, u'not-a-unit')
+        self.assertConvertInvalid(opt, u'Gb') # Forgot the int
+        self.assertConvertInvalid(opt, u'1b') # Forgot the unit
+        self.assertConvertInvalid(opt, u'1GG')
+        self.assertConvertInvalid(opt, u'1Mbb')
+        self.assertConvertInvalid(opt, u'1MM')
+
+    def test_convert_valid(self):
+        opt = self.get_option()
+        self.assertConverted(int(5e3), opt, u'5kb')
+        self.assertConverted(int(5e6), opt, u'5M')
+        self.assertConverted(int(5e6), opt, u'5MB')
+        self.assertConverted(int(5e9), opt, u'5g')
+        self.assertConverted(int(5e9), opt, u'5gB')
+        self.assertConverted(100, opt, u'100')
 
 
 class TestOptionWithListConverter(tests.TestCase, TestOptionConverterMixin):
