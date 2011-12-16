@@ -761,7 +761,7 @@ class TreeTransformBase(object):
 
     def _set_executability(self, path, trans_id):
         """Set the executability of versioned files """
-        if supports_executable():
+        if self._tree._supports_executable():
             new_executability = self._new_executability[trans_id]
             abspath = self._tree.abspath(path)
             current_mode = os.stat(abspath).st_mode
@@ -2319,7 +2319,7 @@ class _PreviewTree(tree.InventoryTree):
             if kind == 'file':
                 statval = os.lstat(limbo_name)
                 size = statval.st_size
-                if not supports_executable():
+                if not tt._tree._supports_executable():
                     executable = False
                 else:
                     executable = statval.st_mode & S_IEXEC

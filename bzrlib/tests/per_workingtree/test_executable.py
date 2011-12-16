@@ -189,7 +189,7 @@ class TestExecutable(TestCaseWithWorkingTree):
         self.assertFalse(b_executable)
 
     def test_use_exec_from_basis(self):
-        if osutils.supports_executable():
+        if self.wt._supports_executable():
             self.assertEqual(self.wt._is_executable_from_path_and_stat_from_stat,
                              self.wt._is_executable_from_path_and_stat)
         else:

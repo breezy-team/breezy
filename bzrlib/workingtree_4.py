@@ -476,25 +476,17 @@ class DirStateWorkingTree(InventoryWorkingTree):
             return False # Missing entries are not executable
         return entry[1][0][3] # Executable?
 
-    if not osutils.supports_executable():
-        def is_executable(self, file_id, path=None):
-            """Test if a file is executable or not.
+    def is_executable(self, file_id, path=None):
+        """Test if a file is executable or not.
 
-            Note: The caller is expected to take a read-lock before calling this.
-            """
+        Note: The caller is expected to take a read-lock before calling this.
+        """
+        if not self._supports_executable():
             entry = self._get_entry(file_id=file_id, path=path)
             if entry == (None, None):
                 return False
             return entry[1][0][3]
-
-        _is_executable_from_path_and_stat = \
-            _is_executable_from_path_and_stat_from_basis
-    else:
-        def is_executable(self, file_id, path=None):
-            """Test if a file is executable or not.
-
-            Note: The caller is expected to take a read-lock before calling this.
-            """
+        else:
             self._must_be_locked()
             if not path:
                 path = self.id2path(file_id)
