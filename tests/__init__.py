@@ -197,6 +197,7 @@ def test_suite():
         'test_cache',
         'test_dir',
         'test_fetch',
+        'test_git_remote_helper',
         'test_mapping',
         'test_object_store',
         'test_push',
