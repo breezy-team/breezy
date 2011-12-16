@@ -1170,15 +1170,6 @@ import %(root_name)s.%(sub_name)s.%(submoda_name)s as submoda7
                          ], self.actions)
 
 
-class ProxyingReplacer(lazy_import.ScopeReplacer):
-    """Replacer class that will do proxying even during selftest.
-    
-    This is useful to check that the lazy import code is sufficiently
-    thread-safe.
-    """
-
-    _should_proxy = True
-
 
 class TestScopeReplacerReentrance(TestCase):
     """The ScopeReplacer should be reentrant.
@@ -1190,7 +1181,7 @@ class TestScopeReplacerReentrance(TestCase):
     These tests set up a tracer that stops at a suitable moment (upon
     entry of a specified method) and starts another call to the
     functionality in question (__call__, __getattribute__, __setattr_)
-    in order win the race, setting up the original caller to loose.
+    in order win the race, setting up the original caller to lose.
     """
 
     def tracer(self, frame, event, arg):
@@ -1212,7 +1203,7 @@ class TestScopeReplacerReentrance(TestCase):
         return self.tracer
 
     def run_race(self, racer, method_to_trace='_resolve'):
-        lazy_import.ScopeReplacer._should_proxy = True
+        self.overrideAttr(lazy_import.ScopeReplacer, '_should_proxy', True)
         self.racer = racer
         self.method_to_trace = method_to_trace
         sys.settrace(self.tracer)
@@ -1225,7 +1216,7 @@ class TestScopeReplacerReentrance(TestCase):
     def test_call(self):
         def factory(*args):
             return factory
-        replacer = ProxyingReplacer({}, factory, 'name')
+        replacer = lazy_import.ScopeReplacer({}, factory, 'name')
         self.run_race(replacer)
 
     def test_setattr(self):
@@ -1235,7 +1226,7 @@ class TestScopeReplacerReentrance(TestCase):
         def factory(*args):
             return Replaced()
 
-        replacer = ProxyingReplacer({}, factory, 'name')
+        replacer = lazy_import.ScopeReplacer({}, factory, 'name')
 
         def racer():
             replacer.foo = 42
@@ -1249,7 +1240,7 @@ class TestScopeReplacerReentrance(TestCase):
         def factory(*args):
             return Replaced()
 
-        replacer = ProxyingReplacer({}, factory, 'name')
+        replacer = lazy_import.ScopeReplacer({}, factory, 'name')
 
         def racer():
             replacer.foo
