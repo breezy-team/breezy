@@ -1166,6 +1166,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         if response != ('ok', ):
             raise errors.UnexpectedSmartServerResponse(response)
         self._write_group_tokens = None
+        # Refresh data after writing to the repository.
         self.refresh_data()
 
     def resume_write_group(self, tokens):
@@ -1850,6 +1851,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         """
         if self._real_repository is not None:
             self._real_repository.refresh_data()
+        # Refresh the parents cache for this object
         self._unstacked_provider.disable_cache()
         self._unstacked_provider.enable_cache()
 
