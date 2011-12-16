@@ -1,4 +1,4 @@
-bzr-builddeb (2.7.10) UNRELEASED; urgency=low
+bzr-builddeb (2.8.0) unstable; urgency=low
 
   [ Jonathan Riddell ]
   * Add get-orig-source command which will get the upstream tar file.
@@ -36,7 +36,7 @@ bzr-builddeb (2.7.10) UNRELEASED; urgency=low
   * Deal with invalid versions and bad encoding in the changelog merge
     hook. LP: #893495
 
- -- Jelmer Vernooij <jelmer@debian.org>  Wed, 14 Dec 2011 01:03:44 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 16 Dec 2011 19:58:57 +0100
 
 bzr-builddeb (2.7.9) unstable; urgency=low
 
