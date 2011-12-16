@@ -70,6 +70,9 @@ Bug Fixes
 * Report mistake trying to move a removed file with a non-ascii name without
   UnicodeEncodeError being raised. (Martin Packman, #898541)
 
+* Uncommit no longer removes tags if they are part of the working
+  trees pending merges. (Jelmer Vernooij, #905462)
+
 Documentation
 *************
 
