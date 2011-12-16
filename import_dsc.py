@@ -997,12 +997,8 @@ class DistributionBranch(object):
         changelog_path = os.path.join(self.tree.basedir, 'debian',
                 'changelog')
         if os.path.exists(changelog_path):
-            f = open(changelog_path)
-            try:
-                changelog_contents = f.read()
-            finally:
-                f.close()
-            changelog = Changelog(file=changelog_contents, max_blocks=1)
+            changelog = self.get_changelog_from_source(
+                self.tree.basedir, max_blocks=1)
         message, authors, thanks, bugs = \
                 get_commit_info_from_changelog(changelog, self.branch)
         if message is None:
@@ -1077,10 +1073,17 @@ class DistributionBranch(object):
         # FIXME: What about other versions ?
         return { None: parents }
 
-    def get_changelog_from_source(self, dir):
+    def get_changelog_from_source(self, dir, max_blocks=None):
         cl_filename = os.path.join(dir, "debian", "changelog")
+        content = open(cl_filename).read()
+        # Older versions of python-debian were accepting various encodings in
+        # the changelog. This is not true with 0.1.20ubuntu2 at least which
+        # force an 'utf-8' encoding. This leads to failures when trying to
+        # parse old changelogs. Using safe_decode() below will fallback to
+        # iso-8859-1 (latin_1) in this case.
+        content = safe_decode(content)
         cl = Changelog()
-        cl.parse_changelog(open(cl_filename).read(), strict=False)
+        cl.parse_changelog(content, strict=False, max_blocks=max_blocks)
         return cl
 
     def _fetch_from_branch(self, branch, revid):
