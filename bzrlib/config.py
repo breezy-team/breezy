@@ -440,6 +440,7 @@ class Config(object):
             l = [l]
         return l
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def get_user_option_as_int_from_SI(self, option_name, default=None):
         """Get a generic option from a human readable size in SI units, e.g 10MB
 
@@ -2458,6 +2459,15 @@ def int_from_store(unicode_str):
 _unit_sfxs = dict(K=10**3, M=10**6, G=10**9)
 
 def int_SI_from_store(unicode_str):
+    """Convert a human readable size in SI units, e.g 10MB into an integer.
+
+    Accepted suffixes are K,M,G. It is case-insensitive and may be followed
+    by a trailing b (i.e. Kb, MB). This is intended to be practical and not
+    pedantic.
+
+    :return Integer, expanded to its base-10 value if a proper SI unit is 
+        found, None otherwise.
+    """
     regexp = "^(\d+)(([" + ''.join(_unit_sfxs) + "])b?)?$"
     p = re.compile(regexp, re.IGNORECASE)
     m = p.match(unicode_str)
@@ -2556,6 +2566,16 @@ option_registry.register(
            default=None, from_unicode=list_from_store,
            help="""\
 List of GPG key patterns which are acceptable for verification.
+"""))
+option_registry.register(
+    Option('add.maximum_file_size',
+           default=u'20MB', from_unicode=int_SI_from_store,
+           help="""Size above which files should be added manually.
+
+Files below this size are added automatically when using ``bzr add`` without
+arguments.
+
+A negative value means disable the size check.
 """))
 option_registry.register(
     Option('bzr.workingtree.worth_saving_limit', default=10,

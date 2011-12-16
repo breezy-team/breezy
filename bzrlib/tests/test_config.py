@@ -1069,7 +1069,10 @@ si_mb = 5MB,
 si_g = 5g,
 si_gb = 5gB,
 """)
-        get_si = conf.get_user_option_as_int_from_SI
+        def get_si(s, default=None):
+            return self.applyDeprecated(
+                deprecated_in((2, 5, 0)),
+                conf.get_user_option_as_int_from_SI, s, default)
         self.assertEqual(100, get_si('plain'))
         self.assertEqual(5000, get_si('si_k'))
         self.assertEqual(5000, get_si('si_kb'))
