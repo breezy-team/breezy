@@ -677,6 +677,10 @@ class cmd_merge_upstream(Command):
             distribution=None, package=None,
             directory=".", revision=None, merge_type=None,
             last_version=None, force=None, snapshot=False, launchpad=False):
+        from bzrlib.plugins.builddeb.upstream import (
+                TarfileSource,
+                UScanSource,
+                )
         from bzrlib.plugins.builddeb.upstream.branch import (
                 UpstreamBranchSource,
                 )
