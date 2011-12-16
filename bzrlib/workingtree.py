@@ -2795,9 +2795,8 @@ class InventoryWorkingTree(WorkingTree,
                 # something is wrong, so lets determine what exactly
                 if not self.has_filename(from_rel) and \
                    not self.has_filename(to_rel):
-                    raise errors.BzrRenameFailedError(from_rel,to_rel,
-                        errors.PathsDoNotExist(paths=(str(from_rel),
-                        str(to_rel))))
+                    raise errors.BzrRenameFailedError(from_rel, to_rel,
+                        errors.PathsDoNotExist(paths=(from_rel, to_rel)))
                 else:
                     raise errors.RenameFailedFilesExist(from_rel, to_rel)
             rename_entry.only_change_inv = only_change_inv
@@ -3029,25 +3028,6 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
 
     supports_versioned_directories = None
 
-    @classmethod
-    def find_format_string(klass, controldir):
-        """Return format name for the working tree object in controldir."""
-        try:
-            transport = controldir.get_workingtree_transport(None)
-            return transport.get_bytes("format")
-        except errors.NoSuchFile:
-            raise errors.NoWorkingTree(base=transport.base)
-
-    @classmethod
-    def find_format(klass, controldir):
-        """Return the format for the working tree object in controldir."""
-        try:
-            format_string = klass.find_format_string(controldir)
-            return format_registry.get(format_string)
-        except KeyError:
-            raise errors.UnknownFormatError(format=format_string,
-                                            kind="working tree")
-
     def initialize(self, controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
         """Initialize a new working tree in controldir.
@@ -3077,10 +3057,6 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
     def get_default_format(klass):
         """Return the current default format."""
         return format_registry.get_default()
-
-    def get_format_string(self):
-        """Return the ASCII format string that identifies this format."""
-        raise NotImplementedError(self.get_format_string)
 
     def get_format_description(self):
         """Return the short description for this format."""
@@ -3146,6 +3122,30 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
         in the same control directory as a branch.
         """
         return self._matchingbzrdir
+
+
+class WorkingTreeFormatMetaDir(bzrdir.BzrDirMetaComponentFormat, WorkingTreeFormat):
+    """Base class for working trees that live in bzr meta directories."""
+
+    def __init__(self):
+        WorkingTreeFormat.__init__(self)
+        bzrdir.BzrDirMetaComponentFormat.__init__(self)
+
+    @classmethod
+    def find_format_string(klass, controldir):
+        """Return format name for the working tree object in controldir."""
+        try:
+            transport = controldir.get_workingtree_transport(None)
+            return transport.get_bytes("format")
+        except errors.NoSuchFile:
+            raise errors.NoWorkingTree(base=transport.base)
+
+    @classmethod
+    def find_format(klass, controldir):
+        """Return the format for the working tree object in controldir."""
+        format_string = klass.find_format_string(controldir)
+        return klass._find_format(format_registry, 'working tree',
+                format_string)
 
 
 format_registry.register_lazy("Bazaar Working Tree Format 4 (bzr 0.15)\n",

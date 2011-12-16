@@ -1217,7 +1217,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
-        osutils._fs_enc = 'UTF-8'
+        osutils._fs_enc = 'utf-8'
         self.assertDirReaderIs(
             UTF8DirReaderFeature.module.UTF8DirReader)
 
@@ -1225,22 +1225,14 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
-        osutils._fs_enc = 'US-ASCII'
-        self.assertDirReaderIs(
-            UTF8DirReaderFeature.module.UTF8DirReader)
-
-    def test_force_walkdirs_utf8_fs_ANSI(self):
-        self.requireFeature(UTF8DirReaderFeature)
-        self._save_platform_info()
-        win32utils.winver = None # Avoid the win32 detection code
-        osutils._fs_enc = 'ANSI_X3.4-1968'
+        osutils._fs_enc = 'ascii'
         self.assertDirReaderIs(
             UTF8DirReaderFeature.module.UTF8DirReader)
 
     def test_force_walkdirs_utf8_fs_latin1(self):
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
-        osutils._fs_enc = 'latin1'
+        osutils._fs_enc = 'iso-8859-1'
         self.assertDirReaderIs(osutils.UnicodeDirReader)
 
     def test_force_walkdirs_utf8_nt(self):
@@ -2122,12 +2114,6 @@ class TestGetuserUnicode(tests.TestCase):
         self.assertEqual(uni_username, osutils.getuser_unicode())
         self.overrideEnv('LOGNAME', u'jrandom\xb6'.encode(ue))
         self.assertEqual(u'jrandom\xb6', osutils.getuser_unicode())
-
-    def test_no_username_bug_660174(self):
-        self.requireFeature(features.win32_feature)
-        for name in ('LOGNAME', 'USER', 'LNAME', 'USERNAME'):
-            self.overrideEnv(name, None)
-        self.assertEqual(u'UNKNOWN', osutils.getuser_unicode())
 
 
 class TestBackupNames(tests.TestCase):

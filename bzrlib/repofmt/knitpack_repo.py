@@ -160,7 +160,8 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar pack repository format 1 (needs bzr 0.92)\n"
 
@@ -200,7 +201,8 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n"
 
@@ -238,7 +240,8 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return ("Bazaar pack repository format 1 with rich root"
                 " (needs bzr 1.0)\n")
@@ -276,7 +279,8 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n"
 
@@ -316,7 +320,8 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n"
 
@@ -362,7 +367,8 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n"
 
@@ -400,7 +406,8 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n"
 
@@ -437,7 +444,8 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n"
 
@@ -477,7 +485,8 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return ("Bazaar development format 2 with subtree support "
             "(needs bzr.dev from before 1.8)\n")

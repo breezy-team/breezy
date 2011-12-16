@@ -71,7 +71,7 @@ from bzrlib.tree import (
 from bzrlib.workingtree import (
     InventoryWorkingTree,
     WorkingTree,
-    WorkingTreeFormat,
+    WorkingTreeFormatMetaDir,
     )
 
 
@@ -1448,7 +1448,7 @@ class WorkingTree6(ContentFilteringDirStateWorkingTree):
         return views.PathBasedViews(self)
 
 
-class DirStateWorkingTreeFormat(WorkingTreeFormat):
+class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
 
     missing_parent_conflicts = True
 
@@ -1620,7 +1620,8 @@ class WorkingTreeFormat4(DirStateWorkingTreeFormat):
 
     _tree_class = WorkingTree4
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See WorkingTreeFormat.get_format_string()."""
         return "Bazaar Working Tree Format 4 (bzr 0.15)\n"
 
@@ -1637,7 +1638,8 @@ class WorkingTreeFormat5(DirStateWorkingTreeFormat):
 
     _tree_class = WorkingTree5
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See WorkingTreeFormat.get_format_string()."""
         return "Bazaar Working Tree Format 5 (bzr 1.11)\n"
 
@@ -1657,7 +1659,8 @@ class WorkingTreeFormat6(DirStateWorkingTreeFormat):
 
     _tree_class = WorkingTree6
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See WorkingTreeFormat.get_format_string()."""
         return "Bazaar Working Tree Format 6 (bzr 1.14)\n"
 

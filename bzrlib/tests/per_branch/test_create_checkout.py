@@ -28,8 +28,8 @@ class TestCreateCheckout(per_branch.TestCaseWithBranch):
         # All branches can define the format they want checkouts made in.
         # This checks it is honoured.
         expected_format = a_branch._get_checkout_format(lightweight=True)
-        self.assertEqual(expected_format.get_branch_format().__class__,
-                         tree.branch._format.__class__)
+        self.assertEqual(expected_format.get_branch_format().network_name(),
+                         tree.branch._format.network_name())
 
     def test_checkout_format_heavyweight(self):
         """Make sure the new heavy checkout uses the desired branch format."""
@@ -38,8 +38,8 @@ class TestCreateCheckout(per_branch.TestCaseWithBranch):
         # All branches can define the format they want checkouts made in.
         # This checks it is honoured.
         expected_format = a_branch._get_checkout_format(lightweight=False)
-        self.assertEqual(expected_format.get_branch_format().__class__,
-                         tree.branch._format.__class__)
+        self.assertEqual(expected_format.get_branch_format().network_name(),
+                         tree.branch._format.network_name())
 
     def test_create_revision_checkout(self):
         """Test that we can create a checkout from an earlier revision."""

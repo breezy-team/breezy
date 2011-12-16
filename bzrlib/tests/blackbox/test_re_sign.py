@@ -19,8 +19,6 @@
 """Black-box tests for bzr re-sign.
 """
 
-import os
-
 from bzrlib import (
     gpg,
     tests,
