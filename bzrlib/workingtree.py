@@ -227,6 +227,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         """See `Tree.has_versioned_directories`."""
         return self._format.supports_versioned_directories
 
+    def _supports_executable(self):
+        if sys.platform == 'win32':
+            return False
+        # FIXME: Ideally this should check the file system
+        return True
+
     def break_lock(self):
         """Break a lock if one is present from another instance.
 
@@ -1774,10 +1780,6 @@ class InventoryWorkingTree(WorkingTree,
         """
         self._inventory = inv
         self._inventory_is_modified = dirty
-
-    def _supports_executable(self):
-        # FIXME: Ideally this should check the file system
-        return osutils.supports_executable()
 
     def _detect_case_handling(self):
         wt_trans = self.bzrdir.get_workingtree_transport(None)

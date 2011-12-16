@@ -1613,6 +1613,7 @@ else:
     _terminal_size = _ioctl_terminal_size
 
 
+@deprecated_function(deprecated_in((2, 5, 0)))
 def supports_executable():
     return sys.platform != "win32"
 
