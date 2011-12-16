@@ -60,3 +60,9 @@ class RemoteHelperTests(TestCaseWithTransport):
         capabs = f.getvalue()
         base = "fetch\noption\npush\n"
         self.assertTrue(capabs in (base+"\n", base+"import\n\n"), capabs)
+
+    def test_option(self):
+        f = StringIO()
+        self.helper.cmd_option(f, [])
+        self.assertEquals("unsupported\n", f.getvalue())
+

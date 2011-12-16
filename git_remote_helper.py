@@ -125,7 +125,6 @@ class RemoteHelper(object):
 
     def cmd_option(self, outf, argv):
         outf.write("unsupported\n")
-        outf.flush()
 
     def cmd_fetch(self, outf, argv):
         if self.batchcmd not in (None, "fetch"):
