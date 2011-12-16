@@ -20,6 +20,7 @@
 
 """Remote helper for git for accessing bzr repositories."""
 
+import optparse
 import signal
 import sys
 
@@ -28,195 +29,21 @@ def handle_sigint(signal, frame):
 
 signal.signal(signal.SIGINT, handle_sigint)
 
-CAPABILITIES = ["fetch", "option", "push"]
-
-import optparse
-import os
 import bzrlib
 bzrlib.initialize()
 
 from bzrlib.plugin import load_plugins
 load_plugins()
 
-from bzrlib.controldir import ControlDir
-from bzrlib.errors import NotBranchError, NoRepositoryPresent
-from bzrlib.repository import InterRepository
-from bzrlib.transport import get_transport_from_path
-
-from bzrlib.plugins.git import (
-    LocalGitProber,
+from bzrlib.plugins.git.git_remote_helper import (
+    RemoteHelper,
+    open_local_dir,
+    open_remote_dir,
     )
-from bzrlib.plugins.git.dir import (
-    BareLocalGitControlDirFormat,
-    LocalGitControlDirFormat,
-    )
-
-from bzrlib.plugins.git.object_store import (
-    get_object_store,
-    )
-from bzrlib.plugins.git.refs import (
-    get_refs_container,
-    ref_to_branch_name,
-    )
-from bzrlib.plugins.git.repository import (
-    GitRepository,
-    )
-
-try:
-    from bzrlib.plugins.fastimport import exporter as fastexporter
-except ImportError:
-    pass
-else:
-    CAPABILITIES.append("import")
-
-options = {}
-transports = []
-
-def cmd_capabilities(argv, name, remote_dir):
-    sys.stdout.write("\n".join(CAPABILITIES)+"\n\n")
-    sys.stdout.flush()
-
-
-def cmd_list(argv, name, remote_dir):
-    try:
-        repo = remote_dir.find_repository()
-    except NoRepositoryPresent:
-        repo = remote_dir.create_repository()
-    object_store = get_object_store(repo)
-    object_store.lock_read()
-    try:
-        refs = get_refs_container(remote_dir, object_store)
-        for ref, git_sha1 in refs.as_dict().iteritems():
-            sys.stdout.write("%s %s\n" % (git_sha1, ref))
-        sys.stdout.write("\n")
-    finally:
-        object_store.unlock()
-    sys.stdout.flush()
-
-
-def cmd_option(argv, name, remote_dir):
-    sys.stdout.write("unsupported\n")
-    sys.stdout.flush()
-
-
-batchcmd = None
-wants = []
-def cmd_fetch(argv, name, remote_dir):
-    global batchcmd, wants
-    if batchcmd not in (None, "fetch"):
-        raise Exception("fetch command inside other batch command")
-    wants.append(tuple(argv[1:]))
-    batchcmd = "fetch"
-
-
-def cmd_push(argv, name, remote_dir):
-    global batchcmd, wants
-    if batchcmd not in (None, "push"):
-        raise Exception("push command inside other batch command")
-    wants.append(tuple(argv[1].split(":", 1)))
-    batchcmd = "push"
-
-
-def cmd_import(argv, name, remote_dir):
-    dest_branch_name = ref_to_branch_name(argv[1])
-    if dest_branch_name == "master":
-        dest_branch_name = None
-    remote_branch = remote_dir.open_branch(name=dest_branch_name)
-    exporter = fastexporter.BzrFastExporter(remote_branch,
-        outf=sys.stdout, git_branch=argv[1],
-        checkpoint=None, import_marks_file=None,
-        export_marks_file=None, revision=None,
-        verbose=None, plain_format=True,
-        rewrite_tags=False)
-    exporter.run()
-    sys.stdout.flush()
-
-
-def fetch(wants, shortname, remote_dir, local_dir):
-    remote_repo = remote_dir.find_repository()
-    local_repo = local_dir.find_repository()
-    inter = InterRepository.get(remote_repo, local_repo)
-    def update_refs(heads):
-        ret = {}
-        for (sha1, ref) in wants:
-            ret[ref] = (sha1, None)
-        return ret
-    if (isinstance(remote_repo, GitRepository) and
-        isinstance(local_repo, GitRepository)):
-        lossy = False
-    else:
-        lossy = True
-    inter.fetch_refs(update_refs, lossy=lossy)
-    sys.stdout.write("\n")
-    sys.stdout.flush()
-
-
-def push(wants, shortname, remote_dir, local_dir):
-    for (src_ref, dest_ref) in wants:
-        local_branch = local_dir.open_branch(ref=src_ref)
-        dest_branch_name = ref_to_branch_name(dest_ref)
-        if dest_branch_name == "master":
-            dest_branch_name = None
-        try:
-            remote_branch = remote_dir.open_branch(name=dest_branch_name)
-        except NotBranchError:
-            remote_branch = remote_dir.create_branch(name=dest_branch_name)
-        local_branch.push(remote_branch)
-        sys.stdout.write("ok %s\n" % dest_ref)
-    sys.stdout.write("\n")
-    sys.stdout.flush()
-
-
-commands = {
-    "capabilities": cmd_capabilities,
-    "list": cmd_list,
-    "option": cmd_option,
-    "fetch": cmd_fetch,
-    "push": cmd_push,
-    "import": cmd_import,
-    }
 
 parser = optparse.OptionParser()
 (opts, args) = parser.parse_args()
 (shortname, url) = args
 
-try:
-    remote_dir = ControlDir.open(url)
-except NotBranchError:
-    remote_dir = ControlDir.create(url)
-
-try:
-    git_path = os.environ["GIT_DIR"]
-except KeyError:
-    git_transport = get_transport_from_path(".")
-    git_format = LocalGitProber().probe_transport(git_transport)
-else:
-    if git_path.endswith("/.git"):
-        git_format = LocalGitControlDirFormat()
-        git_path = git_path[:-4]
-    else:
-        git_format = BareLocalGitControlDirFormat()
-    git_transport = get_transport_from_path(git_path)
-
-local_dir = git_format.open(git_transport)
-
-while True:
-    l = sys.stdin.readline()
-    if not l:
-        break
-    argv = l.strip().split()
-    if argv == []:
-        if batchcmd == "fetch":
-            fetch(wants, shortname, remote_dir, local_dir)
-        elif batchcmd == "push":
-            push(wants, shortname, remote_dir, local_dir)
-        elif batchcmd is None:
-            break
-        else:
-            raise AssertionError("invalid batch %r" % batchcmd)
-        batchcmd = None
-    else:
-        try:
-           commands[argv[0]](argv, shortname, remote_dir)
-        except KeyError:
-           raise Exception("Unknown remote command %r" % argv)
+helper = RemoteHelper(open_local_dir(), shortname, open_remote_dir(url))
+helper.process(sys.stdin, sys.stdout)
