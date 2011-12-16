@@ -311,7 +311,7 @@ pseudo-prog (\xc2\xa7) unstable; urgency=low
         if not handled:
             # Can't assert on the exact message as it depends on the locale
             self.assertContainsRe(self.logged_warnings.getvalue(),
-                "dpkg-mergechangelogs: .*\xc2\xa7( is not a valid version)?")
+                "dpkg-mergechangelogs: .*( is not a valid version)?")
 
 
 class TestChangelogHook(tests.TestCaseWithMemoryTransport):
