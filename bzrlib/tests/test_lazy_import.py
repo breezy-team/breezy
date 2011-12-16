@@ -39,10 +39,6 @@ class InstrumentedReplacer(lazy_import.ScopeReplacer):
     def use_actions(actions):
         InstrumentedReplacer.actions = actions
 
-    def _replace(self):
-        InstrumentedReplacer.actions.append('_replace')
-        return lazy_import.ScopeReplacer._replace(self)
-
     def __getattribute__(self, attr):
         InstrumentedReplacer.actions.append(('__getattribute__', attr))
         return lazy_import.ScopeReplacer.__getattribute__(self, attr)
@@ -61,10 +57,6 @@ class InstrumentedImportReplacer(lazy_import.ImportReplacer):
     def _import(self, scope, name):
         InstrumentedImportReplacer.actions.append(('_import', name))
         return lazy_import.ImportReplacer._import(self, scope, name)
-
-    def _replace(self):
-        InstrumentedImportReplacer.actions.append('_replace')
-        return lazy_import.ScopeReplacer._replace(self)
 
     def __getattribute__(self, attr):
         InstrumentedImportReplacer.actions.append(('__getattribute__', attr))
@@ -144,7 +136,6 @@ class TestScopeReplacer(TestCase):
         self.assertIsInstance(test_obj1, TestClass)
         self.assertEqual('foo', test_obj1.foo(2))
         self.assertEqual([('__getattribute__', 'foo'),
-                          '_replace',
                           'factory',
                           'init',
                           ('foo', 1),
@@ -243,7 +234,6 @@ class TestScopeReplacer(TestCase):
         self.assertEqual('class_member', test_class1.class_member)
         self.assertEqual(test_class1, TestClass)
         self.assertEqual([('__getattribute__', 'class_member'),
-                          '_replace',
                           'factory',
                          ], actions)
 
@@ -273,7 +263,6 @@ class TestScopeReplacer(TestCase):
         self.assertIsInstance(obj, TestClass)
         self.assertEqual('class_member', obj.class_member)
         self.assertEqual([('__call__', (), {}),
-                          '_replace',
                           'factory',
                           'init',
                          ], actions)
@@ -306,7 +295,6 @@ class TestScopeReplacer(TestCase):
 
         self.assertEqual((1,2,'3'), val)
         self.assertEqual([('__call__', (1,2), {'c':'3'}),
-                          '_replace',
                           'factory',
                           'func',
                          ], actions)
@@ -368,7 +356,6 @@ class TestScopeReplacer(TestCase):
                           getattr, test_obj3, 'foo')
 
         self.assertEqual([('__getattribute__', 'foo'),
-                          '_replace',
                           'factory',
                           'init',
                           ('foo', 1),
@@ -425,7 +412,6 @@ class TestScopeReplacer(TestCase):
                          object.__getattribute__(test_obj5, '__class__'))
 
         self.assertEqual([('__getattribute__', 'foo'),
-                          '_replace',
                           'factory',
                           'init',
                           ('foo', 1),
@@ -463,7 +449,6 @@ class TestScopeReplacer(TestCase):
         e = self.assertRaises(errors.IllegalUseOfScopeReplacer, test_obj7)
         self.assertIn("replace itself", e.msg)
         self.assertEqual([('__call__', (), {}),
-                          '_replace',
                           'factory'], actions)
 
 
@@ -598,7 +583,6 @@ class TestImportReplacer(ImportReplacerHelper):
         self.assertEqual('x', root1.func1('x'))
 
         self.assertEqual([('__getattribute__', 'var1'),
-                          '_replace',
                           ('_import', 'root1'),
                           ('import', self.root_name, []),
                          ], self.actions)
@@ -624,7 +608,6 @@ class TestImportReplacer(ImportReplacerHelper):
         self.assertEqual('y', mod1.func2('y'))
 
         self.assertEqual([('__getattribute__', 'var2'),
-                          '_replace',
                           ('_import', 'mod1'),
                           ('import', mod_path, []),
                          ], self.actions)
@@ -649,7 +632,6 @@ class TestImportReplacer(ImportReplacerHelper):
         self.assertEqual('y', mod2.func2('y'))
 
         self.assertEqual([('__getattribute__', 'var2'),
-                          '_replace',
                           ('_import', 'mod2'),
                           ('import', self.root_name, [self.mod_name]),
                          ], self.actions)
@@ -682,11 +664,9 @@ class TestImportReplacer(ImportReplacerHelper):
 
         mod_path = self.root_name + '.' + self.mod_name
         self.assertEqual([('__getattribute__', 'var1'),
-                          '_replace',
                           ('_import', 'root3'),
                           ('import', self.root_name, []),
                           ('__getattribute__', 'var2'),
-                          '_replace',
                           ('_import', 'mod3'),
                           ('import', mod_path, []),
                          ], self.actions)
@@ -726,11 +706,9 @@ class TestImportReplacer(ImportReplacerHelper):
 
         mod_path = self.root_name + '.' + self.mod_name
         self.assertEqual([('__getattribute__', 'mod4'),
-                          '_replace',
                           ('_import', 'root4'),
                           ('import', self.root_name, []),
                           ('__getattribute__', 'var2'),
-                          '_replace',
                           ('_import', 'mod4'),
                           ('import', mod_path, []),
                          ], self.actions)
@@ -791,23 +769,18 @@ class TestImportReplacer(ImportReplacerHelper):
         submodb_path = sub_path + '.' + self.submodb_name
 
         self.assertEqual([('__getattribute__', 'mod5'),
-                          '_replace',
                           ('_import', 'root5'),
                           ('import', self.root_name, []),
                           ('__getattribute__', 'submoda5'),
-                          '_replace',
                           ('_import', 'sub5'),
                           ('import', sub_path, []),
                           ('__getattribute__', 'var2'),
-                          '_replace',
                           ('_import', 'mod5'),
                           ('import', mod_path, []),
                           ('__getattribute__', 'var4'),
-                          '_replace',
                           ('_import', 'submoda5'),
                           ('import', submoda_path, []),
                           ('__getattribute__', 'var5'),
-                          '_replace',
                           ('_import', 'submodb5'),
                           ('import', submodb_path, []),
                          ], self.actions)
@@ -1103,7 +1076,6 @@ class TestLazyImportProcessor(ImportReplacerHelper):
         self.assertEqual('x', root6.func1('x'))
 
         self.assertEqual([('__getattribute__', 'var1'),
-                          '_replace',
                           ('_import', 'root6'),
                           ('import', self.root_name, []),
                          ], self.actions)
@@ -1139,7 +1111,6 @@ import %(root_name)s.%(sub_name)s.%(submoda_name)s as submoda7
         submoda_path = sub_path + '.' + self.submoda_name
 
         self.assertEqual([('__getattribute__', 'var4'),
-                          '_replace',
                           ('_import', 'submoda7'),
                           ('import', submoda_path, []),
                          ], self.actions)
@@ -1164,7 +1135,6 @@ import %(root_name)s.%(sub_name)s.%(submoda_name)s as submoda7
         self.assertEqual(1, root8.func1(1))
 
         self.assertEqual([('__getattribute__', 'var1'),
-                          '_replace',
                           ('_import', 'root8'),
                           ('import', self.root_name, []),
                          ], self.actions)
