@@ -49,8 +49,8 @@ class RemoteHelperTests(TestCaseWithTransport):
 
     def setUp(self):
         super(RemoteHelperTests, self).setUp()
-        self.local_dir = self.make_branch_and_tree('local', format='git')
-        self.remote_dir = self.make_branch_and_tree('remote')
+        self.local_dir = self.make_branch_and_tree('local', format='git').bzrdir
+        self.remote_dir = self.make_branch_and_tree('remote').bzrdir
         self.shortname = 'bzr'
         self.helper = RemoteHelper(self.local_dir, self.shortname, self.remote_dir)
 
@@ -66,3 +66,10 @@ class RemoteHelperTests(TestCaseWithTransport):
         self.helper.cmd_option(f, [])
         self.assertEquals("unsupported\n", f.getvalue())
 
+    def test_list_basic(self):
+        f = StringIO()
+        self.helper.cmd_list(f, [])
+        self.assertEquals(
+            '0000000000000000000000000000000000000000 HEAD\n'
+            '0000000000000000000000000000000000000000 refs/heads/master\n\n',
+            f.getvalue())
