@@ -17,11 +17,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from cStringIO import StringIO
 import os
 
 from bzrlib.tests import TestCaseWithTransport
 
-from bzrlib.plugins.git.git_remote_helper import open_local_dir
+from bzrlib.plugins.git.git_remote_helper import (
+    RemoteHelper,
+    open_local_dir,
+    )
 
 
 class OpenLocalDirTests(TestCaseWithTransport):
@@ -39,3 +43,20 @@ class OpenLocalDirTests(TestCaseWithTransport):
     def test_from_dir(self):
         self.make_branch_and_tree('.', format='git')
         open_local_dir()
+
+
+class RemoteHelperTests(TestCaseWithTransport):
+
+    def setUp(self):
+        super(RemoteHelperTests, self).setUp()
+        self.local_dir = self.make_branch_and_tree('local', format='git')
+        self.remote_dir = self.make_branch_and_tree('remote')
+        self.shortname = 'bzr'
+        self.helper = RemoteHelper(self.local_dir, self.shortname, self.remote_dir)
+
+    def test_capabilities(self):
+        f = StringIO()
+        self.helper.cmd_capabilities(f, [])
+        capabs = f.getvalue()
+        base = "fetch\noption\npush\n"
+        self.assertTrue(capabs in (base+"\n", base+"import\n\n"), capabs)
