@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import bzrlib.bzrdir
-
 from cStringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
@@ -45,6 +43,10 @@ from bzrlib import (
     )
 from bzrlib.i18n import gettext, ngettext
 """)
+
+# Explicitly import bzrlib.bzrdir so that the BzrProber
+# is guaranteed to be registered.
+import bzrlib.bzrdir
 
 from bzrlib import (
     controldir,

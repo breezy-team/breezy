@@ -69,6 +69,10 @@ from bzrlib import (
     )
 """)
 
+# Explicitly import bzrlib.bzrdir so that the BzrProber
+# is guaranteed to be registered.
+import bzrlib.bzrdir
+
 from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.i18n import gettext
