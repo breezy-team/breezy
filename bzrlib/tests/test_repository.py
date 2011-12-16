@@ -905,7 +905,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             revision = _mod_revision.Revision('rev1a',
                 committer='jrandom@example.com', timestamp=0,
                 inventory_sha1='', timezone=0, message='foo', parent_ids=[])
-            repo.add_revision('rev1a',revision, inv)
+            repo.add_revision('rev1a', revision, inv)
 
             # make rev1b, which has no Revision, but has an Inventory, and
             # file1
@@ -946,7 +946,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         revision = _mod_revision.Revision(revision_id,
             committer='jrandom@example.com', timestamp=0, inventory_sha1='',
             timezone=0, message='foo', parent_ids=parent_ids)
-        repo.add_revision(revision_id,revision, inv)
+        repo.add_revision(revision_id, revision, inv)
 
     def add_file(self, repo, inv, filename, revision, parents):
         file_id = filename + '-id'

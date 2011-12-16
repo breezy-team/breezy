@@ -105,7 +105,7 @@ def annotate_file_tree(tree, file_id, to_file, verbose=False, full=False,
         current_rev = Revision(CURRENT_REVISION)
         current_rev.parent_ids = tree.get_parent_ids()
         try:
-            current_rev.committer = branch.get_config().username()
+            current_rev.committer = branch.get_config_stack().get('email')
         except errors.NoWhoami:
             current_rev.committer = 'local user'
         current_rev.message = "?"

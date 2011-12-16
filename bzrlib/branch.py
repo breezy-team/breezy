@@ -663,18 +663,12 @@ class Branch(controldir.ControlComponent):
         """
         if not self._format.supports_set_append_revisions_only():
             return False
-        return self.get_config(
-            ).get_user_option_as_bool('append_revisions_only')
+        return self.get_config_stack().get('append_revisions_only')
 
     def set_append_revisions_only(self, enabled):
         if not self._format.supports_set_append_revisions_only():
             raise errors.UpgradeRequired(self.user_url)
-        if enabled:
-            value = 'True'
-        else:
-            value = 'False'
-        self.get_config().set_user_option('append_revisions_only', value,
-            warn_masked=True)
+        self.get_config_stack().set('append_revisions_only', enabled)
 
     def set_reference_info(self, file_id, tree_path, branch_location):
         """Set the branch location to use for a tree reference."""
@@ -709,7 +703,7 @@ class Branch(controldir.ControlComponent):
         """
         raise errors.UpgradeRequired(self.user_url)
 
-    def get_commit_builder(self, parents, config=None, timestamp=None,
+    def get_commit_builder(self, parents, config_stack=None, timestamp=None,
                            timezone=None, committer=None, revprops=None,
                            revision_id=None, lossy=False):
         """Obtain a CommitBuilder for this branch.
@@ -725,10 +719,10 @@ class Branch(controldir.ControlComponent):
             represented, when pushing to a foreign VCS 
         """
 
-        if config is None:
-            config = self.get_config()
+        if config_stack is None:
+            config_stack = self.get_config_stack()
 
-        return self.repository.get_commit_builder(self, parents, config,
+        return self.repository.get_commit_builder(self, parents, config_stack,
             timestamp, timezone, committer, revprops, revision_id,
             lossy)
 

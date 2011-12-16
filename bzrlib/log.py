@@ -580,20 +580,32 @@ def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
         and (not generate_merge_revisions
              or not _has_merges(branch, end_rev_id))):
         # If a single revision is requested, check we can handle it
-        iter_revs = _generate_one_revision(branch, end_rev_id, br_rev_id,
-                                           br_revno)
-    elif not generate_merge_revisions:
-        # If we only want to see linear revisions, we can iterate ...
-        iter_revs = _generate_flat_revisions(branch, start_rev_id, end_rev_id,
-                                             direction, exclude_common_ancestry)
-        if direction == 'forward':
-            iter_revs = reversed(iter_revs)
-    else:
-        iter_revs = _generate_all_revisions(branch, start_rev_id, end_rev_id,
-                                            direction, delayed_graph_generation,
-                                            exclude_common_ancestry)
-        if direction == 'forward':
-            iter_revs = _rebase_merge_depth(reverse_by_depth(list(iter_revs)))
+        return  _generate_one_revision(branch, end_rev_id, br_rev_id,
+                                       br_revno)
+    if not generate_merge_revisions:
+        try:
+            # If we only want to see linear revisions, we can iterate ...
+            iter_revs = _linear_view_revisions(
+                branch, start_rev_id, end_rev_id,
+                exclude_common_ancestry=exclude_common_ancestry)
+            # If a start limit was given and it's not obviously an
+            # ancestor of the end limit, check it before outputting anything
+            if (direction == 'forward'
+                or (start_rev_id and not _is_obvious_ancestor(
+                        branch, start_rev_id, end_rev_id))):
+                    iter_revs = list(iter_revs)
+            if direction == 'forward':
+                iter_revs = reversed(iter_revs)
+            return iter_revs
+        except _StartNotLinearAncestor:
+            # Switch to the slower implementation that may be able to find a
+            # non-obvious ancestor out of the left-hand history.
+            pass
+    iter_revs = _generate_all_revisions(branch, start_rev_id, end_rev_id,
+                                        direction, delayed_graph_generation,
+                                        exclude_common_ancestry)
+    if direction == 'forward':
+        iter_revs = _rebase_merge_depth(reverse_by_depth(list(iter_revs)))
     return iter_revs
 
 
@@ -604,23 +616,6 @@ def _generate_one_revision(branch, rev_id, br_rev_id, br_revno):
     else:
         revno_str = _compute_revno_str(branch, rev_id)
         return [(rev_id, revno_str, 0)]
-
-
-def _generate_flat_revisions(branch, start_rev_id, end_rev_id, direction,
-                             exclude_common_ancestry=False):
-    result = _linear_view_revisions(
-        branch, start_rev_id, end_rev_id,
-        exclude_common_ancestry=exclude_common_ancestry)
-    # If a start limit was given and it's not obviously an
-    # ancestor of the end limit, check it before outputting anything
-    if direction == 'forward' or (start_rev_id
-        and not _is_obvious_ancestor(branch, start_rev_id, end_rev_id)):
-        try:
-            result = list(result)
-        except _StartNotLinearAncestor:
-            raise errors.BzrCommandError(gettext('Start revision not found in'
-                ' left-hand history of end revision.'))
-    return result
 
 
 def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,

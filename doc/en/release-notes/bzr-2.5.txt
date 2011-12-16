@@ -15,6 +15,10 @@ External Compatibility Breaks
 
 .. These may require users to change the way they use Bazaar.
 
+* The '.bzr/branch/email' file is no longer read to determine the users'
+  identity. Instead, the 'email' setting in '.bzr/branch/branch.conf'
+  should be used. (Jelmer Vernooij, #903894)
+
 New Features
 ************
 
@@ -32,6 +36,14 @@ Improvements
 
 * New HPSS call for ``Repository.reconcile``. (Jelmer Vernooij, #894455)
 
+* Override the value returned by ``sys.getfilesystemencoding()`` for the bzr
+  script to utf-8 when it would otherwise be ascii on a posix system. This
+  will mean bzr works with non-ascii files when no locale or an incorrect
+  locale is set. (Martin Packman, #794353)
+
+* ``bzr send`` now only opens a single connection, rather than two,
+  to the target branch.  (Jelmer Vernooij)
+
 Bug Fixes
 *********
 
@@ -44,8 +56,19 @@ Bug Fixes
 * Create obsolete_packs directory when repacking if it does not
   exist. (Jonathan Riddell, Jelmer Vernooij, #314314)
 
+* Fallback to the slower ``bzr log`` implementation when displaying a range
+  of revisions whose ancestry is not obviously on the same developement
+  line. (Vincent Ladeuil, #904744)
+
+* Not setting ``gpg_signing_key`` or setting it to ``default`` will use the
+  user email (obtained from the ``email`` configuration option or its
+  default value). (Vincent Ladeuil, Jelmer Vernooij, #904550)
+
 * Properly ignore '\n' in an option reference since this cannot be part of a
   config option identifier. (Vincent Ladeuil, #902125)
+
+* Report mistake trying to move a removed file with a non-ascii name without
+  UnicodeEncodeError being raised. (Martin Packman, #898541)
 
 Documentation
 *************
@@ -58,6 +81,18 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``Config.signature_needed``, ``Config.signing_policy``,
+  ``Config.gpg_signing_key``, ``Config.gpg_signing_command``,
+  ``Config.checking_policy`` and ``Config.post_commit`` are now deprecated.
+  (Jelmer Vernooij)
+
+* ``Repository.get_commit_builder`` now takes a ``config_stack``
+  rather than a ``config`` argument. (Jelmer Vernooij)
+
+* Send formats now accept a new optional argument ``submit_branch``,
+  which can be None or a Branch object for the submit branch location.
+  (Jelmer Vernooij)
+
 Internals
 *********
 
@@ -69,12 +104,27 @@ Internals
   branches themselves. The active branch uses the key None.
   (Neil Martinsen-Burrell)
 
+* Helper ``win32utils.get_environ_unicode`` added for avoiding encoding
+  problems with ``os.environ.get`` use. (Martin Packman, #262874) 
+
+* Helper ``osutils.path_from_environ`` added for extracting a unicode path
+  from an environment variable. (Martin Packman, #832028)
+
+* New HPSS call ``BzrDir.checkout_metadir``. (Jelmer Vernooij, #894459)
+
+* New HPSS call ``VersionedFileRepository.get_inventories``,
+  speeding up various commands including ``bzr export``,
+  ``bzr checkout`` and ``bzr cat``. (Jelmer Vernooij, #608640)
+
 Testing
 *******
 
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
+
+* New matcher ``ContainsNoVfsCalls`` which filters a list of HPSS
+  calls for VFS requests. (Jelmer Vernooij)
 
 
 bzr 2.5b4
@@ -91,7 +141,8 @@ the colocated branches, optimizations for revision specifiers to avoid
 history sized operations, enhancements to the config framework, bug fixes
 related to unicode paths and more.
 
-This release includes all bug fixed in previous series known at the time of
+All bug fixed in previous series known at the time of this release are
+included.
 
 External Compatibility Breaks
 *****************************
@@ -125,6 +176,9 @@ Improvements
 
 * Plugins can now register additional "location aliases".
   (Jelmer Vernooij)
+
+* ``bzr status`` no longer shows shelves if files are specified.
+  (Francis Devereux)
 
 * Revision specifiers will now only browse as much history as they
   need to, rather than grabbing the whole history unnecessarily in some
@@ -185,7 +239,7 @@ Bug Fixes
   unreserved characters are unquoted in URLs. (Martin Packman, #842223)
 
 * Split segments from URLs for colocated branches without assuming the
-  combined form is a valid. (Martin Packman, #842233)
+  combined form is valid. (Martin Packman, #842233)
 
 * Support looking up revision numbers by revision id in empty branches.
   (Jelmer Vernooij, #535031)
@@ -250,6 +304,18 @@ Internals
   ``Repository.add_signature_revision_text`` and
   ``Repository.get_revision_signature_text``.
   (Jelmer Vernooij)
+
+* Add HPSS call for ``Branch.get_checkout_format``. (Jelmer Vernooij, #894459)
+
+* Add HPSS call for ``Repository.pack``. (Jelmer Vernooij, #894461)
+
+* Add HPSS calls for ``Repository.iter_files_bytes``, speeding up
+  several commands including ``bzr export`` and ``bzr co --lightweight``.
+  (Jelmer Vernooij, #608640)
+
+* Custom HPSS error handlers can now be installed in the smart server client
+  using the ``error_translators`` and ``no_context_error_translators``
+  registries. (Jelmer Vernooij)
 
 * ``RemoteBranch.get_config_stack`` and ``RemoteBzrDir.get_config_stack``
   will now use HPSS calls where possible. (Jelmer Vernooij)

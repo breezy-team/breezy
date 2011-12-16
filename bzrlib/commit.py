@@ -165,13 +165,13 @@ class Commit(object):
     """
     def __init__(self,
                  reporter=None,
-                 config=None):
+                 config_stack=None):
         """Create a Commit object.
 
         :param reporter: the default reporter to use or None to decide later
         """
         self.reporter = reporter
-        self.config = config
+        self.config_stack = config_stack
 
     @staticmethod
     def update_revprops(revprops, branch, authors=None, author=None,
@@ -268,7 +268,7 @@ class Commit(object):
         operation = OperationWithCleanups(self._commit)
         self.revprops = revprops or {}
         # XXX: Can be set on __init__ or passed in - this is a bit ugly.
-        self.config = config or self.config
+        self.config_stack = config or self.config_stack
         return operation.run(
                message=message,
                timestamp=timestamp,
@@ -370,8 +370,8 @@ class Commit(object):
             self.reporter = reporter
         elif self.reporter is None:
             self.reporter = self._select_reporter()
-        if self.config is None:
-            self.config = self.branch.get_config()
+        if self.config_stack is None:
+            self.config_stack = self.branch.get_config_stack()
 
         self._set_specific_file_ids()
 
@@ -405,7 +405,7 @@ class Commit(object):
         self._set_progress_stage("Collecting changes", counter=True)
         self._lossy = lossy
         self.builder = self.branch.get_commit_builder(self.parents,
-            self.config, timestamp, timezone, committer, self.revprops,
+            self.config_stack, timestamp, timezone, committer, self.revprops,
             rev_id, lossy=lossy)
         if not self.builder.supports_record_entry_contents and self.exclude:
             self.builder.abort()
@@ -604,9 +604,10 @@ class Commit(object):
         # Process the post commit hooks, if any
         self._set_progress_stage("Running post_commit hooks")
         # old style commit hooks - should be deprecated ? (obsoleted in
-        # 0.15)
-        if self.config.post_commit() is not None:
-            hooks = self.config.post_commit().split(' ')
+        # 0.15^H^H^H^H 2.5.0)
+        post_commit = self.config_stack.get('post_commit')
+        if post_commit is not None:
+            hooks = post_commit.split(' ')
             # this would be nicer with twisted.python.reflect.namedAny
             for hook in hooks:
                 result = eval(hook + '(branch, rev_id)',

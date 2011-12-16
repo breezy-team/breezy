@@ -69,6 +69,7 @@ from bzrlib.smart.client import _SmartClient
 from bzrlib.smart.repository import (
     SmartServerRepositoryGetParentMap,
     SmartServerRepositoryGetStream_1_19,
+    _stream_to_byte_stream,
     )
 from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import (
@@ -174,17 +175,17 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
     def test_remote_branch_set_append_revisions_only(self):
         # Make a format 1.9 branch, which supports append_revisions_only
         branch = self.make_branch('branch', format='1.9')
-        config = branch.get_config()
         branch.set_append_revisions_only(True)
+        config = branch.get_config_stack()
         self.assertEqual(
-            'True', config.get_user_option('append_revisions_only'))
+            True, config.get('append_revisions_only'))
         branch.set_append_revisions_only(False)
+        config = branch.get_config_stack()
         self.assertEqual(
-            'False', config.get_user_option('append_revisions_only'))
+            False, config.get('append_revisions_only'))
 
     def test_remote_branch_set_append_revisions_only_upgrade_reqd(self):
         branch = self.make_branch('branch', format='knit')
-        config = branch.get_config()
         self.assertRaises(
             errors.UpgradeRequired, branch.set_append_revisions_only, True)
 
@@ -501,6 +502,43 @@ class TestBzrDirCloningMetaDir(TestRemote):
         a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         self.assertRaises(errors.UnknownFormatError, a_bzrdir.cloning_metadir)
+
+
+class TestBzrDirCheckoutMetaDir(TestRemote):
+
+    def test__get_checkout_format(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        control_name = reference_bzrdir_format.network_name()
+        client.add_expected_call(
+            'BzrDir.checkout_metadir', ('quack/', ),
+            'success', (control_name, '', ''))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        result = a_bzrdir.checkout_metadir()
+        # We should have got a reference control dir with default branch and
+        # repository formats.
+        self.assertEqual(bzrdir.BzrDirMetaFormat1, type(result))
+        self.assertEqual(None, result._repository_format)
+        self.assertEqual(None, result._branch_format)
+        self.assertFinished(client)
+
+    def test_unknown_format(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.checkout_metadir', ('quack/',),
+            'success', ('dontknow', '', ''))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        self.assertRaises(errors.UnknownFormatError,
+            a_bzrdir.checkout_metadir)
+        self.assertFinished(client)
 
 
 class TestBzrDirDestroyBranch(TestRemote):
@@ -4196,3 +4234,43 @@ class TestRepositoryPack(TestRemoteRepository):
             'Repository.unlock', ('quack/', 'token', 'False'),
             'success', ('ok', ))
         repo.pack(['hinta', 'hintb'])
+
+
+class TestRepositoryIterInventories(TestRemoteRepository):
+    """Test Repository.iter_inventories."""
+
+    def _serialize_inv_delta(self, old_name, new_name, delta):
+        serializer = inventory_delta.InventoryDeltaSerializer(True, False)
+        return "".join(serializer.delta_to_lines(old_name, new_name, delta))
+
+    def test_single_empty(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        fmt = bzrdir.format_registry.get('2a')().repository_format
+        repo._format = fmt
+        stream = [('inventory-deltas', [
+            versionedfile.FulltextContentFactory('somerevid', None, None,
+                self._serialize_inv_delta('null:', 'somerevid', []))])]
+        client.add_expected_call(
+            'VersionedFileRepository.get_inventories', ('quack/', 'unordered'),
+            'success', ('ok', ),
+            _stream_to_byte_stream(stream, fmt))
+        ret = list(repo.iter_inventories(["somerevid"]))
+        self.assertLength(1, ret)
+        inv = ret[0]
+        self.assertEquals("somerevid", inv.revision_id)
+
+    def test_empty(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        ret = list(repo.iter_inventories([]))
+        self.assertEquals(ret, [])
+
+    def test_missing(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'VersionedFileRepository.get_inventories', ('quack/', 'unordered'),
+            'success', ('ok', ), iter([]))
+        self.assertRaises(errors.NoSuchRevision, list, repo.iter_inventories(
+            ["somerevid"]))

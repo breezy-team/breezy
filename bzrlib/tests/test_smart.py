@@ -32,6 +32,7 @@ from bzrlib import (
     bzrdir,
     errors,
     gpg,
+    inventory_delta,
     tests,
     transport,
     urlutils,
@@ -222,6 +223,24 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         request = request_class(backing)
         expected = smart_req.FailedSmartServerResponse(('BranchReference',))
         self.assertEqual(expected, request.execute('', 'False'))
+
+
+class TestSmartServerBzrDirRequestCloningMetaDir(
+    tests.TestCaseWithMemoryTransport):
+    """Tests for BzrDir.checkout_metadir."""
+
+    def test_checkout_metadir(self):
+        backing = self.get_transport()
+        request = smart_dir.SmartServerBzrDirRequestCheckoutMetaDir(
+            backing)
+        branch = self.make_branch('.', format='2a')
+        response = request.execute('')
+        self.assertEqual(
+            smart_req.SmartServerResponse(
+                ('Bazaar-NG meta directory, format 1\n',
+                 'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
+                 'Bazaar Branch Format 7 (needs bzr 1.6)\n')),
+            response)
 
 
 class TestSmartServerBzrDirRequestDestroyBranch(
@@ -2477,6 +2496,8 @@ class TestHandlers(tests.TestCase):
             smart_dir.SmartServerRequestInitializeBzrDir)
         self.assertHandlerEqual('BzrDirFormat.initialize_ex_1.16',
             smart_dir.SmartServerRequestBzrDirInitializeEx)
+        self.assertHandlerEqual('BzrDir.checkout_metadir',
+            smart_dir.SmartServerBzrDirRequestCheckoutMetaDir)
         self.assertHandlerEqual('BzrDir.cloning_metadir',
             smart_dir.SmartServerBzrDirRequestCloningMetaDir)
         self.assertHandlerEqual('BzrDir.get_config_file',
@@ -2545,6 +2566,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryAbortWriteGroup)
         self.assertHandlerEqual('VersionedFileRepository.get_serializer_format',
             smart_repo.SmartServerRepositoryGetSerializerFormat)
+        self.assertHandlerEqual('VersionedFileRepository.get_inventories',
+            smart_repo.SmartServerRepositoryGetInventories)
         self.assertHandlerEqual('Transport.is_readonly',
             smart_req.SmartServerIsReadonly)
 
@@ -2610,3 +2633,48 @@ class TestSmartServerRepositoryPack(tests.TestCaseWithMemoryTransport):
             smart_req.SuccessfulSmartServerResponse(('ok', ), ),
             request.do_body(''))
 
+
+class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
+
+    def _get_serialized_inventory_delta(self, repository, base_revid, revid):
+        base_inv = repository.revision_tree(base_revid).inventory
+        inv = repository.revision_tree(revid).inventory
+        inv_delta = inv._make_delta(base_inv)
+        serializer = inventory_delta.InventoryDeltaSerializer(True, False)
+        return "".join(serializer.delta_to_lines(base_revid, revid, inv_delta))
+
+    def test_single(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryGetInventories(backing)
+        t = self.make_branch_and_tree('.', format='2a')
+        self.addCleanup(t.lock_write().unlock)
+        self.build_tree_contents([("file", "somecontents")])
+        t.add(["file"], ["thefileid"])
+        t.commit(rev_id='somerev', message="add file")
+        self.assertIs(None, request.execute('', 'unordered'))
+        response = request.do_body("somerev\n")
+        self.assertTrue(response.is_successful())
+        self.assertEquals(response.args, ("ok", ))
+        stream = [('inventory-deltas', [
+            versionedfile.FulltextContentFactory('somerev', None, None,
+                self._get_serialized_inventory_delta(
+                    t.branch.repository, 'null:', 'somerev'))])]
+        fmt = bzrdir.format_registry.get('2a')().repository_format
+        self.assertEquals(
+            "".join(response.body_stream),
+            "".join(smart_repo._stream_to_byte_stream(stream, fmt)))
+
+    def test_empty(self):
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryGetInventories(backing)
+        t = self.make_branch_and_tree('.', format='2a')
+        self.addCleanup(t.lock_write().unlock)
+        self.build_tree_contents([("file", "somecontents")])
+        t.add(["file"], ["thefileid"])
+        t.commit(rev_id='somerev', message="add file")
+        self.assertIs(None, request.execute('', 'unordered'))
+        response = request.do_body("")
+        self.assertTrue(response.is_successful())
+        self.assertEquals(response.args, ("ok", ))
+        self.assertEquals("".join(response.body_stream),
+            "Bazaar pack format 1 (introduced in 0.18)\nB54\n\nBazaar repository format 2a (needs bzr 1.16 or later)\nE")

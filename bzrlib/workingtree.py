@@ -2795,9 +2795,8 @@ class InventoryWorkingTree(WorkingTree,
                 # something is wrong, so lets determine what exactly
                 if not self.has_filename(from_rel) and \
                    not self.has_filename(to_rel):
-                    raise errors.BzrRenameFailedError(from_rel,to_rel,
-                        errors.PathsDoNotExist(paths=(str(from_rel),
-                        str(to_rel))))
+                    raise errors.BzrRenameFailedError(from_rel, to_rel,
+                        errors.PathsDoNotExist(paths=(from_rel, to_rel)))
                 else:
                     raise errors.RenameFailedFilesExist(from_rel, to_rel)
             rename_entry.only_change_inv = only_change_inv
