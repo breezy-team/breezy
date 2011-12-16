@@ -73,9 +73,7 @@ up=pull
 """
 
 import os
-import string
 import sys
-
 
 import bzrlib
 from bzrlib.decorators import needs_write_lock
@@ -150,6 +148,30 @@ STORE_LOCATION_NORECURSE = POLICY_NORECURSE
 STORE_LOCATION_APPENDPATH = POLICY_APPENDPATH
 STORE_BRANCH = 3
 STORE_GLOBAL = 4
+
+
+def signature_policy_from_unicode(signature_string):
+    """Convert a string to a signing policy."""
+    if signature_string.lower() == 'check-available':
+        return CHECK_IF_POSSIBLE
+    if signature_string.lower() == 'ignore':
+        return CHECK_NEVER
+    if signature_string.lower() == 'require':
+        return CHECK_ALWAYS
+    raise ValueError("Invalid signatures policy '%s'"
+                     % signature_string)
+
+
+def signing_policy_from_unicode(signature_string):
+    """Convert a string to a signing policy."""
+    if signature_string.lower() == 'when-required':
+        return SIGN_WHEN_REQUIRED
+    if signature_string.lower() == 'never':
+        return SIGN_NEVER
+    if signature_string.lower() == 'always':
+        return SIGN_ALWAYS
+    raise ValueError("Invalid signing policy '%s'"
+                     % signature_string)
 
 
 class ConfigObj(configobj.ConfigObj):
@@ -417,14 +439,14 @@ class Config(object):
             # add) the final ','
             l = [l]
         return l
-        
-    def get_user_option_as_int_from_SI(self,  option_name,  default=None):
+
+    def get_user_option_as_int_from_SI(self, option_name, default=None):
         """Get a generic option from a human readable size in SI units, e.g 10MB
-        
+
         Accepted suffixes are K,M,G. It is case-insensitive and may be followed
         by a trailing b (i.e. Kb, MB). This is intended to be practical and not
         pedantic.
-        
+
         :return Integer, expanded to its base-10 value if a proper SI unit is 
             found. If the option doesn't exist, or isn't a value in 
             SI units, return default (which defaults to None)
@@ -455,8 +477,8 @@ class Config(object):
             except TypeError:
                 val = default
         return val
-        
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def gpg_signing_command(self):
         """What program should be used to sign signatures?"""
         result = self._gpg_signing_command()
@@ -492,6 +514,7 @@ class Config(object):
         """See validate_signatures_in_log()."""
         return None
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def acceptable_keys(self):
         """Comma separated list of key patterns acceptable to 
         verify-signatures command"""
@@ -502,6 +525,7 @@ class Config(object):
         """See acceptable_keys()."""
         return None
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def post_commit(self):
         """An ordered list of python functions to call.
 
@@ -533,15 +557,7 @@ class Config(object):
         v = self._get_user_id()
         if v:
             return v
-        v = os.environ.get('EMAIL')
-        if v:
-            return v.decode(osutils.get_user_encoding())
-        name, email = _auto_user_id()
-        if name and email:
-            return '%s <%s>' % (name, email)
-        elif email:
-            return email
-        raise errors.NoWhoami()
+        return default_email()
 
     def ensure_username(self):
         """Raise errors.NoWhoami if username is not set.
@@ -550,6 +566,7 @@ class Config(object):
         """
         self.username()
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def signature_checking(self):
         """What is the current policy for signature checking?."""
         policy = self._get_signature_checking()
@@ -557,6 +574,7 @@ class Config(object):
             return policy
         return CHECK_IF_POSSIBLE
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def signing_policy(self):
         """What is the current policy for signature checking?."""
         policy = self._get_signing_policy()
@@ -564,6 +582,7 @@ class Config(object):
             return policy
         return SIGN_WHEN_REQUIRED
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def signature_needed(self):
         """Is a signature needed when committing ?."""
         policy = self._get_signing_policy()
@@ -578,6 +597,7 @@ class Config(object):
             return True
         return False
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def gpg_signing_key(self):
         """GPG user-id to sign commits"""
         key = self.get_user_option('gpg_signing_key')
@@ -868,13 +888,13 @@ class IniBasedConfig(Config):
         """See Config._get_signature_checking."""
         policy = self._get_user_option('check_signatures')
         if policy:
-            return self._string_to_signature_policy(policy)
+            return signature_policy_from_unicode(policy)
 
     def _get_signing_policy(self):
         """See Config._get_signing_policy"""
         policy = self._get_user_option('create_signatures')
         if policy:
-            return self._string_to_signing_policy(policy)
+            return signing_policy_from_unicode(policy)
 
     def _get_user_id(self):
         """Get the user id from the 'email' key in the current section."""
@@ -924,28 +944,6 @@ class IniBasedConfig(Config):
     def _post_commit(self):
         """See Config.post_commit."""
         return self._get_user_option('post_commit')
-
-    def _string_to_signature_policy(self, signature_string):
-        """Convert a string to a signing policy."""
-        if signature_string.lower() == 'check-available':
-            return CHECK_IF_POSSIBLE
-        if signature_string.lower() == 'ignore':
-            return CHECK_NEVER
-        if signature_string.lower() == 'require':
-            return CHECK_ALWAYS
-        raise errors.BzrError("Invalid signatures policy '%s'"
-                              % signature_string)
-
-    def _string_to_signing_policy(self, signature_string):
-        """Convert a string to a signing policy."""
-        if signature_string.lower() == 'when-required':
-            return SIGN_WHEN_REQUIRED
-        if signature_string.lower() == 'never':
-            return SIGN_NEVER
-        if signature_string.lower() == 'always':
-            return SIGN_ALWAYS
-        raise errors.BzrError("Invalid signing policy '%s'"
-                              % signature_string)
 
     def _get_alias(self, value):
         try:
@@ -1396,13 +1394,6 @@ class BranchConfig(Config):
         e.g. "John Hacker <jhacker@example.com>"
         This is looked up in the email controlfile for the branch.
         """
-        try:
-            return (self.branch._transport.get_bytes("email")
-                    .decode(osutils.get_user_encoding())
-                    .rstrip("\r\n"))
-        except (errors.NoSuchFile, errors.PermissionDenied), e:
-            pass
-
         return self._get_best_value('_get_user_id')
 
     def _get_change_editor(self):
@@ -1642,6 +1633,32 @@ def _get_default_mail_domain():
         f.close()
 
 
+def default_email():
+    v = os.environ.get('BZR_EMAIL')
+    if v:
+        return v.decode(osutils.get_user_encoding())
+    v = os.environ.get('EMAIL')
+    if v:
+        return v.decode(osutils.get_user_encoding())
+    name, email = _auto_user_id()
+    if name and email:
+        return u'%s <%s>' % (name, email)
+    elif email:
+        return email
+    raise errors.NoWhoami()
+
+
+def email_from_store(unicode_str):
+    """Unlike other env vars, BZR_EMAIL takes precedence over config settings.
+
+    Whatever comes from a config file is then overridden.
+    """
+    value = os.environ.get('BZR_EMAIL')
+    if value:
+        return value.decode(osutils.get_user_encoding())
+    return unicode_str
+
+
 def _auto_user_id():
     """Calculate automatic user identification.
 
@@ -1836,7 +1853,7 @@ class AuthenticationConfig(object):
         :param user: login (optional)
 
         :param path: the absolute path on the server (optional)
-        
+
         :param realm: the http authentication realm (optional)
 
         :return: A dict containing the matching credentials or None.
@@ -2323,16 +2340,17 @@ class Option(object):
     """
 
     def __init__(self, name, default=None, default_from_env=None,
-                 help=None,
-                 from_unicode=None, invalid=None):
+                 help=None, from_unicode=None, invalid=None):
         """Build an option definition.
 
         :param name: the name used to refer to the option.
 
         :param default: the default value to use when none exist in the config
             stores. This is either a string that ``from_unicode`` will convert
-            into the proper type or a python object that can be stringified (so
-            only the empty list is supported for example).
+            into the proper type, a callable returning a unicode string so that
+            ``from_unicode`` can be used on the return value, or a python
+            object that can be stringified (so only the empty list is supported
+            for example).
 
         :param default_from_env: A list of environment variables which can
            provide a default value. 'default' will be used only if none of the
@@ -2367,6 +2385,8 @@ class Option(object):
         elif isinstance(default, (str, unicode, bool, int, float)):
             # Rely on python to convert strings, booleans and integers
             self.default = u'%s' % (default,)
+        elif callable(default):
+            self.default = default
         else:
             # other python objects are not expected
             raise AssertionError('%r is not supported as a default value'
@@ -2401,13 +2421,19 @@ class Option(object):
         for var in self.default_from_env:
             try:
                 # If the env variable is defined, its value is the default one
-                value = os.environ[var]
+                value = os.environ[var].decode(osutils.get_user_encoding())
                 break
             except KeyError:
                 continue
         if value is None:
             # Otherwise, fallback to the value defined at registration
-            value = self.default
+            if callable(self.default):
+                value = self.default()
+                if not isinstance(value, unicode):
+                    raise AssertionError(
+                    'Callable default values should be unicode')
+            else:
+                value = self.default
         return value
 
     def get_help_text(self, additional_see_also=None, plain=True):
@@ -2431,7 +2457,6 @@ def int_from_store(unicode_str):
 
 def float_from_store(unicode_str):
     return float(unicode_str)
-
 
 
 # Use a an empty dict to initialize an empty configobj avoiding all
@@ -2508,6 +2533,12 @@ option_registry = OptionRegistry()
 # Registered options in lexicographical order
 
 option_registry.register(
+    Option('acceptable_keys',
+           default=None, from_unicode=list_from_store,
+           help="""\
+List of GPG key patterns which are acceptable for verification.
+"""))
+option_registry.register(
     Option('bzr.workingtree.worth_saving_limit', default=10,
            from_unicode=int_from_store,  invalid='warning',
            help='''\
@@ -2518,6 +2549,29 @@ stat-cache changes. Regardless of this setting, we will always rewrite
 the dirstate file if a file is added/removed/renamed/etc. This flag only
 affects the behavior of updating the dirstate file after we notice that
 a file has been touched.
+'''))
+option_registry.register(
+    Option('check_signatures', default=CHECK_IF_POSSIBLE,
+           from_unicode=signature_policy_from_unicode,
+           help='''\
+GPG checking policy.
+
+Possible values: require, ignore, check-available (default)
+
+this option will control whether bzr will require good gpg
+signatures, ignore them, or check them if they are
+present.
+'''))
+option_registry.register(
+    Option('create_signatures', default=SIGN_WHEN_REQUIRED,
+           from_unicode=signing_policy_from_unicode,
+           help='''\
+GPG Signing policy.
+
+Possible values: always, never, when-required (default)
+
+This option controls whether bzr will always create
+gpg signatures or not on commits.
 '''))
 option_registry.register(
     Option('dirstate.fdatasync', default=True,
@@ -2548,6 +2602,26 @@ custom bzr metadata.
 option_registry.register(
     Option('editor',
            help='The command called to launch an editor to enter a message.'))
+option_registry.register(
+    Option('email', default=default_email,
+           from_unicode=email_from_store,
+           help='The users identity'))
+option_registry.register(
+    Option('gpg_signing_command',
+           default='gpg',
+           help="""\
+Program to use use for creating signatures.
+
+This should support at least the -u and --clearsign options.
+"""))
+option_registry.register(
+    Option('gpg_signing_key',
+           default=None,
+           help="""\
+GPG key to use for signing.
+
+This defaults to the first key associated with the users email.
+"""))
 option_registry.register(
     Option('ignore_missing_extensions', default=False,
            from_unicode=bool_from_store,
@@ -2583,6 +2657,15 @@ option_registry.register(
     Option('output_encoding',
            help= 'Unicode encoding for output'
            ' (terminal encoding if not specified).'))
+option_registry.register(
+    Option('post_commit', default=None,
+           help='''\
+Post commit functions.
+
+An ordered list of python functions to call, separated by spaces.
+
+Each function takes branch, rev_id as parameters.
+'''))
 option_registry.register(
     Option('push_strict', default=None,
            from_unicode=bool_from_store,
@@ -3156,7 +3239,7 @@ class LocationMatcher(SectionMatcher):
             yield self.store, section
 
 
-_option_ref_re = lazy_regex.lazy_compile('({[^{}]+})')
+_option_ref_re = lazy_regex.lazy_compile('({[^{}\n]+})')
 """Describes an expandable option reference.
 
 We want to match the most embedded reference first.
@@ -3387,45 +3470,86 @@ class _CompatibleStack(Stack):
 
 
 class GlobalStack(_CompatibleStack):
-    """Global options only stack."""
+    """Global options only stack.
+
+    The following sections are queried:
+
+    * command-line overrides,
+
+    * the 'DEFAULT' section in bazaar.conf
+
+    This stack will use the ``DEFAULT`` section in bazaar.conf as its
+    MutableSection.
+    """
 
     def __init__(self):
-        # Get a GlobalStore
         gstore = GlobalStore()
         super(GlobalStack, self).__init__(
-            [self._get_overrides, NameMatcher(gstore, 'DEFAULT').get_sections],
+            [self._get_overrides,
+             NameMatcher(gstore, 'DEFAULT').get_sections],
             gstore, mutable_section_id='DEFAULT')
 
 
 class LocationStack(_CompatibleStack):
-    """Per-location options falling back to global options stack."""
+    """Per-location options falling back to global options stack.
+
+
+    The following sections are queried:
+
+    * command-line overrides,
+
+    * the sections matching ``location`` in ``locations.conf``, the order being
+      defined by the number of path components in the section glob, higher
+      numbers first (from most specific section to most generic).
+
+    * the 'DEFAULT' section in bazaar.conf
+
+    This stack will use the ``location`` section in locations.conf as its
+    MutableSection.
+    """
 
     def __init__(self, location):
         """Make a new stack for a location and global configuration.
-        
+
         :param location: A URL prefix to """
         lstore = LocationStore()
         if location.startswith('file://'):
             location = urlutils.local_path_from_url(location)
-        matcher = LocationMatcher(lstore, location)
         gstore = GlobalStore()
         super(LocationStack, self).__init__(
             [self._get_overrides,
-             matcher.get_sections, NameMatcher(gstore, 'DEFAULT').get_sections],
+             LocationMatcher(lstore, location).get_sections,
+             NameMatcher(gstore, 'DEFAULT').get_sections],
             lstore, mutable_section_id=location)
 
 
 class BranchStack(_CompatibleStack):
-    """Per-location options falling back to branch then global options stack."""
+    """Per-location options falling back to branch then global options stack.
+
+    The following sections are queried:
+
+    * command-line overrides,
+
+    * the sections matching ``location`` in ``locations.conf``, the order being
+      defined by the number of path components in the section glob, higher
+      numbers first (from most specific section to most generic),
+
+    * the no-name section in branch.conf,
+
+    * the ``DEFAULT`` section in ``bazaar.conf``.
+
+    This stack will use the no-name section in ``branch.conf`` as its
+    MutableSection.
+    """
 
     def __init__(self, branch):
-        bstore = branch._get_config_store()
         lstore = LocationStore()
-        matcher = LocationMatcher(lstore, branch.base)
+        bstore = branch._get_config_store()
         gstore = GlobalStore()
         super(BranchStack, self).__init__(
             [self._get_overrides,
-             matcher.get_sections, bstore.get_sections,
+             LocationMatcher(lstore, branch.base).get_sections,
+             NameMatcher(bstore, None).get_sections,
              NameMatcher(gstore, 'DEFAULT').get_sections],
             bstore)
         self.branch = branch
@@ -3441,7 +3565,7 @@ class RemoteControlStack(_CompatibleStack):
     def __init__(self, bzrdir):
         cstore = bzrdir._get_config_store()
         super(RemoteControlStack, self).__init__(
-            [cstore.get_sections],
+            [NameMatcher(cstore, None).get_sections],
             cstore)
         self.bzrdir = bzrdir
 
@@ -3456,7 +3580,7 @@ class RemoteBranchStack(_CompatibleStack):
     def __init__(self, branch):
         bstore = branch._get_config_store()
         super(RemoteBranchStack, self).__init__(
-            [bstore.get_sections],
+            [NameMatcher(bstore, None).get_sections],
             bstore)
         self.branch = branch
 

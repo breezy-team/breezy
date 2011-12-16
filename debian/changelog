@@ -1,3 +1,9 @@
+bzr (2.5.0~beta4+bzr6378-1) UNRELEASED; urgency=low
+
+  * New upstream snapshot.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 16 Dec 2011 07:12:52 +0100
+
 bzr (2.5.0~beta4-2) unstable; urgency=low
 
   * Fix Vcs-Bzr URL.

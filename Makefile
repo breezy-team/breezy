@@ -432,7 +432,7 @@ TRANSLATABLE_PYFILES:=$(shell find bzrlib -name '*.py' \
 		)
 
 po/bzr.pot: $(PYFILES) $(DOCFILES)
-	$(PYTHON) ./bzr export-pot > po/bzr.pot
+	$(PYTHON) ./bzr export-pot --include-duplicates > po/bzr.pot
 	echo $(TRANSLATABLE_PYFILES) | xargs \
 	  xgettext --package-name "bzr" \
 	  --msgid-bugs-address "<bazaar@canonical.com>" \

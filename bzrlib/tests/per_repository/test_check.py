@@ -30,7 +30,7 @@ class TestCleanRepository(TestCaseWithRepository):
         branch.lock_write()
         self.addCleanup(branch.unlock)
         self.overrideEnv('BZR_EMAIL', 'foo@sample.com')
-        builder = branch.get_commit_builder([], branch.get_config())
+        builder = branch.get_commit_builder([], branch.get_config_stack())
         list(builder.record_iter_changes(None, _mod_revision.NULL_REVISION, [
             ('TREE_ROOT', (None, ''), True, (False, True), (None, None),
             (None, ''), (None, 'directory'), (None, False))]))
