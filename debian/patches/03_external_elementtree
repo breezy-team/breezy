@@ -2,24 +2,9 @@ Description: Remove included copy of python-elementtree
 Author: Jelmer Vernooij <jelmer@debian.org>
 Bug-Debian: http://bugs.debian.org/555343
 
---- bzr-2.3.0.orig/bzrlib/xml_serializer.py
-+++ bzr-2.3.0/bzrlib/xml_serializer.py
-@@ -44,10 +44,10 @@ except ImportError:
-     mutter('WARNING: using slower ElementTree; consider installing cElementTree'
-            " and make sure it's on your PYTHONPATH")
-     # this copy is shipped with bzr
--    from util.elementtree.ElementTree import (ElementTree, SubElement,
-+    from elementtree.ElementTree import (ElementTree, SubElement,
-                                               Element, XMLTreeBuilder,
-                                               fromstring, tostring)
--    import util.elementtree as elementtree
-+    import elementtree
-     from xml.parsers.expat import ExpatError as ParseError
- 
- from bzrlib import errors
 === removed directory 'bzrlib/util/elementtree'
 === removed file 'bzrlib/util/elementtree/ElementTree.py'
---- old/bzrlib/util/elementtree/ElementTree.py	2011-02-03 18:34:23 +0000
+--- old/bzrlib/util/elementtree/ElementTree.py	2011-04-05 13:44:35 +0000
 +++ new/bzrlib/util/elementtree/ElementTree.py	1970-01-01 00:00:00 +0000
 @@ -1,1254 +0,0 @@
 -#
@@ -1278,7 +1263,7 @@ Bug-Debian: http://bugs.debian.org/555343
 -        return tree
 
 === removed file 'bzrlib/util/elementtree/__init__.py'
---- old/bzrlib/util/elementtree/__init__.py	2011-02-03 18:34:23 +0000
+--- old/bzrlib/util/elementtree/__init__.py	2011-04-05 13:44:35 +0000
 +++ new/bzrlib/util/elementtree/__init__.py	1970-01-01 00:00:00 +0000
 @@ -1,30 +0,0 @@
 -# $Id: __init__.py 1821 2004-06-03 16:57:49Z fredrik $
@@ -1311,4 +1296,21 @@ Bug-Debian: http://bugs.debian.org/555343
 -# ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
 -# OF THIS SOFTWARE.
 -# --------------------------------------------------------------------
+
+=== modified file 'bzrlib/xml_serializer.py'
+--- old/bzrlib/xml_serializer.py	2011-12-16 06:14:26 +0000
++++ new/bzrlib/xml_serializer.py	2011-12-16 06:15:05 +0000
+@@ -44,10 +44,10 @@
+     mutter('WARNING: using slower ElementTree; consider installing cElementTree'
+            " and make sure it's on your PYTHONPATH")
+     # this copy is shipped with bzr
+-    from util.elementtree.ElementTree import (ElementTree, SubElement,
++    from elementtree.ElementTree import (ElementTree, SubElement,
+                                               Element, XMLTreeBuilder,
+                                               fromstring, tostring)
+-    import util.elementtree as elementtree
++    import elementtree
+     from xml.parsers.expat import ExpatError as ParseError
+ 
+ from bzrlib import (
 
