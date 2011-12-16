@@ -663,18 +663,12 @@ class Branch(controldir.ControlComponent):
         """
         if not self._format.supports_set_append_revisions_only():
             return False
-        return self.get_config(
-            ).get_user_option_as_bool('append_revisions_only')
+        return self.get_config_stack().get('append_revisions_only')
 
     def set_append_revisions_only(self, enabled):
         if not self._format.supports_set_append_revisions_only():
             raise errors.UpgradeRequired(self.user_url)
-        if enabled:
-            value = 'True'
-        else:
-            value = 'False'
-        self.get_config().set_user_option('append_revisions_only', value,
-            warn_masked=True)
+        self.get_config_stack().set('append_revisions_only', enabled)
 
     def set_reference_info(self, file_id, tree_path, branch_location):
         """Set the branch location to use for a tree reference."""
