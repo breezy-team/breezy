@@ -18,6 +18,7 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from bzrlib import version_info as bzrlib_version
 from bzrlib.errors import NoSuchTag
 from bzrlib.revisionspec import RevisionSpec, RevisionInfo
 
@@ -48,7 +49,13 @@ class RevisionSpec_package(RevisionSpec):
 
         try:
             revision_id = branch.tags.lookup_tag(version_spec)
-            return RevisionInfo.from_revision_id(branch,
-                    revision_id, revs)
+            if bzrlib_version < (2, 5):
+                if revs is None:
+                    revs = branch.revision_history()
+                return RevisionInfo.from_revision_id(branch,
+                        revision_id, revs)
+            else:
+                return RevisionInfo.from_revision_id(
+                    branch, revision_id)
         except NoSuchTag:
             raise UnknownVersion(version_spec)
