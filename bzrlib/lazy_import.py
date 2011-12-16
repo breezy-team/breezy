@@ -51,10 +51,6 @@ class ScopeReplacer(object):
 
     __slots__ = ('_scope', '_factory', '_name', '_real_obj')
 
-    # This will record the last duplicate replacement. It is used
-    # during selftests where duplicate replacements are forbidden.
-    _last_duplicate_replacement = None
-
     # If you to do x = y, setting this to False will disallow access to
     # members from the second variable (i.e. x). This should normally
     # be enabled for reasons of thread safety and documentation, but
@@ -124,9 +120,7 @@ class ScopeReplacer(object):
 
     def _duplicate_replacement(self):
         if object.__getattribute__(self, '_should_proxy'):
-            # Do not report now, but remember in case we want to
-            # report this later.
-            ScopeReplacer._last_duplicate_replacement = self
+            pass
         else:
             name = object.__getattribute__(self, '_name')
             raise errors.IllegalUseOfScopeReplacer(
@@ -141,17 +135,9 @@ def disallow_proxying():
     in multithreaded environments, but will help detecting wasteful
     indirection, so it should be called when executing unit tests.
 
-    Calling this function will even act for the most recent past case
-    of proxying, reporting the name of the proxied object. So a
-    successful call to this function will ensure that scope replacer
-    objects were never misused as proxies in the past and will never
-    be misused in the future."""
-
+    Only lazy imports that happen after this call are affected.
+    """
     ScopeReplacer._should_proxy = False
-    last = ScopeReplacer._last_duplicate_replacement
-    if last is not None:
-        ScopeReplacer._last_duplicate_replacement = None
-        object.__getattribute__(last, '_duplicate_replacement')()
 
 
 class ImportReplacer(ScopeReplacer):
