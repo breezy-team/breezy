@@ -240,10 +240,15 @@ try:
     from bzrlib.revisionspec import revspec_registry
     revspec_registry.register_lazy("package:",
         "bzrlib.plugins.builddeb.revspec", "RevisionSpec_package")
+    revspec_registry.register_lazy("upstream:",
+        "bzrlib.plugins.builddeb.revspec", "RevisionSpec_upstream")
 except ImportError:
     from bzrlib.revisionspec import SPEC_TYPES
-    from bzrlib.plugins.builddeb.revspec import RevisionSpec_package
-    SPEC_TYPES.append(RevisionSpec_package)
+    from bzrlib.plugins.builddeb.revspec import (
+        RevisionSpec_package,
+        RevisionSpec_upstream,
+        )
+    SPEC_TYPES.extend([RevisionSpec_package, RevisionSpec_upstream])
 
 try:
     from bzrlib.tag import tag_sort_methods

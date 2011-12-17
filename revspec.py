@@ -19,13 +19,17 @@
 #
 
 from bzrlib import version_info as bzrlib_version
-from bzrlib.errors import NoSuchTag
+from bzrlib.errors import (
+    InvalidRevisionSpec,
+    NoSuchTag,
+    )
 from bzrlib.revisionspec import RevisionSpec, RevisionInfo
 
 from bzrlib.plugins.builddeb.errors import (
-        UnknownVersion,
-        VersionNotSpecified,
-        )
+    MissingChangelogError,
+    UnknownVersion,
+    VersionNotSpecified,
+    )
 
 
 class RevisionSpec_package(RevisionSpec):
@@ -49,6 +53,57 @@ class RevisionSpec_package(RevisionSpec):
 
         try:
             revision_id = branch.tags.lookup_tag(version_spec)
+            if bzrlib_version < (2, 5):
+                if revs is None:
+                    revs = branch.revision_history()
+                return RevisionInfo.from_revision_id(branch,
+                        revision_id, revs)
+            else:
+                return RevisionInfo.from_revision_id(
+                    branch, revision_id)
+        except NoSuchTag:
+            raise UnknownVersion(version_spec)
+
+
+class RevisionSpec_upstream(RevisionSpec):
+    """Selects the matching upstream revision."""
+
+    help_txt = """Selects the revision matching the upstream specified
+    or the current upstream.
+
+    This will look at debian/changelog to find out the current version,
+    and then look up the upstream.
+    """
+    wants_revision_history = False
+    prefix = 'upstream:'
+
+    def _match_on(self, branch, revs):
+        from bzrlib.workingtree import WorkingTree
+        from bzrlib.plugins.builddeb.util import find_changelog
+        from bzrlib.plugins.builddeb.upstream.pristinetar import PristineTarSource
+        from debian.changelog import Version
+        tree = WorkingTree.open_containing('.')[0]
+        try:
+            (cl, top_level) = find_changelog(tree, False)
+        except MissingChangelogError, e:
+            raise InvalidRevisionSpec(self.user_spec, branch,
+                "no debian/changelog file found: %s" % e)
+        if self.spec == '':
+            version_spec = cl.version.upstream_version
+            if not cl.version.debian_version:
+                raise InvalidRevisionSpec(self.user_spec, branch,
+                    "This is a native package.")
+        else:
+            version = Version(self.spec)
+            if version.upstream_version:
+                version_spec = version.upstream_version
+            else:
+                version_spec = self.spec
+
+        pristine_tar_source = PristineTarSource(tree, branch)
+        try:
+            revision_id = pristine_tar_source.version_as_revisions(cl.package,
+                version_spec)[None]
             if bzrlib_version < (2, 5):
                 if revs is None:
                     revs = branch.revision_history()
