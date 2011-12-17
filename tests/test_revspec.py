@@ -18,15 +18,22 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from bzrlib.tests.test_revisionspec import TestRevisionSpec
+import os
 
+from bzrlib.errors import InvalidRevisionSpec
 from bzrlib.revisionspec import RevisionSpec
 
+from bzrlib.tests.test_revisionspec import TestRevisionSpec
+
+from bzrlib.plugins.builddeb.tests import Version, Changelog
 from bzrlib.plugins.builddeb.errors import (
-        UnknownVersion,
-        VersionNotSpecified,
-        )
-from bzrlib.plugins.builddeb.revspec import RevisionSpec_package
+    UnknownVersion,
+    VersionNotSpecified,
+    )
+from bzrlib.plugins.builddeb.revspec import (
+    RevisionSpec_package,
+    RevisionSpec_upstream,
+    )
 
 
 class TestRevisionSpec_package(TestRevisionSpec):
@@ -48,3 +55,68 @@ class TestRevisionSpec_package(TestRevisionSpec):
         self.assertRaises(VersionNotSpecified,
                 self.get_in_history, 'package:')
 
+
+class TestRevisionSpec_upstream(TestRevisionSpec):
+
+    package_name = 'test'
+    package_version = Version('0.1-1')
+    upstream_version = property(lambda self: \
+                                self.package_version.upstream_version)
+
+    def make_changelog(self, version=None):
+        if version is None:
+            version = self.package_version
+        c = Changelog()
+        c.new_block()
+        c.version = Version(version)
+        c.package = self.package_name
+        c.distributions = 'unstable'
+        c.urgency = 'low'
+        c.author = 'James Westby <jw+debian@jameswestby.net>'
+        c.date = 'Thu,  3 Aug 2006 19:16:22 +0100'
+        c.add_change('')
+        c.add_change('  *  test build')
+        c.add_change('')
+        return c
+
+    def write_changelog(self, changelog, filename):
+        f = open(filename, 'w')
+        changelog.write_to_open_file(f)
+        f.close()
+
+    def add_changelog(self, tree, version):
+        cl = self.make_changelog("1.2-1")
+        tree.mkdir('debian')
+        self.write_changelog(cl, os.path.join(tree.basedir, 'debian/changelog'))
+        tree.add(['debian', 'debian/changelog'])
+
+    def test_from_string_package(self):
+        self.make_branch_and_tree('.')
+        spec = RevisionSpec.from_string('upstream:')
+        self.assertIsInstance(spec, RevisionSpec_upstream)
+        self.assertEqual(spec.spec, '')
+
+    def test_no_changelog(self):
+        t = self.make_branch_and_tree('.')
+        spec = RevisionSpec.from_string('upstream:')
+        self.assertRaises(InvalidRevisionSpec, spec.as_revision_id, t.branch)
+
+    def test_version_specified(self):
+        t = self.make_branch_and_tree('.')
+        upstream_revid = t.commit('The upstream revision')
+        t.branch.tags.set_tag("upstream-1.2", upstream_revid)
+        t.commit('Mention upstream.')
+        self.add_changelog(t, "1.2-1")
+        spec = RevisionSpec.from_string('upstream:1.2')
+        self.assertEquals(upstream_revid, spec.as_revision_id(t.branch))
+        spec = RevisionSpec.from_string('upstream:1.2-1')
+        self.assertEquals(upstream_revid, spec.as_revision_id(t.branch))
+
+    def test_version_from_changelog(self):
+        t = self.make_branch_and_tree('.')
+        upstream_revid = t.commit('The upstream revision')
+        t.branch.tags.set_tag("upstream-1.2", upstream_revid)
+        t.commit('Mention upstream.')
+        self.add_changelog(t, "1.2-1")
+        spec = RevisionSpec.from_string('upstream:')
+        self.assertEquals(upstream_revid, spec.as_revision_id(t.branch))
