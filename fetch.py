@@ -778,7 +778,7 @@ class InterGitGitRepository(InterFromGitRepository):
         old_refs = self.target.bzrdir.get_refs_container()
         ref_changes = {}
         def determine_wants(heads):
-            old_refs = dict([(k, (v, None)) for (k, v) in heads.iteritems()])
+            old_refs = dict([(k, (v, None)) for (k, v) in heads.as_dict().iteritems()])
             new_refs = update_refs(old_refs)
             ref_changes.update(new_refs)
             return [sha1 for (sha1, bzr_revid) in new_refs.itervalues()]
