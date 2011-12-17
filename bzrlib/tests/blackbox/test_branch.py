@@ -155,6 +155,12 @@ class TestBranch(TestCaseWithTransport):
         work = branch.Branch.open('current')
         self.assertEqual(work.last_revision(), _mod_revision.NULL_REVISION)
 
+    def test_branch_into_empty_dir(self):
+        t = self.example_branch('source')
+        self.make_bzrdir('target')
+        self.run_bzr("branch source target")
+        self.assertEquals(2, len(t.branch.repository.all_revision_ids()))
+
     def test_branch_switch_checkout(self):
         # Checkout in the current directory:
         #  => new branch will be created and checkout bound to the new branch
