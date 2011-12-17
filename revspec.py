@@ -18,6 +18,7 @@
 # Please note that imports are delayed as much as possible here since
 # if DWIM revspecs are supported this module is imported by __init__.py.
 
+from bzrlib import version_info as bzrlib_version
 from bzrlib.errors import (
     InvalidRevisionId,
     InvalidRevisionSpec,
@@ -67,21 +68,14 @@ class RevisionSpec_git(RevisionSpec):
                               default_mapping.revision_id_foreign_to_bzr)(sha1)
         try:
             if branch.repository.has_revision(bzr_revid):
-                history = self._history(branch, bzr_revid)
-                return RevisionInfo.from_revision_id(branch, bzr_revid, history)
+                if bzrlib_version < (2, 5):
+                    history = branch.revision_history()
+                    return RevisionInfo.from_revision_id(branch, bzr_revid, history)
+                else:
+                    return RevisionInfo.from_revision_id(branch, bzr_revid)
         except GitSmartRemoteNotSupported:
             return RevisionInfo(branch, None, bzr_revid)
         raise InvalidRevisionSpec(self.user_spec, branch)
-
-    def _history(self, branch, revid):
-        branch.lock_read()
-        try:
-            history = list(branch.repository.iter_reverse_revision_history(
-                revid))
-        finally:
-            branch.unlock()
-        history.reverse()
-        return history
 
     def __nonzero__(self):
         # The default implementation uses branch.repository.has_revision()
@@ -111,8 +105,11 @@ class RevisionSpec_git(RevisionSpec):
                 if not isinstance(mapping.vcs, ForeignGit):
                     continue
                 if foreign_revid.startswith(sha1):
-                    history = self._history(branch, revid)
-                    return RevisionInfo.from_revision_id(branch, revid, history)
+                    if bzrlib_version < (2, 5):
+                        history = branch.revision_history()
+                        return RevisionInfo.from_revision_id(branch, revid, history)
+                    else:
+                        return RevisionInfo.from_revision_id(branch, revid)
             raise InvalidRevisionSpec(self.user_spec, branch)
         finally:
             branch.repository.unlock()
