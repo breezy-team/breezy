@@ -30,7 +30,7 @@ if __name__ == '__main__':
           package_dir={'bzrlib.plugins.git':'.'},
           packages=['bzrlib.plugins.git',
                     'bzrlib.plugins.git.tests'],
-          scripts=['bzr-receive-pack', 'bzr-upload-pack'],
+          scripts=['bzr-receive-pack', 'bzr-upload-pack', 'git-remote-bzr'],
           classifiers=[
               'Topic :: Software Development :: Version Control',
               'Environment :: Plugins',
