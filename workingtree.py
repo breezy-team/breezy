@@ -46,7 +46,6 @@ from bzrlib import (
     lock,
     osutils,
     trace,
-    transport,
     tree,
     workingtree,
     )
@@ -101,6 +100,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         if not self._lock_mode:
             self._lock_mode = 'r'
             self._lock_count = 1
+            self.index.read()
         else:
             self._lock_count += 1
         self.branch.lock_read()
@@ -110,6 +110,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         if not self._lock_mode:
             self._lock_mode = 'w'
             self._lock_count = 1
+            self.index.read()
         elif self._lock_mode == 'r':
             raise errors.ReadOnlyError(self)
         else:
@@ -121,6 +122,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         if not self._lock_mode:
             self._lock_mode = 'w'
             self._lock_count = 1
+            self.index.read()
         elif self._lock_mode == 'r':
             raise errors.ReadOnlyError(self)
         else:
@@ -159,6 +161,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         self.set_parent_ids([p for p, t in parents_list])
 
     def _index_add_entry(self, path, file_id, kind):
+        assert self._lock_mode is not None
         assert isinstance(path, basestring)
         assert type(file_id) == str or file_id is None
         if kind == "directory":
@@ -208,11 +211,13 @@ class GitWorkingTree(workingtree.WorkingTree):
         self._versioned_dirs.add(dirname)
 
     def _load_dirs(self):
+        assert self._lock_mode is not None
         self._versioned_dirs = set()
         for p in self.index:
             self._ensure_versioned_dir(posixpath.dirname(p))
 
     def _unversion_path(self, path):
+        assert self._lock_mode is not None
         encoded_path = path.encode("utf-8")
         try:
             del self.index[encoded_path]
@@ -421,17 +426,20 @@ class GitWorkingTree(workingtree.WorkingTree):
                 if not self.mapping.is_special_file(filename):
                     yield os.path.join(dir_relpath, filename)
 
+    @needs_read_lock
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
         """
         return set(self._iter_files_recursive()) - set(self.index)
 
+    @needs_tree_write_lock
     def flush(self):
         # TODO: Maybe this should only write on dirty ?
         if self._lock_mode != 'w':
             raise errors.NotWriteLocked(self)
         self.index.write()
 
+    @needs_read_lock
     def __iter__(self):
         for path in self.index:
             yield self.path2id(path)
@@ -541,6 +549,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         return self.repository.revision_tree(revid)
 
     def _is_versioned(self, path):
+        assert self._lock_mode is not None
         return (path in self.index or self._has_dir(path))
 
     def filter_unversioned_files(self, files):
@@ -586,6 +595,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         mode = stat_result.st_mode
         return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
+    @needs_read_lock
     def stored_kind(self, file_id, path=None):
         if path is None:
             path = self.id2path(file_id)
@@ -614,6 +624,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         _is_executable_from_path_and_stat = \
             _is_executable_from_path_and_stat_from_stat
 
+    @needs_read_lock
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         # FIXME: Yield non-versioned files
         if from_dir is None:
@@ -653,6 +664,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                 ie = fk_entries[kind]()
                 yield path, "?", kind, None, ie
 
+    @needs_read_lock
     def all_file_ids(self):
         ids = {u"": self.path2id("")}
         for path in self.index:
@@ -669,6 +681,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         # FIXME: Check .gitsubmodules for path
         return False
 
+    @needs_read_lock
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
         # FIXME: Is return order correct?
         if yield_parents:
@@ -711,6 +724,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         # The index just contains content, which won't have changed.
         self._reset_data()
 
+    @needs_read_lock
     def get_canonical_inventory_path(self, path):
         for p in self.index:
             if p.lower() == path.lower():
@@ -718,6 +732,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         else:
             return path
 
+    @needs_read_lock
     def _walkdirs(self, prefix=""):
         if prefix != "":
             prefix += "/"
@@ -773,6 +788,7 @@ class InterIndexGitTree(tree.InterTree):
 
     def __init__(self, source, target):
         super(InterIndexGitTree, self).__init__(source, target)
+        assert target.is_locked()
         self._index = target.index
 
     @classmethod
