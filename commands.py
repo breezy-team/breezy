@@ -206,12 +206,10 @@ class cmd_git_refs(Command):
 
     hidden = True
 
-    takes_options = [Option('directory',
-        short_name='d',
-        help='Location of repository.', type=unicode)]
+    takes_args = ["location?"]
 
     @display_command
-    def run(self, directory="."):
+    def run(self, location="."):
         from bzrlib.bzrdir import (
             BzrDir,
             )
@@ -221,12 +219,12 @@ class cmd_git_refs(Command):
         from bzrlib.plugins.git.object_store import (
             get_object_store,
             )
-        bzrdir, _ = BzrDir.open_containing(directory)
+        bzrdir, _ = BzrDir.open_containing(location)
         repo = bzrdir.find_repository()
         object_store = get_object_store(repo)
         object_store.lock_read()
         try:
-            refs = get_refs_container(bzrdir)
+            refs = get_refs_container(bzrdir, object_store)
             for k, v in refs.as_dict().iteritems():
                 self.outf.write("%s -> %s\n" % (k, v))
         finally:

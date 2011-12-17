@@ -224,3 +224,27 @@ class TestGitBlackBox(ExternalBase):
         self.assertEquals(
             set([b.name for b in BzrDir.open("b").list_branches()]),
             set(["abranch", "bbranch"]))
+
+    def test_git_refs_from_git(self):
+        r = GitRepo.init("a", mkdir=True)
+        self.build_tree(["a/file"])
+        r.stage("file")
+        cid = r.do_commit(ref="refs/heads/abranch", committer="Joe <joe@example.com>", message="Dummy")
+        r["refs/tags/atag"] = cid
+        (stdout, stderr) = self.run_bzr(["git-refs", "a"])
+        self.assertEquals(stderr, "")
+        self.assertEquals(stdout,
+            'refs/tags/atag -> ' + cid + '\n'
+            'refs/heads/abranch -> ' + cid + '\n')
+
+    def test_git_refs_from_bzr(self):
+        tree = self.make_branch_and_tree('a')
+        self.build_tree(["a/file"])
+        tree.add(["file"])
+        revid = tree.commit(committer="Joe <joe@example.com>", message="Dummy")
+        tree.branch.tags.set_tag("atag", revid)
+        (stdout, stderr) = self.run_bzr(["git-refs", "a"])
+        self.assertEquals(stderr, "")
+        self.assertTrue("refs/tags/atag -> " in stdout)
+        self.assertTrue("refs/heads/master -> " in stdout)
+        self.assertTrue("HEAD -> " in stdout)
