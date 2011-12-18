@@ -24,8 +24,6 @@ from zlib import adler32
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import urllib
-
 from bzrlib import (
     annotate,
     bencode,
@@ -38,6 +36,7 @@ from bzrlib import (
     multiparent,
     tsort,
     revision,
+    urlutils,
     )
 """)
 from bzrlib.registry import Registry
@@ -821,11 +820,11 @@ class URLEscapeMapper(KeyMapper):
 
     def map(self, key):
         """See KeyMapper.map()."""
-        return urllib.quote(self._map(key))
+        return urlutils.quote(self._map(key))
 
     def unmap(self, partition_id):
         """See KeyMapper.unmap()."""
-        return self._unmap(urllib.unquote(partition_id))
+        return self._unmap(urlutils.unquote(partition_id))
 
 
 class PrefixMapper(URLEscapeMapper):
@@ -878,7 +877,7 @@ class HashEscapedPrefixMapper(HashPrefixMapper):
     def _escape(self, prefix):
         """Turn a key element into a filesystem safe string.
 
-        This is similar to a plain urllib.quote, except
+        This is similar to a plain urlutils.quote, except
         it uses specific safe characters, so that it doesn't
         have to translate a lot of valid file ids.
         """
@@ -891,7 +890,7 @@ class HashEscapedPrefixMapper(HashPrefixMapper):
 
     def _unescape(self, basename):
         """Escaped names are easily unescaped by urlutils."""
-        return urllib.unquote(basename)
+        return urlutils.unquote(basename)
 
 
 def make_versioned_files_factory(versioned_file_factory, mapper):
