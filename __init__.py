@@ -23,6 +23,8 @@
 
 """bzr-builddeb - manage packages in a Bazaar branch."""
 
+from __future__ import absolute_import
+
 import os
 
 import bzrlib
@@ -32,7 +34,7 @@ from bzrlib.directory_service import (
     directories,
     )
 
-from info import (
+from bzrlib.plugins.builddeb.info import (
     bzr_plugin_version as version_info,
     )
 
