@@ -98,7 +98,7 @@ def load_fastimport():
 
 
 def test_suite():
-    import tests
+    from bzrlib.plugins.fastimport import tests
     return tests.test_suite()
 
 
