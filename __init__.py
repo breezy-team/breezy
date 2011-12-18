@@ -104,6 +104,8 @@ The last part of the key needs to match the keyword name. The value must be
 a legal strftime (http://docs.python.org/lib/module-time.html) format.
 '''
 
+from __future__ import absolute_import
+
 
 from bzrlib import (
     builtins,
