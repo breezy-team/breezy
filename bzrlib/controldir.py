@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 """ControlDir is the basic control directory class.
 
 The ControlDir class is the base for the control directory used
@@ -737,6 +739,8 @@ class ControlDir(ControlComponent):
                 result = klass.open_from_transport(a_transport)
                 return result, urlutils.unescape(a_transport.relpath(url))
             except errors.NotBranchError, e:
+                pass
+            except errors.PermissionDenied:
                 pass
             try:
                 new_t = a_transport.clone('..')

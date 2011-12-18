@@ -18,6 +18,8 @@
 
 # This code is from bzr-explorer and modified for bzr.
 
+from __future__ import absolute_import
+
 """build_mo command for setup.py"""
 
 from distutils import log

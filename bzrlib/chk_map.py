@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 """Persistent maps from tuple_of_strings->string using CHK stores.
 
 Overview and current status:
@@ -36,6 +38,8 @@ TODO:
 Densely packed upper nodes.
 
 """
+
+from __future__ import absolute_import
 
 import heapq
 import threading

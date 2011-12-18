@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -75,11 +77,8 @@ class RevisionInfo(object):
         return self._revno
 
     def __nonzero__(self):
-        # first the easy ones...
         if self.rev_id is None:
             return False
-        if self.revno is not None:
-            return True
         # TODO: otherwise, it should depend on how I was built -
         # if it's in_history(branch), then check revision_history(),
         # if it's in_store(branch), do the check below

@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 """DirState objects record the state of a directory and its bzr metadata.
 
 Pseudo EBNF grammar for the state file. Fields are separated by NULLs, and
@@ -217,6 +219,8 @@ desirable. We can consider a pyrex version of this with objects in future if
 desired.
 
 """
+
+from __future__ import absolute_import
 
 import bisect
 import errno

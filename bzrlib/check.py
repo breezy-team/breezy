@@ -32,6 +32,8 @@
 # raising them.  If there's more than one exception it'd be good to see them
 # all.
 
+from __future__ import absolute_import
+
 """Checking of bzr objects.
 
 check_refs is a concept used for optimising check. Objects that depend on other
