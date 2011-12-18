@@ -21,11 +21,13 @@ patches, the user can resolve the conflict and continue the rebase using the
 'rebase-continue' command or abort using the 'rebase-abort' command.
 """
 
+from __future__ import absolute_import
+
 import bzrlib
 import bzrlib.api
 from bzrlib.commands import plugin_cmds
 
-from info import (
+from bzrlib.plugins.rewrite.info import (
     bzr_commands,
     bzr_plugin_version as version_info,
     bzr_compatible_versions,
