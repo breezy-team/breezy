@@ -21,13 +21,15 @@
 
 """A GIT branch and repository format implementation for bzr."""
 
+from __future__ import absolute_import
+
 import os
 import sys
 
 import bzrlib
 import bzrlib.api
 
-from info import (
+from bzrlib.plugins.git.info import (
     bzr_compatible_versions,
     bzr_plugin_version as version_info,
     dulwich_minimum_version,
