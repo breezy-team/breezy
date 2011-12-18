@@ -1433,12 +1433,22 @@ class cmd_branches(Command):
                     self.outf.encoding).rstrip("/"))
         else:
             dir = controldir.ControlDir.open_containing(location)[0]
-            for branch in dir.list_branches():
-                if branch.name is None:
-                    self.outf.write(gettext(" (default)\n"))
+            try:
+                active_branch = dir.open_branch(name=None)
+            except errors.NotBranchError:
+                active_branch = None
+            branches = dir.get_branches()
+            for name in sorted(branches.keys()):
+                branch = branches[name]
+                if name is None:
+                    name = gettext("(default)")
+                if (active_branch is not None and
+                    active_branch.base == branch.base):
+                    prefix = "*"
                 else:
-                    self.outf.write(" %s\n" % branch.name.encode(
-                        self.outf.encoding))
+                    prefix = " "
+                self.outf.write("%s%s\n" % (
+                    prefix, name.encode(self.outf.encoding)))
 
 
 class cmd_checkout(Command):
