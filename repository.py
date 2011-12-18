@@ -332,6 +332,17 @@ class LocalGitRepository(GitRepository):
                     else:
                         raise AssertionError("file text resolved to %r" % obj)
 
+    def gather_stats(self, revid=None, committers=None):
+        """See Repository.gather_stats()."""
+        result = super(LocalGitRepository, self).gather_stats(revid, committers)
+        revs = []
+        for sha in self._git.object_store:
+            o = self._git.object_store[sha]
+            if o.type_name == "commit":
+                revs.append(o.id)
+        result['revisions'] = len(revs)
+        return result
+
     def _iter_revision_ids(self):
         mapping = self.get_mapping()
         for sha in self._git.object_store:
