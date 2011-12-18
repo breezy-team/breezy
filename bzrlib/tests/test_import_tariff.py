@@ -190,6 +190,8 @@ class TestImportTariffs(ImportTariffTestCase):
             'bzrlib.xml8',
             'getpass',
             'kerberos',
+            'ssl',
+            'socket',
             'smtplib',
             'tarfile',
             'tempfile',
