@@ -788,7 +788,7 @@ class InterGitGitRepository(InterFromGitRepository):
         new_refs = self.target.bzrdir.get_refs_container()
         return None, old_refs, new_refs
 
-    def fetch_objects(self, determine_wants, mapping=None):
+    def fetch_objects(self, determine_wants, mapping=None, limit=None):
         graphwalker = self.target._git.get_graph_walker()
         if (isinstance(self.source, LocalGitRepository) and
             isinstance(self.target, LocalGitRepository)):
@@ -828,7 +828,7 @@ class InterGitGitRepository(InterFromGitRepository):
         return set([sha for sha in shas if sha in self.target._git.object_store])
 
     def fetch(self, revision_id=None, find_ghosts=False,
-              mapping=None, fetch_spec=None, branches=None):
+              mapping=None, fetch_spec=None, branches=None, limit=None):
         if mapping is None:
             mapping = self.source.get_mapping()
         r = self.target._git
