@@ -791,7 +791,6 @@ class InterIndexGitTree(tree.InterTree):
 
     def __init__(self, source, target):
         super(InterIndexGitTree, self).__init__(source, target)
-        assert target.is_locked()
         self._index = target.index
 
     @classmethod
@@ -800,6 +799,7 @@ class InterIndexGitTree(tree.InterTree):
         return (isinstance(source, GitRevisionTree) and 
                 isinstance(target, GitWorkingTree))
 
+    @needs_read_lock
     def compare(self, want_unchanged=False, specific_files=None,
                 extra_trees=None, require_versioned=False, include_root=False,
                 want_unversioned=False):
@@ -820,6 +820,7 @@ class InterIndexGitTree(tree.InterTree):
                     osutils.file_kind(self.target.abspath(e))))
         return ret
 
+    @needs_read_lock
     def iter_changes(self, include_unchanged=False, specific_files=None,
         pb=None, extra_trees=[], require_versioned=True,
         want_unversioned=False):
