@@ -20,6 +20,8 @@
 
 # This module is copied from Bazaar Explorer and modified for bzr.
 
+from __future__ import absolute_import
+
 """i18n and l10n support for Bazaar."""
 
 import gettext as _gettext

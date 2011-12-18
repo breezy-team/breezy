@@ -16,6 +16,8 @@
 #
 # Author: Mattias Eriksson
 
+from __future__ import absolute_import
+
 """Implementation of Transport over gio.
 
 Written by Mattias Eriksson <snaggen@acc.umu.se> based on the ftp transport.

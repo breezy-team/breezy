@@ -16,6 +16,7 @@
 #
 # Author: Martin Pool <mbp@canonical.com>
 
+from __future__ import absolute_import
 
 
 

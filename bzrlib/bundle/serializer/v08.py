@@ -14,10 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 """Serializer factory for reading and writing bundles.
 """
-
-import os
 
 from bzrlib import (
     errors,
@@ -27,15 +27,13 @@ from bzrlib.bundle.serializer import (BundleSerializer,
                                       _get_bundle_header,
                                      )
 from bzrlib.bundle.serializer import binary_diff
-from bzrlib.bundle.bundle_data import (RevisionInfo, BundleInfo, BundleTree)
+from bzrlib.bundle.bundle_data import (RevisionInfo, BundleInfo)
 from bzrlib.diff import internal_diff
-from bzrlib.osutils import pathjoin
 from bzrlib.revision import NULL_REVISION
 from bzrlib.testament import StrictTestament
 from bzrlib.timestamp import (
     format_highres_date,
-    unpack_highres_date,
-)
+    )
 from bzrlib.textfile import text_file
 from bzrlib.trace import mutter
 

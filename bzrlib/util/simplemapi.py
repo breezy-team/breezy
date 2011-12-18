@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 """
 Copyright (c) 2007 Ian Cook and John Popplewell
 

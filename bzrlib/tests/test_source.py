@@ -426,10 +426,10 @@ class TestSource(TestSourceHelper):
         missing_absolute_import = []
         for fname, text in self.get_source_file_contents(
                 extensions=('.py', )):
-            if "/tests/" in fname:
+            if "/tests/" in fname or "test_" in fname:
                 # We don't really care about tests
                 continue
-            if not "from __future__ import absolute_import\n" in text:
+            if not "from __future__ import absolute_import" in text:
                 missing_absolute_import.append(fname)
 
         if missing_absolute_import:

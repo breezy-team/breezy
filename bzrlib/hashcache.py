@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 # TODO: Up-front, stat all files in order and remove those which are deleted or
 # out-of-date.  Don't actually re-read them until they're needed.  That ought
 # to bring all the inodes into core so that future stats to them are fast, and

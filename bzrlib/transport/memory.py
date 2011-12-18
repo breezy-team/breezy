@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 """Implementation of Transport that uses memory for its storage.
 
 The contents of the transport will be lost when the object is discarded,

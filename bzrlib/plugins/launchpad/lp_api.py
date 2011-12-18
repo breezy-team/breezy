@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 """Tools for dealing with the Launchpad API."""
 
 # Importing this module will be expensive, since it imports launchpadlib and

@@ -17,6 +17,8 @@
 # The normalize function is taken from pygettext which is distributed
 # with Python under the Python License, which is GPL compatible.
 
+from __future__ import absolute_import
+
 """Extract docstrings from Bazaar commands.
 
 This module only handles bzrlib objects that use strings not directly wrapped
