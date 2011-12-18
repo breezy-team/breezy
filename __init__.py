@@ -15,9 +15,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """A Simple bzr plugin to generate statistics about the history."""
 
+from __future__ import absolute_import
+
 from bzrlib import _format_version_tuple
 
-from info import (
+from bzrlib.plugins.stats.info import (
     bzr_plugin_version  as version_info,
     )
 
