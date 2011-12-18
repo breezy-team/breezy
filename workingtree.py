@@ -25,6 +25,9 @@ from collections import defaultdict
 import errno
 from dulwich.index import (
     Index,
+    changes_from_tree,
+    cleanup_mode,
+    index_entry_from_stat,
     )
 from dulwich.object_store import (
     tree_lookup_path,
@@ -196,10 +199,8 @@ class GitWorkingTree(workingtree.WorkingTree):
         # Add an entry to the index or update the existing entry
         flags = 0 # FIXME
         encoded_path = path.encode("utf-8")
-        self.index[encoded_path] = (stat_val.st_ctime,
-                stat_val.st_mtime, stat_val.st_dev, stat_val.st_ino,
-                stat_val.st_mode, stat_val.st_uid, stat_val.st_gid,
-                stat_val.st_size, blob.id, flags)
+        self.index[encoded_path] = index_entry_from_stat(
+            stat_val, blob.id, flags)
         if self._versioned_dirs is not None:
             self._ensure_versioned_dir(encoded_path)
 
@@ -833,12 +834,30 @@ class InterIndexGitTree(tree.InterTree):
 tree.InterTree.register_optimiser(InterIndexGitTree)
 
 
-def changes_between_git_tree_and_index(object_store, tree, path, index,
+def changes_between_git_tree_and_index(object_store, tree, base_path, index,
         want_unchanged=False, want_unversioned=False, update_index=False):
     """Determine the changes between a git tree and a working tree with index.
 
     """
-    return index.changes_from_tree(object_store, tree, want_unchanged)
-    # FIXME: os.walk() over the contents of path.
-    # FIXME: for each path, check if it is in the index. If it is, and
-    # the timestamp looks plausible, use the data from the index
+    names = index._byname.keys()
+    def lookup_entry(path):
+        entry = index[path]
+        index_mode = entry[-6]
+        index_sha = entry[-2]
+        disk_path = os.path.join(base_path, path)
+        disk_stat = os.lstat(disk_path)
+        mtime = disk_stat.st_mtime
+        mtime_delta = (entry[1][0] - mtime)
+        disk_mode = cleanup_mode(disk_stat.st_mode)
+        if (mtime_delta > 0 or
+            disk_mode != index_mode):
+            with open(disk_path, 'r') as f:
+                blob = Blob.from_string(f.read())
+            if update_index:
+                flags = 0 # FIXME
+                index[path] = index_entry_from_stat(disk_stat, blob.id, flags)
+            return (blob.id, disk_mode)
+        return (index_sha, index_mode)
+    for (name, mode, sha) in changes_from_tree(names, lookup_entry,
+            object_store, tree, want_unchanged=want_unchanged):
+        yield (name, mode, sha)
