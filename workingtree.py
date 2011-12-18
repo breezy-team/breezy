@@ -482,6 +482,7 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     @needs_read_lock
     def id2path(self, file_id):
+        assert type(file_id) is str, "file id not a string: %r" % file_id
         file_id = osutils.safe_utf8(file_id)
         path = self._fileid_map.lookup_path(file_id)
         # FIXME: What about directories?
@@ -846,8 +847,12 @@ def changes_between_git_tree_and_index(object_store, tree, base_path, index,
         index_sha = entry[-2]
         disk_path = os.path.join(base_path, path)
         disk_stat = os.lstat(disk_path)
-        mtime = disk_stat.st_mtime
-        mtime_delta = (entry[1][0] - mtime)
+        disk_mtime = disk_stat.st_mtime
+        if isinstance(entry[1], tuple):
+            index_mtime = entry[1][0]
+        else:
+            index_mtime = int(entry[1])
+        mtime_delta = (index_mtime - disk_mtime)
         disk_mode = cleanup_mode(disk_stat.st_mode)
         if (mtime_delta > 0 or
             disk_mode != index_mode):
