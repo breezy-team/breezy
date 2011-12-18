@@ -139,12 +139,12 @@ class GitWorkingTree(workingtree.WorkingTree):
     def unlock(self):
         if not self._lock_count:
             return lock.cant_unlock_not_held(self)
+        self.branch.unlock()
         self._cleanup()
         self._lock_count -= 1
         if self._lock_count > 0:
             return
         self._lock_mode = None
-        self.branch.unlock()
 
     def _detect_case_handling(self):
         try:
@@ -479,6 +479,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         else:
             return True
 
+    @needs_read_lock
     def id2path(self, file_id):
         file_id = osutils.safe_utf8(file_id)
         path = self._fileid_map.lookup_path(file_id)
