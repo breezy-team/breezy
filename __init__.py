@@ -19,7 +19,9 @@
 Currently only tells the user that Monotone is not supported.
 """
 
-from info import (
+from __future__ import absolute_import
+
+from bzrlib.plugins.mtn.info import (
     bzr_plugin_version as version_info,
     )
 
