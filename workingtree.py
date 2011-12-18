@@ -800,9 +800,12 @@ class InterIndexGitTree(tree.InterTree):
     def compare(self, want_unchanged=False, specific_files=None,
                 extra_trees=None, require_versioned=False, include_root=False,
                 want_unversioned=False):
-        changes = self._index.changes_from_tree(
+        # FIXME: Handle include_root
+        changes = changes_between_git_tree_and_index(
             self.source.store, self.source.tree, 
-            want_unchanged=want_unchanged)
+            self.target.basedir, self.target.index,
+            want_unchanged=want_unchanged,
+            want_unversioned=want_unversioned)
         source_fileid_map = self.source._fileid_map
         target_fileid_map = self.target._fileid_map
         ret = tree_delta_from_git_changes(changes, self.target.mapping,
@@ -817,12 +820,24 @@ class InterIndexGitTree(tree.InterTree):
     def iter_changes(self, include_unchanged=False, specific_files=None,
         pb=None, extra_trees=[], require_versioned=True,
         want_unversioned=False):
-        changes = self._index.changes_from_tree(
+        changes = changes_between_git_tree_and_index(
             self.source.store, self.source.tree,
-            want_unchanged=include_unchanged)
-        # FIXME: Handle want_unversioned
+            self.target.basedir, self.target.index,
+            want_unchanged=include_unchanged,
+            want_unversioned=want_unversioned)
         return changes_from_git_changes(changes, self.target.mapping,
             specific_file=specific_files)
 
 
 tree.InterTree.register_optimiser(InterIndexGitTree)
+
+
+def changes_between_git_tree_and_index(object_store, tree, path, index,
+        want_unchanged=False, want_unversioned=False, update_index=False):
+    """Determine the changes between a git tree and a working tree with index.
+
+    """
+    return index.changes_from_tree(object_store, tree, want_unchanged)
+    # FIXME: os.walk() over the contents of path.
+    # FIXME: for each path, check if it is in the index. If it is, and
+    # the timestamp looks plausible, use the data from the index
