@@ -78,7 +78,9 @@ To report bugs or publish enhancements, visit the bzr-fastimport project
 page on Launchpad, https://launchpad.net/bzr-fastimport.
 """
 
-from info import (
+from __future__ import absolute_import
+
+from bzrlib.plugins.fastimport.info import (
     bzr_plugin_version as version_info,
     )
 
