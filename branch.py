@@ -380,7 +380,7 @@ class GitBranch(ForeignBranch):
 
         :return: Branch nick
         """
-        return self.name or "HEAD"
+        return self.name.encode('utf-8') or "HEAD"
 
     def _set_nick(self, nick):
         raise NotImplementedError
@@ -904,6 +904,15 @@ class InterGitLocalGitBranch(InterGitBranch):
     def is_compatible(self, source, target):
         return (isinstance(source, GitBranch) and
                 isinstance(target, LocalGitBranch))
+
+    def fetch(self, stop_revision=None, fetch_tags=None, limit=None):
+        interrepo = _mod_repository.InterRepository.get(self.source.repository,
+            self.target.repository)
+        if stop_revision is None:
+            stop_revision = self.source.last_revision()
+        determine_wants = interrepo.get_determine_wants_revids(
+            [stop_revision], include_tags=fetch_tags)
+        interrepo.fetch_objects(determine_wants, limit=limit)
 
     def _basic_push(self, overwrite=False, stop_revision=None):
         result = GitBranchPushResult()
