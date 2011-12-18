@@ -78,8 +78,6 @@ class RevisionInfo(object):
         # first the easy ones...
         if self.rev_id is None:
             return False
-        if self.revno is not None:
-            return True
         # TODO: otherwise, it should depend on how I was built -
         # if it's in_history(branch), then check revision_history(),
         # if it's in_store(branch), do the check below
