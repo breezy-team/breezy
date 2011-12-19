@@ -195,6 +195,8 @@ class TestImportTariffs(ImportTariffTestCase):
             'smtplib',
             'tarfile',
             'tempfile',
+            'termios',
+            'tty',
             'urllib',
             ] + old_format_modules)
         # TODO: similar test for repository-only operations, checking we avoid
@@ -265,4 +267,6 @@ class TestImportTariffs(ImportTariffTestCase):
             'smtplib',
             'tarfile',
             'tempfile',
+            'termios',
+            'tty',
             ] + old_format_modules)
