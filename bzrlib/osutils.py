@@ -53,8 +53,11 @@ from bzrlib.i18n import gettext
 """)
 
 from bzrlib.symbol_versioning import (
+    DEPRECATED_PARAMETER,
     deprecated_function,
     deprecated_in,
+    deprecated_passed,
+    warn as warn_deprecated,
     )
 
 from hashlib import (
@@ -1978,21 +1981,20 @@ def compare_paths_prefix_order(path_a, path_b):
 _cached_user_encoding = None
 
 
-def get_user_encoding(use_cache=True):
+def get_user_encoding(use_cache=DEPRECATED_PARAMETER):
     """Find out what the preferred user encoding is.
 
     This is generally the encoding that is used for command line parameters
     and file contents. This may be different from the terminal encoding
     or the filesystem encoding.
 
-    :param  use_cache:  Enable cache for detected encoding.
-                        (This parameter is turned on by default,
-                        and required only for selftesting)
-
     :return: A string defining the preferred user encoding
     """
     global _cached_user_encoding
-    if _cached_user_encoding is not None and use_cache:
+    if deprecated_passed(use_cache):
+        warn_deprecated("use_cache should only have been used for tests",
+            DeprecationWarning, stacklevel=2) 
+    if _cached_user_encoding is not None:
         return _cached_user_encoding
 
     if os.name == 'posix' and getattr(locale, 'CODESET', None) is not None:
@@ -2025,9 +2027,7 @@ def get_user_encoding(use_cache=True):
             # GZ 2011-12-19: Maybe UTF-8 should be the default in this case
             #                for some other posix platforms as well.
 
-    if use_cache:
-        _cached_user_encoding = user_encoding
-
+    _cached_user_encoding = user_encoding
     return user_encoding
 
 

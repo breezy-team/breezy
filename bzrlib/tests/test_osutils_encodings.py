@@ -170,6 +170,7 @@ class TestUserEncoding(TestCase):
 
     def setUp(self):
         TestCase.setUp(self)
+        self.overrideAttr(osutils, '_cached_user_encoding', None)
         self.overrideAttr(locale, 'getpreferredencoding')
         self.overrideAttr(locale, 'CODESET', None)
         self.overrideAttr(sys, 'stderr', StringIOWrapper())
@@ -181,7 +182,7 @@ class TestUserEncoding(TestCase):
         locale.getpreferredencoding = f
         fake_codec.add('user_encoding')
         self.assertEquals('iso8859-1', # fake_codec maps to latin-1
-                          osutils.get_user_encoding(use_cache=False))
+                          osutils.get_user_encoding())
         self.assertEquals('', sys.stderr.getvalue())
 
     def test_user_cp0(self):
@@ -189,7 +190,7 @@ class TestUserEncoding(TestCase):
             return 'cp0'
 
         locale.getpreferredencoding = f
-        self.assertEquals('ascii', osutils.get_user_encoding(use_cache=False))
+        self.assertEquals('ascii', osutils.get_user_encoding())
         self.assertEquals('', sys.stderr.getvalue())
 
     def test_user_cp_unknown(self):
@@ -197,7 +198,7 @@ class TestUserEncoding(TestCase):
             return 'cp-unknown'
 
         locale.getpreferredencoding = f
-        self.assertEquals('ascii', osutils.get_user_encoding(use_cache=False))
+        self.assertEquals('ascii', osutils.get_user_encoding())
         self.assertEquals('bzr: warning: unknown encoding cp-unknown.'
                           ' Continuing with ascii encoding.\n',
                           sys.stderr.getvalue())
@@ -208,7 +209,7 @@ class TestUserEncoding(TestCase):
             return ''
 
         locale.getpreferredencoding = f
-        self.assertEquals('ascii', osutils.get_user_encoding(use_cache=False))
+        self.assertEquals('ascii', osutils.get_user_encoding())
         self.assertEquals('', sys.stderr.getvalue())
 
 
