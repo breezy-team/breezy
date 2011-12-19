@@ -68,7 +68,7 @@ always_safe = ('ABCDEFGHIJKLMNOPQRSTUVWXYZ'
                '0123456789' '_.-')
 _safe_map = {}
 for i, c in zip(xrange(256), str(bytearray(xrange(256)))):
-    _safe_map[c] = c if (i < 128 and c in always_safe) else '%{:02X}'.format(i)
+    _safe_map[c] = c if (i < 128 and c in always_safe) else '%{0:02X}'.format(i)
 _safe_quoters = {}
 
 
