@@ -24,11 +24,12 @@ over SSH), and pass them to and from the protocol logic.  See the overview in
 bzrlib/transport/smart/__init__.py.
 """
 
+from __future__ import absolute_import
+
 import errno
 import os
 import sys
 import time
-import urllib
 
 import bzrlib
 from bzrlib.lazy_import import lazy_import
@@ -840,7 +841,7 @@ class SmartClientMedium(SmartMedium):
         """
         medium_base = urlutils.join(self.base, '/')
         rel_url = urlutils.relative_url(medium_base, transport.base)
-        return urllib.unquote(rel_url)
+        return urlutils.unquote(rel_url)
 
 
 class SmartClientStreamMedium(SmartClientMedium):

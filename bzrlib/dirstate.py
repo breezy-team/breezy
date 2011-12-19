@@ -218,6 +218,8 @@ desired.
 
 """
 
+from __future__ import absolute_import
+
 import bisect
 import errno
 import operator

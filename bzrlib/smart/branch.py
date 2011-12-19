@@ -16,6 +16,7 @@
 
 """Server-side branch related request implmentations."""
 
+from __future__ import absolute_import
 
 from bzrlib import (
     bencode,

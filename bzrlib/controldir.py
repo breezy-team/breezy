@@ -22,6 +22,8 @@ see bzrlib.bzrdir.BzrDir.
 
 """
 
+from __future__ import absolute_import
+
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import textwrap
@@ -737,6 +739,8 @@ class ControlDir(ControlComponent):
                 result = klass.open_from_transport(a_transport)
                 return result, urlutils.unescape(a_transport.relpath(url))
             except errors.NotBranchError, e:
+                pass
+            except errors.PermissionDenied:
                 pass
             try:
                 new_t = a_transport.clone('..')

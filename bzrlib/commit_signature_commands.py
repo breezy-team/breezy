@@ -17,6 +17,8 @@
 """Command which looks for unsigned commits by the current user, and signs them.
 """
 
+from __future__ import absolute_import
+
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (

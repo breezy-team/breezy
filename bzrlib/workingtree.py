@@ -29,6 +29,7 @@ To get a WorkingTree, call bzrdir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
+from __future__ import absolute_import
 
 from cStringIO import StringIO
 import os
@@ -68,6 +69,10 @@ from bzrlib import (
     xml7,
     )
 """)
+
+# Explicitly import bzrlib.bzrdir so that the BzrProber
+# is guaranteed to be registered.
+import bzrlib.bzrdir
 
 from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock

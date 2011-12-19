@@ -19,6 +19,8 @@
 See ``bzr help rules`` for details.
 """
 
+from __future__ import absolute_import
+
 from bzrlib import (
     config,
     cmdline,

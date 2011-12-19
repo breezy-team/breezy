@@ -16,6 +16,8 @@
 
 """A transport decorator that filters all paths that are passed to it."""
 
+from __future__ import absolute_import
+
 from bzrlib import urlutils
 
 from bzrlib.transport import (

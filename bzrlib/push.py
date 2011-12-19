@@ -16,6 +16,8 @@
 
 """UI helper for the push command."""
 
+from __future__ import absolute_import
+
 from bzrlib import (
     controldir,
     errors,
