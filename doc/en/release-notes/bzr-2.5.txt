@@ -102,27 +102,29 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* ``bzrlib.urlutils`` now includes ``quote`` and ``unquote`` functions,
+  rather than importing them from ``urllib``. This prevents loading
+  of the ``socket``, ``ssl`` and ``urllib`` modules for
+  local bzr operations. (Jelmer Vernooij)
+
 * ControlDir now has a get_branches method that returns a dictionary
   whose keys are the names of the branches and whose values are the
   branches themselves. The active branch uses the key None.
   (Neil Martinsen-Burrell)
 
+* Helper ``osutils.path_from_environ`` added for extracting a unicode path
+  from an environment variable. (Martin Packman, #832028)
+
 * Helper ``win32utils.get_environ_unicode`` added for avoiding encoding
   problems with ``os.environ.get`` use. (Martin Packman, #262874) 
 
-* Helper ``osutils.path_from_environ`` added for extracting a unicode path
-  from an environment variable. (Martin Packman, #832028)
+* Lazy imports can now only be absolute. (Jelmer Vernooij)
 
 * New HPSS call ``BzrDir.checkout_metadir``. (Jelmer Vernooij, #894459)
 
 * New HPSS call ``VersionedFileRepository.get_inventories``,
   speeding up various commands including ``bzr export``,
   ``bzr checkout`` and ``bzr cat``. (Jelmer Vernooij, #608640)
-
-* ``bzrlib.urlutils`` now includes ``quote`` and ``unquote`` functions,
-  rather than importing them from ``urllib``. This prevents loading
-  of the ``socket``, ``ssl`` and ``urllib`` modules for
-  local bzr operations. (Jelmer Vernooij)
 
 Testing
 *******

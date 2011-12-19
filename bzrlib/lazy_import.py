@@ -208,10 +208,10 @@ class ImportReplacer(ScopeReplacer):
         module_path = object.__getattribute__(self, '_module_path')
         module_python_path = '.'.join(module_path)
         if member is not None:
-            module = __import__(module_python_path, scope, scope, [member])
+            module = __import__(module_python_path, scope, scope, [member], level=0)
             return getattr(module, member)
         else:
-            module = __import__(module_python_path, scope, scope, [])
+            module = __import__(module_python_path, scope, scope, [], level=0)
             for path in module_path[1:]:
                 module = getattr(module, path)
 
