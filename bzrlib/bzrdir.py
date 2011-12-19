@@ -1172,11 +1172,15 @@ class BzrFormat(object):
         lines = text[len(format_string):].splitlines()
         ret = cls()
         for lineno, line in enumerate(lines):
-            (necessity, command, feature) = line.split(" ")
-            if command != "feature":
+            (necessity, command, feature) = line.split(" ", 2)
+            if command == "feature":
+                ret.features[feature] = necessity
+            elif necessity == "optional":
+                mutter("Invalid optional command %r on line %d" %
+                    (command, lineno))
+            else:
                 raise ValueError("Invalid command %r on line %d" %
                     (command, lineno))
-            ret.features[feature] = necessity
         return ret
 
     def as_string(self):

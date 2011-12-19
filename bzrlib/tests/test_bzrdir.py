@@ -1486,6 +1486,12 @@ class TestBzrFormat(TestCase):
             "First line\nrequired bla foo\n")
         self.assertRaises(ValueError, SampleBzrFormat.from_string,
             "First line\nfoo\n")
+        format = SampleBzrFormat.from_string(
+            "First line\noptional bla foo\n")
+        self.assertEquals(None, format.features.get("foo"))
+        format = SampleBzrFormat.from_string(
+            "First line\nrequired feature foo with spaces\n")
+        self.assertEquals("required", format.features.get("foo with spaces"))
 
     def test_eq(self):
         format1 = SampleBzrFormat()
