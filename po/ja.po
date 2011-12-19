@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-12-08 09:21+0100\n"
-"PO-Revision-Date: 2011-11-21 03:39+0000\n"
-"Last-Translator: INADA Naoki <Unknown>\n"
+"PO-Revision-Date: 2011-12-18 18:54+0000\n"
+"Last-Translator: IWATA Hidetaka <Unknown>\n"
 "Language-Team: Japanese <ja@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Launchpad-Export-Date: 2011-12-09 04:31+0000\n"
-"X-Generator: Launchpad (build 14450)\n"
+"X-Launchpad-Export-Date: 2011-12-19 04:30+0000\n"
+"X-Generator: Launchpad (build 14525)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -313,7 +313,7 @@ msgstr "タグは1つのリビジョンにしか指定できません"
 
 #: bzrlib/builtins.py:609
 msgid "Show revno of working tree."
-msgstr ""
+msgstr "作業ツリーのリビジョン番号を表示します。"
 
 #: bzrlib/builtins.py:657
 msgid "Add specified files or directories."
@@ -931,12 +931,16 @@ msgid ""
 "branch, or the specified revision) into the working tree, and then make\n"
 "that revision the basis revision for the working tree.  "
 msgstr ""
+"移動先のリビジョン(ブランチのTipもしくは指定されたリビジョン)を作業ツリーに\n"
+"マージして、そのリビジョンを作業ツリーのベースリビジョンに設定します。  "
 
 #: bzrlib/builtins.py:1530
 msgid ""
 "You can use this to visit an older revision, or to update a working tree\n"
 "that is out of date from its branch."
 msgstr ""
+"古いリビジョンに一時的に移動したり、ブランチより古くなってしまった作業ツリーを\n"
+"最新の状態にしたりすることができます。"
 
 #: bzrlib/builtins.py:1533
 msgid ""
@@ -967,6 +971,12 @@ msgid ""
 "revision, use 'bzr revert' with a '-r' option, or use 'bzr cat' to write\n"
 "out the old content of that file to a new location."
 msgstr ""
+"Bazaarの作業ツリーはそれぞれベースリビジョンをひとつだけ持っているので、\n"
+"ファイルやディレクトリを個別に更新することはできません。もし、手元で削除して\n"
+"しまったファイルを元に戻したいのであれば、'bzr update'ではなく'bzr revert'を\n"
+"使ってください。もし、ファイルを前のバージョンの状態に戻したいのであれば、\n"
+"'bzr revert'に -r オプションを指定するか、'bzr cat'を使って古い内容を書き出して\n"
+"ください。"
 
 #: bzrlib/builtins.py:1548
 msgid ""
@@ -974,6 +984,8 @@ msgid ""
 "working tree to update.  By default, the working tree that contains the \n"
 "current working directory is used."
 msgstr ""
+"dir 引数を指定する場合は、作業ツリーのルートを指定する必要があります。\n"
+"デフォルトでは、カレントディレクトリを含む作業ツリーが選択されます。"
 
 #: bzrlib/builtins.py:1564
 msgid "bzr update --revision takes exactly one revision"
@@ -981,7 +993,7 @@ msgstr "bzr update --revisionには、リビジョンをひとつだけ指定し
 
 #: bzrlib/builtins.py:1572
 msgid "bzr update can only update a whole tree, not a file or subdirectory"
-msgstr ""
+msgstr "bzr updateは、個々のファイルやディレクトリではなく、作業ツリー全体を更新します。"
 
 #: bzrlib/builtins.py:1603
 msgid "Tree is up to date at revision {0} of branch {1}"
@@ -1093,15 +1105,15 @@ msgstr "削除モード"
 
 #: bzrlib/builtins.py:1696
 msgid "Backup changed files (default)."
-msgstr ""
+msgstr "変更したファイルをバックアップします。"
 
 #: bzrlib/builtins.py:1697
 msgid "Delete from bzr but leave the working copy."
-msgstr ""
+msgstr "Bazaarからは削除しますが、作業ツリーには残します。"
 
 #: bzrlib/builtins.py:1698
 msgid "Don't backup changed files."
-msgstr ""
+msgstr "変更されたファイルをバックアップしません。"
 
 #: bzrlib/builtins.py:1699
 msgid ""
@@ -13318,14 +13330,3 @@ msgid ""
 "Many commands that accept URLs also accept location aliases too.\n"
 "See :doc:`location-alias-help` and :doc:`url-special-chars-help`.\n"
 msgstr ""
-
-#~ msgid "Show revno of working tree"
-#~ msgstr "作業ツリーのリビジョン番号を表示します。"
-
-#~ msgid ""
-#~ "Can't safely remove modified or unknown files:\n"
-#~ "%(changes_as_text)sUse --keep to not delete them, or --force to delete them "
-#~ "regardless."
-#~ msgstr ""
-#~ "変更された、あるいは管理されていないファイルは安全に削除できません:\n"
-#~ "%(changes_as_text)sファイルを削除しない場合は --keep を、強制的に削除する場合は --force を利用してください。"
