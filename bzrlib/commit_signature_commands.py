@@ -61,7 +61,7 @@ class cmd_sign_my_commits(Command):
 
         if committer is None:
             committer = branch_config.username()
-        gpg_strategy = gpg.GPGStrategy(branch_config)
+        gpg_strategy = gpg.GPGStrategy(branch.get_config_stack())
 
         count = 0
         repo.lock_write()
@@ -119,7 +119,7 @@ class cmd_verify_signatures(Command):
         bzrdir = controldir.ControlDir.open_containing(location)[0]
         branch = bzrdir.open_branch()
         repo = branch.repository
-        branch_config = branch.get_config()
+        branch_config = branch.get_config_stack()
         gpg_strategy = gpg.GPGStrategy(branch_config)
 
         gpg_strategy.set_acceptable_keys(acceptable_keys)

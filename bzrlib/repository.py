@@ -78,7 +78,7 @@ class CommitBuilder(object):
     # being committed to
     updates_branch = False
 
-    def __init__(self, repository, parents, config, timestamp=None,
+    def __init__(self, repository, parents, config_stack, timestamp=None,
                  timezone=None, committer=None, revprops=None,
                  revision_id=None, lossy=False):
         """Initiate a CommitBuilder.
@@ -93,11 +93,11 @@ class CommitBuilder(object):
         :param lossy: Whether to discard data that can not be natively
             represented, when pushing to a foreign VCS 
         """
-        self._config = config
+        self._config_stack = config_stack
         self._lossy = lossy
 
         if committer is None:
-            self._committer = self._config.username()
+            self._committer = self._config_stack.get('email')
         elif not isinstance(committer, unicode):
             self._committer = committer.decode() # throw if non-ascii
         else:
@@ -711,14 +711,14 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
     def create_bundle(self, target, base, fileobj, format=None):
         return serializer.write_bundle(self, target, base, fileobj, format)
 
-    def get_commit_builder(self, branch, parents, config, timestamp=None,
+    def get_commit_builder(self, branch, parents, config_stack, timestamp=None,
                            timezone=None, committer=None, revprops=None,
                            revision_id=None, lossy=False):
         """Obtain a CommitBuilder for this repository.
 
         :param branch: Branch to commit to.
         :param parents: Revision ids of the parents of the new revision.
-        :param config: Configuration to use.
+        :param config_stack: Configuration stack to use.
         :param timestamp: Optional timestamp recorded for commit.
         :param timezone: Optional timezone for timestamp.
         :param committer: Optional committer to set for commit.

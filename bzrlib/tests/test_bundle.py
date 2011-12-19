@@ -16,10 +16,8 @@
 
 from cStringIO import StringIO
 import os
-import socket
 import SocketServer
 import sys
-import threading
 
 from bzrlib import (
     bzrdir,
@@ -1421,7 +1419,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
             # monkey patch gpg signing mechanism
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
             new_config = test_commit.MustSignConfig(branch)
-            commit.Commit(config=new_config).commit(message="base",
+            commit.Commit(config_stack=new_config).commit(message="base",
                                                     allow_pointless=True,
                                                     rev_id='B',
                                                     working_tree=tree_a)

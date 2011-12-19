@@ -154,11 +154,9 @@ class CHKSerializer(serializer.Serializer):
     def _unpack_inventory(self, elt, revision_id=None, entry_cache=None,
                           return_from_cache=False):
         """Construct from XML Element"""
-        def unpack_entry(entry_elt):
-            return xml_serializer.unpack_inventory_entry(entry_elt,
-                entry_cache=entry_cache, return_from_cache=return_from_cache)
         inv = xml_serializer.unpack_inventory_flat(elt, self.format_num,
-            unpack_entry)
+            xml_serializer.unpack_inventory_entry, entry_cache,
+            return_from_cache)
         return inv
 
     def read_inventory_from_string(self, xml_string, revision_id=None,

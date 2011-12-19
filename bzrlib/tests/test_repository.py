@@ -905,7 +905,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             revision = _mod_revision.Revision('rev1a',
                 committer='jrandom@example.com', timestamp=0,
                 inventory_sha1='', timezone=0, message='foo', parent_ids=[])
-            repo.add_revision('rev1a',revision, inv)
+            repo.add_revision('rev1a', revision, inv)
 
             # make rev1b, which has no Revision, but has an Inventory, and
             # file1
@@ -946,7 +946,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         revision = _mod_revision.Revision(revision_id,
             committer='jrandom@example.com', timestamp=0, inventory_sha1='',
             timezone=0, message='foo', parent_ids=parent_ids)
-        repo.add_revision(revision_id,revision, inv)
+        repo.add_revision(revision_id, revision, inv)
 
     def add_file(self, repo, inv, filename, revision, parents):
         file_id = filename + '-id'
@@ -1072,6 +1072,23 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
                                'obsolete_packs/%s.pack' % (names[0],))
         packs.transport.rename('indices/%s.iix' % (names[0],),
                                'obsolete_packs/%s.iix' % (names[0],))
+        # Now trigger the obsoletion, and ensure that all the remaining files
+        # are still renamed
+        packs._obsolete_packs([pack])
+        self.assertEqual([n + '.pack' for n in names[1:]],
+                         sorted(packs._pack_transport.list_dir('.')))
+        # names[0] should not be present in the index anymore
+        self.assertEqual(names[1:],
+            sorted(set([osutils.splitext(n)[0] for n in
+                        packs._index_transport.list_dir('.')])))
+
+    def test__obsolete_packs_missing_directory(self):
+        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        r.control_transport.rmdir('obsolete_packs')
+        names = packs.names()
+        pack = packs.get_pack_by_name(names[0])
+        # Schedule this one for removal
+        packs._remove_pack_from_memory(pack)
         # Now trigger the obsoletion, and ensure that all the remaining files
         # are still renamed
         packs._obsolete_packs([pack])
@@ -1357,6 +1374,12 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         obsolete_names = set([osutils.splitext(n)[0] for n in obsolete_packs])
         self.assertEqual([pack.name], sorted(obsolete_names))
 
+    def test_pack_no_obsolete_packs_directory(self):
+        """Bug #314314, don't fail if obsolete_packs directory does
+        not exist."""
+        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        r.control_transport.rmdir('obsolete_packs')
+        packs._clear_obsolete_packs()
 
 
 class TestPack(TestCaseWithTransport):
