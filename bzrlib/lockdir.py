@@ -109,7 +109,6 @@ but helps protect against colliding host names.
 # the existing locking code and needs a new format of the containing object.
 # -- robertc, mbp 20070628
 
-import errno
 import os
 import time
 
