@@ -1,7 +1,8 @@
 bzr (2.5.0~beta4+bzr6386-1) UNRELEASED; urgency=low
 
   * New upstream snapshot.
-  * New upstream snapshot.
+   + Add Breaks: for older versions of bzr-pqm, which don't provide config
+     stacks.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Mon, 19 Dec 2011 17:52:28 +0100
 
