@@ -26,6 +26,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from datetime import datetime
 import getpass
+import locale
 import ntpath
 import posixpath
 import select
@@ -1994,55 +1995,35 @@ def get_user_encoding(use_cache=True):
     if _cached_user_encoding is not None and use_cache:
         return _cached_user_encoding
 
-    if sys.platform == 'darwin':
-        # python locale.getpreferredencoding() always return
-        # 'mac-roman' on darwin. That's a lie.
-        sys.platform = 'posix'
-        try:
-            if os.environ.get('LANG', None) is None:
-                # If LANG is not set, we end up with 'ascii', which is bad
-                # ('mac-roman' is more than ascii), so we set a default which
-                # will give us UTF-8 (which appears to work in all cases on
-                # OSX). Users are still free to override LANG of course, as
-                # long as it give us something meaningful. This work-around
-                # *may* not be needed with python 3k and/or OSX 10.5, but will
-                # work with them too -- vila 20080908
-                os.environ['LANG'] = 'en_US.UTF-8'
-            import locale
-        finally:
-            sys.platform = 'darwin'
+    if os.name == 'posix' and getattr(locale, 'CODESET', None) is not None:
+        # Use the existing locale settings and call nl_langinfo directly
+        # rather than going through getpreferredencoding. This avoids
+        # <http://bugs.python.org/issue6202> on OSX Python 2.6 and the
+        # possibility of the setlocale call throwing an error.
+        user_encoding = locale.nl_langinfo(locale.CODESET)
     else:
-        import locale
+        # GZ 2011-12-19: On windows could call GetACP directly instead.
+        user_encoding = locale.getpreferredencoding()
 
     try:
-        user_encoding = locale.getpreferredencoding()
-    except locale.Error, e:
-        sys.stderr.write('bzr: warning: %s\n'
-                         '  Could not determine what text encoding to use.\n'
-                         '  This error usually means your Python interpreter\n'
-                         '  doesn\'t support the locale set by $LANG (%s)\n'
-                         "  Continuing with ascii encoding.\n"
-                         % (e, os.environ.get('LANG')))
-        user_encoding = 'ascii'
-
-    # Windows returns 'cp0' to indicate there is no code page. So we'll just
-    # treat that as ASCII, and not support printing unicode characters to the
-    # console.
-    #
-    # For python scripts run under vim, we get '', so also treat that as ASCII
-    if user_encoding in (None, 'cp0', ''):
-        user_encoding = 'ascii'
-    else:
-        # check encoding
-        try:
-            codecs.lookup(user_encoding)
-        except LookupError:
+        user_encoding = codecs.lookup(user_encoding).name
+    except LookupError:
+        if user_encoding not in ("", "cp0"):
             sys.stderr.write('bzr: warning:'
                              ' unknown encoding %s.'
                              ' Continuing with ascii encoding.\n'
                              % user_encoding
                             )
-            user_encoding = 'ascii'
+        user_encoding = 'ascii'
+    else:
+        # Get 'ascii' when setlocale has not been called or LANG=C or unset.
+        if user_encoding == 'ascii':
+            if sys.platform == 'darwin':
+                # OSX is special-cased in Python to have a UTF-8 filesystem
+                # encoding and previously had LANG set here if not present.
+                user_encoding = 'utf-8'
+            # GZ 2011-12-19: Maybe UTF-8 should be the default in this case
+            #                for some other posix platforms as well.
 
     if use_cache:
         _cached_user_encoding = user_encoding
@@ -2066,7 +2047,6 @@ def get_message_encoding():
     global _message_encoding
     if _message_encoding is None:
         if os.name == "posix":
-            import locale
             # This is a process-global setting that can change, but should in
             # general just get set once at process startup then be constant.
             _message_encoding = locale.getlocale(locale.LC_MESSAGES)[1]

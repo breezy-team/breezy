@@ -171,6 +171,7 @@ class TestUserEncoding(TestCase):
     def setUp(self):
         TestCase.setUp(self)
         self.overrideAttr(locale, 'getpreferredencoding')
+        self.overrideAttr(locale, 'CODESET', None)
         self.overrideAttr(sys, 'stderr', StringIOWrapper())
 
     def test_get_user_encoding(self):
@@ -179,7 +180,7 @@ class TestUserEncoding(TestCase):
 
         locale.getpreferredencoding = f
         fake_codec.add('user_encoding')
-        self.assertEquals('user_encoding',
+        self.assertEquals('iso8859-1', # fake_codec maps to latin-1
                           osutils.get_user_encoding(use_cache=False))
         self.assertEquals('', sys.stderr.getvalue())
 
@@ -209,20 +210,6 @@ class TestUserEncoding(TestCase):
         locale.getpreferredencoding = f
         self.assertEquals('ascii', osutils.get_user_encoding(use_cache=False))
         self.assertEquals('', sys.stderr.getvalue())
-
-    def test_user_locale_error(self):
-        def f():
-            raise locale.Error, 'unsupported locale'
-
-        locale.getpreferredencoding = f
-        self.overrideEnv('LANG', 'BOGUS')
-        self.assertEquals('ascii', osutils.get_user_encoding(use_cache=False))
-        self.assertEquals('bzr: warning: unsupported locale\n'
-                          '  Could not determine what text encoding to use.\n'
-                          '  This error usually means your Python interpreter\n'
-                          '  doesn\'t support the locale set by $LANG (BOGUS)\n'
-                          '  Continuing with ascii encoding.\n',
-                          sys.stderr.getvalue())
 
 
 class TestMessageEncoding(TestCase):
