@@ -14,13 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Front-end command for shell-like test scripts.
 
 See doc/developers/testing.txt for more explanations.
 This module should be importable even if testtools aren't available.
 """
+
+from __future__ import absolute_import
 
 import os
 

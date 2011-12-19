@@ -15,9 +15,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-from __future__ import absolute_import
-
 """ChunkWriter: write compressed data out with a fixed upper bound."""
+
+from __future__ import absolute_import
 
 import zlib
 from zlib import Z_FINISH, Z_SYNC_FLUSH

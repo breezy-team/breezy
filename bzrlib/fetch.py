@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Copying of history from one branch to another.
 
 The basic plan is that every branch knows the history of everything
@@ -23,6 +21,8 @@ that has merged into it.  As the first step of a merge, pull, or
 branch operation we copy history from the source into the destination
 branch.
 """
+
+from __future__ import absolute_import
 
 import operator
 

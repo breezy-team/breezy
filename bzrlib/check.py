@@ -32,8 +32,6 @@
 # raising them.  If there's more than one exception it'd be good to see them
 # all.
 
-from __future__ import absolute_import
-
 """Checking of bzr objects.
 
 check_refs is a concept used for optimising check. Objects that depend on other
@@ -48,6 +46,8 @@ check_refs are tuples (kind, value). Currently defined kinds are:
 * 'revision-existence', where value is a revid, and the result is True or False
   indicating that the revision was found/not found.
 """
+
+from __future__ import absolute_import
 
 from bzrlib import (
     errors,

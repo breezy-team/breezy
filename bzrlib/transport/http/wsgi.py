@@ -14,13 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """WSGI application for bzr HTTP smart server.
 
 For more information about WSGI, see PEP 333:
     http://www.python.org/dev/peps/pep-0333/
 """
+
+from __future__ import absolute_import
 
 from cStringIO import StringIO
 

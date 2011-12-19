@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Fake transport with some restrictions of Windows VFAT filesystems.
 
 VFAT on Windows has several restrictions that are not present on unix
@@ -40,9 +38,10 @@ Some other restrictions are not implemented yet, but possibly could be:
 
 """
 
+from __future__ import absolute_import
+
 import re
 
-from bzrlib.errors import TransportNotPossible
 from bzrlib.transport import decorator
 
 

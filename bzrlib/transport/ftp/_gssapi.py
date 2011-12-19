@@ -14,12 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Support for secure authentication using GSSAPI over FTP.
 
 See RFC2228 for details.
 """
+
+from __future__ import absolute_import
 
 import base64, ftplib
 

@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Messages and logging.
 
 Messages are supplied by callers as a string-formatting template, plus values
@@ -46,6 +44,8 @@ explanatory message.  This is not true for builtin exceptions such as
 KeyError, which typically just str to "0".  They're printed in a different
 form.
 """
+
+from __future__ import absolute_import
 
 # FIXME: Unfortunately it turns out that python's logging module
 # is quite expensive, even when the message is not printed by any handlers.

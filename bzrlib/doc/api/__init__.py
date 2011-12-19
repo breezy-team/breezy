@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """API Documentation for bzrlib.
 
 This documentation is made up of doctest testable examples.
@@ -25,6 +23,8 @@ Look for `bzrlib/doc/api/*.txt` to read it.
 This documentation documents the current best practice in using the library.
 For details on specific apis, see pydoc on the api, or read the source.
 """
+
+from __future__ import absolute_import
 
 import doctest
 import os

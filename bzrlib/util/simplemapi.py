@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 """
 Copyright (c) 2007 Ian Cook and John Popplewell
 
@@ -36,6 +35,8 @@ Thanks  : Werner F. Bruhin and Michele Petrazzo on the ctypes list.
 If you have any bug-fixes, enhancements or suggestions regarding this
 software, please contact me at the above email address.
 """
+
+from __future__ import absolute_import
 
 import os
 from ctypes import *

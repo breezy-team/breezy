@@ -14,9 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
-
 """Code to show logs of changes.
 
 Various flavors of log can be produced:
@@ -49,6 +46,8 @@ changes touching hello.c you will get a list of those revisions also
 listing other things that were changed in the same revision, but not
 all the changes since the previous revision that touched hello.c.
 """
+
+from __future__ import absolute_import
 
 import codecs
 from cStringIO import StringIO

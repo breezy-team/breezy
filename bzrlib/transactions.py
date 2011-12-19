@@ -15,8 +15,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """This module provides a transactional facility.
 
 Transactions provide hooks to allow data objects (i.e. inventory weaves or
@@ -37,6 +35,8 @@ memory, unless they are marked as 'precious' which indicates that
 repeated reads cannot be obtained if the object is ejected, or that
 the object is an expensive one for obtaining.
 """
+
+from __future__ import absolute_import
 
 import sys
 

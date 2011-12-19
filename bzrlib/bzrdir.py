@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """BzrDir logic. The BzrDir is the basic control directory used by bzr.
 
 At format 7 this was split out into Branch, Repository and Checkout control
@@ -26,6 +24,8 @@ references to in-memory objects. As a rule, there are no matching ``close``
 methods. To free any associated resources, simply stop referencing the
 objects returned.
 """
+
+from __future__ import absolute_import
 
 import sys
 

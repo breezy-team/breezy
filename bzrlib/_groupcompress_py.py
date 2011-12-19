@@ -14,13 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Python version of compiled extensions for doing compression.
 
 We separate the implementation from the groupcompress.py to avoid importing
 useless stuff.
 """
+
+from __future__ import absolute_import
 
 from bzrlib import osutils
 

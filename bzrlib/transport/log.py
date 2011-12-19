@@ -14,10 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Transport decorator that logs transport operations to .bzr.log."""
 
+from __future__ import absolute_import
 
 # see also the transportstats plugin, which gives you some summary information
 # in a machine-readable dump

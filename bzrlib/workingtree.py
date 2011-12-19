@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """WorkingTree object and friends.
 
 A WorkingTree represents the editable working copy of a branch.
@@ -31,6 +29,7 @@ To get a WorkingTree, call bzrdir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
+from __future__ import absolute_import
 
 from cStringIO import StringIO
 import os

@@ -14,9 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Foreign branch utilities."""
+
+from __future__ import absolute_import
 
 
 from bzrlib.branch import (

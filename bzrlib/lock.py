@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Locking using OS file locks or file existence.
 
 Note: This method of locking is generally deprecated in favour of LockDir, but
@@ -34,6 +32,8 @@ This defines two classes: ReadLock and WriteLock, which can be
 implemented in different ways on different platforms.  Both have an
 unlock() method.
 """
+
+from __future__ import absolute_import
 
 import errno
 import os

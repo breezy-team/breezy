@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """On-disk mutex protecting a resource
 
 bzr on-disk objects are locked by the existence of a directory with a
@@ -99,6 +97,8 @@ same as the local host name; the user name is the same as the local user; the
 process id no longer exists.  The check on user name is not strictly necessary
 but helps protect against colliding host names.
 """
+
+from __future__ import absolute_import
 
 
 # TODO: We sometimes have the problem that our attempt to rename '1234' to

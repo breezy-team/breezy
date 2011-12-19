@@ -14,9 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Implementation of Transport over SFTP, using paramiko."""
+
+from __future__ import absolute_import
 
 # TODO: Remove the transport-based lock_read and lock_write methods.  They'll
 # then raise TransportNotPossible, which will break remote access to any

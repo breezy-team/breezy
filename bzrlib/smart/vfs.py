@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """VFS operations for the smart server.
 
 This module defines the smart server methods that are low-level file operations
@@ -25,6 +23,8 @@ higher-level concepts like branches and revisions.
 These methods, plus 'hello' and 'get_bundle', are version 1 of the smart server
 protocol, as implemented in bzr 0.11 and later.
 """
+
+from __future__ import absolute_import
 
 import os
 

@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Handlers for HTTP Responses.
 
 The purpose of these classes is to provide a uniform interface for clients
@@ -23,6 +21,7 @@ to standard HTTP responses, single range responses and multipart range
 responses.
 """
 
+from __future__ import absolute_import
 
 import httplib
 from cStringIO import StringIO

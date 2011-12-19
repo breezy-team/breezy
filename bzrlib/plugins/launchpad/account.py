@@ -14,13 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Functions to manage the user's Launchpad user ID.
 
 This allows the user to configure their Launchpad user ID once, rather
 than once for each place that needs to take it into account.
 """
+
+from __future__ import absolute_import
 
 from bzrlib import (
     errors,

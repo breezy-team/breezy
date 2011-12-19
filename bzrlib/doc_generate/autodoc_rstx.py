@@ -14,16 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Generate reStructuredText source for the User Reference Manual.
 Loosely based on the manpage generator autodoc_man.py.
 
 Written by the Bazaar community.
 """
 
-import os
-import sys
+from __future__ import absolute_import
+
 import time
 
 import bzrlib

@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """man.py - create man page from built-in bzr help and static text
 
 TODO:
@@ -23,8 +21,8 @@ TODO:
   * add command aliases
 """
 
-import os
-import sys
+from __future__ import absolute_import
+
 import textwrap
 import time
 

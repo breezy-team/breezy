@@ -14,13 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Documentation for bzrlib.
 
 See bzrlib.doc.api for api documentation and in the future bzrlib.doc.man
 for man page generation.
 """
+
+from __future__ import absolute_import
 
 
 def load_tests(basic_tests, module, loader):

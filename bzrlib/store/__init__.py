@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 # TODO: Could remember a bias towards whether a particular store is typically
 # compressed or not.
 
@@ -25,6 +23,8 @@ Stores are the main data-storage mechanism for Bazaar.
 A store is a simple write-once container indexed by a universally
 unique ID.
 """
+
+from __future__ import absolute_import
 
 import os
 

@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Knit versionedfile implementation.
 
 A knit is a versioned file implementation that supports efficient append only
@@ -52,6 +50,8 @@ so the index sequence is the dictionary compressed sequence number used
 in the deltas to provide line annotation
 
 """
+
+from __future__ import absolute_import
 
 
 from cStringIO import StringIO

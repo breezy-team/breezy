@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Implementation of Transport over ftp.
 
 Written by Daniel Silverstone <dsilvers@digital-scurf.org> with serious
@@ -26,6 +24,8 @@ and aftp:// is active ftp. Most people will want passive ftp for traversing
 NAT and other firewalls, so it's best to use it unless you explicitly want
 active, in which case aftp:// will be your friend.
 """
+
+from __future__ import absolute_import
 
 from cStringIO import StringIO
 import ftplib

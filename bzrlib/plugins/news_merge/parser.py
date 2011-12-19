@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Simple parser for bzr's NEWS file.
 
 Simple as this is, it's a bit over-powered for news_merge's needs, which only
@@ -25,6 +23,8 @@ This module can be run as a standalone Python program; pass it a filename and
 it will print the parsed form of a file (a series of 2-tuples, see
 simple_parse's docstring).
 """
+
+from __future__ import absolute_import
 
 
 def simple_parse_lines(lines):

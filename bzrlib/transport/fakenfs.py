@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Transport implementation that adapts another transport to look like NFS.
 
 Currently this means that the rename() call will raise ResourceBusy when a
@@ -23,6 +21,8 @@ target path is a directory.
 
 To get a fake nfs transport use get_transport('fakenfs+' + real_url)
 """
+
+from __future__ import absolute_import
 
 from stat import S_ISDIR
 

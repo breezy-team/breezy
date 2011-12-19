@@ -14,13 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Tests for weave repositories.
 
 For interface tests see tests/per_repository/*.py.
 
 """
+
+from __future__ import absolute_import
 
 from cStringIO import StringIO
 from stat import S_ISDIR

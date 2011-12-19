@@ -14,18 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Wire-level encoding and decoding of requests and responses for the smart
 client and server.
 """
+
+from __future__ import absolute_import
 
 import collections
 from cStringIO import StringIO
 import struct
 import sys
 import thread
-import threading
 import time
 
 import bzrlib

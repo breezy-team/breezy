@@ -14,13 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Container format for Bazaar data.
 
 "Containers" and "records" are described in
 doc/developers/container-format.txt.
 """
+
+from __future__ import absolute_import
 
 from cStringIO import StringIO
 import re

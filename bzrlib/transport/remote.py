@@ -14,13 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """RemoteTransport client for the smart-server.
 
 This module shouldn't be accessed directly.  The classes defined here should be
 imported from bzrlib.smart.
 """
+
+from __future__ import absolute_import
 
 __all__ = ['RemoteTransport', 'RemoteTCPTransport', 'RemoteSSHTransport']
 

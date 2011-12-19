@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Functionality to create lazy evaluation objects.
 
 This includes waiting to import a module until it is actually used.
@@ -42,6 +40,8 @@ have been replaced. This is especially true for constants, sometimes
 true for classes or functions (when used as a factory, or you want
 to inherit from them).
 """
+
+from __future__ import absolute_import
 
 
 class ScopeReplacer(object):

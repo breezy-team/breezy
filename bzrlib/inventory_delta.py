@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Inventory delta serialisation.
 
 See doc/developers/inventory.txt for the description of the format.
@@ -23,6 +21,8 @@ See doc/developers/inventory.txt for the description of the format.
 In this module the interesting classes are:
  - InventoryDeltaSerializer - object to read/write inventory deltas.
 """
+
+from __future__ import absolute_import
 
 __all__ = ['InventoryDeltaSerializer']
 

@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Implementaion of urllib2 tailored to bzr needs
 
 This file complements the urllib2 class hierarchy with custom classes.
@@ -37,6 +35,8 @@ For coherency with python libraries, we use capitalized header names throughout
 the code, even if the header names will be titled just before sending the
 request (see AbstractHTTPHandler.do_open).
 """
+
+from __future__ import absolute_import
 
 DEBUG = 0
 

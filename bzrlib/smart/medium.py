@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """The 'medium' layer for the smart servers and clients.
 
 "Medium" here is the noun meaning "a means of transmission", not the adjective
@@ -25,6 +23,8 @@ Media carry the bytes of the requests somehow (e.g. via TCP, wrapped in HTTP, or
 over SSH), and pass them to and from the protocol logic.  See the overview in
 bzrlib/transport/smart/__init__.py.
 """
+
+from __future__ import absolute_import
 
 import errno
 import os

@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Handling and reporting crashes.
 
 A crash is an exception propagated up almost to the top level of Bazaar.
@@ -37,6 +35,8 @@ to be some portability bugs.
 To force this off in bzr turn set APPORT_DISABLE in the environment or 
 -Dno_apport.
 """
+
+from __future__ import absolute_import
 
 # for interactive testing, try the 'bzr assert-fail' command 
 # or see http://code.launchpad.net/~mbp/bzr/bzr-fail

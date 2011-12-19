@@ -14,10 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Implementation of Graph algorithms when we have already loaded everything.
 """
+
+from __future__ import absolute_import
 
 from collections import deque
 from bzrlib import (

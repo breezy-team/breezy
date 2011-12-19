@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """bzr python plugin support.
 
 When load_plugins() is invoked, any python module in any directory in
@@ -30,6 +28,8 @@ BZR_PLUGIN_PATH is also honoured for any plugins imported via
 'import bzrlib.plugins.PLUGINNAME', as long as set_plugins_path has been
 called.
 """
+
+from __future__ import absolute_import
 
 import os
 import sys
