@@ -62,6 +62,7 @@ h=help
 up=pull
 """
 
+from cStringIO import StringIO
 import os
 import string
 import sys
@@ -73,7 +74,6 @@ lazy_import(globals(), """
 import errno
 import fnmatch
 import re
-from cStringIO import StringIO
 
 import bzrlib
 from bzrlib import (
