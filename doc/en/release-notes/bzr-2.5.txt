@@ -107,6 +107,9 @@ Internals
   of the ``socket``, ``ssl`` and ``urllib`` modules for
   local bzr operations. (Jelmer Vernooij)
 
+* Configuration options can be SI units by using ``int_SI_from_unicode`` as
+  their ``convert_from_unicode`` helper. (Vincent Ladeuil)
+
 * ControlDir now has a get_branches method that returns a dictionary
   whose keys are the names of the branches and whose values are the
   branches themselves. The active branch uses the key None.
