@@ -168,8 +168,8 @@ class LaunchpadService(object):
             # the url?  perhaps a bit more secure against accidentally
             # revealing it.  std66 s3.2.1 discourages putting the
             # password in the url.
-            hostinfo = '%s:%s@%s' % (urllib.quote(self.registrant_email),
-                                     urllib.quote(self.registrant_password),
+            hostinfo = '%s:%s@%s' % (urlutils.quote(self.registrant_email),
+                                     urlutils.quote(self.registrant_password),
                                      hostinfo)
             url = urlunsplit((scheme, hostinfo, path, '', ''))
         else:

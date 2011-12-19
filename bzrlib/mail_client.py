@@ -21,7 +21,6 @@ import os
 import subprocess
 import sys
 import tempfile
-import urllib
 
 import bzrlib
 from bzrlib import (
@@ -312,7 +311,7 @@ class Thunderbird(BodyExternalMailClient):
             message_options['attachment'] = urlutils.local_path_to_url(
                 attach_path)
         if body is not None:
-            options_list = ['body=%s' % urllib.quote(self._encode_safe(body))]
+            options_list = ['body=%s' % urlutils.quote(self._encode_safe(body))]
         else:
             options_list = []
         options_list.extend(["%s='%s'" % (k, v) for k, v in
@@ -354,15 +353,15 @@ class Claws(ExternalMailClient):
         """See ExternalMailClient._get_compose_commandline"""
         compose_url = []
         if from_ is not None:
-            compose_url.append('from=' + urllib.quote(from_))
+            compose_url.append('from=' + urlutils.quote(from_))
         if subject is not None:
-            # Don't use urllib.quote_plus because Claws doesn't seem
+            # Don't use urlutils.quote_plus because Claws doesn't seem
             # to recognise spaces encoded as "+".
             compose_url.append(
-                'subject=' + urllib.quote(self._encode_safe(subject)))
+                'subject=' + urlutils.quote(self._encode_safe(subject)))
         if body is not None:
             compose_url.append(
-                'body=' + urllib.quote(self._encode_safe(body)))
+                'body=' + urlutils.quote(self._encode_safe(body)))
         # to must be supplied for the claws-mail --compose syntax to work.
         if to is None:
             raise errors.NoMailAddressSpecified()

@@ -25,6 +25,7 @@ from __future__ import absolute_import
 import re, sys
 
 from bzrlib.errors import BzrError
+from bzrlib.filters import ContentFilter
 
 
 # Real Unix newline - \n without \r before it
@@ -49,29 +50,24 @@ def _to_crlf_converter(chunks, context=None):
         return [_UNIX_NL_RE.sub('\r\n', content)]
 
 
-# Register the eol content filter.
-def register_eol_content_filter():
-    from bzrlib.filters import ContentFilter, register_filter_stack_map
- 
-    if sys.platform == 'win32':
-        _native_output = _to_crlf_converter
-    else:
-        _native_output = _to_lf_converter
-    _eol_filter_stack_map = {
-        'exact': [],
-        'native': [ContentFilter(_to_lf_converter, _native_output)],
-        'lf':     [ContentFilter(_to_lf_converter, _to_lf_converter)],
-        'crlf':   [ContentFilter(_to_lf_converter, _to_crlf_converter)],
-        'native-with-crlf-in-repo':
-            [ContentFilter(_to_crlf_converter, _native_output)],
-        'lf-with-crlf-in-repo':
-            [ContentFilter(_to_crlf_converter, _to_lf_converter)],
-        'crlf-with-crlf-in-repo':
-            [ContentFilter(_to_crlf_converter, _to_crlf_converter)],
-        }
-    def eol_lookup(key):
-        filter = _eol_filter_stack_map.get(key)
-        if filter is None:
-            raise BzrError("Unknown eol value '%s'" % key)
-        return filter
-    register_filter_stack_map('eol', eol_lookup)
+if sys.platform == 'win32':
+    _native_output = _to_crlf_converter
+else:
+    _native_output = _to_lf_converter
+_eol_filter_stack_map = {
+    'exact': [],
+    'native': [ContentFilter(_to_lf_converter, _native_output)],
+    'lf':     [ContentFilter(_to_lf_converter, _to_lf_converter)],
+    'crlf':   [ContentFilter(_to_lf_converter, _to_crlf_converter)],
+    'native-with-crlf-in-repo':
+        [ContentFilter(_to_crlf_converter, _native_output)],
+    'lf-with-crlf-in-repo':
+        [ContentFilter(_to_crlf_converter, _to_lf_converter)],
+    'crlf-with-crlf-in-repo':
+        [ContentFilter(_to_crlf_converter, _to_crlf_converter)],
+    }
+def eol_lookup(key):
+    filter = _eol_filter_stack_map.get(key)
+    if filter is None:
+        raise BzrError("Unknown eol value '%s'" % key)
+    return filter

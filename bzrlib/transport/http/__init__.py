@@ -24,7 +24,6 @@ There are separate implementation modules for each http client implementation.
 from cStringIO import StringIO
 import re
 import urlparse
-import urllib
 import sys
 import weakref
 
@@ -65,9 +64,9 @@ def extract_auth(url, password_manager):
             host = netloc.split(':', 1)[0]
         else:
             host = netloc
-        username = urllib.unquote(username)
+        username = urlutils.unquote(username)
         if password is not None:
-            password = urllib.unquote(password)
+            password = urlutils.unquote(password)
         else:
             password = ui.ui_factory.get_password(
                 prompt=u'HTTP %(user)s@%(host)s password',
@@ -591,7 +590,7 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
         if transport_base.startswith('bzr+'):
             transport_base = transport_base[4:]
         rel_url = urlutils.relative_url(self.base, transport_base)
-        return urllib.unquote(rel_url)
+        return urlutils.unquote(rel_url)
 
     def send_http_smart_request(self, bytes):
         try:

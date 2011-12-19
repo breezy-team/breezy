@@ -283,6 +283,4 @@ def _reset_registry(value=None):
     return original
 
 
-# Register the standard filters
-from bzrlib.filters import eol
-eol.register_eol_content_filter()
+lazy_register_filter_stack_map('eol', 'bzrlib.filters.eol', 'eol_lookup')

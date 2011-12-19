@@ -116,6 +116,11 @@ Internals
   speeding up various commands including ``bzr export``,
   ``bzr checkout`` and ``bzr cat``. (Jelmer Vernooij, #608640)
 
+* ``bzrlib.urlutils`` now includes ``quote`` and ``unquote`` functions,
+  rather than importing them from ``urllib``. This prevents loading
+  of the ``socket``, ``ssl`` and ``urllib`` modules for
+  local bzr operations. (Jelmer Vernooij)
+
 Testing
 *******
 
