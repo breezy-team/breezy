@@ -2005,7 +2005,7 @@ def get_user_encoding(use_cache=DEPRECATED_PARAMETER):
         user_encoding = locale.nl_langinfo(locale.CODESET)
     else:
         # GZ 2011-12-19: On windows could call GetACP directly instead.
-        user_encoding = locale.getpreferredencoding()
+        user_encoding = locale.getpreferredencoding(False)
 
     try:
         user_encoding = codecs.lookup(user_encoding).name

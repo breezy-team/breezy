@@ -171,33 +171,27 @@ class TestUserEncoding(TestCase):
     def setUp(self):
         TestCase.setUp(self)
         self.overrideAttr(osutils, '_cached_user_encoding', None)
-        self.overrideAttr(locale, 'getpreferredencoding')
+        self.overrideAttr(locale, 'getpreferredencoding', self.get_encoding)
         self.overrideAttr(locale, 'CODESET', None)
         self.overrideAttr(sys, 'stderr', StringIOWrapper())
 
-    def test_get_user_encoding(self):
-        def f():
-            return 'user_encoding'
+    def get_encoding(self, do_setlocale=True):
+        return self._encoding
 
-        locale.getpreferredencoding = f
+    def test_get_user_encoding(self):
+        self._encoding = 'user_encoding'
         fake_codec.add('user_encoding')
         self.assertEquals('iso8859-1', # fake_codec maps to latin-1
                           osutils.get_user_encoding())
         self.assertEquals('', sys.stderr.getvalue())
 
     def test_user_cp0(self):
-        def f():
-            return 'cp0'
-
-        locale.getpreferredencoding = f
+        self._encoding = 'cp0'
         self.assertEquals('ascii', osutils.get_user_encoding())
         self.assertEquals('', sys.stderr.getvalue())
 
     def test_user_cp_unknown(self):
-        def f():
-            return 'cp-unknown'
-
-        locale.getpreferredencoding = f
+        self._encoding = 'cp-unknown'
         self.assertEquals('ascii', osutils.get_user_encoding())
         self.assertEquals('bzr: warning: unknown encoding cp-unknown.'
                           ' Continuing with ascii encoding.\n',
@@ -205,10 +199,7 @@ class TestUserEncoding(TestCase):
 
     def test_user_empty(self):
         """Running bzr from a vim script gives '' for a preferred locale"""
-        def f():
-            return ''
-
-        locale.getpreferredencoding = f
+        self._encoding = ''
         self.assertEquals('ascii', osutils.get_user_encoding())
         self.assertEquals('', sys.stderr.getvalue())
 
