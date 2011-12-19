@@ -47,6 +47,8 @@ check_refs are tuples (kind, value). Currently defined kinds are:
   indicating that the revision was found/not found.
 """
 
+from __future__ import absolute_import
+
 from bzrlib import (
     errors,
     ui,

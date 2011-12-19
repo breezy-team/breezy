@@ -21,6 +21,8 @@ bzrlib. Please see doc/developers/api-versioning.txt for design details and
 examples.
 """
 
+from __future__ import absolute_import
+
 import bzrlib
 from bzrlib.errors import IncompatibleAPI
 

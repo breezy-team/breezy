@@ -11,6 +11,8 @@
 # Copyright (c) 2001-2004 by Fredrik Lundh.  All rights reserved.
 #
 
+from __future__ import absolute_import
+
 import asyncore
 import socket, string, time, sys
 import StringIO

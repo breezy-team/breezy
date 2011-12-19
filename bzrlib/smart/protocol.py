@@ -18,12 +18,13 @@
 client and server.
 """
 
+from __future__ import absolute_import
+
 import collections
 from cStringIO import StringIO
 import struct
 import sys
 import thread
-import threading
 import time
 
 import bzrlib

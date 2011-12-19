@@ -16,6 +16,8 @@
 
 """Utility for create branches with particular contents."""
 
+from __future__ import absolute_import
+
 from bzrlib import (
     controldir,
     commit,

@@ -16,6 +16,8 @@
 
 """Implementation of Transport that adapts another transport to be readonly."""
 
+from __future__ import absolute_import
+
 from bzrlib.errors import TransportNotPossible, NoSmartMedium
 from bzrlib.transport import decorator
 

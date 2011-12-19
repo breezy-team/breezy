@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
 """Working tree content filtering support.
 
 A filter consists of a read converter, write converter pair.
@@ -38,6 +37,8 @@ where:
 
 Note that context is currently only supported for write converters.
 """
+
+from __future__ import absolute_import
 
 from cStringIO import StringIO
 from bzrlib.lazy_import import lazy_import

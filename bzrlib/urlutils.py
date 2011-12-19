@@ -16,6 +16,8 @@
 
 """A collection of function for handling URL operations."""
 
+from __future__ import absolute_import
+
 import os
 import re
 import sys

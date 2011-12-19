@@ -41,6 +41,7 @@ while also ensuring all cleanups are run.  See OperationWithCleanups for more
 details.
 """
 
+from __future__ import absolute_import
 
 from collections import deque
 import sys

@@ -29,6 +29,7 @@ To get a WorkingTree, call bzrdir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
+from __future__ import absolute_import
 
 from cStringIO import StringIO
 import os

@@ -16,6 +16,8 @@
 
 """Lists of ignore files, etc."""
 
+from __future__ import absolute_import
+
 import errno
 import os
 from cStringIO import StringIO

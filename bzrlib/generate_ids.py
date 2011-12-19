@@ -16,6 +16,8 @@
 
 """Common code for generating file or revision ids."""
 
+from __future__ import absolute_import
+
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import time
