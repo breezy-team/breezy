@@ -1231,6 +1231,11 @@ class DiskTreeTransform(TreeTransformBase):
         finally:
             TreeTransformBase.finalize(self)
 
+    def _limbo_supports_executable(self):
+        """Check if the limbo path supports the executable bit."""
+        # FIXME: Check actual file system capabilities of limbodir
+        return osutils.supports_executable()
+
     def _limbo_name(self, trans_id):
         """Generate the limbo name of a file"""
         limbo_name = self._limbo_files.get(trans_id)
@@ -2319,7 +2324,7 @@ class _PreviewTree(tree.InventoryTree):
             if kind == 'file':
                 statval = os.lstat(limbo_name)
                 size = statval.st_size
-                if not tt._tree._supports_executable():
+                if not tt._limbo_supports_executable():
                     executable = False
                 else:
                     executable = statval.st_mode & S_IEXEC
