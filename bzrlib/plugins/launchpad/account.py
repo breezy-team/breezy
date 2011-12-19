@@ -20,6 +20,8 @@ This allows the user to configure their Launchpad user ID once, rather
 than once for each place that needs to take it into account.
 """
 
+from __future__ import absolute_import
+
 from bzrlib import (
     errors,
     trace,

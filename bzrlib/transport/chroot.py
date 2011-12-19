@@ -18,6 +18,8 @@
 root.
 """
 
+from __future__ import absolute_import
+
 from bzrlib.transport import (
     pathfilter,
     register_transport,

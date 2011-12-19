@@ -16,6 +16,8 @@
 
 """Python implementations of Dirstate Helper functions."""
 
+from __future__ import absolute_import
+
 import binascii
 import os
 import struct

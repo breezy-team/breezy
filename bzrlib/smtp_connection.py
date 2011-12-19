@@ -16,6 +16,8 @@
 
 """A convenience class around smtplib."""
 
+from __future__ import absolute_import
+
 from email import Utils
 import errno
 import smtplib

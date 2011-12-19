@@ -24,6 +24,8 @@ This documentation documents the current best practice in using the library.
 For details on specific apis, see pydoc on the api, or read the source.
 """
 
+from __future__ import absolute_import
+
 import doctest
 import os
 

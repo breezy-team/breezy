@@ -17,6 +17,8 @@
 
 """Bzrlib specific gzip tunings. We plan to feed these to the upstream gzip."""
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 
 # make GzipFile faster:

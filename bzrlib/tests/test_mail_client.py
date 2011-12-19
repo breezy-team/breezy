@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import urllib
-
 from bzrlib import (
     errors,
     mail_client,
@@ -212,7 +210,7 @@ class TestClaws(tests.TestCase):
         claws = mail_client.Claws(None)
         cmdline = claws._get_compose_commandline(
             u'jrandom@example.org', u'\xb5cosm of fun!', u'file%')
-        subject_string = urllib.quote(
+        subject_string = urlutils.quote(
             u'\xb5cosm of fun!'.encode(osutils.get_user_encoding(), 'replace'))
         self.assertEqual(
             ['--compose',

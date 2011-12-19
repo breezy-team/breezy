@@ -67,6 +67,9 @@ Bug Fixes
 * Properly ignore '\n' in an option reference since this cannot be part of a
   config option identifier. (Vincent Ladeuil, #902125)
 
+* Make sure that the bzr probers are always registered when
+  bzrlib.workingtree is imported. (Jelmer Vernooij, #905218)
+
 * Report mistake trying to move a removed file with a non-ascii name without
   UnicodeEncodeError being raised. (Martin Packman, #898541)
 
@@ -99,16 +102,23 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* ``bzrlib.urlutils`` now includes ``quote`` and ``unquote`` functions,
+  rather than importing them from ``urllib``. This prevents loading
+  of the ``socket``, ``ssl`` and ``urllib`` modules for
+  local bzr operations. (Jelmer Vernooij)
+
 * ControlDir now has a get_branches method that returns a dictionary
   whose keys are the names of the branches and whose values are the
   branches themselves. The active branch uses the key None.
   (Neil Martinsen-Burrell)
 
+* Helper ``osutils.path_from_environ`` added for extracting a unicode path
+  from an environment variable. (Martin Packman, #832028)
+
 * Helper ``win32utils.get_environ_unicode`` added for avoiding encoding
   problems with ``os.environ.get`` use. (Martin Packman, #262874) 
 
-* Helper ``osutils.path_from_environ`` added for extracting a unicode path
-  from an environment variable. (Martin Packman, #832028)
+* Lazy imports can now only be absolute. (Jelmer Vernooij)
 
 * New HPSS call ``BzrDir.checkout_metadir``. (Jelmer Vernooij, #894459)
 

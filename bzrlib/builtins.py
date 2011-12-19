@@ -16,6 +16,8 @@
 
 """builtin bzr commands"""
 
+from __future__ import absolute_import
+
 import os
 
 import bzrlib.bzrdir

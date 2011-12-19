@@ -20,6 +20,8 @@ This module shouldn't be accessed directly.  The classes defined here should be
 imported from bzrlib.smart.
 """
 
+from __future__ import absolute_import
+
 __all__ = ['RemoteTransport', 'RemoteTCPTransport', 'RemoteSSHTransport']
 
 from cStringIO import StringIO

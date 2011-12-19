@@ -31,6 +31,8 @@ Some particularly interesting things in bzrlib are:
 We hope you enjoy this library.
 """
 
+from __future__ import absolute_import
+
 import time
 
 # Keep track of when bzrlib was first imported, so that we can give rough

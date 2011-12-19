@@ -19,6 +19,8 @@
 Only one dependency: ctypes should be installed.
 """
 
+from __future__ import absolute_import
+
 import glob
 import operator
 import os

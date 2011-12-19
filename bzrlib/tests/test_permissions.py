@@ -32,9 +32,8 @@ permissions should be inherited individually, rather than all be the same.
 
 import os
 import sys
-import urllib
 
-from bzrlib import transport
+from bzrlib import urlutils
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
@@ -68,11 +67,11 @@ def check_mode_r(test, base, file_mode, dir_mode, include_base=True):
         test.assertTransportMode(t, base, dir_mode)
     for root, dirs, files in os.walk(base):
         for d in dirs:
-            p = '/'.join([urllib.quote(x) for x in root.split('/\\') + [d]])
+            p = '/'.join([urlutils.quote(x) for x in root.split('/\\') + [d]])
             test.assertTransportMode(t, p, dir_mode)
         for f in files:
             p = os.path.join(root, f)
-            p = '/'.join([urllib.quote(x) for x in root.split('/\\') + [f]])
+            p = '/'.join([urlutils.quote(x) for x in root.split('/\\') + [f]])
             test.assertTransportMode(t, p, file_mode)
 
 
