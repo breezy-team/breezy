@@ -190,11 +190,14 @@ class TestImportTariffs(ImportTariffTestCase):
             'bzrlib.xml8',
             'getpass',
             'kerberos',
+            'ssl',
+            'socket',
             'smtplib',
             'tarfile',
             'tempfile',
             'termios',
             'tty',
+            'urllib',
             ] + old_format_modules)
         # TODO: similar test for repository-only operations, checking we avoid
         # loading wt-specific stuff
