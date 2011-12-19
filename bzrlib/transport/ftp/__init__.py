@@ -25,6 +25,8 @@ NAT and other firewalls, so it's best to use it unless you explicitly want
 active, in which case aftp:// will be your friend.
 """
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 import ftplib
 import getpass

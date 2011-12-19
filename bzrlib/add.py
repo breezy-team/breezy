@@ -16,6 +16,8 @@
 
 """Helper functions for adding files to working trees."""
 
+from __future__ import absolute_import
+
 import sys
 import os
 

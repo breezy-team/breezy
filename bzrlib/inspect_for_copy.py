@@ -25,6 +25,8 @@ This module is designed to use tricky hacks in import rules, to avoid this
 overhead.
 """
 
+from __future__ import absolute_import
+
 
 ####
 # These are the only 2 functions that 'copy' needs from 'inspect'

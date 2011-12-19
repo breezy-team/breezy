@@ -20,6 +20,8 @@ For more information about WSGI, see PEP 333:
     http://www.python.org/dev/peps/pep-0333/
 """
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 
 from bzrlib.smart import medium

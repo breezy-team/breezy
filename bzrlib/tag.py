@@ -22,6 +22,8 @@ when the branch is opened.  Clients should typically do
   Branch.tags.add('name', 'value')
 """
 
+from __future__ import absolute_import
+
 # NOTE: I was going to call this tags.py, but vim seems to think all files
 # called tags* are ctags files... mbp 20070220.
 

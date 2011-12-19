@@ -16,6 +16,8 @@
 
 """Weave-era branch implementations."""
 
+from __future__ import absolute_import
+
 from bzrlib import (
     errors,
     lockable_files,

@@ -16,6 +16,8 @@
 
 """Routines for extracting all version information from a bzr branch."""
 
+from __future__ import absolute_import
+
 import time
 
 from bzrlib.osutils import local_time_offset, format_date

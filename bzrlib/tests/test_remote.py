@@ -175,17 +175,17 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
     def test_remote_branch_set_append_revisions_only(self):
         # Make a format 1.9 branch, which supports append_revisions_only
         branch = self.make_branch('branch', format='1.9')
-        config = branch.get_config()
         branch.set_append_revisions_only(True)
+        config = branch.get_config_stack()
         self.assertEqual(
-            'True', config.get_user_option('append_revisions_only'))
+            True, config.get('append_revisions_only'))
         branch.set_append_revisions_only(False)
+        config = branch.get_config_stack()
         self.assertEqual(
-            'False', config.get_user_option('append_revisions_only'))
+            False, config.get('append_revisions_only'))
 
     def test_remote_branch_set_append_revisions_only_upgrade_reqd(self):
         branch = self.make_branch('branch', format='knit')
-        config = branch.get_config()
         self.assertRaises(
             errors.UpgradeRequired, branch.set_append_revisions_only, True)
 

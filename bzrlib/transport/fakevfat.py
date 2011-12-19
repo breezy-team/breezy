@@ -38,9 +38,10 @@ Some other restrictions are not implemented yet, but possibly could be:
 
 """
 
+from __future__ import absolute_import
+
 import re
 
-from bzrlib.errors import TransportNotPossible
 from bzrlib.transport import decorator
 
 

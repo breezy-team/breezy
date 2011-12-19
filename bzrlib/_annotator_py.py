@@ -16,6 +16,8 @@
 
 """Functionality for doing annotations in the 'optimal' way"""
 
+from __future__ import absolute_import
+
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
