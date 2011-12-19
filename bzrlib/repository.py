@@ -22,7 +22,6 @@ import itertools
 import time
 
 from bzrlib import (
-    bzrdir,
     config,
     controldir,
     debug,
@@ -41,6 +40,7 @@ from bzrlib.i18n import gettext
 """)
 
 from bzrlib import (
+    bzrdir,
     errors,
     registry,
     symbol_versioning,

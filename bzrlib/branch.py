@@ -48,6 +48,10 @@ from bzrlib import (
 from bzrlib.i18n import gettext, ngettext
 """)
 
+# Explicitly import bzrlib.bzrdir so that the BzrProber
+# is guaranteed to be registered.
+import bzrlib.bzrdir
+
 from bzrlib import (
     controldir,
     )
