@@ -433,7 +433,6 @@ class cmd_bash_completion(commands.Command):
 
     def run(self, **kwargs):
         import sys
-        from bashcomp import bash_completion_function
         if 'plugin' in kwargs:
             # work around bug #387117 which prevents us from using param_name
             if len(kwargs['plugin']) > 0:
