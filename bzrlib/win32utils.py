@@ -592,8 +592,9 @@ else:
 
         Fallback version that should basically never be needed.
         """
+        from bzrlib import osutils
         try:
-            return os.environ[key].decode("mbcs")
+            return os.environ[key].decode(osutils.get_user_encoding())
         except KeyError:
             return default
 
