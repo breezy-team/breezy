@@ -20,12 +20,12 @@ import os
 import bzrlib
 from bzrlib import (
     bzrdir,
+    config,
     errors,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.commit import Commit, NullCommitReporter
-from bzrlib.config import BranchConfig
 from bzrlib.errors import (
     PointlessCommit,
     BzrError,
@@ -44,19 +44,27 @@ from bzrlib.tests.matchers import MatchesAncestry
 
 # TODO: Test commit with some added, and added-but-missing files
 
-class MustSignConfig(BranchConfig):
+class MustSignConfig(config.Stack):
 
-    def signature_needed(self):
-        return True
+    def __init__(self, branch):
+        store = config.IniFileStore()
+        store._load_from_string('''
+gpg_signing_command=cat -
+create_signatures=always
+''')
+        super(MustSignConfig, self).__init__([store.get_sections])
+        # FIXME: Strictly speaking we should fallback to the no-name section in
+        # branch.conf but no tests need that so far -- vila 2011-12-14
 
-    def gpg_signing_command(self):
-        return ['cat', '-']
 
+class BranchWithHooks(config.Stack):
 
-class BranchWithHooks(BranchConfig):
-
-    def post_commit(self):
-        return "bzrlib.ahook bzrlib.ahook"
+    def __init__(self, branch):
+        store = config.IniFileStore()
+        store._load_from_string('post_commit=bzrlib.ahook bzrlib.ahook')
+        super(BranchWithHooks, self).__init__([store.get_sections])
+        # FIXME: Strictly speaking we should fallback to the no-name section in
+        # branch.conf but no tests need that so far -- vila 2011-12-14
 
 
 class CapturingReporter(NullCommitReporter):
@@ -431,14 +439,13 @@ class TestCommit(TestCaseWithTransport):
             from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
-            commit.Commit(config=MustSignConfig(branch)).commit(message="base",
-                                                      allow_pointless=True,
-                                                      rev_id='B',
-                                                      working_tree=wt)
+            commit.Commit(config_stack=MustSignConfig(branch)
+                          ).commit(message="base", allow_pointless=True,
+                                   rev_id='B', working_tree=wt)
             def sign(text):
                 return bzrlib.gpg.LoopbackGPGStrategy(None).sign(text)
             self.assertEqual(sign(Testament.from_revision(branch.repository,
-                             'B').as_short_text()),
+                                                          'B').as_short_text()),
                              branch.repository.get_signature_text('B'))
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
@@ -456,7 +463,7 @@ class TestCommit(TestCaseWithTransport):
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.DisabledGPGStrategy
             config = MustSignConfig(branch)
             self.assertRaises(SigningFailed,
-                              commit.Commit(config=config).commit,
+                              commit.Commit(config_stack=config).commit,
                               message="base",
                               allow_pointless=True,
                               rev_id='B',
@@ -477,7 +484,7 @@ class TestCommit(TestCaseWithTransport):
         bzrlib.ahook = called
         try:
             config = BranchWithHooks(branch)
-            commit.Commit(config=config).commit(
+            commit.Commit(config_stack=config).commit(
                             message = "base",
                             allow_pointless=True,
                             rev_id='A', working_tree = wt)

@@ -20,6 +20,8 @@ See bzrlib.doc.api for api documentation and in the future bzrlib.doc.man
 for man page generation.
 """
 
+from __future__ import absolute_import
+
 
 def load_tests(basic_tests, module, loader):
     suite = loader.suiteClass()

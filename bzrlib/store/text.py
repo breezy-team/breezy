@@ -20,9 +20,10 @@ This store keeps uncompressed versions of the full text. It does not
 do any sort of delta compression.
 """
 
+from __future__ import absolute_import
+
 import gzip
 import os
-from cStringIO import StringIO
 
 from bzrlib import osutils
 from bzrlib.errors import BzrError, NoSuchFile, FileExists

@@ -22,6 +22,8 @@
 
 """i18n and l10n support for Bazaar."""
 
+from __future__ import absolute_import
+
 import gettext as _gettext
 import os
 import sys

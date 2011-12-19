@@ -18,6 +18,8 @@
 """Text UI, write output to the console.
 """
 
+from __future__ import absolute_import
+
 import os
 import sys
 import time

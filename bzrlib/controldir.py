@@ -22,6 +22,8 @@ see bzrlib.bzrdir.BzrDir.
 
 """
 
+from __future__ import absolute_import
+
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import textwrap
@@ -106,10 +108,17 @@ class ControlDir(ControlComponent):
         """Return a sequence of all branches local to this control directory.
 
         """
+        return self.get_branches().values()
+
+    def get_branches(self):
+        """Get all branches in this control directory, as a dictionary.
+        
+        :return: Dictionary mapping branch names to instances.
+        """
         try:
-            return [self.open_branch()]
+           return { None: self.open_branch() }
         except (errors.NotBranchError, errors.NoRepositoryPresent):
-            return []
+           return {}
 
     def is_control_filename(self, filename):
         """True if filename is the name of a path which is reserved for
@@ -321,7 +330,12 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.cloning_metadir)
 
     def checkout_metadir(self):
-        """Produce a metadir suitable for checkouts of this controldir."""
+        """Produce a metadir suitable for checkouts of this controldir.
+
+        :returns: A ControlDirFormat with all component formats
+            either set appropriately or set to None if that component
+            should not be created.
+        """
         return self.cloning_metadir()
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
@@ -725,6 +739,8 @@ class ControlDir(ControlComponent):
                 result = klass.open_from_transport(a_transport)
                 return result, urlutils.unescape(a_transport.relpath(url))
             except errors.NotBranchError, e:
+                pass
+            except errors.PermissionDenied:
                 pass
             try:
                 new_t = a_transport.clone('..')

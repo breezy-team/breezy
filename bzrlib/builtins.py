@@ -16,6 +16,8 @@
 
 """builtin bzr commands"""
 
+from __future__ import absolute_import
+
 import os
 
 import bzrlib.bzrdir
@@ -23,6 +25,7 @@ import bzrlib.bzrdir
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import cStringIO
+import errno
 import sys
 import time
 
@@ -753,20 +756,44 @@ class cmd_mkdir(Command):
     """
 
     takes_args = ['dir+']
+    takes_options = [
+        Option(
+            'parents',
+            help='No error if existing, make parent directories as needed.',
+            short_name='p'
+            )
+        ]
     encoding_type = 'replace'
 
-    def run(self, dir_list):
-        for d in dir_list:
-            wt, dd = WorkingTree.open_containing(d)
-            base = os.path.dirname(dd)
-            id = wt.path2id(base)
-            if id != None:
-                os.mkdir(d)
-                wt.add([dd])
-                if not is_quiet():
-                    self.outf.write(gettext('added %s\n') % d)
+    @classmethod
+    def add_file_with_parents(cls, wt, relpath):
+        if wt.path2id(relpath) is not None:
+            return
+        cls.add_file_with_parents(wt, osutils.dirname(relpath))
+        wt.add([relpath])
+
+    @classmethod
+    def add_file_single(cls, wt, relpath):
+        wt.add([relpath])
+
+    def run(self, dir_list, parents=False):
+        if parents:
+            add_file = self.add_file_with_parents
+        else:
+            add_file = self.add_file_single
+        for dir in dir_list:
+            wt, relpath = WorkingTree.open_containing(dir)
+            if parents:
+                try:
+                    os.makedirs(dir)
+                except OSError, e:
+                    if e.errno != errno.EEXIST:
+                        raise
             else:
-                raise errors.NotVersionedError(path=base)
+                os.mkdir(dir)
+            add_file(wt, relpath)
+            if not is_quiet():
+                self.outf.write(gettext('added %s\n') % dir)
 
 
 class cmd_relpath(Command):
@@ -3686,15 +3713,17 @@ class cmd_whoami(Command):
             if directory is None:
                 # use branch if we're inside one; otherwise global config
                 try:
-                    c = Branch.open_containing(u'.')[0].get_config()
+                    c = Branch.open_containing(u'.')[0].get_config_stack()
                 except errors.NotBranchError:
-                    c = _mod_config.GlobalConfig()
+                    c = _mod_config.GlobalStack()
             else:
-                c = Branch.open(directory).get_config()
+                c = Branch.open(directory).get_config_stack()
+            identity = c.get('email')
             if email:
-                self.outf.write(c.user_email() + '\n')
+                self.outf.write(_mod_config.extract_email_address(identity)
+                                + '\n')
             else:
-                self.outf.write(c.username() + '\n')
+                self.outf.write(identity + '\n')
             return
 
         if email:
@@ -3711,12 +3740,12 @@ class cmd_whoami(Command):
         # use global config unless --branch given
         if branch:
             if directory is None:
-                c = Branch.open_containing(u'.')[0].get_config()
+                c = Branch.open_containing(u'.')[0].get_config_stack()
             else:
-                c = Branch.open(directory).get_config()
+                c = Branch.open(directory).get_config_stack()
         else:
-            c = _mod_config.GlobalConfig()
-        c.set_user_option('email', name)
+            c = _mod_config.GlobalStack()
+        c.set('email', name)
 
 
 class cmd_nick(Command):
@@ -5030,7 +5059,7 @@ class cmd_re_sign(Command):
 
     def _run(self, b, revision_id_list, revision):
         import bzrlib.gpg as gpg
-        gpg_strategy = gpg.GPGStrategy(b.get_config())
+        gpg_strategy = gpg.GPGStrategy(b.get_config_stack())
         if revision_id_list is not None:
             b.repository.start_write_group()
             try:
@@ -6550,11 +6579,15 @@ class cmd_export_pot(Command):
     takes_options = [Option('plugin', 
                             help='Export help text from named command '\
                                  '(defaults to all built in commands).',
-                            type=str)]
+                            type=str),
+                     Option('include-duplicates',
+                            help='Output multiple copies of the same msgid '
+                                 'string if it appears more than once.'),
+                            ]
 
-    def run(self, plugin=None):
+    def run(self, plugin=None, include_duplicates=False):
         from bzrlib.export_pot import export_pot
-        export_pot(self.outf, plugin)
+        export_pot(self.outf, plugin, include_duplicates)
 
 
 def _register_lazy_builtins():

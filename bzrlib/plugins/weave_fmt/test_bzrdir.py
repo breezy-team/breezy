@@ -19,6 +19,8 @@
 For interface contract tests, see tests/per_bzr_dir.
 """
 
+from __future__ import absolute_import
+
 import os
 import sys
 

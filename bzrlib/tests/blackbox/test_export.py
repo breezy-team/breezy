@@ -33,6 +33,7 @@ from bzrlib.tests import (
     features,
     TestCaseWithTransport,
     )
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 
 
 class TestExport(TestCaseWithTransport):
@@ -447,4 +448,5 @@ class TestSmartServerExport(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(16, self.hpss_calls)
+        self.assertLength(7, self.hpss_calls)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

@@ -677,18 +677,18 @@ class TestBranchOptions(tests.TestCaseWithTransport):
     def setUp(self):
         super(TestBranchOptions, self).setUp()
         self.branch = self.make_branch('.')
-        self.config = self.branch.get_config()
+        self.config_stack = self.branch.get_config_stack()
 
     def check_append_revisions_only(self, expected_value, value=None):
         """Set append_revisions_only in config and check its interpretation."""
         if value is not None:
-            self.config.set_user_option('append_revisions_only', value)
+            self.config_stack.set('append_revisions_only', value)
         self.assertEqual(expected_value,
                          self.branch.get_append_revisions_only())
 
     def test_valid_append_revisions_only(self):
         self.assertEquals(None,
-                          self.config.get_user_option('append_revisions_only'))
+                          self.config_stack.get('append_revisions_only'))
         self.check_append_revisions_only(None)
         self.check_append_revisions_only(False, 'False')
         self.check_append_revisions_only(True, 'True')
@@ -706,7 +706,7 @@ class TestBranchOptions(tests.TestCaseWithTransport):
         self.check_append_revisions_only(None, 'not-a-bool')
         self.assertLength(1, self.warnings)
         self.assertEqual(
-            'Value "not-a-bool" is not a boolean for "append_revisions_only"',
+            'Value "not-a-bool" is not valid for "append_revisions_only"',
             self.warnings[0])
 
 

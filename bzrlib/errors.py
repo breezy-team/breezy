@@ -17,6 +17,8 @@
 """Exceptions for bzr, and reporting of them.
 """
 
+from __future__ import absolute_import
+
 # TODO: is there any value in providing the .args field used by standard
 # python exceptions?   A list of values with no names seems less useful
 # to me.

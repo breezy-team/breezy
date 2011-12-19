@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 import re
 import sys
 
@@ -1221,8 +1223,18 @@ class RepositoryPackCollection(object):
         """
         for pack in packs:
             try:
-                pack.pack_transport.move(pack.file_name(),
-                    '../obsolete_packs/' + pack.file_name())
+                try:
+                    pack.pack_transport.move(pack.file_name(),
+                        '../obsolete_packs/' + pack.file_name())
+                except errors.NoSuchFile:
+                    # perhaps obsolete_packs was removed? Let's create it and
+                    # try again
+                    try:
+                        pack.pack_transport.mkdir('../obsolete_packs/')
+                    except errors.FileExists:
+                        pass
+                    pack.pack_transport.move(pack.file_name(),
+                        '../obsolete_packs/' + pack.file_name())
             except (errors.PathError, errors.TransportError), e:
                 # TODO: Should these be warnings or mutters?
                 mutter("couldn't rename obsolete pack, skipping it:\n%s"
@@ -1494,7 +1506,11 @@ class RepositoryPackCollection(object):
         obsolete_pack_transport = self.transport.clone('obsolete_packs')
         if preserve is None:
             preserve = set()
-        for filename in obsolete_pack_transport.list_dir('.'):
+        try:
+            obsolete_pack_files = obsolete_pack_transport.list_dir('.')
+        except errors.NoSuchFile:
+            return found
+        for filename in obsolete_pack_files:
             name, ext = osutils.splitext(filename)
             if ext == '.pack':
                 found.append(name)

@@ -22,6 +22,8 @@ target path is a directory.
 To get a fake nfs transport use get_transport('fakenfs+' + real_url)
 """
 
+from __future__ import absolute_import
+
 from stat import S_ISDIR
 
 from bzrlib import (
