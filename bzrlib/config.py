@@ -1662,24 +1662,6 @@ def email_from_store(unicode_str):
         return value.decode(osutils.get_user_encoding())
     return unicode_str
 
-def default_ca_certs():
-    """Find the default file with ca certificates."""
-    return u"/etc/ssl/certs/ca-certificates.crt"
-
-def default_cert_reqs():
-    return u"required"
-
-def cert_reqs_from_store(unicode_str):
-    import ssl
-    try:
-        return {
-            "required": ssl.CERT_REQUIRED,
-            "optional": ssl.CERT_OPTIONAL,
-            "none": ssl.CERT_NONE
-            }[unicode_str]
-    except KeyError:
-        raise ValueError("invalid value %s" % unicode_str)
-
 def _auto_user_id():
     """Calculate automatic user identification.
 
@@ -2778,25 +2760,11 @@ option_registry.register(
            help="If we wait for a new request from a client for more than"
                 " X seconds, consider the client idle, and hangup."))
 
-option_registry.register(
-    Option('ssl.ca_certs',
-        default=default_ca_certs,
-        help="""\
-Path to certification authority certificates to trust.
-"""))
+option_registry.register_lazy('ssl.ca_certs',
+    'bzrlib.transport.http._urllib2_wrappers', 'opt_ssl_ca_certs')
 
-option_registry.register(
-    Option('ssl.cert_reqs',
-        default=default_cert_reqs,
-        from_unicode=cert_reqs_from_store,
-        help="""\
-Whether to require a certificate from the remote side. (default:required)
-
-Possible values:
- * none: certificates ignored
- * optional: Certificates not required, but validated if provided
- * required: Certificates required, and validated
-"""))
+option_registry.register_lazy('ssl.cert_reqs',
+    'bzrlib.transport.http._urllib2_wrappers', 'opt_ssl_cert_reqs')
 
 
 

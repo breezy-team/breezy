@@ -74,6 +74,43 @@ import ssl
 """)
 
 
+def default_ca_certs():
+    """Find the default file with ca certificates."""
+    return u"/etc/ssl/certs/ca-certificates.crt"
+
+def default_cert_reqs():
+    return u"required"
+
+def cert_reqs_from_store(unicode_str):
+    import ssl
+    try:
+        return {
+            "required": ssl.CERT_REQUIRED,
+            "optional": ssl.CERT_OPTIONAL,
+            "none": ssl.CERT_NONE
+            }[unicode_str]
+    except KeyError:
+        raise ValueError("invalid value %s" % unicode_str)
+
+
+opt_ssl_ca_certs = config.Option('ssl.ca_certs',
+        default=default_ca_certs,
+        help="""\
+Path to certification authority certificates to trust.
+""")
+
+opt_ssl_cert_reqs = config.Option('ssl.cert_reqs',
+        default=default_cert_reqs,
+        from_unicode=cert_reqs_from_store,
+        help="""\
+Whether to require a certificate from the remote side. (default:required)
+
+Possible values:
+ * none: certificates ignored
+ * optional: Certificates not required, but validated if provided
+ * required: Certificates required, and validated
+""")
+
 checked_kerberos = False
 kerberos = None
 
