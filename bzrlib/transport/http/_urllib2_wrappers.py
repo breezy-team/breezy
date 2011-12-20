@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Implementaion of urllib2 tailored to bzr needs
+"""Implementation of urllib2 tailored to bzr needs
 
 This file complements the urllib2 class hierarchy with custom classes.
 
@@ -50,6 +50,7 @@ DEBUG = 0
 
 import errno
 import httplib
+import os
 import socket
 import urllib
 import urllib2
@@ -73,13 +74,20 @@ lazy_import.lazy_import(globals(), """
 import ssl
 """)
 
+DEFAULT_CA_PATH = u"/etc/ssl/certs/ca-certificates.crt"
+
 
 def default_ca_certs():
     """Find the default file with ca certificates."""
-    return u"/etc/ssl/certs/ca-certificates.crt"
+    if not os.path.exists(DEFAULT_CA_PATH):
+        raise ValueError("default ca path %s does not exist" %
+            DEFAULT_CA_PATH)
+    return DEFAULT_CA_PATH
+
 
 def default_cert_reqs():
     return u"required"
+
 
 def cert_reqs_from_store(unicode_str):
     import ssl
