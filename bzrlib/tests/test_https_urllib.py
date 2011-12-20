@@ -21,13 +21,19 @@
 import ssl
 
 from bzrlib import trace
-from bzrlib.errors import ConfigOptionValueError
+from bzrlib.errors import (
+    CertificateError,
+    ConfigOptionValueError,
+    )
 from bzrlib.config import (
     IniFileStore,
     Stack,
     )
 import os
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import (
+    TestCase,
+    TestCaseInTempDir,
+    )
 from bzrlib.transport.http import _urllib2_wrappers
 
 
@@ -85,3 +91,19 @@ class CertReqsConfigTests(TestCaseInTempDir):
         self.assertEquals(ssl.CERT_REQUIRED, stack.get("ssl.cert_reqs"))
         stack = stack_from_string("ssl.cert_reqs = invalid\n")
         self.assertRaises(ConfigOptionValueError, stack.get, "ssl.cert_reqs")
+
+
+class MatchHostnameTests(TestCase):
+
+    def test_no_certificate(self):
+        self.assertRaises(ValueError, _urllib2_wrappers.match_hostname({}))
+
+    def test_no_valid_attributes(self):
+        self.assertRaises(CertificateError,
+            _urllib2_wrappers.match_hostname({"Problem": "Solved"}))
+
+    def test_common_name(self):
+        cert = {'subject': ((('commonName', 'example.com'),),)}
+        self.assertIs(None, _urllib2_wrappers.match_hostname(cert, "example.com"))
+        self.assertRaises(CertificateError, _urllib2_wrappers.match_hostname,
+                cert, "example.org")
