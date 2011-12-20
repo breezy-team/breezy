@@ -191,6 +191,20 @@ def debian_tag_name(branch, revid):
     return db.tag_name(changelog.version)
 
 
+def pre_merge_quilt(merger):
+    if (merge.this_tree.path2id("debian/patches") is None and
+        merge.base_tree.path2id("debian/patches") is None):
+        return
+    from bzrlib.plugins.builddeb.merge_quilt import tree_unapply_patches
+    merger.this_tree = tree_unapply_patches(merger.this_tree)
+    merger.base_tree = tree_unapply_patches(merger.base_tree)
+    merger.other_tree = tree_unapply_patches(merger.other_tree)
+
+
+def post_merge_quilt(merger):
+    pass # FIXME: Try to apply as many patches as possible
+
+
 try:
     from bzrlib.hooks import install_lazy_named_hook
 except ImportError: # Compatibility with bzr < 2.4
@@ -237,6 +251,14 @@ else:
         "bzrlib.branch", "Branch.hooks",
         "automatic_tag_name", debian_tag_name,
          "Automatically determine tag names from Debian version")
+    install_lazy_named_hook(
+        "bzrlib.merge", "Merger.hooks",
+        'pre_merge', pre_merge_quilt,
+        'Debian quilt patches unapplying')
+    install_lazy_named_hook(
+        "bzrlib.merge", "Merger.hooks",
+        'post_merge', post_merge_quilt,
+        'Debian quilt patches re-applying')
 
 try:
     from bzrlib.revisionspec import revspec_registry
