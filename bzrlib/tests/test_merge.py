@@ -3242,3 +3242,42 @@ class TestMergeInto(TestMergeIntoBase):
         # The dest tree is unmodified.
         self.assertEqual(['r1-dest'], dest_wt.get_parent_ids())
         self.assertTreeEntriesEqual([('', 'dest-root-id')], dest_wt)
+
+
+class TestMergeHooks(TestCaseWithTransport):
+
+    def setup_trees_to_merge(self):
+        tree_a = self.make_branch_and_tree('tree_a')
+        self.build_tree_contents([('tree_a/file', 'content_1')])
+        tree_a.add('file', 'file-id')
+        tree_a.commit('added file')
+
+        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        self.build_tree_contents([('tree_b/another-file', 'content_2')])
+        tree_b.add('another-file', 'another-file-id')
+        tree_b.commit('add another file')
+        return tree_a, tree_b
+
+    def test_pre_merge(self):
+        calls = []
+        def factory(pre_merge_args):
+            calls.append(pre_merge_args)
+        _mod_merge.Merger.hooks.install_named_hook('pre_merge',
+                                                   factory, 'test factory')
+        tree_a, tree_b = self.setup_trees_to_merge()
+        tree_a.merge_from_branch(tree_b.branch)
+
+        self.assertLength(1, calls)
+
+    def test_post_merge(self):
+        calls = []
+        def factory(post_merge_args):
+            self.assertIsInstance(post_merge_args, _mod_merge.Merge3Merger)
+            calls.append(post_merge_args)
+        _mod_merge.Merger.hooks.install_named_hook('post_merge',
+                                                   factory, 'test factory')
+
+        tree_a, tree_b = self.setup_trees_to_merge()
+        tree_a.merge_from_branch(tree_b.branch)
+
+        self.assertLength(1, calls)

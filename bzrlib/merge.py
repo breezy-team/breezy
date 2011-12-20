@@ -78,6 +78,13 @@ class MergeHooks(hooks.Hooks):
             "See the AbstractPerFileMerger API docs for details on how it is "
             "used by merge.",
             (2, 1))
+        self.add_hook('pre_merge',
+            'Called before a merge.',
+            (2, 5))
+        self.add_hook('post_merge',
+            'Called after a merge. Receives a Merger object as a single argument. '
+            'The return value is ignored.',
+            (2, 5))
 
 
 class AbstractPerFileMerger(object):
@@ -95,7 +102,7 @@ class AbstractPerFileMerger(object):
     def merge_contents(self, merge_params):
         """Attempt to merge the contents of a single file.
         
-        :param merge_params: A bzrlib.merge.MergeHookParams
+        :param merge_params: A bzrlib.merge.MergeFileHookParams
         :return: A tuple of (status, chunks), where status is one of
             'not_applicable', 'success', 'conflicted', or 'delete'.  If status
             is 'success' or 'conflicted', then chunks should be an iterable of
@@ -122,14 +129,14 @@ class PerFileMerger(AbstractPerFileMerger):
 
     def get_filename(self, params, tree):
         """Lookup the filename (i.e. basename, not path), given a Tree (e.g.
-        self.merger.this_tree) and a MergeHookParams.
+        self.merger.this_tree) and a MergeFileHookParams.
         """
         return osutils.basename(tree.id2path(params.file_id))
 
     def get_filepath(self, params, tree):
         """Calculate the path to the file in a tree.
 
-        :param params: A MergeHookParams describing the file to merge
+        :param params: A MergeFileHookParams describing the file to merge
         :param tree: a Tree, e.g. self.merger.this_tree.
         """
         return tree.id2path(params.file_id)
@@ -224,7 +231,7 @@ class ConfigurableFileMerger(PerFileMerger):
         raise NotImplementedError(self.merge_text)
 
 
-class MergeHookParams(object):
+class MergeFileHookParams(object):
     """Object holding parameters passed to merge_file_content hooks.
 
     There are some fields hooks can access:
@@ -263,6 +270,24 @@ class MergeHookParams(object):
     def other_lines(self):
         """The lines of the 'other' version of the file."""
         return self._merger.get_lines(self._merger.other_tree, self.file_id)
+
+
+class PreMergeHookParams(object):
+    """Object holding parameters passed to the `pre_merge` hook.
+
+    """
+
+    def __init__(self):
+        """Create a PreMergeHookParams object.
+
+        """
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __repr__(self):
+        return "<%s>" % (
+            self.__class__.__name__)
 
 
 class Merger(object):
@@ -603,7 +628,10 @@ class Merger(object):
             self._maybe_fetch(base_branch, self.this_branch, self.base_rev_id)
 
     def make_merger(self):
-        kwargs = {'working_tree':self.this_tree, 'this_tree': self.this_tree,
+        params = PreMergeHookParams()
+        for hook in Merger.hooks['pre_merge']:
+            hook(params)
+        kwargs = {'working_tree': self.this_tree, 'this_tree': self.this_tree,
                   'other_tree': self.other_tree,
                   'interesting_ids': self.interesting_ids,
                   'interesting_files': self.interesting_files,
@@ -640,6 +668,8 @@ class Merger(object):
         if self.other_branch is not None:
             self.other_branch.update_references(self.this_branch)
         merge.do_merge()
+        for hook in Merger.hooks['post_merge']:
+            hook(merge)
         if self.recurse == 'down':
             for relpath, file_id in self.this_tree.iter_references():
                 sub_tree = self.this_tree.get_nested_tree(file_id, relpath)
@@ -1343,7 +1373,7 @@ class Merge3Merger(object):
         # We have a hypothetical conflict, but if we have files, then we
         # can try to merge the content
         trans_id = self.tt.trans_id_file_id(file_id)
-        params = MergeHookParams(self, file_id, trans_id, this_pair[0],
+        params = MergeFileHookParams(self, file_id, trans_id, this_pair[0],
             other_pair[0], winner)
         hooks = self.active_hooks
         hook_status = 'not_applicable'
