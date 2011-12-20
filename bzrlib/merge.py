@@ -79,10 +79,12 @@ class MergeHooks(hooks.Hooks):
             "used by merge.",
             (2, 1))
         self.add_hook('pre_merge',
-            'Called before a merge.',
+            'Called before a merge. '
+            'Receives a Merger object as the single argument.',
             (2, 5))
         self.add_hook('post_merge',
-            'Called after a merge. Receives a Merger object as a single argument. '
+            'Called after a merge. '
+            'Receives a Merger object as the single argument. '
             'The return value is ignored.',
             (2, 5))
 
@@ -628,9 +630,6 @@ class Merger(object):
             self._maybe_fetch(base_branch, self.this_branch, self.base_rev_id)
 
     def make_merger(self):
-        params = PreMergeHookParams()
-        for hook in Merger.hooks['pre_merge']:
-            hook(params)
         kwargs = {'working_tree': self.this_tree, 'this_tree': self.this_tree,
                   'other_tree': self.other_tree,
                   'interesting_ids': self.interesting_ids,
@@ -667,6 +666,8 @@ class Merger(object):
         merge = self.make_merger()
         if self.other_branch is not None:
             self.other_branch.update_references(self.this_branch)
+        for hook in Merger.hooks['pre_merge']:
+            hook(merge)
         merge.do_merge()
         for hook in Merger.hooks['post_merge']:
             hook(merge)

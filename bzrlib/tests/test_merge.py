@@ -3253,31 +3253,39 @@ class TestMergeHooks(TestCaseWithTransport):
         tree_a.commit('added file')
 
         tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
-        self.build_tree_contents([('tree_b/another-file', 'content_2')])
-        tree_b.add('another-file', 'another-file-id')
-        tree_b.commit('add another file')
+        self.build_tree_contents([('tree_b/file', 'content_2')])
+        tree_b.commit('modify file')
         return tree_a, tree_b
 
     def test_pre_merge(self):
+        tree_a, tree_b = self.setup_trees_to_merge()
+        tree_c = tree_b.bzrdir.sprout('tree_c').open_workingtree()
+        self.build_tree_contents([('tree_c/file', 'content_3')])
+        tree_c.commit("more content")
         calls = []
-        def factory(pre_merge_args):
-            calls.append(pre_merge_args)
+        def factory(merger):
+            self.assertIsInstance(merger, _mod_merge.Merge3Merger)
+            merger.other_tree = tree_c
+            calls.append(merger)
         _mod_merge.Merger.hooks.install_named_hook('pre_merge',
                                                    factory, 'test factory')
-        tree_a, tree_b = self.setup_trees_to_merge()
         tree_a.merge_from_branch(tree_b.branch)
+
+        self.assertFileEqual("content_3", 'tree_a/file')
 
         self.assertLength(1, calls)
 
     def test_post_merge(self):
         calls = []
-        def factory(post_merge_args):
-            self.assertIsInstance(post_merge_args, _mod_merge.Merge3Merger)
-            calls.append(post_merge_args)
+        def factory(merger):
+            self.assertIsInstance(merger, _mod_merge.Merge3Merger)
+            calls.append(merger)
         _mod_merge.Merger.hooks.install_named_hook('post_merge',
                                                    factory, 'test factory')
 
         tree_a, tree_b = self.setup_trees_to_merge()
         tree_a.merge_from_branch(tree_b.branch)
+
+        self.assertFileEqual("content_2", 'tree_a/file')
 
         self.assertLength(1, calls)
