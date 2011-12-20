@@ -1662,6 +1662,9 @@ def email_from_store(unicode_str):
         return value.decode(osutils.get_user_encoding())
     return unicode_str
 
+def default_ca_certs():
+    """Find the default file with ca certificates."""
+    return "/etc/ssl/certs/ca-certificates.crt",
 
 def _auto_user_id():
     """Calculate automatic user identification.
@@ -2760,6 +2763,13 @@ option_registry.register(
            default=300.0, from_unicode=float_from_store,
            help="If we wait for a new request from a client for more than"
                 " X seconds, consider the client idle, and hangup."))
+
+option_registry.register(
+    Option('ssl.ca_certs',
+        default=default_ca_certs,
+        help="""\
+Path to certification authority certificates to trust.
+"""))
 
 
 class Section(object):

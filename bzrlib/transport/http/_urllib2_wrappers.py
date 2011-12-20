@@ -389,9 +389,11 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
             self.connect_to_origin()
 
     def connect_to_origin(self):
+        global_config = config.GlobalStack()
+        ca_certs = global_config.get('ssl.ca_certs')
         ssl_sock = ssl.wrap_socket(self.sock, self.key_file, self.cert_file,
             cert_reqs=ssl.CERT_REQUIRED,
-            ca_certs="/etc/ssl/certs/ca-certificates.crt")
+            ca_certs=ca_certs)
         match_hostname(ssl_sock.getpeercert(), self.host)
 
         # Wrap the ssl socket before anybody use it
