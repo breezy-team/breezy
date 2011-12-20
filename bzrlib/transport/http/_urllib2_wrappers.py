@@ -78,11 +78,16 @@ DEFAULT_CA_PATH = u"/etc/ssl/certs/ca-certificates.crt"
 
 
 def default_ca_certs():
-    """Find the default file with ca certificates."""
     if not os.path.exists(DEFAULT_CA_PATH):
-        raise ValueError("default ca path %s does not exist" %
+        raise ValueError("default ca certs path %s does not exist" %
             DEFAULT_CA_PATH)
     return DEFAULT_CA_PATH
+
+
+def ca_certs_from_store(path):
+    if not os.path.exists(path):
+        raise ValueError("ca certs path %s does not exist" % path)
+    return path
 
 
 def default_cert_reqs():
@@ -102,7 +107,9 @@ def cert_reqs_from_store(unicode_str):
 
 
 opt_ssl_ca_certs = config.Option('ssl.ca_certs',
+        from_unicode=ca_certs_from_store,
         default=default_ca_certs,
+        invalid='warning',
         help="""\
 Path to certification authority certificates to trust.
 """)
@@ -110,6 +117,7 @@ Path to certification authority certificates to trust.
 opt_ssl_cert_reqs = config.Option('ssl.cert_reqs',
         default=default_cert_reqs,
         from_unicode=cert_reqs_from_store,
+        invalid='error',
         help="""\
 Whether to require a certificate from the remote side. (default:required)
 
