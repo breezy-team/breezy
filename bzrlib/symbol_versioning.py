@@ -19,6 +19,8 @@
 The methods here allow for api symbol versioning.
 """
 
+from __future__ import absolute_import
+
 __all__ = ['deprecated_function',
            'deprecated_in',
            'deprecated_list',

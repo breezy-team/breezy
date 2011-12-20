@@ -16,6 +16,8 @@
 
 """Display what revisions are missing in 'other' from 'this' and vice versa."""
 
+from __future__ import absolute_import
+
 from bzrlib import (
     log,
     symbol_versioning,

@@ -14,13 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
 import time
 
 from bzrlib import (
-    bzrdir,
     config,
     controldir,
     debug,
@@ -39,6 +40,7 @@ from bzrlib.i18n import gettext
 """)
 
 from bzrlib import (
+    bzrdir,
     errors,
     registry,
     symbol_versioning,
@@ -74,8 +76,11 @@ class CommitBuilder(object):
     record_root_entry = True
     # whether this commit builder supports the record_entry_contents interface
     supports_record_entry_contents = False
+    # whether this commit builder will automatically update the branch that is
+    # being committed to
+    updates_branch = False
 
-    def __init__(self, repository, parents, config, timestamp=None,
+    def __init__(self, repository, parents, config_stack, timestamp=None,
                  timezone=None, committer=None, revprops=None,
                  revision_id=None, lossy=False):
         """Initiate a CommitBuilder.
@@ -90,11 +95,11 @@ class CommitBuilder(object):
         :param lossy: Whether to discard data that can not be natively
             represented, when pushing to a foreign VCS 
         """
-        self._config = config
+        self._config_stack = config_stack
         self._lossy = lossy
 
         if committer is None:
-            self._committer = self._config.username()
+            self._committer = self._config_stack.get('email')
         elif not isinstance(committer, unicode):
             self._committer = committer.decode() # throw if non-ascii
         else:
@@ -639,6 +644,12 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         """
 
     def suspend_write_group(self):
+        """Suspend a write group.
+
+        :raise UnsuspendableWriteGroup: If the write group can not be
+            suspended.
+        :return: List of tokens
+        """
         raise errors.UnsuspendableWriteGroup(self)
 
     def refresh_data(self):
@@ -666,12 +677,10 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
     def _resume_write_group(self, tokens):
         raise errors.UnsuspendableWriteGroup(self)
 
-    def fetch(self, source, revision_id=None, find_ghosts=False,
-            fetch_spec=None):
+    def fetch(self, source, revision_id=None, find_ghosts=False):
         """Fetch the content required to construct revision_id from source.
 
-        If revision_id is None and fetch_spec is None, then all content is
-        copied.
+        If revision_id is None, then all content is copied.
 
         fetch() may not be used when the repository is in a write group -
         either finish the current write group before using fetch, or use
@@ -683,14 +692,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         :param revision_id: If specified, all the content needed for this
             revision ID will be copied to the target.  Fetch will determine for
             itself which content needs to be copied.
-        :param fetch_spec: If specified, a SearchResult or
-            PendingAncestryResult that describes which revisions to copy.  This
-            allows copying multiple heads at once.  Mutually exclusive with
-            revision_id.
         """
-        if fetch_spec is not None and revision_id is not None:
-            raise AssertionError(
-                "fetch_spec and revision_id are mutually exclusive.")
         if self.is_in_write_group():
             raise errors.InternalBzrError(
                 "May not fetch while in a write group.")
@@ -698,7 +700,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         # TODO: lift out to somewhere common with RemoteRepository
         # <https://bugs.launchpad.net/bzr/+bug/401646>
         if (self.has_same_location(source)
-            and fetch_spec is None
             and self._has_same_fallbacks(source)):
             # check that last_revision is in 'from' and then return a
             # no-operation.
@@ -707,20 +708,19 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                 self.get_revision(revision_id)
             return 0, []
         inter = InterRepository.get(source, self)
-        return inter.fetch(revision_id=revision_id,
-            find_ghosts=find_ghosts, fetch_spec=fetch_spec)
+        return inter.fetch(revision_id=revision_id, find_ghosts=find_ghosts)
 
     def create_bundle(self, target, base, fileobj, format=None):
         return serializer.write_bundle(self, target, base, fileobj, format)
 
-    def get_commit_builder(self, branch, parents, config, timestamp=None,
+    def get_commit_builder(self, branch, parents, config_stack, timestamp=None,
                            timezone=None, committer=None, revprops=None,
                            revision_id=None, lossy=False):
         """Obtain a CommitBuilder for this repository.
 
         :param branch: Branch to commit to.
         :param parents: Revision ids of the parents of the new revision.
-        :param config: Configuration to use.
+        :param config_stack: Configuration stack to use.
         :param timestamp: Optional timestamp recorded for commit.
         :param timezone: Optional timezone for timestamp.
         :param committer: Optional committer to set for commit.
@@ -1149,19 +1149,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
-    def revision_ids_to_search_result(self, result_set):
-        """Convert a set of revision ids to a graph SearchResult."""
-        result_parents = set()
-        for parents in self.get_graph().get_parent_map(
-            result_set).itervalues():
-            result_parents.update(parents)
-        included_keys = result_set.intersection(result_parents)
-        start_keys = result_set.difference(included_keys)
-        exclude_keys = result_parents.difference(result_set)
-        result = graph.SearchResult(start_keys, exclude_keys,
-            len(result_set), result_set)
-        return result
-
     @needs_write_lock
     def set_make_working_trees(self, new_value):
         """Set the policy flag for making working trees when creating branches.
@@ -1185,7 +1172,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         self.store_revision_signature(gpg_strategy, plaintext, revision_id)
 
     @needs_read_lock
-    def verify_revision(self, revision_id, gpg_strategy):
+    def verify_revision_signature(self, revision_id, gpg_strategy):
         """Verify the signature on a revision.
         
         :param revision_id: the revision to verify
@@ -1424,24 +1411,6 @@ class RepositoryFormat(controldir.ControlComponentFormat):
         return not self == other
 
     @classmethod
-    def find_format(klass, a_bzrdir):
-        """Return the format for the repository object in a_bzrdir.
-
-        This is used by bzr native formats that have a "format" file in
-        the repository.  Other methods may be used by different types of
-        control directory.
-        """
-        try:
-            transport = a_bzrdir.get_repository_transport(None)
-            format_string = transport.get_bytes("format")
-            return format_registry.get(format_string)
-        except errors.NoSuchFile:
-            raise errors.NoRepositoryPresent(a_bzrdir)
-        except KeyError:
-            raise errors.UnknownFormatError(format=format_string,
-                                            kind='repository')
-
-    @classmethod
     @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
     def register_format(klass, format):
         format_registry.register(format)
@@ -1456,14 +1425,6 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     def get_default_format(klass):
         """Return the current default format."""
         return format_registry.get_default()
-
-    def get_format_string(self):
-        """Return the ASCII format string that identifies this format.
-
-        Note that in pre format ?? repositories the format string is
-        not permitted nor written to disk.
-        """
-        raise NotImplementedError(self.get_format_string)
 
     def get_format_description(self):
         """Return the short description for this format."""
@@ -1536,7 +1497,7 @@ class RepositoryFormat(controldir.ControlComponentFormat):
             hook(params)
 
 
-class MetaDirRepositoryFormat(RepositoryFormat):
+class RepositoryFormatMetaDir(bzrdir.BzrDirMetaComponentFormat, RepositoryFormat):
     """Common base class for the new repositories using the metadir layout."""
 
     rich_root_data = False
@@ -1552,7 +1513,8 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         return matching
 
     def __init__(self):
-        super(MetaDirRepositoryFormat, self).__init__()
+        RepositoryFormat.__init__(self)
+        bzrdir.BzrDirMetaComponentFormat.__init__(self)
 
     def _create_control_files(self, a_bzrdir):
         """Create the required files and the initial control_files object."""
@@ -1582,9 +1544,20 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         finally:
             control_files.unlock()
 
-    def network_name(self):
-        """Metadir formats have matching disk and network format strings."""
-        return self.get_format_string()
+    @classmethod
+    def find_format(klass, a_bzrdir):
+        """Return the format for the repository object in a_bzrdir.
+
+        This is used by bzr native formats that have a "format" file in
+        the repository.  Other methods may be used by different types of
+        control directory.
+        """
+        try:
+            transport = a_bzrdir.get_repository_transport(None)
+            format_string = transport.get_bytes("format")
+        except errors.NoSuchFile:
+            raise errors.NoRepositoryPresent(a_bzrdir)
+        return klass._find_format(format_registry, 'repository', format_string)
 
 
 # formats which have no format string are not discoverable or independently
@@ -1707,8 +1680,7 @@ class InterRepository(InterObject):
         self.target.fetch(self.source, revision_id=revision_id)
 
     @needs_write_lock
-    def fetch(self, revision_id=None, find_ghosts=False,
-            fetch_spec=None):
+    def fetch(self, revision_id=None, find_ghosts=False):
         """Fetch the content required to construct revision_id.
 
         The content is copied from self.source to self.target.

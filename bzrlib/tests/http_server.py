@@ -22,9 +22,9 @@ import random
 import re
 import SimpleHTTPServer
 import socket
-import urllib
 import urlparse
 
+from bzrlib import urlutils
 from bzrlib.tests import test_server
 
 
@@ -336,7 +336,7 @@ Message: %(message)s.
         """
         # abandon query parameters
         path = urlparse.urlparse(path)[2]
-        path = posixpath.normpath(urllib.unquote(path))
+        path = posixpath.normpath(urlutils.unquote(path))
         path = path.decode('utf-8')
         words = path.split('/')
         words = filter(None, words)

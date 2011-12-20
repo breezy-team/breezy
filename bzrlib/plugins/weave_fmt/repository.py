@@ -20,10 +20,11 @@ Weave based formats scaled linearly with history size and could not represent
 ghosts.
 """
 
+from __future__ import absolute_import
+
 import gzip
 import os
 from cStringIO import StringIO
-import urllib
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -52,7 +53,7 @@ from bzrlib import (
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
     InterRepository,
-    RepositoryFormat,
+    RepositoryFormatMetaDir,
     )
 from bzrlib.store.text import TextStore
 from bzrlib.versionedfile import (
@@ -504,7 +505,8 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
     def _serializer(self):
         return xml5.serializer_v5
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar-NG Repository format 7"
 
@@ -561,7 +563,7 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
                                     than normal. I.e. during 'upgrade'.
         """
         if not _found:
-            format = RepositoryFormat.find_format(a_bzrdir)
+            format = RepositoryFormatMetaDir.find_format(a_bzrdir)
         if _override_transport is not None:
             repo_transport = _override_transport
         else:
@@ -707,7 +709,7 @@ class RevisionTextStore(TextVersionedFiles):
             raise errors.ObjectNotLocked(self)
         relpaths = set()
         for quoted_relpath in self._transport.iter_files_recursive():
-            relpath = urllib.unquote(quoted_relpath)
+            relpath = urlutils.unquote(quoted_relpath)
             path, ext = os.path.splitext(relpath)
             if ext == '.gz':
                 relpath = path
@@ -747,7 +749,7 @@ class SignatureTextStore(TextVersionedFiles):
             raise errors.ObjectNotLocked(self)
         relpaths = set()
         for quoted_relpath in self._transport.iter_files_recursive():
-            relpath = urllib.unquote(quoted_relpath)
+            relpath = urlutils.unquote(quoted_relpath)
             path, ext = os.path.splitext(relpath)
             if ext == '.gz':
                 relpath = path

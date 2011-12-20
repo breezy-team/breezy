@@ -16,6 +16,8 @@
 
 """A generator which creates a rio stanza of the current tree info"""
 
+from __future__ import absolute_import
+
 from bzrlib import hooks
 from bzrlib.revision import (
     NULL_REVISION,

@@ -109,4 +109,4 @@ class TestAddInventoryByDelta(TestCaseWithRepository):
         else:
             repo_delta.commit_write_group()
         self.assertEqual(add_validator, delta_validator)
-        self.assertEqual(new_inv, inv)
+        self.assertEqual(list(new_inv.iter_entries()), list(inv.iter_entries()))

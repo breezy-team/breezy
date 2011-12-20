@@ -24,6 +24,7 @@ from bzrlib import (
     osutils,
     tests,
     )
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 from bzrlib.tests.script import (
     run_script,
     )
@@ -124,3 +125,19 @@ class TestConfigBreakLock(tests.TestCaseWithTransport):
                      stdin="y\n")
         self.assertRaises(errors.LockBroken, self.config.unlock)
 
+
+class TestSmartServerBreakLock(tests.TestCaseWithTransport):
+
+    def test_simple_branch_break_lock(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        t.branch.lock_write()
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['break-lock', '--force', self.get_url('branch')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
+        self.assertLength(5, self.hpss_calls)

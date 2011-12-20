@@ -23,6 +23,9 @@ Written by Mattias Eriksson <snaggen@acc.umu.se> based on the ftp transport.
 It provides the gio+XXX:// protocols where XXX is any of the protocols
 supported by gio.
 """
+
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 import os
 import random

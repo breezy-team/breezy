@@ -26,6 +26,8 @@ The Transport returned has methods to read, write and manipulate files within
 it.
 """
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 import sys
 
@@ -33,7 +35,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
 from stat import S_ISDIR
-import urllib
 import urlparse
 
 from bzrlib import (
@@ -310,7 +311,8 @@ class Transport(object):
     def __init__(self, base):
         super(Transport, self).__init__()
         self.base = base
-        self._segment_parameters = urlutils.split_segment_parameters(base)[1]
+        (self._raw_base, self._segment_parameters) = (
+            urlutils.split_segment_parameters(base))
 
     def _translate_error(self, e, path, raise_generic=True):
         """Translate an IOError or OSError into an appropriate bzr error.
@@ -414,6 +416,22 @@ class Transport(object):
         """Return the segment parameters for the top segment of the URL.
         """
         return self._segment_parameters
+
+    def set_segment_parameter(self, name, value):
+        """Set a segment parameter.
+
+        :param name: Segment parameter name (urlencoded string)
+        :param value: Segment parameter value (urlencoded string)
+        """
+        if value is None:
+            try:
+                del self._segment_parameters[name]
+            except KeyError:
+                pass
+        else:
+            self._segment_parameters[name] = value
+        self.base = urlutils.join_segment_parameters(
+            self._raw_base, self._segment_parameters)
 
     def _pump(self, from_file, to_file):
         """Most children will need to copy from one file-like
@@ -1398,12 +1416,12 @@ class ConnectedTransport(Transport):
 
         :return: The corresponding URL.
         """
-        netloc = urllib.quote(host)
+        netloc = urlutils.quote(host)
         if user is not None:
             # Note that we don't put the password back even if we
             # have one so that it doesn't get accidentally
             # exposed.
-            netloc = '%s@%s' % (urllib.quote(user), netloc)
+            netloc = '%s@%s' % (urlutils.quote(user), netloc)
         if port is not None:
             netloc = '%s:%d' % (netloc, port)
         path = urlutils.escape(path)

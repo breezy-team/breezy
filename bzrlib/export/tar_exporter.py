@@ -16,6 +16,8 @@
 
 """Export a tree to a tarball."""
 
+from __future__ import absolute_import
+
 import os
 import StringIO
 import sys
@@ -28,15 +30,13 @@ from bzrlib import (
 from bzrlib.export import _export_iter_entries
 
 
-def prepare_tarball_item(tree, root, final_path, entry, force_mtime=None):
+def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=None):
     """Prepare a tarball item for exporting
 
     :param tree: Tree to export
-
     :param final_path: Final path to place item
-
+    :param tree_path: Path for the entry in the tree
     :param entry: Entry to export
-
     :param force_mtime: Option mtime to force, instead of using tree
         timestamps.
 
@@ -47,10 +47,10 @@ def prepare_tarball_item(tree, root, final_path, entry, force_mtime=None):
     if force_mtime is not None:
         item.mtime = force_mtime
     else:
-        item.mtime = tree.get_file_mtime(entry.file_id, final_path)
+        item.mtime = tree.get_file_mtime(entry.file_id, tree_path)
     if entry.kind == "file":
         item.type = tarfile.REGTYPE
-        if tree.is_executable(entry.file_id):
+        if tree.is_executable(entry.file_id, tree_path):
             item.mode = 0755
         else:
             item.mode = 0644
@@ -58,7 +58,7 @@ def prepare_tarball_item(tree, root, final_path, entry, force_mtime=None):
         # the tarfile contract, which wants the size of the file up front.  We
         # want to make sure it doesn't change, and we need to read it in one
         # go for content filtering.
-        content = tree.get_file_text(entry.file_id)
+        content = tree.get_file_text(entry.file_id, tree_path)
         item.size = len(content)
         fileobj = StringIO.StringIO(content)
     elif entry.kind == "directory":
@@ -71,7 +71,7 @@ def prepare_tarball_item(tree, root, final_path, entry, force_mtime=None):
         item.type = tarfile.SYMTYPE
         item.size = 0
         item.mode = 0755
-        item.linkname = tree.get_symlink_target(entry.file_id)
+        item.linkname = tree.get_symlink_target(entry.file_id, tree_path)
         fileobj = None
     else:
         raise errors.BzrError("don't know how to export {%s} of kind %r"
@@ -97,9 +97,9 @@ def export_tarball_generator(tree, ball, root, subdir=None, force_mtime=None):
         timestamps.
     """
     try:
-        for final_path, entry in _export_iter_entries(tree, subdir):
+        for final_path, tree_path, entry in _export_iter_entries(tree, subdir):
             (item, fileobj) = prepare_tarball_item(
-                tree, root, final_path, entry, force_mtime)
+                tree, root, final_path, tree_path, entry, force_mtime)
             ball.addfile(item, fileobj)
             yield
     finally:

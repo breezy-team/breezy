@@ -16,6 +16,8 @@
 
 """Commands for generating snapshot information about a bzr tree."""
 
+from __future__ import absolute_import
+
 from bzrlib.lazy_import import lazy_import
 
 lazy_import(globals(), """
@@ -113,10 +115,15 @@ class cmd_version_info(Command):
         else:
             b = wt.branch
 
-        if all or template:
+        if all:
             include_history = True
             check_clean = True
             include_file_revisions = True
+        if template:
+            include_history = True
+            include_file_revisions = True
+            if '{clean}' in template:
+                check_clean = True
 
         if revision is not None:
             revision_id = revision[0].as_revision_id(b)

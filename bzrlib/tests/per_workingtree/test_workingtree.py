@@ -22,11 +22,11 @@ import os
 
 from bzrlib import (
     branch,
-    branchbuilder,
     bzrdir,
     config,
     errors,
     osutils,
+    revision as _mod_revision,
     symbol_versioning,
     tests,
     trace,
@@ -309,6 +309,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_clone_trivial(self):
         wt = self.make_branch_and_tree('source')
         cloned_dir = wt.bzrdir.clone('target')
+        cloned = cloned_dir.open_workingtree()
+        self.assertEqual(cloned.get_parent_ids(), wt.get_parent_ids())
+
+    def test_clone_empty(self):
+        wt = self.make_branch_and_tree('source')
+        cloned_dir = wt.bzrdir.clone('target', revision_id=_mod_revision.NULL_REVISION)
         cloned = cloned_dir.open_workingtree()
         self.assertEqual(cloned.get_parent_ids(), wt.get_parent_ids())
 
@@ -953,6 +959,24 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         t.put_bytes(tree._format.case_sensitive_filename, content)
         tree = tree.bzrdir.open_workingtree()
         self.assertFalse(tree.case_sensitive)
+
+    def test_supports_executable(self):
+        self.build_tree(['filename'])
+        tree = self.make_branch_and_tree('.')
+        tree.add('filename')
+        self.assertIsInstance(tree._supports_executable(), bool)
+        if tree._supports_executable():
+            tree.lock_read()
+            try:
+                self.assertFalse(tree.is_executable(tree.path2id('filename')))
+            finally:
+                tree.unlock()
+            os.chmod('filename', 0755)
+            self.addCleanup(tree.lock_read().unlock)
+            self.assertTrue(tree.is_executable(tree.path2id('filename')))
+        else:
+            self.addCleanup(tree.lock_read().unlock)
+            self.assertFalse(tree.is_executable(tree.path2id('filename')))
 
     def test_all_file_ids_with_missing(self):
         tree = self.make_branch_and_tree('tree')

@@ -18,7 +18,15 @@
 # with Python under the Python License, which is GPL compatible.
 
 """Extract docstrings from Bazaar commands.
+
+This module only handles bzrlib objects that use strings not directly wrapped
+by a gettext() call. To generate a complete translation template file, this
+output needs to be combined with that of xgettext or a similar command for
+extracting those strings, as is done in the bzr Makefile. Sorting the output
+is also left to that stage of the process.
 """
+
+from __future__ import absolute_import
 
 import inspect
 import os
@@ -27,6 +35,7 @@ from bzrlib import (
     commands as _mod_commands,
     errors,
     help_topics,
+    option,
     plugin,
     help,
     )
@@ -62,114 +71,169 @@ def _normalize(s):
     return s
 
 
-_FOUND_MSGID = None # set by entry function.
-
-def _poentry(outf, path, lineno, s, comment=None):
-    if s in _FOUND_MSGID:
-        return
-    _FOUND_MSGID.add(s)
-    if comment is None:
-        comment = ''
-    else:
-        comment = "# %s\n" % comment
-    mutter("Exporting msg %r at line %d in %r", s[:20], lineno, path)
-    print >>outf, ('#: %s:%d\n' % (path, lineno) +
-           comment+
-           'msgid %s\n' % _normalize(s) +
-           'msgstr ""\n')
-
-def _poentry_per_paragraph(outf, path, lineno, msgid, filter=lambda x: False):
-    # TODO: How to split long help?
-    paragraphs = msgid.split('\n\n')
-    for p in paragraphs:
-        if filter(p):
-            continue
-        _poentry(outf, path, lineno, p)
-        lineno += p.count('\n') + 2
-
-_LAST_CACHE = _LAST_CACHED_SRC = None
-
-def _offsets_of_literal(src):
-    global _LAST_CACHE, _LAST_CACHED_SRC
-    if src == _LAST_CACHED_SRC:
-        return _LAST_CACHE.copy()
-
+def _parse_source(source_text):
+    """Get object to lineno mappings from given source_text"""
     import ast
-    root = ast.parse(src)
-    offsets = {}
-    for node in ast.walk(root):
-        if not isinstance(node, ast.Str):
-            continue
-        offsets[node.s] = node.lineno - node.s.count('\n')
+    cls_to_lineno = {}
+    str_to_lineno = {}
+    for node in ast.walk(ast.parse(source_text)):
+        # TODO: worry about duplicates?
+        if isinstance(node, ast.ClassDef):
+            # TODO: worry about nesting?
+            cls_to_lineno[node.name] = node.lineno
+        elif isinstance(node, ast.Str):
+            # Python AST gives location of string literal as the line the
+            # string terminates on. It's more useful to have the line the
+            # string begins on. Unfortunately, counting back newlines is
+            # only an approximation as the AST is ignorant of escaping.
+            str_to_lineno[node.s] = node.lineno - node.s.count('\n')
+    return cls_to_lineno, str_to_lineno
 
-    _LAST_CACHED_SRC = src
-    _LAST_CACHE = offsets.copy()
-    return offsets
 
-def _standard_options(outf):
-    from bzrlib.option import Option
-    src = inspect.findsource(Option)[0]
-    src = ''.join(src)
-    path = 'bzrlib/option.py'
-    offsets = _offsets_of_literal(src)
+class _ModuleContext(object):
+    """Record of the location within a source tree"""
 
-    for name in sorted(Option.OPTIONS.keys()):
-        opt = Option.OPTIONS[name]
-        if getattr(opt, 'hidden', False):
-            continue
-        if getattr(opt, 'title', None):
-            lineno = offsets.get(opt.title, 9999)
-            if lineno == 9999:
-                note(gettext("%r is not found in bzrlib/option.py") % opt.title)
-            _poentry(outf, path, lineno, opt.title,
-                     'title of %r option' % name)
-        if getattr(opt, 'help', None):
-            lineno = offsets.get(opt.help, 9999)
-            if lineno == 9999:
-                note(gettext("%r is not found in bzrlib/option.py") % opt.help)
-            _poentry(outf, path, lineno, opt.help,
-                     'help of %r option' % name)
+    def __init__(self, path, lineno=1, _source_info=None):
+        self.path = path
+        self.lineno = lineno
+        if _source_info is not None:
+            self._cls_to_lineno, self._str_to_lineno = _source_info
 
-def _command_options(outf, path, cmd):
-    src, default_lineno = inspect.findsource(cmd.__class__)
-    offsets = _offsets_of_literal(''.join(src))
+    @classmethod
+    def from_module(cls, module):
+        """Get new context from module object and parse source for linenos"""
+        sourcepath = inspect.getsourcefile(module)
+        # TODO: fix this to do the right thing rather than rely on cwd
+        relpath = os.path.relpath(sourcepath)
+        return cls(relpath,
+            _source_info=_parse_source("".join(inspect.findsource(module)[0])))
+
+    def from_class(self, cls):
+        """Get new context with same details but lineno of class in source"""
+        try:
+            lineno = self._cls_to_lineno[cls.__name__]
+        except (AttributeError, KeyError):
+            mutter("Definition of %r not found in %r", cls, self.path)
+            return self
+        return self.__class__(self.path, lineno,
+            (self._cls_to_lineno, self._str_to_lineno))
+
+    def from_string(self, string):
+        """Get new context with same details but lineno of string in source"""
+        try:
+            lineno = self._str_to_lineno[string]
+        except (AttributeError, KeyError):
+            mutter("String %r not found in %r", string[:20], self.path)
+            return self
+        return self.__class__(self.path, lineno,
+            (self._cls_to_lineno, self._str_to_lineno))
+
+
+class _PotExporter(object):
+    """Write message details to output stream in .pot file format"""
+
+    def __init__(self, outf, include_duplicates=False):
+        self.outf = outf
+        if include_duplicates:
+            self._msgids = None
+        else:
+            self._msgids = set()
+        self._module_contexts = {}
+
+    def poentry(self, path, lineno, s, comment=None):
+        if self._msgids is not None:
+            if s in self._msgids:
+                return
+            self._msgids.add(s)
+        if comment is None:
+            comment = ''
+        else:
+            comment = "# %s\n" % comment
+        mutter("Exporting msg %r at line %d in %r", s[:20], lineno, path)
+        self.outf.write(
+            "#: {path}:{lineno}\n"
+            "{comment}"
+            "msgid {msg}\n"
+            "msgstr \"\"\n"
+            "\n".format(
+                path=path, lineno=lineno, comment=comment, msg=_normalize(s)))
+
+    def poentry_in_context(self, context, string, comment=None):
+        context = context.from_string(string)
+        self.poentry(context.path, context.lineno, string, comment)
+
+    def poentry_per_paragraph(self, path, lineno, msgid, include=None):
+        # TODO: How to split long help?
+        paragraphs = msgid.split('\n\n')
+        if include is not None:
+            paragraphs = filter(include, paragraphs)
+        for p in paragraphs:
+            self.poentry(path, lineno, p)
+            lineno += p.count('\n') + 2
+
+    def get_context(self, obj):
+        module = inspect.getmodule(obj)
+        try:
+            context = self._module_contexts[module.__name__]
+        except KeyError:
+            context = _ModuleContext.from_module(module)
+            self._module_contexts[module.__name__] = context
+        if inspect.isclass(obj):
+            context = context.from_class(obj)
+        return context
+
+
+def _write_option(exporter, context, opt, note):
+    if getattr(opt, 'hidden', False):
+        return   
+    optname = opt.name
+    if getattr(opt, 'title', None):
+        exporter.poentry_in_context(context, opt.title,
+            "title of {name!r} {what}".format(name=optname, what=note))
+    for name, _, _, helptxt in opt.iter_switches():
+        if name != optname:
+            if opt.is_hidden(name):
+                continue
+            name = "=".join([optname, name])
+        if helptxt:
+            exporter.poentry_in_context(context, helptxt,
+                "help of {name!r} {what}".format(name=name, what=note))
+
+
+def _standard_options(exporter):
+    OPTIONS = option.Option.OPTIONS
+    context = exporter.get_context(option)
+    for name in sorted(OPTIONS.keys()):
+        opt = OPTIONS[name]
+        _write_option(exporter, context.from_string(name), opt, "option")
+
+
+def _command_options(exporter, context, cmd):
+    note = "option of {0!r} command".format(cmd.name())
     for opt in cmd.takes_options:
-        if isinstance(opt, str):
-            continue
-        if getattr(opt, 'hidden', False):
-            continue
-        name = opt.name
-        if getattr(opt, 'title', None):
-            lineno = offsets.get(opt.title, default_lineno)
-            _poentry(outf, path, lineno, opt.title,
-                     'title of %r option of %r command' % (name, cmd.name()))
-        if getattr(opt, 'help', None):
-            lineno = offsets.get(opt.help, default_lineno)
-            _poentry(outf, path, lineno, opt.help,
-                     'help of %r option of %r command' % (name, cmd.name()))
+        # String values in Command option lists are for global options
+        if not isinstance(opt, str):
+            _write_option(exporter, context, opt, note)
 
 
-def _write_command_help(outf, cmd):
-    path = inspect.getfile(cmd.__class__)
-    if path.endswith('.pyc'):
-        path = path[:-1]
-    path = os.path.relpath(path)
-    src, lineno = inspect.findsource(cmd.__class__)
-    offsets = _offsets_of_literal(''.join(src))
-    lineno = offsets[cmd.__doc__]
-    doc = inspect.getdoc(cmd)
+def _write_command_help(exporter, cmd):
+    context = exporter.get_context(cmd.__class__)
+    rawdoc = cmd.__doc__
+    dcontext = context.from_string(rawdoc)
+    doc = inspect.cleandoc(rawdoc)
 
-    def filter(p):
+    def exclude_usage(p):
         # ':Usage:' has special meaning in help topics.
         # This is usage example of command and should not be translated.
-        if p.splitlines()[0] == ':Usage:':
+        if p.splitlines()[0] != ':Usage:':
             return True
 
-    _poentry_per_paragraph(outf, path, lineno, doc, filter)
-    _command_options(outf, path, cmd)
+    exporter.poentry_per_paragraph(dcontext.path, dcontext.lineno, doc,
+        exclude_usage)
+    _command_options(exporter, context, cmd)
 
 
-def _command_helps(outf, plugin_name=None):
+def _command_helps(exporter, plugin_name=None):
     """Extract docstrings from path.
 
     This respects the Bazaar cmdtable/table convention and will
@@ -186,7 +250,7 @@ def _command_helps(outf, plugin_name=None):
             # only export builtins if we are not exporting plugin commands
             continue
         note(gettext("Exporting messages from builtin command: %s"), cmd_name)
-        _write_command_help(outf, command)
+        _write_command_help(exporter, command)
 
     plugin_path = plugin.get_core_plugin_path()
     core_plugins = glob(plugin_path + '/*/__init__.py')
@@ -206,16 +270,12 @@ def _command_helps(outf, plugin_name=None):
             continue
         note(gettext("Exporting messages from plugin command: {0} in {1}").format(
              cmd_name, command.plugin_name() ))
-        _write_command_help(outf, command)
+        _write_command_help(exporter, command)
 
 
-def _error_messages(outf):
+def _error_messages(exporter):
     """Extract fmt string from bzrlib.errors."""
-    path = errors.__file__
-    if path.endswith('.pyc'):
-        path = path[:-1]
-    offsets = _offsets_of_literal(open(path).read())
-
+    context = exporter.get_context(errors)
     base_klass = errors.BzrError
     for name in dir(errors):
         klass = getattr(errors, name)
@@ -230,35 +290,33 @@ def _error_messages(outf):
         fmt = getattr(klass, "_fmt", None)
         if fmt:
             note(gettext("Exporting message from error: %s"), name)
-            _poentry(outf, 'bzrlib/errors.py',
-                     offsets.get(fmt, 9999), fmt)
+            exporter.poentry_in_context(context, fmt)
 
-def _help_topics(outf):
+
+def _help_topics(exporter):
     topic_registry = help_topics.topic_registry
     for key in topic_registry.keys():
         doc = topic_registry.get(key)
         if isinstance(doc, str):
-            _poentry_per_paragraph(
-                    outf,
+            exporter.poentry_per_paragraph(
                     'dummy/help_topics/'+key+'/detail.txt',
                     1, doc)
         elif callable(doc): # help topics from files
-            _poentry_per_paragraph(
-                    outf,
+            exporter.poentry_per_paragraph(
                     'en/help_topics/'+key+'.txt',
                     1, doc(key))
         summary = topic_registry.get_summary(key)
         if summary is not None:
-            _poentry(outf, 'dummy/help_topics/'+key+'/summary.txt',
+            exporter.poentry('dummy/help_topics/'+key+'/summary.txt',
                      1, summary)
 
-def export_pot(outf, plugin=None):
-    global _FOUND_MSGID
-    _FOUND_MSGID = set()
+
+def export_pot(outf, plugin=None, include_duplicates=False):
+    exporter = _PotExporter(outf, include_duplicates)
     if plugin is None:
-        _standard_options(outf)
-        _command_helps(outf)
-        _error_messages(outf)
-        _help_topics(outf)
+        _standard_options(exporter)
+        _command_helps(exporter)
+        _error_messages(exporter)
+        _help_topics(exporter)
     else:
-        _command_helps(outf, plugin)
+        _command_helps(exporter, plugin)

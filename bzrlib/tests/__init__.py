@@ -16,6 +16,8 @@
 
 """Testing framework extensions"""
 
+from __future__ import absolute_import
+
 # NOTE: Some classes in here use camelCaseNaming() rather than
 # underscore_naming().  That's for consistency with unittest; it's not the
 # general style of bzrlib.  Please continue that consistency when adding e.g.
@@ -36,6 +38,7 @@ import pprint
 import random
 import re
 import shlex
+import site
 import stat
 import subprocess
 import sys
@@ -94,12 +97,14 @@ from bzrlib.symbol_versioning import (
     deprecated_in,
     )
 from bzrlib.tests import (
+    fixtures,
     test_server,
     TestUtil,
     treeshape,
     )
 from bzrlib.ui import NullProgressView
 from bzrlib.ui.text import TextUIFactory
+from bzrlib.tests.features import _CompatabilityThunkFeature
 
 # Mark this python module as being part of the implementation
 # of unittest: this gives us better tracebacks where the last
@@ -994,12 +999,21 @@ class TestCase(testtools.TestCase):
 
     def setUp(self):
         super(TestCase, self).setUp()
+
+        timeout = config.GlobalStack().get('selftest.timeout')
+        if timeout:
+            timeout_fixture = fixtures.TimeoutFixture(timeout)
+            timeout_fixture.setUp()
+            self.addCleanup(timeout_fixture.cleanUp)
+
         for feature in getattr(self, '_test_needs_features', []):
             self.requireFeature(feature)
         self._cleanEnvironment()
+
         if bzrlib.global_state is not None:
             self.overrideAttr(bzrlib.global_state, 'cmdline_overrides',
-                              config.CommandLineSection())
+                              config.CommandLineStore())
+
         self._silenceUI()
         self._startLogFile()
         self._benchcalls = []
@@ -1978,8 +1992,8 @@ class TestCase(testtools.TestCase):
 
         self.log('run bzr: %r', args)
         # FIXME: don't call into logging here
-        handler = logging.StreamHandler(stderr)
-        handler.setLevel(logging.INFO)
+        handler = trace.EncodedStreamHandler(stderr, errors="replace",
+            level=logging.INFO)
         logger = logging.getLogger('')
         logger.addHandler(handler)
         old_ui_factory = ui.ui_factory
@@ -2173,6 +2187,11 @@ class TestCase(testtools.TestCase):
 
         if env_changes is None:
             env_changes = {}
+        # Because $HOME is set to a tempdir for the context of a test, modules
+        # installed in the user dir will not be found unless $PYTHONUSERBASE
+        # gets set to the computed directory of this parent process.
+        if site.USER_BASE is not None:
+            env_changes["PYTHONUSERBASE"] = site.USER_BASE
         old_env = {}
 
         def cleanup_environment():
@@ -2369,8 +2388,10 @@ class TestCase(testtools.TestCase):
         from bzrlib.smart import request
         request_handlers = request.request_handlers
         orig_method = request_handlers.get(verb)
+        orig_info = request_handlers.get_info(verb)
         request_handlers.remove(verb)
-        self.addCleanup(request_handlers.register, verb, orig_method)
+        self.addCleanup(request_handlers.register, verb, orig_method,
+            info=orig_info)
 
 
 class CapturedCall(object):
@@ -3516,9 +3537,11 @@ def fork_for_tests(suite):
                 process_suite.run(subunit_result)
             except:
                 # Try and report traceback on stream, but exit with error even
-                # if stream couldn't be created or something else goes wrong
+                # if stream couldn't be created or something else goes wrong.
+                # The traceback is formatted to a string and written in one go
+                # to avoid interleaving lines from multiple failing children.
                 try:
-                    traceback.print_exc(file=stream)
+                    stream.write(traceback.format_exc())
                 finally:
                     os._exit(1)
             os._exit(0)
@@ -4072,6 +4095,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_version',
         'bzrlib.tests.test_version_info',
         'bzrlib.tests.test_versionedfile',
+        'bzrlib.tests.test_vf_search',
         'bzrlib.tests.test_weave',
         'bzrlib.tests.test_whitebox',
         'bzrlib.tests.test_win32utils',
@@ -4460,8 +4484,28 @@ except ImportError:
     pass
 
 
-@deprecated_function(deprecated_in((2, 5, 0)))
-def ModuleAvailableFeature(name):
-    from bzrlib.tests import features
-    return features.ModuleAvailableFeature(name)
-    
+# API compatibility for old plugins; see bug 892622.
+for name in [
+    'Feature',
+    'HTTPServerFeature', 
+    'ModuleAvailableFeature',
+    'HTTPSServerFeature', 'SymlinkFeature', 'HardlinkFeature',
+    'OsFifoFeature', 'UnicodeFilenameFeature',
+    'ByteStringNamedFilesystem', 'UTF8Filesystem',
+    'BreakinFeature', 'CaseInsCasePresFilenameFeature',
+    'CaseInsensitiveFilesystemFeature', 'case_sensitive_filesystem_feature',
+    'posix_permissions_feature',
+    ]:
+    globals()[name] = _CompatabilityThunkFeature(
+        symbol_versioning.deprecated_in((2, 5, 0)),
+        'bzrlib.tests', name,
+        name, 'bzrlib.tests.features')
+
+
+for (old_name, new_name) in [
+    ('UnicodeFilename', 'UnicodeFilenameFeature'),
+    ]:
+    globals()[name] = _CompatabilityThunkFeature(
+        symbol_versioning.deprecated_in((2, 5, 0)),
+        'bzrlib.tests', old_name,
+        new_name, 'bzrlib.tests.features')

@@ -16,6 +16,8 @@
 
 """RevisionTree - a Tree implementation backed by repository data for a revision."""
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 
 from bzrlib import (
@@ -65,8 +67,9 @@ class RevisionTree(tree.Tree):
         raise NotImplementedError(self.get_file_revision)
 
     def get_file_text(self, file_id, path=None):
-        _, content = list(self.iter_files_bytes([(file_id, None)]))[0]
-        return ''.join(content)
+        for (identifier, content) in self.iter_files_bytes([(file_id, None)]):
+            ret = "".join(content)
+        return ret
 
     def get_file(self, file_id, path=None):
         return StringIO(self.get_file_text(file_id))
@@ -215,14 +218,14 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
     def iter_files_bytes(self, desired_files):
         """See Tree.iter_files_bytes.
 
-        This version is implemented on top of Repository.extract_files_bytes"""
+        This version is implemented on top of Repository.iter_files_bytes"""
         repo_desired_files = [(f, self.get_file_revision(f), i)
                               for f, i in desired_files]
         try:
             for result in self._repository.iter_files_bytes(repo_desired_files):
                 yield result
         except errors.RevisionNotPresent, e:
-            raise errors.NoSuchFile(e.revision_id)
+            raise errors.NoSuchFile(e.file_id)
 
     def annotate_iter(self, file_id,
                       default_revision=revision.CURRENT_REVISION):

@@ -16,6 +16,8 @@
 
 """Read in a bundle stream, and process it into a BundleReader object."""
 
+from __future__ import absolute_import
+
 import base64
 from cStringIO import StringIO
 import os

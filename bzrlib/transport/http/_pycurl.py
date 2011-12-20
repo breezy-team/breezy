@@ -16,6 +16,8 @@
 
 """http/https transport using pycurl"""
 
+from __future__ import absolute_import
+
 # TODO: test reporting of http errors
 #
 # TODO: Transport option to control caching of particular requests; broadly we

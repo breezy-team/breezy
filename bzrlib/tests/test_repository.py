@@ -31,10 +31,10 @@ from bzrlib.errors import (
     )
 from bzrlib import (
     btree_index,
-    graph,
     symbol_versioning,
     tests,
     transport,
+    vf_search,
     )
 from bzrlib.btree_index import BTreeBuilder, BTreeGraphIndex
 from bzrlib.index import GraphIndex
@@ -92,14 +92,15 @@ class TestDefaultFormat(TestCase):
                               old_format.__class__)
 
 
-class SampleRepositoryFormat(repository.RepositoryFormat):
+class SampleRepositoryFormat(repository.RepositoryFormatMetaDir):
     """A sample format
 
     this format is initializable, unsupported to aid in testing the
     open and open(unsupported=True) routines.
     """
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return "Sample .bzr repository format."
 
@@ -137,21 +138,30 @@ class TestRepositoryFormat(TestCaseWithTransport):
             dir = format._matchingbzrdir.initialize(url)
             format.initialize(dir)
             t = transport.get_transport_from_path(url)
-            found_format = repository.RepositoryFormat.find_format(dir)
+            found_format = repository.RepositoryFormatMetaDir.find_format(dir)
             self.assertIsInstance(found_format, format.__class__)
         check_format(repository.format_registry.get_default(), "bar")
 
     def test_find_format_no_repository(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         self.assertRaises(errors.NoRepositoryPresent,
-                          repository.RepositoryFormat.find_format,
+                          repository.RepositoryFormatMetaDir.find_format,
                           dir)
+
+    def test_from_string(self):
+        self.assertIsInstance(
+            SampleRepositoryFormat.from_string(
+                "Sample .bzr repository format."),
+            SampleRepositoryFormat)
+        self.assertRaises(ValueError,
+            SampleRepositoryFormat.from_string,
+                "Different .bzr repository format.")
 
     def test_find_format_unknown_format(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         SampleRepositoryFormat().initialize(dir)
         self.assertRaises(UnknownFormatError,
-                          repository.RepositoryFormat.find_format,
+                          repository.RepositoryFormatMetaDir.find_format,
                           dir)
 
     def test_register_unregister_format(self):
@@ -438,13 +448,15 @@ class TestInterRepository(TestCaseWithTransport):
 
 class TestRepositoryFormat1(knitrepo.RepositoryFormatKnit1):
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         return "Test Format 1"
 
 
 class TestRepositoryFormat2(knitrepo.RepositoryFormatKnit1):
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         return "Test Format 2"
 
 
@@ -706,7 +718,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
 
         # On a regular pass, getting the inventories and chk pages for rev-2
         # would only get the newly created chk pages
-        search = graph.SearchResult(set(['rev-2']), set(['rev-1']), 1,
+        search = vf_search.SearchResult(set(['rev-2']), set(['rev-1']), 1,
                                     set(['rev-2']))
         simple_chk_records = []
         for vf_name, substream in source.get_stream(search):
@@ -893,7 +905,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             revision = _mod_revision.Revision('rev1a',
                 committer='jrandom@example.com', timestamp=0,
                 inventory_sha1='', timezone=0, message='foo', parent_ids=[])
-            repo.add_revision('rev1a',revision, inv)
+            repo.add_revision('rev1a', revision, inv)
 
             # make rev1b, which has no Revision, but has an Inventory, and
             # file1
@@ -934,7 +946,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         revision = _mod_revision.Revision(revision_id,
             committer='jrandom@example.com', timestamp=0, inventory_sha1='',
             timezone=0, message='foo', parent_ids=parent_ids)
-        repo.add_revision(revision_id,revision, inv)
+        repo.add_revision(revision_id, revision, inv)
 
     def add_file(self, repo, inv, filename, revision, parents):
         file_id = filename + '-id'
@@ -1060,6 +1072,23 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
                                'obsolete_packs/%s.pack' % (names[0],))
         packs.transport.rename('indices/%s.iix' % (names[0],),
                                'obsolete_packs/%s.iix' % (names[0],))
+        # Now trigger the obsoletion, and ensure that all the remaining files
+        # are still renamed
+        packs._obsolete_packs([pack])
+        self.assertEqual([n + '.pack' for n in names[1:]],
+                         sorted(packs._pack_transport.list_dir('.')))
+        # names[0] should not be present in the index anymore
+        self.assertEqual(names[1:],
+            sorted(set([osutils.splitext(n)[0] for n in
+                        packs._index_transport.list_dir('.')])))
+
+    def test__obsolete_packs_missing_directory(self):
+        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        r.control_transport.rmdir('obsolete_packs')
+        names = packs.names()
+        pack = packs.get_pack_by_name(names[0])
+        # Schedule this one for removal
+        packs._remove_pack_from_memory(pack)
         # Now trigger the obsoletion, and ensure that all the remaining files
         # are still renamed
         packs._obsolete_packs([pack])
@@ -1345,6 +1374,12 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         obsolete_names = set([osutils.splitext(n)[0] for n in obsolete_packs])
         self.assertEqual([pack.name], sorted(obsolete_names))
 
+    def test_pack_no_obsolete_packs_directory(self):
+        """Bug #314314, don't fail if obsolete_packs directory does
+        not exist."""
+        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        r.control_transport.rmdir('obsolete_packs')
+        packs._clear_obsolete_packs()
 
 
 class TestPack(TestCaseWithTransport):

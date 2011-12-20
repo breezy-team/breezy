@@ -19,6 +19,8 @@
 These were formats present in pre-1.0 version of Bazaar.
 """
 
+from __future__ import absolute_import
+
 # Since we are a built-in plugin we share the bzrlib version
 from bzrlib import version_info
 

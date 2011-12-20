@@ -156,6 +156,8 @@ class TestControlDir(TestCaseWithControlDir):
         except (errors.UnsupportedOperation, errors.TransportNotPossible):
             raise TestNotApplicable('Format does not support destroying'
                                     ' repository')
+        self.assertRaises(errors.NoRepositoryPresent,
+            bzrdir.destroy_repository)
         self.assertRaises(errors.NoRepositoryPresent, bzrdir.open_repository)
         bzrdir.create_repository()
         bzrdir.open_repository()
@@ -1189,6 +1191,11 @@ class TestControlDir(TestCaseWithControlDir):
             pass # Not all bzrdirs support destroying directories
         else:
             self.assertEquals([], made_control.list_branches())
+
+    def test_get_branches(self):
+        repo = self.make_repository('branch-1')
+        target_branch = repo.bzrdir.create_branch()
+        self.assertEqual([None], repo.bzrdir.get_branches().keys())
 
     def test_create_repository(self):
         # a bzrdir can construct a repository for itself.

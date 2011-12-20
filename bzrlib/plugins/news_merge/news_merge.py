@@ -16,6 +16,8 @@
 
 """Merge logic for news_merge plugin."""
 
+from __future__ import absolute_import
+
 
 from bzrlib.plugins.news_merge.parser import simple_parse_lines
 from bzrlib import merge, merge3

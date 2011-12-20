@@ -16,6 +16,8 @@
 
 """A simple least-recently-used (LRU) cache."""
 
+from __future__ import absolute_import
+
 from bzrlib import (
     symbol_versioning,
     trace,

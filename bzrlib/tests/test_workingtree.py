@@ -79,6 +79,13 @@ class TestDefaultFormat(TestCaseWithTransport):
             workingtree.format_registry.set_default(old_format)
         self.assertEqual(old_format, workingtree.format_registry.get_default())
 
+    def test_from_string(self):
+        self.assertIsInstance(
+            SampleTreeFormat.from_string("Sample tree format."),
+            SampleTreeFormat)
+        self.assertRaises(ValueError,
+            SampleTreeFormat.from_string, "Different format string.")
+
     def test_get_set_default_format_by_key(self):
         old_format = workingtree.format_registry.get_default()
         # default is 6
@@ -120,14 +127,15 @@ class TestDefaultFormat(TestCaseWithTransport):
         self.assertEqual('subdir', relpath)
 
 
-class SampleTreeFormat(workingtree.WorkingTreeFormat):
+class SampleTreeFormat(workingtree.WorkingTreeFormatMetaDir):
     """A sample format
 
     this format is initializable, unsupported to aid in testing the
     open and open_downlevel routines.
     """
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See WorkingTreeFormat.get_format_string()."""
         return "Sample tree format."
 
@@ -172,14 +180,14 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
         # is the right format object found for a working tree?
         branch = self.make_branch('branch')
         self.assertRaises(errors.NoWorkingTree,
-            workingtree.WorkingTreeFormat.find_format_string, branch.bzrdir)
+            workingtree.WorkingTreeFormatMetaDir.find_format_string, branch.bzrdir)
         transport = branch.bzrdir.get_workingtree_transport(None)
         transport.mkdir('.')
         transport.put_bytes("format", "some format name")
         # The format does not have to be known by Bazaar,
         # find_format_string just retrieves the name
         self.assertEquals("some format name",
-            workingtree.WorkingTreeFormat.find_format_string(branch.bzrdir))
+            workingtree.WorkingTreeFormatMetaDir.find_format_string(branch.bzrdir))
 
     def test_find_format(self):
         # is the right format object found for a working tree?
@@ -191,14 +199,14 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
             dir.create_branch()
             format.initialize(dir)
             t = transport.get_transport(url)
-            found_format = workingtree.WorkingTreeFormat.find_format(dir)
+            found_format = workingtree.WorkingTreeFormatMetaDir.find_format(dir)
             self.assertIsInstance(found_format, format.__class__)
         check_format(workingtree_3.WorkingTreeFormat3(), "bar")
 
     def test_find_format_no_tree(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize('.')
         self.assertRaises(errors.NoWorkingTree,
-                          workingtree.WorkingTreeFormat.find_format,
+                          workingtree.WorkingTreeFormatMetaDir.find_format,
                           dir)
 
     def test_find_format_unknown_format(self):
@@ -207,7 +215,7 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
         dir.create_branch()
         SampleTreeFormat().initialize(dir)
         self.assertRaises(errors.UnknownFormatError,
-                          workingtree.WorkingTreeFormat.find_format,
+                          workingtree.WorkingTreeFormatMetaDir.find_format,
                           dir)
 
     def test_register_unregister_format(self):

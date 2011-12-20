@@ -67,8 +67,8 @@ load_tests = scenarios.load_tests_apply_scenarios
 
 # Register helpers to build stores
 config.test_store_builder_registry.register(
-    'configobj', lambda test: config.IniFileStore(test.get_transport(),
-                                                  'configobj.conf'))
+    'configobj', lambda test: config.TransportIniFileStore(
+        test.get_transport(), 'configobj.conf'))
 config.test_store_builder_registry.register(
     'bazaar', lambda test: config.GlobalStore())
 config.test_store_builder_registry.register(
@@ -328,13 +328,13 @@ class InstrumentedConfigObj(object):
 
 class FakeBranch(object):
 
-    def __init__(self, base=None, user_id=None):
+    def __init__(self, base=None):
         if base is None:
             self.base = "http://example.com/branches/demo"
         else:
             self.base = base
         self._transport = self.control_files = \
-            FakeControlFilesAndTransport(user_id=user_id)
+            FakeControlFilesAndTransport()
 
     def _get_config(self):
         return config.TransportConfig(self._transport, 'branch.conf')
@@ -348,15 +348,9 @@ class FakeBranch(object):
 
 class FakeControlFilesAndTransport(object):
 
-    def __init__(self, user_id=None):
+    def __init__(self):
         self.files = {}
-        if user_id:
-            self.files['email'] = user_id
         self._transport = self
-
-    def get_utf8(self, filename):
-        # from LockableFiles
-        raise AssertionError("get_utf8 should no longer be used")
 
     def get(self, filename):
         # from Transport
@@ -500,27 +494,36 @@ class TestConfig(tests.TestCase):
 
     def test_signatures_default(self):
         my_config = config.Config()
-        self.assertFalse(my_config.signature_needed())
+        self.assertFalse(
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.signature_needed))
         self.assertEqual(config.CHECK_IF_POSSIBLE,
-                         my_config.signature_checking())
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.signature_checking))
         self.assertEqual(config.SIGN_WHEN_REQUIRED,
-                         my_config.signing_policy())
+                self.applyDeprecated(deprecated_in((2, 5, 0)),
+                    my_config.signing_policy))
 
     def test_signatures_template_method(self):
         my_config = InstrumentedConfig()
-        self.assertEqual(config.CHECK_NEVER, my_config.signature_checking())
+        self.assertEqual(config.CHECK_NEVER,
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.signature_checking))
         self.assertEqual(['_get_signature_checking'], my_config._calls)
 
     def test_signatures_template_method_none(self):
         my_config = InstrumentedConfig()
         my_config._signatures = None
         self.assertEqual(config.CHECK_IF_POSSIBLE,
-                         my_config.signature_checking())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             my_config.signature_checking))
         self.assertEqual(['_get_signature_checking'], my_config._calls)
 
     def test_gpg_signing_command_default(self):
         my_config = config.Config()
-        self.assertEqual('gpg', my_config.gpg_signing_command())
+        self.assertEqual('gpg',
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.gpg_signing_command))
 
     def test_get_user_option_default(self):
         my_config = config.Config()
@@ -528,15 +531,20 @@ class TestConfig(tests.TestCase):
 
     def test_post_commit_default(self):
         my_config = config.Config()
-        self.assertEqual(None, my_config.post_commit())
+        self.assertEqual(None, self.applyDeprecated(deprecated_in((2, 5, 0)),
+                                                    my_config.post_commit))
+
 
     def test_log_format_default(self):
         my_config = config.Config()
-        self.assertEqual('long', my_config.log_format())
+        self.assertEqual('long',
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                                              my_config.log_format))
 
     def test_acceptable_keys_default(self):
         my_config = config.Config()
-        self.assertEqual(None, my_config.acceptable_keys())
+        self.assertEqual(None, self.applyDeprecated(deprecated_in((2, 5, 0)),
+            my_config.acceptable_keys))
 
     def test_validate_signatures_in_log_default(self):
         my_config = config.Config()
@@ -1063,7 +1071,10 @@ si_mb = 5MB,
 si_g = 5g,
 si_gb = 5gB,
 """)
-        get_si = conf.get_user_option_as_int_from_SI
+        def get_si(s, default=None):
+            return self.applyDeprecated(
+                deprecated_in((2, 5, 0)),
+                conf.get_user_option_as_int_from_SI, s, default)
         self.assertEqual(100, get_si('plain'))
         self.assertEqual(5000, get_si('si_k'))
         self.assertEqual(5000, get_si('si_kb'))
@@ -1073,6 +1084,7 @@ si_gb = 5gB,
         self.assertEqual(5000000000, get_si('si_gb'))
         self.assertEqual(None, get_si('non-exist'))
         self.assertEqual(42, get_si('non-exist-with-default',  42))
+
 
 class TestSupressWarning(TestIniConfig):
 
@@ -1235,26 +1247,36 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
     def test_signatures_always(self):
         my_config = config.GlobalConfig.from_string(sample_always_signatures)
         self.assertEqual(config.CHECK_NEVER,
-                         my_config.signature_checking())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             my_config.signature_checking))
         self.assertEqual(config.SIGN_ALWAYS,
-                         my_config.signing_policy())
-        self.assertEqual(True, my_config.signature_needed())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             my_config.signing_policy))
+        self.assertEqual(True,
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.signature_needed))
 
     def test_signatures_if_possible(self):
         my_config = config.GlobalConfig.from_string(sample_maybe_signatures)
         self.assertEqual(config.CHECK_NEVER,
-                         my_config.signature_checking())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             my_config.signature_checking))
         self.assertEqual(config.SIGN_WHEN_REQUIRED,
-                         my_config.signing_policy())
-        self.assertEqual(False, my_config.signature_needed())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             my_config.signing_policy))
+        self.assertEqual(False, self.applyDeprecated(deprecated_in((2, 5, 0)),
+            my_config.signature_needed))
 
     def test_signatures_ignore(self):
         my_config = config.GlobalConfig.from_string(sample_ignore_signatures)
         self.assertEqual(config.CHECK_ALWAYS,
-                         my_config.signature_checking())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             my_config.signature_checking))
         self.assertEqual(config.SIGN_NEVER,
-                         my_config.signing_policy())
-        self.assertEqual(False, my_config.signature_needed())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             my_config.signing_policy))
+        self.assertEqual(False, self.applyDeprecated(deprecated_in((2, 5, 0)),
+            my_config.signature_needed))
 
     def _get_sample_config(self):
         my_config = config.GlobalConfig.from_string(sample_config_text)
@@ -1262,12 +1284,17 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
 
     def test_gpg_signing_command(self):
         my_config = self._get_sample_config()
-        self.assertEqual("gnome-gpg", my_config.gpg_signing_command())
-        self.assertEqual(False, my_config.signature_needed())
+        self.assertEqual("gnome-gpg",
+            self.applyDeprecated(
+                deprecated_in((2, 5, 0)), my_config.gpg_signing_command))
+        self.assertEqual(False, self.applyDeprecated(deprecated_in((2, 5, 0)),
+            my_config.signature_needed))
 
     def test_gpg_signing_key(self):
         my_config = self._get_sample_config()
-        self.assertEqual("DD4D5088", my_config.gpg_signing_key())
+        self.assertEqual("DD4D5088",
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.gpg_signing_key))
 
     def _get_empty_config(self):
         my_config = config.GlobalConfig()
@@ -1275,7 +1302,9 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
 
     def test_gpg_signing_command_unset(self):
         my_config = self._get_empty_config()
-        self.assertEqual("gpg", my_config.gpg_signing_command())
+        self.assertEqual("gpg",
+            self.applyDeprecated(
+                deprecated_in((2, 5, 0)), my_config.gpg_signing_command))
 
     def test_get_user_option_default(self):
         my_config = self._get_empty_config()
@@ -1288,15 +1317,21 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
 
     def test_post_commit_default(self):
         my_config = self._get_sample_config()
-        self.assertEqual(None, my_config.post_commit())
+        self.assertEqual(None,
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                                              my_config.post_commit))
 
     def test_configured_logformat(self):
         my_config = self._get_sample_config()
-        self.assertEqual("short", my_config.log_format())
+        self.assertEqual("short",
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                                              my_config.log_format))
 
     def test_configured_acceptable_keys(self):
         my_config = self._get_sample_config()
-        self.assertEqual("amy", my_config.acceptable_keys())
+        self.assertEqual("amy",
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.acceptable_keys))
 
     def test_configured_validate_signatures_in_log(self):
         my_config = self._get_sample_config()
@@ -1538,40 +1573,52 @@ other_url = /other-subdir
         self.get_branch_config('http://www.example.com',
                                  global_config=sample_ignore_signatures)
         self.assertEqual(config.CHECK_ALWAYS,
-                         self.my_config.signature_checking())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             self.my_config.signature_checking))
         self.assertEqual(config.SIGN_NEVER,
-                         self.my_config.signing_policy())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             self.my_config.signing_policy))
 
     def test_signatures_never(self):
         self.get_branch_config('/a/c')
         self.assertEqual(config.CHECK_NEVER,
-                         self.my_config.signature_checking())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             self.my_config.signature_checking))
 
     def test_signatures_when_available(self):
         self.get_branch_config('/a/', global_config=sample_ignore_signatures)
         self.assertEqual(config.CHECK_IF_POSSIBLE,
-                         self.my_config.signature_checking())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                             self.my_config.signature_checking))
 
     def test_signatures_always(self):
         self.get_branch_config('/b')
         self.assertEqual(config.CHECK_ALWAYS,
-                         self.my_config.signature_checking())
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                         self.my_config.signature_checking))
 
     def test_gpg_signing_command(self):
         self.get_branch_config('/b')
-        self.assertEqual("gnome-gpg", self.my_config.gpg_signing_command())
+        self.assertEqual("gnome-gpg",
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                self.my_config.gpg_signing_command))
 
     def test_gpg_signing_command_missing(self):
         self.get_branch_config('/a')
-        self.assertEqual("false", self.my_config.gpg_signing_command())
+        self.assertEqual("false",
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                self.my_config.gpg_signing_command))
 
     def test_gpg_signing_key(self):
         self.get_branch_config('/b')
-        self.assertEqual("DD4D5088", self.my_config.gpg_signing_key())
+        self.assertEqual("DD4D5088", self.applyDeprecated(deprecated_in((2, 5, 0)),
+            self.my_config.gpg_signing_key))
 
     def test_gpg_signing_key_default(self):
         self.get_branch_config('/a')
-        self.assertEqual("erik@bagfors.nu", self.my_config.gpg_signing_key())
+        self.assertEqual("erik@bagfors.nu",
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                self.my_config.gpg_signing_key))
 
     def test_get_user_option_global(self):
         self.get_branch_config('/a')
@@ -1665,7 +1712,8 @@ other_url = /other-subdir
     def test_post_commit_default(self):
         self.get_branch_config('/a/c')
         self.assertEqual('bzrlib.tests.test_config.post_commit',
-                         self.my_config.post_commit())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                                              self.my_config.post_commit))
 
     def get_branch_config(self, location, global_config=None,
                           location_config=None):
@@ -1761,24 +1809,14 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
         return my_config
 
     def test_user_id(self):
-        branch = FakeBranch(user_id='Robert Collins <robertc@example.net>')
+        branch = FakeBranch()
         my_config = config.BranchConfig(branch)
-        self.assertEqual("Robert Collins <robertc@example.net>",
-                         my_config.username())
+        self.assertIsNot(None, my_config.username())
         my_config.branch.control_files.files['email'] = "John"
         my_config.set_user_option('email',
                                   "Robert Collins <robertc@example.org>")
-        self.assertEqual("John", my_config.username())
-        del my_config.branch.control_files.files['email']
         self.assertEqual("Robert Collins <robertc@example.org>",
-                         my_config.username())
-
-    def test_not_set_in_branch(self):
-        my_config = self.get_branch_config(global_config=sample_config_text)
-        self.assertEqual(u"Erik B\u00e5gfors <erik@bagfors.nu>",
-                         my_config._get_user_id())
-        my_config.branch.control_files.files['email'] = "John"
-        self.assertEqual("John", my_config._get_user_id())
+                        my_config.username())
 
     def test_BZR_EMAIL_OVERRIDES(self):
         self.overrideEnv('BZR_EMAIL', "Robert Collins <robertc@example.org>")
@@ -1790,24 +1828,36 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
     def test_signatures_forced(self):
         my_config = self.get_branch_config(
             global_config=sample_always_signatures)
-        self.assertEqual(config.CHECK_NEVER, my_config.signature_checking())
-        self.assertEqual(config.SIGN_ALWAYS, my_config.signing_policy())
-        self.assertTrue(my_config.signature_needed())
+        self.assertEqual(config.CHECK_NEVER,
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.signature_checking))
+        self.assertEqual(config.SIGN_ALWAYS,
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.signing_policy))
+        self.assertTrue(self.applyDeprecated(deprecated_in((2, 5, 0)),
+            my_config.signature_needed))
 
     def test_signatures_forced_branch(self):
         my_config = self.get_branch_config(
             global_config=sample_ignore_signatures,
             branch_data_config=sample_always_signatures)
-        self.assertEqual(config.CHECK_NEVER, my_config.signature_checking())
-        self.assertEqual(config.SIGN_ALWAYS, my_config.signing_policy())
-        self.assertTrue(my_config.signature_needed())
+        self.assertEqual(config.CHECK_NEVER,
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.signature_checking))
+        self.assertEqual(config.SIGN_ALWAYS,
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.signing_policy))
+        self.assertTrue(self.applyDeprecated(deprecated_in((2, 5, 0)),
+            my_config.signature_needed))
 
     def test_gpg_signing_command(self):
         my_config = self.get_branch_config(
             global_config=sample_config_text,
             # branch data cannot set gpg_signing_command
             branch_data_config="gpg_signing_command=pgp")
-        self.assertEqual('gnome-gpg', my_config.gpg_signing_command())
+        self.assertEqual('gnome-gpg',
+            self.applyDeprecated(deprecated_in((2, 5, 0)),
+                my_config.gpg_signing_command))
 
     def test_get_user_option_global(self):
         my_config = self.get_branch_config(global_config=sample_config_text)
@@ -1820,14 +1870,18 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
                                       location_config=sample_branches_text)
         self.assertEqual(my_config.branch.base, '/a/c')
         self.assertEqual('bzrlib.tests.test_config.post_commit',
-                         my_config.post_commit())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                                              my_config.post_commit))
         my_config.set_user_option('post_commit', 'rmtree_root')
         # post-commit is ignored when present in branch data
         self.assertEqual('bzrlib.tests.test_config.post_commit',
-                         my_config.post_commit())
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                                              my_config.post_commit))
         my_config.set_user_option('post_commit', 'rmtree_root',
                                   store=config.STORE_LOCATION)
-        self.assertEqual('rmtree_root', my_config.post_commit())
+        self.assertEqual('rmtree_root',
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                                              my_config.post_commit))
 
     def test_config_precedence(self):
         # FIXME: eager test, luckily no persitent config file makes it fail
@@ -2275,6 +2329,12 @@ class TestOption(tests.TestCase):
         opt = config.Option('foo', default='bar')
         self.assertEquals('bar', opt.get_default())
 
+    def test_callable_default_value(self):
+        def bar_as_unicode():
+            return u'bar'
+        opt = config.Option('foo', default=bar_as_unicode)
+        self.assertEquals('bar', opt.get_default())
+
     def test_default_value_from_env(self):
         opt = config.Option('foo', default='bar', default_from_env=['FOO'])
         self.overrideEnv('FOO', 'quux')
@@ -2296,11 +2356,18 @@ class TestOption(tests.TestCase):
         self.assertRaises(AssertionError, config.Option, 'foo',
                           default=object())
 
+    def test_not_supported_callable_default_value_not_unicode(self):
+        def bar_not_unicode():
+            return 'bar'
+        opt = config.Option('foo', default=bar_not_unicode)
+        self.assertRaises(AssertionError, opt.get_default)
+
 
 class TestOptionConverterMixin(object):
 
     def assertConverted(self, expected, opt, value):
-        self.assertEquals(expected, opt.convert_from_unicode(value))
+        self.assertEquals(expected, opt.convert_from_unicode(value),
+                          'Expecting %s, got %s' % (expected, value,))
 
     def assertWarns(self, opt, value):
         warnings = []
@@ -2319,7 +2386,8 @@ class TestOptionConverterMixin(object):
 
     def assertConvertInvalid(self, opt, invalid_value):
         opt.invalid = None
-        self.assertEquals(None, opt.convert_from_unicode(invalid_value))
+        self.assertEquals(None, opt.convert_from_unicode(invalid_value),
+                          '%s is not None' % (invalid_value,))
         opt.invalid = 'warning'
         self.assertWarns(opt, invalid_value)
         opt.invalid = 'error'
@@ -2362,6 +2430,32 @@ class TestOptionWithIntegerConverter(tests.TestCase, TestOptionConverterMixin):
     def test_convert_valid(self):
         opt = self.get_option()
         self.assertConverted(16, opt, u'16')
+
+
+class TestOptionWithSIUnitConverter(tests.TestCase, TestOptionConverterMixin):
+
+    def get_option(self):
+        return config.Option('foo', help='An integer in SI units.',
+                             from_unicode=config.int_SI_from_store)
+
+    def test_convert_invalid(self):
+        opt = self.get_option()
+        self.assertConvertInvalid(opt, u'not-a-unit')
+        self.assertConvertInvalid(opt, u'Gb') # Forgot the int
+        self.assertConvertInvalid(opt, u'1b') # Forgot the unit
+        self.assertConvertInvalid(opt, u'1GG')
+        self.assertConvertInvalid(opt, u'1Mbb')
+        self.assertConvertInvalid(opt, u'1MM')
+
+    def test_convert_valid(self):
+        opt = self.get_option()
+        self.assertConverted(int(5e3), opt, u'5kb')
+        self.assertConverted(int(5e6), opt, u'5M')
+        self.assertConverted(int(5e6), opt, u'5MB')
+        self.assertConverted(int(5e9), opt, u'5g')
+        self.assertConverted(int(5e9), opt, u'5gB')
+        self.assertConverted(100, opt, u'100')
+
 
 class TestOptionWithListConverter(tests.TestCase, TestOptionConverterMixin):
 
@@ -2565,9 +2659,6 @@ class TestMutableSection(tests.TestCase):
     scenarios = [('mutable',
                   {'get_section':
                        lambda opts: config.MutableSection('myID', opts)},),
-                 ('cmdline',
-                  {'get_section':
-                       lambda opts: config.CommandLineSection(opts)},),
         ]
 
     def test_set(self):
@@ -2615,43 +2706,52 @@ class TestMutableSection(tests.TestCase):
         self.assertEquals(config._NewlyCreatedOption, section.orig['foo'])
 
 
-class TestCommandLineSection(tests.TestCase):
+class TestCommandLineStore(tests.TestCase):
 
     def setUp(self):
-        super(TestCommandLineSection, self).setUp()
-        self.section = config.CommandLineSection()
+        super(TestCommandLineStore, self).setUp()
+        self.store = config.CommandLineStore()
+
+    def get_section(self):
+        """Get the unique section for the command line overrides."""
+        sections = list(self.store.get_sections())
+        self.assertLength(1, sections)
+        store, section = sections[0]
+        self.assertEquals(self.store, store)
+        return section
 
     def test_no_override(self):
-        self.section._from_cmdline([])
-        # FIXME: we want some iterator over all options, failing that, we peek
-        # under the cover -- vila 2011-09026
-        self.assertLength(0, self.section.options)
+        self.store._from_cmdline([])
+        section = self.get_section()
+        self.assertLength(0, list(section.iter_option_names()))
 
     def test_simple_override(self):
-        self.section._from_cmdline(['a=b'])
-        self.assertEqual('b', self.section.get('a'))
+        self.store._from_cmdline(['a=b'])
+        section = self.get_section()
+        self.assertEqual('b', section.get('a'))
 
     def test_list_override(self):
-        self.section._from_cmdline(['l=1,2,3'])
-        val = self.section.get('l')
+        self.store._from_cmdline(['l=1,2,3'])
+        val = self.get_section().get('l')
         self.assertEqual('1,2,3', val)
-        # Reminder: lists should registered as such explicitely, otherwise the
-        # conversion needs to be done afterwards.
+        # Reminder: lists should be registered as such explicitely, otherwise
+        # the conversion needs to be done afterwards.
         self.assertEqual(['1', '2', '3'], config.list_from_store(val))
 
     def test_multiple_overrides(self):
-        self.section._from_cmdline(['a=b', 'x=y'])
-        self.assertEquals('b', self.section.get('a'))
-        self.assertEquals('y', self.section.get('x'))
+        self.store._from_cmdline(['a=b', 'x=y'])
+        section = self.get_section()
+        self.assertEquals('b', section.get('a'))
+        self.assertEquals('y', section.get('x'))
 
     def test_wrong_syntax(self):
         self.assertRaises(errors.BzrCommandError,
-                          self.section._from_cmdline, ['a=b', 'c'])
+                          self.store._from_cmdline, ['a=b', 'c'])
 
 
 class TestStore(tests.TestCaseWithTransport):
 
-    def assertSectionContent(self, expected, section):
+    def assertSectionContent(self, expected, (store, section)):
         """Assert that some options have the proper values in a section."""
         expected_name, expected_options = expected
         self.assertEquals(expected_name, section.id)
@@ -2716,7 +2816,7 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         utf8_content = unicode_content.encode('utf8')
         # Store the raw content in the config file
         t.put_bytes('foo.conf', utf8_content)
-        store = config.IniFileStore(t, 'foo.conf')
+        store = config.TransportIniFileStore(t, 'foo.conf')
         store.load()
         stack = config.Stack([store.get_sections], store)
         self.assertEquals(unicode_user, stack.get('user'))
@@ -2725,14 +2825,14 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         """Ensure we display a proper error on non-ascii, non utf-8 content."""
         t = self.get_transport()
         t.put_bytes('foo.conf', 'user=foo\n#%s\n' % (self.invalid_utf8_char,))
-        store = config.IniFileStore(t, 'foo.conf')
+        store = config.TransportIniFileStore(t, 'foo.conf')
         self.assertRaises(errors.ConfigContentError, store.load)
 
     def test_load_erroneous_content(self):
         """Ensure we display a proper error on content that can't be parsed."""
         t = self.get_transport()
         t.put_bytes('foo.conf', '[open_section\n')
-        store = config.IniFileStore(t, 'foo.conf')
+        store = config.TransportIniFileStore(t, 'foo.conf')
         self.assertRaises(errors.ParseConfigError, store.load)
 
     def test_load_permission_denied(self):
@@ -2747,7 +2847,7 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         def get_bytes(relpath):
             raise errors.PermissionDenied(relpath, "")
         t.get_bytes = get_bytes
-        store = config.IniFileStore(t, 'foo.conf')
+        store = config.TransportIniFileStore(t, 'foo.conf')
         self.assertRaises(errors.PermissionDenied, store.load)
         self.assertEquals(
             warnings,
@@ -2907,14 +3007,15 @@ class TestMutableStore(TestStore):
         self.assertEquals((store,), calls[0])
 
 
-class TestIniFileStore(TestStore):
+class TestTransportIniFileStore(TestStore):
 
     def test_loading_unknown_file_fails(self):
-        store = config.IniFileStore(self.get_transport(), 'I-do-not-exist')
+        store = config.TransportIniFileStore(self.get_transport(),
+            'I-do-not-exist')
         self.assertRaises(errors.NoSuchFile, store.load)
 
     def test_invalid_content(self):
-        store = config.IniFileStore(self.get_transport(), 'foo.conf', )
+        store = config.TransportIniFileStore(self.get_transport(), 'foo.conf')
         self.assertEquals(False, store.is_loaded())
         exc = self.assertRaises(
             errors.ParseConfigError, store._load_from_string,
@@ -2928,7 +3029,7 @@ class TestIniFileStore(TestStore):
         # option names share the same name space...)
         # FIXME: This should be fixed by forbidding dicts as values ?
         # -- vila 2011-04-05
-        store = config.IniFileStore(self.get_transport(), 'foo.conf', )
+        store = config.TransportIniFileStore(self.get_transport(), 'foo.conf')
         store._load_from_string('''
 foo=bar
 l=1,2
@@ -2983,13 +3084,13 @@ class TestConcurrentStoreUpdates(TestStore):
 
     def setUp(self):
         super(TestConcurrentStoreUpdates, self).setUp()
-        self._content = 'one=1\ntwo=2\n'
         self.stack = self.get_stack(self)
         if not isinstance(self.stack, config._CompatibleStack):
             raise tests.TestNotApplicable(
                 '%s is not meant to be compatible with the old config design'
                 % (self.stack,))
-        self.stack.store._load_from_string(self._content)
+        self.stack.set('one', '1')
+        self.stack.set('two', '2')
         # Flush the store
         self.stack.store.save()
 
@@ -3170,9 +3271,9 @@ section=/quux/quux
 ''')
         self.assertEquals(['/foo', '/foo/baz', '/foo/bar', '/foo/bar/baz',
                            '/quux/quux'],
-                          [section.id for section in store.get_sections()])
+                          [section.id for _, section in store.get_sections()])
         matcher = config.LocationMatcher(store, '/foo/bar/quux')
-        sections = list(matcher.get_sections())
+        sections = [section for s, section in matcher.get_sections()]
         self.assertEquals([3, 2],
                           [section.length for section in sections])
         self.assertEquals(['/foo/bar', '/foo'],
@@ -3189,9 +3290,9 @@ section=/foo
 section=/foo/bar
 ''')
         self.assertEquals(['/foo', '/foo/bar'],
-                          [section.id for section in store.get_sections()])
+                          [section.id for _, section in store.get_sections()])
         matcher = config.LocationMatcher(store, '/foo/bar/baz')
-        sections = list(matcher.get_sections())
+        sections = [section for s, section in matcher.get_sections()]
         self.assertEquals([3, 2],
                           [section.length for section in sections])
         self.assertEquals(['/foo/bar', '/foo'],
@@ -3210,7 +3311,7 @@ foo:policy = appendpath
         matcher = config.LocationMatcher(store, 'dir/subdir')
         sections = list(matcher.get_sections())
         self.assertLength(1, sections)
-        self.assertEquals('bar/dir/subdir', sections[0].get('foo'))
+        self.assertEquals('bar/dir/subdir', sections[0][1].get('foo'))
 
     def test_file_urls_are_normalized(self):
         store = self.get_store(self)
@@ -3333,7 +3434,7 @@ class TestStackGet(TestStackWithTransport):
         self.assertEquals(None, self.conf.get('foo'))
 
     def test_get_hook(self):
-        self.conf.store._load_from_string('foo=bar')
+        self.conf.set('foo', 'bar')
         calls = []
         def hook(*args):
             calls.append(args)
@@ -3345,12 +3446,17 @@ class TestStackGet(TestStackWithTransport):
         self.assertEquals((self.conf, 'foo', 'bar'), calls[0])
 
 
-class TestStackGetWithConverter(TestStackGet):
+class TestStackGetWithConverter(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestStackGetWithConverter, self).setUp()
         self.overrideAttr(config, 'option_registry', config.OptionRegistry())
         self.registry = config.option_registry
+        # We just want a simple stack with a simple store so we can inject
+        # whatever content the tests need without caring about what section
+        # names are valid for a given store/stack.
+        store = config.TransportIniFileStore(self.get_transport(), 'foo.conf')
+        self.conf = config.Stack([store.get_sections], store)
 
     def register_bool_option(self, name, default=None, default_from_env=None):
         b = config.Option(name, help='A boolean.',
@@ -3451,6 +3557,38 @@ class TestStackGetWithConverter(TestStackGet):
         self.register_list_option('foo', None)
         self.conf.store._load_from_string('foo= bar ,  baz ')
         self.assertEquals(['bar', 'baz'], self.conf.get('foo'))
+
+
+class TestIterOptionRefs(tests.TestCase):
+    """iter_option_refs is a bit unusual, document some cases."""
+
+    def assertRefs(self, expected, string):
+        self.assertEquals(expected, list(config.iter_option_refs(string)))
+
+    def test_empty(self):
+        self.assertRefs([(False, '')], '')
+
+    def test_no_refs(self):
+        self.assertRefs([(False, 'foo bar')], 'foo bar')
+
+    def test_single_ref(self):
+        self.assertRefs([(False, ''), (True, '{foo}'), (False, '')], '{foo}')
+
+    def test_broken_ref(self):
+        self.assertRefs([(False, '{foo')], '{foo')
+
+    def test_embedded_ref(self):
+        self.assertRefs([(False, '{'), (True, '{foo}'), (False, '}')],
+                        '{{foo}}')
+
+    def test_two_refs(self):
+        self.assertRefs([(False, ''), (True, '{foo}'),
+                         (False, ''), (True, '{bar}'),
+                         (False, ''),],
+                        '{foo}{bar}')
+
+    def test_newline_in_refs_are_not_matched(self):
+        self.assertRefs([(False, '{\nxx}{xx\n}{{\n}}')], '{\nxx}{xx\n}{{\n}}')
 
 
 class TestStackExpandOptions(tests.TestCaseWithTransport):
@@ -3607,12 +3745,125 @@ bar = {foo}ux
         self.assertEquals('quux', c.get('bar', expand=True))
 
 
+class TestStackCrossStoresExpand(tests.TestCaseWithTransport):
+
+    def test_cross_global_locations(self):
+        l_store = config.LocationStore()
+        l_store._load_from_string('''
+[/branch]
+lfoo = loc-foo
+lbar = {gbar}
+''')
+        l_store.save()
+        g_store = config.GlobalStore()
+        g_store._load_from_string('''
+[DEFAULT]
+gfoo = {lfoo}
+gbar = glob-bar
+''')
+        g_store.save()
+        stack = config.LocationStack('/branch')
+        self.assertEquals('glob-bar', stack.get('lbar', expand=True))
+        self.assertEquals('loc-foo', stack.get('gfoo', expand=True))
+
+
+class TestStackExpandSectionLocals(tests.TestCaseWithTransport):
+
+    def test_expand_locals_empty(self):
+        l_store = config.LocationStore()
+        l_store._load_from_string('''
+[/home/user/project]
+base = {basename}
+rel = {relpath}
+''')
+        l_store.save()
+        stack = config.LocationStack('/home/user/project/')
+        self.assertEquals('', stack.get('base', expand=True))
+        self.assertEquals('', stack.get('rel', expand=True))
+
+    def test_expand_basename_locally(self):
+        l_store = config.LocationStore()
+        l_store._load_from_string('''
+[/home/user/project]
+bfoo = {basename}
+''')
+        l_store.save()
+        stack = config.LocationStack('/home/user/project/branch')
+        self.assertEquals('branch', stack.get('bfoo', expand=True))
+
+    def test_expand_basename_locally_longer_path(self):
+        l_store = config.LocationStore()
+        l_store._load_from_string('''
+[/home/user]
+bfoo = {basename}
+''')
+        l_store.save()
+        stack = config.LocationStack('/home/user/project/dir/branch')
+        self.assertEquals('branch', stack.get('bfoo', expand=True))
+
+    def test_expand_relpath_locally(self):
+        l_store = config.LocationStore()
+        l_store._load_from_string('''
+[/home/user/project]
+lfoo = loc-foo/{relpath}
+''')
+        l_store.save()
+        stack = config.LocationStack('/home/user/project/branch')
+        self.assertEquals('loc-foo/branch', stack.get('lfoo', expand=True))
+
+    def test_expand_relpath_unknonw_in_global(self):
+        g_store = config.GlobalStore()
+        g_store._load_from_string('''
+[DEFAULT]
+gfoo = {relpath}
+''')
+        g_store.save()
+        stack = config.LocationStack('/home/user/project/branch')
+        self.assertRaises(errors.ExpandingUnknownOption,
+                          stack.get, 'gfoo', expand=True)
+
+    def test_expand_local_option_locally(self):
+        l_store = config.LocationStore()
+        l_store._load_from_string('''
+[/home/user/project]
+lfoo = loc-foo/{relpath}
+lbar = {gbar}
+''')
+        l_store.save()
+        g_store = config.GlobalStore()
+        g_store._load_from_string('''
+[DEFAULT]
+gfoo = {lfoo}
+gbar = glob-bar
+''')
+        g_store.save()
+        stack = config.LocationStack('/home/user/project/branch')
+        self.assertEquals('glob-bar', stack.get('lbar', expand=True))
+        self.assertEquals('loc-foo/branch', stack.get('gfoo', expand=True))
+
+    def test_locals_dont_leak(self):
+        """Make sure we chose the right local in presence of several sections.
+        """
+        l_store = config.LocationStore()
+        l_store._load_from_string('''
+[/home/user]
+lfoo = loc-foo/{relpath}
+[/home/user/project]
+lfoo = loc-foo/{relpath}
+''')
+        l_store.save()
+        stack = config.LocationStack('/home/user/project/branch')
+        self.assertEquals('loc-foo/branch', stack.get('lfoo', expand=True))
+        stack = config.LocationStack('/home/user/bar/baz')
+        self.assertEquals('loc-foo/bar/baz', stack.get('lfoo', expand=True))
+
+
+
 class TestStackSet(TestStackWithTransport):
 
     def test_simple_set(self):
         conf = self.get_stack(self)
-        conf.store._load_from_string('foo=bar')
-        self.assertEquals('bar', conf.get('foo'))
+        self.assertEquals(None, conf.get('foo'))
         conf.set('foo', 'baz')
         # Did we get it back ?
         self.assertEquals('baz', conf.get('foo'))
@@ -4323,7 +4574,7 @@ class TestAutoUserId(tests.TestCase):
 
     def test_auto_user_id(self):
         """Automatic inference of user name.
-        
+
         This is a bit hard to test in an isolated way, because it depends on
         system functions that go direct to /etc or perhaps somewhere else.
         But it's reasonable to say that on Unix, with an /etc/mailname, we ought
@@ -4339,3 +4590,25 @@ class TestAutoUserId(tests.TestCase):
         else:
             self.assertEquals((None, None), (realname, address))
 
+
+class EmailOptionTests(tests.TestCase):
+
+    def test_default_email_uses_BZR_EMAIL(self):
+        # BZR_EMAIL takes precedence over EMAIL
+        self.overrideEnv('BZR_EMAIL', 'jelmer@samba.org')
+        self.overrideEnv('EMAIL', 'jelmer@apache.org')
+        self.assertEquals('jelmer@samba.org', config.default_email())
+
+    def test_default_email_uses_EMAIL(self):
+        self.overrideEnv('BZR_EMAIL', None)
+        self.overrideEnv('EMAIL', 'jelmer@apache.org')
+        self.assertEquals('jelmer@apache.org', config.default_email())
+
+    def test_BZR_EMAIL_overrides(self):
+        self.overrideEnv('BZR_EMAIL', 'jelmer@apache.org')
+        self.assertEquals('jelmer@apache.org',
+            config.email_from_store('jelmer@debian.org'))
+        self.overrideEnv('BZR_EMAIL', None)
+        self.overrideEnv('EMAIL', 'jelmer@samba.org')
+        self.assertEquals('jelmer@debian.org',
+            config.email_from_store('jelmer@debian.org'))

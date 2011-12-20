@@ -19,6 +19,7 @@
 import os
 
 from bzrlib import tests
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 
 
 class TestPack(tests.TestCaseWithTransport):
@@ -83,3 +84,23 @@ class TestPack(tests.TestCaseWithTransport):
 
         pack_names = transport.list_dir('repository/obsolete_packs')
         self.assertTrue(len(pack_names) == 0)
+
+
+class TestSmartServerPack(tests.TestCaseWithTransport):
+
+    def test_simple_pack(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        t.commit("message")
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['pack', self.get_url('branch')])
+        # This figure represent the amount of HPSS calls to perform this use
+        # case. It is entirely ok to reduce this number if a test fails due to
+        # rpc_count # being too low. If rpc_count increases, more network
+        # roundtrips have become necessary for this use case. Please do not
+        # adjust this number upwards without agreement from bzr's network
+        # support maintainers.
+        self.assertLength(6, self.hpss_calls)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

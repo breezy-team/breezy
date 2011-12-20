@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 import errno
 import os
 import re
@@ -28,6 +30,7 @@ from datetime import datetime
 import getpass
 import ntpath
 import posixpath
+import select
 # We need to import both shutil and rmtree as we export the later on posix
 # and need the former on windows
 import shutil
@@ -62,7 +65,7 @@ from hashlib import (
 
 
 import bzrlib
-from bzrlib import symbol_versioning
+from bzrlib import symbol_versioning, _fs_enc
 
 
 # Cross platform wall-clock time functionality with decent resolution.
@@ -99,14 +102,33 @@ def make_readonly(filename):
     mod = os.lstat(filename).st_mode
     if not stat.S_ISLNK(mod):
         mod = mod & 0777555
-        os.chmod(filename, mod)
+        chmod_if_possible(filename, mod)
 
 
 def make_writable(filename):
     mod = os.lstat(filename).st_mode
     if not stat.S_ISLNK(mod):
         mod = mod | 0200
-        os.chmod(filename, mod)
+        chmod_if_possible(filename, mod)
+
+
+def chmod_if_possible(filename, mode):
+    # Set file mode if that can be safely done.
+    # Sometimes even on unix the filesystem won't allow it - see
+    # https://bugs.launchpad.net/bzr/+bug/606537
+    try:
+        # It is probably faster to just do the chmod, rather than
+        # doing a stat, and then trying to compare
+        os.chmod(filename, mode)
+    except (IOError, OSError),e:
+        # Permission/access denied seems to commonly happen on smbfs; there's
+        # probably no point warning about it.
+        # <https://bugs.launchpad.net/bzr/+bug/606537>
+        if getattr(e, 'errno') in (errno.EPERM, errno.EACCES):
+            trace.mutter("ignore error on chmod of %r: %r" % (
+                filename, e))
+            return
+        raise
 
 
 def minimum_path_selection(paths):
@@ -273,7 +295,6 @@ def fancy_rename(old, new, rename_func, unlink_func):
 # choke on a Unicode string containing a relative path if
 # os.getcwd() returns a non-sys.getdefaultencoding()-encoded
 # string.
-_fs_enc = sys.getfilesystemencoding() or 'utf-8'
 def _posix_abspath(path):
     # jam 20060426 rather than encoding to fsencoding
     # copy posixpath.abspath, but use os.getcwdu instead
@@ -299,6 +320,33 @@ def _posix_normpath(path):
     if path.startswith('//'):
         path = path[1:]
     return path
+
+
+def _posix_path_from_environ(key):
+    """Get unicode path from `key` in environment or None if not present
+
+    Note that posix systems use arbitrary byte strings for filesystem objects,
+    so a path that raises BadFilenameEncoding here may still be accessible.
+    """
+    val = os.environ.get(key, None)
+    if val is None:
+        return val
+    try:
+        return val.decode(_fs_enc)
+    except UnicodeDecodeError:
+        # GZ 2011-12-12:Ideally want to include `key` in the exception message
+        raise errors.BadFilenameEncoding(val, _fs_enc)
+
+
+def _posix_getuser_unicode():
+    """Get username from environment or password database as unicode"""
+    name = getpass.getuser()
+    user_encoding = get_user_encoding()
+    try:
+        return name.decode(user_encoding)
+    except UnicodeDecodeError:
+        raise errors.BzrError("Encoding of username %r is unsupported by %s "
+            "application locale." % (name, user_encoding))
 
 
 def _win32_fixdrive(path):
@@ -395,6 +443,8 @@ abspath = _posix_abspath
 realpath = _posix_realpath
 pathjoin = os.path.join
 normpath = _posix_normpath
+path_from_environ = _posix_path_from_environ
+getuser_unicode = _posix_getuser_unicode
 getcwd = os.getcwdu
 rename = os.rename
 dirname = os.path.dirname
@@ -456,6 +506,8 @@ if sys.platform == 'win32':
     f = win32utils.get_unicode_argv     # special function or None
     if f is not None:
         get_unicode_argv = f
+    path_from_environ = win32utils.get_environ_unicode
+    getuser_unicode = win32utils.get_user_name
 
 elif sys.platform == 'darwin':
     getcwd = _mac_getcwd
@@ -1751,7 +1803,6 @@ def _walkdirs_utf8(top, prefix=""):
     """
     global _selected_dir_reader
     if _selected_dir_reader is None:
-        fs_encoding = _fs_enc.upper()
         if sys.platform == "win32" and win32utils.winver == 'Windows NT':
             # Win98 doesn't have unicode apis like FindFirstFileW
             # TODO: We possibly could support Win98 by falling back to the
@@ -1763,8 +1814,7 @@ def _walkdirs_utf8(top, prefix=""):
                 _selected_dir_reader = Win32ReadDir()
             except ImportError:
                 pass
-        elif fs_encoding in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
-            # ANSI_X3.4-1968 is a form of ASCII
+        elif _fs_enc in ('utf-8', 'ascii'):
             try:
                 from bzrlib._readdir_pyx import UTF8DirReader
                 _selected_dir_reader = UTF8DirReader()
@@ -2005,6 +2055,28 @@ def get_user_encoding(use_cache=True):
 def get_diff_header_encoding():
     return get_terminal_encoding()
 
+
+_message_encoding = None
+
+
+def get_message_encoding():
+    """Return the encoding used for messages
+
+    While the message encoding is a general setting it should usually only be
+    needed for decoding system error strings such as from OSError instances.
+    """
+    global _message_encoding
+    if _message_encoding is None:
+        if os.name == "posix":
+            import locale
+            # This is a process-global setting that can change, but should in
+            # general just get set once at process startup then be constant.
+            _message_encoding = locale.getlocale(locale.LC_MESSAGES)[1]
+        else:
+            # On windows want the result of GetACP() which this boils down to.
+            _message_encoding = get_user_encoding()
+    return _message_encoding or "ascii"
+        
 
 def get_host_name():
     """Return the current unicode host name.
@@ -2255,13 +2327,13 @@ def re_compile_checked(re_string, flags=0, where=""):
 
 
 if sys.platform == "win32":
-    import msvcrt
     def getchar():
+        import msvcrt
         return msvcrt.getch()
 else:
-    import tty
-    import termios
     def getchar():
+        import tty
+        import termios
         fd = sys.stdin.fileno()
         settings = termios.tcgetattr(fd)
         try:
@@ -2316,14 +2388,15 @@ def local_concurrency(use_cache=True):
     if concurrency is None:
         try:
             import multiprocessing
-        except ImportError:
+            concurrency = multiprocessing.cpu_count()
+        except (ImportError, NotImplementedError):
             # multiprocessing is only available on Python >= 2.6
+            # and multiprocessing.cpu_count() isn't implemented on all
+            # platforms
             try:
                 concurrency = _local_concurrency()
             except (OSError, IOError):
                 pass
-        else:
-            concurrency = multiprocessing.cpu_count()
     try:
         concurrency = int(concurrency)
     except (TypeError, ValueError):
@@ -2389,30 +2462,6 @@ if sys.platform == 'win32':
         return os.fdopen(os.open(filename, flags), mode, bufsize)
 else:
     open_file = open
-
-
-def getuser_unicode():
-    """Return the username as unicode.
-    """
-    try:
-        user_encoding = get_user_encoding()
-        username = getpass.getuser().decode(user_encoding)
-    except UnicodeDecodeError:
-        raise errors.BzrError("Can't decode username as %s." % \
-                user_encoding)
-    except ImportError, e:
-        if sys.platform != 'win32':
-            raise
-        if str(e) != 'No module named pwd':
-            raise
-        # https://bugs.launchpad.net/bzr/+bug/660174
-        # getpass.getuser() is unable to return username on Windows
-        # if there is no USERNAME environment variable set.
-        # That could be true if bzr is running as a service,
-        # e.g. running `bzr serve` as a service on Windows.
-        # We should not fail with traceback in this case.
-        username = u'UNKNOWN'
-    return username
 
 
 def available_backup_name(base, exists):
@@ -2517,3 +2566,31 @@ def fdatasync(fileno):
     fn = getattr(os, 'fdatasync', getattr(os, 'fsync', None))
     if fn is not None:
         fn(fileno)
+
+
+def ensure_empty_directory_exists(path, exception_class):
+    """Make sure a local directory exists and is empty.
+    
+    If it does not exist, it is created.  If it exists and is not empty, an
+    instance of exception_class is raised.
+    """
+    try:
+        os.mkdir(path)
+    except OSError, e:
+        if e.errno != errno.EEXIST:
+            raise
+        if os.listdir(path) != []:
+            raise exception_class(path)
+
+
+def is_environment_error(evalue):
+    """True if exception instance is due to a process environment issue
+
+    This includes OSError and IOError, but also other errors that come from
+    the operating system or core libraries but are not subclasses of those.
+    """
+    if isinstance(evalue, (EnvironmentError, select.error)):
+        return True
+    if sys.platform == "win32" and win32utils._is_pywintypes_error(evalue):
+        return True
+    return False
