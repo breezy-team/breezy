@@ -495,7 +495,7 @@ class Merger(object):
                 raise errors.NoCommits(self.other_branch)
         if self.other_rev_id is not None:
             self._cached_trees[self.other_rev_id] = self.other_tree
-        self._maybe_fetch(self.other_branch,self.this_branch, self.other_basis)
+        self._maybe_fetch(self.other_branch, self.this_branch, self.other_basis)
 
     def set_other_revision(self, revision_id, other_branch):
         """Set 'other' based on a branch and revision id
