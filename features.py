@@ -15,12 +15,13 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 """'Features' which are used to skip tests."""
 
-from bzrlib import tests
+from __future__ import absolute_import
+
 try:
     from bzrlib.tests.features import Feature
 except ImportError: # bzr < 2.5
     from bzrlib.tests import Feature
-from termcolor import allow_color
+from bzrlib.plugins.grep.termcolor import allow_color
 
 class _ColorFeature(Feature):
 

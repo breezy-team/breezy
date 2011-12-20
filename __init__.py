@@ -16,9 +16,11 @@
 
 """Print lines matching PATTERN for specified files and revisions."""
 
+from __future__ import absolute_import
+
 from bzrlib.commands import plugin_cmds
 
-import version
+from bzrlib.plugins.grep import version
 
 version_info = version.version_info
 

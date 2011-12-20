@@ -14,14 +14,21 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from __future__ import absolute_import
+
 import os
 import re
 import unicodedata as ud
 
-import features
-from termcolor import color_string, FG
+from bzrlib.plugins.grep import features
+from bzrlib.plugins.grep.termcolor import color_string, FG
 
 from bzrlib import tests, osutils
+
+try:
+    from bzrlib.tests.features import UnicodeFilenameFeature
+except ImportError: # bzr < 2.4
+    from bzrlib.tests import UnicodeFilenameFeature
 
 # NOTE: As bzr-grep optimizes PATTERN search to -F/--fixed-string
 # for patterns that are not alphanumeric+whitespace, we test grep
@@ -1945,7 +1952,7 @@ class TestGrep(GrepTestBase):
 class TestNonAscii(GrepTestBase):
     """Tests for non-ascii filenames and file contents"""
 
-    _test_needs_features = [tests.UnicodeFilenameFeature]
+    _test_needs_features = [UnicodeFilenameFeature]
 
     def test_unicode_only_file(self):
         """Test filename and contents that requires a unicode encoding"""

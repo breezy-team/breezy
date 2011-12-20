@@ -16,6 +16,8 @@
 
 """Print lines matching PATTERN for specified files and revisions."""
 
+from __future__ import absolute_import
+
 from bzrlib import errors
 from bzrlib.commands import Command, display_command
 from bzrlib.option import Option, ListOption

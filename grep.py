@@ -14,7 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os
+from __future__ import absolute_import
+
 import sys
 
 from bzrlib.lazy_import import lazy_import
@@ -23,7 +24,7 @@ from fnmatch import fnmatch
 import re
 from cStringIO import StringIO
 
-from termcolor import color_string, re_color_string, FG
+from bzrlib.plugins.grep.termcolor import color_string, re_color_string, FG
 
 from bzrlib.workingtree import WorkingTree
 from bzrlib.revision import Revision
