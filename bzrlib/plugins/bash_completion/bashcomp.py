@@ -28,6 +28,7 @@ from bzrlib import (
 )
 import bzrlib
 import re
+import sys
 
 
 class BashCodeGen(object):
@@ -432,7 +433,6 @@ class cmd_bash_completion(commands.Command):
         ]
 
     def run(self, **kwargs):
-        import sys
         if 'plugin' in kwargs:
             # work around bug #387117 which prevents us from using param_name
             if len(kwargs['plugin']) > 0:
@@ -443,7 +443,6 @@ class cmd_bash_completion(commands.Command):
 
 if __name__ == '__main__':
 
-    import sys
     import locale
     import optparse
 
