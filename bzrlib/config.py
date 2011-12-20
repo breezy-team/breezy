@@ -2737,7 +2737,12 @@ If true (default), repository changes are flushed through the OS buffers
 to physical disk.  This is somewhat slower, but means data should not be
 lost if the machine crashes.  See also dirstate.fdatasync.
 '''))
-
+option_registry.register_lazy('smtp_server',
+    'bzrlib.smtp_connection', 'smtp_server')
+option_registry.register_lazy('smtp_password',
+    'bzrlib.smtp_connection', 'smtp_password')
+option_registry.register_lazy('smtp_username',
+    'bzrlib.smtp_connection', 'smtp_username')
 option_registry.register(
     Option('selftest.timeout',
         default='600',
