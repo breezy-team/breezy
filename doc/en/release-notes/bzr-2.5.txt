@@ -67,6 +67,8 @@ Bug Fixes
 * Properly ignore '\n' in an option reference since this cannot be part of a
   config option identifier. (Vincent Ladeuil, #902125)
 
+* Rename a non-empty directory with a non-ASCII name (Rory Yorke, #185211)
+
 * Report mistake trying to move a removed file with a non-ascii name without
   UnicodeEncodeError being raised. (Martin Packman, #898541)
 
