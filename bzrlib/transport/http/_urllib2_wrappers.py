@@ -55,7 +55,6 @@ import urllib
 import urllib2
 import urlparse
 import re
-import ssl
 import sys
 import time
 
@@ -64,11 +63,15 @@ from bzrlib import (
     config,
     debug,
     errors,
+    lazy_import,
     osutils,
     trace,
     transport,
     urlutils,
     )
+lazy_import.lazy_import(globals(), """
+import ssl
+""")
 
 
 checked_kerberos = False
@@ -389,12 +392,18 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
             self.connect_to_origin()
 
     def connect_to_origin(self):
-        global_config = config.GlobalStack()
-        ca_certs = global_config.get('ssl.ca_certs')
+        # FIXME JRV 2011-12-18: Use location config here?
+        config_stack = config.GlobalStack()
+        ca_certs = config_stack.get('ssl.ca_certs')
+        cert_reqs = config_stack.get('ssl.cert_reqs')
+        if cert_reqs == "none":
+            trace.warning("not checking SSL certificates for %s: %d",
+                self.host, self.port)
         ssl_sock = ssl.wrap_socket(self.sock, self.key_file, self.cert_file,
-            cert_reqs=ssl.CERT_REQUIRED,
-            ca_certs=ca_certs)
-        match_hostname(ssl_sock.getpeercert(), self.host)
+            cert_reqs=cert_reqs, ca_certs=ca_certs)
+        peer_cert = ssl_sock.getpeercert()
+        if cert_reqs == "required" or peer_cert:
+            match_hostname(peer_cert, self.host)
 
         # Wrap the ssl socket before anybody use it
         self._wrap_socket_for_reporting(ssl_sock)
