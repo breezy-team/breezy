@@ -274,24 +274,6 @@ class MergeFileHookParams(object):
         return self._merger.get_lines(self._merger.other_tree, self.file_id)
 
 
-class PreMergeHookParams(object):
-    """Object holding parameters passed to the `pre_merge` hook.
-
-    """
-
-    def __init__(self):
-        """Create a PreMergeHookParams object.
-
-        """
-
-    def __eq__(self, other):
-        return self.__dict__ == other.__dict__
-
-    def __repr__(self):
-        return "<%s>" % (
-            self.__class__.__name__)
-
-
 class Merger(object):
 
     hooks = MergeHooks()
