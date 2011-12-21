@@ -1251,8 +1251,16 @@ class cmd_push(Command):
         if location is None:
             stored_loc = br_from.get_push_location()
             if stored_loc is None:
-                raise errors.BzrCommandError(gettext(
-                    "No push location known or specified."))
+                parent_loc = br_from.get_parent()
+                if parent_loc:
+                    raise errors.BzrCommandError(gettext(
+                        "No push location known or specified. To push to the "
+                        "parent branch (at %s), use 'bzr push :parent'." %
+                        urlutils.unescape_for_display(parent_loc,
+                            self.outf.encoding)))
+                else:
+                    raise errors.BzrCommandError(gettext(
+                        "No push location known or specified."))
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
