@@ -57,9 +57,8 @@ All paths are absolute.
 ''')
 
 
-po_dirs_option = config.Option(
+po_dirs_option = config.ListOption(
         'po_merge.po_dirs', default='po,debian/po',
-        from_unicode=config.list_from_store,
         help='List of dirs containing .po files that the hook applies to.')
 
 
