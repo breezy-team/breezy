@@ -1169,17 +1169,17 @@ class Branch(controldir.ControlComponent):
     def _set_config_location(self, name, url, config=None,
                              make_relative=False):
         if config is None:
-            config = self.get_config()
+            config = self.get_config_stack()
         if url is None:
             url = ''
         elif make_relative:
             url = urlutils.relative_url(self.base, url)
-        config.set_user_option(name, url, warn_masked=True)
+        config.set(name, url)
 
     def _get_config_location(self, name, config=None):
         if config is None:
-            config = self.get_config()
-        location = config.get_user_option(name)
+            config = self.get_config_stack()
+        location = config.get(name)
         if location == '':
             location = None
         return location
@@ -2967,28 +2967,27 @@ class BzrBranch8(BzrBranch):
         """See Branch.set_push_location."""
         self._master_branch_cache = None
         result = None
-        config = self.get_config()
+        conf = self.get_config_stack()
         if location is None:
-            if config.get_user_option('bound') != 'True':
+            if not conf.get('bound'):
                 return False
             else:
-                config.set_user_option('bound', 'False', warn_masked=True)
+                conf.set('bound', 'False')
                 return True
         else:
             self._set_config_location('bound_location', location,
-                                      config=config)
-            config.set_user_option('bound', 'True', warn_masked=True)
+                                      config=conf)
+            conf.set('bound', 'True')
         return True
 
     def _get_bound_location(self, bound):
         """Return the bound location in the config file.
 
         Return None if the bound parameter does not match"""
-        config = self.get_config()
-        config_bound = (config.get_user_option('bound') == 'True')
-        if config_bound != bound:
+        conf = self.get_config_stack()
+        if conf.get('bound') != bound:
             return None
-        return self._get_config_location('bound_location', config=config)
+        return self._get_config_location('bound_location', config=conf)
 
     def get_bound_location(self):
         """See Branch.set_push_location."""
@@ -3004,9 +3003,9 @@ class BzrBranch8(BzrBranch):
         ## self._check_stackable_repo()
         # stacked_on_location is only ever defined in branch.conf, so don't
         # waste effort reading the whole stack of config files.
-        config = self.get_config()._get_branch_data_config()
+        conf = _mod_config.BranchOnlyStack(self)
         stacked_url = self._get_config_location('stacked_on_location',
-            config=config)
+                                                config=conf)
         if stacked_url is None:
             raise errors.NotStacked(self)
         return stacked_url

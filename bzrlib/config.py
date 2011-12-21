@@ -2468,7 +2468,7 @@ def int_from_store(unicode_str):
     return int(unicode_str)
 
 
-_unit_sfxs = dict(K=10**3, M=10**6, G=10**9)
+_unit_suffixes = dict(K=10**3, M=10**6, G=10**9)
 
 def int_SI_from_store(unicode_str):
     """Convert a human readable size in SI units, e.g 10MB into an integer.
@@ -2480,7 +2480,7 @@ def int_SI_from_store(unicode_str):
     :return Integer, expanded to its base-10 value if a proper SI unit is 
         found, None otherwise.
     """
-    regexp = "^(\d+)(([" + ''.join(_unit_sfxs) + "])b?)?$"
+    regexp = "^(\d+)(([" + ''.join(_unit_suffixes) + "])b?)?$"
     p = re.compile(regexp, re.IGNORECASE)
     m = p.match(unicode_str)
     val = None
@@ -2489,7 +2489,7 @@ def int_SI_from_store(unicode_str):
         val = int(val)
         if unit:
             try:
-                coeff = _unit_sfxs[unit.upper()]
+                coeff = _unit_suffixes[unit.upper()]
             except KeyError:
                 raise ValueError(gettext('{0} is not an SI unit.').format(unit))
             val *= coeff
@@ -2520,14 +2520,14 @@ class ListOption(Option):
             from_unicode=self.from_unicode, help=help,
             invalid=invalid, unquote=False)
 
-    def from_unicode(self, unicode_value):
-        if not isinstance(unicode_value, basestring):
+    def from_unicode(self, unicode_str):
+        if not isinstance(unicode_str, basestring):
             raise TypeError
         # Now inject our string directly as unicode. All callers got their
         # value from configobj, so values that need to be quoted are already
         # properly quoted.
         _list_converter_config.reset()
-        _list_converter_config._parse([u"list=%s" % (unicode_value,)])
+        _list_converter_config._parse([u"list=%s" % (unicode_str,)])
         maybe_list = _list_converter_config['list']
         if isinstance(maybe_list, basestring):
             if maybe_list:
@@ -2611,6 +2611,27 @@ Files below this size are added automatically when using ``bzr add`` without
 arguments.
 
 A negative value means disable the size check.
+"""))
+option_registry.register(
+    Option('bound',
+           default=None, from_unicode=bool_from_store,
+           help="""\
+Is the branch bound to ``bound_location``.
+
+If set to "True", the branch should act as a checkout, and push each commit to
+the bound_location.  This option is normally set by ``bind``/``unbind``.
+
+See also: bound_location.
+"""))
+option_registry.register(
+    Option('bound_location',
+           default=None,
+           help="""\
+The location that commits should go to when acting as a checkout.
+
+This option is normally set by ``bind``.
+
+See also: bound.
 """))
 option_registry.register(
     Option('bzr.workingtree.worth_saving_limit', default=10,
@@ -2732,6 +2753,15 @@ option_registry.register(
            help= 'Unicode encoding for output'
            ' (terminal encoding if not specified).'))
 option_registry.register(
+    Option('parent_location',
+           default=None,
+           help="""\
+The location of the default branch for pull or merge.
+
+This option is normally set when creating a branch, the first ``pull`` or by
+``pull --remember``.
+"""))
+option_registry.register(
     Option('post_commit', default=None,
            help='''\
 Post commit functions.
@@ -2740,6 +2770,23 @@ An ordered list of python functions to call, separated by spaces.
 
 Each function takes branch, rev_id as parameters.
 '''))
+option_registry.register(
+    Option('public_branch',
+           default=None,
+           help="""\
+A publically-accessible version of this branch.
+
+This implies that the branch setting this option is not publically-accessible.
+Used and set by ``bzr send``.
+"""))
+option_registry.register(
+    Option('push_location',
+           default=None,
+           help="""\
+The location of the default branch for push.
+
+This option is normally set by the first ``push`` or ``push --remember``.
+"""))
 option_registry.register(
     Option('push_strict', default=None,
            from_unicode=bool_from_store,
@@ -2779,7 +2826,7 @@ option_registry.register(
 The default value for ``send --strict``.
 
 If present, defines the ``--strict`` option default value for checking
-uncommitted changes before pushing.
+uncommitted changes before sending a bundle.
 '''))
 
 option_registry.register(
@@ -2787,6 +2834,19 @@ option_registry.register(
            default=300.0, from_unicode=float_from_store,
            help="If we wait for a new request from a client for more than"
                 " X seconds, consider the client idle, and hangup."))
+option_registry.register(
+    Option('stacked_on_location',
+           default=None,
+           help="""The location where this branch is stacked on."""))
+option_registry.register(
+    Option('submit_branch',
+           default=None,
+           help="""\
+The branch you intend to submit your current work to.
+
+This is automatically set by ``bzr send`` and ``bzr merge``, and is also used
+by the ``submit:`` revision spec.
+"""))
 
 
 class Section(object):
@@ -3550,6 +3610,29 @@ class Stack(object):
         return []
 
 
+class MemoryStack(Stack):
+    """A configuration stack defined from a string.
+
+    This is mainly intended for tests and requires no disk resources.
+    """
+
+    def __init__(self, content=None):
+        """Create an in-memory stack from a given content.
+
+        It uses a single store based on configobj and support reading and
+        writing options.
+
+        :param content: The initial content of the store. If None, the store is
+            not loaded and ``_load_from_string`` can and should be used if
+            needed.
+        """
+        store = IniFileStore()
+        if content is not None:
+            store._load_from_string(content)
+        super(MemoryStack, self).__init__(
+            [store.get_sections], store)
+
+
 class _CompatibleStack(Stack):
     """Place holder for compatibility with previous design.
 
@@ -3682,16 +3765,16 @@ class RemoteControlStack(_CompatibleStack):
         self.bzrdir = bzrdir
 
 
-class RemoteBranchStack(_CompatibleStack):
-    """Remote branch-only options stack."""
+class BranchOnlyStack(_CompatibleStack):
+    """Branch-only options stack."""
 
-    # FIXME 2011-11-22 JRV This should probably be renamed to avoid confusion
-    # with the stack used for remote branches. RemoteBranchStack only uses
-    # branch.conf and is used only for the stack options.
+    # FIXME: _BranchOnlyStack only uses branch.conf and is used only for the
+    # stacked_on_location options waiting for http://pad.lv/832042 to be fixed.
+    # -- vila 2011-12-16
 
     def __init__(self, branch):
         bstore = branch._get_config_store()
-        super(RemoteBranchStack, self).__init__(
+        super(BranchOnlyStack, self).__init__(
             [NameMatcher(bstore, None).get_sections],
             bstore)
         self.branch = branch

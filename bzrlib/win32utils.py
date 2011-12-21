@@ -372,7 +372,7 @@ def get_host_name():
     return get_environ_unicode('COMPUTERNAME')
 
 
-@symbol_versioning.deprecated_method(
+@symbol_versioning.deprecated_function(
     symbol_versioning.deprecated_in((2, 5, 0)))
 def _ensure_unicode(s):
     if s and type(s) != unicode:
@@ -381,16 +381,16 @@ def _ensure_unicode(s):
     return s
 
 
-get_appdata_location_unicode = symbol_versioning.deprecated_method(
+get_appdata_location_unicode = symbol_versioning.deprecated_function(
     symbol_versioning.deprecated_in((2, 5, 0)))(get_appdata_location)
 
-get_home_location_unicode = symbol_versioning.deprecated_method(
+get_home_location_unicode = symbol_versioning.deprecated_function(
     symbol_versioning.deprecated_in((2, 5, 0)))(get_home_location)
 
-get_user_name_unicode = symbol_versioning.deprecated_method(
+get_user_name_unicode = symbol_versioning.deprecated_function(
     symbol_versioning.deprecated_in((2, 5, 0)))(get_user_name)
 
-get_host_name_unicode = symbol_versioning.deprecated_method(
+get_host_name_unicode = symbol_versioning.deprecated_function(
     symbol_versioning.deprecated_in((2, 5, 0)))(get_host_name)
 
 
@@ -594,8 +594,9 @@ else:
 
         Fallback version that should basically never be needed.
         """
+        from bzrlib import osutils
         try:
-            return os.environ[key].decode("mbcs")
+            return os.environ[key].decode(osutils.get_user_encoding())
         except KeyError:
             return default
 
