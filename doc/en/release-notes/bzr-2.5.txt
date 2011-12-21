@@ -142,6 +142,10 @@ Testing
 * New matcher ``ContainsNoVfsCalls`` which filters a list of HPSS
   calls for VFS requests. (Jelmer Vernooij)
 
+* New ``MemoryStack`` class allows for diskless tests and locally injected
+  configuration stacks.  Lower level tests for predefined set of options can
+  be written without setting up configuration files. (Vincent Ladeuil)
+
 
 bzr 2.5b4
 #########
