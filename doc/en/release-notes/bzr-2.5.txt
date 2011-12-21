@@ -46,6 +46,9 @@ Improvements
   will mean bzr works with non-ascii files when no locale or an incorrect
   locale is set. (Martin Packman, #794353)
 
+* ``bzr branches`` now indicates the active colocated branch.
+  (Jelmer Vernooij, #891667)
+
 * ``bzr send`` now only opens a single connection, rather than two,
   to the target branch.  (Jelmer Vernooij)
 
