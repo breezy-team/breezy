@@ -1438,16 +1438,24 @@ class cmd_branches(Command):
             except errors.NotBranchError:
                 active_branch = None
             branches = dir.get_branches()
-            for name in sorted(branches.keys()):
-                branch = branches[name]
+            names = {}
+            for name, branch in branches.iteritems():
                 if name is None:
-                    name = gettext("(default)")
-                if (active_branch is not None and
-                    active_branch.base == branch.base):
+                    continue
+                active = (active_branch is not None and
+                          active_branch.base == branch.base)
+                names[name] = active
+            # Only mention the current branch explicitly if it's not
+            # one of the colocated branches
+            if not any(names.values()) and active_branch is not None:
+                self.outf.write("* %s\n" % gettext("(default)"))
+            for name in sorted(names.keys()):
+                active = names[name]
+                if active:
                     prefix = "*"
                 else:
                     prefix = " "
-                self.outf.write("%s%s\n" % (
+                self.outf.write("%s %s\n" % (
                     prefix, name.encode(self.outf.encoding)))
 
 
