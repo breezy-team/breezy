@@ -1180,9 +1180,7 @@ class Branch(controldir.ControlComponent):
         if config is None:
             config = self.get_config_stack()
         location = config.get(name)
-        # FIXME: There is a glitch around quoting/unquoting in config stores:
-        # an empty string can be seen as '""' instead of '' -- vila 2011-12-20
-        if location in ('', '""') :
+        if location == '':
             location = None
         return location
 
