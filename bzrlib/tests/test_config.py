@@ -2358,14 +2358,14 @@ class TestOption(tests.TestCase):
 class TestOptionConverterMixin(object):
 
     def assertConverted(self, expected, opt, value):
-        self.assertEquals(expected, opt.convert_from_unicode(value))
+        self.assertEquals(expected, opt.convert_from_unicode(None, value))
 
     def assertWarns(self, opt, value):
         warnings = []
         def warning(*args):
             warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
-        self.assertEquals(None, opt.convert_from_unicode(value))
+        self.assertEquals(None, opt.convert_from_unicode(None, value))
         self.assertLength(1, warnings)
         self.assertEquals(
             'Value "%s" is not valid for "%s"' % (value, opt.name),
@@ -2373,11 +2373,11 @@ class TestOptionConverterMixin(object):
 
     def assertErrors(self, opt, value):
         self.assertRaises(errors.ConfigOptionValueError,
-                          opt.convert_from_unicode, value)
+                          opt.convert_from_unicode, None, value)
 
     def assertConvertInvalid(self, opt, invalid_value):
         opt.invalid = None
-        self.assertEquals(None, opt.convert_from_unicode(invalid_value))
+        self.assertEquals(None, opt.convert_from_unicode(None, invalid_value))
         opt.invalid = 'warning'
         self.assertWarns(opt, invalid_value)
         opt.invalid = 'error'
@@ -2422,105 +2422,10 @@ class TestOptionWithIntegerConverter(tests.TestCase, TestOptionConverterMixin):
         self.assertConverted(16, opt, u'16')
 
 
-class TestOptionWithListConverter(tests.TestCase, TestOptionConverterMixin):
+class TestListOption(tests.TestCase, TestOptionConverterMixin):
 
     def get_option(self):
-        return config.Option('foo', help='A list.',
-                             from_unicode=config.list_from_store)
-
-    def test_convert_invalid(self):
-        # No string is invalid as all forms can be converted to a list
-        pass
-
-    def test_convert_valid(self):
-        opt = self.get_option()
-        # An empty string is an empty list
-        self.assertConverted([], opt, '') # Using a bare str() just in case
-        self.assertConverted([], opt, u'')
-        # A boolean
-        self.assertConverted([u'True'], opt, u'True')
-        # An integer
-        self.assertConverted([u'42'], opt, u'42')
-        # A single string
-        self.assertConverted([u'bar'], opt, u'bar')
-        # A list remains a list (configObj will turn a string containing commas
-        # into a list, but that's not what we're testing here)
-        self.assertConverted([u'foo', u'1', u'True'],
-                             opt, [u'foo', u'1', u'True'])
-
-
-class TestOptionConverterMixin(object):
-
-    def assertConverted(self, expected, opt, value):
-        self.assertEquals(expected, opt.convert_from_unicode(value))
-
-    def assertWarns(self, opt, value):
-        warnings = []
-        def warning(*args):
-            warnings.append(args[0] % args[1:])
-        self.overrideAttr(trace, 'warning', warning)
-        self.assertEquals(None, opt.convert_from_unicode(value))
-        self.assertLength(1, warnings)
-        self.assertEquals(
-            'Value "%s" is not valid for "%s"' % (value, opt.name),
-            warnings[0])
-
-    def assertErrors(self, opt, value):
-        self.assertRaises(errors.ConfigOptionValueError,
-                          opt.convert_from_unicode, value)
-
-    def assertConvertInvalid(self, opt, invalid_value):
-        opt.invalid = None
-        self.assertEquals(None, opt.convert_from_unicode(invalid_value))
-        opt.invalid = 'warning'
-        self.assertWarns(opt, invalid_value)
-        opt.invalid = 'error'
-        self.assertErrors(opt, invalid_value)
-
-
-class TestOptionWithBooleanConverter(tests.TestCase, TestOptionConverterMixin):
-
-    def get_option(self):
-        return config.Option('foo', help='A boolean.',
-                             from_unicode=config.bool_from_store)
-
-    def test_convert_invalid(self):
-        opt = self.get_option()
-        # A string that is not recognized as a boolean
-        self.assertConvertInvalid(opt, u'invalid-boolean')
-        # A list of strings is never recognized as a boolean
-        self.assertConvertInvalid(opt, [u'not', u'a', u'boolean'])
-
-    def test_convert_valid(self):
-        opt = self.get_option()
-        self.assertConverted(True, opt, u'True')
-        self.assertConverted(True, opt, u'1')
-        self.assertConverted(False, opt, u'False')
-
-
-class TestOptionWithIntegerConverter(tests.TestCase, TestOptionConverterMixin):
-
-    def get_option(self):
-        return config.Option('foo', help='An integer.',
-                             from_unicode=config.int_from_store)
-
-    def test_convert_invalid(self):
-        opt = self.get_option()
-        # A string that is not recognized as an integer
-        self.assertConvertInvalid(opt, u'forty-two')
-        # A list of strings is never recognized as an integer
-        self.assertConvertInvalid(opt, [u'a', u'list'])
-
-    def test_convert_valid(self):
-        opt = self.get_option()
-        self.assertConverted(16, opt, u'16')
-
-
-class TestOptionWithListConverter(tests.TestCase, TestOptionConverterMixin):
-
-    def get_option(self):
-        return config.Option('foo', help='A list.',
-                             from_unicode=config.list_from_store)
+        return config.ListOption('foo', help='A list.')
 
     def test_convert_invalid(self):
         opt = self.get_option()
@@ -2676,6 +2581,7 @@ class TestCommandLineStore(tests.TestCase):
     def setUp(self):
         super(TestCommandLineStore, self).setUp()
         self.store = config.CommandLineStore()
+        self.overrideAttr(config, 'option_registry', config.OptionRegistry())
 
     def get_section(self):
         """Get the unique section for the command line overrides."""
@@ -2696,12 +2602,15 @@ class TestCommandLineStore(tests.TestCase):
         self.assertEqual('b', section.get('a'))
 
     def test_list_override(self):
+        opt = config.ListOption('l')
+        config.option_registry.register(opt)
         self.store._from_cmdline(['l=1,2,3'])
         val = self.get_section().get('l')
         self.assertEqual('1,2,3', val)
         # Reminder: lists should be registered as such explicitely, otherwise
         # the conversion needs to be done afterwards.
-        self.assertEqual(['1', '2', '3'], config.list_from_store(val))
+        self.assertEqual(['1', '2', '3'],
+                         opt.convert_from_unicode(self.store, val))
 
     def test_multiple_overrides(self):
         self.store._from_cmdline(['a=b', 'x=y'])
@@ -2970,6 +2879,25 @@ class TestMutableStore(TestStore):
         store.save()
         self.assertLength(1, calls)
         self.assertEquals((store,), calls[0])
+
+
+class TestQuotingIniFileStore(tests.TestCaseWithTransport):
+
+    def get_store(self):
+        return config.TransportIniFileStore(self.get_transport(), 'foo.conf')
+
+    def test_get_quoted_string(self):
+        store = self.get_store()
+        store._load_from_string('foo= " abc "')
+        stack = config.Stack([store.get_sections])
+        self.assertEquals(' abc ', stack.get('foo'))
+
+    def test_set_quoted_string(self):
+        store = self.get_store()
+        stack = config.Stack([store.get_sections], store)
+        stack.set('foo', ' a b c ')
+        store.save()
+        self.assertFileEqual('foo = " a b c "\n', 'foo.conf')
 
 
 class TestTransportIniFileStore(TestStore):
@@ -3485,9 +3413,8 @@ class TestStackGetWithConverter(tests.TestCaseWithTransport):
         self.assertEquals(12, self.conf.get('foo'))
 
     def register_list_option(self, name, default=None, default_from_env=None):
-        l = config.Option(name, help='A list.',
-                          default=default, default_from_env=default_from_env,
-                          from_unicode=config.list_from_store)
+        l = config.ListOption(name, help='A list.', default=default,
+                              default_from_env=default_from_env)
         self.registry.register(l)
 
     def test_get_default_list_None(self):
@@ -3640,7 +3567,7 @@ baz=end
 list={foo},{bar},{baz}
 ''')
         self.registry.register(
-            config.Option('list', from_unicode=config.list_from_store))
+            config.ListOption('list'))
         self.assertEquals(['start', 'middle', 'end'],
                            self.conf.get('list', expand=True))
 
@@ -3652,7 +3579,7 @@ baz=end
 list={foo}
 ''')
         self.registry.register(
-            config.Option('list', from_unicode=config.list_from_store))
+            config.ListOption('list'))
         self.assertEquals(['start', 'middle', 'end'],
                            self.conf.get('list', expand=True))
 
@@ -3667,8 +3594,7 @@ hidden={start}{middle}{end}
 ''')
         # What matters is what the registration says, the conversion happens
         # only after all expansions have been performed
-        self.registry.register(
-            config.Option('hidden', from_unicode=config.list_from_store))
+        self.registry.register(config.ListOption('hidden'))
         self.assertEquals(['bin', 'go'],
                           self.conf.get('hidden', expand=True))
 

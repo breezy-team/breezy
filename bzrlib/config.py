@@ -2340,7 +2340,8 @@ class Option(object):
     """
 
     def __init__(self, name, default=None, default_from_env=None,
-                 help=None, from_unicode=None, invalid=None):
+                 help=None, from_unicode=None, invalid=None,
+                 unquote=True):
         """Build an option definition.
 
         :param name: the name used to refer to the option.
@@ -2368,6 +2369,11 @@ class Option(object):
             TypeError. Accepted values are: None (ignore invalid values),
             'warning' (emit a warning), 'error' (emit an error message and
             terminates).
+
+        :param unquote: should the unicode value be unquoted before conversion.
+           This should be used only when the store providing the values cannot
+           safely unquote them (see http://pad.lv/906897). It is provided so
+           daughter classes can handle the quoting themselves.
         """
         if default_from_env is None:
             default_from_env = []
@@ -2394,11 +2400,14 @@ class Option(object):
         self.default_from_env = default_from_env
         self.help = help
         self.from_unicode = from_unicode
+        self.unquote = unquote
         if invalid and invalid not in ('warning', 'error'):
             raise AssertionError("%s not supported for 'invalid'" % (invalid,))
         self.invalid = invalid
 
-    def convert_from_unicode(self, unicode_value):
+    def convert_from_unicode(self, store, unicode_value):
+        if self.unquote and store is not None and unicode_value is not None:
+            unicode_value = store.unquote(unicode_value)
         if self.from_unicode is None or unicode_value is None:
             # Don't convert or nothing to convert
             return unicode_value
@@ -2465,28 +2474,41 @@ _list_converter_config = configobj.ConfigObj(
     {}, encoding='utf-8', list_values=True, interpolation=False)
 
 
-def list_from_store(unicode_str):
-    if not isinstance(unicode_str, basestring):
-        raise TypeError
-    # Now inject our string directly as unicode. All callers got their value
-    # from configobj, so values that need to be quoted are already properly
-    # quoted.
-    _list_converter_config.reset()
-    _list_converter_config._parse([u"list=%s" % (unicode_str,)])
-    maybe_list = _list_converter_config['list']
-    # ConfigObj return '' instead of u''. Use 'str' below to catch all cases.
-    if isinstance(maybe_list, basestring):
-        if maybe_list:
-            # A single value, most probably the user forgot (or didn't care to
-            # add) the final ','
-            l = [maybe_list]
+class ListOption(Option):
+
+    def __init__(self, name, default=None, default_from_env=None,
+                 help=None, invalid=None):
+        """A list Option definition.
+
+        This overrides the base class so the conversion from a unicode string
+        can take quoting into account.
+        """
+        super(ListOption, self).__init__(
+            name, default=default, default_from_env=default_from_env,
+            from_unicode=self.from_unicode, help=help,
+            invalid=invalid, unquote=False)
+
+    def from_unicode(self, unicode_value):
+        if not isinstance(unicode_value, basestring):
+            raise TypeError
+        # Now inject our string directly as unicode. All callers got their
+        # value from configobj, so values that need to be quoted are already
+        # properly quoted.
+        _list_converter_config.reset()
+        _list_converter_config._parse([u"list=%s" % (unicode_value,)])
+        maybe_list = _list_converter_config['list']
+        if isinstance(maybe_list, basestring):
+            if maybe_list:
+                # A single value, most probably the user forgot (or didn't care
+                # to add) the final ','
+                l = [maybe_list]
+            else:
+                # The empty string, convert to empty list
+                l = []
         else:
-            # The empty string, convert to empty list
-            l = []
-    else:
-        # We rely on ConfigObj providing us with a list already
-        l = maybe_list
-    return l
+            # We rely on ConfigObj providing us with a list already
+            l = maybe_list
+        return l
 
 
 class OptionRegistry(registry.Registry):
@@ -2542,8 +2564,8 @@ If this is set to true, then it is not possible to change the
 existing mainline of the branch.
 '''))
 option_registry.register(
-    Option('acceptable_keys',
-           default=None, from_unicode=list_from_store,
+    ListOption('acceptable_keys',
+           default=None,
            help="""\
 List of GPG key patterns which are acceptable for verification.
 """))
@@ -2593,7 +2615,7 @@ OS buffers to physical disk.  This is somewhat slower, but means data
 should not be lost if the machine crashes.  See also repository.fdatasync.
 '''))
 option_registry.register(
-    Option('debug_flags', default=[], from_unicode=list_from_store,
+    ListOption('debug_flags', default=[],
            help='Debug flags to activate.'))
 option_registry.register(
     Option('default_format', default='2a',
@@ -2803,6 +2825,20 @@ class Store(object):
         """
         raise NotImplementedError(self.unload)
 
+    def quote(self, value):
+        """Quote a configuration option value for storing purposes.
+
+        This allows Stacks to present values as they will be stored.
+        """
+        return value
+
+    def unquote(self, value):
+        """Unquote a configuration option value into unicode.
+
+        The received value is quoted as stored.
+        """
+        return value
+
     def save(self):
         """Saves the Store to persistent storage."""
         raise NotImplementedError(self.save)
@@ -2974,6 +3010,20 @@ class IniFileStore(Store):
         else:
             section = self._config_obj.setdefault(section_id, {})
         return self.mutable_section_class(section_id, section)
+
+    def quote(self, value):
+        try:
+            # configobj conflates automagical list values and quoting
+            self._config_obj.list_values = True
+            return self._config_obj._quote(value)
+        finally:
+            self._config_obj.list_values = False
+
+    def unquote(self, value):
+        if value:
+            # _unquote doesn't handle None nor empty strings
+            value = self._config_obj._unquote(value)
+        return value
 
 
 class TransportIniFileStore(IniFileStore):
@@ -3309,10 +3359,12 @@ class Stack(object):
         # implies querying the persistent storage) until it can't be avoided
         # anymore by using callables to describe (possibly empty) section
         # lists.
+        found_store = None # Where the option value has been found
         for sections in self.sections_def:
             for store, section in sections():
                 value = section.get(name)
                 if value is not None:
+                    found_store = store
                     break
             if value is not None:
                 break
@@ -3334,8 +3386,10 @@ class Stack(object):
                         trace.warning('Cannot expand "%s":'
                                       ' %s does not support option expansion'
                                       % (name, type(val)))
-                if opt is not None:
-                    val = opt.convert_from_unicode(val)
+                if opt is None:
+                    val = found_store.unquote(val)
+                else:
+                    val = opt.convert_from_unicode(found_store, val)
             return val
         value = expand_and_convert(value)
         if opt is not None and value is None:
@@ -3419,19 +3473,20 @@ class Stack(object):
         or deleting an option. In practice the store will often be loaded but
         this helps catching some programming errors.
         """
-        section = self.store.get_mutable_section(self.mutable_section_id)
-        return section
+        store = self.store
+        section = store.get_mutable_section(self.mutable_section_id)
+        return store, section
 
     def set(self, name, value):
         """Set a new value for the option."""
-        section = self._get_mutable_section()
-        section.set(name, value)
+        store, section = self._get_mutable_section()
+        section.set(name, store.quote(value))
         for hook in ConfigHooks['set']:
             hook(self, name, value)
 
     def remove(self, name):
         """Remove an existing option."""
-        section = self._get_mutable_section()
+        _, section = self._get_mutable_section()
         section.remove(name)
         for hook in ConfigHooks['remove']:
             hook(self, name)
@@ -3593,10 +3648,11 @@ class RemoteBranchStack(_CompatibleStack):
             bstore)
         self.branch = branch
 
+
 # Use a an empty dict to initialize an empty configobj avoiding all
 # parsing and encoding checks
 _quoting_config = configobj.ConfigObj(
-    {}, encoding='utf-8', interpolation=False)
+    {}, encoding='utf-8', interpolation=False, list_values=True)
 
 class cmd_config(commands.Command):
     __doc__ = """Display, set or remove a configuration option.
@@ -3729,6 +3785,13 @@ class cmd_config(commands.Command):
                             self.outf.write('  [%s]\n' % (section.id,))
                             cur_section = section.id
                         value = section.get(oname, expand=False)
+                        # Since we don't use the stack, we need to restore a
+                        # proper quoting.
+                        try:
+                            opt = option_registry.get(oname)
+                            value = opt.convert_from_unicode(store, value)
+                        except KeyError:
+                            value = store.unquote(value)
                         value = _quoting_config._quote(value)
                         self.outf.write('  %s = %s\n' % (oname, value))
 

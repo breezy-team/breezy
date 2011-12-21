@@ -53,6 +53,10 @@ Bug Fixes
 * Allow configuration option default value to be a python callable at
   registration. (Vincent Ladeuil, #832064)
 
+* Configuration stores can now provides a specific quoting mechanism. This
+  is required to workaround ``configobj`` conflating quoting and list values
+  automatic conversion. (Vincent Ladeuil, #906897)
+
 * Create obsolete_packs directory when repacking if it does not
   exist. (Jonathan Riddell, Jelmer Vernooij, #314314)
 

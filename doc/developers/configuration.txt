@@ -128,8 +128,6 @@ achieved with ``Store`` and ``SectionMatcher`` objects.
 Adding a new store
 ------------------
 
-
-
 The following stores are used by ``bzr`` in ways that illustrate various
 uses of sections.
 
@@ -250,6 +248,16 @@ used as examples to define new ones if needed. The associated tests provides a
 basis for new classes which only need to register themselves in the right
 places to inherit from the existing basic tests and add their own specific
 ones.
+
+A ``Store`` defines how option values are stored, this includes:
+
+* defining the sections where the options are grouped,
+
+* defining how the values are quoted/unquoted for storage purposes. Stacks
+  use the unquoted values internally (default value handling and option
+  expansion are simpler this way) and ``bzr config`` quote them when they
+  need to be displayed.
+
 
 Filtering sections
 ------------------
