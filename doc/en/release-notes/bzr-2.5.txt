@@ -64,6 +64,9 @@ Bug Fixes
   user email (obtained from the ``email`` configuration option or its
   default value). (Vincent Ladeuil, Jelmer Vernooij, #904550)
 
+* Prevent spurious InconsistentDelta error when committing a move of a
+  non-ascii directory with contents. (Rory Yorke, #185211)
+
 * Properly ignore '\n' in an option reference since this cannot be part of a
   config option identifier. (Vincent Ladeuil, #902125)
 
