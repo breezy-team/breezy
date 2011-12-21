@@ -128,8 +128,6 @@ achieved with ``Store`` and ``SectionMatcher`` objects.
 Adding a new store
 ------------------
 
-
-
 The following stores are used by ``bzr`` in ways that illustrate various
 uses of sections.
 
@@ -327,3 +325,11 @@ or examples. These classes are the only ones that should be used in code,
 ``Stores`` can be used to build them but shouldn't be used otherwise, ditto
 for sections. Again, the associated tests could and should be used against the
 created stacks.
+
+Also note that ``MemoryStack`` can be used without any disk resources which
+allows for simpler and faster tests. A common pattern is to accept a
+``config`` parameter related to a given feature and test it with predefined
+configurations without involving the whole
+stack. ``bzrlib.tests.test_commit``, ``bzrlib.tests.test_gpg`` and
+``bzrlib.tests.test_smtp_connection`` are good examples.
+

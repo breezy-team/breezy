@@ -16,6 +16,7 @@
 
 """Counted lock class"""
 
+from __future__ import absolute_import
 
 from bzrlib import (
     errors,

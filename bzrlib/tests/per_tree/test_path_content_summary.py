@@ -133,10 +133,7 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
         self.assertEqual('file', summary[0])
         self.check_content_summary_size(tree, summary, 22)
         # not executable
-        if osutils.supports_executable:
-            self.assertEqual(False, summary[2])
-        else:
-            self.assertEqual(None, summary[2])
+        self.assertEqual(False, summary[2])
         # may have hash,
         self.assertSubset((summary[3],),
             (None, '0c352290ae1c26ca7f97d5b2906c4624784abd60'))

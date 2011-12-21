@@ -72,6 +72,8 @@ h=help
 up=pull
 """
 
+from __future__ import absolute_import
+
 import os
 import sys
 
@@ -440,6 +442,7 @@ class Config(object):
             l = [l]
         return l
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def get_user_option_as_int_from_SI(self, option_name, default=None):
         """Get a generic option from a human readable size in SI units, e.g 10MB
 
@@ -490,6 +493,7 @@ class Config(object):
         """See gpg_signing_command()."""
         return None
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def log_format(self):
         """What log format should be used"""
         result = self._log_format()
@@ -2455,6 +2459,34 @@ def int_from_store(unicode_str):
     return int(unicode_str)
 
 
+_unit_sfxs = dict(K=10**3, M=10**6, G=10**9)
+
+def int_SI_from_store(unicode_str):
+    """Convert a human readable size in SI units, e.g 10MB into an integer.
+
+    Accepted suffixes are K,M,G. It is case-insensitive and may be followed
+    by a trailing b (i.e. Kb, MB). This is intended to be practical and not
+    pedantic.
+
+    :return Integer, expanded to its base-10 value if a proper SI unit is 
+        found, None otherwise.
+    """
+    regexp = "^(\d+)(([" + ''.join(_unit_sfxs) + "])b?)?$"
+    p = re.compile(regexp, re.IGNORECASE)
+    m = p.match(unicode_str)
+    val = None
+    if m is not None:
+        val, _, unit = m.groups()
+        val = int(val)
+        if unit:
+            try:
+                coeff = _unit_sfxs[unit.upper()]
+            except KeyError:
+                raise ValueError(gettext('{0} is not an SI unit.').format(unit))
+            val *= coeff
+    return val
+
+
 def float_from_store(unicode_str):
     return float(unicode_str)
 
@@ -2545,6 +2577,17 @@ option_registry.register(
            default=None, from_unicode=list_from_store,
            help="""\
 List of GPG key patterns which are acceptable for verification.
+"""))
+option_registry.register(
+    Option('add.maximum_file_size',
+           default=u'20MB', from_unicode=int_SI_from_store,
+           help="""\
+Size above which files should be added manually.
+
+Files below this size are added automatically when using ``bzr add`` without
+arguments.
+
+A negative value means disable the size check.
 """))
 option_registry.register(
     Option('bound',
@@ -2740,7 +2783,12 @@ If true (default), repository changes are flushed through the OS buffers
 to physical disk.  This is somewhat slower, but means data should not be
 lost if the machine crashes.  See also dirstate.fdatasync.
 '''))
-
+option_registry.register_lazy('smtp_server',
+    'bzrlib.smtp_connection', 'smtp_server')
+option_registry.register_lazy('smtp_password',
+    'bzrlib.smtp_connection', 'smtp_password')
+option_registry.register_lazy('smtp_username',
+    'bzrlib.smtp_connection', 'smtp_username')
 option_registry.register(
     Option('selftest.timeout',
         default='600',
@@ -3504,6 +3552,29 @@ class Stack(object):
         if bzrlib.global_state is not None:
             return bzrlib.global_state.cmdline_overrides.get_sections()
         return []
+
+
+class MemoryStack(Stack):
+    """A configuration stack defined from a string.
+
+    This is mainly intended for tests and requires no disk resources.
+    """
+
+    def __init__(self, content=None):
+        """Create an in-memory stack from a given content.
+
+        It uses a single store based on configobj and support reading and
+        writing options.
+
+        :param content: The initial content of the store. If None, the store is
+            not loaded and ``_load_from_string`` can and should be used if
+            needed.
+        """
+        store = IniFileStore()
+        if content is not None:
+            store._load_from_string(content)
+        super(MemoryStack, self).__init__(
+            [store.get_sections], store)
 
 
 class _CompatibleStack(Stack):

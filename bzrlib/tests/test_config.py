@@ -22,6 +22,7 @@ import sys
 import threading
 
 
+import testtools
 from testtools import matchers
 
 #import bzrlib specific imports here
@@ -537,7 +538,9 @@ class TestConfig(tests.TestCase):
 
     def test_log_format_default(self):
         my_config = config.Config()
-        self.assertEqual('long', my_config.log_format())
+        self.assertEqual('long',
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                                              my_config.log_format))
 
     def test_acceptable_keys_default(self):
         my_config = config.Config()
@@ -1069,7 +1072,10 @@ si_mb = 5MB,
 si_g = 5g,
 si_gb = 5gB,
 """)
-        get_si = conf.get_user_option_as_int_from_SI
+        def get_si(s, default=None):
+            return self.applyDeprecated(
+                deprecated_in((2, 5, 0)),
+                conf.get_user_option_as_int_from_SI, s, default)
         self.assertEqual(100, get_si('plain'))
         self.assertEqual(5000, get_si('si_k'))
         self.assertEqual(5000, get_si('si_kb'))
@@ -1079,6 +1085,7 @@ si_gb = 5gB,
         self.assertEqual(5000000000, get_si('si_gb'))
         self.assertEqual(None, get_si('non-exist'))
         self.assertEqual(42, get_si('non-exist-with-default',  42))
+
 
 class TestSupressWarning(TestIniConfig):
 
@@ -1317,7 +1324,9 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
 
     def test_configured_logformat(self):
         my_config = self._get_sample_config()
-        self.assertEqual("short", my_config.log_format())
+        self.assertEqual("short",
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                                              my_config.log_format))
 
     def test_configured_acceptable_keys(self):
         my_config = self._get_sample_config()
@@ -2358,7 +2367,8 @@ class TestOption(tests.TestCase):
 class TestOptionConverterMixin(object):
 
     def assertConverted(self, expected, opt, value):
-        self.assertEquals(expected, opt.convert_from_unicode(value))
+        self.assertEquals(expected, opt.convert_from_unicode(value),
+                          'Expecting %s, got %s' % (expected, value,))
 
     def assertWarns(self, opt, value):
         warnings = []
@@ -2377,7 +2387,8 @@ class TestOptionConverterMixin(object):
 
     def assertConvertInvalid(self, opt, invalid_value):
         opt.invalid = None
-        self.assertEquals(None, opt.convert_from_unicode(invalid_value))
+        self.assertEquals(None, opt.convert_from_unicode(invalid_value),
+                          '%s is not None' % (invalid_value,))
         opt.invalid = 'warning'
         self.assertWarns(opt, invalid_value)
         opt.invalid = 'error'
@@ -2420,6 +2431,31 @@ class TestOptionWithIntegerConverter(tests.TestCase, TestOptionConverterMixin):
     def test_convert_valid(self):
         opt = self.get_option()
         self.assertConverted(16, opt, u'16')
+
+
+class TestOptionWithSIUnitConverter(tests.TestCase, TestOptionConverterMixin):
+
+    def get_option(self):
+        return config.Option('foo', help='An integer in SI units.',
+                             from_unicode=config.int_SI_from_store)
+
+    def test_convert_invalid(self):
+        opt = self.get_option()
+        self.assertConvertInvalid(opt, u'not-a-unit')
+        self.assertConvertInvalid(opt, u'Gb') # Forgot the int
+        self.assertConvertInvalid(opt, u'1b') # Forgot the unit
+        self.assertConvertInvalid(opt, u'1GG')
+        self.assertConvertInvalid(opt, u'1Mbb')
+        self.assertConvertInvalid(opt, u'1MM')
+
+    def test_convert_valid(self):
+        opt = self.get_option()
+        self.assertConverted(int(5e3), opt, u'5kb')
+        self.assertConverted(int(5e6), opt, u'5M')
+        self.assertConverted(int(5e6), opt, u'5MB')
+        self.assertConverted(int(5e9), opt, u'5g')
+        self.assertConverted(int(5e9), opt, u'5gB')
+        self.assertConverted(100, opt, u'100')
 
 
 class TestOptionWithListConverter(tests.TestCase, TestOptionConverterMixin):
@@ -3321,50 +3357,33 @@ option=bar
         self.assertLength(0, sections)
 
 
-class TestStackGet(tests.TestCase):
+class TestBaseStackGet(tests.TestCase):
 
-    # FIXME: This should be parametrized for all known Stack or dedicated
-    # paramerized tests created to avoid bloating -- vila 2011-03-31
-
-    def overrideOptionRegistry(self):
+    def setUp(self):
+        super(TestBaseStackGet, self).setUp()
         self.overrideAttr(config, 'option_registry', config.OptionRegistry())
 
-    def test_single_config_get(self):
-        conf = dict(foo='bar')
-        conf_stack = config.Stack([conf])
-        self.assertEquals('bar', conf_stack.get('foo'))
+    def test_get_first_definition(self):
+        store1 = config.IniFileStore()
+        store1._load_from_string('foo=bar')
+        store2 = config.IniFileStore()
+        store2._load_from_string('foo=baz')
+        conf = config.Stack([store1.get_sections, store2.get_sections])
+        self.assertEquals('bar', conf.get('foo'))
 
     def test_get_with_registered_default_value(self):
-        conf_stack = config.Stack([dict()])
-        opt = config.Option('foo', default='bar')
-        self.overrideOptionRegistry()
-        config.option_registry.register('foo', opt)
+        config.option_registry.register(config.Option('foo', default='bar'))
+        conf_stack = config.Stack([])
         self.assertEquals('bar', conf_stack.get('foo'))
 
     def test_get_without_registered_default_value(self):
-        conf_stack = config.Stack([dict()])
-        opt = config.Option('foo')
-        self.overrideOptionRegistry()
-        config.option_registry.register('foo', opt)
+        config.option_registry.register(config.Option('foo'))
+        conf_stack = config.Stack([])
         self.assertEquals(None, conf_stack.get('foo'))
 
     def test_get_without_default_value_for_not_registered(self):
-        conf_stack = config.Stack([dict()])
-        opt = config.Option('foo')
-        self.overrideOptionRegistry()
+        conf_stack = config.Stack([])
         self.assertEquals(None, conf_stack.get('foo'))
-
-    def test_get_first_definition(self):
-        conf1 = dict(foo='bar')
-        conf2 = dict(foo='baz')
-        conf_stack = config.Stack([conf1, conf2])
-        self.assertEquals('bar', conf_stack.get('foo'))
-
-    def test_get_embedded_definition(self):
-        conf1 = dict(yy='12')
-        conf2 = config.Stack([dict(xx='42'), dict(foo='baz')])
-        conf_stack = config.Stack([conf1, conf2])
-        self.assertEquals('baz', conf_stack.get('foo'))
 
     def test_get_for_empty_section_callable(self):
         conf_stack = config.Stack([lambda : []])
@@ -3372,8 +3391,29 @@ class TestStackGet(tests.TestCase):
 
     def test_get_for_broken_callable(self):
         # Trying to use and invalid callable raises an exception on first use
-        conf_stack = config.Stack([lambda : object()])
+        conf_stack = config.Stack([object])
         self.assertRaises(TypeError, conf_stack.get, 'foo')
+
+
+class TestMemoryStack(tests.TestCase):
+
+    def test_get(self):
+        conf = config.MemoryStack('foo=bar')
+        self.assertEquals('bar', conf.get('foo'))
+
+    def test_set(self):
+        conf = config.MemoryStack('foo=bar')
+        conf.set('foo', 'baz')
+        self.assertEquals('baz', conf.get('foo'))
+
+    def test_no_content(self):
+        conf = config.MemoryStack()
+        # No content means no loading
+        self.assertFalse(conf.store.is_loaded())
+        self.assertRaises(NotImplementedError, conf.get, 'foo')
+        # But a content can still be provided
+        conf.store._load_from_string('foo=bar')
+        self.assertEquals('bar', conf.get('foo'))
 
 
 class TestStackWithTransport(tests.TestCaseWithTransport):
@@ -3411,17 +3451,15 @@ class TestStackGet(TestStackWithTransport):
         self.assertEquals((self.conf, 'foo', 'bar'), calls[0])
 
 
-class TestStackGetWithConverter(tests.TestCaseWithTransport):
+class TestStackGetWithConverter(tests.TestCase):
 
     def setUp(self):
         super(TestStackGetWithConverter, self).setUp()
         self.overrideAttr(config, 'option_registry', config.OptionRegistry())
         self.registry = config.option_registry
-        # We just want a simple stack with a simple store so we can inject
-        # whatever content the tests need without caring about what section
-        # names are valid for a given store/stack.
-        store = config.TransportIniFileStore(self.get_transport(), 'foo.conf')
-        self.conf = config.Stack([store.get_sections], store)
+
+    def get_conf(self, content=None):
+        return config.MemoryStack(content)
 
     def register_bool_option(self, name, default=None, default_from_env=None):
         b = config.Option(name, help='A boolean.',
@@ -3431,29 +3469,34 @@ class TestStackGetWithConverter(tests.TestCaseWithTransport):
 
     def test_get_default_bool_None(self):
         self.register_bool_option('foo')
-        self.assertEquals(None, self.conf.get('foo'))
+        conf = self.get_conf('')
+        self.assertEquals(None, conf.get('foo'))
 
     def test_get_default_bool_True(self):
         self.register_bool_option('foo', u'True')
-        self.assertEquals(True, self.conf.get('foo'))
+        conf = self.get_conf('')
+        self.assertEquals(True, conf.get('foo'))
 
     def test_get_default_bool_False(self):
         self.register_bool_option('foo', False)
-        self.assertEquals(False, self.conf.get('foo'))
+        conf = self.get_conf('')
+        self.assertEquals(False, conf.get('foo'))
 
     def test_get_default_bool_False_as_string(self):
         self.register_bool_option('foo', u'False')
-        self.assertEquals(False, self.conf.get('foo'))
+        conf = self.get_conf('')
+        self.assertEquals(False, conf.get('foo'))
 
     def test_get_default_bool_from_env_converted(self):
         self.register_bool_option('foo', u'True', default_from_env=['FOO'])
         self.overrideEnv('FOO', 'False')
-        self.assertEquals(False, self.conf.get('foo'))
+        conf = self.get_conf('')
+        self.assertEquals(False, conf.get('foo'))
 
     def test_get_default_bool_when_conversion_fails(self):
         self.register_bool_option('foo', default='True')
-        self.conf.store._load_from_string('foo=invalid boolean')
-        self.assertEquals(True, self.conf.get('foo'))
+        conf = self.get_conf('foo=invalid boolean')
+        self.assertEquals(True, conf.get('foo'))
 
     def register_integer_option(self, name,
                                 default=None, default_from_env=None):
@@ -3464,25 +3507,29 @@ class TestStackGetWithConverter(tests.TestCaseWithTransport):
 
     def test_get_default_integer_None(self):
         self.register_integer_option('foo')
-        self.assertEquals(None, self.conf.get('foo'))
+        conf = self.get_conf('')
+        self.assertEquals(None, conf.get('foo'))
 
     def test_get_default_integer(self):
         self.register_integer_option('foo', 42)
-        self.assertEquals(42, self.conf.get('foo'))
+        conf = self.get_conf('')
+        self.assertEquals(42, conf.get('foo'))
 
     def test_get_default_integer_as_string(self):
         self.register_integer_option('foo', u'42')
-        self.assertEquals(42, self.conf.get('foo'))
+        conf = self.get_conf('')
+        self.assertEquals(42, conf.get('foo'))
 
     def test_get_default_integer_from_env(self):
         self.register_integer_option('foo', default_from_env=['FOO'])
         self.overrideEnv('FOO', '18')
-        self.assertEquals(18, self.conf.get('foo'))
+        conf = self.get_conf('')
+        self.assertEquals(18, conf.get('foo'))
 
     def test_get_default_integer_when_conversion_fails(self):
         self.register_integer_option('foo', default='12')
-        self.conf.store._load_from_string('foo=invalid integer')
-        self.assertEquals(12, self.conf.get('foo'))
+        conf = self.get_conf('foo=invalid integer')
+        self.assertEquals(12, conf.get('foo'))
 
     def register_list_option(self, name, default=None, default_from_env=None):
         l = config.Option(name, help='A list.',
@@ -3492,36 +3539,39 @@ class TestStackGetWithConverter(tests.TestCaseWithTransport):
 
     def test_get_default_list_None(self):
         self.register_list_option('foo')
-        self.assertEquals(None, self.conf.get('foo'))
+        conf = self.get_conf('')
+        self.assertEquals(None, conf.get('foo'))
 
     def test_get_default_list_empty(self):
         self.register_list_option('foo', '')
-        self.assertEquals([], self.conf.get('foo'))
+        conf = self.get_conf('')
+        self.assertEquals([], conf.get('foo'))
 
     def test_get_default_list_from_env(self):
         self.register_list_option('foo', default_from_env=['FOO'])
         self.overrideEnv('FOO', '')
-        self.assertEquals([], self.conf.get('foo'))
+        conf = self.get_conf('')
+        self.assertEquals([], conf.get('foo'))
 
     def test_get_with_list_converter_no_item(self):
         self.register_list_option('foo', None)
-        self.conf.store._load_from_string('foo=,')
-        self.assertEquals([], self.conf.get('foo'))
+        conf = self.get_conf('foo=,')
+        self.assertEquals([], conf.get('foo'))
 
     def test_get_with_list_converter_many_items(self):
         self.register_list_option('foo', None)
-        self.conf.store._load_from_string('foo=m,o,r,e')
-        self.assertEquals(['m', 'o', 'r', 'e'], self.conf.get('foo'))
+        conf = self.get_conf('foo=m,o,r,e')
+        self.assertEquals(['m', 'o', 'r', 'e'], conf.get('foo'))
 
     def test_get_with_list_converter_embedded_spaces_many_items(self):
         self.register_list_option('foo', None)
-        self.conf.store._load_from_string('foo=" bar", "baz "')
-        self.assertEquals([' bar', 'baz '], self.conf.get('foo'))
+        conf = self.get_conf('foo=" bar", "baz "')
+        self.assertEquals([' bar', 'baz '], conf.get('foo'))
 
     def test_get_with_list_converter_stripped_spaces_many_items(self):
         self.register_list_option('foo', None)
-        self.conf.store._load_from_string('foo= bar ,  baz ')
-        self.assertEquals(['bar', 'baz'], self.conf.get('foo'))
+        conf = self.get_conf('foo= bar ,  baz ')
+        self.assertEquals(['bar', 'baz'], conf.get('foo'))
 
 
 class TestIterOptionRefs(tests.TestCase):

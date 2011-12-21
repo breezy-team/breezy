@@ -218,6 +218,8 @@ desired.
 
 """
 
+from __future__ import absolute_import
+
 import bisect
 import errno
 import operator
@@ -1559,16 +1561,19 @@ class DirState(object):
                     else:
                         source_path = child_basename
                     if new_path_utf8:
-                        target_path = new_path_utf8 + source_path[len(old_path):]
+                        target_path = \
+                            new_path_utf8 + source_path[len(old_path_utf8):]
                     else:
-                        if old_path == '':
+                        if old_path_utf8 == '':
                             raise AssertionError("cannot rename directory to"
                                                  " itself")
-                        target_path = source_path[len(old_path) + 1:]
+                        target_path = source_path[len(old_path_utf8) + 1:]
                     adds.append((None, target_path, entry[0][2], entry[1][1], False))
                     deletes.append(
                         (source_path, target_path, entry[0][2], None, False))
-                deletes.append((old_path_utf8, new_path, file_id, None, False))
+                deletes.append(
+                    (old_path_utf8, new_path_utf8, file_id, None, False))
+
         self._check_delta_ids_absent(new_ids, delta, 1)
         try:
             # Finish expunging deletes/first half of renames.

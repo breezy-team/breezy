@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 import os
 import errno
 from stat import S_ISREG, S_IEXEC
@@ -761,7 +763,7 @@ class TreeTransformBase(object):
 
     def _set_executability(self, path, trans_id):
         """Set the executability of versioned files """
-        if supports_executable():
+        if self._tree._supports_executable():
             new_executability = self._new_executability[trans_id]
             abspath = self._tree.abspath(path)
             current_mode = os.stat(abspath).st_mode
@@ -1230,6 +1232,11 @@ class DiskTreeTransform(TreeTransformBase):
                 raise errors.ImmortalPendingDeletion(self._deletiondir)
         finally:
             TreeTransformBase.finalize(self)
+
+    def _limbo_supports_executable(self):
+        """Check if the limbo path supports the executable bit."""
+        # FIXME: Check actual file system capabilities of limbodir
+        return osutils.supports_executable()
 
     def _limbo_name(self, trans_id):
         """Generate the limbo name of a file"""
@@ -2319,7 +2326,7 @@ class _PreviewTree(tree.InventoryTree):
             if kind == 'file':
                 statval = os.lstat(limbo_name)
                 size = statval.st_size
-                if not supports_executable():
+                if not tt._limbo_supports_executable():
                     executable = False
                 else:
                     executable = statval.st_mode & S_IEXEC

@@ -16,6 +16,7 @@
 
 """Server-side bzrdir related request implmentations."""
 
+from __future__ import absolute_import
 
 from bzrlib import branch, errors, repository, urlutils
 from bzrlib.bzrdir import (

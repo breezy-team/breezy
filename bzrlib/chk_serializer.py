@@ -16,6 +16,8 @@
 
 """Serializer object for CHK based inventory storage."""
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 
 from bzrlib import lazy_import

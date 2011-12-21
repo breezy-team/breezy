@@ -45,6 +45,8 @@ KeyError, which typically just str to "0".  They're printed in a different
 form.
 """
 
+from __future__ import absolute_import
+
 # FIXME: Unfortunately it turns out that python's logging module
 # is quite expensive, even when the message is not printed by any handlers.
 # We should perhaps change back to just simply doing it here.
