@@ -51,8 +51,8 @@ would fall in the optional category.
 Feature necessity
 -----------------
 
-The initial implementation will feature the following set of possible
-settings for feature "necessity". Any format necessity that can't
+The initial implementation will feature the following two possible
+settings for feature ``necessity``. Any format necessity that can't
 be understood should be interpreted as "required", and an appropriate
 warning printed.
 
@@ -62,8 +62,16 @@ warning printed.
       annotate cache)
  - required: read and write access is only possible if the feature
       is supported. Useful for things like nested trees.
- - write-required: read access is possible if the feature is not supported,
+
+In the future, we might add more values for necessity. Older
+versions of bzr treat unknown necessities as "required". Some likely
+candidates for new necessities that might be added in the future:
+
+ - read-optional: read access is possible if the feature is not supported,
       but write access requires it
+ - client-read-optional: directly writing to the object requires
+      the feature, but reading or writing through an intermediary (such as
+      a HPSS server) doesn't.
 
 Format changes
 --------------
@@ -95,12 +103,21 @@ API Changes
 -----------
 
 Class methods will be added to ``BzrFormat`` to allow registering
-and unregistering the presence of particular features. This class is inherited
-by ``BzrBranchFormat``, ``VersionedFileRepositoryFormat`` and
-``InventoryWorkingTreeFormat``.
+and unregistering the presence of particular features.
 
  * BzrFormat.register_feature(name)
  * BzrFormat.unregister_feature(name)
+
+The namespace for features is global. It is assumed
+that the plugin that provides the feature X provides that feature
+in all objects that it is relevant for. For example, if a plugin
+provides the ``nested-trees`` feature, it is assumed to support
+that in both working trees and repositories. If this is not the case,
+it should use a different feature name for the working tree support
+and the repository support.
+
+BzrFormat is inherited by ``BranchFormatMetaDir``, ``BzrDirFormat``,
+``RepositoryFormatMetaDir`` and ``WorkingTreeFormatMetaDir``.
 
 Upon opening, BzrFormat will be responsible for checking that the
 required features are present.  lock_write will raise an exception
