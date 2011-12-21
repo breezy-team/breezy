@@ -1992,7 +1992,7 @@ class RepositoryAcquisitionPolicy(object):
         :return: A repository, is_new_flag (True if the repository was
             created).
         """
-        raise NotImplemented(RepositoryAcquisitionPolicy.acquire_repository)
+        raise NotImplementedError(RepositoryAcquisitionPolicy.acquire_repository)
 
 
 class CreateRepository(RepositoryAcquisitionPolicy):
