@@ -75,6 +75,5 @@ class TestBranches(TestCaseWithTransport):
         branch = t.bzrdir.create_branch(name='colocated')
         BranchReferenceFormat().initialize(t.bzrdir, target_branch=branch)
         out, err = self.run_bzr('branches a')
-        self.assertEquals(out, "*(default)\n"
-                               " another\n"
+        self.assertEquals(out, " another\n"
                                "*colocated\n")
