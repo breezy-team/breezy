@@ -3638,7 +3638,7 @@ class RemoteControlStack(_CompatibleStack):
         self.bzrdir = bzrdir
 
 
-class _BranchOnlyStack(_CompatibleStack):
+class BranchOnlyStack(_CompatibleStack):
     """Branch-only options stack."""
 
     # FIXME: _BranchOnlyStack only uses branch.conf and is used only for the
@@ -3647,7 +3647,7 @@ class _BranchOnlyStack(_CompatibleStack):
 
     def __init__(self, branch):
         bstore = branch._get_config_store()
-        super(_BranchOnlyStack, self).__init__(
+        super(BranchOnlyStack, self).__init__(
             [NameMatcher(bstore, None).get_sections],
             bstore)
         self.branch = branch

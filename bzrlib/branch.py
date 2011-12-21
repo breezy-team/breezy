@@ -2999,7 +2999,7 @@ class BzrBranch8(BzrBranch):
         ## self._check_stackable_repo()
         # stacked_on_location is only ever defined in branch.conf, so don't
         # waste effort reading the whole stack of config files.
-        conf = _mod_config._BranchOnlyStack(self)
+        conf = _mod_config.BranchOnlyStack(self)
         stacked_url = self._get_config_location('stacked_on_location',
                                                 config=conf)
         if stacked_url is None:

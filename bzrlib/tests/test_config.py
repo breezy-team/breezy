@@ -151,7 +151,7 @@ def build_branch_only_stack(test):
      server_class) = transport_remote.get_test_permutations()[0]
     build_backing_branch(test, 'branch', transport_class, server_class)
     b = branch.Branch.open(test.get_url('branch'))
-    return config._BranchOnlyStack(b)
+    return config.BranchOnlyStack(b)
 config.test_stack_builder_registry.register('branch_only',
                                             build_branch_only_stack)
 
