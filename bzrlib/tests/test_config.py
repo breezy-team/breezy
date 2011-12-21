@@ -21,7 +21,7 @@ import os
 import sys
 import threading
 
-
+import testtools
 from testtools import matchers
 
 #import bzrlib specific imports here
@@ -2668,6 +2668,63 @@ class TestReadonlyStore(TestStore):
         store = self.get_store(self)
         store._load_from_string('foo=bar')
         self.assertRaises(AssertionError, store._load_from_string, 'bar=baz')
+
+
+class TestStoreQuoting(TestStore):
+
+    scenarios = [(key, {'get_store': builder}) for key, builder
+                 in config.test_store_builder_registry.iteritems()]
+
+    def setUp(self):
+        super(TestStoreQuoting, self).setUp()
+        self.store = self.get_store(self)
+        # We need a loaded store but any content will do
+        self.store._load_from_string('')
+
+    def assertIdempotent(self, s):
+        """Assert that quoting an unquoted string is a no-op and vice-versa.
+
+        What matters here is that option values, as they appear in a store, can
+        be safely round-tripped out of the store and back.
+
+        :param s: A string, quoted if required.
+        """
+        self.assertEquals(s, self.store.quote(self.store.unquote(s)))
+        self.assertEquals(s, self.store.unquote(self.store.quote(s)))
+
+    def test_empty_string(self):
+        if isinstance(self.store, config.IniFileStore):
+            # configobj._quote doesn't handle empty values
+            with testtools.ExpectedException(AssertionError):
+                self.assertIdempotent('')
+        else:
+            self.assertIdempotent('')
+        # But quoted empty strings are ok
+        self.assertIdempotent('""')
+
+    def test_embedded_spaces(self):
+        self.assertIdempotent('" a b c "')
+
+    def test_embedded_commas(self):
+        self.assertIdempotent('" a , b c "')
+
+    def test_simple_comma(self):
+        if isinstance(self.store, config.IniFileStore):
+            # configobj requires that lists are special-cased
+            with testtools.ExpectedException(AssertionError):
+                self.assertIdempotent(',')
+        else:
+            self.assertIdempotent(',')
+        # When a single comma is required, quoting is also required
+        self.assertIdempotent('","')
+
+    def test_list(self):
+        if isinstance(self.store, config.IniFileStore):
+            # configobj requires that lists are special-cased
+            with testtools.ExpectedException(AssertionError):
+                self.assertIdempotent('a,b')
+        else:
+            self.assertIdempotent('a,b')
 
 
 class TestIniFileStoreContent(tests.TestCaseWithTransport):
