@@ -36,10 +36,18 @@ Improvements
 
 * New HPSS call for ``Repository.reconcile``. (Jelmer Vernooij, #894455)
 
+* Merge now has two new hooks ``pre_merge`` and ``post_merge``
+  that are called before and after a merge and can make
+  additional modifications to the trees involved.
+  (Jelmer Vernooij, #906877)
+
 * Override the value returned by ``sys.getfilesystemencoding()`` for the bzr
   script to utf-8 when it would otherwise be ascii on a posix system. This
   will mean bzr works with non-ascii files when no locale or an incorrect
   locale is set. (Martin Packman, #794353)
+
+* ``bzr branches`` now indicates the active colocated branch.
+  (Jelmer Vernooij, #891667)
 
 * ``bzr push`` now suggests using :parent if there is a parent location
   set. (Jelmer Vernooij)
@@ -144,6 +152,10 @@ Testing
 
 * New matcher ``ContainsNoVfsCalls`` which filters a list of HPSS
   calls for VFS requests. (Jelmer Vernooij)
+
+* New ``MemoryStack`` class allows for diskless tests and locally injected
+  configuration stacks.  Lower level tests for predefined set of options can
+  be written without setting up configuration files. (Vincent Ladeuil)
 
 
 bzr 2.5b4
