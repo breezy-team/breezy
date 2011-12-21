@@ -17,6 +17,8 @@
 """Serializer factory for reading and writing bundles.
 """
 
+from __future__ import absolute_import
+
 import base64
 from StringIO import StringIO
 import re

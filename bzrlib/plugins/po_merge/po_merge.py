@@ -16,6 +16,7 @@
 
 """Merge logic for po_merge plugin."""
 
+from __future__ import absolute_import
 
 from bzrlib import (
     config,

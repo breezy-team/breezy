@@ -16,6 +16,8 @@
 
 """Helper functions for adding files to working trees."""
 
+from __future__ import absolute_import
+
 import sys
 import os
 
@@ -73,19 +75,17 @@ class AddAction(object):
 class AddWithSkipLargeAction(AddAction):
     """A class that can decide to skip a file if it's considered too large"""
 
-    # default 20 MB
-    _DEFAULT_MAX_FILE_SIZE = 20000000
-    _optionName = 'add.maximum_file_size'
     _maxSize = None
 
     def skip_file(self, tree, path, kind, stat_value = None):
         if kind != 'file':
-            return False            
+            return False
+        opt_name = 'add.maximum_file_size'
         if self._maxSize is None:
-            config = tree.branch.get_config()
-            self._maxSize = config.get_user_option_as_int_from_SI(
-                self._optionName,  
-                self._DEFAULT_MAX_FILE_SIZE)
+            # FIXME: We use the branch config as there is no tree config
+            # -- vila 2011-12-16
+            config = tree.branch.get_config_stack()
+            self._maxSize = config.get(opt_name)
         if stat_value is None:
             file_size = os.path.getsize(path);
         else:
@@ -93,7 +93,7 @@ class AddWithSkipLargeAction(AddAction):
         if self._maxSize > 0 and file_size > self._maxSize:
             ui.ui_factory.show_warning(gettext(
                 "skipping {0} (larger than {1} of {2} bytes)").format(
-                path, self._optionName,  self._maxSize))
+                path, opt_name,  self._maxSize))
             return True
         return False
 

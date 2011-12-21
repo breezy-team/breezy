@@ -24,6 +24,8 @@ over SSH), and pass them to and from the protocol logic.  See the overview in
 bzrlib/transport/smart/__init__.py.
 """
 
+from __future__ import absolute_import
+
 import errno
 import os
 import sys

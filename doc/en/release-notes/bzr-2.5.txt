@@ -68,6 +68,9 @@ Bug Fixes
   user email (obtained from the ``email`` configuration option or its
   default value). (Vincent Ladeuil, Jelmer Vernooij, #904550)
 
+* Prevent spurious InconsistentDelta error when committing a move of a
+  non-ascii directory with contents. (Rory Yorke, #185211)
+
 * Properly ignore '\n' in an option reference since this cannot be part of a
   config option identifier. (Vincent Ladeuil, #902125)
 
@@ -110,6 +113,9 @@ Internals
   rather than importing them from ``urllib``. This prevents loading
   of the ``socket``, ``ssl`` and ``urllib`` modules for
   local bzr operations. (Jelmer Vernooij)
+
+* Configuration options can be SI units by using ``int_SI_from_unicode`` as
+  their ``convert_from_unicode`` helper. (Vincent Ladeuil)
 
 * ControlDir now has a get_branches method that returns a dictionary
   whose keys are the names of the branches and whose values are the

@@ -29,6 +29,7 @@ To get a WorkingTree, call bzrdir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
+from __future__ import absolute_import
 
 from cStringIO import StringIO
 import os
@@ -88,7 +89,6 @@ from bzrlib.osutils import (
     realpath,
     safe_unicode,
     splitpath,
-    supports_executable,
     )
 from bzrlib.trace import mutter, note
 from bzrlib.revision import CURRENT_REVISION
@@ -231,6 +231,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
     def has_versioned_directories(self):
         """See `Tree.has_versioned_directories`."""
         return self._format.supports_versioned_directories
+
+    def _supports_executable(self):
+        if sys.platform == 'win32':
+            return False
+        # FIXME: Ideally this should check the file system
+        return True
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -1116,7 +1122,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         else:
             mode = stat_value.st_mode
             kind = osutils.file_kind_from_stat_mode(mode)
-            if not supports_executable():
+            if not self._supports_executable():
                 executable = entry is not None and entry.executable
             else:
                 executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
@@ -2191,21 +2197,20 @@ class InventoryWorkingTree(WorkingTree,
         mode = stat_result.st_mode
         return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
-    if not supports_executable():
-        def is_executable(self, file_id, path=None):
+    def is_executable(self, file_id, path=None):
+        if not self._supports_executable():
             return self._inventory[file_id].executable
-
-        _is_executable_from_path_and_stat = \
-            _is_executable_from_path_and_stat_from_basis
-    else:
-        def is_executable(self, file_id, path=None):
+        else:
             if not path:
                 path = self.id2path(file_id)
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
-        _is_executable_from_path_and_stat = \
-            _is_executable_from_path_and_stat_from_stat
+    def _is_executable_from_path_and_stat(self, path, stat_result):
+        if not self._supports_executable():
+            return self._is_executable_from_path_and_stat_from_basis(path, stat_result)
+        else:
+            return self._is_executable_from_path_and_stat_from_stat(path, stat_result)
 
     @needs_tree_write_lock
     def _add(self, files, ids, kinds):

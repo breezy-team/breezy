@@ -16,6 +16,8 @@
 
 """Python implementation of _search_key functions, etc."""
 
+from __future__ import absolute_import
+
 import zlib
 import struct
 

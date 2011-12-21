@@ -26,6 +26,8 @@ The Transport returned has methods to read, write and manipulate files within
 it.
 """
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 import sys
 
