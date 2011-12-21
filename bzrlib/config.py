@@ -3909,10 +3909,10 @@ class cmd_config(commands.Command):
                             self.outf.write('%s:\n' % (store.id,))
                             cur_store_id = store.id
                             cur_section = None
-                        if (section.id not in (None, 'DEFAULT')
+                        if (section.id is not None
                             and cur_section != section.id):
-                            # Display the section if it's not the default (or
-                            # only) one.
+                            # Display the section id as it appears in the store
+                            # (None doesn't appear by definition)
                             self.outf.write('  [%s]\n' % (section.id,))
                             cur_section = section.id
                         value = section.get(oname, expand=False)

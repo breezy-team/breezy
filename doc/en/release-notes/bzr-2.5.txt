@@ -64,6 +64,9 @@ Bug Fixes
 * Allow configuration option default value to be a python callable at
   registration. (Vincent Ladeuil, #832064)
 
+* ``bzr config`` will now display the section ``[DEFAULT]`` used in
+  ``bazaar.conf``. (Vincent Ladeuil, #907268)
+
 * Configuration stores can now provides a specific quoting mechanism. This
   is required to workaround ``configobj`` conflating quoting and list values
   automatic conversion. (Vincent Ladeuil, #906897)

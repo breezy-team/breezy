@@ -79,6 +79,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         script.run_script(self, '''\
             $ bzr config -d tree
             bazaar:
+              [DEFAULT]
               multiline = """1
             2
             """
@@ -101,6 +102,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         script.run_script(self, '''\
             $ bzr config -d tree
             bazaar:
+              [DEFAULT]
               list = 1, a, "with, a comma"
             ''')
 
@@ -118,6 +120,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         script.run_script(self, '''\
             $ bzr config -d tree
             bazaar:
+              [DEFAULT]
               hello = world
             ''')
 
@@ -139,6 +142,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         script.run_script(self, '''\
             $ bzr config
             bazaar:
+              [DEFAULT]
               hello = world
             ''')
 
@@ -214,6 +218,7 @@ class TestConfigSetOption(tests.TestCaseWithTransport):
             $ bzr config --scope bazaar hello=world
             $ bzr config -d tree --all hello
             bazaar:
+              [DEFAULT]
               hello = world
             ''')
 
@@ -222,6 +227,7 @@ class TestConfigSetOption(tests.TestCaseWithTransport):
             $ bzr config -d tree --scope bazaar hello=world
             $ bzr config -d tree --all hello
             bazaar:
+              [DEFAULT]
               hello = world
             ''')
 
@@ -290,6 +296,7 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
             branch:
               file = branch
             bazaar:
+              [DEFAULT]
               file = bazaar
             ''')
 
@@ -300,12 +307,14 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
             branch:
               file = branch
             bazaar:
+              [DEFAULT]
               file = bazaar
             ''')
         script.run_script(self, '''\
             $ bzr config -d tree --remove file
             $ bzr config -d tree --all file
             bazaar:
+              [DEFAULT]
               file = bazaar
             ''')
 
@@ -317,12 +326,14 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
               [.../work/tree]
               file = locations
             bazaar:
+              [DEFAULT]
               file = bazaar
             ''')
         script.run_script(self, '''\
             $ bzr config -d tree --scope locations --remove file
             $ bzr config -d tree --all file
             bazaar:
+              [DEFAULT]
               file = bazaar
             ''')
 
