@@ -2468,7 +2468,7 @@ def int_from_store(unicode_str):
     return int(unicode_str)
 
 
-_unit_sfxs = dict(K=10**3, M=10**6, G=10**9)
+_unit_suffixes = dict(K=10**3, M=10**6, G=10**9)
 
 def int_SI_from_store(unicode_str):
     """Convert a human readable size in SI units, e.g 10MB into an integer.
@@ -2480,7 +2480,7 @@ def int_SI_from_store(unicode_str):
     :return Integer, expanded to its base-10 value if a proper SI unit is 
         found, None otherwise.
     """
-    regexp = "^(\d+)(([" + ''.join(_unit_sfxs) + "])b?)?$"
+    regexp = "^(\d+)(([" + ''.join(_unit_suffixes) + "])b?)?$"
     p = re.compile(regexp, re.IGNORECASE)
     m = p.match(unicode_str)
     val = None
@@ -2489,7 +2489,7 @@ def int_SI_from_store(unicode_str):
         val = int(val)
         if unit:
             try:
-                coeff = _unit_sfxs[unit.upper()]
+                coeff = _unit_suffixes[unit.upper()]
             except KeyError:
                 raise ValueError(gettext('{0} is not an SI unit.').format(unit))
             val *= coeff
@@ -2520,14 +2520,14 @@ class ListOption(Option):
             from_unicode=self.from_unicode, help=help,
             invalid=invalid, unquote=False)
 
-    def from_unicode(self, unicode_value):
-        if not isinstance(unicode_value, basestring):
+    def from_unicode(self, unicode_str):
+        if not isinstance(unicode_str, basestring):
             raise TypeError
         # Now inject our string directly as unicode. All callers got their
         # value from configobj, so values that need to be quoted are already
         # properly quoted.
         _list_converter_config.reset()
-        _list_converter_config._parse([u"list=%s" % (unicode_value,)])
+        _list_converter_config._parse([u"list=%s" % (unicode_str,)])
         maybe_list = _list_converter_config['list']
         if isinstance(maybe_list, basestring):
             if maybe_list:
