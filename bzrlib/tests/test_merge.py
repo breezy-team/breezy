@@ -3246,20 +3246,19 @@ class TestMergeInto(TestMergeIntoBase):
 
 class TestMergeHooks(TestCaseWithTransport):
 
-    def setup_trees_to_merge(self):
-        tree_a = self.make_branch_and_tree('tree_a')
+    def setUp(self):
+        super(TestMergeHooks, self).setUp()
+        self.tree_a = self.make_branch_and_tree('tree_a')
         self.build_tree_contents([('tree_a/file', 'content_1')])
-        tree_a.add('file', 'file-id')
-        tree_a.commit('added file')
+        self.tree_a.add('file', 'file-id')
+        self.tree_a.commit('added file')
 
-        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        self.tree_b = self.tree_a.bzrdir.sprout('tree_b').open_workingtree()
         self.build_tree_contents([('tree_b/file', 'content_2')])
-        tree_b.commit('modify file')
-        return tree_a, tree_b
+        self.tree_b.commit('modify file')
 
-    def test_pre_merge(self):
-        tree_a, tree_b = self.setup_trees_to_merge()
-        tree_c = tree_b.bzrdir.sprout('tree_c').open_workingtree()
+    def test_pre_merge_hook_inject_different_tree(self):
+        tree_c = self.tree_b.bzrdir.sprout('tree_c').open_workingtree()
         self.build_tree_contents([('tree_c/file', 'content_3')])
         tree_c.commit("more content")
         calls = []
@@ -3269,13 +3268,12 @@ class TestMergeHooks(TestCaseWithTransport):
             calls.append(merger)
         _mod_merge.Merger.hooks.install_named_hook('pre_merge',
                                                    factory, 'test factory')
-        tree_a.merge_from_branch(tree_b.branch)
+        self.tree_a.merge_from_branch(self.tree_b.branch)
 
         self.assertFileEqual("content_3", 'tree_a/file')
-
         self.assertLength(1, calls)
 
-    def test_post_merge(self):
+    def test_post_merge_hook_called(self):
         calls = []
         def factory(merger):
             self.assertIsInstance(merger, _mod_merge.Merge3Merger)
@@ -3283,9 +3281,7 @@ class TestMergeHooks(TestCaseWithTransport):
         _mod_merge.Merger.hooks.install_named_hook('post_merge',
                                                    factory, 'test factory')
 
-        tree_a, tree_b = self.setup_trees_to_merge()
-        tree_a.merge_from_branch(tree_b.branch)
+        self.tree_a.merge_from_branch(self.tree_b.branch)
 
         self.assertFileEqual("content_2", 'tree_a/file')
-
         self.assertLength(1, calls)
