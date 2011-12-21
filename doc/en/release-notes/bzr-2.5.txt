@@ -49,6 +49,9 @@ Improvements
 * ``bzr branches`` now indicates the active colocated branch.
   (Jelmer Vernooij, #891667)
 
+* ``bzr push`` now suggests using :parent if there is a parent location
+  set. (Jelmer Vernooij)
+
 * ``bzr send`` now only opens a single connection, rather than two,
   to the target branch.  (Jelmer Vernooij)
 
