@@ -2728,8 +2728,8 @@ class TestStoreQuoting(TestStore):
     def test_empty_string(self):
         if isinstance(self.store, config.IniFileStore):
             # configobj._quote doesn't handle empty values
-            with testtools.ExpectedException(AssertionError):
-                self.assertIdempotent('')
+            self.assertRaises(AssertionError,
+                              self.assertIdempotent, '')
         else:
             self.assertIdempotent('')
         # But quoted empty strings are ok
@@ -2744,8 +2744,8 @@ class TestStoreQuoting(TestStore):
     def test_simple_comma(self):
         if isinstance(self.store, config.IniFileStore):
             # configobj requires that lists are special-cased
-            with testtools.ExpectedException(AssertionError):
-                self.assertIdempotent(',')
+           self.assertRaises(AssertionError,
+                             self.assertIdempotent, ',')
         else:
             self.assertIdempotent(',')
         # When a single comma is required, quoting is also required
@@ -2754,8 +2754,8 @@ class TestStoreQuoting(TestStore):
     def test_list(self):
         if isinstance(self.store, config.IniFileStore):
             # configobj requires that lists are special-cased
-            with testtools.ExpectedException(AssertionError):
-                self.assertIdempotent('a,b')
+            self.assertRaises(AssertionError,
+                              self.assertIdempotent, 'a,b')
         else:
             self.assertIdempotent('a,b')
 
