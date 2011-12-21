@@ -3410,8 +3410,7 @@ class TestMemoryStack(tests.TestCase):
         conf = config.MemoryStack()
         # No content means no loading
         self.assertFalse(conf.store.is_loaded())
-        with testtools.ExpectedException(NotImplementedError):
-            conf.get('foo')
+        self.assertRaises(NotImplementedError, conf.get, 'foo')
         # But a content can still be provided
         conf.store._load_from_string('foo=bar')
         self.assertEquals('bar', conf.get('foo'))
