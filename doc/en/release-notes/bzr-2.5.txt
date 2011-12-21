@@ -41,6 +41,9 @@ Improvements
   will mean bzr works with non-ascii files when no locale or an incorrect
   locale is set. (Martin Packman, #794353)
 
+* ``bzr push`` now suggests using :parent if there is a parent location
+  set. (Jelmer Vernooij)
+
 * ``bzr send`` now only opens a single connection, rather than two,
   to the target branch.  (Jelmer Vernooij)
 
