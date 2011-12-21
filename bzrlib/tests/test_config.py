@@ -145,16 +145,16 @@ def build_branch_stack(test):
 config.test_stack_builder_registry.register('branch', build_branch_stack)
 
 
-def build_remote_branch_stack(test):
+def build_branch_only_stack(test):
     # There is only one permutation (but we won't be able to handle more with
     # this design anyway)
     (transport_class,
      server_class) = transport_remote.get_test_permutations()[0]
     build_backing_branch(test, 'branch', transport_class, server_class)
     b = branch.Branch.open(test.get_url('branch'))
-    return config.RemoteBranchStack(b)
-config.test_stack_builder_registry.register('remote_branch',
-                                            build_remote_branch_stack)
+    return config.BranchOnlyStack(b)
+config.test_stack_builder_registry.register('branch_only',
+                                            build_branch_only_stack)
 
 def build_remote_control_stack(test):
     # There is only one permutation (but we won't be able to handle more with
