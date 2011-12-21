@@ -26,6 +26,8 @@ The Transport returned has methods to read, write and manipulate files within
 it.
 """
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 import sys
 
@@ -33,7 +35,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
 from stat import S_ISDIR
-import urllib
 import urlparse
 
 from bzrlib import (
@@ -1430,12 +1431,12 @@ class ConnectedTransport(Transport):
 
         :return: The corresponding URL.
         """
-        netloc = urllib.quote(host)
+        netloc = urlutils.quote(host)
         if user is not None:
             # Note that we don't put the password back even if we
             # have one so that it doesn't get accidentally
             # exposed.
-            netloc = '%s@%s' % (urllib.quote(user), netloc)
+            netloc = '%s@%s' % (urlutils.quote(user), netloc)
         if port is not None:
             netloc = '%s:%d' % (netloc, port)
         path = urlutils.escape(path)

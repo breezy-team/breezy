@@ -17,18 +17,14 @@
 
 """Support for running strace against the current process."""
 
-import errno
+from __future__ import absolute_import
+
 import os
 import signal
 import subprocess
 import tempfile
 
 from bzrlib import errors
-
-
-# this is currently test-focused, so importing bzrlib.tests is ok. We might
-# want to move feature to its own module though.
-from bzrlib.tests.features import Feature
 
 
 def strace(function, *args, **kwargs):
@@ -54,7 +50,7 @@ def strace_detailed(function, args, kwargs, follow_children=True):
     # start strace
     strace_cmd = ['strace', '-r', '-tt', '-p', str(pid), '-o', log_file.name]
     if follow_children:
-        strace_args.append('-f')
+        strace_cmd.append('-f')
     # need to catch both stdout and stderr to work around
     # bug 627208
     proc = subprocess.Popen(strace_cmd,

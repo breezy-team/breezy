@@ -16,6 +16,8 @@
 
 """A sphinx builder producing texinfo output."""
 
+from __future__ import absolute_import
+
 from sphinx import builders
 from sphinx.builders import text as _text_builder
 

@@ -537,7 +537,9 @@ class TestConfig(tests.TestCase):
 
     def test_log_format_default(self):
         my_config = config.Config()
-        self.assertEqual('long', my_config.log_format())
+        self.assertEqual('long',
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                                              my_config.log_format))
 
     def test_acceptable_keys_default(self):
         my_config = config.Config()
@@ -1069,7 +1071,10 @@ si_mb = 5MB,
 si_g = 5g,
 si_gb = 5gB,
 """)
-        get_si = conf.get_user_option_as_int_from_SI
+        def get_si(s, default=None):
+            return self.applyDeprecated(
+                deprecated_in((2, 5, 0)),
+                conf.get_user_option_as_int_from_SI, s, default)
         self.assertEqual(100, get_si('plain'))
         self.assertEqual(5000, get_si('si_k'))
         self.assertEqual(5000, get_si('si_kb'))
@@ -1079,6 +1084,7 @@ si_gb = 5gB,
         self.assertEqual(5000000000, get_si('si_gb'))
         self.assertEqual(None, get_si('non-exist'))
         self.assertEqual(42, get_si('non-exist-with-default',  42))
+
 
 class TestSupressWarning(TestIniConfig):
 
@@ -1317,7 +1323,9 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
 
     def test_configured_logformat(self):
         my_config = self._get_sample_config()
-        self.assertEqual("short", my_config.log_format())
+        self.assertEqual("short",
+                         self.applyDeprecated(deprecated_in((2, 5, 0)),
+                                              my_config.log_format))
 
     def test_configured_acceptable_keys(self):
         my_config = self._get_sample_config()
@@ -2358,7 +2366,8 @@ class TestOption(tests.TestCase):
 class TestOptionConverterMixin(object):
 
     def assertConverted(self, expected, opt, value):
-        self.assertEquals(expected, opt.convert_from_unicode(value))
+        self.assertEquals(expected, opt.convert_from_unicode(value),
+                          'Expecting %s, got %s' % (expected, value,))
 
     def assertWarns(self, opt, value):
         warnings = []
@@ -2377,7 +2386,8 @@ class TestOptionConverterMixin(object):
 
     def assertConvertInvalid(self, opt, invalid_value):
         opt.invalid = None
-        self.assertEquals(None, opt.convert_from_unicode(invalid_value))
+        self.assertEquals(None, opt.convert_from_unicode(invalid_value),
+                          '%s is not None' % (invalid_value,))
         opt.invalid = 'warning'
         self.assertWarns(opt, invalid_value)
         opt.invalid = 'error'
@@ -2420,6 +2430,31 @@ class TestOptionWithIntegerConverter(tests.TestCase, TestOptionConverterMixin):
     def test_convert_valid(self):
         opt = self.get_option()
         self.assertConverted(16, opt, u'16')
+
+
+class TestOptionWithSIUnitConverter(tests.TestCase, TestOptionConverterMixin):
+
+    def get_option(self):
+        return config.Option('foo', help='An integer in SI units.',
+                             from_unicode=config.int_SI_from_store)
+
+    def test_convert_invalid(self):
+        opt = self.get_option()
+        self.assertConvertInvalid(opt, u'not-a-unit')
+        self.assertConvertInvalid(opt, u'Gb') # Forgot the int
+        self.assertConvertInvalid(opt, u'1b') # Forgot the unit
+        self.assertConvertInvalid(opt, u'1GG')
+        self.assertConvertInvalid(opt, u'1Mbb')
+        self.assertConvertInvalid(opt, u'1MM')
+
+    def test_convert_valid(self):
+        opt = self.get_option()
+        self.assertConverted(int(5e3), opt, u'5kb')
+        self.assertConverted(int(5e6), opt, u'5M')
+        self.assertConverted(int(5e6), opt, u'5MB')
+        self.assertConverted(int(5e9), opt, u'5g')
+        self.assertConverted(int(5e9), opt, u'5gB')
+        self.assertConverted(100, opt, u'100')
 
 
 class TestOptionWithListConverter(tests.TestCase, TestOptionConverterMixin):
@@ -4539,7 +4574,7 @@ class TestAutoUserId(tests.TestCase):
 
     def test_auto_user_id(self):
         """Automatic inference of user name.
-        
+
         This is a bit hard to test in an isolated way, because it depends on
         system functions that go direct to /etc or perhaps somewhere else.
         But it's reasonable to say that on Unix, with an /etc/mailname, we ought
@@ -4555,3 +4590,25 @@ class TestAutoUserId(tests.TestCase):
         else:
             self.assertEquals((None, None), (realname, address))
 
+
+class EmailOptionTests(tests.TestCase):
+
+    def test_default_email_uses_BZR_EMAIL(self):
+        # BZR_EMAIL takes precedence over EMAIL
+        self.overrideEnv('BZR_EMAIL', 'jelmer@samba.org')
+        self.overrideEnv('EMAIL', 'jelmer@apache.org')
+        self.assertEquals('jelmer@samba.org', config.default_email())
+
+    def test_default_email_uses_EMAIL(self):
+        self.overrideEnv('BZR_EMAIL', None)
+        self.overrideEnv('EMAIL', 'jelmer@apache.org')
+        self.assertEquals('jelmer@apache.org', config.default_email())
+
+    def test_BZR_EMAIL_overrides(self):
+        self.overrideEnv('BZR_EMAIL', 'jelmer@apache.org')
+        self.assertEquals('jelmer@apache.org',
+            config.email_from_store('jelmer@debian.org'))
+        self.overrideEnv('BZR_EMAIL', None)
+        self.overrideEnv('EMAIL', 'jelmer@samba.org')
+        self.assertEquals('jelmer@debian.org',
+            config.email_from_store('jelmer@debian.org'))

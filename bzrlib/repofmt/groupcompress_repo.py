@@ -16,6 +16,8 @@
 
 """Repository formats using CHK inventories and groupcompress compression."""
 
+from __future__ import absolute_import
+
 import time
 
 from bzrlib import (

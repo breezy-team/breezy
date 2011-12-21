@@ -13,12 +13,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
 """\
 This is an attempt to take the internal delta object, and represent
 it as a single-file text-only changeset.
 This should have commands for both generating a changeset,
 and for applying a changeset.
 """
+
+from __future__ import absolute_import
 
 from cStringIO import StringIO
 

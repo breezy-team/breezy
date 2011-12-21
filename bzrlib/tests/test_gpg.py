@@ -36,11 +36,13 @@ from bzrlib.tests import (
 
 class FakeConfig(config.Stack):
 
-    def __init__(self):
+    def __init__(self, content=None):
         store = config.IniFileStore()
-        store._load_from_string('''
+        if content is None:
+            content = '''
 gpg_signing_key=amy@example.com
-gpg_signing_command=false''')
+gpg_signing_command=false'''
+        store._load_from_string(content)
         super(FakeConfig, self).__init__([store.get_sections])
 
 
@@ -53,6 +55,23 @@ class TestCommandLine(tests.TestCase):
     def test_signing_command_line(self):
         self.assertEqual(['false',  '--clearsign', '-u', 'amy@example.com'],
                          self.my_gpg._command_line())
+
+    def test_signing_command_line_from_default(self):
+        # Using 'default' for gpg_signing_key will use the mail part of 'email'
+        my_gpg = gpg.GPGStrategy(FakeConfig('''
+email=Amy <amy@example.com>
+gpg_signing_key=default
+gpg_signing_command=false'''))
+        self.assertEqual(['false',  '--clearsign', '-u', 'amy@example.com'],
+                         my_gpg._command_line())
+
+    def test_signing_command_line_from_email(self):
+        # Not setting gpg_signing_key will use the mail part of 'email'
+        my_gpg = gpg.GPGStrategy(FakeConfig('''
+email=Amy <amy@example.com>
+gpg_signing_command=false'''))
+        self.assertEqual(['false',  '--clearsign', '-u', 'amy@example.com'],
+                         my_gpg._command_line())
 
     def test_checks_return_code(self):
         # This test needs a unix like platform - one with 'false' to run.
@@ -252,7 +271,7 @@ kRk=
         #untrusted by gpg but listed as acceptable_keys by user
         self.requireFeature(features.gpgme)
         self.import_keys()
-            
+
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
@@ -283,7 +302,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
     def test_verify_unacceptable_key(self):
         self.requireFeature(features.gpgme)
         self.import_keys()
-            
+
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
@@ -314,7 +333,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
     def test_verify_valid_but_untrusted(self):
         self.requireFeature(features.gpgme)
         self.import_keys()
-            
+
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
@@ -344,7 +363,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
     def test_verify_bad_testament(self):
         self.requireFeature(features.gpgme)
         self.import_keys()
-            
+
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
@@ -376,7 +395,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
     def test_verify_revoked_signature(self):
         self.requireFeature(features.gpgme)
         self.import_keys()
-            
+
         content = """-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 

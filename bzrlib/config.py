@@ -72,10 +72,10 @@ h=help
 up=pull
 """
 
-import os
-import string
-import sys
+from __future__ import absolute_import
 
+import os
+import sys
 
 import bzrlib
 from bzrlib.decorators import needs_write_lock
@@ -441,14 +441,15 @@ class Config(object):
             # add) the final ','
             l = [l]
         return l
-        
+
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def get_user_option_as_int_from_SI(self, option_name, default=None):
         """Get a generic option from a human readable size in SI units, e.g 10MB
-        
+
         Accepted suffixes are K,M,G. It is case-insensitive and may be followed
         by a trailing b (i.e. Kb, MB). This is intended to be practical and not
         pedantic.
-        
+
         :return Integer, expanded to its base-10 value if a proper SI unit is 
             found. If the option doesn't exist, or isn't a value in 
             SI units, return default (which defaults to None)
@@ -479,7 +480,6 @@ class Config(object):
             except TypeError:
                 val = default
         return val
-        
 
     @deprecated_method(deprecated_in((2, 5, 0)))
     def gpg_signing_command(self):
@@ -493,6 +493,7 @@ class Config(object):
         """See gpg_signing_command()."""
         return None
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def log_format(self):
         """What log format should be used"""
         result = self._log_format()
@@ -1636,9 +1637,10 @@ def _get_default_mail_domain():
         f.close()
 
 
-
-
 def default_email():
+    v = os.environ.get('BZR_EMAIL')
+    if v:
+        return v.decode(osutils.get_user_encoding())
     v = os.environ.get('EMAIL')
     if v:
         return v.decode(osutils.get_user_encoding())
@@ -1855,7 +1857,7 @@ class AuthenticationConfig(object):
         :param user: login (optional)
 
         :param path: the absolute path on the server (optional)
-        
+
         :param realm: the http authentication realm (optional)
 
         :return: A dict containing the matching credentials or None.
@@ -2457,9 +2459,36 @@ def int_from_store(unicode_str):
     return int(unicode_str)
 
 
+_unit_sfxs = dict(K=10**3, M=10**6, G=10**9)
+
+def int_SI_from_store(unicode_str):
+    """Convert a human readable size in SI units, e.g 10MB into an integer.
+
+    Accepted suffixes are K,M,G. It is case-insensitive and may be followed
+    by a trailing b (i.e. Kb, MB). This is intended to be practical and not
+    pedantic.
+
+    :return Integer, expanded to its base-10 value if a proper SI unit is 
+        found, None otherwise.
+    """
+    regexp = "^(\d+)(([" + ''.join(_unit_sfxs) + "])b?)?$"
+    p = re.compile(regexp, re.IGNORECASE)
+    m = p.match(unicode_str)
+    val = None
+    if m is not None:
+        val, _, unit = m.groups()
+        val = int(val)
+        if unit:
+            try:
+                coeff = _unit_sfxs[unit.upper()]
+            except KeyError:
+                raise ValueError(gettext('{0} is not an SI unit.').format(unit))
+            val *= coeff
+    return val
+
+
 def float_from_store(unicode_str):
     return float(unicode_str)
-
 
 
 # Use a an empty dict to initialize an empty configobj avoiding all
@@ -2536,10 +2565,30 @@ option_registry = OptionRegistry()
 # Registered options in lexicographical order
 
 option_registry.register(
+    Option('append_revisions_only',
+           default=None, from_unicode=bool_from_store, invalid='warning',
+           help='''\
+Whether to only append revisions to the mainline.
+
+If this is set to true, then it is not possible to change the
+existing mainline of the branch.
+'''))
+option_registry.register(
     Option('acceptable_keys',
            default=None, from_unicode=list_from_store,
            help="""\
 List of GPG key patterns which are acceptable for verification.
+"""))
+option_registry.register(
+    Option('add.maximum_file_size',
+           default=u'20MB', from_unicode=int_SI_from_store,
+           help="""\
+Size above which files should be added manually.
+
+Files below this size are added automatically when using ``bzr add`` without
+arguments.
+
+A negative value means disable the size check.
 """))
 option_registry.register(
     Option('bzr.workingtree.worth_saving_limit', default=10,
@@ -2688,7 +2737,12 @@ If true (default), repository changes are flushed through the OS buffers
 to physical disk.  This is somewhat slower, but means data should not be
 lost if the machine crashes.  See also dirstate.fdatasync.
 '''))
-
+option_registry.register_lazy('smtp_server',
+    'bzrlib.smtp_connection', 'smtp_server')
+option_registry.register_lazy('smtp_password',
+    'bzrlib.smtp_connection', 'smtp_password')
+option_registry.register_lazy('smtp_username',
+    'bzrlib.smtp_connection', 'smtp_username')
 option_registry.register(
     Option('selftest.timeout',
         default='600',
@@ -3473,45 +3527,86 @@ class _CompatibleStack(Stack):
 
 
 class GlobalStack(_CompatibleStack):
-    """Global options only stack."""
+    """Global options only stack.
+
+    The following sections are queried:
+
+    * command-line overrides,
+
+    * the 'DEFAULT' section in bazaar.conf
+
+    This stack will use the ``DEFAULT`` section in bazaar.conf as its
+    MutableSection.
+    """
 
     def __init__(self):
-        # Get a GlobalStore
         gstore = GlobalStore()
         super(GlobalStack, self).__init__(
-            [self._get_overrides, NameMatcher(gstore, 'DEFAULT').get_sections],
+            [self._get_overrides,
+             NameMatcher(gstore, 'DEFAULT').get_sections],
             gstore, mutable_section_id='DEFAULT')
 
 
 class LocationStack(_CompatibleStack):
-    """Per-location options falling back to global options stack."""
+    """Per-location options falling back to global options stack.
+
+
+    The following sections are queried:
+
+    * command-line overrides,
+
+    * the sections matching ``location`` in ``locations.conf``, the order being
+      defined by the number of path components in the section glob, higher
+      numbers first (from most specific section to most generic).
+
+    * the 'DEFAULT' section in bazaar.conf
+
+    This stack will use the ``location`` section in locations.conf as its
+    MutableSection.
+    """
 
     def __init__(self, location):
         """Make a new stack for a location and global configuration.
-        
+
         :param location: A URL prefix to """
         lstore = LocationStore()
         if location.startswith('file://'):
             location = urlutils.local_path_from_url(location)
-        matcher = LocationMatcher(lstore, location)
         gstore = GlobalStore()
         super(LocationStack, self).__init__(
             [self._get_overrides,
-             matcher.get_sections, NameMatcher(gstore, 'DEFAULT').get_sections],
+             LocationMatcher(lstore, location).get_sections,
+             NameMatcher(gstore, 'DEFAULT').get_sections],
             lstore, mutable_section_id=location)
 
 
 class BranchStack(_CompatibleStack):
-    """Per-location options falling back to branch then global options stack."""
+    """Per-location options falling back to branch then global options stack.
+
+    The following sections are queried:
+
+    * command-line overrides,
+
+    * the sections matching ``location`` in ``locations.conf``, the order being
+      defined by the number of path components in the section glob, higher
+      numbers first (from most specific section to most generic),
+
+    * the no-name section in branch.conf,
+
+    * the ``DEFAULT`` section in ``bazaar.conf``.
+
+    This stack will use the no-name section in ``branch.conf`` as its
+    MutableSection.
+    """
 
     def __init__(self, branch):
-        bstore = branch._get_config_store()
         lstore = LocationStore()
-        matcher = LocationMatcher(lstore, branch.base)
+        bstore = branch._get_config_store()
         gstore = GlobalStore()
         super(BranchStack, self).__init__(
             [self._get_overrides,
-             matcher.get_sections, bstore.get_sections,
+             LocationMatcher(lstore, branch.base).get_sections,
+             NameMatcher(bstore, None).get_sections,
              NameMatcher(gstore, 'DEFAULT').get_sections],
             bstore)
         self.branch = branch
@@ -3527,7 +3622,7 @@ class RemoteControlStack(_CompatibleStack):
     def __init__(self, bzrdir):
         cstore = bzrdir._get_config_store()
         super(RemoteControlStack, self).__init__(
-            [cstore.get_sections],
+            [NameMatcher(cstore, None).get_sections],
             cstore)
         self.bzrdir = bzrdir
 
@@ -3542,7 +3637,7 @@ class RemoteBranchStack(_CompatibleStack):
     def __init__(self, branch):
         bstore = branch._get_config_store()
         super(RemoteBranchStack, self).__init__(
-            [bstore.get_sections],
+            [NameMatcher(bstore, None).get_sections],
             bstore)
         self.branch = branch
 

@@ -20,6 +20,8 @@ This does not change the transport behaviour at all, but provides all the
 stub functions to allow other decorators to be written easily.
 """
 
+from __future__ import absolute_import
+
 from bzrlib import transport
 
 

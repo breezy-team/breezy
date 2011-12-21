@@ -56,8 +56,25 @@ Bug Fixes
 * Create obsolete_packs directory when repacking if it does not
   exist. (Jonathan Riddell, Jelmer Vernooij, #314314)
 
+* Fallback to the slower ``bzr log`` implementation when displaying a range
+  of revisions whose ancestry is not obviously on the same developement
+  line. (Vincent Ladeuil, #904744)
+
+* Not setting ``gpg_signing_key`` or setting it to ``default`` will use the
+  user email (obtained from the ``email`` configuration option or its
+  default value). (Vincent Ladeuil, Jelmer Vernooij, #904550)
+
+* Prevent spurious InconsistentDelta error when committing a move of a
+  non-ascii directory with contents. (Rory Yorke, #185211)
+
 * Properly ignore '\n' in an option reference since this cannot be part of a
   config option identifier. (Vincent Ladeuil, #902125)
+
+* Make sure that the bzr probers are always registered when
+  bzrlib.workingtree is imported. (Jelmer Vernooij, #905218)
+
+* Report mistake trying to move a removed file with a non-ascii name without
+  UnicodeEncodeError being raised. (Martin Packman, #898541)
 
 Documentation
 *************
@@ -88,10 +105,26 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* ``bzrlib.urlutils`` now includes ``quote`` and ``unquote`` functions,
+  rather than importing them from ``urllib``. This prevents loading
+  of the ``socket``, ``ssl`` and ``urllib`` modules for
+  local bzr operations. (Jelmer Vernooij)
+
+* Configuration options can be SI units by using ``int_SI_from_unicode`` as
+  their ``convert_from_unicode`` helper. (Vincent Ladeuil)
+
 * ControlDir now has a get_branches method that returns a dictionary
   whose keys are the names of the branches and whose values are the
   branches themselves. The active branch uses the key None.
   (Neil Martinsen-Burrell)
+
+* Helper ``osutils.path_from_environ`` added for extracting a unicode path
+  from an environment variable. (Martin Packman, #832028)
+
+* Helper ``win32utils.get_environ_unicode`` added for avoiding encoding
+  problems with ``os.environ.get`` use. (Martin Packman, #262874) 
+
+* Lazy imports can now only be absolute. (Jelmer Vernooij)
 
 * New HPSS call ``BzrDir.checkout_metadir``. (Jelmer Vernooij, #894459)
 
@@ -222,7 +255,7 @@ Bug Fixes
   unreserved characters are unquoted in URLs. (Martin Packman, #842223)
 
 * Split segments from URLs for colocated branches without assuming the
-  combined form is a valid. (Martin Packman, #842233)
+  combined form is valid. (Martin Packman, #842233)
 
 * Support looking up revision numbers by revision id in empty branches.
   (Jelmer Vernooij, #535031)

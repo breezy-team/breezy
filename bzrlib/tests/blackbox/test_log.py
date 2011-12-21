@@ -205,6 +205,10 @@ class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
         # 4  1.1.4
         # | /
         # 5
+        # | \
+        # | 5.1.1
+        # | /
+        # 6
 
         # mainline
         builder.build_snapshot('1', None, [
@@ -223,6 +227,8 @@ class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
         builder.build_snapshot('1.1.4', ['1.1.3', '4'], [])
         # merge branch into mainline
         builder.build_snapshot('5', ['4', '1.1.4'], [])
+        builder.build_snapshot('5.1.1', ['5'], [])
+        builder.build_snapshot('6', ['5', '5.1.1'], [])
         builder.finish_series()
 
     def test_n0(self):
@@ -241,6 +247,11 @@ class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
         self.assertLogRevnos(['-n1', '-r1.1.1..1.1.4', '--forward'],
                              ['1.1.1', '1.1.2', '1.1.3', '1.1.4'])
 
+    def test_fallback_when_end_rev_is_not_on_mainline(self):
+        self.assertLogRevnos(['-n1', '-r1.1.1..5.1.1'],
+                             # We don't get 1.1.1 because we say -n1
+                             ['5.1.1', '5', '4', '3'])
+
 
 class Test_GenerateAllRevisions(TestLogWithLogCatcher):
 
@@ -258,6 +269,19 @@ class Test_GenerateAllRevisions(TestLogWithLogCatcher):
         # The graph below may look a bit complicated (and it may be but I've
         # banged my head enough on it) but the bug requires at least dotted
         # revnos *and* merged revisions below that.
+        # 1
+        # | \
+        # 2  1.1.1
+        # | X
+        # 3  2.1.1
+        # |   |    \
+        # |  2.1.2  2.2.1
+        # |   |    X
+        # |  2.1.3  \
+        # | /       /
+        # 4        /
+        # |       /
+        # 5 -----/
         builder.build_snapshot('1', None, [
             ('add', ('', 'root-id', 'directory', ''))])
         builder.build_snapshot('2', ['1'], [])
@@ -382,7 +406,7 @@ class TestLogErrors(TestLog):
     def test_log_reversed_dotted_revspecs(self):
         self.make_merged_branch()
         self.run_bzr_error(('bzr: ERROR: Start revision not found in '
-                            'left-hand history of end revision.\n',),
+                            'history of end revision.\n',),
                            "log -r 1.1.1..1")
 
     def test_log_bad_message_re(self):

@@ -855,6 +855,21 @@ altered in u2
         self.assertContainsRe(err,
             'Branch.*test_checkout.*appears to be bound to itself')
 
+    def test_mv_dirs_non_ascii(self):
+        """Move directory with non-ascii name and containing files.
+
+        Regression test for bug 185211.
+        """
+        tree = self.make_branch_and_tree('.')
+        self.build_tree([u'abc\xc3/', u'abc\xc3/foo'])
+
+        tree.add([u'abc\xc3/', u'abc\xc3/foo'])
+        tree.commit('checkin')
+
+        tree.rename_one(u'abc\xc3','abc')
+
+        self.run_bzr('ci -m "non-ascii mv"')
+
 
 class TestSmartServerCommit(TestCaseWithTransport):
 

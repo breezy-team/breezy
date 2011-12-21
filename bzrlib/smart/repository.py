@@ -16,6 +16,8 @@
 
 """Server-side repository related request implementations."""
 
+from __future__ import absolute_import
+
 import bz2
 import os
 import Queue
