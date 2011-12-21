@@ -72,7 +72,8 @@ class TestPush(tests.TestCaseWithTransport):
         out = self.run_bzr('push', working_dir='a', retcode=3)
         self.assertEquals(out,
             ('','bzr: ERROR: No push location known or specified. '
-                'To push to the parent branch, use \'bzr push :parent\'.\n'))
+                'To push to the parent branch '
+                '(at %s), use \'bzr push :parent\'.\n' % tree_b.branch.base))
 
     def test_push_remember(self):
         """Push changes from one branch to another and test push location."""

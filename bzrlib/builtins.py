@@ -1251,10 +1251,12 @@ class cmd_push(Command):
         if location is None:
             stored_loc = br_from.get_push_location()
             if stored_loc is None:
-                if br_from.get_parent():
+                parent_loc = br_from.get_parent()
+                if parent_loc:
                     raise errors.BzrCommandError(gettext(
                         "No push location known or specified. To push to the "
-                        "parent branch, use 'bzr push :parent'."))
+                        "parent branch (at %s), use 'bzr push :parent'." %
+                        parent_loc))
                 else:
                     raise errors.BzrCommandError(gettext(
                         "No push location known or specified."))
