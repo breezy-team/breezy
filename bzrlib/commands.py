@@ -263,8 +263,7 @@ def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
         # No command found.
         raise KeyError
     # Allow plugins to extend commands
-    for hook in Command.hooks['extend_command']:
-        hook(cmd)
+    Command.hooks['extend_command'].fire(cmd)
     if getattr(cmd, 'invoked_as', None) is None:
         cmd.invoked_as = cmd_name
     return cmd
@@ -691,7 +690,7 @@ class Command(object):
         """
         class_run = self.run
         def run(*args, **kwargs):
-            Command.hooks['pre_command'].run(self)
+            Command.hooks['pre_command'].fire(self)
             raised = None
             try:
                 return class_run(*args, **kwargs)
@@ -699,7 +698,7 @@ class Command(object):
                 raised = e
                 raise e
             finally:
-                Command.hooks['post_command'].run(self, raised)
+                Command.hooks['post_command'].fire(self, raised)
         self.run = run
 
     def _setup_run(self):
@@ -813,13 +812,14 @@ class CommandHooks(Hooks):
             (1, 17))
         self.add_hook('pre_command',
             "Called prior to executing a command. Called with the command "
-            "object.",
-            (2, 5))
+            "object.", (2, 5), suppress_exceptions=True,
+            passed_exceptions=[errors.BzrCommandError])
         self.add_hook('post_command',
             "Called after executing a command. Called with the command "
             "object and the raised exception (or None). The hook cannot "
-            "affect the raising of the exception.",
-            (2, 5))
+            "affect the raising of the exception.", (2, 5),
+            suppress_exceptions=True,
+            passed_exceptions=[errors.BzrCommandError])
 
 Command.hooks = CommandHooks()
 
