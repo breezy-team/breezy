@@ -29,9 +29,10 @@ New Features
   provide notification before and after a command has been run.
   (Brian de Alwis)
 
-* Added new method run() to bzrlib.hooks.HookPoint to trigger defined hooks,
-  while catching and logging any errors.  E.g.:
-  ``bzrlib.commands.Command.hooks['pre_commands'].run(cmd)``
+* Added new method fire() to bzrlib.hooks.HookPoint to trigger defined hooks,
+  while catching and logging any errors.  Hook points can be configured
+  to suppress and log exceptions.  E.g.:
+  ``bzrlib.commands.Command.hooks['pre_commands'].fire(cmd)``
   (Brian de Alwis)
 
 Improvements
