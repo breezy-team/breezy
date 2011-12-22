@@ -1135,6 +1135,8 @@ class BzrFormat(object):
 
         :param name: Name of the feature
         """
+        if " " in name:
+            raise ValueError("spaces are not allowed in feature names")
         if name in cls._present_features:
             raise errors.FeatureAlreadyRegistered(name)
         cls._present_features.add(name)
@@ -1172,22 +1174,15 @@ class BzrFormat(object):
         lines = text[len(format_string):].splitlines()
         ret = cls()
         for lineno, line in enumerate(lines):
-            (necessity, command, feature) = line.split(" ", 2)
-            if command == "feature":
-                ret.features[feature] = necessity
-            elif necessity == "optional":
-                mutter("Invalid optional command %r on line %d" %
-                    (command, lineno))
-            else:
-                raise ValueError("Invalid command %r on line %d" %
-                    (command, lineno))
+            (necessity, feature) = line.split(" ", 1)
+            ret.features[feature] = necessity
         return ret
 
     def as_string(self):
         """Return the string representation of this format.
         """
         lines = [self.get_format_string()]
-        lines.extend([("%s feature %s\n" % (item[1], item[0])) for item in
+        lines.extend([("%s %s\n" % (item[1], item[0])) for item in
             self.features.iteritems()])
         return "".join(lines)
 

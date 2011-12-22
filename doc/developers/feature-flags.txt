@@ -90,10 +90,10 @@ roundtrips when opening a remote format. An example .bzr/repository/format
 file could then look like this::
 
   Bazaar repository format 2a (needs bzr 1.16 or later)
-  optional feature git
-  optional feature search
-  optional feature tiplog
-  required feature nested-trees
+  optional git
+  optional search
+  optional tiplog
+  required nested-trees
 
 In other words, this is a "2a" bzr format which also stores a cache of
 Git Tree/Commit objects, a bzr-search index, and a reflog. It also contains
