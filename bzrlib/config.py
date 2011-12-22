@@ -3314,9 +3314,8 @@ class NameMatcher(SectionMatcher):
 
 class LocationSection(Section):
 
-    def __init__(self, section, length, extra_path):
+    def __init__(self, section, extra_path):
         super(LocationSection, self).__init__(section.id, section.options)
-        self.length = length
         self.extra_path = extra_path
         self.locals = {'relpath': extra_path,
                        'basename': urlutils.basename(extra_path)}
@@ -3373,7 +3372,7 @@ class LocationMatcher(SectionMatcher):
         matching_sections = []
         if no_name_section is not None:
             matching_sections.append(
-                LocationSection(no_name_section, 0, self.location))
+                (0, LocationSection(no_name_section, self.location)))
         for section_id, extra_path, length in filtered_sections:
             # a section id is unique for a given store so it's safe to take the
             # first matching section while iterating. Also, all filtered
@@ -3383,7 +3382,7 @@ class LocationMatcher(SectionMatcher):
                 section = iter_all_sections.next()
                 if section_id == section.id:
                     matching_sections.append(
-                        LocationSection(section, length, extra_path))
+                        (length, LocationSection(section, extra_path)))
                     break
         return matching_sections
 
@@ -3392,10 +3391,10 @@ class LocationMatcher(SectionMatcher):
         matching_sections = self._get_matching_sections()
         # We want the longest (aka more specific) locations first
         sections = sorted(matching_sections,
-                          key=lambda section: (section.length, section.id),
+                          key=lambda (length, section): (length, section.id),
                           reverse=True)
         # Sections mentioning 'ignore_parents' restrict the selection
-        for section in sections:
+        for _, section in sections:
             # FIXME: We really want to use as_bool below -- vila 2011-04-07
             ignore = section.get('ignore_parents', None)
             if ignore is not None:

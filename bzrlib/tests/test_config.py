@@ -3212,8 +3212,7 @@ class TestLocationSection(tests.TestCase):
 
     def get_section(self, options, extra_path):
         section = config.Section('foo', options)
-        # We don't care about the length so we use '0'
-        return config.LocationSection(section, 0, extra_path)
+        return config.LocationSection(section, extra_path)
 
     def test_simple_option(self):
         section = self.get_section({'foo': 'bar'}, '')
@@ -3257,8 +3256,6 @@ section=/quux/quux
                           [section.id for _, section in store.get_sections()])
         matcher = config.LocationMatcher(store, '/foo/bar/quux')
         sections = [section for s, section in matcher.get_sections()]
-        self.assertEquals([3, 2],
-                          [section.length for section in sections])
         self.assertEquals(['/foo/bar', '/foo'],
                           [section.id for section in sections])
         self.assertEquals(['quux', 'bar/quux'],
@@ -3276,8 +3273,6 @@ section=/foo/bar
                           [section.id for _, section in store.get_sections()])
         matcher = config.LocationMatcher(store, '/foo/bar/baz')
         sections = [section for s, section in matcher.get_sections()]
-        self.assertEquals([3, 2],
-                          [section.length for section in sections])
         self.assertEquals(['/foo/bar', '/foo'],
                           [section.id for section in sections])
         self.assertEquals(['baz', 'bar/baz'],
