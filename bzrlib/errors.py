@@ -763,6 +763,18 @@ class IncompatibleFormat(BzrError):
         self.bzrdir = bzrdir_format
 
 
+class ParseFormatError(BzrError):
+
+    _fmt = "Parse error on line %(lineno)d of %(format)s format: %(line)s"
+
+    def __init__(self, format, lineno, line, text):
+        BzrError.__init__(self)
+        self.format = format
+        self.lineno = lineno
+        self.line = line
+        self.text = text
+
+
 class IncompatibleRepositories(BzrError):
     """Report an error that two repositories are not compatible.
 
@@ -3242,6 +3254,15 @@ class UnsupportedKindChange(BzrError):
         self.format = format
 
 
+class MissingFeature(BzrError):
+
+    _fmt = ("Missing feature %(feature)s not provided by this "
+            "version of Bazaar or any plugin.")
+
+    def __init__(self, feature):
+        self.feature = feature
+
+
 class PatchSyntax(BzrError):
     """Base class for patch syntax errors."""
 
@@ -3291,3 +3312,11 @@ class PatchConflict(BzrError):
         self.line_no = line_no
         self.orig_line = orig_line.rstrip('\n')
         self.patch_line = patch_line.rstrip('\n')
+
+
+class FeatureAlreadyRegistered(BzrError):
+
+    _fmt = 'The feature %(feature)s has already been registered.'
+
+    def __init__(self, feature):
+        self.feature = feature

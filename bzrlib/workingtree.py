@@ -47,7 +47,6 @@ import re
 
 from bzrlib import (
     branch,
-    bzrdir,
     conflicts as _mod_conflicts,
     controldir,
     errors,
@@ -72,9 +71,11 @@ from bzrlib import (
 
 # Explicitly import bzrlib.bzrdir so that the BzrProber
 # is guaranteed to be registered.
-import bzrlib.bzrdir
+from bzrlib import (
+    bzrdir,
+    symbol_versioning,
+    )
 
-from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.i18n import gettext
 from bzrlib.lock import LogicalLockResult
@@ -3133,12 +3134,12 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
         return self._matchingbzrdir
 
 
-class WorkingTreeFormatMetaDir(bzrdir.BzrDirMetaComponentFormat, WorkingTreeFormat):
+class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
     """Base class for working trees that live in bzr meta directories."""
 
     def __init__(self):
         WorkingTreeFormat.__init__(self)
-        bzrdir.BzrDirMetaComponentFormat.__init__(self)
+        bzrdir.BzrFormat.__init__(self)
 
     @classmethod
     def find_format_string(klass, controldir):
@@ -3155,6 +3156,14 @@ class WorkingTreeFormatMetaDir(bzrdir.BzrDirMetaComponentFormat, WorkingTreeForm
         format_string = klass.find_format_string(controldir)
         return klass._find_format(format_registry, 'working tree',
                 format_string)
+
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+            basedir=None):
+        WorkingTreeFormat.check_support_status(self,
+            allow_unsupported=allow_unsupported, recommend_upgrade=recommend_upgrade,
+            basedir=basedir)
+        bzrdir.BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
+            recommend_upgrade=recommend_upgrade, basedir=basedir)
 
 
 format_registry.register_lazy("Bazaar Working Tree Format 4 (bzr 0.15)\n",

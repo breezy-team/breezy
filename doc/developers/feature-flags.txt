@@ -51,8 +51,8 @@ would fall in the optional category.
 Feature necessity
 -----------------
 
-The initial implementation will feature the following set of possible
-settings for feature "necessity". Any format necessity that can't
+The initial implementation will feature the following two possible
+settings for feature ``necessity``. Any format necessity that can't
 be understood should be interpreted as "required", and an appropriate
 warning printed.
 
@@ -62,8 +62,16 @@ warning printed.
       annotate cache)
  - required: read and write access is only possible if the feature
       is supported. Useful for things like nested trees.
- - write-required: read access is possible if the feature is not supported,
+
+In the future, we might add more values for necessity. Older
+versions of bzr treat unknown necessities as "required". Some likely
+candidates for new necessities that might be added in the future:
+
+ - read-optional: read access is possible if the feature is not supported,
       but write access requires it
+ - client-read-optional: directly writing to the object requires
+      the feature, but reading or writing through an intermediary (such as
+      a HPSS server) doesn't.
 
 Format changes
 --------------
@@ -94,23 +102,32 @@ revisions with nested trees.
 API Changes
 -----------
 
-Class methods will be added to ``BzrDirComponentFormat`` to allow registering
-and deregistering the presence of particular features. This class is inherited
-by ``BzrBranchFormat``, ``VersionedFileRepositoryFormat`` and
-``InventoryWorkingTreeFormat``.
+Class methods will be added to ``BzrFormat`` to allow registering
+and unregistering the presence of particular features.
 
- * BzrDirComponentFormat.register_feature(name)
- * BzrDirComponentFormat.unregister_feature(name)
+ * BzrFormat.register_feature(name)
+ * BzrFormat.unregister_feature(name)
 
-Upon opening, BzrDirComponentFormat will be responsible for checking that the
+The namespace for features is global. It is assumed
+that the plugin that provides the feature X provides that feature
+in all objects that it is relevant for. For example, if a plugin
+provides the ``nested-trees`` feature, it is assumed to support
+that in both working trees and repositories. If this is not the case,
+it should use a different feature name for the working tree support
+and the repository support.
+
+BzrFormat is inherited by ``BranchFormatMetaDir``, ``BzrDirFormat``,
+``RepositoryFormatMetaDir`` and ``WorkingTreeFormatMetaDir``.
+
+Upon opening, BzrFormat will be responsible for checking that the
 required features are present.  lock_write will raise an exception
-when there is an un unsupported mandatory feature required for write access.
+when there is an unsupported mandatory feature required for write access.
 
-Methods will also be added to BzrDirComponentFormat to allow plugins, etc,
+Methods will also be added to BzrFormat to allow plugins, etc,
 to check whether a feature is present and adding new features:
 
- * BzrDirComponentFormat.set_feature(name, necessity)
- * BzrDirComponentFormat.get_feature(name) -> necessity
+ * BzrFormat.features.set(name, necessity)
+ * BzrFormat.features.get(name) -> necessity
 
 See also
 --------

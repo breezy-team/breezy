@@ -83,7 +83,7 @@ class TestDefaultFormat(TestCaseWithTransport):
         self.assertIsInstance(
             SampleTreeFormat.from_string("Sample tree format."),
             SampleTreeFormat)
-        self.assertRaises(ValueError,
+        self.assertRaises(AssertionError,
             SampleTreeFormat.from_string, "Different format string.")
 
     def test_get_set_default_format_by_key(self):
@@ -242,6 +242,21 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
         self.assertFalse(format in
             self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
                 workingtree.WorkingTreeFormat.get_formats))
+
+    def test_find_format_with_features(self):
+        tree = self.make_branch_and_tree('.', format='2a')
+        tree.control_transport.put_bytes('format',
+            tree._format.get_format_string() + "necessity name\n")
+        found_format = workingtree.WorkingTreeFormatMetaDir.find_format(
+            tree.bzrdir)
+        self.assertIsInstance(found_format, workingtree.WorkingTreeFormat)
+        self.assertEquals(found_format.features.get("name"), "necessity")
+        self.assertRaises(errors.MissingFeature, found_format.check_support_status,
+            True)
+        self.addCleanup(workingtree.WorkingTreeFormatMetaDir.unregister_feature,
+            "name")
+        workingtree.WorkingTreeFormatMetaDir.register_feature("name")
+        found_format.check_support_status(True)
 
 
 class TestWorkingTreeIterEntriesByDir_wSubtrees(TestCaseWithTransport):
