@@ -3322,6 +3322,15 @@ class TestGlobOrderedMatcher(TestStore):
     def test_empty(self):
         self.assertSectionIDs([], self.test_dir, '')
 
+    def test_no_name_included_when_present(self):
+        # Note that other tests will cover the case where the no-name section
+        # is empty and as such, not included.
+        self.assertSectionIDs(['/foo/bar', '/foo', None], '/foo/bar/baz', '''\
+option = defined so the no-name section exists
+[/foo]
+[/foo/bar]
+''')
+
     def test_order_reversed(self):
         self.assertSectionIDs(['/foo/bar', '/foo'], '/foo/bar/baz', '''\
 [/foo]

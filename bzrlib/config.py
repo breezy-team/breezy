@@ -3359,11 +3359,22 @@ class GlobOrderedMatcher(SectionMatcher):
         self.location = location
 
     def get_sections(self):
-        """Get all sections matching ``location``."""
+        """Get all sections matching ``location`` in the store.
+
+        The most generic sections are described first in the store, then more
+        specific ones can be provided for reduced scopes.
+
+        The returned section are therefore returned in the reversed order so
+        the most specific ones can be found first.
+        """
         store = self.store
         sections = []
         # Later sections are more specific, they should be returned first
         for _, section in reversed(list(store.get_sections())):
+            if section.id is None:
+                # The no-name section is always included if present
+                yield store, LocationSection(section, self.location)
+                continue
             section_path = section.id
             if section_path.startswith('file://'):
                 section_path = urlutils.local_path_from_url(section)

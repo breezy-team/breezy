@@ -130,7 +130,8 @@ Internals
 
 * Configuration stacks can now use ``GlobOrderedMatcher`` to select the
   sections matching a location while respecting the order chosen by the user
-  in the configuration file. (Vincent Ladeuil, #832046).
+  in the configuration file: from generic sections to specific
+  sections. (Vincent Ladeuil, #832046).
 
 * Configuration options can be SI units by using ``int_SI_from_unicode`` as
   their ``convert_from_unicode`` helper. (Vincent Ladeuil)
