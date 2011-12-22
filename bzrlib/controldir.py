@@ -262,7 +262,7 @@ class ControlDir(ControlComponent):
         """
         raise NotImplementedError(self.find_repository)
 
-    def open_workingtree(self, _unsupported=False,
+    def open_workingtree(self, unsupported=False,
                          recommend_upgrade=True, from_branch=None):
         """Open the workingtree object at this ControlDir if one is present.
 
@@ -1113,7 +1113,7 @@ class ControlDirFormat(object):
 
     @classmethod
     def all_probers(klass):
-        return klass._probers + klass._server_probers
+        return klass._server_probers + klass._probers
 
     @classmethod
     def known_formats(klass):
