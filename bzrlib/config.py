@@ -3343,6 +3343,22 @@ class LocationSection(Section):
         return value
 
 
+class GlobOrderedMatcher(SectionMatcher):
+    """Select sections for a given location respecting the Store order."""
+
+    def __init__(self, store, location):
+        super(GlobOrderedMatcher, self).__init__(store)
+        if location.startswith('file://'):
+            location = urlutils.local_path_from_url(location)
+        self.location = location
+
+    def get_sections(self):
+        """Get all sections matching ``location``."""
+        store = self.store
+        for _, section in store.get_sections():
+            yield store, LocationSection(section, self.location)
+
+
 class LocationMatcher(SectionMatcher):
 
     def __init__(self, store, location):

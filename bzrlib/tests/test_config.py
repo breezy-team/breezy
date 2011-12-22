@@ -3334,6 +3334,25 @@ option=bar
         self.assertLength(0, sections)
 
 
+class TestGlobOrderedMatcher(TestStore):
+
+    def setUp(self):
+        super(TestGlobOrderedMatcher, self).setUp()
+        self.matcher = config.NameMatcher
+        # Any simple store is good enough
+        self.store = config.IniFileStore()
+
+    def assertSections(self, expected, location, content):
+        self.store._load_from_string(content)
+        matcher = config.GlobOrderedMatcher(self.store, location)
+        sections = list(matcher.get_sections())
+        self.assertLength(len(expected), sections)
+        self.assertEqual(expected, sections)
+
+    def test_empty(self):
+        self.assertSections([], self.test_dir, '')
+
+
 class TestBaseStackGet(tests.TestCase):
 
     def setUp(self):
