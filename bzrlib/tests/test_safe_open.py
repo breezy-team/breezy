@@ -20,7 +20,6 @@ from bzrlib import urlutils
 from bzrlib.branch import (
     Branch,
     BranchReferenceFormat,
-    BzrBranchFormat7,
     )
 from bzrlib.bzrdir import (
     BzrDir,
@@ -28,7 +27,6 @@ from bzrlib.bzrdir import (
     )
 from bzrlib.controldir import ControlDirFormat
 from bzrlib.errors import NotBranchError
-from bzrlib.repofmt.knitpack_repo import RepositoryFormatKnitPack1
 from bzrlib.safe_open import (
     BadUrl,
     BlacklistPolicy,
@@ -329,7 +327,7 @@ class TestSafeOpen(TestCaseWithTransport):
         self.addCleanup(chroot_server.stop_server)
 
         def get_url(relpath):
-            return str(chroot_server.get_url() + relpath)
+            return chroot_server.get_url() + relpath
 
         return urlutils.URL.from_string(chroot_server.get_url()).scheme, get_url
 

@@ -3008,7 +3008,7 @@ class BzrBranch8(BzrBranch):
                                                 config=conf)
         if stacked_url is None:
             raise errors.NotStacked(self)
-        return stacked_url
+        return stacked_url.encode('utf-8')
 
     @needs_read_lock
     def get_rev_id(self, revno, history=None):

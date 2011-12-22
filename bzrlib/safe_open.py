@@ -31,23 +31,26 @@ from bzrlib.transport import (
     )
 
 
-class BadUrl(Exception):
-    """Tried to access a branch from a bad URL."""
+class BadUrl(errors.BzrError):
+
+    _fmt = "Tried to access a branch from bad URL %(url)s."
 
 
-class BranchReferenceForbidden(Exception):
-    """Trying to mirror a branch reference and the branch type does not allow
-    references.
-    """
+class BranchReferenceForbidden(errors.BzrError):
+
+    _fmt = ("Trying to mirror a branch reference and the branch type "
+            "does not allow references.")
 
 
-class BranchLoopError(Exception):
+class BranchLoopError(errors.BzrError):
     """Encountered a branch cycle.
 
     A URL may point to a branch reference or it may point to a stacked branch.
     In either case, it's possible for there to be a cycle in these references,
     and this exception is raised when we detect such a cycle.
     """
+
+    _fmt = "Encountered a branch cycle"""
 
 
 class BranchOpenPolicy(object):
@@ -317,6 +320,9 @@ class SafeBranchOpener(object):
         What safety means is defined by a subclasses `follow_reference` and
         `check_one_url` methods.
         """
+        if type(url) != str:
+            raise TypeError
+
         url = self.check_and_follow_branch_reference(url)
 
         def open_branch(url):
