@@ -1478,13 +1478,21 @@ class TestBzrFormat(TestCase):
             format.network_name())
 
     def test_from_string(self):
+        # No features
+        format = SampleBzrFormat.from_string(
+            "First line\n")
+        self.assertEquals({}, format.features)
+        # Proper feature
         format = SampleBzrFormat.from_string(
             "First line\nrequired foo\n")
         self.assertEquals("required", format.features.get("foo"))
+        # The first line has to match the format string
         self.assertRaises(ValueError, SampleBzrFormat.from_string,
             "Second line\nrequired foo\n")
+        # At least one space is required in the feature lines
         self.assertRaises(ValueError, SampleBzrFormat.from_string,
             "First line\nfoo\n")
+        # Feature with spaces (in case we add stuff like this in the future)
         format = SampleBzrFormat.from_string(
             "First line\nrequired foo with spaces\n")
         self.assertEquals("required", format.features.get("foo with spaces"))
