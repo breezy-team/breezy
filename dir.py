@@ -422,7 +422,7 @@ class LocalGitDir(GitDir):
         """'open' a repository for this dir."""
         return self._gitrepository_class(self)
 
-    def open_workingtree(self, recommend_upgrade=True):
+    def open_workingtree(self, recommend_upgrade=True, unsupported=False):
         if not self._git.bare:
             from dulwich.errors import NoIndexPresent
             repo = self.open_repository()
