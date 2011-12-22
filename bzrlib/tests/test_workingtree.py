@@ -83,7 +83,7 @@ class TestDefaultFormat(TestCaseWithTransport):
         self.assertIsInstance(
             SampleTreeFormat.from_string("Sample tree format."),
             SampleTreeFormat)
-        self.assertRaises(ValueError,
+        self.assertRaises(AssertionError,
             SampleTreeFormat.from_string, "Different format string.")
 
     def test_get_set_default_format_by_key(self):

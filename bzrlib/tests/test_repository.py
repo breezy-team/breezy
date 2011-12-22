@@ -153,7 +153,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
             SampleRepositoryFormat.from_string(
                 "Sample .bzr repository format."),
             SampleRepositoryFormat)
-        self.assertRaises(ValueError,
+        self.assertRaises(AssertionError,
             SampleRepositoryFormat.from_string,
                 "Different .bzr repository format.")
 

@@ -201,7 +201,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
         self.assertIsInstance(
             SampleBranchFormat.from_string("Sample branch format."),
             SampleBranchFormat)
-        self.assertRaises(ValueError,
+        self.assertRaises(AssertionError,
             SampleBranchFormat.from_string, "Different branch format.")
 
     def test_find_format_not_branch(self):
