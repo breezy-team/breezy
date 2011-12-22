@@ -133,6 +133,7 @@ def load_tests(standard_tests, module, loader):
             'test_import_dsc',
             'test_merge_changelog',
             'test_merge_package',
+            'test_merge_quilt',
             'test_merge_upstream',
             'test_repack_tarball_extra',
             'test_revspec',
