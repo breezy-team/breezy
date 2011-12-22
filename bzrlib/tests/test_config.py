@@ -3255,7 +3255,7 @@ section=/quux/quux
                            '/quux/quux'],
                           [section.id for _, section in store.get_sections()])
         matcher = config.LocationMatcher(store, '/foo/bar/quux')
-        sections = [section for s, section in matcher.get_sections()]
+        sections = [section for _, section in matcher.get_sections()]
         self.assertEquals(['/foo/bar', '/foo'],
                           [section.id for section in sections])
         self.assertEquals(['quux', 'bar/quux'],
@@ -3272,7 +3272,7 @@ section=/foo/bar
         self.assertEquals(['/foo', '/foo/bar'],
                           [section.id for _, section in store.get_sections()])
         matcher = config.LocationMatcher(store, '/foo/bar/baz')
-        sections = [section for s, section in matcher.get_sections()]
+        sections = [section for _, section in matcher.get_sections()]
         self.assertEquals(['/foo/bar', '/foo'],
                           [section.id for section in sections])
         self.assertEquals(['baz', 'bar/baz'],
@@ -3301,6 +3301,57 @@ foo:policy = appendpath
             expected_location = '/dir/subdir'
         matcher = config.LocationMatcher(store, expected_url)
         self.assertEquals(expected_location, matcher.location)
+
+
+class TestGlobOrderedMatcher(TestStore):
+
+    def setUp(self):
+        super(TestGlobOrderedMatcher, self).setUp()
+        self.matcher = config.NameMatcher
+        # Any simple store is good enough
+        self.store = config.IniFileStore()
+
+    def assertSectionIDs(self, expected, location, content):
+        self.store._load_from_string(content)
+        matcher = config.GlobOrderedMatcher(self.store, location)
+        sections = list(matcher.get_sections())
+        self.assertLength(len(expected), sections)
+        self.assertEqual(expected, [section.id for _, section in sections])
+        return sections
+
+    def test_empty(self):
+        self.assertSectionIDs([], self.test_dir, '')
+
+    def test_order_reversed(self):
+        self.assertSectionIDs(['/foo/bar', '/foo'], '/foo/bar/baz', '''\
+[/foo]
+[/foo/bar]
+''')
+
+    def test_unrelated_section_excluded(self):
+        self.assertSectionIDs(['/foo/bar', '/foo'], '/foo/bar/baz', '''\
+[/foo]
+[/foo/qux]
+[/foo/bar]
+''')
+
+    def test_glob_included(self):
+        self.assertSectionIDs(['/foo/*/baz', '/foo/b*', '/foo'],
+                              '/foo/bar/baz', '''\
+[/foo]
+[/foo/qux]
+[/foo/b*]
+[/foo/*/baz]
+''')
+
+    def test_respect_order(self):
+        self.assertSectionIDs(['/foo', '/foo/b*', '/foo/*/baz'],
+                              '/foo/bar/baz', '''\
+[/foo/*/baz]
+[/foo/qux]
+[/foo/b*]
+[/foo]
+''')
 
 
 class TestNameMatcher(TestStore):
@@ -3332,25 +3383,6 @@ option=bar
     def test_not_matching(self):
         sections = self.get_matching_sections('baz')
         self.assertLength(0, sections)
-
-
-class TestGlobOrderedMatcher(TestStore):
-
-    def setUp(self):
-        super(TestGlobOrderedMatcher, self).setUp()
-        self.matcher = config.NameMatcher
-        # Any simple store is good enough
-        self.store = config.IniFileStore()
-
-    def assertSections(self, expected, location, content):
-        self.store._load_from_string(content)
-        matcher = config.GlobOrderedMatcher(self.store, location)
-        sections = list(matcher.get_sections())
-        self.assertLength(len(expected), sections)
-        self.assertEqual(expected, sections)
-
-    def test_empty(self):
-        self.assertSections([], self.test_dir, '')
 
 
 class TestBaseStackGet(tests.TestCase):

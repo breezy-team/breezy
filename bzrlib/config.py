@@ -3012,10 +3012,6 @@ class CommandLineStore(Store):
 class IniFileStore(Store):
     """A config Store using ConfigObj for storage.
 
-    :ivar transport: The transport object where the config file is located.
-
-    :ivar file_name: The config file basename in the transport directory.
-
     :ivar _config_obj: Private member to hold the ConfigObj instance used to
         serialize/deserialize the config file.
     """
@@ -3133,9 +3129,19 @@ class IniFileStore(Store):
             value = self._config_obj._unquote(value)
         return value
 
+    def external_url(self):
+        # Since an IniFileStore can be used without a file (at least in tests),
+        # it's better to provide something than raising a NotImplementedError.
+        # All daughter classes are supposed to provide an implementation
+        # anyway.
+        return 'In-Process Store, no URL'
 
 class TransportIniFileStore(IniFileStore):
     """IniFileStore that loads files from a transport.
+
+    :ivar transport: The transport object where the config file is located.
+
+    :ivar file_name: The config file basename in the transport directory.
     """
 
     def __init__(self, transport, file_name):
@@ -3355,8 +3361,15 @@ class GlobOrderedMatcher(SectionMatcher):
     def get_sections(self):
         """Get all sections matching ``location``."""
         store = self.store
-        for _, section in store.get_sections():
-            yield store, LocationSection(section, self.location)
+        sections = []
+        # Later sections are more specific, they should be returned first
+        for _, section in reversed(list(store.get_sections())):
+            section_path = section.id
+            if section_path.startswith('file://'):
+                section_path = urlutils.local_path_from_url(section)
+            if (self.location.startswith(section_path)
+                or fnmatch.fnmatch(self.location, section_path)):
+                yield store, LocationSection(section, self.location)
 
 
 class LocationMatcher(SectionMatcher):
