@@ -180,8 +180,8 @@ class Branch(controldir.ControlComponent):
         For instance, if the branch is at URL/.bzr/branch,
         Branch.open(URL) -> a Branch instance.
         """
-        control = controldir.ControlDir.open(base, _unsupported,
-                                     possible_transports=possible_transports)
+        control = controldir.ControlDir.open(base,
+            possible_transports=possible_transports, _unsupported=_unsupported)
         return control.open_branch(unsupported=_unsupported,
             possible_transports=possible_transports)
 
@@ -3008,7 +3008,7 @@ class BzrBranch8(BzrBranch):
                                                 config=conf)
         if stacked_url is None:
             raise errors.NotStacked(self)
-        return stacked_url
+        return stacked_url.encode('utf-8')
 
     @needs_read_lock
     def get_rev_id(self, revno, history=None):
