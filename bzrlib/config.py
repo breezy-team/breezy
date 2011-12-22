@@ -2345,7 +2345,7 @@ class Option(object):
 
     def __init__(self, name, override_from_env=None,
                  default=None, default_from_env=None,
-                 help=None, from_unicode=None, invalid=None):
+                 help=None, from_unicode=None, invalid=None, unquote=True):
         """Build an option definition.
 
         :param name: the name used to refer to the option.
@@ -2376,6 +2376,11 @@ class Option(object):
             TypeError. Accepted values are: None (ignore invalid values),
             'warning' (emit a warning), 'error' (emit an error message and
             terminates).
+
+        :param unquote: should the unicode value be unquoted before conversion.
+           This should be used only when the store providing the values cannot
+           safely unquote them (see http://pad.lv/906897). It is provided so
+           daughter classes can handle the quoting themselves.
         """
         if override_from_env is None:
             override_from_env = []
@@ -2405,11 +2410,14 @@ class Option(object):
         self.default_from_env = default_from_env
         self.help = help
         self.from_unicode = from_unicode
+        self.unquote = unquote
         if invalid and invalid not in ('warning', 'error'):
             raise AssertionError("%s not supported for 'invalid'" % (invalid,))
         self.invalid = invalid
 
-    def convert_from_unicode(self, unicode_value):
+    def convert_from_unicode(self, store, unicode_value):
+        if self.unquote and store is not None and unicode_value is not None:
+            unicode_value = store.unquote(unicode_value)
         if self.from_unicode is None or unicode_value is None:
             # Don't convert or nothing to convert
             return unicode_value
@@ -2477,7 +2485,7 @@ def int_from_store(unicode_str):
     return int(unicode_str)
 
 
-_unit_sfxs = dict(K=10**3, M=10**6, G=10**9)
+_unit_suffixes = dict(K=10**3, M=10**6, G=10**9)
 
 def int_SI_from_store(unicode_str):
     """Convert a human readable size in SI units, e.g 10MB into an integer.
@@ -2489,7 +2497,7 @@ def int_SI_from_store(unicode_str):
     :return Integer, expanded to its base-10 value if a proper SI unit is 
         found, None otherwise.
     """
-    regexp = "^(\d+)(([" + ''.join(_unit_sfxs) + "])b?)?$"
+    regexp = "^(\d+)(([" + ''.join(_unit_suffixes) + "])b?)?$"
     p = re.compile(regexp, re.IGNORECASE)
     m = p.match(unicode_str)
     val = None
@@ -2498,7 +2506,7 @@ def int_SI_from_store(unicode_str):
         val = int(val)
         if unit:
             try:
-                coeff = _unit_sfxs[unit.upper()]
+                coeff = _unit_suffixes[unit.upper()]
             except KeyError:
                 raise ValueError(gettext('{0} is not an SI unit.').format(unit))
             val *= coeff
@@ -2515,28 +2523,41 @@ _list_converter_config = configobj.ConfigObj(
     {}, encoding='utf-8', list_values=True, interpolation=False)
 
 
-def list_from_store(unicode_str):
-    if not isinstance(unicode_str, basestring):
-        raise TypeError
-    # Now inject our string directly as unicode. All callers got their value
-    # from configobj, so values that need to be quoted are already properly
-    # quoted.
-    _list_converter_config.reset()
-    _list_converter_config._parse([u"list=%s" % (unicode_str,)])
-    maybe_list = _list_converter_config['list']
-    # ConfigObj return '' instead of u''. Use 'str' below to catch all cases.
-    if isinstance(maybe_list, basestring):
-        if maybe_list:
-            # A single value, most probably the user forgot (or didn't care to
-            # add) the final ','
-            l = [maybe_list]
+class ListOption(Option):
+
+    def __init__(self, name, default=None, default_from_env=None,
+                 help=None, invalid=None):
+        """A list Option definition.
+
+        This overrides the base class so the conversion from a unicode string
+        can take quoting into account.
+        """
+        super(ListOption, self).__init__(
+            name, default=default, default_from_env=default_from_env,
+            from_unicode=self.from_unicode, help=help,
+            invalid=invalid, unquote=False)
+
+    def from_unicode(self, unicode_str):
+        if not isinstance(unicode_str, basestring):
+            raise TypeError
+        # Now inject our string directly as unicode. All callers got their
+        # value from configobj, so values that need to be quoted are already
+        # properly quoted.
+        _list_converter_config.reset()
+        _list_converter_config._parse([u"list=%s" % (unicode_str,)])
+        maybe_list = _list_converter_config['list']
+        if isinstance(maybe_list, basestring):
+            if maybe_list:
+                # A single value, most probably the user forgot (or didn't care
+                # to add) the final ','
+                l = [maybe_list]
+            else:
+                # The empty string, convert to empty list
+                l = []
         else:
-            # The empty string, convert to empty list
-            l = []
-    else:
-        # We rely on ConfigObj providing us with a list already
-        l = maybe_list
-    return l
+            # We rely on ConfigObj providing us with a list already
+            l = maybe_list
+        return l
 
 
 class OptionRegistry(registry.Registry):
@@ -2592,8 +2613,8 @@ If this is set to true, then it is not possible to change the
 existing mainline of the branch.
 '''))
 option_registry.register(
-    Option('acceptable_keys',
-           default=None, from_unicode=list_from_store,
+    ListOption('acceptable_keys',
+           default=None,
            help="""\
 List of GPG key patterns which are acceptable for verification.
 """))
@@ -2607,6 +2628,27 @@ Files below this size are added automatically when using ``bzr add`` without
 arguments.
 
 A negative value means disable the size check.
+"""))
+option_registry.register(
+    Option('bound',
+           default=None, from_unicode=bool_from_store,
+           help="""\
+Is the branch bound to ``bound_location``.
+
+If set to "True", the branch should act as a checkout, and push each commit to
+the bound_location.  This option is normally set by ``bind``/``unbind``.
+
+See also: bound_location.
+"""))
+option_registry.register(
+    Option('bound_location',
+           default=None,
+           help="""\
+The location that commits should go to when acting as a checkout.
+
+This option is normally set by ``bind``.
+
+See also: bound.
 """))
 option_registry.register(
     Option('bzr.workingtree.worth_saving_limit', default=10,
@@ -2654,7 +2696,7 @@ OS buffers to physical disk.  This is somewhat slower, but means data
 should not be lost if the machine crashes.  See also repository.fdatasync.
 '''))
 option_registry.register(
-    Option('debug_flags', default=[], from_unicode=list_from_store,
+    ListOption('debug_flags', default=[],
            help='Debug flags to activate.'))
 option_registry.register(
     Option('default_format', default='2a',
@@ -2728,6 +2770,15 @@ option_registry.register(
            help= 'Unicode encoding for output'
            ' (terminal encoding if not specified).'))
 option_registry.register(
+    Option('parent_location',
+           default=None,
+           help="""\
+The location of the default branch for pull or merge.
+
+This option is normally set when creating a branch, the first ``pull`` or by
+``pull --remember``.
+"""))
+option_registry.register(
     Option('post_commit', default=None,
            help='''\
 Post commit functions.
@@ -2736,6 +2787,23 @@ An ordered list of python functions to call, separated by spaces.
 
 Each function takes branch, rev_id as parameters.
 '''))
+option_registry.register(
+    Option('public_branch',
+           default=None,
+           help="""\
+A publically-accessible version of this branch.
+
+This implies that the branch setting this option is not publically-accessible.
+Used and set by ``bzr send``.
+"""))
+option_registry.register(
+    Option('push_location',
+           default=None,
+           help="""\
+The location of the default branch for push.
+
+This option is normally set by the first ``push`` or ``push --remember``.
+"""))
 option_registry.register(
     Option('push_strict', default=None,
            from_unicode=bool_from_store,
@@ -2775,7 +2843,7 @@ option_registry.register(
 The default value for ``send --strict``.
 
 If present, defines the ``--strict`` option default value for checking
-uncommitted changes before pushing.
+uncommitted changes before sending a bundle.
 '''))
 
 option_registry.register(
@@ -2783,6 +2851,19 @@ option_registry.register(
            default=300.0, from_unicode=float_from_store,
            help="If we wait for a new request from a client for more than"
                 " X seconds, consider the client idle, and hangup."))
+option_registry.register(
+    Option('stacked_on_location',
+           default=None,
+           help="""The location where this branch is stacked on."""))
+option_registry.register(
+    Option('submit_branch',
+           default=None,
+           help="""\
+The branch you intend to submit your current work to.
+
+This is automatically set by ``bzr send`` and ``bzr merge``, and is also used
+by the ``submit:`` revision spec.
+"""))
 
 
 class Section(object):
@@ -2868,6 +2949,20 @@ class Store(object):
         the last load.
         """
         raise NotImplementedError(self.unload)
+
+    def quote(self, value):
+        """Quote a configuration option value for storing purposes.
+
+        This allows Stacks to present values as they will be stored.
+        """
+        return value
+
+    def unquote(self, value):
+        """Unquote a configuration option value into unicode.
+
+        The received value is quoted as stored.
+        """
+        return value
 
     def save(self):
         """Saves the Store to persistent storage."""
@@ -3040,6 +3135,20 @@ class IniFileStore(Store):
         else:
             section = self._config_obj.setdefault(section_id, {})
         return self.mutable_section_class(section_id, section)
+
+    def quote(self, value):
+        try:
+            # configobj conflates automagical list values and quoting
+            self._config_obj.list_values = True
+            return self._config_obj._quote(value)
+        finally:
+            self._config_obj.list_values = False
+
+    def unquote(self, value):
+        if value:
+            # _unquote doesn't handle None nor empty strings
+            value = self._config_obj._unquote(value)
+        return value
 
 
 class TransportIniFileStore(IniFileStore):
@@ -3371,6 +3480,7 @@ class Stack(object):
         if expand is None:
             expand = _get_expand_default_value()
         value = None
+        found_store = None # Where the option value has been found
         # If the option is registered, it may provide additional info about
         # value handling
         try:
@@ -3380,8 +3490,8 @@ class Stack(object):
             opt = None
 
         def expand_and_convert(val):
-            # This may need to be called twice if the value is None or ends up
-            # being None during expansion or conversion.
+            # This may need to be called in different contexts if the value is
+            # None or ends up being None during expansion or conversion.
             if val is not None:
                 if expand:
                     if isinstance(val, basestring):
@@ -3390,8 +3500,10 @@ class Stack(object):
                         trace.warning('Cannot expand "%s":'
                                       ' %s does not support option expansion'
                                       % (name, type(val)))
-                if opt is not None:
-                    val = opt.convert_from_unicode(val)
+                if opt is None:
+                    val = found_store.unquote(val)
+                else:
+                    val = opt.convert_from_unicode(found_store, val)
             return val
 
         # First of all, check if the environment can override the configuration
@@ -3408,6 +3520,7 @@ class Stack(object):
                 for store, section in sections():
                     value = section.get(name)
                     if value is not None:
+                        found_store = store
                         break
                 if value is not None:
                     break
@@ -3493,19 +3606,20 @@ class Stack(object):
         or deleting an option. In practice the store will often be loaded but
         this helps catching some programming errors.
         """
-        section = self.store.get_mutable_section(self.mutable_section_id)
-        return section
+        store = self.store
+        section = store.get_mutable_section(self.mutable_section_id)
+        return store, section
 
     def set(self, name, value):
         """Set a new value for the option."""
-        section = self._get_mutable_section()
-        section.set(name, value)
+        store, section = self._get_mutable_section()
+        section.set(name, store.quote(value))
         for hook in ConfigHooks['set']:
             hook(self, name, value)
 
     def remove(self, name):
         """Remove an existing option."""
-        section = self._get_mutable_section()
+        _, section = self._get_mutable_section()
         section.remove(name)
         for hook in ConfigHooks['remove']:
             hook(self, name)
@@ -3676,24 +3790,25 @@ class RemoteControlStack(_CompatibleStack):
         self.bzrdir = bzrdir
 
 
-class RemoteBranchStack(_CompatibleStack):
-    """Remote branch-only options stack."""
+class BranchOnlyStack(_CompatibleStack):
+    """Branch-only options stack."""
 
-    # FIXME 2011-11-22 JRV This should probably be renamed to avoid confusion
-    # with the stack used for remote branches. RemoteBranchStack only uses
-    # branch.conf and is used only for the stack options.
+    # FIXME: _BranchOnlyStack only uses branch.conf and is used only for the
+    # stacked_on_location options waiting for http://pad.lv/832042 to be fixed.
+    # -- vila 2011-12-16
 
     def __init__(self, branch):
         bstore = branch._get_config_store()
-        super(RemoteBranchStack, self).__init__(
+        super(BranchOnlyStack, self).__init__(
             [NameMatcher(bstore, None).get_sections],
             bstore)
         self.branch = branch
 
+
 # Use a an empty dict to initialize an empty configobj avoiding all
 # parsing and encoding checks
 _quoting_config = configobj.ConfigObj(
-    {}, encoding='utf-8', interpolation=False)
+    {}, encoding='utf-8', interpolation=False, list_values=True)
 
 class cmd_config(commands.Command):
     __doc__ = """Display, set or remove a configuration option.
@@ -3819,13 +3934,20 @@ class cmd_config(commands.Command):
                             self.outf.write('%s:\n' % (store.id,))
                             cur_store_id = store.id
                             cur_section = None
-                        if (section.id not in (None, 'DEFAULT')
+                        if (section.id is not None
                             and cur_section != section.id):
-                            # Display the section if it's not the default (or
-                            # only) one.
+                            # Display the section id as it appears in the store
+                            # (None doesn't appear by definition)
                             self.outf.write('  [%s]\n' % (section.id,))
                             cur_section = section.id
                         value = section.get(oname, expand=False)
+                        # Since we don't use the stack, we need to restore a
+                        # proper quoting.
+                        try:
+                            opt = option_registry.get(oname)
+                            value = opt.convert_from_unicode(store, value)
+                        except KeyError:
+                            value = store.unquote(value)
                         value = _quoting_config._quote(value)
                         self.outf.write('  %s = %s\n' % (oname, value))
 
