@@ -2725,16 +2725,10 @@ class BzrBranch(Branch, _RelockDebugMixin):
     def update_feature_flags(self, updated_flags):
         """Update the feature flags for this branch.
 
-        :param updated_flags:
+        :param updated_flags: Dictionary mapping feature names to necessities
+            A necessity can be None to indicate the feature should be removed
         """
-        for name, necessity in updated_flags.iteritems():
-            if necessity is None:
-                try:
-                    del self._format.features[name]
-                except KeyError:
-                    pass
-            else:
-                self._format.features[name] = necessity
+        self._format._update_feature_flags(updated_flags)
         self.control_transport.put_bytes('format', self._format.as_string())
 
 

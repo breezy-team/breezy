@@ -794,14 +794,7 @@ class BzrDir(controldir.ControlDir):
         """
         self.control_files.lock_write()
         try:
-            for name, necessity in updated_flags.iteritems():
-                if necessity is None:
-                    try:
-                        del self._format.features[name]
-                    except KeyError:
-                        pass
-                else:
-                    self._format.features[name] = necessity
+            self._format._update_feature_flags(updated_flags)
             self.transport.put_bytes('branch-format', self._format.as_string())
         finally:
             self.control_files.unlock()
@@ -1232,6 +1225,20 @@ class BzrFormat(object):
     def __eq__(self, other):
         return (self.__class__ is other.__class__ and
                 self.features == other.features)
+
+    def _update_feature_flags(self, updated_flags):
+        """Update the feature flags in this format.
+
+        :param updated_flags: Updated feature flags
+        """
+        for name, necessity in updated_flags.iteritems():
+            if necessity is None:
+                try:
+                    del self.features[name]
+                except KeyError:
+                    pass
+            else:
+                self.features[name] = necessity
 
 
 class BzrProber(controldir.Prober):
