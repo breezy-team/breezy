@@ -303,8 +303,8 @@ or just ``match``.
 * ``LocationMatcher(store, location)``: To select all sections that match
   ``location`` sorted by decreasing number of path components.
 
-* ``GlobOrderedMatcher(store, location)``: To select all sections that match
-  ``location`` in the order they appear in the ``store``.
+* ``StartingPathMatcher(store, location)``: To select all sections that
+  match ``location`` in the order they appear in the ``store``.
 
 Stacks
 ------

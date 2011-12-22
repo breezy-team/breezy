@@ -3303,17 +3303,17 @@ foo:policy = appendpath
         self.assertEquals(expected_location, matcher.location)
 
 
-class TestGlobOrderedMatcher(TestStore):
+class TestStartingPathMatcher(TestStore):
 
     def setUp(self):
-        super(TestGlobOrderedMatcher, self).setUp()
+        super(TestStartingPathMatcher, self).setUp()
         self.matcher = config.NameMatcher
         # Any simple store is good enough
         self.store = config.IniFileStore()
 
     def assertSectionIDs(self, expected, location, content):
         self.store._load_from_string(content)
-        matcher = config.GlobOrderedMatcher(self.store, location)
+        matcher = config.StartingPathMatcher(self.store, location)
         sections = list(matcher.get_sections())
         self.assertLength(len(expected), sections)
         self.assertEqual(expected, [section.id for _, section in sections])
@@ -3322,14 +3322,17 @@ class TestGlobOrderedMatcher(TestStore):
     def test_empty(self):
         self.assertSectionIDs([], self.test_dir, '')
 
-    def test_no_name_included_when_present(self):
+    def test_no_name_section_included_when_present(self):
         # Note that other tests will cover the case where the no-name section
         # is empty and as such, not included.
-        self.assertSectionIDs(['/foo/bar', '/foo', None], '/foo/bar/baz', '''\
+        sections = self.assertSectionIDs(['/foo/bar', '/foo', None],
+                                         '/foo/bar/baz', '''\
 option = defined so the no-name section exists
 [/foo]
 [/foo/bar]
 ''')
+        self.assertEquals(['baz', 'bar/baz', '/foo/bar/baz'],
+                          [s.locals['relpath'] for _, s in sections])
 
     def test_order_reversed(self):
         self.assertSectionIDs(['/foo/bar', '/foo'], '/foo/bar/baz', '''\
@@ -3345,13 +3348,18 @@ option = defined so the no-name section exists
 ''')
 
     def test_glob_included(self):
-        self.assertSectionIDs(['/foo/*/baz', '/foo/b*', '/foo'],
-                              '/foo/bar/baz', '''\
+        sections = self.assertSectionIDs(['/foo/*/baz', '/foo/b*', '/foo'],
+                                         '/foo/bar/baz', '''\
 [/foo]
 [/foo/qux]
 [/foo/b*]
 [/foo/*/baz]
 ''')
+        # Note that 'baz' as a relpath for /foo/b* is not fully correct, but
+        # nothing really does... as far using {relpath} to append it to
+        # something else, this seems good enough though.
+        self.assertEquals(['', 'baz', 'bar/baz'],
+                          [s.locals['relpath'] for _, s in sections])
 
     def test_respect_order(self):
         self.assertSectionIDs(['/foo', '/foo/b*', '/foo/*/baz'],

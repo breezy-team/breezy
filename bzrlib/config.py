@@ -3349,11 +3349,11 @@ class LocationSection(Section):
         return value
 
 
-class GlobOrderedMatcher(SectionMatcher):
+class StartingPathMatcher(SectionMatcher):
     """Select sections for a given location respecting the Store order."""
 
     def __init__(self, store, location):
-        super(GlobOrderedMatcher, self).__init__(store)
+        super(StartingPathMatcher, self).__init__(store)
         if location.startswith('file://'):
             location = urlutils.local_path_from_url(location)
         self.location = location
@@ -3367,6 +3367,7 @@ class GlobOrderedMatcher(SectionMatcher):
         The returned section are therefore returned in the reversed order so
         the most specific ones can be found first.
         """
+        location_parts = self.location.rstrip('/').split('/')
         store = self.store
         sections = []
         # Later sections are more specific, they should be returned first
@@ -3377,10 +3378,14 @@ class GlobOrderedMatcher(SectionMatcher):
                 continue
             section_path = section.id
             if section_path.startswith('file://'):
+                # the location is already a local path or URL, convert the
+                # section to the same format
                 section_path = urlutils.local_path_from_url(section)
             if (self.location.startswith(section_path)
                 or fnmatch.fnmatch(self.location, section_path)):
-                yield store, LocationSection(section, self.location)
+                section_parts = section_path.rstrip('/').split('/')
+                extra_path = '/'.join(location_parts[len(section_parts):])
+                yield store, LocationSection(section, extra_path)
 
 
 class LocationMatcher(SectionMatcher):

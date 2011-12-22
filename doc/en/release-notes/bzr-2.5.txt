@@ -128,7 +128,7 @@ Internals
   of the ``socket``, ``ssl`` and ``urllib`` modules for
   local bzr operations. (Jelmer Vernooij)
 
-* Configuration stacks can now use ``GlobOrderedMatcher`` to select the
+* Configuration stacks can now use ``StartingPathMatcher`` to select the
   sections matching a location while respecting the order chosen by the user
   in the configuration file: from generic sections to specific
   sections. (Vincent Ladeuil, #832046).
