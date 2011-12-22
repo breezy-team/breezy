@@ -16,6 +16,8 @@
 
 """Safe branch opening."""
 
+from __future__ import absolute_import
+
 import threading
 
 from bzrlib import (
@@ -258,8 +260,9 @@ class SafeBranchOpener(object):
 
     def run_with_transform_fallback_location_hook_installed(
             self, callable, *args, **kw):
-        assert (self.transform_fallback_locationHook in
-                Branch.hooks['transform_fallback_location'])
+        if (self.transform_fallback_locationHook not in
+                Branch.hooks['transform_fallback_location']):
+            raise AssertionError("hook not installed")
         self._threading_data.opener = self
         try:
             return callable(*args, **kw)
