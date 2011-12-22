@@ -250,7 +250,7 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
     def test_find_format_with_features(self):
         tree = self.make_branch_and_tree('.', format='2a')
         tree.control_transport.put_bytes('format',
-            tree._format.get_format_string() + "necessity feature name\n")
+            tree._format.get_format_string() + "necessity name\n")
         found_format = workingtree.WorkingTreeFormatMetaDir.find_format(
             tree.bzrdir)
         self.assertIsInstance(found_format, workingtree.WorkingTreeFormat)
