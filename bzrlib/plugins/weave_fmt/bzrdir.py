@@ -16,6 +16,8 @@
 
 """Weave-era BzrDir formats."""
 
+from __future__ import absolute_import
+
 from bzrlib.bzrdir import (
     BzrDir,
     BzrDirFormat,

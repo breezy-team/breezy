@@ -16,11 +16,12 @@
 
 """The core state needed to make use of bzr is managed here."""
 
+from __future__ import absolute_import
+
 __all__ = [
     'BzrLibraryState',
     ]
 
-import sys
 
 import bzrlib
 from bzrlib.lazy_import import lazy_import

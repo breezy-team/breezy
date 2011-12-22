@@ -16,6 +16,8 @@
 
 """Report on version of bzrlib"""
 
+from __future__ import absolute_import
+
 import os
 import sys
 

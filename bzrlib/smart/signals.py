@@ -16,6 +16,8 @@
 
 """Signal handling for the smart server code."""
 
+from __future__ import absolute_import
+
 import signal
 import weakref
 

@@ -41,6 +41,7 @@ bzrlib.ui.text.TextUIFactory
     back to working through the terminal.
 """
 
+from __future__ import absolute_import
 
 import warnings
 

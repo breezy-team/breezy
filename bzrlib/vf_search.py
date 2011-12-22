@@ -16,6 +16,8 @@
 
 """Searching in versioned file repositories."""
 
+from __future__ import absolute_import
+
 from bzrlib import (
     debug,
     revision,

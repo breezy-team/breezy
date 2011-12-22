@@ -90,9 +90,9 @@ class WideOpenSMTPFactory(StubSMTPFactory):
 class TestSMTPConnection(tests.TestCaseInTempDir):
 
     def get_connection(self, text, smtp_factory=None):
-        my_config = config.GlobalConfig.from_string(text)
-        return smtp_connection.SMTPConnection(my_config,
-                                              _smtp_factory=smtp_factory)
+        my_config = config.MemoryStack(text)
+        return smtp_connection.SMTPConnection(
+            my_config, _smtp_factory=smtp_factory)
 
     def test_defaults(self):
         conn = self.get_connection('')
@@ -101,13 +101,13 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         self.assertEqual(None, conn._smtp_password)
 
     def test_smtp_server(self):
-        conn = self.get_connection('[DEFAULT]\nsmtp_server=host:10\n')
+        conn = self.get_connection('smtp_server=host:10')
         self.assertEqual('host:10', conn._smtp_server)
 
     def test_missing_server(self):
         conn = self.get_connection('', smtp_factory=connection_refuser)
         self.assertRaises(errors.DefaultSMTPConnectionRefused, conn._connect)
-        conn = self.get_connection('[DEFAULT]\nsmtp_server=smtp.example.com\n',
+        conn = self.get_connection('smtp_server=smtp.example.com',
                                    smtp_factory=connection_refuser)
         self.assertRaises(errors.SMTPConnectionRefused, conn._connect)
 
@@ -115,14 +115,14 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         conn = self.get_connection('')
         self.assertIs(None, conn._smtp_username)
 
-        conn = self.get_connection('[DEFAULT]\nsmtp_username=joebody\n')
+        conn = self.get_connection('smtp_username=joebody')
         self.assertEqual(u'joebody', conn._smtp_username)
 
     def test_smtp_password_from_config(self):
         conn = self.get_connection('')
         self.assertIs(None, conn._smtp_password)
 
-        conn = self.get_connection('[DEFAULT]\nsmtp_password=mypass\n')
+        conn = self.get_connection('smtp_password=mypass')
         self.assertEqual(u'mypass', conn._smtp_password)
 
     def test_smtp_password_from_user(self):
@@ -161,8 +161,8 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         utf8_pass = unicode_pass.encode('utf-8')
         factory = WideOpenSMTPFactory()
         conn = self.get_connection(
-            u'[DEFAULT]\nsmtp_username=%s\nsmtp_password=%s\n'
-            % (user, unicode_pass), smtp_factory=factory)
+            '[DEFAULT]\nsmtp_username=%s\nsmtp_password=%s\n'
+            % (user, utf8_pass), smtp_factory=factory)
         self.assertEqual(unicode_pass, conn._smtp_password)
         conn._connect()
         self.assertEqual([('connect', 'localhost'),
@@ -254,22 +254,21 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
             'pperez@ejemplo.com', 'user@localhost']), sorted(to))
 
     def test_destination_address_required(self):
-        class FakeConfig:
-            def get_user_option(self, option):
-                return None
-
         msg = Message()
         msg['From'] = '"J. Random Developer" <jrandom@example.com>'
         self.assertRaises(
             errors.NoDestinationAddress,
-            smtp_connection.SMTPConnection(FakeConfig()).send_email, msg)
+            smtp_connection.SMTPConnection(config.MemoryStack("")
+                                           ).send_email, msg)
 
         msg = email_message.EmailMessage('from@from.com', '', 'subject')
         self.assertRaises(
             errors.NoDestinationAddress,
-            smtp_connection.SMTPConnection(FakeConfig()).send_email, msg)
+            smtp_connection.SMTPConnection(config.MemoryStack("")
+                                           ).send_email, msg)
 
         msg = email_message.EmailMessage('from@from.com', [], 'subject')
         self.assertRaises(
             errors.NoDestinationAddress,
-            smtp_connection.SMTPConnection(FakeConfig()).send_email, msg)
+            smtp_connection.SMTPConnection(config.MemoryStack("")
+                                           ).send_email, msg)
