@@ -3395,6 +3395,36 @@ class TestBaseStackGet(tests.TestCase):
         self.assertRaises(TypeError, conf_stack.get, 'foo')
 
 
+class TestStackWithSimpleStore(tests.TestCase):
+
+    def setUp(self):
+        super(TestStackWithSimpleStore, self).setUp()
+        self.overrideAttr(config, 'option_registry', config.OptionRegistry())
+        self.registry = config.option_registry
+
+    def get_conf(self, content=None):
+        return config.MemoryStack(content)
+
+
+    def test_override_value_from_env(self):
+        self.registry.register(
+            config.Option('foo', default='bar', override_from_env=['FOO']))
+        self.overrideEnv('FOO', 'quux')
+        # Env variable provides a default taking over the option one
+        conf = self.get_conf('foo=store')
+        self.assertEquals('quux', conf.get('foo'))
+
+    def test_first_override_value_from_env_wins(self):
+        self.registry.register(
+            config.Option('foo', default='bar',
+                          override_from_env=['NO_VALUE', 'FOO', 'BAZ']))
+        self.overrideEnv('FOO', 'foo')
+        self.overrideEnv('BAZ', 'baz')
+        # The first env var set wins
+        conf = self.get_conf('foo=store')
+        self.assertEquals('foo', conf.get('foo'))
+
+
 class TestMemoryStack(tests.TestCase):
 
     def test_get(self):

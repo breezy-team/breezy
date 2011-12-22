@@ -2343,11 +2343,15 @@ class Option(object):
     encoutered, in which config files it can be stored.
     """
 
-    def __init__(self, name, default=None, default_from_env=None,
+    def __init__(self, name, override_from_env=None,
+                 default=None, default_from_env=None,
                  help=None, from_unicode=None, invalid=None):
         """Build an option definition.
 
         :param name: the name used to refer to the option.
+
+        :param override_from_env: A list of environment variables which can
+           provide override any configuration setting.
 
         :param default: the default value to use when none exist in the config
             stores. This is either a string that ``from_unicode`` will convert
@@ -2373,9 +2377,12 @@ class Option(object):
             'warning' (emit a warning), 'error' (emit an error message and
             terminates).
         """
+        if override_from_env is None:
+            override_from_env = []
         if default_from_env is None:
             default_from_env = []
         self.name = name
+        self.override_from_env = override_from_env
         # Convert the default value to a unicode string so all values are
         # strings internally before conversion (via from_unicode) is attempted.
         if default is None:
@@ -2419,6 +2426,17 @@ class Option(object):
             elif self.invalid == 'error':
                 raise errors.ConfigOptionValueError(self.name, unicode_value)
         return converted
+
+    def get_override(self):
+        value = None
+        for var in self.override_from_env:
+            try:
+                # If the env variable is defined, its value takes precedence
+                value = os.environ[var].decode(osutils.get_user_encoding())
+                break
+            except KeyError:
+                continue
+        return value
 
     def get_default(self):
         value = None
@@ -3353,17 +3371,6 @@ class Stack(object):
         if expand is None:
             expand = _get_expand_default_value()
         value = None
-        # Ensuring lazy loading is achieved by delaying section matching (which
-        # implies querying the persistent storage) until it can't be avoided
-        # anymore by using callables to describe (possibly empty) section
-        # lists.
-        for sections in self.sections_def:
-            for store, section in sections():
-                value = section.get(name)
-                if value is not None:
-                    break
-            if value is not None:
-                break
         # If the option is registered, it may provide additional info about
         # value handling
         try:
@@ -3371,6 +3378,7 @@ class Stack(object):
         except KeyError:
             # Not registered
             opt = None
+
         def expand_and_convert(val):
             # This may need to be called twice if the value is None or ends up
             # being None during expansion or conversion.
@@ -3385,11 +3393,29 @@ class Stack(object):
                 if opt is not None:
                     val = opt.convert_from_unicode(val)
             return val
-        value = expand_and_convert(value)
-        if opt is not None and value is None:
-            # If the option is registered, it may provide a default value
-            value = opt.get_default()
+
+        # First of all, check if the environment can override the configuration
+        # value
+        if opt is not None and opt.override_from_env:
+            value = opt.get_override()
             value = expand_and_convert(value)
+        if value is None:
+            # Ensuring lazy loading is achieved by delaying section matching
+            # (which implies querying the persistent storage) until it can't be
+            # avoided anymore by using callables to describe (possibly empty)
+            # section lists.
+            for sections in self.sections_def:
+                for store, section in sections():
+                    value = section.get(name)
+                    if value is not None:
+                        break
+                if value is not None:
+                    break
+            value = expand_and_convert(value)
+            if opt is not None and value is None:
+                # If the option is registered, it may provide a default value
+                value = opt.get_default()
+                value = expand_and_convert(value)
         for hook in ConfigHooks['get']:
             hook(self, name, value)
         return value
