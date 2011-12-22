@@ -146,10 +146,6 @@ class SampleTreeFormat(workingtree.WorkingTreeFormatMetaDir):
         t.put_bytes('format', self.get_format_string())
         return 'A tree'
 
-    @classmethod
-    def from_string(cls, format_string):
-        return cls()
-
     def is_supported(self):
         return False
 
