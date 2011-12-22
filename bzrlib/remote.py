@@ -480,7 +480,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
                 warning('VFS BzrDir access triggered\n%s',
                     ''.join(traceback.format_stack()))
             self._real_bzrdir = _mod_bzrdir.BzrDir.open_from_transport(
-                self.root_transport, _server_formats=False)
+                self.root_transport, probers=[_mod_bzrdir.BzrProber])
             self._format._network_name = \
                 self._real_bzrdir._format.network_name()
 

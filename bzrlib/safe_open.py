@@ -20,14 +20,11 @@ import threading
 
 from bzrlib import (
     errors,
-    trace,
     urlutils,
     )
 from bzrlib.branch import Branch
-from bzrlib.controldir import ControlDirFormat
-from bzrlib.transport import (
-    do_catching_redirections,
-    get_transport,
+from bzrlib.controldir import (
+    ControlDir,
     )
 
 
@@ -197,10 +194,7 @@ class SafeBranchOpener(object):
         """
         self.policy = policy
         self._seen_urls = set()
-        if probers is None:
-            self.probers = ControlDirFormat.all_probers()
-        else:
-            self.probers = probers
+        self.probers = probers
 
     @classmethod
     def install_hook(cls):
@@ -280,39 +274,8 @@ class SafeBranchOpener(object):
 
         This exists as a separate method only to be overriden in unit tests.
         """
-        bzrdir = self._open_dir(url)
+        bzrdir = ControlDir.open(url, probers=self.probers)
         return bzrdir.get_branch_reference()
-
-    def _open_dir(self, url):
-        """Simple BzrDir.open clone that only uses specific probers.
-
-        :param url: URL to open
-        :return: ControlDir instance
-        """
-        def redirected(transport, e, redirection_notice):
-            self.policy.check_one_url(e.target)
-            redirected_transport = transport._redirected_to(
-                e.source, e.target)
-            if redirected_transport is None:
-                raise errors.NotBranchError(e.source)
-            trace.note('%s is%s redirected to %s',
-                 transport.base, e.permanently, redirected_transport.base)
-            return redirected_transport
-
-        def find_format(transport):
-            last_error = errors.NotBranchError(transport.base)
-            for prober_kls in self.probers:
-                prober = prober_kls()
-                try:
-                    return transport, prober.probe_transport(transport)
-                except errors.NotBranchError, e:
-                    last_error = e
-            else:
-                raise last_error
-        transport = get_transport(url)
-        transport, format = do_catching_redirections(find_format, transport,
-            redirected)
-        return format.open(transport)
 
     def open(self, url):
         """Open the Bazaar branch at url, first checking for safety.
@@ -326,7 +289,7 @@ class SafeBranchOpener(object):
         url = self.check_and_follow_branch_reference(url)
 
         def open_branch(url):
-            dir = self._open_dir(url)
+            dir = ControlDir.open(url, probers=self.probers)
             return dir.open_branch()
         return self.run_with_transform_fallback_location_hook_installed(
             open_branch, url)

@@ -267,8 +267,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         """
         if path is None:
             path = osutils.getcwd()
-        control = controldir.ControlDir.open(path, _unsupported)
-        return control.open_workingtree(_unsupported)
+        control = controldir.ControlDir.open(path, _unsupported=_unsupported)
+        return control.open_workingtree(_unsupported=_unsupported)
 
     @staticmethod
     def open_containing(path=None):
