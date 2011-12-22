@@ -1110,11 +1110,15 @@ class ControlDirFormat(object):
         return self.get_format_description().rstrip()
 
     @classmethod
+    def all_probers(klass):
+        return klass._probers + klass._server_probers
+
+    @classmethod
     def known_formats(klass):
         """Return all the known formats.
         """
         result = set()
-        for prober_kls in klass._probers + klass._server_probers:
+        for prober_kls in klass.all_probers():
             result.update(prober_kls.known_formats())
         return result
 

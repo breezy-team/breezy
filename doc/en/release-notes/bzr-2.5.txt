@@ -123,6 +123,8 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* Add new module ``bzrlib.safe_open``. (Jelmer Vernooij, #850843)
+
 * ``bzrlib.urlutils`` now includes ``quote`` and ``unquote`` functions,
   rather than importing them from ``urllib``. This prevents loading
   of the ``socket``, ``ssl`` and ``urllib`` modules for
