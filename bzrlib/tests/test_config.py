@@ -4618,22 +4618,26 @@ class TestAutoUserId(tests.TestCase):
 
 class EmailOptionTests(tests.TestCase):
 
+    def setUp(self):
+        super(EmailOptionTests, self).setUp()
+
     def test_default_email_uses_BZR_EMAIL(self):
+        conf = config.MemoryStack('email=jelmer@debian.org')
         # BZR_EMAIL takes precedence over EMAIL
         self.overrideEnv('BZR_EMAIL', 'jelmer@samba.org')
         self.overrideEnv('EMAIL', 'jelmer@apache.org')
-        self.assertEquals('jelmer@samba.org', config.default_email())
+        self.assertEquals('jelmer@samba.org', conf.get('email'))
 
     def test_default_email_uses_EMAIL(self):
+        conf = config.MemoryStack('')
         self.overrideEnv('BZR_EMAIL', None)
         self.overrideEnv('EMAIL', 'jelmer@apache.org')
-        self.assertEquals('jelmer@apache.org', config.default_email())
+        self.assertEquals('jelmer@apache.org', conf.get('email'))
 
     def test_BZR_EMAIL_overrides(self):
+        conf = config.MemoryStack('email=jelmer@debian.org')
         self.overrideEnv('BZR_EMAIL', 'jelmer@apache.org')
-        self.assertEquals('jelmer@apache.org',
-            config.email_from_store('jelmer@debian.org'))
+        self.assertEquals('jelmer@apache.org', conf.get('email'))
         self.overrideEnv('BZR_EMAIL', None)
         self.overrideEnv('EMAIL', 'jelmer@samba.org')
-        self.assertEquals('jelmer@debian.org',
-            config.email_from_store('jelmer@debian.org'))
+        self.assertEquals('jelmer@debian.org', conf.get('email'))

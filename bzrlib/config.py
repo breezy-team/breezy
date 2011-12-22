@@ -1652,17 +1652,6 @@ def default_email():
     raise errors.NoWhoami()
 
 
-def email_from_store(unicode_str):
-    """Unlike other env vars, BZR_EMAIL takes precedence over config settings.
-
-    Whatever comes from a config file is then overridden.
-    """
-    value = os.environ.get('BZR_EMAIL')
-    if value:
-        return value.decode(osutils.get_user_encoding())
-    return unicode_str
-
-
 def _auto_user_id():
     """Calculate automatic user identification.
 
@@ -2715,8 +2704,7 @@ option_registry.register(
     Option('editor',
            help='The command called to launch an editor to enter a message.'))
 option_registry.register(
-    Option('email', default=default_email,
-           from_unicode=email_from_store,
+    Option('email', override_from_env=['BZR_EMAIL'], default=default_email,
            help='The users identity'))
 option_registry.register(
     Option('gpg_signing_command',
