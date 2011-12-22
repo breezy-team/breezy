@@ -27,6 +27,7 @@ objects returned.
 
 from __future__ import absolute_import
 
+from collections import OrderedDict
 import sys
 
 from bzrlib.lazy_import import lazy_import
@@ -1127,7 +1128,7 @@ class BzrFormat(object):
     _present_features = set()
 
     def __init__(self):
-        self.features = {}
+        self.features = OrderedDict()
 
     @classmethod
     def register_feature(cls, name):
