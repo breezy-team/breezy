@@ -1170,11 +1170,15 @@ class BzrFormat(object):
     def from_string(cls, text):
         format_string = cls.get_format_string()
         if not text.startswith(format_string):
-            raise ValueError("Invalid format header %r" % text)
+            raise AssertionError("Invalid format header %r for %r" % (text, cls))
         lines = text[len(format_string):].splitlines()
         ret = cls()
         for lineno, line in enumerate(lines):
-            (necessity, feature) = line.split(" ", 1)
+            try:
+                (necessity, feature) = line.split(" ", 1)
+            except ValueError:
+                raise errors.ParseFormatError(format=cls, lineno=lineno+2,
+                    line=line, text=text)
             ret.features[feature] = necessity
         return ret
 
