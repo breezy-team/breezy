@@ -613,22 +613,24 @@ class GitWorkingTree(workingtree.WorkingTree):
                 return "directory"
             raise errors.NoSuchId(self, file_id)
 
-    if not osutils.supports_executable():
-        def is_executable(self, file_id, path=None):
+    def is_executable(self, file_id, path=None):
+        if getattr(self, "_supports_executable", osutils.supports_executable)():
+            if not path:
+                path = self.id2path(file_id)
+            mode = os.lstat(self.abspath(path)).st_mode
+            return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
+        else:
             basis_tree = self.basis_tree()
             if file_id in basis_tree:
                 return basis_tree.is_executable(file_id)
             # Default to not executable
             return False
-    else:
-        def is_executable(self, file_id, path=None):
-            if not path:
-                path = self.id2path(file_id)
-            mode = os.lstat(self.abspath(path)).st_mode
-            return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
-        _is_executable_from_path_and_stat = \
-            _is_executable_from_path_and_stat_from_stat
+    def _is_executable_from_path_and_stat(self, path, stat_result):
+        if getattr(self, "_supports_executable", osutils.supports_executable)():
+            return self._is_executable_from_path_and_stat_from_stat(path, stat_result)
+        else:
+            return self._is_executable_from_path_and_stat_from_basis(path, stat_result)
 
     @needs_read_lock
     def list_files(self, include_root=False, from_dir=None, recursive=True):
