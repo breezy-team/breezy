@@ -766,6 +766,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         return per_dir.iteritems()
 
     def _lookup_entry(self, path, update_index=False):
+        assert type(path) == str
         entry = self.index[path]
         index_mode = entry[-6]
         index_sha = entry[-2]
@@ -787,10 +788,15 @@ class GitWorkingTree(workingtree.WorkingTree):
                 else:
                     disk_mode = S_IFGITLINK
                     git_id = subrepo.head()
-            else:
+            elif stat.S_ISLNK(disk_mode):
+                blob = Blob.from_string(os.readlink(disk_path))
+                git_id = blob.id
+            elif stat.S_ISREG(disk_mode):
                 with open(disk_path, 'r') as f:
                     blob = Blob.from_string(f.read())
                 git_id = blob.id
+            else:
+                raise AssertionError
             if update_index:
                 flags = 0 # FIXME
                 self.index[path] = index_entry_from_stat(disk_stat, git_id, flags)
