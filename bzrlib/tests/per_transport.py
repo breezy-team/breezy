@@ -57,6 +57,7 @@ from bzrlib.transport import (
     _get_transport_modules,
     )
 from bzrlib.transport.memory import MemoryTransport
+from bzrlib.transport.remote import RemoteTransport
 
 
 def get_transport_test_permutations(module):
@@ -1845,7 +1846,9 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
         self.assertEqual([], log)
         t.has("non-existant")
-        if isinstance(t, ConnectedTransport):
+        if isinstance(t, RemoteTransport):
+            self.assertEqual([t.get_smart_medium()], log)
+        elif isinstance(t, ConnectedTransport):
             self.assertEqual([t], log)
         else:
             self.assertEqual([], log)
@@ -1861,7 +1864,9 @@ class TransportTests(TestTransportImplementation):
         t1.has("x")
         t2.has("x")
         t3.has("x")
-        if isinstance(t1, ConnectedTransport):
+        if isinstance(t1, RemoteTransport):
+            self.assertEqual([t.get_smart_medium() for t in [t1, t3]], log)
+        elif isinstance(t1, ConnectedTransport):
             self.assertEqual([t1, t3], log)
         else:
             self.assertEqual([], log)
