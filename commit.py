@@ -21,6 +21,7 @@
 from dulwich.index import (
     commit_tree,
     )
+import os
 import stat
 
 from bzrlib import (
@@ -38,6 +39,7 @@ from dulwich.objects import (
     Blob,
     Commit,
     )
+from dulwich.repo import Repo
 
 
 from bzrlib.plugins.git.mapping import (
@@ -79,20 +81,18 @@ class GitCommitBuilder(CommitBuilder):
         self._any_changes = True
 
     def record_iter_changes(self, workingtree, basis_revid, iter_changes):
-        index = getattr(workingtree, "index", None)
-        if index is not None:
-            def index_sha1(path, file_id):
-                return index.get_sha1(path.encode("utf-8"))
-            text_sha1 = link_sha1 = index_sha1
-        else:
-            def link_sha1(path, file_id):
-                blob = Blob()
-                blob.data = workingtree.get_symlink_target(file_id, path)
-                return blob.id
-            def text_sha1(path, file_id):
-                blob = Blob()
-                blob.data = workingtree.get_file_text(file_id, path)
-                return blob.id
+        def link_sha1(path, file_id):
+            blob = Blob()
+            blob.data = workingtree.get_symlink_target(file_id, path)
+            self.store.add_object(blob)
+            return blob.id
+        def text_sha1(path, file_id):
+            blob = Blob()
+            blob.data = workingtree.get_file_text(file_id, path)
+            self.store.add_object(blob)
+            return blob.id
+        def treeref_sha1(path, file_id):
+            return Repo.open(os.path.join(workingtree.basedir, path)).head()
         seen_root = False
         for (file_id, path, changed_content, versioned, parent, name, kind,
              executable) in iter_changes:
@@ -113,7 +113,7 @@ class GitCommitBuilder(CommitBuilder):
                 sha = link_sha1(path[1], file_id)
             elif kind[1] == "tree-reference":
                 mode = S_IFGITLINK
-                sha = "FIXME" # FIXME
+                sha = treeref_sha1(path[1], file_id)
             else:
                 raise AssertionError("Unknown kind %r" % kind[1])
             if executable[1]:
@@ -142,16 +142,21 @@ class GitCommitBuilder(CommitBuilder):
             basis_tree = self.repository.revision_tree(basis_revid)
         # Fill in entries that were not changed
         for path, entry in basis_tree.iter_entries_by_dir():
-            if entry.kind not in ("file", "symlink"):
+            if entry.kind not in ("file", "symlink", "tree-reference"):
                 continue
             if not path in self._blobs:
-                blob = Blob()
                 if entry.kind == "symlink":
+                    blob = Blob()
                     blob.data = basis_tree.get_symlink_target(entry.file_id,
                         path)
-                else:
+                    self._blobs[path.encode("utf-8")] = (entry_mode(entry), blob.id)
+                elif entry.kind == "file":
+                    blob = Blob()
                     blob.data = basis_tree.get_file_text(entry.file_id, path)
-                self._blobs[path.encode("utf-8")] = (entry_mode(entry), blob.id)
+                    self._blobs[path.encode("utf-8")] = (entry_mode(entry), blob.id)
+                else:
+                    (mode, sha) = workingtree._lookup_entry(path.encode("utf-8"), True)
+                    self._blobs[path.encode("utf-8")] = (sha, mode)
         if not self._lossy and self._mapping.BZR_FILE_IDS_FILE is not None:
             try:
                 fileid_map = dict(basis_tree._fileid_map.file_ids)
