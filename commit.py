@@ -211,8 +211,8 @@ class GitCommitBuilder(CommitBuilder):
                 c.message = inject_bzr_metadata(c.message, commit_supplement, "utf-8")
 
         assert len(c.id) == 40
-        if self._new_revision_id is None:
-            self._new_revision_id = self.mapping.revision_id_foreign_to_bzr(c.id)
+        if self._new_revision_id is None or self._lossy:
+            self._new_revision_id = self._mapping.revision_id_foreign_to_bzr(c.id)
         self.store.add_object(c)
         self.repository.commit_write_group()
         return self._new_revision_id
