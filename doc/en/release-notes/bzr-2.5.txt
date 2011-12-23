@@ -150,6 +150,9 @@ Internals
   speeding up various commands including ``bzr export``,
   ``bzr checkout`` and ``bzr cat``. (Jelmer Vernooij, #608640)
 
+* The ``ConfigCommandLineStore`` is now supported by ``bzr config`` and is
+  seen as single no-name section of configuration options. (Vincent Ladeuil)
+
 Testing
 *******
 

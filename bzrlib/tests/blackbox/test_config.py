@@ -146,6 +146,17 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
               hello = world
             ''')
 
+    def test_cmd_line(self):
+        self.bazaar_config.set_user_option('hello', 'world')
+        script.run_script(self, '''\
+            $ bzr config -Ohello=bzr
+            cmdline:
+              hello = bzr
+            bazaar:
+              [DEFAULT]
+              hello = world
+            ''')
+
 
 class TestConfigDisplayWithPolicy(tests.TestCaseWithTransport):
 
