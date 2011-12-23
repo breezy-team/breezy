@@ -500,6 +500,8 @@ def mode_is_executable(mode):
 
 def mode_kind(mode):
     """Determine the Bazaar inventory kind based on Unix file mode."""
+    if mode is None:
+        return None
     entry_kind = (mode & 0700000) / 0100000
     if entry_kind == 0:
         return 'directory'

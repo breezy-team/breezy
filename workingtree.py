@@ -23,6 +23,7 @@ from cStringIO import (
     )
 from collections import defaultdict
 import errno
+from dulwich.errors import NotGitRepository
 from dulwich.index import (
     Index,
     changes_from_tree,
@@ -34,8 +35,10 @@ from dulwich.object_store import (
     )
 from dulwich.objects import (
     Blob,
+    S_IFGITLINK,
     ZERO_SHA,
     )
+from dulwich.repo import Repo
 import os
 import posixpath
 import stat
@@ -841,6 +844,7 @@ def changes_between_git_tree_and_index(object_store, tree, base_path, index,
     """Determine the changes between a git tree and a working tree with index.
 
     """
+
     names = index._byname.keys()
     def lookup_entry(path):
         entry = index[path]
@@ -855,15 +859,24 @@ def changes_between_git_tree_and_index(object_store, tree, base_path, index,
             index_mtime = int(entry[1])
         mtime_delta = (index_mtime - disk_mtime)
         disk_mode = cleanup_mode(disk_stat.st_mode)
-        if (mtime_delta > 0 or
-            disk_mode != index_mode):
-            with open(disk_path, 'r') as f:
-                blob = Blob.from_string(f.read())
+        if mtime_delta > 0 or disk_mode != index_mode:
+            if stat.S_ISDIR(disk_mode):
+                disk_mode = S_IFGITLINK
+                try:
+                    git_id = Repo(disk_path).head()
+                except NotGitRepository:
+                    return (None, None)
+            else:
+                with open(disk_path, 'r') as f:
+                    blob = Blob.from_string(f.read())
+                git_id = blob.id
             if update_index:
                 flags = 0 # FIXME
-                index[path] = index_entry_from_stat(disk_stat, blob.id, flags)
-            return (blob.id, disk_mode)
+                index[path] = index_entry_from_stat(disk_stat, git_id, flags)
+            return (git_id, disk_mode)
         return (index_sha, index_mode)
     for (name, mode, sha) in changes_from_tree(names, lookup_entry,
             object_store, tree, want_unchanged=want_unchanged):
+        if name == (None, None):
+            continue
         yield (name, mode, sha)
