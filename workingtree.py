@@ -859,15 +859,17 @@ def changes_between_git_tree_and_index(object_store, tree, base_path, index,
             index_mtime = entry[1][0]
         else:
             index_mtime = int(entry[1])
-        mtime_delta = (index_mtime - disk_mtime)
+        mtime_delta = (disk_mtime - index_mtime)
         disk_mode = cleanup_mode(disk_stat.st_mode)
         if mtime_delta > 0 or disk_mode != index_mode:
             if stat.S_ISDIR(disk_mode):
-                disk_mode = S_IFGITLINK
                 try:
-                    git_id = Repo(disk_path).head()
+                    subrepo = Repo(disk_path)
                 except NotGitRepository:
                     return (None, None)
+                else:
+                    disk_mode = S_IFGITLINK
+                    git_id = subrepo.head()
             else:
                 with open(disk_path, 'r') as f:
                     blob = Blob.from_string(f.read())
