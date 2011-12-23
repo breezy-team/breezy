@@ -765,6 +765,38 @@ class GitWorkingTree(workingtree.WorkingTree):
                 mode_kind(mode)))
         return per_dir.iteritems()
 
+    def _lookup_entry(self, path, update_index=False):
+        entry = self.index[path]
+        index_mode = entry[-6]
+        index_sha = entry[-2]
+        disk_path = os.path.join(self.basedir, path)
+        disk_stat = os.lstat(disk_path)
+        disk_mtime = disk_stat.st_mtime
+        if isinstance(entry[1], tuple):
+            index_mtime = entry[1][0]
+        else:
+            index_mtime = int(entry[1])
+        mtime_delta = (disk_mtime - index_mtime)
+        disk_mode = cleanup_mode(disk_stat.st_mode)
+        if mtime_delta > 0 or disk_mode != index_mode:
+            if stat.S_ISDIR(disk_mode):
+                try:
+                    subrepo = Repo(disk_path)
+                except NotGitRepository:
+                    return (None, None)
+                else:
+                    disk_mode = S_IFGITLINK
+                    git_id = subrepo.head()
+            else:
+                with open(disk_path, 'r') as f:
+                    blob = Blob.from_string(f.read())
+                git_id = blob.id
+            if update_index:
+                flags = 0 # FIXME
+                self.index[path] = index_entry_from_stat(disk_stat, git_id, flags)
+            return (git_id, disk_mode)
+        return (index_sha, index_mode)
+
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 
@@ -811,8 +843,7 @@ class InterIndexGitTree(tree.InterTree):
         # FIXME: Handle include_root
         changes = changes_between_git_tree_and_index(
             self.source.store, self.source.tree, 
-            self.target.basedir, self.target.index,
-            want_unchanged=want_unchanged,
+            self.target, want_unchanged=want_unchanged,
             want_unversioned=want_unversioned)
         source_fileid_map = self.source._fileid_map
         target_fileid_map = self.target._fileid_map
@@ -831,8 +862,7 @@ class InterIndexGitTree(tree.InterTree):
         want_unversioned=False):
         changes = changes_between_git_tree_and_index(
             self.source.store, self.source.tree,
-            self.target.basedir, self.target.index,
-            want_unchanged=include_unchanged,
+            self.target, want_unchanged=include_unchanged,
             want_unversioned=want_unversioned)
         return changes_from_git_changes(changes, self.target.mapping,
             specific_file=specific_files)
@@ -841,45 +871,14 @@ class InterIndexGitTree(tree.InterTree):
 tree.InterTree.register_optimiser(InterIndexGitTree)
 
 
-def changes_between_git_tree_and_index(object_store, tree, base_path, index,
+def changes_between_git_tree_and_index(object_store, tree, target,
         want_unchanged=False, want_unversioned=False, update_index=False):
     """Determine the changes between a git tree and a working tree with index.
 
     """
 
-    names = index._byname.keys()
-    def lookup_entry(path):
-        entry = index[path]
-        index_mode = entry[-6]
-        index_sha = entry[-2]
-        disk_path = os.path.join(base_path, path)
-        disk_stat = os.lstat(disk_path)
-        disk_mtime = disk_stat.st_mtime
-        if isinstance(entry[1], tuple):
-            index_mtime = entry[1][0]
-        else:
-            index_mtime = int(entry[1])
-        mtime_delta = (disk_mtime - index_mtime)
-        disk_mode = cleanup_mode(disk_stat.st_mode)
-        if mtime_delta > 0 or disk_mode != index_mode:
-            if stat.S_ISDIR(disk_mode):
-                try:
-                    subrepo = Repo(disk_path)
-                except NotGitRepository:
-                    return (None, None)
-                else:
-                    disk_mode = S_IFGITLINK
-                    git_id = subrepo.head()
-            else:
-                with open(disk_path, 'r') as f:
-                    blob = Blob.from_string(f.read())
-                git_id = blob.id
-            if update_index:
-                flags = 0 # FIXME
-                index[path] = index_entry_from_stat(disk_stat, git_id, flags)
-            return (git_id, disk_mode)
-        return (index_sha, index_mode)
-    for (name, mode, sha) in changes_from_tree(names, lookup_entry,
+    names = target.index._byname.keys()
+    for (name, mode, sha) in changes_from_tree(names, target._lookup_entry,
             object_store, tree, want_unchanged=want_unchanged):
         if name == (None, None):
             continue
