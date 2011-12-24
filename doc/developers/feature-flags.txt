@@ -129,6 +129,16 @@ to check whether a feature is present and adding new features:
  * BzrFormat.features.set(name, necessity)
  * BzrFormat.features.get(name) -> necessity
 
+Enabling features
+-----------------
+
+Features are enabled through the ``update_feature_flags`` method on
+``Repository``, ``Branch``, ``WorkingTree`` and ``BzrDir``.
+
+These methods are called by whatever needs to enable features.
+When they do that is up to them - e.g. bzr-search would enable its
+feature when ``bzr index`` is first run.
+
 See also
 --------
 
