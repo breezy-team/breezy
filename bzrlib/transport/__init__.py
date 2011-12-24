@@ -292,8 +292,8 @@ class TransportHooks(hooks.Hooks):
         super(TransportHooks, self).__init__()
         self.add_hook("post_connect",
             "Called after a new connection is established or a reconnect "
-            "occurs. The connected transport instance is the sole argument "
-            "passed.", (2, 5))
+            "occurs. The sole argument passed is either the connected "
+            "transport or smart medium instance.", (2, 5))
 
 
 class Transport(object):

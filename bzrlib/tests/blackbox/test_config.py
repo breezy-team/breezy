@@ -79,6 +79,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         script.run_script(self, '''\
             $ bzr config -d tree
             bazaar:
+              [DEFAULT]
               multiline = """1
             2
             """
@@ -95,22 +96,23 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
             ''')
 
     def test_list_all_values(self):
-        # FIXME: we should register the option as a list or it's displayed as
-        # astring and as such, quoted.
+        config.option_registry.register(config.ListOption('list'))
+        self.addCleanup(config.option_registry.remove, 'list')
         self.bazaar_config.set_user_option('list', [1, 'a', 'with, a comma'])
         script.run_script(self, '''\
             $ bzr config -d tree
             bazaar:
-              list = '1, a, "with, a comma"'
+              [DEFAULT]
+              list = 1, a, "with, a comma"
             ''')
 
     def test_list_value_only(self):
-        # FIXME: we should register the option as a list or it's displayed as
-        # astring and as such, quoted.
+        config.option_registry.register(config.ListOption('list'))
+        self.addCleanup(config.option_registry.remove, 'list')
         self.bazaar_config.set_user_option('list', [1, 'a', 'with, a comma'])
         script.run_script(self, '''\
             $ bzr config -d tree list
-            '1, a, "with, a comma"'
+            1, a, "with, a comma"
             ''')
 
     def test_bazaar_config(self):
@@ -118,6 +120,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         script.run_script(self, '''\
             $ bzr config -d tree
             bazaar:
+              [DEFAULT]
               hello = world
             ''')
 
@@ -139,8 +142,10 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         script.run_script(self, '''\
             $ bzr config
             bazaar:
+              [DEFAULT]
               hello = world
             ''')
+
 
 class TestConfigDisplayWithPolicy(tests.TestCaseWithTransport):
 
@@ -213,6 +218,7 @@ class TestConfigSetOption(tests.TestCaseWithTransport):
             $ bzr config --scope bazaar hello=world
             $ bzr config -d tree --all hello
             bazaar:
+              [DEFAULT]
               hello = world
             ''')
 
@@ -221,6 +227,7 @@ class TestConfigSetOption(tests.TestCaseWithTransport):
             $ bzr config -d tree --scope bazaar hello=world
             $ bzr config -d tree --all hello
             bazaar:
+              [DEFAULT]
               hello = world
             ''')
 
@@ -289,6 +296,7 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
             branch:
               file = branch
             bazaar:
+              [DEFAULT]
               file = bazaar
             ''')
 
@@ -299,12 +307,14 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
             branch:
               file = branch
             bazaar:
+              [DEFAULT]
               file = bazaar
             ''')
         script.run_script(self, '''\
             $ bzr config -d tree --remove file
             $ bzr config -d tree --all file
             bazaar:
+              [DEFAULT]
               file = bazaar
             ''')
 
@@ -316,12 +326,14 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
               [.../work/tree]
               file = locations
             bazaar:
+              [DEFAULT]
               file = bazaar
             ''')
         script.run_script(self, '''\
             $ bzr config -d tree --scope locations --remove file
             $ bzr config -d tree --all file
             bazaar:
+              [DEFAULT]
               file = bazaar
             ''')
 

@@ -79,7 +79,7 @@ class TestBranch(TestCaseWithTransport):
         self.assertEqual('', out)
         self.assertEqual('Branched 2 revisions.\n', err)
         out, err = self.run_bzr('branches b')
-        self.assertEqual(" thiswasa\n orig\n", out)
+        self.assertEqual("  orig\n  thiswasa\n", out)
         self.assertEqual('', err)
         out,err = self.run_bzr('branch a file:b,branch=orig', retcode=3)
         self.assertEqual('', out)

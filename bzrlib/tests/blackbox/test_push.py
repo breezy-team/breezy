@@ -33,12 +33,10 @@ from bzrlib import (
     )
 from bzrlib.repofmt import knitrepo
 from bzrlib.tests import (
-    blackbox,
     http_server,
     scenarios,
     script,
     test_foreign,
-    test_server,
     )
 from bzrlib.tests.matchers import ContainsNoVfsCalls
 from bzrlib.transport import memory
@@ -58,6 +56,26 @@ class TestPush(tests.TestCaseWithTransport):
         self.run_bzr_error(['http does not support mkdir'],
                            ['push', public_url],
                            working_dir='source')
+
+    def test_push_suggests_parent_alias(self):
+        """Push suggests using :parent if there is a known parent branch."""
+        tree_a = self.make_branch_and_tree('a')
+        tree_a.commit('this is a commit')
+        tree_b = self.make_branch_and_tree('b')
+
+        # If there is no parent location set, :parent isn't mentioned.
+        out = self.run_bzr('push', working_dir='a', retcode=3)
+        self.assertEquals(out,
+                ('','bzr: ERROR: No push location known or specified.\n'))
+
+        # If there is a parent location set, the error suggests :parent.
+        tree_a.branch.set_parent(tree_b.branch.base)
+        out = self.run_bzr('push', working_dir='a', retcode=3)
+        self.assertEquals(out,
+            ('','bzr: ERROR: No push location known or specified. '
+                'To push to the parent branch '
+                '(at %s), use \'bzr push :parent\'.\n' %
+                urlutils.unescape_for_display(tree_b.branch.base, 'utf-8')))
 
     def test_push_remember(self):
         """Push changes from one branch to another and test push location."""
@@ -267,7 +285,7 @@ class TestPush(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(13, self.hpss_calls)
+        self.assertLength(14, self.hpss_calls)
         self.assertLength(1, self.hpss_connections)
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
         remote = branch.Branch.open('public')
