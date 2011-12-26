@@ -19,6 +19,24 @@
 
 from bzrlib.plugins.builddeb import debian_changelog_commit_message, debian_changelog_commit
 from bzrlib.plugins.builddeb.tests import TestCaseWithTransport
+try:
+    from bzrlib.tests.features import Feature
+except ImportError: # bzr < 2.4
+    from bzrlib.tests import Feature
+
+
+class _LaunchpadConnectionFeature(Feature):
+
+    def _probe(self):
+        from httplib2 import Http, ServerNotFoundError
+        try:
+            Http().request("https://code.launchpad.net/")
+        except ServerNotFoundError:
+            return False
+        return True
+
+
+LaunchpadConnectionFeature = _LaunchpadConnectionFeature()
 
 
 class CommitMessageTests(TestCaseWithTransport):
@@ -134,6 +152,7 @@ class CommitMessageTests(TestCaseWithTransport):
                 None)
 
     def test_set_message_with_bugs(self):
+        self.requireFeature(LaunchpadConnectionFeature)
         wt = self.make_branch_and_tree(".")
         self.build_tree(['a', 'debian/', 'debian/changelog'])
         self._set_commit_message_from_changelog(True)
