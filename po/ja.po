@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-12-08 09:21+0100\n"
-"PO-Revision-Date: 2011-12-18 18:54+0000\n"
+"PO-Revision-Date: 2011-12-25 16:19+0000\n"
 "Last-Translator: IWATA Hidetaka <Unknown>\n"
 "Language-Team: Japanese <ja@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Launchpad-Export-Date: 2011-12-19 04:30+0000\n"
-"X-Generator: Launchpad (build 14525)\n"
+"X-Launchpad-Export-Date: 2011-12-26 04:38+0000\n"
+"X-Generator: Launchpad (build 14560)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -1120,6 +1120,7 @@ msgid ""
 "Delete all the specified files, even if they can not be recovered and even "
 "if they are non-empty directories. (deprecated, use no-backup)"
 msgstr ""
+"元に戻せないファイル、空ではないディレクトリも含めて、指定されたアイテムを全て削除します。(廃止予定。no-backupを使用してください)"
 
 #: bzrlib/builtins.py:1708
 msgid "(The --force option is deprecated, rather use --no-backup in future.)"
@@ -1175,6 +1176,10 @@ msgid ""
 "Uses group-compress storage.\n"
 "Provides rich roots which are a one-way transition.\n"
 msgstr ""
+"bzr 2.0 シリーズのためのフォーマット。\n"
+"group-compress ストレージを利用します。\n"
+"rich root 機能を提供します。 rich root 機能を提供するフォーマットに変換すると、\n"
+"rich root 機能を持たないフォーマットに戻ることはできません。\n"
 
 #: bzrlib/builtins.py:1868
 msgid ""
@@ -1184,7 +1189,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1868
 msgid "The 2a format with experimental support for colocated branches.\n"
-msgstr ""
+msgstr "colocated branch を実験的にサポートする 2a フォーマット。\n"
 
 #: bzrlib/builtins.py:1869
 msgid "Make a directory into a versioned branch."
@@ -1585,25 +1590,25 @@ msgstr ""
 
 #: bzrlib/builtins.py:2288
 msgid "Show the tree root directory."
-msgstr ""
+msgstr "ツリーのルートディレクトリを表示します。"
 
 #: bzrlib/builtins.py:2290
 msgid ""
 "The root is the nearest enclosing directory with a .bzr control\n"
 "directory."
-msgstr ""
+msgstr "ルートとは、.bzr管理ディレクトリを持つ、一番近い上位ディレクトリのことです。"
 
 #: bzrlib/builtins.py:2305
 msgid "The limit argument must be an integer."
-msgstr ""
+msgstr "limitは整数でなければなりません。"
 
 #: bzrlib/builtins.py:2313
 msgid "The levels argument must be an integer."
-msgstr ""
+msgstr "levelsは整数でなければなりません。"
 
 #: bzrlib/builtins.py:2318
 msgid "Show historical log for a branch or subset of a branch."
-msgstr ""
+msgstr "ブランチ、もしくはブランチの一部の履歴ログを表示します。"
 
 #: bzrlib/builtins.py:2320
 msgid ""
@@ -1612,6 +1617,10 @@ msgid ""
 "are given, the branch containing the working directory is logged.\n"
 "Here are some simple examples::"
 msgstr ""
+"logは、ブランチの履歴を見るためのbzrのデフォルトのツールです。\n"
+"対象のブランチは１つ目の引数で指定します。引数が指定されていなければ、\n"
+"作業ディレクトリを含むブランチの履歴が表示されます。\n"
+"簡単な例を以下に示します。::"
 
 #: bzrlib/builtins.py:2325
 msgid ""
@@ -1619,6 +1628,9 @@ msgid ""
 "  bzr log foo.py                log a file in its branch\n"
 "  bzr log http://server/branch  log a branch on a server"
 msgstr ""
+"  bzr log は、現在のブランチの履歴を表示します。\n"
+"  bzr log foo,py は、ブランチ内のファイルの履歴を表示します。\n"
+"  bzr log http://server/branch は、サーバ上のブランチのログを表示します。"
 
 #: bzrlib/builtins.py:2329
 msgid ""
@@ -1629,10 +1641,15 @@ msgid ""
 "merged revisions are shown indented under the revision in which they\n"
 "were merged."
 msgstr ""
+"フィルタリング、並び替え、各リビジョンに表示する情報については、以下のように\n"
+"変更できます。デフォルトでは、全てのリビジョンが(トポロジカルに)ソートされ、\n"
+"新しいリビジョンは古いリビジョンより前に、子孫のリビジョンは先祖より前に配置\n"
+"されます。マージされたリビジョンを表示する場合は、マージ先のリビジョンよりも\n"
+"インデントされて表示されます。"
 
 #: bzrlib/builtins.py:2336
 msgid ":Output control:"
-msgstr ""
+msgstr ":出力のコントロール:"
 
 #: bzrlib/builtins.py:2338
 msgid ""
@@ -1641,12 +1658,16 @@ msgid ""
 "  and ``line``. The default is long. See ``bzr help log-formats``\n"
 "  for more details on log formats."
 msgstr ""
+"  ログフォーマットの指定によって、各リビジョンの情報がどう表示されるかを\n"
+"  コントロールします。標準のログフォーマットには ``long`` 、``short`` 、 ``line``\n"
+"  があります。デフォルトはlongです。ログフォーマットについての詳細は\n"
+"  ``bzr help log-formats`` をご覧ください。"
 
 #: bzrlib/builtins.py:2343
 msgid ""
 "  The following options can be used to control what information is\n"
 "  displayed::"
-msgstr ""
+msgstr "  以下のオプションで、どの情報を表示するかをコントロールできます。"
 
 #: bzrlib/builtins.py:2346
 msgid ""
@@ -1656,6 +1677,11 @@ msgid ""
 "    -p          display a diff (patch) for each revision\n"
 "    --show-ids  display revision-ids (and file-ids), not just revnos"
 msgstr ""
+"    -l N        最大N個のリビジョンを表示します。\n"
+"    -n N        Nレベルのリビジョンを表示します。(0で全て、1でメインラインのみ)\n"
+"    -v          ステータスのサマリ(差分)を各リビジョンに表示します。\n"
+"    -p          Diff(patch)を各リビジョンに表示します。\n"
+"    --show-ids  リビジョン番号だけでなく、リビジョンIDとファイルIDも表示します。」"
 
 #: bzrlib/builtins.py:2352
 msgid ""
