@@ -789,7 +789,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                     disk_mode = S_IFGITLINK
                     git_id = subrepo.head()
             elif stat.S_ISLNK(disk_mode):
-                blob = Blob.from_string(os.readlink(disk_path))
+                blob = Blob.from_string(os.readlink(disk_path).encode('utf-8'))
                 git_id = blob.id
             elif stat.S_ISREG(disk_mode):
                 with open(disk_path, 'r') as f:
@@ -799,7 +799,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                 raise AssertionError
             if update_index:
                 flags = 0 # FIXME
-                self.index[path] = index_entry_from_stat(disk_stat, git_id, flags)
+                self.index[path] = index_entry_from_stat(disk_stat, git_id, flags, disk_mode)
             return (git_id, disk_mode)
         return (index_sha, index_mode)
 

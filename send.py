@@ -109,11 +109,12 @@ class GitMergeDirective(BaseMergeDirective):
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
                  target_branch, source_branch=None, message=None,
-                 patches=None):
+                 patches=None, local_target_branch=None):
         super(GitMergeDirective, self).__init__(revision_id=revision_id,
             testament_sha1=testament_sha1, time=time, timezone=timezone,
             target_branch=target_branch, patch=None,
-            source_branch=source_branch, message=message, bundle=None)
+            source_branch=source_branch, message=message,
+            bundle=None)
         self.patches = patches
 
     def to_lines(self):
@@ -170,8 +171,7 @@ class GitMergeDirective(BaseMergeDirective):
             message=message, patches=patches)
 
 
-def send_git(branch, revision_id, submit_branch, public_branch, no_patch,
-             no_bundle, message, base_revision_id):
+def send_git(branch, revision_id, submit_branch, public_branch, no_patch, no_bundle, message, base_revision_id, local_target_branch=None):
     if no_patch:
         raise errors.BzrCommandError("no patch not supported for git-am style patches")
     if no_bundle:
@@ -179,4 +179,5 @@ def send_git(branch, revision_id, submit_branch, public_branch, no_patch,
     return GitMergeDirective.from_objects(
         branch.repository, revision_id, time.time(),
         osutils.local_time_offset(), submit_branch,
-        public_branch=public_branch, message=message)
+        public_branch=public_branch, message=message,
+        local_target_branch=local_target_branch)

@@ -155,7 +155,7 @@ class GitCommitBuilder(CommitBuilder):
                     blob.data = basis_tree.get_file_text(entry.file_id, path)
                     self._blobs[path.encode("utf-8")] = (entry_mode(entry), blob.id)
                 else:
-                    (mode, sha) = workingtree._lookup_entry(path.encode("utf-8"), True)
+                    (mode, sha) = workingtree._lookup_entry(path.encode("utf-8"), update_index=True)
                     self._blobs[path.encode("utf-8")] = (sha, mode)
         if not self._lossy and self._mapping.BZR_FILE_IDS_FILE is not None:
             try:
