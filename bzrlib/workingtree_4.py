@@ -478,25 +478,17 @@ class DirStateWorkingTree(InventoryWorkingTree):
             return False # Missing entries are not executable
         return entry[1][0][3] # Executable?
 
-    if not osutils.supports_executable():
-        def is_executable(self, file_id, path=None):
-            """Test if a file is executable or not.
+    def is_executable(self, file_id, path=None):
+        """Test if a file is executable or not.
 
-            Note: The caller is expected to take a read-lock before calling this.
-            """
+        Note: The caller is expected to take a read-lock before calling this.
+        """
+        if not self._supports_executable():
             entry = self._get_entry(file_id=file_id, path=path)
             if entry == (None, None):
                 return False
             return entry[1][0][3]
-
-        _is_executable_from_path_and_stat = \
-            _is_executable_from_path_and_stat_from_basis
-    else:
-        def is_executable(self, file_id, path=None):
-            """Test if a file is executable or not.
-
-            Note: The caller is expected to take a read-lock before calling this.
-            """
+        else:
             self._must_be_locked()
             if not path:
                 path = self.id2path(file_id)
@@ -1486,7 +1478,7 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
         control_files = self._open_control_files(a_bzrdir)
         control_files.create_lock()
         control_files.lock_write()
-        transport.put_bytes('format', self.get_format_string(),
+        transport.put_bytes('format', self.as_string(),
             mode=a_bzrdir._get_file_mode())
         if from_branch is not None:
             branch = from_branch
@@ -2268,7 +2260,7 @@ class Converter3to4(object):
     def update_format(self, tree):
         """Change the format marker."""
         tree._transport.put_bytes('format',
-            self.target_format.get_format_string(),
+            self.target_format.as_string(),
             mode=tree.bzrdir._get_file_mode())
 
 
@@ -2291,7 +2283,7 @@ class Converter4to5(object):
     def update_format(self, tree):
         """Change the format marker."""
         tree._transport.put_bytes('format',
-            self.target_format.get_format_string(),
+            self.target_format.as_string(),
             mode=tree.bzrdir._get_file_mode())
 
 
@@ -2320,5 +2312,5 @@ class Converter4or5to6(object):
     def update_format(self, tree):
         """Change the format marker."""
         tree._transport.put_bytes('format',
-            self.target_format.get_format_string(),
+            self.target_format.as_string(),
             mode=tree.bzrdir._get_file_mode())

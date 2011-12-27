@@ -36,10 +36,21 @@ Improvements
 
 * New HPSS call for ``Repository.reconcile``. (Jelmer Vernooij, #894455)
 
+* Merge now has two new hooks ``pre_merge`` and ``post_merge``
+  that are called before and after a merge and can make
+  additional modifications to the trees involved.
+  (Jelmer Vernooij, #906877)
+
 * Override the value returned by ``sys.getfilesystemencoding()`` for the bzr
   script to utf-8 when it would otherwise be ascii on a posix system. This
   will mean bzr works with non-ascii files when no locale or an incorrect
   locale is set. (Martin Packman, #794353)
+
+* ``bzr branches`` now indicates the active colocated branch.
+  (Jelmer Vernooij, #891667)
+
+* ``bzr push`` now suggests using :parent if there is a parent location
+  set. (Jelmer Vernooij)
 
 * ``bzr send`` now only opens a single connection, rather than two,
   to the target branch.  (Jelmer Vernooij)
@@ -53,6 +64,13 @@ Bug Fixes
 * Allow configuration option default value to be a python callable at
   registration. (Vincent Ladeuil, #832064)
 
+* ``bzr config`` will now display the section ``[DEFAULT]`` used in
+  ``bazaar.conf``. (Vincent Ladeuil, #907268)
+
+* Configuration stores can now provides a specific quoting mechanism. This
+  is required to workaround ``configobj`` conflating quoting and list values
+  automatic conversion. (Vincent Ladeuil, #906897)
+
 * Create obsolete_packs directory when repacking if it does not
   exist. (Jonathan Riddell, Jelmer Vernooij, #314314)
 
@@ -63,6 +81,9 @@ Bug Fixes
 * Not setting ``gpg_signing_key`` or setting it to ``default`` will use the
   user email (obtained from the ``email`` configuration option or its
   default value). (Vincent Ladeuil, Jelmer Vernooij, #904550)
+
+* Prevent spurious InconsistentDelta error when committing a move of a
+  non-ascii directory with contents. (Rory Yorke, #185211)
 
 * Properly ignore '\n' in an option reference since this cannot be part of a
   config option identifier. (Vincent Ladeuil, #902125)
@@ -107,6 +128,9 @@ Internals
   of the ``socket``, ``ssl`` and ``urllib`` modules for
   local bzr operations. (Jelmer Vernooij)
 
+* Configuration options can be SI units by using ``int_SI_from_unicode`` as
+  their ``convert_from_unicode`` helper. (Vincent Ladeuil)
+
 * ControlDir now has a get_branches method that returns a dictionary
   whose keys are the names of the branches and whose values are the
   branches themselves. The active branch uses the key None.
@@ -135,6 +159,10 @@ Testing
 
 * New matcher ``ContainsNoVfsCalls`` which filters a list of HPSS
   calls for VFS requests. (Jelmer Vernooij)
+
+* New ``MemoryStack`` class allows for diskless tests and locally injected
+  configuration stacks.  Lower level tests for predefined set of options can
+  be written without setting up configuration files. (Vincent Ladeuil)
 
 
 bzr 2.5b4
@@ -336,6 +364,12 @@ Internals
 
 * The registry of merge types has been moved to ``merge`` from ``option`` but
   ``merge.get_merge_type_registry`` remains as an accessor. (Martin Packman)
+
+* All bzr control directories, branch formats, repository formats and
+  working tree formats now support feature flags, which are
+  serialized in their respective format files. See
+  ``doc/developers/feature-flags.txt`` for details.
+  (Jelmer Vernooij)
 
 Testing
 *******
