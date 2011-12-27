@@ -1566,14 +1566,11 @@ class Branch(controldir.ControlComponent):
             heads that must be fetched if present, but no error is necessary if
             they are not present.
         """
-        # For bzr native formats must_fetch is just the tip, and if_present_fetch
-        # are the tags.
+        # For bzr native formats must_fetch is just the tip, and
+        # if_present_fetch are the tags.
         must_fetch = set([self.last_revision()])
         if_present_fetch = set()
-        c = self.get_config()
-        include_tags = c.get_user_option_as_bool('branch.fetch_tags',
-                                                 default=False)
-        if include_tags:
+        if self.get_config_stack().get('branch.fetch_tags'):
             try:
                 if_present_fetch = set(self.tags.get_reverse_tag_dict())
             except errors.TagsNotSupported:

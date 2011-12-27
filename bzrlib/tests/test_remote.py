@@ -1430,8 +1430,8 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
 
     def test_backwards_compatible(self):
         branch = self.make_branch_with_tags()
-        c = branch.get_config()
-        c.set_user_option('branch.fetch_tags', 'True')
+        c = branch.get_config_stack()
+        c.set('branch.fetch_tags', True)
         self.addCleanup(branch.lock_read().unlock)
         # Disable the heads_to_fetch verb
         verb = 'Branch.heads_to_fetch'
@@ -1446,8 +1446,8 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
 
     def test_backwards_compatible_no_tags(self):
         branch = self.make_branch_with_tags()
-        c = branch.get_config()
-        c.set_user_option('branch.fetch_tags', 'False')
+        c = branch.get_config_stack()
+        c.set('branch.fetch_tags', False)
         self.addCleanup(branch.lock_read().unlock)
         # Disable the heads_to_fetch verb
         verb = 'Branch.heads_to_fetch'
