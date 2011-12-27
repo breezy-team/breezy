@@ -201,7 +201,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
         self.assertIsInstance(
             SampleBranchFormat.from_string("Sample branch format."),
             SampleBranchFormat)
-        self.assertRaises(ValueError,
+        self.assertRaises(AssertionError,
             SampleBranchFormat.from_string, "Different branch format.")
 
     def test_find_format_not_branch(self):
@@ -216,6 +216,15 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
         self.assertRaises(errors.UnknownFormatError,
                           _mod_branch.BranchFormatMetadir.find_format,
                           dir)
+
+    def test_find_format_with_features(self):
+        tree = self.make_branch_and_tree('.', format='2a')
+        tree.branch.control_transport.put_bytes('format',
+            tree.branch._format.get_format_string() +
+            "optional name\n")
+        found_format = _mod_branch.BranchFormatMetadir.find_format(tree.bzrdir)
+        self.assertIsInstance(found_format, _mod_branch.BranchFormatMetadir)
+        self.assertEquals(found_format.features.get("name"), "optional")
 
     def test_register_unregister_format(self):
         # Test the deprecated format registration functions
@@ -402,22 +411,6 @@ class TestBranch67(object):
 
     def test_light_checkout_with_references(self):
         self.do_checkout_test(lightweight=True)
-
-    def test_set_push(self):
-        branch = self.make_branch('source', format=self.get_format_name())
-        branch.get_config().set_user_option('push_location', 'old',
-            store=config.STORE_LOCATION)
-        warnings = []
-        def warning(*args):
-            warnings.append(args[0] % args[1:])
-        _warning = trace.warning
-        trace.warning = warning
-        try:
-            branch.set_push_location('new')
-        finally:
-            trace.warning = _warning
-        self.assertEqual(warnings[0], 'Value "new" is masked by "old" from '
-                         'locations.conf')
 
 
 class TestBranch6(TestBranch67, tests.TestCaseWithTransport):
@@ -734,4 +727,3 @@ class TestPullResult(tests.TestCase):
         f = StringIO()
         r.report(f)
         self.assertEqual("No revisions or tags to pull.\n", f.getvalue())
-

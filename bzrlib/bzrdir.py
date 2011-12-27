@@ -1102,7 +1102,7 @@ class BzrDirMeta1Colo(BzrDirMeta1):
         return self.transport.clone(path)
 
 
-class BzrDirMetaComponentFormat(controldir.ControlComponentFormat):
+class BzrFormat(object):
     """Base class for all formats of things living in metadirs.
 
     This class manages the format string that is stored in the 'format'
@@ -1113,7 +1113,53 @@ class BzrDirMetaComponentFormat(controldir.ControlComponentFormat):
     (i.e. different from .bzr/branch-format) derive from this class,
     as well as the relevant base class for their kind
     (BranchFormat, WorkingTreeFormat, RepositoryFormat).
+
+    Each format is identified by a "format" or "branch-format" file with a
+    single line containing the base format name and then an optional list of
+    feature flags.
+
+    Feature flags are supported as of bzr 2.5. Setting feature flags on formats
+    will render them inaccessible to older versions of bzr.
+
+    :ivar features: Dictionary mapping feature names to their necessity
     """
+
+    _present_features = set()
+
+    def __init__(self):
+        self.features = {}
+
+    @classmethod
+    def register_feature(cls, name):
+        """Register a feature as being present.
+
+        :param name: Name of the feature
+        """
+        if " " in name:
+            raise ValueError("spaces are not allowed in feature names")
+        if name in cls._present_features:
+            raise errors.FeatureAlreadyRegistered(name)
+        cls._present_features.add(name)
+
+    @classmethod
+    def unregister_feature(cls, name):
+        """Unregister a feature."""
+        cls._present_features.remove(name)
+
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+            basedir=None):
+        for name, necessity in self.features.iteritems():
+            if name in self._present_features:
+                continue
+            if necessity == "optional":
+                mutter("ignoring optional missing feature %s", name)
+                continue
+            elif necessity == "required":
+                raise errors.MissingFeature(name)
+            else:
+                mutter("treating unknown necessity as require for %s",
+                       name)
+                raise errors.MissingFeature(name)
 
     @classmethod
     def get_format_string(cls):
@@ -1121,28 +1167,51 @@ class BzrDirMetaComponentFormat(controldir.ControlComponentFormat):
         raise NotImplementedError(cls.get_format_string)
 
     @classmethod
-    def from_string(cls, format_string):
-        if format_string != cls.get_format_string():
-            raise ValueError("Invalid format header %r" % format_string)
-        return cls()
+    def from_string(cls, text):
+        format_string = cls.get_format_string()
+        if not text.startswith(format_string):
+            raise AssertionError("Invalid format header %r for %r" % (text, cls))
+        lines = text[len(format_string):].splitlines()
+        ret = cls()
+        for lineno, line in enumerate(lines):
+            try:
+                (necessity, feature) = line.split(" ", 1)
+            except ValueError:
+                raise errors.ParseFormatError(format=cls, lineno=lineno+2,
+                    line=line, text=text)
+            ret.features[feature] = necessity
+        return ret
+
+    def as_string(self):
+        """Return the string representation of this format.
+        """
+        lines = [self.get_format_string()]
+        lines.extend([("%s %s\n" % (item[1], item[0])) for item in
+            self.features.iteritems()])
+        return "".join(lines)
 
     @classmethod
     def _find_format(klass, registry, kind, format_string):
         try:
-            cls = registry.get(format_string)
+            first_line = format_string[:format_string.index("\n")+1]
+        except ValueError:
+            first_line = format_string
+        try:
+            cls = registry.get(first_line)
         except KeyError:
-            raise errors.UnknownFormatError(format=format_string, kind=kind)
-        return cls
+            raise errors.UnknownFormatError(format=first_line, kind=kind)
+        return cls.from_string(format_string)
 
     def network_name(self):
         """A simple byte string uniquely identifying this format for RPC calls.
 
         Metadir branch formats use their format string.
         """
-        return self.get_format_string()
+        return self.as_string()
 
     def __eq__(self, other):
-        return (self.__class__ is other.__class__)
+        return (self.__class__ is other.__class__ and
+                self.features == other.features)
 
 
 class BzrProber(controldir.Prober):
@@ -1169,9 +1238,13 @@ class BzrProber(controldir.Prober):
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
         try:
-            cls = klass.formats.get(format_string)
+            first_line = format_string[:format_string.index("\n")+1]
+        except ValueError:
+            first_line = format_string
+        try:
+            cls = klass.formats.get(first_line)
         except KeyError:
-            raise errors.UnknownFormatError(format=format_string, kind='bzrdir')
+            raise errors.UnknownFormatError(format=first_line, kind='bzrdir')
         return cls.from_string(format_string)
 
     @classmethod
@@ -1221,7 +1294,7 @@ class RemoteBzrProber(controldir.Prober):
         return set([RemoteBzrDirFormat()])
 
 
-class BzrDirFormat(controldir.ControlDirFormat):
+class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
     """ControlDirFormat base class for .bzr/ directories.
 
     Formats are placed in a dict by their format string for reference
@@ -1237,11 +1310,6 @@ class BzrDirFormat(controldir.ControlDirFormat):
 
     # _lock_class must be set in subclasses to the lock type, typ.
     # TransportLock or LockDir
-
-    @classmethod
-    def get_format_string(cls):
-        """Return the ASCII format string that identifies this format."""
-        raise NotImplementedError(cls.get_format_string)
 
     def initialize_on_transport(self, transport):
         """Initialize a new bzrdir in the base directory of a Transport."""
@@ -1433,10 +1501,19 @@ class BzrDirFormat(controldir.ControlDirFormat):
             compatible with whatever sub formats are supported by self.
         :return: None.
         """
+        other_format.features = dict(self.features)
 
     def supports_transport(self, transport):
         # bzr formats can be opened over all known transports
         return True
+
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+            basedir=None):
+        controldir.ControlDirFormat.check_support_status(self,
+            allow_unsupported=allow_unsupported, recommend_upgrade=recommend_upgrade,
+            basedir=basedir)
+        BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
+            recommend_upgrade=recommend_upgrade, basedir=basedir)
 
 
 class BzrDirMetaFormat1(BzrDirFormat):
@@ -1459,6 +1536,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
     colocated_branches = False
 
     def __init__(self):
+        BzrDirFormat.__init__(self)
         self._workingtree_format = None
         self._branch_format = None
         self._repository_format = None
@@ -1469,6 +1547,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
         if other.repository_format != self.repository_format:
             return False
         if other.workingtree_format != self.workingtree_format:
+            return False
+        if other.features != self.features:
             return False
         return True
 
@@ -1601,15 +1681,6 @@ class BzrDirMetaFormat1(BzrDirFormat):
         """See BzrDirFormat.get_format_description()."""
         return "Meta directory format 1"
 
-    @classmethod
-    def from_string(cls, format_string):
-        if format_string != cls.get_format_string():
-            raise ValueError("Invalid format string %r" % format_string)
-        return cls()
-
-    def network_name(self):
-        return self.get_format_string()
-
     def _open(self, transport):
         """See BzrDirFormat._open."""
         # Create a new format instance because otherwise initialisation of new
@@ -1644,6 +1715,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
             compatible with whatever sub formats are supported by self.
         :return: None.
         """
+        super(BzrDirMetaFormat1, self)._supply_sub_formats_to(other_format)
         if getattr(self, '_repository_format', None) is not None:
             other_format.repository_format = self.repository_format
         if self._branch_format is not None:
@@ -1919,7 +1991,7 @@ class RepositoryAcquisitionPolicy(object):
         :return: A repository, is_new_flag (True if the repository was
             created).
         """
-        raise NotImplemented(RepositoryAcquisitionPolicy.acquire_repository)
+        raise NotImplementedError(RepositoryAcquisitionPolicy.acquire_repository)
 
 
 class CreateRepository(RepositoryAcquisitionPolicy):
