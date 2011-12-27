@@ -1297,6 +1297,9 @@ class _TestBranch(bzrlib.branch.Branch):
     def _get_config(self):
         return config.TransportConfig(self._transport, 'branch.conf')
 
+    def _get_config_store(self):
+        return config.BranchStore(self)
+
     def set_parent(self, parent):
         self._parent = parent
 
