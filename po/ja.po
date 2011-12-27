@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-12-08 09:21+0100\n"
-"PO-Revision-Date: 2011-12-25 16:19+0000\n"
+"PO-Revision-Date: 2011-12-27 01:59+0000\n"
 "Last-Translator: IWATA Hidetaka <Unknown>\n"
 "Language-Team: Japanese <ja@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Launchpad-Export-Date: 2011-12-26 04:38+0000\n"
+"X-Launchpad-Export-Date: 2011-12-27 04:38+0000\n"
 "X-Generator: Launchpad (build 14560)\n"
 
 #: bzrlib/add.py:95
@@ -1689,6 +1689,9 @@ msgid ""
 "  log format. If the -n option is not used, the standard log formats show\n"
 "  just the top level (mainline)."
 msgstr ""
+"  デフォルトの表示レベルは、ログフォーマットの機能であることに注意してください。\n"
+"  -nオプションが使用されない場合は、標準のログフォーマットはトップレベル(メイン\n"
+"  ライン)だけを表示します。"
 
 #: bzrlib/builtins.py:2356
 msgid ""
@@ -1696,10 +1699,12 @@ msgid ""
 "  the changes explained using words like ``added`` and ``modified``\n"
 "  instead, use the -vv option."
 msgstr ""
+"  ステータスのサマリは、A、Mなどのフラグで表示されます。 かわりに ``added``、\n"
+"  ``modified`` などの単語で表示するには、-vvオプションを使用してください。"
 
 #: bzrlib/builtins.py:2360
 msgid ":Ordering control:"
-msgstr ""
+msgstr ":表示順のコントロール:"
 
 #: bzrlib/builtins.py:2362
 msgid ""
@@ -1708,16 +1713,21 @@ msgid ""
 "  time taken to produce a log, though --forward does not incrementally\n"
 "  display revisions like --reverse does when it can."
 msgstr ""
+"  古いリビジョンから新しいリビジョンの順で表示するには、 --forwardオプションを\n"
+"  使います。--forwardは、--reverseのようにログをインクリメンタルに表示はしません\n"
+"が、たいていの場合、ログ表示にかかる時間への影響はわずかです。"
 
 #: bzrlib/builtins.py:2367
 msgid ":Revision filtering:"
-msgstr ""
+msgstr ":リビジョンのフィルタリング:"
 
 #: bzrlib/builtins.py:2369
 msgid ""
 "  The -r option can be used to specify what revision or range of revisions\n"
 "  to filter against. The various forms are shown below::"
 msgstr ""
+"  -rオプションで、どのリビジョン、もしくはリビジョンの範囲を表示するかを指定する\n"
+"  ことができます。いろいろな例を以下に示します。::"
 
 #: bzrlib/builtins.py:2372
 msgid ""
@@ -1726,6 +1736,10 @@ msgid ""
 "    -r..Y    display up to and including revision Y\n"
 "    -rX..Y   display from X to Y inclusive"
 msgstr ""
+"    -rX      リビジョンXを表示\n"
+"    -rX..    リビジョンX以降を表示\n"
+"    -r..Y    リビジョンY以前(Yを含む)を表示\n"
+"    -rX..Y   リビジョンXからY(X、Yを含む)を表示"
 
 #: bzrlib/builtins.py:2377
 msgid ""
