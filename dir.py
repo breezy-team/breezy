@@ -470,12 +470,14 @@ class LocalGitDir(GitDir):
         return branch
 
     def backup_bzrdir(self):
-        if self._git.bare:
+        if not self._git.bare:
             self.root_transport.copy_tree(".git", ".git.backup")
             return (self.root_transport.abspath(".git"),
                     self.root_transport.abspath(".git.backup"))
         else:
-            raise bzr_errors.BzrError("Unable to backup bare repositories")
+            basename = urlutils.basename(self.root_transport.base)
+            parent = self.root_transport.clone('..')
+            parent.copy_tree(basename, basename + ".backup")
 
     def create_workingtree(self, revision_id=None, from_branch=None,
         accelerator_tree=None, hardlink=False):
