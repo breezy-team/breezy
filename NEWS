@@ -5,9 +5,15 @@
   * "git:" revision specifier now avoids full branch history
     access if it can. (Jelmer Vernooij)
 
- DOCUMENTATIOn
+ DOCUMENTATION
 
   * Added manual page for git-remote-bzr. (Jelmer Vernooij0
+
+ BUG FIXES
+
+  * Support setting branch nicks. (Jelmer Vernooij, #731239)
+
+  * Support Repository.set_make_working_trees(). (Jelmer Vernooij, #777065)
 
 0.6.6	2011-12-15
 
