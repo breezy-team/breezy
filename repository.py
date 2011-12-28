@@ -228,7 +228,7 @@ class GitRepository(ForeignRepository):
         return default_mapping
 
     def make_working_trees(self):
-        return not self._git.bare
+        return not self._git.get_config().get_boolean(("core", ), "bare")
 
     def revision_graph_can_have_wrong_parents(self):
         return False
@@ -534,8 +534,10 @@ class LocalGitRepository(GitRepository):
         raise NotImplementedError(self.get_inventory)
 
     def set_make_working_trees(self, trees):
-        raise errors.UnsupportedOperation(self.set_make_working_trees, self)
-        # TODO: Set bare= in the configuration bug=777065
+        if trees:
+            self._git.get_config().set(("core", ), "bare", "false")
+        else:
+            self._git.get_config().set(("core", ), "bare", "true")
 
     def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref,
         progress=None):

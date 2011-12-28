@@ -346,6 +346,16 @@ class TransportRepo(BaseRepo):
         # missing index file, which is treated as empty.
         return not self.bare
 
+    def get_config(self):
+        from dulwich.config import ConfigFile, StackedConfig
+        backends = []
+        try:
+            p = ConfigFile.from_file(self.transport.get('config'))
+        except NoSuchFile:
+            pass
+        backends.extend(StackedConfig.default_backends())
+        return StackedConfig(backends)
+
     def __repr__(self):
         return "<%s for %r>" % (self.__class__.__name__, self.transport)
 
