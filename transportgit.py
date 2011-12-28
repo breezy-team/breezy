@@ -347,14 +347,23 @@ class TransportRepo(BaseRepo):
         return not self.bare
 
     def get_config(self):
-        from dulwich.config import ConfigFile, StackedConfig
-        backends = []
+        from dulwich.config import ConfigFile
         try:
-            p = ConfigFile.from_file(self.transport.get('config'))
+            return ConfigFile.from_file(self._controltransport.get('config'))
         except NoSuchFile:
-            pass
+            return ConfigFile()
+
+    def get_config_stack(self):
+        from dulwich.config import StackedConfig
+        backends = []
+        p = self.get_config()
+        if p is not None:
+            backends.append(p)
+            writable = p
+        else:
+            writable = None
         backends.extend(StackedConfig.default_backends())
-        return StackedConfig(backends)
+        return StackedConfig(backends, writable=writable)
 
     def __repr__(self):
         return "<%s for %r>" % (self.__class__.__name__, self.transport)

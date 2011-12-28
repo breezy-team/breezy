@@ -17,6 +17,7 @@
 
 """An adapter between a Git Branch and a Bazaar Branch"""
 
+from cStringIO import StringIO
 from collections import defaultdict
 
 from dulwich.objects import (
@@ -380,10 +381,19 @@ class GitBranch(ForeignBranch):
 
         :return: Branch nick
         """
+        cs = self.repository._git.get_config_stack()
+        try:
+            return cs.get(("branch", self.name), "nick")
+        except KeyError:
+            pass
         return self.name.encode('utf-8') or "HEAD"
 
     def _set_nick(self, nick):
-        raise NotImplementedError
+        cf = self.repository._git.get_config()
+        cf.set(("branch", self.name), "nick", nick)
+        f = StringIO()
+        cf.write_to_file(f)
+        self.repository._git.transport.put_bytes('config', f.getvalue())
 
     nick = property(_get_nick, _set_nick)
 
