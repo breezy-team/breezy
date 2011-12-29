@@ -3025,6 +3025,8 @@ class IniFileStore(Store):
         """
         super(IniFileStore, self).__init__()
         self._config_obj = None
+        # Which sections need to be saved
+        self.dirty_sections = []
 
     def is_loaded(self):
         return self._config_obj != None
@@ -3117,7 +3119,10 @@ class IniFileStore(Store):
             section = self._config_obj
         else:
             section = self._config_obj.setdefault(section_id, {})
-        return self.mutable_section_class(section_id, section)
+        mutable_section = self.mutable_section_class(section_id, section)
+        # All mutable sections can become dirty
+        self.dirty_sections.append(mutable_section)
+        return mutable_section
 
     def quote(self, value):
         try:

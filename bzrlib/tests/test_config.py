@@ -2970,6 +2970,18 @@ class TestMutableStore(TestStore):
         self.assertLength(1, calls)
         self.assertEquals((store,), calls[0])
 
+    def test_set_mark_dirty(self):
+        stack = config.MemoryStack('')
+        self.assertLength(0, stack.store.dirty_sections)
+        stack.set('foo', 'baz')
+        self.assertLength(1, stack.store.dirty_sections)
+
+    def test_remove_mark_dirty(self):
+        stack = config.MemoryStack('foo=bar')
+        self.assertLength(0, stack.store.dirty_sections)
+        stack.remove('foo')
+        self.assertLength(1, stack.store.dirty_sections)
+
 
 class TestQuotingIniFileStore(tests.TestCaseWithTransport):
 
