@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-12-08 09:21+0100\n"
-"PO-Revision-Date: 2011-12-27 21:14+0000\n"
+"PO-Revision-Date: 2011-12-28 23:01+0000\n"
 "Last-Translator: IWATA Hidetaka <Unknown>\n"
 "Language-Team: Japanese <ja@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Launchpad-Export-Date: 2011-12-28 04:30+0000\n"
+"X-Launchpad-Export-Date: 2011-12-29 04:30+0000\n"
 "X-Generator: Launchpad (build 14560)\n"
 
 #: bzrlib/add.py:95
@@ -1746,8 +1746,8 @@ msgid ""
 "  See ``bzr help revisionspec`` for details on how to specify X and Y.\n"
 "  Some common examples are given below::"
 msgstr ""
-"  XとYの指定方法の詳細は、 ``bzr help revisionspec`` を参照してください。\n"
-"  一般的な例を以下に示します。::"
+"  X、Yの指定方法の詳細は、 ``bzr help revisionspec`` を参照してください。\n"
+"  よくある例を以下に示します。::"
 
 #: bzrlib/builtins.py:2380
 msgid ""
@@ -1890,6 +1890,11 @@ msgid ""
 "  Guide <http://doc.bazaar.canonical.com/plugins/en/> and\n"
 "  <http://wiki.bazaar.canonical.com/IDEIntegration>.  "
 msgstr ""
+"  履歴を見るには、CUIよりもGUIやIDEの方がいいことも多いでしょう。qlog、\n"
+"  qbzrやbzr-gtkのビジュアライゼーション、bzr-explorerシェル、LoggerHead\n"
+"  のWebインターフェイスなどが気に入るかもしれまん。プラグインガイド\n"
+"  <http://doc.bazaar.canonical.com/plugins/en/> や、\n"
+"  <http://wiki.bazaar.canonical.com/IDEIntegration> をご覧ください。  "
 
 #: bzrlib/builtins.py:2443
 msgid ""
@@ -1951,6 +1956,10 @@ msgid ""
 "  the historycache plugin. This plugin buffers historical information\n"
 "  trading disk space for faster speed."
 msgstr ""
+"  深い履歴をもつ大規模なプロジェクトで、メインライン以外の履歴を見る場合は、\n"
+"  historycacheプラグインをインストールすることでパフォーマンスを大きく改善\n"
+"  することができます。このプラグインは、履歴情報をキャッシュして、ディスク\n"
+"  スペースと引き換えに高速なパフォーマンスをもたらします。"
 
 #: bzrlib/builtins.py:2476
 msgid "Show from oldest to newest."
@@ -2020,76 +2029,78 @@ msgstr "作者が指定された表現にマッチするリビジョンを表示
 
 #: bzrlib/builtins.py:2541
 msgid "Show revisions whose bugs match this expression."
-msgstr ""
+msgstr "バグ情報が指定された表現にマッチするリビジョンを表示します"
 
 #: bzrlib/builtins.py:2595
 msgid "--exclude-common-ancestry requires -r with two revisions"
-msgstr ""
+msgstr "--exclude-common-ancestryには、-rで2つのリビジョンを指定する必要があります。"
 
 #: bzrlib/builtins.py:2623
 #, python-format
 msgid "Path unknown at end or start of revision range: %s"
-msgstr ""
+msgstr "最後のリビジョンにも最初のリビジョンにもパスが見つかりません: %s"
 
 #: bzrlib/builtins.py:2740
 #, python-format
 msgid "bzr %s doesn't accept two revisions in different branches."
-msgstr ""
+msgstr "bzr %s には、異なるブランチ上の2つのリビジョンは指定できません。"
 
 #: bzrlib/builtins.py:2756
 #, python-format
 msgid "bzr %s --revision takes one or two values."
-msgstr ""
+msgstr "bzr %s --revision は1つまたは2つの値を取ります。"
 
 #: bzrlib/builtins.py:2801
 msgid ""
 "List files in a tree.\n"
 "    "
 msgstr ""
+"ツリー内のファイルをリストアップします。\n"
+"    "
 
 #: bzrlib/builtins.py:2810
 msgid "Recurse into subdirectories."
-msgstr ""
+msgstr "サブディレクトリも再帰で処理します。"
 
 #: bzrlib/builtins.py:2812
 msgid "Print paths relative to the root of the branch."
-msgstr ""
+msgstr "ブランチのルートからの相対パスを表示します。"
 
 #: bzrlib/builtins.py:2814
 msgid "Print unknown files."
-msgstr ""
+msgstr "バージョン管理外のファイルを表示します。"
 
 #: bzrlib/builtins.py:2815
 msgid "Print versioned files."
-msgstr ""
+msgstr "バージョン管理されたファイルを表示します。"
 
 #: bzrlib/builtins.py:2818
 msgid "Print ignored files."
-msgstr ""
+msgstr "無視されたファイルを表示します。"
 
 #: bzrlib/builtins.py:2820
 msgid "List entries of a particular kind: file, directory, symlink."
-msgstr ""
+msgstr "指定された種別のアイテム(ファイル、ディレクトリ、シンボリックリンク)を表示します。"
 
 #: bzrlib/builtins.py:2833
 msgid "invalid kind specified"
-msgstr ""
+msgstr "無効な種別が指定されました。"
 
 #: bzrlib/builtins.py:2836
 msgid "Cannot set both --verbose and --null"
-msgstr ""
+msgstr "--verboseと--nullを同時に指定することはできません。"
 
 #: bzrlib/builtins.py:2845
 msgid "cannot specify both --from-root and PATH"
-msgstr ""
+msgstr "--from-rootとPATHを同時に指定することはできません。"
 
 #: bzrlib/builtins.py:2932
 msgid "Ignore specified files or patterns."
-msgstr ""
+msgstr "指定されたファイルやパターンを無視します。"
 
 #: bzrlib/builtins.py:2934
 msgid "See ``bzr help patterns`` for details on the syntax of patterns."
-msgstr ""
+msgstr "パターンの書き方の詳細は ``bzr help patterns`` をご覧ください。"
 
 #: bzrlib/builtins.py:2936
 msgid ""
@@ -2099,6 +2110,11 @@ msgid ""
 ".bzrignore file to be versioned. Creating a .bzrignore file without\n"
 "the use of the ignore command will require an explicit add command."
 msgstr ""
+".bzrignoreファイルが存在しない場合は、ignoreコマンドはそれを作成して、\n"
+"指定されたファイルやパターンを追加します。また、.bzrignoreファイルは\n"
+"ignoreコマンドで自動的にバージョン管理に追加されます。ignoreコマンドを\n"
+"使わずに.bzrignoreファイルを手で作成した場合は、明示的にaddコマンドを\n"
+"呼ぶ必要があります。"
 
 #: bzrlib/builtins.py:2942
 msgid ""
@@ -2107,6 +2123,9 @@ msgid ""
 "using this command or directly by using an editor, be sure to commit\n"
 "it."
 msgstr ""
+"無視リストからパターンを削除するには、.bzrignoreファイルを編集します。\n"
+"ignoreコマンドやエディタでこのファイルのエントリを追加、編集、削除した\n"
+"場合は、忘れずにコミットしてください。"
 
 #: bzrlib/builtins.py:2947
 msgid ""
@@ -2116,6 +2135,11 @@ msgid ""
 "Global ignores are not touched by this command. The global ignore file\n"
 "can be edited directly using an editor."
 msgstr ""
+"Bazaarは、グローバルな無視ファイル ~/.bazaar/ignore もサポートしています。\n"
+"Windowsでは、このファイルはApplication Data ディレクトリにあります。\n"
+"(C:\\Documents and Settings\\<user>\\Application Data\\Bazaar\\2.0\\ignore)\n"
+"このファイルをこのコマンドで編集することはできないので、直接エディタで編集\n"
+"してください。"
 
 #: bzrlib/builtins.py:2953
 msgid ""
@@ -2123,12 +2147,17 @@ msgid ""
 "precedence over regular ignores.  Such exceptions are used to specify\n"
 "files that should be versioned which would otherwise be ignored."
 msgstr ""
+"!で始まるパターンは、無視指定からの除外を表し、通常の無視指定よりも\n"
+"優先されます。これは、普通なら無視されるはずのファイルをバージョン管理\n"
+"の対象とするために使います。"
 
 #: bzrlib/builtins.py:2957
 msgid ""
 "Patterns prefixed with '!!' act as regular ignore patterns, but have\n"
 "precedence over the '!' exception patterns."
 msgstr ""
+"!!で始まるパターンは、通常の無視指定として扱われますが、!による除外\n"
+"パターンよりも優先されます。"
 
 #: bzrlib/builtins.py:2960
 msgid ""
@@ -2137,62 +2166,70 @@ msgid ""
 "* Ignore patterns containing shell wildcards must be quoted from\n"
 "  the shell on Unix."
 msgstr ""
+":注意: \n"
+"    \n"
+"*シェルのワイルドカードをふくむ無視パターンを指定するときには、Unixシェル\n"
+"  による引用符でくくる必要があります。"
 
 #: bzrlib/builtins.py:2965
 msgid ""
 "* Ignore patterns starting with \"#\" act as comments in the ignore file.\n"
 "  To ignore patterns that begin with that character, use the \"RE:\" prefix."
 msgstr ""
+"* #で始まる無視パターンは、無視ファイル中のコメントとして扱われます。\n"
+"  #で始まるファイルを無視したい場合は、\"RE:\"プレフィックスを使ってください。"
 
 #: bzrlib/builtins.py:2968
 msgid ""
 ":Examples:\n"
 "    Ignore the top level Makefile::"
 msgstr ""
+":例:\n"
+"    トップレベルのMakefileを無視する::"
 
 #: bzrlib/builtins.py:2971
 msgid "        bzr ignore ./Makefile"
-msgstr ""
+msgstr "        bzr ignore ./Makefile"
 
 #: bzrlib/builtins.py:2973
 msgid "    Ignore .class files in all directories...::"
-msgstr ""
+msgstr "    すべてのディレクトリの.classファイルを無視するが...::"
 
 #: bzrlib/builtins.py:2975
 msgid "        bzr ignore \"*.class\""
-msgstr ""
+msgstr "        bzr ignore \"*.class\""
 
 #: bzrlib/builtins.py:2977
 msgid "    ...but do not ignore \"special.class\"::"
-msgstr ""
+msgstr "    ...\"special.class\" は無視しない::"
 
 #: bzrlib/builtins.py:2979
 msgid "        bzr ignore \"!special.class\""
-msgstr ""
+msgstr "        bzr ignore \"!special.class\""
 
 #: bzrlib/builtins.py:2981
 msgid "    Ignore files whose name begins with the \"#\" character::"
-msgstr ""
+msgstr "    #で始まるファイルを無視する::"
 
 #: bzrlib/builtins.py:2983
 msgid "        bzr ignore \"RE:^#\""
-msgstr ""
+msgstr "        bzr ignore \"RE:^#\""
 
 #: bzrlib/builtins.py:2985
 msgid "    Ignore .o files under the lib directory::"
-msgstr ""
+msgstr "    libディレクトリ配下の.oファイルを無視する::"
 
 #: bzrlib/builtins.py:2987
 msgid "        bzr ignore \"lib/**/*.o\""
-msgstr ""
+msgstr "        bzr ignore \"lib/**/*.o\""
 
 #: bzrlib/builtins.py:2991
 msgid "        bzr ignore \"RE:lib/.*\\.o\""
-msgstr ""
+msgstr "        bzr ignore \"RE:lib/.*\\.o\""
 
 #: bzrlib/builtins.py:2993
 msgid "    Ignore everything but the \"debian\" toplevel directory::"
-msgstr ""
+msgstr "    \"debian\"トップレベルディレクトリ以外の全てを無視する::"
 
 #: bzrlib/builtins.py:2995
 msgid ""
@@ -2205,25 +2242,32 @@ msgid ""
 "        bzr ignore \"!./local\"\n"
 "        bzr ignore \"!!*~\""
 msgstr ""
+"        bzr ignore \"RE:(?!debian/).*\"\n"
+"    \n"
+"    ”local”トップレベルディレクトリ配下以外の全てを無視する,\n"
+"    ただし、~で終わる自動セーブファイルは、local/配下であっても無視する::\n"
+"    \n"
+"        bzr ignore \"*\"\n"
+"        bzr ignore \"!./local\"\n"
+"        bzr ignore \"!!*~\""
 
 #: bzrlib/builtins.py:3009
 msgid "Display the default ignore rules that bzr uses."
-msgstr ""
+msgstr "bzrが使用するデフォルトの無視ルールを表示します。"
 
 #: bzrlib/builtins.py:3021
 msgid "ignore requires at least one NAME_PATTERN or --default-rules."
-msgstr ""
+msgstr "ignoreにはNAME_PATTERNか--default-rulesのどちらかは指定する必要があります。"
 
 #: bzrlib/builtins.py:3032
 #, python-format
 msgid "Invalid ignore pattern found. %s"
 msgid_plural "Invalid ignore patterns found. %s"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "無効な無視パターンが見つかりました。 %s"
 
 #: bzrlib/builtins.py:3041
 msgid "NAME_PATTERN should not be an absolute path"
-msgstr ""
+msgstr "NAME_PATTERNに絶対パスは指定できません。"
 
 #: bzrlib/builtins.py:3054
 #, python-format
@@ -2234,6 +2278,9 @@ msgid ""
 "These files will continue to be version controlled unless you 'bzr remove' "
 "them.\n"
 msgstr ""
+"注意: 以下のファイルはバージョン管理されていますが、無視パターンにマッチしました。:\n"
+"%s\n"
+"これらのファイルは、'bzr remove'しない限りはバージョン管理されたままです。\n"
 
 #: bzrlib/builtins.py:3061
 msgid "List ignored files and the patterns that matched them."
@@ -4877,11 +4924,13 @@ msgid ""
 ":Usage:\n"
 "%s\n"
 msgstr ""
+":使い方:\n"
+"%s\n"
 
 #: bzrlib/commands.py:496
 #, python-format
 msgid ":Usage:   %s\n"
-msgstr ""
+msgstr ":使い方: %s\n"
 
 #: bzrlib/commands.py:515
 #, python-format
@@ -6638,15 +6687,15 @@ msgstr ""
 
 #: bzrlib/option.py:526
 msgid "Only display errors and warnings."
-msgstr ""
+msgstr "エラーや警告だけを表示します。"
 
 #: bzrlib/option.py:529
 msgid "Show usage message and options."
-msgstr ""
+msgstr "使い方とオプションを表示します。"
 
 #: bzrlib/option.py:531
 msgid "Display more information."
-msgstr ""
+msgstr "より詳細な情報を表示します。"
 
 #: bzrlib/option.py:539
 msgid ""
@@ -6728,7 +6777,7 @@ msgstr ""
 
 #: bzrlib/option.py:564
 msgid "See \"help revisionspec\" for details."
-msgstr ""
+msgstr "詳細は \"help revisionspec\" を参照してください。"
 
 #: bzrlib/option.py:566
 msgid "Show internal object ids."
@@ -8466,6 +8515,9 @@ msgid ""
 "--verbose, -v  Display more information.\n"
 "--quiet, -q    Only display errors and warnings."
 msgstr ""
+"--help, -h     ヘルプを表示します。\n"
+"--verbose, -v  より詳細な情報を表示します。\n"
+"--quiet, -q    エラーや警告だけを表示します。"
 
 #: dummy/help_topics/standard-options/detail.txt:9
 msgid "Unlike global options, standard options can be used in aliases.\n"
