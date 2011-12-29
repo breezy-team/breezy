@@ -2187,12 +2187,12 @@ class InventoryWorkingTree(WorkingTree,
             raise
 
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
-        file_id = self.path2id(path)
+        inv, file_id = self._path2inv_file_id(path)
         if file_id is None:
             # For unversioned files on win32, we just assume they are not
             # executable
             return False
-        return self._inventory[file_id].executable
+        return inv[file_id].executable
 
     def _is_executable_from_path_and_stat_from_stat(self, path, stat_result):
         mode = stat_result.st_mode
@@ -2200,7 +2200,8 @@ class InventoryWorkingTree(WorkingTree,
 
     def is_executable(self, file_id, path=None):
         if not self._supports_executable():
-            return self._inventory[file_id].executable
+            inv, inv_file_id = self._unpack_file_id(file_id)
+            return inv[inv_file_id].executable
         else:
             if not path:
                 path = self.id2path(file_id)
@@ -2452,9 +2453,8 @@ class InventoryWorkingTree(WorkingTree,
         if not self.is_locked():
             raise errors.ObjectNotLocked(self)
 
-        inv = self.inventory
         if from_dir is None and include_root is True:
-            yield ('', 'V', 'directory', inv.root.file_id, inv.root)
+            yield ('', 'V', 'directory', self.inventory.root.file_id, self.inventory.root)
         # Convert these into local objects to save lookup times
         pathjoin = osutils.pathjoin
         file_kind = self._kind
@@ -2467,12 +2467,13 @@ class InventoryWorkingTree(WorkingTree,
 
         # directory file_id, relative path, absolute path, reverse sorted children
         if from_dir is not None:
-            from_dir_id = inv.path2id(from_dir)
+            inv, from_dir_id = self._path2inv_file_id(from_dir)
             if from_dir_id is None:
                 # Directory not versioned
                 return
             from_dir_abspath = pathjoin(self.basedir, from_dir)
         else:
+            inv = self.inventory
             from_dir_id = inv.root.file_id
             from_dir_abspath = self.basedir
         children = os.listdir(from_dir_abspath)
