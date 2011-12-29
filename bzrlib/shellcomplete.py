@@ -59,8 +59,7 @@ def shellcomplete_on_options(options, outfile=None):
 
 def shellcomplete_commands(outfile = None):
     """List all commands"""
-    import inspect
-    import commands
+    from bzrlib import commands
     from inspect import getdoc
 
     commands.install_bzr_command_hooks()
