@@ -2985,6 +2985,47 @@ class TestMutableStore(TestStore):
         self.assertTrue(stack.store._need_saving())
 
 
+class TestStoreSaveChanges(tests.TestCaseWithTransport):
+    """Tests that config changes are kept in memory and saved on-demand."""
+
+    def setUp(self):
+        super(TestStoreSaveChanges, self).setUp()
+        self.transport = self.get_transport()
+        # Most of the tests involve two stores pointing to the same persistent
+        # storage to observe the effects of concurrent changes
+        self.st1 = config.TransportIniFileStore(self.transport, 'foo.conf')
+        self.st2 = config.TransportIniFileStore(self.transport, 'foo.conf')
+
+    def has_store(self, store):
+        store_basename = urlutils.relative_url(self.transport.external_url(),
+                                               store.external_url())
+        return self.transport.has(store_basename)
+
+    def get_stack(self, store):
+        # Any stack will do as long as it uses the right store, just a single
+        # no-name section is enough
+        return config.Stack([store.get_sections], store)
+
+    def test_no_changes_no_save(self):
+        s = self.get_stack(self.st1)
+        s.store.save_changes()
+        self.assertEquals(False, self.has_store(self.st1))
+
+    def test_unrelated_concurrent_update(self):
+        s1 = self.get_stack(self.st1)
+        s2 = self.get_stack(self.st2)
+        s1.set('foo', 'bar')
+        s2.set('baz', 'quux')
+        s1.store.save()
+        # Changes don't propagate magically
+        self.assertEquals(None, s1.get('baz'))
+        s2.store.save_changes()
+        # Changes are acquired when saving
+        self.assertEquals('bar', s2.get('foo'))
+
+# concurrent update on the same option should warn about the lost update
+
+
 class TestQuotingIniFileStore(tests.TestCaseWithTransport):
 
     def get_store(self):

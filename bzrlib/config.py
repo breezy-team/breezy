@@ -2883,6 +2883,9 @@ class MutableSection(Section):
 
     def __init__(self, section_id, options):
         super(MutableSection, self).__init__(section_id, options)
+        self.reset_changes()
+
+    def reset_changes(self):
         self.orig = {}
 
     def set(self, name, value):
@@ -2954,6 +2957,14 @@ class Store(object):
     def save(self):
         """Saves the Store to persistent storage."""
         raise NotImplementedError(self.save)
+
+    def save_changes(self):
+        """Saves the Store to persistent storage if changes occurred.
+
+        Apply the changes recorded in the mutable sections to a store content
+        refreshed from persistent storage.
+        """
+        raise NotImplementedError(self.save_changes)
 
     def external_url(self):
         raise NotImplementedError(self.external_url)
@@ -3035,6 +3046,7 @@ class IniFileStore(Store):
 
     def unload(self):
         self._config_obj = None
+        self.dirty_sections = []
 
     def _load_content(self):
         """Load the config file bytes.
@@ -3087,6 +3099,36 @@ class IniFileStore(Store):
                 # At least one dirty section contains a modification
                 return True
         return False
+
+    def save_changes(self):
+        if not self.is_loaded():
+            # Nothing to save
+            return
+        if not self._need_saving():
+            return
+        # Preserve the current version
+        current = self._config_obj
+        dirty_sections = list(self.dirty_sections)
+        # Get an up-to-date version from the persistent storage
+        self.unload()
+        # From now on we need a lock on the store to ensure changes can be
+        # saved atomically (daughter classes will provide locking around
+        # save_changes)
+        self.load()
+        # Apply the changes from the preserved dirty sections
+        for dirty in dirty_sections:
+            clean = self.get_mutable_section(dirty.id)
+            for k,v in dirty.orig.iteritems():
+                if v is None:
+                    clean.remove(k)
+                else:
+                    clean.set(k, v)
+            # No need to keep track of these changes
+            clean.reset_changes()
+        # Everything is clean now
+        self.dirty_sections = []
+        # Save to the persistent storage
+        self.save()
 
     def save(self):
         if not self.is_loaded():
