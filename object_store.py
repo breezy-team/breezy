@@ -526,6 +526,9 @@ class BazaarObjectStore(BaseObjectStore):
                     # no-change merge?
                     return self._reconstruct_blobs(
                         [(entry.file_id, entry.revision, None)]).next().id
+            elif entry.kind == 'tree-reference':
+                # FIXME: Make sure the file id is the root id
+                return self._lookup_revision_sha1(entry.reference_revision)
             else:
                 raise AssertionError("unknown entry kind '%s'" % entry.kind)
         tree = directory_to_tree(bzr_tree.inventory[fileid], get_ie_sha1, unusual_modes,
