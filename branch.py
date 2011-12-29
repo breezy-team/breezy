@@ -393,7 +393,7 @@ class GitBranch(ForeignBranch):
         cf.set(("branch", self.name), "nick", nick)
         f = StringIO()
         cf.write_to_file(f)
-        self.repository._git.transport.put_bytes('config', f.getvalue())
+        self.bzrdir.control_transport.put_bytes('config', f.getvalue())
 
     nick = property(_get_nick, _set_nick)
 
