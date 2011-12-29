@@ -371,7 +371,7 @@ class LocalGitRepository(GitRepository):
             return None
         # FIXME: Honor no_alternates setting
         try:
-            commit = self._git.object_store.get(hexsha)
+            commit = self._git.object_store[hexsha]
         except KeyError:
             return None
         return [
