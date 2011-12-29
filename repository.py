@@ -362,25 +362,29 @@ class LocalGitRepository(GitRepository):
                 ret.add(revid)
         return ret
 
-    def _get_parents(self, revid):
+    def _get_parents(self, revid, no_alternates=False):
         if type(revid) != str:
             raise ValueError
         try:
             (hexsha, mapping) = self.lookup_bzr_revision_id(revid)
         except errors.NoSuchRevision:
             return None
+        # FIXME: Honor no_alternates setting
         try:
-            commit = self._git[hexsha]
+            commit = self._git.object_store.get(hexsha)
         except KeyError:
             return None
         return [
             self.lookup_foreign_revision_id(p, mapping)
             for p in commit.parents]
 
-    def get_parent_map(self, revids):
+    def _get_parent_map_no_fallbacks(self, revids):
+        return self.get_parent_map(revids, no_alternates=True)
+
+    def get_parent_map(self, revids, no_alternates=False):
         parent_map = {}
         for revision_id in revids:
-            parents = self._get_parents(revision_id)
+            parents = self._get_parents(revision_id, no_alternates=no_alternates)
             if revision_id == revision.NULL_REVISION:
                 parent_map[revision_id] = ()
                 continue
@@ -487,7 +491,7 @@ class LocalGitRepository(GitRepository):
             raise errors.InvalidRevisionId(revision_id, self)
         git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
         try:
-            commit = self._git[git_commit_id]
+            commit = self._git.object_store[git_commit_id]
         except KeyError:
             raise errors.NoSuchRevision(self, revision_id)
         revision, roundtrip_revid, verifiers = mapping.import_commit(
@@ -553,7 +557,7 @@ class GitRepositoryFormat(repository.RepositoryFormat):
     supports_leaving_lock = False
     fast_deltas = True
     supports_funky_characters = True
-    supports_external_lookups = False
+    supports_external_lookups = True
     supports_full_versioned_files = False
     supports_revision_signatures = False
     supports_nesting_repositories = False
