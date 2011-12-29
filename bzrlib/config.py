@@ -2905,6 +2905,10 @@ class Store(object):
     readonly_section_class = Section
     mutable_section_class = MutableSection
 
+    def __init__(self):
+        # Which sections need to be saved
+        self.dirty_sections = []
+
     def is_loaded(self):
         """Returns True if the Store has been loaded.
 
@@ -3025,8 +3029,6 @@ class IniFileStore(Store):
         """
         super(IniFileStore, self).__init__()
         self._config_obj = None
-        # Which sections need to be saved
-        self.dirty_sections = []
 
     def is_loaded(self):
         return self._config_obj != None
