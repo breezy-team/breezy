@@ -2975,12 +2975,14 @@ class TestMutableStore(TestStore):
         self.assertLength(0, stack.store.dirty_sections)
         stack.set('foo', 'baz')
         self.assertLength(1, stack.store.dirty_sections)
+        self.assertTrue(stack.store._need_saving())
 
     def test_remove_mark_dirty(self):
         stack = config.MemoryStack('foo=bar')
         self.assertLength(0, stack.store.dirty_sections)
         stack.remove('foo')
         self.assertLength(1, stack.store.dirty_sections)
+        self.assertTrue(stack.store._need_saving())
 
 
 class TestQuotingIniFileStore(tests.TestCaseWithTransport):

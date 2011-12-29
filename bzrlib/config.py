@@ -3081,6 +3081,13 @@ class IniFileStore(Store):
         except UnicodeDecodeError:
             raise errors.ConfigContentError(self.external_url())
 
+    def _need_saving(self):
+        for s in self.dirty_sections:
+            if s.orig:
+                # At least one dirty section contains a modification
+                return True
+        return False
+
     def save(self):
         if not self.is_loaded():
             # Nothing to save
