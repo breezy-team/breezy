@@ -142,8 +142,9 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
         inv = self.inventory
         if from_dir is None:
             from_dir_id = None
+            inv = self.inventory
         else:
-            from_dir_id = inv.path2id(from_dir)
+            inv, from_dir_id = self._path2inv_file_id(from_dir)
             if from_dir_id is None:
                 # Directory not versioned
                 return
@@ -174,11 +175,10 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
 
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
-        id = self.path2id(path)
-        if id is None:
+        inv, file_id = self._path2inv_file_id(path)
+        if file_id is None:
             return ('missing', None, None, None)
-        inv, inv_file_id = self._unpack_file_id(id)
-        entry = inv[inv_file_id]
+        entry = inv[file_id]
         kind = entry.kind
         if kind == 'file':
             return (kind, entry.text_size, entry.executable, entry.text_sha1)
@@ -197,8 +197,7 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
 
     def walkdirs(self, prefix=""):
         _directory = 'directory'
-        inv = self.inventory
-        top_id = inv.path2id(prefix)
+        inv, top_id = self._path2inv_file_id(prefix)
         if top_id is None:
             pending = []
         else:
