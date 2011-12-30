@@ -413,22 +413,6 @@ class TestBranch67(object):
     def test_light_checkout_with_references(self):
         self.do_checkout_test(lightweight=True)
 
-    def test_set_push(self):
-        branch = self.make_branch('source', format=self.get_format_name())
-        branch.get_config().set_user_option('push_location', 'old',
-            store=config.STORE_LOCATION)
-        warnings = []
-        def warning(*args):
-            warnings.append(args[0] % args[1:])
-        _warning = trace.warning
-        trace.warning = warning
-        try:
-            branch.set_push_location('new')
-        finally:
-            trace.warning = _warning
-        self.assertEqual(warnings[0], 'Value "new" is masked by "old" from '
-                         'locations.conf')
-
 
 class TestBranch6(TestBranch67, tests.TestCaseWithTransport):
 

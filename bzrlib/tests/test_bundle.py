@@ -1418,7 +1418,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
             from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
-            new_config = test_commit.MustSignConfig(branch)
+            new_config = test_commit.MustSignConfig()
             commit.Commit(config_stack=new_config).commit(message="base",
                                                     allow_pointless=True,
                                                     rev_id='B',

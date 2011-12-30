@@ -114,6 +114,7 @@ def load_tests(basic_tests, module, loader):
                      'test_send',
                      'test_serve',
                      'test_shared_repository',
+                     'test_shell_complete',
                      'test_shelve',
                      'test_sign_my_commits',
                      'test_split',

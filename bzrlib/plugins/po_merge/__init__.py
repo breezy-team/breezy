@@ -73,7 +73,7 @@ register_lazy_option('po_merge.pot_glob', 'pot_glob_option')
 
 
 def po_merge_hook(merger):
-    """Merger.merge_file_content hook for bzr-format NEWS files."""
+    """Merger.merge_file_content hook for po files."""
     from bzrlib.plugins.po_merge.po_merge import PoMerger
     return PoMerger(merger)
 
