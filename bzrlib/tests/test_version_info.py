@@ -222,6 +222,19 @@ class TestVersionInfoRio(VersionInfoTestCase):
         self.assertEqual(['r1', 'r4', 'unversioned', 'removed'],
                          file_rev_stanza.get_all('revision'))
 
+    def test_revision(self):
+        wt = self.create_branch()
+        self.build_tree(['branch/a', 'branch/c'])
+        wt.add('c')
+        wt.rename_one('b', 'd')
+
+        stanza = self.regen(wt, check_for_clean=True,
+            include_file_revisions=True, revision_id=wt.last_revision())
+        file_rev_stanza = self.get_one_stanza(stanza, 'file-revisions')
+        self.assertEqual(['', 'a', 'b'], file_rev_stanza.get_all('path'))
+        self.assertEqual(['r1', 'r3', 'r2'],
+                         file_rev_stanza.get_all('revision'))
+
 
 class PythonVersionInfoTests(VersionInfoTestCase):
 
