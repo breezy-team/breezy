@@ -2077,16 +2077,17 @@ class InventoryWorkingTree(WorkingTree,
 
     def has_id(self, file_id):
         # files that have been deleted are excluded
-        inv = self.inventory
-        if not inv.has_id(file_id):
+        inv, inv_file_id = self._unpack_file_id(file_id)
+        if not inv.has_id(inv_file_id):
             return False
-        path = inv.id2path(file_id)
+        path = inv.id2path(inv_file_id)
         return osutils.lexists(self.abspath(path))
 
     def has_or_had_id(self, file_id):
         if file_id == self.inventory.root.file_id:
             return True
-        return self.inventory.has_id(file_id)
+        inv, inv_file_id = self._unpack_file_id(file_id)
+        return inv.has_id(inv_file_id)
 
     @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
     def __iter__(self):

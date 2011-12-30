@@ -139,7 +139,6 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         # The only files returned by this are those from the version
-        inv = self.inventory
         if from_dir is None:
             from_dir_id = None
             inv = self.inventory
