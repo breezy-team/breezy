@@ -933,6 +933,7 @@ class TestBzrDirOpenRepository(TestRemote):
         # name.
         client.add_success_response_with_body(
             "Bazaar-NG meta directory, format 1\n", 'ok')
+        client.add_success_response('stat', '0', '65535')
         client.add_success_response_with_body(
             reference_format.get_format_string(), 'ok')
         # PackRepository wants to do a stat
@@ -947,6 +948,7 @@ class TestBzrDirOpenRepository(TestRemote):
              ('call', 'BzrDir.find_repositoryV2', ('quack/',)),
              ('call', 'BzrDir.find_repository', ('quack/',)),
              ('call_expecting_body', 'get', ('/quack/.bzr/branch-format',)),
+             ('call', 'stat', ('/quack/.bzr',)),
              ('call_expecting_body', 'get', ('/quack/.bzr/repository/format',)),
              ('call', 'stat', ('/quack/.bzr/repository',)),
              ],
@@ -966,6 +968,7 @@ class TestBzrDirOpenRepository(TestRemote):
         # name.
         client.add_success_response_with_body(
             "Bazaar-NG meta directory, format 1\n", 'ok')
+        client.add_success_response('stat', '0', '65535')
         client.add_success_response_with_body(
             reference_format.get_format_string(), 'ok')
         # PackRepository wants to do a stat
@@ -979,6 +982,7 @@ class TestBzrDirOpenRepository(TestRemote):
             [('call', 'BzrDir.find_repositoryV3', ('quack/',)),
              ('call', 'BzrDir.find_repositoryV2', ('quack/',)),
              ('call_expecting_body', 'get', ('/quack/.bzr/branch-format',)),
+             ('call', 'stat', ('/quack/.bzr',)),
              ('call_expecting_body', 'get', ('/quack/.bzr/repository/format',)),
              ('call', 'stat', ('/quack/.bzr/repository',)),
              ],
@@ -1270,7 +1274,7 @@ class TestBranchSetParentLocation(RemoteBranchTestCase):
         verb = 'Branch.set_parent_location'
         self.disable_verb(verb)
         branch.set_parent('http://foo/')
-        self.assertLength(12, self.hpss_calls)
+        self.assertLength(13, self.hpss_calls)
 
 
 class TestBranchGetTagsBytes(RemoteBranchTestCase):
@@ -1998,7 +2002,7 @@ class TestBranchGetSetConfig(RemoteBranchTestCase):
         self.addCleanup(branch.unlock)
         self.reset_smart_call_log()
         branch._get_config().set_option('value', 'name')
-        self.assertLength(10, self.hpss_calls)
+        self.assertLength(11, self.hpss_calls)
         self.assertEqual('value', branch._get_config().get_option('name'))
 
     def test_backwards_compat_set_option_with_dict(self):
@@ -2012,7 +2016,7 @@ class TestBranchGetSetConfig(RemoteBranchTestCase):
         config = branch._get_config()
         value_dict = {'ascii': 'a', u'unicode \N{WATCH}': u'\N{INTERROBANG}'}
         config.set_option(value_dict, 'name')
-        self.assertLength(10, self.hpss_calls)
+        self.assertLength(11, self.hpss_calls)
         self.assertEqual(value_dict, branch._get_config().get_option('name'))
 
 
@@ -2138,7 +2142,7 @@ class TestBranchRevisionIdToRevno(RemoteBranchTestCase):
         self.reset_smart_call_log()
         self.assertEquals((0, ),
             branch.revision_id_to_dotted_revno('null:'))
-        self.assertLength(7, self.hpss_calls)
+        self.assertLength(8, self.hpss_calls)
 
 
 class TestBzrDirGetSetConfig(RemoteBzrDirTestCase):
@@ -2160,7 +2164,7 @@ class TestBzrDirGetSetConfig(RemoteBzrDirTestCase):
         self.reset_smart_call_log()
         config = bzrdir.get_config()
         config.set_default_stack_on('/')
-        self.assertLength(3, self.hpss_calls)
+        self.assertLength(4, self.hpss_calls)
 
     def test_backwards_compat_get_option(self):
         self.setup_smart_server_with_call_log()
@@ -2170,7 +2174,7 @@ class TestBzrDirGetSetConfig(RemoteBzrDirTestCase):
         self.reset_smart_call_log()
         self.assertEqual(None,
             bzrdir._get_config().get_option('default_stack_on'))
-        self.assertLength(3, self.hpss_calls)
+        self.assertLength(4, self.hpss_calls)
 
 
 class TestTransportIsReadonly(tests.TestCase):

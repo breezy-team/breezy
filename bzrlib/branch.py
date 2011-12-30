@@ -2721,6 +2721,16 @@ class BzrBranch(Branch, _RelockDebugMixin):
         self._transport.put_bytes('last-revision', out_string,
             mode=self.bzrdir._get_file_mode())
 
+    @needs_write_lock
+    def update_feature_flags(self, updated_flags):
+        """Update the feature flags for this branch.
+
+        :param updated_flags: Dictionary mapping feature names to necessities
+            A necessity can be None to indicate the feature should be removed
+        """
+        self._format._update_feature_flags(updated_flags)
+        self.control_transport.put_bytes('format', self._format.as_string())
+
 
 class FullHistoryBzrBranch(BzrBranch):
     """Bzr branch which contains the full revision history."""

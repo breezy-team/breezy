@@ -786,6 +786,19 @@ class BzrDir(controldir.ControlDir):
     def __repr__(self):
         return "<%s at %r>" % (self.__class__.__name__, self.user_url)
 
+    def update_feature_flags(self, updated_flags):
+        """Update the features required by this bzrdir.
+
+        :param updated_flags: Dictionary mapping feature names to necessities
+            A necessity can be None to indicate the feature should be removed
+        """
+        self.control_files.lock_write()
+        try:
+            self._format._update_feature_flags(updated_flags)
+            self.transport.put_bytes('branch-format', self._format.as_string())
+        finally:
+            self.control_files.unlock()
+
 
 class BzrDirMeta1(BzrDir):
     """A .bzr meta version 1 control object.
@@ -795,6 +808,11 @@ class BzrDirMeta1(BzrDir):
     workingtree and branch subdirectories and any subset of the three can be
     present within a BzrDir.
     """
+
+    def __init__(self, _transport, _format):
+        super(BzrDirMeta1, self).__init__(_transport, _format)
+        self.control_files = lockable_files.LockableFiles(self.control_transport,
+            self._format._lock_file_name, self._format._lock_class)
 
     def can_convert_format(self):
         """See BzrDir.can_convert_format()."""
@@ -992,11 +1010,6 @@ class BzrDirMeta1Colo(BzrDirMeta1):
     This format is experimental, and will eventually be merged back into
     BzrDirMeta1.
     """
-
-    def __init__(self, _transport, _format):
-        super(BzrDirMeta1Colo, self).__init__(_transport, _format)
-        self.control_files = lockable_files.LockableFiles(self.control_transport,
-            self._format._lock_file_name, self._format._lock_class)
 
     def _get_branch_path(self, name):
         """Obtain the branch path to use.
@@ -1212,6 +1225,20 @@ class BzrFormat(object):
     def __eq__(self, other):
         return (self.__class__ is other.__class__ and
                 self.features == other.features)
+
+    def _update_feature_flags(self, updated_flags):
+        """Update the feature flags in this format.
+
+        :param updated_flags: Updated feature flags
+        """
+        for name, necessity in updated_flags.iteritems():
+            if necessity is None:
+                try:
+                    del self.features[name]
+                except KeyError:
+                    pass
+            else:
+                self.features[name] = necessity
 
 
 class BzrProber(controldir.Prober):
@@ -1451,7 +1478,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
                        "This is a Bazaar control directory.\n"
                        "Do not change any files in this directory.\n"
                        "See http://bazaar.canonical.com/ for more information about Bazaar.\n"),
-                      ('branch-format', self.get_format_string()),
+                      ('branch-format', self.as_string()),
                       ]
         # NB: no need to escape relative paths that are url safe.
         control_files = lockable_files.LockableFiles(bzrdir_transport,
@@ -1866,7 +1893,7 @@ class ConvertMetaToColo(controldir.Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         to_convert.transport.put_bytes('branch-format',
-            self.target_format.get_format_string())
+            self.target_format.as_string())
         return BzrDir.open_from_transport(to_convert.root_transport)
 
 
@@ -1892,7 +1919,7 @@ class ConvertMetaRemoveColo(controldir.Converter):
         finally:
             to_convert.control_files.unlock()
         to_convert.transport.put_bytes('branch-format',
-            self.target_format.get_format_string())
+            self.target_format.as_string())
         return BzrDir.open_from_transport(to_convert.root_transport)
 
 

@@ -2977,6 +2977,16 @@ class InventoryWorkingTree(WorkingTree,
                 if dir[2] == _directory:
                     pending.append(dir)
 
+    @needs_write_lock
+    def update_feature_flags(self, updated_flags):
+        """Update the feature flags for this branch.
+
+        :param updated_flags: Dictionary mapping feature names to necessities
+            A necessity can be None to indicate the feature should be removed
+        """
+        self._format._update_feature_flags(updated_flags)
+        self.control_transport.put_bytes('format', self._format.as_string())
+
 
 class WorkingTreeFormatRegistry(controldir.ControlComponentFormatRegistry):
     """Registry for working tree formats."""
