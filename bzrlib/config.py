@@ -2876,6 +2876,8 @@ class Section(object):
 
 _NewlyCreatedOption = object()
 """Was the option created during the MutableSection lifetime"""
+_DeletedOption = object()
+"""Was the option deleted during the MutableSection lifetime"""
 
 
 class MutableSection(Section):
@@ -2884,9 +2886,6 @@ class MutableSection(Section):
     def __init__(self, section_id, options):
         super(MutableSection, self).__init__(section_id, options)
         self.reset_changes()
-
-    def reset_changes(self):
-        self.orig = {}
 
     def set(self, name, value):
         if name not in self.options:
@@ -2900,6 +2899,43 @@ class MutableSection(Section):
         if name not in self.orig:
             self.orig[name] = self.get(name, None)
         del self.options[name]
+
+    def reset_changes(self):
+        self.orig = {}
+
+    def apply_changes(self, dirty, store):
+        """Apply option value changes.
+
+        ``self`` has been reloaded from the persistent storage. ``dirty``
+        contains the changes made since the previous loading.
+
+        :param dirty: the mutable section containing the changes.
+
+        :param store: the store containing the section
+        """
+        for k, expected in dirty.orig.iteritems():
+            actual = dirty.get(k, _DeletedOption)
+            reloaded = self.get(k, _NewlyCreatedOption)
+            if actual is _DeletedOption:
+                if k in self.options:
+                    self.remove(k)
+            else:
+                self.set(k, actual)
+            if expected != reloaded:
+                if actual is _DeletedOption:
+                    actual = '<DELETED>'
+                if reloaded is _NewlyCreatedOption:
+                    reloaded = '<CREATED>'
+                if expected is _NewlyCreatedOption:
+                    expected = '<CREATED>'
+                # Someone changed the value since we get it from the persistent
+                # storage.
+                trace.warning("Option %s in section %s of %s was changed"
+                              " from %s to %s. The %s value will be saved.",
+                              k, self.id, store.external_url(),
+                              expected, reloaded, actual)
+        # No need to keep track of these changes
+        self.reset_changes()
 
 
 class Store(object):
@@ -2957,6 +2993,35 @@ class Store(object):
     def save(self):
         """Saves the Store to persistent storage."""
         raise NotImplementedError(self.save)
+
+    def _need_saving(self):
+        for s in self.dirty_sections:
+            if s.orig:
+                # At least one dirty section contains a modification
+                return True
+        return False
+
+    def apply_changes(self, dirty_sections):
+        """Apply changes from dirty sections while checking for coherency.
+
+        The Store content is discarded and reloaded from persistent storage to
+        acquire up-to-date values.
+
+        Dirty sections are MutableSection which kept track of the value they
+        are expected to update.
+        """
+        # Get an up-to-date version from the persistent storage
+        self.unload()
+        # From now on we need a lock on the store to ensure changes can be
+        # saved atomically (daughter classes will provide locking around
+        # save_changes)
+        self.load()
+        # Apply the changes from the preserved dirty sections
+        for dirty in dirty_sections:
+            clean = self.get_mutable_section(dirty.id)
+            clean.apply_changes(dirty, self)
+        # Everything is clean now
+        self.dirty_sections = []
 
     def save_changes(self):
         """Saves the Store to persistent storage if changes occurred.
@@ -3093,13 +3158,6 @@ class IniFileStore(Store):
         except UnicodeDecodeError:
             raise errors.ConfigContentError(self.external_url())
 
-    def _need_saving(self):
-        for s in self.dirty_sections:
-            if s.orig:
-                # At least one dirty section contains a modification
-                return True
-        return False
-
     def save_changes(self):
         if not self.is_loaded():
             # Nothing to save
@@ -3109,24 +3167,7 @@ class IniFileStore(Store):
         # Preserve the current version
         current = self._config_obj
         dirty_sections = list(self.dirty_sections)
-        # Get an up-to-date version from the persistent storage
-        self.unload()
-        # From now on we need a lock on the store to ensure changes can be
-        # saved atomically (daughter classes will provide locking around
-        # save_changes)
-        self.load()
-        # Apply the changes from the preserved dirty sections
-        for dirty in dirty_sections:
-            clean = self.get_mutable_section(dirty.id)
-            for k,v in dirty.orig.iteritems():
-                if v is None:
-                    clean.remove(k)
-                else:
-                    clean.set(k, v)
-            # No need to keep track of these changes
-            clean.reset_changes()
-        # Everything is clean now
-        self.dirty_sections = []
+        self.apply_changes(dirty_sections)
         # Save to the persistent storage
         self.save()
 
