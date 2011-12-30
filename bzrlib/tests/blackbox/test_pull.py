@@ -421,6 +421,7 @@ class TestPull(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(19, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
         remote = Branch.open('stacked')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
 
