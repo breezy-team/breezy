@@ -1300,7 +1300,7 @@ class MetaDirRepository(Repository):
         :param updated_flags: Dictionary mapping feature names to necessities
             A necessity can be None to indicate the feature should be removed
         """
-        self._format.update_feature_flags(updated_flags)
+        self._format._update_feature_flags(updated_flags)
         self.control_transport.put_bytes('format', self._format.as_string())
 
 
