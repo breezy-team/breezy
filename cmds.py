@@ -36,6 +36,7 @@ except ImportError:
 
 from bzrlib import (
     urlutils,
+    version_info as bzrlib_version,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
@@ -1253,6 +1254,9 @@ class cmd_merge_package(Command):
     """
     takes_options = ['revision']
     takes_args = ['source']
+
+    if bzrlib_version >= (2, 5):
+        hidden = True
 
     def run(self, source, revision=None):
         from bzrlib import ui
