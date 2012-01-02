@@ -55,15 +55,9 @@ Improvements
 * ``bzr send`` now only opens a single connection, rather than two,
   to the target branch.  (Jelmer Vernooij)
 
-* Added new method fire() to bzrlib.hooks.HookPoint to trigger defined hooks,
-  while catching and logging any errors.  Hook points can be configured
-  to suppress and log exceptions.  E.g.:
-  ``bzrlib.commands.Command.hooks['pre_commands'].fire(cmd)``
-  (Brian de Alwis)
-
 * Two new command hooks, ``pre_command`` and ``post_command``,
   provide notification before and after a command has been run.
-  (Brian de Alwis)
+  (Brian de Alwis, Jelmer Vernooij)
 
 Bug Fixes
 *********

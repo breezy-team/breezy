@@ -21,7 +21,6 @@ from __future__ import absolute_import
 from bzrlib import (
     registry,
     symbol_versioning,
-    trace,
     )
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -134,8 +133,7 @@ class Hooks(dict):
         self._module = module
         self._member_name = member_name
 
-    def add_hook(self, name, doc, introduced, deprecated=None,
-        suppress_exceptions=False, passed_exceptions=[]):
+    def add_hook(self, name, doc, introduced, deprecated=None):
         """Add a hook point to this dictionary.
 
         :param name: The name of the hook, for clients to use when registering.
@@ -143,11 +141,6 @@ class Hooks(dict):
         :param introduced: When the hook was introduced (e.g. (0, 15)).
         :param deprecated: When the hook was deprecated, None for
             not-deprecated.
-        :param suppress_exceptions: If True, then exceptions raised
-            when firing the hookpoints are suppressed and a warning message
-            reported on bzr.log.
-        :param passed_exceptions: A list of exception classes to
-            be raised when suppress_exceptions = True.
         """
         if name in self:
             raise errors.DuplicateKey(name)
@@ -157,9 +150,7 @@ class Hooks(dict):
         else:
             callbacks = None
         hookpoint = HookPoint(name=name, doc=doc, introduced=introduced,
-                              deprecated=deprecated, callbacks=callbacks,
-                              suppress_exceptions=suppress_exceptions,
-                              passed_exceptions=passed_exceptions)
+                              deprecated=deprecated, callbacks=callbacks)
         self[name] = hookpoint
 
     @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4)))
@@ -306,8 +297,7 @@ class HookPoint(object):
         should describe the recommended replacement hook to register for.
     """
 
-    def __init__(self, name, doc, introduced, deprecated=None, callbacks=None,
-        suppress_exceptions=False, passed_exceptions=[]):
+    def __init__(self, name, doc, introduced, deprecated=None, callbacks=None):
         """Create a HookPoint.
 
         :param name: The name of the hook, for clients to use when registering.
@@ -315,11 +305,6 @@ class HookPoint(object):
         :param introduced: When the hook was introduced (e.g. (0, 15)).
         :param deprecated: When the hook was deprecated, None for
             not-deprecated.
-        :param suppress_exceptions: If True, then exceptions raised
-            when firing the hookpoints are suppressed and a warning message
-            reported on bzr.log.
-        :param passed_exceptions: A list of exception classes to
-            be raised when suppress_exceptions = True.
         """
         self.name = name
         self.__doc__ = doc
@@ -329,8 +314,6 @@ class HookPoint(object):
             self._callbacks = []
         else:
             self._callbacks = callbacks
-        self.suppress_exceptions = suppress_exceptions
-        self.passed_exceptions = passed_exceptions
 
     def docs(self):
         """Generate the documentation for this HookPoint.
@@ -418,34 +401,6 @@ class HookPoint(object):
         strings.append("]>")
         return ''.join(strings)
 
-    def fire(self, *args):
-        """Fire this hook.  If suppress_exceptions is True, then catch
-        and report any exceptions that may occur, except for those
-        exceptions in passed_exceptions.
-        
-        :return: True if all hooks passed without an exception
-        """
-
-        if not self.suppress_exceptions:
-            for (callback, callback_name) in self._callbacks:
-                callback.get_obj()(*args)
-            return True
-
-        raised = 0
-        for (callback, callback_name) in self._callbacks:
-            try:
-                callback.get_obj()(*args)
-            except Exception, e:
-                for exc in self.passed_exceptions:
-                    if isinstance(e, exc): raise e
-                raised = raised + 1
-                trace.mutter('hook %r in %r failed: %r' % (self.name,
-                    callback_name, e))
-                trace.log_exception_quietly()
-        if raised > 0 and not trace.is_quiet():
-            trace.warning("There were hook failures for %r: see bzr.log"
-                % self.name)
-        return raised == 0
 
 _help_prefix = \
 """

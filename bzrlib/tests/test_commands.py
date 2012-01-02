@@ -383,7 +383,7 @@ class TestPreAndPostCommandHooks(tests.TestCase):
             self.assertEqual([], hook_calls)
             hook_calls.append('pre')
 
-        def post_command(cmd, e):
+        def post_command(cmd):
             self.assertEqual(['pre', 'run'], hook_calls)
             hook_calls.append('post')
 
@@ -405,8 +405,7 @@ class TestPreAndPostCommandHooks(tests.TestCase):
     def test_post_hook_provided_exception(self):
         hook_calls = []
 
-        def post_command(cmd, e):
-            self.assertTrue(isinstance(e, self.TestError))
+        def post_command(cmd):
             hook_calls.append('post')
 
         def run(cmd):
@@ -419,36 +418,8 @@ class TestPreAndPostCommandHooks(tests.TestCase):
             "post_command", post_command, None)
 
         self.assertEqual([], hook_calls)
-        self.assertRaises(self.TestError,
-                          commands.run_bzr, [u'rocks'])
+        self.assertRaises(self.TestError, commands.run_bzr, [u'rocks'])
         self.assertEqual(['run', 'post'], hook_calls)
-
-    def test_pre_exception(self):
-        """Ensure an exception in pre_command does not abort the command"""
-
-        hook_calls = []
-
-        def pre_command(cmd):
-            hook_calls.append('pre')
-            raise self.TestError()
-
-        def post_command(cmd, e):
-            hook_calls.append('post')
-
-        def run(cmd):
-            hook_calls.append('run')
-
-        self.overrideAttr(builtins.cmd_rocks, 'run', run)
-        commands.install_bzr_command_hooks()
-        commands.Command.hooks.install_named_hook(
-            "pre_command", pre_command, None)
-        commands.Command.hooks.install_named_hook(
-            "post_command", post_command, None)
-
-        self.assertEqual([], hook_calls)
-        self.run_bzr(['rocks', '-Oxx=12', '-Oyy=foo'])
-        self.assertEqual(['pre', 'run', 'post'], hook_calls)
-
 
     def test_pre_command_error(self):
         """Ensure an BzrCommandError in pre_command aborts the command"""

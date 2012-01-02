@@ -22,7 +22,6 @@ from bzrlib import (
     hooks as _mod_hooks,
     pyutils,
     tests,
-    trace,
     )
 from bzrlib.hooks import (
     HookPoint,
@@ -263,88 +262,6 @@ class TestHook(tests.TestCase):
         self.assertEqual(
             '<HookPoint(foo), callbacks=[%s(my callback)]>' %
             callback_repr, repr(hook))
-
-    def test_fire(self):
-        executions = []
-
-        def callback(arg):
-            executions.append('callback')
-            self.assertEquals('argument', arg)
-
-        hook = HookPoint("foo", "no docs", None, None)
-        hook.hook(callback, None)
-        hook.hook(callback, None)
-        result = hook.fire('argument')
-        self.assertTrue(result, 'no exceptions raised')
-        self.assertEqual(['callback', 'callback'], executions)
-
-    def test_fire_passes_exceptions(self):
-        class TestError(StandardError):
-            __doc__ = """A test exception."""
-
-        def callback(arg):
-            raise TestError()
-
-        hook = HookPoint("foo", "no docs", None, None)
-        hook.hook(callback, None)
-        try:
-            result = hook.fire('argument')
-            self.fail('execution should not reach here')
-        except TestError, e:
-            self.assertTrue(isinstance(e, TestError))
-
-    def test_fire_with_passed_exceptions(self):
-        arguments = []
-        class TestPassedError(StandardError):
-            __doc__ = """A test exception that should be passed."""
-        class TestSuppressedError(StandardError):
-            __doc__ = """A test exception that should be suppressed."""
-
-        def callback(excClass):
-            arguments.append(excClass)
-            raise excClass()
-
-        hook = HookPoint("foo", "no docs", None, None,
-            suppress_exceptions=True, passed_exceptions=[TestPassedError])
-        hook.hook(callback, None)
-        try:
-            # this exception should be suppressed, but logged
-            result = hook.fire(TestSuppressedError)
-            self.assertFalse(result)
-
-            # this exception should be passed through
-            result = hook.fire(TestPassedError)
-            self.fail('execution should not reach here')
-        except Exception, e:
-            self.assertTrue(isinstance(e, TestPassedError))
-        # hook should have been called twice
-        self.assertEqual(2, len(arguments))
-
-
-    def test_suppressed_fire_logs_exceptions(self):
-        class TestError(StandardError):
-            __doc__ = """A test exception."""
-
-        def callback():
-            raise TestError()
-
-        hook = HookPoint("foo", "no docs", None, None, suppress_exceptions=True)
-        hook.hook(callback, None)
-
-        warnings = []
-        def warning(*args):
-            warnings.append(args[0] % args[1:])
-        _warning = trace.warning
-        trace.warning = warning
-
-        try:
-            hook.fire()
-        except:
-            self.fail('exceptions should be captured')
-        finally:
-            trace.warning = _warning
-
-        self.assertEqual(1, len(warnings))
 
 
 class TestHookRegistry(tests.TestCase):
