@@ -18,9 +18,13 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from bzrlib.merge import Merger
 import os
 import string
 
+from bzrlib import version_info as bzrlib_version
+from bzrlib.tests import TestNotApplicable
+from bzrlib.plugins.builddeb import pre_merge_fix_ancestry
 from bzrlib.plugins.builddeb.tests import BuilddebTestCase
 
 
@@ -70,6 +74,27 @@ class TestMergePackageBB(BuilddebTestCase):
         self.run_bzr_error(
             ['branches for the merge source and target have diverged'],
             'merge-package %s' % merge_source)
+
+    def test_pre_merge_hook_shared_rev_conflict(self):
+        """Source upstream conflicts with target packaging -> Error.
+
+        The debian upstream and the ubuntu packaging branches will differ
+        with respect to the content of the file 'c'.
+
+        The conflict cannot be resolved by fix_ancestry_as_needed().
+        The `SharedUpstreamConflictsWithTargetPackaging` exception is
+        thrown instead.
+        """
+        if bzrlib_version < (2, 5):
+            raise TestNotApplicable("pre_merge hook requires bzr 2.5")
+        target, _source = self.make_conflicting_branches_setup()
+        os.chdir('ubup-o')
+        merge_source = '../debp-n'
+        Merger.hooks.install_named_hook(
+            "pre_merge", pre_merge_fix_ancestry, "fix ancestry")
+        self.run_bzr_error(
+            ['branches for the merge source and target have diverged'],
+            'merge %s' % merge_source)
 
     def make_conflicting_branches_setup(self):
         """

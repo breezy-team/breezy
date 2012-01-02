@@ -27,6 +27,7 @@ import tempfile
 
 from bzrlib import (
     urlutils,
+    version_info as bzrlib_version,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
@@ -1290,13 +1291,25 @@ class cmd_merge_package(Command):
     so that the user only needs to deal with packaging branch merge issues.
 
     In the opposite case a normal merge will be performed.
+
+    As of bzr 2.5 and bzr-builddeb 2.8.1, this functionality is automatically
+    provided as part of bzr merge.
     """
     takes_options = ['revision']
     takes_args = ['source']
 
+    if bzrlib_version >= (2, 5):
+        hidden = True
+
     def run(self, source, revision=None):
+        from bzrlib import ui
+        from bzrlib.merge import Merger
         from bzrlib.tag import _merge_tags_if_possible
         from bzrlib.plugins.builddeb.merge_package import fix_ancestry_as_needed
+        if 'pre_merge' in Merger.hooks:
+            ui.ui_factory.show_warning(
+                "The merge-package command is deprecated. Use 'bzr merge' "
+                "instead.")
         source_branch = None
         # Get the target branch.
         try:

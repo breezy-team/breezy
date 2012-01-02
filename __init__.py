@@ -191,6 +191,25 @@ def debian_tag_name(branch, revid):
     return db.tag_name(changelog.version)
 
 
+def pre_merge_fix_ancestry(merger):
+    from bzrlib.plugins.builddeb.config import BUILD_TYPE_NATIVE
+    from bzrlib.plugins.builddeb.util import debuild_config
+    from bzrlib.plugins.builddeb.merge_package import fix_ancestry_as_needed
+    from bzrlib.workingtree import WorkingTree
+    if not isinstance(merger.this_tree, WorkingTree):
+        return
+    if merger.other_branch is None:
+        return
+    if (not merger.this_tree.path2id("debian/changelog") or
+        not merger.other_tree.path2id("debian/changelog")):
+        return
+    this_config = debuild_config(merger.this_tree, merger.this_tree)
+    other_config = debuild_config(merger.other_tree, merger.other_tree)
+    if not (this_config.build_type == BUILD_TYPE_NATIVE or
+            other_config.build_type == BUILD_TYPE_NATIVE):
+        fix_ancestry_as_needed(merger.this_tree, merger.other_branch,
+            source_revid=merger.other_tree.get_revision_id())
+
 try:
     from bzrlib.hooks import install_lazy_named_hook
 except ImportError: # Compatibility with bzr < 2.4
@@ -237,6 +256,10 @@ else:
         "bzrlib.branch", "Branch.hooks",
         "automatic_tag_name", debian_tag_name,
          "Automatically determine tag names from Debian version")
+    install_lazy_named_hook(
+        "bzrlib.merge", "Merger.hooks",
+        "pre_merge", pre_merge_fix_ancestry,
+        "Fix the branch ancestry prior to a merge")
 
 try:
     from bzrlib.revisionspec import revspec_registry
