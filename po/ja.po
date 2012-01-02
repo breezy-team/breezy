@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-12-08 09:21+0100\n"
-"PO-Revision-Date: 2011-12-30 00:08+0000\n"
-"Last-Translator: hikaruworld <Unknown>\n"
+"PO-Revision-Date: 2012-01-01 05:50+0000\n"
+"Last-Translator: IWATA Hidetaka <Unknown>\n"
 "Language-Team: Japanese <ja@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Launchpad-Export-Date: 2011-12-31 04:37+0000\n"
+"X-Launchpad-Export-Date: 2012-01-02 04:38+0000\n"
 "X-Generator: Launchpad (build 14560)\n"
 
 #: bzrlib/add.py:95
@@ -1948,6 +1948,10 @@ msgid ""
 "  Among other features, this plugin can find all revisions containing\n"
 "  a list of words but not others."
 msgstr ""
+"  bzrには、包括的な全文検索マッチをするbzr-searchというプラグインがあり、\n"
+"  ユーザ名、コミットメッセージなどでリビジョンを検索することができます。\n"
+"  他の機能とはちがい、このプラグインでは単語のリストを含むすべての\n"
+"  リビジョンを検索することができます。"
 
 #: bzrlib/builtins.py:2467
 msgid ""
@@ -2298,12 +2302,12 @@ msgstr "代わりにファイルの一覧だけを表示するには::"
 
 #: bzrlib/builtins.py:3068
 msgid "    bzr ls --ignored"
-msgstr ""
+msgstr "    bzr ls --ignored"
 
 #: bzrlib/builtins.py:3102
 #, python-format
 msgid "not a valid revision-number: %r"
-msgstr ""
+msgstr "無効なリビジョン番号です。: %r"
 
 #: bzrlib/builtins.py:3109
 msgid ""
@@ -2330,6 +2334,10 @@ msgid ""
 "container formats (tar, zip, etc). If it is not supplied it will default\n"
 "to the exported filename. The root option has no effect for 'dir' format."
 msgstr ""
+"rootが指定された場合は、コンテナフォーマット(tar、zipなど)のルート\n"
+"ディレクトリに使用されます。指定されていない場合は、エクスポート\n"
+"ファイル名がデフォルトになります。rootオプションは、'dir'フォーマット\n"
+"に対しては作用しません。"
 
 #: bzrlib/builtins.py:3121
 msgid ""
@@ -2370,7 +2378,7 @@ msgstr "エクスポートするファイルの種類"
 
 #: bzrlib/builtins.py:3143
 msgid "Apply content filters to export the convenient form."
-msgstr ""
+msgstr "使いやすい形でエクスポートするためのコンテンツフィルターを適用します。"
 
 #: bzrlib/builtins.py:3147
 msgid "Name of the root directory inside the exported file."
@@ -2380,21 +2388,21 @@ msgstr "エクスポートされたファイル内部のrootディレクトリ�
 msgid ""
 "Set modification time of files to that of the last revision in which it was "
 "changed."
-msgstr ""
+msgstr "各ファイルの編集日時を、最後にそのファイルが変更されたリビジョンの日時に設定します。"
 
 #: bzrlib/builtins.py:3152
 msgid ""
 "Export the working tree contents rather than that of the last revision."
-msgstr ""
+msgstr "最終リビジョンではなく、作業ツリーの内容をエクスポートします。"
 
 #: bzrlib/builtins.py:3171
 msgid "--uncommitted requires a working tree"
-msgstr ""
+msgstr "作業ツリーに対しては--uncommittedを指定する必要があります。"
 
 #: bzrlib/builtins.py:3180
 #, python-format
 msgid "Unsupported export format: %s"
-msgstr ""
+msgstr "サポートされていないエクスポートフォーマット: %s"
 
 #: bzrlib/builtins.py:3184
 msgid ""
