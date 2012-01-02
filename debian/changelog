@@ -1,8 +1,10 @@
 bzr-builddeb (2.8.1) UNRELEASED; urgency=low
 
   * New revision specifier 'upstream:'. LP: #905728
+  * Provide merge-package functionality as a hook for 'bzr merge'. LP:
+    #486075, LP: #910900
 
- -- Jelmer Vernooij <jelmer@debian.org>  Sat, 17 Dec 2011 17:41:19 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 02 Jan 2012 17:27:32 +0100
 
 bzr-builddeb (2.8.0) unstable; urgency=low
 

@@ -1247,6 +1247,9 @@ class cmd_merge_package(Command):
     so that the user only needs to deal with packaging branch merge issues.
 
     In the opposite case a normal merge will be performed.
+
+    As of bzr 2.5 and bzr-builddeb 2.8.1, this functionality is automatically
+    provided as part of bzr merge.
     """
     takes_options = ['revision']
     takes_args = ['source']
