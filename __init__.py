@@ -193,6 +193,8 @@ def debian_tag_name(branch, revid):
 
 def pre_merge(merger):
     pre_merge_fix_ancestry(merger)
+    if getattr(merger, "_no_quilt_unapplying", False):
+        return
     pre_merge_quilt(merger)
 
 
@@ -232,7 +234,7 @@ def pre_merge_quilt(merger):
 
 def post_merge_quilt_cleanup(merger):
     import shutil
-    for dir in merger._quilt_tempdirs:
+    for dir in getattr(merger, "_quilt_tempdirs", []):
         shutil.rmtree(dir)
 
 

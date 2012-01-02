@@ -22,12 +22,20 @@
 
 from __future__ import absolute_import
 
+import shutil
 import tempfile
+from bzrlib.revisiontree import RevisionTree
 from bzrlib import (
+    merge as _mod_merge,
     trace,
     )
 
 from bzrlib.plugins.builddeb.quilt import quilt_pop_all
+
+
+class NoUnapplyingMerger(_mod_merge.Merge3Merger):
+
+    _no_quilt_unapplying = True
 
 
 def tree_unapply_patches(orig_tree, orig_branch):
@@ -44,7 +52,19 @@ def tree_unapply_patches(orig_tree, orig_branch):
         return orig_tree, None
 
     target_dir = tempfile.mkdtemp()
-    tree = orig_branch.create_checkout(target_dir, lightweight=True)
-    trace.mutter("Applying quilt patches for %r in %s", orig_tree, target_dir)
-    quilt_pop_all(working_dir=tree.basedir)
-    return tree, target_dir
+    try:
+        if isinstance(orig_tree, RevisionTree):
+            tree = orig_branch.create_checkout(target_dir, lightweight=True,
+                accelerator_tree=orig_tree, revision_id=orig_tree.get_revision_id())
+        else:
+            tree = orig_branch.create_checkout(target_dir, lightweight=True,
+                revision_id=orig_tree.last_revision(), accelerator_tree=orig_tree)
+            merger = _mod_merge.Merger.from_uncommitted(tree, orig_tree)
+            merger.merge_type = NoUnapplyingMerger
+            merger.do_merge()
+        trace.mutter("Applying quilt patches for %r in %s", orig_tree, target_dir)
+        quilt_pop_all(working_dir=tree.basedir)
+        return tree, target_dir
+    except:
+        shutil.rmtree(target_dir)
+        raise
