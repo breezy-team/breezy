@@ -101,14 +101,15 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
     # recursive section - that is, it appends the branch name.
 
 
-class SampleBranchFormat(_mod_branch.BranchFormat):
+class SampleBranchFormat(_mod_branch.BranchFormatMetadir):
     """A sample format
 
     this format is initializable, unsupported to aid in testing the
     open and open_downlevel routines.
     """
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BzrBranchFormat.get_format_string()."""
         return "Sample branch format."
 
@@ -122,7 +123,8 @@ class SampleBranchFormat(_mod_branch.BranchFormat):
     def is_supported(self):
         return False
 
-    def open(self, transport, name=None, _found=False, ignore_fallbacks=False):
+    def open(self, transport, name=None, _found=False, ignore_fallbacks=False,
+             possible_transports=None):
         return "opened branch."
 
 
@@ -131,10 +133,11 @@ class SampleBranchFormat(_mod_branch.BranchFormat):
 SampleSupportedBranchFormatString = "Sample supported branch format."
 
 # And the format class can then reference the constant to avoid skew.
-class SampleSupportedBranchFormat(_mod_branch.BranchFormat):
+class SampleSupportedBranchFormat(_mod_branch.BranchFormatMetadir):
     """A sample supported format."""
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BzrBranchFormat.get_format_string()."""
         return SampleSupportedBranchFormatString
 
@@ -143,7 +146,8 @@ class SampleSupportedBranchFormat(_mod_branch.BranchFormat):
         t.put_bytes('format', self.get_format_string())
         return 'A branch'
 
-    def open(self, transport, name=None, _found=False, ignore_fallbacks=False):
+    def open(self, transport, name=None, _found=False, ignore_fallbacks=False,
+             possible_transports=None):
         return "opened supported branch."
 
 
@@ -161,7 +165,8 @@ class SampleExtraBranchFormat(_mod_branch.BranchFormat):
     def initialize(self, a_bzrdir, name=None):
         raise NotImplementedError(self.initialize)
 
-    def open(self, transport, name=None, _found=False, ignore_fallbacks=False):
+    def open(self, transport, name=None, _found=False, ignore_fallbacks=False,
+             possible_transports=None):
         raise NotImplementedError(self.open)
 
 
@@ -177,7 +182,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
             dir = format._matchingbzrdir.initialize(url)
             dir.create_repository()
             format.initialize(dir)
-            found_format = _mod_branch.BranchFormat.find_format(dir)
+            found_format = _mod_branch.BranchFormatMetadir.find_format(dir)
             self.assertIsInstance(found_format, format.__class__)
         check_format(_mod_branch.BzrBranchFormat5(), "bar")
 
@@ -192,18 +197,35 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
         b = _mod_branch.Branch.open(self.get_url())
         self.assertEqual(b, "opened supported branch.")
 
+    def test_from_string(self):
+        self.assertIsInstance(
+            SampleBranchFormat.from_string("Sample branch format."),
+            SampleBranchFormat)
+        self.assertRaises(AssertionError,
+            SampleBranchFormat.from_string, "Different branch format.")
+
     def test_find_format_not_branch(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         self.assertRaises(errors.NotBranchError,
-                          _mod_branch.BranchFormat.find_format,
+                          _mod_branch.BranchFormatMetadir.find_format,
                           dir)
 
     def test_find_format_unknown_format(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         SampleBranchFormat().initialize(dir)
         self.assertRaises(errors.UnknownFormatError,
-                          _mod_branch.BranchFormat.find_format,
+                          _mod_branch.BranchFormatMetadir.find_format,
                           dir)
+
+    def test_find_format_with_features(self):
+        tree = self.make_branch_and_tree('.', format='2a')
+        tree.branch.update_feature_flags({"name": "optional"})
+        found_format = _mod_branch.BranchFormatMetadir.find_format(tree.bzrdir)
+        self.assertIsInstance(found_format, _mod_branch.BranchFormatMetadir)
+        self.assertEquals(found_format.features.get("name"), "optional")
+        tree.branch.update_feature_flags({"name": None})
+        branch = _mod_branch.Branch.open('.')
+        self.assertEquals(branch._format.features, {})
 
     def test_register_unregister_format(self):
         # Test the deprecated format registration functions
@@ -390,22 +412,6 @@ class TestBranch67(object):
 
     def test_light_checkout_with_references(self):
         self.do_checkout_test(lightweight=True)
-
-    def test_set_push(self):
-        branch = self.make_branch('source', format=self.get_format_name())
-        branch.get_config().set_user_option('push_location', 'old',
-            store=config.STORE_LOCATION)
-        warnings = []
-        def warning(*args):
-            warnings.append(args[0] % args[1:])
-        _warning = trace.warning
-        trace.warning = warning
-        try:
-            branch.set_push_location('new')
-        finally:
-            trace.warning = _warning
-        self.assertEqual(warnings[0], 'Value "new" is masked by "old" from '
-                         'locations.conf')
 
 
 class TestBranch6(TestBranch67, tests.TestCaseWithTransport):
@@ -656,18 +662,18 @@ class TestBranchOptions(tests.TestCaseWithTransport):
     def setUp(self):
         super(TestBranchOptions, self).setUp()
         self.branch = self.make_branch('.')
-        self.config = self.branch.get_config()
+        self.config_stack = self.branch.get_config_stack()
 
     def check_append_revisions_only(self, expected_value, value=None):
         """Set append_revisions_only in config and check its interpretation."""
         if value is not None:
-            self.config.set_user_option('append_revisions_only', value)
+            self.config_stack.set('append_revisions_only', value)
         self.assertEqual(expected_value,
                          self.branch.get_append_revisions_only())
 
     def test_valid_append_revisions_only(self):
         self.assertEquals(None,
-                          self.config.get_user_option('append_revisions_only'))
+                          self.config_stack.get('append_revisions_only'))
         self.check_append_revisions_only(None)
         self.check_append_revisions_only(False, 'False')
         self.check_append_revisions_only(True, 'True')
@@ -685,7 +691,7 @@ class TestBranchOptions(tests.TestCaseWithTransport):
         self.check_append_revisions_only(None, 'not-a-bool')
         self.assertLength(1, self.warnings)
         self.assertEqual(
-            'Value "not-a-bool" is not a boolean for "append_revisions_only"',
+            'Value "not-a-bool" is not valid for "append_revisions_only"',
             self.warnings[0])
 
 
@@ -713,6 +719,7 @@ class TestPullResult(tests.TestCase):
         f = StringIO()
         r.report(f)
         self.assertEqual("Now on revision 20.\n", f.getvalue())
+        self.assertEqual("Now on revision 20.\n", f.getvalue())
 
     def test_report_unchanged(self):
         r = _mod_branch.PullResult()
@@ -721,4 +728,3 @@ class TestPullResult(tests.TestCase):
         f = StringIO()
         r.report(f)
         self.assertEqual("No revisions or tags to pull.\n", f.getvalue())
-

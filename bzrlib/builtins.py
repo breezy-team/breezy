@@ -16,6 +16,8 @@
 
 """builtin bzr commands"""
 
+from __future__ import absolute_import
+
 import os
 
 import bzrlib.bzrdir
@@ -23,6 +25,7 @@ import bzrlib.bzrdir
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import cStringIO
+import errno
 import sys
 import time
 
@@ -558,7 +561,7 @@ class cmd_revno(Command):
     _see_also = ['info']
     takes_args = ['location?']
     takes_options = [
-        Option('tree', help='Show revno of working tree'),
+        Option('tree', help='Show revno of working tree.'),
         'revision',
         ]
 
@@ -606,7 +609,7 @@ class cmd_revision_info(Command):
         custom_help('directory',
             help='Branch to examine, '
                  'rather than the one containing the working directory.'),
-        Option('tree', help='Show revno of working tree'),
+        Option('tree', help='Show revno of working tree.'),
         ]
 
     @display_command
@@ -753,20 +756,44 @@ class cmd_mkdir(Command):
     """
 
     takes_args = ['dir+']
+    takes_options = [
+        Option(
+            'parents',
+            help='No error if existing, make parent directories as needed.',
+            short_name='p'
+            )
+        ]
     encoding_type = 'replace'
 
-    def run(self, dir_list):
-        for d in dir_list:
-            wt, dd = WorkingTree.open_containing(d)
-            base = os.path.dirname(dd)
-            id = wt.path2id(base)
-            if id != None:
-                os.mkdir(d)
-                wt.add([dd])
-                if not is_quiet():
-                    self.outf.write(gettext('added %s\n') % d)
+    @classmethod
+    def add_file_with_parents(cls, wt, relpath):
+        if wt.path2id(relpath) is not None:
+            return
+        cls.add_file_with_parents(wt, osutils.dirname(relpath))
+        wt.add([relpath])
+
+    @classmethod
+    def add_file_single(cls, wt, relpath):
+        wt.add([relpath])
+
+    def run(self, dir_list, parents=False):
+        if parents:
+            add_file = self.add_file_with_parents
+        else:
+            add_file = self.add_file_single
+        for dir in dir_list:
+            wt, relpath = WorkingTree.open_containing(dir)
+            if parents:
+                try:
+                    os.makedirs(dir)
+                except OSError, e:
+                    if e.errno != errno.EEXIST:
+                        raise
             else:
-                raise errors.NotVersionedError(path=base)
+                os.mkdir(dir)
+            add_file(wt, relpath)
+            if not is_quiet():
+                self.outf.write(gettext('added %s\n') % dir)
 
 
 class cmd_relpath(Command):
@@ -1224,8 +1251,16 @@ class cmd_push(Command):
         if location is None:
             stored_loc = br_from.get_push_location()
             if stored_loc is None:
-                raise errors.BzrCommandError(gettext(
-                    "No push location known or specified."))
+                parent_loc = br_from.get_parent()
+                if parent_loc:
+                    raise errors.BzrCommandError(gettext(
+                        "No push location known or specified. To push to the "
+                        "parent branch (at %s), use 'bzr push :parent'." %
+                        urlutils.unescape_for_display(parent_loc,
+                            self.outf.encoding)))
+                else:
+                    raise errors.BzrCommandError(gettext(
+                        "No push location known or specified."))
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
@@ -1312,27 +1347,29 @@ class cmd_branch(Command):
             # RBC 20060209
             revision_id = br_from.last_revision()
         if to_location is None:
-            to_location = urlutils.derive_to_location(from_location)
+            to_location = getattr(br_from, "name", None)
+            if to_location is None:
+                to_location = urlutils.derive_to_location(from_location)
         to_transport = transport.get_transport(to_location)
         try:
             to_transport.mkdir('.')
         except errors.FileExists:
-            if not use_existing_dir:
-                raise errors.BzrCommandError(gettext('Target directory "%s" '
-                    'already exists.') % to_location)
+            try:
+                to_dir = controldir.ControlDir.open_from_transport(
+                    to_transport)
+            except errors.NotBranchError:
+                if not use_existing_dir:
+                    raise errors.BzrCommandError(gettext('Target directory "%s" '
+                        'already exists.') % to_location)
+                else:
+                    to_dir = None
             else:
                 try:
-                    to_dir = controldir.ControlDir.open_from_transport(
-                        to_transport)
+                    to_dir.open_branch()
                 except errors.NotBranchError:
-                    to_dir = None
+                    pass
                 else:
-                    try:
-                        to_dir.open_branch()
-                    except errors.NotBranchError:
-                        pass
-                    else:
-                        raise errors.AlreadyBranchError(to_location)
+                    raise errors.AlreadyBranchError(to_location)
         except errors.NoSuchFile:
             raise errors.BzrCommandError(gettext('Parent of "%s" does not exist.')
                                          % to_location)
@@ -1348,7 +1385,9 @@ class cmd_branch(Command):
                                             force_new_repo=standalone,
                                             create_tree_if_local=not no_tree,
                                             source_branch=br_from)
-                branch = to_dir.open_branch()
+                branch = to_dir.open_branch(
+                    possible_transports=[
+                        br_from.bzrdir.root_transport, to_transport])
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
                 msg = gettext("The branch {0} has no revision {1}.").format(
@@ -1404,12 +1443,30 @@ class cmd_branches(Command):
                     self.outf.encoding).rstrip("/"))
         else:
             dir = controldir.ControlDir.open_containing(location)[0]
-            for branch in dir.list_branches():
-                if branch.name is None:
-                    self.outf.write(gettext(" (default)\n"))
+            try:
+                active_branch = dir.open_branch(name=None)
+            except errors.NotBranchError:
+                active_branch = None
+            branches = dir.get_branches()
+            names = {}
+            for name, branch in branches.iteritems():
+                if name is None:
+                    continue
+                active = (active_branch is not None and
+                          active_branch.base == branch.base)
+                names[name] = active
+            # Only mention the current branch explicitly if it's not
+            # one of the colocated branches
+            if not any(names.values()) and active_branch is not None:
+                self.outf.write("* %s\n" % gettext("(default)"))
+            for name in sorted(names.keys()):
+                active = names[name]
+                if active:
+                    prefix = "*"
                 else:
-                    self.outf.write(" %s\n" % branch.name.encode(
-                        self.outf.encoding))
+                    prefix = " "
+                self.outf.write("%s %s\n" % (
+                    prefix, name.encode(self.outf.encoding)))
 
 
 class cmd_checkout(Command):
@@ -2029,14 +2086,16 @@ class cmd_init_repository(Command):
             location = '.'
 
         to_transport = transport.get_transport(location)
-        to_transport.ensure_base()
 
-        newdir = format.initialize_on_transport(to_transport)
-        repo = newdir.create_repository(shared=True)
-        repo.set_make_working_trees(not no_trees)
+        (repo, newdir, require_stacking, repository_policy) = (
+            format.initialize_on_transport_ex(to_transport,
+            create_prefix=True, make_working_trees=not no_trees,
+            shared_repo=True, force_new_repo=True,
+            use_existing_dir=True,
+            repo_format_name=format.repository_format.get_format_string()))
         if not is_quiet():
             from bzrlib.info import show_bzrdir_info
-            show_bzrdir_info(repo.bzrdir, verbose=0, outfile=self.outf)
+            show_bzrdir_info(newdir, verbose=0, outfile=self.outf)
 
 
 class cmd_diff(Command):
@@ -2512,10 +2571,10 @@ class cmd_log(Command):
                    help='Do not report commits with more than one parent.'),
             Option('exclude-common-ancestry',
                    help='Display only the revisions that are not part'
-                   ' of both ancestries (require -rX..Y)'
+                   ' of both ancestries (require -rX..Y).'
                    ),
             Option('signatures',
-                   help='Show digital signature validity'),
+                   help='Show digital signature validity.'),
             ListOption('match',
                 short_name='m',
                 help='Show revisions whose properties match this '
@@ -3144,25 +3203,36 @@ class cmd_export(Command):
         Option('per-file-timestamps',
                help='Set modification time of files to that of the last '
                     'revision in which it was changed.'),
+        Option('uncommitted',
+               help='Export the working tree contents rather than that of the '
+                    'last revision.'),
         ]
     def run(self, dest, branch_or_subdir=None, revision=None, format=None,
-        root=None, filters=False, per_file_timestamps=False, directory=u'.'):
+        root=None, filters=False, per_file_timestamps=False, uncommitted=False,
+        directory=u'.'):
         from bzrlib.export import export
 
         if branch_or_subdir is None:
-            tree = WorkingTree.open_containing(directory)[0]
-            b = tree.branch
-            subdir = None
-        else:
-            b, subdir = Branch.open_containing(branch_or_subdir)
-            tree = None
+            branch_or_subdir = directory
 
-        rev_tree = _get_one_revision_tree('export', revision, branch=b, tree=tree)
+        (tree, b, subdir) = controldir.ControlDir.open_containing_tree_or_branch(
+            branch_or_subdir)
+        if tree is not None:
+            self.add_cleanup(tree.lock_read().unlock)
+
+        if uncommitted:
+            if tree is None:
+                raise errors.BzrCommandError(
+                    gettext("--uncommitted requires a working tree"))
+            export_tree = tree
+        else:
+            export_tree = _get_one_revision_tree('export', revision, branch=b, tree=tree)
         try:
-            export(rev_tree, dest, format, root, subdir, filtered=filters,
+            export(export_tree, dest, format, root, subdir, filtered=filters,
                    per_file_timestamps=per_file_timestamps)
         except errors.NoSuchExportFormat, e:
-            raise errors.BzrCommandError(gettext('Unsupported export format: %s') % e.format)
+            raise errors.BzrCommandError(
+                gettext('Unsupported export format: %s') % e.format)
 
 
 class cmd_cat(Command):
@@ -3671,15 +3741,17 @@ class cmd_whoami(Command):
             if directory is None:
                 # use branch if we're inside one; otherwise global config
                 try:
-                    c = Branch.open_containing(u'.')[0].get_config()
+                    c = Branch.open_containing(u'.')[0].get_config_stack()
                 except errors.NotBranchError:
-                    c = _mod_config.GlobalConfig()
+                    c = _mod_config.GlobalStack()
             else:
-                c = Branch.open(directory).get_config()
+                c = Branch.open(directory).get_config_stack()
+            identity = c.get('email')
             if email:
-                self.outf.write(c.user_email() + '\n')
+                self.outf.write(_mod_config.extract_email_address(identity)
+                                + '\n')
             else:
-                self.outf.write(c.username() + '\n')
+                self.outf.write(identity + '\n')
             return
 
         if email:
@@ -3696,12 +3768,12 @@ class cmd_whoami(Command):
         # use global config unless --branch given
         if branch:
             if directory is None:
-                c = Branch.open_containing(u'.')[0].get_config()
+                c = Branch.open_containing(u'.')[0].get_config_stack()
             else:
-                c = Branch.open(directory).get_config()
+                c = Branch.open(directory).get_config_stack()
         else:
-            c = _mod_config.GlobalConfig()
-        c.set_user_option('email', name)
+            c = _mod_config.GlobalStack()
+        c.set('email', name)
 
 
 class cmd_nick(Command):
@@ -4651,7 +4723,7 @@ class cmd_shell_complete(Command):
 
     @display_command
     def run(self, context=None):
-        import shellcomplete
+        from bzrlib import shellcomplete
         shellcomplete.shellcomplete(context)
 
 
@@ -5015,7 +5087,7 @@ class cmd_re_sign(Command):
 
     def _run(self, b, revision_id_list, revision):
         import bzrlib.gpg as gpg
-        gpg_strategy = gpg.GPGStrategy(b.get_config())
+        gpg_strategy = gpg.GPGStrategy(b.get_config_stack())
         if revision_id_list is not None:
             b.repository.start_write_group()
             try:
@@ -5537,7 +5609,7 @@ class cmd_merge_directive(Command):
                 self.outf.writelines(directive.to_lines())
         else:
             message = directive.to_email(mail_to, branch, sign)
-            s = SMTPConnection(branch.get_config())
+            s = SMTPConnection(branch.get_config_stack())
             s.send_email(message)
 
 
@@ -6068,17 +6140,35 @@ class cmd_switch(Command):
             if '/' not in to_location and '\\' not in to_location:
                 # This path is meant to be relative to the existing branch
                 this_url = self._get_branch_location(control_dir)
-                to_location = urlutils.join(this_url, '..', to_location)
+                # Perhaps the target control dir supports colocated branches?
+                try:
+                    root = controldir.ControlDir.open(this_url,
+                        possible_transports=[control_dir.user_transport])
+                except errors.NotBranchError:
+                    colocated = False
+                else:
+                    colocated = root._format.colocated_branches
+                if colocated:
+                    to_location = urlutils.join_segment_parameters(this_url,
+                        {"branch": urlutils.escape(to_location)})
+                else:
+                    to_location = urlutils.join(
+                        this_url, '..', urlutils.escape(to_location))
             to_branch = branch.bzrdir.sprout(to_location,
                                  possible_transports=[branch.bzrdir.root_transport],
                                  source_branch=branch).open_branch()
         else:
+            # Perhaps it's a colocated branch?
             try:
-                to_branch = Branch.open(to_location)
-            except errors.NotBranchError:
-                this_url = self._get_branch_location(control_dir)
-                to_branch = Branch.open(
-                    urlutils.join(this_url, '..', to_location))
+                to_branch = control_dir.open_branch(to_location)
+            except (errors.NotBranchError, errors.NoColocatedBranchSupport):
+                try:
+                    to_branch = Branch.open(to_location)
+                except errors.NotBranchError:
+                    this_url = self._get_branch_location(control_dir)
+                    to_branch = Branch.open(
+                        urlutils.join(
+                            this_url, '..', urlutils.escape(to_location)))
         if revision is not None:
             revision = revision.as_revision_id(to_branch)
         switch.switch(control_dir, to_branch, force, revision_id=revision)
@@ -6517,11 +6607,15 @@ class cmd_export_pot(Command):
     takes_options = [Option('plugin', 
                             help='Export help text from named command '\
                                  '(defaults to all built in commands).',
-                            type=str)]
+                            type=str),
+                     Option('include-duplicates',
+                            help='Output multiple copies of the same msgid '
+                                 'string if it appears more than once.'),
+                            ]
 
-    def run(self, plugin=None):
+    def run(self, plugin=None, include_duplicates=False):
         from bzrlib.export_pot import export_pot
-        export_pot(self.outf, plugin)
+        export_pot(self.outf, plugin, include_duplicates)
 
 
 def _register_lazy_builtins():

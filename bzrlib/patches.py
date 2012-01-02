@@ -14,57 +14,22 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+from __future__ import absolute_import
+
+from bzrlib.errors import (
+    BinaryFiles,
+    MalformedHunkHeader,
+    MalformedLine,
+    MalformedPatchHeader,
+    PatchConflict,
+    PatchSyntax,
+    )
+
 import re
 
 
 binary_files_re = 'Binary files (.*) and (.*) differ\n'
-
-
-class BinaryFiles(Exception):
-
-    def __init__(self, orig_name, mod_name):
-        self.orig_name = orig_name
-        self.mod_name = mod_name
-        Exception.__init__(self, 'Binary files section encountered.')
-
-
-class PatchSyntax(Exception):
-    def __init__(self, msg):
-        Exception.__init__(self, msg)
-
-
-class MalformedPatchHeader(PatchSyntax):
-    def __init__(self, desc, line):
-        self.desc = desc
-        self.line = line
-        msg = "Malformed patch header.  %s\n%r" % (self.desc, self.line)
-        PatchSyntax.__init__(self, msg)
-
-
-class MalformedHunkHeader(PatchSyntax):
-    def __init__(self, desc, line):
-        self.desc = desc
-        self.line = line
-        msg = "Malformed hunk header.  %s\n%r" % (self.desc, self.line)
-        PatchSyntax.__init__(self, msg)
-
-
-class MalformedLine(PatchSyntax):
-    def __init__(self, desc, line):
-        self.desc = desc
-        self.line = line
-        msg = "Malformed line.  %s\n%s" % (self.desc, self.line)
-        PatchSyntax.__init__(self, msg)
-
-
-class PatchConflict(Exception):
-    def __init__(self, line_no, orig_line, patch_line):
-        orig = orig_line.rstrip('\n')
-        patch = str(patch_line).rstrip('\n')
-        msg = 'Text contents mismatch at line %d.  Original has "%s",'\
-            ' but patch says it should be "%s"' % (line_no, orig, patch)
-        Exception.__init__(self, msg)
-
 
 def get_patch_names(iter_lines):
     try:

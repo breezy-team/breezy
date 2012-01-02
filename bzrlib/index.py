@@ -16,6 +16,8 @@
 
 """Indexing facilities."""
 
+from __future__ import absolute_import
+
 __all__ = [
     'CombinedGraphIndex',
     'GraphIndex',

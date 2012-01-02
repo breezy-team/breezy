@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
 
 # TODO: Define arguments by objects, rather than just using names.
 # Those objects can specify the expected type of the argument, which
@@ -50,11 +51,6 @@ from bzrlib.i18n import gettext
 from bzrlib.option import Option
 from bzrlib.plugin import disable_plugins, load_plugins
 from bzrlib import registry
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
-    deprecated_method,
-    )
 
 
 class CommandInfo(object):

@@ -156,6 +156,8 @@ class TestControlDir(TestCaseWithControlDir):
         except (errors.UnsupportedOperation, errors.TransportNotPossible):
             raise TestNotApplicable('Format does not support destroying'
                                     ' repository')
+        self.assertRaises(errors.NoRepositoryPresent,
+            bzrdir.destroy_repository)
         self.assertRaises(errors.NoRepositoryPresent, bzrdir.open_repository)
         bzrdir.create_repository()
         bzrdir.open_repository()
@@ -744,7 +746,7 @@ class TestControlDir(TestCaseWithControlDir):
             source.tags.set_tag('tag-a', 'rev-2')
         except errors.TagsNotSupported:
             raise TestNotApplicable('Branch format does not support tags.')
-        source.get_config().set_user_option('branch.fetch_tags', 'True')
+        source.get_config_stack().set('branch.fetch_tags', True)
         # Now source has a tag not in its ancestry.  Sprout its controldir.
         dir = source.bzrdir
         target = dir.sprout(self.get_url('target'))
@@ -823,7 +825,7 @@ class TestControlDir(TestCaseWithControlDir):
             has_ghost_tag = False
         else:
             has_ghost_tag = True
-        source.get_config().set_user_option('branch.fetch_tags', 'True')
+        source.get_config_stack().set('branch.fetch_tags', True)
         # And ask sprout for C2
         dir = source.bzrdir
         target = dir.sprout(self.get_url('target'), revision_id='rev-c2')
@@ -1189,6 +1191,11 @@ class TestControlDir(TestCaseWithControlDir):
             pass # Not all bzrdirs support destroying directories
         else:
             self.assertEquals([], made_control.list_branches())
+
+    def test_get_branches(self):
+        repo = self.make_repository('branch-1')
+        target_branch = repo.bzrdir.create_branch()
+        self.assertEqual([None], repo.bzrdir.get_branches().keys())
 
     def test_create_repository(self):
         # a bzrdir can construct a repository for itself.

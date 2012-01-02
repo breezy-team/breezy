@@ -16,6 +16,7 @@
 
 """Server-side branch related request implmentations."""
 
+from __future__ import absolute_import
 
 from bzrlib import (
     bencode,
@@ -77,6 +78,15 @@ class SmartServerLockedBranchRequest(SmartServerBranchRequest):
             branch.repository.unlock()
 
 
+class SmartServerBranchBreakLock(SmartServerBranchRequest):
+
+    def do_with_branch(self, branch):
+        """Break a branch lock.
+        """
+        branch.break_lock()
+        return SuccessfulSmartServerResponse(('ok', ), )
+
+
 class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
 
     def do_with_branch(self, branch):
@@ -85,10 +95,41 @@ class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
         The body is not utf8 decoded - its the literal bytestream from disk.
         """
         try:
-            content = branch._transport.get_bytes('branch.conf')
+            content = branch.control_transport.get_bytes('branch.conf')
         except errors.NoSuchFile:
             content = ''
         return SuccessfulSmartServerResponse( ('ok', ), content)
+
+
+class SmartServerBranchPutConfigFile(SmartServerBranchRequest):
+    """Set the configuration data for a branch.
+
+    New in 2.5.
+    """
+
+    def do_with_branch(self, branch, branch_token, repo_token):
+        """Set the content of branch.conf.
+
+        The body is not utf8 decoded - its the literal bytestream for disk.
+        """
+        self._branch = branch
+        self._branch_token = branch_token
+        self._repo_token = repo_token
+        # Signal we want a body
+        return None
+
+    def do_body(self, body_bytes):
+        self._branch.repository.lock_write(token=self._repo_token)
+        try:
+            self._branch.lock_write(token=self._branch_token)
+            try:
+                self._branch.control_transport.put_bytes(
+                    'branch.conf', body_bytes)
+            finally:
+                self._branch.unlock()
+        finally:
+            self._branch.repository.unlock()
+        return SuccessfulSmartServerResponse(('ok', ))
 
 
 class SmartServerBranchGetParent(SmartServerBranchRequest):
@@ -193,6 +234,23 @@ class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):
         """
         revno, last_revision = branch.last_revision_info()
         return SuccessfulSmartServerResponse(('ok', str(revno), last_revision))
+
+
+class SmartServerBranchRequestRevisionIdToRevno(SmartServerBranchRequest):
+
+    def do_with_branch(self, branch, revid):
+        """Return branch.revision_id_to_revno().
+
+        New in 2.5.
+
+        The revno is encoded in decimal, the revision_id is encoded as utf8.
+        """
+        try:
+            dotted_revno = branch.revision_id_to_dotted_revno(revid)
+        except errors.NoSuchRevision:
+            return FailedSmartServerResponse(('NoSuchRevision', revid))
+        return SuccessfulSmartServerResponse(
+            ('ok', ) + tuple(map(str, dotted_revno)))
 
 
 class SmartServerSetTipRequest(SmartServerLockedBranchRequest):
@@ -377,3 +435,15 @@ class SmartServerBranchRequestUnlock(SmartServerBranchRequest):
         branch.unlock()
         return SuccessfulSmartServerResponse(('ok',))
 
+
+class SmartServerBranchRequestGetPhysicalLockStatus(SmartServerBranchRequest):
+    """Get the physical lock status for a branch.
+
+    New in 2.5.
+    """
+
+    def do_with_branch(self, branch):
+        if branch.get_physical_lock_status():
+            return SuccessfulSmartServerResponse(('yes',))
+        else:
+            return SuccessfulSmartServerResponse(('no',))

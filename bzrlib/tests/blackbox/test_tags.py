@@ -28,6 +28,7 @@ from bzrlib.tests import (
     script,
     TestCaseWithTransport,
     )
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 from bzrlib.workingtree import WorkingTree
 
 
@@ -406,3 +407,42 @@ class TestTagging(TestCaseWithTransport):
             'tag2                 2\n'
             'unknown              ?\n')
         self.assertEqual('', err)
+
+
+class TestSmartServerCat(TestCaseWithTransport):
+
+    def test_set_tag(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        t.commit("message")
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['tag', "-d", self.get_url('branch'), "tagname"])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(9, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
+
+    def test_show_tags(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        t.commit("message")
+        t.branch.tags.set_tag("sometag", "rev1")
+        t.branch.tags.set_tag("sometag", "rev2")
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['tags', "-d", self.get_url('branch')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(6, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

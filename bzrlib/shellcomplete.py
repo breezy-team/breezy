@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 import sys
 
 
@@ -57,8 +59,7 @@ def shellcomplete_on_options(options, outfile=None):
 
 def shellcomplete_commands(outfile = None):
     """List all commands"""
-    import inspect
-    import commands
+    from bzrlib import commands
     from inspect import getdoc
 
     commands.install_bzr_command_hooks()

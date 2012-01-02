@@ -16,12 +16,12 @@
 
 """Server-side bzrdir related request implmentations."""
 
+from __future__ import absolute_import
 
 from bzrlib import branch, errors, repository, urlutils
 from bzrlib.bzrdir import (
     BzrDir,
     BzrDirFormat,
-    BzrDirMetaFormat1,
     BzrProber,
     )
 from bzrlib.controldir import (
@@ -121,6 +121,53 @@ class SmartServerRequestBzrDir(SmartServerRequest):
         return '/'.join(segments)
 
 
+class SmartServerBzrDirRequestDestroyBranch(SmartServerRequestBzrDir):
+
+    def do_bzrdir_request(self, name=None):
+        """Destroy the branch with the specified name.
+
+        New in 2.5.0.
+        :return: On success, 'ok'.
+        """
+        try:
+            self._bzrdir.destroy_branch(name)
+        except errors.NotBranchError, e:
+            return FailedSmartServerResponse(('nobranch',))
+        return SuccessfulSmartServerResponse(('ok',))
+
+
+class SmartServerBzrDirRequestHasWorkingTree(SmartServerRequestBzrDir):
+
+    def do_bzrdir_request(self, name=None):
+        """Check whether there is a working tree present.
+
+        New in 2.5.0.
+
+        :return: If there is a working tree present, 'yes'.
+            Otherwise 'no'.
+        """
+        if self._bzrdir.has_workingtree():
+            return SuccessfulSmartServerResponse(('yes', ))
+        else:
+            return SuccessfulSmartServerResponse(('no', ))
+
+
+class SmartServerBzrDirRequestDestroyRepository(SmartServerRequestBzrDir):
+
+    def do_bzrdir_request(self, name=None):
+        """Destroy the repository.
+
+        New in 2.5.0.
+
+        :return: On success, 'ok'.
+        """
+        try:
+            self._bzrdir.destroy_repository()
+        except errors.NoRepositoryPresent, e:
+            return FailedSmartServerResponse(('norepository',))
+        return SuccessfulSmartServerResponse(('ok',))
+
+
 class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
 
     def do_bzrdir_request(self, require_stacking):
@@ -160,6 +207,41 @@ class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
             repository_name = ''
         return SuccessfulSmartServerResponse((control_name, repository_name,
             branch_name))
+
+
+class SmartServerBzrDirRequestCheckoutMetaDir(SmartServerRequestBzrDir):
+    """Get the format to use for checkouts.
+
+    New in 2.5.
+
+    :return: on success, a 3-tuple of network names for (control,
+        repository, branch) directories, where '' signifies "not present".
+        If this BzrDir contains a branch reference then this will fail with
+        BranchReference; clients should resolve branch references before
+        calling this RPC (they should not try to create a checkout of a
+        checkout).
+    """
+
+    def do_bzrdir_request(self):
+        try:
+            branch_ref = self._bzrdir.get_branch_reference()
+        except errors.NotBranchError:
+            branch_ref = None
+        if branch_ref is not None:
+            # The server shouldn't try to resolve references, and it quite
+            # possibly can't reach them anyway.  The client needs to resolve
+            # the branch reference to determine the cloning_metadir.
+            return FailedSmartServerResponse(('BranchReference',))
+        control_format = self._bzrdir.checkout_metadir()
+        control_name = control_format.network_name()
+        if not control_format.fixed_components:
+            branch_name = control_format.get_branch_format().network_name()
+            repo_name = control_format.repository_format.network_name()
+        else:
+            branch_name = ''
+            repo_name = ''
+        return SuccessfulSmartServerResponse(
+            (control_name, repo_name, branch_name))
 
 
 class SmartServerRequestCreateBranch(SmartServerRequestBzrDir):

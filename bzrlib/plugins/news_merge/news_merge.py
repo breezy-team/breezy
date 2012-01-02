@@ -16,6 +16,8 @@
 
 """Merge logic for news_merge plugin."""
 
+from __future__ import absolute_import
+
 
 from bzrlib.plugins.news_merge.parser import simple_parse_lines
 from bzrlib import merge, merge3
@@ -28,7 +30,7 @@ class NewsMerger(merge.ConfigurableFileMerger):
 
     def merge_text(self, params):
         """Perform a simple 3-way merge of a bzr NEWS file.
-        
+
         Each section of a bzr NEWS file is essentially an ordered set of bullet
         points, so we can simply take a set of bullet points, determine which
         bullets to add and which to remove, sort, and reserialize.

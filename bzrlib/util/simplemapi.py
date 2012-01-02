@@ -36,6 +36,8 @@ If you have any bug-fixes, enhancements or suggestions regarding this
 software, please contact me at the above email address.
 """
 
+from __future__ import absolute_import
+
 import os
 from ctypes import *
 

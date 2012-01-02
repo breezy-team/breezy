@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 
 import os
 import socket
@@ -166,8 +168,8 @@ class LaunchpadService(object):
             # the url?  perhaps a bit more secure against accidentally
             # revealing it.  std66 s3.2.1 discourages putting the
             # password in the url.
-            hostinfo = '%s:%s@%s' % (urllib.quote(self.registrant_email),
-                                     urllib.quote(self.registrant_password),
+            hostinfo = '%s:%s@%s' % (urlutils.quote(self.registrant_email),
+                                     urlutils.quote(self.registrant_password),
                                      hostinfo)
             url = urlunsplit((scheme, hostinfo, path, '', ''))
         else:

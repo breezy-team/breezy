@@ -16,8 +16,8 @@
 
 "bash_completion.py - create bash completion script from built-in bzr help"
 
-import os
-import sys
+from __future__ import absolute_import
+
 import time
 
 import bzrlib

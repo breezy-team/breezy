@@ -56,3 +56,9 @@ class TestRevisionIdToRevno(TestCaseWithBranch):
             tree.branch.revision_id_to_revno, "unknown")
         self.assertEquals(1, tree.branch.revision_id_to_revno("rev1"))
         self.assertEquals(2, tree.branch.revision_id_to_revno("rev2"))
+
+    def test_empty(self):
+        branch = self.make_branch('.')
+        self.assertRaises(errors.NoSuchRevision,
+            branch.revision_id_to_revno, "unknown")
+        self.assertEquals(0, branch.revision_id_to_revno('null:'))

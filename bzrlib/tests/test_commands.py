@@ -24,7 +24,6 @@ from bzrlib import (
     config,
     errors,
     option,
-    symbol_versioning,
     tests,
     trace,
     )

@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 import os
 import errno
 from stat import S_ISREG, S_IEXEC
@@ -761,7 +763,7 @@ class TreeTransformBase(object):
 
     def _set_executability(self, path, trans_id):
         """Set the executability of versioned files """
-        if supports_executable():
+        if self._tree._supports_executable():
             new_executability = self._new_executability[trans_id]
             abspath = self._tree.abspath(path)
             current_mode = os.stat(abspath).st_mode
@@ -776,7 +778,7 @@ class TreeTransformBase(object):
                     to_mode |= 0010 & ~umask
             else:
                 to_mode = current_mode & ~0111
-            os.chmod(abspath, to_mode)
+            osutils.chmod_if_possible(abspath, to_mode)
 
     def _new_entry(self, name, parent_id, file_id):
         """Helper function to create a new filesystem entry."""
@@ -1231,6 +1233,11 @@ class DiskTreeTransform(TreeTransformBase):
         finally:
             TreeTransformBase.finalize(self)
 
+    def _limbo_supports_executable(self):
+        """Check if the limbo path supports the executable bit."""
+        # FIXME: Check actual file system capabilities of limbodir
+        return osutils.supports_executable()
+
     def _limbo_name(self, trans_id):
         """Generate the limbo name of a file"""
         limbo_name = self._limbo_files.get(trans_id)
@@ -1555,18 +1562,14 @@ class TreeTransform(DiskTreeTransform):
         try:
             limbodir = urlutils.local_path_from_url(
                 tree._transport.abspath('limbo'))
-            try:
-                os.mkdir(limbodir)
-            except OSError, e:
-                if e.errno == errno.EEXIST:
-                    raise ExistingLimbo(limbodir)
+            osutils.ensure_empty_directory_exists(
+                limbodir,
+                errors.ExistingLimbo)
             deletiondir = urlutils.local_path_from_url(
                 tree._transport.abspath('pending-deletion'))
-            try:
-                os.mkdir(deletiondir)
-            except OSError, e:
-                if e.errno == errno.EEXIST:
-                    raise errors.ExistingPendingDeletion(deletiondir)
+            osutils.ensure_empty_directory_exists(
+                deletiondir,
+                errors.ExistingPendingDeletion)
         except:
             tree.unlock()
             raise
@@ -1635,7 +1638,7 @@ class TreeTransform(DiskTreeTransform):
             else:
                 raise
         if typefunc(mode):
-            os.chmod(self._limbo_name(trans_id), mode)
+            osutils.chmod_if_possible(self._limbo_name(trans_id), mode)
 
     def iter_tree_children(self, parent_id):
         """Iterate through the entry's tree children, if any"""
@@ -2323,7 +2326,7 @@ class _PreviewTree(tree.InventoryTree):
             if kind == 'file':
                 statval = os.lstat(limbo_name)
                 size = statval.st_size
-                if not supports_executable():
+                if not tt._limbo_supports_executable():
                     executable = False
                 else:
                     executable = statval.st_mode & S_IEXEC

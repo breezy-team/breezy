@@ -24,6 +24,8 @@ We do this rather than just providing a new interface so that it will also
 be used by existing Python modules that create regexs.
 """
 
+from __future__ import absolute_import
+
 import re
 
 from bzrlib import errors
@@ -70,6 +72,19 @@ class LazyRegex(object):
             # raise InvalidPattern instead of re.error as this gives a
             # cleaner message to the user.
             raise errors.InvalidPattern('"' + args[0] + '" ' +str(e))
+
+    def __getstate__(self):
+        """Return the state to use when pickling."""
+        return {
+            "args": self._regex_args,
+            "kwargs": self._regex_kwargs,
+            }
+
+    def __setstate__(self, dict):
+        """Restore from a pickled state."""
+        self._real_regex = None
+        setattr(self, "_regex_args", dict["args"])
+        setattr(self, "_regex_kwargs", dict["kwargs"])
 
     def __getattr__(self, attr):
         """Return a member from the proxied regex object.

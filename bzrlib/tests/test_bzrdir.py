@@ -253,6 +253,10 @@ class SampleBzrDirFormat(bzrdir.BzrDirFormat):
     def open(self, transport, _found=None):
         return "opened branch."
 
+    @classmethod
+    def from_string(cls, format_string):
+        return cls()
+
 
 class BzrDirFormatTest1(bzrdir.BzrDirMetaFormat1):
 
@@ -1021,6 +1025,18 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         self.assertNotEqual(otherdir2, mydir)
         self.assertFalse(otherdir2 == mydir)
 
+    def test_with_features(self):
+        tree = self.make_branch_and_tree('tree', format='2a')
+        tree.bzrdir.update_feature_flags({"bar": "required"})
+        self.assertRaises(errors.MissingFeature, bzrdir.BzrDir.open, 'tree')
+        bzrdir.BzrDirMetaFormat1.register_feature('bar')
+        self.addCleanup(bzrdir.BzrDirMetaFormat1.unregister_feature, 'bar')
+        dir = bzrdir.BzrDir.open('tree')
+        self.assertEquals("required", dir._format.features.get("bar"))
+        tree.bzrdir.update_feature_flags({"bar": None, "nonexistant": None})
+        dir = bzrdir.BzrDir.open('tree')
+        self.assertEquals({}, dir._format.features)
+
     def test_needs_conversion_different_working_tree(self):
         # meta1dirs need an conversion if any element is not the default.
         new_format = bzrdir.format_registry.make_bzrdir('dirstate')
@@ -1244,7 +1260,7 @@ class _TestBzrDir(bzrdir.BzrDirMeta1):
         self.test_branch = _TestBranch(self.transport)
         self.test_branch.repository = self.create_repository()
 
-    def open_branch(self, unsupported=False):
+    def open_branch(self, unsupported=False, possible_transports=None):
         return self.test_branch
 
     def cloning_metadir(self, require_stacking=False):
@@ -1281,6 +1297,9 @@ class _TestBranch(bzrlib.branch.Branch):
 
     def _get_config(self):
         return config.TransportConfig(self._transport, 'branch.conf')
+
+    def _get_config_store(self):
+        return config.BranchStore(self)
 
     def set_parent(self, parent):
         self._parent = parent
@@ -1431,3 +1450,112 @@ class TestMeta1DirColoFormat(TestCaseWithTransport):
         self.assertRaises(errors.BzrError, converter.convert, tree.bzrdir,
             None)
 
+
+class SampleBzrFormat(bzrdir.BzrFormat):
+
+    @classmethod
+    def get_format_string(cls):
+        return "First line\n"
+
+
+class TestBzrFormat(TestCase):
+    """Tests for BzrFormat."""
+
+    def test_as_string(self):
+        format = SampleBzrFormat()
+        format.features = {"foo": "required"}
+        self.assertEquals(format.as_string(),
+            "First line\n"
+            "required foo\n")
+        format.features["another"] = "optional"
+        self.assertEquals(format.as_string(),
+            "First line\n"
+            "required foo\n"
+            "optional another\n")
+
+    def test_network_name(self):
+        # The network string should include the feature info
+        format = SampleBzrFormat()
+        format.features = {"foo": "required"}
+        self.assertEquals(
+            "First line\nrequired foo\n",
+            format.network_name())
+
+    def test_from_string_no_features(self):
+        # No features
+        format = SampleBzrFormat.from_string(
+            "First line\n")
+        self.assertEquals({}, format.features)
+
+    def test_from_string_with_feature(self):
+        # Proper feature
+        format = SampleBzrFormat.from_string(
+            "First line\nrequired foo\n")
+        self.assertEquals("required", format.features.get("foo"))
+
+    def test_from_string_format_string_mismatch(self):
+        # The first line has to match the format string
+        self.assertRaises(AssertionError, SampleBzrFormat.from_string,
+            "Second line\nrequired foo\n")
+
+    def test_from_string_missing_space(self):
+        # At least one space is required in the feature lines
+        self.assertRaises(errors.ParseFormatError, SampleBzrFormat.from_string,
+            "First line\nfoo\n")
+
+    def test_from_string_with_spaces(self):
+        # Feature with spaces (in case we add stuff like this in the future)
+        format = SampleBzrFormat.from_string(
+            "First line\nrequired foo with spaces\n")
+        self.assertEquals("required", format.features.get("foo with spaces"))
+
+    def test_eq(self):
+        format1 = SampleBzrFormat()
+        format1.features = {"nested-trees": "optional"}
+        format2 = SampleBzrFormat()
+        format2.features = {"nested-trees": "optional"}
+        self.assertEquals(format1, format1)
+        self.assertEquals(format1, format2)
+        format3 = SampleBzrFormat()
+        self.assertNotEquals(format1, format3)
+
+    def test_check_support_status_optional(self):
+        # Optional, so silently ignore
+        format = SampleBzrFormat()
+        format.features = {"nested-trees": "optional"}
+        format.check_support_status(True)
+        self.addCleanup(SampleBzrFormat.unregister_feature, "nested-trees")
+        SampleBzrFormat.register_feature("nested-trees")
+        format.check_support_status(True)
+
+    def test_check_support_status_required(self):
+        # Optional, so trigger an exception
+        format = SampleBzrFormat()
+        format.features = {"nested-trees": "required"}
+        self.assertRaises(errors.MissingFeature, format.check_support_status,
+            True)
+        self.addCleanup(SampleBzrFormat.unregister_feature, "nested-trees")
+        SampleBzrFormat.register_feature("nested-trees")
+        format.check_support_status(True)
+
+    def test_check_support_status_unknown(self):
+        # treat unknown necessity as required
+        format = SampleBzrFormat()
+        format.features = {"nested-trees": "unknown"}
+        self.assertRaises(errors.MissingFeature, format.check_support_status,
+            True)
+        self.addCleanup(SampleBzrFormat.unregister_feature, "nested-trees")
+        SampleBzrFormat.register_feature("nested-trees")
+        format.check_support_status(True)
+
+    def test_feature_already_registered(self):
+        # a feature can only be registered once
+        self.addCleanup(SampleBzrFormat.unregister_feature, "nested-trees")
+        SampleBzrFormat.register_feature("nested-trees")
+        self.assertRaises(errors.FeatureAlreadyRegistered,
+            SampleBzrFormat.register_feature, "nested-trees")
+
+    def test_feature_with_space(self):
+        # spaces are not allowed in feature names
+        self.assertRaises(ValueError, SampleBzrFormat.register_feature,
+            "nested trees")

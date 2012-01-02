@@ -29,7 +29,7 @@ from bzrlib import (
     workingtree_4,
     )
 from bzrlib.lockdir import LockDir
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.tests import TestCaseWithTransport, TestSkipped, features
 from bzrlib.tree import InterTree
 
 
@@ -672,6 +672,21 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         e = self.assertRaises(errors.PathsNotVersionedError,
                               tree_iter_changes, ['bar', 'foo'])
         self.assertEqual(e.paths, ['foo'])
+
+    def test_iter_changes_unversioned_non_ascii(self):
+        """Unversioned non-ascii paths should be reported as unicode"""
+        self.requireFeature(features.UnicodeFilenameFeature)
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('f', '')])
+        tree.add(['f'], ['f-id'])
+        def tree_iter_changes(tree, files):
+            return list(tree.iter_changes(tree.basis_tree(),
+                specific_files=files, require_versioned=True))
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        e = self.assertRaises(errors.PathsNotVersionedError,
+            tree_iter_changes, tree, [u'\xa7', u'\u03c0'])
+        self.assertEqual(e.paths, [u'\xa7', u'\u03c0'])
 
     def get_tree_with_cachable_file_foo(self):
         tree = self.make_branch_and_tree('.')

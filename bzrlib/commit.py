@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
 
 # The newly committed revision is going to have a shape corresponding
 # to that of the working tree.  Files that are not in the
@@ -165,13 +166,13 @@ class Commit(object):
     """
     def __init__(self,
                  reporter=None,
-                 config=None):
+                 config_stack=None):
         """Create a Commit object.
 
         :param reporter: the default reporter to use or None to decide later
         """
         self.reporter = reporter
-        self.config = config
+        self.config_stack = config_stack
 
     @staticmethod
     def update_revprops(revprops, branch, authors=None, author=None,
@@ -268,7 +269,7 @@ class Commit(object):
         operation = OperationWithCleanups(self._commit)
         self.revprops = revprops or {}
         # XXX: Can be set on __init__ or passed in - this is a bit ugly.
-        self.config = config or self.config
+        self.config_stack = config or self.config_stack
         return operation.run(
                message=message,
                timestamp=timestamp,
@@ -363,15 +364,15 @@ class Commit(object):
         self._check_bound_branch(operation, possible_master_transports)
 
         # Check that the working tree is up to date
-        old_revno, new_revno = self._check_out_of_date_tree()
+        old_revno, old_revid, new_revno = self._check_out_of_date_tree()
 
         # Complete configuration setup
         if reporter is not None:
             self.reporter = reporter
         elif self.reporter is None:
             self.reporter = self._select_reporter()
-        if self.config is None:
-            self.config = self.branch.get_config()
+        if self.config_stack is None:
+            self.config_stack = self.branch.get_config_stack()
 
         self._set_specific_file_ids()
 
@@ -405,11 +406,17 @@ class Commit(object):
         self._set_progress_stage("Collecting changes", counter=True)
         self._lossy = lossy
         self.builder = self.branch.get_commit_builder(self.parents,
-            self.config, timestamp, timezone, committer, self.revprops,
+            self.config_stack, timestamp, timezone, committer, self.revprops,
             rev_id, lossy=lossy)
         if not self.builder.supports_record_entry_contents and self.exclude:
             self.builder.abort()
             raise errors.ExcludesUnsupported(self.branch.repository)
+
+        if self.builder.updates_branch and self.bound_branch:
+            self.builder.abort()
+            raise AssertionError(
+                "bound branches not supported for commit builders "
+                "that update the branch")
 
         try:
             self.builder.will_record_deletes()
@@ -445,31 +452,7 @@ class Commit(object):
             self.builder.abort()
             raise
 
-        self._process_pre_hooks(old_revno, new_revno)
-
-        # Upload revision data to the master.
-        # this will propagate merged revisions too if needed.
-        if self.bound_branch:
-            self._set_progress_stage("Uploading data to master branch")
-            # 'commit' to the master first so a timeout here causes the
-            # local branch to be out of date
-            (new_revno, self.rev_id) = self.master_branch.import_last_revision_info_and_tags(
-                self.branch, new_revno, self.rev_id, lossy=lossy)
-            if lossy:
-                self.branch.fetch(self.master_branch, self.rev_id)
-
-        # and now do the commit locally.
-        self.branch.set_last_revision_info(new_revno, self.rev_id)
-
-        # Merge local tags to remote
-        if self.bound_branch:
-            self._set_progress_stage("Merging tags to master branch")
-            tag_updates, tag_conflicts = self.branch.tags.merge_to(
-                self.master_branch.tags)
-            if tag_conflicts:
-                warning_lines = ['    ' + name for name, _, _ in tag_conflicts]
-                note( gettext("Conflicting tags in bound branch:\n{0}".format(
-                    "\n".join(warning_lines))) )
+        self._update_branches(old_revno, old_revid, new_revno)
 
         # Make the working tree be up to date with the branch. This
         # includes automatic changes scheduled to be made to the tree, such
@@ -481,6 +464,52 @@ class Commit(object):
         self.reporter.completed(new_revno, self.rev_id)
         self._process_post_hooks(old_revno, new_revno)
         return self.rev_id
+
+    def _update_branches(self, old_revno, old_revid, new_revno):
+        """Update the master and local branch to the new revision.
+
+        This will try to make sure that the master branch is updated
+        before the local branch.
+
+        :param old_revno: Revision number of master branch before the
+            commit
+        :param old_revid: Tip of master branch before the commit
+        :param new_revno: Revision number of the new commit
+        """
+        if not self.builder.updates_branch:
+            self._process_pre_hooks(old_revno, new_revno)
+
+            # Upload revision data to the master.
+            # this will propagate merged revisions too if needed.
+            if self.bound_branch:
+                self._set_progress_stage("Uploading data to master branch")
+                # 'commit' to the master first so a timeout here causes the
+                # local branch to be out of date
+                (new_revno, self.rev_id) = self.master_branch.import_last_revision_info_and_tags(
+                    self.branch, new_revno, self.rev_id, lossy=self._lossy)
+                if self._lossy:
+                    self.branch.fetch(self.master_branch, self.rev_id)
+
+            # and now do the commit locally.
+            self.branch.set_last_revision_info(new_revno, self.rev_id)
+        else:
+            try:
+                self._process_pre_hooks(old_revno, new_revno)
+            except:
+                # The commit builder will already have updated the branch,
+                # revert it.
+                self.branch.set_last_revision_info(old_revno, old_revid)
+                raise
+
+        # Merge local tags to remote
+        if self.bound_branch:
+            self._set_progress_stage("Merging tags to master branch")
+            tag_updates, tag_conflicts = self.branch.tags.merge_to(
+                self.master_branch.tags)
+            if tag_conflicts:
+                warning_lines = ['    ' + name for name, _, _ in tag_conflicts]
+                note( gettext("Conflicting tags in bound branch:\n{0}".format(
+                    "\n".join(warning_lines))) )
 
     def _select_reporter(self):
         """Select the CommitReporter to use."""
@@ -544,7 +573,8 @@ class Commit(object):
     def _check_out_of_date_tree(self):
         """Check that the working tree is up to date.
 
-        :return: old_revision_number,new_revision_number tuple
+        :return: old_revision_number, old_revision_id, new_revision_number
+            tuple
         """
         try:
             first_tree_parent = self.work_tree.get_parent_ids()[0]
@@ -563,7 +593,7 @@ class Commit(object):
         else:
             # ghost parents never appear in revision history.
             new_revno = 1
-        return old_revno,new_revno
+        return old_revno, master_last, new_revno
 
     def _process_pre_hooks(self, old_revno, new_revno):
         """Process any registered pre commit hooks."""
@@ -575,9 +605,10 @@ class Commit(object):
         # Process the post commit hooks, if any
         self._set_progress_stage("Running post_commit hooks")
         # old style commit hooks - should be deprecated ? (obsoleted in
-        # 0.15)
-        if self.config.post_commit() is not None:
-            hooks = self.config.post_commit().split(' ')
+        # 0.15^H^H^H^H 2.5.0)
+        post_commit = self.config_stack.get('post_commit')
+        if post_commit is not None:
+            hooks = post_commit.split(' ')
             # this would be nicer with twisted.python.reflect.namedAny
             for hook in hooks:
                 result = eval(hook + '(branch, rev_id)',

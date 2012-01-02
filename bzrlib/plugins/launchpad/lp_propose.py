@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 from bzrlib import (
     errors,
     hooks,
@@ -25,6 +27,7 @@ import webbrowser
 from bzrlib import (
     msgeditor,
     )
+from bzrlib.i18n import gettext
 from bzrlib.plugins.launchpad import (
     lp_api,
     lp_registration,

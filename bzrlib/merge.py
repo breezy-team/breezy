@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 import warnings
 
 from bzrlib.lazy_import import lazy_import
@@ -44,6 +46,7 @@ from bzrlib import (
     decorators,
     errors,
     hooks,
+    registry,
     )
 from bzrlib.symbol_versioning import (
     deprecated_in,
@@ -75,6 +78,15 @@ class MergeHooks(hooks.Hooks):
             "See the AbstractPerFileMerger API docs for details on how it is "
             "used by merge.",
             (2, 1))
+        self.add_hook('pre_merge',
+            'Called before a merge. '
+            'Receives a Merger object as the single argument.',
+            (2, 5))
+        self.add_hook('post_merge',
+            'Called after a merge. '
+            'Receives a Merger object as the single argument. '
+            'The return value is ignored.',
+            (2, 5))
 
 
 class AbstractPerFileMerger(object):
@@ -92,7 +104,7 @@ class AbstractPerFileMerger(object):
     def merge_contents(self, merge_params):
         """Attempt to merge the contents of a single file.
         
-        :param merge_params: A bzrlib.merge.MergeHookParams
+        :param merge_params: A bzrlib.merge.MergeFileHookParams
         :return: A tuple of (status, chunks), where status is one of
             'not_applicable', 'success', 'conflicted', or 'delete'.  If status
             is 'success' or 'conflicted', then chunks should be an iterable of
@@ -119,14 +131,14 @@ class PerFileMerger(AbstractPerFileMerger):
 
     def get_filename(self, params, tree):
         """Lookup the filename (i.e. basename, not path), given a Tree (e.g.
-        self.merger.this_tree) and a MergeHookParams.
+        self.merger.this_tree) and a MergeFileHookParams.
         """
         return osutils.basename(tree.id2path(params.file_id))
 
     def get_filepath(self, params, tree):
         """Calculate the path to the file in a tree.
 
-        :param params: A MergeHookParams describing the file to merge
+        :param params: A MergeFileHookParams describing the file to merge
         :param tree: a Tree, e.g. self.merger.this_tree.
         """
         return tree.id2path(params.file_id)
@@ -139,7 +151,7 @@ class PerFileMerger(AbstractPerFileMerger):
             params.winner == 'other' or
             # THIS and OTHER aren't both files.
             not params.is_file_merge() or
-            # The filename doesn't match *.xml
+            # The filename doesn't match
             not self.file_matches(params)):
             return 'not_applicable', None
         return self.merge_matching(params)
@@ -221,7 +233,7 @@ class ConfigurableFileMerger(PerFileMerger):
         raise NotImplementedError(self.merge_text)
 
 
-class MergeHookParams(object):
+class MergeFileHookParams(object):
     """Object holding parameters passed to merge_file_content hooks.
 
     There are some fields hooks can access:
@@ -442,51 +454,6 @@ class Merger(object):
         revision_id = _mod_revision.ensure_null(revision_id)
         return branch, self.revision_tree(revision_id, branch)
 
-    @deprecated_method(deprecated_in((2, 1, 0)))
-    def ensure_revision_trees(self):
-        if self.this_revision_tree is None:
-            self.this_basis_tree = self.revision_tree(self.this_basis)
-            if self.this_basis == self.this_rev_id:
-                self.this_revision_tree = self.this_basis_tree
-
-        if self.other_rev_id is None:
-            other_basis_tree = self.revision_tree(self.other_basis)
-            if other_basis_tree.has_changes(self.other_tree):
-                raise errors.WorkingTreeNotRevision(self.this_tree)
-            other_rev_id = self.other_basis
-            self.other_tree = other_basis_tree
-
-    @deprecated_method(deprecated_in((2, 1, 0)))
-    def file_revisions(self, file_id):
-        self.ensure_revision_trees()
-        if self.this_rev_id is None:
-            if self.this_basis_tree.get_file_sha1(file_id) != \
-                self.this_tree.get_file_sha1(file_id):
-                raise errors.WorkingTreeNotRevision(self.this_tree)
-
-        trees = (self.this_basis_tree, self.other_tree)
-        return [tree.get_file_revision(file_id) for tree in trees]
-
-    @deprecated_method(deprecated_in((2, 1, 0)))
-    def check_basis(self, check_clean, require_commits=True):
-        if self.this_basis is None and require_commits is True:
-            raise errors.BzrCommandError(
-                "This branch has no commits."
-                " (perhaps you would prefer 'bzr pull')")
-        if check_clean:
-            self.compare_basis()
-            if self.this_basis != self.this_rev_id:
-                raise errors.UncommittedChanges(self.this_tree)
-
-    @deprecated_method(deprecated_in((2, 1, 0)))
-    def compare_basis(self):
-        try:
-            basis_tree = self.revision_tree(self.this_tree.last_revision())
-        except errors.NoSuchRevision:
-            basis_tree = self.this_tree.basis_tree()
-        if not self.this_tree.has_changes(basis_tree):
-            self.this_rev_id = self.this_basis
-
     def set_interesting_files(self, file_list):
         self.interesting_files = file_list
 
@@ -537,7 +504,7 @@ class Merger(object):
                 raise errors.NoCommits(self.other_branch)
         if self.other_rev_id is not None:
             self._cached_trees[self.other_rev_id] = self.other_tree
-        self._maybe_fetch(self.other_branch,self.this_branch, self.other_basis)
+        self._maybe_fetch(self.other_branch, self.this_branch, self.other_basis)
 
     def set_other_revision(self, revision_id, other_branch):
         """Set 'other' based on a branch and revision id
@@ -645,7 +612,7 @@ class Merger(object):
             self._maybe_fetch(base_branch, self.this_branch, self.base_rev_id)
 
     def make_merger(self):
-        kwargs = {'working_tree':self.this_tree, 'this_tree': self.this_tree,
+        kwargs = {'working_tree': self.this_tree, 'this_tree': self.this_tree,
                   'other_tree': self.other_tree,
                   'interesting_ids': self.interesting_ids,
                   'interesting_files': self.interesting_files,
@@ -681,7 +648,11 @@ class Merger(object):
         merge = self.make_merger()
         if self.other_branch is not None:
             self.other_branch.update_references(self.this_branch)
+        for hook in Merger.hooks['pre_merge']:
+            hook(merge)
         merge.do_merge()
+        for hook in Merger.hooks['post_merge']:
+            hook(merge)
         if self.recurse == 'down':
             for relpath, file_id in self.this_tree.iter_references():
                 sub_tree = self.this_tree.get_nested_tree(file_id, relpath)
@@ -854,14 +825,18 @@ class Merge3Merger(object):
         else:
             entries = self._entries_lca()
             resolver = self._lca_multi_way
+        # Prepare merge hooks
+        factories = Merger.hooks['merge_file_content']
+        # One hook for each registered one plus our default merger
+        hooks = [factory(self) for factory in factories] + [self]
+        self.active_hooks = [hook for hook in hooks if hook is not None]
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
-            factories = Merger.hooks['merge_file_content']
-            hooks = [factory(self) for factory in factories] + [self]
-            self.active_hooks = [hook for hook in hooks if hook is not None]
             for num, (file_id, changed, parents3, names3,
                       executable3) in enumerate(entries):
-                child_pb.update(gettext('Preparing file merge'), num, len(entries))
+                # Try merging each entry
+                child_pb.update(gettext('Preparing file merge'),
+                                num, len(entries))
                 self._merge_names(file_id, parents3, names3, resolver=resolver)
                 if changed:
                     file_status = self._do_merge_contents(file_id)
@@ -1381,7 +1356,7 @@ class Merge3Merger(object):
         # We have a hypothetical conflict, but if we have files, then we
         # can try to merge the content
         trans_id = self.tt.trans_id_file_id(file_id)
-        params = MergeHookParams(self, file_id, trans_id, this_pair[0],
+        params = MergeFileHookParams(self, file_id, trans_id, this_pair[0],
             other_pair[0], winner)
         hooks = self.active_hooks
         hook_status = 'not_applicable'
@@ -2038,13 +2013,24 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     merger.set_base_revision(get_revision_id(), this_branch)
     return merger.do_merge()
 
-def get_merge_type_registry():
-    """Merge type registry is in bzrlib.option to avoid circular imports.
 
-    This method provides a sanctioned way to retrieve it.
+merge_type_registry = registry.Registry()
+merge_type_registry.register('diff3', Diff3Merger,
+                             "Merge using external diff3.")
+merge_type_registry.register('lca', LCAMerger,
+                             "LCA-newness merge.")
+merge_type_registry.register('merge3', Merge3Merger,
+                             "Native diff3-style merge.")
+merge_type_registry.register('weave', WeaveMerger,
+                             "Weave-based merge.")
+
+
+def get_merge_type_registry():
+    """Merge type registry was previously in bzrlib.option
+
+    This method provides a backwards compatible way to retrieve it.
     """
-    from bzrlib import option
-    return option._merge_type_registry
+    return merge_type_registry
 
 
 def _plan_annotate_merge(annotated_a, annotated_b, ancestors_a, ancestors_b):
