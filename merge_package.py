@@ -38,18 +38,6 @@ from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 from bzrlib.plugins.builddeb.util import find_changelog
 
 
-def _latest_version(repository, revid):
-    """Version of a source package upload in the given `repository`.
-
-    :param repository: A Repository object containing the source upload of
-        interest.
-    :param revid: Revision id in the repository
-    """
-    changelog, _ignore = find_changelog(repository.revision_tree(revid), False)
-
-    return changelog.version
-
-
 def _upstream_version_data(branch, revid):
     """Most recent upstream versions/revision IDs of the merge source/target.
 
@@ -58,9 +46,12 @@ def _upstream_version_data(branch, revid):
 
     :param branch: The merge branch.
     :param revid: The revision in the branch to consider
+    :param tree: Optional tree for the revision
     """
     db = DistributionBranch(branch, branch)
-    uver = _latest_version(branch.repository, revid).upstream_version
+    tree = branch.repository.revision_tree(revid)
+    changelog, _ignore = find_changelog(tree, False)
+    uver = changelog.version.upstream_version
     upstream_revids = db.pristine_upstream_source.version_as_revisions(None, uver)
     if upstream_revids.keys() != [None]:
         raise MultipleUpstreamTarballsNotSupported()
