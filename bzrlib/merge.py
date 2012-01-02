@@ -617,6 +617,7 @@ class Merger(object):
                   'interesting_ids': self.interesting_ids,
                   'interesting_files': self.interesting_files,
                   'this_branch': self.this_branch,
+                  'other_branch': self.other_branch,
                   'do_merge': False}
         if self.merge_type.requires_base:
             kwargs['base_tree'] = self.base_tree
@@ -725,7 +726,8 @@ class Merge3Merger(object):
                  interesting_ids=None, reprocess=False, show_base=False,
                  pb=None, pp=None, change_reporter=None,
                  interesting_files=None, do_merge=True,
-                 cherrypick=False, lca_trees=None, this_branch=None):
+                 cherrypick=False, lca_trees=None, this_branch=None,
+                 other_branch=None):
         """Initialize the merger object and perform the merge.
 
         :param working_tree: The working tree to apply the merge to
@@ -734,6 +736,7 @@ class Merge3Merger(object):
         :param other_tree: The other tree to merge changes from
         :param this_branch: The branch associated with this_tree.  Defaults to
             this_tree.branch if not supplied.
+        :param other_branch: The branch associated with other_tree, if any.
         :param interesting_ids: The file_ids of files that should be
             participate in the merge.  May not be combined with
             interesting_files.
@@ -765,6 +768,7 @@ class Merge3Merger(object):
         self.base_tree = base_tree
         self.other_tree = other_tree
         self.this_branch = this_branch
+        self.other_branch = other_branch
         self._raw_conflicts = []
         self.cooked_conflicts = []
         self.reprocess = reprocess
