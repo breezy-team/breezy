@@ -5,8 +5,11 @@ bzr-builddeb (2.8.1) UNRELEASED; urgency=low
     commands like 'bzr bash-completion'. LP: #903650
   * Provide merge-package functionality as a hook for 'bzr merge'.
     LP: #486075, LP: #910900
+  * Automatically apply quilt patches. LP: #616791
+  * Automatically apply v3 quilt patches for 'bzr builddeb' and 'bzr bd-
+    do'. LP: #616791
 
- -- Jelmer Vernooij <jelmer@debian.org>  Mon, 02 Jan 2012 17:57:33 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 02 Jan 2012 22:43:13 +0100
 
 bzr-builddeb (2.8.0) unstable; urgency=low
 
