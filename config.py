@@ -295,6 +295,9 @@ class DebBuildConfig(object):
   commit_message_from_changelog = _bool_property('commit-message-from-changelog',
        "Whether the commit message should come from debian/changelog", default=False)
 
+  commit_quilt_policy = _opt_property("commit-quilt-policy",
+        "Policy for committing quilt patches (applied / unapplied)")
+
 
 def _test():
   import doctest

@@ -191,6 +191,35 @@ def debian_tag_name(branch, revid):
     return db.tag_name(changelog.version)
 
 
+def start_commit_check_quilt(tree):
+    from bzrlib import trace
+    from bzrlib.plugins.builddeb.quilt import (
+        quilt_applied_patches,
+        quilt_unapplied_patches,
+        quilt_pop_all,
+        quilt_push_all,
+        )
+    from bzrlib.plugins.builddeb.util import debuild_config
+    if tree.path2id("debian/patches") is None:
+        # No patches to worry about
+        return
+    config = debuild_config(tree, False)
+    policy = config.commit_quilt_policy
+    applied_patches = quilt_applied_patches(tree.basedir)
+    unapplied_patches = quilt_unapplied_patches(tree.basedir)
+    if policy is None:
+        if applied_patches:
+            trace.warning("Committing with %d patches applied.\n" %
+                len(applied_patches))
+    elif policy == "applied":
+        quilt_push_all(tree.basedir)
+    elif policy == "unapplied":
+        quilt_pop_all(tree.basedir)
+    else:
+        raise errors.BzrError("Invalid setting %r for commit-quilt-policy" %
+                policy)
+
+
 def pre_merge_fix_ancestry(merger):
     from bzrlib.plugins.builddeb.config import BUILD_TYPE_NATIVE
     from bzrlib.plugins.builddeb.util import debuild_config
@@ -260,6 +289,10 @@ else:
         "bzrlib.merge", "Merger.hooks",
         "pre_merge", pre_merge_fix_ancestry,
         "Fix the branch ancestry prior to a merge")
+    install_lazy_named_hook(
+        "bzrlib.mutabletree", "MutableTree.hooks",
+        "start_commit", start_commit_check_quilt,
+        "Check for (un)applied quilt patches")
 
 try:
     from bzrlib.revisionspec import revspec_registry
