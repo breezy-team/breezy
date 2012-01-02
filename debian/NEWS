@@ -1,4 +1,11 @@
-bzr-builddeb (2.7.10) precise; urgency=low
+bzr-builddeb (2.8.1) precise; urgency=low
+
+  The 'bzr merge-package' command is now deprecated, and its
+  functionality is available as part of 'bzr merge'.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 02 Jan 2012 17:32:03 +0100
+
+bzr-builddeb (2.8.0) precise; urgency=low
 
   bzr-builddeb now warns when using the get-orig-source target in debian/rules
   to fetch the currently package upstream tarball. get-packaged-orig-source
