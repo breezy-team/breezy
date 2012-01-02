@@ -168,7 +168,7 @@ class SharedUpstreamConflictsWithTargetPackaging(BzrError):
     _fmt = ('The upstream branches for the merge source and target have '
             'diverged. Unfortunately, the attempt to fix this problem '
             'resulted in conflicts. Please resolve these, commit and '
-            're-run the "merge-package" command to finish. '
+            're-run the "merge" command to finish. '
             'Alternatively, until you commit you can use "bzr revert" to '
             'restore the state of the unmerged branch.')
 
