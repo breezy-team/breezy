@@ -109,5 +109,5 @@ def tree_unapply_patches(orig_tree):
     target_dir = tempfile.mkdtemp()
     tree = orig_tree.branch.create_checkout(target_dir, lightweight=True)
     trace.warning("Applying quilt patches for %r in %s", orig_tree, target_dir)
-    quilt_pull_all(working_dir=tree.basedir)
+    quilt_pop_all(working_dir=tree.basedir)
     return tree, target_dir
