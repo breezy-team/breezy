@@ -137,6 +137,7 @@ def load_tests(standard_tests, module, loader):
             'test_merge_package',
             'test_merge_quilt',
             'test_merge_upstream',
+            'test_quilt',
             'test_repack_tarball_extra',
             'test_revspec',
             'test_source_distiller',
