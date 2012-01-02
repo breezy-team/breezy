@@ -197,13 +197,43 @@ def pre_merge(merger):
 
 
 def pre_merge_quilt(merger):
-    if (merge.this_tree.path2id("debian/patches") is None and
-        merge.base_tree.path2id("debian/patches") is None):
+    if (merger.this_tree.path2id("debian/patches") is None and
+        merger.base_tree.path2id("debian/patches") is None):
         return
+    import shutil
+    from bzrlib import trace
+    from bzrlib.plugins.builddeb.errors import QuiltUnapplyError
+    from bzrlib.plugins.builddeb.quilt import QuiltError
     from bzrlib.plugins.builddeb.merge_quilt import tree_unapply_patches
-    merger.this_tree = tree_unapply_patches(merger.this_tree)
-    merger.base_tree = tree_unapply_patches(merger.base_tree)
-    merger.other_tree = tree_unapply_patches(merger.other_tree)
+    trace.note("Unapplying quilt patches to prevent spurious conflicts")
+    merger._quilt_tempdirs = []
+    try:
+        merger.this_tree, this_dir = tree_unapply_patches(merger.this_tree, merger.this_branch)
+    except QuiltError, e:
+        shutil.rmtree(this_dir)
+        raise QuiltUnapplyError("this", e.msg)
+    else:
+        merger._quilt_tempdirs.append(this_dir)
+    try:
+        merger.base_tree, base_dir = tree_unapply_patches(merger.base_tree, merger.this_branch)
+    except QuiltError, e:
+        shutil.rmtree(base_dir)
+        raise QuiltUnapplyError("base", e.msg)
+    else:
+        merger._quilt_tempdirs.append(base_dir)
+    try:
+        merger.other_tree, other_dir = tree_unapply_patches(merger.other_tree, merger.other_branch)
+    except QuiltError, e:
+        shutil.rmtree(other_dir)
+        raise QuiltUnapplyError("other", e.msg)
+    else:
+        merger._quilt_tempdirs.append(other_dir)
+
+
+def post_merge_quilt_cleanup(merger):
+    import shutil
+    for dir in merger._quilt_tempdirs:
+        shutil.rmtree(dir)
 
 
 def pre_merge_fix_ancestry(merger):
@@ -276,6 +306,10 @@ else:
         "bzrlib.merge", "Merger.hooks",
         'pre_merge', pre_merge,
         'Debian quilt patch (un)applying and ancestry fixing')
+    install_lazy_named_hook(
+        "bzrlib.merge", "Merger.hooks",
+        'post_merge', post_merge_quilt_cleanup,
+        'Cleaning up quilt temporary directories')
 
 try:
     from bzrlib.revisionspec import revspec_registry
