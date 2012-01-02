@@ -18,3 +18,25 @@
 #
 
 """Tests for the merge_quilt code."""
+
+from bzrlib.plugins.builddeb.tests import ExecutableFeature
+from bzrlib.plugins.builddeb.merge_quilt import quilt_pop_all
+
+from bzrlib.tests import TestCaseWithTransport
+
+quilt_feature = ExecutableFeature('quilt')
+
+
+class QuiltTests(TestCaseWithTransport):
+
+    _test_needs_features = [quilt_feature]
+
+    def test_push_all_empty(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/debian/', 'source/debian/patches/'])
+        self.build_tree_contents([
+            ("test.recipe", "# bzr-builder format 0.3 "
+             "deb-version 1\nsource 3\n"),
+            ("source/debian/patches/series", "\n")])
+        source.add(["debian", "debian/patches", "debian/patches/series"])
+        quilt_pop_all("source", quiet=True)

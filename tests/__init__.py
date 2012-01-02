@@ -37,11 +37,13 @@ except ImportError:
 from bzrlib.tests import TestUtil, multiply_tests
 try:
     from bzrlib.tests.features import (
+        ExecutableFeature,
         ModuleAvailableFeature,
         UnicodeFilenameFeature,
         )
 except ImportError: # bzr < 2.5
     from bzrlib.tests import (
+        ExecutableFeature,
         ModuleAvailableFeature,
         UnicodeFilenameFeature,
         )
