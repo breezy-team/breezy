@@ -155,7 +155,7 @@ class TestPull(tests.TestCaseWithTransport):
         # Make a source, sprout a target off it
         builder = self.make_branch_builder('source')
         source = fixtures.build_branch_with_non_ancestral_rev(builder)
-        source.get_config().set_user_option('branch.fetch_tags', 'True')
+        source.get_config_stack().set('branch.fetch_tags', True)
         target_bzrdir = source.bzrdir.sprout('target')
         source.tags.set_tag('tag-a', 'rev-2')
         # Pull from source
