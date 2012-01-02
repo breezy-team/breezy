@@ -1252,8 +1252,14 @@ class cmd_merge_package(Command):
     takes_args = ['source']
 
     def run(self, source, revision=None):
+        from bzrlib import ui
+        from bzrlib.merge import Merger
         from bzrlib.tag import _merge_tags_if_possible
         from bzrlib.plugins.builddeb.merge_package import fix_ancestry_as_needed
+        if 'pre_merge' in Merger.hooks:
+            ui.ui_factory.show_warning(
+                "The merge-package command is deprecated. Use 'bzr merge' "
+                "instead.")
         source_branch = None
         # Get the target branch.
         try:
