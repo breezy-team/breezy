@@ -65,28 +65,6 @@ def _prepend_log(text, path):
 
 class MergePackageTests(TestCaseWithTransport):
 
-    def test_latest_upstream_versions(self):
-        """Check correctness of upstream version computation."""
-        ubup_o, debp_n, _ubuu, _debu = self._setup_debian_upstream_newer()
-        # Ubuntu upstream.
-        self.assertEquals(
-            MP._latest_version(ubup_o.branch, ubup_o.last_revision()).upstream_version,
-            '1.2')
-        # Debian upstream.
-        self.assertEquals(
-            MP._latest_version(debp_n.branch, debp_n.last_revision()).upstream_version,
-            '1.10')
-
-        ubuntup, debianp = self._setup_upstreams_not_diverged()
-        # Ubuntu upstream.
-        self.assertEquals(
-            MP._latest_version(ubuntup.branch, ubuntup.last_revision()).upstream_version,
-            '1.4')
-        # Debian upstream.
-        self.assertEquals(
-            MP._latest_version(debianp.branch, debianp.last_revision()).upstream_version,
-            '2.2')
-
     def test__upstream_version_data(self):
         ubup_o, debp_n, _ubuu, _debu = self._setup_debian_upstream_newer()
         vdata = MP._upstream_version_data(debp_n.branch, debp_n.last_revision())

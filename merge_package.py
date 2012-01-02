@@ -20,6 +20,8 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from bzrlib import version_info as bzrlib_version
+
 import os
 import shutil
 import tempfile
@@ -38,17 +40,6 @@ from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 from bzrlib.plugins.builddeb.util import find_changelog
 
 
-def _latest_version(branch, revid):
-    """Version of the most recent source package upload in the given `branch`.
-    
-    :param branch: A Branch object containing the source upload of interest.
-    :param revid: Revision id in the branch
-    """
-    changelog, _ignore = find_changelog(branch.repository.revision_tree(revid), False)
-
-    return changelog.version
-
-
 def _upstream_version_data(branch, revid):
     """Most recent upstream versions/revision IDs of the merge source/target.
 
@@ -57,9 +48,12 @@ def _upstream_version_data(branch, revid):
 
     :param branch: The merge branch.
     :param revid: The revision in the branch to consider
+    :param tree: Optional tree for the revision
     """
     db = DistributionBranch(branch, branch)
-    uver = _latest_version(branch, revid).upstream_version
+    tree = branch.repository.revision_tree(revid)
+    changelog, _ignore = find_changelog(tree, False)
+    uver = changelog.version.upstream_version
     upstream_revids = db.pristine_upstream_source.version_as_revisions(None, uver)
     if upstream_revids.keys() != [None]:
         raise MultipleUpstreamTarballsNotSupported()
@@ -173,7 +167,11 @@ def fix_ancestry_as_needed(tree, source, source_revid=None):
                     # creates revison L in the digram above.
                     conflicts = tree.merge_from_branch(tmp_target_utree.branch)
                     if conflicts > 0:
-                        raise SharedUpstreamConflictsWithTargetPackaging()
+                        if bzrlib_version >= (2, 5):
+                            cmd = "bzr merge"
+                        else:
+                            cmd = "bzr merge-package"
+                        raise SharedUpstreamConflictsWithTargetPackaging(cmd)
                     else:
                         tree.commit('Merging shared upstream rev into target branch.')
 
