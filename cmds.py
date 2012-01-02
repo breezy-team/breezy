@@ -21,12 +21,9 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-import commands
 import os
 import shutil
-import subprocess
 import tempfile
-import urlparse
 
 try:
     from debian.changelog import Version
@@ -61,32 +58,8 @@ from bzrlib.plugins.builddeb.config import (
     BUILD_TYPE_NATIVE,
     BUILD_TYPE_SPLIT,
     )
-from bzrlib.plugins.builddeb.errors import (
-    BuildFailedError,
-    DchError,
-    MissingChangelogError,
-    NoPreviousUpload,
-    PackageVersionNotPresent,
-    StrictBuildFailed,
-    )
-from bzrlib.plugins.builddeb.hooks import run_hook
 from bzrlib.plugins.builddeb.util import (
-    FORMAT_3_0_QUILT,
-    FORMAT_3_0_NATIVE,
-    component_from_orig_tarball,
     debuild_config,
-    dget_changes,
-    find_changelog,
-    find_last_distribution,
-    find_previous_upload,
-    get_source_format,
-    guess_build_type,
-    lookup_distribution,
-    md5sum_filename,
-    open_file,
-    open_file_via_transport,
-    tarball_name,
-    tree_contains_upstream_source,
     )
 
 dont_purge_opt = Option('dont-purge',
@@ -189,6 +162,7 @@ class cmd_builddeb(Command):
         result_compat_opt, package_merge_opt]
 
     def _get_tree_and_branch(self, location):
+        import urlparse
         if location is None:
             location = "."
         is_local = urlparse.urlsplit(location)[0] in ('', 'file')
@@ -298,12 +272,18 @@ class cmd_builddeb(Command):
             quick=False, reuse=False, native=None,
             source=False, revision=None, result=None, package_merge=None,
             strict=False):
+        import commands
         from bzrlib.plugins.builddeb.source_distiller import (
                 FullSourceDistiller,
                 MergeModeDistiller,
                 NativeSourceDistiller,
                 )
         from bzrlib.plugins.builddeb.builder import DebBuild
+        from bzrlib.plugins.builddeb.errors import (
+            NoPreviousUpload,
+            StrictBuildFailed
+            )
+        from bzrlib.plugins.builddeb.hooks import run_hook
         from bzrlib.plugins.builddeb.upstream.branch import (
             LazyUpstreamBranchSource,
             )
@@ -316,6 +296,13 @@ class cmd_builddeb(Command):
             )
         from bzrlib.plugins.builddeb.upstream.pristinetar import (
             PristineTarSource,
+            )
+        from bzrlib.plugins.builddeb.util import (
+            dget_changes,
+            find_changelog,
+            find_previous_upload,
+            guess_build_type,
+            tree_contains_upstream_source,
             )
 
         if result is not None:
@@ -476,6 +463,9 @@ class cmd_get_orig_source(Command):
         from bzrlib.plugins.builddeb.upstream.pristinetar import (
             PristineTarSource,
             )
+        from bzrlib.plugins.builddeb.util import (
+            find_changelog,
+            )
         tree = WorkingTree.open_containing(directory)[0]
         config = debuild_config(tree, tree)
 
@@ -582,6 +572,9 @@ class cmd_merge_upstream(Command):
             changelog):
         from bzrlib.plugins.builddeb.merge_upstream import (
             changelog_add_new_version)
+        from bzrlib.plugins.builddeb.errors import (
+            DchError,
+            )
         try:
             changelog_add_new_version(tree, version, distribution_name,
                 changelog, package)
@@ -598,6 +591,9 @@ class cmd_merge_upstream(Command):
             DistributionBranch,
             DistributionBranchSet,
             )
+        from bzrlib.plugins.builddeb.util import (
+            component_from_orig_tarball,
+            )
         db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
@@ -611,6 +607,7 @@ class cmd_merge_upstream(Command):
 
     def _fetch_tarball(self, package, version, orig_dir, locations, v3):
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
+        from bzrlib.plugins.builddeb.util import tarball_name
         ret = []
         format = None
         for location in locations:
@@ -642,6 +639,14 @@ class cmd_merge_upstream(Command):
             locations, v3)
 
     def _get_changelog_info(self, tree, last_version, package, distribution):
+        from bzrlib.plugins.builddeb.util import (
+            find_changelog,
+            find_last_distribution,
+            lookup_distribution,
+            )
+        from bzrlib.plugins.builddeb.errors import (
+            MissingChangelogError,
+            )
         current_version = last_version
         try:
             (changelog, top_level) = find_changelog(tree, False, max_blocks=2)
@@ -677,13 +682,22 @@ class cmd_merge_upstream(Command):
             distribution=None, package=None,
             directory=".", revision=None, merge_type=None,
             last_version=None, force=None, snapshot=False, launchpad=False):
+        from bzrlib.plugins.builddeb.errors import PackageVersionNotPresent
+        from bzrlib.plugins.builddeb.hooks import run_hook
         from bzrlib.plugins.builddeb.upstream import (
-                TarfileSource,
-                UScanSource,
-                )
+            TarfileSource,
+            UScanSource,
+            )
         from bzrlib.plugins.builddeb.upstream.branch import (
-                UpstreamBranchSource,
-                )
+            UpstreamBranchSource,
+            )
+        from bzrlib.plugins.builddeb.util import (
+            FORMAT_3_0_QUILT,
+            FORMAT_3_0_NATIVE,
+            get_source_format,
+            guess_build_type,
+            tree_contains_upstream_source,
+            )
 
         tree, _ = WorkingTree.open_containing(directory)
         tree.lock_write()
@@ -873,9 +887,12 @@ class cmd_import_dsc(Command):
 
     def import_many(self, db, files_list, orig_target):
         from bzrlib.plugins.builddeb.import_dsc import (
-                DscCache,
-                DscComp,
-                )
+            DscCache,
+            DscComp,
+            )
+        from bzrlib.plugins.builddeb.util import (
+            open_file_via_transport,
+            )
         cache = DscCache()
         files_list.sort(cmp=DscComp(cache).cmp)
         if not os.path.exists(orig_target):
@@ -899,9 +916,16 @@ class cmd_import_dsc(Command):
             db.import_package(os.path.join(orig_target, filename))
 
     def run(self, files_list, file=None):
+        from bzrlib.plugins.builddeb.errors import (
+            MissingChangelogError,
+            )
         from bzrlib.plugins.builddeb.import_dsc import (
             DistributionBranch,
             DistributionBranchSet,
+            )
+        from bzrlib.plugins.builddeb.util import (
+            find_changelog,
+            open_file,
             )
         try:
             tree = WorkingTree.open_containing('.')[0]
@@ -1013,6 +1037,9 @@ class cmd_import_upstream(Command):
             DistributionBranch,
             DistributionBranchSet,
             )
+        from bzrlib.plugins.builddeb.util import (
+            md5sum_filename,
+            )
         # TODO: search for similarity etc.
         version = version.encode('utf8')
         branch, _ = Branch.open_containing('.')
@@ -1105,6 +1132,10 @@ class cmd_builddeb_do(Command):
     aliases = ['bd-do']
 
     def run(self, command_list=None):
+        import subprocess
+        from bzrlib.plugins.builddeb.errors import (
+            BuildFailedError,
+            )
         from bzrlib.plugins.builddeb.source_distiller import (
             MergeModeDistiller,
             )
@@ -1119,6 +1150,10 @@ class cmd_builddeb_do(Command):
             )
         from bzrlib.plugins.builddeb.upstream.pristinetar import (
             PristineTarSource,
+            )
+        from bzrlib.plugins.builddeb.hooks import run_hook
+        from bzrlib.plugins.builddeb.util import (
+            find_changelog,
             )
         t = WorkingTree.open_containing('.')[0]
         config = debuild_config(t, t)
@@ -1206,6 +1241,9 @@ class cmd_mark_uploaded(Command):
         from bzrlib.plugins.builddeb.import_dsc import (
             DistributionBranch,
             DistributionBranchSet,
+            )
+        from bzrlib.plugins.builddeb.util import (
+            find_changelog,
             )
         t = WorkingTree.open_containing('.')[0]
         t.lock_write()

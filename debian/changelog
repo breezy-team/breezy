@@ -1,8 +1,10 @@
 bzr-builddeb (2.8.1) UNRELEASED; urgency=low
 
   * New revision specifier 'upstream:'. LP: #905728
+  * Imports are now deferred in command definitions, to speed up
+    commands like 'bzr bash-completion'. LP: #903650
 
- -- Jelmer Vernooij <jelmer@debian.org>  Sat, 17 Dec 2011 17:41:19 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 02 Jan 2012 17:57:33 +0100
 
 bzr-builddeb (2.8.0) unstable; urgency=low
 
