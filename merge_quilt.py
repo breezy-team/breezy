@@ -35,9 +35,10 @@ from bzrlib import (
 
 class QuiltError(errors.BzrError):
 
-    _fmt = "An error occurred running quilt: %(msg)s"
+    _fmt = "An error (%(retcode)d) occurred running quilt: %(msg)s"
 
-    def __init__(self, msg):
+    def __init__(self, retcode, msg):
+        self.retcode = retcode
         self.msg = msg
 
 
@@ -66,22 +67,25 @@ def run_quilt(args, working_dir, series_file=None, patches_dir=None, quiet=None)
     if quiet is None:
         quiet = trace.is_quiet()
     if quiet:
-        kwargs = {"stderr": subprocess.STDOUT, "stdout": subprocess.PIPE}
+        stderr =  subprocess.STDOUT
     else:
-        kwargs = {}
+        stderr = subprocess.PIPE
     command = ["quilt"] + args
     trace.mutter("running: %r", command)
     try:
-        proc = subprocess.Popen(command, cwd=working_dir,
-                stdin=subprocess.PIPE, preexec_fn=subprocess_setup, **kwargs)
+        proc = subprocess.Popen(command, cwd=working_dir, env=env,
+                stdin=subprocess.PIPE, preexec_fn=subprocess_setup,
+                stdout=subprocess.PIPE, stderr=stderr)
     except OSError, e:
         if e.errno != errno.ENOENT:
             raise
         raise errors.BzrError("quilt is not installed, please install it")
     output = proc.communicate()
     if proc.returncode not in (0, 2):
-        raise QuiltError(output)
-    return output
+        raise QuiltError(proc.returncode, output[1])
+    if output[0] is None:
+        return ""
+    return output[0]
 
 
 def quilt_pop_all(working_dir, patches_dir=None, series_file=None, quiet=None):
@@ -91,7 +95,7 @@ def quilt_pop_all(working_dir, patches_dir=None, series_file=None, quiet=None):
     :param patches_dir: Optional patches directory
     :param series_file: Optional series file
     """
-    return run_quilt(["pop", "-a", "-v"], working_dir=working_dir, quiet=quiet)
+    return run_quilt(["pop", "-a", "-v"], working_dir=working_dir, patches_dir=patches_dir, series_file=series_file, quiet=quiet)
 
 
 def quilt_push_all(working_dir, patches_dir=None, series_file=None, quiet=None):
@@ -101,7 +105,7 @@ def quilt_push_all(working_dir, patches_dir=None, series_file=None, quiet=None):
     :param patches_dir: Optional patches directory
     :param series_file: Optional series file
     """
-    return run_quilt(["push", "-a", "-v"], working_dir=working_dir, quiet=quiet)
+    return run_quilt(["push", "-a", "-v"], working_dir=working_dir, patches_dir=patches_dir, series_file=series_file, quiet=quiet)
 
 
 def quilt_applied(working_dir, patches_dir=None, series_file=None):
@@ -111,7 +115,7 @@ def quilt_applied(working_dir, patches_dir=None, series_file=None):
     :param patches_dir: Optional patches directory
     :param series_file: Optional series file
     """
-    return run_quilt(["applied"], working_dir=working_dir).splitlines()
+    return run_quilt(["applied"], working_dir=working_dir, patches_dir=patches_dir, series_file=series_file).splitlines()
 
 
 def quilt_unapplied(working_dir, patches_dir=None, series_file=None):
@@ -121,7 +125,17 @@ def quilt_unapplied(working_dir, patches_dir=None, series_file=None):
     :param patches_dir: Optional patches directory
     :param series_file: Optional series file
     """
-    return run_quilt(["unapplied"], working_dir=working_dir).splitlines()
+    return run_quilt(["unapplied"], working_dir=working_dir, patches_dir=patches_dir, series_file=series_file).splitlines()
+
+
+def quilt_series(working_dir, patches_dir=None, series_file=None):
+    """Find the list of patches.
+
+    :param working_dir: Directory to work in
+    :param patches_dir: Optional patches directory
+    :param series_file: Optional series file
+    """
+    return run_quilt(["series"], working_dir=working_dir, patches_dir=patches_dir, series_file=series_file).splitlines()
 
 
 def tree_unapply_patches(orig_tree):

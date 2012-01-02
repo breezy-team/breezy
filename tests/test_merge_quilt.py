@@ -19,8 +19,16 @@
 
 """Tests for the merge_quilt code."""
 
+import os
+
 from bzrlib.plugins.builddeb.tests import ExecutableFeature
-from bzrlib.plugins.builddeb.merge_quilt import quilt_pop_all
+from bzrlib.plugins.builddeb.merge_quilt import (
+    quilt_pop_all,
+    quilt_applied,
+    quilt_unapplied,
+    quilt_push_all,
+    quilt_series,
+    )
 
 from bzrlib.tests import TestCaseWithTransport
 
@@ -31,12 +39,37 @@ class QuiltTests(TestCaseWithTransport):
 
     _test_needs_features = [quilt_feature]
 
-    def test_push_all_empty(self):
-        source = self.make_branch_and_tree('source')
-        self.build_tree(['source/debian/', 'source/debian/patches/'])
+    def make_empty_quilt_dir(self, path):
+        source = self.make_branch_and_tree(path)
+        self.build_tree([os.path.join(path, n) for n in ['debian/',
+            'debian/patches/']])
         self.build_tree_contents([
-            ("test.recipe", "# bzr-builder format 0.3 "
-             "deb-version 1\nsource 3\n"),
-            ("source/debian/patches/series", "\n")])
+            (os.path.join(path, "debian/patches/series"), "\n")])
         source.add(["debian", "debian/patches", "debian/patches/series"])
+        return source
+
+    def test_series_all_empty(self):
+        self.make_empty_quilt_dir("source")
+        self.assertEquals([], quilt_series("source"))
+
+    def test_series_all(self):
+        self.make_empty_quilt_dir("source")
+        self.build_tree_contents([
+            ("source/debian/patches/series", "patch1.diff\n"),
+            ("source/debian/patches/patch1.diff", "foob ar")])
+        self.assertEquals(["patch1.diff"], quilt_series("source"))
+
+    def test_push_all_empty(self):
+        self.make_empty_quilt_dir("source")
         quilt_pop_all("source", quiet=True)
+
+    def test_applied_empty(self):
+        self.make_empty_quilt_dir("source")
+        self.assertEquals([], quilt_applied("source"))
+
+    def test_unapplied(self):
+        self.make_empty_quilt_dir("source")
+        self.build_tree_contents([
+            ("source/debian/patches/series", "patch1.diff\n"),
+            ("source/debian/patches/patch1.diff", "foob ar")])
+        self.assertEquals(["patch1.diff"], quilt_unapplied("source"))
