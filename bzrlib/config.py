@@ -2921,6 +2921,10 @@ class MutableSection(Section):
                     self.remove(k)
             else:
                 self.set(k, actual)
+            # Report concurrent updates in an ad-hoc way. This should only
+            # occurs when different processes try to update the same option
+            # which is not supported (as in: the config framework is not meant
+            # to be used a sharing mechanism).
             if expected != reloaded:
                 if actual is _DeletedOption:
                     actual = '<DELETED>'
