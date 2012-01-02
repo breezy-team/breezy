@@ -8,8 +8,10 @@ bzr-builddeb (2.8.1) UNRELEASED; urgency=low
   * Automatically apply quilt patches. LP: #616791
   * Automatically apply v3 quilt patches for 'bzr builddeb' and 'bzr bd-
     do'. LP: #616791
+  * Automatically apply patches for 3.0 (quilt) packages in 'bzr bd-do'
+    and 'bzr bd'. LP: #616791
 
- -- Jelmer Vernooij <jelmer@debian.org>  Mon, 02 Jan 2012 22:43:13 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 02 Jan 2012 23:02:44 +0100
 
 bzr-builddeb (2.8.0) unstable; urgency=low
 

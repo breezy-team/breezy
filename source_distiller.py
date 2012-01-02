@@ -24,14 +24,11 @@ import tempfile
 
 from bzrlib import errors as bzr_errors
 
-from bzrlib.plugins.builddeb.quilt import quilt_push_all
 from bzrlib.plugins.builddeb.util import (
     export,
     extract_orig_tarballs,
     get_parent_dir,
-    get_source_format,
     recursive_copy,
-    FORMAT_3_0_QUILT,
     )
 
 
@@ -64,7 +61,7 @@ class SourceDistiller(object):
             assert not self.use_existing, "distiller doesn't support use_existing"
         self.is_working_tree = is_working_tree
 
-    def distill(self, target, apply_quilt_patches=True):
+    def distill(self, target):
         """Extract the source to a tree rooted at the given location.
 
         The passed location cannot already exist. If it does then
@@ -72,7 +69,6 @@ class SourceDistiller(object):
 
         :param target: a string containing the location at which to 
             place the tree containing the buildable source.
-        :param apply_quilt_patches: Whether to apply v3 quilt patches
         """
         if not self.supports_use_existing or not self.use_existing:
             if os.path.exists(target):
@@ -81,10 +77,6 @@ class SourceDistiller(object):
             if not os.path.exists(target):
                 raise bzr_errors.NotADirectory(target)
         self._distill(target)
-        if (apply_quilt_patches and 
-            os.path.isfile(os.path.join(target, "debian/patches/series")) and
-            get_source_format(self.tree) == FORMAT_3_0_QUILT):
-            quilt_push_all(target)
 
     def _distill(self, target):
         """Subclasses should override this to implement distill."""

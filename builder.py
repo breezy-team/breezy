@@ -28,10 +28,13 @@ from bzrlib.plugins.builddeb.errors import (
                     NoSourceDirError,
                     BuildFailedError,
                     )
+from bzrlib.plugins.builddeb.quilt import quilt_push_all
 from bzrlib.plugins.builddeb.util import (
-        get_parent_dir,
-        subprocess_setup,
-        )
+    get_parent_dir,
+    tree_get_source_format,
+    subprocess_setup,
+    FORMAT_3_0_QUILT,
+    )
 
 
 class DebBuild(object):
@@ -71,8 +74,20 @@ class DebBuild(object):
             if self.use_existing:
                 raise NoSourceDirError
 
-    def export(self):
+    def export(self, apply_quilt_patches=True):
         self.distiller.distill(self.target_dir)
+        if apply_quilt_patches:
+            self._apply_quilt_patches()
+
+    def _apply_quilt_patches(self):
+        if not os.path.isfile(os.path.join(self.target_dir, "debian/patches/series")):
+            return
+        format_path = os.path.join(self.target_dir, "debian/source/format")
+        if not os.path.isfile(format_path):
+            return
+        with file(format_path, 'r') as f:
+            if f.read().strip() == FORMAT_3_0_QUILT:
+                quilt_push_all(os.path.abspath(self.target_dir))
 
     def build(self):
         """This builds the package using the supplied command."""
