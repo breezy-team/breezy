@@ -198,7 +198,7 @@ def pre_merge_fix_ancestry(merger):
     from bzrlib.workingtree import WorkingTree
     if not isinstance(merger.this_tree, WorkingTree):
         return
-    if merger.other_branch is None:
+    if getattr(merger, "other_branch", None) is None:
         return
     if (not merger.this_tree.path2id("debian/changelog") or
         not merger.other_tree.path2id("debian/changelog")):
