@@ -25,12 +25,6 @@ import os
 import shutil
 import tempfile
 
-try:
-    from debian.changelog import Version
-except ImportError:
-    # Prior to 0.1.15 the debian module was called debian_bundle
-    from debian_bundle.changelog import Version
-
 from bzrlib import (
     urlutils,
     )
@@ -682,6 +676,12 @@ class cmd_merge_upstream(Command):
             distribution=None, package=None,
             directory=".", revision=None, merge_type=None,
             last_version=None, force=None, snapshot=False, launchpad=False):
+        try:
+            from debian.changelog import Version
+        except ImportError:
+            # Prior to 0.1.15 the debian module was called debian_bundle
+            from debian_bundle.changelog import Version
+
         from bzrlib.plugins.builddeb.errors import PackageVersionNotPresent
         from bzrlib.plugins.builddeb.hooks import run_hook
         from bzrlib.plugins.builddeb.upstream import (
@@ -1033,6 +1033,11 @@ class cmd_import_upstream(Command):
     takes_args = ['version', 'location', 'upstream_branch?']
 
     def run(self, version, location, upstream_branch=None, revision=None):
+        try:
+            from debian.changelog import Version
+        except ImportError:
+            # Prior to 0.1.15 the debian module was called debian_bundle
+            from debian_bundle.changelog import Version
         from bzrlib.plugins.builddeb.import_dsc import (
             DistributionBranch,
             DistributionBranchSet,
