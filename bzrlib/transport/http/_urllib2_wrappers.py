@@ -449,13 +449,28 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
         config_stack = config.GlobalStack()
         ca_certs = config_stack.get('ssl.ca_certs')
         cert_reqs = config_stack.get('ssl.cert_reqs')
-        if cert_reqs == "none":
+        if cert_reqs == ssl.CERT_NONE:
             trace.warning("not checking SSL certificates for %s: %d",
                 self.host, self.port)
-        ssl_sock = ssl.wrap_socket(self.sock, self.key_file, self.cert_file,
-            cert_reqs=cert_reqs, ca_certs=ca_certs)
+        else:
+            trace.warning(
+                "no valid trusted SSL CA certificates file set. See "
+                "'bzr help ssl.ca_certs' for more information on setting "
+                "trusted CA's.")
+        try:
+            ssl_sock = ssl.wrap_socket(self.sock, self.key_file, self.cert_file,
+                cert_reqs=cert_reqs, ca_certs=ca_certs)
+        except ssl.SSLError, e:
+            if e.errno != ssl.SSL_ERROR_SSL:
+                raise
+            trace.note(
+                "To disable SSL certificate verification, use "
+                "-Ossl.cert_reqs=none. See ``bzr help ssl.ca_certs`` for "
+                "more information on specifying trusted CA certificates.")
+            raise
         peer_cert = ssl_sock.getpeercert()
-        if cert_reqs == "required" or peer_cert:
+        if (cert_reqs == ssl.CERT_REQUIRED or
+            (cert_reqs == ssl.CERT_OPTIONAL and peer_cert)):
             match_hostname(peer_cert, self.host)
 
         # Wrap the ssl socket before anybody use it
