@@ -96,8 +96,7 @@ class TestVersionInfoRio(VersionInfoTestCase):
 
     def regen_text(self, wt, **kwargs):
         sio = StringIO()
-        builder = RioVersionInfoBuilder(wt.branch, working_tree=wt,
-                                        **kwargs)
+        builder = RioVersionInfoBuilder(wt.branch, working_tree=wt, **kwargs)
         builder.generate(sio)
         val = sio.getvalue()
         return val
@@ -135,8 +134,7 @@ class TestVersionInfoRio(VersionInfoTestCase):
 
     def regen(self, wt, **kwargs):
         sio = StringIO()
-        builder = RioVersionInfoBuilder(wt.branch, working_tree=wt,
-                                        **kwargs)
+        builder = RioVersionInfoBuilder(wt.branch, working_tree=wt, **kwargs)
         builder.generate(sio)
         sio.seek(0)
         stanzas = list(read_stanzas(sio))
@@ -154,8 +152,7 @@ class TestVersionInfoRio(VersionInfoTestCase):
         self.assertEqual(['bloe'], stanza.get_all('bla'))
 
     def get_one_stanza(self, stanza, key):
-        new_stanzas = list(read_stanzas(
-                            StringIO(stanza[key].encode('utf8'))))
+        new_stanzas = list(read_stanzas(StringIO(stanza[key].encode('utf8'))))
         self.assertEqual(1, len(new_stanzas))
         return new_stanzas[0]
 
