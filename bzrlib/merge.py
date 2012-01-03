@@ -617,6 +617,7 @@ class Merger(object):
                   'interesting_ids': self.interesting_ids,
                   'interesting_files': self.interesting_files,
                   'this_branch': self.this_branch,
+                  'other_branch': self.other_branch,
                   'do_merge': False}
         if self.merge_type.requires_base:
             kwargs['base_tree'] = self.base_tree
@@ -725,7 +726,8 @@ class Merge3Merger(object):
                  interesting_ids=None, reprocess=False, show_base=False,
                  pb=None, pp=None, change_reporter=None,
                  interesting_files=None, do_merge=True,
-                 cherrypick=False, lca_trees=None, this_branch=None):
+                 cherrypick=False, lca_trees=None, this_branch=None,
+                 other_branch=None):
         """Initialize the merger object and perform the merge.
 
         :param working_tree: The working tree to apply the merge to
@@ -734,6 +736,7 @@ class Merge3Merger(object):
         :param other_tree: The other tree to merge changes from
         :param this_branch: The branch associated with this_tree.  Defaults to
             this_tree.branch if not supplied.
+        :param other_branch: The branch associated with other_tree, if any.
         :param interesting_ids: The file_ids of files that should be
             participate in the merge.  May not be combined with
             interesting_files.
@@ -761,10 +764,12 @@ class Merge3Merger(object):
             this_branch = this_tree.branch
         self.interesting_ids = interesting_ids
         self.interesting_files = interesting_files
-        self.this_tree = working_tree
+        self.working_tree = working_tree
+        self.this_tree = this_tree
         self.base_tree = base_tree
         self.other_tree = other_tree
         self.this_branch = this_branch
+        self.other_branch = other_branch
         self._raw_conflicts = []
         self.cooked_conflicts = []
         self.reprocess = reprocess
@@ -786,7 +791,9 @@ class Merge3Merger(object):
 
     def do_merge(self):
         operation = cleanup.OperationWithCleanups(self._do_merge)
-        self.this_tree.lock_tree_write()
+        self.working_tree.lock_tree_write()
+        operation.add_cleanup(self.working_tree.unlock)
+        self.this_tree.lock_read()
         operation.add_cleanup(self.this_tree.unlock)
         self.base_tree.lock_read()
         operation.add_cleanup(self.base_tree.unlock)
@@ -795,13 +802,13 @@ class Merge3Merger(object):
         operation.run()
 
     def _do_merge(self, operation):
-        self.tt = transform.TreeTransform(self.this_tree, None)
+        self.tt = transform.TreeTransform(self.working_tree, None)
         operation.add_cleanup(self.tt.finalize)
         self._compute_transform()
         results = self.tt.apply(no_conflicts=True)
         self.write_modified(results)
         try:
-            self.this_tree.add_conflicts(self.cooked_conflicts)
+            self.working_tree.add_conflicts(self.cooked_conflicts)
         except errors.UnsupportedOperation:
             pass
 
@@ -814,7 +821,7 @@ class Merge3Merger(object):
         return operation.run_simple()
 
     def _make_preview_transform(self):
-        self.tt = transform.TransformPreview(self.this_tree)
+        self.tt = transform.TransformPreview(self.working_tree)
         self._compute_transform()
         return self.tt
 
@@ -1119,14 +1126,14 @@ class Merge3Merger(object):
     def write_modified(self, results):
         modified_hashes = {}
         for path in results.modified_paths:
-            file_id = self.this_tree.path2id(self.this_tree.relpath(path))
+            file_id = self.working_tree.path2id(self.working_tree.relpath(path))
             if file_id is None:
                 continue
-            hash = self.this_tree.get_file_sha1(file_id)
+            hash = self.working_tree.get_file_sha1(file_id)
             if hash is None:
                 continue
             modified_hashes[file_id] = hash
-        self.this_tree.set_merge_modified(modified_hashes)
+        self.working_tree.set_merge_modified(modified_hashes)
 
     @staticmethod
     def parent(entry, file_id):

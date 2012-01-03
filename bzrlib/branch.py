@@ -53,6 +53,7 @@ from bzrlib.i18n import gettext, ngettext
 import bzrlib.bzrdir
 
 from bzrlib import (
+    bzrdir,
     controldir,
     )
 from bzrlib.decorators import (
@@ -1565,14 +1566,11 @@ class Branch(controldir.ControlComponent):
             heads that must be fetched if present, but no error is necessary if
             they are not present.
         """
-        # For bzr native formats must_fetch is just the tip, and if_present_fetch
-        # are the tags.
+        # For bzr native formats must_fetch is just the tip, and
+        # if_present_fetch are the tags.
         must_fetch = set([self.last_revision()])
         if_present_fetch = set()
-        c = self.get_config()
-        include_tags = c.get_user_option_as_bool('branch.fetch_tags',
-                                                 default=False)
-        if include_tags:
+        if self.get_config_stack().get('branch.fetch_tags'):
             try:
                 if_present_fetch = set(self.tags.get_reverse_tag_dict())
             except errors.TagsNotSupported:
@@ -1587,7 +1585,7 @@ class BranchFormat(controldir.ControlComponentFormat):
 
     Formats provide three things:
      * An initialization routine,
-     * a format string,
+     * a format description
      * an open routine.
 
     Formats are placed in an dict by their format string for reference
@@ -1999,13 +1997,13 @@ class SwitchHookParams(object):
             self.revision_id)
 
 
-class BranchFormatMetadir(bzrdir.BzrDirMetaComponentFormat, BranchFormat):
+class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
     """Base class for branch formats that live in meta directories.
     """
 
     def __init__(self):
         BranchFormat.__init__(self)
-        bzrdir.BzrDirMetaComponentFormat.__init__(self)
+        bzrdir.BzrFormat.__init__(self)
 
     @classmethod
     def find_format(klass, controldir, name=None):
@@ -2049,7 +2047,7 @@ class BranchFormatMetadir(bzrdir.BzrDirMetaComponentFormat, BranchFormat):
         control_files.create_lock()
         control_files.lock_write()
         try:
-            utf8_files += [('format', self.get_format_string())]
+            utf8_files += [('format', self.as_string())]
             for (filename, content) in utf8_files:
                 branch_transport.put_bytes(
                     filename, content,
@@ -2096,6 +2094,14 @@ class BranchFormatMetadir(bzrdir.BzrDirMetaComponentFormat, BranchFormat):
 
     def supports_leaving_lock(self):
         return True
+
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+            basedir=None):
+        BranchFormat.check_support_status(self,
+            allow_unsupported=allow_unsupported, recommend_upgrade=recommend_upgrade,
+            basedir=basedir)
+        bzrdir.BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
+            recommend_upgrade=recommend_upgrade, basedir=basedir)
 
 
 class BzrBranchFormat5(BranchFormatMetadir):
@@ -2304,7 +2310,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
         branch_transport = a_bzrdir.get_branch_transport(self, name=name)
         branch_transport.put_bytes('location',
             target_branch.user_url)
-        branch_transport.put_bytes('format', self.get_format_string())
+        branch_transport.put_bytes('format', self.as_string())
         branch = self.open(
             a_bzrdir, name, _found=True,
             possible_transports=[target_branch.bzrdir.root_transport])
@@ -2711,6 +2717,16 @@ class BzrBranch(Branch, _RelockDebugMixin):
         out_string = '%d %s\n' % (revno, revision_id)
         self._transport.put_bytes('last-revision', out_string,
             mode=self.bzrdir._get_file_mode())
+
+    @needs_write_lock
+    def update_feature_flags(self, updated_flags):
+        """Update the feature flags for this branch.
+
+        :param updated_flags: Dictionary mapping feature names to necessities
+            A necessity can be None to indicate the feature should be removed
+        """
+        self._format._update_feature_flags(updated_flags)
+        self.control_transport.put_bytes('format', self._format.as_string())
 
 
 class FullHistoryBzrBranch(BzrBranch):
@@ -3218,7 +3234,7 @@ class Converter5to6(object):
 
         # Copying done; now update target format
         new_branch._transport.put_bytes('format',
-            format.get_format_string(),
+            format.as_string(),
             mode=new_branch.bzrdir._get_file_mode())
 
         # Clean up old files
@@ -3237,7 +3253,7 @@ class Converter6to7(object):
         format = BzrBranchFormat7()
         branch._set_config_location('stacked_on_location', '')
         # update target format
-        branch._transport.put_bytes('format', format.get_format_string())
+        branch._transport.put_bytes('format', format.as_string())
 
 
 class Converter7to8(object):
@@ -3247,7 +3263,7 @@ class Converter7to8(object):
         format = BzrBranchFormat8()
         branch._transport.put_bytes('references', '')
         # update target format
-        branch._transport.put_bytes('format', format.get_format_string())
+        branch._transport.put_bytes('format', format.as_string())
 
 
 class InterBranch(InterObject):

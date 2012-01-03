@@ -107,11 +107,11 @@ class cmd_version_info(Command):
         if format is None:
             format = version_info_formats.format_registry.get()
 
-        wt = None
         try:
             wt = workingtree.WorkingTree.open_containing(location)[0]
         except errors.NoWorkingTree:
             b = branch.Branch.open(location)
+            wt = None
         else:
             b = wt.branch
 

@@ -844,7 +844,7 @@ ControlDir.hooks = ControlDirHooks()
 
 
 class ControlComponentFormat(object):
-    """A component that can live inside of a .bzr meta directory."""
+    """A component that can live inside of a control directory."""
 
     upgrade_recommended = False
 

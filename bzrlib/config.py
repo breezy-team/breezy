@@ -1652,17 +1652,6 @@ def default_email():
     raise errors.NoWhoami()
 
 
-def email_from_store(unicode_str):
-    """Unlike other env vars, BZR_EMAIL takes precedence over config settings.
-
-    Whatever comes from a config file is then overridden.
-    """
-    value = os.environ.get('BZR_EMAIL')
-    if value:
-        return value.decode(osutils.get_user_encoding())
-    return unicode_str
-
-
 def _auto_user_id():
     """Calculate automatic user identification.
 
@@ -2343,12 +2332,15 @@ class Option(object):
     encoutered, in which config files it can be stored.
     """
 
-    def __init__(self, name, default=None, default_from_env=None,
-                 help=None, from_unicode=None, invalid=None,
-                 unquote=True):
+    def __init__(self, name, override_from_env=None,
+                 default=None, default_from_env=None,
+                 help=None, from_unicode=None, invalid=None, unquote=True):
         """Build an option definition.
 
         :param name: the name used to refer to the option.
+
+        :param override_from_env: A list of environment variables which can
+           provide override any configuration setting.
 
         :param default: the default value to use when none exist in the config
             stores. This is either a string that ``from_unicode`` will convert
@@ -2379,9 +2371,12 @@ class Option(object):
            safely unquote them (see http://pad.lv/906897). It is provided so
            daughter classes can handle the quoting themselves.
         """
+        if override_from_env is None:
+            override_from_env = []
         if default_from_env is None:
             default_from_env = []
         self.name = name
+        self.override_from_env = override_from_env
         # Convert the default value to a unicode string so all values are
         # strings internally before conversion (via from_unicode) is attempted.
         if default is None:
@@ -2428,6 +2423,17 @@ class Option(object):
             elif self.invalid == 'error':
                 raise errors.ConfigOptionValueError(self.name, unicode_value)
         return converted
+
+    def get_override(self):
+        value = None
+        for var in self.override_from_env:
+            try:
+                # If the env variable is defined, its value takes precedence
+                value = os.environ[var].decode(osutils.get_user_encoding())
+                break
+            except KeyError:
+                continue
+        return value
 
     def get_default(self):
         value = None
@@ -2634,6 +2640,11 @@ This option is normally set by ``bind``.
 See also: bound.
 """))
 option_registry.register(
+    Option('branch.fetch_tags', default=False,  from_unicode=bool_from_store,
+           help="""\
+Whether revisions associated with tags should be fetched.
+"""))
+option_registry.register(
     Option('bzr.workingtree.worth_saving_limit', default=10,
            from_unicode=int_from_store,  invalid='warning',
            help='''\
@@ -2698,8 +2709,7 @@ option_registry.register(
     Option('editor',
            help='The command called to launch an editor to enter a message.'))
 option_registry.register(
-    Option('email', default=default_email,
-           from_unicode=email_from_store,
+    Option('email', override_from_env=['BZR_EMAIL'], default=default_email,
            help='The users identity'))
 option_registry.register(
     Option('gpg_signing_command',
@@ -2982,6 +2992,7 @@ class CommandLineStore(Store):
         if opts is None:
             opts = {}
         self.options = {}
+        self.id = 'cmdline'
 
     def _reset(self):
         # The dict should be cleared but not replaced so it can be shared.
@@ -3005,8 +3016,7 @@ class CommandLineStore(Store):
         return 'cmdline'
 
     def get_sections(self):
-        yield self,  self.readonly_section_class('cmdline_overrides',
-                                                 self.options)
+        yield self,  self.readonly_section_class(None, self.options)
 
 
 class IniFileStore(Store):
@@ -3128,8 +3138,9 @@ class IniFileStore(Store):
             self._config_obj.list_values = False
 
     def unquote(self, value):
-        if value:
-            # _unquote doesn't handle None nor empty strings
+        if value and isinstance(value, basestring):
+            # _unquote doesn't handle None nor empty strings nor anything that
+            # is not a string, really.
             value = self._config_obj._unquote(value)
         return value
 
@@ -3271,6 +3282,7 @@ class ControlStore(LockableIniFileStore):
         super(ControlStore, self).__init__(bzrdir.transport,
                                           'control.conf',
                                            lock_dir_name='branch_lock')
+        self.id = 'control'
 
 
 class SectionMatcher(object):
@@ -3463,19 +3475,7 @@ class Stack(object):
         if expand is None:
             expand = _get_expand_default_value()
         value = None
-        # Ensuring lazy loading is achieved by delaying section matching (which
-        # implies querying the persistent storage) until it can't be avoided
-        # anymore by using callables to describe (possibly empty) section
-        # lists.
         found_store = None # Where the option value has been found
-        for sections in self.sections_def:
-            for store, section in sections():
-                value = section.get(name)
-                if value is not None:
-                    found_store = store
-                    break
-            if value is not None:
-                break
         # If the option is registered, it may provide additional info about
         # value handling
         try:
@@ -3483,9 +3483,10 @@ class Stack(object):
         except KeyError:
             # Not registered
             opt = None
+
         def expand_and_convert(val):
-            # This may need to be called twice if the value is None or ends up
-            # being None during expansion or conversion.
+            # This may need to be called in different contexts if the value is
+            # None or ends up being None during expansion or conversion.
             if val is not None:
                 if expand:
                     if isinstance(val, basestring):
@@ -3499,11 +3500,30 @@ class Stack(object):
                 else:
                     val = opt.convert_from_unicode(found_store, val)
             return val
-        value = expand_and_convert(value)
-        if opt is not None and value is None:
-            # If the option is registered, it may provide a default value
-            value = opt.get_default()
+
+        # First of all, check if the environment can override the configuration
+        # value
+        if opt is not None and opt.override_from_env:
+            value = opt.get_override()
             value = expand_and_convert(value)
+        if value is None:
+            # Ensuring lazy loading is achieved by delaying section matching
+            # (which implies querying the persistent storage) until it can't be
+            # avoided anymore by using callables to describe (possibly empty)
+            # section lists.
+            for sections in self.sections_def:
+                for store, section in sections():
+                    value = section.get(name)
+                    if value is not None:
+                        found_store = store
+                        break
+                if value is not None:
+                    break
+            value = expand_and_convert(value)
+            if opt is not None and value is None:
+                # If the option is registered, it may provide a default value
+                value = opt.get_default()
+                value = expand_and_convert(value)
         for hook in ConfigHooks['get']:
             hook(self, name, value)
         return value

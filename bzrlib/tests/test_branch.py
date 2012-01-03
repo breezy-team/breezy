@@ -201,7 +201,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
         self.assertIsInstance(
             SampleBranchFormat.from_string("Sample branch format."),
             SampleBranchFormat)
-        self.assertRaises(ValueError,
+        self.assertRaises(AssertionError,
             SampleBranchFormat.from_string, "Different branch format.")
 
     def test_find_format_not_branch(self):
@@ -216,6 +216,16 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
         self.assertRaises(errors.UnknownFormatError,
                           _mod_branch.BranchFormatMetadir.find_format,
                           dir)
+
+    def test_find_format_with_features(self):
+        tree = self.make_branch_and_tree('.', format='2a')
+        tree.branch.update_feature_flags({"name": "optional"})
+        found_format = _mod_branch.BranchFormatMetadir.find_format(tree.bzrdir)
+        self.assertIsInstance(found_format, _mod_branch.BranchFormatMetadir)
+        self.assertEquals(found_format.features.get("name"), "optional")
+        tree.branch.update_feature_flags({"name": None})
+        branch = _mod_branch.Branch.open('.')
+        self.assertEquals(branch._format.features, {})
 
     def test_register_unregister_format(self):
         # Test the deprecated format registration functions
@@ -718,4 +728,3 @@ class TestPullResult(tests.TestCase):
         f = StringIO()
         r.report(f)
         self.assertEqual("No revisions or tags to pull.\n", f.getvalue())
-

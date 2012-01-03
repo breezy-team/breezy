@@ -1293,6 +1293,16 @@ class MetaDirRepository(Repository):
         """Returns the policy for making working trees on new branches."""
         return not self._transport.has('no-working-trees')
 
+    @needs_write_lock
+    def update_feature_flags(self, updated_flags):
+        """Update the feature flags for this branch.
+
+        :param updated_flags: Dictionary mapping feature names to necessities
+            A necessity can be None to indicate the feature should be removed
+        """
+        self._format._update_feature_flags(updated_flags)
+        self.control_transport.put_bytes('format', self._format.as_string())
+
 
 class RepositoryFormatRegistry(controldir.ControlComponentFormatRegistry):
     """Repository format registry."""
@@ -1497,7 +1507,7 @@ class RepositoryFormat(controldir.ControlComponentFormat):
             hook(params)
 
 
-class RepositoryFormatMetaDir(bzrdir.BzrDirMetaComponentFormat, RepositoryFormat):
+class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
     """Common base class for the new repositories using the metadir layout."""
 
     rich_root_data = False
@@ -1514,7 +1524,7 @@ class RepositoryFormatMetaDir(bzrdir.BzrDirMetaComponentFormat, RepositoryFormat
 
     def __init__(self):
         RepositoryFormat.__init__(self)
-        bzrdir.BzrDirMetaComponentFormat.__init__(self)
+        bzrdir.BzrFormat.__init__(self)
 
     def _create_control_files(self, a_bzrdir):
         """Create the required files and the initial control_files object."""
@@ -1558,6 +1568,14 @@ class RepositoryFormatMetaDir(bzrdir.BzrDirMetaComponentFormat, RepositoryFormat
         except errors.NoSuchFile:
             raise errors.NoRepositoryPresent(a_bzrdir)
         return klass._find_format(format_registry, 'repository', format_string)
+
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+            basedir=None):
+        RepositoryFormat.check_support_status(self,
+            allow_unsupported=allow_unsupported, recommend_upgrade=recommend_upgrade,
+            basedir=basedir)
+        bzrdir.BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
+            recommend_upgrade=recommend_upgrade, basedir=basedir)
 
 
 # formats which have no format string are not discoverable or independently

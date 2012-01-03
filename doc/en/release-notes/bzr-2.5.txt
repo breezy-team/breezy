@@ -28,6 +28,10 @@ New Features
   parent directories.
   (Jared Hance, Jelmer Vernooij, #253529)
 
+* ``config.Option`` can now declare ``override_from_env``, a list of
+  environment variables which, when set, that takes precedence over values
+  defined in configuration files. (Vincent Ladeuil, #907279)
+
 Improvements
 ************
 
@@ -94,6 +98,10 @@ Bug Fixes
 * Report mistake trying to move a removed file with a non-ascii name without
   UnicodeEncodeError being raised. (Martin Packman, #898541)
 
+* Safely unquote configuration values in weird edge cases (a section seen as
+  a dictionary which is not a supported use case for the configuration
+  stacks). (Vincent Ladeuil, #908050)
+
 Documentation
 *************
 
@@ -146,11 +154,18 @@ Internals
 
 * Lazy imports can now only be absolute. (Jelmer Vernooij)
 
+* Merge3Mergers now have an optional ``other_branch`` argument
+  which contains the branch from which the ``other_tree``
+  was obtained, if any. (Jelmer Vernooij)
+
 * New HPSS call ``BzrDir.checkout_metadir``. (Jelmer Vernooij, #894459)
 
 * New HPSS call ``VersionedFileRepository.get_inventories``,
   speeding up various commands including ``bzr export``,
   ``bzr checkout`` and ``bzr cat``. (Jelmer Vernooij, #608640)
+
+* The ``ConfigCommandLineStore`` is now supported by ``bzr config`` and is
+  seen as single no-name section of configuration options. (Vincent Ladeuil)
 
 Testing
 *******
@@ -366,6 +381,12 @@ Internals
 
 * The registry of merge types has been moved to ``merge`` from ``option`` but
   ``merge.get_merge_type_registry`` remains as an accessor. (Martin Packman)
+
+* All bzr control directories, branch formats, repository formats and
+  working tree formats now support feature flags, which are
+  serialized in their respective format files. See
+  ``doc/developers/feature-flags.txt`` for details.
+  (Jelmer Vernooij)
 
 Testing
 *******

@@ -2655,6 +2655,20 @@ class TestCommandLineStore(tests.TestCase):
         self.assertRaises(errors.BzrCommandError,
                           self.store._from_cmdline, ['a=b', 'c'])
 
+class TestStoreMinimalAPI(tests.TestCaseWithTransport):
+
+    scenarios = [(key, {'get_store': builder}) for key, builder
+                 in config.test_store_builder_registry.iteritems()] + [
+        ('cmdline', {'get_store': lambda test: config.CommandLineStore()})]
+
+    def test_id(self):
+        store = self.get_store(self)
+        if type(store) == config.TransportIniFileStore:
+            raise tests.TestNotApplicable(
+                "%s is not a concrete Store implementation"
+                " so it doesn't need an id" % (store.__class__.__name__,))
+        self.assertIsNot(None, store.id)
+
 
 class TestStore(tests.TestCaseWithTransport):
 
@@ -2758,6 +2772,22 @@ class TestStoreQuoting(TestStore):
                               self.assertIdempotent, 'a,b')
         else:
             self.assertIdempotent('a,b')
+
+
+class TestDictFromStore(tests.TestCase):
+
+    def test_unquote_not_string(self):
+        conf = config.MemoryStack('x=2\n[a_section]\na=1\n')
+        value = conf.get('a_section')
+        # Urgh, despite 'conf' asking for the no-name section, we get the
+        # content of another section as a dict o_O
+        self.assertEquals({'a': '1'}, value)
+        unquoted = conf.store.unquote(value)
+        # Which cannot be unquoted but shouldn't crash either (the use cases
+        # are getting the value or displaying it. In the later case, '%s' will
+        # do).
+        self.assertEquals({'a': '1'}, unquoted)
+        self.assertEquals("{u'a': u'1'}", '%s' % (unquoted,))
 
 
 class TestIniFileStoreContent(tests.TestCaseWithTransport):
@@ -3375,6 +3405,35 @@ class TestBaseStackGet(tests.TestCase):
         # Trying to use and invalid callable raises an exception on first use
         conf_stack = config.Stack([object])
         self.assertRaises(TypeError, conf_stack.get, 'foo')
+
+
+class TestStackWithSimpleStore(tests.TestCase):
+
+    def setUp(self):
+        super(TestStackWithSimpleStore, self).setUp()
+        self.overrideAttr(config, 'option_registry', config.OptionRegistry())
+        self.registry = config.option_registry
+
+    def get_conf(self, content=None):
+        return config.MemoryStack(content)
+
+    def test_override_value_from_env(self):
+        self.registry.register(
+            config.Option('foo', default='bar', override_from_env=['FOO']))
+        self.overrideEnv('FOO', 'quux')
+        # Env variable provides a default taking over the option one
+        conf = self.get_conf('foo=store')
+        self.assertEquals('quux', conf.get('foo'))
+
+    def test_first_override_value_from_env_wins(self):
+        self.registry.register(
+            config.Option('foo', default='bar',
+                          override_from_env=['NO_VALUE', 'FOO', 'BAZ']))
+        self.overrideEnv('FOO', 'foo')
+        self.overrideEnv('BAZ', 'baz')
+        # The first env var set wins
+        conf = self.get_conf('foo=store')
+        self.assertEquals('foo', conf.get('foo'))
 
 
 class TestMemoryStack(tests.TestCase):
@@ -4589,21 +4648,22 @@ class TestAutoUserId(tests.TestCase):
 class EmailOptionTests(tests.TestCase):
 
     def test_default_email_uses_BZR_EMAIL(self):
+        conf = config.MemoryStack('email=jelmer@debian.org')
         # BZR_EMAIL takes precedence over EMAIL
         self.overrideEnv('BZR_EMAIL', 'jelmer@samba.org')
         self.overrideEnv('EMAIL', 'jelmer@apache.org')
-        self.assertEquals('jelmer@samba.org', config.default_email())
+        self.assertEquals('jelmer@samba.org', conf.get('email'))
 
     def test_default_email_uses_EMAIL(self):
+        conf = config.MemoryStack('')
         self.overrideEnv('BZR_EMAIL', None)
         self.overrideEnv('EMAIL', 'jelmer@apache.org')
-        self.assertEquals('jelmer@apache.org', config.default_email())
+        self.assertEquals('jelmer@apache.org', conf.get('email'))
 
     def test_BZR_EMAIL_overrides(self):
+        conf = config.MemoryStack('email=jelmer@debian.org')
         self.overrideEnv('BZR_EMAIL', 'jelmer@apache.org')
-        self.assertEquals('jelmer@apache.org',
-            config.email_from_store('jelmer@debian.org'))
+        self.assertEquals('jelmer@apache.org', conf.get('email'))
         self.overrideEnv('BZR_EMAIL', None)
         self.overrideEnv('EMAIL', 'jelmer@samba.org')
-        self.assertEquals('jelmer@debian.org',
-            config.email_from_store('jelmer@debian.org'))
+        self.assertEquals('jelmer@debian.org', conf.get('email'))

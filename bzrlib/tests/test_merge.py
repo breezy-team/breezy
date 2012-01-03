@@ -446,8 +446,11 @@ class TestMerge(TestCaseWithTransport):
         merger.merge_type = _mod_merge.Merge3Merger
         tree_merger = merger.make_merger()
         self.assertIs(_mod_merge.Merge3Merger, tree_merger.__class__)
-        self.assertEqual('rev2b', tree_merger.other_tree.get_revision_id())
-        self.assertEqual('rev1', tree_merger.base_tree.get_revision_id())
+        self.assertEqual('rev2b',
+            tree_merger.other_tree.get_revision_id())
+        self.assertEqual('rev1',
+            tree_merger.base_tree.get_revision_id())
+        self.assertEqual(other_tree.branch, tree_merger.other_branch)
 
     def test_make_preview_transform(self):
         this_tree = self.make_branch_and_tree('this')
