@@ -29,7 +29,7 @@ from bzrlib.controldir import ControlDirFormat
 from bzrlib.errors import NotBranchError
 from bzrlib.safe_open import (
     BadUrl,
-    BlacklistPolicy,
+    _BlacklistPolicy,
     BranchLoopError,
     BranchReferenceForbidden,
     safe_open,
@@ -72,12 +72,13 @@ class TestSafeBranchOpenerCheckAndFollowBranchReference(TestCase):
 
     def make_branch_opener(self, should_follow_references, references,
                          unsafe_urls=None):
-        policy = BlacklistPolicy(should_follow_references, unsafe_urls)
+        policy = _BlacklistPolicy(should_follow_references, unsafe_urls)
         opener = self.StubbedSafeBranchOpener(references, policy)
         return opener
 
     def test_check_initial_url(self):
-        # check_and_follow_branch_reference rejects all URLs that are not allowed.
+        # check_and_follow_branch_reference rejects all URLs that are not
+        # allowed.
         opener = self.make_branch_opener(None, [], set(['a']))
         self.assertRaises(
             BadUrl, opener.check_and_follow_branch_reference, 'a')

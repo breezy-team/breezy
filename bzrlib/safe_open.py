@@ -96,8 +96,12 @@ class BranchOpenPolicy(object):
         raise NotImplementedError(self.check_one_url)
 
 
-class BlacklistPolicy(BranchOpenPolicy):
-    """Branch policy that forbids certain URLs."""
+class _BlacklistPolicy(BranchOpenPolicy):
+    """Branch policy that forbids certain URLs.
+
+    This doesn't cope with various alternative spellings of URLs,
+    with e.g. url encoding. It's mostly useful for tests.
+    """
 
     def __init__(self, should_follow_references, unsafe_urls=None):
         if unsafe_urls is None:
@@ -122,7 +126,7 @@ class BlacklistPolicy(BranchOpenPolicy):
         return urlutils.join(branch.base, url), False
 
 
-class AcceptAnythingPolicy(BlacklistPolicy):
+class AcceptAnythingPolicy(_BlacklistPolicy):
     """Accept anything, to make testing easier."""
 
     def __init__(self):
