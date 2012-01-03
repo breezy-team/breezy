@@ -28,6 +28,10 @@ New Features
   parent directories.
   (Jared Hance, Jelmer Vernooij, #253529)
 
+* ``config.Option`` can now declare ``override_from_env``, a list of
+  environment variables which, when set, that takes precedence over values
+  defined in configuration files. (Vincent Ladeuil, #907279)
+
 Improvements
 ************
 
