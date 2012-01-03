@@ -98,6 +98,10 @@ Bug Fixes
 * Report mistake trying to move a removed file with a non-ascii name without
   UnicodeEncodeError being raised. (Martin Packman, #898541)
 
+* Safely unquote configuration values in weird edge cases (a section seen as
+  a dictionary which is not a supported use case for the configuration
+  stacks). (Vincent Ladeuil, #908050)
+
 Documentation
 *************
 

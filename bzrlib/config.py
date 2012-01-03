@@ -3138,8 +3138,9 @@ class IniFileStore(Store):
             self._config_obj.list_values = False
 
     def unquote(self, value):
-        if value:
-            # _unquote doesn't handle None nor empty strings
+        if value and isinstance(value, basestring):
+            # _unquote doesn't handle None nor empty strings nor anything that
+            # is not a string, really.
             value = self._config_obj._unquote(value)
         return value
 

@@ -2760,6 +2760,22 @@ class TestStoreQuoting(TestStore):
             self.assertIdempotent('a,b')
 
 
+class TestDictFromStore(tests.TestCase):
+
+    def test_unquote_not_string(self):
+        conf = config.MemoryStack('x=2\n[a_section]\na=1\n')
+        value = conf.get('a_section')
+        # Urgh, despite 'conf' asking for the no-name section, we get the
+        # content of another section as a dict o_O
+        self.assertEquals({'a': '1'}, value)
+        unquoted = conf.store.unquote(value)
+        # Which cannot be unquoted but shouldn't crash either (the use cases
+        # are getting the value or displaying it. In the later case, '%s' will
+        # do).
+        self.assertEquals({'a': '1'}, unquoted)
+        self.assertEquals("{u'a': u'1'}", '%s' % (unquoted,))
+
+
 class TestIniFileStoreContent(tests.TestCaseWithTransport):
     """Simulate loading a config store with content of various encodings.
 
