@@ -19,6 +19,7 @@
 import os
 
 from bzrlib import tests
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 
 
 class TestPack(tests.TestCaseWithTransport):
@@ -102,3 +103,5 @@ class TestSmartServerPack(tests.TestCaseWithTransport):
         # adjust this number upwards without agreement from bzr's network
         # support maintainers.
         self.assertLength(6, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

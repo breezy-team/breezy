@@ -16,6 +16,8 @@
 
 """XML externalization support."""
 
+from __future__ import absolute_import
+
 # "XML is like violence: if it doesn't solve your problem, you aren't
 # using enough of it." -- various
 

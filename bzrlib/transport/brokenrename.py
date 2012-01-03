@@ -17,7 +17,7 @@
 """Transport implementation that doesn't detect clashing renames.
 """
 
-from stat import S_ISDIR
+from __future__ import absolute_import
 
 from bzrlib import (
         errors,

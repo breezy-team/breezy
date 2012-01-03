@@ -17,6 +17,8 @@
 # TODO: 'bzr resolve' should accept a directory name and work from that
 # point down
 
+from __future__ import absolute_import
+
 import os
 
 from bzrlib.lazy_import import lazy_import

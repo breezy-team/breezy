@@ -16,6 +16,8 @@
 
 """Merge logic for changelog_merge plugin."""
 
+from __future__ import absolute_import
+
 import difflib
 
 from bzrlib import merge

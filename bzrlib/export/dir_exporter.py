@@ -16,6 +16,8 @@
 
 """Export a bzrlib.tree.Tree to a new or empty directory."""
 
+from __future__ import absolute_import
+
 import errno
 import os
 

@@ -20,6 +20,8 @@ This module provides functions for converting shell-like globs to regular
 expressions.
 """
 
+from __future__ import absolute_import
+
 import re
 
 from bzrlib import (

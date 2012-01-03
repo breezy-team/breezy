@@ -20,6 +20,8 @@ Directory services are utilities that provide a mapping from URL-like strings
 to true URLs.  Examples include lp:urls and per-user location aliases.
 """
 
+from __future__ import absolute_import
+
 from bzrlib import (
     errors,
     registry,

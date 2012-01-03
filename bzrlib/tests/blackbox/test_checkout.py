@@ -27,6 +27,7 @@ from bzrlib import (
 from bzrlib.tests import (
     TestCaseWithTransport,
     )
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 from bzrlib.tests.features import (
     HardlinkFeature,
     )
@@ -178,14 +179,15 @@ class TestSmartServerCheckout(TestCaseWithTransport):
         for count in range(9):
             t.commit(message='commit %d' % count)
         self.reset_smart_call_log()
-        out, err = self.run_bzr(['checkout', self.get_url('from'),
-            'target'])
+        out, err = self.run_bzr(['checkout', self.get_url('from'), 'target'])
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(17, self.hpss_calls)
+        self.assertLength(10, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
     def test_lightweight_checkout(self):
         self.setup_smart_server_with_call_log()
@@ -200,7 +202,5 @@ class TestSmartServerCheckout(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        if len(self.hpss_calls) < 34 or len(self.hpss_calls) > 48:
-            self.fail(
-                "Incorrect length: wanted between 34 and 48, got %d for %r" % (
-                    len(self.hpss_calls), self.hpss_calls))
+        self.assertLength(15, self.hpss_calls)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

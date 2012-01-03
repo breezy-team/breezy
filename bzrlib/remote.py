@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 import bz2
 import zlib
 
@@ -27,6 +29,7 @@ from bzrlib import (
     errors,
     gpg,
     graph,
+    inventory_delta,
     lock,
     lockdir,
     osutils,
@@ -478,7 +481,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
                 warning('VFS BzrDir access triggered\n%s',
                     ''.join(traceback.format_stack()))
             self._real_bzrdir = _mod_bzrdir.BzrDir.open_from_transport(
-                self.root_transport, _server_formats=False)
+                self.root_transport, probers=[_mod_bzrdir.BzrProber])
             self._format._network_name = \
                 self._real_bzrdir._format.network_name()
 
@@ -490,6 +493,48 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         # See create_branch for rationale.
         self._next_open_branch_result = None
         return _mod_bzrdir.BzrDir.break_lock(self)
+
+    def _vfs_checkout_metadir(self):
+        self._ensure_real()
+        return self._real_bzrdir.checkout_metadir()
+
+    def checkout_metadir(self):
+        """Retrieve the controldir format to use for checkouts of this one.
+        """
+        medium = self._client._medium
+        if medium._is_remote_before((2, 5)):
+            return self._vfs_checkout_metadir()
+        path = self._path_for_remote_call(self._client)
+        try:
+            response = self._client.call('BzrDir.checkout_metadir',
+                path)
+        except errors.UnknownSmartMethod:
+            medium._remember_remote_is_before((2, 5))
+            return self._vfs_checkout_metadir()
+        if len(response) != 3:
+            raise errors.UnexpectedSmartServerResponse(response)
+        control_name, repo_name, branch_name = response
+        try:
+            format = controldir.network_format_registry.get(control_name)
+        except KeyError:
+            raise errors.UnknownFormatError(kind='control',
+                format=control_name)
+        if repo_name:
+            try:
+                repo_format = _mod_repository.network_format_registry.get(
+                    repo_name)
+            except KeyError:
+                raise errors.UnknownFormatError(kind='repository',
+                    format=repo_name)
+            format.repository_format = repo_format
+        if branch_name:
+            try:
+                format.set_branch_format(
+                    branch.network_format_registry.get(branch_name))
+            except KeyError:
+                raise errors.UnknownFormatError(kind='branch',
+                    format=branch_name)
+        return format
 
     def _vfs_cloning_metadir(self, require_stacking=False):
         self._ensure_real()
@@ -1167,6 +1212,8 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         if response != ('ok', ):
             raise errors.UnexpectedSmartServerResponse(response)
         self._write_group_tokens = None
+        # Refresh data after writing to the repository.
+        self.refresh_data()
 
     def resume_write_group(self, tokens):
         if self._real_repository:
@@ -1832,9 +1879,125 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
     def get_inventory(self, revision_id):
         return list(self.iter_inventories([revision_id]))[0]
 
-    def iter_inventories(self, revision_ids, ordering=None):
+    def _iter_inventories_rpc(self, revision_ids, ordering):
+        if ordering is None:
+            ordering = 'unordered'
+        path = self.bzrdir._path_for_remote_call(self._client)
+        body = "\n".join(revision_ids)
+        response_tuple, response_handler = (
+            self._call_with_body_bytes_expecting_body(
+                "VersionedFileRepository.get_inventories",
+                (path, ordering), body))
+        if response_tuple[0] != "ok":
+            raise errors.UnexpectedSmartServerResponse(response_tuple)
+        deserializer = inventory_delta.InventoryDeltaDeserializer()
+        byte_stream = response_handler.read_streamed_body()
+        decoded = smart_repo._byte_stream_to_stream(byte_stream)
+        if decoded is None:
+            # no results whatsoever
+            return
+        src_format, stream = decoded
+        if src_format.network_name() != self._format.network_name():
+            raise AssertionError(
+                "Mismatched RemoteRepository and stream src %r, %r" % (
+                src_format.network_name(), self._format.network_name()))
+        # ignore the src format, it's not really relevant
+        prev_inv = Inventory(root_id=None,
+            revision_id=_mod_revision.NULL_REVISION)
+        # there should be just one substream, with inventory deltas
+        substream_kind, substream = stream.next()
+        if substream_kind != "inventory-deltas":
+            raise AssertionError(
+                 "Unexpected stream %r received" % substream_kind)
+        for record in substream:
+            (parent_id, new_id, versioned_root, tree_references, invdelta) = (
+                deserializer.parse_text_bytes(record.get_bytes_as("fulltext")))
+            if parent_id != prev_inv.revision_id:
+                raise AssertionError("invalid base %r != %r" % (parent_id,
+                    prev_inv.revision_id))
+            inv = prev_inv.create_by_apply_delta(invdelta, new_id)
+            yield inv, inv.revision_id
+            prev_inv = inv
+
+    def _iter_inventories_vfs(self, revision_ids, ordering=None):
         self._ensure_real()
-        return self._real_repository.iter_inventories(revision_ids, ordering)
+        return self._real_repository._iter_inventories(revision_ids, ordering)
+
+    def iter_inventories(self, revision_ids, ordering=None):
+        """Get many inventories by revision_ids.
+
+        This will buffer some or all of the texts used in constructing the
+        inventories in memory, but will only parse a single inventory at a
+        time.
+
+        :param revision_ids: The expected revision ids of the inventories.
+        :param ordering: optional ordering, e.g. 'topological'.  If not
+            specified, the order of revision_ids will be preserved (by
+            buffering if necessary).
+        :return: An iterator of inventories.
+        """
+        if ((None in revision_ids)
+            or (_mod_revision.NULL_REVISION in revision_ids)):
+            raise ValueError('cannot get null revision inventory')
+        for inv, revid in self._iter_inventories(revision_ids, ordering):
+            if inv is None:
+                raise errors.NoSuchRevision(self, revid)
+            yield inv
+
+    def _iter_inventories(self, revision_ids, ordering=None):
+        if len(revision_ids) == 0:
+            return
+        missing = set(revision_ids)
+        if ordering is None:
+            order_as_requested = True
+            invs = {}
+            order = list(revision_ids)
+            order.reverse()
+            next_revid = order.pop()
+        else:
+            order_as_requested = False
+            if ordering != 'unordered' and self._fallback_repositories:
+                raise ValueError('unsupported ordering %r' % ordering)
+        iter_inv_fns = [self._iter_inventories_rpc] + [
+            fallback._iter_inventories for fallback in
+            self._fallback_repositories]
+        try:
+            for iter_inv in iter_inv_fns:
+                request = [revid for revid in revision_ids if revid in missing]
+                for inv, revid in iter_inv(request, ordering):
+                    if inv is None:
+                        continue
+                    missing.remove(inv.revision_id)
+                    if ordering != 'unordered':
+                        invs[revid] = inv
+                    else:
+                        yield inv, revid
+                if order_as_requested:
+                    # Yield as many results as we can while preserving order.
+                    while next_revid in invs:
+                        inv = invs.pop(next_revid)
+                        yield inv, inv.revision_id
+                        try:
+                            next_revid = order.pop()
+                        except IndexError:
+                            # We still want to fully consume the stream, just
+                            # in case it is not actually finished at this point
+                            next_revid = None
+                            break
+        except errors.UnknownSmartMethod:
+            for inv, revid in self._iter_inventories_vfs(revision_ids, ordering):
+                yield inv, revid
+            return
+        # Report missing
+        if order_as_requested:
+            if next_revid is not None:
+                yield None, next_revid
+            while order:
+                revid = order.pop()
+                yield invs.get(revid), revid
+        else:
+            while missing:
+                yield None, missing.pop()
 
     @needs_read_lock
     def get_revision(self, revision_id):
@@ -1876,6 +2039,9 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         """
         if self._real_repository is not None:
             self._real_repository.refresh_data()
+        # Refresh the parents cache for this object
+        self._unstacked_provider.disable_cache()
+        self._unstacked_provider.enable_cache()
 
     def revision_ids_to_search_result(self, result_set):
         """Convert a set of revision ids to a graph SearchResult."""
@@ -2193,6 +2359,8 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
     @needs_read_lock
     def _get_inventory_xml(self, revision_id):
+        # This call is used by older working tree formats,
+        # which stored a serialized basis inventory.
         self._ensure_real()
         return self._real_repository._get_inventory_xml(revision_id)
 
@@ -2237,11 +2405,58 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             revids.update(set(fallback.all_revision_ids()))
         return list(revids)
 
+    def _filtered_revision_trees(self, revision_ids, file_ids):
+        """Return Tree for a revision on this branch with only some files.
+
+        :param revision_ids: a sequence of revision-ids;
+          a revision-id may not be None or 'null:'
+        :param file_ids: if not None, the result is filtered
+          so that only those file-ids, their parents and their
+          children are included.
+        """
+        inventories = self.iter_inventories(revision_ids)
+        for inv in inventories:
+            # Should we introduce a FilteredRevisionTree class rather
+            # than pre-filter the inventory here?
+            filtered_inv = inv.filter(file_ids)
+            yield InventoryRevisionTree(self, filtered_inv, filtered_inv.revision_id)
+
     @needs_read_lock
     def get_deltas_for_revisions(self, revisions, specific_fileids=None):
-        self._ensure_real()
-        return self._real_repository.get_deltas_for_revisions(revisions,
-            specific_fileids=specific_fileids)
+        medium = self._client._medium
+        if medium._is_remote_before((1, 2)):
+            self._ensure_real()
+            for delta in self._real_repository.get_deltas_for_revisions(
+                    revisions, specific_fileids):
+                yield delta
+            return
+        # Get the revision-ids of interest
+        required_trees = set()
+        for revision in revisions:
+            required_trees.add(revision.revision_id)
+            required_trees.update(revision.parent_ids[:1])
+
+        # Get the matching filtered trees. Note that it's more
+        # efficient to pass filtered trees to changes_from() rather
+        # than doing the filtering afterwards. changes_from() could
+        # arguably do the filtering itself but it's path-based, not
+        # file-id based, so filtering before or afterwards is
+        # currently easier.
+        if specific_fileids is None:
+            trees = dict((t.get_revision_id(), t) for
+                t in self.revision_trees(required_trees))
+        else:
+            trees = dict((t.get_revision_id(), t) for
+                t in self._filtered_revision_trees(required_trees,
+                specific_fileids))
+
+        # Calculate the deltas
+        for revision in revisions:
+            if not revision.parent_ids:
+                old_tree = self.revision_tree(_mod_revision.NULL_REVISION)
+            else:
+                old_tree = trees[revision.parent_ids[0]]
+            yield trees[revision.revision_id].changes_from(old_tree)
 
     @needs_read_lock
     def get_revision_delta(self, revision_id, specific_fileids=None):
@@ -3222,17 +3437,6 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             self._control_files = RemoteBranchLockableFiles(
                 self.bzrdir, self._client)
         return self._control_files
-
-    def _get_checkout_format(self, lightweight=False):
-        self._ensure_real()
-        if lightweight:
-            format = RemoteBzrDirFormat()
-            self.bzrdir._format._supply_sub_formats_to(format)
-            format.workingtree_format = self._real_branch._get_checkout_format(
-                lightweight=lightweight).workingtree_format
-            return format
-        else:
-            return self._real_branch._get_checkout_format(lightweight=False)
 
     def get_physical_lock_status(self):
         """See Branch.get_physical_lock_status()."""

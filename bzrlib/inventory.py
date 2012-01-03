@@ -23,6 +23,8 @@
 # But those depend on its position within a particular inventory, and
 # it would be nice not to need to hold the backpointer here.
 
+from __future__ import absolute_import
+
 # This should really be an id randomly assigned when the tree is
 # created, but it's not for now.
 ROOT_ID = "TREE_ROOT"

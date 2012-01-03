@@ -22,6 +22,8 @@ see bzrlib.bzrdir.BzrDir.
 
 """
 
+from __future__ import absolute_import
+
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import textwrap
@@ -260,7 +262,7 @@ class ControlDir(ControlComponent):
         """
         raise NotImplementedError(self.find_repository)
 
-    def open_workingtree(self, _unsupported=False,
+    def open_workingtree(self, unsupported=False,
                          recommend_upgrade=True, from_branch=None):
         """Open the workingtree object at this ControlDir if one is present.
 
@@ -328,7 +330,12 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.cloning_metadir)
 
     def checkout_metadir(self):
-        """Produce a metadir suitable for checkouts of this controldir."""
+        """Produce a metadir suitable for checkouts of this controldir.
+
+        :returns: A ControlDirFormat with all component formats
+            either set appropriately or set to None if that component
+            should not be created.
+        """
         return self.cloning_metadir()
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
@@ -657,17 +664,19 @@ class ControlDir(ControlComponent):
         return klass.open(base, _unsupported=True)
 
     @classmethod
-    def open(klass, base, _unsupported=False, possible_transports=None):
+    def open(klass, base, possible_transports=None, probers=None,
+             _unsupported=False):
         """Open an existing controldir, rooted at 'base' (url).
 
         :param _unsupported: a private parameter to the ControlDir class.
         """
         t = _mod_transport.get_transport(base, possible_transports)
-        return klass.open_from_transport(t, _unsupported=_unsupported)
+        return klass.open_from_transport(t, probers=probers,
+                _unsupported=_unsupported)
 
     @classmethod
     def open_from_transport(klass, transport, _unsupported=False,
-                            _server_formats=True):
+                            probers=None):
         """Open a controldir within a particular directory.
 
         :param transport: Transport containing the controldir.
@@ -679,8 +688,8 @@ class ControlDir(ControlComponent):
         # the redirections.
         base = transport.base
         def find_format(transport):
-            return transport, ControlDirFormat.find_format(
-                transport, _server_formats=_server_formats)
+            return transport, ControlDirFormat.find_format(transport,
+                probers=probers)
 
         def redirected(transport, e, redirection_notice):
             redirected_transport = transport._redirected_to(e.source, e.target)
@@ -732,6 +741,8 @@ class ControlDir(ControlComponent):
                 result = klass.open_from_transport(a_transport)
                 return result, urlutils.unescape(a_transport.relpath(url))
             except errors.NotBranchError, e:
+                pass
+            except errors.PermissionDenied:
                 pass
             try:
                 new_t = a_transport.clone('..')
@@ -833,7 +844,7 @@ ControlDir.hooks = ControlDirHooks()
 
 
 class ControlComponentFormat(object):
-    """A component that can live inside of a .bzr meta directory."""
+    """A component that can live inside of a control directory."""
 
     upgrade_recommended = False
 
@@ -1101,22 +1112,24 @@ class ControlDirFormat(object):
         return self.get_format_description().rstrip()
 
     @classmethod
+    def all_probers(klass):
+        return klass._server_probers + klass._probers
+
+    @classmethod
     def known_formats(klass):
         """Return all the known formats.
         """
         result = set()
-        for prober_kls in klass._probers + klass._server_probers:
+        for prober_kls in klass.all_probers():
             result.update(prober_kls.known_formats())
         return result
 
     @classmethod
-    def find_format(klass, transport, _server_formats=True):
+    def find_format(klass, transport, probers=None):
         """Return the format present at transport."""
-        if _server_formats:
-            _probers = klass._server_probers + klass._probers
-        else:
-            _probers = klass._probers
-        for prober_kls in _probers:
+        if probers is None:
+            probers = klass.all_probers()
+        for prober_kls in probers:
             prober = prober_kls()
             try:
                 return prober.probe_transport(transport)

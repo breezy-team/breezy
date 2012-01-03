@@ -16,6 +16,8 @@
 
 """Code to estimate the entropy of content"""
 
+from __future__ import absolute_import
+
 import zlib
 
 

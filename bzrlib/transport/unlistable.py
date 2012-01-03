@@ -16,7 +16,8 @@
 
 """Transport implementation that disables listing to simulate HTTP cheaply."""
 
-import bzrlib.errors as errors
+from __future__ import absolute_import
+
 from bzrlib.transport import Transport
 from bzrlib.transport import decorator
 

@@ -21,6 +21,8 @@
 import os
 
 from bzrlib import tests
+from bzrlib.tests.matchers import ContainsNoVfsCalls
+
 
 class TestRevno(tests.TestCaseWithTransport):
 
@@ -153,6 +155,8 @@ class TestSmartServerRevno(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
+        self.assertLength(1, self.hpss_connections)
         self.assertLength(6, self.hpss_calls)
 
     def test_simple_branch_revno_lookup(self):
@@ -171,3 +175,5 @@ class TestSmartServerRevno(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(5, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
