@@ -3379,8 +3379,8 @@ class StartingPathMatcher(SectionMatcher):
             section_path = section.id
             if section_path.startswith('file://'):
                 # the location is already a local path or URL, convert the
-                # section to the same format
-                section_path = urlutils.local_path_from_url(section)
+                # section id to the same format
+                section_path = urlutils.local_path_from_url(section_path)
             if (self.location.startswith(section_path)
                 or fnmatch.fnmatch(self.location, section_path)):
                 section_parts = section_path.rstrip('/').split('/')

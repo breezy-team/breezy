@@ -3307,7 +3307,6 @@ class TestStartingPathMatcher(TestStore):
 
     def setUp(self):
         super(TestStartingPathMatcher, self).setUp()
-        self.matcher = config.NameMatcher
         # Any simple store is good enough
         self.store = config.IniFileStore()
 
@@ -3320,7 +3319,7 @@ class TestStartingPathMatcher(TestStore):
         return sections
 
     def test_empty(self):
-        self.assertSectionIDs([], self.test_dir, '')
+        self.assertSectionIDs([], self.get_url(), '')
 
     def test_no_name_section_included_when_present(self):
         # Note that other tests will cover the case where the no-name section
