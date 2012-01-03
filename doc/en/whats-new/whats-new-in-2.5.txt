@@ -36,6 +36,23 @@ non-ascii filenames. It will now use utf-8 rather than ascii as a fallback
 encoding for interacting with the filesystem. This makes creating a working
 tree and commiting to it possible for such branches in most environments.
 
+SSL Certificate Verification Support in urllib HTTPS backend
+************************************************************
+
+In previous versions of Bazaar, only one of the two supported HTTPS
+backends, pycurl, supported verification of SSL certificates. This version
+also introduces this support for the urllib backend.
+
+Along with this support two new options have been introduced to control
+which CA's are trusted and to what degree server certificates should be
+verified. See ``bzr help ssl.ca_certs`` and ``bzr help ssl.cert_reqs``
+for more information
+
+Users who have previously used the urllib HTTPS backend with servers
+with invalid or untrusted certificates can continue to do so by
+adding the required certificates to the trusted CA certificate file
+(recommended) or by setting the ``ssl.cert_reqs`` option to ``none``.
+
 Further information
 *******************
 
