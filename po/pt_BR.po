@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-12-08 09:21+0100\n"
-"PO-Revision-Date: 2011-12-02 15:07+0000\n"
-"Last-Translator: Fabrício Massuia <Unknown>\n"
+"PO-Revision-Date: 2012-01-02 20:54+0000\n"
+"Last-Translator: Rafael Neri <Unknown>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2011-12-09 04:33+0000\n"
-"X-Generator: Launchpad (build 14450)\n"
+"X-Launchpad-Export-Date: 2012-01-03 04:38+0000\n"
+"X-Generator: Launchpad (build 14616)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -40,7 +40,7 @@ msgstr[1] "%d tags atualizadas."
 
 #: bzrlib/branch.py:3178
 msgid "No new revisions or tags to push."
-msgstr "Nenhuma revisão ou tag para enviar."
+msgstr "Nenhuma revisão ou tags para enviar."
 
 #: bzrlib/branch.py:3180
 msgid "No new revisions to push."
@@ -318,10 +318,11 @@ msgstr "--tre e --revision não podem ser usados juntos"
 #: bzrlib/builtins.py:585 bzrlib/builtins.py:5808
 msgid "Tags can only be placed on a single revision, not on a range"
 msgstr ""
+"Tags podem apenas serem colocadas em uma revisão simples, não em um intervalo"
 
 #: bzrlib/builtins.py:609
 msgid "Show revno of working tree."
-msgstr ""
+msgstr "Mostrar número de revisão da árvore de trabalho."
 
 #: bzrlib/builtins.py:657
 msgid "Add specified files or directories."
@@ -360,6 +361,8 @@ msgid ""
 "A warning will be printed when nested trees are encountered,\n"
 "unless they are explicitly ignored."
 msgstr ""
+"Um alerta será impresso quando árvores aninhadas forem encontradas,\n"
+"exceto que seja explicitamente ignorado."
 
 #: bzrlib/builtins.py:674
 msgid ""
@@ -376,12 +379,20 @@ msgid ""
 "you should never need to explicitly add a directory, they'll just\n"
 "get added when you add a file in the directory."
 msgstr ""
+"Adicionar um arquivo cujo diretório pai não é versionado irá\n"
+"implicitamente adicionar o diretório pai, e assim por diante até a raiz. "
+"Isto significa\n"
+"que você nunca precisará adicionar explicitamente um diretório, eles apenas\n"
+"serão adicionados quando você adicionar um arquivo no diretório."
 
 #: bzrlib/builtins.py:682
 msgid ""
 "--dry-run will show which files would be added, but not actually\n"
 "add them."
 msgstr ""
+"--dry-run irá mostrar quais arquivos deveriam ser adicionados, mas na "
+"verdade\n"
+"não os adiciona."
 
 #: bzrlib/builtins.py:685
 msgid ""
@@ -393,12 +404,23 @@ msgid ""
 "adds as a conflict). It is also useful when merging another project\n"
 "into a subdirectory of this one."
 msgstr ""
+"--file-ids-from tentará usar os ids de arquivo do caminho fornecido.\n"
+"Procura ids tentando encontrar um diretório pai correspondente com\n"
+"o mesmo nome, e depois pelo caminho absoluto. Esta opção é raramente \n"
+"necessária mas pode ser útil quando adicionar o mesmo arquivo lógico em \n"
+"duas ramificações que serão mescladas mais tarde (sem mostrar as duas "
+"adições \n"
+"como conflitos). Isto também pode ser útil quando estiver mesclando outro \n"
+"projeto dentro de um subdiretório deste."
 
 #: bzrlib/builtins.py:693
 msgid ""
 "Any files matching patterns in the ignore list will not be added\n"
 "unless they are explicitly mentioned."
 msgstr ""
+"Quaisquer arquivos correspondentes com o padrão na lista ignorar não serão "
+"adicionados\n"
+"a menos que eles sejam explicitamente mencionados."
 
 #: bzrlib/builtins.py:696
 msgid ""
@@ -406,6 +428,9 @@ msgid ""
 "add.maximum_file_size will be skipped. Named items are never skipped due\n"
 "to file size."
 msgstr ""
+"No modo recursivo, arquivos maiores do que a opção de configuração \n"
+"add.maximum_file_size serão pulados. Itens nomeados nunca são pulados\n"
+"devido ao tamanho do arquivo."
 
 #: bzrlib/builtins.py:703
 msgid "Don't recursively add the contents of directories."
@@ -435,7 +460,7 @@ msgstr "%s adicionado\n"
 #: bzrlib/builtins.py:811
 #, python-format
 msgid "invalid kind %r specified"
-msgstr "tipo especificado %s é inválido"
+msgstr "tipo especificado %r é inválido"
 
 #: bzrlib/builtins.py:848
 msgid "Move or rename a file."
@@ -546,6 +571,11 @@ msgid ""
 "match the remote one, use pull --overwrite. This will work even if the two\n"
 "branches have diverged."
 msgstr ""
+"Se você quer substituir suas alterações locais e quer apenas a sua "
+"ramificação\n"
+"para corresponder com a remota, use pull --overwrite. Isto funcionará mesmo "
+"se\n"
+"as duas ramificações divergiram."
 
 #: bzrlib/builtins.py:1002
 msgid ""
@@ -554,6 +584,11 @@ msgid ""
 "location to use the default.  To change the default, use --remember. The\n"
 "value will only be saved if the remote location can be accessed."
 msgstr ""
+"Se não estiver definido a localização padrão, na primeira vez que o projeto "
+"for puxado será definido (use \n"
+"--no-remember para evitar isso). Após isso, você pode omitir a localização\n"
+"para usar o padrão. Para alterar o padrão, use --remember. O valor será\n"
+"salvo apenas se o local remoto puder ser acessado."
 
 #: bzrlib/builtins.py:1007
 msgid ""
@@ -568,6 +603,9 @@ msgid ""
 "or in the form of a path to a file containing a merge directive generated\n"
 "with bzr send."
 msgstr ""
+"Nota: a localização pode ser especificada ou na forma de uma ramificação,\n"
+"ou na forma de um caminho para um arquivo contendo uma diretiva\n"
+"de mesclagem gerada com bzr send."
 
 #: bzrlib/builtins.py:1019
 msgid "Show logs of pulled revisions."
@@ -586,7 +624,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1053
 msgid "Need working tree for --show-base."
-msgstr ""
+msgstr "Necessário a árvore de trabalho para --show-base."
 
 #: bzrlib/builtins.py:1069
 msgid "No pull location known or specified."
@@ -13159,6 +13197,3 @@ msgid ""
 "Many commands that accept URLs also accept location aliases too.\n"
 "See :doc:`location-alias-help` and :doc:`url-special-chars-help`.\n"
 msgstr ""
-
-#~ msgid "Show revno of working tree"
-#~ msgstr "Mostrar o número da revisão atual da árvore de trabalho"
