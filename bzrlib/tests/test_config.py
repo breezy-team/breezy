@@ -3387,7 +3387,6 @@ class TestStackWithSimpleStore(tests.TestCase):
     def get_conf(self, content=None):
         return config.MemoryStack(content)
 
-
     def test_override_value_from_env(self):
         self.registry.register(
             config.Option('foo', default='bar', override_from_env=['FOO']))
@@ -4617,9 +4616,6 @@ class TestAutoUserId(tests.TestCase):
 
 
 class EmailOptionTests(tests.TestCase):
-
-    def setUp(self):
-        super(EmailOptionTests, self).setUp()
 
     def test_default_email_uses_BZR_EMAIL(self):
         conf = config.MemoryStack('email=jelmer@debian.org')
