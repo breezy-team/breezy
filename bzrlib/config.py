@@ -2992,6 +2992,7 @@ class CommandLineStore(Store):
         if opts is None:
             opts = {}
         self.options = {}
+        self.id = 'cmdline'
 
     def _reset(self):
         # The dict should be cleared but not replaced so it can be shared.
@@ -3015,8 +3016,7 @@ class CommandLineStore(Store):
         return 'cmdline'
 
     def get_sections(self):
-        yield self,  self.readonly_section_class('cmdline_overrides',
-                                                 self.options)
+        yield self,  self.readonly_section_class(None, self.options)
 
 
 class IniFileStore(Store):
@@ -3282,6 +3282,7 @@ class ControlStore(LockableIniFileStore):
         super(ControlStore, self).__init__(bzrdir.transport,
                                           'control.conf',
                                            lock_dir_name='branch_lock')
+        self.id = 'control'
 
 
 class SectionMatcher(object):
