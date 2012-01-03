@@ -152,6 +152,10 @@ Internals
 
 * Lazy imports can now only be absolute. (Jelmer Vernooij)
 
+* Merge3Mergers now have an optional ``other_branch`` argument
+  which contains the branch from which the ``other_tree``
+  was obtained, if any. (Jelmer Vernooij)
+
 * New HPSS call ``BzrDir.checkout_metadir``. (Jelmer Vernooij, #894459)
 
 * New HPSS call ``VersionedFileRepository.get_inventories``,
