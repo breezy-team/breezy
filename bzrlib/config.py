@@ -3352,6 +3352,14 @@ class LocationSection(Section):
 class StartingPathMatcher(SectionMatcher):
     """Select sections for a given location respecting the Store order."""
 
+    # FIXME: Both local paths and urls can be used for section names as well as
+    # ``location`` to stay consistent with ``LocationMatcher`` which itself
+    # inherited the fuzziness from the previous ``LocationConfig``
+    # implementation. We probably need to revisit which encoding is allowed for
+    # both ``location`` and section names and how we normalize
+    # them. http://pad.lv/85479, http://pad.lv/437009 and http://359320 are
+    # related too. -- vila 2012-01-04
+
     def __init__(self, store, location):
         super(StartingPathMatcher, self).__init__(store)
         if location.startswith('file://'):

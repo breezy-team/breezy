@@ -3321,6 +3321,23 @@ class TestStartingPathMatcher(TestStore):
     def test_empty(self):
         self.assertSectionIDs([], self.get_url(), '')
 
+    def test_url_vs_local_paths(self):
+        # The matcher location is an url and the section names are local paths
+        sections = self.assertSectionIDs(['/foo/bar', '/foo'],
+                                         'file:///foo/bar/baz', '''\
+[/foo]
+[/foo/bar]
+''')
+
+    def test_local_path_vs_url(self):
+        # The matcher location is a local path and the section names are urls
+        sections = self.assertSectionIDs(['file:///foo/bar', 'file:///foo'],
+                                         '/foo/bar/baz', '''\
+[file:///foo]
+[file:///foo/bar]
+''')
+
+
     def test_no_name_section_included_when_present(self):
         # Note that other tests will cover the case where the no-name section
         # is empty and as such, not included.
@@ -3355,8 +3372,8 @@ option = defined so the no-name section exists
 [/foo/*/baz]
 ''')
         # Note that 'baz' as a relpath for /foo/b* is not fully correct, but
-        # nothing really does... as far using {relpath} to append it to
-        # something else, this seems good enough though.
+        # nothing really is... as far using {relpath} to append it to something
+        # else, this seems good enough though.
         self.assertEquals(['', 'baz', 'bar/baz'],
                           [s.locals['relpath'] for _, s in sections])
 
