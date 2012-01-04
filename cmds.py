@@ -82,6 +82,48 @@ export_upstream_revision_opt = Option('export-upstream-revision',
     type=str)
 
 
+def _get_changelog_info(tree, last_version=None, package=None, distribution=None):
+    from bzrlib.plugins.builddeb.util import (
+        find_changelog,
+        find_last_distribution,
+        lookup_distribution,
+        )
+    from bzrlib.plugins.builddeb.errors import (
+        MissingChangelogError,
+        )
+    current_version = last_version
+    try:
+        (changelog, top_level) = find_changelog(tree, False, max_blocks=2)
+        if last_version is None:
+            current_version = changelog.version.upstream_version
+        if package is None:
+            package = changelog.package
+        if distribution is None:
+            distribution = find_last_distribution(changelog)
+            if distribution is not None:
+                note(gettext("Using distribution %s") % distribution)
+    except MissingChangelogError:
+        top_level = False
+        changelog = None
+    if distribution is None:
+        note("No distribution specified, and no changelog, "
+                "assuming 'debian'")
+        distribution = "debian"
+    if package is None:
+        raise BzrCommandError("You did not specify --package, and "
+                "there is no changelog from which to determine the "
+                "package name, which is needed to know the name to "
+                "give the .orig.tar.gz. Please specify --package.")
+    distribution = distribution.lower()
+    distribution_name = lookup_distribution(distribution)
+    if distribution_name is None:
+        raise BzrCommandError(gettext("Unknown target distribution: %s") \
+                    % distribution)
+    return (current_version, package, distribution, distribution_name,
+            changelog, top_level)
+
+
+
 class cmd_builddeb(Command):
     """Builds a Debian package from a branch.
 
@@ -633,46 +675,6 @@ class cmd_merge_upstream(Command):
         return self._fetch_tarball(package, version, orig_dir,
             locations, v3)
 
-    def _get_changelog_info(self, tree, last_version, package, distribution):
-        from bzrlib.plugins.builddeb.util import (
-            find_changelog,
-            find_last_distribution,
-            lookup_distribution,
-            )
-        from bzrlib.plugins.builddeb.errors import (
-            MissingChangelogError,
-            )
-        current_version = last_version
-        try:
-            (changelog, top_level) = find_changelog(tree, False, max_blocks=2)
-            if last_version is None:
-                current_version = changelog.version.upstream_version
-            if package is None:
-                package = changelog.package
-            if distribution is None:
-                distribution = find_last_distribution(changelog)
-                if distribution is not None:
-                    note(gettext("Using distribution %s") % distribution)
-        except MissingChangelogError:
-            top_level = False
-            changelog = None
-        if distribution is None:
-            note("No distribution specified, and no changelog, "
-                    "assuming 'debian'")
-            distribution = "debian"
-        if package is None:
-            raise BzrCommandError("You did not specify --package, and "
-                    "there is no changelog from which to determine the "
-                    "package name, which is needed to know the name to "
-                    "give the .orig.tar.gz. Please specify --package.")
-        distribution = distribution.lower()
-        distribution_name = lookup_distribution(distribution)
-        if distribution_name is None:
-            raise BzrCommandError(gettext("Unknown target distribution: %s") \
-                        % distribution)
-        return (current_version, package, distribution, distribution_name,
-                changelog, top_level)
-
     def run(self, location=None, upstream_branch=None, version=None,
             distribution=None, package=None,
             directory=".", revision=None, merge_type=None,
@@ -710,7 +712,7 @@ class cmd_merge_upstream(Command):
                         "command.")
             config = debuild_config(tree, tree)
             (current_version, package, distribution, distribution_name,
-             changelog, top_level) = self._get_changelog_info(tree, last_version,
+             changelog, top_level) = _get_changelog_info(tree, last_version,
                  package, distribution)
             contains_upstream_source = tree_contains_upstream_source(tree)
             if changelog is None:
@@ -1160,10 +1162,25 @@ class cmd_builddeb_do(Command):
         from bzrlib.plugins.builddeb.hooks import run_hook
         from bzrlib.plugins.builddeb.util import (
             find_changelog,
+            guess_build_type,
+            tree_contains_upstream_source,
             )
         t = WorkingTree.open_containing('.')[0]
+        self.add_cleanup(t.lock_read().unlock)
         config = debuild_config(t, t)
-        if config.build_type != BUILD_TYPE_MERGE:
+        (current_version, package, distribution, distribution_name,
+         changelog, top_level) = _get_changelog_info(t)
+        contains_upstream_source = tree_contains_upstream_source(t)
+        if changelog is None:
+            changelog_version = None
+        else:
+            changelog_version = changelog.version
+        build_type = config.build_type
+        if build_type is None:
+            build_type = guess_build_type(t, changelog_version,
+                contains_upstream_source)
+
+        if build_type != BUILD_TYPE_MERGE:
             raise BzrCommandError(gettext("This command only works for merge "
                 "mode packages. See /usr/share/doc/bzr-builddeb"
                 "/user_manual/merge.html for more information."))
