@@ -204,7 +204,8 @@ class VersionedFileCommitBuilder(CommitBuilder):
             testament = Testament(rev, self.revision_tree())
             plaintext = testament.as_short_text()
             self.repository.store_revision_signature(
-                gpg.GPGStrategy(config), plaintext, self._new_revision_id)
+                gpg.GPGStrategy(self._config_stack), plaintext,
+                self._new_revision_id)
         self.repository._add_revision(rev)
         self._ensure_fallback_inventories()
         self.repository.commit_write_group()
