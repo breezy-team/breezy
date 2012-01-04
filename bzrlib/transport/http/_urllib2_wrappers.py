@@ -453,10 +453,11 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
             trace.warning("not checking SSL certificates for %s: %d",
                 self.host, self.port)
         else:
-            trace.warning(
-                "no valid trusted SSL CA certificates file set. See "
-                "'bzr help ssl.ca_certs' for more information on setting "
-                "trusted CA's.")
+            if ca_certs is None:
+                trace.warning(
+                    "no valid trusted SSL CA certificates file set. See "
+                    "'bzr help ssl.ca_certs' for more information on setting "
+                    "trusted CA's.")
         try:
             ssl_sock = ssl.wrap_socket(self.sock, self.key_file, self.cert_file,
                 cert_reqs=cert_reqs, ca_certs=ca_certs)
