@@ -109,11 +109,6 @@ def _get_changelog_info(tree, last_version=None, package=None, distribution=None
         note("No distribution specified, and no changelog, "
                 "assuming 'debian'")
         distribution = "debian"
-    if package is None:
-        raise BzrCommandError("You did not specify --package, and "
-                "there is no changelog from which to determine the "
-                "package name, which is needed to know the name to "
-                "give the .orig.tar.gz. Please specify --package.")
     distribution = distribution.lower()
     distribution_name = lookup_distribution(distribution)
     if distribution_name is None:
@@ -714,6 +709,12 @@ class cmd_merge_upstream(Command):
             (current_version, package, distribution, distribution_name,
              changelog, top_level) = _get_changelog_info(tree, last_version,
                  package, distribution)
+            if package is None:
+                raise BzrCommandError("You did not specify --package, and "
+                        "there is no changelog from which to determine the "
+                        "package name, which is needed to know the name to "
+                        "give the .orig.tar.gz. Please specify --package.")
+
             contains_upstream_source = tree_contains_upstream_source(tree)
             if changelog is None:
                 changelog_version = None
@@ -1168,8 +1169,8 @@ class cmd_builddeb_do(Command):
         t = WorkingTree.open_containing('.')[0]
         self.add_cleanup(t.lock_read().unlock)
         config = debuild_config(t, t)
-        (current_version, package, distribution, distribution_name,
-         changelog, top_level) = _get_changelog_info(t)
+        (changelog, top_level) = find_changelog(t, False, max_blocks=2)
+
         contains_upstream_source = tree_contains_upstream_source(t)
         if changelog is None:
             changelog_version = None
@@ -1192,7 +1193,6 @@ class cmd_builddeb_do(Command):
             except KeyError:
                 command_list = ["/bin/sh"]
             give_instruction = True
-        (changelog, top_level) = find_changelog(t, True)
         build_dir = config.build_dir
         if build_dir is None:
             build_dir = default_build_dir

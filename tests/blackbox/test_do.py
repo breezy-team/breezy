@@ -120,6 +120,9 @@ class TestDo(ExternalBase):
     self.run_bzr("bd-do --help")
 
   def test_bd_do_not_merge(self):
+    tree = self.make_unpacked_source()
+    self.build_tree(['other', 'more-other'])
+    tree.add(["other", "more-other"])
     self.run_bzr_error(['This command only works for merge mode packages.',
                         'See /usr/share/doc/bzr-builddeb/user_manual'
                         '/merge.html for more information.'], 'bd-do true')
