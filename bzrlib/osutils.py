@@ -945,19 +945,16 @@ def filesize(f):
     return os.fstat(f.fileno())[stat.ST_SIZE]
 
 
-# Define rand_bytes based on platform.
-try:
-    # Python 2.4 and later have os.urandom,
-    # but it doesn't work on some arches
-    os.urandom(1)
-    rand_bytes = os.urandom
-except (NotImplementedError, AttributeError):
-    # If python doesn't have os.urandom, or it doesn't work,
-    # then try to first pull random data from /dev/urandom
+# Alias os.urandom to support platforms (which?) without /dev/urandom and 
+# override if it doesn't work. Avoid checking on windows where there is
+# significant initialisation cost that can be avoided for some bzr calls.
+
+rand_bytes = os.urandom
+
+if rand_bytes.__module__ != "nt":
     try:
-        rand_bytes = file('/dev/urandom', 'rb').read
-    # Otherwise, use this hack as a last resort
-    except (IOError, OSError):
+        rand_bytes(1)
+    except NotImplementedError:
         # not well seeded, but better than nothing
         def rand_bytes(n):
             import random
