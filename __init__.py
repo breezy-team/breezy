@@ -172,7 +172,8 @@ class RemoteGitProber(Prober):
 
     def probe_http_transport(self, transport):
         from bzrlib import urlutils
-        url = urlutils.join(transport.external_url(), "info/refs") + "?service=git-upload-pack"
+        base_url, _ = urlutils.split_segment_parameters(transport.external_url())
+        url = urlutils.join(base_url, "info/refs") + "?service=git-upload-pack"
         from bzrlib.transport.http._urllib import HttpTransport_urllib, Request
         if isinstance(transport, HttpTransport_urllib):
             req = Request('GET', url, accepted_errors=[200, 403, 404, 405],
