@@ -2097,7 +2097,6 @@ class TestCreationOps(tests.TestCaseInTempDir):
 
 class TestGetuserUnicode(tests.TestCase):
 
-    
     def test_is_unicode(self):
         user = osutils.getuser_unicode()
         self.assertIsInstance(user, unicode)
@@ -2122,11 +2121,8 @@ class TestGetuserUnicode(tests.TestCase):
                 % (osutils.get_user_encoding(),))
         uni_username = u'jrandom' + uni_val
         encoded_username = uni_username.encode(ue)
-        var = self.envvar_to_override()
-        self.overrideEnv(var, encoded_username)
+        self.overrideEnv(self.envvar_to_override(), encoded_username)
         self.assertEqual(uni_username, osutils.getuser_unicode())
-        self.overrideEnv(var, u'jrandom\xb6'.encode(ue))
-        self.assertEqual(u'jrandom\xb6', osutils.getuser_unicode())
 
 
 class TestBackupNames(tests.TestCase):
