@@ -125,6 +125,9 @@ API Changes
   which can be None or a Branch object for the submit branch location.
   (Jelmer Vernooij)
 
+* ``VersionedFileRepository.add_revision`` no longer takes a ``config``
+  argument. (Jelmer Vernooij)
+
 Internals
 *********
 
