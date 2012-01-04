@@ -74,32 +74,33 @@ class ScopeReplacer(object):
 
     def _resolve(self):
         """Return the real object for which this is a placeholder"""
-        real_obj = object.__getattribute__(self, '_real_obj')
-        if real_obj is not None:
-            object.__getattribute__(self, '_duplicate_replacement')()
-            return real_obj
         name = object.__getattribute__(self, '_name')
-        factory = object.__getattribute__(self, '_factory')
-        scope = object.__getattribute__(self, '_scope')
-        obj = factory(self, scope, name)
-        if obj is self:
-            raise errors.IllegalUseOfScopeReplacer(name, msg="Object tried"
-                " to replace itself, check it's not using its own scope.")
+        real_obj = object.__getattribute__(self, '_real_obj')
+        if real_obj is None:
+            # No obj generated previously, so generate from factory and scope.
+            factory = object.__getattribute__(self, '_factory')
+            scope = object.__getattribute__(self, '_scope')
+            obj = factory(self, scope, name)
+            if obj is self:
+                raise errors.IllegalUseOfScopeReplacer(name, msg="Object tried"
+                    " to replace itself, check it's not using its own scope.")
 
-        # The same object might be replaced repeatedly due to a race
-        # condition. We want to detect this fact for possible reporting.
-        prev_obj = object.__getattribute__(self, '_real_obj')
-        if prev_obj is None:
-            object.__setattr__(self, '_real_obj', obj)
-            scope[name] = obj
-        else:
-            # This indicates a duplicate replacement and should never
-            # happen except under rare race conditions. See lp:396819.
-            # Note: the above check is not thread-safe, so there is a
-            # slight chance that concurrent duplicate replacements are
-            # missed. Not worth the cost of a lock, though.
-            object.__getattribute__(self, '_duplicate_replacement')()
-        return obj
+            # Check if another thread has jumped in while obj was generated.
+            real_obj = object.__getattribute__(self, '_real_obj')
+            if real_obj is None:
+                # Still no prexisting obj, so go ahead and assign to scope and
+                # return. There is still a small window here where races will
+                # not be detected, but safest to avoid additional locking.
+                object.__setattr__(self, '_real_obj', obj)
+                scope[name] = obj
+                return obj
+
+        # Raise if proxying is disabled as obj has already been generated.
+        if not ScopeReplacer._should_proxy:
+            raise errors.IllegalUseOfScopeReplacer(
+                name, msg="Object already replaced, did you assign it"
+                          " to another variable?")
+        return real_obj
 
     def __getattribute__(self, attr):
         obj = object.__getattribute__(self, '_resolve')()
@@ -112,15 +113,6 @@ class ScopeReplacer(object):
     def __call__(self, *args, **kwargs):
         obj = object.__getattribute__(self, '_resolve')()
         return obj(*args, **kwargs)
-
-    def _duplicate_replacement(self):
-        if object.__getattribute__(self, '_should_proxy'):
-            pass
-        else:
-            name = object.__getattribute__(self, '_name')
-            raise errors.IllegalUseOfScopeReplacer(
-                name, msg="Object already replaced, did you assign it"
-                          " to another variable?")
 
 
 def disallow_proxying():
