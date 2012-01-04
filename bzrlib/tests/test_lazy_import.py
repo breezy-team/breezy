@@ -1140,13 +1140,12 @@ import %(root_name)s.%(sub_name)s.%(submoda_name)s as submoda7
                          ], self.actions)
 
 
-
 class TestScopeReplacerReentrance(TestCase):
     """The ScopeReplacer should be reentrant.
 
     Invoking a replacer while an invocation was already on-going leads to a
     race to see which invocation will be the first to call _replace.
-    The loosing caller used to see an exception (bugs 396819 and 702914).
+    The losing caller used to see an exception (bugs 396819 and 702914).
 
     These tests set up a tracer that stops at a suitable moment (upon
     entry of a specified method) and starts another call to the
