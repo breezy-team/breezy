@@ -858,7 +858,20 @@ class TarfileSourceTests(TestCaseWithTransport):
 
     def test_version(self):
         source = TarfileSource("foo-1.0.tar.gz", "1.0")
-        self.assertEquals("1.0", source.get_latest_version("foo", "0.9"))
+        self.assertEquals(
+            "1.0", source.get_latest_version("foo", "0.9"))
+
+    def test_version_unicode(self):
+        source = TarfileSource(u"foo-1.0.tar.gz", u"1.0")
+        latest_version = source.get_latest_version("foo", "0.9")
+        self.assertEquals("1.0", latest_version)
+        self.assertIsInstance(latest_version, str)
+
+    def test_version_unicode_not_specified(self):
+        source = TarfileSource(u"foo-1.0.tar.gz")
+        latest_version = source.get_latest_version("foo", "0.9")
+        self.assertEquals("1.0", latest_version)
+        self.assertIsInstance(latest_version, str)
 
     def test_get_latest_version_parses(self):
         source = TarfileSource("foo-1.0.tar.gz")

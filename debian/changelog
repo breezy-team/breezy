@@ -5,8 +5,10 @@ bzr-builddeb (2.8.1) UNRELEASED; urgency=low
     commands like 'bzr bash-completion'. LP: #903650
   * Provide merge-package functionality as a hook for 'bzr merge'.
     LP: #486075, LP: #910900
+  * Cope with unicode strings being specified to TarfileSource. Based on
+    patch by Gediminas Paulauskas. LP: #911262
 
- -- Jelmer Vernooij <jelmer@debian.org>  Mon, 02 Jan 2012 17:57:33 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 04 Jan 2012 22:14:07 +0100
 
 bzr-builddeb (2.8.0) unstable; urgency=low
 
