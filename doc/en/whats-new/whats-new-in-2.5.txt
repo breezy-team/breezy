@@ -53,6 +53,83 @@ with invalid or untrusted certificates can continue to do so by
 adding the required certificates to the trusted CA certificate file
 (recommended) or by setting the ``ssl.cert_reqs`` option to ``none``.
 
+Faster smart server
+*******************
+
+A large number of new methods have been added to the smart server, making
+raw file access through the VFS unnecessary in almost all situations, with
+the major exception of operations involving stacked branches.
+
+Commands that have become significantly faster when using a remote branch
+over ``bzr://``, ``bzr+ssh://`` or ``bzr+http://`` include:
+
+ * ``bzr checkout --lightweight``
+ * ``bzr export``
+ * ``bzr cat``
+ * ``bzr ls``
+ * ``bzr send``
+
+Several commands which used to make multiple connections to the server now
+make only a single one. Connection setup has a fairly high overhead,
+especially to Launchpad, so this can save several seconds for some
+commands.
+
+To benefit from the improved smart server, both the server and the
+client need to be running bzr 2.5.
+
+Basic colocated branch support
+******************************
+
+The UI now has basic support for colocated branches. In full URLs,
+a specific colocated branch can be specified using URL path segment
+parameters. For example a branch named ``stronk`` could be addressed using
+``http://example.com/path/to/dir,branch=stronk``.
+
+The new ``bzr branches`` command can be used to list all present branches
+in a directory, and indicates what the currently active branch is.
+
+Several commands also accept co-located branch names directly, such as
+``bzr switch``.
+
+Feature flags
+*************
+
+All Bazaar formats now allow setting ``feature flags``. These can be used
+by plugins to extend Bazaar formats and require the presence of particular
+plugins or versions of Bazaar to open them, without having to introduce
+completely new formats.
+
+See ``doc/developers/feature-flags.txt`` for details.
+
+Branch history access
+*********************
+
+Several commands or options that previously required access to the full
+branch history now only access those parts of the history they actually
+need. This significantly improves their performance for branches
+with large histories.
+
+GPG signatures
+**************
+
+A new command ``bzr verify-signatures`` can be used to verify GPG
+signatures made with ``bzr commit`` or the ``bzr sign-my-commits``
+command.
+
+Translations
+************
+
+Most error messages, help topics and other user-visible text can now be
+translated. Initial translations for Russian, Japanese and Spanish exist.
+
+PO merge plugin
+***************
+
+The ``po_merge`` plugin has been added.  It provides a merge hook
+to automate merging of changes to gettext template files. Refer to
+``bzr help po_merge`` for documentation on how to
+enable it and what it can do.
+
 Further information
 *******************
 

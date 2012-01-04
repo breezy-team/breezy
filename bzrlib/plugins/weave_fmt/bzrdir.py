@@ -966,7 +966,7 @@ class BzrDir5(BzrDirPreSplitOut):
         from bzrlib.plugins.weave_fmt.repository import RepositoryFormat5
         return RepositoryFormat5().open(self, _found=True)
 
-    def open_workingtree(self, _unsupported=False,
+    def open_workingtree(self, unsupported=False,
             recommend_upgrade=True):
         """See BzrDir.create_workingtree."""
         from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
@@ -991,8 +991,7 @@ class BzrDir6(BzrDirPreSplitOut):
         from bzrlib.plugins.weave_fmt.repository import RepositoryFormat6
         return RepositoryFormat6().open(self, _found=True)
 
-    def open_workingtree(self, _unsupported=False,
-        recommend_upgrade=True):
+    def open_workingtree(self, unsupported=False, recommend_upgrade=True):
         """See BzrDir.create_workingtree."""
         # we don't warn here about upgrades; that ought to be handled for the
         # bzrdir as a whole

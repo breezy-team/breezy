@@ -35,6 +35,20 @@ from bzrlib.errors import (
     )
 
 
+smtp_password = config.Option('smtp_password', default=None,
+        help='''\
+Password to use for authentication to SMTP server.
+''')
+smtp_server = config.Option('smtp_server', default=None,
+        help='''\
+Hostname of the SMTP server to use for sending email.
+''')
+smtp_username = config.Option('smtp_username', default=None,
+        help='''\
+Username to use for authentication to SMTP server.
+''')
+
+
 class SMTPConnection(object):
     """Connect to an SMTP server and send an email.
 
@@ -50,13 +64,13 @@ class SMTPConnection(object):
         if self._smtp_factory is None:
             self._smtp_factory = smtplib.SMTP
         self._config = config
-        self._config_smtp_server = config.get_user_option('smtp_server')
+        self._config_smtp_server = config.get('smtp_server')
         self._smtp_server = self._config_smtp_server
         if self._smtp_server is None:
             self._smtp_server = self._default_smtp_server
 
-        self._smtp_username = config.get_user_option('smtp_username')
-        self._smtp_password = config.get_user_option('smtp_password')
+        self._smtp_username = config.get('smtp_username')
+        self._smtp_password = config.get('smtp_password')
 
         self._connection = None
 
