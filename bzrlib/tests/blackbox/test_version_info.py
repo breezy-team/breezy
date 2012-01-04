@@ -18,9 +18,9 @@
 
 import os
 
-from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.version_info_formats import VersionInfoBuilder
+
 
 class TestVersionInfo(TestCaseWithTransport):
 
@@ -163,16 +163,16 @@ class TestVersionInfo(TestCaseWithTransport):
 
     def test_non_ascii(self):
         """Test that we can output non-ascii data"""
-        
+
         commit_message = u'Non-ascii message with character not in latin-1: \u1234'
-        
+
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a_file'])
         tree.add('a_file')
         tree.commit(commit_message)
         out, err = self.run_bzr(
             ['version-info', '--include-history'], encoding='latin-1')
-        
+
         self.assertContainsString(out, commit_message.encode('utf-8'))
 
     def test_revision(self):

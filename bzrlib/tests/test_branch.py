@@ -219,12 +219,13 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
 
     def test_find_format_with_features(self):
         tree = self.make_branch_and_tree('.', format='2a')
-        tree.branch.control_transport.put_bytes('format',
-            tree.branch._format.get_format_string() +
-            "optional name\n")
+        tree.branch.update_feature_flags({"name": "optional"})
         found_format = _mod_branch.BranchFormatMetadir.find_format(tree.bzrdir)
         self.assertIsInstance(found_format, _mod_branch.BranchFormatMetadir)
         self.assertEquals(found_format.features.get("name"), "optional")
+        tree.branch.update_feature_flags({"name": None})
+        branch = _mod_branch.Branch.open('.')
+        self.assertEquals(branch._format.features, {})
 
     def test_register_unregister_format(self):
         # Test the deprecated format registration functions

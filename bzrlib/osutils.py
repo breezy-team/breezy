@@ -2076,7 +2076,7 @@ def get_message_encoding():
             # On windows want the result of GetACP() which this boils down to.
             _message_encoding = get_user_encoding()
     return _message_encoding or "ascii"
-        
+
 
 def get_host_name():
     """Return the current unicode host name.
@@ -2085,7 +2085,6 @@ def get_host_name():
     behaves inconsistently on different platforms.
     """
     if sys.platform == "win32":
-        import win32utils
         return win32utils.get_host_name()
     else:
         import socket

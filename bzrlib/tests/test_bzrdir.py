@@ -1027,14 +1027,15 @@ class TestMeta1DirFormat(TestCaseWithTransport):
 
     def test_with_features(self):
         tree = self.make_branch_and_tree('tree', format='2a')
-        tree.bzrdir.control_transport.put_bytes(
-            'branch-format',
-            tree.bzrdir._format.get_format_string() + "required bar\n")
+        tree.bzrdir.update_feature_flags({"bar": "required"})
         self.assertRaises(errors.MissingFeature, bzrdir.BzrDir.open, 'tree')
         bzrdir.BzrDirMetaFormat1.register_feature('bar')
         self.addCleanup(bzrdir.BzrDirMetaFormat1.unregister_feature, 'bar')
         dir = bzrdir.BzrDir.open('tree')
         self.assertEquals("required", dir._format.features.get("bar"))
+        tree.bzrdir.update_feature_flags({"bar": None, "nonexistant": None})
+        dir = bzrdir.BzrDir.open('tree')
+        self.assertEquals({}, dir._format.features)
 
     def test_needs_conversion_different_working_tree(self):
         # meta1dirs need an conversion if any element is not the default.
@@ -1296,6 +1297,9 @@ class _TestBranch(bzrlib.branch.Branch):
 
     def _get_config(self):
         return config.TransportConfig(self._transport, 'branch.conf')
+
+    def _get_config_store(self):
+        return config.BranchStore(self)
 
     def set_parent(self, parent):
         self._parent = parent

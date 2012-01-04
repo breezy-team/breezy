@@ -70,7 +70,6 @@ class VersionInfoBuilder(object):
         :param revision_id: Revision id to print version for (optional)
         """
         self._branch = branch
-        self._working_tree = working_tree
         self._check = check_for_clean
         self._include_history = include_revision_history
         self._include_file_revs = include_file_revisions
@@ -80,19 +79,27 @@ class VersionInfoBuilder(object):
         self._file_revisions = {}
         self._revision_id = revision_id
 
+        if self._revision_id is None:
+            self._tree = working_tree
+            self._working_tree = working_tree
+        else:
+            self._tree = self._branch.repository.revision_tree(self._revision_id)
+            # the working tree is not relevant if an explicit revision was specified
+            self._working_tree = None
+
     def _extract_file_revisions(self):
         """Extract the working revisions for all files"""
 
         # Things seem clean if we never look :)
         self._clean = True
 
-        if self._working_tree is not None:
+        if self._working_tree is self._tree:
             basis_tree = self._working_tree.basis_tree()
             # TODO: jam 20070215 The working tree should actually be locked at
             #       a higher level, but this will do for now.
             self._working_tree.lock_read()
         else:
-            basis_tree = self._branch.basis_tree()
+            basis_tree = self._branch.repository.revision_tree(self._revision_id)
 
         basis_tree.lock_read()
         try:
@@ -100,7 +107,7 @@ class VersionInfoBuilder(object):
             for info in basis_tree.list_files(include_root=True):
                 self._file_revisions[info[0]] = info[-1].revision
 
-            if not self._check or self._working_tree is None:
+            if not self._check or self._working_tree is not self._tree:
                 return
 
             delta = self._working_tree.changes_from(basis_tree,
@@ -140,11 +147,7 @@ class VersionInfoBuilder(object):
     def _iter_revision_history(self):
         """Find the messages for all revisions in history."""
 
-        # Unfortunately, there is no WorkingTree.revision_history
-        if self._working_tree is not None:
-            last_rev = self._working_tree.last_revision()
-        else:
-            last_rev = self._branch.last_revision()
+        last_rev = self._get_revision_id()
 
         repository =  self._branch.repository
         repository.lock_read()
