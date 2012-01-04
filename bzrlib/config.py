@@ -3014,12 +3014,10 @@ class Store(object):
         Dirty sections are MutableSection which kept track of the value they
         are expected to update.
         """
-        # Get an up-to-date version from the persistent storage
+        # We need an up-to-date version from the persistent storage, unload the
+        # store. The reload will occur when needed (triggered by the first
+        # get_mutable_section() call below.
         self.unload()
-        # From now on we need a lock on the store to ensure changes can be
-        # saved atomically (daughter classes will provide locking around
-        # save_changes)
-        self.load()
         # Apply the changes from the preserved dirty sections
         for dirty in dirty_sections:
             clean = self.get_mutable_section(dirty.id)
