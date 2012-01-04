@@ -3017,7 +3017,7 @@ class TestQuotingIniFileStore(tests.TestCaseWithTransport):
         stack = config.Stack([store.get_sections], store)
         stack.set('foo', ' a b c ')
         store.save()
-        self.assertFileEqual('foo = " a b c "\n', 'foo.conf')
+        self.assertFileEqual('foo = " a b c "' + os.linesep, 'foo.conf')
 
 
 class TestTransportIniFileStore(TestStore):
