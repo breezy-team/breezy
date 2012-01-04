@@ -49,10 +49,9 @@ def send(target_branch, revision, public_branch, remember,
     branch.lock_write()
     try:
         if output is None:
-            config = branch.get_config()
             if mail_to is None:
-                mail_to = config.get_user_option('submit_to')
-            mail_client = config.get_mail_client()
+                mail_to = branch.get_config_stack().get('submit_to')
+            mail_client = branch.get_config().get_mail_client()
             if (not getattr(mail_client, 'supports_body', False)
                 and body is not None):
                 raise errors.BzrCommandError(gettext(
@@ -87,16 +86,16 @@ def send(target_branch, revision, public_branch, remember,
             possible_transports=possible_transports)
         possible_transports.append(submit_branch.bzrdir.root_transport)
         if mail_to is None or format is None:
-            submit_config = submit_branch.get_config()
             if mail_to is None:
-                mail_to = submit_config.get_user_option("child_submit_to")
+                mail_to = submit_branch.get_config_stack().get(
+                    'child_submit_to')
             if format is None:
                 formatname = submit_branch.get_child_submit_format()
                 try:
                     format = format_registry.get(formatname)
                 except KeyError:
-                    raise errors.BzrCommandError(gettext("No such send format '%s'.") % 
-                                                 formatname)
+                    raise errors.BzrCommandError(
+                        gettext("No such send format '%s'.") % formatname)
 
         stored_public_branch = branch.get_public_branch()
         if public_branch is None:

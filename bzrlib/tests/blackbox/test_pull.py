@@ -377,8 +377,8 @@ class TestPull(tests.TestCaseWithTransport):
     def test_pull_verbose_uses_default_log(self):
         tree = self.example_branch('source')
         target = self.make_branch_and_tree('target')
-        target_config = target.branch.get_config()
-        target_config.set_user_option('log_format', 'short')
+        target_config = target.branch.get_config_stack()
+        target_config.set('log_format', 'short')
         out = self.run_bzr('pull -v source -d target')[0]
         self.assertContainsRe(out, r'\n {4}1 .*\n {6}setup\n')
         self.assertNotContainsRe(

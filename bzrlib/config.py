@@ -2669,6 +2669,12 @@ signatures, ignore them, or check them if they are
 present.
 '''))
 option_registry.register(
+    Option('child_submit_format',
+           help='''The preferred format of submissions to this branch.'''))
+option_registry.register(
+    Option('child_submit_to',
+           help='''Where submissions to this branch are mailed to.'''))
+option_registry.register(
     Option('create_signatures', default=SIGN_WHEN_REQUIRED,
            from_unicode=signing_policy_from_unicode,
            help='''\
@@ -2857,6 +2863,9 @@ The branch you intend to submit your current work to.
 This is automatically set by ``bzr send`` and ``bzr merge``, and is also used
 by the ``submit:`` revision spec.
 """))
+option_registry.register(
+    Option('submit_to',
+           help='''Where submissions from this branch are mailed to.'''))
 
 
 class Section(object):
