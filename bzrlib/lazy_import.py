@@ -78,11 +78,6 @@ class ScopeReplacer(object):
         if real_obj is not None:
             object.__getattribute__(self, '_duplicate_replacement')()
             return real_obj
-        replace = object.__getattribute__(self, '_replace')
-        return replace()
-
-    def _replace(self):
-        """Actually replace self with other in the given scope"""
         name = object.__getattribute__(self, '_name')
         factory = object.__getattribute__(self, '_factory')
         scope = object.__getattribute__(self, '_scope')
