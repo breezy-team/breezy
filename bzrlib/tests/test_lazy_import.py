@@ -1150,7 +1150,7 @@ class TestScopeReplacerReentrance(TestCase):
     These tests set up a tracer that stops at a suitable moment (upon
     entry of a specified method) and starts another call to the
     functionality in question (__call__, __getattribute__, __setattr_)
-    in order win the race, setting up the original caller to lose.
+    in order to win the race, setting up the original caller to lose.
     """
 
     def tracer(self, frame, event, arg):
