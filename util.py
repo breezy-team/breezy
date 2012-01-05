@@ -144,20 +144,25 @@ def find_changelog(t, merge, max_blocks=1):
         located at 'changelog' (rather than 'debian/changelog') if
         merge was given, False otherwise.
     """
-    changelog_file = 'debian/changelog'
     top_level = False
     t.lock_read()
     try:
+        changelog_file = 'debian/changelog'
         if not t.has_filename(changelog_file):
+            checked_files = ['debian/changelog']
             if merge:
                 # Assume LarstiQ's layout (.bzr in debian/)
                 changelog_file = 'changelog'
                 top_level = True
                 if not t.has_filename(changelog_file):
-                    raise MissingChangelogError('"debian/changelog" or '
-                            '"changelog"')
+                    checked_files.append(changelog_file)
+                    changelog_file = None
             else:
-                raise MissingChangelogError('"debian/changelog"')
+                changelog_file = None
+            if changelog_file is None:
+                if getattr(t, "abspath", None):
+                    checked_files = [t.abspath(f) for f in checked_files]
+                raise MissingChangelogError(" or ".join(checked_files))
         elif merge and t.has_filename('changelog'):
             # If it is a "top_level" package and debian is a symlink to
             # "." then it will have found debian/changelog. Try and detect

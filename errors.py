@@ -67,7 +67,7 @@ class StopBuild(BzrError):
 
 
 class MissingChangelogError(BzrError):
-    _fmt = 'Could not find changelog at %(location)s.'
+    _fmt = 'Could not find changelog at %(location)s in tree.'
 
     def __init__(self, locations):
         BzrError.__init__(self, location=locations)
