@@ -178,7 +178,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
 
     def test_annotate_edited_file(self):
         tree = self._setup_edited_file()
-        tree.branch.get_config_stack().set('email', 'current@host2')
+        self.overrideEnv('BZR_EMAIL', 'current@host2')
         out, err = self.run_bzr('annotate file')
         self.assertEqual(
             '1   test@ho | foo\n'
