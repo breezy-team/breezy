@@ -199,6 +199,10 @@ def pre_merge(merger):
 def pre_merge_quilt(merger):
     if getattr(merger, "_no_quilt_unapplying", False):
         return
+    if (merger.other_tree.path2id("debian/patches") is None and
+        merger.this_tree.path2id("debian/patches") is None and
+        merger.working_tree.path2id("debian/patches") is None):
+        return
     import shutil
     from bzrlib import trace
     from bzrlib.plugins.builddeb.errors import QuiltUnapplyError
