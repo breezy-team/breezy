@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1269,8 +1269,12 @@ class TestBranchSetParentLocation(RemoteBranchTestCase):
         self.reset_smart_call_log()
         verb = 'Branch.set_parent_location'
         self.disable_verb(verb)
-        branch.set_parent('http://foo/')
-        self.assertLength(12, self.hpss_calls)
+        branch.lock_write()
+        try:
+            branch.set_parent('http://foo/')
+        finally:
+            branch.unlock()
+        self.assertLength(13, self.hpss_calls)
 
 
 class TestBranchGetTagsBytes(RemoteBranchTestCase):
@@ -2047,6 +2051,9 @@ class TestBranchGetPutConfigStore(RemoteBranchTestCase):
             'Branch.get_config_file', ('memory:///', ),
             'success', ('ok', ), "# line 1\n")
         client.add_expected_call(
+            'Branch.get_config_file', ('memory:///', ),
+            'success', ('ok', ), "# line 1\n")
+        client.add_expected_call(
             'Branch.put_config_file', ('memory:///', 'branch token',
             'repo token'),
             'success', ('ok',))
@@ -2063,6 +2070,7 @@ class TestBranchGetPutConfigStore(RemoteBranchTestCase):
         self.assertEqual(
             [('call', 'Branch.get_stacked_on_url', ('memory:///',)),
              ('call', 'Branch.lock_write', ('memory:///', '', '')),
+             ('call_expecting_body', 'Branch.get_config_file', ('memory:///',)),
              ('call_expecting_body', 'Branch.get_config_file', ('memory:///',)),
              ('call_with_body_bytes_expecting_body', 'Branch.put_config_file',
                  ('memory:///', 'branch token', 'repo token'),
@@ -4134,8 +4142,12 @@ class TestUpdateBoundBranchWithModifiedBoundLocation(
         self.bound_location = self.checkout.branch.get_bound_location()
 
     def assertUpdateSucceeds(self, new_location):
-        self.checkout.branch.set_bound_location(new_location)
-        self.checkout.update()
+        self.checkout.lock_write()
+        try:
+            self.checkout.branch.set_bound_location(new_location)
+            self.checkout.update()
+        finally:
+            self.checkout.unlock()
         self.assertEquals(self.last_revid, self.checkout.last_revision())
 
     def test_without_final_slash(self):

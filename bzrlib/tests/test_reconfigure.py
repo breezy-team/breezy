@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009, 2011, 2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -72,7 +72,8 @@ class TestReconfigure(tests.TestCaseWithTransport):
         checkout = branch.create_checkout('checkout')
         reconfiguration = reconfigure.Reconfigure.to_branch(checkout.bzrdir)
         reconfiguration.apply()
-        self.assertIs(None, checkout.branch.get_bound_location())
+        reconfigured = bzrdir.BzrDir.open('checkout').open_branch()
+        self.assertIs(None, reconfigured.get_bound_location())
 
     def prepare_lightweight_checkout_to_branch(self):
         branch = self.make_branch('branch')
@@ -146,17 +147,37 @@ class TestReconfigure(tests.TestCaseWithTransport):
         reconfiguration = reconfigure.Reconfigure(branch.bzrdir)
         self.assertRaises(errors.NoBindLocation,
                           reconfiguration._select_bind_location)
-        branch.set_parent('http://parent')
+        branch.lock_write()
+        try:
+            branch.set_parent('http://parent')
+        finally:
+            branch.unlock()
+        reconfiguration = reconfigure.Reconfigure(branch.bzrdir)
         self.assertEqual('http://parent',
                          reconfiguration._select_bind_location())
-        branch.set_push_location('sftp://push')
+        branch.lock_write()
+        try:
+            branch.set_push_location('sftp://push')
+        finally:
+            branch.unlock()
+        reconfiguration = reconfigure.Reconfigure(branch.bzrdir)
         self.assertEqual('sftp://push',
                          reconfiguration._select_bind_location())
-        branch.set_bound_location('bzr://foo/old-bound')
-        branch.set_bound_location(None)
+        branch.lock_write()
+        try:
+            branch.set_bound_location('bzr://foo/old-bound')
+            branch.set_bound_location(None)
+        finally:
+            branch.unlock()
+        reconfiguration = reconfigure.Reconfigure(branch.bzrdir)
         self.assertEqual('bzr://foo/old-bound',
                          reconfiguration._select_bind_location())
-        branch.set_bound_location('bzr://foo/cur-bound')
+        branch.lock_write()
+        try:
+            branch.set_bound_location('bzr://foo/cur-bound')
+        finally:
+            branch.unlock()
+        reconfiguration = reconfigure.Reconfigure(branch.bzrdir)
         self.assertEqual('bzr://foo/cur-bound',
                          reconfiguration._select_bind_location())
         reconfiguration.new_bound_location = 'ftp://user-specified'
@@ -179,7 +200,12 @@ class TestReconfigure(tests.TestCaseWithTransport):
         reconfiguration = reconfigure.Reconfigure.to_checkout(tree.bzrdir)
         self.assertRaises(errors.NoBindLocation, reconfiguration.apply)
         # setting a parent allows it to become a checkout
-        tree.branch.set_parent(parent.base)
+        tree.branch.lock_write()
+        try:
+            tree.branch.set_parent(parent.base)
+        finally:
+            tree.branch.unlock()
+        reconfiguration = reconfigure.Reconfigure.to_checkout(tree.bzrdir)
         reconfiguration.apply()
         # supplying a location allows it to become a checkout
         tree2 = self.make_branch_and_tree('tree2')
@@ -197,7 +223,13 @@ class TestReconfigure(tests.TestCaseWithTransport):
             tree.bzrdir)
         self.assertRaises(errors.NoBindLocation, reconfiguration.apply)
         # setting a parent allows it to become a checkout
-        tree.branch.set_parent(parent.base)
+        tree.branch.lock_write()
+        try:
+            tree.branch.set_parent(parent.base)
+        finally:
+            tree.branch.unlock()
+        reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
+            tree.bzrdir)
         reconfiguration.apply()
         # supplying a location allows it to become a checkout
         tree2 = self.make_branch_and_tree('tree2')

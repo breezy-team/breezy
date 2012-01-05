@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@ import os
 import sys
 
 from bzrlib import (
+    branch,
     debug,
     remote,
     tests,
@@ -249,32 +250,38 @@ class TestPull(tests.TestCaseWithTransport):
         tree_a.commit('commit b')
         # reset parent
         parent = branch_b.get_parent()
+        branch_b = branch.Branch.open('branch_b')
+        branch_b.lock_write()
         branch_b.set_parent(None)
+        branch_b.unlock()
         self.assertEqual(None, branch_b.get_parent())
         # test pull for failure without parent set
-        os.chdir('branch_b')
-        out = self.run_bzr('pull', retcode=3)
+        out = self.run_bzr('pull', retcode=3, working_dir='branch_b')
         self.assertEqual(out,
                 ('','bzr: ERROR: No pull location known or specified.\n'))
         # test implicit --remember when no parent set, this pull conflicts
-        self.build_tree(['d'])
+        self.build_tree(['branch_b/d'])
         tree_b.add('d')
         tree_b.commit('commit d')
-        out = self.run_bzr('pull ../branch_a', retcode=3)
+        out = self.run_bzr('pull ../branch_a', retcode=3,
+                           working_dir='branch_b')
         self.assertEqual(out,
                 ('','bzr: ERROR: These branches have diverged.'
                     ' Use the missing command to see how.\n'
                     'Use the merge command to reconcile them.\n'))
-        self.assertEqual(branch_b.get_parent(), parent)
+        branch_b = branch.Branch.open('branch_b')
+        self.assertEqual(parent, branch_b.get_parent())
         # test implicit --remember after resolving previous failure
-        uncommit(branch=branch_b, tree=tree_b)
+        uncommit(branch=tree_b.branch, tree=tree_b)
         transport.delete('branch_b/d')
-        self.run_bzr('pull')
+        self.run_bzr('pull', working_dir='branch_b')
+        branch_b = branch.Branch.open('branch_b')
         self.assertEqual(branch_b.get_parent(), parent)
         # test explicit --remember
-        self.run_bzr('pull ../branch_c --remember')
-        self.assertEqual(branch_b.get_parent(),
-                          branch_c.bzrdir.root_transport.base)
+        self.run_bzr('pull ../branch_c --remember', working_dir='branch_b')
+        branch_b = branch.Branch.open('branch_b')
+        self.assertEqual(branch_c.bzrdir.root_transport.base,
+                         branch_b.get_parent())
 
     def test_pull_bundle(self):
         from bzrlib.testament import Testament

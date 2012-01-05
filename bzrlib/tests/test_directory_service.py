@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -65,55 +65,57 @@ class TestDirectoryLookup(TestCase):
 
 class TestAliasDirectory(TestCaseWithTransport):
 
+    def setUp(self):
+        super(TestAliasDirectory, self).setUp()
+        self.branch = self.make_branch('.')
+
+    def assertAliasFromBranch(self, setter, value, alias):
+        self.branch.lock_write()
+        try:
+            setter(value)
+        finally:
+            self.branch.unlock()
+        self.assertEquals(value, directories.dereference(alias))
+
     def test_lookup_parent(self):
-        branch = self.make_branch('.')
-        branch.set_parent('http://a')
-        self.assertEqual('http://a', directories.dereference(':parent'))
+        self.assertAliasFromBranch(self.branch.set_parent, 'http://a',
+                                  ':parent')
 
     def test_lookup_submit(self):
-        branch = self.make_branch('.')
-        branch.set_submit_branch('http://b')
-        self.assertEqual('http://b', directories.dereference(':submit'))
+        self.assertAliasFromBranch(self.branch.set_submit_branch, 'http://b',
+                                   ':submit')
 
     def test_lookup_public(self):
-        branch = self.make_branch('.')
-        branch.set_public_branch('http://c')
-        self.assertEqual('http://c', directories.dereference(':public'))
+        self.assertAliasFromBranch(self.branch.set_public_branch, 'http://c',
+                                   ':public')
 
     def test_lookup_bound(self):
-        branch = self.make_branch('.')
-        branch.set_bound_location('http://d')
-        self.assertEqual('http://d', directories.dereference(':bound'))
+        self.assertAliasFromBranch(self.branch.set_bound_location, 'http://d',
+                                   ':bound')
 
     def test_lookup_push(self):
-        branch = self.make_branch('.')
-        branch.set_push_location('http://e')
-        self.assertEqual('http://e', directories.dereference(':push'))
+        self.assertAliasFromBranch(self.branch.set_push_location, 'http://e',
+                                   ':push')
 
     def test_lookup_this(self):
-        branch = self.make_branch('.')
-        self.assertEqual(branch.base, directories.dereference(':this'))
+        self.assertEqual(self.branch.base, directories.dereference(':this'))
 
     def test_extra_path(self):
-        branch = self.make_branch('.')
-        self.assertEqual(urlutils.join(branch.base, 'arg'),
+        self.assertEqual(urlutils.join(self.branch.base, 'arg'),
                          directories.dereference(':this/arg'))
 
     def test_lookup_badname(self):
-        branch = self.make_branch('.')
         e = self.assertRaises(errors.InvalidLocationAlias,
                               directories.dereference, ':booga')
         self.assertEqual('":booga" is not a valid location alias.',
                          str(e))
 
     def test_lookup_badvalue(self):
-        branch = self.make_branch('.')
         e = self.assertRaises(errors.UnsetLocationAlias,
                               directories.dereference, ':parent')
         self.assertEqual('No parent location assigned.', str(e))
 
     def test_register_location_alias(self):
-        branch = self.make_branch('.')
         self.addCleanup(AliasDirectory.branch_aliases.remove, "booga")
         AliasDirectory.branch_aliases.register("booga",
             lambda b: "UHH?", help="Nobody knows")

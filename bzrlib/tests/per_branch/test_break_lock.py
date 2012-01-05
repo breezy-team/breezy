@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -79,14 +79,19 @@ class TestBreakLock(per_branch.TestCaseWithBranch):
         # unlock it.
         master = self.make_branch('master')
         try:
-            self.branch.bind(master)
+            self.branch.lock_write()
+            try:
+                self.branch.bind(master)
+            finally:
+                self.branch.unlock()
         except errors.UpgradeRequired:
             # this branch does not support binding.
             return
         master.lock_write()
         ui.ui_factory = ui.CannedInputUIFactory([True, True])
         try:
-            self.unused_branch.break_lock()
+            fresh = _mod_branch.Branch.open(self.unused_branch.base)
+            fresh.break_lock()
         except NotImplementedError:
             # branch does not support break_lock
             master.unlock()

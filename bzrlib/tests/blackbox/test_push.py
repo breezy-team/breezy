@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -116,6 +116,7 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertEquals(out,
                 ('','bzr: ERROR: These branches have diverged.  '
                  'See "bzr help diverged-branches" for more information.\n'))
+        branch_a = bzrdir.BzrDir.open('branch_a').open_branch()
         self.assertEquals(osutils.abspath(branch_a.get_push_location()),
                           osutils.abspath(branch_b.bzrdir.root_transport.base))
 
@@ -123,6 +124,7 @@ class TestPush(tests.TestCaseWithTransport):
         uncommit.uncommit(branch=branch_b, tree=tree_b)
         transport.delete('branch_b/c')
         out, err = self.run_bzr('push', working_dir='branch_a')
+        branch_a = bzrdir.BzrDir.open('branch_a').open_branch()
         path = branch_a.get_push_location()
         self.assertEqual(err,
                          'Using saved push location: %s\n'
@@ -133,6 +135,7 @@ class TestPush(tests.TestCaseWithTransport):
                          branch_b.bzrdir.root_transport.base)
         # test explicit --remember
         self.run_bzr('push ../branch_c --remember', working_dir='branch_a')
+        branch_a = bzrdir.BzrDir.open('branch_a').open_branch()
         self.assertEquals(branch_a.get_push_location(),
                           branch_c.bzrdir.root_transport.base)
 
@@ -175,7 +178,7 @@ class TestPush(tests.TestCaseWithTransport):
         t.add('file')
         t.commit('commit 1')
         self.run_bzr('push -d tree pushed-to')
-        path = t.branch.get_push_location()
+        path = bzrdir.BzrDir.open('tree').open_branch().get_push_location()
         out, err = self.run_bzr('push', working_dir="tree")
         self.assertEqual('Using saved push location: %s\n'
                          'No new revisions or tags to push.\n' %
@@ -282,7 +285,7 @@ class TestPush(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(14, self.hpss_calls)
+        self.assertLength(15, self.hpss_calls)
         remote = branch.Branch.open('public')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
 
@@ -497,7 +500,12 @@ class TestPush(tests.TestCaseWithTransport):
         trunk_public = self.make_branch('public_trunk', format='1.9')
         trunk_public.pull(trunk_tree.branch)
         trunk_public_url = self.get_readonly_url('public_trunk')
-        trunk_tree.branch.set_public_branch(trunk_public_url)
+        br = trunk_tree.branch
+        br.lock_write()
+        try:
+            br.set_public_branch(trunk_public_url)
+        finally:
+            br.unlock()
         # now we do a stacked push, which should determine the public location
         # for us.
         out, err = self.run_bzr(['push', '--stacked',
@@ -694,10 +702,13 @@ class TestPushStrictMixin(object):
         self.tree.commit('modify file', rev_id='modified')
 
     def set_config_push_strict(self, value):
-        # set config var (any of bazaar.conf, locations.conf, branch.conf
-        # should do)
-        conf = self.tree.branch.get_config_stack()
-        conf.set('push_strict', value)
+        br = branch.Branch.open('local')
+        br.lock_write()
+        try:
+            conf = br.get_config_stack()
+            conf.set('push_strict', value)
+        finally:
+            br.unlock()
 
     _default_command = ['push', '../to']
     _default_wd = 'local'

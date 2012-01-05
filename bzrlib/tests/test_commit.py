@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -502,7 +502,11 @@ create_signatures=always
         master.create_workingtree()
         bound = master.sprout('bound')
         wt = bound.open_workingtree()
-        wt.branch.set_bound_location(os.path.realpath('master'))
+        wt.branch.lock_write()
+        try:
+            wt.branch.set_bound_location(os.path.realpath('master'))
+        finally:
+            wt.branch.unlock()
         master_branch.lock_write()
         try:
             self.assertRaises(LockContention, wt.commit, 'silly')

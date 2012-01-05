@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 # Authors: Aaron Bentley
 #
 # This program is free software; you can redistribute it and/or modify
@@ -293,10 +293,11 @@ class TestSendStrictMixin(TestSendMixin):
     _default_additional_warning = 'Uncommitted changes will not be sent.'
 
     def set_config_send_strict(self, value):
-        # set config var (any of bazaar.conf, locations.conf, branch.conf
-        # should do)
-        conf = self.local_tree.branch.get_config_stack()
+        br = branch.Branch.open('local')
+        br.lock_write()
+        conf = br.get_config_stack()
         conf.set('send_strict', value)
+        br.unlock()
 
     def assertSendFails(self, args):
         out, err = self.run_send(args, rc=3, err_re=self._default_errors)

@@ -1,4 +1,4 @@
-# Copyright (C) 2010, 2011 Canonical Ltd
+# Copyright (C) 2010, 2011, 2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -621,7 +621,7 @@ class TestingSmartConnectionHandler(SocketServer.BaseRequestHandler,
             return
 
 
-_DEFAULT_TESTING_CLIENT_TIMEOUT = 60.0
+_DEFAULT_TESTING_CLIENT_TIMEOUT = 600.0
 
 class TestingSmartServer(TestingThreadingTCPServer, server.SmartTCPServer):
 

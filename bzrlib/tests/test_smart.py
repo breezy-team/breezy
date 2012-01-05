@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1296,7 +1296,8 @@ class TestSmartServerBranchRequestSetParent(TestLockedBranch):
         finally:
             branch.unlock()
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(()), response)
-        self.assertEqual(None, branch.get_parent())
+        refreshed = _mod_branch.Branch.open(branch.base)
+        self.assertEqual(None, refreshed.get_parent())
 
     def test_set_parent_something(self):
         branch = self.make_branch('base', format="1.9")
@@ -1305,11 +1306,12 @@ class TestSmartServerBranchRequestSetParent(TestLockedBranch):
         branch_token, repo_token = self.get_lock_tokens(branch)
         try:
             response = request.execute('base', branch_token, repo_token,
-            'http://bar/')
+                                       'http://bar/')
         finally:
             branch.unlock()
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(()), response)
-        self.assertEqual('http://bar/', branch.get_parent())
+        refreshed = _mod_branch.Branch.open(branch.base)
+        self.assertEqual('http://bar/', refreshed.get_parent())
 
 
 class TestSmartServerBranchRequestGetTagsBytes(

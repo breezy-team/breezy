@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #            and others
 #
@@ -3019,7 +3019,6 @@ class Store(object):
         # From now on we need a lock on the store to ensure changes can be
         # saved atomically (daughter classes will provide locking around
         # save_changes)
-        self.load()
         # Apply the changes from the preserved dirty sections
         for dirty in dirty_sections:
             clean = self.get_mutable_section(dirty.id)
@@ -3351,19 +3350,16 @@ class BranchStore(TransportIniFileStore):
         self.branch = branch
         self.id = 'branch'
 
-    def lock_write(self, token=None):
-        return self.branch.lock_write(token)
-
-    def unlock(self):
-        return self.branch.unlock()
-
-    @needs_write_lock
-    def save(self):
-        # We need to be able to override the undecorated implementation
-        self.save_without_locking()
-
-    def save_without_locking(self):
-        super(BranchStore, self).save()
+    # FIXME: This is very handy to detect which callers forgot to lock the
+    # branch but break many bt.test_config tests. Either these tests should
+    # parametrized differently or better ways to achieve the branch locking
+    # should be found that don't require this.
+    def xget_mutable_section(self, section_id=None):
+        if self.branch.peek_lock_mode() != 'w':
+            from bzrlib import debug ; debug.set_trace()
+            raise AssertionError('The branch for %s is not write-locked'
+                                 % self.external_url())
+        return super(BranchStore, self).get_mutable_section(section_id)
 
 
 class ControlStore(LockableIniFileStore):
@@ -3819,7 +3815,7 @@ class LocationStack(_CompatibleStack):
             lstore, mutable_section_id=location)
 
 
-class BranchStack(_CompatibleStack):
+class BranchStack(Stack):
     """Per-location options falling back to branch then global options stack.
 
     The following sections are queried:
@@ -3866,7 +3862,7 @@ class RemoteControlStack(_CompatibleStack):
         self.bzrdir = bzrdir
 
 
-class BranchOnlyStack(_CompatibleStack):
+class BranchOnlyStack(Stack):
     """Branch-only options stack."""
 
     # FIXME: _BranchOnlyStack only uses branch.conf and is used only for the
@@ -3952,12 +3948,15 @@ class cmd_config(commands.Command):
                 # Set the option value
                 self._set_config_option(name, value, directory, scope)
 
-    def _get_stack(self, directory, scope=None):
+    def _get_stack(self, directory, scope=None, write_access=False):
         """Get the configuration stack specified by ``directory`` and ``scope``.
 
         :param directory: Where the configurations are derived from.
 
         :param scope: A specific config to start from.
+
+        :param write_access: Whether a write access to the stack will be
+            attempted.
         """
         # FIXME: scope should allow access to plugin-specific stacks (even
         # reduced to the plugin-specific store), related to
@@ -3971,6 +3970,8 @@ class cmd_config(commands.Command):
                 (_, br, _) = (
                     controldir.ControlDir.open_containing_tree_or_branch(
                         directory))
+                if write_access:
+                    self.add_cleanup(br.lock_write().unlock)
                 return br.get_config_stack()
             raise errors.NoSuchConfig(scope)
         else:
@@ -3978,6 +3979,8 @@ class cmd_config(commands.Command):
                 (_, br, _) = (
                     controldir.ControlDir.open_containing_tree_or_branch(
                         directory))
+                if write_access:
+                    self.add_cleanup(br.lock_write().unlock)
                 return br.get_config_stack()
             except errors.NotBranchError:
                 return LocationStack(directory)
@@ -4028,14 +4031,14 @@ class cmd_config(commands.Command):
                         self.outf.write('  %s = %s\n' % (oname, value))
 
     def _set_config_option(self, name, value, directory, scope):
-        conf = self._get_stack(directory, scope)
+        conf = self._get_stack(directory, scope, write_access=True)
         conf.set(name, value)
 
     def _remove_config_option(self, name, directory, scope):
         if name is None:
             raise errors.BzrCommandError(
                 '--remove expects an option to remove.')
-        conf = self._get_stack(directory, scope)
+        conf = self._get_stack(directory, scope, write_access=True)
         try:
             conf.remove(name)
         except KeyError:

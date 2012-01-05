@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -160,7 +160,8 @@ class TestBranch(TestCaseWithTransport):
         #  => new branch will be created and checkout bound to the new branch
         self.example_branch('a')
         self.run_bzr('checkout a current')
-        out, err = self.run_bzr('branch --switch ../a ../b', working_dir='current')
+        out, err = self.run_bzr('branch --switch ../a ../b',
+                                working_dir='current')
         a = branch.Branch.open('a')
         b = branch.Branch.open('b')
         self.assertEqual(a.last_revision(), b.last_revision())

@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -135,7 +135,11 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         # Remembers if asked explicitly or no previous location is set
         if (remember
             or (remember is None and br_from.get_push_location() is None)):
-            br_from.set_push_location(br_to.base)
+            br_from.lock_write()
+            try:
+                br_from.set_push_location(br_to.base)
+            finally:
+                br_from.unlock()
     else:
         if stacked_on is not None:
             warning("Ignoring request for a stacked branch as repository "

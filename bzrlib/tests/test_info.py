@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2011 Canonical Ltd
+# Copyright (C) 2007-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -312,10 +312,14 @@ class TestInfo(tests.TestCaseWithTransport):
 
     def test_gather_related_braches(self):
         branch = self.make_branch('.')
-        branch.set_public_branch('baz')
-        branch.set_push_location('bar')
-        branch.set_parent('foo')
-        branch.set_submit_branch('qux')
+        branch.lock_write()
+        try:
+            branch.set_public_branch('baz')
+            branch.set_push_location('bar')
+            branch.set_parent('foo')
+            branch.set_submit_branch('qux')
+        finally:
+            branch.unlock()
         self.assertEqual(
             [('public branch', 'baz'), ('push branch', 'bar'),
              ('parent branch', 'foo'), ('submit branch', 'qux')],

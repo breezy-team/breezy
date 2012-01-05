@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -3190,20 +3190,6 @@ class RemoteBranchStore(config.IniFileStore):
         self.id = "branch"
         self._real_store = None
 
-    def lock_write(self, token=None):
-        return self.branch.lock_write(token)
-
-    def unlock(self):
-        return self.branch.unlock()
-
-    @needs_write_lock
-    def save(self):
-        # We need to be able to override the undecorated implementation
-        self.save_without_locking()
-
-    def save_without_locking(self):
-        super(RemoteBranchStore, self).save()
-
     def external_url(self):
         return self.branch.user_url
 
@@ -3293,6 +3279,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         self._repo_lock_token = None
         self._lock_count = 0
         self._leave_lock = False
+        self.conf_store = None
         # Setup a format: note that we cannot call _ensure_real until all the
         # attributes above are set: This code cannot be moved higher up in this
         # function.
@@ -3341,7 +3328,9 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         return RemoteBranchConfig(self)
 
     def _get_config_store(self):
-        return RemoteBranchStore(self)
+        if self.conf_store is None:
+            self.conf_store =  RemoteBranchStore(self)
+        return self.conf_store
 
     def _get_real_transport(self):
         # if we try vfs access, return the real branch's vfs transport
@@ -3367,6 +3356,10 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             self.bzrdir._ensure_real()
             self._real_branch = self.bzrdir._real_bzrdir.open_branch(
                 ignore_fallbacks=self._real_ignore_fallbacks, name=self._name)
+            # The remote branch and the real branch shares the same store. If
+            # we don't, there will always be cases where one of the stores
+            # doesn't see an update made on the other.
+            self._real_branch.conf_store = self.conf_store
             if self.repository._real_repository is None:
                 # Give the remote repository the matching real repo.
                 real_repo = self._real_branch.repository
@@ -3450,6 +3443,13 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
 
     def set_stacked_on_url(self, url):
         branch.Branch.set_stacked_on_url(self, url)
+        # We need the stacked_on_url to be visible both locally (to not query
+        # it repeatedly) and remotely (so smart verbs can get it server side)
+        # Without the following line,
+        # bzrlib.tests.per_branch.test_create_clone.TestCreateClone
+        # .test_create_clone_on_transport_stacked_hooks_get_stacked_branch
+        # fails for remote branches -- vila 2012-01-04
+        self.conf_store.save_changes()
         if not url:
             self._is_stacked = False
         else:
@@ -3583,6 +3583,8 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         try:
             self._lock_count -= 1
             if not self._lock_count:
+                if self.conf_store is not None:
+                    self.conf_store.save_changes()
                 self._clear_cached_state()
                 mode = self._lock_mode
                 self._lock_mode = None
@@ -3878,8 +3880,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             last_rev=last_rev,other_branch=other_branch))
 
     def set_push_location(self, location):
-        self._ensure_real()
-        return self._real_branch.set_push_location(location)
+        self._set_config_location('push_location', location)
 
     def heads_to_fetch(self):
         if self._format._use_default_local_heads_to_fetch():

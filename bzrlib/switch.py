@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2009, 2010 Canonical Ltd.
+# Copyright (C) 2007, 2009-2012 Canonical Ltd.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -101,11 +101,15 @@ def _set_branch_location(control, to_branch, force=False):
                         'Unable to connect to current master branch %(target)s: '
                         '%(error)s To switch anyway, use --force.') %
                         e.__dict__)
-            b.set_bound_location(None)
-            b.pull(to_branch, overwrite=True,
-                possible_transports=possible_transports)
-            b.set_bound_location(to_branch.base)
-            b.set_parent(b.get_master_branch().get_parent())
+            b.lock_write()
+            try:
+                b.set_bound_location(None)
+                b.pull(to_branch, overwrite=True,
+                       possible_transports=possible_transports)
+                b.set_bound_location(to_branch.base)
+                b.set_parent(b.get_master_branch().get_parent())
+            finally:
+                b.unlock()
         else:
             raise errors.BzrCommandError(gettext('Cannot switch a branch, '
                 'only a checkout.'))

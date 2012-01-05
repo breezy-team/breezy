@@ -1,4 +1,4 @@
-# Copyright (C) 2010, 2011 Canonical Ltd
+# Copyright (C) 2010, 2011, 2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -394,7 +394,11 @@ class ControlDir(ControlComponent):
             repository_to.fetch(source.repository, revision_id=revision_id)
             br_to = source.clone(self, revision_id=revision_id)
             if source.get_push_location() is None or remember:
-                source.set_push_location(br_to.base)
+                source.lock_write()
+                try:
+                    source.set_push_location(br_to.base)
+                finally:
+                    source.unlock()
             push_result.stacked_on = None
             push_result.branch_push_result = None
             push_result.old_revno = None
@@ -405,7 +409,11 @@ class ControlDir(ControlComponent):
         else:
             # We have successfully opened the branch, remember if necessary:
             if source.get_push_location() is None or remember:
-                source.set_push_location(br_to.base)
+                source.lock_write()
+                try:
+                    source.set_push_location(br_to.base)
+                finally:
+                    source.unlock()
             try:
                 tree_to = self.open_workingtree()
             except errors.NotLocalUrl:

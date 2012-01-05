@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -175,7 +175,9 @@ class TestBranchRegistration(TestCaseWithTransport):
 
     def test_register_no_url_in_published_branch_no_error(self):
         b = self.make_branch('.')
+        b.lock_write()
         b.set_public_branch('http://test-server.com/bzr/branch')
+        b.unlock()
         out, err = self.run_bzr(['register-branch', '--dry-run'])
         self.assertEqual('Branch registered.\n', out)
         self.assertEqual('', err)

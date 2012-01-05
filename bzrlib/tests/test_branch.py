@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -351,13 +351,13 @@ class TestBranch67(object):
     def test_config(self):
         """Ensure that all configuration data is stored in the branch"""
         branch = self.make_branch('a', format=self.get_format_name())
+        self.addCleanup(branch.lock_write().unlock)
         branch.set_parent('http://example.com')
         self.assertPathDoesNotExist('a/.bzr/branch/parent')
         self.assertEqual('http://example.com', branch.get_parent())
         branch.set_push_location('sftp://example.com')
-        config = branch.get_config()._get_branch_data_config()
-        self.assertEqual('sftp://example.com',
-                         config.get_user_option('push_location'))
+        conf = branch.get_config_stack()
+        self.assertEqual('sftp://example.com', conf.get('push_location'))
         branch.set_bound_location('ftp://example.com')
         self.assertPathDoesNotExist('a/.bzr/branch/bound')
         self.assertEqual('ftp://example.com', branch.get_bound_location())
@@ -666,7 +666,11 @@ class TestBranchOptions(tests.TestCaseWithTransport):
     def check_append_revisions_only(self, expected_value, value=None):
         """Set append_revisions_only in config and check its interpretation."""
         if value is not None:
-            self.config_stack.set('append_revisions_only', value)
+            self.branch.lock_write()
+            try:
+                self.config_stack.set('append_revisions_only', value)
+            finally:
+                self.branch.unlock()
         self.assertEqual(expected_value,
                          self.branch.get_append_revisions_only())
 

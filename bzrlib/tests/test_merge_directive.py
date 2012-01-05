@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009, 2011, 2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -423,7 +423,9 @@ class TestMergeDirectiveBranch(object):
         md = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 144,
             tree_b.branch.base, patch_type=None, public_branch=branch_c.base)
         self.assertEqual(md.target_branch, tree_b.branch.base)
+        tree_b.branch.lock_write()
         tree_b.branch.set_public_branch('http://example.com')
+        tree_b.branch.unlock()
         md2 = self.from_objects(
               tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
               patch_type=None, public_branch=branch_c.base)
