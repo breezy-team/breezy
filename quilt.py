@@ -34,11 +34,16 @@ from bzrlib import (
 
 class QuiltError(errors.BzrError):
 
-    _fmt = "An error (%(retcode)d) occurred running quilt: %(msg)s"
+    _fmt = "An error (%(retcode)d) occurred running quilt: %(stderr)s%(extra)s"
 
-    def __init__(self, retcode, msg):
+    def __init__(self, retcode, stdout, stderr):
         self.retcode = retcode
-        self.msg = msg
+        self.stderr = stderr
+        if stdout is not None:
+            self.extra = "\n\n%s" % stdout
+        else:
+            self.extra = ""
+        self.stdout = stdout
 
 
 def run_quilt(args, working_dir, series_file=None, patches_dir=None, quiet=None):
@@ -83,7 +88,7 @@ def run_quilt(args, working_dir, series_file=None, patches_dir=None, quiet=None)
         raise errors.BzrError("quilt is not installed, please install it")
     output = proc.communicate()
     if proc.returncode not in (0, 2):
-        raise QuiltError(proc.returncode, output[1])
+        raise QuiltError(proc.returncode, output[0], output[1])
     if output[0] is None:
         return ""
     return output[0]
@@ -96,7 +101,7 @@ def quilt_pop_all(working_dir, patches_dir=None, series_file=None, quiet=None):
     :param patches_dir: Optional patches directory
     :param series_file: Optional series file
     """
-    return run_quilt(["pop", "-a", "-v"], working_dir=working_dir, patches_dir=patches_dir, series_file=series_file, quiet=quiet)
+    return run_quilt(["pop", "-a"], working_dir=working_dir, patches_dir=patches_dir, series_file=series_file, quiet=quiet)
 
 
 def quilt_push_all(working_dir, patches_dir=None, series_file=None, quiet=None):
@@ -106,7 +111,7 @@ def quilt_push_all(working_dir, patches_dir=None, series_file=None, quiet=None):
     :param patches_dir: Optional patches directory
     :param series_file: Optional series file
     """
-    return run_quilt(["push", "-a", "-v"], working_dir=working_dir, patches_dir=patches_dir, series_file=series_file, quiet=quiet)
+    return run_quilt(["push", "-a"], working_dir=working_dir, patches_dir=patches_dir, series_file=series_file, quiet=quiet)
 
 
 def quilt_applied(working_dir, patches_dir=None, series_file=None):

@@ -648,7 +648,7 @@ def tree_contains_upstream_source(tree):
     return (len(present_files - packaging_files) > 0)
 
 
-def get_source_format(tree):
+def tree_get_source_format(tree):
     """Retrieve the source format name from a package.
 
     :param path: Path to the package
@@ -657,7 +657,8 @@ def get_source_format(tree):
     filename = "debian/source/format"
     if not tree.has_filename(filename):
         return FORMAT_1_0
-    text = tree.get_file_text(tree.path2id(filename), filename)
+    file_id = tree.path2id(filename)
+    text = tree.get_file_text(file_id, filename)
     return text.strip()
 
 
@@ -677,7 +678,7 @@ def guess_build_type(tree, version, contains_upstream_source):
     :param contains_upstream_source: Whether this branch contains the upstream source.
     :return: A build_type value.
     """
-    source_format = get_source_format(tree)
+    source_format = tree_get_source_format(tree)
     if source_format in NATIVE_SOURCE_FORMATS:
         format_native = True
     elif source_format in NORMAL_SOURCE_FORMATS:

@@ -7,8 +7,14 @@ bzr-builddeb (2.8.1) UNRELEASED; urgency=low
     LP: #486075, LP: #910900
   * Add pre-commit hook that warns about applied quilt patches, and can
     automatically unapply/apply all quilt patches. LP: #608670
+  * Automatically unapply patches before merge operations.
+    LP: #815854
+  * Cope with unicode strings being specified to TarfileSource. Based on
+    patch by Gediminas Paulauskas. LP: #911262
+  * Automatically apply patches for 3.0 (quilt) packages in 'bzr bd-do'
+    and 'bzr bd'. LP: #616791
 
- -- Jelmer Vernooij <jelmer@debian.org>  Mon, 02 Jan 2012 20:36:30 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 04 Jan 2012 22:14:07 +0100
 
 bzr-builddeb (2.8.0) unstable; urgency=low
 
