@@ -17,6 +17,7 @@
 
 
 from bzrlib import tests
+from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import per_workingtree
 
 
@@ -30,6 +31,12 @@ class TestPull(per_workingtree.TestCaseWithWorkingTree):
         tree_b = self.make_branch_and_tree('to')
         return tree, tree_b
 
+    def test_pull_null(self):
+        tree_a, tree_b = self.get_pullable_trees()
+        root_id = tree_a.get_root_id()
+        tree_a.pull(tree_b.branch, stop_revision=NULL_REVISION, overwrite=True)
+        self.assertEquals(root_id, tree_a.get_root_id())
+
     def test_pull(self):
         tree_a, tree_b = self.get_pullable_trees()
         tree_b.pull(tree_a.branch)
@@ -39,7 +46,7 @@ class TestPull(per_workingtree.TestCaseWithWorkingTree):
     def test_pull_overwrites(self):
         tree_a, tree_b = self.get_pullable_trees()
         tree_b.commit('foo', rev_id='B')
-        self.assertEqual(['B'], tree_b.branch.revision_history())
+        self.assertEqual('B', tree_b.branch.last_revision())
         tree_b.pull(tree_a.branch, overwrite=True)
         self.assertTrue(tree_b.branch.repository.has_revision('A'))
         self.assertTrue(tree_b.branch.repository.has_revision('B'))

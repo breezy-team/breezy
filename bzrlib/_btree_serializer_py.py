@@ -17,6 +17,8 @@
 
 """B+Tree index parsing."""
 
+from __future__ import absolute_import
+
 from bzrlib import static_tuple
 
 

@@ -17,6 +17,8 @@
 # TODO: 'bzr resolve' should accept a directory name and work from that
 # point down
 
+from __future__ import absolute_import
+
 import os
 
 from bzrlib.lazy_import import lazy_import
@@ -32,6 +34,7 @@ from bzrlib import (
     transform,
     workingtree,
     )
+from bzrlib.i18n import gettext, ngettext
 """)
 from bzrlib import (
     commands,
@@ -79,13 +82,13 @@ resolve_action_registry = registry.Registry()
 
 
 resolve_action_registry.register(
-    'done', 'done', 'Marks the conflict as resolved' )
+    'done', 'done', 'Marks the conflict as resolved.')
 resolve_action_registry.register(
     'take-this', 'take_this',
-    'Resolve the conflict preserving the version in the working tree' )
+    'Resolve the conflict preserving the version in the working tree.')
 resolve_action_registry.register(
     'take-other', 'take_other',
-    'Resolve the conflict taking the merged version into account' )
+    'Resolve the conflict taking the merged version into account.')
 resolve_action_registry.default_key = 'done'
 
 class ResolveActionOption(option.RegistryOption):
@@ -120,8 +123,8 @@ class cmd_resolve(commands.Command):
     def run(self, file_list=None, all=False, action=None, directory=None):
         if all:
             if file_list:
-                raise errors.BzrCommandError("If --all is specified,"
-                                             " no FILE may be provided")
+                raise errors.BzrCommandError(gettext("If --all is specified,"
+                                             " no FILE may be provided"))
             if directory is None:
                 directory = u'.'
             tree = workingtree.WorkingTree.open_containing(directory)[0]
@@ -145,13 +148,15 @@ class cmd_resolve(commands.Command):
             if file_list is None:
                 un_resolved, resolved = tree.auto_resolve()
                 if len(un_resolved) > 0:
-                    trace.note('%d conflict(s) auto-resolved.', len(resolved))
-                    trace.note('Remaining conflicts:')
+                    trace.note(ngettext('%d conflict auto-resolved.',
+                        '%d conflicts auto-resolved.', len(resolved)),
+                        len(resolved))
+                    trace.note(gettext('Remaining conflicts:'))
                     for conflict in un_resolved:
                         trace.note(unicode(conflict))
                     return 1
                 else:
-                    trace.note('All conflicts resolved.')
+                    trace.note(gettext('All conflicts resolved.'))
                     return 0
             else:
                 # FIXME: This can never occur but the block above needs some
@@ -160,8 +165,9 @@ class cmd_resolve(commands.Command):
                 pass
         else:
             before, after = resolve(tree, file_list, action=action)
-            trace.note('%d conflict(s) resolved, %d remaining'
-                       % (before - after, after))
+            trace.note(ngettext('{0} conflict resolved, {1} remaining',
+                                '{0} conflicts resolved, {1} remaining',
+                                before-after).format(before - after, after))
 
 
 def resolve(tree, paths=None, ignore_misses=False, recursive=False,

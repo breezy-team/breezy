@@ -16,6 +16,8 @@
 
 """Utilities for distinguishing binary files from text files"""
 
+from __future__ import absolute_import
+
 from itertools import chain
 
 from bzrlib.errors import BinaryFile

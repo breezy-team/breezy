@@ -29,12 +29,20 @@ assertions in Test Case objects, so they are recommended for new testing work.
 __all__ = [
     'HasLayout',
     'MatchesAncestry',
+    'ContainsNoVfsCalls',
     'ReturnsUnlockable',
     ]
 
 from bzrlib import (
+    osutils,
     revision as _mod_revision,
     )
+from bzrlib import lazy_import
+lazy_import.lazy_import(globals(),
+"""
+from bzrlib.smart.request import request_handlers as smart_request_handlers
+from bzrlib.smart import vfs
+""")
 
 from testtools.matchers import Equals, Mismatch, Matcher
 
@@ -54,7 +62,7 @@ class ReturnsUnlockable(Matcher):
         self.lockable_thing = lockable_thing
 
     def __str__(self):
-        return ('ReturnsUnlockable(lockable_thing=%s)' % 
+        return ('ReturnsUnlockable(lockable_thing=%s)' %
             self.lockable_thing)
 
     def match(self, lock_method):
@@ -131,16 +139,80 @@ class HasLayout(Matcher):
         """Get the (path, file_id) pairs for the current tree."""
         tree.lock_read()
         try:
-            return [(path, ie.file_id) for path, ie
-                    in tree.iter_entries_by_dir()]
+            for path, ie in tree.iter_entries_by_dir():
+                if ie.parent_id is None:
+                    yield (u"", ie.file_id)
+                else:
+                    yield (path+ie.kind_character(), ie.file_id)
         finally:
             tree.unlock()
 
+    @staticmethod
+    def _strip_unreferenced_directories(entries):
+        """Strip all directories that don't (in)directly contain any files.
+
+        :param entries: List of path strings or (path, ie) tuples to process
+        """
+        directories = []
+        for entry in entries:
+            if isinstance(entry, basestring):
+                path = entry
+            else:
+                path = entry[0]
+            if not path or path[-1] == "/":
+                # directory
+                directories.append((path, entry))
+            else:
+                # Yield the referenced parent directories
+                for dirpath, direntry in directories:
+                    if osutils.is_inside(dirpath, path):
+                        yield direntry
+                directories = []
+                yield entry
+
     def __str__(self):
-        return ('HasLayout(%r)' % self.entries)
+        return 'HasLayout(%r)' % self.entries
 
     def match(self, tree):
-        actual = self.get_tree_layout(tree)
+        actual = list(self.get_tree_layout(tree))
         if self.entries and isinstance(self.entries[0], basestring):
             actual = [path for (path, fileid) in actual]
-        return Equals(actual).match(self.entries)
+        if not tree.has_versioned_directories():
+            entries = list(self._strip_unreferenced_directories(self.entries))
+        else:
+            entries = self.entries
+        return Equals(entries).match(actual)
+
+
+class _NoVfsCallsMismatch(Mismatch):
+    """Mismatch describing a list of HPSS calls which includes VFS requests."""
+
+    def __init__(self, vfs_calls):
+        self.vfs_calls = vfs_calls
+
+    def describe(self):
+        return "no VFS calls expected, got: %s" % ",".join([
+            "%s(%s)" % (c.method,
+                ", ".join([repr(a) for a in c.args])) for c in self.vfs_calls])
+
+
+class ContainsNoVfsCalls(Matcher):
+    """Ensure that none of the specified calls are HPSS calls."""
+
+    def __str__(self):
+        return 'ContainsNoVfsCalls()'
+
+    @classmethod
+    def match(cls, hpss_calls):
+        vfs_calls = []
+        for call in hpss_calls:
+            try:
+                request_method = smart_request_handlers.get(call.call.method)
+            except KeyError:
+                # A method we don't know about doesn't count as a VFS method.
+                continue
+            if issubclass(request_method, vfs.VfsRequest):
+                vfs_calls.append(call.call)
+        if len(vfs_calls) == 0:
+            return None
+        return _NoVfsCallsMismatch(vfs_calls)

@@ -34,7 +34,7 @@ class TestAddRevision(TestCaseWithExternalReferenceRepository):
         self.addCleanup(tree.unlock)
         rev = tree.branch.repository.get_revision(revid)
         base = self.make_repository('base')
-        repo = self.make_referring('referring', 'base')
+        repo = self.make_referring('referring', base)
         repo.lock_write()
         try:
             repo.start_write_group()

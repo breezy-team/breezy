@@ -91,6 +91,10 @@ class DummyForeignVcs(foreign.ForeignVcs):
 class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
     """A Dummy VCS Branch."""
 
+    @property
+    def user_transport(self):
+        return self.bzrdir.user_transport
+
     def __init__(self, _format, _control_files, a_bzrdir, *args, **kwargs):
         self._format = _format
         self._base = a_bzrdir.transport.base
@@ -101,7 +105,7 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
         branch.BzrBranch6.__init__(self, _format, _control_files, a_bzrdir,
             *args, **kwargs)
 
-    def _get_checkout_format(self):
+    def _get_checkout_format(self, lightweight=False):
         """Return the most suitable metadir for a checkout of this branch.
         Weaves are used if this branch's repository uses weaves.
         """
@@ -141,11 +145,19 @@ class DummyForeignVcsRepositoryFormat(groupcompress_repo.RepositoryFormat2a):
     repository_class = DummyForeignVcsRepository
     _commit_builder_class = DummyForeignCommitBuilder
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         return "Dummy Foreign Vcs Repository"
 
     def get_format_description(self):
         return "Dummy Foreign Vcs Repository"
+
+
+def branch_history(graph, revid):
+    ret = list(graph.iter_lefthand_ancestry(revid,
+        (revision.NULL_REVISION,)))
+    ret.reverse()
+    return ret
 
 
 class InterToDummyVcsBranch(branch.GenericInterBranch):
@@ -165,12 +177,11 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
         try:
             graph = self.source.repository.get_graph()
             # This just handles simple cases, but that's good enough for tests
-            my_history = self.target.revision_history()
+            my_history = branch_history(self.target.repository.get_graph(),
+                result.old_revid)
             if stop_revision is None:
                 stop_revision = self.source.last_revision()
-            their_history = list(graph.iter_lefthand_ancestry(stop_revision,
-                (revision.NULL_REVISION,)))
-            their_history.reverse()
+            their_history = branch_history(graph, stop_revision)
             if their_history[:min(len(my_history), len(their_history))] != my_history:
                 raise errors.DivergedBranches(self.target, self.source)
             todo = their_history[len(my_history):]
@@ -190,7 +201,7 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
                 else:
                     parent_revids = [parent_revid]
                 builder = self.target.get_commit_builder(parent_revids, 
-                        self.target.get_config(), rev.timestamp,
+                        self.target.get_config_stack(), rev.timestamp,
                         rev.timezone, rev.committer, rev.properties,
                         new_revid)
                 try:
@@ -219,12 +230,13 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
 
 class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         return "Branch for Testing"
 
-    def __init__(self):
-        super(DummyForeignVcsBranchFormat, self).__init__()
-        self._matchingbzrdir = DummyForeignVcsDirFormat()
+    @property
+    def _matchingbzrdir(self):
+        return DummyForeignVcsDirFormat()
 
     def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
             found_repository=None):
@@ -303,7 +315,8 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
         self.root_transport.put_bytes(".bzr", "foo")
         return super(DummyForeignVcsDir, self).create_workingtree()
 
-    def open_branch(self, name=None, unsupported=False, ignore_fallbacks=True):
+    def open_branch(self, name=None, unsupported=False, ignore_fallbacks=True,
+            possible_transports=None):
         if name is not None:
             raise errors.NoColocatedBranchSupport(self)
         return self._format.get_branch_format().open(self, _found=True)
@@ -465,7 +478,8 @@ class DummyForeignVcsTests(tests.TestCaseWithTransport):
             format=DummyForeignVcsDirFormat())
         target_tree.branch.lock_write()
         try:
-            pushresult = source_tree.branch.push(target_tree.branch, lossy=True)
+            pushresult = source_tree.branch.push(
+                target_tree.branch, lossy=True)
         finally:
             target_tree.branch.unlock()
         self.assertEquals(revision.NULL_REVISION, pushresult.old_revid)

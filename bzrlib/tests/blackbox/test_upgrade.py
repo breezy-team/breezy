@@ -59,7 +59,8 @@ class OldBzrDirFormat(bzrdir.BzrDirMetaFormat1):
     def get_converter(self, format=None):
         return ConvertOldTestToMeta()
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         return "Ancient Test Format"
 
     def _open(self, transport):
@@ -89,12 +90,13 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
     def test_upgrade_up_to_date(self):
         self.make_current_format_branch_and_checkout()
         # when up to date we should get a message to that effect
-        (out, err) = self.run_bzr('upgrade current_format_branch', retcode=3)
-        err_msg = ('The branch format %s is already at the most recent format.'
-                   % ('Meta directory format 1'))
-        self.assertEqualDiff('conversion error: %s\nbzr: ERROR: %s\n'
-                             % (err_msg, err_msg),
-                             err)
+        burl = self.get_transport('current_format_branch').local_abspath(".")
+        (out, err) = self.run_bzr('upgrade current_format_branch', retcode=0)
+        self.assertEqual(
+            'Upgrading branch %s/ ...\n'
+            'The branch format %s is already at the most recent format.\n'
+            % (burl, 'Meta directory format 1'),
+            out)
 
     def test_upgrade_up_to_date_checkout_warns_branch_left_alone(self):
         self.make_current_format_branch_and_checkout()
@@ -103,17 +105,13 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         # date
         burl = self.get_transport('current_format_branch').local_abspath(".")
         curl = self.get_transport('current_format_checkout').local_abspath(".")
-        (out, err) = self.run_bzr('upgrade current_format_checkout', retcode=3)
+        (out, err) = self.run_bzr('upgrade current_format_checkout', retcode=0)
         self.assertEqual(
             'Upgrading branch %s/ ...\nThis is a checkout.'
             ' The branch (%s/) needs to be upgraded separately.\n'
-            % (curl, burl),
+            'The branch format %s is already at the most recent format.\n'
+            % (curl, burl, 'Meta directory format 1'),
             out)
-        msg = 'The branch format %s is already at the most recent format.' % (
-            'Meta directory format 1')
-        self.assertEqualDiff('conversion error: %s\nbzr: ERROR: %s\n'
-                             % (msg, msg),
-                             err)
 
     def test_upgrade_checkout(self):
         # upgrading a checkout should work

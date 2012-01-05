@@ -17,6 +17,8 @@
 """Tree classes, representing directory at point in time.
 """
 
+from __future__ import absolute_import
+
 import os
 
 from bzrlib.lazy_import import lazy_import
@@ -35,6 +37,7 @@ from bzrlib import (
     rules,
     trace,
     )
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib.decorators import needs_read_lock
@@ -57,6 +60,14 @@ class Tree(object):
     Trees can be compared, etc, regardless of whether they are working
     trees or versioned trees.
     """
+
+    def has_versioned_directories(self):
+        """Whether this tree can contain explicitly versioned directories.
+
+        This defaults to True, but some implementations may want to override
+        it.
+        """
+        return True
 
     def changes_from(self, other, want_unchanged=False, specific_files=None,
         extra_trees=None, require_versioned=False, include_root=False,
@@ -346,9 +357,6 @@ class Tree(object):
         """
         raise NotImplementedError(self.get_file_size)
 
-    def get_file_by_path(self, path):
-        raise NotImplementedError(self.get_file_by_path)
-
     def is_executable(self, file_id, path=None):
         """Check if a file is executable.
 
@@ -623,7 +631,7 @@ class Tree(object):
         prefs = self.iter_search_rules([path], filter_pref_names).next()
         stk = filters._get_filter_stack_for(prefs)
         if 'filters' in debug.debug_flags:
-            trace.note("*** %s content-filter: %s => %r" % (path,prefs,stk))
+            trace.note(gettext("*** {0} content-filter: {1} => {2!r}").format(path,prefs,stk))
         return stk
 
     def _content_filter_stack_provider(self):
@@ -818,8 +826,9 @@ class InventoryTree(Tree):
         return self.inventory.iter_entries_by_dir(
             specific_file_ids=specific_file_ids, yield_parents=yield_parents)
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def get_file_by_path(self, path):
-        return self.get_file(self._inventory.path2id(path), path)
+        return self.get_file(self.path2id(path), path)
 
 
 def find_ids_across_trees(filenames, trees, require_versioned=True):

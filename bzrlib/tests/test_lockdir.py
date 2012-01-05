@@ -43,6 +43,7 @@ from bzrlib.lockdir import (
 from bzrlib.tests import (
     features,
     TestCase,
+    TestCaseInTempDir,
     TestCaseWithTransport,
     )
 
@@ -654,7 +655,7 @@ class TestLockDirHooks(TestCaseWithTransport):
         self.assertEqual([], self._calls)
 
 
-class TestLockHeldInfo(TestCase):
+class TestLockHeldInfo(TestCaseInTempDir):
     """Can get information about the lock holder, and detect whether they're
     still alive."""
 

@@ -17,7 +17,11 @@
 
 import os
 
-from bzrlib import check, osutils
+from bzrlib import (
+    check,
+    osutils,
+    revision as _mod_revision,
+    )
 from bzrlib.errors import PointlessCommit
 from bzrlib.tests import (
     TestCaseWithTransport,
@@ -55,8 +59,12 @@ class TestCommitMerge(TestCaseWithTransport):
         wty.commit('merge from x', rev_id='y@u-0-2', allow_pointless=False)
 
         self.assertEquals(by.revno(), 3)
-        self.assertEquals(list(by.revision_history()),
-                          [base_rev, 'y@u-0-1', 'y@u-0-2'])
+        graph = wty.branch.repository.get_graph()
+        self.addCleanup(wty.lock_read().unlock)
+        self.assertEquals(list(
+            graph.iter_lefthand_ancestry(by.last_revision(),
+                [_mod_revision.NULL_REVISION])),
+            ['y@u-0-2', 'y@u-0-1', base_rev])
         rev = by.repository.get_revision('y@u-0-2')
         self.assertEquals(rev.parent_ids,
                           ['y@u-0-1', 'x@u-0-1'])

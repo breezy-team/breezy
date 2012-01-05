@@ -48,10 +48,20 @@ class TestInit(TestCaseWithTransport):
         self.assertIsDirectory('.bzr/checkout/lock', t)
 
     def test_init_format_2a(self):
-        """Smoke test for constructing a format 2a repoistory."""
+        """Smoke test for constructing a format 2a repository."""
         out, err = self.run_bzr('init --format=2a')
         self.assertEqual("""Created a standalone tree (format: 2a)\n""",
             out)
+        self.assertEqual('', err)
+
+    def test_init_colocated(self):
+        """Smoke test for constructing a colocated branch."""
+        out, err = self.run_bzr('init --format=development-colo file:,branch=abranch')
+        self.assertEqual("""Created a lightweight checkout (format: development-colo)\n""",
+            out)
+        self.assertEqual('', err)
+        out, err = self.run_bzr('branches')
+        self.assertEqual("  abranch\n", out)
         self.assertEqual('', err)
 
     def test_init_at_repository_root(self):
@@ -203,10 +213,10 @@ class TestSFTPInit(TestCaseWithSFTPServer):
     def test_init_append_revisions_only(self):
         self.run_bzr('init --dirstate-tags normal_branch6')
         branch = _mod_branch.Branch.open('normal_branch6')
-        self.assertEqual(None, branch._get_append_revisions_only())
+        self.assertEqual(None, branch.get_append_revisions_only())
         self.run_bzr('init --append-revisions-only --dirstate-tags branch6')
         branch = _mod_branch.Branch.open('branch6')
-        self.assertEqual(True, branch._get_append_revisions_only())
+        self.assertEqual(True, branch.get_append_revisions_only())
         self.run_bzr_error(['cannot be set to append-revisions-only'],
                            'init --append-revisions-only --knit knit')
 

@@ -22,6 +22,8 @@ Launchpad.login_anonymously() takes a 500ms once the WADL is cached, and 5+s to
 get the WADL.
 """
 
+from __future__ import absolute_import
+
 try:
     # Use simplejson if available, much faster, and can be easily installed in
     # older versions of python

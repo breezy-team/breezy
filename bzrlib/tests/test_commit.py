@@ -20,12 +20,12 @@ import os
 import bzrlib
 from bzrlib import (
     bzrdir,
+    config,
     errors,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.commit import Commit, NullCommitReporter
-from bzrlib.config import BranchConfig
 from bzrlib.errors import (
     PointlessCommit,
     BzrError,
@@ -44,19 +44,13 @@ from bzrlib.tests.matchers import MatchesAncestry
 
 # TODO: Test commit with some added, and added-but-missing files
 
-class MustSignConfig(BranchConfig):
+class MustSignConfig(config.MemoryStack):
 
-    def signature_needed(self):
-        return True
-
-    def gpg_signing_command(self):
-        return ['cat', '-']
-
-
-class BranchWithHooks(BranchConfig):
-
-    def post_commit(self):
-        return "bzrlib.ahook bzrlib.ahook"
+    def __init__(self):
+        super(MustSignConfig, self).__init__('''
+gpg_signing_command=cat -
+create_signatures=always
+''')
 
 
 class CapturingReporter(NullCommitReporter):
@@ -90,25 +84,24 @@ class TestCommit(TestCaseWithTransport):
         b = wt.branch
         file('hello', 'w').write('hello world')
         wt.add('hello')
-        wt.commit(message='add hello')
+        rev1 = wt.commit(message='add hello')
         file_id = wt.path2id('hello')
 
         file('hello', 'w').write('version 2')
-        wt.commit(message='commit 2')
+        rev2 = wt.commit(message='commit 2')
 
         eq = self.assertEquals
         eq(b.revno(), 2)
-        rh = b.revision_history()
-        rev = b.repository.get_revision(rh[0])
+        rev = b.repository.get_revision(rev1)
         eq(rev.message, 'add hello')
 
-        tree1 = b.repository.revision_tree(rh[0])
+        tree1 = b.repository.revision_tree(rev1)
         tree1.lock_read()
         text = tree1.get_file_text(file_id)
         tree1.unlock()
         self.assertEqual('hello world', text)
 
-        tree2 = b.repository.revision_tree(rh[1])
+        tree2 = b.repository.revision_tree(rev2)
         tree2.lock_read()
         text = tree2.get_file_text(file_id)
         tree2.unlock()
@@ -161,7 +154,11 @@ class TestCommit(TestCaseWithTransport):
         wt.commit(message='add hello')
 
         os.remove('hello')
-        wt.commit('removed hello', rev_id='rev2')
+        reporter = CapturingReporter()
+        wt.commit('removed hello', rev_id='rev2', reporter=reporter)
+        self.assertEquals(
+            [('missing', u'hello'), ('deleted', u'hello')],
+            reporter.calls)
 
         tree = b.repository.revision_tree('rev2')
         self.assertFalse(tree.has_id('hello-id'))
@@ -361,8 +358,6 @@ class TestCommit(TestCaseWithTransport):
             rev_ids.append(rev_id)
             wt.commit(message='rev %d' % (i+1),
                      rev_id=rev_id)
-        eq = self.assertEquals
-        eq(b.revision_history(), rev_ids)
         for i in range(4):
             self.assertThat(rev_ids[:i+1],
                 MatchesAncestry(b.repository, rev_ids[i]))
@@ -430,14 +425,17 @@ class TestCommit(TestCaseWithTransport):
             from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
-            commit.Commit(config=MustSignConfig(branch)).commit(message="base",
-                                                      allow_pointless=True,
-                                                      rev_id='B',
-                                                      working_tree=wt)
+            conf = config.MemoryStack('''
+gpg_signing_command=cat -
+create_signatures=always
+''')
+            commit.Commit(config_stack=conf).commit(
+                message="base", allow_pointless=True, rev_id='B',
+                working_tree=wt)
             def sign(text):
                 return bzrlib.gpg.LoopbackGPGStrategy(None).sign(text)
             self.assertEqual(sign(Testament.from_revision(branch.repository,
-                             'B').as_short_text()),
+                                                          'B').as_short_text()),
                              branch.repository.get_signature_text('B'))
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
@@ -453,15 +451,18 @@ class TestCommit(TestCaseWithTransport):
         try:
             # monkey patch gpg signing mechanism
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.DisabledGPGStrategy
-            config = MustSignConfig(branch)
+            conf = config.MemoryStack('''
+gpg_signing_command=cat -
+create_signatures=always
+''')
             self.assertRaises(SigningFailed,
-                              commit.Commit(config=config).commit,
+                              commit.Commit(config_stack=conf).commit,
                               message="base",
                               allow_pointless=True,
                               rev_id='B',
                               working_tree=wt)
             branch = Branch.open(self.get_url('.'))
-            self.assertEqual(branch.revision_history(), ['A'])
+            self.assertEqual(branch.last_revision(), 'A')
             self.assertFalse(branch.repository.has_revision('B'))
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
@@ -475,11 +476,10 @@ class TestCommit(TestCaseWithTransport):
             calls.append('called')
         bzrlib.ahook = called
         try:
-            config = BranchWithHooks(branch)
-            commit.Commit(config=config).commit(
-                            message = "base",
-                            allow_pointless=True,
-                            rev_id='A', working_tree = wt)
+            conf = config.MemoryStack('post_commit=bzrlib.ahook bzrlib.ahook')
+            commit.Commit(config_stack=conf).commit(
+                message = "base", allow_pointless=True, rev_id='A',
+                working_tree = wt)
             self.assertEqual(['called', 'called'], calls)
         finally:
             del bzrlib.ahook

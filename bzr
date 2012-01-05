@@ -16,6 +16,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 """Bazaar -- a free distributed version-control tool"""
 
 import os
@@ -25,29 +27,12 @@ import warnings
 # update this on each release
 _script_version = (2, 5, 0)
 
-try:
-    version_info = sys.version_info
-except AttributeError:
-    version_info = 1, 5  # 1.5 or older
-
-REINVOKE = "__BZR_REINVOKE"
 NEED_VERS = (2, 6)
-KNOWN_PYTHONS = ('python2.6', 'python2.7')
 
-if version_info < NEED_VERS:
-    if not os.environ.has_key(REINVOKE):
-        # mutating os.environ doesn't work in old Pythons
-        os.putenv(REINVOKE, "1")
-        for python in KNOWN_PYTHONS:
-            try:
-                os.execvp(python, [python] + sys.argv)
-            except OSError:
-                pass
+if sys.version_info < NEED_VERS:
     sys.stderr.write("bzr: error: cannot find a suitable python interpreter\n")
     sys.stderr.write("  (need %d.%d or later)\n" % NEED_VERS)
     sys.exit(1)
-if hasattr(os, "unsetenv"):
-    os.unsetenv(REINVOKE)
 
 
 profiling = False
@@ -84,6 +69,10 @@ if os.name == "posix":
             '  Although this should be no problem for bzr itself, it might\n'
             '  cause problems with some plugins. To investigate the issue,\n'
             '  look at the output of the locale(1p) tool.\n' % e)
+    # Use better default than ascii with posix filesystems that deal in bytes
+    # natively even when the C locale or no locale at all is given. Note that
+    # we need an immortal string for the hack, hence the lack of a hyphen.
+    sys._bzr_default_fs_enc = "utf8"
 
 
 # The python2.6 release includes some libraries that have deprecation warnings

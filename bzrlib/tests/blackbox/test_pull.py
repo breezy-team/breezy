@@ -23,6 +23,7 @@ import sys
 from bzrlib import (
     debug,
     remote,
+    tests,
     urlutils,
     )
 
@@ -31,13 +32,13 @@ from bzrlib.directory_service import directories
 from bzrlib.osutils import pathjoin
 from bzrlib.tests import (
     fixtures,
-    TestCaseWithTransport,
+    script,
     )
 from bzrlib.uncommit import uncommit
 from bzrlib.workingtree import WorkingTree
 
 
-class TestPull(TestCaseWithTransport):
+class TestPull(tests.TestCaseWithTransport):
 
     def example_branch(self, path='.'):
         tree = self.make_branch_and_tree(path)
@@ -53,6 +54,7 @@ class TestPull(TestCaseWithTransport):
     def test_pull(self):
         """Pull changes from one branch to another."""
         a_tree = self.example_branch('a')
+        base_rev = a_tree.branch.last_revision()
         os.chdir('a')
         self.run_bzr('pull', retcode=3)
         self.run_bzr('missing', retcode=3)
@@ -71,16 +73,17 @@ class TestPull(TestCaseWithTransport):
         self.run_bzr('pull')
         os.mkdir('subdir')
         b_tree.add('subdir')
-        b_tree.commit(message='blah', allow_pointless=True)
+        new_rev = b_tree.commit(message='blah', allow_pointless=True)
 
         os.chdir('..')
         a = Branch.open('a')
         b = Branch.open('b')
-        self.assertEqual(a.revision_history(), b.revision_history()[:-1])
+        self.assertEqual(a.last_revision(), base_rev)
+        self.assertEqual(b.last_revision(), new_rev)
 
         os.chdir('a')
         self.run_bzr('pull ../b')
-        self.assertEqual(a.revision_history(), b.revision_history())
+        self.assertEqual(a.last_revision(), b.last_revision())
         a_tree.commit(message='blah2', allow_pointless=True)
         b_tree.commit(message='blah3', allow_pointless=True)
         # no overwrite
@@ -91,13 +94,13 @@ class TestPull(TestCaseWithTransport):
         os.chdir('overwriteme')
         self.run_bzr('pull --overwrite ../a')
         overwritten = Branch.open('.')
-        self.assertEqual(overwritten.revision_history(),
-                         a.revision_history())
+        self.assertEqual(overwritten.last_revision(),
+                         a.last_revision())
         a_tree.merge_from_branch(b_tree.branch)
         a_tree.commit(message="blah4", allow_pointless=True)
         os.chdir('../b/subdir')
         self.run_bzr('pull ../../a')
-        self.assertEqual(a.revision_history()[-1], b.revision_history()[-1])
+        self.assertEqual(a.last_revision(), b.last_revision())
         sub_tree = WorkingTree.open_containing('.')[0]
         sub_tree.commit(message="blah5", allow_pointless=True)
         sub_tree.commit(message="blah6", allow_pointless=True)
@@ -143,7 +146,7 @@ class TestPull(TestCaseWithTransport):
         self.run_bzr('pull -r 3')
         self.assertEqual(b.revno(),3)
         self.run_bzr('pull -r 4')
-        self.assertEqual(a.revision_history(), b.revision_history())
+        self.assertEqual(a.last_revision(), b.last_revision())
 
     def test_pull_tags(self):
         """Tags are updated by pull, and revisions named in those tags are
@@ -152,7 +155,7 @@ class TestPull(TestCaseWithTransport):
         # Make a source, sprout a target off it
         builder = self.make_branch_builder('source')
         source = fixtures.build_branch_with_non_ancestral_rev(builder)
-        source.get_config().set_user_option('branch.fetch_tags', 'True')
+        source.get_config_stack().set('branch.fetch_tags', True)
         target_bzrdir = source.bzrdir.sprout('target')
         source.tags.set_tag('tag-a', 'rev-2')
         # Pull from source
@@ -179,20 +182,18 @@ class TestPull(TestCaseWithTransport):
         self.build_tree_contents([('a/foo', 'a third change')])
         a_tree.commit(message='a third change')
 
-        rev_history_a = a_tree.branch.revision_history()
-        self.assertEqual(len(rev_history_a), 3)
+        self.assertEqual(a_tree.branch.last_revision_info()[0], 3)
 
         b_tree.merge_from_branch(a_tree.branch)
         b_tree.commit(message='merge')
 
-        self.assertEqual(len(b_tree.branch.revision_history()), 2)
+        self.assertEqual(b_tree.branch.last_revision_info()[0], 2)
 
         os.chdir('b')
         self.run_bzr('pull --overwrite ../a')
-        rev_history_b = b_tree.branch.revision_history()
-        self.assertEqual(len(rev_history_b), 3)
-
-        self.assertEqual(rev_history_b, rev_history_a)
+        (last_revinfo_b) = b_tree.branch.last_revision_info()
+        self.assertEqual(last_revinfo_b[0], 3)
+        self.assertEqual(last_revinfo_b[1], a_tree.branch.last_revision())
 
     def test_overwrite_children(self):
         # Make sure pull --overwrite sets the revision-history
@@ -210,27 +211,26 @@ class TestPull(TestCaseWithTransport):
         self.build_tree_contents([('a/foo', 'a third change')])
         a_tree.commit(message='a third change')
 
-        self.assertEqual(len(a_tree.branch.revision_history()), 3)
+        self.assertEqual(a_tree.branch.last_revision_info()[0], 3)
 
         b_tree.merge_from_branch(a_tree.branch)
         b_tree.commit(message='merge')
 
-        self.assertEqual(len(b_tree.branch.revision_history()), 2)
+        self.assertEqual(b_tree.branch.last_revision_info()[0], 2)
 
         self.build_tree_contents([('a/foo', 'a fourth change\n')])
         a_tree.commit(message='a fourth change')
 
-        rev_history_a = a_tree.branch.revision_history()
-        self.assertEqual(len(rev_history_a), 4)
+        rev_info_a = a_tree.branch.last_revision_info()
+        self.assertEqual(rev_info_a[0], 4)
 
         # With convergence, we could just pull over the
         # new change, but with --overwrite, we want to switch our history
         os.chdir('b')
         self.run_bzr('pull --overwrite ../a')
-        rev_history_b = b_tree.branch.revision_history()
-        self.assertEqual(len(rev_history_b), 4)
-
-        self.assertEqual(rev_history_b, rev_history_a)
+        rev_info_b = b_tree.branch.last_revision_info()
+        self.assertEqual(rev_info_b[0], 4)
+        self.assertEqual(rev_info_b, rev_info_a)
 
     def test_pull_remember(self):
         """Pull changes from one branch to another and test parent location."""
@@ -305,8 +305,8 @@ class TestPull(TestCaseWithTransport):
         self.assertEqual(err,
                 ' M  a\nAll changes applied successfully.\n')
 
-        self.assertEqualDiff(tree_a.branch.revision_history(),
-                             tree_b.branch.revision_history())
+        self.assertEqualDiff(tree_a.branch.last_revision(),
+                             tree_b.branch.last_revision())
 
         testament_a = Testament.from_revision(tree_a.branch.repository,
                                               tree_a.get_parent_ids()[0])
@@ -318,7 +318,7 @@ class TestPull(TestCaseWithTransport):
         # it is legal to attempt to pull an already-merged bundle
         out, err = self.run_bzr('pull ../bundle')
         self.assertEqual(err, '')
-        self.assertEqual(out, 'No revisions to pull.\n')
+        self.assertEqual(out, 'No revisions or tags to pull.\n')
 
     def test_pull_verbose_no_files(self):
         """Pull --verbose should not list modified files"""
@@ -421,9 +421,10 @@ class TestPull(TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(19, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
         remote = Branch.open('stacked')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
-    
+
     def test_pull_cross_format_warning(self):
         """You get a warning for probably slow cross-format pulls.
         """
@@ -533,3 +534,51 @@ class TestPull(TestCaseWithTransport):
         out = self.run_bzr(['pull','-d','to','from'],retcode=1)
         self.assertEqual(out,
             ('No revisions to pull.\nConflicting tags:\n    mytag\n', ''))
+
+    def test_pull_tag_notification(self):
+        """pulling tags with conflicts will change the exit code"""
+        # create a branch, see that --show-base fails
+        from_tree = self.make_branch_and_tree('from')
+        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        to_tree = self.make_branch_and_tree('to')
+        out = self.run_bzr(['pull', '-d', 'to', 'from'])
+        self.assertEqual(out,
+            ('1 tag(s) updated.\n', ''))
+
+    def test_pull_tag_overwrite(self):
+        """pulling tags with --overwrite only reports changed tags."""
+        # create a branch, see that --show-base fails
+        from_tree = self.make_branch_and_tree('from')
+        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        to_tree = self.make_branch_and_tree('to')
+        to_tree.branch.tags.set_tag("mytag", "somerevid")
+        out = self.run_bzr(['pull', '--overwrite', '-d', 'to', 'from'])
+        self.assertEqual(out,
+            ('No revisions or tags to pull.\n', ''))
+
+
+class TestPullOutput(script.TestCaseWithTransportAndScript):
+
+    def test_pull_log_format(self):
+        self.run_script("""
+            $ bzr init trunk
+            Created a standalone tree (format: 2a)
+            $ cd trunk
+            $ echo foo > file
+            $ bzr add
+            adding file
+            $ bzr commit -m 'we need some foo'
+            2>Committing to:...trunk/
+            2>added file
+            2>Committed revision 1.
+            $ cd ..
+            $ bzr init feature
+            Created a standalone tree (format: 2a)
+            $ cd feature
+            $ bzr pull -v ../trunk -Olog_format=line
+            Now on revision 1.
+            Added Revisions:
+            1: jrandom@example.com ...we need some foo
+            2>+N  file
+            2>All changes applied successfully.
+            """)

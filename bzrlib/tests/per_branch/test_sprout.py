@@ -112,7 +112,7 @@ class TestSprout(TestCaseWithBranch):
         repo.fetch(wt.branch.repository)
         branch2 = wt.branch.sprout(repo.bzrdir, revision_id='rev2-alt')
         self.assertEqual((2, 'rev2-alt'), branch2.last_revision_info())
-        self.assertEqual(['rev1', 'rev2-alt'], branch2.revision_history())
+        self.assertEqual('rev2-alt', branch2.last_revision())
 
     def test_sprout_preserves_tags(self):
         """Sprout preserves tags, even tags of absent revisions."""
@@ -124,9 +124,9 @@ class TestSprout(TestCaseWithBranch):
         source = builder.get_branch()
         try:
             source.tags.set_tag('tag-a', 'missing-rev')
-        except errors.TagsNotSupported:
+        except (errors.TagsNotSupported, errors.GhostTagsNotSupported):
             raise tests.TestNotApplicable(
-                'Branch format does not support tags.')
+                'Branch format does not support tags or tags to ghosts.')
         # Now source has a tag pointing to an absent revision.  Sprout it.
         target_bzrdir = self.make_repository('target').bzrdir
         new_branch = source.sprout(target_bzrdir)
@@ -179,6 +179,9 @@ class TestSprout(TestCaseWithBranch):
 
     def test_sprout_with_ghost_in_mainline(self):
         tree = self.make_branch_and_tree('tree1')
+        if not tree.branch.repository._format.supports_ghosts:
+            raise tests.TestNotApplicable(
+                "repository format does not support ghosts in mainline")
         tree.set_parent_ids(["spooky"], allow_leftmost_as_ghost=True)
         tree.add('')
         tree.commit('msg1', rev_id='rev1')

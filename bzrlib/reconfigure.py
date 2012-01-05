@@ -14,22 +14,24 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Reconfigure a bzrdir into a new tree/branch/repository layout.
+"""Reconfigure a controldir into a new tree/branch/repository layout.
 
 Various types of reconfiguration operation are available either by
 constructing a class or using a factory method on Reconfigure.
 """
 
+from __future__ import absolute_import
+
 
 from bzrlib import (
     branch,
-    bzrdir,
+    controldir,
     errors,
     trace,
     ui,
     urlutils,
     )
-
+from bzrlib.i18n import gettext
 
 # TODO: common base class for all reconfigure operations, making no
 # assumptions about what kind of change will be done.
@@ -48,9 +50,9 @@ class ReconfigureStackedOn(object):
         try:
             branch.set_stacked_on_url(on_url)
             if not trace.is_quiet():
-                ui.ui_factory.note(
-                    "%s is now stacked on %s\n"
-                    % (branch.base, branch.get_stacked_on_url()))
+                ui.ui_factory.note(gettext(
+                    "{0} is now stacked on {1}\n").format(
+                      branch.base, branch.get_stacked_on_url()))
         finally:
             branch.unlock()
 
@@ -63,8 +65,8 @@ class ReconfigureUnstacked(object):
         try:
             branch.set_stacked_on_url(None)
             if not trace.is_quiet():
-                ui.ui_factory.note(
-                    "%s is now not stacked\n"
+                ui.ui_factory.note(gettext(
+                    "%s is now not stacked\n")
                     % (branch.base,))
         finally:
             branch.unlock()
@@ -344,7 +346,8 @@ class Reconfigure(object):
                 reference_branch.repository.fetch(self.repository)
             elif self.local_branch is not None and not self._destroy_branch:
                 up = self.local_branch.user_transport.clone('..')
-                up_bzrdir = bzrdir.BzrDir.open_containing_from_transport(up)[0]
+                up_bzrdir = controldir.ControlDir.open_containing_from_transport(
+                    up)[0]
                 new_repo = up_bzrdir.find_repository()
                 new_repo.fetch(self.repository)
         last_revision_info = None

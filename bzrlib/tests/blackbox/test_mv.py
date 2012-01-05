@@ -187,6 +187,12 @@ class TestMove(TestCaseWithTransport):
         self.run_bzr('move a b')
         self.run_bzr('rename b a')
 
+    def test_mv_no_root(self):
+        tree = self.make_branch_and_tree('.')
+        self.run_bzr_error(
+            ["bzr: ERROR: can not move root of branch"],
+            'mv . a')
+
     def test_mv_through_symlinks(self):
         self.requireFeature(SymlinkFeature)
         tree = self.make_branch_and_tree('.')
@@ -514,4 +520,15 @@ class TestMove(TestCaseWithTransport):
         tree = self.make_branch_and_tree(".")
         self.build_tree([u"\xA7"])
         out, err = self.run_bzr_error(["Could not rename", "not versioned"],
+            ["mv", u"\xA7", "b"])
+
+    def test_mv_removed_non_ascii(self):
+        """Clear error on mv of a removed non-ascii file, see lp:898541"""
+        self.requireFeature(UnicodeFilenameFeature)
+        tree = self.make_branch_and_tree(".")
+        self.build_tree([u"\xA7"])
+        tree.add([u"\xA7"])
+        tree.commit(u"Adding \xA7")
+        os.remove(u"\xA7")
+        out, err = self.run_bzr_error(["Could not rename", "not exist"],
             ["mv", u"\xA7", "b"])

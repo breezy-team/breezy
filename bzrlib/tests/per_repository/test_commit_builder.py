@@ -39,7 +39,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         branch = self.make_branch('.')
         branch.repository.lock_write()
         builder = branch.repository.get_commit_builder(
-            branch, [], branch.get_config())
+            branch, [], branch.get_config_stack())
         self.assertIsInstance(builder, repository.CommitBuilder)
         self.assertTrue(builder.random_revid)
         branch.repository.commit_write_group()
@@ -148,6 +148,21 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual('foo bar blah', rev.message)
 
+    def test_updates_branch(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        try:
+            builder = tree.branch.get_commit_builder([])
+            list(builder.record_iter_changes(tree, tree.last_revision(),
+                tree.iter_changes(tree.basis_tree())))
+            builder.finish_inventory()
+            will_update_branch = builder.updates_branch
+            rev_id = builder.commit('might update the branch')
+        finally:
+            tree.unlock()
+        actually_updated_branch = (tree.branch.last_revision() == rev_id)
+        self.assertEquals(actually_updated_branch, will_update_branch)
+
     def test_commit_with_revision_id_record_entry_contents(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
@@ -218,7 +233,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # on deserialisation, but thats all the current contract guarantees
         # anyway.
         self.assertEqual(revision_id,
-            tree.branch.repository.get_inventory(revision_id).revision_id)
+            tree.branch.repository.revision_tree(revision_id).get_revision_id())
 
     def test_commit_without_root_errors(self):
         tree = self.make_branch_and_tree(".")
@@ -233,6 +248,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 except:
                     builder.abort()
                     raise
+                else:
+                    builder.commit("msg")
             self.assertRaises(errors.RootMissing, do_commit)
         finally:
             tree.unlock()
@@ -306,6 +323,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             # pointless commit.
             self.assertFalse(builder.any_changes())
             builder.finish_inventory()
+            builder.commit('')
             builder_tree = builder.revision_tree()
             new_root_id = builder_tree.get_root_id()
             new_root_revision = builder_tree.get_file_revision(new_root_id)
@@ -316,7 +334,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 # We should see a new root revision
                 self.assertNotEqual(old_revision_id, new_root_revision)
         finally:
-            builder.abort()
             tree.unlock()
 
     def test_commit_record_entry_contents(self):
@@ -975,6 +992,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                                 [inv_key])[inv_key]
                 self.assertEqual(inv_sha1, builder.inv_sha1)
             self.assertIs(None, builder.new_inventory)
+            rev2 = builder.commit('')
             new_inventory = builder.revision_tree().inventory
             new_entry = new_inventory[file_id]
             if delta_against_basis:
@@ -983,7 +1001,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             else:
                 expected_delta = None
                 self.assertFalse(version_recorded)
-            rev2 = builder.commit('')
             tree.set_parent_ids([rev2])
         except:
             builder.abort()
@@ -1278,7 +1295,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         make_before(path)
 
         def change_kind():
-            osutils.delete_any(path)
+            if osutils.file_kind(path) == "directory":
+                osutils.rmtree(path)
+            else:
+                osutils.delete_any(path)
             make_after(path)
 
         self._add_commit_change_check_changed(tree, path, change_kind,
@@ -1289,16 +1309,26 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             expect_fs_hash=True)
 
     def test_last_modified_dir_file_ric(self):
-        self._check_kind_change(self.make_dir, self.make_file,
-            expect_fs_hash=True,
-            mini_commit=self.mini_commit_record_iter_changes)
+        try:
+            self._check_kind_change(self.make_dir, self.make_file,
+                expect_fs_hash=True,
+                mini_commit=self.mini_commit_record_iter_changes)
+        except errors.UnsupportedKindChange:
+            raise tests.TestSkipped(
+                "tree does not support changing entry kind from "
+                "directory to file")
 
     def test_last_modified_dir_link(self):
         self._check_kind_change(self.make_dir, self.make_link)
 
     def test_last_modified_dir_link_ric(self):
-        self._check_kind_change(self.make_dir, self.make_link,
-            mini_commit=self.mini_commit_record_iter_changes)
+        try:
+            self._check_kind_change(self.make_dir, self.make_link,
+                mini_commit=self.mini_commit_record_iter_changes)
+        except errors.UnsupportedKindChange:
+            raise tests.TestSkipped(
+                "tree does not support changing entry kind from "
+                "directory to link")
 
     def test_last_modified_link_file(self):
         self._check_kind_change(self.make_link, self.make_file,
@@ -1335,7 +1365,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         branch.repository.lock_write()
         self.addCleanup(branch.repository.unlock)
         self.assertRaises(ValueError, branch.repository.get_commit_builder,
-            branch, [], branch.get_config(),
+            branch, [], branch.get_config_stack(),
             revprops={'invalid': u'property\rwith\r\ninvalid chars'})
 
     def test_commit_builder_commit_with_invalid_message(self):
@@ -1343,7 +1373,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         branch.repository.lock_write()
         self.addCleanup(branch.repository.unlock)
         builder = branch.repository.get_commit_builder(branch, [],
-            branch.get_config())
+            branch.get_config_stack())
         self.addCleanup(branch.repository.abort_write_group)
         self.assertRaises(ValueError, builder.commit,
             u'Invalid\r\ncommit message\r\n')
@@ -1355,7 +1385,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.addCleanup(branch.repository.unlock)
         self.assertRaises(UnicodeDecodeError,
             branch.repository.get_commit_builder,
-            branch, [], branch.get_config(),
+            branch, [], branch.get_config_stack(),
             committer="Erik B\xe5gfors <erik@example.com>")
 
     def test_stacked_repositories_reject_commit_builder(self):
@@ -1372,10 +1402,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.addCleanup(repo_local.lock_write().unlock)
         if not repo_local._format.supports_chks:
             self.assertRaises(errors.BzrError, repo_local.get_commit_builder,
-                branch, [], branch.get_config())
+                branch, [], branch.get_config_stack())
         else:
             builder = repo_local.get_commit_builder(branch, [],
-                                                    branch.get_config())
+                                                    branch.get_config_stack())
             builder.abort()
 
     def test_committer_no_username(self):

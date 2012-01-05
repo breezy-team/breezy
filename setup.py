@@ -172,7 +172,7 @@ class bzr_build(build):
 ## Setup
 ########################
 
-from tools.build_mo import build_mo
+from bzrlib.bzr_distutils import build_mo
 
 command_classes = {'install_scripts': my_install_scripts,
                    'build': bzr_build,
@@ -202,7 +202,7 @@ except ImportError:
     from distutils.command.build_ext import build_ext
 else:
     have_pyrex = True
-    pyrex_version_info = tuple(map(int, pyrex_version.split('.')))
+    pyrex_version_info = tuple(map(int, pyrex_version.rstrip("+").split('.')))
 
 
 class build_ext_if_possible(build_ext):
@@ -482,6 +482,10 @@ def get_svn_py2exe_info(includes, excludes, packages):
     packages.append('sqlite3')
 
 
+def get_git_py2exe_info(includes, excludes, packages):
+    packages.append('dulwich')
+
+
 def get_fastimport_py2exe_info(includes, excludes, packages):
     # This is the python-fastimport package, not to be confused with the
     # bzr-fastimport plugin.
@@ -679,6 +683,9 @@ elif 'py2exe' in sys.argv:
 
     if 'svn' in plugins:
         get_svn_py2exe_info(includes, excludes, packages)
+
+    if 'git' in plugins:
+        get_git_py2exe_info(includes, excludes, packages)
 
     if 'fastimport' in plugins:
         get_fastimport_py2exe_info(includes, excludes, packages)

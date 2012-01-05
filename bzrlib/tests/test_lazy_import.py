@@ -467,9 +467,9 @@ class ImportReplacerHelper(TestCaseInTempDir):
         self.addCleanup(sys.path.remove, base_path)
 
         original_import = __import__
-        def instrumented_import(mod, scope1, scope2, fromlist):
-            self.actions.append(('import', mod, fromlist))
-            return original_import(mod, scope1, scope2, fromlist)
+        def instrumented_import(mod, scope1, scope2, fromlist, level):
+            self.actions.append(('import', mod, fromlist, level))
+            return original_import(mod, scope1, scope2, fromlist, level)
         def cleanup():
             __builtins__['__import__'] = original_import
         self.addCleanup(cleanup)
@@ -545,18 +545,18 @@ class TestImportReplacerHelper(ImportReplacerHelper):
         """Test that a real import of these modules works"""
         sub_mod_path = '.'.join([self.root_name, self.sub_name,
                                   self.submoda_name])
-        root = __import__(sub_mod_path, globals(), locals(), [])
+        root = __import__(sub_mod_path, globals(), locals(), [], 0)
         self.assertEqual(1, root.var1)
         self.assertEqual(3, getattr(root, self.sub_name).var3)
         self.assertEqual(4, getattr(getattr(root, self.sub_name),
                                     self.submoda_name).var4)
 
         mod_path = '.'.join([self.root_name, self.mod_name])
-        root = __import__(mod_path, globals(), locals(), [])
+        root = __import__(mod_path, globals(), locals(), [], 0)
         self.assertEqual(2, getattr(root, self.mod_name).var2)
 
-        self.assertEqual([('import', sub_mod_path, []),
-                          ('import', mod_path, []),
+        self.assertEqual([('import', sub_mod_path, [], 0),
+                          ('import', mod_path, [], 0),
                          ], self.actions)
 
 
@@ -584,7 +584,7 @@ class TestImportReplacer(ImportReplacerHelper):
 
         self.assertEqual([('__getattribute__', 'var1'),
                           ('_import', 'root1'),
-                          ('import', self.root_name, []),
+                          ('import', self.root_name, [], 0),
                          ], self.actions)
 
     def test_import_mod(self):
@@ -609,7 +609,7 @@ class TestImportReplacer(ImportReplacerHelper):
 
         self.assertEqual([('__getattribute__', 'var2'),
                           ('_import', 'mod1'),
-                          ('import', mod_path, []),
+                          ('import', mod_path, [], 0),
                          ], self.actions)
 
     def test_import_mod_from_root(self):
@@ -633,7 +633,7 @@ class TestImportReplacer(ImportReplacerHelper):
 
         self.assertEqual([('__getattribute__', 'var2'),
                           ('_import', 'mod2'),
-                          ('import', self.root_name, [self.mod_name]),
+                          ('import', self.root_name, [self.mod_name], 0),
                          ], self.actions)
 
     def test_import_root_and_mod(self):
@@ -665,10 +665,10 @@ class TestImportReplacer(ImportReplacerHelper):
         mod_path = self.root_name + '.' + self.mod_name
         self.assertEqual([('__getattribute__', 'var1'),
                           ('_import', 'root3'),
-                          ('import', self.root_name, []),
+                          ('import', self.root_name, [], 0),
                           ('__getattribute__', 'var2'),
                           ('_import', 'mod3'),
-                          ('import', mod_path, []),
+                          ('import', mod_path, [], 0),
                          ], self.actions)
 
     def test_import_root_and_root_mod(self):
@@ -707,10 +707,10 @@ class TestImportReplacer(ImportReplacerHelper):
         mod_path = self.root_name + '.' + self.mod_name
         self.assertEqual([('__getattribute__', 'mod4'),
                           ('_import', 'root4'),
-                          ('import', self.root_name, []),
+                          ('import', self.root_name, [], 0),
                           ('__getattribute__', 'var2'),
                           ('_import', 'mod4'),
-                          ('import', mod_path, []),
+                          ('import', mod_path, [], 0),
                          ], self.actions)
 
     def test_import_root_sub_submod(self):
@@ -770,19 +770,19 @@ class TestImportReplacer(ImportReplacerHelper):
 
         self.assertEqual([('__getattribute__', 'mod5'),
                           ('_import', 'root5'),
-                          ('import', self.root_name, []),
+                          ('import', self.root_name, [], 0),
                           ('__getattribute__', 'submoda5'),
                           ('_import', 'sub5'),
-                          ('import', sub_path, []),
+                          ('import', sub_path, [], 0),
                           ('__getattribute__', 'var2'),
                           ('_import', 'mod5'),
-                          ('import', mod_path, []),
+                          ('import', mod_path, [], 0),
                           ('__getattribute__', 'var4'),
                           ('_import', 'submoda5'),
-                          ('import', submoda_path, []),
+                          ('import', submoda_path, [], 0),
                           ('__getattribute__', 'var5'),
                           ('_import', 'submodb5'),
-                          ('import', submodb_path, []),
+                          ('import', submodb_path, [], 0),
                          ], self.actions)
 
 
@@ -1077,7 +1077,7 @@ class TestLazyImportProcessor(ImportReplacerHelper):
 
         self.assertEqual([('__getattribute__', 'var1'),
                           ('_import', 'root6'),
-                          ('import', self.root_name, []),
+                          ('import', self.root_name, [], 0),
                          ], self.actions)
 
     def test_import_deep(self):
@@ -1112,7 +1112,7 @@ import %(root_name)s.%(sub_name)s.%(submoda_name)s as submoda7
 
         self.assertEqual([('__getattribute__', 'var4'),
                           ('_import', 'submoda7'),
-                          ('import', submoda_path, []),
+                          ('import', submoda_path, [], 0),
                          ], self.actions)
 
     def test_lazy_import(self):
@@ -1136,7 +1136,7 @@ import %(root_name)s.%(sub_name)s.%(submoda_name)s as submoda7
 
         self.assertEqual([('__getattribute__', 'var1'),
                           ('_import', 'root8'),
-                          ('import', self.root_name, []),
+                          ('import', self.root_name, [], 0),
                          ], self.actions)
 
 

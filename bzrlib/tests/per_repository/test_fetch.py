@@ -22,7 +22,6 @@ from bzrlib import (
     gpg,
     remote,
     repository,
-    tests,
     )
 from bzrlib.inventory import ROOT_ID
 from bzrlib.tests import (
@@ -157,6 +156,9 @@ class TestFetchSameRepository(TestCaseWithRepository):
 
     def test_fetch_to_rich_root_set_parent_1_ghost_parent(self):
         # 1 ghost parent -> No parents
+        if not self.repository_format.supports_ghosts:
+            raise TestNotApplicable("repository format does not support "
+                 "ghosts")
         self.do_test_fetch_to_rich_root_sets_parents_correctly((),
             [('tip', ['ghost'], [('add', ('', ROOT_ID, 'directory', ''))]),
             ], allow_lefthand_ghost=True)
@@ -333,6 +335,8 @@ class TestFetchSameRepository(TestCaseWithRepository):
     def test_fetch_into_smart_with_ghost(self):
         trans = self.make_smart_server('target')
         source_b = self.make_simple_branch_with_ghost()
+        if not source_b.bzrdir._format.supports_transport(trans):
+            raise TestNotApplicable("format does not support transport")
         target = self.make_repository('target')
         # Re-open the repository over the smart protocol
         target = repository.Repository.open(trans.base)
@@ -350,6 +354,8 @@ class TestFetchSameRepository(TestCaseWithRepository):
     def test_fetch_from_smart_with_ghost(self):
         trans = self.make_smart_server('source')
         source_b = self.make_simple_branch_with_ghost()
+        if not source_b.bzrdir._format.supports_transport(trans):
+            raise TestNotApplicable("format does not support transport")
         target = self.make_repository('target')
         target.lock_write()
         self.addCleanup(target.unlock)

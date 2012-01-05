@@ -17,18 +17,7 @@
 """Exceptions for bzr, and reporting of them.
 """
 
-from bzrlib import (
-    osutils,
-    symbol_versioning,
-    )
-from bzrlib.patches import (
-    MalformedHunkHeader,
-    MalformedLine,
-    MalformedPatchHeader,
-    PatchConflict,
-    PatchSyntax,
-    )
-
+from __future__ import absolute_import
 
 # TODO: is there any value in providing the .args field used by standard
 # python exceptions?   A list of values with no names seems less useful
@@ -106,12 +95,15 @@ class BzrError(StandardError):
                 # __str__() should always return a 'str' object
                 # never a 'unicode' object.
                 return s
-        except (AttributeError, TypeError, NameError, ValueError, KeyError), e:
-            return 'Unprintable exception %s: dict=%r, fmt=%r, error=%r' \
-                % (self.__class__.__name__,
-                   self.__dict__,
-                   getattr(self, '_fmt', None),
-                   e)
+        except Exception, e:
+            pass # just bind to 'e' for formatting below
+        else:
+            e = None
+        return 'Unprintable exception %s: dict=%r, fmt=%r, error=%r' \
+            % (self.__class__.__name__,
+               self.__dict__,
+               getattr(self, '_fmt', None),
+               e)
 
     def __unicode__(self):
         u = self._format()
@@ -140,18 +132,8 @@ class BzrError(StandardError):
         """Return format string for this exception or None"""
         fmt = getattr(self, '_fmt', None)
         if fmt is not None:
-            return fmt
-        fmt = getattr(self, '__doc__', None)
-        if fmt is not None:
-            symbol_versioning.warn("%s uses its docstring as a format, "
-                    "it should use _fmt instead" % self.__class__.__name__,
-                    DeprecationWarning)
-            return fmt
-        return 'Unprintable exception %s: dict=%r, fmt=%r' \
-            % (self.__class__.__name__,
-               self.__dict__,
-               getattr(self, '_fmt', None),
-               )
+            from bzrlib.i18n import gettext
+            return gettext(unicode(fmt)) # _fmt strings should be ascii
 
     def __eq__(self, other):
         if self.__class__ is not other.__class__:
@@ -168,39 +150,6 @@ class InternalBzrError(BzrError):
     """
 
     internal_error = True
-
-
-class BzrNewError(BzrError):
-    """Deprecated error base class."""
-    # base classes should override the docstring with their human-
-    # readable explanation
-
-    def __init__(self, *args, **kwds):
-        # XXX: Use the underlying BzrError to always generate the args
-        # attribute if it doesn't exist.  We can't use super here, because
-        # exceptions are old-style classes in python2.4 (but new in 2.5).
-        # --bmc, 20060426
-        symbol_versioning.warn('BzrNewError was deprecated in bzr 0.13; '
-             'please convert %s to use BzrError instead'
-             % self.__class__.__name__,
-             DeprecationWarning,
-             stacklevel=2)
-        BzrError.__init__(self, *args)
-        for key, value in kwds.items():
-            setattr(self, key, value)
-
-    def __str__(self):
-        try:
-            # __str__() should always return a 'str' object
-            # never a 'unicode' object.
-            s = self.__doc__ % self.__dict__
-            if isinstance(s, unicode):
-                return s.encode('utf8')
-            return s
-        except (TypeError, NameError, ValueError, KeyError), e:
-            return 'Unprintable exception %s(%r): %r' \
-                % (self.__class__.__name__,
-                   self.__dict__, e)
 
 
 class AlreadyBuilding(BzrError):
@@ -790,19 +739,6 @@ class NoRepositoryPresent(BzrError):
         self.path = bzrdir.transport.clone('..').base
 
 
-class FileInWrongBranch(BzrError):
-
-    _fmt = 'File "%(path)s" is not in branch %(branch_base)s.'
-
-    # use PathNotChild instead
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 3, 0)))
-    def __init__(self, branch, path):
-        BzrError.__init__(self)
-        self.branch = branch
-        self.branch_base = branch.base
-        self.path = path
-
-
 class UnsupportedFormatError(BzrError):
 
     _fmt = "Unsupported branch format: %(format)s\nPlease run 'bzr upgrade'"
@@ -825,6 +761,18 @@ class IncompatibleFormat(BzrError):
         BzrError.__init__(self)
         self.format = format
         self.bzrdir = bzrdir_format
+
+
+class ParseFormatError(BzrError):
+
+    _fmt = "Parse error on line %(lineno)d of %(format)s format: %(line)s"
+
+    def __init__(self, format, lineno, line, text):
+        BzrError.__init__(self)
+        self.format = format
+        self.lineno = lineno
+        self.line = line
+        self.text = text
 
 
 class IncompatibleRepositories(BzrError):
@@ -1221,11 +1169,6 @@ class InvalidRevisionSpec(BzrError):
             self.extra = ''
 
 
-class HistoryMissing(BzrError):
-
-    _fmt = "%(branch)s is missing %(object_type)s {%(object_id)s}"
-
-
 class AppendRevisionsOnlyViolation(BzrError):
 
     _fmt = ('Operation denied because it would change the main history,'
@@ -1294,17 +1237,6 @@ class NotAncestor(BzrError):
     def __init__(self, rev_id, not_ancestor_id):
         BzrError.__init__(self, rev_id=rev_id,
             not_ancestor_id=not_ancestor_id)
-
-
-class AmbiguousBase(BzrError):
-
-    def __init__(self, bases):
-        symbol_versioning.warn("BzrError AmbiguousBase has been deprecated "
-            "as of bzrlib 0.8.", DeprecationWarning, stacklevel=2)
-        msg = ("The correct base is unclear, because %s are all equally close"
-                % ", ".join(bases))
-        BzrError.__init__(self, msg)
-        self.bases = bases
 
 
 class NoCommits(BranchError):
@@ -1572,6 +1504,7 @@ class RetryWithNewPacks(BzrError):
             problem we can raise the original error (value from sys.exc_info())
         """
         BzrError.__init__(self)
+        self.context = context
         self.reload_occurred = reload_occurred
         self.exc_info = exc_info
         self.orig_error = exc_info[1]
@@ -1659,6 +1592,7 @@ class SmartMessageHandlerError(InternalBzrError):
 
     def __init__(self, exc_info):
         import traceback
+        # GZ 2010-08-10: Cycle with exc_tb/exc_info affects at least one test
         self.exc_type, self.exc_value, self.exc_tb = exc_info
         self.exc_info = exc_info
         traceback_strings = traceback.format_exception(
@@ -1701,6 +1635,11 @@ class SocketConnectionError(ConnectionError):
 class ConnectionReset(TransportError):
 
     _fmt = "Connection closed: %(msg)s %(orig_error)s"
+
+
+class ConnectionTimeout(ConnectionError):
+
+    _fmt = "Connection Timeout: %(msg)s%(orig_error)s"
 
 
 class InvalidRange(TransportError):
@@ -1972,7 +1911,7 @@ class DuplicateHelpPrefix(BzrError):
         self.prefix = prefix
 
 
-class MalformedTransform(BzrError):
+class MalformedTransform(InternalBzrError):
 
     _fmt = "Tree transform is malformed %(conflicts)r"
 
@@ -2070,22 +2009,6 @@ class BzrRenameFailedError(BzrMoveFailedError):
 
     def __init__(self, from_path, to_path, extra=None):
         BzrMoveFailedError.__init__(self, from_path, to_path, extra)
-
-
-class BzrRemoveChangedFilesError(BzrError):
-    """Used when user is trying to remove changed files."""
-
-    _fmt = ("Can't safely remove modified or unknown files:\n"
-        "%(changes_as_text)s"
-        "Use --keep to not delete them, or --force to delete them regardless.")
-
-    def __init__(self, tree_delta):
-        symbol_versioning.warn(symbol_versioning.deprecated_in((2, 3, 0)) %
-            "BzrRemoveChangedFilesError", DeprecationWarning, stacklevel=2)
-        BzrError.__init__(self)
-        self.changes_as_text = tree_delta.get_changes_as_text()
-        #self.paths_as_string = '\n'.join(changed_files)
-        #self.paths_as_string = '\n'.join([quotefn(p) for p in changed_files])
 
 
 class BzrBadParameterNotString(BzrBadParameter):
@@ -2347,6 +2270,14 @@ class NonAsciiRevisionId(UnsupportedOperation):
     """Raised when a commit is attempting to set a non-ascii revision id
        but cant.
     """
+
+
+class GhostTagsNotSupported(BzrError):
+
+    _fmt = "Ghost tags not supported by format %(format)r."
+
+    def __init__(self, format):
+        self.format = format
 
 
 class BinaryFile(BzrError):
@@ -2784,7 +2715,7 @@ class DuplicateRecordNameError(ContainerError):
     _fmt = "Container has multiple records with the same name: %(name)s"
 
     def __init__(self, name):
-        self.name = name
+        self.name = name.decode("utf-8")
 
 
 class NoDestinationAddress(InternalBzrError):
@@ -3019,7 +2950,7 @@ class UnableEncodePath(BzrError):
         from bzrlib.osutils import get_user_encoding
         self.path = path
         self.kind = kind
-        self.user_encoding = osutils.get_user_encoding()
+        self.user_encoding = get_user_encoding()
 
 
 class NoSuchConfig(BzrError):
@@ -3084,31 +3015,6 @@ class UnknownRules(BzrError):
 
     def __init__(self, unknowns):
         BzrError.__init__(self, unknowns_str=", ".join(unknowns))
-
-
-class HookFailed(BzrError):
-    """Raised when a pre_change_branch_tip hook function fails anything other
-    than TipChangeRejected.
-
-    Note that this exception is no longer raised, and the import is only left
-    to be nice to code which might catch it in a plugin.
-    """
-
-    _fmt = ("Hook '%(hook_name)s' during %(hook_stage)s failed:\n"
-            "%(traceback_text)s%(exc_value)s")
-
-    def __init__(self, hook_stage, hook_name, exc_info, warn=True):
-        if warn:
-            symbol_versioning.warn("BzrError HookFailed has been deprecated "
-                "as of bzrlib 2.1.", DeprecationWarning, stacklevel=2)
-        import traceback
-        self.hook_stage = hook_stage
-        self.hook_name = hook_name
-        self.exc_info = exc_info
-        self.exc_type = exc_info[0]
-        self.exc_value = exc_info[1]
-        self.exc_tb = exc_info[2]
-        self.traceback_text = ''.join(traceback.format_tb(self.exc_tb))
 
 
 class TipChangeRejected(BzrError):
@@ -3334,3 +3240,83 @@ class HpssVfsRequestNotAllowed(BzrError):
     def __init__(self, method, arguments):
         self.method = method
         self.arguments = arguments
+
+
+class UnsupportedKindChange(BzrError):
+
+    _fmt = ("Kind change from %(from_kind)s to %(to_kind)s for "
+            "%(path)s not supported by format %(format)r")
+
+    def __init__(self, path, from_kind, to_kind, format):
+        self.path = path
+        self.from_kind = from_kind
+        self.to_kind = to_kind
+        self.format = format
+
+
+class MissingFeature(BzrError):
+
+    _fmt = ("Missing feature %(feature)s not provided by this "
+            "version of Bazaar or any plugin.")
+
+    def __init__(self, feature):
+        self.feature = feature
+
+
+class PatchSyntax(BzrError):
+    """Base class for patch syntax errors."""
+
+
+class BinaryFiles(BzrError):
+
+    _fmt = 'Binary files section encountered.'
+
+    def __init__(self, orig_name, mod_name):
+        self.orig_name = orig_name
+        self.mod_name = mod_name
+
+
+class MalformedPatchHeader(PatchSyntax):
+
+    _fmt = "Malformed patch header.  %(desc)s\n%(line)r"
+
+    def __init__(self, desc, line):
+        self.desc = desc
+        self.line = line
+
+
+class MalformedHunkHeader(PatchSyntax):
+
+    _fmt = "Malformed hunk header.  %(desc)s\n%(line)r"
+
+    def __init__(self, desc, line):
+        self.desc = desc
+        self.line = line
+
+
+class MalformedLine(PatchSyntax):
+
+    _fmt = "Malformed line.  %(desc)s\n%(line)r"
+
+    def __init__(self, desc, line):
+        self.desc = desc
+        self.line = line
+
+
+class PatchConflict(BzrError):
+
+    _fmt = ('Text contents mismatch at line %(line_no)d.  Original has '
+            '"%(orig_line)s", but patch says it should be "%(patch_line)s"')
+
+    def __init__(self, line_no, orig_line, patch_line):
+        self.line_no = line_no
+        self.orig_line = orig_line.rstrip('\n')
+        self.patch_line = patch_line.rstrip('\n')
+
+
+class FeatureAlreadyRegistered(BzrError):
+
+    _fmt = 'The feature %(feature)s has already been registered.'
+
+    def __init__(self, feature):
+        self.feature = feature

@@ -21,6 +21,7 @@ to standard HTTP responses, single range responses and multipart range
 responses.
 """
 
+from __future__ import absolute_import
 
 import httplib
 from cStringIO import StringIO
@@ -28,7 +29,6 @@ import rfc822
 
 from bzrlib import (
     errors,
-    trace,
     osutils,
     )
 

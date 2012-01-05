@@ -22,11 +22,11 @@ import os
 
 from bzrlib import (
     branch,
-    branchbuilder,
     bzrdir,
     config,
     errors,
     osutils,
+    revision as _mod_revision,
     symbol_versioning,
     tests,
     trace,
@@ -249,7 +249,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
         wt.commit('create initial state')
 
-        revid = b.revision_history()[0]
+        revid = b.last_revision()
         self.log('first revision_id is {%s}' % revid)
 
         tree = b.repository.revision_tree(revid)
@@ -309,6 +309,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_clone_trivial(self):
         wt = self.make_branch_and_tree('source')
         cloned_dir = wt.bzrdir.clone('target')
+        cloned = cloned_dir.open_workingtree()
+        self.assertEqual(cloned.get_parent_ids(), wt.get_parent_ids())
+
+    def test_clone_empty(self):
+        wt = self.make_branch_and_tree('source')
+        cloned_dir = wt.bzrdir.clone('target', revision_id=_mod_revision.NULL_REVISION)
         cloned = cloned_dir.open_workingtree()
         self.assertEqual(cloned.get_parent_ids(), wt.get_parent_ids())
 
@@ -623,8 +629,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # which should have pivoted the local tip into a merge
         self.assertEqual([master_tip, 'bar'], tree.get_parent_ids())
         # and the local branch history should match the masters now.
-        self.assertEqual(master_tree.branch.revision_history(),
-            tree.branch.revision_history())
+        self.assertEqual(master_tree.branch.last_revision(),
+            tree.branch.last_revision())
 
     def test_update_takes_revision_parameter(self):
         wt = self.make_branch_and_tree('wt')
@@ -940,6 +946,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             case_sensitive = True
         tree = self.make_branch_and_tree('test')
         self.assertEqual(case_sensitive, tree.case_sensitive)
+        if not isinstance(tree, InventoryWorkingTree):
+            raise TestNotApplicable("get_format_string is only available "
+                                    "on bzr working trees")
         # now we cheat, and make a file that matches the case-sensitive name
         t = tree.bzrdir.get_workingtree_transport(None)
         try:
@@ -950,6 +959,24 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         t.put_bytes(tree._format.case_sensitive_filename, content)
         tree = tree.bzrdir.open_workingtree()
         self.assertFalse(tree.case_sensitive)
+
+    def test_supports_executable(self):
+        self.build_tree(['filename'])
+        tree = self.make_branch_and_tree('.')
+        tree.add('filename')
+        self.assertIsInstance(tree._supports_executable(), bool)
+        if tree._supports_executable():
+            tree.lock_read()
+            try:
+                self.assertFalse(tree.is_executable(tree.path2id('filename')))
+            finally:
+                tree.unlock()
+            os.chmod('filename', 0755)
+            self.addCleanup(tree.lock_read().unlock)
+            self.assertTrue(tree.is_executable(tree.path2id('filename')))
+        else:
+            self.addCleanup(tree.lock_read().unlock)
+            self.assertFalse(tree.is_executable(tree.path2id('filename')))
 
     def test_all_file_ids_with_missing(self):
         tree = self.make_branch_and_tree('tree')
@@ -1001,10 +1028,9 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
             4 5-M
             |
             W
-         """
-        builder = branchbuilder.BranchBuilder(
-            self.get_transport(),
-            format=self.workingtree_format._matchingbzrdir)
+        """
+        format = self.workingtree_format.get_controldir_for_branch()
+        builder = self.make_branch_builder(".", format=format)
         builder.start_series()
         # mainline
         builder.build_snapshot(

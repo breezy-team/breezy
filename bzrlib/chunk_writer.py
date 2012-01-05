@@ -17,6 +17,8 @@
 
 """ChunkWriter: write compressed data out with a fixed upper bound."""
 
+from __future__ import absolute_import
+
 import zlib
 from zlib import Z_FINISH, Z_SYNC_FLUSH
 

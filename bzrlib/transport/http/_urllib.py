@@ -14,14 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
-import urllib
-import urlparse
+from __future__ import absolute_import
 
 from bzrlib import (
     errors,
     trace,
-    urlutils,
     )
 from bzrlib.transport import http
 # TODO: handle_response should be integrated into the http/__init__.py

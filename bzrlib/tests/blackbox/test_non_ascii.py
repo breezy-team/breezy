@@ -267,7 +267,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
         expected = osutils.pathjoin(osutils.getcwd(), dirname1)
         self.assertEqual(u'Using saved parent location: %s/\n'
-                'No revisions to pull.\n' % (expected,), txt)
+                'No revisions or tags to pull.\n' % (expected,), txt)
 
         self.build_tree_contents(
             [(osutils.pathjoin(dirname1, 'a'), 'and yet more\n')])

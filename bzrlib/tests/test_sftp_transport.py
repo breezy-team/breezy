@@ -199,13 +199,13 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         b2 = bzrdir.BzrDir.create_branch_and_repo(self.get_url('/b'))
         b2.pull(b)
 
-        self.assertEquals(b2.revision_history(), ['a1'])
+        self.assertEquals(b2.last_revision(), 'a1')
 
         open('a/foo', 'wt').write('something new in foo\n')
         t.commit('new', rev_id='a2')
         b2.pull(b)
 
-        self.assertEquals(b2.revision_history(), ['a1', 'a2'])
+        self.assertEquals(b2.last_revision(), 'a2')
 
 
 class SSHVendorConnection(TestCaseWithSFTPServer):
@@ -279,9 +279,12 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         self.addCleanup(s.close)
         self.bogus_url = 'sftp://%s:%s/' % s.getsockname()
 
-    def set_vendor(self, vendor):
+    def set_vendor(self, vendor, subprocess_stderr=None):
         from bzrlib.transport import ssh
         self.overrideAttr(ssh._ssh_vendor_manager, '_cached_ssh_vendor', vendor)
+        if subprocess_stderr is not None:
+            self.overrideAttr(ssh.SubprocessVendor, "_stderr_target",
+                subprocess_stderr)
 
     def test_bad_connection_paramiko(self):
         """Test that a real connection attempt raises the right error"""
@@ -292,32 +295,16 @@ class SSHVendorBadConnection(TestCaseWithTransport):
 
     def test_bad_connection_ssh(self):
         """None => auto-detect vendor"""
-        self.set_vendor(None)
-        # This is how I would normally test the connection code
-        # it makes it very clear what we are testing.
-        # However, 'ssh' will create stipple on the output, so instead
-        # I'm using run_bzr_subprocess, and parsing the output
-        # try:
-        #     t = _mod_transport.get_transport(self.bogus_url)
-        # except errors.ConnectionError:
-        #     # Correct error
-        #     pass
-        # except errors.NameError, e:
-        #     if 'SSHException' in str(e):
-        #         raise TestSkipped('Known NameError bug in paramiko 1.6.1')
-        #     raise
-        # else:
-        #     self.fail('Excepted ConnectionError to be raised')
-
-        out, err = self.run_bzr_subprocess(['log', self.bogus_url], retcode=3)
-        self.assertEqual('', out)
-        if "NameError: global name 'SSHException'" in err:
-            # We aren't fixing this bug, because it is a bug in
-            # paramiko, but we know about it, so we don't have to
-            # fail the test
-            raise TestSkipped('Known NameError bug with paramiko-1.6.1')
-        self.assertContainsRe(err, r'bzr: ERROR: Unable to connect to SSH host'
-                                   r' 127\.0\.0\.1:\d+; ')
+        f = file(os.devnull, "wb")
+        self.addCleanup(f.close)
+        self.set_vendor(None, f)
+        t = _mod_transport.get_transport_from_url(self.bogus_url)
+        try:
+            self.assertRaises(errors.ConnectionError, t.get, 'foobar')
+        except NameError, e:
+            if "global name 'SSHException'" in str(e):
+                self.knownFailure('Known NameError bug in paramiko 1.6.1')
+            raise
 
 
 class SFTPLatencyKnob(TestCaseWithSFTPServer):

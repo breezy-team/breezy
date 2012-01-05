@@ -45,6 +45,8 @@ KeyError, which typically just str to "0".  They're printed in a different
 form.
 """
 
+from __future__ import absolute_import
+
 # FIXME: Unfortunately it turns out that python's logging module
 # is quite expensive, even when the message is not printed by any handlers.
 # We should perhaps change back to just simply doing it here.
@@ -54,7 +56,6 @@ form.
 # increased cost of logging.py is not so bad, and we could standardize on
 # that.
 
-import codecs
 import logging
 import os
 import sys
@@ -111,8 +112,6 @@ def note(*args, **kwargs):
 
     :return: None
     """
-    # FIXME note always emits utf-8, regardless of the terminal encoding
-    #
     # FIXME: clearing the ui and then going through the abstract logging
     # framework is whack; we should probably have a logging Handler that
     # deals with terminal output if needed.
@@ -285,7 +284,6 @@ def enable_default_logging():
     """
     start_time = osutils.format_local_date(_bzr_log_start_time,
                                            timezone='local')
-    # create encoded wrapper around stderr
     bzr_log_file = _open_bzr_log()
     if bzr_log_file is not None:
         bzr_log_file.write(start_time.encode('utf-8') + '\n')
@@ -294,11 +292,8 @@ def enable_default_logging():
         r'%Y-%m-%d %H:%M:%S')
     # after hooking output into bzr_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding
-    term_encoding = osutils.get_terminal_encoding()
-    writer_factory = codecs.getwriter(term_encoding)
-    encoded_stderr = writer_factory(sys.stderr, errors='replace')
-    stderr_handler = logging.StreamHandler(encoded_stderr)
-    stderr_handler.setLevel(logging.INFO)
+    stderr_handler = EncodedStreamHandler(sys.stderr,
+        osutils.get_terminal_encoding(), 'replace', level=logging.INFO)
     logging.getLogger('bzr').addHandler(stderr_handler)
     return memento
 
@@ -313,8 +308,7 @@ def push_log_file(to_file, log_format=None, date_format=None):
     """
     global _trace_file
     # make a new handler
-    new_handler = logging.StreamHandler(to_file)
-    new_handler.setLevel(logging.DEBUG)
+    new_handler = EncodedStreamHandler(to_file, "utf-8", level=logging.DEBUG)
     if log_format is None:
         log_format = '%(levelname)8s  %(message)s'
     new_handler.setFormatter(logging.Formatter(log_format, date_format))
@@ -491,11 +485,7 @@ def report_exception(exc_info, err_file):
         print_exception(exc_info, err_file)
         return errors.EXIT_ERROR
     exc_type, exc_object, exc_tb = exc_info
-    if (isinstance(exc_object, IOError)
-        and getattr(exc_object, 'errno', None) == errno.EPIPE):
-        err_file.write("bzr: broken pipe\n")
-        return errors.EXIT_ERROR
-    elif isinstance(exc_object, KeyboardInterrupt):
+    if isinstance(exc_object, KeyboardInterrupt):
         err_file.write("bzr: interrupted\n")
         return errors.EXIT_ERROR
     elif isinstance(exc_object, MemoryError):
@@ -513,9 +503,10 @@ def report_exception(exc_info, err_file):
     elif not getattr(exc_object, 'internal_error', True):
         report_user_error(exc_info, err_file)
         return errors.EXIT_ERROR
-    elif isinstance(exc_object, (OSError, IOError)) or (
-        # GZ 2010-05-20: Like (exc_type is pywintypes.error) but avoid import
-        exc_type.__name__ == "error" and exc_type.__module__ == "pywintypes"):
+    elif osutils.is_environment_error(exc_object):
+        if getattr(exc_object, 'errno', None) == errno.EPIPE:
+            err_file.write("bzr: broken pipe\n")
+            return errors.EXIT_ERROR
         # Might be nice to catch all of these and show them as something more
         # specific, but there are too many cases at the moment.
         report_user_error(exc_info, err_file)
@@ -559,6 +550,10 @@ def _flush_stdout_stderr():
     try:
         sys.stdout.flush()
         sys.stderr.flush()
+    except ValueError, e:
+        # On Windows, I get ValueError calling stdout.flush() on a closed
+        # handle
+        pass
     except IOError, e:
         import errno
         if e.errno in [errno.EINVAL, errno.EPIPE]:
@@ -572,6 +567,49 @@ def _flush_trace():
     global _trace_file
     if _trace_file:
         _trace_file.flush()
+
+
+class EncodedStreamHandler(logging.Handler):
+    """Robustly write logging events to a stream using the specified encoding
+
+    Messages are expected to be formatted to unicode, but UTF-8 byte strings
+    are also accepted. An error during formatting or a str message in another
+    encoding will be quitely noted as an error in the Bazaar log file.
+
+    The stream is not closed so sys.stdout or sys.stderr may be passed.
+    """
+
+    def __init__(self, stream, encoding=None, errors='strict', level=0):
+        logging.Handler.__init__(self, level)
+        self.stream = stream
+        if encoding is None:
+            encoding = getattr(stream, "encoding", "ascii")
+        self.encoding = encoding
+        self.errors = errors
+
+    def flush(self):
+        flush = getattr(self.stream, "flush", None)
+        if flush is not None:
+            flush()
+
+    def emit(self, record):
+        try:
+            line = self.format(record)
+            if not isinstance(line, unicode):
+                line = line.decode("utf-8")
+            self.stream.write(line.encode(self.encoding, self.errors) + "\n")
+        except Exception:
+            log_exception_quietly()
+            # Try saving the details that would have been logged in some form
+            msg = args = "<Unformattable>"
+            try:
+                msg = repr(record.msg).encode("ascii")
+                args = repr(record.args).encode("ascii")
+            except Exception:
+                pass
+            # Using mutter() bypasses the logging module and writes directly
+            # to the file so there's no danger of getting into a loop here.
+            mutter("Logging record unformattable: %s %% %s", msg, args)
 
 
 class Config(object):
