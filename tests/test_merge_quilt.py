@@ -62,6 +62,17 @@ class TestTreeUnapplyPatches(TestCaseWithTransport):
         self.assertPathDoesNotExist(tree.abspath("a"))
         self.assertPathExists(tree.abspath("debian/patches/series"))
 
+    def test_unapply_nothing_applied(self):
+        orig_tree = self.make_branch_and_tree('source')
+        self.build_tree(["source/debian/", "source/debian/patches/"])
+        self.build_tree_contents([
+            ("source/debian/patches/series", "patch1.diff\n"),
+            ("source/debian/patches/patch1.diff", TRIVIAL_PATCH)])
+        orig_tree.smart_add([orig_tree.basedir])
+        tree, target_dir = tree_unapply_patches(orig_tree)
+        self.assertIs(tree, orig_tree)
+        self.assertIs(None, target_dir)
+
 
 class TestMergeHook(TestCaseWithTransport):
 

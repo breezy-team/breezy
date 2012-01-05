@@ -22,6 +22,7 @@
 
 from __future__ import absolute_import
 
+import errno
 import shutil
 import tempfile
 from bzrlib.revisiontree import RevisionTree
@@ -52,6 +53,20 @@ def tree_unapply_patches(orig_tree, orig_branch=None):
     series_file_id = orig_tree.path2id("debian/patches/series")
     if series_file_id is None:
         # No quilt patches
+        return orig_tree, None
+    applied_patches_id = orig_tree.path2id(".pc/applied-patches")
+    if applied_patches_id is None:
+        return orig_tree, None
+    try:
+        applied_patches = orig_tree.get_file_text(applied_patches_id, ".pc/applied-patches")
+    except (IOError, OSError), e:
+        if e.errno == errno.ENOENT:
+            # File has already been removed
+            return orig_tree, None
+        raise
+
+    # Don't do any processing if there are no unapplied patches
+    if not applied_patches:
         return orig_tree, None
 
     target_dir = tempfile.mkdtemp()
