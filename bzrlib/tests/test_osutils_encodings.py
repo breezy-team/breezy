@@ -17,9 +17,7 @@
 """Tests for the osutils wrapper."""
 
 import codecs
-import errno
 import locale
-import os
 import sys
 
 from bzrlib import (
@@ -202,17 +200,3 @@ class TestUserEncoding(TestCase):
         self._encoding = ''
         self.assertEquals('ascii', osutils.get_user_encoding())
         self.assertEquals('', sys.stderr.getvalue())
-
-
-class TestMessageEncoding(TestCase):
-    """Tests for getting the encoding used by system messages"""
-
-    def test_get_message_encoding(self):
-        encoding_name = osutils.get_message_encoding()
-        "".decode(encoding_name) # should be a valid encoding name
-
-    def test_get_message_encoding_decodes_strerror(self):
-        encoding_name = osutils.get_message_encoding()
-        for number, name in errno.errorcode.iteritems():
-            string = os.strerror(number)
-            string.decode(encoding_name)
