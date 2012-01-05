@@ -82,6 +82,11 @@ Bug Fixes
   of revisions whose ancestry is not obviously on the same developement
   line. (Vincent Ladeuil, #904744)
 
+* Make lazy imports resilient when resolved concurrently from multiple
+  threads. Now the stand-in object will behave as a proxy for the real object
+  after the initial access, rather than throwing. Assigning the object to
+  multiple names should still be avoided. (Martin von Gagern, #396819)
+
 * Not setting ``gpg_signing_key`` or setting it to ``default`` will use the
   user email (obtained from the ``email`` configuration option or its
   default value). (Vincent Ladeuil, Jelmer Vernooij, #904550)
