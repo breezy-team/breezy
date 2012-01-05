@@ -110,6 +110,9 @@ Bug Fixes
 * Stop altering ``sys.platform`` on OSX when initialising the locale.
   (Martin Packman, #570495)
 
+* Uncommit no longer removes tags if they are part of the working
+  trees pending merges. (Jelmer Vernooij, #905462)
+
 Documentation
 *************
 

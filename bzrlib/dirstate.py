@@ -1924,7 +1924,7 @@ class DirState(object):
             # paths are produced by UnicodeDirReader on purpose.
             abspath = abspath.encode(fs_encoding)
         target = os.readlink(abspath)
-        if fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
+        if fs_encoding not in ('utf-8', 'ascii'):
             # Change encoding if needed
             target = target.decode(fs_encoding).encode('UTF-8')
         return target

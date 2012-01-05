@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,14 +16,14 @@
 
 """External tests of 'bzr ls'"""
 
-import os
-
-from bzrlib import ignores
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib import (
+    ignores,
+    tests,
+    )
 from bzrlib.tests.matchers import ContainsNoVfsCalls
 
 
-class TestLS(TestCaseWithTransport):
+class TestLS(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestLS, self).setUp()
@@ -37,13 +37,13 @@ class TestLS(TestCaseWithTransport):
                                  ('a', 'hello\n'),
                                  ])
 
-    def ls_equals(self, value, args=None, recursive=True):
+    def ls_equals(self, value, args=None, recursive=True, working_dir=None):
         command = 'ls'
         if args is not None:
             command += ' ' + args
         if recursive:
             command += ' -R'
-        out, err = self.run_bzr(command)
+        out, err = self.run_bzr(command, working_dir=working_dir)
         self.assertEqual('', err)
         self.assertEqualDiff(value, out)
 
@@ -127,16 +127,13 @@ class TestLS(TestCaseWithTransport):
                        , '--verbose', recursive=False)
 
         # Check what happens in a sub-directory
-        os.chdir('subdir')
-        self.ls_equals('b\n')
-        self.ls_equals('b\0'
-                  , '--null')
-        self.ls_equals('subdir/b\n'
-                       , '--from-root')
-        self.ls_equals('subdir/b\0'
-                       , '--from-root --null')
-        self.ls_equals('subdir/b\n'
-                       , '--from-root', recursive=False)
+        self.ls_equals('b\n', working_dir='subdir')
+        self.ls_equals('b\0', '--null', working_dir='subdir')
+        self.ls_equals('subdir/b\n', '--from-root', working_dir='subdir')
+        self.ls_equals('subdir/b\0', '--from-root --null',
+                       working_dir='subdir')
+        self.ls_equals('subdir/b\n', '--from-root', recursive=False,
+                       working_dir='subdir')
 
     def test_ls_path(self):
         """If a path is specified, files are listed with that prefix"""
@@ -144,24 +141,23 @@ class TestLS(TestCaseWithTransport):
         self.wt.add(['subdir', 'subdir/b'])
         self.ls_equals('subdir/b\n' ,
                        'subdir')
-        os.chdir('subdir')
         self.ls_equals('../.bzrignore\n'
                        '../a\n'
                        '../subdir/\n'
                        '../subdir/b\n' ,
-                       '..')
+                       '..', working_dir='subdir')
         self.ls_equals('../.bzrignore\0'
                        '../a\0'
                        '../subdir\0'
                        '../subdir/b\0' ,
-                       '.. --null')
+                       '.. --null', working_dir='subdir')
         self.ls_equals('?        ../.bzrignore\n'
                        '?        ../a\n'
                        'V        ../subdir/\n'
                        'V        ../subdir/b\n' ,
-                       '.. --verbose')
+                       '.. --verbose', working_dir='subdir')
         self.run_bzr_error(['cannot specify both --from-root and PATH'],
-                           'ls --from-root ..')
+                           'ls --from-root ..', working_dir='subdir')
 
     def test_ls_revision(self):
         self.wt.add(['a'])
@@ -174,8 +170,7 @@ class TestLS(TestCaseWithTransport):
         self.ls_equals('V        a\n'
                        , '--verbose --revision 1')
 
-        os.chdir('subdir')
-        self.ls_equals('', '--revision 1')
+        self.ls_equals('', '--revision 1', working_dir='subdir')
 
     def test_ls_branch(self):
         """If a branch is specified, files are listed from it"""
@@ -247,7 +242,7 @@ class TestLS(TestCaseWithTransport):
         self.ls_equals('sub/file\n', '-d dir sub')
 
 
-class TestSmartServerLs(TestCaseWithTransport):
+class TestSmartServerLs(tests.TestCaseWithTransport):
 
     def test_simple_ls(self):
         self.setup_smart_server_with_call_log()
