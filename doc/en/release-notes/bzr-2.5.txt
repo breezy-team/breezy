@@ -78,6 +78,11 @@ Bug Fixes
   of revisions whose ancestry is not obviously on the same developement
   line. (Vincent Ladeuil, #904744)
 
+* Configuration stacks can now use ``StartingPathMatcher`` to select the
+  sections matching a location while respecting the order chosen by the user
+  in the configuration file: from generic sections to specific
+  sections. (Vincent Ladeuil, #832046).
+
 * Not setting ``gpg_signing_key`` or setting it to ``default`` will use the
   user email (obtained from the ``email`` configuration option or its
   default value). (Vincent Ladeuil, Jelmer Vernooij, #904550)
@@ -127,11 +132,6 @@ Internals
   rather than importing them from ``urllib``. This prevents loading
   of the ``socket``, ``ssl`` and ``urllib`` modules for
   local bzr operations. (Jelmer Vernooij)
-
-* Configuration stacks can now use ``StartingPathMatcher`` to select the
-  sections matching a location while respecting the order chosen by the user
-  in the configuration file: from generic sections to specific
-  sections. (Vincent Ladeuil, #832046).
 
 * Configuration options can be SI units by using ``int_SI_from_unicode`` as
   their ``convert_from_unicode`` helper. (Vincent Ladeuil)
