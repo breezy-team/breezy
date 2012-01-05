@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,21 +21,21 @@ import os
 import sys
 
 from bzrlib import (
+    branch,
     debug,
+    osutils,
     remote,
     tests,
+    uncommit,
     urlutils,
+    workingtree,
     )
 
-from bzrlib.branch import Branch
 from bzrlib.directory_service import directories
-from bzrlib.osutils import pathjoin
 from bzrlib.tests import (
     fixtures,
     script,
     )
-from bzrlib.uncommit import uncommit
-from bzrlib.workingtree import WorkingTree
 
 
 class TestPull(tests.TestCaseWithTransport):
@@ -43,8 +43,8 @@ class TestPull(tests.TestCaseWithTransport):
     def example_branch(self, path='.'):
         tree = self.make_branch_and_tree(path)
         self.build_tree_contents([
-            (pathjoin(path, 'hello'),   'foo'),
-            (pathjoin(path, 'goodbye'), 'baz')])
+            (osutils.pathjoin(path, 'hello'),   'foo'),
+            (osutils.pathjoin(path, 'goodbye'), 'baz')])
         tree.add('hello')
         tree.commit(message='setup')
         tree.add('goodbye')
@@ -55,63 +55,53 @@ class TestPull(tests.TestCaseWithTransport):
         """Pull changes from one branch to another."""
         a_tree = self.example_branch('a')
         base_rev = a_tree.branch.last_revision()
-        os.chdir('a')
-        self.run_bzr('pull', retcode=3)
-        self.run_bzr('missing', retcode=3)
-        self.run_bzr('missing .')
-        self.run_bzr('missing')
+        self.run_bzr('pull', retcode=3, working_dir='a')
+        self.run_bzr('missing', retcode=3, working_dir='a')
+        self.run_bzr('missing .', working_dir='a')
+        self.run_bzr('missing', working_dir='a')
         # this will work on windows because we check for the same branch
         # in pull - if it fails, it is a regression
-        self.run_bzr('pull')
-        self.run_bzr('pull /', retcode=3)
+        self.run_bzr('pull', working_dir='a')
+        self.run_bzr('pull /', retcode=3, working_dir='a')
         if sys.platform not in ('win32', 'cygwin'):
-            self.run_bzr('pull')
+            self.run_bzr('pull', working_dir='a')
 
-        os.chdir('..')
         b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
-        os.chdir('b')
-        self.run_bzr('pull')
-        os.mkdir('subdir')
+        self.run_bzr('pull', working_dir='b')
+        os.mkdir('b/subdir')
         b_tree.add('subdir')
         new_rev = b_tree.commit(message='blah', allow_pointless=True)
 
-        os.chdir('..')
-        a = Branch.open('a')
-        b = Branch.open('b')
+        a = branch.Branch.open('a')
+        b = branch.Branch.open('b')
         self.assertEqual(a.last_revision(), base_rev)
         self.assertEqual(b.last_revision(), new_rev)
 
-        os.chdir('a')
-        self.run_bzr('pull ../b')
+        self.run_bzr('pull ../b', working_dir='a')
         self.assertEqual(a.last_revision(), b.last_revision())
         a_tree.commit(message='blah2', allow_pointless=True)
         b_tree.commit(message='blah3', allow_pointless=True)
         # no overwrite
-        os.chdir('../b')
-        self.run_bzr('pull ../a', retcode=3)
-        os.chdir('..')
+        self.run_bzr('pull ../a', retcode=3, working_dir='b')
         b_tree.bzrdir.sprout('overwriteme')
-        os.chdir('overwriteme')
-        self.run_bzr('pull --overwrite ../a')
-        overwritten = Branch.open('.')
+        self.run_bzr('pull --overwrite ../a', working_dir='overwriteme')
+        overwritten = branch.Branch.open('overwriteme')
         self.assertEqual(overwritten.last_revision(),
                          a.last_revision())
         a_tree.merge_from_branch(b_tree.branch)
         a_tree.commit(message="blah4", allow_pointless=True)
-        os.chdir('../b/subdir')
-        self.run_bzr('pull ../../a')
+
+        self.run_bzr('pull ../../a', working_dir='b/subdir')
         self.assertEqual(a.last_revision(), b.last_revision())
-        sub_tree = WorkingTree.open_containing('.')[0]
+        sub_tree = workingtree.WorkingTree.open_containing('b/subdir')[0]
         sub_tree.commit(message="blah5", allow_pointless=True)
         sub_tree.commit(message="blah6", allow_pointless=True)
-        os.chdir('..')
-        self.run_bzr('pull ../a')
-        os.chdir('../a')
+        self.run_bzr('pull ../a', working_dir='b')
         a_tree.commit(message="blah7", allow_pointless=True)
         a_tree.merge_from_branch(b_tree.branch)
         a_tree.commit(message="blah8", allow_pointless=True)
-        self.run_bzr('pull ../b')
-        self.run_bzr('pull ../b')
+        self.run_bzr('pull ../b', working_dir='a')
+        self.run_bzr('pull ../b', working_dir='a')
 
     def test_pull_dash_d(self):
         self.example_branch('a')
@@ -137,15 +127,14 @@ class TestPull(tests.TestCaseWithTransport):
 
         b_tree = a_tree.bzrdir.sprout('b',
                    revision_id=a_tree.branch.get_rev_id(1)).open_workingtree()
-        os.chdir('b')
-        self.run_bzr('pull -r 2')
-        a = Branch.open('../a')
-        b = Branch.open('.')
+        self.run_bzr('pull -r 2', working_dir='b')
+        a = branch.Branch.open('a')
+        b = branch.Branch.open('b')
         self.assertEqual(a.revno(),4)
         self.assertEqual(b.revno(),2)
-        self.run_bzr('pull -r 3')
+        self.run_bzr('pull -r 3', working_dir='b')
         self.assertEqual(b.revno(),3)
-        self.run_bzr('pull -r 4')
+        self.run_bzr('pull -r 4', working_dir='b')
         self.assertEqual(a.last_revision(), b.last_revision())
 
     def test_pull_tags(self):
@@ -189,8 +178,7 @@ class TestPull(tests.TestCaseWithTransport):
 
         self.assertEqual(b_tree.branch.last_revision_info()[0], 2)
 
-        os.chdir('b')
-        self.run_bzr('pull --overwrite ../a')
+        self.run_bzr('pull --overwrite ../a', working_dir='b')
         (last_revinfo_b) = b_tree.branch.last_revision_info()
         self.assertEqual(last_revinfo_b[0], 3)
         self.assertEqual(last_revinfo_b[1], a_tree.branch.last_revision())
@@ -226,15 +214,14 @@ class TestPull(tests.TestCaseWithTransport):
 
         # With convergence, we could just pull over the
         # new change, but with --overwrite, we want to switch our history
-        os.chdir('b')
-        self.run_bzr('pull --overwrite ../a')
+        self.run_bzr('pull --overwrite ../a', working_dir='b')
         rev_info_b = b_tree.branch.last_revision_info()
         self.assertEqual(rev_info_b[0], 4)
         self.assertEqual(rev_info_b, rev_info_a)
 
     def test_pull_remember(self):
         """Pull changes from one branch to another and test parent location."""
-        transport = self.get_transport()
+        t = self.get_transport()
         tree_a = self.make_branch_and_tree('branch_a')
         branch_a = tree_a.branch
         self.build_tree(['branch_a/a'])
@@ -252,27 +239,27 @@ class TestPull(tests.TestCaseWithTransport):
         branch_b.set_parent(None)
         self.assertEqual(None, branch_b.get_parent())
         # test pull for failure without parent set
-        os.chdir('branch_b')
-        out = self.run_bzr('pull', retcode=3)
+        out = self.run_bzr('pull', retcode=3, working_dir='branch_b')
         self.assertEqual(out,
                 ('','bzr: ERROR: No pull location known or specified.\n'))
         # test implicit --remember when no parent set, this pull conflicts
-        self.build_tree(['d'])
+        self.build_tree(['branch_b/d'])
         tree_b.add('d')
         tree_b.commit('commit d')
-        out = self.run_bzr('pull ../branch_a', retcode=3)
+        out = self.run_bzr('pull ../branch_a', retcode=3,
+                           working_dir='branch_b')
         self.assertEqual(out,
                 ('','bzr: ERROR: These branches have diverged.'
                     ' Use the missing command to see how.\n'
                     'Use the merge command to reconcile them.\n'))
         self.assertEqual(branch_b.get_parent(), parent)
         # test implicit --remember after resolving previous failure
-        uncommit(branch=branch_b, tree=tree_b)
-        transport.delete('branch_b/d')
-        self.run_bzr('pull')
+        uncommit.uncommit(branch=branch_b, tree=tree_b)
+        t.delete('branch_b/d')
+        self.run_bzr('pull', working_dir='branch_b')
         self.assertEqual(branch_b.get_parent(), parent)
         # test explicit --remember
-        self.run_bzr('pull ../branch_c --remember')
+        self.run_bzr('pull ../branch_c --remember', working_dir='branch_b')
         self.assertEqual(branch_b.get_parent(),
                           branch_c.bzrdir.root_transport.base)
 
@@ -280,26 +267,22 @@ class TestPull(tests.TestCaseWithTransport):
         from bzrlib.testament import Testament
         # Build up 2 trees and prepare for a pull
         tree_a = self.make_branch_and_tree('branch_a')
-        f = open('branch_a/a', 'wb')
-        f.write('hello')
-        f.close()
+        with open('branch_a/a', 'wb') as f:
+            f.write('hello')
         tree_a.add('a')
         tree_a.commit('message')
 
         tree_b = tree_a.bzrdir.sprout('branch_b').open_workingtree()
 
         # Make a change to 'a' that 'b' can pull
-        f = open('branch_a/a', 'wb')
-        f.write('hey there')
-        f.close()
+        with open('branch_a/a', 'wb') as f:
+            f.write('hey there')
         tree_a.commit('message')
 
         # Create the bundle for 'b' to pull
-        os.chdir('branch_a')
-        self.run_bzr('bundle ../branch_b -o ../bundle')
+        self.run_bzr('bundle ../branch_b -o ../bundle', working_dir='branch_a')
 
-        os.chdir('../branch_b')
-        out, err = self.run_bzr('pull ../bundle')
+        out, err = self.run_bzr('pull ../bundle', working_dir='branch_b')
         self.assertEqual(out,
                          'Now on revision 2.\n')
         self.assertEqual(err,
@@ -316,7 +299,7 @@ class TestPull(tests.TestCaseWithTransport):
                              testament_b.as_text())
 
         # it is legal to attempt to pull an already-merged bundle
-        out, err = self.run_bzr('pull ../bundle')
+        out, err = self.run_bzr('pull ../bundle', working_dir='branch_b')
         self.assertEqual(err, '')
         self.assertEqual(out, 'No revisions or tags to pull.\n')
 
@@ -422,7 +405,7 @@ class TestPull(tests.TestCaseWithTransport):
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(19, self.hpss_calls)
         self.assertLength(1, self.hpss_connections)
-        remote = Branch.open('stacked')
+        remote = branch.Branch.open('stacked')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
 
     def test_pull_cross_format_warning(self):
@@ -492,26 +475,25 @@ class TestPull(tests.TestCaseWithTransport):
         a_tree = self.example_branch('a')
         b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
 
-        f = open(pathjoin('a', 'hello'),'wt')
-        f.write('fee')
-        f.close()
+        with open(osutils.pathjoin('a', 'hello'),'wt') as f:
+            f.write('fee')
         a_tree.commit('fee')
 
-        f = open(pathjoin('b', 'hello'),'wt')
-        f.write('fie')
-        f.close()
+        with open(osutils.pathjoin('b', 'hello'),'wt') as f:
+            f.write('fie')
 
         out,err=self.run_bzr(['pull','-d','b','a','--show-base'])
 
         # check for message here
-        self.assertEqual(err,
-                         ' M  hello\nText conflict in hello\n1 conflicts encountered.\n')
+        self.assertEqual(
+            err,
+            ' M  hello\nText conflict in hello\n1 conflicts encountered.\n')
 
         self.assertEqualDiff('<<<<<<< TREE\n'
                              'fie||||||| BASE-REVISION\n'
                              'foo=======\n'
                              'fee>>>>>>> MERGE-SOURCE\n',
-                             open(pathjoin('b', 'hello')).read())
+                             open(osutils.pathjoin('b', 'hello')).read())
 
     def test_pull_show_base_working_tree_only(self):
         """--show-base only allowed if there's a working tree
@@ -521,8 +503,8 @@ class TestPull(tests.TestCaseWithTransport):
         self.make_branch('from')
         self.make_branch('to')
         out=self.run_bzr(['pull','-d','to','from','--show-base'],retcode=3)
-        self.assertEqual(out,
-                         ('','bzr: ERROR: Need working tree for --show-base.\n'))
+        self.assertEqual(
+            out, ('','bzr: ERROR: Need working tree for --show-base.\n'))
 
     def test_pull_tag_conflicts(self):
         """pulling tags with conflicts will change the exit code"""
