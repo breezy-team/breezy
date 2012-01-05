@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #            and others
 #
@@ -2944,10 +2944,11 @@ class MutableSection(Section):
                     expected = '<CREATED>'
                 # Someone changed the value since we get it from the persistent
                 # storage.
-                trace.warning("Option %s in section %s of %s was changed"
-                              " from %s to %s. The %s value will be saved.",
-                              k, self.id, store.external_url(),
-                              expected, reloaded, actual)
+                trace.warning(gettext(
+                        "Option {0} in section {1} of {2} was changed"
+                        " from {3} to {4}. The {5} value will be saved.".format(
+                            k, self.id, store.external_url(), expected,
+                            reloaded, actual)))
         # No need to keep track of these changes
         self.reset_changes()
 
