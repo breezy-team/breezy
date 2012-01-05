@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009, 2010, 2011 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -154,8 +154,8 @@ class TestAdd(tests.TestCaseWithTransport):
         new_tree = self.make_branch_and_tree('new')
         self.build_tree(['new/a', 'new/b/', 'new/b/c', 'd'])
 
-        os.chdir('new')
-        out, err = self.run_bzr('add --file-ids-from ../base')
+        out, err = self.run_bzr('add --file-ids-from ../base',
+                                working_dir='new')
         self.assertEqual('', err)
         self.assertEqualDiff('adding a w/ file id from a\n'
                              'adding b w/ file id from b\n'
@@ -175,14 +175,14 @@ class TestAdd(tests.TestCaseWithTransport):
         new_tree = self.make_branch_and_tree('new')
         self.build_tree(['new/c', 'new/d'])
 
-        os.chdir('new')
-        out, err = self.run_bzr('add --file-ids-from ../base/b')
+        out, err = self.run_bzr('add --file-ids-from ../base/b',
+                                working_dir='new')
         self.assertEqual('', err)
         self.assertEqualDiff('adding c w/ file id from b/c\n'
                              'adding d w/ file id from b/d\n',
                              out)
 
-        new_tree = new_tree.bzrdir.open_workingtree()
+        new_tree = new_tree.bzrdir.open_workingtree('new')
         self.assertEqual(base_tree.path2id('b/c'), new_tree.path2id('c'))
         self.assertEqual(base_tree.path2id('b/d'), new_tree.path2id('d'))
 
