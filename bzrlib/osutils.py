@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 import errno
 import os
 import re
@@ -947,19 +949,16 @@ def filesize(f):
     return os.fstat(f.fileno())[stat.ST_SIZE]
 
 
-# Define rand_bytes based on platform.
-try:
-    # Python 2.4 and later have os.urandom,
-    # but it doesn't work on some arches
-    os.urandom(1)
-    rand_bytes = os.urandom
-except (NotImplementedError, AttributeError):
-    # If python doesn't have os.urandom, or it doesn't work,
-    # then try to first pull random data from /dev/urandom
+# Alias os.urandom to support platforms (which?) without /dev/urandom and 
+# override if it doesn't work. Avoid checking on windows where there is
+# significant initialisation cost that can be avoided for some bzr calls.
+
+rand_bytes = os.urandom
+
+if rand_bytes.__module__ != "nt":
     try:
-        rand_bytes = file('/dev/urandom', 'rb').read
-    # Otherwise, use this hack as a last resort
-    except (IOError, OSError):
+        rand_bytes(1)
+    except NotImplementedError:
         # not well seeded, but better than nothing
         def rand_bytes(n):
             import random
@@ -2042,7 +2041,6 @@ def get_host_name():
     behaves inconsistently on different platforms.
     """
     if sys.platform == "win32":
-        import win32utils
         return win32utils.get_host_name()
     else:
         import socket

@@ -19,6 +19,8 @@
 There are separate implementation modules for each http client implementation.
 """
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 import re
 import urlparse

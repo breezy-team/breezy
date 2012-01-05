@@ -24,6 +24,8 @@ over SSH), and pass them to and from the protocol logic.  See the overview in
 bzrlib/transport/smart/__init__.py.
 """
 
+from __future__ import absolute_import
+
 import errno
 import os
 import sys
@@ -41,6 +43,7 @@ from bzrlib import (
     debug,
     errors,
     trace,
+    transport,
     ui,
     urlutils,
     )
@@ -1019,6 +1022,8 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
             raise AssertionError(
                 "Unexpected io_kind %r from %r"
                 % (io_kind, self._ssh_connection))
+        for hook in transport.Transport.hooks["post_connect"]:
+            hook(self)
 
     def _flush(self):
         """See SmartClientStreamMedium._flush()."""
@@ -1127,6 +1132,8 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
             raise errors.ConnectionError("failed to connect to %s:%d: %s" %
                     (self._host, port, err_msg))
         self._connected = True
+        for hook in transport.Transport.hooks["post_connect"]:
+            hook(self)
 
 
 class SmartClientAlreadyConnectedSocketMedium(SmartClientSocketMedium):

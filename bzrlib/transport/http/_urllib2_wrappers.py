@@ -36,6 +36,8 @@ the code, even if the header names will be titled just before sending the
 request (see AbstractHTTPHandler.do_open).
 """
 
+from __future__ import absolute_import
+
 DEBUG = 0
 
 # FIXME: Oversimplifying, two kind of exceptions should be

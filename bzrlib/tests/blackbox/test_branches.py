@@ -17,6 +17,7 @@
 
 """Black-box tests for bzr branches."""
 
+from bzrlib.branch import BranchReferenceFormat
 from bzrlib.tests import TestCaseWithTransport
 
 
@@ -27,7 +28,7 @@ class TestBranches(TestCaseWithTransport):
         # support.
         self.run_bzr('init a')
         out, err = self.run_bzr('branches a')
-        self.assertEquals(out, " (default)\n")
+        self.assertEquals(out, "* (default)\n")
 
     def test_no_branch(self):
         # Listing the branches in a control directory without branches.
@@ -58,3 +59,21 @@ class TestBranches(TestCaseWithTransport):
         self.assertIs(True, 'source/subsource' in lines, lines)
         self.assertIs(True, 'checkout/subcheckout' in lines, lines)
         self.assertIs(True, 'checkout' not in lines, lines)
+
+    def test_indicates_non_branch(self):
+        t = self.make_branch_and_tree('a', format='development-colo')
+        t.bzrdir.create_branch(name='another')
+        t.bzrdir.create_branch(name='colocated')
+        out, err = self.run_bzr('branches a')
+        self.assertEquals(out, "* (default)\n"
+                               "  another\n"
+                               "  colocated\n")
+
+    def test_indicates_branch(self):
+        t = self.make_repository('a', format='development-colo')
+        t.bzrdir.create_branch(name='another')
+        branch = t.bzrdir.create_branch(name='colocated')
+        BranchReferenceFormat().initialize(t.bzrdir, target_branch=branch)
+        out, err = self.run_bzr('branches a')
+        self.assertEquals(out, "  another\n"
+                               "* colocated\n")

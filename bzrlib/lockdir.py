@@ -98,6 +98,8 @@ process id no longer exists.  The check on user name is not strictly necessary
 but helps protect against colliding host names.
 """
 
+from __future__ import absolute_import
+
 
 # TODO: We sometimes have the problem that our attempt to rename '1234' to
 # 'held' fails because the transport server moves into an existing directory,
@@ -107,7 +109,6 @@ but helps protect against colliding host names.
 # the existing locking code and needs a new format of the containing object.
 # -- robertc, mbp 20070628
 
-import errno
 import os
 import time
 

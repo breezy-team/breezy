@@ -19,6 +19,8 @@
 This is a fairly thin wrapper on regular file IO.
 """
 
+from __future__ import absolute_import
+
 import os
 from stat import ST_MODE, S_ISDIR, S_IMODE
 import sys

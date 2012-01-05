@@ -16,6 +16,8 @@
 
 """builtin bzr commands"""
 
+from __future__ import absolute_import
+
 import os
 
 import bzrlib.bzrdir
@@ -1249,8 +1251,16 @@ class cmd_push(Command):
         if location is None:
             stored_loc = br_from.get_push_location()
             if stored_loc is None:
-                raise errors.BzrCommandError(gettext(
-                    "No push location known or specified."))
+                parent_loc = br_from.get_parent()
+                if parent_loc:
+                    raise errors.BzrCommandError(gettext(
+                        "No push location known or specified. To push to the "
+                        "parent branch (at %s), use 'bzr push :parent'." %
+                        urlutils.unescape_for_display(parent_loc,
+                            self.outf.encoding)))
+                else:
+                    raise errors.BzrCommandError(gettext(
+                        "No push location known or specified."))
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
@@ -1433,12 +1443,30 @@ class cmd_branches(Command):
                     self.outf.encoding).rstrip("/"))
         else:
             dir = controldir.ControlDir.open_containing(location)[0]
-            for branch in dir.list_branches():
-                if branch.name is None:
-                    self.outf.write(gettext(" (default)\n"))
+            try:
+                active_branch = dir.open_branch(name=None)
+            except errors.NotBranchError:
+                active_branch = None
+            branches = dir.get_branches()
+            names = {}
+            for name, branch in branches.iteritems():
+                if name is None:
+                    continue
+                active = (active_branch is not None and
+                          active_branch.base == branch.base)
+                names[name] = active
+            # Only mention the current branch explicitly if it's not
+            # one of the colocated branches
+            if not any(names.values()) and active_branch is not None:
+                self.outf.write("* %s\n" % gettext("(default)"))
+            for name in sorted(names.keys()):
+                active = names[name]
+                if active:
+                    prefix = "*"
                 else:
-                    self.outf.write(" %s\n" % branch.name.encode(
-                        self.outf.encoding))
+                    prefix = " "
+                self.outf.write("%s %s\n" % (
+                    prefix, name.encode(self.outf.encoding)))
 
 
 class cmd_checkout(Command):
@@ -2058,14 +2086,16 @@ class cmd_init_repository(Command):
             location = '.'
 
         to_transport = transport.get_transport(location)
-        to_transport.ensure_base()
 
-        newdir = format.initialize_on_transport(to_transport)
-        repo = newdir.create_repository(shared=True)
-        repo.set_make_working_trees(not no_trees)
+        (repo, newdir, require_stacking, repository_policy) = (
+            format.initialize_on_transport_ex(to_transport,
+            create_prefix=True, make_working_trees=not no_trees,
+            shared_repo=True, force_new_repo=True,
+            use_existing_dir=True,
+            repo_format_name=format.repository_format.get_format_string()))
         if not is_quiet():
             from bzrlib.info import show_bzrdir_info
-            show_bzrdir_info(repo.bzrdir, verbose=0, outfile=self.outf)
+            show_bzrdir_info(newdir, verbose=0, outfile=self.outf)
 
 
 class cmd_diff(Command):
@@ -4693,7 +4723,7 @@ class cmd_shell_complete(Command):
 
     @display_command
     def run(self, context=None):
-        import shellcomplete
+        from bzrlib import shellcomplete
         shellcomplete.shellcomplete(context)
 
 
@@ -5579,7 +5609,7 @@ class cmd_merge_directive(Command):
                 self.outf.writelines(directive.to_lines())
         else:
             message = directive.to_email(mail_to, branch, sign)
-            s = SMTPConnection(branch.get_config())
+            s = SMTPConnection(branch.get_config_stack())
             s.send_email(message)
 
 

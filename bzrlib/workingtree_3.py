@@ -18,6 +18,8 @@
 
 """
 
+from __future__ import absolute_import
+
 import errno
 
 from bzrlib import (
@@ -193,7 +195,7 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
         control_files = self._open_control_files(a_bzrdir)
         control_files.create_lock()
         control_files.lock_write()
-        transport.put_bytes('format', self.get_format_string(),
+        transport.put_bytes('format', self.as_string(),
             mode=a_bzrdir._get_file_mode())
         if from_branch is not None:
             branch = from_branch

@@ -44,27 +44,13 @@ from bzrlib.tests.matchers import MatchesAncestry
 
 # TODO: Test commit with some added, and added-but-missing files
 
-class MustSignConfig(config.Stack):
+class MustSignConfig(config.MemoryStack):
 
-    def __init__(self, branch):
-        store = config.IniFileStore()
-        store._load_from_string('''
+    def __init__(self):
+        super(MustSignConfig, self).__init__('''
 gpg_signing_command=cat -
 create_signatures=always
 ''')
-        super(MustSignConfig, self).__init__([store.get_sections])
-        # FIXME: Strictly speaking we should fallback to the no-name section in
-        # branch.conf but no tests need that so far -- vila 2011-12-14
-
-
-class BranchWithHooks(config.Stack):
-
-    def __init__(self, branch):
-        store = config.IniFileStore()
-        store._load_from_string('post_commit=bzrlib.ahook bzrlib.ahook')
-        super(BranchWithHooks, self).__init__([store.get_sections])
-        # FIXME: Strictly speaking we should fallback to the no-name section in
-        # branch.conf but no tests need that so far -- vila 2011-12-14
 
 
 class CapturingReporter(NullCommitReporter):
@@ -439,9 +425,13 @@ class TestCommit(TestCaseWithTransport):
             from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
-            commit.Commit(config_stack=MustSignConfig(branch)
-                          ).commit(message="base", allow_pointless=True,
-                                   rev_id='B', working_tree=wt)
+            conf = config.MemoryStack('''
+gpg_signing_command=cat -
+create_signatures=always
+''')
+            commit.Commit(config_stack=conf).commit(
+                message="base", allow_pointless=True, rev_id='B',
+                working_tree=wt)
             def sign(text):
                 return bzrlib.gpg.LoopbackGPGStrategy(None).sign(text)
             self.assertEqual(sign(Testament.from_revision(branch.repository,
@@ -461,9 +451,12 @@ class TestCommit(TestCaseWithTransport):
         try:
             # monkey patch gpg signing mechanism
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.DisabledGPGStrategy
-            config = MustSignConfig(branch)
+            conf = config.MemoryStack('''
+gpg_signing_command=cat -
+create_signatures=always
+''')
             self.assertRaises(SigningFailed,
-                              commit.Commit(config_stack=config).commit,
+                              commit.Commit(config_stack=conf).commit,
                               message="base",
                               allow_pointless=True,
                               rev_id='B',
@@ -483,11 +476,10 @@ class TestCommit(TestCaseWithTransport):
             calls.append('called')
         bzrlib.ahook = called
         try:
-            config = BranchWithHooks(branch)
-            commit.Commit(config_stack=config).commit(
-                            message = "base",
-                            allow_pointless=True,
-                            rev_id='A', working_tree = wt)
+            conf = config.MemoryStack('post_commit=bzrlib.ahook bzrlib.ahook')
+            commit.Commit(config_stack=conf).commit(
+                message = "base", allow_pointless=True, rev_id='A',
+                working_tree = wt)
             self.assertEqual(['called', 'called'], calls)
         finally:
             del bzrlib.ahook
