@@ -144,10 +144,10 @@ def find_changelog(t, merge, max_blocks=1):
         located at 'changelog' (rather than 'debian/changelog') if
         merge was given, False otherwise.
     """
-    changelog_file = None
     top_level = False
     t.lock_read()
     try:
+        changelog_file = 'debian/changelog'
         if not t.has_filename(changelog_file):
             checked_files = ['debian/changelog']
             if merge:
@@ -156,6 +156,9 @@ def find_changelog(t, merge, max_blocks=1):
                 top_level = True
                 if not t.has_filename(changelog_file):
                     checked_files.append('changelog')
+                    changelog_file = None
+            else:
+                changelog_file = None
             if changelog_file is None:
                 if getattr(t, "abspath", None):
                     checked_files = [t.abspath(f) for f in checked_files]
@@ -170,8 +173,6 @@ def find_changelog(t, merge, max_blocks=1):
                 t.get_symlink_target(t.path2id('debian')) == '.'):
                 changelog_file = 'changelog'
                 top_level = True
-        else:
-            changelog_file = 'debian/changelog'
         mutter("Using '%s' to get package information", changelog_file)
         changelog_id = t.path2id(changelog_file)
         if changelog_id is None:
