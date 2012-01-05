@@ -19,8 +19,9 @@
 
 """Some functions to enable caching the conversion between unicode to utf8"""
 
-import codecs
+from __future__ import absolute_import
 
+import codecs
 
 _utf8_encode = codecs.utf_8_encode
 _utf8_decode = codecs.utf_8_decode

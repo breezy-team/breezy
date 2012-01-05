@@ -79,7 +79,7 @@ class TestBranch(TestCaseWithTransport):
         self.assertEqual('', out)
         self.assertEqual('Branched 2 revisions.\n', err)
         out, err = self.run_bzr('branches b')
-        self.assertEqual(" thiswasa\n orig\n", out)
+        self.assertEqual("  orig\n  thiswasa\n", out)
         self.assertEqual('', err)
         out,err = self.run_bzr('branch a file:b,branch=orig', retcode=3)
         self.assertEqual('', out)
@@ -331,7 +331,7 @@ class TestBranch(TestCaseWithTransport):
         builder = self.make_branch_builder('source')
         source = fixtures.build_branch_with_non_ancestral_rev(builder)
         source.tags.set_tag('tag-a', 'rev-2')
-        source.get_config().set_user_option('branch.fetch_tags', 'True')
+        source.get_config_stack().set('branch.fetch_tags', True)
         # Now source has a tag not in its ancestry.  Make a branch from it.
         self.run_bzr('branch source new-branch')
         new_branch = branch.Branch.open('new-branch')
@@ -483,6 +483,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(2, self.hpss_connections)
         self.assertLength(33, self.hpss_calls)
         self.expectFailure("branching to the same branch requires VFS access",
             self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
@@ -502,6 +503,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # upwards without agreement from bzr's network support maintainers.
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
         self.assertLength(10, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
 
     def test_branch_from_trivial_stacked_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -522,13 +524,14 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(15, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
     def test_branch_from_branch_with_tags(self):
         self.setup_smart_server_with_call_log()
         builder = self.make_branch_builder('source')
         source = fixtures.build_branch_with_non_ancestral_rev(builder)
-        source.get_config().set_user_option('branch.fetch_tags', 'True')
+        source.get_config_stack().set('branch.fetch_tags', True)
         source.tags.set_tag('tag-a', 'rev-2')
         source.tags.set_tag('tag-missing', 'missing-rev')
         # Now source has a tag not in its ancestry.  Make a branch from it.
@@ -541,6 +544,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(10, self.hpss_calls)
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
+        self.assertLength(1, self.hpss_connections)
 
     def test_branch_to_stacked_from_trivial_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -559,6 +563,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         readvs_of_rix_files = [
             c for c in self.hpss_calls
             if c.call.method == 'readv' and c.call.args[-1].endswith('.rix')]
+        self.assertLength(1, self.hpss_connections)
         self.assertLength(0, readvs_of_rix_files)
         self.expectFailure("branching to stacked requires VFS access",
             self.assertThat, self.hpss_calls, ContainsNoVfsCalls)

@@ -26,6 +26,8 @@ Interesting module attributes:
       of times during a request).
 """
 
+from __future__ import absolute_import
+
 # XXX: The class names are a little confusing: the protocol will instantiate a
 # SmartServerRequestHandler, whose dispatch_command method creates an instance
 # of a SmartServerRequest subclass.

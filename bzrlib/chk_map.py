@@ -37,6 +37,8 @@ Densely packed upper nodes.
 
 """
 
+from __future__ import absolute_import
+
 import heapq
 import threading
 

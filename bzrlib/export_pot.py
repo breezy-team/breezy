@@ -26,6 +26,8 @@ extracting those strings, as is done in the bzr Makefile. Sorting the output
 is also left to that stage of the process.
 """
 
+from __future__ import absolute_import
+
 import inspect
 import os
 

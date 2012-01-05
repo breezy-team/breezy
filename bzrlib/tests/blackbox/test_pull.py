@@ -155,7 +155,7 @@ class TestPull(tests.TestCaseWithTransport):
         # Make a source, sprout a target off it
         builder = self.make_branch_builder('source')
         source = fixtures.build_branch_with_non_ancestral_rev(builder)
-        source.get_config().set_user_option('branch.fetch_tags', 'True')
+        source.get_config_stack().set('branch.fetch_tags', True)
         target_bzrdir = source.bzrdir.sprout('target')
         source.tags.set_tag('tag-a', 'rev-2')
         # Pull from source
@@ -377,8 +377,8 @@ class TestPull(tests.TestCaseWithTransport):
     def test_pull_verbose_uses_default_log(self):
         tree = self.example_branch('source')
         target = self.make_branch_and_tree('target')
-        target_config = target.branch.get_config()
-        target_config.set_user_option('log_format', 'short')
+        target_config = target.branch.get_config_stack()
+        target_config.set('log_format', 'short')
         out = self.run_bzr('pull -v source -d target')[0]
         self.assertContainsRe(out, r'\n {4}1 .*\n {6}setup\n')
         self.assertNotContainsRe(
@@ -421,6 +421,7 @@ class TestPull(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(19, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
         remote = Branch.open('stacked')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
 

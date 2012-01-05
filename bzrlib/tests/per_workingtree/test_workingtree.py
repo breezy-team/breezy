@@ -960,6 +960,24 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = tree.bzrdir.open_workingtree()
         self.assertFalse(tree.case_sensitive)
 
+    def test_supports_executable(self):
+        self.build_tree(['filename'])
+        tree = self.make_branch_and_tree('.')
+        tree.add('filename')
+        self.assertIsInstance(tree._supports_executable(), bool)
+        if tree._supports_executable():
+            tree.lock_read()
+            try:
+                self.assertFalse(tree.is_executable(tree.path2id('filename')))
+            finally:
+                tree.unlock()
+            os.chmod('filename', 0755)
+            self.addCleanup(tree.lock_read().unlock)
+            self.assertTrue(tree.is_executable(tree.path2id('filename')))
+        else:
+            self.addCleanup(tree.lock_read().unlock)
+            self.assertFalse(tree.is_executable(tree.path2id('filename')))
+
     def test_all_file_ids_with_missing(self):
         tree = self.make_branch_and_tree('tree')
         tree.lock_write()

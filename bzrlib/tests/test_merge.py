@@ -446,8 +446,11 @@ class TestMerge(TestCaseWithTransport):
         merger.merge_type = _mod_merge.Merge3Merger
         tree_merger = merger.make_merger()
         self.assertIs(_mod_merge.Merge3Merger, tree_merger.__class__)
-        self.assertEqual('rev2b', tree_merger.other_tree.get_revision_id())
-        self.assertEqual('rev1', tree_merger.base_tree.get_revision_id())
+        self.assertEqual('rev2b',
+            tree_merger.other_tree.get_revision_id())
+        self.assertEqual('rev1',
+            tree_merger.base_tree.get_revision_id())
+        self.assertEqual(other_tree.branch, tree_merger.other_branch)
 
     def test_make_preview_transform(self):
         this_tree = self.make_branch_and_tree('this')
@@ -3242,3 +3245,46 @@ class TestMergeInto(TestMergeIntoBase):
         # The dest tree is unmodified.
         self.assertEqual(['r1-dest'], dest_wt.get_parent_ids())
         self.assertTreeEntriesEqual([('', 'dest-root-id')], dest_wt)
+
+
+class TestMergeHooks(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestMergeHooks, self).setUp()
+        self.tree_a = self.make_branch_and_tree('tree_a')
+        self.build_tree_contents([('tree_a/file', 'content_1')])
+        self.tree_a.add('file', 'file-id')
+        self.tree_a.commit('added file')
+
+        self.tree_b = self.tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        self.build_tree_contents([('tree_b/file', 'content_2')])
+        self.tree_b.commit('modify file')
+
+    def test_pre_merge_hook_inject_different_tree(self):
+        tree_c = self.tree_b.bzrdir.sprout('tree_c').open_workingtree()
+        self.build_tree_contents([('tree_c/file', 'content_3')])
+        tree_c.commit("more content")
+        calls = []
+        def factory(merger):
+            self.assertIsInstance(merger, _mod_merge.Merge3Merger)
+            merger.other_tree = tree_c
+            calls.append(merger)
+        _mod_merge.Merger.hooks.install_named_hook('pre_merge',
+                                                   factory, 'test factory')
+        self.tree_a.merge_from_branch(self.tree_b.branch)
+
+        self.assertFileEqual("content_3", 'tree_a/file')
+        self.assertLength(1, calls)
+
+    def test_post_merge_hook_called(self):
+        calls = []
+        def factory(merger):
+            self.assertIsInstance(merger, _mod_merge.Merge3Merger)
+            calls.append(merger)
+        _mod_merge.Merger.hooks.install_named_hook('post_merge',
+                                                   factory, 'test factory')
+
+        self.tree_a.merge_from_branch(self.tree_b.branch)
+
+        self.assertFileEqual("content_2", 'tree_a/file')
+        self.assertLength(1, calls)

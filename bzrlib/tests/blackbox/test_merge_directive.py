@@ -44,8 +44,8 @@ class TestMergeDirective(tests.TestCaseWithTransport):
     def prepare_merge_directive(self):
         self.tree1 = self.make_branch_and_tree('tree1')
         self.build_tree_contents([('tree1/file', 'a\nb\nc\nd\n')])
-        self.tree1.branch.get_config().set_user_option('email',
-            'J. Random Hacker <jrandom@example.com>')
+        self.tree1.branch.get_config_stack().set(
+            'email', 'J. Random Hacker <jrandom@example.com>')
         self.tree1.add('file')
         self.tree1.commit('foo', rev_id='foo-id')
         self.tree2 = self.tree1.bzrdir.sprout('tree2').open_workingtree()
@@ -223,7 +223,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
 
     def test_mail_uses_config(self):
         tree1, tree2 = self.prepare_merge_directive()
-        tree1.branch.get_config().set_user_option('smtp_server', 'bogushost')
+        tree1.branch.get_config_stack().set('smtp_server', 'bogushost')
         md_text, errr, connect_calls, sendmail_calls =\
             self.run_bzr_fakemail('merge-directive --mail-to'
                                   ' pqm@example.com --plain ../tree2 .')
