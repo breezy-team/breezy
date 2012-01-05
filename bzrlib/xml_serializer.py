@@ -42,18 +42,16 @@ except ImportError:
     elementtree.XMLTreeBuilder, elementtree.fromstring, elementtree.tostring)
 
 
-from bzrlib.serializer import Serializer
-from bzrlib.trace import mutter
-
 from bzrlib import (
     cache_utf8,
+    errors,
     inventory,
     lazy_regex,
-    errors,
+    serializer,
     )
 
 
-class XMLSerializer(Serializer):
+class XMLSerializer(serializer.Serializer):
     """Abstract XML object serialize/deserialize"""
 
     squashes_xml_invalid_characters = True
