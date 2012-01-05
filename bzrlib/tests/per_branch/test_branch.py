@@ -655,7 +655,7 @@ class TestChildSubmitFormats(per_branch.TestCaseWithBranch):
     def test_get_child_submit_format(self):
         branch = self.get_branch()
         self.addCleanup(branch.lock_write().unlock)
-        branch.get_config().set_user_option('child_submit_format', '10')
+        branch.get_config_stack().set('child_submit_format', '10')
         branch = self.get_branch()
         self.assertEqual('10', branch.get_child_submit_format())
 

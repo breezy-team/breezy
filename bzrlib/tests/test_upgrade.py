@@ -53,9 +53,8 @@ class TestUpgrade(tests.TestCaseWithTransport):
         self.assertEqual('CD', new_branch.last_revision())
         self.assertEqual('file:///EF', new_branch.get_parent())
         self.assertEqual('file:///GH', new_branch.get_bound_location())
-        branch_config = new_branch.get_config()._get_branch_data_config()
-        self.assertEqual('file:///IJ',
-            branch_config.get_user_option('push_location'))
+        branch_config = new_branch.get_config_stack()
+        self.assertEqual('file:///IJ', branch_config.get('push_location'))
 
         b2 = self.make_branch('branch2', format='knit')
         converter = b2.bzrdir._format.get_converter(target)

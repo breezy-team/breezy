@@ -138,8 +138,8 @@ class TestWhoami(tests.TestCaseWithTransport):
         c = branch.Branch.open(url).get_config_stack()
         self.assertEquals('Changed Identity <changed@identi.ty>',
                           c.get('email'))
-        # Ensuring that the value does not come from bazaar.conf requires some
-        # isolation setup
+        # Ensuring that the value does not come from the bazaar.conf file
+        # itself requires some isolation setup
         self.overrideEnv('BZR_EMAIL', None)
         self.overrideEnv('EMAIL', None)
         self.overrideAttr(config, '_auto_user_id', lambda: (None, None))

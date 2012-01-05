@@ -239,7 +239,7 @@ class TestAdd(tests.TestCaseWithTransport):
         out, err = self.run_bzr(["add", "a", "b"], working_dir=u"\xA7")
         self.assertEquals(out, "adding a\n" "adding b\n")
         self.assertEquals(err, "")
-        
+
     def test_add_skip_large_files(self):
         """Test skipping files larger than add.maximum_file_size"""
         tree = self.make_branch_and_tree('.')
@@ -247,19 +247,24 @@ class TestAdd(tests.TestCaseWithTransport):
         self.build_tree_contents([('small.txt', '0\n')])
         self.build_tree_contents([('big.txt', '01234567890123456789\n')])
         self.build_tree_contents([('big2.txt', '01234567890123456789\n')])
-        tree.branch.get_config().set_user_option('add.maximum_file_size', 5)
+        tree.branch.lock_write()
+        try:
+            tree.branch.get_config_stack().set('add.maximum_file_size', 5)
+        finally:
+            tree.branch.unlock()
         out = self.run_bzr('add')[0]
         results = sorted(out.rstrip('\n').split('\n'))
-        self.assertEquals(['adding small.txt'], 
-                          results)
+        self.assertEquals(['adding small.txt'], results)
         # named items never skipped, even if over max
         out, err = self.run_bzr(["add", "big2.txt"])
         results = sorted(out.rstrip('\n').split('\n'))
-        self.assertEquals(['adding big2.txt'], 
-                          results)
-        self.assertEquals(err, "")
-        tree.branch.get_config().set_user_option('add.maximum_file_size', 30)
+        self.assertEquals(['adding big2.txt'], results)
+        self.assertEquals("", err)
+        tree.branch.lock_write()
+        try:
+            tree.branch.get_config_stack().set('add.maximum_file_size', 30)
+        finally:
+            tree.branch.unlock()
         out = self.run_bzr('add')[0]
         results = sorted(out.rstrip('\n').split('\n'))
-        self.assertEquals(['adding big.txt'], 
-                          results)
+        self.assertEquals(['adding big.txt'], results)
