@@ -1187,7 +1187,7 @@ class Branch(controldir.ControlComponent):
 
     def get_child_submit_format(self):
         """Return the preferred format of submissions to this branch."""
-        return self.get_config().get_user_option("child_submit_format")
+        return self.get_config_stack().get('child_submit_format')
 
     def get_submit_branch(self):
         """Return the submit location of the branch.
@@ -1196,7 +1196,7 @@ class Branch(controldir.ControlComponent):
         pattern is that the user can override it by specifying a
         location.
         """
-        return self.get_config().get_user_option('submit_branch')
+        return self.get_config_stack().get('submit_branch')
 
     def set_submit_branch(self, location):
         """Return the submit location of the branch.
@@ -1205,8 +1205,7 @@ class Branch(controldir.ControlComponent):
         pattern is that the user can override it by specifying a
         location.
         """
-        self.get_config().set_user_option('submit_branch', location,
-            warn_masked=True)
+        self.get_config_stack().set('submit_branch', location)
 
     def get_public_branch(self):
         """Return the public location of the branch.
@@ -1225,9 +1224,8 @@ class Branch(controldir.ControlComponent):
         self._set_config_location('public_branch', location)
 
     def get_push_location(self):
-        """Return the None or the location to push this branch to."""
-        push_loc = self.get_config().get_user_option('push_location')
-        return push_loc
+        """Return None or the location to push this branch to."""
+        return self.get_config_stack().get('push_location')
 
     def set_push_location(self, location):
         """Set a new push location for this branch."""
@@ -3006,7 +3004,7 @@ class BzrBranch8(BzrBranch):
         return self._get_config_location('bound_location', config=conf)
 
     def get_bound_location(self):
-        """See Branch.set_push_location."""
+        """See Branch.get_bound_location."""
         return self._get_bound_location(True)
 
     def get_old_bound_location(self):
