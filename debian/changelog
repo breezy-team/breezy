@@ -9,6 +9,8 @@ bzr-builddeb (2.8.1) UNRELEASED; urgency=low
     automatically unapply/apply all quilt patches. LP: #608670
   * Automatically unapply patches before merge operations.
     LP: #815854
+  * Include full changelog paths that were checked in error message.
+    LP: #811459
   * Cope with unicode strings being specified to TarfileSource. Based on
     patch by Gediminas Paulauskas. LP: #911262
   * Automatically apply patches for 3.0 (quilt) packages in 'bzr bd-do'

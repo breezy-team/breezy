@@ -87,7 +87,7 @@ class TestGetOrigSource(BuilddebTestCase):
 
     def test_get_orig_source_error_no_changelog(self):
         self.run_bzr_error(
-        ['Could not find changelog at "debian/changelog" or "changelog".'],
+        ['Could not find changelog at .*debian/changelog or .*changelog.'],
         "get-orig-source")
 
     def test_get_orig_source_error_no_tar(self):
