@@ -193,21 +193,20 @@ def debian_tag_name(branch, revid):
 
 def pre_merge(merger):
     pre_merge_fix_ancestry(merger)
-    if getattr(merger, "_no_quilt_unapplying", False):
-        return
     pre_merge_quilt(merger)
 
 
 def pre_merge_quilt(merger):
-    if (merger.this_tree.path2id("debian/patches") is None and
-        merger.base_tree.path2id("debian/patches") is None):
+    if getattr(merger, "_no_quilt_unapplying", False):
         return
     import shutil
     from bzrlib import trace
     from bzrlib.plugins.builddeb.errors import QuiltUnapplyError
-    from bzrlib.plugins.builddeb.quilt import QuiltError
+    from bzrlib.plugins.builddeb.quilt import quilt_pop_all, QuiltError
     from bzrlib.plugins.builddeb.merge_quilt import tree_unapply_patches
     trace.note("Unapplying quilt patches to prevent spurious conflicts")
+    if merger.working_tree.path2id("debian/patches") is not None:
+        quilt_pop_all(working_dir=merger.working_tree.basedir)
     merger._quilt_tempdirs = []
     try:
         merger.this_tree, this_dir = tree_unapply_patches(merger.this_tree, merger.this_branch)
