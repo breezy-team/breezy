@@ -194,32 +194,11 @@ def debian_tag_name(branch, revid):
 def start_commit_check_quilt(tree):
     """start_commit hook which checks the state of quilt patches.
     """
-    from bzrlib import trace
-    from bzrlib.plugins.builddeb.quilt import (
-        quilt_applied,
-        quilt_unapplied,
-        quilt_pop_all,
-        quilt_push_all,
-        )
-    from bzrlib.plugins.builddeb.util import debuild_config
     if tree.path2id("debian/patches") is None:
         # No patches to worry about
         return
-    config = debuild_config(tree, False)
-    policy = config.commit_quilt_policy
-    applied_patches = quilt_applied(tree.basedir)
-    unapplied_patches = quilt_unapplied(tree.basedir)
-    if policy is None:
-        if applied_patches:
-            trace.warning("Committing with %d quilt patches applied." %
-                len(applied_patches))
-    elif policy == "applied":
-        quilt_push_all(tree.basedir)
-    elif policy == "unapplied":
-        quilt_pop_all(tree.basedir)
-    else:
-        raise errors.BzrError("Invalid setting %r for quilt-commit-policy" %
-                policy)
+    from bzrlib.plugins.builddeb.merge_quilt import start_commit_quilt_patches
+    start_commit_quilt_patches(tree)
 
 
 def pre_merge(merger):

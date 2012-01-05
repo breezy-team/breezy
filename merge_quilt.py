@@ -27,11 +27,18 @@ import shutil
 import tempfile
 from bzrlib.revisiontree import RevisionTree
 from bzrlib import (
+    errors,
     merge as _mod_merge,
     trace,
     )
 
-from bzrlib.plugins.builddeb.quilt import quilt_pop_all
+from bzrlib.plugins.builddeb.quilt import (
+    quilt_applied,
+    quilt_unapplied,
+    quilt_pop_all,
+    quilt_push_all,
+    )
+from bzrlib.plugins.builddeb.util import debuild_config
 
 
 class NoUnapplyingMerger(_mod_merge.Merge3Merger):
@@ -86,3 +93,24 @@ def tree_unapply_patches(orig_tree, orig_branch=None):
     except:
         shutil.rmtree(target_dir)
         raise
+
+
+def start_commit_quilt_patches(tree):
+    config = debuild_config(tree, False)
+    policy = config.commit_quilt_policy
+    applied_patches = quilt_applied(tree.basedir)
+    unapplied_patches = quilt_unapplied(tree.basedir)
+    if policy is None:
+        # No policy set - just warn about having both applied and unapplied
+        # patches.
+        if applied_patches and unapplied_patches:
+            trace.warning(
+                "Committing with %d patches applied and %d patches unapplied.",
+                len(applied_patches), len(unapplied_patches))
+    elif policy == "applied":
+        quilt_push_all(tree.basedir)
+    elif policy == "unapplied":
+        quilt_pop_all(tree.basedir)
+    else:
+        raise errors.BzrError("Invalid setting %r for quilt-commit-policy" %
+                policy)
