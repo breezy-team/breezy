@@ -235,3 +235,15 @@ class MultipleUpstreamTarballsNotSupported(BzrError):
 
     _fmt = ("Importing packages using source format 3.0 multiple tarballs "
             "is not yet supported.")
+
+
+class QuiltUnapplyError(BzrError):
+
+    _fmt = ("Unable to unapply quilt patches for %(kind)r tree: %(msg)s")
+
+    def __init__(self, kind, msg):
+        BzrError.__init__(self)
+        self.kind = kind
+        if msg.count("\n") == 1:
+            msg = msg.strip()
+        self.msg = msg

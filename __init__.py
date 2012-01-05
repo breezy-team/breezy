@@ -191,6 +191,52 @@ def debian_tag_name(branch, revid):
     return db.tag_name(changelog.version)
 
 
+def pre_merge(merger):
+    pre_merge_fix_ancestry(merger)
+    pre_merge_quilt(merger)
+
+
+def pre_merge_quilt(merger):
+    if getattr(merger, "_no_quilt_unapplying", False):
+        return
+    import shutil
+    from bzrlib import trace
+    from bzrlib.plugins.builddeb.errors import QuiltUnapplyError
+    from bzrlib.plugins.builddeb.quilt import quilt_pop_all, QuiltError
+    from bzrlib.plugins.builddeb.merge_quilt import tree_unapply_patches
+    trace.note("Unapplying quilt patches to prevent spurious conflicts")
+    if merger.working_tree.path2id("debian/patches") is not None:
+        quilt_pop_all(working_dir=merger.working_tree.basedir)
+    merger._quilt_tempdirs = []
+    try:
+        merger.this_tree, this_dir = tree_unapply_patches(merger.this_tree, merger.this_branch)
+    except QuiltError, e:
+        shutil.rmtree(this_dir)
+        raise QuiltUnapplyError("this", e.msg)
+    else:
+        merger._quilt_tempdirs.append(this_dir)
+    try:
+        merger.base_tree, base_dir = tree_unapply_patches(merger.base_tree, merger.this_branch)
+    except QuiltError, e:
+        shutil.rmtree(base_dir)
+        raise QuiltUnapplyError("base", e.msg)
+    else:
+        merger._quilt_tempdirs.append(base_dir)
+    try:
+        merger.other_tree, other_dir = tree_unapply_patches(merger.other_tree, merger.other_branch)
+    except QuiltError, e:
+        shutil.rmtree(other_dir)
+        raise QuiltUnapplyError("other", e.msg)
+    else:
+        merger._quilt_tempdirs.append(other_dir)
+
+
+def post_merge_quilt_cleanup(merger):
+    import shutil
+    for dir in getattr(merger, "_quilt_tempdirs", []):
+        shutil.rmtree(dir)
+
+
 def pre_merge_fix_ancestry(merger):
     from bzrlib.plugins.builddeb.config import BUILD_TYPE_NATIVE
     from bzrlib.plugins.builddeb.util import debuild_config
@@ -209,6 +255,7 @@ def pre_merge_fix_ancestry(merger):
             other_config.build_type == BUILD_TYPE_NATIVE):
         fix_ancestry_as_needed(merger.this_tree, merger.other_branch,
             source_revid=merger.other_tree.get_revision_id())
+
 
 try:
     from bzrlib.hooks import install_lazy_named_hook
@@ -258,8 +305,12 @@ else:
          "Automatically determine tag names from Debian version")
     install_lazy_named_hook(
         "bzrlib.merge", "Merger.hooks",
-        "pre_merge", pre_merge_fix_ancestry,
-        "Fix the branch ancestry prior to a merge")
+        'pre_merge', pre_merge,
+        'Debian quilt patch (un)applying and ancestry fixing')
+    install_lazy_named_hook(
+        "bzrlib.merge", "Merger.hooks",
+        'post_merge', post_merge_quilt_cleanup,
+        'Cleaning up quilt temporary directories')
 
 try:
     from bzrlib.revisionspec import revspec_registry
