@@ -142,6 +142,11 @@ Internals
 * Configuration options can be SI units by using ``int_SI_from_unicode`` as
   their ``convert_from_unicode`` helper. (Vincent Ladeuil)
 
+* Configuration stores can now save incremental changes by using
+  ``save_changes()`` instead of ``save()``. This reduces the number or
+  required input/outputs and allows stores to be shared between
+  stacks. (Vincent Ladeuil)
+
 * ControlDir now has a get_branches method that returns a dictionary
   whose keys are the names of the branches and whose values are the
   branches themselves. The active branch uses the key None.

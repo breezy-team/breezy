@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #            and others
 #
@@ -2886,6 +2886,8 @@ class Section(object):
 
 _NewlyCreatedOption = object()
 """Was the option created during the MutableSection lifetime"""
+_DeletedOption = object()
+"""Was the option deleted during the MutableSection lifetime"""
 
 
 class MutableSection(Section):
@@ -2893,7 +2895,7 @@ class MutableSection(Section):
 
     def __init__(self, section_id, options):
         super(MutableSection, self).__init__(section_id, options)
-        self.orig = {}
+        self.reset_changes()
 
     def set(self, name, value):
         if name not in self.options:
@@ -2908,12 +2910,58 @@ class MutableSection(Section):
             self.orig[name] = self.get(name, None)
         del self.options[name]
 
+    def reset_changes(self):
+        self.orig = {}
+
+    def apply_changes(self, dirty, store):
+        """Apply option value changes.
+
+        ``self`` has been reloaded from the persistent storage. ``dirty``
+        contains the changes made since the previous loading.
+
+        :param dirty: the mutable section containing the changes.
+
+        :param store: the store containing the section
+        """
+        for k, expected in dirty.orig.iteritems():
+            actual = dirty.get(k, _DeletedOption)
+            reloaded = self.get(k, _NewlyCreatedOption)
+            if actual is _DeletedOption:
+                if k in self.options:
+                    self.remove(k)
+            else:
+                self.set(k, actual)
+            # Report concurrent updates in an ad-hoc way. This should only
+            # occurs when different processes try to update the same option
+            # which is not supported (as in: the config framework is not meant
+            # to be used a sharing mechanism).
+            if expected != reloaded:
+                if actual is _DeletedOption:
+                    actual = '<DELETED>'
+                if reloaded is _NewlyCreatedOption:
+                    reloaded = '<CREATED>'
+                if expected is _NewlyCreatedOption:
+                    expected = '<CREATED>'
+                # Someone changed the value since we get it from the persistent
+                # storage.
+                trace.warning(gettext(
+                        "Option {0} in section {1} of {2} was changed"
+                        " from {3} to {4}. The {5} value will be saved.".format(
+                            k, self.id, store.external_url(), expected,
+                            reloaded, actual)))
+        # No need to keep track of these changes
+        self.reset_changes()
+
 
 class Store(object):
     """Abstract interface to persistent storage for configuration options."""
 
     readonly_section_class = Section
     mutable_section_class = MutableSection
+
+    def __init__(self):
+        # Which sections need to be saved
+        self.dirty_sections = []
 
     def is_loaded(self):
         """Returns True if the Store has been loaded.
@@ -2960,6 +3008,41 @@ class Store(object):
     def save(self):
         """Saves the Store to persistent storage."""
         raise NotImplementedError(self.save)
+
+    def _need_saving(self):
+        for s in self.dirty_sections:
+            if s.orig:
+                # At least one dirty section contains a modification
+                return True
+        return False
+
+    def apply_changes(self, dirty_sections):
+        """Apply changes from dirty sections while checking for coherency.
+
+        The Store content is discarded and reloaded from persistent storage to
+        acquire up-to-date values.
+
+        Dirty sections are MutableSection which kept track of the value they
+        are expected to update.
+        """
+        # We need an up-to-date version from the persistent storage, unload the
+        # store. The reload will occur when needed (triggered by the first
+        # get_mutable_section() call below.
+        self.unload()
+        # Apply the changes from the preserved dirty sections
+        for dirty in dirty_sections:
+            clean = self.get_mutable_section(dirty.id)
+            clean.apply_changes(dirty, self)
+        # Everything is clean now
+        self.dirty_sections = []
+
+    def save_changes(self):
+        """Saves the Store to persistent storage if changes occurred.
+
+        Apply the changes recorded in the mutable sections to a store content
+        refreshed from persistent storage.
+        """
+        raise NotImplementedError(self.save_changes)
 
     def external_url(self):
         raise NotImplementedError(self.external_url)
@@ -3041,6 +3124,7 @@ class IniFileStore(Store):
 
     def unload(self):
         self._config_obj = None
+        self.dirty_sections = []
 
     def _load_content(self):
         """Load the config file bytes.
@@ -3087,6 +3171,19 @@ class IniFileStore(Store):
         except UnicodeDecodeError:
             raise errors.ConfigContentError(self.external_url())
 
+    def save_changes(self):
+        if not self.is_loaded():
+            # Nothing to save
+            return
+        if not self._need_saving():
+            return
+        # Preserve the current version
+        current = self._config_obj
+        dirty_sections = list(self.dirty_sections)
+        self.apply_changes(dirty_sections)
+        # Save to the persistent storage
+        self.save()
+
     def save(self):
         if not self.is_loaded():
             # Nothing to save
@@ -3127,7 +3224,10 @@ class IniFileStore(Store):
             section = self._config_obj
         else:
             section = self._config_obj.setdefault(section_id, {})
-        return self.mutable_section_class(section_id, section)
+        mutable_section = self.mutable_section_class(section_id, section)
+        # All mutable sections can become dirty
+        self.dirty_sections.append(mutable_section)
+        return mutable_section
 
     def quote(self, value):
         try:
