@@ -509,11 +509,11 @@ def extract_tarball_version(path, packagename):
     # Debian style tarball
     m = re.match(packagename+"_(.*).orig", basename)
     if m:
-        return m.group(1)
+        return str(m.group(1))
     # Traditional, PACKAGE-VERSION.tar.gz
     m = re.match(packagename+"-(.*)", basename)
     if m:
-        return m.group(1)
+        return str(m.group(1))
     return None
 
 
@@ -522,7 +522,10 @@ class TarfileSource(UpstreamSource):
 
     def __init__(self, path, version=None):
         self.path = path
-        self.version = version
+        if version is not None:
+            self.version = str(version)
+        else:
+            self.version = None
 
     def fetch_tarballs(self, package, version, target_dir, components=None):
         if version != self.version:
@@ -534,7 +537,8 @@ class TarfileSource(UpstreamSource):
     def get_latest_version(self, package, version):
         if self.version is not None:
             return self.version
-        return extract_tarball_version(self.path, package)
+        self.version = extract_tarball_version(self.path, package)
+        return self.version
 
 
 class LaunchpadReleaseFileSource(UpstreamSource):

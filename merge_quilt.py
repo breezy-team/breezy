@@ -38,14 +38,17 @@ class NoUnapplyingMerger(_mod_merge.Merge3Merger):
     _no_quilt_unapplying = True
 
 
-def tree_unapply_patches(orig_tree, orig_branch):
+def tree_unapply_patches(orig_tree, orig_branch=None):
     """Return a tree with patches unapplied.
 
-    :param tree: Tree from which to unapply quilt patches
+    :param orig_tree: Tree from which to unapply quilt patches
+    :param orig_branch: Related branch (optional)
     :return: Tuple with tree and temp path.
         The tree is a tree with unapplied patches; either a checkout of
         tree or tree itself if there were no patches
     """
+    if orig_branch is None:
+        orig_branch = orig_tree.branch
     series_file_id = orig_tree.path2id("debian/patches/series")
     if series_file_id is None:
         # No quilt patches

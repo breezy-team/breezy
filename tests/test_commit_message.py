@@ -28,7 +28,10 @@ except ImportError: # bzr < 2.4
 class _LaunchpadConnectionFeature(Feature):
 
     def _probe(self):
-        from httplib2 import Http, ServerNotFoundError
+        try:
+            from httplib2 import Http, ServerNotFoundError
+        except ImportError:
+            return False
         try:
             Http().request("https://code.launchpad.net/")
         except ServerNotFoundError:

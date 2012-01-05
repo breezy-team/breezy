@@ -35,7 +35,7 @@ from bzrlib.tests import TestCaseWithTransport
 quilt_feature = ExecutableFeature('quilt')
 
 TRIVIAL_PATCH = """--- /dev/null	2012-01-02 01:09:10.986490031 +0100
-+++ a	2012-01-02 20:03:59.710666215 +0100
++++ base/a	2012-01-02 20:03:59.710666215 +0100
 @@ -0,0 +1 @@
 +a
 """
