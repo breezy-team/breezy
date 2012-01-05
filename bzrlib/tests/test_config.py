@@ -3000,6 +3000,100 @@ class TestMutableStore(TestStore):
         self.assertLength(1, calls)
         self.assertEquals((store,), calls[0])
 
+    def test_set_mark_dirty(self):
+        stack = config.MemoryStack('')
+        self.assertLength(0, stack.store.dirty_sections)
+        stack.set('foo', 'baz')
+        self.assertLength(1, stack.store.dirty_sections)
+        self.assertTrue(stack.store._need_saving())
+
+    def test_remove_mark_dirty(self):
+        stack = config.MemoryStack('foo=bar')
+        self.assertLength(0, stack.store.dirty_sections)
+        stack.remove('foo')
+        self.assertLength(1, stack.store.dirty_sections)
+        self.assertTrue(stack.store._need_saving())
+
+
+class TestStoreSaveChanges(tests.TestCaseWithTransport):
+    """Tests that config changes are kept in memory and saved on-demand."""
+
+    def setUp(self):
+        super(TestStoreSaveChanges, self).setUp()
+        self.transport = self.get_transport()
+        # Most of the tests involve two stores pointing to the same persistent
+        # storage to observe the effects of concurrent changes
+        self.st1 = config.TransportIniFileStore(self.transport, 'foo.conf')
+        self.st2 = config.TransportIniFileStore(self.transport, 'foo.conf')
+        self.warnings = []
+        def warning(*args):
+            self.warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+
+    def has_store(self, store):
+        store_basename = urlutils.relative_url(self.transport.external_url(),
+                                               store.external_url())
+        return self.transport.has(store_basename)
+
+    def get_stack(self, store):
+        # Any stack will do as long as it uses the right store, just a single
+        # no-name section is enough
+        return config.Stack([store.get_sections], store)
+
+    def test_no_changes_no_save(self):
+        s = self.get_stack(self.st1)
+        s.store.save_changes()
+        self.assertEquals(False, self.has_store(self.st1))
+
+    def test_unrelated_concurrent_update(self):
+        s1 = self.get_stack(self.st1)
+        s2 = self.get_stack(self.st2)
+        s1.set('foo', 'bar')
+        s2.set('baz', 'quux')
+        s1.store.save()
+        # Changes don't propagate magically
+        self.assertEquals(None, s1.get('baz'))
+        s2.store.save_changes()
+        self.assertEquals('quux', s2.get('baz'))
+        # Changes are acquired when saving
+        self.assertEquals('bar', s2.get('foo'))
+        # Since there is no overlap, no warnings are emitted
+        self.assertLength(0, self.warnings)
+
+    def test_concurrent_update_modified(self):
+        s1 = self.get_stack(self.st1)
+        s2 = self.get_stack(self.st2)
+        s1.set('foo', 'bar')
+        s2.set('foo', 'baz')
+        s1.store.save()
+        # Last speaker wins
+        s2.store.save_changes()
+        self.assertEquals('baz', s2.get('foo'))
+        # But the user get a warning
+        self.assertLength(1, self.warnings)
+        warning = self.warnings[0]
+        self.assertStartsWith(warning, 'Option foo in section None')
+        self.assertEndsWith(warning, 'was changed from <CREATED> to bar.'
+                            ' The baz value will be saved.')
+
+    def test_concurrent_deletion(self):
+        self.st1._load_from_string('foo=bar')
+        self.st1.save()
+        s1 = self.get_stack(self.st1)
+        s2 = self.get_stack(self.st2)
+        s1.remove('foo')
+        s2.remove('foo')
+        s1.store.save_changes()
+        # No warning yet
+        self.assertLength(0, self.warnings)
+        s2.store.save_changes()
+        # Now we get one
+        self.assertLength(1, self.warnings)
+        warning = self.warnings[0]
+        self.assertStartsWith(warning, 'Option foo in section None')
+        self.assertEndsWith(warning, 'was changed from bar to <CREATED>.'
+                            ' The <DELETED> value will be saved.')
+
 
 class TestQuotingIniFileStore(tests.TestCaseWithTransport):
 

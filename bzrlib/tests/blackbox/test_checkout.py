@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -133,12 +133,11 @@ class TestCheckout(TestCaseWithTransport):
     def test_checkout_in_branch_with_r(self):
         branch = _mod_branch.Branch.open('branch')
         branch.bzrdir.destroy_workingtree()
-        os.chdir('branch')
-        self.run_bzr('checkout -r 1')
-        tree = workingtree.WorkingTree.open('.')
+        self.run_bzr('checkout -r 1', working_dir='branch')
+        tree = workingtree.WorkingTree.open('branch')
         self.assertEqual('1', tree.last_revision())
         branch.bzrdir.destroy_workingtree()
-        self.run_bzr('checkout -r 0')
+        self.run_bzr('checkout -r 0', working_dir='branch')
         self.assertEqual('null:', tree.last_revision())
 
     def test_checkout_files_from(self):
