@@ -63,7 +63,6 @@ from bzrlib.plugins.builddeb.util import (
     _find_previous_upload,
     find_thanks,
     get_commit_info_from_changelog,
-    get_source_format,
     guess_build_type,
     lookup_distribution,
     move_file_if_different,
@@ -74,6 +73,7 @@ from bzrlib.plugins.builddeb.util import (
     suite_to_distribution,
     tarball_name,
     tree_contains_upstream_source,
+    tree_get_source_format,
     write_if_different,
     )
 
@@ -773,27 +773,27 @@ class SourceFormatTests(TestCaseWithTransport):
 
     def test_no_source_format_file(self):
         tree = self.make_branch_and_tree('.')
-        self.assertEquals("1.0", get_source_format(tree))
+        self.assertEquals("1.0", tree_get_source_format(tree))
 
     def test_source_format_newline(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([("debian/", ), ("debian/source/",),
             ("debian/source/format", "3.0 (native)\n")])
         tree.add(["debian", "debian/source", "debian/source/format"])
-        self.assertEquals("3.0 (native)", get_source_format(tree))
+        self.assertEquals("3.0 (native)", tree_get_source_format(tree))
 
     def test_source_format(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([("debian/",), ("debian/source/",),
             ("debian/source/format", "3.0 (quilt)")])
         tree.add(["debian", "debian/source", "debian/source/format"])
-        self.assertEquals("3.0 (quilt)", get_source_format(tree))
+        self.assertEquals("3.0 (quilt)", tree_get_source_format(tree))
 
     def test_source_format_file_unversioned(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([("debian/",), ("debian/source/",),
             ("debian/source/format", "3.0 (quilt)")])
-        self.assertEquals("3.0 (quilt)", get_source_format(tree))
+        self.assertEquals("3.0 (quilt)", tree_get_source_format(tree))
 
 
 class GuessBuildTypeTests(TestCaseWithTransport):

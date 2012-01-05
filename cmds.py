@@ -692,7 +692,7 @@ class cmd_merge_upstream(Command):
         from bzrlib.plugins.builddeb.util import (
             FORMAT_3_0_QUILT,
             FORMAT_3_0_NATIVE,
-            get_source_format,
+            tree_get_source_format,
             guess_build_type,
             tree_contains_upstream_source,
             )
@@ -825,7 +825,7 @@ class cmd_merge_upstream(Command):
                             revisions=upstream_revisions)
                     else:
                         raise
-                source_format = get_source_format(tree)
+                source_format = tree_get_source_format(tree)
                 v3 = (source_format in [
                     FORMAT_3_0_QUILT, FORMAT_3_0_NATIVE])
                 tarball_filenames = self._get_tarballs(config, tree, package,

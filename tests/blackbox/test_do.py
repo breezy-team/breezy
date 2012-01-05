@@ -35,6 +35,12 @@ except ImportError:
 from bzrlib.tests.blackbox import ExternalBase
 
 
+TRIVIAL_PATCH = """--- /dev/null	2012-01-02 01:09:10.986490031 +0100
++++ base/afile	2012-01-02 20:03:59.710666215 +0100
+@@ -0,0 +1 @@
++a
+"""
+
 class TestDo(ExternalBase):
 
   package_name = 'test'
@@ -146,6 +152,19 @@ class TestDo(ExternalBase):
     self.make_upstream_tarball()
     self.run_bzr(['bd-do', 'touch debian/do'])
     self.assertPathExists('debian/do')
+
+  def test_apply_patches(self):
+    tree = self.make_unpacked_source()
+    self.build_tree(["debian/patches/", "debian/source/"])
+    self.build_tree_contents([
+      ("debian/patches/series", "patch1\n"),
+      ("debian/source/format", "3.0 (quilt)\n"),
+      ("debian/patches/patch1", TRIVIAL_PATCH)])
+    tree.smart_add([tree.basedir])
+    self.make_merge_mode_config(tree)
+    self.make_upstream_tarball()
+    self.run_bzr(['bd-do', 'cp afile debian/afile'])
+    self.assertPathExists('debian/afile')
 
   def test_removed_files_are_removed_in_branch(self):
     tree = self.make_unpacked_source()
