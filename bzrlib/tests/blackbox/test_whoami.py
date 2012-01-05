@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009, 2010, 2011 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 import bzrlib
 from bzrlib import (
     config,
+    errors,
     tests,
     )
 
@@ -139,7 +140,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         self.overrideEnv('EMAIL', None)
         self.overrideAttr(config, '_auto_user_id', lambda: (None, None))
         global_conf = config.GlobalStack()
-        self.assertEquals(None, global_conf.get('email'))
+        self.assertRaises(errors.NoWhoami, global_conf.get, 'email')
 
     def test_whoami_nonbranch_directory(self):
         """Test --directory mentioning a non-branch directory."""
