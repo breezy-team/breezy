@@ -125,3 +125,41 @@ class TestMergeHook(TestCaseWithTransport):
         # "a" should be unapplied again
         self.assertPathDoesNotExist("a/a")
         self.assertEquals(1, conflicts)
+
+    def test_auto_apply_patches_after_merge(self):
+        self.enable_hooks()
+
+        tree_a = self.make_branch_and_tree('a')
+        tree_b = tree_a.branch.create_checkout("b")
+
+        self.build_tree(['a/debian/', 'a/debian/patches/'])
+        self.build_tree_contents([
+            ('a/debian/patches/series', 'patch1\n'),
+            ('a/debian/patches/patch1', TRIVIAL_PATCH)])
+        tree_a.smart_add([tree_a.basedir])
+        tree_a.commit('initial')
+
+        self.build_tree(["b/.bzr-builddeb/"])
+        self.build_tree_contents([("b/.bzr-builddeb/local.conf", "[BUILDDEB]\nquilt-tree-policy = applied\n")])
+
+        tree_b.update()
+        self.assertFileEqual("a\n", "b/a")
+
+    def test_auto_unapply_patches_after_merge(self):
+        self.enable_hooks()
+
+        tree_a = self.make_branch_and_tree('a')
+        tree_b = tree_a.branch.create_checkout("b")
+
+        self.build_tree(['a/debian/', 'a/debian/patches/'])
+        self.build_tree_contents([
+            ('a/debian/patches/series', 'patch1\n'),
+            ('a/debian/patches/patch1', TRIVIAL_PATCH)])
+        tree_a.smart_add([tree_a.basedir])
+        tree_a.commit('initial')
+
+        self.build_tree(["b/.bzr-builddeb/"])
+        self.build_tree_contents([("b/.bzr-builddeb/local.conf", "[BUILDDEB]\nquilt-tree-policy = unapplied\n")])
+
+        tree_b.update()
+        self.assertPathDoesNotExist("b/a")

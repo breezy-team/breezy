@@ -101,7 +101,20 @@ def quilt_pop_all(working_dir, patches_dir=None, series_file=None, quiet=None):
     :param patches_dir: Optional patches directory
     :param series_file: Optional series file
     """
-    return run_quilt(["pop", "-a"], working_dir=working_dir, patches_dir=patches_dir, series_file=series_file, quiet=quiet)
+    return run_quilt(["pop", "-a"], working_dir=working_dir,
+        patches_dir=patches_dir, series_file=series_file, quiet=quiet)
+
+
+def quilt_pop(working_dir, patch, patches_dir=None, series_file=None, quiet=None):
+    """Pop a patch.
+
+    :param working_dir: Directory to work in
+    :param patch: Patch to apply
+    :param patches_dir: Optional patches directory
+    :param series_file: Optional series file
+    """
+    return run_quilt(["pop", patch], working_dir=working_dir,
+        patches_dir=patches_dir, series_file=series_file, quiet=quiet)
 
 
 def quilt_push_all(working_dir, patches_dir=None, series_file=None, quiet=None):
@@ -111,7 +124,20 @@ def quilt_push_all(working_dir, patches_dir=None, series_file=None, quiet=None):
     :param patches_dir: Optional patches directory
     :param series_file: Optional series file
     """
-    return run_quilt(["push", "-a"], working_dir=working_dir, patches_dir=patches_dir, series_file=series_file, quiet=quiet)
+    return run_quilt(["push", "-a"], working_dir=working_dir,
+            patches_dir=patches_dir, series_file=series_file, quiet=quiet)
+
+
+def quilt_push(working_dir, patch, patches_dir=None, series_file=None, quiet=None):
+    """Push a patch.
+
+    :param working_dir: Directory to work in
+    :param patch: Patch to push
+    :param patches_dir: Optional patches directory
+    :param series_file: Optional series file
+    """
+    return run_quilt(["push", patch], working_dir=working_dir,
+            patches_dir=patches_dir, series_file=series_file, quiet=quiet)
 
 
 def quilt_applied(working_dir, patches_dir=None, series_file=None):

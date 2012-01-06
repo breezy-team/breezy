@@ -210,6 +210,9 @@ def pre_merge_quilt(merger):
     from bzrlib.plugins.builddeb.merge_quilt import tree_unapply_patches
     trace.note("Unapplying quilt patches to prevent spurious conflicts")
     merger._quilt_tempdirs = []
+    series_file_id = merger.working_tree.path2id("debian/patches/series")
+    if series_file_id is not None:
+        merger._old_quilt_series = merger.working_tree.get_file_lines(series_file_id)
     if merger.working_tree.path2id("debian/patches") is not None:
         quilt_pop_all(working_dir=merger.working_tree.basedir)
     try:
@@ -245,6 +248,9 @@ def post_merge_quilt_cleanup(merger):
     import shutil
     for dir in getattr(merger, "_quilt_tempdirs", []):
         shutil.rmtree(dir)
+    from bzrlib.plugins.builddeb.merge_quilt import post_process_quilt_patches
+    post_process_quilt_patches(
+        merger.working_tree, getattr(merger, "_old_quilt_series", []))
 
 
 def pre_merge_fix_ancestry(merger):
