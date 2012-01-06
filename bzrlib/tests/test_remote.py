@@ -547,11 +547,19 @@ class TestBzrDirGetBranches(TestRemote):
         transport = MemoryTransport()
         client = FakeClient(transport.base)
         reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        branch_name = reference_bzrdir_format.get_branch_format().network_name()
         client.add_success_response_with_body(
             bencode.bencode({
-                "foo": (
-                    "branch", reference_bzrdir_format.get_branch_format().network_name()),
-                "": ("ref", "")}), "success")
+                "foo": ("branch", branch_name),
+                "": ("branch", branch_name)}), "success")
+        client.add_success_response(
+            'ok', '', 'no', 'no', 'no',
+                reference_bzrdir_format.repository_format.network_name())
+        client.add_error_response('NotStacked')
+        client.add_success_response(
+            'ok', '', 'no', 'no', 'no',
+                reference_bzrdir_format.repository_format.network_name())
+        client.add_error_response('NotStacked')
         transport.mkdir('quack')
         transport = transport.clone('quack')
         a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
@@ -559,7 +567,11 @@ class TestBzrDirGetBranches(TestRemote):
         result = a_bzrdir.get_branches()
         self.assertEquals(["", "foo"], result.keys())
         self.assertEqual(
-            [('call', 'BzrDir.get_branches', ('quack/',))],
+            [('call_expecting_body', 'BzrDir.get_branches', ('quack/',)),
+             ('call', 'BzrDir.find_repositoryV3', ('quack/', )),
+             ('call', 'Branch.get_stacked_on_url', ('quack/', )),
+             ('call', 'BzrDir.find_repositoryV3', ('quack/', )),
+             ('call', 'Branch.get_stacked_on_url', ('quack/', ))],
             client._calls)
 
 

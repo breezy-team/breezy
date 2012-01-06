@@ -40,6 +40,8 @@ Improvements
 
 * New HPSS call for ``Repository.reconcile``. (Jelmer Vernooij, #894455)
 
+* New HPSS call for ``BzrDir.get_branches``. (Jelmer Vernooij, #894460)
+
 * Merge now has two new hooks ``pre_merge`` and ``post_merge``
   that are called before and after a merge and can make
   additional modifications to the trees involved.

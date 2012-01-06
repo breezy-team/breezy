@@ -18,7 +18,13 @@
 
 from __future__ import absolute_import
 
-from bzrlib import branch, errors, repository, urlutils
+from bzrlib import (
+    bencode,
+    branch,
+    errors,
+    repository,
+    urlutils,
+    )
 from bzrlib.bzrdir import (
     BzrDir,
     BzrDirFormat,
@@ -423,6 +429,24 @@ class SmartServerBzrDirRequestConfigFile(SmartServerRequestBzrDir):
         else:
             content = config._get_config_file().read()
         return SuccessfulSmartServerResponse((), content)
+
+
+class SmartServerBzrDirRequestGetBranches(SmartServerRequestBzrDir):
+
+    def do_bzrdir_request(self):
+        """Get the branches in a control directory.
+        
+        The body is a bencoded dictionary, with values similar to the return
+        value of the open branch request.
+        """
+        branches = self._bzrdir.get_branches()
+        ret = {}
+        for name, b in branches.iteritems():
+            if name is None:
+                name = ""
+            ret[name] = ("branch", b._format.network_name())
+        return SuccessfulSmartServerResponse(
+            ("success", ), bencode.bencode(ret))
 
 
 class SmartServerRequestInitializeBzrDir(SmartServerRequest):
