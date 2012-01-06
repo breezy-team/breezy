@@ -144,7 +144,11 @@ class TestPull(tests.TestCaseWithTransport):
         # Make a source, sprout a target off it
         builder = self.make_branch_builder('source')
         source = fixtures.build_branch_with_non_ancestral_rev(builder)
-        source.get_config_stack().set('branch.fetch_tags', True)
+        source.lock_write()
+        try:
+            source.get_config_stack().set('branch.fetch_tags', True)
+        finally:
+            source.unlock()
         target_bzrdir = source.bzrdir.sprout('target')
         source.tags.set_tag('tag-a', 'rev-2')
         # Pull from source
@@ -255,17 +259,18 @@ class TestPull(tests.TestCaseWithTransport):
                 ('','bzr: ERROR: These branches have diverged.'
                     ' Use the missing command to see how.\n'
                     'Use the merge command to reconcile them.\n'))
-        branch_b = branch.Branch.open('branch_b')
+        tree_b = tree_b.bzrdir.open_workingtree()
+        branch_b = tree_b.branch
         self.assertEqual(parent, branch_b.get_parent())
         # test implicit --remember after resolving previous failure
         uncommit.uncommit(branch=branch_b, tree=tree_b)
         t.delete('branch_b/d')
         self.run_bzr('pull', working_dir='branch_b')
-        branch_b = branch.Branch.open('branch_b')
+        branch_b = branch_b.bzrdir.open_branch()
         self.assertEqual(branch_b.get_parent(), parent)
         # test explicit --remember
         self.run_bzr('pull ../branch_c --remember', working_dir='branch_b')
-        branch_b = branch.Branch.open('branch_b')
+        branch_b = branch_b.bzrdir.open_branch()
         self.assertEqual(branch_c.bzrdir.root_transport.base,
                          branch_b.get_parent())
 
