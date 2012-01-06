@@ -20,8 +20,8 @@ Loosely based on the manpage generator autodoc_man.py.
 Written by the Bazaar community.
 """
 
-import os
-import sys
+from __future__ import absolute_import
+
 import time
 
 import bzrlib

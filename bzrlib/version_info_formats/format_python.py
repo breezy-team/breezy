@@ -16,6 +16,8 @@
 
 """A generator which creates a python script from the current tree info"""
 
+from __future__ import absolute_import
+
 import pprint
 
 from bzrlib.revision import (

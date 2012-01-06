@@ -16,6 +16,8 @@
 
 """Utility functions for managing external merge tools such as kdiff3."""
 
+from __future__ import absolute_import
+
 import os
 import shutil
 import subprocess

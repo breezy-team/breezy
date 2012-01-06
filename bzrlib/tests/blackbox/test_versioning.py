@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -67,11 +67,9 @@ class TestMkdir(TestCaseWithTransport):
         self.run_bzr(['mkdir', 'dir'])
         self.assert_(os.path.isdir('dir'))
 
-        os.chdir('dir')
         self.log('Run mkdir in subdir')
-        self.run_bzr(['mkdir', 'subdir'])
-        self.assert_(os.path.isdir('subdir'))
-        os.chdir('..')
+        self.run_bzr(['mkdir', 'subdir'], working_dir='dir')
+        self.assert_(os.path.isdir('dir/subdir'))
 
         wt = WorkingTree.open('.')
 
@@ -156,9 +154,9 @@ class SubdirCommit(TestCaseWithTransport):
         self.assertEqual(get_text_by_path(new, 'a/one'), 'new contents')
         new.unlock()
 
-        os.chdir('a')
         # commit from here should do nothing
-        self.run_bzr(['commit', '.', '-m', 'commit subdir only', '--unchanged'])
+        self.run_bzr(['commit', '.', '-m', 'commit subdir only', '--unchanged'],
+                     working_dir='a')
         v3 = b.repository.revision_tree(b.get_rev_id(3))
         v3.lock_read()
         self.assertEqual(get_text_by_path(v3, 'b/two'), 'old contents')
@@ -167,7 +165,8 @@ class SubdirCommit(TestCaseWithTransport):
         v3.unlock()
 
         # commit in subdirectory commits whole tree
-        self.run_bzr(['commit', '-m', 'commit whole tree from subdir'])
+        self.run_bzr(['commit', '-m', 'commit whole tree from subdir'],
+                     working_dir='a')
         v4 = b.repository.revision_tree(b.get_rev_id(4))
         v4.lock_read()
         self.assertEqual(get_text_by_path(v4, 'b/two'), 'new contents')

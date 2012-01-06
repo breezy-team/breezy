@@ -16,6 +16,8 @@
 
 """Python implementation of _read_stanza_*."""
 
+from __future__ import absolute_import
+
 import re
 
 from bzrlib.rio import (

@@ -16,6 +16,8 @@
 
 """Repository formats built around versioned files."""
 
+from __future__ import absolute_import
+
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -23,6 +25,7 @@ import itertools
 
 from bzrlib import (
     check,
+    config as _mod_config,
     debug,
     fetch as _mod_fetch,
     fifo_cache,
@@ -106,11 +109,11 @@ class VersionedFileCommitBuilder(CommitBuilder):
     # the default CommitBuilder does not manage trees whose root is versioned.
     _versioned_root = False
 
-    def __init__(self, repository, parents, config, timestamp=None,
+    def __init__(self, repository, parents, config_stack, timestamp=None,
                  timezone=None, committer=None, revprops=None,
                  revision_id=None, lossy=False):
         super(VersionedFileCommitBuilder, self).__init__(repository,
-            parents, config, timestamp, timezone, committer, revprops,
+            parents, config_stack, timestamp, timezone, committer, revprops,
             revision_id, lossy)
         try:
             basis_id = self.parents[0]
@@ -197,8 +200,13 @@ class VersionedFileCommitBuilder(CommitBuilder):
                        revision_id=self._new_revision_id,
                        properties=self._revprops)
         rev.parent_ids = self.parents
-        self.repository.add_revision(self._new_revision_id, rev,
-            self.new_inventory, self._config)
+        if self._config_stack.get('create_signatures') == _mod_config.SIGN_ALWAYS:
+            testament = Testament(rev, self.revision_tree())
+            plaintext = testament.as_short_text()
+            self.repository.store_revision_signature(
+                gpg.GPGStrategy(self._config_stack), plaintext,
+                self._new_revision_id)
+        self.repository._add_revision(rev)
         self._ensure_fallback_inventories()
         self.repository.commit_write_group()
         return self._new_revision_id
@@ -1030,28 +1038,17 @@ class VersionedFileRepository(Repository):
         self.inventories._access.flush()
         return result
 
-    def add_revision(self, revision_id, rev, inv=None, config=None):
+    def add_revision(self, revision_id, rev, inv=None):
         """Add rev to the revision store as revision_id.
 
         :param revision_id: the revision id to use.
         :param rev: The revision object.
         :param inv: The inventory for the revision. if None, it will be looked
                     up in the inventory storer
-        :param config: If None no digital signature will be created.
-                       If supplied its signature_needed method will be used
-                       to determine if a signature should be made.
         """
         # TODO: jam 20070210 Shouldn't we check rev.revision_id and
         #       rev.parent_ids?
         _mod_revision.check_not_reserved_id(revision_id)
-        if config is not None and config.signature_needed():
-            if inv is None:
-                inv = self.get_inventory(revision_id)
-            tree = InventoryRevisionTree(self, inv, revision_id)
-            testament = Testament(rev, tree)
-            plaintext = testament.as_short_text()
-            self.store_revision_signature(
-                gpg.GPGStrategy(config), plaintext, revision_id)
         # check inventory present
         if not self.inventories.get_parent_map([(revision_id,)]):
             if inv is None:
@@ -1283,14 +1280,14 @@ class VersionedFileRepository(Repository):
             # result['size'] = t
         return result
 
-    def get_commit_builder(self, branch, parents, config, timestamp=None,
+    def get_commit_builder(self, branch, parents, config_stack, timestamp=None,
                            timezone=None, committer=None, revprops=None,
                            revision_id=None, lossy=False):
         """Obtain a CommitBuilder for this repository.
 
         :param branch: Branch to commit to.
         :param parents: Revision ids of the parents of the new revision.
-        :param config: Configuration to use.
+        :param config_stack: Configuration stack to use.
         :param timestamp: Optional timestamp recorded for commit.
         :param timezone: Optional timezone for timestamp.
         :param committer: Optional committer to set for commit.
@@ -1303,7 +1300,7 @@ class VersionedFileRepository(Repository):
             raise errors.BzrError("Cannot commit directly to a stacked branch"
                 " in pre-2a formats. See "
                 "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
-        result = self._commit_builder_class(self, parents, config,
+        result = self._commit_builder_class(self, parents, config_stack,
             timestamp, timezone, committer, revprops, revision_id,
             lossy)
         self.start_write_group()

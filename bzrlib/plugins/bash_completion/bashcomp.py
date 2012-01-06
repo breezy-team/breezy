@@ -16,6 +16,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 from bzrlib import (
     cmdline,
     commands,
@@ -26,6 +28,7 @@ from bzrlib import (
 )
 import bzrlib
 import re
+import sys
 
 
 class BashCodeGen(object):
@@ -430,8 +433,6 @@ class cmd_bash_completion(commands.Command):
         ]
 
     def run(self, **kwargs):
-        import sys
-        from bashcomp import bash_completion_function
         if 'plugin' in kwargs:
             # work around bug #387117 which prevents us from using param_name
             if len(kwargs['plugin']) > 0:
@@ -442,7 +443,6 @@ class cmd_bash_completion(commands.Command):
 
 if __name__ == '__main__':
 
-    import sys
     import locale
     import optparse
 

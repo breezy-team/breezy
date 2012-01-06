@@ -17,19 +17,14 @@
 """Content-filtered view of any tree.
 """
 
+from __future__ import absolute_import
 
 from bzrlib import (
     tree,
     )
 from bzrlib.filters import (
-    ContentFilter,
     ContentFilterContext,
-    filtered_input_file,
     filtered_output_bytes,
-    _get_filter_stack_for,
-    _get_registered_names,
-    internal_size_sha_file_byname,
-    register_filter_stack_map,
     )
 
 

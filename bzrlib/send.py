@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
 
 import os
 import time
@@ -37,63 +38,64 @@ from bzrlib.revision import (
 format_registry = registry.Registry()
 
 
-def send(submit_branch, revision, public_branch, remember, format,
-         no_bundle, no_patch, output, from_, mail_to, message, body,
+def send(target_branch, revision, public_branch, remember,
+         format, no_bundle, no_patch, output, from_, mail_to, message, body,
          to_file, strict=None):
     tree, branch = controldir.ControlDir.open_containing_tree_or_branch(
         from_)[:2]
+    possible_transports = [tree.bzrdir.transport, branch.bzrdir.transport]
     # we may need to write data into branch's repository to calculate
     # the data to send.
     branch.lock_write()
     try:
         if output is None:
-            config = branch.get_config()
             if mail_to is None:
-                mail_to = config.get_user_option('submit_to')
-            mail_client = config.get_mail_client()
+                mail_to = branch.get_config_stack().get('submit_to')
+            mail_client = branch.get_config().get_mail_client()
             if (not getattr(mail_client, 'supports_body', False)
                 and body is not None):
                 raise errors.BzrCommandError(gettext(
                     'Mail client "%s" does not support specifying body') %
                     mail_client.__class__.__name__)
-        if remember and submit_branch is None:
+        if remember and target_branch is None:
             raise errors.BzrCommandError(gettext(
                 '--remember requires a branch to be specified.'))
-        stored_submit_branch = branch.get_submit_branch()
-        remembered_submit_branch = None
-        if submit_branch is None:
-            submit_branch = stored_submit_branch
-            remembered_submit_branch = "submit"
+        stored_target_branch = branch.get_submit_branch()
+        remembered_target_branch = None
+        if target_branch is None:
+            target_branch = stored_target_branch
+            remembered_target_branch = "submit"
         else:
             # Remembers if asked explicitly or no previous location is set
-            if remember or (remember is None and stored_submit_branch is None):
-                branch.set_submit_branch(submit_branch)
-        if submit_branch is None:
-            submit_branch = branch.get_parent()
-            remembered_submit_branch = "parent"
-        if submit_branch is None:
+            if remember or (
+                    remember is None and stored_target_branch is None):
+                branch.set_submit_branch(target_branch)
+        if target_branch is None:
+            target_branch = branch.get_parent()
+            remembered_target_branch = "parent"
+        if target_branch is None:
             raise errors.BzrCommandError(gettext('No submit branch known or'
                                          ' specified'))
-        if remembered_submit_branch is not None:
+        if remembered_target_branch is not None:
             trace.note(gettext('Using saved {0} location "{1}" to determine '
                        'what changes to submit.').format(
-                                    remembered_submit_branch, submit_branch))
+                                    remembered_target_branch,
+                                    target_branch))
 
+        submit_branch = Branch.open(target_branch,
+            possible_transports=possible_transports)
+        possible_transports.append(submit_branch.bzrdir.root_transport)
         if mail_to is None or format is None:
-            # TODO: jam 20090716 we open the submit_branch here, but we *don't*
-            #       pass it down into the format creation, so it will have to
-            #       open it again
-            submit_br = Branch.open(submit_branch)
-            submit_config = submit_br.get_config()
             if mail_to is None:
-                mail_to = submit_config.get_user_option("child_submit_to")
+                mail_to = submit_branch.get_config_stack().get(
+                    'child_submit_to')
             if format is None:
-                formatname = submit_br.get_child_submit_format()
+                formatname = submit_branch.get_child_submit_format()
                 try:
                     format = format_registry.get(formatname)
                 except KeyError:
-                    raise errors.BzrCommandError(gettext("No such send format '%s'.") % 
-                                                 formatname)
+                    raise errors.BzrCommandError(
+                        gettext("No such send format '%s'.") % formatname)
 
         stored_public_branch = branch.get_public_branch()
         if public_branch is None:
@@ -125,8 +127,9 @@ def send(submit_branch, revision, public_branch, remember, format,
             raise errors.BzrCommandError(gettext('No revisions to submit.'))
         if format is None:
             format = format_registry.get()
-        directive = format(branch, revision_id, submit_branch,
-            public_branch, no_patch, no_bundle, message, base_revision_id)
+        directive = format(branch, revision_id, target_branch,
+            public_branch, no_patch, no_bundle, message, base_revision_id,
+            submit_branch)
         if output is None:
             directive.compose_merge_request(mail_client, mail_to, body,
                                             branch, tree)
@@ -158,19 +161,23 @@ def send(submit_branch, revision, public_branch, remember, format,
         branch.unlock()
 
 
-def _send_4(branch, revision_id, submit_branch, public_branch,
-            no_patch, no_bundle, message, base_revision_id):
+def _send_4(branch, revision_id, target_branch, public_branch,
+            no_patch, no_bundle, message,
+            base_revision_id, local_target_branch=None):
     from bzrlib import merge_directive
     return merge_directive.MergeDirective2.from_objects(
         branch.repository, revision_id, time.time(),
-        osutils.local_time_offset(), submit_branch,
-        public_branch=public_branch, include_patch=not no_patch,
+        osutils.local_time_offset(), target_branch,
+        public_branch=public_branch,
+        include_patch=not no_patch,
         include_bundle=not no_bundle, message=message,
-        base_revision_id=base_revision_id)
+        base_revision_id=base_revision_id,
+        local_target_branch=local_target_branch)
 
 
 def _send_0_9(branch, revision_id, submit_branch, public_branch,
-              no_patch, no_bundle, message, base_revision_id):
+              no_patch, no_bundle, message,
+              base_revision_id, local_target_branch=None):
     if not no_bundle:
         if not no_patch:
             patch_type = 'bundle'
@@ -187,10 +194,10 @@ def _send_0_9(branch, revision_id, submit_branch, public_branch,
         branch.repository, revision_id, time.time(),
         osutils.local_time_offset(), submit_branch,
         public_branch=public_branch, patch_type=patch_type,
-        message=message)
+        message=message, local_target_branch=local_target_branch)
 
 
-format_registry.register('4', 
+format_registry.register('4',
     _send_4, 'Bundle format 4, Merge Directive 2 (default)')
 format_registry.register('0.9',
     _send_0_9, 'Bundle format 0.9, Merge Directive 1')

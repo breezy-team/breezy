@@ -21,6 +21,7 @@ from bzrlib import (
     gpg,
     tests,
     )
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 
 
 class SignMyCommits(tests.TestCaseWithTransport):
@@ -164,7 +165,9 @@ class TestSmartServerSignMyCommits(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(51, self.hpss_calls)
+        self.assertLength(15, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
     def test_verify_commits(self):
         self.setup_smart_server_with_call_log()
@@ -182,10 +185,6 @@ class TestSmartServerSignMyCommits(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-
-        # The number of readv requests seems to vary depending on the generated
-        # repository and how well it compresses, so allow for a bit of
-        # variation:
-        if len(self.hpss_calls) not in (18, 19):
-            self.fail("Incorrect length: wanted 18 or 19, got %d for %r" % (
-                len(self.hpss_calls), self.hpss_calls))
+        self.assertLength(10, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

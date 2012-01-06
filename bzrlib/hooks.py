@@ -14,8 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
 """Support for plugin hooking logic."""
+
+from __future__ import absolute_import
 
 from bzrlib import (
     registry,
@@ -82,6 +83,7 @@ _builtin_known_hooks = (
     ('bzrlib.smart.client', '_SmartClient.hooks', 'SmartClientHooks'),
     ('bzrlib.smart.server', 'SmartTCPServer.hooks', 'SmartServerHooks'),
     ('bzrlib.status', 'hooks', 'StatusHooks'),
+    ('bzrlib.transport', 'Transport.hooks', 'TransportHooks'),
     ('bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilder.hooks',
         'RioVersionInfoBuilderHooks'),
     ('bzrlib.merge_directive', 'BaseMergeDirective.hooks',

@@ -31,12 +31,15 @@ Some particularly interesting things in bzrlib are:
 We hope you enjoy this library.
 """
 
+from __future__ import absolute_import
+
 import time
 
 # Keep track of when bzrlib was first imported, so that we can give rough
 # timestamps relative to program start in the log file kept by bzrlib.trace.
 _start_time = time.time()
 
+import codecs
 import sys
 
 
@@ -130,6 +133,47 @@ if getattr(sys, '_bzr_lazy_regex', False):
 
 __version__ = _format_version_tuple(version_info)
 version_string = __version__
+
+
+def _patch_filesystem_default_encoding(new_enc):
+    """Change the Python process global encoding for filesystem names
+    
+    The effect is to change how open() and other builtin functions handle
+    unicode filenames on posix systems. This should only be done near startup.
+
+    The new encoding string passed to this function must survive until process
+    termination, otherwise the interpreter may access uninitialized memory.
+    The use of intern() may defer breakage is but is not enough, the string
+    object should be secure against module reloading and during teardown.
+    """
+    try:
+        import ctypes
+    except ImportError:
+        return
+    pythonapi = getattr(ctypes, "pythonapi", None)
+    if pythonapi is None:
+        # Not CPython ctypes implementation
+        return
+    old_ptr = ctypes.c_void_p.in_dll(pythonapi, "Py_FileSystemDefaultEncoding")
+    new_ptr = ctypes.cast(ctypes.c_char_p(intern(new_enc)), ctypes.c_void_p)
+    old_ptr.value = new_ptr.value
+    if sys.getfilesystemencoding() != new_enc:
+        raise RuntimeError("Failed to change the filesystem default encoding")
+    return new_enc
+
+
+# When running under the bzr script, override bad filesystem default encoding.
+# This is not safe to do for all users of bzrlib, other scripts should instead
+# just ensure a usable locale is set via the $LANG variable on posix systems.
+_fs_enc = sys.getfilesystemencoding()
+if getattr(sys, "_bzr_default_fs_enc", None) is not None:
+    if (_fs_enc is None or codecs.lookup(_fs_enc).name == "ascii"):
+        _fs_enc = _patch_filesystem_default_encoding(sys._bzr_default_fs_enc)
+if _fs_enc is None:
+    _fs_enc = "ascii"
+else:
+    _fs_enc = codecs.lookup(_fs_enc).name
+
 
 # bzr has various bits of global state that are slowly being eliminated.
 # This variable is intended to permit any new state-like things to be attached

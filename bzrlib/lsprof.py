@@ -3,6 +3,8 @@
 # I made one modification to profile so that it returns a pair
 # instead of just the Stats object
 
+from __future__ import absolute_import
+
 import cPickle
 import os
 import sys

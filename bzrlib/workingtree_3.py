@@ -18,6 +18,8 @@
 
 """
 
+from __future__ import absolute_import
+
 import errno
 
 from bzrlib import (
@@ -34,6 +36,7 @@ from bzrlib.decorators import (
     )
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.lockdir import LockDir
+from bzrlib.mutabletree import MutableTree
 from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import (
     InventoryWorkingTree,
@@ -193,7 +196,7 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
         control_files = self._open_control_files(a_bzrdir)
         control_files.create_lock()
         control_files.lock_write()
-        transport.put_bytes('format', self.get_format_string(),
+        transport.put_bytes('format', self.as_string(),
             mode=a_bzrdir._get_file_mode())
         if from_branch is not None:
             branch = from_branch
@@ -225,6 +228,8 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
             else:
                 wt.set_parent_trees([(revision_id, basis_tree)])
             transform.build_tree(basis_tree, wt)
+            for hook in MutableTree.hooks['post_build_tree']:
+                hook(wt)
         finally:
             # Unlock in this order so that the unlock-triggers-flush in
             # WorkingTree is given a chance to fire.

@@ -17,6 +17,8 @@
 
 """Foundation SSH support for SFTP and smart server."""
 
+from __future__ import absolute_import
+
 import errno
 import getpass
 import logging

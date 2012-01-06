@@ -153,7 +153,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
             SampleRepositoryFormat.from_string(
                 "Sample .bzr repository format."),
             SampleRepositoryFormat)
-        self.assertRaises(ValueError,
+        self.assertRaises(AssertionError,
             SampleRepositoryFormat.from_string,
                 "Different .bzr repository format.")
 
@@ -163,6 +163,19 @@ class TestRepositoryFormat(TestCaseWithTransport):
         self.assertRaises(UnknownFormatError,
                           repository.RepositoryFormatMetaDir.find_format,
                           dir)
+
+    def test_find_format_with_features(self):
+        tree = self.make_branch_and_tree('.', format='2a')
+        tree.branch.repository.update_feature_flags({"name": "necessity"})
+        found_format = repository.RepositoryFormatMetaDir.find_format(tree.bzrdir)
+        self.assertIsInstance(found_format, repository.RepositoryFormatMetaDir)
+        self.assertEquals(found_format.features.get("name"), "necessity")
+        self.assertRaises(errors.MissingFeature, found_format.check_support_status,
+            True)
+        self.addCleanup(repository.RepositoryFormatMetaDir.unregister_feature,
+            "name")
+        repository.RepositoryFormatMetaDir.register_feature("name")
+        found_format.check_support_status(True)
 
     def test_register_unregister_format(self):
         # Test deprecated format registration functions
@@ -905,7 +918,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             revision = _mod_revision.Revision('rev1a',
                 committer='jrandom@example.com', timestamp=0,
                 inventory_sha1='', timezone=0, message='foo', parent_ids=[])
-            repo.add_revision('rev1a',revision, inv)
+            repo.add_revision('rev1a', revision, inv)
 
             # make rev1b, which has no Revision, but has an Inventory, and
             # file1
@@ -946,7 +959,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         revision = _mod_revision.Revision(revision_id,
             committer='jrandom@example.com', timestamp=0, inventory_sha1='',
             timezone=0, message='foo', parent_ids=parent_ids)
-        repo.add_revision(revision_id,revision, inv)
+        repo.add_revision(revision_id, revision, inv)
 
     def add_file(self, repo, inv, filename, revision, parents):
         file_id = filename + '-id'
@@ -1703,3 +1716,25 @@ class Test_LazyListJoin(tests.TestCase):
         lazy = repository._LazyListJoin(['a'], ['b'])
         self.assertEqual("bzrlib.repository._LazyListJoin((['a'], ['b']))",
                          repr(lazy))
+
+
+class TestFeatures(tests.TestCaseWithTransport):
+
+    def test_open_with_present_feature(self):
+        self.addCleanup(
+            repository.RepositoryFormatMetaDir.unregister_feature,
+            "makes-cheese-sandwich")
+        repository.RepositoryFormatMetaDir.register_feature(
+            "makes-cheese-sandwich")
+        repo = self.make_repository('.')
+        repo.lock_write()
+        repo._format.features["makes-cheese-sandwich"] = "required"
+        repo._format.check_support_status(False)
+        repo.unlock()
+
+    def test_open_with_missing_required_feature(self):
+        repo = self.make_repository('.')
+        repo.lock_write()
+        repo._format.features["makes-cheese-sandwich"] = "required"
+        self.assertRaises(errors.MissingFeature,
+            repo._format.check_support_status, False)

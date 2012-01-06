@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -725,7 +725,7 @@ class TestUrlToPath(TestCase):
 
 
 class TestCwdToURL(TestCaseInTempDir):
-    """Test that local_path_to_url works base on the cwd"""
+    """Test that local_path_to_url works based on the cwd"""
 
     def test_dot(self):
         # This test will fail if getcwd is not ascii
@@ -1026,3 +1026,20 @@ class TestFileRelpath(TestCase):
             urlutils.file_relpath, "file:///A:/b", "file:///A:/")
         self.assertRaises(PathNotChild,
             urlutils.file_relpath, "file:///A:/b/c", "file:///A:/b")
+
+
+class QuoteTests(TestCase):
+
+    def test_quote(self):
+        self.assertEqual('abc%20def', urlutils.quote('abc def'))
+        self.assertEqual('abc%2Fdef', urlutils.quote('abc/def', safe=''))
+        self.assertEqual('abc/def', urlutils.quote('abc/def', safe='/'))
+
+    def test_quote_tildes(self):
+        self.assertEqual('%7Efoo', urlutils.quote('~foo'))
+        self.assertEqual('~foo', urlutils.quote('~foo', safe='/~'))
+
+    def test_unquote(self):
+        self.assertEqual('%', urlutils.unquote('%25'))
+        self.assertEqual('\xc3\xa5', urlutils.unquote('%C3%A5'))
+        self.assertEqual(u"\xe5", urlutils.unquote(u'\xe5'))

@@ -19,6 +19,7 @@
 See MutableTree for more details.
 """
 
+from __future__ import absolute_import
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -519,6 +520,9 @@ class MutableTreeHooks(hooks.Hooks):
             "called with a bzrlib.mutabletree.PostCommitHookParams object. "
             "The mutable tree the commit was performed on is available via "
             "the mutable_tree attribute of that object.", (2, 0))
+        self.add_hook('post_build_tree',
+            "Called after a completely new tree is built. The hook is "
+            "called with the tree as its only argument.", (2, 5))
 
 
 # install the default hooks into the MutableTree class.
