@@ -2305,6 +2305,8 @@ class BranchReferenceFormat(BranchFormatMetadir):
         mutter('creating branch reference in %s', a_bzrdir.user_url)
         if a_bzrdir._format.fixed_components:
             raise errors.IncompatibleFormat(self, a_bzrdir._format)
+        if name is None:
+            name = a_bzrdir._get_selected_branch()
         branch_transport = a_bzrdir.get_branch_transport(self, name=name)
         branch_transport.put_bytes('location',
             target_branch.user_url)
@@ -2445,10 +2447,11 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """Create new branch object at a particular location."""
         if a_bzrdir is None:
             raise ValueError('a_bzrdir must be supplied')
-        else:
-            self.bzrdir = a_bzrdir
+        if name is None:
+            raise ValueError('name must be supplied')
+        self.bzrdir = a_bzrdir
         self._user_transport = self.bzrdir.transport.clone('..')
-        if name is not None:
+        if name != "":
             self._user_transport.set_segment_parameter(
                 "branch", urlutils.escape(name))
         self._base = self._user_transport.base
