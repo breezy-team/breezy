@@ -522,10 +522,12 @@ class MutableTreeHooks(hooks.Hooks):
             "the mutable_tree attribute of that object.", (2, 0))
         self.add_hook('pre_transform',
             "Called before a tree transform on this tree. The hook is called "
-            "with the tree transform is being done.", (2, 5))
+            "with the tree that is being transformed and the transform.",
+            (2, 5))
         self.add_hook('post_transform',
             "Called after a tree transform has been performed on a tree. "
-            "The hook is called with the tree transform that is being done.",
+            "The hook is called with the tree that is being transformed and "
+            "the transform.",
             (2, 5))
 
 

@@ -178,6 +178,10 @@ Internals
   which contains the branch from which the ``other_tree``
   was obtained, if any. (Jelmer Vernooij)
 
+* ``MutableTree`` has two new hooks ``pre_transform`` and
+  ``post_transform`` that are called for tree transform operations.
+  (Jelmer Vernooij, #912084)
+
 * New HPSS call ``BzrDir.checkout_metadir``. (Jelmer Vernooij, #894459)
 
 * New HPSS call ``VersionedFileRepository.get_inventories``,
