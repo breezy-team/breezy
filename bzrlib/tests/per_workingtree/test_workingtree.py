@@ -457,14 +457,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         def track_post_build_tree(tree):
             calls.append(tree.last_revision())
         source = self.make_branch_and_tree('source')
-        MutableTree.hooks.install_named_hook("post_build_tree",
-            track_post_build_tree, "Test")
         source.commit('a', rev_id='a', allow_pointless=True)
         source.commit('b', rev_id='b', allow_pointless=True)
         self.build_tree(['new/'])
         made_control = self.bzrdir_format.initialize('new')
         source.branch.repository.clone(made_control)
         source.branch.clone(made_control)
+        MutableTree.hooks.install_named_hook("post_build_tree",
+            track_post_build_tree, "Test")
         made_tree = self.workingtree_format.initialize(made_control,
             revision_id='a')
         self.assertEqual(['a'], calls)
