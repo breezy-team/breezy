@@ -265,7 +265,20 @@ def post_merge_quilt_cleanup(merger):
         return
     from bzrlib.plugins.builddeb.merge_quilt import post_process_quilt_patches
     post_process_quilt_patches(
-            merger.working_tree, getattr(merger, "_old_quilt_series", []), policy)
+        merger.working_tree,
+        getattr(merger, "_old_quilt_series", []), policy)
+
+
+def post_build_tree_quilt(tree):
+    from bzrlib.plugins.builddeb.util import debuild_config
+    config = debuild_config(tree, tree)
+    policy = config.quilt_tree_policy
+    if policy is None:
+        return
+    from bzrlib.plugins.builddeb.merge_quilt import post_process_quilt_patches
+    from bzrlib import trace
+    trace.note("Applying quilt patches.");
+    post_process_quilt_patches(tree, [], policy)
 
 
 def pre_merge_fix_ancestry(merger):
@@ -342,6 +355,11 @@ else:
         "bzrlib.merge", "Merger.hooks",
         'post_merge', post_merge_quilt_cleanup,
         'Cleaning up quilt temporary directories')
+    install_lazy_named_hook(
+        "bzrlib.mutabletree", "MutableTree.hooks",
+        'post_build_tree', post_build_tree_quilt,
+        'Applying quilt patches.')
+
 
 try:
     from bzrlib.revisionspec import revspec_registry
