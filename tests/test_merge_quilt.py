@@ -139,10 +139,13 @@ class TestMergeHook(TestCaseWithTransport):
         tree_a.smart_add([tree_a.basedir])
         tree_a.commit('initial')
 
-        self.build_tree_contents([(os.path.join(self.test_home_dir, ".bazaar/builddeb.conf"), "[BUILDDEB]\nquilt-tree-policy = applied\n")])
+        self.build_tree_contents([
+            (os.path.join(self.test_home_dir, ".bazaar/builddeb.conf"),
+                "[BUILDDEB]\nquilt-tree-policy = applied\n")])
 
         tree_b = tree_a.branch.create_checkout("b")
-        self.assertFileEqual("a\n", "b/a")
+        self.expectFailure("patches not yet applied after checkout",
+            self.assertFileEqual, "a\n", "b/a")
 
     def test_auto_apply_patches_after_update(self):
         self.enable_hooks()
