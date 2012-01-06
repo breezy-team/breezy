@@ -520,6 +520,13 @@ class MutableTreeHooks(hooks.Hooks):
             "called with a bzrlib.mutabletree.PostCommitHookParams object. "
             "The mutable tree the commit was performed on is available via "
             "the mutable_tree attribute of that object.", (2, 0))
+        self.add_hook('pre_transform',
+            "Called before a tree transform on this tree. The hook is called "
+            "with the tree transform is being done.", (2, 5))
+        self.add_hook('post_transform',
+            "Called after a tree transform has been performed on a tree. "
+            "The hook is called with the tree transform that is being done.",
+            (2, 5))
 
 
 # install the default hooks into the MutableTree class.
