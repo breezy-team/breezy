@@ -190,6 +190,8 @@ Internals
 * The ``ConfigCommandLineStore`` is now supported by ``bzr config`` and is
   seen as single no-name section of configuration options. (Vincent Ladeuil)
 
+* A new matcher ``RevisionHistoryMatches`` has been added. (Jelmer Vernooij)
+
 Testing
 *******
 
