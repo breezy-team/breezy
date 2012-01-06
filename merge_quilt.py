@@ -36,7 +36,6 @@ from bzrlib.plugins.builddeb.quilt import (
     quilt_push,
     quilt_pop,
     )
-from bzrlib.plugins.builddeb.util import debuild_config
 
 
 class NoUnapplyingMerger(_mod_merge.Merge3Merger):
@@ -93,17 +92,13 @@ def tree_unapply_patches(orig_tree, orig_branch=None):
         raise
 
 
-def post_process_quilt_patches(tree, old_patches):
+def post_process_quilt_patches(tree, old_patches, policy):
     """(Un)apply patches after a merge.
 
     :param tree: Working tree to work in
     :param old_patches: List of patches applied before the operation (usually a merge)
     """
     new_patches = tree.get_file_lines(tree.path2id("debian/patches/series"))
-    config = debuild_config(tree, tree)
-    policy = config.quilt_tree_policy
-    if policy is None:
-        return
     applied_file_id = tree.path2id(".pc/applied-patches")
     if applied_file_id is not None:
         applied_patches = tree.get_file_lines(applied_file_id, ".pc/applied-patches")

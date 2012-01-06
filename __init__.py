@@ -248,9 +248,14 @@ def post_merge_quilt_cleanup(merger):
     import shutil
     for dir in getattr(merger, "_quilt_tempdirs", []):
         shutil.rmtree(dir)
+    from bzrlib.plugins.builddeb.util import debuild_config
+    config = debuild_config(merger.working_tree, merger.working_tree)
+    policy = config.quilt_tree_policy
+    if policy is None:
+        return
     from bzrlib.plugins.builddeb.merge_quilt import post_process_quilt_patches
     post_process_quilt_patches(
-        merger.working_tree, getattr(merger, "_old_quilt_series", []))
+            merger.working_tree, getattr(merger, "_old_quilt_series", []), policy)
 
 
 def pre_merge_fix_ancestry(merger):

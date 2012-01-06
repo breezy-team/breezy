@@ -19,6 +19,7 @@
 
 """Tests for the merge_quilt code."""
 
+import os
 import shutil
 
 from bzrlib.hooks import install_lazy_named_hook
@@ -126,7 +127,24 @@ class TestMergeHook(TestCaseWithTransport):
         self.assertPathDoesNotExist("a/a")
         self.assertEquals(1, conflicts)
 
-    def test_auto_apply_patches_after_merge(self):
+    def test_auto_apply_patches_after_checkout(self):
+        self.enable_hooks()
+
+        tree_a = self.make_branch_and_tree('a')
+
+        self.build_tree(['a/debian/', 'a/debian/patches/'])
+        self.build_tree_contents([
+            ('a/debian/patches/series', 'patch1\n'),
+            ('a/debian/patches/patch1', TRIVIAL_PATCH)])
+        tree_a.smart_add([tree_a.basedir])
+        tree_a.commit('initial')
+
+        self.build_tree_contents([(os.path.join(self.test_home_dir, ".bazaar/builddeb.conf"), "[BUILDDEB]\nquilt-tree-policy = applied\n")])
+
+        tree_b = tree_a.branch.create_checkout("b")
+        self.assertFileEqual("a\n", "b/a")
+
+    def test_auto_apply_patches_after_update(self):
         self.enable_hooks()
 
         tree_a = self.make_branch_and_tree('a')
@@ -145,7 +163,7 @@ class TestMergeHook(TestCaseWithTransport):
         tree_b.update()
         self.assertFileEqual("a\n", "b/a")
 
-    def test_auto_unapply_patches_after_merge(self):
+    def test_auto_unapply_patches_after_update(self):
         self.enable_hooks()
 
         tree_a = self.make_branch_and_tree('a')
