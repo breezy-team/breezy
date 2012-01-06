@@ -203,6 +203,13 @@ def pre_merge_quilt(merger):
         merger.this_tree.path2id("debian/patches") is None and
         merger.working_tree.path2id("debian/patches") is None):
         return
+
+    from bzrlib.plugins.builddeb.util import debuild_config
+    config = debuild_config(merger.working_tree, merger.working_tree)
+    if not config.quilt_smart_merge:
+        from bzrlib import trace; trace.mutter("FOO")
+        return
+
     import shutil
     from bzrlib import trace
     from bzrlib.plugins.builddeb.errors import QuiltUnapplyError
@@ -216,7 +223,8 @@ def pre_merge_quilt(merger):
     if merger.working_tree.path2id("debian/patches") is not None:
         quilt_pop_all(working_dir=merger.working_tree.basedir)
     try:
-        merger.this_tree, this_dir = tree_unapply_patches(merger.this_tree, merger.this_branch)
+        merger.this_tree, this_dir = tree_unapply_patches(merger.this_tree,
+            merger.this_branch)
     except QuiltError, e:
         shutil.rmtree(this_dir)
         raise QuiltUnapplyError("this", e.msg)
@@ -224,7 +232,8 @@ def pre_merge_quilt(merger):
         if this_dir is not None:
             merger._quilt_tempdirs.append(this_dir)
     try:
-        merger.base_tree, base_dir = tree_unapply_patches(merger.base_tree, merger.this_branch)
+        merger.base_tree, base_dir = tree_unapply_patches(merger.base_tree,
+            merger.this_branch)
     except QuiltError, e:
         shutil.rmtree(base_dir)
         raise QuiltUnapplyError("base", e.msg)
@@ -235,7 +244,8 @@ def pre_merge_quilt(merger):
     if other_branch is None:
         other_branch = merger.this_branch
     try:
-        merger.other_tree, other_dir = tree_unapply_patches(merger.other_tree, other_branch)
+        merger.other_tree, other_dir = tree_unapply_patches(merger.other_tree,
+            other_branch)
     except QuiltError, e:
         shutil.rmtree(other_dir)
         raise QuiltUnapplyError("other", e.msg)
