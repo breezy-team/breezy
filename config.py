@@ -295,6 +295,9 @@ class DebBuildConfig(object):
   commit_message_from_changelog = _bool_property('commit-message-from-changelog',
        "Whether the commit message should come from debian/changelog", default=False)
 
+  quilt_smart_merge = _bool_property('quilt-smart-merge',
+    "Automatically unapply quilt patches during merge", default=True)
+
 
 def _test():
   import doctest

@@ -125,3 +125,51 @@ class TestMergeHook(TestCaseWithTransport):
         # "a" should be unapplied again
         self.assertPathDoesNotExist("a/a")
         self.assertEquals(1, conflicts)
+
+    def test_disabled_hook(self):
+        self.enable_hooks()
+
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/debian/', 'a/debian/patches/'])
+        self.build_tree_contents([
+            ('a/debian/patches/series', 'patch1\n'),
+            ('a/debian/patches/patch1', TRIVIAL_PATCH),
+            ("a/debian/bzr-builddeb.conf", "[BUILDDEB]\n"
+                "quilt-smart-merge = False\n"),
+            ("a/a", "")])
+        tree_a.smart_add([tree_a.basedir])
+        tree_a.commit('initial')
+
+        tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
+        self.build_tree_contents([
+            ('a/debian/patches/patch1', 
+                "\n".join(TRIVIAL_PATCH.splitlines()[:-1] + ["+d\n"]))])
+        quilt_push_all(tree_a.basedir)
+        tree_a.smart_add([tree_a.basedir])
+        tree_a.commit('apply patches')
+        self.assertFileEqual("d\n", "a/a")
+        self.build_tree_contents([
+            ('b/debian/patches/patch1', 
+                "\n".join(TRIVIAL_PATCH.splitlines()[:-1] + ["+c\n"]))])
+        quilt_push_all(tree_b.basedir)
+        tree_b.commit('apply patches')
+        self.assertFileEqual("c\n", "b/a")
+        conflicts = tree_a.merge_from_branch(tree_b.branch)
+        self.assertFileEqual("""\
+--- /dev/null\t2012-01-02 01:09:10.986490031 +0100
++++ base/a\t2012-01-02 20:03:59.710666215 +0100
+@@ -0,0 +1 @@
+<<<<<<< TREE
++d
+=======
++c
+>>>>>>> MERGE-SOURCE
+""", "a/debian/patches/patch1")
+        self.assertFileEqual("""\
+<<<<<<< TREE
+d
+=======
+c
+>>>>>>> MERGE-SOURCE
+""", "a/a")
+        self.assertEquals(2, conflicts)

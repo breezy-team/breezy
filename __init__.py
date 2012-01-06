@@ -203,6 +203,13 @@ def pre_merge_quilt(merger):
         merger.this_tree.path2id("debian/patches") is None and
         merger.working_tree.path2id("debian/patches") is None):
         return
+
+    from bzrlib.plugins.builddeb.util import debuild_config
+    config = debuild_config(merger.working_tree, merger.working_tree)
+    if not config.quilt_smart_merge:
+        from bzrlib import trace; trace.mutter("FOO")
+        return
+
     import shutil
     from bzrlib import trace
     from bzrlib.plugins.builddeb.errors import QuiltUnapplyError
