@@ -24,7 +24,11 @@ import shutil
 
 from bzrlib.hooks import install_lazy_named_hook
 
-from bzrlib.plugins.builddeb import pre_merge_quilt, post_merge_quilt_cleanup
+from bzrlib.plugins.builddeb import (
+    pre_merge_quilt,
+    post_build_tree_quilt,
+    post_merge_quilt_cleanup,
+    )
 from bzrlib.plugins.builddeb.quilt import quilt_push_all
 from bzrlib.plugins.builddeb.merge_quilt import tree_unapply_patches
 
@@ -88,6 +92,10 @@ class TestMergeHook(TestCaseWithTransport):
             "bzrlib.merge", "Merger.hooks",
             'post_merge', post_merge_quilt_cleanup,
             'Cleaning up quilt temporary directories')
+        install_lazy_named_hook(
+            "bzrlib.mutabletree", "MutableTree.hooks",
+            "post_build_tree", post_build_tree_quilt,
+            "Apply quilt trees.")
 
     def test_diverged_patches(self):
         self.enable_hooks()
@@ -144,8 +152,7 @@ class TestMergeHook(TestCaseWithTransport):
                 "[BUILDDEB]\nquilt-tree-policy = applied\n")])
 
         tree_b = tree_a.branch.create_checkout("b")
-        self.expectFailure("patches not yet applied after checkout",
-            self.assertFileEqual, "a\n", "b/a")
+        self.assertFileEqual("a\n", "b/a")
 
     def test_auto_apply_patches_after_update(self):
         self.enable_hooks()
