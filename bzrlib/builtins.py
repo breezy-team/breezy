@@ -101,8 +101,14 @@ def _get_branch_location(control_dir):
             return control_dir.root_transport.base
 
 
-def create_sibling_branch(control_dir, location):
-    """Create sibling branch."""
+def lookup_new_sibling_branch(control_dir, location):
+    """Lookup the location for a new sibling branch.
+
+    :param control_dir: Control directory relative to which to look up
+        the name.
+    :param location: Name of the new branch
+    :return: Full location to the new branch
+    """
     location = directory_service.directories.dereference(location)
     if '/' not in location and '\\' not in location:
         # This path is meant to be relative to the existing branch
@@ -125,8 +131,15 @@ def create_sibling_branch(control_dir, location):
 
 
 def lookup_sibling_branch(control_dir, location):
-    """Lookup sibling branch."""
+    """Lookup sibling branch.
+    
+    :param control_dir: Control directory relative to which to lookup the
+        location.
+    :param location: Location to look up
+    :return: branch to open
+    """
     try:
+        # Perhaps it's a colocated branch?
         return control_dir.open_branch(location)
     except (errors.NotBranchError, errors.NoColocatedBranchSupport):
         try:
@@ -136,11 +149,6 @@ def lookup_sibling_branch(control_dir, location):
             return Branch.open(
                 urlutils.join(
                     this_url, '..', urlutils.escape(location)))
-
-
-def list_sibling_branches(branch):
-    """List sibling branches."""
-    raise NotImplementedError(list_sibling_branches)
 
 
 @symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 3, 0)))
@@ -6204,12 +6212,11 @@ class cmd_switch(Command):
             if branch is None:
                 raise errors.BzrCommandError(
                     gettext('cannot create branch without source branch'))
-            to_location = create_sibling_branch(control_dir, to_location)
+            to_location = lookup_new_sibling_branch(control_dir, to_location)
             to_branch = branch.bzrdir.sprout(to_location,
                  possible_transports=[branch.bzrdir.root_transport],
                  source_branch=branch).open_branch()
         else:
-            # Perhaps it's a colocated branch?
             to_branch = lookup_sibling_branch(control_dir, to_location)
         if revision is not None:
             revision = revision.as_revision_id(to_branch)
