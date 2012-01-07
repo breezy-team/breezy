@@ -2315,8 +2315,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
         branch_transport.put_bytes('location',
             target_branch.user_url)
         branch_transport.put_bytes('format', self.as_string())
-        branch = self.open(
-            a_bzrdir, name, _found=True,
+        branch = self.open(a_bzrdir, name, _found=True,
             possible_transports=[target_branch.bzrdir.root_transport])
         self._run_post_branch_init_hooks(a_bzrdir, name, branch)
         return branch
@@ -2348,6 +2347,8 @@ class BranchReferenceFormat(BranchFormatMetadir):
             a_bzrdir.
         :param possible_transports: An optional reusable transports list.
         """
+        if name is None:
+            name = a_bzrdir._get_selected_branch()
         if not _found:
             format = BranchFormatMetadir.find_format(a_bzrdir, name=name)
             if format.__class__ != self.__class__:
@@ -2357,8 +2358,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
             location = self.get_reference(a_bzrdir, name)
         real_bzrdir = controldir.ControlDir.open(
             location, possible_transports=possible_transports)
-        result = real_bzrdir.open_branch(name=name, 
-            ignore_fallbacks=ignore_fallbacks,
+        result = real_bzrdir.open_branch(ignore_fallbacks=ignore_fallbacks,
             possible_transports=possible_transports)
         # this changes the behaviour of result.clone to create a new reference
         # rather than a copy of the content of the branch.

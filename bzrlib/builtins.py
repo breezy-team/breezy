@@ -1444,7 +1444,7 @@ class cmd_branches(Command):
         else:
             dir = controldir.ControlDir.open_containing(location)[0]
             try:
-                active_branch = dir.open_branch(name=None)
+                active_branch = dir.open_branch(name="")
             except errors.NotBranchError:
                 active_branch = None
             branches = dir.get_branches()
@@ -1457,7 +1457,7 @@ class cmd_branches(Command):
                 names[name] = active
             # Only mention the current branch explicitly if it's not
             # one of the colocated branches
-            if not any(names.values()) and active_branch != "":
+            if not any(names.values()) and active_branch is not None:
                 self.outf.write("* %s\n" % gettext("(default)"))
             for name in sorted(names.keys()):
                 active = names[name]
