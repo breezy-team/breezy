@@ -78,6 +78,9 @@ import os
 import tempfile
 import urllib
 import urlparse
+
+# urlparse only supports a limited number of schemes by default
+
 urlparse.uses_netloc.extend(['git', 'git+ssh'])
 
 from dulwich.pack import load_pack_index
@@ -375,7 +378,7 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
         elif urlparse.urlsplit(transport.external_url())[0] in ("http", "https"):
             def get_client(thin_packs=False):
                 return BzrGitHttpClient(transport, thin_packs=thin_packs)
-            client_path = transport._path
+            client_path, _ = urlutils.split_segment_parameters(transport._path)
         else:
             raise NotBranchError(transport.base)
         return RemoteGitDir(transport, self, get_client, client_path)
