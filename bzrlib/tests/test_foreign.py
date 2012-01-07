@@ -240,6 +240,8 @@ class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):
 
     def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
             found_repository=None):
+        if name is None:
+            name = a_bzrdir._get_selected_branch()
         if not _found:
             raise NotImplementedError
         try:
@@ -251,7 +253,8 @@ class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):
             return DummyForeignVcsBranch(_format=self,
                               _control_files=control_files,
                               a_bzrdir=a_bzrdir,
-                              _repository=found_repository)
+                              _repository=found_repository,
+                              name=name)
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
 
@@ -317,7 +320,9 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
 
     def open_branch(self, name=None, unsupported=False, ignore_fallbacks=True,
             possible_transports=None):
-        if name is not None:
+        if name is None:
+            name = self._get_selected_branch()
+        if name != "":
             raise errors.NoColocatedBranchSupport(self)
         return self._format.get_branch_format().open(self, _found=True)
 

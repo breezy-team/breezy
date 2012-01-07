@@ -1450,14 +1450,14 @@ class cmd_branches(Command):
             branches = dir.get_branches()
             names = {}
             for name, branch in branches.iteritems():
-                if name is None:
+                if name == "":
                     continue
                 active = (active_branch is not None and
                           active_branch.base == branch.base)
                 names[name] = active
             # Only mention the current branch explicitly if it's not
             # one of the colocated branches
-            if not any(names.values()) and active_branch is not None:
+            if not any(names.values()) and active_branch != "":
                 self.outf.write("* %s\n" % gettext("(default)"))
             for name in sorted(names.keys()):
                 active = names[name]

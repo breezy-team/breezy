@@ -2038,6 +2038,8 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
         :param name: Name of colocated branch to create, if any
         :return: a branch in this format
         """
+        if name is None:
+            name = a_bzrdir._get_selected_branch()
         mutter('creating branch %r in %s', self, a_bzrdir.user_url)
         branch_transport = a_bzrdir.get_branch_transport(self, name=name)
         control_files = lockable_files.LockableFiles(branch_transport,
@@ -2060,6 +2062,8 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
     def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
             found_repository=None, possible_transports=None):
         """See BranchFormat.open()."""
+        if name is None:
+            name = a_bzrdir._get_selected_branch()
         if not _found:
             format = BranchFormatMetadir.find_format(a_bzrdir, name=name)
             if format.__class__ != self.__class__:

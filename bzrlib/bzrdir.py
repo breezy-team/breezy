@@ -1086,8 +1086,10 @@ class BzrDirMeta1Colo(BzrDirMeta1):
 
         return ret
 
-    def get_branch_transport(self, branch_format, name):
+    def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
+        if name is None:
+            name = self._get_selected_branch()
         path = self._get_branch_path(name)
         # XXX: this shouldn't implicitly create the directory if it's just
         # promising to get a transport -- mbp 20090727
