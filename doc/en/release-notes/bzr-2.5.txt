@@ -178,6 +178,9 @@ Internals
   which contains the branch from which the ``other_tree``
   was obtained, if any. (Jelmer Vernooij)
 
+* MutableTree now has a hook ``post_build_tree`` which is called after
+  a new mutable tree has been created. (Jelmer Vernooij, #912765)
+
 * New HPSS call ``BzrDir.checkout_metadir``. (Jelmer Vernooij, #894459)
 
 * New HPSS call ``VersionedFileRepository.get_inventories``,
