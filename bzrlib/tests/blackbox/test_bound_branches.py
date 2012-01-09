@@ -150,7 +150,8 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         self.run_bzr("commit -m child", retcode=3, working_dir='child')
         self.check_revno(1, 'child')
         self.run_bzr('unbind', working_dir='child')
-        child_tree = bzrdir.BzrDir.open('child').open_workingtree()
+        # Refresh the child tree/branch objects as 'unbind' modified them
+        child_tree = child_tree.bzrdir.open_workingtree()
         child_tree.commit(message='child')
         self.check_revno(2, 'child')
 
@@ -201,7 +202,8 @@ class TestBoundBranches(tests.TestCaseWithTransport):
 
         self.run_bzr('unbind', working_dir='child')
 
-        child_tree = bzrdir.BzrDir.open('child').open_workingtree()
+        # Refresh the child tree/branch objects as 'unbind' modified them
+        child_tree = child_tree.bzrdir.open_workingtree()
         child_tree.commit(message='child', allow_pointless=True)
         self.check_revno(2, 'child')
 
@@ -212,8 +214,9 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         # These branches have diverged, but bind should succeed anyway
         self.run_bzr('bind ../base', working_dir='child')
 
+        # Refresh the child tree/branch objects as 'bind' modified them
+        child_tree = child_tree.bzrdir.open_workingtree()
         # This should turn the local commit into a merge
-        child_tree = bzrdir.BzrDir.open('child').open_workingtree()
         child_tree.update()
         child_tree.commit(message='merged')
         self.check_revno(3, 'child')
@@ -252,7 +255,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
 
         self.run_bzr('unbind', working_dir='child')
         # Refresh the child tree/branch objects as 'bind' modified them
-        child_tree = bzrdir.BzrDir.open('child').open_workingtree()
+        child_tree = child_tree.bzrdir.open_workingtree()
         child_tree.commit(message='child', allow_pointless=True)
         self.check_revno(2, 'child')
         self.check_revno(1, 'base')

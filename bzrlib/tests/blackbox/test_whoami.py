@@ -119,7 +119,9 @@ class TestWhoami(tests.TestCaseWithTransport):
                           '--directory', 'subdir')
         self.run_bzr(['whoami', '--directory', 'subdir', '--branch',
                       'Changed Identity <changed@identi.ty>'])
-        c = branch.Branch.open('subdir').get_config_stack()
+        # Refresh wt as 'whoami' modified it
+        wt = wt.bzrdir.open_workingtree()
+        c = wt.branch.get_config_stack()
         self.assertEquals('Changed Identity <changed@identi.ty>',
                           c.get('email'))
 

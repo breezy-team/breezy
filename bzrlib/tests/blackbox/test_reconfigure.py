@@ -250,10 +250,11 @@ class TestReconfigureStacking(tests.TestCaseWithTransport):
                                 % (self.get_url('b1'),))
         self.assertContainsRe(out, '^.*/b2/ is now stacked on ../b1\n$')
         self.assertEquals('', err)
-        b2 = bzrdir.BzrDir.open('b2').open_branch()
+        # Refresh the branch as 'reconfigure' modified it
+        branch_2 = branch_2.bzrdir.open_branch()
         # It should be given a relative URL to the destination, if possible,
         # because that's most likely to work across different transports
-        self.assertEquals('../b1', b2.get_stacked_on_url())
+        self.assertEquals('../b1', branch_2.get_stacked_on_url())
         # commit, and it should be stored into b2's repo
         self.build_tree_contents([('foo', 'new foo')])
         tree_2.commit('update foo')
@@ -262,8 +263,9 @@ class TestReconfigureStacking(tests.TestCaseWithTransport):
         self.assertContainsRe(out,
             '^.*/b2/ is now not stacked\n$')
         self.assertEquals('', err)
-        b2 = bzrdir.BzrDir.open('b2').open_branch()
-        self.assertRaises(errors.NotStacked, b2.get_stacked_on_url)
+        # Refresh the branch as 'reconfigure' modified it
+        branch_2 = branch_2.bzrdir.open_branch()
+        self.assertRaises(errors.NotStacked, branch_2.get_stacked_on_url)
 
     # XXX: Needs a test for reconfiguring stacking and shape at the same time;
     # no branch at location; stacked-on is not a branch; quiet mode.

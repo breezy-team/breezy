@@ -306,9 +306,10 @@ class TestSendStrictMixin(TestSendMixin):
     def set_config_send_strict(self, value):
         br = branch.Branch.open('local')
         br.lock_write()
-        conf = br.get_config_stack()
-        conf.set('send_strict', value)
-        br.unlock()
+        try:
+            br.get_config_stack().set('send_strict', value)
+        finally:
+            br.unlock()
 
     def assertSendFails(self, args):
         out, err = self.run_send(args, rc=3, err_re=self._default_errors)

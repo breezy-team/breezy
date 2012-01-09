@@ -176,8 +176,10 @@ class TestBranchRegistration(TestCaseWithTransport):
     def test_register_no_url_in_published_branch_no_error(self):
         b = self.make_branch('.')
         b.lock_write()
-        b.set_public_branch('http://test-server.com/bzr/branch')
-        b.unlock()
+        try:
+            b.set_public_branch('http://test-server.com/bzr/branch')
+        finally:
+            b.unlock()
         out, err = self.run_bzr(['register-branch', '--dry-run'])
         self.assertEqual('Branch registered.\n', out)
         self.assertEqual('', err)

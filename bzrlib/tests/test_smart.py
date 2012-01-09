@@ -1296,8 +1296,9 @@ class TestSmartServerBranchRequestSetParent(TestLockedBranch):
         finally:
             branch.unlock()
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(()), response)
-        refreshed = _mod_branch.Branch.open(branch.base)
-        self.assertEqual(None, refreshed.get_parent())
+        # Refresh branch as SetParentLocation modified it
+        branch = branch.bzrdir.open_branch()
+        self.assertEqual(None, branch.get_parent())
 
     def test_set_parent_something(self):
         branch = self.make_branch('base', format="1.9")

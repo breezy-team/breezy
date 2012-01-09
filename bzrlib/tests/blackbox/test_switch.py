@@ -153,7 +153,8 @@ class TestSwitch(TestCaseWithTransport):
         branchb_id = tree2.commit('bar')
         checkout = tree1.branch.create_checkout('heavyco/a', lightweight=False)
         self.run_bzr(['switch', 'branchb'], working_dir='heavyco/a')
-        checkout = BzrDir.open('heavyco/a').open_workingtree()
+        # Refresh checkout as 'switch' modified it
+        checkout = checkout.bzrdir.open_workingtree()
         self.assertEqual(branchb_id, checkout.last_revision())
         self.assertEqual(tree2.branch.base,
                          checkout.branch.get_bound_location())

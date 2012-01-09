@@ -242,8 +242,10 @@ class TestPull(tests.TestCaseWithTransport):
         parent = branch_b.get_parent()
         branch_b = branch.Branch.open('branch_b')
         branch_b.lock_write()
-        branch_b.set_parent(None)
-        branch_b.unlock()
+        try:
+            branch_b.set_parent(None)
+        finally:
+            branch_b.unlock()
         self.assertEqual(None, branch_b.get_parent())
         # test pull for failure without parent set
         out = self.run_bzr('pull', retcode=3, working_dir='branch_b')
@@ -266,10 +268,12 @@ class TestPull(tests.TestCaseWithTransport):
         uncommit.uncommit(branch=branch_b, tree=tree_b)
         t.delete('branch_b/d')
         self.run_bzr('pull', working_dir='branch_b')
+        # Refresh the branch object as 'pull' modified it
         branch_b = branch_b.bzrdir.open_branch()
         self.assertEqual(branch_b.get_parent(), parent)
         # test explicit --remember
         self.run_bzr('pull ../branch_c --remember', working_dir='branch_b')
+        # Refresh the branch object as 'pull' modified it
         branch_b = branch_b.bzrdir.open_branch()
         self.assertEqual(branch_c.bzrdir.root_transport.base,
                          branch_b.get_parent())

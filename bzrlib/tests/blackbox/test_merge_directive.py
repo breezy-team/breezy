@@ -45,9 +45,11 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.tree1 = self.make_branch_and_tree('tree1')
         self.build_tree_contents([('tree1/file', 'a\nb\nc\nd\n')])
         self.tree1.branch.lock_write()
-        self.tree1.branch.get_config_stack().set(
-            'email', 'J. Random Hacker <jrandom@example.com>')
-        self.tree1.branch.unlock()
+        try:
+            self.tree1.branch.get_config_stack().set(
+                'email', 'J. Random Hacker <jrandom@example.com>')
+        finally:
+            self.tree1.branch.unlock()
         self.tree1.add('file')
         self.tree1.commit('foo', rev_id='foo-id')
         self.tree2 = self.tree1.bzrdir.sprout('tree2').open_workingtree()

@@ -45,8 +45,10 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         branch = self.make_branch('non-lp')
         url = 'http://example.com/non-lp'
         branch.lock_write()
-        branch.set_public_branch(url)
-        branch.unlock()
+        try:
+            branch.set_public_branch(url)
+        finally:
+            branch.unlock()
         self.assertEqual(
             ['bzr: ERROR: %s is not registered on Launchpad.' % url],
             self.run_open('non-lp', retcode=3))
@@ -54,9 +56,11 @@ class TestLaunchpadOpen(TestCaseWithTransport):
     def test_launchpad_branch_with_public_location(self):
         branch = self.make_branch('lp')
         branch.lock_write()
-        branch.set_public_branch(
-            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
-        branch.unlock()
+        try:
+            branch.set_public_branch(
+                'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
+        finally:
+            branch.unlock()
         self.assertEqual(
             ['Opening https://code.launchpad.net/~foo/bar/baz in web '
              'browser'],
@@ -65,11 +69,13 @@ class TestLaunchpadOpen(TestCaseWithTransport):
     def test_launchpad_branch_with_public_and_push_location(self):
         branch = self.make_branch('lp')
         branch.lock_write()
-        branch.set_public_branch(
-            'bzr+ssh://bazaar.launchpad.net/~foo/bar/public')
-        branch.set_push_location(
-            'bzr+ssh://bazaar.launchpad.net/~foo/bar/push')
-        branch.unlock()
+        try:
+            branch.set_public_branch(
+                'bzr+ssh://bazaar.launchpad.net/~foo/bar/public')
+            branch.set_push_location(
+                'bzr+ssh://bazaar.launchpad.net/~foo/bar/push')
+        finally:
+            branch.unlock()
         self.assertEqual(
             ['Opening https://code.launchpad.net/~foo/bar/public in web '
              'browser'],
@@ -80,9 +86,11 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         # location.
         branch = self.make_branch('lp')
         branch.lock_write()
-        branch.set_push_location(
-            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
-        branch.unlock()
+        try:
+            branch.set_push_location(
+                'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
+        finally:
+            branch.unlock()
         self.assertEqual(
             ['Opening https://code.launchpad.net/~foo/bar/baz in web '
              'browser'],
@@ -101,9 +109,11 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         # lp-open in a subdirectory of a registered branch should work
         wt = self.make_branch_and_tree('lp')
         wt.branch.lock_write()
-        wt.branch.set_push_location(
-            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
-        wt.branch.unlock()
+        try:
+            wt.branch.set_push_location(
+                'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
+        finally:
+            wt.branch.unlock()
         self.build_tree(['lp/a/'])
         self.assertEqual(
             ['Opening https://code.launchpad.net/~foo/bar/baz in web '

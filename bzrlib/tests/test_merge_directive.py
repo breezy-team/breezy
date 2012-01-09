@@ -424,8 +424,10 @@ class TestMergeDirectiveBranch(object):
             tree_b.branch.base, patch_type=None, public_branch=branch_c.base)
         self.assertEqual(md.target_branch, tree_b.branch.base)
         tree_b.branch.lock_write()
-        tree_b.branch.set_public_branch('http://example.com')
-        tree_b.branch.unlock()
+        try:
+            tree_b.branch.set_public_branch('http://example.com')
+        finally:
+            tree_b.branch.unlock()
         md2 = self.from_objects(
               tree_a.branch.repository, 'rev2a', 500, 144, tree_b.branch.base,
               patch_type=None, public_branch=branch_c.base)
