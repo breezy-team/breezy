@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #            and others
 #
@@ -1652,17 +1652,6 @@ def default_email():
     raise errors.NoWhoami()
 
 
-def email_from_store(unicode_str):
-    """Unlike other env vars, BZR_EMAIL takes precedence over config settings.
-
-    Whatever comes from a config file is then overridden.
-    """
-    value = os.environ.get('BZR_EMAIL')
-    if value:
-        return value.decode(osutils.get_user_encoding())
-    return unicode_str
-
-
 def _auto_user_id():
     """Calculate automatic user identification.
 
@@ -2343,12 +2332,15 @@ class Option(object):
     encoutered, in which config files it can be stored.
     """
 
-    def __init__(self, name, default=None, default_from_env=None,
-                 help=None, from_unicode=None, invalid=None,
-                 unquote=True):
+    def __init__(self, name, override_from_env=None,
+                 default=None, default_from_env=None,
+                 help=None, from_unicode=None, invalid=None, unquote=True):
         """Build an option definition.
 
         :param name: the name used to refer to the option.
+
+        :param override_from_env: A list of environment variables which can
+           provide override any configuration setting.
 
         :param default: the default value to use when none exist in the config
             stores. This is either a string that ``from_unicode`` will convert
@@ -2379,9 +2371,12 @@ class Option(object):
            safely unquote them (see http://pad.lv/906897). It is provided so
            daughter classes can handle the quoting themselves.
         """
+        if override_from_env is None:
+            override_from_env = []
         if default_from_env is None:
             default_from_env = []
         self.name = name
+        self.override_from_env = override_from_env
         # Convert the default value to a unicode string so all values are
         # strings internally before conversion (via from_unicode) is attempted.
         if default is None:
@@ -2428,6 +2423,17 @@ class Option(object):
             elif self.invalid == 'error':
                 raise errors.ConfigOptionValueError(self.name, unicode_value)
         return converted
+
+    def get_override(self):
+        value = None
+        for var in self.override_from_env:
+            try:
+                # If the env variable is defined, its value takes precedence
+                value = os.environ[var].decode(osutils.get_user_encoding())
+                break
+            except KeyError:
+                continue
+        return value
 
     def get_default(self):
         value = None
@@ -2634,6 +2640,11 @@ This option is normally set by ``bind``.
 See also: bound.
 """))
 option_registry.register(
+    Option('branch.fetch_tags', default=False,  from_unicode=bool_from_store,
+           help="""\
+Whether revisions associated with tags should be fetched.
+"""))
+option_registry.register(
     Option('bzr.workingtree.worth_saving_limit', default=10,
            from_unicode=int_from_store,  invalid='warning',
            help='''\
@@ -2657,6 +2668,12 @@ this option will control whether bzr will require good gpg
 signatures, ignore them, or check them if they are
 present.
 '''))
+option_registry.register(
+    Option('child_submit_format',
+           help='''The preferred format of submissions to this branch.'''))
+option_registry.register(
+    Option('child_submit_to',
+           help='''Where submissions to this branch are mailed to.'''))
 option_registry.register(
     Option('create_signatures', default=SIGN_WHEN_REQUIRED,
            from_unicode=signing_policy_from_unicode,
@@ -2698,8 +2715,7 @@ option_registry.register(
     Option('editor',
            help='The command called to launch an editor to enter a message.'))
 option_registry.register(
-    Option('email', default=default_email,
-           from_unicode=email_from_store,
+    Option('email', override_from_env=['BZR_EMAIL'], default=default_email,
            help='The users identity'))
 option_registry.register(
     Option('gpg_signing_command',
@@ -2847,6 +2863,9 @@ The branch you intend to submit your current work to.
 This is automatically set by ``bzr send`` and ``bzr merge``, and is also used
 by the ``submit:`` revision spec.
 """))
+option_registry.register(
+    Option('submit_to',
+           help='''Where submissions from this branch are mailed to.'''))
 
 
 class Section(object):
@@ -2876,6 +2895,8 @@ class Section(object):
 
 _NewlyCreatedOption = object()
 """Was the option created during the MutableSection lifetime"""
+_DeletedOption = object()
+"""Was the option deleted during the MutableSection lifetime"""
 
 
 class MutableSection(Section):
@@ -2883,7 +2904,7 @@ class MutableSection(Section):
 
     def __init__(self, section_id, options):
         super(MutableSection, self).__init__(section_id, options)
-        self.orig = {}
+        self.reset_changes()
 
     def set(self, name, value):
         if name not in self.options:
@@ -2898,12 +2919,58 @@ class MutableSection(Section):
             self.orig[name] = self.get(name, None)
         del self.options[name]
 
+    def reset_changes(self):
+        self.orig = {}
+
+    def apply_changes(self, dirty, store):
+        """Apply option value changes.
+
+        ``self`` has been reloaded from the persistent storage. ``dirty``
+        contains the changes made since the previous loading.
+
+        :param dirty: the mutable section containing the changes.
+
+        :param store: the store containing the section
+        """
+        for k, expected in dirty.orig.iteritems():
+            actual = dirty.get(k, _DeletedOption)
+            reloaded = self.get(k, _NewlyCreatedOption)
+            if actual is _DeletedOption:
+                if k in self.options:
+                    self.remove(k)
+            else:
+                self.set(k, actual)
+            # Report concurrent updates in an ad-hoc way. This should only
+            # occurs when different processes try to update the same option
+            # which is not supported (as in: the config framework is not meant
+            # to be used a sharing mechanism).
+            if expected != reloaded:
+                if actual is _DeletedOption:
+                    actual = '<DELETED>'
+                if reloaded is _NewlyCreatedOption:
+                    reloaded = '<CREATED>'
+                if expected is _NewlyCreatedOption:
+                    expected = '<CREATED>'
+                # Someone changed the value since we get it from the persistent
+                # storage.
+                trace.warning(gettext(
+                        "Option {0} in section {1} of {2} was changed"
+                        " from {3} to {4}. The {5} value will be saved.".format(
+                            k, self.id, store.external_url(), expected,
+                            reloaded, actual)))
+        # No need to keep track of these changes
+        self.reset_changes()
+
 
 class Store(object):
     """Abstract interface to persistent storage for configuration options."""
 
     readonly_section_class = Section
     mutable_section_class = MutableSection
+
+    def __init__(self):
+        # Which sections need to be saved
+        self.dirty_sections = []
 
     def is_loaded(self):
         """Returns True if the Store has been loaded.
@@ -2951,6 +3018,41 @@ class Store(object):
         """Saves the Store to persistent storage."""
         raise NotImplementedError(self.save)
 
+    def _need_saving(self):
+        for s in self.dirty_sections:
+            if s.orig:
+                # At least one dirty section contains a modification
+                return True
+        return False
+
+    def apply_changes(self, dirty_sections):
+        """Apply changes from dirty sections while checking for coherency.
+
+        The Store content is discarded and reloaded from persistent storage to
+        acquire up-to-date values.
+
+        Dirty sections are MutableSection which kept track of the value they
+        are expected to update.
+        """
+        # We need an up-to-date version from the persistent storage, unload the
+        # store. The reload will occur when needed (triggered by the first
+        # get_mutable_section() call below.
+        self.unload()
+        # Apply the changes from the preserved dirty sections
+        for dirty in dirty_sections:
+            clean = self.get_mutable_section(dirty.id)
+            clean.apply_changes(dirty, self)
+        # Everything is clean now
+        self.dirty_sections = []
+
+    def save_changes(self):
+        """Saves the Store to persistent storage if changes occurred.
+
+        Apply the changes recorded in the mutable sections to a store content
+        refreshed from persistent storage.
+        """
+        raise NotImplementedError(self.save_changes)
+
     def external_url(self):
         raise NotImplementedError(self.external_url)
 
@@ -2982,6 +3084,7 @@ class CommandLineStore(Store):
         if opts is None:
             opts = {}
         self.options = {}
+        self.id = 'cmdline'
 
     def _reset(self):
         # The dict should be cleared but not replaced so it can be shared.
@@ -3005,16 +3108,11 @@ class CommandLineStore(Store):
         return 'cmdline'
 
     def get_sections(self):
-        yield self,  self.readonly_section_class('cmdline_overrides',
-                                                 self.options)
+        yield self,  self.readonly_section_class(None, self.options)
 
 
 class IniFileStore(Store):
     """A config Store using ConfigObj for storage.
-
-    :ivar transport: The transport object where the config file is located.
-
-    :ivar file_name: The config file basename in the transport directory.
 
     :ivar _config_obj: Private member to hold the ConfigObj instance used to
         serialize/deserialize the config file.
@@ -3031,6 +3129,7 @@ class IniFileStore(Store):
 
     def unload(self):
         self._config_obj = None
+        self.dirty_sections = []
 
     def _load_content(self):
         """Load the config file bytes.
@@ -3077,6 +3176,19 @@ class IniFileStore(Store):
         except UnicodeDecodeError:
             raise errors.ConfigContentError(self.external_url())
 
+    def save_changes(self):
+        if not self.is_loaded():
+            # Nothing to save
+            return
+        if not self._need_saving():
+            return
+        # Preserve the current version
+        current = self._config_obj
+        dirty_sections = list(self.dirty_sections)
+        self.apply_changes(dirty_sections)
+        # Save to the persistent storage
+        self.save()
+
     def save(self):
         if not self.is_loaded():
             # Nothing to save
@@ -3117,7 +3229,10 @@ class IniFileStore(Store):
             section = self._config_obj
         else:
             section = self._config_obj.setdefault(section_id, {})
-        return self.mutable_section_class(section_id, section)
+        mutable_section = self.mutable_section_class(section_id, section)
+        # All mutable sections can become dirty
+        self.dirty_sections.append(mutable_section)
+        return mutable_section
 
     def quote(self, value):
         try:
@@ -3128,14 +3243,25 @@ class IniFileStore(Store):
             self._config_obj.list_values = False
 
     def unquote(self, value):
-        if value:
-            # _unquote doesn't handle None nor empty strings
+        if value and isinstance(value, basestring):
+            # _unquote doesn't handle None nor empty strings nor anything that
+            # is not a string, really.
             value = self._config_obj._unquote(value)
         return value
 
+    def external_url(self):
+        # Since an IniFileStore can be used without a file (at least in tests),
+        # it's better to provide something than raising a NotImplementedError.
+        # All daughter classes are supposed to provide an implementation
+        # anyway.
+        return 'In-Process Store, no URL'
 
 class TransportIniFileStore(IniFileStore):
     """IniFileStore that loads files from a transport.
+
+    :ivar transport: The transport object where the config file is located.
+
+    :ivar file_name: The config file basename in the transport directory.
     """
 
     def __init__(self, transport, file_name):
@@ -3271,6 +3397,7 @@ class ControlStore(LockableIniFileStore):
         super(ControlStore, self).__init__(bzrdir.transport,
                                           'control.conf',
                                            lock_dir_name='branch_lock')
+        self.id = 'control'
 
 
 class SectionMatcher(object):
@@ -3314,9 +3441,8 @@ class NameMatcher(SectionMatcher):
 
 class LocationSection(Section):
 
-    def __init__(self, section, length, extra_path):
+    def __init__(self, section, extra_path):
         super(LocationSection, self).__init__(section.id, section.options)
-        self.length = length
         self.extra_path = extra_path
         self.locals = {'relpath': extra_path,
                        'basename': urlutils.basename(extra_path)}
@@ -3342,6 +3468,53 @@ class LocationSection(Section):
                         chunks.append(chunk)
             value = ''.join(chunks)
         return value
+
+
+class StartingPathMatcher(SectionMatcher):
+    """Select sections for a given location respecting the Store order."""
+
+    # FIXME: Both local paths and urls can be used for section names as well as
+    # ``location`` to stay consistent with ``LocationMatcher`` which itself
+    # inherited the fuzziness from the previous ``LocationConfig``
+    # implementation. We probably need to revisit which encoding is allowed for
+    # both ``location`` and section names and how we normalize
+    # them. http://pad.lv/85479, http://pad.lv/437009 and http://359320 are
+    # related too. -- vila 2012-01-04
+
+    def __init__(self, store, location):
+        super(StartingPathMatcher, self).__init__(store)
+        if location.startswith('file://'):
+            location = urlutils.local_path_from_url(location)
+        self.location = location
+
+    def get_sections(self):
+        """Get all sections matching ``location`` in the store.
+
+        The most generic sections are described first in the store, then more
+        specific ones can be provided for reduced scopes.
+
+        The returned section are therefore returned in the reversed order so
+        the most specific ones can be found first.
+        """
+        location_parts = self.location.rstrip('/').split('/')
+        store = self.store
+        sections = []
+        # Later sections are more specific, they should be returned first
+        for _, section in reversed(list(store.get_sections())):
+            if section.id is None:
+                # The no-name section is always included if present
+                yield store, LocationSection(section, self.location)
+                continue
+            section_path = section.id
+            if section_path.startswith('file://'):
+                # the location is already a local path or URL, convert the
+                # section id to the same format
+                section_path = urlutils.local_path_from_url(section_path)
+            if (self.location.startswith(section_path)
+                or fnmatch.fnmatch(self.location, section_path)):
+                section_parts = section_path.rstrip('/').split('/')
+                extra_path = '/'.join(location_parts[len(section_parts):])
+                yield store, LocationSection(section, extra_path)
 
 
 class LocationMatcher(SectionMatcher):
@@ -3373,7 +3546,7 @@ class LocationMatcher(SectionMatcher):
         matching_sections = []
         if no_name_section is not None:
             matching_sections.append(
-                LocationSection(no_name_section, 0, self.location))
+                (0, LocationSection(no_name_section, self.location)))
         for section_id, extra_path, length in filtered_sections:
             # a section id is unique for a given store so it's safe to take the
             # first matching section while iterating. Also, all filtered
@@ -3383,7 +3556,7 @@ class LocationMatcher(SectionMatcher):
                 section = iter_all_sections.next()
                 if section_id == section.id:
                     matching_sections.append(
-                        LocationSection(section, length, extra_path))
+                        (length, LocationSection(section, extra_path)))
                     break
         return matching_sections
 
@@ -3392,10 +3565,10 @@ class LocationMatcher(SectionMatcher):
         matching_sections = self._get_matching_sections()
         # We want the longest (aka more specific) locations first
         sections = sorted(matching_sections,
-                          key=lambda section: (section.length, section.id),
+                          key=lambda (length, section): (length, section.id),
                           reverse=True)
         # Sections mentioning 'ignore_parents' restrict the selection
-        for section in sections:
+        for _, section in sections:
             # FIXME: We really want to use as_bool below -- vila 2011-04-07
             ignore = section.get('ignore_parents', None)
             if ignore is not None:
@@ -3463,19 +3636,7 @@ class Stack(object):
         if expand is None:
             expand = _get_expand_default_value()
         value = None
-        # Ensuring lazy loading is achieved by delaying section matching (which
-        # implies querying the persistent storage) until it can't be avoided
-        # anymore by using callables to describe (possibly empty) section
-        # lists.
         found_store = None # Where the option value has been found
-        for sections in self.sections_def:
-            for store, section in sections():
-                value = section.get(name)
-                if value is not None:
-                    found_store = store
-                    break
-            if value is not None:
-                break
         # If the option is registered, it may provide additional info about
         # value handling
         try:
@@ -3483,9 +3644,10 @@ class Stack(object):
         except KeyError:
             # Not registered
             opt = None
+
         def expand_and_convert(val):
-            # This may need to be called twice if the value is None or ends up
-            # being None during expansion or conversion.
+            # This may need to be called in different contexts if the value is
+            # None or ends up being None during expansion or conversion.
             if val is not None:
                 if expand:
                     if isinstance(val, basestring):
@@ -3499,11 +3661,30 @@ class Stack(object):
                 else:
                     val = opt.convert_from_unicode(found_store, val)
             return val
-        value = expand_and_convert(value)
-        if opt is not None and value is None:
-            # If the option is registered, it may provide a default value
-            value = opt.get_default()
+
+        # First of all, check if the environment can override the configuration
+        # value
+        if opt is not None and opt.override_from_env:
+            value = opt.get_override()
             value = expand_and_convert(value)
+        if value is None:
+            # Ensuring lazy loading is achieved by delaying section matching
+            # (which implies querying the persistent storage) until it can't be
+            # avoided anymore by using callables to describe (possibly empty)
+            # section lists.
+            for sections in self.sections_def:
+                for store, section in sections():
+                    value = section.get(name)
+                    if value is not None:
+                        found_store = store
+                        break
+                if value is not None:
+                    break
+            value = expand_and_convert(value)
+            if opt is not None and value is None:
+                # If the option is registered, it may provide a default value
+                value = opt.get_default()
+                value = expand_and_convert(value)
         for hook in ConfigHooks['get']:
             hook(self, name, value)
         return value

@@ -268,8 +268,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         """
         if path is None:
             path = osutils.getcwd()
-        control = controldir.ControlDir.open(path, _unsupported)
-        return control.open_workingtree(_unsupported)
+        control = controldir.ControlDir.open(path, _unsupported=_unsupported)
+        return control.open_workingtree(unsupported=_unsupported)
 
     @staticmethod
     def open_containing(path=None):
@@ -2980,6 +2980,16 @@ class InventoryWorkingTree(WorkingTree,
             for dir in reversed(dirblock):
                 if dir[2] == _directory:
                     pending.append(dir)
+
+    @needs_write_lock
+    def update_feature_flags(self, updated_flags):
+        """Update the feature flags for this branch.
+
+        :param updated_flags: Dictionary mapping feature names to necessities
+            A necessity can be None to indicate the feature should be removed
+        """
+        self._format._update_feature_flags(updated_flags)
+        self.control_transport.put_bytes('format', self._format.as_string())
 
 
 class WorkingTreeFormatRegistry(controldir.ControlComponentFormatRegistry):

@@ -110,6 +110,27 @@ class TestUncommit(tests.TestCaseWithTransport):
             "pointsatexisting": history[0]
             }, tree.branch.tags.get_tag_dict())
 
+    def test_uncommit_remove_tags_keeps_pending_merges(self):
+        tree, history = self.make_linear_tree()
+        copy = tree.bzrdir.sprout('copyoftree').open_workingtree()
+        copy.commit(message='merged', rev_id='merged')
+        tree.merge_from_branch(copy.branch)
+        tree.branch.tags.set_tag('pointsatmerged', 'merged')
+        history.append(tree.commit('merge'))
+        self.assertEquals('merged', tree.branch.tags.lookup_tag('pointsatmerged'))
+        self.assertEqual(history[2], tree.last_revision())
+        self.assertEqual((3, history[2]), tree.branch.last_revision_info())
+        tree.branch.tags.set_tag(u"pointsatexisting", history[1])
+        tree.branch.tags.set_tag(u"pointsatremoved", history[2])
+        uncommit.uncommit(tree.branch, tree=tree)
+        self.assertEqual(history[1], tree.last_revision())
+        self.assertEqual((2, history[1]), tree.branch.last_revision_info())
+        self.assertEquals([history[1], 'merged'], tree.get_parent_ids())
+        self.assertEqual({
+            "pointsatexisting": history[1],
+            "pointsatmerged": 'merged',
+            }, tree.branch.tags.get_tag_dict())
+
     def test_uncommit_keep_tags(self):
         tree, history = self.make_linear_tree()
         self.assertEqual(history[1], tree.last_revision())

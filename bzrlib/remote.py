@@ -23,7 +23,7 @@ from bzrlib import (
     bencode,
     branch,
     bzrdir as _mod_bzrdir,
-    config,
+    config as _mod_config,
     controldir,
     debug,
     errors,
@@ -59,6 +59,7 @@ from bzrlib.revisiontree import InventoryRevisionTree
 from bzrlib.repository import RepositoryWriteLockResult, _LazyListJoin
 from bzrlib.serializer import format_registry as serializer_format_registry
 from bzrlib.trace import mutter, note, warning, log_exception_quietly
+from bzrlib.versionedfile import ChunkedContentFactory, FulltextContentFactory
 
 
 _DEFAULT_SEARCH_DEPTH = 100
@@ -348,7 +349,7 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         _mod_bzrdir.BzrDirMetaFormat1._set_repository_format) #.im_func)
 
 
-class RemoteControlStore(config.IniFileStore):
+class RemoteControlStore(_mod_config.IniFileStore):
     """Control store which attempts to use HPSS calls to retrieve control store.
 
     Note that this is specific to bzr-based formats.
@@ -378,7 +379,7 @@ class RemoteControlStore(config.IniFileStore):
     def _ensure_real(self):
         self.bzrdir._ensure_real()
         if self._real_store is None:
-            self._real_store = config.ControlStore(self.bzrdir)
+            self._real_store = _mod_config.ControlStore(self.bzrdir)
 
     def external_url(self):
         return self.bzrdir.user_url
@@ -480,7 +481,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
                 warning('VFS BzrDir access triggered\n%s',
                     ''.join(traceback.format_stack()))
             self._real_bzrdir = _mod_bzrdir.BzrDir.open_from_transport(
-                self.root_transport, _server_formats=False)
+                self.root_transport, probers=[_mod_bzrdir.BzrProber])
             self._format._network_name = \
                 self._real_bzrdir._format.network_name()
 
@@ -1843,10 +1844,31 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             delta, new_revision_id, parents, basis_inv=basis_inv,
             propagate_caches=propagate_caches)
 
-    def add_revision(self, rev_id, rev, inv=None, config=None):
-        self._ensure_real()
-        return self._real_repository.add_revision(
-            rev_id, rev, inv=inv, config=config)
+    def add_revision(self, revision_id, rev, inv=None):
+        _mod_revision.check_not_reserved_id(revision_id)
+        key = (revision_id,)
+        # check inventory present
+        if not self.inventories.get_parent_map([key]):
+            if inv is None:
+                raise errors.WeaveRevisionNotPresent(revision_id,
+                                                     self.inventories)
+            else:
+                # yes, this is not suitable for adding with ghosts.
+                rev.inventory_sha1 = self.add_inventory(revision_id, inv,
+                                                        rev.parent_ids)
+        else:
+            rev.inventory_sha1 = self.inventories.get_sha1s([key])[key]
+        self._add_revision(rev)
+
+    def _add_revision(self, rev):
+        if self._real_repository is not None:
+            return self._real_repository._add_revision(rev)
+        text = self._serializer.write_revision_to_string(rev)
+        key = (rev.revision_id,)
+        parents = tuple((parent,) for parent in rev.parent_ids)
+        self._write_group_tokens, missing_keys = self._get_sink().insert_stream(
+            [('revisions', [FulltextContentFactory(key, parents, None, text)])],
+            self._format, self._write_group_tokens)
 
     @needs_read_lock
     def get_inventory(self, revision_id):
@@ -3178,7 +3200,7 @@ class RemoteBranchFormat(branch.BranchFormat):
         return False
 
 
-class RemoteBranchStore(config.IniFileStore):
+class RemoteBranchStore(_mod_config.IniFileStore):
     """Branch store which attempts to use HPSS calls to retrieve branch store.
 
     Note that this is specific to bzr-based formats.
@@ -3236,7 +3258,7 @@ class RemoteBranchStore(config.IniFileStore):
     def _ensure_real(self):
         self.branch._ensure_real()
         if self._real_store is None:
-            self._real_store = config.BranchStore(self.branch)
+            self._real_store = _mod_config.BranchStore(self.branch)
 
 
 class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
@@ -3941,7 +3963,7 @@ class RemoteConfig(object):
                 value = section_obj.get(name, default)
         except errors.UnknownSmartMethod:
             value = self._vfs_get_option(name, section, default)
-        for hook in config.OldConfigHooks['get']:
+        for hook in _mod_config.OldConfigHooks['get']:
             hook(self, name, value)
         return value
 
@@ -3949,8 +3971,8 @@ class RemoteConfig(object):
         if len(response[0]) and response[0][0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
         lines = response[1].read_body_bytes().splitlines()
-        conf = config.ConfigObj(lines, encoding='utf-8')
-        for hook in config.OldConfigHooks['load']:
+        conf = _mod_config.ConfigObj(lines, encoding='utf-8')
+        for hook in _mod_config.OldConfigHooks['load']:
             hook(self)
         return conf
 

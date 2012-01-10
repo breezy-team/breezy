@@ -186,6 +186,10 @@ The Option object is used to define its properties:
   suitable value for the option. If the string cannot be coerced it should
   return None.
 
+* override_from_env: a list of environment variables. The first variable set
+  will be used as the option value overriding any other definition of the
+  option.
+
 * default: the default value that Stack.get() should return if no value can
   be found for the option. This can also be a callable as long as it returns
   a unicode string.
@@ -297,11 +301,14 @@ or just ``match``.
 
 ``bzrlib`` provides:
 
-* ``LocationMatcher(store, location)``: To select all sections that match
-  ``location``.
-
 * ``NameMatcher(store, unique_id)``: To select a single section matching
   ``unique_id``.
+
+* ``LocationMatcher(store, location)``: To select all sections that match
+  ``location`` sorted by decreasing number of path components.
+
+* ``StartingPathMatcher(store, location)``: To select all sections that
+  match ``location`` in the order they appear in the ``store``.
 
 Stacks
 ------

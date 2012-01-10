@@ -166,9 +166,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
 
     def test_find_format_with_features(self):
         tree = self.make_branch_and_tree('.', format='2a')
-        tree.branch.repository.control_transport.put_bytes('format',
-            tree.branch.repository._format.get_format_string() +
-            "necessity name\n")
+        tree.branch.repository.update_feature_flags({"name": "necessity"})
         found_format = repository.RepositoryFormatMetaDir.find_format(tree.bzrdir)
         self.assertIsInstance(found_format, repository.RepositoryFormatMetaDir)
         self.assertEquals(found_format.features.get("name"), "necessity")

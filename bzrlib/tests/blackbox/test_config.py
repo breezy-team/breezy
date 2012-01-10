@@ -146,6 +146,17 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
               hello = world
             ''')
 
+    def test_cmd_line(self):
+        self.bazaar_config.set_user_option('hello', 'world')
+        script.run_script(self, '''\
+            $ bzr config -Ohello=bzr
+            cmdline:
+              hello = bzr
+            bazaar:
+              [DEFAULT]
+              hello = world
+            ''')
+
 
 class TestConfigDisplayWithPolicy(tests.TestCaseWithTransport):
 
@@ -351,4 +362,5 @@ class TestSmartServerConfig(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(5, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
