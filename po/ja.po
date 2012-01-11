@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2011-12-08 09:21+0100\n"
-"PO-Revision-Date: 2012-01-09 06:23+0000\n"
+"PO-Revision-Date: 2012-01-10 23:09+0000\n"
 "Last-Translator: IWATA Hidetaka <Unknown>\n"
 "Language-Team: Japanese <ja@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Launchpad-Export-Date: 2012-01-10 04:30+0000\n"
+"X-Launchpad-Export-Date: 2012-01-11 04:32+0000\n"
 "X-Generator: Launchpad (build 14640)\n"
 
 #: bzrlib/add.py:95
@@ -5899,7 +5899,7 @@ msgstr "%(from_path)s から %(to_path)s へのリネームに失敗しました
 msgid ""
 "Could not move %(from_path)s%(operator)s %(to_path)s%(_has_extra)s%(extra)s"
 msgstr ""
-"%(from_path)s%(operator)s から %(to_path)s%(_has_extra)s%(extra)s へ移動できません"
+"移動できません。  %(from_path)s%(operator)s  %(to_path)s%(_has_extra)s%(extra)s"
 
 #: bzrlib/errors.py:1993
 msgid ""
