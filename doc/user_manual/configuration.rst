@@ -117,10 +117,22 @@ normal mode use the ``merge-upstream`` command.
 Committing
 ^^^^^^^^^^
 
-bzr-builddeb will set the commit message from debian/changelog.  If you do not
-want this set::
+bzr-builddeb can set the commit message from debian/changelog.  To enable this,
+set::
 
-  * ``commit-message-from-changelog = false``
+  * ``commit-message-from-changelog = true``
+
+When there are quilt patches applied in the current tree, ``bzr commit``
+will by default warn::
+
+  $ bzr commit
+  Committing with 5 quilt patches applied.
+  Committing to: /tmp/popt/
+  Committed revision 20.
+
+It is also possible to force it to always make sure that quilt patches
+are unapplied or applied during a commit by setting the
+``quilt-commit-policy`` to either ``applied`` or ``unapplied``.
 
 Builders
 ^^^^^^^^

@@ -301,6 +301,9 @@ class DebBuildConfig(object):
   quilt_tree_policy = _opt_property('quilt-tree-policy',
       "Whether to automatically apply/unapply quilt patches after tree operations")
 
+  quilt_commit_policy = _opt_property("quilt-commit-policy",
+        "Policy for committing quilt patches (applied / unapplied)")
+
 
 def _test():
   import doctest

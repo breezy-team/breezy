@@ -191,6 +191,16 @@ def debian_tag_name(branch, revid):
     return db.tag_name(changelog.version)
 
 
+def start_commit_check_quilt(tree):
+    """start_commit hook which checks the state of quilt patches.
+    """
+    if tree.path2id("debian/patches") is None:
+        # No patches to worry about
+        return
+    from bzrlib.plugins.builddeb.merge_quilt import start_commit_quilt_patches
+    start_commit_quilt_patches(tree)
+
+
 def pre_merge(merger):
     pre_merge_fix_ancestry(merger)
     pre_merge_quilt(merger)
@@ -359,7 +369,10 @@ else:
         "bzrlib.mutabletree", "MutableTree.hooks",
         'post_build_tree', post_build_tree_quilt,
         'Applying quilt patches.')
-
+    install_lazy_named_hook(
+        "bzrlib.mutabletree", "MutableTree.hooks",
+        "start_commit", start_commit_check_quilt,
+        "Check for (un)applied quilt patches")
 
 try:
     from bzrlib.revisionspec import revspec_registry

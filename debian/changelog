@@ -5,6 +5,8 @@ bzr-builddeb (2.8.1) UNRELEASED; urgency=low
     commands like 'bzr bash-completion'. LP: #903650
   * Provide merge-package functionality as a hook for 'bzr merge'.
     LP: #486075, LP: #910900
+  * Add pre-commit hook that warns about applied quilt patches, and can
+    automatically unapply/apply all quilt patches. LP: #608670
   * Automatically unapply patches before merge operations.
     LP: #815854
   * Include full changelog paths that were checked in error message.

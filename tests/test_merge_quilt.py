@@ -22,12 +22,15 @@
 import os
 import shutil
 
+from bzrlib import trace
+
 from bzrlib.hooks import install_lazy_named_hook
 
 from bzrlib.plugins.builddeb import (
     pre_merge_quilt,
     post_build_tree_quilt,
     post_merge_quilt_cleanup,
+    start_commit_check_quilt,
     )
 from bzrlib.plugins.builddeb.quilt import quilt_push_all
 from bzrlib.plugins.builddeb.merge_quilt import tree_unapply_patches
@@ -239,3 +242,85 @@ c
 >>>>>>> MERGE-SOURCE
 """, "a/a")
         self.assertEquals(2, conflicts)
+
+
+
+class StartCommitMergeHookTests(TestCaseWithTransport):
+
+    def enable_hooks(self):
+        install_lazy_named_hook(
+            "bzrlib.mutabletree", "MutableTree.hooks",
+            'start_commit', start_commit_check_quilt,
+            'Check for (un)applied quilt patches')
+
+    def test_applied(self):
+        self.enable_hooks()
+        tree = self.make_branch_and_tree('source')
+        self.build_tree(['source/debian/', 'source/debian/patches/'])
+        self.build_tree_contents([
+            ('source/debian/patches/series', 'patch1\n'),
+            ('source/debian/patches/patch1', TRIVIAL_PATCH),
+            ('source/debian/bzr-builddeb.conf',
+                "[BUILDDEB]\n"
+                "quilt-commit-policy = applied\n")])
+        self.assertPathDoesNotExist("source/.pc/applied-patches")
+        self.assertPathDoesNotExist("source/a")
+        tree.smart_add([tree.basedir])
+        tree.commit("foo")
+        self.assertPathExists("source/.pc/applied-patches")
+        self.assertPathExists("source/a")
+
+    def test_unapplied(self):
+        self.enable_hooks()
+        tree = self.make_branch_and_tree('source')
+        self.build_tree(['source/debian/', 'source/debian/patches/'])
+        self.build_tree_contents([
+            ('source/debian/patches/series', 'patch1\n'),
+            ('source/debian/patches/patch1', TRIVIAL_PATCH),
+            ('source/debian/bzr-builddeb.conf',
+                "[BUILDDEB]\n"
+                "quilt-commit-policy = unapplied\n")])
+        quilt_push_all(tree.basedir)
+        self.assertPathExists("source/.pc/applied-patches")
+        self.assertPathExists("source/a")
+        tree.smart_add([tree.basedir])
+        tree.commit("foo")
+        self.assertPathDoesNotExist("source/.pc/applied-patches")
+        self.assertPathDoesNotExist("source/a")
+
+    def test_warning(self):
+        self.enable_hooks()
+        warnings = []
+        def warning(*args):
+            if len(args) > 1:
+                warnings.append(args[0] % args[1:])
+            else:
+                warnings.append(args[0])
+        _warning = trace.warning
+        trace.warning = warning
+        self.addCleanup(setattr, trace, "warning", _warning)
+        tree = self.make_branch_and_tree('source')
+        self.build_tree(['source/debian/', 'source/debian/patches/'])
+        self.build_tree_contents([
+            ('source/debian/patches/series', 'patch1\n'),
+            ('source/debian/patches/patch1', TRIVIAL_PATCH)])
+        quilt_push_all(tree.basedir)
+        tree.smart_add([tree.basedir])
+        tree.commit("initial")
+        self.assertEquals([], warnings)
+        self.assertPathExists("source/.pc/applied-patches")
+        self.assertPathExists("source/a")
+        self.build_tree_contents([
+            ('source/debian/patches/series', 'patch1\npatch2\n'),
+            ('source/debian/patches/patch2', 
+                """--- /dev/null	2012-01-02 01:09:10.986490031 +0100
++++ base/b	2012-01-02 20:03:59.710666215 +0100
+@@ -0,0 +1 @@
++a
+""")])
+        tree.smart_add([tree.basedir])
+        tree.commit("foo")
+        self.assertEquals(['Committing with 1 patches applied and 1 patches unapplied.'], warnings)
+        self.assertPathExists("source/.pc/applied-patches")
+        self.assertPathExists("source/a")
+        self.assertPathDoesNotExist("source/b")
