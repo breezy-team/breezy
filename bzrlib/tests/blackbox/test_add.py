@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009, 2010, 2011 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -154,8 +154,8 @@ class TestAdd(tests.TestCaseWithTransport):
         new_tree = self.make_branch_and_tree('new')
         self.build_tree(['new/a', 'new/b/', 'new/b/c', 'd'])
 
-        os.chdir('new')
-        out, err = self.run_bzr('add --file-ids-from ../base')
+        out, err = self.run_bzr('add --file-ids-from ../base',
+                                working_dir='new')
         self.assertEqual('', err)
         self.assertEqualDiff('adding a w/ file id from a\n'
                              'adding b w/ file id from b\n'
@@ -175,14 +175,14 @@ class TestAdd(tests.TestCaseWithTransport):
         new_tree = self.make_branch_and_tree('new')
         self.build_tree(['new/c', 'new/d'])
 
-        os.chdir('new')
-        out, err = self.run_bzr('add --file-ids-from ../base/b')
+        out, err = self.run_bzr('add --file-ids-from ../base/b',
+                                working_dir='new')
         self.assertEqual('', err)
         self.assertEqualDiff('adding c w/ file id from b/c\n'
                              'adding d w/ file id from b/d\n',
                              out)
 
-        new_tree = new_tree.bzrdir.open_workingtree()
+        new_tree = new_tree.bzrdir.open_workingtree('new')
         self.assertEqual(base_tree.path2id('b/c'), new_tree.path2id('c'))
         self.assertEqual(base_tree.path2id('b/d'), new_tree.path2id('d'))
 
@@ -239,7 +239,7 @@ class TestAdd(tests.TestCaseWithTransport):
         out, err = self.run_bzr(["add", "a", "b"], working_dir=u"\xA7")
         self.assertEquals(out, "adding a\n" "adding b\n")
         self.assertEquals(err, "")
-        
+
     def test_add_skip_large_files(self):
         """Test skipping files larger than add.maximum_file_size"""
         tree = self.make_branch_and_tree('.')
@@ -250,16 +250,13 @@ class TestAdd(tests.TestCaseWithTransport):
         tree.branch.get_config().set_user_option('add.maximum_file_size', 5)
         out = self.run_bzr('add')[0]
         results = sorted(out.rstrip('\n').split('\n'))
-        self.assertEquals(['adding small.txt'], 
-                          results)
+        self.assertEquals(['adding small.txt'], results)
         # named items never skipped, even if over max
         out, err = self.run_bzr(["add", "big2.txt"])
         results = sorted(out.rstrip('\n').split('\n'))
-        self.assertEquals(['adding big2.txt'], 
-                          results)
-        self.assertEquals(err, "")
-        tree.branch.get_config().set_user_option('add.maximum_file_size', 30)
+        self.assertEquals(['adding big2.txt'], results)
+        self.assertEquals("", err)
+        tree.branch.get_config_stack().set('add.maximum_file_size', 30)
         out = self.run_bzr('add')[0]
         results = sorted(out.rstrip('\n').split('\n'))
-        self.assertEquals(['adding big.txt'], 
-                          results)
+        self.assertEquals(['adding big.txt'], results)

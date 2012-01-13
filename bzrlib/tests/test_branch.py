@@ -219,12 +219,13 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
 
     def test_find_format_with_features(self):
         tree = self.make_branch_and_tree('.', format='2a')
-        tree.branch.control_transport.put_bytes('format',
-            tree.branch._format.get_format_string() +
-            "optional name\n")
+        tree.branch.update_feature_flags({"name": "optional"})
         found_format = _mod_branch.BranchFormatMetadir.find_format(tree.bzrdir)
         self.assertIsInstance(found_format, _mod_branch.BranchFormatMetadir)
         self.assertEquals(found_format.features.get("name"), "optional")
+        tree.branch.update_feature_flags({"name": None})
+        branch = _mod_branch.Branch.open('.')
+        self.assertEquals(branch._format.features, {})
 
     def test_register_unregister_format(self):
         # Test the deprecated format registration functions
@@ -355,9 +356,8 @@ class TestBranch67(object):
         self.assertPathDoesNotExist('a/.bzr/branch/parent')
         self.assertEqual('http://example.com', branch.get_parent())
         branch.set_push_location('sftp://example.com')
-        config = branch.get_config()._get_branch_data_config()
-        self.assertEqual('sftp://example.com',
-                         config.get_user_option('push_location'))
+        config = branch.get_config_stack()
+        self.assertEqual('sftp://example.com', config.get('push_location'))
         branch.set_bound_location('ftp://example.com')
         self.assertPathDoesNotExist('a/.bzr/branch/bound')
         self.assertEqual('ftp://example.com', branch.get_bound_location())

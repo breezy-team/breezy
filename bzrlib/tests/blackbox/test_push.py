@@ -38,6 +38,7 @@ from bzrlib.tests import (
     script,
     test_foreign,
     )
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 from bzrlib.transport import memory
 
 
@@ -267,6 +268,8 @@ class TestPush(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(9, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
     def test_push_smart_stacked_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -283,6 +286,8 @@ class TestPush(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(14, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
         remote = branch.Branch.open('public')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
 
@@ -299,6 +304,8 @@ class TestPush(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(11, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
     def test_push_smart_incremental_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -315,6 +322,8 @@ class TestPush(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(11, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
     def test_push_smart_with_default_stacking_url_path_segment(self):
         # If the default stacked-on location is a path element then branches

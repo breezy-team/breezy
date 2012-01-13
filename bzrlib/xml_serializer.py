@@ -26,41 +26,32 @@ from __future__ import absolute_import
 
 import re
 
-from bzrlib.serializer import Serializer
-from bzrlib.trace import mutter
-
 try:
-    try:
-        # it's in this package in python2.5
-        from xml.etree.cElementTree import (ElementTree, SubElement, Element,
-            XMLTreeBuilder, fromstring, tostring)
-        import xml.etree as elementtree
-        # Also import ElementTree module so monkey-patching below always works
-        import xml.etree.ElementTree
-    except ImportError:
-        from cElementTree import (ElementTree, SubElement, Element,
-                                  XMLTreeBuilder, fromstring, tostring)
-        import elementtree.ElementTree
-    ParseError = SyntaxError
+    import xml.etree.cElementTree as elementtree
+    ParseError = getattr(elementtree, "ParseError", SyntaxError)
 except ImportError:
-    mutter('WARNING: using slower ElementTree; consider installing cElementTree'
-           " and make sure it's on your PYTHONPATH")
-    # this copy is shipped with bzr
-    from util.elementtree.ElementTree import (ElementTree, SubElement,
-                                              Element, XMLTreeBuilder,
-                                              fromstring, tostring)
-    import util.elementtree as elementtree
-    from xml.parsers.expat import ExpatError as ParseError
+    # Fall back to pure python implementation if C extention is unavailable
+    import xml.etree.ElementTree as elementtree
+    try:
+        from xml.etree.ElementTree import ParseError
+    except ImportError:
+        from xml.parsers.expat import ExpatError as ParseError
+
+(ElementTree, SubElement, Element, XMLTreeBuilder, fromstring, tostring) = (
+    elementtree.ElementTree, elementtree.SubElement, elementtree.Element,
+    elementtree.XMLTreeBuilder, elementtree.fromstring, elementtree.tostring)
+
 
 from bzrlib import (
     cache_utf8,
+    errors,
     inventory,
     lazy_regex,
-    errors,
+    serializer,
     )
 
 
-class XMLSerializer(Serializer):
+class XMLSerializer(serializer.Serializer):
     """Abstract XML object serialize/deserialize"""
 
     squashes_xml_invalid_characters = True
