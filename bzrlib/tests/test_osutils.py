@@ -2097,8 +2097,19 @@ class TestCreationOps(tests.TestCaseInTempDir):
 
 class TestGetuserUnicode(tests.TestCase):
 
+    def test_is_unicode(self):
+        user = osutils.getuser_unicode()
+        self.assertIsInstance(user, unicode)
+
+    def envvar_to_override(self):
+        if sys.platform == "win32":
+            # Disable use of platform calls on windows so envvar is used
+            self.overrideAttr(win32utils, 'has_ctypes', False)
+            return 'USERNAME' # only variable used on windows
+        return 'LOGNAME' # first variable checked by getpass.getuser()
+
     def test_ascii_user(self):
-        self.overrideEnv('LOGNAME', 'jrandom')
+        self.overrideEnv(self.envvar_to_override(), 'jrandom')
         self.assertEqual(u'jrandom', osutils.getuser_unicode())
 
     def test_unicode_user(self):
@@ -2110,10 +2121,8 @@ class TestGetuserUnicode(tests.TestCase):
                 % (osutils.get_user_encoding(),))
         uni_username = u'jrandom' + uni_val
         encoded_username = uni_username.encode(ue)
-        self.overrideEnv('LOGNAME', encoded_username)
+        self.overrideEnv(self.envvar_to_override(), encoded_username)
         self.assertEqual(uni_username, osutils.getuser_unicode())
-        self.overrideEnv('LOGNAME', u'jrandom\xb6'.encode(ue))
-        self.assertEqual(u'jrandom\xb6', osutils.getuser_unicode())
 
 
 class TestBackupNames(tests.TestCase):

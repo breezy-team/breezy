@@ -28,6 +28,10 @@ New Features
   parent directories.
   (Jared Hance, Jelmer Vernooij, #253529)
 
+* ``config.Option`` can now declare ``override_from_env``, a list of
+  environment variables which, when set, that takes precedence over values
+  defined in configuration files. (Vincent Ladeuil, #907279)
+
 Improvements
 ************
 
@@ -78,6 +82,16 @@ Bug Fixes
   of revisions whose ancestry is not obviously on the same developement
   line. (Vincent Ladeuil, #904744)
 
+* Configuration stacks can now use ``StartingPathMatcher`` to select the
+  sections matching a location while respecting the order chosen by the user
+  in the configuration file: from generic sections to specific
+  sections. (Vincent Ladeuil, #832046).
+
+* Make lazy imports resilient when resolved concurrently from multiple
+  threads. Now the stand-in object will behave as a proxy for the real object
+  after the initial access, rather than throwing. Assigning the object to
+  multiple names should still be avoided. (Martin von Gagern, #396819)
+
 * Not setting ``gpg_signing_key`` or setting it to ``default`` will use the
   user email (obtained from the ``email`` configuration option or its
   default value). (Vincent Ladeuil, Jelmer Vernooij, #904550)
@@ -93,6 +107,16 @@ Bug Fixes
 
 * Report mistake trying to move a removed file with a non-ascii name without
   UnicodeEncodeError being raised. (Martin Packman, #898541)
+
+* Safely unquote configuration values in weird edge cases (a section seen as
+  a dictionary which is not a supported use case for the configuration
+  stacks). (Vincent Ladeuil, #908050)
+
+* Stop altering ``sys.platform`` on OSX when initialising the locale.
+  (Martin Packman, #570495)
+
+* Uncommit no longer removes tags if they are part of the working
+  trees pending merges. (Jelmer Vernooij, #905462)
 
 Documentation
 *************
@@ -113,9 +137,15 @@ API Changes
 * ``Repository.get_commit_builder`` now takes a ``config_stack``
   rather than a ``config`` argument. (Jelmer Vernooij)
 
+* Scripts using bzrlib should now ensure setlocale is called on posix
+  platforms if they need a non-ascii user encoding. (Martin Packman)
+
 * Send formats now accept a new optional argument ``submit_branch``,
   which can be None or a Branch object for the submit branch location.
   (Jelmer Vernooij)
+
+* ``VersionedFileRepository.add_revision`` no longer takes a ``config``
+  argument. (Jelmer Vernooij)
 
 Internals
 *********
@@ -131,6 +161,11 @@ Internals
 * Configuration options can be SI units by using ``int_SI_from_unicode`` as
   their ``convert_from_unicode`` helper. (Vincent Ladeuil)
 
+* Configuration stores can now save incremental changes by using
+  ``save_changes()`` instead of ``save()``. This reduces the number or
+  required input/outputs and allows stores to be shared between
+  stacks. (Vincent Ladeuil)
+
 * ControlDir now has a get_branches method that returns a dictionary
   whose keys are the names of the branches and whose values are the
   branches themselves. The active branch uses the key None.
@@ -144,11 +179,21 @@ Internals
 
 * Lazy imports can now only be absolute. (Jelmer Vernooij)
 
+* Merge3Mergers now have an optional ``other_branch`` argument
+  which contains the branch from which the ``other_tree``
+  was obtained, if any. (Jelmer Vernooij)
+
+* MutableTree now has a hook ``post_build_tree`` which is called after
+  a new mutable tree has been created. (Jelmer Vernooij, #912765)
+
 * New HPSS call ``BzrDir.checkout_metadir``. (Jelmer Vernooij, #894459)
 
 * New HPSS call ``VersionedFileRepository.get_inventories``,
   speeding up various commands including ``bzr export``,
   ``bzr checkout`` and ``bzr cat``. (Jelmer Vernooij, #608640)
+
+* The ``ConfigCommandLineStore`` is now supported by ``bzr config`` and is
+  seen as single no-name section of configuration options. (Vincent Ladeuil)
 
 Testing
 *******

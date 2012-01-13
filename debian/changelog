@@ -1,4 +1,4 @@
-bzr (2.5.0~beta4+bzr6405-1) UNRELEASED; urgency=low
+bzr (2.5.0~beta4+bzr6437-1) UNRELEASED; urgency=low
 
   * New upstream snapshot.
    + Add Breaks: for older versions of bzr-pqm, which don't provide config
@@ -6,7 +6,7 @@ bzr (2.5.0~beta4+bzr6405-1) UNRELEASED; urgency=low
    + Add Breaks: for older versions of bzr-xmloutput, which use
      relative lazy imports.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Tue, 27 Dec 2011 16:30:03 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 13 Jan 2012 14:45:04 +0100
 
 bzr (2.5.0~beta4-2) unstable; urgency=low
 
