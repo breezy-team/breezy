@@ -5,6 +5,7 @@ bzr (2.5.0~beta4+bzr6437-1) UNRELEASED; urgency=low
      stacks.
    + Add Breaks: for older versions of bzr-xmloutput, which use
      relative lazy imports.
+   + Drop 03_external_elementtree, now upstream.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Fri, 13 Jan 2012 14:45:04 +0100
 

@@ -1,12 +1,14 @@
+Description: Suggest installing python-bzrlib.tests when bzrlib.tests is unavailable
+Author: Jelmer Vernooij <jelmer@debian.org>
+Status: Not upstream, Debian-specific
+
 === modified file 'bzrlib/builtins.py'
-Index: unstable-2.5/bzrlib/builtins.py
-===================================================================
---- unstable-2.5.orig/bzrlib/builtins.py	2012-01-13 14:40:43.669694000 +0100
-+++ unstable-2.5/bzrlib/builtins.py	2012-01-13 14:41:26.314834313 +0100
-@@ -4002,7 +4002,11 @@
-             load_list=None, debugflag=None, starting_with=None, subunit=False,
-             parallel=None, lsprof_tests=False,
-             sync=False):
+--- old/bzrlib/builtins.py	2012-01-13 13:45:44 +0000
++++ new/bzrlib/builtins.py	2012-01-13 13:46:18 +0000
+@@ -4013,7 +4013,11 @@
+         # backtraces.
+         lazy_import.disallow_proxying()
+ 
 -        from bzrlib import tests
 +        try:
 +            from bzrlib import tests
@@ -16,3 +18,4 @@ Index: unstable-2.5/bzrlib/builtins.py
  
          if testspecs_list is not None:
              pattern = '|'.join(testspecs_list)
+
