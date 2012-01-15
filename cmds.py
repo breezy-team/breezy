@@ -91,9 +91,18 @@ def _get_changelog_info(tree, last_version=None, package=None, distribution=None
     from bzrlib.plugins.builddeb.errors import (
         MissingChangelogError,
         )
+    DEFAULT_FALLBACK_DISTRIBUTION = "debian"
     current_version = last_version
     try:
         (changelog, top_level) = find_changelog(tree, False, max_blocks=2)
+    except MissingChangelogError:
+        top_level = False
+        changelog = None
+        if distribution is None:
+            distribution = DEFAULT_FALLBACK_DISTRIBUTION
+            note(gettext("No distribution specified, and no changelog, "
+                         "assuming '%s'"), distribution)
+    else:
         if last_version is None:
             current_version = changelog.version.upstream_version
         if package is None:
@@ -102,13 +111,11 @@ def _get_changelog_info(tree, last_version=None, package=None, distribution=None
             distribution = find_last_distribution(changelog)
             if distribution is not None:
                 note(gettext("Using distribution %s") % distribution)
-    except MissingChangelogError:
-        top_level = False
-        changelog = None
-    if distribution is None:
-        note("No distribution specified, and no changelog, "
-                "assuming 'debian'")
-        distribution = "debian"
+            else:
+                distribution = DEFAULT_FALLBACK_DISTRIBUTION
+                note(gettext("No distribution specified, and no previous "
+                             "distribution in changelog. Assuming '%s'"),
+                             distribution)
     distribution = distribution.lower()
     distribution_name = lookup_distribution(distribution)
     if distribution_name is None:
