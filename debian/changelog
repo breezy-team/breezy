@@ -1,12 +1,11 @@
-bzr (2.5.0~beta5-1) UNRELEASED; urgency=low
+bzr (2.5.0~beta5-1) unstable; urgency=low
 
-  * New upstream snapshot.
+  * New upstream release..
    + Add Breaks: for older versions of bzr-pqm, which don't provide config
      stacks.
    + Add Breaks: for older versions of bzr-xmloutput, which use
      relative lazy imports.
    + Drop 03_external_elementtree, now upstream.
-  * New upstream release.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Mon, 16 Jan 2012 18:58:22 +0100
 
