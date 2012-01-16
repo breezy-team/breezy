@@ -217,6 +217,7 @@ def pre_merge_quilt(merger):
     from bzrlib import trace
     from bzrlib.plugins.builddeb.util import debuild_config
     config = debuild_config(merger.working_tree, merger.working_tree)
+    merger.debuild_config = config
     if not config.quilt_smart_merge:
         trace.mutter("skipping smart quilt merge, not enabled.")
         return
@@ -230,7 +231,7 @@ def pre_merge_quilt(merger):
     series_file_id = merger.working_tree.path2id("debian/patches/series")
     if series_file_id is not None:
         merger._old_quilt_series = merger.working_tree.get_file_lines(series_file_id)
-    if merger.working_tree.path2id("debian/patches") is not None:
+    if series_file_id is not None:
         quilt_pop_all(working_dir=merger.working_tree.basedir)
     try:
         merger.this_tree, this_dir = tree_unapply_patches(merger.this_tree,
@@ -268,8 +269,10 @@ def post_merge_quilt_cleanup(merger):
     import shutil
     for dir in getattr(merger, "_quilt_tempdirs", []):
         shutil.rmtree(dir)
-    from bzrlib.plugins.builddeb.util import debuild_config
-    config = debuild_config(merger.working_tree, merger.working_tree)
+    config = getattr(merger, "debuild_config", None)
+    if config is None:
+        # If there is no debuild config, then pre_merge didn't get far enough.
+        return
     policy = config.quilt_tree_policy
     if policy is None:
         return
