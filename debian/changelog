@@ -15,8 +15,9 @@ bzr-builddeb (2.8.1) UNRELEASED; urgency=low
     patch by Gediminas Paulauskas. LP: #911262
   * Automatically apply patches for 3.0 (quilt) packages in 'bzr bd-do'
     and 'bzr bd'. LP: #616791
+  * Switch to source format '3.0 (native)'.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Wed, 04 Jan 2012 22:14:07 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 16 Jan 2012 01:01:01 +0100
 
 bzr-builddeb (2.8.0) unstable; urgency=low
 
