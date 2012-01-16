@@ -22,9 +22,12 @@
 import os
 import shutil
 
-from bzrlib import trace
-
-from bzrlib.hooks import install_lazy_named_hook
+from bzrlib import (
+    errors,
+    trace,
+    )
+from bzrlib.merge import Merger
+from bzrlib.mutabletree import MutableTree
 
 from bzrlib.plugins.builddeb import (
     pre_merge_quilt,
@@ -37,7 +40,10 @@ from bzrlib.plugins.builddeb.merge_quilt import tree_unapply_patches
 
 from bzrlib.plugins.builddeb.tests.test_quilt import quilt_feature
 
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+    TestCaseWithTransport,
+    TestSkipped,
+    )
 
 TRIVIAL_PATCH = """--- /dev/null	2012-01-02 01:09:10.986490031 +0100
 +++ base/a	2012-01-02 20:03:59.710666215 +0100
@@ -87,16 +93,16 @@ class TestMergeHook(TestCaseWithTransport):
     _test_needs_features = [quilt_feature]
 
     def enable_hooks(self):
-        install_lazy_named_hook(
-            "bzrlib.merge", "Merger.hooks",
-            'pre_merge', pre_merge_quilt,
-            'Debian quilt patch (un)applying and ancestry fixing')
-        install_lazy_named_hook(
-            "bzrlib.merge", "Merger.hooks",
+        try:
+            Merger.hooks.install_named_hook(
+                'pre_merge', pre_merge_quilt,
+                'Debian quilt patch (un)applying and ancestry fixing')
+        except errors.UnknownHook:
+            raise TestSkipped("pre_merge hook not available")
+        Merger.hooks.install_named_hook(
             'post_merge', post_merge_quilt_cleanup,
             'Cleaning up quilt temporary directories')
-        install_lazy_named_hook(
-            "bzrlib.mutabletree", "MutableTree.hooks",
+        MutableTree.hooks.install_named_hook(
             "post_build_tree", post_build_tree_quilt,
             "Apply quilt trees.")
 
@@ -248,8 +254,7 @@ c
 class StartCommitMergeHookTests(TestCaseWithTransport):
 
     def enable_hooks(self):
-        install_lazy_named_hook(
-            "bzrlib.mutabletree", "MutableTree.hooks",
+        MutableTree.hooks.install_named_hook(
             'start_commit', start_commit_check_quilt,
             'Check for (un)applied quilt patches')
 

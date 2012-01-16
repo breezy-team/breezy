@@ -22,7 +22,10 @@ from bzrlib.merge import Merger
 import os
 import string
 
-from bzrlib import version_info as bzrlib_version
+from bzrlib import (
+    errors,
+    version_info as bzrlib_version,
+    )
 from bzrlib.tests import TestNotApplicable
 from bzrlib.plugins.builddeb import pre_merge_fix_ancestry
 from bzrlib.plugins.builddeb.tests import BuilddebTestCase
@@ -85,13 +88,14 @@ class TestMergePackageBB(BuilddebTestCase):
         The `SharedUpstreamConflictsWithTargetPackaging` exception is
         thrown instead.
         """
-        if bzrlib_version < (2, 5):
-            raise TestNotApplicable("pre_merge hook requires bzr 2.5")
         target, _source = self.make_conflicting_branches_setup()
         os.chdir('ubup-o')
         merge_source = '../debp-n'
-        Merger.hooks.install_named_hook(
-            "pre_merge", pre_merge_fix_ancestry, "fix ancestry")
+        try:
+            Merger.hooks.install_named_hook(
+                "pre_merge", pre_merge_fix_ancestry, "fix ancestry")
+        except errors.UnknownHook:
+            raise TestNotApplicable("pre_merge hook requires bzr 2.5")
         self.run_bzr_error(
             ['branches for the merge source and target have diverged'],
             'merge %s' % merge_source)

@@ -341,8 +341,12 @@ class TestChangelogHook(tests.TestCaseWithMemoryTransport):
                 return tree.get_file_lines(file_id)
 
         merger = FakeMerger(tree)
-        params = merge.MergeFileHookParams(merger, 'c-id', None, 'file', 'file',
-                                       'this')
+        try:
+            params_cls = merge.MergeFileHookParams
+        except AttributeError:
+            # bzr < 2.5
+            params_cls = merge.MergeHookParams
+        params = params_cls(merger, 'c-id', None, 'file', 'file', 'this')
         return params, merger
 
 
