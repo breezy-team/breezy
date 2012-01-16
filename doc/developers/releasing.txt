@@ -487,9 +487,9 @@ translations for the new branch and inform translators.
    turn on ``Import template files`` then for exports click ``Choose a
    target branch`` and point it at the branch you just pushed.
 
-#. E-mail translators to announce that the forthcoming stable release
-   of bzr is ready for translations.  Send to
-   ``translators@lists.launchpad.net`` and
+#. E-mail translators to announce that the forthcoming stable release of bzr
+   is ready for translations.  Send to
+   ``launchpad-translators@lists.launchpad.net`` and
    ``ubuntu-translators@lists.ubuntu.com``.
 
 #. The series is now frozen for strings and API, see below for adding
