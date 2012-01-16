@@ -450,7 +450,7 @@ there is one special case that requires a bit more care: when you release
 the *last* beta for a given ``x.y`` series (from trunk aka lp:bzr), you need
 to setup *two* branches for the next cycle:
 
-#. ``lp:bzr`` needs to be opened for the next *series* ``x.(y+1)``
+#. ``lp:bzr`` needs to be opened for the next *series* ``x.(y+1)``.
 
 #. ``lp:bzr/x.y`` needs to be opened for the next *release* ``x.y.0`` in the
    series. Since this is first real use of ``lp:bzr/x.y``, this is also the
@@ -466,10 +466,14 @@ been waiting to land on ``lp:bzr``.
 
 In a nutshell:
 
-#. Create or update the ``x.y`` PQM branch based on whatever
-   revision you want to release
-
 #. Open ``lp:bzr`` for ``x.(y+1)``
+
+#. Create or update the ``x.y`` PQM branch based on whatever revision you
+   want to release. Since it takes time to create the PQM branch for the new
+   series you should plan to get it created a few days before you need it
+   and seed it with the revision from trunk you want to base your release of
+   (ask a LOSA for pulling this revision from trunk and pushing it to the
+   series branch (``lp:bzr/x.y``) when you're ready).
 
 #. Release ``x.y.0`` from ``lp:bzr/x.y``
 
