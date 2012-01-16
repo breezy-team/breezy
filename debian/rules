@@ -15,9 +15,13 @@ html_docs=$(patsubst %.rst, %.html, $(rst_docs))
 
 docs: $(html_docs)
 
-build: $(PYVERS:%=build-python%) docs
+build-indep: $(PYVERS:%=build-python%) docs
 	rst2html README > README.html
 	touch $@
+
+build-arch:
+
+build: build-indep
 
 ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
 SELFTEST_CONCURRENCY = BZR_CONCURRENCY=$(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
@@ -45,7 +49,7 @@ clean:
 	python setup.py clean --all
 	dh_clean
 
-install: build $(PYVERS:%=install-python%)
+install: build-indep $(PYVERS:%=install-python%)
 
 install-all-stamp:
 	dh_testdir
@@ -57,7 +61,7 @@ install-all-stamp:
 install-python%: install-all-stamp
 	python$* setup.py install --root=$(CURDIR)/debian/bzr-builddeb --no-compile --install-layout=deb
 
-binary-indep: build install
+binary-indep: build-indep install
 	dh_testdir
 	dh_testroot
 	dh_install
@@ -73,7 +77,7 @@ binary-indep: build install
 	dh_md5sums
 	dh_builddeb
 
-binary-arch: build install
+binary-arch: build-arch install
 
 binary: binary-indep binary-arch
-.PHONY: build clean binary-indep binary-arch binary install
+.PHONY: build clean binary-indep binary-arch binary install build-arch build-indep
