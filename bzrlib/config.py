@@ -73,7 +73,7 @@ up=pull
 """
 
 from __future__ import absolute_import
-
+from cStringIO import StringIO
 import os
 import sys
 
@@ -83,7 +83,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import fnmatch
 import re
-from cStringIO import StringIO
 
 from bzrlib import (
     atomicfile,

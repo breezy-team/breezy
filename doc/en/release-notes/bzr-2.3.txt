@@ -35,6 +35,9 @@ Bug Fixes
 * Cope cleanly with buggy HTTP proxies that close the socket in the middle
   of a multipart response.  (Martin Pool, #198646).
 
+* cStringIO is now unconditionally imported in ``bzrlib.config``.
+  (Jelmer Vernooij, #905361)
+
 * Fix "Unprintable exception" error when a RetryWithNewPacks error is
   displayed.  (Andrew Bennetts)
 
