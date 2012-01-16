@@ -225,30 +225,30 @@ Update the source code
 
    For beta releases use::
 
-       version_info = (2, 1, 0, 'beta', SERIAL)
+       version_info = (2, 5, 0, 'beta', SERIAL)
 
-   For instance 2.1b1::
+   For instance 2.5b5::
 
-       version_info = (2, 1, 0, 'beta', 1)
+       version_info = (2, 5, 0, 'beta', 5)
 
    For stable releases use::
 
-       version_info = (2, 1, 2, 'final', 0)
+       version_info = (2, 5, 0, 'final', 0)
 
 #. Update the ``./doc/en/release-notes/`` section for this release.
 
    Check that all news entries related to this release have been added in
-   the right section. For example, if you're releasing 2.5b2, the following
-   command should display a a single chuk diff for the 2.5b2 release::
+   the right section. For example, if you're releasing 2.5b5, the following
+   command should display a a single chuk diff for the 2.5b5 release::
 
-     bzr diff -rbzr-2.5b1.. doc/en/release-notes/bzr-2.5.txt
+     bzr diff -rbzr-2.5b4.. doc/en/release-notes/bzr-2.5.txt
 
    Fill out the date and a description of the release under the existing
    header (the diff above will help you summarizing). If there isn't one,
    follow the instructions above for using the ``release-template.txt`` file
    and remind people that they should document their changes there ;)
 
-   See *2.1.1* or similar for an example of what this looks like.
+   See *2.5b5* or similar for an example of what this looks like.
 
 #. Add or check the summary of the release into the "What's New" document.
 
@@ -479,10 +479,10 @@ In a nutshell:
 
 #. Open ``lp:bzr/x.y`` for bug fixes
 
-You also need to ensure Launchpad is set up to import/export
-translations for the new branch and inform translators.
+You also need to ensure Launchpad is set up to import/export translations
+for the new branch and inform translators.
 
-#. Push a branch::
+#. Push the last beta release to a new branch::
 
      bzr push lp:~bzr-core/bzr/bzr-translations-export-x.y
 
@@ -491,9 +491,9 @@ translations for the new branch and inform translators.
    turn on ``Import template files`` then for exports click ``Choose a
    target branch`` and point it at the branch you just pushed.
 
-#. E-mail translators to announce that the forthcoming stable release
-   of bzr is ready for translations.  Send to
-   ``translators@lists.launchpad.net`` and
+#. E-mail translators to announce that the forthcoming stable release of bzr
+   is ready for translations.  Send to
+   ``launchpad-translators@lists.launchpad.net`` and
    ``ubuntu-translators@lists.ubuntu.com``.
 
 #. The series is now frozen for strings and API, see below for adding
