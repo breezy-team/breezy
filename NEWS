@@ -15,6 +15,10 @@
 
   * Support Repository.set_make_working_trees(). (Jelmer Vernooij, #777065)
 
+ FEATURES
+
+  * Add 'github:' directory service. (Jelmer Vernooij)
+
 0.6.6	2011-12-15
 
  BUG FIXES

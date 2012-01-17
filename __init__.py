@@ -273,7 +273,7 @@ if not getattr(Prober, "known_formats", None): # bzr < 2.4
     RevisionTree.get_file_revision = get_file_revision
 
 ControlDirFormat.register_prober(LocalGitProber)
-ControlDirFormat._server_probers.insert(0, RemoteGitProber)
+ControlDirFormat._server_probers.append(RemoteGitProber)
 
 register_transport_proto('git://',
         help="Access using the Git smart server protocol.")
@@ -463,6 +463,14 @@ else:
         "BranchWSGIApp.hooks", "controller",
         loggerhead_git_hook, "git support")
 
+from bzrlib.directory_service import directories
+
+directories.register_lazy('github:', 'bzrlib.plugins.git.directory',
+                          'GitHubDirectory',
+                          'GitHub directory.')
+directories.register_lazy('git@github.com:', 'bzrlib.plugins.git.directory',
+                          'GitHubDirectory',
+                          'GitHub directory.')
 
 def test_suite():
     from bzrlib.plugins.git import tests
