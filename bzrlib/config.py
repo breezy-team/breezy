@@ -73,7 +73,7 @@ up=pull
 """
 
 from __future__ import absolute_import
-
+from cStringIO import StringIO
 import os
 import sys
 
@@ -83,7 +83,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import fnmatch
 import re
-from cStringIO import StringIO
 
 from bzrlib import (
     atomicfile,
@@ -3114,10 +3113,6 @@ class CommandLineStore(Store):
 class IniFileStore(Store):
     """A config Store using ConfigObj for storage.
 
-    :ivar transport: The transport object where the config file is located.
-
-    :ivar file_name: The config file basename in the transport directory.
-
     :ivar _config_obj: Private member to hold the ConfigObj instance used to
         serialize/deserialize the config file.
     """
@@ -3253,9 +3248,19 @@ class IniFileStore(Store):
             value = self._config_obj._unquote(value)
         return value
 
+    def external_url(self):
+        # Since an IniFileStore can be used without a file (at least in tests),
+        # it's better to provide something than raising a NotImplementedError.
+        # All daughter classes are supposed to provide an implementation
+        # anyway.
+        return 'In-Process Store, no URL'
 
 class TransportIniFileStore(IniFileStore):
     """IniFileStore that loads files from a transport.
+
+    :ivar transport: The transport object where the config file is located.
+
+    :ivar file_name: The config file basename in the transport directory.
     """
 
     def __init__(self, transport, file_name):
@@ -3435,9 +3440,8 @@ class NameMatcher(SectionMatcher):
 
 class LocationSection(Section):
 
-    def __init__(self, section, length, extra_path):
+    def __init__(self, section, extra_path):
         super(LocationSection, self).__init__(section.id, section.options)
-        self.length = length
         self.extra_path = extra_path
         self.locals = {'relpath': extra_path,
                        'basename': urlutils.basename(extra_path)}
@@ -3463,6 +3467,53 @@ class LocationSection(Section):
                         chunks.append(chunk)
             value = ''.join(chunks)
         return value
+
+
+class StartingPathMatcher(SectionMatcher):
+    """Select sections for a given location respecting the Store order."""
+
+    # FIXME: Both local paths and urls can be used for section names as well as
+    # ``location`` to stay consistent with ``LocationMatcher`` which itself
+    # inherited the fuzziness from the previous ``LocationConfig``
+    # implementation. We probably need to revisit which encoding is allowed for
+    # both ``location`` and section names and how we normalize
+    # them. http://pad.lv/85479, http://pad.lv/437009 and http://359320 are
+    # related too. -- vila 2012-01-04
+
+    def __init__(self, store, location):
+        super(StartingPathMatcher, self).__init__(store)
+        if location.startswith('file://'):
+            location = urlutils.local_path_from_url(location)
+        self.location = location
+
+    def get_sections(self):
+        """Get all sections matching ``location`` in the store.
+
+        The most generic sections are described first in the store, then more
+        specific ones can be provided for reduced scopes.
+
+        The returned section are therefore returned in the reversed order so
+        the most specific ones can be found first.
+        """
+        location_parts = self.location.rstrip('/').split('/')
+        store = self.store
+        sections = []
+        # Later sections are more specific, they should be returned first
+        for _, section in reversed(list(store.get_sections())):
+            if section.id is None:
+                # The no-name section is always included if present
+                yield store, LocationSection(section, self.location)
+                continue
+            section_path = section.id
+            if section_path.startswith('file://'):
+                # the location is already a local path or URL, convert the
+                # section id to the same format
+                section_path = urlutils.local_path_from_url(section_path)
+            if (self.location.startswith(section_path)
+                or fnmatch.fnmatch(self.location, section_path)):
+                section_parts = section_path.rstrip('/').split('/')
+                extra_path = '/'.join(location_parts[len(section_parts):])
+                yield store, LocationSection(section, extra_path)
 
 
 class LocationMatcher(SectionMatcher):
@@ -3494,7 +3545,7 @@ class LocationMatcher(SectionMatcher):
         matching_sections = []
         if no_name_section is not None:
             matching_sections.append(
-                LocationSection(no_name_section, 0, self.location))
+                (0, LocationSection(no_name_section, self.location)))
         for section_id, extra_path, length in filtered_sections:
             # a section id is unique for a given store so it's safe to take the
             # first matching section while iterating. Also, all filtered
@@ -3504,7 +3555,7 @@ class LocationMatcher(SectionMatcher):
                 section = iter_all_sections.next()
                 if section_id == section.id:
                     matching_sections.append(
-                        LocationSection(section, length, extra_path))
+                        (length, LocationSection(section, extra_path)))
                     break
         return matching_sections
 
@@ -3513,10 +3564,10 @@ class LocationMatcher(SectionMatcher):
         matching_sections = self._get_matching_sections()
         # We want the longest (aka more specific) locations first
         sections = sorted(matching_sections,
-                          key=lambda section: (section.length, section.id),
+                          key=lambda (length, section): (length, section.id),
                           reverse=True)
         # Sections mentioning 'ignore_parents' restrict the selection
-        for section in sections:
+        for _, section in sections:
             # FIXME: We really want to use as_bool below -- vila 2011-04-07
             ignore = section.get('ignore_parents', None)
             if ignore is not None:

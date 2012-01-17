@@ -73,4 +73,4 @@ class TestNoColocatedSupport(per_controldir.TestCaseWithControlDir):
         made_control = self.make_bzrdir_with_repo()
         made_control.create_branch()
         self.assertEqual(made_control.get_branches().keys(),
-                         [None])
+                         [""])
