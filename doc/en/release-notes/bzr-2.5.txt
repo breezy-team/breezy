@@ -32,6 +32,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Test for equality instead of object identity where ROOT_PARENT is concerned.
+  (Wouter van Heyst, #881142)
+
 Documentation
 *************
 
