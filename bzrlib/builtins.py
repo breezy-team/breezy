@@ -4168,7 +4168,7 @@ class cmd_merge(Command):
     Merge will do its best to combine the changes in two branches, but there
     are some kinds of problems only a human can fix.  When it encounters those,
     it will mark a conflict.  A conflict means that you need to fix something,
-    before you should commit.
+    before you can commit.
 
     Use bzr resolve when you have fixed a problem.  See also bzr conflicts.
 
