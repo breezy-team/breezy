@@ -310,8 +310,14 @@ def pre_merge_fix_ancestry(merger):
     other_config = debuild_config(merger.other_tree, merger.other_tree)
     if not (this_config.build_type == BUILD_TYPE_NATIVE or
             other_config.build_type == BUILD_TYPE_NATIVE):
-        fix_ancestry_as_needed(merger.this_tree, merger.other_branch,
-            source_revid=merger.other_tree.get_revision_id())
+        from bzrlib import trace
+        from bzrlib.plugins.builddeb.errors import PackageVersionNotPresent
+        try:
+            fix_ancestry_as_needed(merger.this_tree, merger.other_branch,
+                source_revid=merger.other_tree.get_revision_id())
+        except PackageVersionNotPresent, e:
+            trace.warning("Not fixing branch ancestry, missing pristine tar "
+                "data for version %s", e.version)
 
 
 try:
