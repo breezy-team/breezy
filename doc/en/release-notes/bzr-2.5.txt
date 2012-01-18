@@ -26,6 +26,9 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* Colocated branches can now have names including forward slashes, to
+  allow for namespaces. (Jelmer Vernooij, #907980)
+
 Bug Fixes
 *********
 

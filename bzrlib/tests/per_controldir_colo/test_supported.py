@@ -134,3 +134,10 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         self.assertEqual(['foo'], repo.bzrdir.get_branches().keys())
         self.assertEqual(target_branch.base,
                          repo.bzrdir.get_branches()['foo'].base)
+
+    def test_branch_name_with_slash(self):
+        repo = self.make_repository('branch-1')
+        target_branch = repo.bzrdir.create_branch(name='foo/bar')
+        self.assertEqual(['foo/bar'], repo.bzrdir.get_branches().keys())
+        self.assertEqual(
+            target_branch.base, repo.bzrdir.open_branch(name='foo/bar').base)
