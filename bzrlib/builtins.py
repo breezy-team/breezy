@@ -22,8 +22,8 @@ import os
 
 import bzrlib.bzrdir
 
-from bzrlib.lazy_import import lazy_import
-lazy_import(globals(), """
+from bzrlib import lazy_import
+lazy_import.lazy_import(globals(), """
 import cStringIO
 import errno
 import sys
@@ -1444,13 +1444,13 @@ class cmd_branches(Command):
         else:
             dir = controldir.ControlDir.open_containing(location)[0]
             try:
-                active_branch = dir.open_branch(name=None)
+                active_branch = dir.open_branch(name="")
             except errors.NotBranchError:
                 active_branch = None
             branches = dir.get_branches()
             names = {}
             for name, branch in branches.iteritems():
-                if name is None:
+                if name == "":
                     continue
                 active = (active_branch is not None and
                           active_branch.base == branch.base)
@@ -4004,6 +4004,15 @@ class cmd_selftest(Command):
             load_list=None, debugflag=None, starting_with=None, subunit=False,
             parallel=None, lsprof_tests=False,
             sync=False):
+
+        # During selftest, disallow proxying, as it can cause severe
+        # performance penalties and is only needed for thread
+        # safety. The selftest command is assumed to not use threads
+        # too heavily. The call should be as early as possible, as
+        # error reporting for past duplicate imports won't have useful
+        # backtraces.
+        lazy_import.disallow_proxying()
+
         from bzrlib import tests
 
         if testspecs_list is not None:
@@ -4159,7 +4168,7 @@ class cmd_merge(Command):
     Merge will do its best to combine the changes in two branches, but there
     are some kinds of problems only a human can fix.  When it encounters those,
     it will mark a conflict.  A conflict means that you need to fix something,
-    before you should commit.
+    before you can commit.
 
     Use bzr resolve when you have fixed a problem.  See also bzr conflicts.
 

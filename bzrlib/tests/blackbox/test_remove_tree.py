@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,9 +36,8 @@ class TestRemoveTree(TestCaseWithTransport):
     # Success modes
 
     def test_remove_tree_original_branch(self):
-        os.chdir('branch1')
-        self.run_bzr('remove-tree')
-        self.assertPathDoesNotExist('foo')
+        self.run_bzr('remove-tree', working_dir='branch1')
+        self.assertPathDoesNotExist('branch1/foo')
 
     def test_remove_tree_original_branch_explicit(self):
         self.run_bzr('remove-tree branch1')
@@ -53,9 +52,8 @@ class TestRemoveTree(TestCaseWithTransport):
     def test_remove_tree_sprouted_branch(self):
         self.tree.bzrdir.sprout('branch2')
         self.assertPathExists('branch2/foo')
-        os.chdir('branch2')
-        self.run_bzr('remove-tree')
-        self.assertPathDoesNotExist('foo')
+        self.run_bzr('remove-tree', working_dir='branch2')
+        self.assertPathDoesNotExist('branch2/foo')
 
     def test_remove_tree_sprouted_branch_explicit(self):
         self.tree.bzrdir.sprout('branch2')
@@ -66,10 +64,8 @@ class TestRemoveTree(TestCaseWithTransport):
     def test_remove_tree_checkout(self):
         self.tree.branch.create_checkout('branch2', lightweight=False)
         self.assertPathExists('branch2/foo')
-        os.chdir('branch2')
-        self.run_bzr('remove-tree')
-        self.assertPathDoesNotExist('foo')
-        os.chdir('..')
+        self.run_bzr('remove-tree', working_dir='branch2')
+        self.assertPathDoesNotExist('branch2/foo')
         self.assertPathExists('branch1/foo')
 
     def test_remove_tree_checkout_explicit(self):
@@ -84,12 +80,10 @@ class TestRemoveTree(TestCaseWithTransport):
     def test_remove_tree_lightweight_checkout(self):
         self.tree.branch.create_checkout('branch2', lightweight=True)
         self.assertPathExists('branch2/foo')
-        os.chdir('branch2')
         output = self.run_bzr_error(
             ["You cannot remove the working tree from a lightweight checkout"],
-            'remove-tree', retcode=3)
-        self.assertPathExists('foo')
-        os.chdir('..')
+            'remove-tree', retcode=3, working_dir='branch2')
+        self.assertPathExists('branch2/foo')
         self.assertPathExists('branch1/foo')
 
     def test_remove_tree_lightweight_checkout_explicit(self):
@@ -103,9 +97,8 @@ class TestRemoveTree(TestCaseWithTransport):
 
     def test_remove_tree_empty_dir(self):
         os.mkdir('branch2')
-        os.chdir('branch2')
-        output = self.run_bzr_error(["Not a branch"],
-                                    'remove-tree', retcode=3)
+        output = self.run_bzr_error(
+            ["Not a branch"], 'remove-tree', retcode=3, working_dir='branch2')
 
     def test_remove_tree_repeatedly(self):
         self.run_bzr('remove-tree branch1')

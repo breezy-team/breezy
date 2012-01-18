@@ -356,9 +356,8 @@ class TestBranch67(object):
         self.assertPathDoesNotExist('a/.bzr/branch/parent')
         self.assertEqual('http://example.com', branch.get_parent())
         branch.set_push_location('sftp://example.com')
-        config = branch.get_config()._get_branch_data_config()
-        self.assertEqual('sftp://example.com',
-                         config.get_user_option('push_location'))
+        config = branch.get_config_stack()
+        self.assertEqual('sftp://example.com', config.get('push_location'))
         branch.set_bound_location('ftp://example.com')
         self.assertPathDoesNotExist('a/.bzr/branch/bound')
         self.assertEqual('ftp://example.com', branch.get_bound_location())

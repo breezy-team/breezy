@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -120,13 +120,10 @@ class TestMove(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         tree.add(['sub1', 'sub1/sub2', 'sub1/hello.txt'])
 
-        os.chdir('sub1/sub2')
-        self.run_bzr('mv ../hello.txt .')
-        self.assertPathExists('./hello.txt')
+        self.run_bzr('mv ../hello.txt .', working_dir='sub1/sub2')
+        self.assertPathExists('sub1/sub2/hello.txt')
 
-        os.chdir('..')
-        self.run_bzr('mv sub2/hello.txt .')
-        os.chdir('..')
+        self.run_bzr('mv sub2/hello.txt .', working_dir='sub1')
         self.assertMoved('sub1/sub2/hello.txt','sub1/hello.txt')
 
     def test_mv_change_case_file(self):
