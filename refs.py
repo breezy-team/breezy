@@ -53,6 +53,8 @@ def branch_name_to_ref(name, default=None):
     """
     if name is None:
         return default
+    if name == "":
+        return "HEAD"
     if name == "HEAD":
         return osutils.safe_utf8(name)
     if not name.startswith("refs/"):
@@ -76,7 +78,9 @@ def ref_to_branch_name(ref):
     :param ref: Ref
     :return: A branch name
     """
-    if ref in (None, "HEAD"):
+    if ref == "HEAD":
+        return ""
+    if ref is None:
         return ref
     if ref.startswith("refs/heads/"):
         return osutils.safe_unicode(ref[len("refs/heads/"):])
