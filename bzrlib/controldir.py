@@ -230,13 +230,14 @@ class ControlDir(ControlComponent):
             raise errors.NoColocatedBranchSupport(self)
         return None
 
-    def set_branch_reference(self, to_branch, name=None):
+    def set_branch_reference(self, target_branch, name=None):
         """Set the referenced URL for the branch in this controldir.
 
         :param name: Optional colocated branch name
-        :param to_branch: Branch to reference
+        :param target_branch: Branch to reference
         :raises NoColocatedBranchSupport: If a branch name was specified
             but colocated branches are not supported.
+        :return: The referencing branch
         """
         raise NotImplementedError(self.set_branch_reference)
 
