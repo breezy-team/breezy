@@ -1475,10 +1475,13 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         # mode from the root directory
         temp_control = lockable_files.LockableFiles(transport,
                             '', lockable_files.TransportLock)
-        temp_control._transport.mkdir('.bzr',
-                                      # FIXME: RBC 20060121 don't peek under
-                                      # the covers
-                                      mode=temp_control._dir_mode)
+        try:
+            temp_control._transport.mkdir('.bzr',
+                # FIXME: RBC 20060121 don't peek under
+                # the covers
+                mode=temp_control._dir_mode)
+        except errors.FileExists:
+            raise errors.AlreadyControlDirError(transport.base)
         if sys.platform == 'win32' and isinstance(transport, local.LocalTransport):
             win32utils.set_file_attr_hidden(transport._abspath('.bzr'))
         file_mode = temp_control._file_mode

@@ -108,6 +108,17 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertRaises(errors.UninitializableFormat,
             self.bzrdir_format.initialize, t.base)
 
+    def test_multiple_initialization(self):
+        # loopback test to check the current format initializes to itself.
+        if not self.bzrdir_format.is_initializable():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            raise TestNotApplicable("format is not initializable")
+        self.bzrdir_format.initialize('.')
+        self.assertRaises(errors.AlreadyControlDirError,
+            self.bzrdir_format.initialize, '.')
+
     def test_create_null_workingtree(self):
         dir = self.make_bzrdir('dir1')
         dir.create_repository()
