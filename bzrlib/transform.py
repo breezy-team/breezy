@@ -50,6 +50,7 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform,
                            ExistingLimbo, ImmortalLimbo, NoFinalPath,
                            UnableCreateSymlink)
 from bzrlib.filters import filtered_output_bytes, ContentFilterContext
+from bzrlib.mutabletree import MutableTree
 from bzrlib.osutils import (
     delete_any,
     file_kind,
@@ -57,7 +58,6 @@ from bzrlib.osutils import (
     pathjoin,
     sha_file,
     splitpath,
-    supports_executable,
     )
 from bzrlib.progress import ProgressPhase
 from bzrlib.symbol_versioning import (
@@ -156,6 +156,8 @@ class TreeTransformBase(object):
         """
         if self._tree is None:
             return
+        for hook in MutableTree.hooks['post_transform']:
+            hook(self._tree, self)
         self._tree.unlock()
         self._tree = None
 
@@ -230,7 +232,7 @@ class TreeTransformBase(object):
         irrelevant.
 
         """
-        new_roots = [k for k, v in self._new_parent.iteritems() if v is
+        new_roots = [k for k, v in self._new_parent.iteritems() if v ==
                      ROOT_PARENT]
         if len(new_roots) < 1:
             return
@@ -626,7 +628,7 @@ class TreeTransformBase(object):
         for trans_id in self._new_parent:
             seen = set()
             parent_id = trans_id
-            while parent_id is not ROOT_PARENT:
+            while parent_id != ROOT_PARENT:
                 seen.add(parent_id)
                 try:
                     parent_id = self.final_parent(parent_id)
@@ -642,7 +644,7 @@ class TreeTransformBase(object):
         """If parent directories are versioned, children must be versioned."""
         conflicts = []
         for parent_id, children in by_parent.iteritems():
-            if parent_id is ROOT_PARENT:
+            if parent_id == ROOT_PARENT:
                 continue
             if self.final_file_id(parent_id) is not None:
                 continue
@@ -741,7 +743,7 @@ class TreeTransformBase(object):
         """Children must have a directory parent"""
         conflicts = []
         for parent_id, children in by_parent.iteritems():
-            if parent_id is ROOT_PARENT:
+            if parent_id == ROOT_PARENT:
                 continue
             no_children = True
             for child_id in children:
@@ -1722,6 +1724,8 @@ class TreeTransform(DiskTreeTransform):
             calculating one.
         :param _mover: Supply an alternate FileMover, for testing
         """
+        for hook in MutableTree.hooks['pre_transform']:
+            hook(self._tree, self)
         if not no_conflicts:
             self._check_malformed()
         child_pb = ui.ui_factory.nested_progress_bar()

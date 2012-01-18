@@ -689,11 +689,15 @@ class Command(object):
         """
         class_run = self.run
         def run(*args, **kwargs):
+            for hook in Command.hooks['pre_command']:
+                hook(self)
             self._operation = cleanup.OperationWithCleanups(class_run)
             try:
                 return self._operation.run_simple(*args, **kwargs)
             finally:
                 del self._operation
+                for hook in Command.hooks['post_command']:
+                    hook(self)
         self.run = run
 
     def run(self):
@@ -787,6 +791,12 @@ class CommandHooks(Hooks):
             " is safe to mutate - e.g. to remove a command. "
             "list_commands should return the updated set of command names.",
             (1, 17))
+        self.add_hook('pre_command',
+            "Called prior to executing a command. Called with the command "
+            "object.", (2, 5))
+        self.add_hook('post_command',
+            "Called after executing a command. Called with the command "
+            "object.", (2, 5))
 
 Command.hooks = CommandHooks()
 

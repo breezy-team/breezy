@@ -1444,13 +1444,13 @@ class cmd_branches(Command):
         else:
             dir = controldir.ControlDir.open_containing(location)[0]
             try:
-                active_branch = dir.open_branch(name=None)
+                active_branch = dir.open_branch(name="")
             except errors.NotBranchError:
                 active_branch = None
             branches = dir.get_branches()
             names = {}
             for name, branch in branches.iteritems():
-                if name is None:
+                if name == "":
                     continue
                 active = (active_branch is not None and
                           active_branch.base == branch.base)

@@ -1195,7 +1195,7 @@ class TestControlDir(TestCaseWithControlDir):
     def test_get_branches(self):
         repo = self.make_repository('branch-1')
         target_branch = repo.bzrdir.create_branch()
-        self.assertEqual([None], repo.bzrdir.get_branches().keys())
+        self.assertEqual([""], repo.bzrdir.get_branches().keys())
 
     def test_create_repository(self):
         # a bzrdir can construct a repository for itself.
@@ -1342,7 +1342,7 @@ class TestControlDir(TestCaseWithControlDir):
             raise TestSkipped("Can't initialize %r on transport %r"
                               % (self.bzrdir_format, t))
         dir = bzrdir.BzrDir.open(t.base)
-        self.assertIs(None, dir._get_selected_branch())
+        self.assertEqual(u"", dir._get_selected_branch())
 
     def test_root_transport(self):
         dir = self.make_bzrdir('.')

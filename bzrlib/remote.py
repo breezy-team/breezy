@@ -625,6 +625,8 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
     def create_branch(self, name=None, repository=None,
                       append_revisions_only=None):
+        if name is None:
+            name = self._get_selected_branch()
         # as per meta1 formats - just delegate to the format object which may
         # be parameterised.
         real_branch = self._format.get_branch_format().initialize(self,
@@ -724,6 +726,8 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False, possible_transports=None):
+        if name is None:
+            name = self._get_selected_branch()
         if unsupported:
             raise NotImplementedError('unsupported flag support not implemented yet.')
         if self._next_open_branch_result is not None:
@@ -3102,6 +3106,8 @@ class RemoteBranchFormat(branch.BranchFormat):
 
     def initialize(self, a_bzrdir, name=None, repository=None,
                    append_revisions_only=None):
+        if name is None:
+            name = a_bzrdir._get_selected_branch()
         # 1) get the network name to use.
         if self._custom_format:
             network_name = self._custom_format.network_name()
@@ -3122,7 +3128,7 @@ class RemoteBranchFormat(branch.BranchFormat):
         # Creating on a remote bzr dir.
         # 2) try direct creation via RPC
         path = a_bzrdir._path_for_remote_call(a_bzrdir._client)
-        if name is not None:
+        if name != "":
             # XXX JRV20100304: Support creating colocated branches
             raise errors.NoColocatedBranchSupport(self)
         verb = 'BzrDir.create_branch'
