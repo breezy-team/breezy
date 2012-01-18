@@ -50,6 +50,7 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform,
                            ExistingLimbo, ImmortalLimbo, NoFinalPath,
                            UnableCreateSymlink)
 from bzrlib.filters import filtered_output_bytes, ContentFilterContext
+from bzrlib.mutabletree import MutableTree
 from bzrlib.osutils import (
     delete_any,
     file_kind,
@@ -57,7 +58,6 @@ from bzrlib.osutils import (
     pathjoin,
     sha_file,
     splitpath,
-    supports_executable,
     )
 from bzrlib.progress import ProgressPhase
 from bzrlib.symbol_versioning import (
@@ -156,6 +156,8 @@ class TreeTransformBase(object):
         """
         if self._tree is None:
             return
+        for hook in MutableTree.hooks['post_transform']:
+            hook(self._tree, self)
         self._tree.unlock()
         self._tree = None
 
@@ -1722,6 +1724,8 @@ class TreeTransform(DiskTreeTransform):
             calculating one.
         :param _mover: Supply an alternate FileMover, for testing
         """
+        for hook in MutableTree.hooks['pre_transform']:
+            hook(self._tree, self)
         if not no_conflicts:
             self._check_malformed()
         child_pb = ui.ui_factory.nested_progress_bar()
