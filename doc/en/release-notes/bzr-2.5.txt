@@ -26,6 +26,9 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* "bzr switch -b" in a standalone tree will now create a colocated branch.
+  (Jelmer Vernooij, #918197)
+
 Bug Fixes
 *********
 
