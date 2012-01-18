@@ -26,6 +26,9 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* ``bzr info`` now reports when there are present (but unused) colocated
+  branches. (Jelmer Vernooij, #891646)
+
 Bug Fixes
 *********
 
