@@ -270,9 +270,9 @@ Update the source code
 
      BZR_PLUGIN_PATH=-site make po/bzr.pot
 
-   This is especially important for the final beta release which is
-   when translations are frozen and translators are requested to make
-   the translations.
+   This is especially important for the final beta release which is when
+   translations are frozen and translators are requested (see `The final
+   beta - branching and translations`_) to make the translations.
 
 #. For stable releases update the translations::
 
@@ -585,6 +585,8 @@ Now that the release is publicly available, tell people about it.
    Feel free to tweak this to your taste.
 
 #. Make an announcement through <https://launchpad.net/bzr/+announce>
+   mentioning the milestone URL <https://launchpad.net/bzr/+milestone/x.y.z>
+   so people get an easy access to details.
 
 #. Announce on http://freecode.com/projects/bazaar-vcs
 
