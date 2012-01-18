@@ -26,6 +26,10 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* Two new command hooks, ``pre_command`` and ``post_command``,
+  provide notification before and after a command has been run.
+  (Brian de Alwis, Jelmer Vernooij)
+
 Bug Fixes
 *********
 
@@ -121,10 +125,6 @@ Improvements
 
 * ``bzr send`` now only opens a single connection, rather than two,
   to the target branch.  (Jelmer Vernooij)
-
-* Two new command hooks, ``pre_command`` and ``post_command``,
-  provide notification before and after a command has been run.
-  (Brian de Alwis, Jelmer Vernooij)
 
 Bug Fixes
 *********
