@@ -3873,14 +3873,14 @@ class BranchStack(Stack):
     @needs_write_lock
     def set(self, name, value):
         super(BranchStack, self).set(name, value)
-        # Force a write to persistent storage
-        self.store.save_changes()
+        # Unlocking the branch will trigger a store.save_changes() so the last
+        # unlock saves all the changes.
 
     @needs_write_lock
     def remove(self, name):
         super(BranchStack, self).remove(name)
-        # Force a write to persistent storage
-        self.store.save_changes()
+        # Unlocking the branch will trigger a store.save_changes() so the last
+        # unlock saves all the changes.
 
 
 class RemoteControlStack(_CompatibleStack):
