@@ -15,8 +15,8 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Launchpad-Export-Date: 2012-01-17 04:33+0000\n"
-"X-Generator: Launchpad (build 14676)\n"
+"X-Launchpad-Export-Date: 2012-01-18 04:33+0000\n"
+"X-Generator: Launchpad (build 14681)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -442,7 +442,7 @@ msgstr "This is equivalent to creating the directory and then adding it."
 
 #: bzrlib/builtins.py:762
 msgid "No error if existing, make parent directories as needed."
-msgstr ""
+msgstr "No error if existing, make parent directories as needed."
 
 #: bzrlib/builtins.py:796
 #, python-format
@@ -746,6 +746,8 @@ msgid ""
 "No push location known or specified. To push to the parent branch (at %s), "
 "use 'bzr push :parent'."
 msgstr ""
+"No push location known or specified. To push to the parent branch (at %s), "
+"use 'bzr push :parent'."
 
 #: bzrlib/builtins.py:1263 bzrlib/foreign.py:306
 msgid "No push location known or specified."
@@ -863,7 +865,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1461
 msgid "(default)"
-msgstr ""
+msgstr "(default)"
 
 #: bzrlib/builtins.py:1473
 msgid "Create a new checkout of an existing branch."
@@ -4869,13 +4871,15 @@ msgstr ""
 
 #: bzrlib/config.py:2499
 msgid "{0} is not an SI unit."
-msgstr ""
+msgstr "{0} is not an SI unit."
 
 #: bzrlib/config.py:2956
 msgid ""
 "Option {0} in section {1} of {2} was changed from {3} to {4}. The {5} value "
 "will be saved."
 msgstr ""
+"Option {0} in section {1} of {2} was changed from {3} to {4}. The {5} value "
+"will be saved."
 
 #: bzrlib/config.py:3100
 #, python-format
@@ -5240,7 +5244,7 @@ msgstr ""
 
 #: bzrlib/errors.py:768
 msgid "Parse error on line %(lineno)d of %(format)s format: %(line)s"
-msgstr ""
+msgstr "Parse error on line %(lineno)d of %(format)s format: %(line)s"
 
 #: bzrlib/errors.py:783
 msgid ""
@@ -6206,6 +6210,8 @@ msgid ""
 "Missing feature %(feature)s not provided by this version of Bazaar or any "
 "plugin."
 msgstr ""
+"Missing feature %(feature)s not provided by this version of Bazaar or any "
+"plugin."
 
 #: bzrlib/errors.py:3272
 msgid "Binary files section encountered."
@@ -6237,7 +6243,7 @@ msgstr ""
 
 #: bzrlib/errors.py:3319
 msgid "The feature %(feature)s has already been registered."
-msgstr ""
+msgstr "The feature %(feature)s has already been registered."
 
 #: bzrlib/export_pot.py:252
 #, python-format
@@ -7564,6 +7570,8 @@ msgid ""
 "Bazaar 2.5b5 -- a free distributed version-control tool\n"
 "http://bazaar.canonical.com/"
 msgstr ""
+"Bazaar 2.5b5 -- a free distributed version-control tool\n"
+"http://bazaar.canonical.com/"
 
 #: dummy/help_topics/basic/detail.txt:4
 msgid ""
@@ -12256,29 +12264,37 @@ msgid ""
 "post_merge\n"
 "~~~~~~~~~~"
 msgstr ""
+"post_merge\n"
+"~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:326 en/help_topics/hooks.txt:334
 #: en/help_topics/hooks.txt:384 en/help_topics/hooks.txt:493
 msgid "Introduced in: 2.5"
-msgstr ""
+msgstr "Introduced in: 2.5"
 
 #: en/help_topics/hooks.txt:328
 msgid ""
 "Called after a merge. Receives a Merger object as the single argument.\n"
 "The return value is ignored."
 msgstr ""
+"Called after a merge. Receives a Merger object as the single argument.\n"
+"The return value is ignored."
 
 #: en/help_topics/hooks.txt:331
 msgid ""
 "pre_merge\n"
 "~~~~~~~~~"
 msgstr ""
+"pre_merge\n"
+"~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:336
 msgid ""
 "Called before a merge. Receives a Merger object as the single\n"
 "argument."
 msgstr ""
+"Called before a merge. Receives a Merger object as the single\n"
+"argument."
 
 #: en/help_topics/hooks.txt:339
 msgid ""
@@ -12356,12 +12372,16 @@ msgid ""
 "post_build_tree\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"post_build_tree\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:386
 msgid ""
 "Called after a completely new tree is built. The hook is called with\n"
 "the tree as its only argument."
 msgstr ""
+"Called after a completely new tree is built. The hook is called with\n"
+"the tree as its only argument."
 
 #: en/help_topics/hooks.txt:392
 msgid "Introduced in: 2.0"
@@ -12521,12 +12541,16 @@ msgid ""
 "TransportHooks\n"
 "--------------"
 msgstr ""
+"TransportHooks\n"
+"--------------"
 
 #: en/help_topics/hooks.txt:490
 msgid ""
 "post_connect\n"
 "~~~~~~~~~~~~"
 msgstr ""
+"post_connect\n"
+"~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:495
 msgid ""
@@ -12534,6 +12558,9 @@ msgid ""
 "The sole argument passed is either the connected transport or smart\n"
 "medium instance."
 msgstr ""
+"Called after a new connection is established or a reconnect occurs.\n"
+"The sole argument passed is either the connected transport or smart\n"
+"medium instance."
 
 #: en/help_topics/hooks.txt:499
 msgid ""

@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-01-16 15:18+0100\n"
-"PO-Revision-Date: 2012-01-02 20:54+0000\n"
+"PO-Revision-Date: 2012-01-17 18:04+0000\n"
 "Last-Translator: Rafael Neri <Unknown>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2012-01-17 04:33+0000\n"
-"X-Generator: Launchpad (build 14676)\n"
+"X-Launchpad-Export-Date: 2012-01-18 04:33+0000\n"
+"X-Generator: Launchpad (build 14681)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -58,7 +58,7 @@ msgstr "erro encontrado:%s"
 #: bzrlib/builtins.py:121 bzrlib/builtins.py:2923 bzrlib/workingtree.py:315
 #, python-format
 msgid "Ignoring files outside view. View is %s"
-msgstr "Ignorar arquivos fora da visualização. A visualização é %s"
+msgstr "Ignorando arquivos fora da visualização. A visualização é %s"
 
 #: bzrlib/builtins.py:130
 #, python-format
@@ -600,6 +600,9 @@ msgid ""
 "configuration option. You can use a different format by overriding it with\n"
 "-Olog_format=<other_format>."
 msgstr ""
+"A opção --verbose irá mostrar as revisões extraídas usando a opção\n"
+"de configuração log_format. Você pode usar um formato diferente para \n"
+"substituí-lo com -Olog_format=<outro formato>."
 
 #: bzrlib/builtins.py:1038
 msgid ""
@@ -619,12 +622,15 @@ msgstr "Mostrar os logs de revisões puxadas."
 msgid ""
 "Branch to pull into, rather than the one containing the working directory."
 msgstr ""
+"Ramificação para extrair, ao invés de uma que contém o diretório de trabalho."
 
 #: bzrlib/builtins.py:1051
 msgid ""
 "Perform a local pull in a bound branch.  Local pulls are not applied to the "
 "master branch."
 msgstr ""
+"Realizar uma extração local em uma ramificação limite. Extrações locais não "
+"são aplicadas na ramificação mestre."
 
 #: bzrlib/builtins.py:1080
 msgid "Need working tree for --show-base."
@@ -632,16 +638,16 @@ msgstr "Necessário a árvore de trabalho para --show-base."
 
 #: bzrlib/builtins.py:1096
 msgid "No pull location known or specified."
-msgstr ""
+msgstr "Nenhuma localização de extração conhecida ou especificada"
 
 #: bzrlib/builtins.py:1102
 #, python-format
 msgid "Using saved parent location: %s\n"
-msgstr ""
+msgstr "Usando a localização pai salva: %s\n"
 
 #: bzrlib/builtins.py:1109 bzrlib/builtins.py:4300
 msgid "Cannot use -r with merge directives or bundles"
-msgstr ""
+msgstr "Não foi possível usar -r com diretivas mescladas ou empacotadas"
 
 #: bzrlib/builtins.py:1150
 msgid "Update a mirror of this branch."
@@ -652,6 +658,8 @@ msgid ""
 "The target branch will not have its working tree populated because this\n"
 "is both expensive, and is not supported on remote file systems."
 msgstr ""
+"A ramificação alvo não terá sua árvore de trabalho populada porque isto\n"
+"é dispendioso e não suportado em sistema de arquivos remoto."
 
 #: bzrlib/builtins.py:1155
 msgid ""
@@ -668,12 +676,20 @@ msgid ""
 "considered diverged if the destination branch's most recent commit is one\n"
 "that has not been merged (directly or indirectly) by the source branch."
 msgstr ""
+"Este comando funcionará apenas em ramificações que não possuem divergências. "
+"Ramificações \n"
+"são consideradas divergentes se a ramificação de destino possui envios mais "
+"recentes e \n"
+"não pode ser fundida (direta ou indiretamente) pela ramificação de origem."
 
 #: bzrlib/builtins.py:1162
 msgid ""
 "If branches have diverged, you can use 'bzr push --overwrite' to replace\n"
 "the other branch completely, discarding its unmerged changes."
 msgstr ""
+"Se ramificações estão divergentes, você pode usar 'bzr push --overwrite' "
+"para substituir\n"
+"a outra ramificação completamente, discartando mudanças não fundidas."
 
 #: bzrlib/builtins.py:1165
 msgid ""
@@ -681,6 +697,11 @@ msgid ""
 "do a merge (see bzr help merge) from the other branch, and commit that.\n"
 "After that you will be able to do a push without '--overwrite'."
 msgstr ""
+"Se você deseja certificar-se que possui mudanças diferentes em outra "
+"ramificação,\n"
+"faça um merge (veja bzr help merge) a partir da outra ramificação, e envie-"
+"o. Após isto\n"
+"você será capaz de fazer um push sem \"'--overwrite\"."
 
 #: bzrlib/builtins.py:1169
 msgid ""
@@ -689,6 +710,11 @@ msgid ""
 "location to use the default.  To change the default, use --remember. The\n"
 "value will only be saved if the remote location can be accessed."
 msgstr ""
+"Se não houver um definição de localização de envio padrão, o primeiro envio "
+"irá ajustá-lo (use\n"
+"--no-remember para evitar isto). Após isto você poderá omitir a\n"
+"localização para usar o padrão. Para alterar o padrão, use --remember. O\n"
+"valor será salvo apenas se a localização remota puder ser acessada."
 
 #: bzrlib/builtins.py:1174
 msgid ""
@@ -696,6 +722,10 @@ msgid ""
 "configuration option. You can use a different format by overriding it with\n"
 "-Olog_format=<other_format>."
 msgstr ""
+"A opção --verbose irá exibir as revisões enviadas usando a opção de \n"
+"configuração log_format. Você pode usar um formato diferente substituindo-o "
+"\n"
+"com -Olog_format=<outro_formato>"
 
 #: bzrlib/builtins.py:1185 bzrlib/foreign.py:272
 msgid ""
@@ -707,12 +737,17 @@ msgid ""
 "By default push will fail if the target directory exists, but does not "
 "already have a control directory.  This flag will allow push to proceed."
 msgstr ""
+"Por padrão o envio irá falhar se o diretório de destino existir, mas não se "
+"tem um diretório de controle. Este sinalizador permitirá que o envio "
+"prossiga."
 
 #: bzrlib/builtins.py:1193
 msgid ""
 "Create a stacked branch that references the public location of the parent "
 "branch."
 msgstr ""
+"Criar uma ramificação empilhada que referencia a localização pública do ramo "
+"pai."
 
 #: bzrlib/builtins.py:1196
 msgid ""
@@ -720,6 +755,9 @@ msgid ""
 "history. Only the work not present in the referenced branch is included in "
 "the branch created."
 msgstr ""
+"Criar uma ramificação empilhada que referencia a outro ramo do histórico de "
+"envio.  Apenas o trabalho não presente no ramo referenciado é incluído no "
+"ramo criado."
 
 #: bzrlib/builtins.py:1201 bzrlib/foreign.py:279
 msgid ""
@@ -730,10 +768,11 @@ msgstr ""
 #: bzrlib/builtins.py:1204
 msgid "Don't populate the working tree, even for protocols that support it."
 msgstr ""
+"Não popular a árvore de trabalho, mesmo para protocolos que o suportam."
 
 #: bzrlib/builtins.py:1248
 msgid "Could not determine branch to refer to."
-msgstr ""
+msgstr "Não foi possível determinar uma ramificação a ser referenciada"
 
 #: bzrlib/builtins.py:1257
 #, python-format

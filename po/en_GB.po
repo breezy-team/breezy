@@ -8,62 +8,62 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-01-16 15:18+0100\n"
-"PO-Revision-Date: 2012-01-04 18:56+0000\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"PO-Revision-Date: 2012-01-17 10:28+0000\n"
+"Last-Translator: Anthony Harrington <untaintableangel@hotmail.co.uk>\n"
 "Language-Team: English (United Kingdom) <en_GB@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Launchpad-Export-Date: 2012-01-17 04:33+0000\n"
-"X-Generator: Launchpad (build 14676)\n"
+"X-Launchpad-Export-Date: 2012-01-18 04:33+0000\n"
+"X-Generator: Launchpad (build 14681)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
-msgstr ""
+msgstr "skipping {0} (larger than {1} of {2} bytes)"
 
 #: bzrlib/branch.py:872
 msgid "Unstacking"
-msgstr ""
+msgstr "Unstacking"
 
 #: bzrlib/branch.py:3183
 #, python-format
 msgid "Pushed up to revision %d."
-msgstr ""
+msgstr "Pushed up to revision %d."
 
 #: bzrlib/branch.py:3185
 #, python-format
 msgid "%d tag updated."
 msgid_plural "%d tags updated."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d tag updated."
+msgstr[1] "%d tags updated."
 
 #: bzrlib/branch.py:3188
 msgid "No new revisions or tags to push."
-msgstr ""
+msgstr "No new revisions or tags to push."
 
 #: bzrlib/branch.py:3190
 msgid "No new revisions to push."
-msgstr ""
+msgstr "No new revisions to push."
 
 #: bzrlib/branch.py:3210
 msgid "checked branch {0} format {1}"
-msgstr ""
+msgstr "checked branch {0} format {1}"
 
 #: bzrlib/branch.py:3213
 #, python-format
 msgid "found error:%s"
-msgstr ""
+msgstr "found error:%s"
 
 #: bzrlib/builtins.py:121 bzrlib/builtins.py:2923 bzrlib/workingtree.py:315
 #, python-format
 msgid "Ignoring files outside view. View is %s"
-msgstr ""
+msgstr "Ignoring files outside view. View is %s"
 
 #: bzrlib/builtins.py:130
 #, python-format
 msgid "bzr %s --revision takes exactly one revision identifier"
-msgstr ""
+msgstr "bzr %s --revision takes exactly one revision identifier"
 
 #: bzrlib/builtins.py:215
 msgid "Display status summary."
