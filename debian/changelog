@@ -1,4 +1,4 @@
-bzr-builddeb (2.8.1) UNRELEASED; urgency=low
+bzr-builddeb (2.8.1) unstable; urgency=low
 
   * New revision specifier 'upstream:'. LP: #905728
   * Imports are now deferred in command definitions, to speed up
