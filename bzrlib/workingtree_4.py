@@ -57,7 +57,10 @@ from bzrlib.inventory import Inventory, ROOT_ID, entry_factory
 from bzrlib.lock import LogicalLockResult
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.lockdir import LockDir
-from bzrlib.mutabletree import needs_tree_write_lock
+from bzrlib.mutabletree import (
+    MutableTree,
+    needs_tree_write_lock,
+    )
 from bzrlib.osutils import (
     file_kind,
     isdir,
@@ -1544,6 +1547,8 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
                 transform.build_tree(basis, wt, accelerator_tree,
                                      hardlink=hardlink,
                                      delta_from_tree=delta_from_tree)
+                for hook in MutableTree.hooks['post_build_tree']:
+                    hook(wt)
             finally:
                 basis.unlock()
         finally:

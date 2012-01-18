@@ -232,7 +232,7 @@ class TreeTransformBase(object):
         irrelevant.
 
         """
-        new_roots = [k for k, v in self._new_parent.iteritems() if v is
+        new_roots = [k for k, v in self._new_parent.iteritems() if v ==
                      ROOT_PARENT]
         if len(new_roots) < 1:
             return
@@ -628,7 +628,7 @@ class TreeTransformBase(object):
         for trans_id in self._new_parent:
             seen = set()
             parent_id = trans_id
-            while parent_id is not ROOT_PARENT:
+            while parent_id != ROOT_PARENT:
                 seen.add(parent_id)
                 try:
                     parent_id = self.final_parent(parent_id)
@@ -644,7 +644,7 @@ class TreeTransformBase(object):
         """If parent directories are versioned, children must be versioned."""
         conflicts = []
         for parent_id, children in by_parent.iteritems():
-            if parent_id is ROOT_PARENT:
+            if parent_id == ROOT_PARENT:
                 continue
             if self.final_file_id(parent_id) is not None:
                 continue
@@ -743,7 +743,7 @@ class TreeTransformBase(object):
         """Children must have a directory parent"""
         conflicts = []
         for parent_id, children in by_parent.iteritems():
-            if parent_id is ROOT_PARENT:
+            if parent_id == ROOT_PARENT:
                 continue
             no_children = True
             for child_id in children:

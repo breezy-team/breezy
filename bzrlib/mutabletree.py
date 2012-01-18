@@ -524,12 +524,14 @@ class MutableTreeHooks(hooks.Hooks):
             "Called before a tree transform on this tree. The hook is called "
             "with the tree that is being transformed and the transform.",
             (2, 5))
+        self.add_hook('post_build_tree',
+            "Called after a completely new tree is built. The hook is "
+            "called with the tree as its only argument.", (2, 5))
         self.add_hook('post_transform',
             "Called after a tree transform has been performed on a tree. "
             "The hook is called with the tree that is being transformed and "
             "the transform.",
             (2, 5))
-
 
 # install the default hooks into the MutableTree class.
 MutableTree.hooks = MutableTreeHooks()

@@ -36,6 +36,7 @@ from bzrlib.decorators import (
     )
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.lockdir import LockDir
+from bzrlib.mutabletree import MutableTree
 from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import (
     InventoryWorkingTree,
@@ -227,6 +228,8 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
             else:
                 wt.set_parent_trees([(revision_id, basis_tree)])
             transform.build_tree(basis_tree, wt)
+            for hook in MutableTree.hooks['post_build_tree']:
+                hook(wt)
         finally:
             # Unlock in this order so that the unlock-triggers-flush in
             # WorkingTree is given a chance to fire.
