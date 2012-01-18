@@ -3370,17 +3370,6 @@ class BranchStore(TransportIniFileStore):
         self.branch = branch
         self.id = 'branch'
 
-    # FIXME: This is very handy to detect which callers forgot to lock the
-    # branch but break many bt.test_config tests. Either these tests should
-    # parametrized differently or better ways to achieve the branch locking
-    # should be found that don't require this.
-    def xget_mutable_section(self, section_id=None):
-        if self.branch.peek_lock_mode() != 'w':
-            from bzrlib import debug ; debug.set_trace()
-            raise AssertionError('The branch for %s is not write-locked'
-                                 % self.external_url())
-        return super(BranchStore, self).get_mutable_section(section_id)
-
 
 class ControlStore(LockableIniFileStore):
 
