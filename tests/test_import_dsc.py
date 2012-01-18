@@ -67,6 +67,9 @@ from bzrlib.plugins.builddeb.import_dsc import (
         ThreeDotZeroNativeSourceExtractor,
         ThreeDotZeroQuiltSourceExtractor,
         )
+from bzrlib.plugins.builddeb.upstream.pristinetar import (
+        PristineTarDeltaTooLarge,
+        )
 from bzrlib.plugins.builddeb.tests import (
         BuilddebTestCase,
         LzmaFeature,
@@ -974,8 +977,11 @@ class DistributionBranchTests(BuilddebTestCase):
                 tf.close()
         finally:
             f.close()
-        self.db1.import_upstream(basedir, "package", version.upstream_version,
-            {}, upstream_tarballs=[(os.path.abspath(tar_path), None, self.fake_md5_1)])
+        try:
+            self.db1.import_upstream(basedir, "package", version.upstream_version,
+                {}, upstream_tarballs=[(os.path.abspath(tar_path), None, self.fake_md5_1)])
+        except PristineTarDeltaTooLarge:
+            raise tests.TestSkipped("Pristine tar version does not support xz")
         tree = self.up_tree1
         branch = tree.branch
         revno, rev_id = branch.last_revision_info()

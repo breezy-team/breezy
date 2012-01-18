@@ -61,6 +61,10 @@ class PristineTarError(BzrError):
         BzrError.__init__(self, error=error)
 
 
+class PristineTarDeltaTooLarge(PristineTarError):
+    _fmt = 'The delta generated was too large: %(error)s.'
+
+
 def reconstruct_pristine_tar(dest, delta, dest_filename):
     """Reconstruct a pristine tarball from a directory and a delta.
 
@@ -73,7 +77,7 @@ def reconstruct_pristine_tar(dest, delta, dest_filename):
     try:
         proc = subprocess.Popen(command, stdin=subprocess.PIPE,
                 cwd=dest, preexec_fn=subprocess_setup,
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                stdout=subprocess.PIPE, stderr=subprocess.STDERR)
     except OSError, e:
         if e.errno == errno.ENOENT:
             raise PristineTarError("pristine-tar is not installed")
@@ -107,7 +111,11 @@ def make_pristine_tar_delta(dest, tarball_path):
             raise
     (stdout, stderr) = proc.communicate()
     if proc.returncode != 0:
-        raise PristineTarError("Generating delta from tar failed: %s" % stderr)
+        if 'excessively large binary delta' in stderr:
+            raise PristineTarDeltaTooLarge(stderr)
+        else:
+            raise PristineTarError("Generating delta from tar failed: %s" %
+                    stderr)
     return stdout
 
 

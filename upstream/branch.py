@@ -193,7 +193,8 @@ def upstream_branch_version(upstream_branch, upstream_revision, package,
     return _upstream_branch_version(list(revhistory),
             upstream_branch.tags.get_reverse_tag_dict(), package,
             previous_version,
-            lambda version, revision: upstream_version_add_revision(upstream_branch, version, revision))
+            lambda version, revision: upstream_version_add_revision(
+                upstream_branch, version, revision))
 
 
 def get_export_upstream_revision(config=None, version=None):
