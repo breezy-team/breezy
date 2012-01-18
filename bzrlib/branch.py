@@ -1457,7 +1457,19 @@ class Branch(controldir.ControlComponent):
         t = transport.get_transport(to_location)
         t.ensure_base()
         format = self._get_checkout_format(lightweight=lightweight)
-        checkout = format.initialize_on_transport(t)
+        try:
+            checkout = format.initialize_on_transport(t)
+        except errors.AlreadyControlDirError:
+            # It's fine if the control directory already exists,
+            # as long as there is no existing branch and working tree.
+            checkout = controldir.ControlDir.open_from_transport(t)
+            try:
+                checkout.open_branch()
+            except errors.NotBranchError:
+                pass
+            else:
+                raise errors.AlreadyControlDirError(t.base)
+
         if lightweight:
             from_branch = checkout.set_branch_reference(target_branch=self)
         else:

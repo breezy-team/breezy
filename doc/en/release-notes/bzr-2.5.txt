@@ -26,6 +26,10 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* Checkouts can now be into target directories that already have
+  a control directory (but no branch or working tree).
+  (Jelmer Vernooij, #913980)
+
 Bug Fixes
 *********
 
