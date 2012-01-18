@@ -464,8 +464,7 @@ class TestControlDir(TestCaseWithControlDir):
         referenced_branch = self.make_branch('referenced')
         dir = self.make_bzrdir('source')
         try:
-            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                target_branch=referenced_branch)
+            dir.set_branch_reference(referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             raise TestNotApplicable("control directory does not "
@@ -696,8 +695,7 @@ class TestControlDir(TestCaseWithControlDir):
         referenced_branch = self.make_branch('referenced')
         dir = self.make_bzrdir('source')
         try:
-            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                target_branch=referenced_branch)
+            dir.set_branch_reference(referenced_branch)
         except errors.IncompatibleFormat:
             raise TestNotApplicable("format does not support branch "
                 "references")
@@ -716,8 +714,7 @@ class TestControlDir(TestCaseWithControlDir):
         referenced_tree.commit('1', rev_id='1', allow_pointless=True)
         dir = self.make_bzrdir('source')
         try:
-            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                target_branch=referenced_tree.branch)
+            dir.set_branch_reference(referenced_tree.branch)
         except errors.IncompatibleFormat:
             raise TestNotApplicable("format does not support branch "
                 "references")
@@ -743,8 +740,7 @@ class TestControlDir(TestCaseWithControlDir):
         referenced_tree.commit('1', rev_id='1', allow_pointless=True)
         dir = self.make_bzrdir('source')
         try:
-            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                target_branch=referenced_tree.branch)
+            dir.set_branch_reference(referenced_tree.branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             raise TestNotApplicable("format does not support "
@@ -895,8 +891,7 @@ class TestControlDir(TestCaseWithControlDir):
         referenced_branch = self.make_branch('referencced')
         dir = self.make_bzrdir('source')
         try:
-            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                target_branch=referenced_branch)
+            dir.set_branch_reference(referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             raise TestNotApplicable("format does not support "
@@ -922,8 +917,7 @@ class TestControlDir(TestCaseWithControlDir):
         referenced_branch = self.make_branch('referencced')
         dir = self.make_bzrdir('source')
         try:
-            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                target_branch=referenced_branch)
+            dir.set_branch_reference(referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             raise TestNotApplicable("format does not support "
@@ -1625,8 +1619,7 @@ class TestBreakLock(TestCaseWithControlDir):
         master = self.make_branch('branch')
         thisdir = self.make_bzrdir('this')
         try:
-            bzrlib.branch.BranchReferenceFormat().initialize(
-                thisdir, target_branch=master)
+            thisdir.set_branch_reference(master)
         except errors.IncompatibleFormat:
             raise TestNotApplicable("format does not support "
                 "branch references")

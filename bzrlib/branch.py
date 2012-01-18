@@ -1459,8 +1459,7 @@ class Branch(controldir.ControlComponent):
         format = self._get_checkout_format(lightweight=lightweight)
         if lightweight:
             checkout = format.initialize_on_transport(t)
-            from_branch = BranchReferenceFormat().initialize(checkout, 
-                target_branch=self)
+            from_branch = checkout.set_branch_reference(target_branch=self)
         else:
             checkout_branch = controldir.ControlDir.create_branch_convenience(
                 to_location, force_new_tree=False, format=format)
