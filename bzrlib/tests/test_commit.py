@@ -502,11 +502,7 @@ create_signatures=always
         master.create_workingtree()
         bound = master.sprout('bound')
         wt = bound.open_workingtree()
-        wt.branch.lock_write()
-        try:
-            wt.branch.set_bound_location(os.path.realpath('master'))
-        finally:
-            wt.branch.unlock()
+        wt.branch.set_bound_location(os.path.realpath('master'))
         master_branch.lock_write()
         try:
             self.assertRaises(LockContention, wt.commit, 'silly')

@@ -52,11 +52,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         self.assertEquals("", out)
 
     def set_branch_email(self, b, email):
-        b.lock_write()
-        try:
-            b.get_config_stack().set('email', email)
-        finally:
-            b.unlock()
+        b.get_config_stack().set('email', email)
 
     def test_whoami_branch(self):
         """branch specific user identity works."""

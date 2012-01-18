@@ -205,7 +205,6 @@ class TestBranch(per_branch.TestCaseWithBranch):
     def test_public_branch(self):
         """public location can be queried and set"""
         branch = self.make_branch('branch')
-        self.addCleanup(branch.lock_write().unlock)
         self.assertEqual(branch.get_public_branch(), None)
         branch.set_public_branch('sftp://example.com')
         self.assertEqual(branch.get_public_branch(), 'sftp://example.com')
@@ -349,7 +348,6 @@ class TestBranch(per_branch.TestCaseWithBranch):
 
     def test_get_set_append_revisions_only(self):
         branch = self.make_branch('.')
-        self.addCleanup(branch.lock_write().unlock)
         if branch._format.supports_set_append_revisions_only():
             branch.set_append_revisions_only(True)
             self.assertTrue(branch.get_append_revisions_only())
@@ -640,7 +638,6 @@ class TestBranchPushLocations(per_branch.TestCaseWithBranch):
 
     def test_set_push_location(self):
         branch = self.get_branch()
-        self.addCleanup(branch.lock_write().unlock)
         branch.set_push_location('foo')
         self.assertEqual('foo', branch.get_push_location())
 
@@ -654,7 +651,6 @@ class TestChildSubmitFormats(per_branch.TestCaseWithBranch):
 
     def test_get_child_submit_format(self):
         branch = self.get_branch()
-        self.addCleanup(branch.lock_write().unlock)
         branch.get_config_stack().set('child_submit_format', '10')
         branch = self.get_branch()
         self.assertEqual('10', branch.get_child_submit_format())
@@ -815,11 +811,7 @@ class TestStrict(per_branch.TestCaseWithBranch):
     def test_strict_history(self):
         tree1 = self.make_branch_and_tree('tree1')
         try:
-            tree1.branch.lock_write()
-            try:
-                tree1.branch.set_append_revisions_only(True)
-            finally:
-                tree1.branch.unlock()
+            tree1.branch.set_append_revisions_only(True)
         except errors.UpgradeRequired:
             raise tests.TestSkipped('Format does not support strict history')
         tree1.commit('empty commit')

@@ -135,11 +135,8 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         # Remembers if asked explicitly or no previous location is set
         if (remember
             or (remember is None and br_from.get_push_location() is None)):
-            br_from.lock_write()
-            try:
-                br_from.set_push_location(br_to.base)
-            finally:
-                br_from.unlock()
+            # FIXME: Should be done only if we succeed ? -- vila 2012-01-18
+            br_from.set_push_location(br_to.base)
     else:
         if stacked_on is not None:
             warning("Ignoring request for a stacked branch as repository "

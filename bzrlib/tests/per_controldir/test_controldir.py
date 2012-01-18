@@ -746,11 +746,7 @@ class TestControlDir(TestCaseWithControlDir):
             source.tags.set_tag('tag-a', 'rev-2')
         except errors.TagsNotSupported:
             raise TestNotApplicable('Branch format does not support tags.')
-        source.lock_write()
-        try:
-            source.get_config_stack().set('branch.fetch_tags', True)
-        finally:
-            source.unlock()
+        source.get_config_stack().set('branch.fetch_tags', True)
         # Now source has a tag not in its ancestry.  Sprout its controldir.
         dir = source.bzrdir
         target = dir.sprout(self.get_url('target'))
@@ -829,11 +825,7 @@ class TestControlDir(TestCaseWithControlDir):
             has_ghost_tag = False
         else:
             has_ghost_tag = True
-        source.lock_write()
-        try:
-            source.get_config_stack().set('branch.fetch_tags', True)
-        finally:
-            source.unlock()
+        source.get_config_stack().set('branch.fetch_tags', True)
         # And ask sprout for C2
         dir = source.bzrdir
         target = dir.sprout(self.get_url('target'), revision_id='rev-c2')

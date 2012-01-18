@@ -1118,13 +1118,9 @@ class cmd_pull(Command):
             # Remembers if asked explicitly or no previous location is set
             if (remember
                 or (remember is None and branch_to.get_parent() is None)):
-                branch_to.lock_write()
-                try:
-                    # FIXME: This shouldn't be done before the pull
-                    # succeeds... -- vila 2012-01-02
-                    branch_to.set_parent(branch_from.base)
-                finally:
-                    branch_to.unlock()
+                # FIXME: This shouldn't be done before the pull
+                # succeeds... -- vila 2012-01-02
+                branch_to.set_parent(branch_from.base)
 
         if revision is not None:
             revision_id = revision.as_revision_id(branch_from)
@@ -2017,11 +2013,7 @@ class cmd_init(Command):
                 a_bzrdir.create_workingtree()
         if append_revisions_only:
             try:
-                branch.lock_write()
-                try:
-                    branch.set_append_revisions_only(True)
-                finally:
-                    branch.unlock()
+                branch.set_append_revisions_only(True)
             except errors.UpgradeRequired:
                 raise errors.BzrCommandError(gettext('This branch format cannot be set'
                     ' to append-revisions-only.  Try --default.'))
@@ -5603,11 +5595,7 @@ class cmd_merge_directive(Command):
             public_branch = stored_public_branch
         elif stored_public_branch is None:
             # FIXME: Should be done only if we succeed ? -- vila 2012-01-03
-            branch.lock_write()
-            try:
-                branch.set_public_branch(public_branch)
-            finally:
-                branch.unlock()
+            branch.set_public_branch(public_branch)
         if not include_bundle and public_branch is None:
             raise errors.BzrCommandError(gettext('No public branch specified or'
                                          ' known'))

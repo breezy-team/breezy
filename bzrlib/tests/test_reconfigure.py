@@ -147,19 +147,11 @@ class TestReconfigure(tests.TestCaseWithTransport):
         reconfiguration = reconfigure.Reconfigure(branch.bzrdir)
         self.assertRaises(errors.NoBindLocation,
                           reconfiguration._select_bind_location)
-        branch.lock_write()
-        try:
-            branch.set_parent('http://parent')
-        finally:
-            branch.unlock()
+        branch.set_parent('http://parent')
         reconfiguration = reconfigure.Reconfigure(branch.bzrdir)
         self.assertEqual('http://parent',
                          reconfiguration._select_bind_location())
-        branch.lock_write()
-        try:
-            branch.set_push_location('sftp://push')
-        finally:
-            branch.unlock()
+        branch.set_push_location('sftp://push')
         reconfiguration = reconfigure.Reconfigure(branch.bzrdir)
         self.assertEqual('sftp://push',
                          reconfiguration._select_bind_location())
@@ -172,11 +164,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         reconfiguration = reconfigure.Reconfigure(branch.bzrdir)
         self.assertEqual('bzr://foo/old-bound',
                          reconfiguration._select_bind_location())
-        branch.lock_write()
-        try:
-            branch.set_bound_location('bzr://foo/cur-bound')
-        finally:
-            branch.unlock()
+        branch.set_bound_location('bzr://foo/cur-bound')
         reconfiguration = reconfigure.Reconfigure(branch.bzrdir)
         self.assertEqual('bzr://foo/cur-bound',
                          reconfiguration._select_bind_location())
@@ -200,11 +188,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         reconfiguration = reconfigure.Reconfigure.to_checkout(tree.bzrdir)
         self.assertRaises(errors.NoBindLocation, reconfiguration.apply)
         # setting a parent allows it to become a checkout
-        tree.branch.lock_write()
-        try:
-            tree.branch.set_parent(parent.base)
-        finally:
-            tree.branch.unlock()
+        tree.branch.set_parent(parent.base)
         reconfiguration = reconfigure.Reconfigure.to_checkout(tree.bzrdir)
         reconfiguration.apply()
         # supplying a location allows it to become a checkout
@@ -223,11 +207,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
             tree.bzrdir)
         self.assertRaises(errors.NoBindLocation, reconfiguration.apply)
         # setting a parent allows it to become a checkout
-        tree.branch.lock_write()
-        try:
-            tree.branch.set_parent(parent.base)
-        finally:
-            tree.branch.unlock()
+        tree.branch.set_parent(parent.base)
         reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
             tree.bzrdir)
         reconfiguration.apply()

@@ -352,7 +352,6 @@ class TestBranch67(object):
     def test_config(self):
         """Ensure that all configuration data is stored in the branch"""
         branch = self.make_branch('a', format=self.get_format_name())
-        self.addCleanup(branch.lock_write().unlock)
         branch.set_parent('http://example.com')
         self.assertPathDoesNotExist('a/.bzr/branch/parent')
         self.assertEqual('http://example.com', branch.get_parent())
@@ -667,11 +666,7 @@ class TestBranchOptions(tests.TestCaseWithTransport):
     def check_append_revisions_only(self, expected_value, value=None):
         """Set append_revisions_only in config and check its interpretation."""
         if value is not None:
-            self.branch.lock_write()
-            try:
-                self.config_stack.set('append_revisions_only', value)
-            finally:
-                self.branch.unlock()
+            self.config_stack.set('append_revisions_only', value)
         self.assertEqual(expected_value,
                          self.branch.get_append_revisions_only())
 

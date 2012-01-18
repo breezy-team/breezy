@@ -146,12 +146,7 @@ class TestDpushStrictMixin(object):
 
     def set_config_push_strict(self, value):
         br = branch.Branch.open('local')
-        br.lock_write()
-        try:
-            conf = br.get_config_stack()
-            conf.set('dpush_strict', value)
-        finally:
-            br.unlock()
+        br.get_config_stack().set('dpush_strict', value)
 
     _default_command = ['dpush', '../to']
 

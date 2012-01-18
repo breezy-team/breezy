@@ -132,6 +132,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         # Double binding succeeds, but committing to child2 should fail
         self.run_bzr('bind ../child', working_dir='child2')
 
+        # Refresh the child tree object as 'unbind' modified it
         child2_tree = bzrdir.BzrDir.open('child2').open_workingtree()
         self.assertRaises(errors.CommitToDoubleBoundBranch,
                 child2_tree.commit, message='child2', allow_pointless=True)

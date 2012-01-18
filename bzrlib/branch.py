@@ -3262,11 +3262,7 @@ class Converter6to7(object):
 
     def convert(self, branch):
         format = BzrBranchFormat7()
-        branch.lock_write()
-        try:
-            branch._set_config_location('stacked_on_location', '')
-        finally:
-            branch.unlock()
+        branch._set_config_location('stacked_on_location', '')
         # update target format
         branch._transport.put_bytes('format', format.as_string())
 

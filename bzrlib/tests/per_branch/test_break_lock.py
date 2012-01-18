@@ -79,11 +79,7 @@ class TestBreakLock(per_branch.TestCaseWithBranch):
         # unlock it.
         master = self.make_branch('master')
         try:
-            self.branch.lock_write()
-            try:
-                self.branch.bind(master)
-            finally:
-                self.branch.unlock()
+            self.branch.bind(master)
         except errors.UpgradeRequired:
             # this branch does not support binding.
             return

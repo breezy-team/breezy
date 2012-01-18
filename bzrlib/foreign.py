@@ -323,11 +323,8 @@ class cmd_dpush(Command):
                     source_branch, target_branch))
             # We successfully created the target, remember it
             if source_branch.get_push_location() is None or remember:
-                source_branch.lock_write()
-                try:
-                    source_branch.set_push_location(target_branch.base)
-                finally:
-                    source_branch.unlock()
+                # FIXME: Should be done only if we succeed ? -- vila 2012-01-18
+                source_branch.set_push_location(target_branch.base)
             if not no_rebase:
                 old_last_revid = source_branch.last_revision()
                 source_branch.pull(target_branch, overwrite=True)

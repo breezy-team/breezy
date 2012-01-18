@@ -514,11 +514,7 @@ class TestPush(tests.TestCaseWithTransport):
         trunk_public.pull(trunk_tree.branch)
         trunk_public_url = self.get_readonly_url('public_trunk')
         br = trunk_tree.branch
-        br.lock_write()
-        try:
-            br.set_public_branch(trunk_public_url)
-        finally:
-            br.unlock()
+        br.set_public_branch(trunk_public_url)
         # now we do a stacked push, which should determine the public location
         # for us.
         out, err = self.run_bzr(['push', '--stacked',
@@ -716,12 +712,7 @@ class TestPushStrictMixin(object):
 
     def set_config_push_strict(self, value):
         br = branch.Branch.open('local')
-        br.lock_write()
-        try:
-            conf = br.get_config_stack()
-            conf.set('push_strict', value)
-        finally:
-            br.unlock()
+        br.get_config_stack().set('push_strict', value)
 
     _default_command = ['push', '../to']
     _default_wd = 'local'

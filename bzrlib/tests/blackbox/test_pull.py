@@ -144,11 +144,7 @@ class TestPull(tests.TestCaseWithTransport):
         # Make a source, sprout a target off it
         builder = self.make_branch_builder('source')
         source = fixtures.build_branch_with_non_ancestral_rev(builder)
-        source.lock_write()
-        try:
-            source.get_config_stack().set('branch.fetch_tags', True)
-        finally:
-            source.unlock()
+        source.get_config_stack().set('branch.fetch_tags', True)
         target_bzrdir = source.bzrdir.sprout('target')
         source.tags.set_tag('tag-a', 'rev-2')
         # Pull from source
@@ -241,11 +237,7 @@ class TestPull(tests.TestCaseWithTransport):
         # reset parent
         parent = branch_b.get_parent()
         branch_b = branch.Branch.open('branch_b')
-        branch_b.lock_write()
-        try:
-            branch_b.set_parent(None)
-        finally:
-            branch_b.unlock()
+        branch_b.set_parent(None)
         self.assertEqual(None, branch_b.get_parent())
         # test pull for failure without parent set
         out = self.run_bzr('pull', retcode=3, working_dir='branch_b')
@@ -375,11 +367,7 @@ class TestPull(tests.TestCaseWithTransport):
     def test_pull_verbose_uses_default_log(self):
         tree = self.example_branch('source')
         target = self.make_branch_and_tree('target')
-        target.branch.lock_write()
-        try:
-            target.branch.get_config_stack().set('log_format', 'short')
-        finally:
-            target.branch.unlock()
+        target.branch.get_config_stack().set('log_format', 'short')
         out = self.run_bzr('pull -v source -d target')[0]
         self.assertContainsRe(out, r'\n {4}1 .*\n {6}setup\n')
         self.assertNotContainsRe(

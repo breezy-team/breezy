@@ -3875,6 +3875,24 @@ class BranchStack(Stack):
             bstore)
         self.branch = branch
 
+    def lock_write(self, token=None):
+        return self.branch.lock_write(token)
+
+    def unlock(self):
+        return self.branch.unlock()
+
+    @needs_write_lock
+    def set(self, name, value):
+        super(BranchStack, self).set(name, value)
+        # Force a write to persistent storage
+        self.store.save_changes()
+
+    @needs_write_lock
+    def remove(self, name):
+        super(BranchStack, self).remove(name)
+        # Force a write to persistent storage
+        self.store.save_changes()
+
 
 class RemoteControlStack(_CompatibleStack):
     """Remote control-only options stack."""
@@ -3904,6 +3922,24 @@ class BranchOnlyStack(Stack):
             [NameMatcher(bstore, None).get_sections],
             bstore)
         self.branch = branch
+
+    def lock_write(self, token=None):
+        return self.branch.lock_write(token)
+
+    def unlock(self):
+        return self.branch.unlock()
+
+    @needs_write_lock
+    def set(self, name, value):
+        super(BranchOnlyStack, self).set(name, value)
+        # Force a write to persistent storage
+        self.store.save_changes()
+
+    @needs_write_lock
+    def remove(self, name):
+        super(BranchOnlyStack, self).remove(name)
+        # Force a write to persistent storage
+        self.store.save_changes()
 
 
 # Use a an empty dict to initialize an empty configobj avoiding all

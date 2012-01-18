@@ -394,11 +394,8 @@ class ControlDir(ControlComponent):
             repository_to.fetch(source.repository, revision_id=revision_id)
             br_to = source.clone(self, revision_id=revision_id)
             if source.get_push_location() is None or remember:
-                source.lock_write()
-                try:
-                    source.set_push_location(br_to.base)
-                finally:
-                    source.unlock()
+                # FIXME: Should be done only if we succeed ? -- vila 2012-01-18
+                source.set_push_location(br_to.base)
             push_result.stacked_on = None
             push_result.branch_push_result = None
             push_result.old_revno = None
@@ -409,11 +406,8 @@ class ControlDir(ControlComponent):
         else:
             # We have successfully opened the branch, remember if necessary:
             if source.get_push_location() is None or remember:
-                source.lock_write()
-                try:
-                    source.set_push_location(br_to.base)
-                finally:
-                    source.unlock()
+                # FIXME: Should be done only if we succeed ? -- vila 2012-01-18
+                source.set_push_location(br_to.base)
             try:
                 tree_to = self.open_workingtree()
             except errors.NotLocalUrl:

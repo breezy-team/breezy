@@ -1273,11 +1273,7 @@ class TestBranchSetParentLocation(RemoteBranchTestCase):
         self.reset_smart_call_log()
         verb = 'Branch.set_parent_location'
         self.disable_verb(verb)
-        branch.lock_write()
-        try:
-            branch.set_parent('http://foo/')
-        finally:
-            branch.unlock()
+        branch.set_parent('http://foo/')
         self.assertLength(14, self.hpss_calls)
 
 
@@ -1438,11 +1434,7 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
 
     def test_backwards_compatible(self):
         br = self.make_branch_with_tags()
-        br.lock_write()
-        try:
-            br.get_config_stack().set('branch.fetch_tags', True)
-        finally:
-            br.unlock()
+        br.get_config_stack().set('branch.fetch_tags', True)
         self.addCleanup(br.lock_read().unlock)
         # Disable the heads_to_fetch verb
         verb = 'Branch.heads_to_fetch'
@@ -1456,11 +1448,7 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
 
     def test_backwards_compatible_no_tags(self):
         br = self.make_branch_with_tags()
-        br.lock_write()
-        try:
-            br.get_config_stack().set('branch.fetch_tags', False)
-        finally:
-            br.unlock()
+        br.get_config_stack().set('branch.fetch_tags', False)
         self.addCleanup(br.lock_read().unlock)
         # Disable the heads_to_fetch verb
         verb = 'Branch.heads_to_fetch'
@@ -4151,12 +4139,8 @@ class TestUpdateBoundBranchWithModifiedBoundLocation(
         self.bound_location = self.checkout.branch.get_bound_location()
 
     def assertUpdateSucceeds(self, new_location):
-        self.checkout.lock_write()
-        try:
-            self.checkout.branch.set_bound_location(new_location)
-            self.checkout.update()
-        finally:
-            self.checkout.unlock()
+        self.checkout.branch.set_bound_location(new_location)
+        self.checkout.update()
         self.assertEquals(self.last_revid, self.checkout.last_revision())
 
     def test_without_final_slash(self):

@@ -334,11 +334,7 @@ class TestBranch(tests.TestCaseWithTransport):
         builder = self.make_branch_builder('source')
         source = fixtures.build_branch_with_non_ancestral_rev(builder)
         source.tags.set_tag('tag-a', 'rev-2')
-        source.lock_write()
-        try:
-            source.get_config_stack().set('branch.fetch_tags', True)
-        finally:
-            source.unlock()
+        source.get_config_stack().set('branch.fetch_tags', True)
         # Now source has a tag not in its ancestry.  Make a branch from it.
         self.run_bzr('branch source new-branch')
         new_branch = branch.Branch.open('new-branch')

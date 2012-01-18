@@ -70,11 +70,7 @@ class TestAliasDirectory(TestCaseWithTransport):
         self.branch = self.make_branch('.')
 
     def assertAliasFromBranch(self, setter, value, alias):
-        self.branch.lock_write()
-        try:
-            setter(value)
-        finally:
-            self.branch.unlock()
+        setter(value)
         self.assertEquals(value, directories.dereference(alias))
 
     def test_lookup_parent(self):

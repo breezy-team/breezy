@@ -230,19 +230,11 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
     def test_format_child_option(self):
         br = branch.Branch.open('parent')
         conf = br.get_config_stack()
-        br.lock_write()
-        try:
-            conf.set('child_submit_format', '4')
-        finally:
-            br.unlock()
+        conf.set('child_submit_format', '4')
         md = self.get_MD([])
         self.assertIs(merge_directive.MergeDirective2, md.__class__)
 
-        br.lock_write()
-        try:
-            conf.set('child_submit_format', '0.9')
-        finally:
-            br.unlock()
+        conf.set('child_submit_format', '0.9')
         md = self.get_MD([])
         self.assertFormatIs('# Bazaar revision bundle v0.9', md)
 
@@ -250,11 +242,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         self.assertFormatIs('# Bazaar revision bundle v0.9', md)
         self.assertIs(merge_directive.MergeDirective, md.__class__)
 
-        br.lock_write()
-        try:
-            conf.set('child_submit_format', '0.999')
-        finally:
-            br.unlock()
+        conf.set('child_submit_format', '0.999')
         self.run_bzr_error(["No such send format '0.999'"],
                             'send -f branch -o-')[0]
 
@@ -305,11 +293,7 @@ class TestSendStrictMixin(TestSendMixin):
 
     def set_config_send_strict(self, value):
         br = branch.Branch.open('local')
-        br.lock_write()
-        try:
-            br.get_config_stack().set('send_strict', value)
-        finally:
-            br.unlock()
+        br.get_config_stack().set('send_strict', value)
 
     def assertSendFails(self, args):
         out, err = self.run_send(args, rc=3, err_re=self._default_errors)
