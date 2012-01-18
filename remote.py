@@ -451,6 +451,9 @@ class RemoteGitRepository(GitRepository):
     def get_revisions(self, revids):
         raise GitSmartRemoteNotSupported(self.get_revisions, self)
 
+    def has_revisions(self, revids):
+        raise GitSmartRemoteNotSupported(self.get_revisions, self)
+
 
 class RemoteGitTagDict(GitTags):
 
