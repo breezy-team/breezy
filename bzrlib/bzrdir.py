@@ -887,6 +887,10 @@ class BzrDirMeta1(BzrDir):
         format = BranchFormatMetadir.find_format(self, name=name)
         return format.get_reference(self, name=name)
 
+    def set_branch_reference(self, to_branch, name=None):
+        format = _mod_branch.BranchReferenceFormat()
+        format.initialize(self, target_branch=to_branch, name=name)
+
     def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
         if name is None:

@@ -415,6 +415,50 @@ class TestControlDir(TestCaseWithControlDir):
                 "not support stacking")
         self.assertEqual(child.open_branch().get_stacked_on_url(), branch.base)
 
+    def test_set_branch_reference(self):
+        """set_branch_reference creates a branch reference"""
+        referenced_branch = self.make_branch('referenced')
+        dir = self.make_bzrdir('source')
+        try:
+            reference = dir.set_branch_reference(referenced_branch)
+        except errors.IncompatibleFormat:
+            # this is ok too, not all formats have to support references.
+            raise TestNotApplicable("control directory does not "
+                "support branch references")
+        self.assertEqual(
+            referenced_branch.bzrdir.root_transport.abspath('') + '/',
+            dir.get_branch_reference())
+
+    def test_set_branch_reference_on_existing_reference(self):
+        """set_branch_reference creates a branch reference"""
+        referenced_branch1 = self.make_branch('old-referenced')
+        referenced_branch2 = self.make_branch('new-referenced')
+        dir = self.make_bzrdir('source')
+        try:
+            reference = dir.set_branch_reference(referenced_branch1)
+        except errors.IncompatibleFormat:
+            # this is ok too, not all formats have to support references.
+            raise TestNotApplicable("control directory does not "
+                "support branch references")
+        reference = dir.set_branch_reference(referenced_branch2)
+        self.assertEqual(
+            referenced_branch2.bzrdir.root_transport.abspath('') + '/',
+            dir.get_branch_reference())
+
+    def test_set_branch_reference_on_existing_branch(self):
+        """set_branch_reference creates a branch reference"""
+        referenced_branch = self.make_branch('referenced')
+        dir = self.make_branch('source').bzrdir
+        try:
+            reference = dir.set_branch_reference(referenced_branch)
+        except errors.IncompatibleFormat:
+            # this is ok too, not all formats have to support references.
+            raise TestNotApplicable("control directory does not "
+                "support branch references")
+        self.assertEqual(
+            referenced_branch.bzrdir.root_transport.abspath('') + '/',
+            dir.get_branch_reference())
+
     def test_get_branch_reference_on_reference(self):
         """get_branch_reference should return the right url."""
         referenced_branch = self.make_branch('referenced')
