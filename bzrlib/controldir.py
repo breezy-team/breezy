@@ -116,7 +116,7 @@ class ControlDir(ControlComponent):
         :return: Dictionary mapping branch names to instances.
         """
         try:
-           return { None: self.open_branch() }
+           return { "": self.open_branch() }
         except (errors.NotBranchError, errors.NoRepositoryPresent):
            return {}
 
@@ -294,9 +294,9 @@ class ControlDir(ControlComponent):
         :return: Name of the branch selected by the user, or None.
         """
         branch = self.root_transport.get_segment_parameters().get("branch")
-        if branch is not None:
-            branch = urlutils.unescape(branch)
-        return branch
+        if branch is None:
+            branch = ""
+        return urlutils.unescape(branch)
 
     def has_workingtree(self):
         """Tell if this controldir contains a working tree.

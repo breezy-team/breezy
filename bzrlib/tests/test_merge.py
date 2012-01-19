@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -83,17 +83,18 @@ class TestMerge(TestCaseWithTransport):
         tip = wt1.commit('empty commit')
         wt2 = self.make_branch_and_tree('branch2')
         wt2.pull(wt1.branch)
-        file('branch1/foo', 'wb').write('foo')
-        file('branch1/bar', 'wb').write('bar')
+        with file('branch1/foo', 'wb') as f:
+            f.write('foo')
+        with file('branch1/bar', 'wb') as f:
+            f.write('bar')
         wt1.add('foo')
         wt1.add('bar')
         wt1.commit('add foobar')
-        os.chdir('branch2')
-        self.run_bzr('merge ../branch1/baz', retcode=3)
-        self.run_bzr('merge ../branch1/foo')
-        self.assertPathExists('foo')
-        self.assertPathDoesNotExist('bar')
-        wt2 = WorkingTree.open('.') # opens branch2
+        self.run_bzr('merge ../branch1/baz', retcode=3, working_dir='branch2')
+        self.run_bzr('merge ../branch1/foo', working_dir='branch2')
+        self.assertPathExists('branch2/foo')
+        self.assertPathDoesNotExist('branch2/bar')
+        wt2 = WorkingTree.open('branch2')
         self.assertEqual([tip], wt2.get_parent_ids())
 
     def test_pending_with_null(self):

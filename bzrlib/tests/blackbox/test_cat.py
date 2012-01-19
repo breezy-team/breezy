@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,8 +18,6 @@
 """Black-box tests for bzr cat.
 """
 
-import os
-
 from bzrlib import tests
 from bzrlib.tests.matchers import ContainsNoVfsCalls
 from bzrlib.transport import memory
@@ -31,45 +29,45 @@ class TestCat(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('branch')
         self.build_tree_contents([('branch/a', 'foo\n')])
         tree.add('a')
-        os.chdir('branch')
         # 'bzr cat' without an option should cat the last revision
-        self.run_bzr(['cat', 'a'], retcode=3)
+        self.run_bzr(['cat', 'a'], retcode=3, working_dir='branch')
 
         tree.commit(message='1')
-        self.build_tree_contents([('a', 'baz\n')])
+        self.build_tree_contents([('branch/a', 'baz\n')])
 
-        self.assertEquals(self.run_bzr(['cat', 'a'])[0], 'foo\n')
+        self.assertEquals('foo\n',
+                          self.run_bzr(['cat', 'a'], working_dir='branch')[0])
 
         # On Windows, we used to have a bug where newlines got changed into
         # crlf, whereas cat ought to write out the file exactly as it's
         # recorded (by default.)  That problem can't be reproduced in-process,
         # so we need just one test here that 
-        self.assertEquals(self.run_bzr_subprocess(['cat', 'a'])[0], 'foo\n')
+        self.assertEquals('foo\n',
+                          self.run_bzr_subprocess(['cat', 'a'],
+                                                  working_dir='branch')[0])
 
         tree.commit(message='2')
-        self.assertEquals(self.run_bzr(['cat', 'a'])[0], 'baz\n')
-        self.assertEquals(self.run_bzr(
-            ['cat', 'a', '-r', '1'])[0],
-            'foo\n')
-        self.assertEquals(self.run_bzr(
-            ['cat', 'a', '-r', '-1'])[0],
-            'baz\n')
+        self.assertEquals(
+            'baz\n', self.run_bzr(['cat', 'a'], working_dir='branch')[0])
+        self.assertEquals(
+            'foo\n', self.run_bzr(['cat', 'a', '-r', '1'],
+                                  working_dir='branch')[0])
+        self.assertEquals(
+            'baz\n', self.run_bzr(['cat', 'a', '-r', '-1'],
+                                  working_dir='branch')[0])
 
         rev_id = tree.branch.last_revision()
 
-        self.assertEquals(self.run_bzr(
-            ['cat', 'a', '-r', 'revid:%s' % rev_id])[0],
-            'baz\n')
+        self.assertEquals(
+            'baz\n', self.run_bzr(['cat', 'a', '-r', 'revid:%s' % rev_id],
+                                  working_dir='branch')[0])
 
-        os.chdir('..')
-
-        self.assertEquals(self.run_bzr(
-            ['cat', 'branch/a', '-r', 'revno:1:branch'])[0],
-            'foo\n')
+        self.assertEquals('foo\n',
+                          self.run_bzr(['cat', 'branch/a',
+                                        '-r', 'revno:1:branch'])[0])
         self.run_bzr(['cat', 'a'], retcode=3)
-        self.run_bzr(
-                ['cat', 'a', '-r', 'revno:1:branch-that-does-not-exist'],
-                retcode=3)
+        self.run_bzr(['cat', 'a', '-r', 'revno:1:branch-that-does-not-exist'],
+                     retcode=3)
 
     def test_cat_different_id(self):
         """'cat' works with old and new files"""
@@ -138,10 +136,9 @@ class TestCat(tests.TestCaseWithTransport):
         wt.add('README')
         wt.commit('Making sure there is a basis_tree available')
         wt = self.make_branch_and_tree('b')
-        os.chdir('b')
 
-        out, err = self.run_bzr(
-            ['cat', '-r', 'branch:../a', 'README'])
+        out, err = self.run_bzr(['cat', '-r', 'branch:../a', 'README'],
+                                working_dir='b')
         self.assertEqual('contents of a/README\n', out)
 
     def test_cat_filters(self):

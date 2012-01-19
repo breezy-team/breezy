@@ -3000,6 +3000,100 @@ class TestMutableStore(TestStore):
         self.assertLength(1, calls)
         self.assertEquals((store,), calls[0])
 
+    def test_set_mark_dirty(self):
+        stack = config.MemoryStack('')
+        self.assertLength(0, stack.store.dirty_sections)
+        stack.set('foo', 'baz')
+        self.assertLength(1, stack.store.dirty_sections)
+        self.assertTrue(stack.store._need_saving())
+
+    def test_remove_mark_dirty(self):
+        stack = config.MemoryStack('foo=bar')
+        self.assertLength(0, stack.store.dirty_sections)
+        stack.remove('foo')
+        self.assertLength(1, stack.store.dirty_sections)
+        self.assertTrue(stack.store._need_saving())
+
+
+class TestStoreSaveChanges(tests.TestCaseWithTransport):
+    """Tests that config changes are kept in memory and saved on-demand."""
+
+    def setUp(self):
+        super(TestStoreSaveChanges, self).setUp()
+        self.transport = self.get_transport()
+        # Most of the tests involve two stores pointing to the same persistent
+        # storage to observe the effects of concurrent changes
+        self.st1 = config.TransportIniFileStore(self.transport, 'foo.conf')
+        self.st2 = config.TransportIniFileStore(self.transport, 'foo.conf')
+        self.warnings = []
+        def warning(*args):
+            self.warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+
+    def has_store(self, store):
+        store_basename = urlutils.relative_url(self.transport.external_url(),
+                                               store.external_url())
+        return self.transport.has(store_basename)
+
+    def get_stack(self, store):
+        # Any stack will do as long as it uses the right store, just a single
+        # no-name section is enough
+        return config.Stack([store.get_sections], store)
+
+    def test_no_changes_no_save(self):
+        s = self.get_stack(self.st1)
+        s.store.save_changes()
+        self.assertEquals(False, self.has_store(self.st1))
+
+    def test_unrelated_concurrent_update(self):
+        s1 = self.get_stack(self.st1)
+        s2 = self.get_stack(self.st2)
+        s1.set('foo', 'bar')
+        s2.set('baz', 'quux')
+        s1.store.save()
+        # Changes don't propagate magically
+        self.assertEquals(None, s1.get('baz'))
+        s2.store.save_changes()
+        self.assertEquals('quux', s2.get('baz'))
+        # Changes are acquired when saving
+        self.assertEquals('bar', s2.get('foo'))
+        # Since there is no overlap, no warnings are emitted
+        self.assertLength(0, self.warnings)
+
+    def test_concurrent_update_modified(self):
+        s1 = self.get_stack(self.st1)
+        s2 = self.get_stack(self.st2)
+        s1.set('foo', 'bar')
+        s2.set('foo', 'baz')
+        s1.store.save()
+        # Last speaker wins
+        s2.store.save_changes()
+        self.assertEquals('baz', s2.get('foo'))
+        # But the user get a warning
+        self.assertLength(1, self.warnings)
+        warning = self.warnings[0]
+        self.assertStartsWith(warning, 'Option foo in section None')
+        self.assertEndsWith(warning, 'was changed from <CREATED> to bar.'
+                            ' The baz value will be saved.')
+
+    def test_concurrent_deletion(self):
+        self.st1._load_from_string('foo=bar')
+        self.st1.save()
+        s1 = self.get_stack(self.st1)
+        s2 = self.get_stack(self.st2)
+        s1.remove('foo')
+        s2.remove('foo')
+        s1.store.save_changes()
+        # No warning yet
+        self.assertLength(0, self.warnings)
+        s2.store.save_changes()
+        # Now we get one
+        self.assertLength(1, self.warnings)
+        warning = self.warnings[0]
+        self.assertStartsWith(warning, 'Option foo in section None')
+        self.assertEndsWith(warning, 'was changed from bar to <CREATED>.'
+                            ' The <DELETED> value will be saved.')
+
 
 class TestQuotingIniFileStore(tests.TestCaseWithTransport):
 
@@ -3017,7 +3111,7 @@ class TestQuotingIniFileStore(tests.TestCaseWithTransport):
         stack = config.Stack([store.get_sections], store)
         stack.set('foo', ' a b c ')
         store.save()
-        self.assertFileEqual('foo = " a b c "\n', 'foo.conf')
+        self.assertFileEqual('foo = " a b c "' + os.linesep, 'foo.conf')
 
 
 class TestTransportIniFileStore(TestStore):
@@ -3242,8 +3336,7 @@ class TestLocationSection(tests.TestCase):
 
     def get_section(self, options, extra_path):
         section = config.Section('foo', options)
-        # We don't care about the length so we use '0'
-        return config.LocationSection(section, 0, extra_path)
+        return config.LocationSection(section, extra_path)
 
     def test_simple_option(self):
         section = self.get_section({'foo': 'bar'}, '')
@@ -3286,9 +3379,7 @@ section=/quux/quux
                            '/quux/quux'],
                           [section.id for _, section in store.get_sections()])
         matcher = config.LocationMatcher(store, '/foo/bar/quux')
-        sections = [section for s, section in matcher.get_sections()]
-        self.assertEquals([3, 2],
-                          [section.length for section in sections])
+        sections = [section for _, section in matcher.get_sections()]
         self.assertEquals(['/foo/bar', '/foo'],
                           [section.id for section in sections])
         self.assertEquals(['quux', 'bar/quux'],
@@ -3305,9 +3396,7 @@ section=/foo/bar
         self.assertEquals(['/foo', '/foo/bar'],
                           [section.id for _, section in store.get_sections()])
         matcher = config.LocationMatcher(store, '/foo/bar/baz')
-        sections = [section for s, section in matcher.get_sections()]
-        self.assertEquals([3, 2],
-                          [section.length for section in sections])
+        sections = [section for _, section in matcher.get_sections()]
         self.assertEquals(['/foo/bar', '/foo'],
                           [section.id for section in sections])
         self.assertEquals(['baz', 'bar/baz'],
@@ -3336,6 +3425,90 @@ foo:policy = appendpath
             expected_location = '/dir/subdir'
         matcher = config.LocationMatcher(store, expected_url)
         self.assertEquals(expected_location, matcher.location)
+
+
+class TestStartingPathMatcher(TestStore):
+
+    def setUp(self):
+        super(TestStartingPathMatcher, self).setUp()
+        # Any simple store is good enough
+        self.store = config.IniFileStore()
+
+    def assertSectionIDs(self, expected, location, content):
+        self.store._load_from_string(content)
+        matcher = config.StartingPathMatcher(self.store, location)
+        sections = list(matcher.get_sections())
+        self.assertLength(len(expected), sections)
+        self.assertEqual(expected, [section.id for _, section in sections])
+        return sections
+
+    def test_empty(self):
+        self.assertSectionIDs([], self.get_url(), '')
+
+    def test_url_vs_local_paths(self):
+        # The matcher location is an url and the section names are local paths
+        sections = self.assertSectionIDs(['/foo/bar', '/foo'],
+                                         'file:///foo/bar/baz', '''\
+[/foo]
+[/foo/bar]
+''')
+
+    def test_local_path_vs_url(self):
+        # The matcher location is a local path and the section names are urls
+        sections = self.assertSectionIDs(['file:///foo/bar', 'file:///foo'],
+                                         '/foo/bar/baz', '''\
+[file:///foo]
+[file:///foo/bar]
+''')
+
+
+    def test_no_name_section_included_when_present(self):
+        # Note that other tests will cover the case where the no-name section
+        # is empty and as such, not included.
+        sections = self.assertSectionIDs(['/foo/bar', '/foo', None],
+                                         '/foo/bar/baz', '''\
+option = defined so the no-name section exists
+[/foo]
+[/foo/bar]
+''')
+        self.assertEquals(['baz', 'bar/baz', '/foo/bar/baz'],
+                          [s.locals['relpath'] for _, s in sections])
+
+    def test_order_reversed(self):
+        self.assertSectionIDs(['/foo/bar', '/foo'], '/foo/bar/baz', '''\
+[/foo]
+[/foo/bar]
+''')
+
+    def test_unrelated_section_excluded(self):
+        self.assertSectionIDs(['/foo/bar', '/foo'], '/foo/bar/baz', '''\
+[/foo]
+[/foo/qux]
+[/foo/bar]
+''')
+
+    def test_glob_included(self):
+        sections = self.assertSectionIDs(['/foo/*/baz', '/foo/b*', '/foo'],
+                                         '/foo/bar/baz', '''\
+[/foo]
+[/foo/qux]
+[/foo/b*]
+[/foo/*/baz]
+''')
+        # Note that 'baz' as a relpath for /foo/b* is not fully correct, but
+        # nothing really is... as far using {relpath} to append it to something
+        # else, this seems good enough though.
+        self.assertEquals(['', 'baz', 'bar/baz'],
+                          [s.locals['relpath'] for _, s in sections])
+
+    def test_respect_order(self):
+        self.assertSectionIDs(['/foo', '/foo/b*', '/foo/*/baz'],
+                              '/foo/bar/baz', '''\
+[/foo/*/baz]
+[/foo/qux]
+[/foo/b*]
+[/foo]
+''')
 
 
 class TestNameMatcher(TestStore):

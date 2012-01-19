@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,8 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for bzr diff.
-"""
+"""Black-box tests for bzr diff."""
 
 import os
 import re
@@ -288,8 +287,8 @@ class TestDiff(DiffBase):
         self.example_branch2()
         self.build_tree_contents([('branch1/file1', 'new line')])
         os.mkdir('branch1/dir1')
-        os.chdir('branch1/dir1')
-        output = self.run_bzr('diff -r 1..', retcode=1)
+        output = self.run_bzr('diff -r 1..', retcode=1,
+                              working_dir='branch1/dir1')
         self.assertContainsRe(output[0], '\n\\-original line\n\\+new line\n')
 
     def test_diff_across_rename(self):
@@ -316,8 +315,7 @@ class TestDiff(DiffBase):
                 return super(BooDiffTree, self).show_diff(specific_files,
                     extra_trees)
 
-        diff_format_registry.register("boo", BooDiffTree, 
-            "Scary diff format")
+        diff_format_registry.register("boo", BooDiffTree, "Scary diff format")
         self.addCleanup(diff_format_registry.remove, "boo")
         self.make_example_branch()
         self.build_tree_contents([('hello', 'hello world!\n')])
@@ -343,7 +341,8 @@ class TestCheckoutDiff(TestDiff):
         return tree
 
     def example_branches(self):
-        branch1_tree, branch2_tree = super(TestCheckoutDiff, self).example_branches()
+        branch1_tree, branch2_tree = super(TestCheckoutDiff,
+                                           self).example_branches()
         os.mkdir('checkouts')
         branch1_tree = branch1_tree.branch.create_checkout('checkouts/branch1')
         branch2_tree = branch2_tree.branch.create_checkout('checkouts/branch2')
