@@ -61,6 +61,8 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* A new matcher ``RevisionHistoryMatches`` has been added. (Jelmer Vernooij)
+
 * ``MutableTree`` has two new hooks ``pre_transform`` and
   ``post_transform`` that are called for tree transform operations.
   (Jelmer Vernooij, #912084)

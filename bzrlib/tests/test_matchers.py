@@ -178,3 +178,27 @@ class TestContainsNoVfsCalls(TestCase):
         self.assertEquals([calls[0].call], mismatch.vfs_calls)
         self.assertEquals("no VFS calls expected, got: append('file')""",
                 mismatch.describe())
+
+
+class TestRevisionHistoryMatches(TestCaseWithTransport):
+
+    def test_empty(self):
+        tree = self.make_branch_and_tree('.')
+        matcher = RevisionHistoryMatches([])
+        self.assertIs(None, matcher.match(tree.branch))
+
+    def test_matches(self):
+        tree = self.make_branch_and_tree('.')
+        tree.commit('msg1', rev_id='a')
+        tree.commit('msg2', rev_id='b')
+        matcher = RevisionHistoryMatches(['a', 'b'])
+        self.assertIs(None, matcher.match(tree.branch))
+
+    def test_mismatch(self):
+        tree = self.make_branch_and_tree('.')
+        tree.commit('msg1', rev_id='a')
+        tree.commit('msg2', rev_id='b')
+        matcher = RevisionHistoryMatches(['a', 'b', 'c'])
+        self.assertEquals(
+            "['a', 'b', 'c'] != ['a', 'b']",
+            matcher.match(tree.branch).describe())
