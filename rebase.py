@@ -19,9 +19,10 @@
 import os
 
 from bzrlib import (
+    config as _mod_config,
     osutils,
+    version_info as bzrlib_version,
     )
-from bzrlib.config import Config
 from bzrlib.errors import (
     BzrError,
     NoSuchFile,
@@ -455,10 +456,15 @@ class CommitBuilderRevisionRewriter(object):
         revprops = dict(oldrev.properties)
         revprops[REVPROP_REBASE_OF] = oldrevid
 
+        if bzrlib_version >= (2, 5):
+            kwargs = {"config_stack": _mod_config.GlobalStack()}
+        else:
+            kwargs = {"config": _mod_config.Config()}
+
         builder = self.repository.get_commit_builder(branch=None,
-            parents=new_parents, config=Config(), committer=oldrev.committer,
+            parents=new_parents, committer=oldrev.committer,
             timestamp=oldrev.timestamp, timezone=oldrev.timezone,
-            revprops=revprops, revision_id=newrevid)
+            revprops=revprops, revision_id=newrevid, **kwargs)
         try:
             # Check what new_ie.file_id should be
             # use old and new parent inventories to generate new_id map
