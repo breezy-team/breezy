@@ -77,7 +77,7 @@ def reconstruct_pristine_tar(dest, delta, dest_filename):
     try:
         proc = subprocess.Popen(command, stdin=subprocess.PIPE,
                 cwd=dest, preexec_fn=subprocess_setup,
-                stdout=subprocess.PIPE, stderr=subprocess.STDERR)
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     except OSError, e:
         if e.errno == errno.ENOENT:
             raise PristineTarError("pristine-tar is not installed")
