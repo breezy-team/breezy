@@ -94,14 +94,18 @@ def run_quilt(args, working_dir, series_file=None, patches_dir=None, quiet=None)
     return output[0]
 
 
-def quilt_pop_all(working_dir, patches_dir=None, series_file=None, quiet=None):
+def quilt_pop_all(working_dir, patches_dir=None, series_file=None, quiet=None,
+        force=False):
     """Pop all patches.
 
     :param working_dir: Directory to work in
     :param patches_dir: Optional patches directory
     :param series_file: Optional series file
     """
-    return run_quilt(["pop", "-a"], working_dir=working_dir,
+    args = ["pop", "-a"]
+    if force:
+        args.append("-f")
+    return run_quilt(args, working_dir=working_dir,
         patches_dir=patches_dir, series_file=series_file, quiet=quiet)
 
 
@@ -117,14 +121,18 @@ def quilt_pop(working_dir, patch, patches_dir=None, series_file=None, quiet=None
         patches_dir=patches_dir, series_file=series_file, quiet=quiet)
 
 
-def quilt_push_all(working_dir, patches_dir=None, series_file=None, quiet=None):
+def quilt_push_all(working_dir, patches_dir=None, series_file=None, quiet=None,
+        force=False):
     """Push all patches.
 
     :param working_dir: Directory to work in
     :param patches_dir: Optional patches directory
     :param series_file: Optional series file
     """
-    return run_quilt(["push", "-a"], working_dir=working_dir,
+    args = ["push", "-a"]
+    if force:
+        args.append("-f")
+    return run_quilt(args, working_dir=working_dir,
             patches_dir=patches_dir, series_file=series_file, quiet=quiet)
 
 
