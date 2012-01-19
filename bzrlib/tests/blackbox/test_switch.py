@@ -183,8 +183,7 @@ class TestSwitch(TestCaseWithTransport):
         # Use switch to change it to 'anotherbranch'
         repo = self.make_repository('branch-1', format='development-colo')
         target_branch = repo.bzrdir.create_branch(name='foo')
-        branch.BranchReferenceFormat().initialize(
-            repo.bzrdir, target_branch=target_branch)
+        repo.bzrdir.set_branch_reference(target_branch)
         tree = repo.bzrdir.create_workingtree()
         self.build_tree(['branch-1/file-1', 'branch-1/file-2'])
         tree.add('file-1')
@@ -203,8 +202,7 @@ class TestSwitch(TestCaseWithTransport):
         # Use switch to create 'anotherbranch' which derives from that
         repo = self.make_repository('branch-1', format='development-colo')
         target_branch = repo.bzrdir.create_branch(name='foo')
-        branch.BranchReferenceFormat().initialize(
-            repo.bzrdir, target_branch=target_branch)
+        repo.bzrdir.set_branch_reference(target_branch)
         tree = repo.bzrdir.create_workingtree()
         self.build_tree(['branch-1/file-1', 'branch-1/file-2'])
         tree.add('file-1')
@@ -223,8 +221,7 @@ class TestSwitch(TestCaseWithTransport):
         self.requireFeature(UnicodeFilenameFeature)
         repo = self.make_repository('branch-1', format='development-colo')
         target_branch = repo.bzrdir.create_branch(name='foo')
-        branch.BranchReferenceFormat().initialize(
-            repo.bzrdir, target_branch=target_branch)
+        repo.bzrdir.set_branch_reference(target_branch)
         tree = repo.bzrdir.create_workingtree()
         self.build_tree(['branch-1/file-1', 'branch-1/file-2'])
         tree.add('file-1')

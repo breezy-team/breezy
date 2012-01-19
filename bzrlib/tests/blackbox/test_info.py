@@ -1256,8 +1256,7 @@ Repository:
         # Do a light checkout of the heavy one
         transport.mkdir('tree/lightcheckout')
         lco_dir = bzrdir.BzrDirMetaFormat1().initialize('tree/lightcheckout')
-        branch.BranchReferenceFormat().initialize(lco_dir,
-            target_branch=co_branch)
+        lco_dir.set_branch_reference(co_branch)
         lco_dir.create_workingtree()
         lco_tree = lco_dir.open_workingtree()
 
