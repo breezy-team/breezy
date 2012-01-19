@@ -1072,6 +1072,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         i += 1
 
     if bzrlib.global_state is None:
+        # FIXME: Workaround for users that imported bzrlib but didn't call
+        # bzrlib.initialize -- vila 2012-01-19
         cmdline_overrides = config.CommandLineStore()
     else:
         cmdline_overrides = bzrlib.global_state.cmdline_overrides
