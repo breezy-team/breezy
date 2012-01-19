@@ -46,6 +46,7 @@ from bzrlib.tests import (
     features,
     http_server,
     http_utils,
+    ssl_certs,
     test_server,
     )
 from bzrlib.tests.scenarios import (
@@ -2126,6 +2127,11 @@ class TestActivityMixin(object):
             _activities[direction] = count
         self.activities = _activities
 
+        store = config.GlobalStore()
+        content = ('[DEFAULT]\nssl.ca_certs=%s\n'
+                   % ssl_certs.build_path('ca.crt'))
+        store._load_from_string(content.encode('utf-8'))
+        store.save()
         # We override at class level because constructors may propagate the
         # bound method and render instance overriding ineffective (an
         # alternative would be to define a specific ui factory instead...)
@@ -2252,7 +2258,7 @@ lalala whatever as long as itsssss
         self.assertActivitiesMatch()
 
 
-class TestActivity(tests.TestCase, TestActivityMixin):
+class TestActivity(tests.TestCaseInTempDir, TestActivityMixin):
 
     scenarios = multiply_scenarios(
         vary_by_http_activity(),
@@ -2263,7 +2269,7 @@ class TestActivity(tests.TestCase, TestActivityMixin):
         TestActivityMixin.setUp(self)
 
 
-class TestNoReportActivity(tests.TestCase, TestActivityMixin):
+class TestNoReportActivity(tests.TestCaseInTempDir, TestActivityMixin):
 
     # Unlike TestActivity, we are really testing ReportingFileSocket and
     # ReportingSocket, so we don't need all the parametrization. Since
