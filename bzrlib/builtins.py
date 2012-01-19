@@ -1444,13 +1444,13 @@ class cmd_branches(Command):
         else:
             dir = controldir.ControlDir.open_containing(location)[0]
             try:
-                active_branch = dir.open_branch(name=None)
+                active_branch = dir.open_branch(name="")
             except errors.NotBranchError:
                 active_branch = None
             branches = dir.get_branches()
             names = {}
             for name, branch in branches.iteritems():
-                if name is None:
+                if name == "":
                     continue
                 active = (active_branch is not None and
                           active_branch.base == branch.base)
@@ -4168,7 +4168,7 @@ class cmd_merge(Command):
     Merge will do its best to combine the changes in two branches, but there
     are some kinds of problems only a human can fix.  When it encounters those,
     it will mark a conflict.  A conflict means that you need to fix something,
-    before you should commit.
+    before you can commit.
 
     Use bzr resolve when you have fixed a problem.  See also bzr conflicts.
 
