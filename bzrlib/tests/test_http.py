@@ -2117,9 +2117,10 @@ class TestActivityMixin(object):
     """
 
     def setUp(self):
-        tests.TestCase.setUp(self)
+        tests.TestCaseInTempDir.setUp(self)
         self.server = self._activity_server(self._protocol_version)
         self.server.start_server()
+        self.addCleanup(self.server.stop_server)
         _activities = {} # Don't close over self and create a cycle
         def report_activity(t, bytes, direction):
             count = _activities.get(direction, 0)
@@ -2136,7 +2137,6 @@ class TestActivityMixin(object):
         # bound method and render instance overriding ineffective (an
         # alternative would be to define a specific ui factory instead...)
         self.overrideAttr(self._transport, '_report_activity', report_activity)
-        self.addCleanup(self.server.stop_server)
 
     def get_transport(self):
         t = self._transport(self.server.get_url())
@@ -2258,7 +2258,7 @@ lalala whatever as long as itsssss
         self.assertActivitiesMatch()
 
 
-class TestActivity(tests.TestCaseInTempDir, TestActivityMixin):
+class TestActivity(TestActivityMixin, tests.TestCaseInTempDir):
 
     scenarios = multiply_scenarios(
         vary_by_http_activity(),
@@ -2269,7 +2269,7 @@ class TestActivity(tests.TestCaseInTempDir, TestActivityMixin):
         TestActivityMixin.setUp(self)
 
 
-class TestNoReportActivity(tests.TestCaseInTempDir, TestActivityMixin):
+class TestNoReportActivity(TestActivityMixin, tests.TestCaseInTempDir):
 
     # Unlike TestActivity, we are really testing ReportingFileSocket and
     # ReportingSocket, so we don't need all the parametrization. Since
