@@ -1101,7 +1101,7 @@ more info
         format = bzrdir.format_registry.make_bzrdir('development-colo')
         transport = self.get_transport()
 
-        # Create unsahred repository
+        # Create unshared repository
         repo = self.make_repository('repo', shared=False, format=format)
         repo.set_make_working_trees(True)
         repo.bzrdir.create_branch(name='foo')
