@@ -18,18 +18,17 @@
 
 """
 
+import os
 import ssl
 
-from bzrlib import trace
+from bzrlib import (
+    config,
+    trace,
+    )
 from bzrlib.errors import (
     CertificateError,
     ConfigOptionValueError,
     )
-from bzrlib.config import (
-    IniFileStore,
-    Stack,
-    )
-import os
 from bzrlib.tests import (
     TestCase,
     TestCaseInTempDir,
@@ -37,23 +36,20 @@ from bzrlib.tests import (
 from bzrlib.transport.http import _urllib2_wrappers
 
 
-def stack_from_string(text):
-    store = IniFileStore()
-    store._load_from_string(text)
-    return Stack([store.get_sections])
-
-
 class CaCertsConfigTests(TestCaseInTempDir):
 
+    def get_stack(self, content):
+        return config.MemoryStack(content.encode('utf-8'))
+
     def test_default_raises_value_error(self):
-        stack = stack_from_string("")
+        stack = self.get_stack("")
         self.overrideAttr(_urllib2_wrappers, "DEFAULT_CA_PATH",
                 "/i-do-not-exist")
         self.assertRaises(ValueError, stack.get, 'ssl.ca_certs')
 
     def test_default_exists(self):
         self.build_tree(['cacerts.pem'])
-        stack = stack_from_string("")
+        stack = self.get_stack("")
         path = os.path.join(self.test_dir, "cacerts.pem")
         self.overrideAttr(_urllib2_wrappers, "DEFAULT_CA_PATH", path)
         self.assertEquals(path, stack.get('ssl.ca_certs'))
@@ -61,49 +57,53 @@ class CaCertsConfigTests(TestCaseInTempDir):
     def test_specified(self):
         self.build_tree(['cacerts.pem'])
         path = os.path.join(self.test_dir, "cacerts.pem")
-        stack = stack_from_string("ssl.ca_certs = %s\n" % path)
+        stack = self.get_stack("ssl.ca_certs = %s\n" % path)
         self.assertEquals(path, stack.get('ssl.ca_certs'))
 
     def test_specified_doesnt_exist(self):
         path = os.path.join(self.test_dir, "nonexisting.pem")
-        stack = stack_from_string("ssl.ca_certs = %s\n" % path)
+        stack = self.get_stack("ssl.ca_certs = %s\n" % path)
         self.warnings = []
         def warning(*args):
             self.warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
-        self.assertEquals(_urllib2_wrappers.DEFAULT_CA_PATH, stack.get('ssl.ca_certs'))
+        self.assertEquals(_urllib2_wrappers.DEFAULT_CA_PATH,
+                          stack.get('ssl.ca_certs'))
         self.assertLength(1, self.warnings)
-        self.assertContainsRe(self.warnings[0], "is not valid for \"ssl.ca_certs\"")
+        self.assertContainsRe(self.warnings[0],
+                              "is not valid for \"ssl.ca_certs\"")
 
 
 class CertReqsConfigTests(TestCaseInTempDir):
 
     def test_default(self):
-        stack = stack_from_string("")
+        stack = config.MemoryStack("")
         self.assertEquals(ssl.CERT_REQUIRED, stack.get("ssl.cert_reqs"))
 
     def test_from_string(self):
-        stack = stack_from_string("ssl.cert_reqs = none\n")
+        stack = config.MemoryStack("ssl.cert_reqs = none\n")
         self.assertEquals(ssl.CERT_NONE, stack.get("ssl.cert_reqs"))
-        stack = stack_from_string("ssl.cert_reqs = optional\n")
+        stack = config.MemoryStack("ssl.cert_reqs = optional\n")
         self.assertEquals(ssl.CERT_OPTIONAL, stack.get("ssl.cert_reqs"))
-        stack = stack_from_string("ssl.cert_reqs = required\n")
+        stack = config.MemoryStack("ssl.cert_reqs = required\n")
         self.assertEquals(ssl.CERT_REQUIRED, stack.get("ssl.cert_reqs"))
-        stack = stack_from_string("ssl.cert_reqs = invalid\n")
+        stack = config.MemoryStack("ssl.cert_reqs = invalid\n")
         self.assertRaises(ConfigOptionValueError, stack.get, "ssl.cert_reqs")
 
 
 class MatchHostnameTests(TestCase):
 
     def test_no_certificate(self):
-        self.assertRaises(ValueError, _urllib2_wrappers.match_hostname({}))
+        self.assertRaises(ValueError,
+                          _urllib2_wrappers.match_hostname, {}, "example.com")
 
     def test_no_valid_attributes(self):
-        self.assertRaises(CertificateError,
-            _urllib2_wrappers.match_hostname({"Problem": "Solved"}))
+        self.assertRaises(CertificateError, _urllib2_wrappers.match_hostname,
+                          {"Problem": "Solved"}, "example.com")
 
     def test_common_name(self):
         cert = {'subject': ((('commonName', 'example.com'),),)}
-        self.assertIs(None, _urllib2_wrappers.match_hostname(cert, "example.com"))
+        self.assertIs(None,
+                      _urllib2_wrappers.match_hostname(cert, "example.com"))
         self.assertRaises(CertificateError, _urllib2_wrappers.match_hostname,
-                cert, "example.org")
+                          cert, "example.org")
