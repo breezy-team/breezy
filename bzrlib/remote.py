@@ -697,6 +697,11 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
                 ignore_fallbacks=ignore_fallbacks)
         return ret
 
+    def set_branch_reference(self, target_branch, name=None):
+        """See BzrDir.set_branch_reference()."""
+        self._ensure_real()
+        return self._real_bzrdir.set_branch_reference(target_branch, name=name)
+
     def get_branch_reference(self, name=None):
         """See BzrDir.get_branch_reference()."""
         if name is not None:

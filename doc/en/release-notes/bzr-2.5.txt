@@ -34,6 +34,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``bzr branch`` now fetches revisions when branching into an empty
+  control directory. (Jelmer Vernooij, #905594)
+
 * Support scripts that don't call bzrlib.initialize() but still call run_bzr().
   (Vincent Ladeuil, #917733)
 
@@ -51,11 +54,16 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``ControlDir`` now has a new method ``set_branch_reference`` which can
+  be used for setting branch references. (Jelmer Vernooij)
+
 Internals
 *********
 
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
+
+* A new matcher ``RevisionHistoryMatches`` has been added. (Jelmer Vernooij)
 
 * ``MutableTree`` has two new hooks ``pre_transform`` and
   ``post_transform`` that are called for tree transform operations.

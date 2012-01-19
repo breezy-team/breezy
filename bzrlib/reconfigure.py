@@ -369,8 +369,7 @@ class Reconfigure(object):
         else:
             local_branch = self.local_branch
         if self._create_reference:
-            format = branch.BranchReferenceFormat().initialize(self.bzrdir,
-                target_branch=reference_branch)
+            self.bzrdir.set_branch_reference(reference_branch)
         if self._destroy_tree:
             self.bzrdir.destroy_workingtree()
         if self._create_tree:

@@ -1394,6 +1394,11 @@ class cmd_branch(Command):
                     from_location, revision)
                 raise errors.BzrCommandError(msg)
         else:
+            try:
+                to_repo = to_dir.open_repository()
+            except errors.NoRepositoryPresent:
+                to_repo = to_dir.create_repository()
+            to_repo.fetch(br_from.repository, revision_id=revision_id)
             branch = br_from.sprout(to_dir, revision_id=revision_id)
         _merge_tags_if_possible(br_from, branch)
         # If the source branch is stacked, the new branch may
