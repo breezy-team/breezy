@@ -16,12 +16,14 @@
 
 """builtin bzr commands"""
 
+from __future__ import absolute_import
+
 import os
 
 import bzrlib.bzrdir
 
-from bzrlib.lazy_import import lazy_import
-lazy_import(globals(), """
+from bzrlib import lazy_import
+lazy_import.lazy_import(globals(), """
 import cStringIO
 import errno
 import sys
@@ -1249,8 +1251,16 @@ class cmd_push(Command):
         if location is None:
             stored_loc = br_from.get_push_location()
             if stored_loc is None:
-                raise errors.BzrCommandError(gettext(
-                    "No push location known or specified."))
+                parent_loc = br_from.get_parent()
+                if parent_loc:
+                    raise errors.BzrCommandError(gettext(
+                        "No push location known or specified. To push to the "
+                        "parent branch (at %s), use 'bzr push :parent'." %
+                        urlutils.unescape_for_display(parent_loc,
+                            self.outf.encoding)))
+                else:
+                    raise errors.BzrCommandError(gettext(
+                        "No push location known or specified."))
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
@@ -1438,12 +1448,30 @@ class cmd_branches(Command):
                     self.outf.encoding).rstrip("/"))
         else:
             dir = controldir.ControlDir.open_containing(location)[0]
-            for branch in dir.list_branches():
-                if branch.name is None:
-                    self.outf.write(gettext(" (default)\n"))
+            try:
+                active_branch = dir.open_branch(name="")
+            except errors.NotBranchError:
+                active_branch = None
+            branches = dir.get_branches()
+            names = {}
+            for name, branch in branches.iteritems():
+                if name == "":
+                    continue
+                active = (active_branch is not None and
+                          active_branch.base == branch.base)
+                names[name] = active
+            # Only mention the current branch explicitly if it's not
+            # one of the colocated branches
+            if not any(names.values()) and active_branch is not None:
+                self.outf.write("* %s\n" % gettext("(default)"))
+            for name in sorted(names.keys()):
+                active = names[name]
+                if active:
+                    prefix = "*"
                 else:
-                    self.outf.write(" %s\n" % branch.name.encode(
-                        self.outf.encoding))
+                    prefix = " "
+                self.outf.write("%s %s\n" % (
+                    prefix, name.encode(self.outf.encoding)))
 
 
 class cmd_checkout(Command):
@@ -2063,14 +2091,16 @@ class cmd_init_repository(Command):
             location = '.'
 
         to_transport = transport.get_transport(location)
-        to_transport.ensure_base()
 
-        newdir = format.initialize_on_transport(to_transport)
-        repo = newdir.create_repository(shared=True)
-        repo.set_make_working_trees(not no_trees)
+        (repo, newdir, require_stacking, repository_policy) = (
+            format.initialize_on_transport_ex(to_transport,
+            create_prefix=True, make_working_trees=not no_trees,
+            shared_repo=True, force_new_repo=True,
+            use_existing_dir=True,
+            repo_format_name=format.repository_format.get_format_string()))
         if not is_quiet():
             from bzrlib.info import show_bzrdir_info
-            show_bzrdir_info(repo.bzrdir, verbose=0, outfile=self.outf)
+            show_bzrdir_info(newdir, verbose=0, outfile=self.outf)
 
 
 class cmd_diff(Command):
@@ -3979,6 +4009,15 @@ class cmd_selftest(Command):
             load_list=None, debugflag=None, starting_with=None, subunit=False,
             parallel=None, lsprof_tests=False,
             sync=False):
+
+        # During selftest, disallow proxying, as it can cause severe
+        # performance penalties and is only needed for thread
+        # safety. The selftest command is assumed to not use threads
+        # too heavily. The call should be as early as possible, as
+        # error reporting for past duplicate imports won't have useful
+        # backtraces.
+        lazy_import.disallow_proxying()
+
         from bzrlib import tests
 
         if testspecs_list is not None:
@@ -4134,7 +4173,7 @@ class cmd_merge(Command):
     Merge will do its best to combine the changes in two branches, but there
     are some kinds of problems only a human can fix.  When it encounters those,
     it will mark a conflict.  A conflict means that you need to fix something,
-    before you should commit.
+    before you can commit.
 
     Use bzr resolve when you have fixed a problem.  See also bzr conflicts.
 
@@ -4698,7 +4737,7 @@ class cmd_shell_complete(Command):
 
     @display_command
     def run(self, context=None):
-        import shellcomplete
+        from bzrlib import shellcomplete
         shellcomplete.shellcomplete(context)
 
 
@@ -5584,7 +5623,7 @@ class cmd_merge_directive(Command):
                 self.outf.writelines(directive.to_lines())
         else:
             message = directive.to_email(mail_to, branch, sign)
-            s = SMTPConnection(branch.get_config())
+            s = SMTPConnection(branch.get_config_stack())
             s.send_email(message)
 
 

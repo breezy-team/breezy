@@ -34,16 +34,14 @@ from bzrlib.tests import (
     )
 
 
-class FakeConfig(config.Stack):
+class FakeConfig(config.MemoryStack):
 
     def __init__(self, content=None):
-        store = config.IniFileStore()
         if content is None:
             content = '''
 gpg_signing_key=amy@example.com
 gpg_signing_command=false'''
-        store._load_from_string(content)
-        super(FakeConfig, self).__init__([store.get_sections])
+        super(FakeConfig, self).__init__(content)
 
 
 class TestCommandLine(tests.TestCase):
@@ -117,6 +115,7 @@ gpg_signing_command=false'''))
         """You can't sign Unicode text; it must be encoded first."""
         self.assertRaises(errors.BzrBadParameterUnicode,
                           self.assertProduces, u'foo')
+
 
 class TestVerify(TestCase):
 

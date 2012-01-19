@@ -16,6 +16,7 @@
 
 """Server-side bzrdir related request implmentations."""
 
+from __future__ import absolute_import
 
 from bzrlib import branch, errors, repository, urlutils
 from bzrlib.bzrdir import (
@@ -267,7 +268,7 @@ class SmartServerRequestCreateBranch(SmartServerRequestBzrDir):
             self.transport_from_client_path(path))
         format = branch.network_format_registry.get(network_name)
         bzrdir.branch_format = format
-        result = format.initialize(bzrdir)
+        result = format.initialize(bzrdir, name="")
         rich_root, tree_ref, external_lookup = self._format_to_capabilities(
             result.repository._format)
         branch_format = result._format.network_name()

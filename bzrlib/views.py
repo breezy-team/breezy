@@ -22,6 +22,7 @@ when first accessed.  Clients should do, for example, ...
   tree.views.lookup_view()
 """
 
+from __future__ import absolute_import
 
 import re
 

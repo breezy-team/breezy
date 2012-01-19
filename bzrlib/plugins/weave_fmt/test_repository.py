@@ -20,6 +20,8 @@ For interface tests see tests/per_repository/*.py.
 
 """
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 from stat import S_ISDIR
 import sys

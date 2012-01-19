@@ -17,6 +17,8 @@
 """Implementation of Graph algorithms when we have already loaded everything.
 """
 
+from __future__ import absolute_import
+
 from collections import deque
 from bzrlib import (
     errors,

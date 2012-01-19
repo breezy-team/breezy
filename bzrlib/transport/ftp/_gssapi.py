@@ -19,6 +19,8 @@
 See RFC2228 for details.
 """
 
+from __future__ import absolute_import
+
 import base64, ftplib
 
 from bzrlib import (

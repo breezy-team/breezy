@@ -39,10 +39,6 @@ class InstrumentedReplacer(lazy_import.ScopeReplacer):
     def use_actions(actions):
         InstrumentedReplacer.actions = actions
 
-    def _replace(self):
-        InstrumentedReplacer.actions.append('_replace')
-        return lazy_import.ScopeReplacer._replace(self)
-
     def __getattribute__(self, attr):
         InstrumentedReplacer.actions.append(('__getattribute__', attr))
         return lazy_import.ScopeReplacer.__getattribute__(self, attr)
@@ -61,10 +57,6 @@ class InstrumentedImportReplacer(lazy_import.ImportReplacer):
     def _import(self, scope, name):
         InstrumentedImportReplacer.actions.append(('_import', name))
         return lazy_import.ImportReplacer._import(self, scope, name)
-
-    def _replace(self):
-        InstrumentedImportReplacer.actions.append('_replace')
-        return lazy_import.ScopeReplacer._replace(self)
 
     def __getattribute__(self, attr):
         InstrumentedImportReplacer.actions.append(('__getattribute__', attr))
@@ -144,7 +136,6 @@ class TestScopeReplacer(TestCase):
         self.assertIsInstance(test_obj1, TestClass)
         self.assertEqual('foo', test_obj1.foo(2))
         self.assertEqual([('__getattribute__', 'foo'),
-                          '_replace',
                           'factory',
                           'init',
                           ('foo', 1),
@@ -243,7 +234,6 @@ class TestScopeReplacer(TestCase):
         self.assertEqual('class_member', test_class1.class_member)
         self.assertEqual(test_class1, TestClass)
         self.assertEqual([('__getattribute__', 'class_member'),
-                          '_replace',
                           'factory',
                          ], actions)
 
@@ -273,7 +263,6 @@ class TestScopeReplacer(TestCase):
         self.assertIsInstance(obj, TestClass)
         self.assertEqual('class_member', obj.class_member)
         self.assertEqual([('__call__', (), {}),
-                          '_replace',
                           'factory',
                           'init',
                          ], actions)
@@ -306,7 +295,6 @@ class TestScopeReplacer(TestCase):
 
         self.assertEqual((1,2,'3'), val)
         self.assertEqual([('__call__', (1,2), {'c':'3'}),
-                          '_replace',
                           'factory',
                           'func',
                          ], actions)
@@ -368,14 +356,12 @@ class TestScopeReplacer(TestCase):
                           getattr, test_obj3, 'foo')
 
         self.assertEqual([('__getattribute__', 'foo'),
-                          '_replace',
                           'factory',
                           'init',
                           ('foo', 1),
                           ('foo', 2),
                           ('foo', 3),
                           ('__getattribute__', 'foo'),
-                          '_replace',
                          ], actions)
 
     def test_enable_proxying(self):
@@ -426,7 +412,6 @@ class TestScopeReplacer(TestCase):
                          object.__getattribute__(test_obj5, '__class__'))
 
         self.assertEqual([('__getattribute__', 'foo'),
-                          '_replace',
                           'factory',
                           'init',
                           ('foo', 1),
@@ -464,7 +449,6 @@ class TestScopeReplacer(TestCase):
         e = self.assertRaises(errors.IllegalUseOfScopeReplacer, test_obj7)
         self.assertIn("replace itself", e.msg)
         self.assertEqual([('__call__', (), {}),
-                          '_replace',
                           'factory'], actions)
 
 
@@ -483,9 +467,9 @@ class ImportReplacerHelper(TestCaseInTempDir):
         self.addCleanup(sys.path.remove, base_path)
 
         original_import = __import__
-        def instrumented_import(mod, scope1, scope2, fromlist):
-            self.actions.append(('import', mod, fromlist))
-            return original_import(mod, scope1, scope2, fromlist)
+        def instrumented_import(mod, scope1, scope2, fromlist, level):
+            self.actions.append(('import', mod, fromlist, level))
+            return original_import(mod, scope1, scope2, fromlist, level)
         def cleanup():
             __builtins__['__import__'] = original_import
         self.addCleanup(cleanup)
@@ -561,18 +545,18 @@ class TestImportReplacerHelper(ImportReplacerHelper):
         """Test that a real import of these modules works"""
         sub_mod_path = '.'.join([self.root_name, self.sub_name,
                                   self.submoda_name])
-        root = __import__(sub_mod_path, globals(), locals(), [])
+        root = __import__(sub_mod_path, globals(), locals(), [], 0)
         self.assertEqual(1, root.var1)
         self.assertEqual(3, getattr(root, self.sub_name).var3)
         self.assertEqual(4, getattr(getattr(root, self.sub_name),
                                     self.submoda_name).var4)
 
         mod_path = '.'.join([self.root_name, self.mod_name])
-        root = __import__(mod_path, globals(), locals(), [])
+        root = __import__(mod_path, globals(), locals(), [], 0)
         self.assertEqual(2, getattr(root, self.mod_name).var2)
 
-        self.assertEqual([('import', sub_mod_path, []),
-                          ('import', mod_path, []),
+        self.assertEqual([('import', sub_mod_path, [], 0),
+                          ('import', mod_path, [], 0),
                          ], self.actions)
 
 
@@ -599,9 +583,8 @@ class TestImportReplacer(ImportReplacerHelper):
         self.assertEqual('x', root1.func1('x'))
 
         self.assertEqual([('__getattribute__', 'var1'),
-                          '_replace',
                           ('_import', 'root1'),
-                          ('import', self.root_name, []),
+                          ('import', self.root_name, [], 0),
                          ], self.actions)
 
     def test_import_mod(self):
@@ -625,9 +608,8 @@ class TestImportReplacer(ImportReplacerHelper):
         self.assertEqual('y', mod1.func2('y'))
 
         self.assertEqual([('__getattribute__', 'var2'),
-                          '_replace',
                           ('_import', 'mod1'),
-                          ('import', mod_path, []),
+                          ('import', mod_path, [], 0),
                          ], self.actions)
 
     def test_import_mod_from_root(self):
@@ -650,9 +632,8 @@ class TestImportReplacer(ImportReplacerHelper):
         self.assertEqual('y', mod2.func2('y'))
 
         self.assertEqual([('__getattribute__', 'var2'),
-                          '_replace',
                           ('_import', 'mod2'),
-                          ('import', self.root_name, [self.mod_name]),
+                          ('import', self.root_name, [self.mod_name], 0),
                          ], self.actions)
 
     def test_import_root_and_mod(self):
@@ -683,13 +664,11 @@ class TestImportReplacer(ImportReplacerHelper):
 
         mod_path = self.root_name + '.' + self.mod_name
         self.assertEqual([('__getattribute__', 'var1'),
-                          '_replace',
                           ('_import', 'root3'),
-                          ('import', self.root_name, []),
+                          ('import', self.root_name, [], 0),
                           ('__getattribute__', 'var2'),
-                          '_replace',
                           ('_import', 'mod3'),
-                          ('import', mod_path, []),
+                          ('import', mod_path, [], 0),
                          ], self.actions)
 
     def test_import_root_and_root_mod(self):
@@ -727,13 +706,11 @@ class TestImportReplacer(ImportReplacerHelper):
 
         mod_path = self.root_name + '.' + self.mod_name
         self.assertEqual([('__getattribute__', 'mod4'),
-                          '_replace',
                           ('_import', 'root4'),
-                          ('import', self.root_name, []),
+                          ('import', self.root_name, [], 0),
                           ('__getattribute__', 'var2'),
-                          '_replace',
                           ('_import', 'mod4'),
-                          ('import', mod_path, []),
+                          ('import', mod_path, [], 0),
                          ], self.actions)
 
     def test_import_root_sub_submod(self):
@@ -792,25 +769,20 @@ class TestImportReplacer(ImportReplacerHelper):
         submodb_path = sub_path + '.' + self.submodb_name
 
         self.assertEqual([('__getattribute__', 'mod5'),
-                          '_replace',
                           ('_import', 'root5'),
-                          ('import', self.root_name, []),
+                          ('import', self.root_name, [], 0),
                           ('__getattribute__', 'submoda5'),
-                          '_replace',
                           ('_import', 'sub5'),
-                          ('import', sub_path, []),
+                          ('import', sub_path, [], 0),
                           ('__getattribute__', 'var2'),
-                          '_replace',
                           ('_import', 'mod5'),
-                          ('import', mod_path, []),
+                          ('import', mod_path, [], 0),
                           ('__getattribute__', 'var4'),
-                          '_replace',
                           ('_import', 'submoda5'),
-                          ('import', submoda_path, []),
+                          ('import', submoda_path, [], 0),
                           ('__getattribute__', 'var5'),
-                          '_replace',
                           ('_import', 'submodb5'),
-                          ('import', submodb_path, []),
+                          ('import', submodb_path, [], 0),
                          ], self.actions)
 
 
@@ -1104,9 +1076,8 @@ class TestLazyImportProcessor(ImportReplacerHelper):
         self.assertEqual('x', root6.func1('x'))
 
         self.assertEqual([('__getattribute__', 'var1'),
-                          '_replace',
                           ('_import', 'root6'),
-                          ('import', self.root_name, []),
+                          ('import', self.root_name, [], 0),
                          ], self.actions)
 
     def test_import_deep(self):
@@ -1140,9 +1111,8 @@ import %(root_name)s.%(sub_name)s.%(submoda_name)s as submoda7
         submoda_path = sub_path + '.' + self.submoda_name
 
         self.assertEqual([('__getattribute__', 'var4'),
-                          '_replace',
                           ('_import', 'submoda7'),
-                          ('import', submoda_path, []),
+                          ('import', submoda_path, [], 0),
                          ], self.actions)
 
     def test_lazy_import(self):
@@ -1165,9 +1135,8 @@ import %(root_name)s.%(sub_name)s.%(submoda_name)s as submoda7
         self.assertEqual(1, root8.func1(1))
 
         self.assertEqual([('__getattribute__', 'var1'),
-                          '_replace',
                           ('_import', 'root8'),
-                          ('import', self.root_name, []),
+                          ('import', self.root_name, [], 0),
                          ], self.actions)
 
 
@@ -1175,41 +1144,42 @@ class TestScopeReplacerReentrance(TestCase):
     """The ScopeReplacer should be reentrant.
 
     Invoking a replacer while an invocation was already on-going leads to a
-    race to see which invocation will be the first to delete the _factory and
-    _scope attributes.  The loosing caller used to see AttributeErrors (bug
-    702914).
+    race to see which invocation will be the first to call _replace.
+    The losing caller used to see an exception (bugs 396819 and 702914).
 
-    These tests set up a tracer that stops at the moment just before one of
-    the attributes is being deleted and starts another call to the
-    functionality in question (__call__, __getattribute__, __setattr_) in
-    order win the race, setting up the originall caller to loose.
+    These tests set up a tracer that stops at a suitable moment (upon
+    entry of a specified method) and starts another call to the
+    functionality in question (__call__, __getattribute__, __setattr_)
+    in order to win the race, setting up the original caller to lose.
     """
 
     def tracer(self, frame, event, arg):
+        if event != 'call':
+            return self.tracer
         # Grab the name of the file that contains the code being executed.
-        filename = frame.f_globals["__file__"]
+        code = frame.f_code
+        filename = code.co_filename
         # Convert ".pyc" and ".pyo" file names to their ".py" equivalent.
         filename = re.sub(r'\.py[co]$', '.py', filename)
+        function_name = code.co_name
         # If we're executing a line of code from the right module...
-        if event == 'line' and 'lazy_import.py' in filename:
-            line = linecache.getline(filename, frame.f_lineno)
-            # ...and the line of code is the one we're looking for...
-            if 'del self._factory' in line:
-                # We don't need to trace any more.
-                sys.settrace(None)
-                # Run another racer.  This one will "win" the race, deleting
-                # the attributes.  When the first racer resumes it will loose
-                # the race, generating an AttributeError.
-                self.racer()
+        if (filename.endswith('lazy_import.py') and
+            function_name == self.method_to_trace):
+            # We don't need to trace any more.
+            sys.settrace(None)
+            # Run another racer.  This one will "win" the race.
+            self.racer()
         return self.tracer
 
-    def run_race(self, racer):
+    def run_race(self, racer, method_to_trace='_resolve'):
+        self.overrideAttr(lazy_import.ScopeReplacer, '_should_proxy', True)
         self.racer = racer
+        self.method_to_trace = method_to_trace
         sys.settrace(self.tracer)
-        self.racer() # Should not raise an AttributeError
-        # Make sure the tracer actually found the code it was looking for.  If
-        # not, maybe the code was refactored in such a way that these tests
-        # aren't needed any more.
+        self.racer() # Should not raise any exception
+        # Make sure the tracer actually found the code it was
+        # looking for.  If not, maybe the code was refactored in
+        # such a way that these tests aren't needed any more.
         self.assertEqual(None, sys.gettrace())
 
     def test_call(self):

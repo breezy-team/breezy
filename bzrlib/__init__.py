@@ -31,6 +31,8 @@ Some particularly interesting things in bzrlib are:
 We hope you enjoy this library.
 """
 
+from __future__ import absolute_import
+
 import time
 
 # Keep track of when bzrlib was first imported, so that we can give rough
@@ -44,7 +46,7 @@ import sys
 IGNORE_FILENAME = ".bzrignore"
 
 
-__copyright__ = "Copyright 2005-2011 Canonical Ltd."
+__copyright__ = "Copyright 2005-2012 Canonical Ltd."
 
 # same format as sys.version_info: "A tuple containing the five components of
 # the version number: major, minor, micro, releaselevel, and serial. All
@@ -53,7 +55,7 @@ __copyright__ = "Copyright 2005-2011 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (2, 5, 0, 'dev', 5)
+version_info = (2, 5, 0, 'dev', 6)
 
 # API compatibility version
 api_minimum_version = (2, 4, 0)

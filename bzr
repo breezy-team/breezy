@@ -16,6 +16,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 """Bazaar -- a free distributed version-control tool"""
 
 import os
@@ -25,29 +27,12 @@ import warnings
 # update this on each release
 _script_version = (2, 5, 0)
 
-try:
-    version_info = sys.version_info
-except AttributeError:
-    version_info = 1, 5  # 1.5 or older
-
-REINVOKE = "__BZR_REINVOKE"
 NEED_VERS = (2, 6)
-KNOWN_PYTHONS = ('python2.6', 'python2.7')
 
-if version_info < NEED_VERS:
-    if not os.environ.has_key(REINVOKE):
-        # mutating os.environ doesn't work in old Pythons
-        os.putenv(REINVOKE, "1")
-        for python in KNOWN_PYTHONS:
-            try:
-                os.execvp(python, [python] + sys.argv)
-            except OSError:
-                pass
+if sys.version_info < NEED_VERS:
     sys.stderr.write("bzr: error: cannot find a suitable python interpreter\n")
     sys.stderr.write("  (need %d.%d or later)\n" % NEED_VERS)
     sys.exit(1)
-if hasattr(os, "unsetenv"):
-    os.unsetenv(REINVOKE)
 
 
 profiling = False
@@ -56,26 +41,9 @@ if '--profile-imports' in sys.argv:
     profile_imports.install()
     profiling = True
 
-if sys.platform == 'darwin':
-    # jameinel says this hack is to force python to honor the LANG setting,
-    # even on Darwin.  Otherwise it is apparently hardcoded to Mac-Roman,
-    # which is incorrect for the normal Terminal.app which wants UTF-8.
-    #
-    # "It might be that I should be setting the "system locale" somewhere else
-    # on the system, rather than setting LANG=en_US.UTF-8 in .bashrc.
-    # Switching to 'posix' and setting LANG worked for me."
-    #
-    # So we can remove this if someone works out the right way to tell Mac
-    # Python which encoding to use.  -- mbp 20080703
-    sys.platform = 'posix'
-    try:
-        import locale
-    finally:
-        sys.platform = 'darwin'
-else:
-    import locale
 
 if os.name == "posix":
+    import locale
     try:
         locale.setlocale(locale.LC_ALL, '')
     except locale.Error, e:

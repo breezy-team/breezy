@@ -200,7 +200,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         self.run_send([])
         self.run_bzr_error(('Unknown mail client: bogus',),
                            'send -f branch --mail-to jrandom@example.org')
-        b.get_config().set_user_option('submit_to', 'jrandom@example.org')
+        b.get_config_stack().set('submit_to', 'jrandom@example.org')
         self.run_bzr_error(('Unknown mail client: bogus',),
                            'send -f branch')
 
@@ -209,10 +209,8 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         b = branch.Branch.open('branch')
         b.get_config().set_user_option('mail_client', 'bogus')
         parent = branch.Branch.open('parent')
-        parent.get_config().set_user_option('child_submit_to',
-                           'somebody@example.org')
-        self.run_bzr_error(('Unknown mail client: bogus',),
-                           'send -f branch')
+        parent.get_config_stack().set('child_submit_to', 'somebody@example.org')
+        self.run_bzr_error(('Unknown mail client: bogus',), 'send -f branch')
 
     def test_format(self):
         md = self.get_MD(['--format=4'])
@@ -230,12 +228,12 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
                             'send -f branch -o- --format=0.999')[0]
 
     def test_format_child_option(self):
-        parent_config = branch.Branch.open('parent').get_config()
-        parent_config.set_user_option('child_submit_format', '4')
+        parent_config = branch.Branch.open('parent').get_config_stack()
+        parent_config.set('child_submit_format', '4')
         md = self.get_MD([])
         self.assertIs(merge_directive.MergeDirective2, md.__class__)
 
-        parent_config.set_user_option('child_submit_format', '0.9')
+        parent_config.set('child_submit_format', '0.9')
         md = self.get_MD([])
         self.assertFormatIs('# Bazaar revision bundle v0.9', md)
 
@@ -243,7 +241,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         self.assertFormatIs('# Bazaar revision bundle v0.9', md)
         self.assertIs(merge_directive.MergeDirective, md.__class__)
 
-        parent_config.set_user_option('child_submit_format', '0.999')
+        parent_config.set('child_submit_format', '0.999')
         self.run_bzr_error(["No such send format '0.999'"],
                             'send -f branch -o-')[0]
 
@@ -460,4 +458,5 @@ class TestSmartServerSend(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(9, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

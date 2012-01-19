@@ -17,7 +17,7 @@
 # Comments, suggestions and bug reports welcome.
 
 
-from __future__ import generators
+from __future__ import absolute_import
 
 import sys
 import os

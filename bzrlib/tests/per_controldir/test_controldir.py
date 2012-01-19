@@ -746,7 +746,7 @@ class TestControlDir(TestCaseWithControlDir):
             source.tags.set_tag('tag-a', 'rev-2')
         except errors.TagsNotSupported:
             raise TestNotApplicable('Branch format does not support tags.')
-        source.get_config().set_user_option('branch.fetch_tags', 'True')
+        source.get_config_stack().set('branch.fetch_tags', True)
         # Now source has a tag not in its ancestry.  Sprout its controldir.
         dir = source.bzrdir
         target = dir.sprout(self.get_url('target'))
@@ -825,7 +825,7 @@ class TestControlDir(TestCaseWithControlDir):
             has_ghost_tag = False
         else:
             has_ghost_tag = True
-        source.get_config().set_user_option('branch.fetch_tags', 'True')
+        source.get_config_stack().set('branch.fetch_tags', True)
         # And ask sprout for C2
         dir = source.bzrdir
         target = dir.sprout(self.get_url('target'), revision_id='rev-c2')
@@ -1195,7 +1195,7 @@ class TestControlDir(TestCaseWithControlDir):
     def test_get_branches(self):
         repo = self.make_repository('branch-1')
         target_branch = repo.bzrdir.create_branch()
-        self.assertEqual([None], repo.bzrdir.get_branches().keys())
+        self.assertEqual([""], repo.bzrdir.get_branches().keys())
 
     def test_create_repository(self):
         # a bzrdir can construct a repository for itself.
@@ -1342,7 +1342,7 @@ class TestControlDir(TestCaseWithControlDir):
             raise TestSkipped("Can't initialize %r on transport %r"
                               % (self.bzrdir_format, t))
         dir = bzrdir.BzrDir.open(t.base)
-        self.assertIs(None, dir._get_selected_branch())
+        self.assertEqual(u"", dir._get_selected_branch())
 
     def test_root_transport(self):
         dir = self.make_bzrdir('.')

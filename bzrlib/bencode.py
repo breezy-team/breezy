@@ -16,6 +16,8 @@
 
 """Wrapper around the bencode pyrex and python implementation"""
 
+from __future__ import absolute_import
+
 from bzrlib import osutils
 
 try:
