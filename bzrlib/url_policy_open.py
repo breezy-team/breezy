@@ -55,7 +55,7 @@ class BranchLoopError(errors.BzrError):
 class BranchOpenPolicy(object):
     """Policy on how to open branches.
 
-    In particular, a policy determines which branches are safe to open by
+    In particular, a policy determines which branches are okay to open by
     checking their URLs and deciding whether or not to follow branch
     references.
     """
@@ -85,13 +85,13 @@ class BranchOpenPolicy(object):
         raise NotImplementedError(self.transform_fallback_location)
 
     def check_one_url(self, url):
-        """Check the safety of the source URL.
+        """Check a URL.
 
         Subclasses must override this method.
 
         :param url: The source URL to check.
         :raise BadUrl: subclasses are expected to raise this or a subclass
-            when it finds a URL it deems to be unsafe.
+            when it finds a URL it deems to be unacceptable.
         """
         raise NotImplementedError(self.check_one_url)
 
@@ -103,17 +103,17 @@ class _BlacklistPolicy(BranchOpenPolicy):
     with e.g. url encoding. It's mostly useful for tests.
     """
 
-    def __init__(self, should_follow_references, unsafe_urls=None):
-        if unsafe_urls is None:
-            unsafe_urls = set()
-        self._unsafe_urls = unsafe_urls
+    def __init__(self, should_follow_references, bad_urls=None):
+        if bad_urls is None:
+            bad_urls = set()
+        self._bad_urls = bad_urls
         self._should_follow_references = should_follow_references
 
     def should_follow_references(self):
         return self._should_follow_references
 
     def check_one_url(self, url):
-        if url in self._unsafe_urls:
+        if url in self._bad_urls:
             raise BadUrl(url)
 
     def transform_fallback_location(self, branch, url):
@@ -172,7 +172,7 @@ class SingleSchemePolicy(BranchOpenPolicy):
         return urlutils.join(branch.base, url), True
 
     def check_one_url(self, url):
-        """Check that `url` is safe to open."""
+        """Check that `url` is okay to open."""
         if urlutils.URL.from_string(str(url)).scheme != self.allowed_scheme:
             raise BadUrl(url)
 
@@ -220,7 +220,7 @@ class BranchOpener(object):
             'BranchOpener.transform_fallback_locationHook')
 
     def check_and_follow_branch_reference(self, url):
-        """Check URL (and possibly the referenced URL) for safety.
+        """Check URL (and possibly the referenced URL).
 
         This method checks that `url` passes the policy's `check_one_url`
         method, and if `url` refers to a branch reference, it checks whether
@@ -285,9 +285,9 @@ class BranchOpener(object):
         return bzrdir.get_branch_reference()
 
     def open(self, url):
-        """Open the Bazaar branch at url, first checking for safety.
+        """Open the Bazaar branch at url, first checking it.
 
-        What safety means is defined by a subclasses `follow_reference` and
+        What is acceptable means is defined by the policy's `follow_reference` and
         `check_one_url` methods.
         """
         if type(url) != str:
