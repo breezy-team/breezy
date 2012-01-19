@@ -29,6 +29,8 @@ Improvements
 * "bzr switch -b" in a standalone tree will now create a colocated branch.
   (Jelmer Vernooij, #918197)
 
+* New HPSS call for ``BzrDir.get_branches``. (Jelmer Vernooij, #894460)
+
 Bug Fixes
 *********
 
