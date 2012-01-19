@@ -33,6 +33,7 @@ import threading
 
 import bzrlib
 from bzrlib import (
+    config,
     cleanup,
     cmdline,
     debug,
