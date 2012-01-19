@@ -512,7 +512,7 @@ class TestSmartServerRequestInitializeBzrDir(tests.TestCaseWithMemoryTransport):
         backing = self.get_transport()
         request = smart_dir.SmartServerRequestInitializeBzrDir(backing)
         self.make_bzrdir('subdir')
-        self.assertRaises(errors.FileExists,
+        self.assertRaises(errors.AlreadyControlDirError,
             request.execute, 'subdir')
 
 

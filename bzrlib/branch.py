@@ -1457,18 +1457,30 @@ class Branch(controldir.ControlComponent):
         t = transport.get_transport(to_location)
         t.ensure_base()
         format = self._get_checkout_format(lightweight=lightweight)
-        if lightweight:
+        try:
             checkout = format.initialize_on_transport(t)
+        except errors.AlreadyControlDirError:
+            # It's fine if the control directory already exists,
+            # as long as there is no existing branch and working tree.
+            checkout = controldir.ControlDir.open_from_transport(t)
+            try:
+                checkout.open_branch()
+            except errors.NotBranchError:
+                pass
+            else:
+                raise errors.AlreadyControlDirError(t.base)
+
+        if lightweight:
             from_branch = checkout.set_branch_reference(target_branch=self)
         else:
-            checkout_branch = controldir.ControlDir.create_branch_convenience(
-                to_location, force_new_tree=False, format=format)
-            checkout = checkout_branch.bzrdir
+            policy = checkout.determine_repository_policy()
+            repo = policy.acquire_repository()[0]
+            checkout_branch = checkout.create_branch()
             checkout_branch.bind(self)
             # pull up to the specified revision_id to set the initial
             # branch tip correctly, and seed it with history.
             checkout_branch.pull(self, stop_revision=revision_id)
-            from_branch=None
+            from_branch = None
         tree = checkout.create_workingtree(revision_id,
                                            from_branch=from_branch,
                                            accelerator_tree=accelerator_tree,
