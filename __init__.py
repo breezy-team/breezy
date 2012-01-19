@@ -209,9 +209,9 @@ def pre_merge(merger):
 def pre_merge_quilt(merger):
     if getattr(merger, "_no_quilt_unapplying", False):
         return
-    if (merger.other_tree.path2id("debian/patches") is None and
-        merger.this_tree.path2id("debian/patches") is None and
-        merger.working_tree.path2id("debian/patches") is None):
+    if (merger.other_tree.path2id(".pc/applied-patches") is None and
+        merger.this_tree.path2id(".pc/applied-patches") is None and
+        merger.working_tree.path2id(".pc/applied-patches") is None):
         return
 
     from bzrlib import trace
@@ -234,7 +234,7 @@ def pre_merge_quilt(merger):
         quilt_pop_all(working_dir=merger.working_tree.basedir)
     try:
         merger.this_tree, this_dir = tree_unapply_patches(merger.this_tree,
-            merger.this_branch)
+            merger.this_branch, force=True)
     except QuiltError, e:
         raise QuiltUnapplyError("this", e.stderr)
     else:
@@ -242,7 +242,7 @@ def pre_merge_quilt(merger):
             merger._quilt_tempdirs.append(this_dir)
     try:
         merger.base_tree, base_dir = tree_unapply_patches(merger.base_tree,
-            merger.this_branch)
+            merger.this_branch, force=True)
     except QuiltError, e:
         raise QuiltUnapplyError("base", e.stderr)
     else:
@@ -253,7 +253,7 @@ def pre_merge_quilt(merger):
         other_branch = merger.this_branch
     try:
         merger.other_tree, other_dir = tree_unapply_patches(merger.other_tree,
-            other_branch)
+            other_branch, force=True)
     except QuiltError, e:
         raise QuiltUnapplyError("other", e.stderr)
     else:
@@ -285,8 +285,6 @@ def post_build_tree_quilt(tree):
     if policy is None:
         return
     from bzrlib.plugins.builddeb.merge_quilt import post_process_quilt_patches
-    from bzrlib import trace
-    trace.note("Applying quilt patches.");
     post_process_quilt_patches(tree, [], policy)
 
 
@@ -312,8 +310,9 @@ def pre_merge_fix_ancestry(merger):
             fix_ancestry_as_needed(merger.this_tree, merger.other_branch,
                 source_revid=merger.other_tree.get_revision_id())
         except PackageVersionNotPresent, e:
-            trace.warning("Not fixing branch ancestry, missing pristine tar "
-                "data for version %s", e.version)
+            trace.warning(
+                gettext("Not attempting to fix packaging branch ancestry, missing pristine tar "
+                "data for version %s."), e.version)
 
 
 try:

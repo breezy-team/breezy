@@ -32,6 +32,7 @@ from bzrlib import (
     trace,
     )
 
+from bzrlib.plugins.builddeb import gettext
 from bzrlib.plugins.builddeb.quilt import (
     quilt_applied,
     quilt_unapplied,
@@ -48,7 +49,7 @@ class NoUnapplyingMerger(_mod_merge.Merge3Merger):
     _no_quilt_unapplying = True
 
 
-def tree_unapply_patches(orig_tree, orig_branch=None):
+def tree_unapply_patches(orig_tree, orig_branch=None, force=False):
     """Return a tree with patches unapplied.
 
     :param orig_tree: Tree from which to unapply quilt patches
@@ -90,7 +91,7 @@ def tree_unapply_patches(orig_tree, orig_branch=None):
             merger.merge_type = NoUnapplyingMerger
             merger.do_merge()
         trace.mutter("Applying quilt patches for %r in %s", orig_tree, target_dir)
-        quilt_pop_all(working_dir=tree.basedir)
+        quilt_pop_all(working_dir=tree.basedir, force=force)
         return tree, target_dir
     except:
         shutil.rmtree(target_dir)
@@ -118,7 +119,7 @@ def post_process_quilt_patches(tree, old_patches, policy):
                 to_apply.append(p)
         if to_apply == []:
             return
-        trace.note("Applying %d quilt patches.", to_apply)
+        trace.note(gettext("Applying %d quilt patches."), to_apply)
         for p in to_apply:
             quilt_push(tree.basedir, p)
     elif policy == "unapplied":
@@ -130,7 +131,7 @@ def post_process_quilt_patches(tree, old_patches, policy):
                 to_unapply.append(p)
         if to_unapply == []:
             return
-        trace.note("Unapplying %d quilt patches", to_unapply)
+        trace.note(gettext("Unapplying %d quilt patches."), to_unapply)
         for p in to_unapply:
             quilt_pop(tree.basedir, p)
 
@@ -145,7 +146,7 @@ def start_commit_quilt_patches(tree):
         # patches.
         if applied_patches and unapplied_patches:
             trace.warning(
-                "Committing with %d patches applied and %d patches unapplied.",
+                gettext("Committing with %d patches applied and %d patches unapplied."),
                 len(applied_patches), len(unapplied_patches))
     elif policy == "applied":
         quilt_push_all(tree.basedir)
