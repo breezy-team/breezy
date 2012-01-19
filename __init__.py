@@ -222,7 +222,6 @@ def pre_merge_quilt(merger):
         trace.mutter("skipping smart quilt merge, not enabled.")
         return
 
-    import shutil
     from bzrlib.plugins.builddeb.errors import QuiltUnapplyError
     from bzrlib.plugins.builddeb.quilt import quilt_pop_all, QuiltError
     from bzrlib.plugins.builddeb.merge_quilt import tree_unapply_patches
@@ -237,8 +236,7 @@ def pre_merge_quilt(merger):
         merger.this_tree, this_dir = tree_unapply_patches(merger.this_tree,
             merger.this_branch)
     except QuiltError, e:
-        shutil.rmtree(this_dir)
-        raise QuiltUnapplyError("this", e.msg)
+        raise QuiltUnapplyError("this", e.stderr)
     else:
         if this_dir is not None:
             merger._quilt_tempdirs.append(this_dir)
@@ -246,8 +244,7 @@ def pre_merge_quilt(merger):
         merger.base_tree, base_dir = tree_unapply_patches(merger.base_tree,
             merger.this_branch)
     except QuiltError, e:
-        shutil.rmtree(base_dir)
-        raise QuiltUnapplyError("base", e.msg)
+        raise QuiltUnapplyError("base", e.stderr)
     else:
         if base_dir is not None:
             merger._quilt_tempdirs.append(base_dir)
@@ -258,8 +255,7 @@ def pre_merge_quilt(merger):
         merger.other_tree, other_dir = tree_unapply_patches(merger.other_tree,
             other_branch)
     except QuiltError, e:
-        shutil.rmtree(other_dir)
-        raise QuiltUnapplyError("other", e.msg)
+        raise QuiltUnapplyError("other", e.stderr)
     else:
         if other_dir is not None:
             merger._quilt_tempdirs.append(other_dir)
