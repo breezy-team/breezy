@@ -413,13 +413,12 @@ def match_hostname(cert, hostname):
                         return
                     dnsnames.append(value)
     if len(dnsnames) > 1:
-        raise errors.CertificateError("hostname %r "
-            "doesn't match either of %s"
+        raise errors.CertificateError(
+            "hostname %r doesn't match either of %s"
             % (hostname, ', '.join(map(repr, dnsnames))))
     elif len(dnsnames) == 1:
-        raise errors.CertificateError("hostname %r "
-            "doesn't match %r"
-            % (hostname, dnsnames[0]))
+        raise errors.CertificateError("hostname %r doesn't match %r" %
+                                      (hostname, dnsnames[0]))
     else:
         raise errors.CertificateError("no appropriate commonName or "
             "subjectAltName fields were found")
@@ -788,6 +787,10 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                     % (request, request.connection.sock.getsockname())
             response = connection.getresponse()
             convert_to_addinfourl = True
+        except (ssl.SSLError, errors.CertificateError):
+            # Something is wrong with either the certificate or the hostname,
+            # re-trying won't help
+            raise
         except (socket.gaierror, httplib.BadStatusLine, httplib.UnknownProtocol,
                 socket.error, httplib.HTTPException):
             response = self.retry_or_raise(http_class, request, first_try)
