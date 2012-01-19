@@ -1071,7 +1071,11 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
             argv_copy.append(a)
         i += 1
 
-    bzrlib.global_state.cmdline_overrides._from_cmdline(override_config)
+    if bzrlib.global_state is None:
+        cmdline_overrides = config.CommandLineStore()
+    else:
+        cmdline_overrides = bzrlib.global_state.cmdline_overrides
+    cmdline_overrides._from_cmdline(override_config)
 
     debug.set_debug_flags_from_config()
 
@@ -1131,7 +1135,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
             trace.debug_memory('Process status after command:', short=False)
         option._verbosity_level = saved_verbosity_level
         # Reset the overrides 
-        bzrlib.global_state.cmdline_overrides._reset()
+        cmdline_overrides._reset()
 
 
 def display_command(func):
