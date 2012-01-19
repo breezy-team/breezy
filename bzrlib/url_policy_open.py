@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Safe branch opening."""
+"""Branch opening with URL-based restrictions."""
 
 from __future__ import absolute_import
 
@@ -177,8 +177,8 @@ class SingleSchemePolicy(BranchOpenPolicy):
             raise BadUrl(url)
 
 
-class SafeBranchOpener(object):
-    """Safe branch opener.
+class BranchOpener(object):
+    """Branch opener which uses a URL policy.
 
     All locations that are opened (stacked-on branches, references) are
     checked against a policy object.
@@ -192,7 +192,7 @@ class SafeBranchOpener(object):
     _threading_data = threading.local()
 
     def __init__(self, policy, probers=None):
-        """Create a new SafeBranchOpener.
+        """Create a new BranchOpener.
 
         :param policy: The opener policy to use.
         :param probers: Optional list of probers to allow.
@@ -211,13 +211,13 @@ class SafeBranchOpener(object):
         object has a 'opener' attribute in this thread.
 
         This is in a module-level function rather than performed at module
-        level so that it can be called in setUp for testing `SafeBranchOpener`
+        level so that it can be called in setUp for testing `BranchOpener`
         as bzrlib.tests.TestCase.setUp clears hooks.
         """
         Branch.hooks.install_named_hook(
             'transform_fallback_location',
             cls.transform_fallback_locationHook,
-            'SafeBranchOpener.transform_fallback_locationHook')
+            'BranchOpener.transform_fallback_locationHook')
 
     def check_and_follow_branch_reference(self, url):
         """Check URL (and possibly the referenced URL) for safety.
@@ -302,13 +302,13 @@ class SafeBranchOpener(object):
             open_branch, url)
 
 
-def safe_open(allowed_scheme, url):
+def open_only_scheme(allowed_scheme, url):
     """Open the branch at `url`, only accessing URLs on `allowed_scheme`.
 
     :raises BadUrl: An attempt was made to open a URL that was not on
         `allowed_scheme`.
     """
-    return SafeBranchOpener(SingleSchemePolicy(allowed_scheme)).open(url)
+    return BranchOpener(SingleSchemePolicy(allowed_scheme)).open(url)
 
 
-SafeBranchOpener.install_hook()
+BranchOpener.install_hook()

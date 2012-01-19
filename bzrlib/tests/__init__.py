@@ -4056,7 +4056,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_revisiontree',
         'bzrlib.tests.test_rio',
         'bzrlib.tests.test_rules',
-        'bzrlib.tests.test_safe_open',
+        'bzrlib.tests.test_url_policy_open',
         'bzrlib.tests.test_sampler',
         'bzrlib.tests.test_scenarios',
         'bzrlib.tests.test_script',

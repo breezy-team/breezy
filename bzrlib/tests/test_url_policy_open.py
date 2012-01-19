@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for the safe branch open code."""
+"""Tests for the branch open with specific URL policy code."""
 
 from bzrlib import urlutils
 from bzrlib.branch import (
@@ -27,13 +27,13 @@ from bzrlib.bzrdir import (
     )
 from bzrlib.controldir import ControlDirFormat
 from bzrlib.errors import NotBranchError
-from bzrlib.safe_open import (
+from bzrlib.url_policy_open import (
     BadUrl,
     _BlacklistPolicy,
     BranchLoopError,
     BranchReferenceForbidden,
-    safe_open,
-    SafeBranchOpener,
+    open_only_scheme,
+    BranchOpener,
     WhitelistPolicy,
     )
 from bzrlib.tests import (
@@ -43,15 +43,15 @@ from bzrlib.tests import (
 from bzrlib.transport import chroot
 
 
-class TestSafeBranchOpenerCheckAndFollowBranchReference(TestCase):
-    """Unit tests for `SafeBranchOpener.check_and_follow_branch_reference`."""
+class TestBranchOpenerCheckAndFollowBranchReference(TestCase):
+    """Unit tests for `BranchOpener.check_and_follow_branch_reference`."""
 
     def setUp(self):
-        super(TestSafeBranchOpenerCheckAndFollowBranchReference, self).setUp()
-        SafeBranchOpener.install_hook()
+        super(TestBranchOpenerCheckAndFollowBranchReference, self).setUp()
+        BranchOpener.install_hook()
 
-    class StubbedSafeBranchOpener(SafeBranchOpener):
-        """SafeBranchOpener that provides canned answers.
+    class StubbedBranchOpener(BranchOpener):
+        """BranchOpener that provides canned answers.
 
         We implement the methods we need to to be able to control all the
         inputs to the `follow_reference` method, which is what is
@@ -59,8 +59,8 @@ class TestSafeBranchOpenerCheckAndFollowBranchReference(TestCase):
         """
 
         def __init__(self, references, policy):
-            parent_cls = TestSafeBranchOpenerCheckAndFollowBranchReference
-            super(parent_cls.StubbedSafeBranchOpener, self).__init__(policy)
+            parent_cls = TestBranchOpenerCheckAndFollowBranchReference
+            super(parent_cls.StubbedBranchOpener, self).__init__(policy)
             self._reference_values = {}
             for i in range(len(references) - 1):
                 self._reference_values[references[i]] = references[i + 1]
@@ -71,9 +71,9 @@ class TestSafeBranchOpenerCheckAndFollowBranchReference(TestCase):
             return self._reference_values[url]
 
     def make_branch_opener(self, should_follow_references, references,
-                         unsafe_urls=None):
+                           unsafe_urls=None):
         policy = _BlacklistPolicy(should_follow_references, unsafe_urls)
-        opener = self.StubbedSafeBranchOpener(references, policy)
+        opener = self.StubbedBranchOpener(references, policy)
         return opener
 
     def test_check_initial_url(self):
@@ -150,15 +150,15 @@ class TrackingProber(BzrProber):
         return BzrProber.probe_transport(transport)
 
 
-class TestSafeBranchOpenerStacking(TestCaseWithTransport):
+class TestBranchOpenerStacking(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestSafeBranchOpenerStacking, self).setUp()
-        SafeBranchOpener.install_hook()
+        super(TestBranchOpenerStacking, self).setUp()
+        BranchOpener.install_hook()
 
     def make_branch_opener(self, allowed_urls, probers=None):
         policy = WhitelistPolicy(True, allowed_urls, True)
-        return SafeBranchOpener(policy, probers)
+        return BranchOpener(policy, probers)
 
     def test_probers(self):
         # Only the specified probers should be used
@@ -170,7 +170,7 @@ class TestSafeBranchOpenerStacking(TestCaseWithTransport):
 
     def test_default_probers(self):
         # If no probers are specified to the constructor
-        # of SafeBranchOpener, then a safe set will be used,
+        # of BranchOpener, then a safe set will be used,
         # rather than all probers registered in bzr.
         self.addCleanup(ControlDirFormat.unregister_prober, TrackingProber)
         ControlDirFormat.register_prober(TrackingProber)
@@ -301,16 +301,16 @@ class TestSafeBranchOpenerStacking(TestCaseWithTransport):
             set(TrackingProber.seen_urls), set([b.base, a.base]))
 
 
-class TestSafeOpen(TestCaseWithTransport):
-    """Tests for `safe_open`."""
+class TestOpenOnlyScheme(TestCaseWithTransport):
+    """Tests for `open_only_scheme`."""
 
     def setUp(self):
-        super(TestSafeOpen, self).setUp()
-        SafeBranchOpener.install_hook()
+        super(TestOpenOnlyScheme, self).setUp()
+        BranchOpener.install_hook()
 
     def test_hook_does_not_interfere(self):
         # The transform_fallback_location hook does not interfere with regular
-        # stacked branch access outside of safe_open.
+        # stacked branch access outside of open_only_scheme.
         self.make_branch('stacked')
         self.make_branch('stacked-on')
         Branch.open('stacked').set_stacked_on_url('../stacked-on')
@@ -341,7 +341,7 @@ class TestSafeOpen(TestCaseWithTransport):
         scheme, get_chrooted_url = self.get_chrooted_scheme('inside')
         Branch.open(get_chrooted_url('stacked')).set_stacked_on_url(
             get_chrooted_url('stacked-on'))
-        safe_open(scheme, get_chrooted_url('stacked'))
+        open_only_scheme(scheme, get_chrooted_url('stacked'))
 
     def test_stacked_outside_scheme(self):
         # A branch that is stacked on a URL that is not of the same scheme is
@@ -354,4 +354,4 @@ class TestSafeOpen(TestCaseWithTransport):
         Branch.open(get_chrooted_url('stacked')).set_stacked_on_url(
             self.get_url('outside/stacked-on'))
         self.assertRaises(
-            BadUrl, safe_open, scheme, get_chrooted_url('stacked'))
+            BadUrl, open_only_scheme, scheme, get_chrooted_url('stacked'))
