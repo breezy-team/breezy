@@ -550,7 +550,7 @@ class GitRepositoryFormat(repository.RepositoryFormat):
     supports_leaving_lock = False
     fast_deltas = True
     supports_funky_characters = True
-    supports_external_lookups = True
+    supports_external_lookups = False
     supports_full_versioned_files = False
     supports_revision_signatures = False
     supports_nesting_repositories = False
