@@ -700,6 +700,11 @@ class NoSubmitBranch(PathError):
        self.path = urlutils.unescape_for_display(branch.base, 'ascii')
 
 
+class AlreadyControlDirError(PathError):
+
+    _fmt = 'A control directory already exists: "%(path)s".'
+
+
 class AlreadyBranchError(PathError):
 
     _fmt = 'Already a branch: "%(path)s".'

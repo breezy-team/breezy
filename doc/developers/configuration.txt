@@ -301,11 +301,14 @@ or just ``match``.
 
 ``bzrlib`` provides:
 
-* ``LocationMatcher(store, location)``: To select all sections that match
-  ``location``.
-
 * ``NameMatcher(store, unique_id)``: To select a single section matching
   ``unique_id``.
+
+* ``LocationMatcher(store, location)``: To select all sections that match
+  ``location`` sorted by decreasing number of path components.
+
+* ``StartingPathMatcher(store, location)``: To select all sections that
+  match ``location`` in the order they appear in the ``store``.
 
 Stacks
 ------

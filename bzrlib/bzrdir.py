@@ -829,7 +829,9 @@ class BzrDirMeta1(BzrDir):
 
     def destroy_branch(self, name=None):
         """See BzrDir.create_branch."""
-        if name is not None:
+        if name is None:
+            name = self._get_selected_branch()
+        if name != "":
             raise errors.NoColocatedBranchSupport(self)
         self.transport.delete_tree('branch')
 
@@ -885,9 +887,15 @@ class BzrDirMeta1(BzrDir):
         format = BranchFormatMetadir.find_format(self, name=name)
         return format.get_reference(self, name=name)
 
+    def set_branch_reference(self, target_branch, name=None):
+        format = _mod_branch.BranchReferenceFormat()
+        return format.initialize(self, target_branch=target_branch, name=name)
+
     def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
-        if name is not None:
+        if name is None:
+            name = self._get_selected_branch()
+        if name != "":
             raise errors.NoColocatedBranchSupport(self)
         # XXX: this shouldn't implicitly create the directory if it's just
         # promising to get a transport -- mbp 20090727
@@ -1021,7 +1029,7 @@ class BzrDirMeta1Colo(BzrDirMeta1):
         :param name: Optional branch name to use
         :return: Relative path to branch
         """
-        if name is None:
+        if name == "":
             return 'branch'
         return urlutils.join('branches', name.encode("utf-8"))
 
@@ -1056,7 +1064,7 @@ class BzrDirMeta1Colo(BzrDirMeta1):
         if name is None:
             name = self._get_selected_branch()
         path = self._get_branch_path(name)
-        if name is not None:
+        if name != "":
             self.control_files.lock_write()
             try:
                 branches = self._read_branch_list()
@@ -1073,17 +1081,19 @@ class BzrDirMeta1Colo(BzrDirMeta1):
         """See ControlDir.get_branches."""
         ret = {}
         try:
-            ret[None] = self.open_branch()
+            ret[""] = self.open_branch(name="")
         except (errors.NotBranchError, errors.NoRepositoryPresent):
             pass
 
         for name in self._read_branch_list():
-            ret[name] = self.open_branch(name.decode('utf-8'))
+            ret[name] = self.open_branch(name=name.decode('utf-8'))
 
         return ret
 
     def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
+        if name is None:
+            name = self._get_selected_branch()
         path = self._get_branch_path(name)
         # XXX: this shouldn't implicitly create the directory if it's just
         # promising to get a transport -- mbp 20090727
@@ -1093,7 +1103,7 @@ class BzrDirMeta1Colo(BzrDirMeta1):
             branch_format.get_format_string()
         except NotImplementedError:
             raise errors.IncompatibleFormat(branch_format, self._format)
-        if name is not None:
+        if name != "":
             try:
                 self.transport.mkdir('branches', mode=self._get_mkdir_mode())
             except errors.FileExists:
@@ -1465,10 +1475,13 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         # mode from the root directory
         temp_control = lockable_files.LockableFiles(transport,
                             '', lockable_files.TransportLock)
-        temp_control._transport.mkdir('.bzr',
-                                      # FIXME: RBC 20060121 don't peek under
-                                      # the covers
-                                      mode=temp_control._dir_mode)
+        try:
+            temp_control._transport.mkdir('.bzr',
+                # FIXME: RBC 20060121 don't peek under
+                # the covers
+                mode=temp_control._dir_mode)
+        except errors.FileExists:
+            raise errors.AlreadyControlDirError(transport.base)
         if sys.platform == 'win32' and isinstance(transport, local.LocalTransport):
             win32utils.set_file_attr_hidden(transport._abspath('.bzr'))
         file_mode = temp_control._file_mode
