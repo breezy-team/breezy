@@ -1,4 +1,4 @@
-bzr (2.5.0~beta5-2) UNRELEASED; urgency=low
+bzr (2.5.0~beta5-2) unstable; urgency=low
 
   * Add patch to use empty string for default colocated branch name.
 
