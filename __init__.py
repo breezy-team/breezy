@@ -209,10 +209,12 @@ def pre_merge(merger):
 def pre_merge_quilt(merger):
     if getattr(merger, "_no_quilt_unapplying", False):
         return
-    if (merger.other_tree.path2id(".pc/applied-patches") is None and
-        merger.this_tree.path2id(".pc/applied-patches") is None and
-        merger.working_tree.path2id(".pc/applied-patches") is None):
+
+    if (merger.other_tree.path2id("debian/patches/series") is None and
+        merger.this_tree.path2id("debian/patches/series") is None and
+        merger.working_tree.path2id("debian/patches/series") is None):
         return
+
 
     from bzrlib import trace
     from bzrlib.plugins.builddeb.util import debuild_config
@@ -220,6 +222,11 @@ def pre_merge_quilt(merger):
     merger.debuild_config = config
     if not config.quilt_smart_merge:
         trace.mutter("skipping smart quilt merge, not enabled.")
+        return
+
+    if (merger.other_tree.path2id(".pc/applied-patches") is None and
+        merger.this_tree.path2id(".pc/applied-patches") is None and
+        merger.working_tree.path2id(".pc/applied-patches") is None):
         return
 
     from bzrlib.plugins.builddeb.errors import QuiltUnapplyError
