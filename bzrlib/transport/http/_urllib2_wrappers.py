@@ -122,7 +122,7 @@ opt_ssl_cert_reqs = config.Option('ssl.cert_reqs',
 Whether to require a certificate from the remote side. (default:required)
 
 Possible values:
- * none: certificates ignored
+ * none: Certificates ignored
  * optional: Certificates not required, but validated if provided
  * required: Certificates required, and validated
 """)
@@ -356,11 +356,12 @@ class HTTPConnection(AbstractHTTPConnection, httplib.HTTPConnection):
 
     # XXX: Needs refactoring at the caller level.
     def __init__(self, host, port=None, proxied_host=None,
-                 report_activity=None):
+                 report_activity=None, ca_certs=None):
         AbstractHTTPConnection.__init__(self, report_activity=report_activity)
         # Use strict=True since we don't support HTTP/0.9
         httplib.HTTPConnection.__init__(self, host, port, strict=True)
         self.proxied_host = proxied_host
+        # ca_certs is ignored, it's only relevant for https
 
     def connect(self):
         if 'http' in debug.debug_flags:
@@ -428,12 +429,13 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
                  proxied_host=None,
-                 report_activity=None):
+                 report_activity=None, ca_certs=None):
         AbstractHTTPConnection.__init__(self, report_activity=report_activity)
         # Use strict=True since we don't support HTTP/0.9
         httplib.HTTPSConnection.__init__(self, host, port,
                                          key_file, cert_file, strict=True)
         self.proxied_host = proxied_host
+        self.ca_certs = ca_certs
 
     def connect(self):
         if 'http' in debug.debug_flags:
@@ -446,7 +448,10 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
     def connect_to_origin(self):
         # FIXME JRV 2011-12-18: Use location config here?
         config_stack = config.GlobalStack()
-        ca_certs = config_stack.get('ssl.ca_certs')
+        if self.ca_certs is None:
+            ca_certs = config_stack.get('ssl.ca_certs')
+        else:
+            ca_certs = self.ca_certs
         cert_reqs = config_stack.get('ssl.cert_reqs')
         if cert_reqs == ssl.CERT_NONE:
             trace.warning("not checking SSL certificates for %s: %d",
@@ -580,8 +585,9 @@ class ConnectionHandler(urllib2.BaseHandler):
 
     handler_order = 1000 # after all pre-processings
 
-    def __init__(self, report_activity=None):
+    def __init__(self, report_activity=None, ca_certs=None):
         self._report_activity = report_activity
+        self.ca_certs = ca_certs
 
     def create_connection(self, request, http_connection_class):
         host = request.get_host()
@@ -595,7 +601,8 @@ class ConnectionHandler(urllib2.BaseHandler):
         try:
             connection = http_connection_class(
                 host, proxied_host=request.proxied_host,
-                report_activity=self._report_activity)
+                report_activity=self._report_activity,
+                ca_certs=self.ca_certs)
         except httplib.InvalidURL, exception:
             # There is only one occurrence of InvalidURL in httplib
             raise errors.InvalidURL(request.get_full_url(),
@@ -1788,9 +1795,10 @@ class Opener(object):
                  connection=ConnectionHandler,
                  redirect=HTTPRedirectHandler,
                  error=HTTPErrorProcessor,
-                 report_activity=None):
+                 report_activity=None,
+                 ca_certs=None):
         self._opener = urllib2.build_opener(
-            connection(report_activity=report_activity),
+            connection(report_activity=report_activity, ca_certs=ca_certs),
             redirect, error,
             ProxyHandler(),
             HTTPBasicAuthHandler(),
