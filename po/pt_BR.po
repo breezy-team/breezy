@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-01-16 15:18+0100\n"
-"PO-Revision-Date: 2012-01-19 02:25+0000\n"
+"PO-Revision-Date: 2012-01-20 01:29+0000\n"
 "Last-Translator: Ielton Ferreira Carneiro Pinto <Unknown>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2012-01-19 04:30+0000\n"
-"X-Generator: Launchpad (build 14692)\n"
+"X-Launchpad-Export-Date: 2012-01-20 04:30+0000\n"
+"X-Generator: Launchpad (build 14700)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -764,6 +764,8 @@ msgid ""
 "Refuse to push if there are uncommitted changes in the working tree, --no-"
 "strict disables the check."
 msgstr ""
+"Recusa o envio se houver alterações não confirmadas na árvore de trabalho, --"
+"no-strict desativa a verificação."
 
 #: bzrlib/builtins.py:1204
 msgid "Don't populate the working tree, even for protocols that support it."
@@ -783,12 +785,12 @@ msgstr ""
 
 #: bzrlib/builtins.py:1263 bzrlib/foreign.py:306
 msgid "No push location known or specified."
-msgstr ""
+msgstr "Sem local de envio conhecido ou especificado."
 
 #: bzrlib/builtins.py:1267
 #, python-format
 msgid "Using saved push location: %s"
-msgstr ""
+msgstr "Usando localização de envio salvo: %s"
 
 #: bzrlib/builtins.py:1277
 msgid "Create a new branch that is a copy of an existing branch."
@@ -841,7 +843,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1315
 msgid "Bind new branch to from location."
-msgstr ""
+msgstr "Vincular novo ramo a partir da localização."
 
 #: bzrlib/builtins.py:1362
 #, python-format
@@ -855,7 +857,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1393
 msgid "The branch {0} has no revision {1}."
-msgstr ""
+msgstr "O ramo {0} não tem revisão {1}."
 
 #: bzrlib/builtins.py:1403 bzrlib/push.py:53
 #, python-format
@@ -872,28 +874,30 @@ msgstr[1] ""
 #: bzrlib/builtins.py:1412
 #, python-format
 msgid "New branch bound to %s"
-msgstr ""
+msgstr "Novo ramo ligado a %s"
 
 #: bzrlib/builtins.py:1417 bzrlib/builtins.py:6187
 #, python-format
 msgid "Switched to branch: %s"
-msgstr ""
+msgstr "Trocado para o ramo: %s"
 
 #: bzrlib/builtins.py:1422
 msgid "List the branches available at the current location."
-msgstr ""
+msgstr "Lista os ramos disponíveis na localização atual."
 
 #: bzrlib/builtins.py:1424
 msgid ""
 "This command will print the names of all the branches at the current\n"
 "location."
-msgstr ""
+msgstr "Esse comando irá mostrar os nomes de todos os ramos no local atual."
 
 #: bzrlib/builtins.py:1431
 msgid ""
 "Recursively scan for branches rather than just looking in the specified "
 "location."
 msgstr ""
+"Pesquisar recursivamente por ramos ao invés de apenas procurar em um local "
+"especificado."
 
 #: bzrlib/builtins.py:1461
 msgid "(default)"
@@ -945,7 +949,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1504
 msgid "Get file contents from this tree."
-msgstr ""
+msgstr "Obter o conteúdo do arquivo desta árvore."
 
 #: bzrlib/builtins.py:1506
 msgid "Hard-link working tree files where possible."
@@ -1015,7 +1019,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1656
 msgid "Tree is up to date at revision {0} of branch {1}"
-msgstr ""
+msgstr "Árvore está atualizada na revisão {0} do ramo {1}"
 
 #: bzrlib/builtins.py:1672
 #, python-format
@@ -1026,7 +1030,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1678
 msgid "Updated to revision {0} of branch {1}"
-msgstr ""
+msgstr "Atualizado para a revisão {0} do ramo {1}"
 
 #: bzrlib/builtins.py:1682
 msgid ""
@@ -1058,7 +1062,7 @@ msgstr ""
 #: bzrlib/builtins.py:1702 bzrlib/builtins.py:3622 bzrlib/builtins.py:4752
 #: bzrlib/builtins.py:6389
 msgid ":Examples:"
-msgstr ""
+msgstr ":Exemplos:"
 
 #: bzrlib/builtins.py:1704
 msgid "  Display information on the format and related locations:"
@@ -1089,7 +1093,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1735
 msgid "Remove files or directories."
-msgstr ""
+msgstr "Remove arquivos ou diretórios."
 
 #: bzrlib/builtins.py:1737
 msgid ""
@@ -1102,7 +1106,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1745
 msgid "Only remove files that have never been committed."
-msgstr ""
+msgstr "Remover apenas arquivos que nunca foram enviados."
 
 #: bzrlib/builtins.py:1747
 msgid "The file deletion mode to be used."
@@ -1110,11 +1114,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:1748
 msgid "Deletion Strategy"
-msgstr ""
+msgstr "Estratégia de exclusão"
 
 #: bzrlib/builtins.py:1749
 msgid "Backup changed files (default)."
-msgstr ""
+msgstr "Backup de arquivos alterados (padrão)."
 
 #: bzrlib/builtins.py:1750
 msgid "Delete from bzr but leave the working copy."
@@ -1122,7 +1126,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1751
 msgid "Don't backup changed files."
-msgstr ""
+msgstr "Não faça backup de arquivos alterados."
 
 #: bzrlib/builtins.py:1752
 msgid ""
@@ -1136,11 +1140,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:1778
 msgid "No matching files."
-msgstr ""
+msgstr "Nenhum arquivo correspondente."
 
 #: bzrlib/builtins.py:1839
 msgid "Reconcile bzr metadata in a branch."
-msgstr ""
+msgstr "Reconciliar metadados bzr em um ramo."
 
 #: bzrlib/builtins.py:1841
 msgid ""
@@ -1187,7 +1191,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1922
 msgid "Make a directory into a versioned branch."
-msgstr ""
+msgstr "Crie um diretório em um ramo versionados."
 
 #: bzrlib/builtins.py:1924
 msgid ""
