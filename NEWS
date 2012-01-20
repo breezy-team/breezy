@@ -1,5 +1,9 @@
 0.6.7	UNRELEASED
 
+ CHANGES
+
+  * Switch to supporting bzr 2.5 only. (Jelmer Vernooij)
+
  PERFORMANCE
 
   * "git:" revision specifier now avoids full branch history

@@ -28,10 +28,7 @@ from bzrlib import (
     version_info as bzrlib_version,
     )
 from bzrlib.decorators import only_raises
-try:
-    from bzrlib.revisiontree import InventoryRevisionTree
-except ImportError: # bzr < 2.4
-    from bzrlib.revisiontree import RevisionTree as InventoryRevisionTree
+from bzrlib.revisiontree import InventoryRevisionTree
 from bzrlib.foreign import (
     ForeignRepository,
     )
@@ -219,10 +216,6 @@ class GitRepository(ForeignRepository):
 
     def supports_rich_root(self):
         return True
-
-    def _warn_if_deprecated(self, branch=None): # for bzr < 2.4
-        # This class isn't deprecated
-        pass
 
     def get_mapping(self):
         return default_mapping

@@ -442,10 +442,7 @@ class BazaarObjectStore(BaseObjectStore):
                 yield self.mapping.BZR_FILE_IDS_FILE, b, None
         yield "", root_tree, root_ie
         if not lossy:
-            if getattr(StrictTestament3, "from_revision_tree", None):
-                testament3 = StrictTestament3(rev, tree)
-            else: # bzr < 2.4
-                testament3 = StrictTestament3(rev, tree.inventory)
+            testament3 = StrictTestament3(rev, tree)
             verifiers = { "testament3-sha1": testament3.as_sha1() }
         else:
             verifiers = {}
@@ -470,10 +467,7 @@ class BazaarObjectStore(BaseObjectStore):
         # FIXME JRV 2011-12-15: Shouldn't we try both values for lossy ?
         for path, obj, ie in self._revision_to_objects(rev, tree, lossy=(not self.mapping.roundtripping)):
             if isinstance(obj, Commit):
-                if getattr(StrictTestament3, "from_revision_tree", None):
-                    testament3 = StrictTestament3(rev, tree)
-                else: # bzr < 2.4
-                    testament3 = StrictTestament3(rev, tree.inventory)
+                testament3 = StrictTestament3(rev, tree)
                 ie = { "testament3-sha1": testament3.as_sha1() }
             updater.add_object(obj, ie, path)
         commit_obj = updater.finish()

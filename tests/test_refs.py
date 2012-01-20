@@ -18,8 +18,6 @@
 
 """Tests for ref handling."""
 
-from dulwich.repo import DictRefsContainer
-
 from bzrlib import tests
 
 from bzrlib.plugins.git import refs
@@ -28,9 +26,8 @@ from bzrlib.plugins.git import refs
 class BranchNameRefConversionTests(tests.TestCase):
 
     def test_head(self):
-        self.assertEquals("HEAD", refs.ref_to_branch_name("HEAD"))
-        self.assertEquals("HEAD", refs.branch_name_to_ref("HEAD"))
-        self.assertEquals(None, refs.branch_name_to_ref(None))
+        self.assertEquals("", refs.ref_to_branch_name("HEAD"))
+        self.assertEquals("HEAD", refs.branch_name_to_ref(""))
 
     def test_tag(self):
         self.assertRaises(ValueError, refs.ref_to_branch_name, "refs/tags/FOO")
@@ -38,9 +35,3 @@ class BranchNameRefConversionTests(tests.TestCase):
     def test_branch(self):
         self.assertEquals("frost", refs.ref_to_branch_name("refs/heads/frost"))
         self.assertEquals("refs/heads/frost", refs.branch_name_to_ref("frost"))
-
-    def test_default(self):
-        self.assertEquals("mydefault",
-            refs.branch_name_to_ref(None, "mydefault"))
-        self.assertEquals(None,
-            refs.branch_name_to_ref(None))

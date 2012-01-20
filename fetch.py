@@ -57,10 +57,7 @@ from bzrlib.repository import (
 from bzrlib.revision import (
     NULL_REVISION,
     )
-try:
-    from bzrlib.revisiontree import InventoryRevisionTree
-except ImportError: # bzr < 2.4
-    from bzrlib.revisiontree import RevisionTree as InventoryRevisionTree
+from bzrlib.revisiontree import InventoryRevisionTree
 from bzrlib.testament import (
     StrictTestament3,
     )
@@ -420,10 +417,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
     ret_tree = InventoryRevisionTree(repo, inv, rev.revision_id)
     # Check verifiers
     if verifiers and roundtrip_revid is not None:
-        if getattr(StrictTestament3, "from_revision_tree", None):
-            testament = StrictTestament3(rev, ret_tree)
-        else: # bzr < 2.4
-            testament = StrictTestament3(rev, inv)
+        testament = StrictTestament3(rev, ret_tree)
         calculated_verifiers = { "testament3-sha1": testament.as_sha1() }
         if calculated_verifiers != verifiers:
             trace.mutter("Testament SHA1 %r for %r did not match %r.",

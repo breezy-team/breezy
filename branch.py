@@ -270,7 +270,7 @@ class GitSymrefBranchFormat(branch.BranchFormat):
         return controldir.get_branch_reference(name)
 
     def set_reference(self, controldir, name, target):
-        return controldir.set_branch_reference(name, target)
+        return controldir.set_branch_reference(target, name)
 
 
 class GitBranchFormat(branch.BranchFormat):
@@ -1154,10 +1154,6 @@ class InterToGitBranch(branch.GenericInterBranch):
         finally:
             self.source.unlock()
         return result
-
-    def lossy_push(self, stop_revision=None):
-        # For compatibility with bzr < 2.4
-        return self.push(lossy=True, stop_revision=stop_revision)
 
 
 branch.InterBranch.register_optimiser(InterGitLocalGitBranch)

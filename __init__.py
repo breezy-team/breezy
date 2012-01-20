@@ -123,13 +123,9 @@ from bzrlib.revisionspec import revspec_registry
 revspec_registry.register_lazy("git:", "bzrlib.plugins.git.revspec",
     "RevisionSpec_git")
 
-from bzrlib.revisionspec import dwim_revspecs, RevisionSpec_dwim
-if getattr(RevisionSpec_dwim, "append_possible_lazy_revspec", None):
-    RevisionSpec_dwim.append_possible_lazy_revspec(
-        "bzrlib.plugins.git.revspec", "RevisionSpec_git")
-else: # bzr < 2.4
-    from bzrlib.plugins.git.revspec import RevisionSpec_git
-    dwim_revspecs.append(RevisionSpec_git)
+from bzrlib.revisionspec import RevisionSpec_dwim
+RevisionSpec_dwim.append_possible_lazy_revspec(
+    "bzrlib.plugins.git.revspec", "RevisionSpec_git")
 
 
 class LocalGitProber(Prober):
@@ -257,21 +253,6 @@ class RemoteGitProber(Prober):
         return set([RemoteGitControlDirFormat()])
 
 
-if not getattr(Prober, "known_formats", None): # bzr < 2.4
-    from bzrlib.plugins.git.dir import (
-        LocalGitControlDirFormat, BareLocalGitControlDirFormat,
-        )
-    from bzrlib.plugins.git.remote import RemoteGitControlDirFormat
-    ControlDirFormat.register_format(LocalGitControlDirFormat())
-    ControlDirFormat.register_format(BareLocalGitControlDirFormat())
-    ControlDirFormat.register_format(RemoteGitControlDirFormat())
-    # Provide RevisionTree.get_file_revision, so various parts of bzr-svn
-    # can avoid inventories.
-    from bzrlib.revisiontree import RevisionTree
-    def get_file_revision(tree, file_id, path=None):
-        return tree.inventory[file_id].revision
-    RevisionTree.get_file_revision = get_file_revision
-
 ControlDirFormat.register_prober(LocalGitProber)
 ControlDirFormat._server_probers.append(RemoteGitProber)
 
@@ -319,18 +300,10 @@ def update_stanza(rev, stanza):
     else:
         stanza.add("git-commit", git_commit)
 
-try:
-    from bzrlib.hooks import install_lazy_named_hook
-except ImportError: # Compatibility with bzr < 2.4
-    from bzrlib.version_info_formats.format_rio import (
-        RioVersionInfoBuilder,
-        )
-    RioVersionInfoBuilder.hooks.install_named_hook('revision', update_stanza,
-        "git commits")
-else:
-    install_lazy_named_hook("bzrlib.version_info_formats.format_rio",
-        "RioVersionInfoBuilder.hooks", "revision", update_stanza,
-        "git commits")
+from bzrlib.hooks import install_lazy_named_hook
+install_lazy_named_hook("bzrlib.version_info_formats.format_rio",
+    "RioVersionInfoBuilder.hooks", "revision", update_stanza,
+    "git commits")
 
 
 from bzrlib.transport import transport_server_registry
@@ -355,14 +328,10 @@ from bzrlib.repository import (
 repository_network_format_registry.register_lazy('git',
     'bzrlib.plugins.git.repository', 'GitRepositoryFormat')
 
-try:
-    register_extra_lazy_repository_format = getattr(repository_format_registry,
-        "register_extra_lazy")
-except AttributeError: # bzr < 2.4
-    pass
-else:
-    register_extra_lazy_repository_format('bzrlib.plugins.git.repository',
-        'GitRepositoryFormat')
+register_extra_lazy_repository_format = getattr(repository_format_registry,
+    "register_extra_lazy")
+register_extra_lazy_repository_format('bzrlib.plugins.git.repository',
+    'GitRepositoryFormat')
 
 from bzrlib.branch import (
     network_format_registry as branch_network_format_registry,
@@ -370,29 +339,21 @@ from bzrlib.branch import (
 branch_network_format_registry.register_lazy('git',
     'bzrlib.plugins.git.branch', 'GitBranchFormat')
 
-try:
-    from bzrlib.branch import (
-        format_registry as branch_format_registry,
-        )
-except ImportError: # bzr < 2.4
-    pass
-else:
-    branch_format_registry.register_extra_lazy(
-        'bzrlib.plugins.git.branch',
-        'GitBranchFormat',
-        )
+from bzrlib.branch import (
+    format_registry as branch_format_registry,
+    )
+branch_format_registry.register_extra_lazy(
+    'bzrlib.plugins.git.branch',
+    'GitBranchFormat',
+    )
 
-try:
-    from bzrlib.workingtree import (
-        format_registry as workingtree_format_registry,
-        )
-except ImportError: # bzr < 2.4
-    pass
-else:
-    workingtree_format_registry.register_extra_lazy(
-        'bzrlib.plugins.git.workingtree',
-        'GitWorkingTreeFormat',
-        )
+from bzrlib.workingtree import (
+    format_registry as workingtree_format_registry,
+    )
+workingtree_format_registry.register_extra_lazy(
+    'bzrlib.plugins.git.workingtree',
+    'GitWorkingTreeFormat',
+    )
 
 controldir_network_format_registry.register_lazy('git',
     "bzrlib.plugins.git.dir", "GitControlDirFormat")
@@ -451,17 +412,12 @@ def loggerhead_git_hook(branch_app, environ):
     return git_http_hook(branch, environ['REQUEST_METHOD'],
         environ['PATH_INFO'])
 
-try:
-    from bzrlib.hooks import install_lazy_named_hook
-except ImportError: # Compatibility with bzr < 2.4
-    pass
-else:
-    install_lazy_named_hook("bzrlib.branch",
-        "Branch.hooks", "post_commit", post_commit_update_cache,
-        "git cache")
-    install_lazy_named_hook("bzrlib.plugins.loggerhead.apps.branch",
-        "BranchWSGIApp.hooks", "controller",
-        loggerhead_git_hook, "git support")
+install_lazy_named_hook("bzrlib.branch",
+    "Branch.hooks", "post_commit", post_commit_update_cache,
+    "git cache")
+install_lazy_named_hook("bzrlib.plugins.loggerhead.apps.branch",
+    "BranchWSGIApp.hooks", "controller",
+    loggerhead_git_hook, "git support")
 
 from bzrlib.directory_service import directories
 

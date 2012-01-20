@@ -45,18 +45,14 @@ def gather_peeled(refs):
     return ret
 
 
-def branch_name_to_ref(name, default=None):
+def branch_name_to_ref(name):
     """Map a branch name to a ref.
 
     :param name: Branch name
     :return: ref string
     """
-    if name is None:
-        return default
     if name == "":
         return "HEAD"
-    if name == "HEAD":
-        return osutils.safe_utf8(name)
     if not name.startswith("refs/"):
         return "refs/heads/%s" % osutils.safe_utf8(name)
     else:
@@ -79,7 +75,7 @@ def ref_to_branch_name(ref):
     :return: A branch name
     """
     if ref == "HEAD":
-        return ""
+        return u""
     if ref is None:
         return ref
     if ref.startswith("refs/heads/"):
@@ -145,11 +141,8 @@ class BazaarRefsContainer(RefsContainer):
         for branch in self.dir.list_branches():
             repo = branch.repository
             if repo.has_revision(branch.last_revision()):
-                ref = branch_name_to_ref(getattr(branch, "name", None),
-                        "refs/heads/master")
+                ref = branch_name_to_ref(branch.name)
                 keys.add(ref)
-                if getattr(branch, "name", None) is None:
-                    keys.add("HEAD")
             try:
                 for tag_name, revid in branch.tags.get_tag_dict().iteritems():
                     if repo.has_revision(revid):

@@ -82,17 +82,17 @@ class GitDir(ControlDir):
             raise bzr_errors.BzrError("can't specify both ref and branch")
         if ref is not None:
             return ref
-        if branch is None and getattr(self, "_get_selected_branch", False):
-            branch = self._get_selected_branch()
-        if branch is not None:
-            from bzrlib.plugins.git.refs import branch_name_to_ref
-            return branch_name_to_ref(branch, None)
         segment_parameters = getattr(
             self.user_transport, "get_segment_parameters", lambda: {})()
         ref = segment_parameters.get("ref")
         if ref is not None:
-            ref = urlutils.unescape(ref)
-        return ref
+            return urlutils.unescape(ref)
+        if branch is None and getattr(self, "_get_selected_branch", False):
+            branch = self._get_selected_branch()
+        if branch is not None:
+            from bzrlib.plugins.git.refs import branch_name_to_ref
+            return branch_name_to_ref(branch)
+        return None
 
     def get_config(self):
         return GitDirConfig()
@@ -222,7 +222,8 @@ class LocalGitControlDirFormat(GitControlDirFormat):
 
     def initialize_on_transport(self, transport):
         from bzrlib.plugins.git.transportgit import TransportRepo
-        TransportRepo.init(transport, bare=self.bare)
+        repo = TransportRepo.init(transport, bare=self.bare)
+        del repo.refs["HEAD"]
         return self.open(transport)
 
     def initialize_on_transport_ex(self, transport, use_existing_dir=False,
@@ -316,12 +317,12 @@ class LocalGitDir(GitDir):
             return refcontents[len(SYMREF):].rstrip("\n")
         return None
 
-    def set_branch_reference(self, name, target):
+    def set_branch_reference(self, target, name=None):
+        if self.control_transport.base != target.bzrdir.control_transport.base:
+            raise bzr_errors.IncompatibleFormat(target._format, self._format)
         ref = self._get_selected_ref(name)
         if ref is None:
             ref = "HEAD"
-        if not getattr(target, "ref", None):
-            raise bzr_errors.BzrError("Can only set symrefs to Git refs")
         self._git.refs.set_symbolic_ref(ref, target.ref)
 
     def get_branch_reference(self, name=None):
@@ -385,7 +386,7 @@ class LocalGitDir(GitDir):
     def destroy_branch(self, name=None):
         refname = self._get_selected_ref(name)
         if refname is None:
-            refname = "refs/heads/master"
+            refname = "HEAD"
         try:
             del self._git.refs[refname]
         except KeyError:
@@ -451,19 +452,11 @@ class LocalGitDir(GitDir):
                       append_revisions_only=None, ref=None):
         refname = self._get_selected_ref(name, ref)
         from dulwich.protocol import ZERO_SHA
-        # FIXME: This is a bit awkward. Perhaps we should have a
-        # a separate method for changing the default branch?
         if refname is None:
-            refname = "refs/heads/master"
-            set_head = True
-        else:
-            set_head = False
-
+            refname = "HEAD"
         if refname in self._git.refs:
-            raise bzr_errors.AlreadyBranchError(self.base)
+            raise bzr_errors.AlreadyBranchError(self.user_url)
         self._git.refs[refname] = ZERO_SHA
-        if set_head:
-            self._git.refs.set_symbolic_ref("HEAD", refname)
         branch = self.open_branch(name)
         if append_revisions_only:
             branch.set_append_revisions_only(append_revisions_only)

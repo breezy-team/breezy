@@ -63,12 +63,12 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
     def test_pointless_fetch_refs(self):
         interrepo = self._get_interrepo(mapping=BzrGitMappingExperimental())
         revidmap, old_refs, new_refs = interrepo.fetch_refs(lambda x: {}, lossy=False)
-        self.assertEquals(old_refs, {'HEAD': ('ref: refs/heads/master', None)})
+        self.assertEquals(old_refs, {})
         self.assertEquals(new_refs, {})
 
     def test_pointless_lossy_fetch_refs(self):
         revidmap, old_refs, new_refs = self._get_interrepo().fetch_refs(lambda x: {}, lossy=True)
-        self.assertEquals(old_refs, {'HEAD': ('ref: refs/heads/master', None)})
+        self.assertEquals(old_refs, {})
         self.assertEquals(new_refs, {})
         self.assertEquals(revidmap, {})
 

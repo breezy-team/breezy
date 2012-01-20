@@ -49,11 +49,12 @@ class TestGitBlackBox(ExternalBase):
         return repo, builder.finish()[r1]
 
     def test_nick(self):
-        GitRepo.init(self.test_dir)
+        r = GitRepo.init(self.test_dir)
+        del r["HEAD"]
         dir = BzrDir.open(self.test_dir)
         dir.create_branch()
         output, error = self.run_bzr(['nick'])
-        self.assertEquals("master\n", output)
+        self.assertEquals("HEAD\n", output)
 
     def test_info(self):
         self.simple_commit()
@@ -102,9 +103,6 @@ class TestGitBlackBox(ExternalBase):
 
     def test_info_verbose(self):
         self.simple_commit()
-
-        if bzrlib_version < (2, 4):
-            self.knownFailure("bzr info uses inventory on bzr < 2.4")
 
         output, error = self.run_bzr(['info', '-v'])
         self.assertEqual(error, '')
@@ -246,5 +244,4 @@ class TestGitBlackBox(ExternalBase):
         (stdout, stderr) = self.run_bzr(["git-refs", "a"])
         self.assertEquals(stderr, "")
         self.assertTrue("refs/tags/atag -> " in stdout)
-        self.assertTrue("refs/heads/master -> " in stdout)
         self.assertTrue("HEAD -> " in stdout)

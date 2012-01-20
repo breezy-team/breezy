@@ -83,7 +83,7 @@ class GitCommitBuilder(CommitBuilder):
     def record_iter_changes(self, workingtree, basis_revid, iter_changes):
         def link_sha1(path, file_id):
             blob = Blob()
-            blob.data = workingtree.get_symlink_target(file_id, path)
+            blob.data = workingtree.get_symlink_target(file_id, path).encode("utf-8")
             self.store.add_object(blob)
             return blob.id
         def text_sha1(path, file_id):

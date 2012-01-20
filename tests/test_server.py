@@ -65,7 +65,7 @@ class TestPlainFetch(GitServerTestCase):
         refs = c.fetch('/', gitrepo)
         self.assertEquals(
             set(refs.keys()),
-            set(["refs/tags/atag", "HEAD", "refs/heads/master"]))
+            set(["refs/tags/atag", "HEAD"]))
 
     def test_fetch_nothing(self):
         wt = self.make_branch_and_tree('t')
@@ -80,4 +80,4 @@ class TestPlainFetch(GitServerTestCase):
         refs = c.fetch('/', gitrepo, determine_wants=lambda x: [])
         self.assertEquals(
             set(refs.keys()),
-            set(["refs/tags/atag", "HEAD", "refs/heads/master"]))
+            set(["refs/tags/atag", "HEAD"]))
