@@ -61,8 +61,7 @@ class TestBreakLock(tests.TestCaseWithTransport):
         local_branch = bzrdir.BzrDir.create_branch_convenience('repo/branch')
         local_branch.bind(self.master_branch)
         checkoutdir = bzrdir.BzrDir.create('checkout')
-        branch.BranchReferenceFormat().initialize(
-            checkoutdir, target_branch=local_branch)
+        checkoutdir.set_branch_reference(local_branch)
         self.wt = checkoutdir.create_workingtree()
 
     def test_break_lock_help(self):

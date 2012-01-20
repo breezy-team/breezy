@@ -28,6 +28,7 @@ import bz2
 import zlib
 
 from bzrlib import (
+    bencode,
     branch as _mod_branch,
     bzrdir,
     errors,
@@ -458,6 +459,32 @@ class TestSmartServerBzrDirRequestGetConfigFile(
         self.assertEqual(expected, request.execute(''))
 
 
+class TestSmartServerBzrDirRequestGetBranches(
+    tests.TestCaseWithMemoryTransport):
+    """Tests for BzrDir.get_branches."""
+
+    def test_simple(self):
+        backing = self.get_transport()
+        branch = self.make_branch('.')
+        request_class = smart_dir.SmartServerBzrDirRequestGetBranches
+        request = request_class(backing)
+        local_result = bencode.bencode(
+            {"": ("branch", branch._format.network_name())})
+        expected = smart_req.SuccessfulSmartServerResponse(
+            ("success", ), local_result)
+        self.assertEqual(expected, request.execute(''))
+
+    def test_empty(self):
+        backing = self.get_transport()
+        dir = self.make_bzrdir('.')
+        request_class = smart_dir.SmartServerBzrDirRequestGetBranches
+        request = request_class(backing)
+        local_result = bencode.bencode({})
+        expected = smart_req.SuccessfulSmartServerResponse(
+            ('success',), local_result)
+        self.assertEqual(expected, request.execute(''))
+
+
 class TestSmartServerRequestInitializeBzrDir(tests.TestCaseWithMemoryTransport):
 
     def test_empty_dir(self):
@@ -485,7 +512,7 @@ class TestSmartServerRequestInitializeBzrDir(tests.TestCaseWithMemoryTransport):
         backing = self.get_transport()
         request = smart_dir.SmartServerRequestInitializeBzrDir(backing)
         self.make_bzrdir('subdir')
-        self.assertRaises(errors.FileExists,
+        self.assertRaises(errors.AlreadyControlDirError,
             request.execute, 'subdir')
 
 
@@ -2500,6 +2527,8 @@ class TestHandlers(tests.TestCase):
             smart_dir.SmartServerBzrDirRequestCheckoutMetaDir)
         self.assertHandlerEqual('BzrDir.cloning_metadir',
             smart_dir.SmartServerBzrDirRequestCloningMetaDir)
+        self.assertHandlerEqual('BzrDir.get_branches',
+            smart_dir.SmartServerBzrDirRequestGetBranches)
         self.assertHandlerEqual('BzrDir.get_config_file',
             smart_dir.SmartServerBzrDirRequestConfigFile)
         self.assertHandlerEqual('BzrDir.open_branch',

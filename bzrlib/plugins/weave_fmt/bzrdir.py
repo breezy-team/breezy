@@ -927,6 +927,12 @@ class BzrDirPreSplitOut(BzrDir):
                                         hardlink=hardlink)
         return result
 
+    def set_branch_reference(self, target_branch, name=None):
+        from bzrlib.branch import BranchReferenceFormat
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
+        raise errors.IncompatibleFormat(BranchReferenceFormat, self._format)
+
 
 class BzrDir4(BzrDirPreSplitOut):
     """A .bzr version 4 control object.
