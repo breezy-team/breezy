@@ -53,6 +53,10 @@ Bug Fixes
 * Test for equality instead of object identity where ROOT_PARENT is concerned.
   (Wouter van Heyst, #881142)
 
+* urllib-based HTTPS client connections now verify the server certificate
+  validity as well as the hostname.
+  (Jelmer Vernooij, Vincent Ladeuil, #651161)
+
 Documentation
 *************
 
@@ -539,12 +543,6 @@ Improvements
   line-based mode by setting the ``BZR_TEXTUI_INPUT`` environment variable
   to 'line-based'. This replace the previous shelf UI only patch using
   ``INSIDE_EMACS``. (Benoît Pierre)
-
-* urllib-based HTTPS client connections now verify the server certificate
-  as well as the hostname. (Jelmer Vernooij)
-
-* urllib-based HTTPS connections are now the default.
-  (Jelmer Vernooij, #125055, #651161)
 
 Bug Fixes
 *********
