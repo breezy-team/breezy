@@ -46,7 +46,6 @@ from bzrlib.tests import (
     features,
     http_server,
     http_utils,
-    ssl_certs,
     test_server,
     )
 from bzrlib.tests.scenarios import (
@@ -128,22 +127,29 @@ def vary_by_http_activity():
         ('urllib,http', dict(_activity_server=ActivityHTTPServer,
                             _transport=_urllib.HttpTransport_urllib,)),
         ]
-    if features.HTTPSServerFeature.available():
-        activity_scenarios.append(
-            ('urllib,https', dict(_activity_server=ActivityHTTPSServer,
-                                _transport=_urllib.HttpTransport_urllib,)),)
     if features.pycurl.available():
         activity_scenarios.append(
             ('pycurl,http', dict(_activity_server=ActivityHTTPServer,
                                 _transport=PyCurlTransport,)),)
-        if features.HTTPSServerFeature.available():
-            from bzrlib.tests import (
-                ssl_certs,
-                )
-            # FIXME: Until we have a better way to handle self-signed
-            # certificates (like allowing them in a test specific
-            # authentication.conf for example), we need some specialized pycurl
-            # transport for tests.
+    if features.HTTPSServerFeature.available():
+        # FIXME: Until we have a better way to handle self-signed certificates
+        # (like allowing them in a test specific authentication.conf for
+        # example), we need some specialized pycurl/urllib transport for tests.
+        # -- vila 2012-01-20
+        from bzrlib.tests import (
+            ssl_certs,
+            )
+        class HTTPS_urllib_transport(_urllib.HttpTransport_urllib):
+
+            def __init__(self, base, _from_transport=None):
+                super(HTTPS_urllib_transport, self).__init__(
+                    base, _from_transport=_from_transport,
+                    ca_certs=ssl_certs.build_path('ca.crt'))
+
+        activity_scenarios.append(
+            ('urllib,https', dict(_activity_server=ActivityHTTPSServer,
+                                  _transport=HTTPS_urllib_transport,)),)
+        if features.pycurl.available():
             class HTTPS_pycurl_transport(PyCurlTransport):
 
                 def __init__(self, base, _from_transport=None):
@@ -2117,7 +2123,7 @@ class TestActivityMixin(object):
     """
 
     def setUp(self):
-        tests.TestCaseInTempDir.setUp(self)
+        tests.TestCase.setUp(self)
         self.server = self._activity_server(self._protocol_version)
         self.server.start_server()
         self.addCleanup(self.server.stop_server)
@@ -2127,12 +2133,6 @@ class TestActivityMixin(object):
             count += bytes
             _activities[direction] = count
         self.activities = _activities
-
-        store = config.GlobalStore()
-        content = ('[DEFAULT]\nssl.ca_certs=%s\n'
-                   % ssl_certs.build_path('ca.crt'))
-        store._load_from_string(content.encode('utf-8'))
-        store.save()
         # We override at class level because constructors may propagate the
         # bound method and render instance overriding ineffective (an
         # alternative would be to define a specific ui factory instead...)
@@ -2258,7 +2258,7 @@ lalala whatever as long as itsssss
         self.assertActivitiesMatch()
 
 
-class TestActivity(TestActivityMixin, tests.TestCaseInTempDir):
+class TestActivity(tests.TestCase, TestActivityMixin):
 
     scenarios = multiply_scenarios(
         vary_by_http_activity(),
@@ -2269,7 +2269,7 @@ class TestActivity(TestActivityMixin, tests.TestCaseInTempDir):
         TestActivityMixin.setUp(self)
 
 
-class TestNoReportActivity(TestActivityMixin, tests.TestCaseInTempDir):
+class TestNoReportActivity(tests.TestCase, TestActivityMixin):
 
     # Unlike TestActivity, we are really testing ReportingFileSocket and
     # ReportingSocket, so we don't need all the parametrization. Since
