@@ -53,6 +53,10 @@ Bug Fixes
 * Test for equality instead of object identity where ROOT_PARENT is concerned.
   (Wouter van Heyst, #881142)
 
+* urllib-based HTTPS client connections now verify the server certificate
+  validity as well as the hostname.
+  (Jelmer Vernooij, Vincent Ladeuil, #651161)
+
 Documentation
 *************
 

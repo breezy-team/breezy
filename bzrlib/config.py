@@ -2866,6 +2866,13 @@ option_registry.register(
     Option('submit_to',
            help='''Where submissions from this branch are mailed to.'''))
 
+option_registry.register_lazy('ssl.ca_certs',
+    'bzrlib.transport.http._urllib2_wrappers', 'opt_ssl_ca_certs')
+
+option_registry.register_lazy('ssl.cert_reqs',
+    'bzrlib.transport.http._urllib2_wrappers', 'opt_ssl_cert_reqs')
+
+
 
 class Section(object):
     """A section defines a dict of option name => value.

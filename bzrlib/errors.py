@@ -1672,6 +1672,14 @@ class InvalidHttpResponse(TransportError):
         TransportError.__init__(self, msg, orig_error=orig_error)
 
 
+class CertificateError(TransportError):
+
+    _fmt = "Certificate error: %(error)s"
+
+    def __init__(self, error):
+        self.error = error
+
+
 class InvalidHttpRange(InvalidHttpResponse):
 
     _fmt = "Invalid http range %(range)r for %(path)s: %(msg)s"
