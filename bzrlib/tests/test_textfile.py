@@ -41,7 +41,8 @@ class TextFile(TestCase):
 class TextPath(TestCaseInTempDir):
 
     def test_text_file(self):
-        file('boo', 'wb').write('ab' * 2048)
+        # TODO: is the first set a test?
+        with file('boo', 'wb') as f: f.write('ab' * 2048)
         check_text_path('boo')
-        file('boo', 'wb').write('a' * 1023 + '\x00')
+        with file('boo', 'wb') as f: f.write('a' * 1023 + '\x00')
         self.assertRaises(BinaryFile, check_text_path, 'boo')
