@@ -1,3 +1,13 @@
+bzr-builddeb (2.8.2) unstable; urgency=low
+
+  * Only warn about unapplying quilt patches when there are actually
+    patches to unapply.
+  * Don't throw a traceback when quilt unapplying fails.
+  * Read configuration from original working tree, in case there are
+    conflicts during merge.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sun, 22 Jan 2012 14:45:04 +0100
+
 bzr-builddeb (2.8.1) unstable; urgency=low
 
   * New revision specifier 'upstream:'. LP: #905728
