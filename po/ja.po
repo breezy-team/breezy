@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-01-16 15:18+0100\n"
-"PO-Revision-Date: 2012-01-10 23:09+0000\n"
+"PO-Revision-Date: 2012-01-22 02:00+0000\n"
 "Last-Translator: IWATA Hidetaka <Unknown>\n"
 "Language-Team: Japanese <ja@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Launchpad-Export-Date: 2012-01-18 04:32+0000\n"
-"X-Generator: Launchpad (build 14681)\n"
+"X-Launchpad-Export-Date: 2012-01-22 04:30+0000\n"
+"X-Generator: Launchpad (build 14700)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -741,7 +741,7 @@ msgstr "参照先のブランチを特定できません。"
 msgid ""
 "No push location known or specified. To push to the parent branch (at %s), "
 "use 'bzr push :parent'."
-msgstr ""
+msgstr "push先が設定も指定もされていません。親ブランチ(%s)にpushする場合は、'bzr push :parent'を使用してください。"
 
 #: bzrlib/builtins.py:1263 bzrlib/foreign.py:306
 msgid "No push location known or specified."
@@ -867,7 +867,7 @@ msgstr "指定された場所だけでなく、再帰的にブランチを探し
 
 #: bzrlib/builtins.py:1461
 msgid "(default)"
-msgstr ""
+msgstr "(デフォルト)"
 
 #: bzrlib/builtins.py:1473
 msgid "Create a new checkout of an existing branch."
@@ -2525,11 +2525,11 @@ msgstr "    bzr commit foo -x foo/bar"
 
 #: bzrlib/builtins.py:3346
 msgid "  A selective commit after a merge is not yet supported."
-msgstr ""
+msgstr "  マージ後の部分的なコミットはまだサポートされていません。"
 
 #: bzrlib/builtins.py:3348
 msgid ":Custom authors:"
-msgstr ""
+msgstr ":作者の変更:"
 
 #: bzrlib/builtins.py:3350
 msgid ""
@@ -2540,10 +2540,14 @@ msgid ""
 "  the change you can specify the option multiple times, once for each\n"
 "  author."
 msgstr ""
+"  もし、変更を行った人とコミットする人がちがう場合は、作者の名前を--author\n"
+"  オプションで指定することができます。\"John Doe <jdoe@example.com>\"の\n"
+"  ように、コミッターのIDと同じフォーマットで指定するべきです。複数の作者が\n"
+"  いるなら、このオプションを複数回指定することもできます。"
 
 #: bzrlib/builtins.py:3357
 msgid ":Checks:"
-msgstr ""
+msgstr ":チェック:"
 
 #: bzrlib/builtins.py:3359
 msgid ""
@@ -2553,10 +2557,15 @@ msgid ""
 "  checks can be implemented by defining hooks. See ``bzr help hooks``\n"
 "  for details."
 msgstr ""
+"  よくあるミスとして、新しく作ったファイルやディレクトリをコミット前に追加するのを\n"
+"  忘れてしまうということがあります。--strictオプションを指定すると、バージョン管理\n"
+"  外のファイルがある場合はコミットが失敗するようになります。もっと高度なコミット\n"
+"  前チェックをフックとして実装することもできます。詳細は ``bzr help hooks`` を\n"
+"  ご覧ください。"
 
 #: bzrlib/builtins.py:3365
 msgid ":Things to note:"
-msgstr ""
+msgstr ":特記事項:"
 
 #: bzrlib/builtins.py:3367
 msgid ""
@@ -2564,6 +2573,9 @@ msgid ""
 "  mistake in the commit message say, you can use the uncommit command\n"
 "  to undo it. See ``bzr help uncommit`` for details."
 msgstr ""
+"  もし、間違ったファイルをコミットしてしまったり、コミットメッセージにスペル\n"
+"  ミスがあった場合は、uncommitコマンドでコミットを取り消すことができます。\n"
+"  詳細は ``bzr help uncommit`` をご覧ください。"
 
 #: bzrlib/builtins.py:3371
 msgid ""
@@ -2572,10 +2584,14 @@ msgid ""
 "  option can be used to record the association between a revision and\n"
 "  one or more bugs. See ``bzr help bugs`` for details."
 msgstr ""
+"  コミット後にフックを実行することもできます。これによって、バグトラッカーなどの\n"
+"  外部のシステムを更新することができます。 --fixesオプションで、リビジョンと\n"
+"  バグとの関係を記録することができます。詳細は ``bzr help bugs`` を見て\n"
+"  ください。"
 
 #: bzrlib/builtins.py:3381
 msgid "Do not consider changes made to a given path."
-msgstr ""
+msgstr "指定されたパスの変更を無視します。"
 
 #: bzrlib/builtins.py:3384
 msgid "Description of the new revision."
@@ -2597,7 +2613,7 @@ msgstr "作業ツリーの中にバージョン管理外のファイルが存在
 msgid ""
 "Manually set a commit time using commit date format, e.g. '2009-10-10 "
 "08:00:00 +0100'."
-msgstr ""
+msgstr "コミット日時を決められたフォーマットで手動で指定します。例) '2009-10-10 08:00:00 +0100'"
 
 #: bzrlib/builtins.py:3399
 msgid "Mark a bug as being fixed by this revision (see \"bzr help bugs\")."
@@ -2624,7 +2640,7 @@ msgstr "メッセージが提供されないとき、 メッセージエディ�
 msgid ""
 "When committing to a foreign version control system do not push data that "
 "can not be natively represented."
-msgstr ""
+msgstr "外部のバージョン管理システムにコミットするときに、ネイティブに表現できないデータをプッシュしません。"
 
 #: bzrlib/builtins.py:3432
 #, python-format
@@ -2633,6 +2649,9 @@ msgid ""
 "default bug tracker using the `bugtracker` option.\n"
 "See \"bzr help bugs\" for more information on this feature. Commit refused."
 msgstr ""
+"バグ %s のバグトラッカーが指定されていません。'トラッカー:id'の形式にするか、デフォルトのトラッカーを `bugtracker` "
+"オプションで指定してください。\n"
+"詳細は \"bzr help bugs\" をご覧ください。コミットは拒否されました。"
 
 #: bzrlib/builtins.py:3441
 #, python-format
@@ -2641,11 +2660,13 @@ msgid ""
 "for more information on this feature.\n"
 "Commit refused."
 msgstr ""
+"無効なバグです。 %s 'トラッカー:id' の形式で指定する必要があります。詳細は \"bzr help bugs\" をご覧ください。\n"
+"コミットは拒否されました。"
 
 #: bzrlib/builtins.py:3450
 #, python-format
 msgid "Unrecognized bug %s. Commit refused."
-msgstr ""
+msgstr "不明なバグです。 %s コミットは拒否されました。"
 
 #: bzrlib/builtins.py:3453
 #, python-format
@@ -2653,40 +2674,45 @@ msgid ""
 "%s\n"
 "Commit refused."
 msgstr ""
+"%s\n"
+"コミットは拒否されました。"
 
 #: bzrlib/builtins.py:3477
 msgid "Could not parse --commit-time: "
-msgstr ""
+msgstr "--commit-timeをパースできません。: "
 
 #: bzrlib/builtins.py:3517
 msgid "please specify either --message or --file"
-msgstr ""
+msgstr "--message か --file かどちらかを指定してください。"
 
 #: bzrlib/builtins.py:3546
 msgid "please specify a commit message with either --message or --file"
-msgstr ""
+msgstr "--messageか--fileのどちらかでコミットメッセージを指定してください。"
 
 #: bzrlib/builtins.py:3549
 msgid ""
 "Empty commit message specified. Please specify a commit message with either -"
 "-message or --file or leave a blank message with --message \"\"."
 msgstr ""
+"空のコミットメッセージが指定されました。--messageか--fileでコミットメッセージを指定するか、--message "
+"\"\"で空メッセージを指定してください。"
 
 #: bzrlib/builtins.py:3569
 msgid ""
 "No changes to commit. Please 'bzr add' the files you want to commit, or use -"
 "-unchanged to force an empty commit."
 msgstr ""
+"コミットする変更がありません。コミットしたいファイルを'bzr add'で追加するか、--unchangedを指定して空のコミットを実行してください。"
 
 #: bzrlib/builtins.py:3573
 msgid ""
 "Conflicts detected in working tree.  Use \"bzr conflicts\" to list, \"bzr "
 "resolve FILE\" to resolve."
-msgstr ""
+msgstr "作業ツリーに競合があります。\"bzr conflicts\" で表示して、\"bzr resolve FILE\"で解消してください。"
 
 #: bzrlib/builtins.py:3577
 msgid "Commit refused because there are unknown files in the working tree."
-msgstr ""
+msgstr "作業ツリーにバージョン管理外のファイルがあるため、コミットが拒否されました。"
 
 #: bzrlib/builtins.py:3580
 msgid ""
@@ -2694,23 +2720,30 @@ msgid ""
 "To commit to master branch, run update and then commit.\n"
 "You can also pass --local to commit to continue working disconnected."
 msgstr ""
+"\n"
+"マスタブランチにコミットするには、先にupdateしてください。\n"
+"--localを指定してオフラインでコミットし、作業を続けることもできます。"
 
 #: bzrlib/builtins.py:3588
 msgid ""
 "Validate working tree structure, branch consistency and repository history."
-msgstr ""
+msgstr "作業ツリーの構造、ブランチの一貫性、リポジトリの履歴をチェックします。"
 
 #: bzrlib/builtins.py:3590
 msgid ""
 "This command checks various invariants about branch and repository storage\n"
 "to detect data corruption or bzr bugs."
 msgstr ""
+"このコマンドは、データの破損やbzrのバグを検出するために、ブランチとリポジトリ\n"
+"ストレージの不変条件をチェックします。"
 
 #: bzrlib/builtins.py:3593
 msgid ""
 "The working tree and branch checks will only give output if a problem is\n"
 "detected. The output fields of the repository check are:"
 msgstr ""
+"作業ツリーとブランチのチェック結果は、問題が見つかったときだけ表示\n"
+"されます。リポジトリチェックの出力は次の通りです。:"
 
 #: bzrlib/builtins.py:3596
 msgid ""
@@ -2718,6 +2751,8 @@ msgid ""
 "    This is just the number of revisions checked.  It doesn't\n"
 "    indicate a problem."
 msgstr ""
+"revisions\n"
+"    チェックしたリビジョンの数です。これは問題ではありません。"
 
 #: bzrlib/builtins.py:3600
 msgid ""
@@ -2725,6 +2760,9 @@ msgid ""
 "    This is just the number of versionedfiles checked.  It\n"
 "    doesn't indicate a problem."
 msgstr ""
+"versionedfiles\n"
+"    チェックしたバージョン管理ファイルの数です。これは問題では\n"
+"    ありません。"
 
 #: bzrlib/builtins.py:3604
 msgid ""
@@ -2733,6 +2771,10 @@ msgid ""
 "    are not properly referenced by the revision ancestry.  This is a\n"
 "    subtle problem that Bazaar can work around."
 msgstr ""
+"unreferenced ancestors\n"
+"    他のテキストの先祖だが、上位のリビジョンから参照されていない\n"
+"    と思われるテキストです。これは、Bazaarが対処できる軽微な\n"
+"    問題です。"
 
 #: bzrlib/builtins.py:3609
 msgid ""
@@ -2740,6 +2782,9 @@ msgid ""
 "    This is the total number of unique file contents\n"
 "    seen in the checked revisions.  It does not indicate a problem."
 msgstr ""
+"unique file texts\n"
+"    チェックしたリビジョンの中にある、一意なファイルコンテンツの数です。\n"
+"    これは問題ではありません。"
 
 #: bzrlib/builtins.py:3613
 msgid ""
@@ -2749,6 +2794,10 @@ msgid ""
 "    entries are modified, but the file contents are not.  It does not\n"
 "    indicate a problem."
 msgstr ""
+"repeated file texts\n"
+"    チェックしたリビジョンの中にある、重複したテキストの数です。\n"
+"    ファイルのエントリが変更されたが、内容は変更されていない場合に、\n"
+"    重複が発生します。これは問題ではありません。"
 
 #: bzrlib/builtins.py:3619
 msgid ""
@@ -2756,6 +2805,8 @@ msgid ""
 "given\n"
 "location will be checked."
 msgstr ""
+"条件が指定されなければ、指定された場所の全てのBazaarデータが\n"
+"チェックされます。"
 
 #: bzrlib/builtins.py:3624
 msgid "    Check the tree and branch at 'foo'::"
@@ -2795,7 +2846,7 @@ msgstr "現在のディレクトリに関連した作業ツリーをチェック
 
 #: bzrlib/builtins.py:3658
 msgid "Upgrade a repository, branch or working tree to a newer format."
-msgstr ""
+msgstr "リポジトリ、ブランチ、作業ツリーを新しいフォーマットにアップグレードします。"
 
 #: bzrlib/builtins.py:3660
 msgid ""
@@ -2805,6 +2856,11 @@ msgid ""
 "or make new features available. It may however limit interoperability\n"
 "with older repositories or with older versions of Bazaar."
 msgstr ""
+"Bazaarのメジャーリリースの後にデフォルトのフォーマットが変更された場合、\n"
+"いくつかのオペレーションの際に、アップグレードすべきであると通知されます。\n"
+"新しいフォーマットへのアップグレードによって、パフォーマンスが改善されたり、\n"
+"新しい機能が使えるようになるでしょう。ただし、古いバージョンのリポジトリや\n"
+"Bazaarとの互換性には制限が発生するかもしれません。"
 
 #: bzrlib/builtins.py:3666
 msgid ""
@@ -2815,6 +2871,11 @@ msgid ""
 "a one way process (e.g. changing from the 1.x default to the\n"
 "2.x default) so downgrading is not always possible."
 msgstr ""
+"デフォルトではなく特定のフォーマットにアップグレードしたい場合は、--format\n"
+"オプションで指定します。これを利用して、upgradeコマンドで昔のフォーマットに\n"
+"*\"ダウングレード\"* することもできますが、変換処理によっては不可逆なものも\n"
+"あります。(たとえば、1.xのデフォルトから2.xのデフォルトへの変換は不可逆です)\n"
+"そのため、ダウングレードできない場合もあります。"
 
 #: bzrlib/builtins.py:3673
 msgid ""
@@ -2826,6 +2887,12 @@ msgid ""
 "Alternatively, you can delete it by hand if everything looks good\n"
 "afterwards."
 msgstr ""
+"変換を開始したときに、 backup.bzr.~#~ というディレクトリが作成されます。\n"
+"(#は連番です) デフォルトでは、このフォルダは変換後も残ります。もし変換が\n"
+"失敗したら、新しい.bzrフォルダを削除して、このフォルダを元の名前に戻して\n"
+"ください。--cleanオプションを指定すると、変換が成功したらbackup.bzr\n"
+"ディレクトリは削除されます。そうでない場合は、変換後特に問題がなければ手で\n"
+"削除してください。"
 
 #: bzrlib/builtins.py:3681
 msgid ""
@@ -2834,124 +2901,138 @@ msgid ""
 "If the conversion of a branch fails, remaining branches are still\n"
 "tried."
 msgstr ""
+"指定された場所が共用リポジトリの場合、リポジトリの変換が成功したら\n"
+"配下のブランチも変換されます。もしブランチの変換に失敗しても、他の\n"
+"ブランチの変換は続行されます。"
 
 #: bzrlib/builtins.py:3686
 msgid ""
 "For more information on upgrades, see the Bazaar Upgrade Guide,\n"
 "http://doc.bazaar.canonical.com/latest/en/upgrade-guide/."
 msgstr ""
+"アップグレードに関する詳細な情報は、Bazaar Upgrade Guideをご覧ください。\n"
+"http://doc.bazaar.canonical.com/latest/en/upgrade-guide/."
 
 #: bzrlib/builtins.py:3694
 msgid "Upgrade to a specific format.  See \"bzr help formats\" for details."
-msgstr ""
+msgstr "指定されたフォーマットにアップグレードします。詳細は\"bzr help formats\"をご覧ください。"
 
 #: bzrlib/builtins.py:3698
 msgid "Branch format"
-msgstr ""
+msgstr "ブランチフォーマット"
 
 #: bzrlib/builtins.py:3700
 msgid "Remove the backup.bzr directory if successful."
-msgstr ""
+msgstr "変換に成功したらbackup.bzrディレクトリを削除します。"
 
 #: bzrlib/builtins.py:3702
 msgid "Show what would be done, but don't actually do anything."
-msgstr ""
+msgstr "何が実行されるかを表示しますが、実際には何もしません。"
 
 #: bzrlib/builtins.py:3717
 msgid "Show or set bzr user id."
-msgstr ""
+msgstr "bzrのユーザIDを表示、設定します。"
 
 #: bzrlib/builtins.py:3719
 msgid ""
 ":Examples:\n"
 "    Show the email of the current user::"
 msgstr ""
+":例:\n"
+"    現在のユーザのEメールを表示します。::"
 
 #: bzrlib/builtins.py:3722
 msgid "        bzr whoami --email"
-msgstr ""
+msgstr "        bzr whoami --email"
 
 #: bzrlib/builtins.py:3724
 msgid "    Set the current user::"
-msgstr ""
+msgstr "    ユーザを設定します。::"
 
 #: bzrlib/builtins.py:3726
 msgid "        bzr whoami \"Frank Chu <fchu@example.com>\""
-msgstr ""
+msgstr "        bzr whoami \"Frank Chu <fchu@example.com>\""
 
 #: bzrlib/builtins.py:3730
 msgid "Display email address only."
-msgstr ""
+msgstr "Eメールアドレスだけを表示します。"
 
 #: bzrlib/builtins.py:3732
 msgid "Set identity for the current branch instead of globally."
-msgstr ""
+msgstr "全体設定ではなく、現在のブランチだけにIDを設定します。"
 
 #: bzrlib/builtins.py:3758
 msgid "--email can only be used to display existing identity"
-msgstr ""
+msgstr "--emailは、現在のIDを表示するためだけに使用できます。"
 
 #: bzrlib/builtins.py:3780
 msgid "Print or set the branch nickname."
-msgstr ""
+msgstr "ブランチのニックネームを表示または設定します。"
 
 #: bzrlib/builtins.py:3782
 msgid ""
 "If unset, the tree root directory name is used as the nickname.\n"
 "To print the current nickname, execute with no argument."
 msgstr ""
+"設定されていない場合は、ツリーのルートディレクトリの名前が\n"
+"ニックネームとして扱われます。引数なしで実行すると、現在の\n"
+"ニックネームを表示します。"
 
 #: bzrlib/builtins.py:3785
 msgid ""
 "Bound branches use the nickname of its master branch unless it is set\n"
 "locally."
 msgstr ""
+"バインドされたブランチは、ローカルでニックネームが設定されていなければ\n"
+"マスタブランチのニックネームを使用します。"
 
 #: bzrlib/builtins.py:3805
 msgid "Set/unset and display aliases."
-msgstr ""
+msgstr "エイリアスの設定、解除、表示を行います。"
 
 #: bzrlib/builtins.py:3807
 msgid ""
 ":Examples:\n"
 "    Show the current aliases::"
 msgstr ""
+":例:\n"
+"    現在のエイリアスを表示します。::"
 
 #: bzrlib/builtins.py:3810
 msgid "        bzr alias"
-msgstr ""
+msgstr "        bzr alias"
 
 #: bzrlib/builtins.py:3812
 msgid "    Show the alias specified for 'll'::"
-msgstr ""
+msgstr "    'll'に設定されているエイリアスを表示します。::"
 
 #: bzrlib/builtins.py:3814
 msgid "        bzr alias ll"
-msgstr ""
+msgstr "        bzr alias ll"
 
 #: bzrlib/builtins.py:3816
 msgid "    Set an alias for 'll'::"
-msgstr ""
+msgstr "    エイリアス'll'を設定します。::"
 
 #: bzrlib/builtins.py:3818
 msgid "        bzr alias ll=\"log --line -r-10..-1\""
-msgstr ""
+msgstr "        bzr alias ll=\"log --line -r-10..-1\""
 
 #: bzrlib/builtins.py:3820
 msgid "    To remove an alias for 'll'::"
-msgstr ""
+msgstr "    エイリアス'll'を解除します。::"
 
 #: bzrlib/builtins.py:3822
 msgid "        bzr alias --remove ll"
-msgstr ""
+msgstr "        bzr alias --remove ll"
 
 #: bzrlib/builtins.py:3827
 msgid "Remove the alias."
-msgstr ""
+msgstr "エイリアスを削除します。"
 
 #: bzrlib/builtins.py:3845
 msgid "bzr alias --remove expects an alias to remove."
-msgstr ""
+msgstr "bzr alias --removeには、削除するエイリアス名を指定する必要があります。"
 
 #: bzrlib/builtins.py:4026
 msgid ""
@@ -2961,15 +3042,15 @@ msgstr ""
 #: bzrlib/builtins.py:4043
 msgid ""
 "--benchmark is no longer supported from bzr 2.2; use bzr-usertest instead"
-msgstr ""
+msgstr "--benchmarkは、bzr2.2以降はサポートしていません。かわりにbzr-usertestを使用してください。"
 
 #: bzrlib/builtins.py:4090
 msgid "Show version of bzr."
-msgstr ""
+msgstr "Bazaarのバージョンを表示します。"
 
 #: bzrlib/builtins.py:4094
 msgid "Print just the version number."
-msgstr ""
+msgstr "リビジョン番号を表示します。"
 
 #: bzrlib/builtins.py:4113
 msgid "It sure does!\n"
@@ -2978,11 +3059,11 @@ msgstr ""
 #: bzrlib/builtins.py:4137
 #, python-format
 msgid "merge base is revision %s\n"
-msgstr ""
+msgstr "マージの起点はリビジョン %s です。\n"
 
 #: bzrlib/builtins.py:4141
 msgid "Perform a three-way merge."
-msgstr ""
+msgstr "3wayマージを実行します。"
 
 #: bzrlib/builtins.py:4143
 msgid ""
@@ -2994,6 +3075,11 @@ msgid ""
 "branch:  in this case, only the modifications to that file are merged into\n"
 "the current working tree."
 msgstr ""
+"マージ元には、ブランチか、bzr sendで作られたマージディレクティブファイル\n"
+"のパスを指定できます。どちらも指定されていない場合は、アップストリームブランチ\n"
+"か、一番最後に--remember指定でマージした時のマージ元がデフォルトになります。\n"
+"別のブランチ内のファイルパスをマージ元として指定することもでき、その場合は\n"
+"指定されたファイルの変更だけが現在のブランチにマージされます。"
 
 #: bzrlib/builtins.py:4151
 msgid ""
@@ -3001,12 +3087,17 @@ msgid ""
 "work from the other branch, automatically determining an appropriate base\n"
 "revision.  If this fails, you may need to give an explicit base."
 msgstr ""
+"ブランチからマージする場合、デフォルトでbzrは自動的に妥当なベースリビジョンを\n"
+"判定し、それ以降のすべての変更をマージしようとします。もしこれが失敗した場合は、\n"
+"明示的にベースリビジョンを指定する必要があります。"
 
 #: bzrlib/builtins.py:4155
 msgid ""
 "To pick a different ending revision, pass \"--revision OTHER\".  bzr will\n"
 "try to merge in all new work up to and including revision OTHER."
 msgstr ""
+"別の最終リビジョンを指定するには、\"-revision OTHER\"を指定します。この場合、\n"
+"OTHERまで(OTHERも含む)の全ての変更がマージされます。"
 
 #: bzrlib/builtins.py:4158
 msgid ""
@@ -3018,10 +3109,16 @@ msgid ""
 "cherrypicks. The changes look like a normal commit, and the history of the\n"
 "changes from the other branch is not stored in the commit."
 msgstr ""
+"もし、２つのリビジョンを指定した場合(\"--revision BASE..OTHER\")、BASEから\n"
+"OTHERの範囲(BASEは含まず、OTHERは含む)のリビジョンがマージされます。これに\n"
+"よってスキップされるリビジョンがある場合、つまりマージ先のリビジョンにBASE\n"
+"が含まれていない場合は、いわゆる\"チェリーピック\"が行われます。通常のマージ\n"
+"とはちがい、今のところBazaarではチェリーピックは追跡しません。変更は、普通の\n"
+"コミットのように見え、マージ元での変更履歴は保存されません。"
 
 #: bzrlib/builtins.py:4166
 msgid "Revision numbers are always relative to the source branch."
-msgstr ""
+msgstr "リビジョン番号は常に元のブランチに関連します。"
 
 #: bzrlib/builtins.py:4168 bzrlib/conflicts.py:52 bzrlib/conflicts.py:106
 msgid ""
@@ -3030,11 +3127,15 @@ msgid ""
 "it will mark a conflict.  A conflict means that you need to fix something,\n"
 "before you should commit."
 msgstr ""
+"マージ処理は、二つのブランチの変更を結合するために最善を尽くしますが、人にしか\n"
+"解決できない問題もあります。そのような問題にあたった場合は、それを衝突として\n"
+"マークします。その場合、コミット前に何かしら修正しなければならないということに\n"
+"なります。"
 
 #: bzrlib/builtins.py:4173
 msgid ""
 "Use bzr resolve when you have fixed a problem.  See also bzr conflicts."
-msgstr ""
+msgstr "問題を解消したら、bzr resolveを使用してください。bzr conflictsもご覧ください。"
 
 #: bzrlib/builtins.py:4175
 msgid ""
@@ -3043,6 +3144,11 @@ msgid ""
 "to use the default.  To change the default, use --remember. The value will\n"
 "only be saved if the remote location can be accessed."
 msgstr ""
+"デフォルトブランチが設定されていない場合、最初にマージを実行したときに\n"
+"設定されます。(これをしないようにするには、--no-rememberを指定します。)\n"
+"その後は、デフォルトのブランチを使用する時には指定を省略できるようになり\n"
+"ます。デフォルトを変更するには、--rememberを指定します。この値は、リモートの\n"
+"ブランチにアクセスできた時だけ保存されます。"
 
 #: bzrlib/builtins.py:4180
 msgid ""
@@ -3050,6 +3156,8 @@ msgid ""
 "directory, where they can be reviewed (with bzr diff), tested, and then\n"
 "committed to record the result of the merge."
 msgstr ""
+"マージの結果はマージ先の作業ツリー内に反映され、そこで(bzr diffを使って)\n"
+"レビューしたり、テストをしたあとで、コミットによって記録することができます。"
 
 #: bzrlib/builtins.py:4184
 msgid ""
@@ -3059,6 +3167,10 @@ msgid ""
 "changes in the tree.  The --force option can also be used to create a\n"
 "merge revision which has more than two parents."
 msgstr ""
+"コミットされていない変更がある場合は、--forceを指定しないとマージは拒否\n"
+"されます。--forceが指定された場合は、未コミットの変更を含む現在の作業ツリーに\n"
+"マージ元の変更がマージされます。--forceオプションを使えば、２つ以上の親を持つ\n"
+"マージリビジョンを作ることもできます。"
 
 #: bzrlib/builtins.py:4190
 msgid ""
@@ -3066,52 +3178,60 @@ msgid ""
 "branch without merging any committed revisions, the --uncommitted option\n"
 "can be given."
 msgstr ""
+"コミット済みの変更ではなく、作業ツリー上での変更を別のブランチにマージしたい\n"
+"場合は、--uncommittedオプションを指定することができます。"
 
 #: bzrlib/builtins.py:4194
 msgid ""
 "To select only some changes to merge, use \"merge -i\", which will prompt\n"
 "you to apply each diff hunk and file change, similar to \"shelve\"."
 msgstr ""
+"変更を部分的にマージしたければ、\"merge -i\"を使用すれば、\"shelve\"と同じ\n"
+"ようにそれぞれのハンクをプロンプトで選択して適用することができます。"
 
 #: bzrlib/builtins.py:4197
 msgid ""
 ":Examples:\n"
 "    To merge all new revisions from bzr.dev::"
 msgstr ""
+":例:\n"
+"    bzr.devから全ての新しいリビジョンをマージします。::"
 
 #: bzrlib/builtins.py:4200
 msgid "        bzr merge ../bzr.dev"
-msgstr ""
+msgstr "        bzr merge ../bzr.dev"
 
 #: bzrlib/builtins.py:4202
 msgid "    To merge changes up to and including revision 82 from bzr.dev::"
-msgstr ""
+msgstr "    bzr.devから、リビジョン82まで(82も含む)のリビジョンをマージします::"
 
 #: bzrlib/builtins.py:4204
 msgid "        bzr merge -r 82 ../bzr.dev"
-msgstr ""
+msgstr "        bzr merge -r 82 ../bzr.dev"
 
 #: bzrlib/builtins.py:4206
 msgid "    To merge the changes introduced by 82, without previous changes::"
-msgstr ""
+msgstr "    リビジョン82での変更をマージし、それ以前の変更はマージしません。::"
 
 #: bzrlib/builtins.py:4208
 msgid "        bzr merge -r 81..82 ../bzr.dev"
-msgstr ""
+msgstr "        bzr merge -r 81..82 ../bzr.dev"
 
 #: bzrlib/builtins.py:4210
 msgid "    To apply a merge directive contained in /tmp/merge::"
-msgstr ""
+msgstr "    /tmp/merge内のマージディレクティブを適用します。::"
 
 #: bzrlib/builtins.py:4212
 msgid "        bzr merge /tmp/merge"
-msgstr ""
+msgstr "        bzr merge /tmp/merge"
 
 #: bzrlib/builtins.py:4214
 msgid ""
 "    To create a merge revision with three parents from two branches\n"
 "    feature1a and feature1b:"
 msgstr ""
+"    feature1a、feature1bの２つのブランチから、３つの親を持つマージ\n"
+"    リビジョンを作ります。::"
 
 #: bzrlib/builtins.py:4217
 msgid ""
@@ -3119,15 +3239,18 @@ msgid ""
 "        bzr merge ../feature1b --force\n"
 "        bzr commit -m 'revision with three parents'"
 msgstr ""
+"        bzr merge ../feature1a\n"
+"        bzr merge ../feature1b --force\n"
+"        bzr commit -m 'revision with three parents'"
 
 #: bzrlib/builtins.py:4229
 msgid "Merge even if the destination tree has uncommitted changes."
-msgstr ""
+msgstr "マージ先のツリーにコミットしていない変更があってもマージします。"
 
 #: bzrlib/builtins.py:4235
 msgid ""
 "Apply uncommitted changes from a working copy, instead of branch changes."
-msgstr ""
+msgstr "ブランチの変更ではなく、作業コピー上のコミットしていない変更をマージします。"
 
 #: bzrlib/builtins.py:4237
 msgid ""
@@ -3135,33 +3258,36 @@ msgid ""
 "the source rather than merging.  When this happens, you do not need to "
 "commit the result."
 msgstr ""
+"マージ先のリビジョンがマージ元のブランチにすべて含まれている場合、マージの\n"
+"かわりにpullを実行します。その場合は、コミットする必要はありません。"
 
 #: bzrlib/builtins.py:4242
 msgid ""
 "Branch to merge into, rather than the one containing the working directory."
-msgstr ""
+msgstr "作業ディレクトリ以外にマージする場合の、マージ先のブランチ。"
 
 #: bzrlib/builtins.py:4244
 msgid "Instead of merging, show a diff of the merge."
-msgstr ""
+msgstr "マージを実行するかわりに、マージされる内容のdiffを表示します。"
 
 #: bzrlib/builtins.py:4246
 msgid "Select changes interactively."
-msgstr ""
+msgstr "変更をインタラクティブに選択します。"
 
 #: bzrlib/builtins.py:4268
 msgid ""
 "Merging into empty branches not currently supported, "
 "https://bugs.launchpad.net/bzr/+bug/308562"
 msgstr ""
+"空ブランチへのマージは今のところサポートされていません。https://bugs.launchpad.net/bzr/+bug/308562"
 
 #: bzrlib/builtins.py:4295
 msgid "Cannot use --uncommitted with bundles or merge directives."
-msgstr ""
+msgstr "バンドル、マージディレクティブに対して--uncommittedを指定することはできません。"
 
 #: bzrlib/builtins.py:4306
 msgid "Cannot use --uncommitted and --revision at the same time."
-msgstr ""
+msgstr "--uncommittedと--revisionを同時に指定することはできません。"
 
 #: bzrlib/builtins.py:4326
 msgid "merger: "
@@ -3169,41 +3295,41 @@ msgstr ""
 
 #: bzrlib/builtins.py:4328 bzrlib/bundle/apply_bundle.py:71
 msgid "Nothing to do."
-msgstr ""
+msgstr "なにもすることがありません。"
 
 #: bzrlib/builtins.py:4332
 msgid "Cannot pull individual files"
-msgstr ""
+msgstr "ファイルを個別にpullすることはできません。"
 
 #: bzrlib/builtins.py:4340
 msgid "This branch has no commits. (perhaps you would prefer 'bzr pull')"
-msgstr ""
+msgstr "ブランチにコミットがありません。('bzr pull'を使うべきかもしれません)"
 
 #: bzrlib/builtins.py:4398
 #, python-format
 msgid "Show-base is not supported for this merge type. %s"
-msgstr ""
+msgstr "Show-baseはこのマージタイプではサポートされません。 %s"
 
 #: bzrlib/builtins.py:4407
 #, python-format
 msgid "Conflict reduction is not supported for merge type %s."
-msgstr ""
+msgstr "衝突の縮小化は、このマージタイプではサポートされません。 %s"
 
 #: bzrlib/builtins.py:4411
 msgid "Cannot do conflict reduction and show base."
-msgstr ""
+msgstr "衝突の縮小化、ベースの表示ができませんでした。"
 
 #: bzrlib/builtins.py:4522
 msgid "No location specified or remembered"
-msgstr ""
+msgstr "対象の場所が設定も指定もされていません。"
 
 #: bzrlib/builtins.py:4524
 msgid "{0} remembered {1} location {2}"
-msgstr ""
+msgstr "{0} 設定された {1} の場所 {2}"
 
 #: bzrlib/builtins.py:4530
 msgid "Redo a merge."
-msgstr ""
+msgstr "マージをやりなおします。"
 
 #: bzrlib/builtins.py:4532
 msgid ""
@@ -3211,6 +3337,9 @@ msgid ""
 "conflicts.  Some merge techniques are better than others, and remerge\n"
 "lets you try different ones on different files."
 msgstr ""
+"衝突を解決するために、別のマージ方法を試したい場合に、このコマンドを\n"
+"使用します。他のものより優れたマージ方法があり、remergeを使って個々の\n"
+"ファイルに別のマージ方法を試すことができます。"
 
 #: bzrlib/builtins.py:4536
 msgid ""
@@ -3218,6 +3347,9 @@ msgid ""
 "merge.  The difference is that remerge can (only) be run when there is a\n"
 "pending merge, and it lets you specify particular files."
 msgstr ""
+"remergeのオプションの意味とデフォルトはmergeと同じです。違いは、\n"
+"remergeはマージ中状態のときだけ実行でき、特定のファイルを指定できる\n"
+"ということです。"
 
 #: bzrlib/builtins.py:4540
 msgid ""
@@ -3225,34 +3357,41 @@ msgid ""
 "    Re-do the merge of all conflicted files, and show the base text in\n"
 "    conflict regions, in addition to the usual THIS and OTHER texts::"
 msgstr ""
+":例:\n"
+"    すべての衝突したファイルのマージをやり直し、通常のTHIS、OTHERの\n"
+"    テキストにくわえて衝突した領域のベーステキストを表示します。::"
 
 #: bzrlib/builtins.py:4544
 msgid "        bzr remerge --show-base"
-msgstr ""
+msgstr "        bzr remerge --show-base"
 
 #: bzrlib/builtins.py:4546
 msgid ""
 "    Re-do the merge of \"foobar\", using the weave merge algorithm, with\n"
 "    additional processing to reduce the size of conflict regions::"
 msgstr ""
+"    \"foobar\"のマージを、weaveマージアルゴリズムでやりなおし、衝突領域の\n"
+"    縮小化処理も行います。::"
 
 #: bzrlib/builtins.py:4549
 msgid "        bzr remerge --merge-type weave --reprocess foobar"
-msgstr ""
+msgstr "        bzr remerge --merge-type weave --reprocess foobar"
 
 #: bzrlib/builtins.py:4556
 msgid "Show base revision text in conflicts."
-msgstr ""
+msgstr "衝突したベースリビジョンのテキストを表示します。"
 
 #: bzrlib/builtins.py:4568
 msgid ""
 "Sorry, remerge only works after normal merges.  Not cherrypicking or multi-"
 "merges."
 msgstr ""
+"remergeは通常のマージ後にだけ実行できます。チェリーピックや複数マージでは\r\n"
+"利用できません。"
 
 #: bzrlib/builtins.py:4624
 msgid "Revert files to a previous revision."
-msgstr ""
+msgstr "ファイルを過去のリビジョンに戻します。"
 
 #: bzrlib/builtins.py:4626
 msgid ""

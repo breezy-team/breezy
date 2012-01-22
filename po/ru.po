@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-01-16 15:18+0100\n"
-"PO-Revision-Date: 2011-11-14 16:38+0000\n"
+"PO-Revision-Date: 2012-01-21 16:45+0000\n"
 "Last-Translator: Sergey Basalaev <SBasalaev@gmail.com>\n"
 "Language-Team: Russian <ru@li.org>\n"
 "MIME-Version: 1.0\n"
@@ -16,8 +16,8 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-01-18 04:32+0000\n"
-"X-Generator: Launchpad (build 14681)\n"
+"X-Launchpad-Export-Date: 2012-01-22 04:30+0000\n"
+"X-Generator: Launchpad (build 14700)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -321,7 +321,7 @@ msgstr "Тегом можно пометить только отдельную �
 
 #: bzrlib/builtins.py:612
 msgid "Show revno of working tree."
-msgstr ""
+msgstr "Показать номер ревизии рабочего дерева."
 
 #: bzrlib/builtins.py:660
 msgid "Add specified files or directories."
@@ -454,6 +454,8 @@ msgstr "Это эквивалентно созданию директории и
 #: bzrlib/builtins.py:762
 msgid "No error if existing, make parent directories as needed."
 msgstr ""
+"Не выводить ошибку, если существует, создавать родительские директории при "
+"необходимости."
 
 #: bzrlib/builtins.py:796
 #, python-format
@@ -907,7 +909,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1461
 msgid "(default)"
-msgstr ""
+msgstr "(по умолчанию)"
 
 #: bzrlib/builtins.py:1473
 msgid "Create a new checkout of an existing branch."
@@ -1104,7 +1106,7 @@ msgstr ""
 #: bzrlib/builtins.py:1702 bzrlib/builtins.py:3622 bzrlib/builtins.py:4752
 #: bzrlib/builtins.py:6389
 msgid ":Examples:"
-msgstr ""
+msgstr ":Примеры:"
 
 #: bzrlib/builtins.py:1704
 msgid "  Display information on the format and related locations:"
@@ -1172,17 +1174,19 @@ msgstr ""
 
 #: bzrlib/builtins.py:1750
 msgid "Delete from bzr but leave the working copy."
-msgstr ""
+msgstr "Удалить из bzr, но оставить рабочую копию."
 
 #: bzrlib/builtins.py:1751
 msgid "Don't backup changed files."
-msgstr ""
+msgstr "Не создавать резервные копии изменённых файлов."
 
 #: bzrlib/builtins.py:1752
 msgid ""
 "Delete all the specified files, even if they can not be recovered and even "
 "if they are non-empty directories. (deprecated, use no-backup)"
 msgstr ""
+"Удалить все указанные файлы, даже если их нельзя восстановить или они "
+"являются непустыми директориями. (устарело, используйте no-backup)"
 
 #: bzrlib/builtins.py:1761
 msgid "(The --force option is deprecated, rather use --no-backup in future.)"
@@ -2086,6 +2090,8 @@ msgid ""
 "Display only the revisions that are not part of both ancestries (require -"
 "rX..Y)."
 msgstr ""
+"Показать только ревизии, которые не являются частью обоих предков (требует -"
+"rX..Y)."
 
 #: bzrlib/builtins.py:2577
 msgid "Show digital signature validity."
@@ -2495,7 +2501,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3226
 msgid "--uncommitted requires a working tree"
-msgstr ""
+msgstr "--uncommitted требует рабочее дерево"
 
 #: bzrlib/builtins.py:3235
 #, python-format
@@ -2522,11 +2528,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:3249
 msgid "The path name in the old tree."
-msgstr ""
+msgstr "Имя пути в старом дереве."
 
 #: bzrlib/builtins.py:3250
 msgid "Apply content filters to display the convenience form."
-msgstr ""
+msgstr "Применить фильтры содержимого для отображения в удобной форме."
 
 #: bzrlib/builtins.py:3261
 msgid "bzr cat --revision takes exactly one revision specifier"
@@ -2815,6 +2821,8 @@ msgid ""
 "The working tree and branch checks will only give output if a problem is\n"
 "detected. The output fields of the repository check are:"
 msgstr ""
+"Проверки рабочего дерева и ветви выведут что-либо только в случае\n"
+"обнаружения проблемы. Поля вывода проверки репозитория следующие:"
 
 #: bzrlib/builtins.py:3596
 msgid ""
@@ -2822,6 +2830,9 @@ msgid ""
 "    This is just the number of revisions checked.  It doesn't\n"
 "    indicate a problem."
 msgstr ""
+"ревизии\n"
+"    Это просто число проверенных ревизий.  Оно не указывает\n"
+"    на проблему."
 
 #: bzrlib/builtins.py:3600
 msgid ""
@@ -2829,6 +2840,9 @@ msgid ""
 "    This is just the number of versionedfiles checked.  It\n"
 "    doesn't indicate a problem."
 msgstr ""
+"версифицированные файлы\n"
+"    Это просто число проверенных файлов под контролем системы\n"
+"    версий.  Оно не указывает на проблему."
 
 #: bzrlib/builtins.py:3604
 msgid ""
@@ -2837,6 +2851,10 @@ msgid ""
 "    are not properly referenced by the revision ancestry.  This is a\n"
 "    subtle problem that Bazaar can work around."
 msgstr ""
+"предки без ссылок\n"
+"    Тексты, являющиеся предками других текстов, но не имеющие\n"
+"    корректных ссылок в истории ревизии.  Это небольшая\n"
+"    проблема, с которой Bazaar может разобраться."
 
 #: bzrlib/builtins.py:3609
 msgid ""
@@ -2844,6 +2862,9 @@ msgid ""
 "    This is the total number of unique file contents\n"
 "    seen in the checked revisions.  It does not indicate a problem."
 msgstr ""
+"уникальные тексты файлов\n"
+"    Это общее число уникального содержимого файлов, встреченного\n"
+"    в проверенных ревизиях.  Оно не указывает на проблему."
 
 #: bzrlib/builtins.py:3613
 msgid ""
@@ -2853,6 +2874,11 @@ msgid ""
 "    entries are modified, but the file contents are not.  It does not\n"
 "    indicate a problem."
 msgstr ""
+"повторяемые тексты файлов\n"
+"    Это общее число повторяемых текстов, встреченных\n"
+"    в проверенных ревизиях.  Тексты могут повторяться, если записи\n"
+"    файлов изменились, но их содержимое осталось прежним.  Оно не\n"
+"    указывает на проблему."
 
 #: bzrlib/builtins.py:3619
 msgid ""
@@ -2863,43 +2889,43 @@ msgstr ""
 
 #: bzrlib/builtins.py:3624
 msgid "    Check the tree and branch at 'foo'::"
-msgstr ""
+msgstr "    Проверить рабочее дерево и ветвь в 'foo'::"
 
 #: bzrlib/builtins.py:3626
 msgid "        bzr check --tree --branch foo"
-msgstr ""
+msgstr "        bzr check --tree --branch foo"
 
 #: bzrlib/builtins.py:3628
 msgid "    Check only the repository at 'bar'::"
-msgstr ""
+msgstr "    Проверить только репозиторий в 'bar'::"
 
 #: bzrlib/builtins.py:3630
 msgid "        bzr check --repo bar"
-msgstr ""
+msgstr "        bzr check --repo bar"
 
 #: bzrlib/builtins.py:3632
 msgid "    Check everything at 'baz'::"
-msgstr ""
+msgstr "    Проверить всё в 'baz'::"
 
 #: bzrlib/builtins.py:3634
 msgid "        bzr check baz"
-msgstr ""
+msgstr "        bzr check baz"
 
 #: bzrlib/builtins.py:3640
 msgid "Check the branch related to the current directory."
-msgstr ""
+msgstr "Проверить ветвь, относящуюся к текущей директории."
 
 #: bzrlib/builtins.py:3642
 msgid "Check the repository related to the current directory."
-msgstr ""
+msgstr "Проверить репозиторий, относящийся к текущей директории."
 
 #: bzrlib/builtins.py:3644
 msgid "Check the working tree related to the current directory."
-msgstr ""
+msgstr "Проверить рабочее дерево, относящееся к текущей директории."
 
 #: bzrlib/builtins.py:3658
 msgid "Upgrade a repository, branch or working tree to a newer format."
-msgstr ""
+msgstr "Обновить репозиторий, ветвь или рабочее дерево до нового формата."
 
 #: bzrlib/builtins.py:3660
 msgid ""
@@ -2948,6 +2974,7 @@ msgstr ""
 #: bzrlib/builtins.py:3694
 msgid "Upgrade to a specific format.  See \"bzr help formats\" for details."
 msgstr ""
+"Обновить до определённого формата. Подробности см. в «bzr help formats»."
 
 #: bzrlib/builtins.py:3698
 msgid "Branch format"
@@ -2955,7 +2982,7 @@ msgstr "Формат ветви"
 
 #: bzrlib/builtins.py:3700
 msgid "Remove the backup.bzr directory if successful."
-msgstr ""
+msgstr "Удалить директорию backup.bzr при успешном завершении."
 
 #: bzrlib/builtins.py:3702
 msgid "Show what would be done, but don't actually do anything."
@@ -2970,22 +2997,24 @@ msgid ""
 ":Examples:\n"
 "    Show the email of the current user::"
 msgstr ""
+":Примеры:\n"
+"    Показать email текущего пользователя::"
 
 #: bzrlib/builtins.py:3722
 msgid "        bzr whoami --email"
-msgstr ""
+msgstr "        bzr whoami --email"
 
 #: bzrlib/builtins.py:3724
 msgid "    Set the current user::"
-msgstr ""
+msgstr "    Установить текущего пользователя::"
 
 #: bzrlib/builtins.py:3726
 msgid "        bzr whoami \"Frank Chu <fchu@example.com>\""
-msgstr ""
+msgstr "        bzr whoami \"Frank Chu <fchu@example.com>\""
 
 #: bzrlib/builtins.py:3730
 msgid "Display email address only."
-msgstr ""
+msgstr "Показать только адрес email."
 
 #: bzrlib/builtins.py:3732
 msgid "Set identity for the current branch instead of globally."
@@ -2997,7 +3026,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3780
 msgid "Print or set the branch nickname."
-msgstr ""
+msgstr "Вывести или установить имя ветви."
 
 #: bzrlib/builtins.py:3782
 msgid ""
@@ -3013,71 +3042,76 @@ msgstr ""
 
 #: bzrlib/builtins.py:3805
 msgid "Set/unset and display aliases."
-msgstr ""
+msgstr "Установить, удалить или отобразить псевдонимы."
 
 #: bzrlib/builtins.py:3807
 msgid ""
 ":Examples:\n"
 "    Show the current aliases::"
 msgstr ""
+":Примеры:\n"
+"    Показать текущие псевдонимы::"
 
 #: bzrlib/builtins.py:3810
 msgid "        bzr alias"
-msgstr ""
+msgstr "        bzr alias"
 
 #: bzrlib/builtins.py:3812
 msgid "    Show the alias specified for 'll'::"
-msgstr ""
+msgstr "    Показать псевдоним для 'll'::"
 
 #: bzrlib/builtins.py:3814
 msgid "        bzr alias ll"
-msgstr ""
+msgstr "        bzr alias ll"
 
 #: bzrlib/builtins.py:3816
 msgid "    Set an alias for 'll'::"
-msgstr ""
+msgstr "    Установить псевдоним для 'll'::"
 
 #: bzrlib/builtins.py:3818
 msgid "        bzr alias ll=\"log --line -r-10..-1\""
-msgstr ""
+msgstr "        bzr alias ll=\"log --line -r-10..-1\""
 
 #: bzrlib/builtins.py:3820
 msgid "    To remove an alias for 'll'::"
-msgstr ""
+msgstr "    Удалить псевдоним для 'll'::"
 
 #: bzrlib/builtins.py:3822
 msgid "        bzr alias --remove ll"
-msgstr ""
+msgstr "        bzr alias --remove ll"
 
 #: bzrlib/builtins.py:3827
 msgid "Remove the alias."
-msgstr ""
+msgstr "Удалить псевдоним."
 
 #: bzrlib/builtins.py:3845
 msgid "bzr alias --remove expects an alias to remove."
-msgstr ""
+msgstr "bzr alias --remove требуется псевдоним для удаления."
 
 #: bzrlib/builtins.py:4026
 msgid ""
 "subunit not available. subunit needs to be installed to use --subunit."
 msgstr ""
+"subunit не доступен. Нужно установить subunit, чтобы использовать --subunit."
 
 #: bzrlib/builtins.py:4043
 msgid ""
 "--benchmark is no longer supported from bzr 2.2; use bzr-usertest instead"
 msgstr ""
+"--benchmark не поддерживается начиная с версии bzr 2.2; вместо этого "
+"используйте bzr-usertest"
 
 #: bzrlib/builtins.py:4090
 msgid "Show version of bzr."
-msgstr ""
+msgstr "Вывести версию bzr."
 
 #: bzrlib/builtins.py:4094
 msgid "Print just the version number."
-msgstr ""
+msgstr "Вывести только номер версии."
 
 #: bzrlib/builtins.py:4113
 msgid "It sure does!\n"
-msgstr ""
+msgstr "Да, он крут!\n"
 
 #: bzrlib/builtins.py:4137
 #, python-format
