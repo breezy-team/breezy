@@ -954,6 +954,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             # record_entry_contents.
             parent_ids = tree.get_parent_ids()
             builder = tree.branch.get_commit_builder(parent_ids)
+            builder.will_record_deletes()
             parent_tree = tree.basis_tree()
             parent_tree.lock_read()
             self.addCleanup(parent_tree.unlock)
@@ -975,15 +976,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 self.assertEqualStat(result[2][1], tree_file_stat[1])
             else:
                 self.assertEqual([], result)
-            delta = builder._basis_delta
-            delta_dict = dict((change[2], change) for change in delta)
-            version_recorded = (file_id in delta_dict and
-                delta_dict[file_id][3] is not None and
-                delta_dict[file_id][3].revision == builder._new_revision_id)
-            if records_version:
-                self.assertTrue(version_recorded)
-            else:
-                self.assertFalse(version_recorded)
             self.assertIs(None, builder.new_inventory)
             builder.finish_inventory()
             if tree.branch.repository._format.supports_full_versioned_files:
@@ -993,6 +985,16 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 self.assertEqual(inv_sha1, builder.inv_sha1)
             self.assertIs(None, builder.new_inventory)
             rev2 = builder.commit('')
+            delta = builder.get_basis_delta()
+            delta_dict = dict((change[2], change) for change in delta)
+            version_recorded = (file_id in delta_dict and
+                delta_dict[file_id][3] is not None and
+                delta_dict[file_id][3].revision == rev2)
+            if records_version:
+                self.assertTrue(version_recorded)
+            else:
+                self.assertFalse(version_recorded)
+
             new_inventory = builder.revision_tree().inventory
             new_entry = new_inventory[file_id]
             if delta_against_basis:
