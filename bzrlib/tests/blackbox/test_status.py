@@ -598,8 +598,7 @@ class CheckoutStatus(BranchStatus):
     def make_branch_and_tree(self, relpath):
         source = self.make_branch(pathjoin('..', relpath))
         checkout = bzrdir.BzrDirMetaFormat1().initialize(relpath)
-        bzrlib.branch.BranchReferenceFormat().initialize(checkout,
-            target_branch=source)
+        checkout.set_branch_reference(source)
         return checkout.create_workingtree()
 
 

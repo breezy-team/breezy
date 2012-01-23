@@ -823,7 +823,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         revision = Revision(revision_id, committer='jrandom@example.com',
             timestamp=0, inventory_sha1='', timezone=0, message='foo',
             parent_ids=parent_ids)
-        repo.add_revision(revision_id,revision, inv)
+        repo.add_revision(revision_id, revision, inv)
 
     def make_one_file_inventory(self, repo, revision, parents,
                                 inv_revision=None, root_revision=None,

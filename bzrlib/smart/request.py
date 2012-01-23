@@ -26,6 +26,8 @@ Interesting module attributes:
       of times during a request).
 """
 
+from __future__ import absolute_import
+
 # XXX: The class names are a little confusing: the protocol will instantiate a
 # SmartServerRequestHandler, whose dispatch_command method creates an instance
 # of a SmartServerRequest subclass.
@@ -583,6 +585,9 @@ request_handlers.register_lazy(
     'Branch.revision_id_to_revno', 'bzrlib.smart.branch',
     'SmartServerBranchRequestRevisionIdToRevno', info='read')
 request_handlers.register_lazy(
+    'BzrDir.checkout_metadir', 'bzrlib.smart.bzrdir',
+    'SmartServerBzrDirRequestCheckoutMetaDir', info='read')
+request_handlers.register_lazy(
     'BzrDir.cloning_metadir', 'bzrlib.smart.bzrdir',
     'SmartServerBzrDirRequestCloningMetaDir', info='read')
 request_handlers.register_lazy(
@@ -600,6 +605,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'BzrDir.find_repositoryV3', 'bzrlib.smart.bzrdir',
     'SmartServerRequestFindRepositoryV3', info='read')
+request_handlers.register_lazy(
+    'BzrDir.get_branches', 'bzrlib.smart.bzrdir',
+    'SmartServerBzrDirRequestGetBranches', info='read')
 request_handlers.register_lazy(
     'BzrDir.get_config_file', 'bzrlib.smart.bzrdir',
     'SmartServerBzrDirRequestConfigFile', info='read')
@@ -748,11 +756,17 @@ request_handlers.register_lazy(
     'Repository.check_write_group', 'bzrlib.smart.repository',
     'SmartServerRepositoryCheckWriteGroup', info='read')
 request_handlers.register_lazy(
-    'VersionedFileRepository.get_serializer_format', 'bzrlib.smart.repository',
-    'SmartServerRepositoryGetSerializerFormat', info='read')
+    'Repository.reconcile', 'bzrlib.smart.repository',
+    'SmartServerRepositoryReconcile', info='idem')
 request_handlers.register_lazy(
     'Repository.tarball', 'bzrlib.smart.repository',
     'SmartServerRepositoryTarball', info='read')
+request_handlers.register_lazy(
+    'VersionedFileRepository.get_serializer_format', 'bzrlib.smart.repository',
+    'SmartServerRepositoryGetSerializerFormat', info='read')
+request_handlers.register_lazy(
+    'VersionedFileRepository.get_inventories', 'bzrlib.smart.repository',
+    'SmartServerRepositoryGetInventories', info='read')
 request_handlers.register_lazy(
     'rmdir', 'bzrlib.smart.vfs', 'RmdirRequest', info='semivfs')
 request_handlers.register_lazy(

@@ -22,6 +22,8 @@ see bzrlib.bzrdir.BzrDir.
 
 """
 
+from __future__ import absolute_import
+
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import textwrap
@@ -106,10 +108,17 @@ class ControlDir(ControlComponent):
         """Return a sequence of all branches local to this control directory.
 
         """
+        return self.get_branches().values()
+
+    def get_branches(self):
+        """Get all branches in this control directory, as a dictionary.
+        
+        :return: Dictionary mapping branch names to instances.
+        """
         try:
-            return [self.open_branch()]
+           return { "": self.open_branch() }
         except (errors.NotBranchError, errors.NoRepositoryPresent):
-            return []
+           return {}
 
     def is_control_filename(self, filename):
         """True if filename is the name of a path which is reserved for
@@ -221,6 +230,17 @@ class ControlDir(ControlComponent):
             raise errors.NoColocatedBranchSupport(self)
         return None
 
+    def set_branch_reference(self, target_branch, name=None):
+        """Set the referenced URL for the branch in this controldir.
+
+        :param name: Optional colocated branch name
+        :param target_branch: Branch to reference
+        :raises NoColocatedBranchSupport: If a branch name was specified
+            but colocated branches are not supported.
+        :return: The referencing branch
+        """
+        raise NotImplementedError(self.set_branch_reference)
+
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False, possible_transports=None):
         """Open the branch object at this ControlDir if one is present.
@@ -253,7 +273,7 @@ class ControlDir(ControlComponent):
         """
         raise NotImplementedError(self.find_repository)
 
-    def open_workingtree(self, _unsupported=False,
+    def open_workingtree(self, unsupported=False,
                          recommend_upgrade=True, from_branch=None):
         """Open the workingtree object at this ControlDir if one is present.
 
@@ -285,9 +305,9 @@ class ControlDir(ControlComponent):
         :return: Name of the branch selected by the user, or None.
         """
         branch = self.root_transport.get_segment_parameters().get("branch")
-        if branch is not None:
-            branch = urlutils.unescape(branch)
-        return branch
+        if branch is None:
+            branch = ""
+        return urlutils.unescape(branch)
 
     def has_workingtree(self):
         """Tell if this controldir contains a working tree.
@@ -321,7 +341,12 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.cloning_metadir)
 
     def checkout_metadir(self):
-        """Produce a metadir suitable for checkouts of this controldir."""
+        """Produce a metadir suitable for checkouts of this controldir.
+
+        :returns: A ControlDirFormat with all component formats
+            either set appropriately or set to None if that component
+            should not be created.
+        """
         return self.cloning_metadir()
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
@@ -650,17 +675,19 @@ class ControlDir(ControlComponent):
         return klass.open(base, _unsupported=True)
 
     @classmethod
-    def open(klass, base, _unsupported=False, possible_transports=None):
+    def open(klass, base, possible_transports=None, probers=None,
+             _unsupported=False):
         """Open an existing controldir, rooted at 'base' (url).
 
         :param _unsupported: a private parameter to the ControlDir class.
         """
         t = _mod_transport.get_transport(base, possible_transports)
-        return klass.open_from_transport(t, _unsupported=_unsupported)
+        return klass.open_from_transport(t, probers=probers,
+                _unsupported=_unsupported)
 
     @classmethod
     def open_from_transport(klass, transport, _unsupported=False,
-                            _server_formats=True):
+                            probers=None):
         """Open a controldir within a particular directory.
 
         :param transport: Transport containing the controldir.
@@ -672,8 +699,8 @@ class ControlDir(ControlComponent):
         # the redirections.
         base = transport.base
         def find_format(transport):
-            return transport, ControlDirFormat.find_format(
-                transport, _server_formats=_server_formats)
+            return transport, ControlDirFormat.find_format(transport,
+                probers=probers)
 
         def redirected(transport, e, redirection_notice):
             redirected_transport = transport._redirected_to(e.source, e.target)
@@ -725,6 +752,8 @@ class ControlDir(ControlComponent):
                 result = klass.open_from_transport(a_transport)
                 return result, urlutils.unescape(a_transport.relpath(url))
             except errors.NotBranchError, e:
+                pass
+            except errors.PermissionDenied:
                 pass
             try:
                 new_t = a_transport.clone('..')
@@ -826,13 +855,9 @@ ControlDir.hooks = ControlDirHooks()
 
 
 class ControlComponentFormat(object):
-    """A component that can live inside of a .bzr meta directory."""
+    """A component that can live inside of a control directory."""
 
     upgrade_recommended = False
-
-    def get_format_string(self):
-        """Return the format of this format, if usable in meta directories."""
-        raise NotImplementedError(self.get_format_string)
 
     def get_format_description(self):
         """Return the short description for this format."""
@@ -865,6 +890,10 @@ class ControlComponentFormat(object):
         if recommend_upgrade and self.upgrade_recommended:
             ui.ui_factory.recommend_upgrade(
                 self.get_format_description(), basedir)
+
+    @classmethod
+    def get_format_string(cls):
+        raise NotImplementedError(cls.get_format_string)
 
 
 class ControlComponentFormatRegistry(registry.FormatRegistry):
@@ -1094,22 +1123,24 @@ class ControlDirFormat(object):
         return self.get_format_description().rstrip()
 
     @classmethod
+    def all_probers(klass):
+        return klass._server_probers + klass._probers
+
+    @classmethod
     def known_formats(klass):
         """Return all the known formats.
         """
         result = set()
-        for prober_kls in klass._probers + klass._server_probers:
+        for prober_kls in klass.all_probers():
             result.update(prober_kls.known_formats())
         return result
 
     @classmethod
-    def find_format(klass, transport, _server_formats=True):
+    def find_format(klass, transport, probers=None):
         """Return the format present at transport."""
-        if _server_formats:
-            _probers = klass._server_probers + klass._probers
-        else:
-            _probers = klass._probers
-        for prober_kls in _probers:
+        if probers is None:
+            probers = klass.all_probers()
+        for prober_kls in probers:
             prober = prober_kls()
             try:
                 return prober.probe_transport(transport)

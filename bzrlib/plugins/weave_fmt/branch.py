@@ -16,6 +16,8 @@
 
 """Weave-era branch implementations."""
 
+from __future__ import absolute_import
+
 from bzrlib import (
     errors,
     lockable_files,
@@ -136,7 +138,9 @@ class BzrBranchFormat4(BranchFormat):
     def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
             found_repository=None, possible_transports=None):
         """See BranchFormat.open()."""
-        if name is not None:
+        if name is None:
+            name = a_bzrdir._get_selected_branch()
+        if name != "":
             raise errors.NoColocatedBranchSupport(self)
         if not _found:
             # we are being called directly and must probe.

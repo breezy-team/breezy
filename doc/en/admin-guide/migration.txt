@@ -47,7 +47,7 @@ Subversion is particularly important for any *new* version control system.
 Bazaar's `svn`_ plugin provides tools for interaction with Subversion
 projects.  In fact, Bazaar can be used transparently with projects stored in
 Subversion, but that is beyond the scope of this document.  (See
-http://doc.bazaar.canonical.com/en/migration/foreign/bzr-on-svn-projects.html for
+http://doc.bazaar.canonical.com/migration/en/foreign/bzr-on-svn-projects.html for
 more on that subject.)  What is relevant here is the ``svn-import`` command
 provided by that plugin.  This can import an entire subversion repository
 including tags and branches, particularly if they are stored in Subversion's

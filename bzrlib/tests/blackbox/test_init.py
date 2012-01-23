@@ -61,7 +61,7 @@ class TestInit(TestCaseWithTransport):
             out)
         self.assertEqual('', err)
         out, err = self.run_bzr('branches')
-        self.assertEqual(" abranch\n", out)
+        self.assertEqual("  abranch\n", out)
         self.assertEqual('', err)
 
     def test_init_at_repository_root(self):

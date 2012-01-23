@@ -127,3 +127,17 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         made_branch = Branch.open(made_branch.user_url)
         self.assertEquals(u"col\xe9", made_branch.name)
         made_control.destroy_branch(u"col\xe9")
+
+    def test_get_branches(self):
+        repo = self.make_repository('branch-1')
+        target_branch = repo.bzrdir.create_branch(name='foo')
+        self.assertEqual(['foo'], repo.bzrdir.get_branches().keys())
+        self.assertEqual(target_branch.base,
+                         repo.bzrdir.get_branches()['foo'].base)
+
+    def test_branch_reference(self):
+        referenced = self.make_branch('referenced')
+        repo = self.make_repository('repo')
+        repo.bzrdir.set_branch_reference(referenced, name='foo')
+        self.assertEquals(referenced.base,
+            repo.bzrdir.get_branch_reference('foo'))

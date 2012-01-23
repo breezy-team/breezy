@@ -16,8 +16,15 @@
 
 """Server-side bzrdir related request implmentations."""
 
+from __future__ import absolute_import
 
-from bzrlib import branch, errors, repository, urlutils
+from bzrlib import (
+    bencode,
+    branch,
+    errors,
+    repository,
+    urlutils,
+    )
 from bzrlib.bzrdir import (
     BzrDir,
     BzrDirFormat,
@@ -208,6 +215,41 @@ class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
             branch_name))
 
 
+class SmartServerBzrDirRequestCheckoutMetaDir(SmartServerRequestBzrDir):
+    """Get the format to use for checkouts.
+
+    New in 2.5.
+
+    :return: on success, a 3-tuple of network names for (control,
+        repository, branch) directories, where '' signifies "not present".
+        If this BzrDir contains a branch reference then this will fail with
+        BranchReference; clients should resolve branch references before
+        calling this RPC (they should not try to create a checkout of a
+        checkout).
+    """
+
+    def do_bzrdir_request(self):
+        try:
+            branch_ref = self._bzrdir.get_branch_reference()
+        except errors.NotBranchError:
+            branch_ref = None
+        if branch_ref is not None:
+            # The server shouldn't try to resolve references, and it quite
+            # possibly can't reach them anyway.  The client needs to resolve
+            # the branch reference to determine the cloning_metadir.
+            return FailedSmartServerResponse(('BranchReference',))
+        control_format = self._bzrdir.checkout_metadir()
+        control_name = control_format.network_name()
+        if not control_format.fixed_components:
+            branch_name = control_format.get_branch_format().network_name()
+            repo_name = control_format.repository_format.network_name()
+        else:
+            branch_name = ''
+            repo_name = ''
+        return SuccessfulSmartServerResponse(
+            (control_name, repo_name, branch_name))
+
+
 class SmartServerRequestCreateBranch(SmartServerRequestBzrDir):
 
     def do(self, path, network_name):
@@ -232,7 +274,7 @@ class SmartServerRequestCreateBranch(SmartServerRequestBzrDir):
             self.transport_from_client_path(path))
         format = branch.network_format_registry.get(network_name)
         bzrdir.branch_format = format
-        result = format.initialize(bzrdir)
+        result = format.initialize(bzrdir, name="")
         rich_root, tree_ref, external_lookup = self._format_to_capabilities(
             result.repository._format)
         branch_format = result._format.network_name()
@@ -387,6 +429,24 @@ class SmartServerBzrDirRequestConfigFile(SmartServerRequestBzrDir):
         else:
             content = config._get_config_file().read()
         return SuccessfulSmartServerResponse((), content)
+
+
+class SmartServerBzrDirRequestGetBranches(SmartServerRequestBzrDir):
+
+    def do_bzrdir_request(self):
+        """Get the branches in a control directory.
+        
+        The body is a bencoded dictionary, with values similar to the return
+        value of the open branch request.
+        """
+        branches = self._bzrdir.get_branches()
+        ret = {}
+        for name, b in branches.iteritems():
+            if name is None:
+                name = ""
+            ret[name] = ("branch", b._format.network_name())
+        return SuccessfulSmartServerResponse(
+            ("success", ), bencode.bencode(ret))
 
 
 class SmartServerRequestInitializeBzrDir(SmartServerRequest):

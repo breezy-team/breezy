@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2007, 2009-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -44,8 +44,8 @@ class TestMergeDirective(tests.TestCaseWithTransport):
     def prepare_merge_directive(self):
         self.tree1 = self.make_branch_and_tree('tree1')
         self.build_tree_contents([('tree1/file', 'a\nb\nc\nd\n')])
-        self.tree1.branch.get_config().set_user_option('email',
-            'J. Random Hacker <jrandom@example.com>')
+        self.tree1.branch.get_config_stack().set(
+            'email', 'J. Random Hacker <jrandom@example.com>')
         self.tree1.add('file')
         self.tree1.commit('foo', rev_id='foo-id')
         self.tree2 = self.tree1.bzrdir.sprout('tree2').open_workingtree()
@@ -223,7 +223,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
 
     def test_mail_uses_config(self):
         tree1, tree2 = self.prepare_merge_directive()
-        tree1.branch.get_config().set_user_option('smtp_server', 'bogushost')
+        tree1.branch.get_config_stack().set('smtp_server', 'bogushost')
         md_text, errr, connect_calls, sendmail_calls =\
             self.run_bzr_fakemail('merge-directive --mail-to'
                                   ' pqm@example.com --plain ../tree2 .')
@@ -234,15 +234,13 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         foo = self.make_branch_and_tree('foo')
         foo.commit('rev1')
         bar = self.make_branch_and_tree('bar')
-        os.chdir('foo')
-        self.run_bzr('merge-directive ../bar')
+        self.run_bzr('merge-directive ../bar', working_dir='foo')
 
     def test_no_commits(self):
         foo = self.make_branch_and_tree('foo')
         bar = self.make_branch_and_tree('bar')
-        os.chdir('foo')
         self.run_bzr_error(('No revisions to bundle.', ),
-                            'merge-directive ../bar')
+                            'merge-directive ../bar', working_dir='foo')
 
     def test_encoding_exact(self):
         tree1, tree2 = self.prepare_merge_directive()

@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 import os
 import errno
 from stat import S_ISREG, S_IEXEC
@@ -48,6 +50,7 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform,
                            ExistingLimbo, ImmortalLimbo, NoFinalPath,
                            UnableCreateSymlink)
 from bzrlib.filters import filtered_output_bytes, ContentFilterContext
+from bzrlib.mutabletree import MutableTree
 from bzrlib.osutils import (
     delete_any,
     file_kind,
@@ -55,7 +58,6 @@ from bzrlib.osutils import (
     pathjoin,
     sha_file,
     splitpath,
-    supports_executable,
     )
 from bzrlib.progress import ProgressPhase
 from bzrlib.symbol_versioning import (
@@ -154,6 +156,8 @@ class TreeTransformBase(object):
         """
         if self._tree is None:
             return
+        for hook in MutableTree.hooks['post_transform']:
+            hook(self._tree, self)
         self._tree.unlock()
         self._tree = None
 
@@ -228,7 +232,7 @@ class TreeTransformBase(object):
         irrelevant.
 
         """
-        new_roots = [k for k, v in self._new_parent.iteritems() if v is
+        new_roots = [k for k, v in self._new_parent.iteritems() if v ==
                      ROOT_PARENT]
         if len(new_roots) < 1:
             return
@@ -624,7 +628,7 @@ class TreeTransformBase(object):
         for trans_id in self._new_parent:
             seen = set()
             parent_id = trans_id
-            while parent_id is not ROOT_PARENT:
+            while parent_id != ROOT_PARENT:
                 seen.add(parent_id)
                 try:
                     parent_id = self.final_parent(parent_id)
@@ -640,7 +644,7 @@ class TreeTransformBase(object):
         """If parent directories are versioned, children must be versioned."""
         conflicts = []
         for parent_id, children in by_parent.iteritems():
-            if parent_id is ROOT_PARENT:
+            if parent_id == ROOT_PARENT:
                 continue
             if self.final_file_id(parent_id) is not None:
                 continue
@@ -739,7 +743,7 @@ class TreeTransformBase(object):
         """Children must have a directory parent"""
         conflicts = []
         for parent_id, children in by_parent.iteritems():
-            if parent_id is ROOT_PARENT:
+            if parent_id == ROOT_PARENT:
                 continue
             no_children = True
             for child_id in children:
@@ -761,7 +765,7 @@ class TreeTransformBase(object):
 
     def _set_executability(self, path, trans_id):
         """Set the executability of versioned files """
-        if supports_executable():
+        if self._tree._supports_executable():
             new_executability = self._new_executability[trans_id]
             abspath = self._tree.abspath(path)
             current_mode = os.stat(abspath).st_mode
@@ -1230,6 +1234,11 @@ class DiskTreeTransform(TreeTransformBase):
                 raise errors.ImmortalPendingDeletion(self._deletiondir)
         finally:
             TreeTransformBase.finalize(self)
+
+    def _limbo_supports_executable(self):
+        """Check if the limbo path supports the executable bit."""
+        # FIXME: Check actual file system capabilities of limbodir
+        return osutils.supports_executable()
 
     def _limbo_name(self, trans_id):
         """Generate the limbo name of a file"""
@@ -1715,6 +1724,8 @@ class TreeTransform(DiskTreeTransform):
             calculating one.
         :param _mover: Supply an alternate FileMover, for testing
         """
+        for hook in MutableTree.hooks['pre_transform']:
+            hook(self._tree, self)
         if not no_conflicts:
             self._check_malformed()
         child_pb = ui.ui_factory.nested_progress_bar()
@@ -2319,7 +2330,7 @@ class _PreviewTree(tree.InventoryTree):
             if kind == 'file':
                 statval = os.lstat(limbo_name)
                 size = statval.st_size
-                if not supports_executable():
+                if not tt._limbo_supports_executable():
                     executable = False
                 else:
                     executable = statval.st_mode & S_IEXEC

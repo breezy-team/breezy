@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2010, 2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,74 +16,75 @@
 
 """Black-box tests for bzr nick."""
 
-import os
-
 import bzrlib
-from bzrlib import osutils
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib import (
+    branch,
+    osutils,
+    tests,
+    )
 
 
-class TestNick(TestCaseWithTransport):
+class TestNick(tests.TestCaseWithTransport):
+
+    def assertNick(self, expected, working_dir='.', explicit=None,
+                   directory=None):
+        cmd = ['nick']
+        if directory is not None:
+            cmd.extend(['--directory', directory])
+        # The nick command outputs the nick on a single line
+        actual = self.run_bzr(cmd, working_dir=working_dir)[0][:-1]
+        self.assertEquals(expected, actual)
+        if explicit is not None:
+            br = branch.Branch.open(working_dir)
+            conf = br.get_config()
+            self.assertEquals(explicit, conf.has_explicit_nickname())
+            if explicit:
+                self.assertEquals(expected, conf._get_explicit_nickname())
 
     def test_nick_command(self):
         """bzr nick for viewing, setting nicknames"""
         self.make_branch_and_tree('me.dev')
-        os.chdir('me.dev')
-        nick = self.run_bzr('nick')[0]
-        self.assertEqual('me.dev\n', nick)
+        self.assertNick('me.dev', working_dir='me.dev')
         # set the nickname
-        self.run_bzr("nick moo")
-        nick = self.run_bzr('nick')[0]
-        self.assertEqual('moo\n', nick)
+        self.run_bzr("nick moo", working_dir='me.dev')
+        self.assertNick('moo', working_dir='me.dev')
 
     def test_autonick_urlencoded(self):
         # https://bugs.launchpad.net/bzr/+bug/66857 -- nick was printed
         # urlencoded but shouldn't be
         self.make_branch_and_tree('!repo')
-        os.chdir('!repo')
-        nick = self.run_bzr('nick')[0]
-        self.assertEqual('!repo\n', nick)
+        self.assertNick('!repo', working_dir='!repo')
 
     def test_bound_nick(self):
-        """Check that nick works well for checkouts."""
+        """Bind should not update implicit nick."""
         base = self.make_branch_and_tree('base')
         child = self.make_branch_and_tree('child')
-        os.chdir('child')
-        self.assertEqual('child', self.run_bzr('nick')[0][:-1])
-        self.assertEqual(False,
-                         child.branch.get_config().has_explicit_nickname())
-        self.run_bzr('bind ../base')
-        self.assertEqual(base.branch.nick, self.run_bzr('nick')[0][:-1])
-        self.assertEqual(False,
-                         child.branch.get_config().has_explicit_nickname())
+        self.assertNick('child', working_dir='child', explicit=False)
 
-        self.run_bzr('unbind')
-        self.run_bzr("nick explicit_nick")
-        self.assertEqual("explicit_nick", self.run_bzr('nick')[0][:-1])
-        self.assertEqual("explicit_nick",
-                         child.branch.get_config()._get_explicit_nickname())
-        self.run_bzr('bind ../base')
-        self.assertEqual(base.branch.nick, self.run_bzr('nick')[0][:-1])
-        self.assertEqual(base.branch.nick,
-                         child.branch.get_config()._get_explicit_nickname())
+        self.run_bzr('bind ../base', working_dir='child')
+        self.assertNick(base.branch.nick, working_dir='child', explicit=False)
+
+    def test_bound_nick_explicit(self):
+        """Bind should update explicit nick."""
+        base = self.make_branch_and_tree('base')
+        child = self.make_branch_and_tree('child')
+        self.run_bzr("nick explicit_nick", working_dir='child')
+        self.assertNick('explicit_nick', working_dir='child', explicit=True)
+        self.run_bzr('bind ../base', working_dir='child')
+        self.assertNick(base.branch.nick, working_dir='child', explicit=True)
 
     def test_boundless_nick(self):
         """Nick defaults to implicit local nick when bound branch is AWOL"""
         base = self.make_branch_and_tree('base')
         child = self.make_branch_and_tree('child')
-        os.chdir('child')
-        self.run_bzr('bind ../base')
-        self.assertEqual(base.branch.nick, self.run_bzr('nick')[0][:-1])
-        self.assertEqual(False,
-                         child.branch.get_config().has_explicit_nickname())
-        osutils.rmtree('../base')
-        self.assertEqual('child', self.run_bzr('nick')[0][:-1])
+        self.run_bzr('bind ../base', working_dir='child')
+        self.assertNick(base.branch.nick, working_dir='child', explicit=False)
+        osutils.rmtree('base')
+        self.assertNick('child', working_dir='child', explicit=False)
 
     def test_nick_directory(self):
         """Test --directory option"""
         self.make_branch_and_tree('me.dev')
-        nick = self.run_bzr(['nick', '--directory=me.dev'])[0]
-        self.assertEqual('me.dev\n', nick)
+        self.assertNick('me.dev', directory='me.dev')
         self.run_bzr(['nick', '-d', 'me.dev', 'moo'])
-        nick = self.run_bzr(['nick', '--directory', 'me.dev'])[0]
-        self.assertEqual('moo\n', nick)
+        self.assertNick('moo', directory='me.dev')

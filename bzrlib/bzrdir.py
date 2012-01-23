@@ -25,6 +25,8 @@ methods. To free any associated resources, simply stop referencing the
 objects returned.
 """
 
+from __future__ import absolute_import
+
 import sys
 
 from bzrlib.lazy_import import lazy_import
@@ -784,6 +786,19 @@ class BzrDir(controldir.ControlDir):
     def __repr__(self):
         return "<%s at %r>" % (self.__class__.__name__, self.user_url)
 
+    def update_feature_flags(self, updated_flags):
+        """Update the features required by this bzrdir.
+
+        :param updated_flags: Dictionary mapping feature names to necessities
+            A necessity can be None to indicate the feature should be removed
+        """
+        self.control_files.lock_write()
+        try:
+            self._format._update_feature_flags(updated_flags)
+            self.transport.put_bytes('branch-format', self._format.as_string())
+        finally:
+            self.control_files.unlock()
+
 
 class BzrDirMeta1(BzrDir):
     """A .bzr meta version 1 control object.
@@ -793,6 +808,11 @@ class BzrDirMeta1(BzrDir):
     workingtree and branch subdirectories and any subset of the three can be
     present within a BzrDir.
     """
+
+    def __init__(self, _transport, _format):
+        super(BzrDirMeta1, self).__init__(_transport, _format)
+        self.control_files = lockable_files.LockableFiles(self.control_transport,
+            self._format._lock_file_name, self._format._lock_class)
 
     def can_convert_format(self):
         """See BzrDir.can_convert_format()."""
@@ -809,7 +829,9 @@ class BzrDirMeta1(BzrDir):
 
     def destroy_branch(self, name=None):
         """See BzrDir.create_branch."""
-        if name is not None:
+        if name is None:
+            name = self._get_selected_branch()
+        if name != "":
             raise errors.NoColocatedBranchSupport(self)
         self.transport.delete_tree('branch')
 
@@ -850,8 +872,8 @@ class BzrDirMeta1(BzrDir):
 
         This might be a synthetic object for e.g. RemoteBranch and SVN.
         """
-        from bzrlib.branch import BranchFormat
-        return BranchFormat.find_format(self, name=name)
+        from bzrlib.branch import BranchFormatMetadir
+        return BranchFormatMetadir.find_format(self, name=name)
 
     def _get_mkdir_mode(self):
         """Figure out the mode to use when creating a bzrdir subdir."""
@@ -861,13 +883,19 @@ class BzrDirMeta1(BzrDir):
 
     def get_branch_reference(self, name=None):
         """See BzrDir.get_branch_reference()."""
-        from bzrlib.branch import BranchFormat
-        format = BranchFormat.find_format(self, name=name)
+        from bzrlib.branch import BranchFormatMetadir
+        format = BranchFormatMetadir.find_format(self, name=name)
         return format.get_reference(self, name=name)
+
+    def set_branch_reference(self, target_branch, name=None):
+        format = _mod_branch.BranchReferenceFormat()
+        return format.initialize(self, target_branch=target_branch, name=name)
 
     def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
-        if name is not None:
+        if name is None:
+            name = self._get_selected_branch()
+        if name != "":
             raise errors.NoColocatedBranchSupport(self)
         # XXX: this shouldn't implicitly create the directory if it's just
         # promising to get a transport -- mbp 20090727
@@ -917,9 +945,9 @@ class BzrDirMeta1(BzrDir):
         Note: if you're going to open the working tree, you should just go
         ahead and try, and not ask permission first.
         """
-        from bzrlib.workingtree import WorkingTreeFormat
+        from bzrlib.workingtree import WorkingTreeFormatMetaDir
         try:
-            WorkingTreeFormat.find_format_string(self)
+            WorkingTreeFormatMetaDir.find_format_string(self)
         except errors.NoWorkingTree:
             return False
         return True
@@ -966,16 +994,16 @@ class BzrDirMeta1(BzrDir):
 
     def open_repository(self, unsupported=False):
         """See BzrDir.open_repository."""
-        from bzrlib.repository import RepositoryFormat
-        format = RepositoryFormat.find_format(self)
+        from bzrlib.repository import RepositoryFormatMetaDir
+        format = RepositoryFormatMetaDir.find_format(self)
         format.check_support_status(unsupported)
         return format.open(self, _found=True)
 
     def open_workingtree(self, unsupported=False,
             recommend_upgrade=True):
         """See BzrDir.open_workingtree."""
-        from bzrlib.workingtree import WorkingTreeFormat
-        format = WorkingTreeFormat.find_format(self)
+        from bzrlib.workingtree import WorkingTreeFormatMetaDir
+        format = WorkingTreeFormatMetaDir.find_format(self)
         format.check_support_status(unsupported, recommend_upgrade,
             basedir=self.root_transport.base)
         return format.open(self, _found=True)
@@ -991,11 +1019,6 @@ class BzrDirMeta1Colo(BzrDirMeta1):
     BzrDirMeta1.
     """
 
-    def __init__(self, _transport, _format):
-        super(BzrDirMeta1Colo, self).__init__(_transport, _format)
-        self.control_files = lockable_files.LockableFiles(self.control_transport,
-            self._format._lock_file_name, self._format._lock_class)
-
     def _get_branch_path(self, name):
         """Obtain the branch path to use.
 
@@ -1006,7 +1029,7 @@ class BzrDirMeta1Colo(BzrDirMeta1):
         :param name: Optional branch name to use
         :return: Relative path to branch
         """
-        if name is None:
+        if name == "":
             return 'branch'
         return urlutils.join('branches', name.encode("utf-8"))
 
@@ -1041,7 +1064,7 @@ class BzrDirMeta1Colo(BzrDirMeta1):
         if name is None:
             name = self._get_selected_branch()
         path = self._get_branch_path(name)
-        if name is not None:
+        if name != "":
             self.control_files.lock_write()
             try:
                 branches = self._read_branch_list()
@@ -1054,23 +1077,23 @@ class BzrDirMeta1Colo(BzrDirMeta1):
                 self.control_files.unlock()
         self.transport.delete_tree(path)
 
-    def list_branches(self):
-        """See ControlDir.list_branches."""
-        ret = []
-        # Default branch
+    def get_branches(self):
+        """See ControlDir.get_branches."""
+        ret = {}
         try:
-            ret.append(self.open_branch())
+            ret[""] = self.open_branch(name="")
         except (errors.NotBranchError, errors.NoRepositoryPresent):
             pass
 
-        # colocated branches
-        ret.extend([self.open_branch(name.decode("utf-8")) for name in
-                    self._read_branch_list()])
+        for name in self._read_branch_list():
+            ret[name] = self.open_branch(name=name.decode('utf-8'))
 
         return ret
 
     def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
+        if name is None:
+            name = self._get_selected_branch()
         path = self._get_branch_path(name)
         # XXX: this shouldn't implicitly create the directory if it's just
         # promising to get a transport -- mbp 20090727
@@ -1080,7 +1103,7 @@ class BzrDirMeta1Colo(BzrDirMeta1):
             branch_format.get_format_string()
         except NotImplementedError:
             raise errors.IncompatibleFormat(branch_format, self._format)
-        if name is not None:
+        if name != "":
             try:
                 self.transport.mkdir('branches', mode=self._get_mkdir_mode())
             except errors.FileExists:
@@ -1100,6 +1123,132 @@ class BzrDirMeta1Colo(BzrDirMeta1):
         except errors.FileExists:
             pass
         return self.transport.clone(path)
+
+
+class BzrFormat(object):
+    """Base class for all formats of things living in metadirs.
+
+    This class manages the format string that is stored in the 'format'
+    or 'branch-format' file.
+
+    All classes for (branch-, repository-, workingtree-) formats that
+    live in meta directories and have their own 'format' file
+    (i.e. different from .bzr/branch-format) derive from this class,
+    as well as the relevant base class for their kind
+    (BranchFormat, WorkingTreeFormat, RepositoryFormat).
+
+    Each format is identified by a "format" or "branch-format" file with a
+    single line containing the base format name and then an optional list of
+    feature flags.
+
+    Feature flags are supported as of bzr 2.5. Setting feature flags on formats
+    will render them inaccessible to older versions of bzr.
+
+    :ivar features: Dictionary mapping feature names to their necessity
+    """
+
+    _present_features = set()
+
+    def __init__(self):
+        self.features = {}
+
+    @classmethod
+    def register_feature(cls, name):
+        """Register a feature as being present.
+
+        :param name: Name of the feature
+        """
+        if " " in name:
+            raise ValueError("spaces are not allowed in feature names")
+        if name in cls._present_features:
+            raise errors.FeatureAlreadyRegistered(name)
+        cls._present_features.add(name)
+
+    @classmethod
+    def unregister_feature(cls, name):
+        """Unregister a feature."""
+        cls._present_features.remove(name)
+
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+            basedir=None):
+        for name, necessity in self.features.iteritems():
+            if name in self._present_features:
+                continue
+            if necessity == "optional":
+                mutter("ignoring optional missing feature %s", name)
+                continue
+            elif necessity == "required":
+                raise errors.MissingFeature(name)
+            else:
+                mutter("treating unknown necessity as require for %s",
+                       name)
+                raise errors.MissingFeature(name)
+
+    @classmethod
+    def get_format_string(cls):
+        """Return the ASCII format string that identifies this format."""
+        raise NotImplementedError(cls.get_format_string)
+
+    @classmethod
+    def from_string(cls, text):
+        format_string = cls.get_format_string()
+        if not text.startswith(format_string):
+            raise AssertionError("Invalid format header %r for %r" % (text, cls))
+        lines = text[len(format_string):].splitlines()
+        ret = cls()
+        for lineno, line in enumerate(lines):
+            try:
+                (necessity, feature) = line.split(" ", 1)
+            except ValueError:
+                raise errors.ParseFormatError(format=cls, lineno=lineno+2,
+                    line=line, text=text)
+            ret.features[feature] = necessity
+        return ret
+
+    def as_string(self):
+        """Return the string representation of this format.
+        """
+        lines = [self.get_format_string()]
+        lines.extend([("%s %s\n" % (item[1], item[0])) for item in
+            self.features.iteritems()])
+        return "".join(lines)
+
+    @classmethod
+    def _find_format(klass, registry, kind, format_string):
+        try:
+            first_line = format_string[:format_string.index("\n")+1]
+        except ValueError:
+            first_line = format_string
+        try:
+            cls = registry.get(first_line)
+        except KeyError:
+            raise errors.UnknownFormatError(format=first_line, kind=kind)
+        return cls.from_string(format_string)
+
+    def network_name(self):
+        """A simple byte string uniquely identifying this format for RPC calls.
+
+        Metadir branch formats use their format string.
+        """
+        return self.as_string()
+
+    def __eq__(self, other):
+        return (self.__class__ is other.__class__ and
+                self.features == other.features)
+
+    def _update_feature_flags(self, updated_flags):
+        """Update the feature flags in this format.
+
+        :param updated_flags: Updated feature flags
+        """
+        for name, necessity in updated_flags.iteritems():
+            if necessity is None:
+                try:
+                    del self.features[name]
+                except KeyError:
+                    pass
+            else:
+                self.features[name] = necessity
 
 
 class BzrProber(controldir.Prober):
@@ -1126,9 +1275,14 @@ class BzrProber(controldir.Prober):
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
         try:
-            return klass.formats.get(format_string)
+            first_line = format_string[:format_string.index("\n")+1]
+        except ValueError:
+            first_line = format_string
+        try:
+            cls = klass.formats.get(first_line)
         except KeyError:
-            raise errors.UnknownFormatError(format=format_string, kind='bzrdir')
+            raise errors.UnknownFormatError(format=first_line, kind='bzrdir')
+        return cls.from_string(format_string)
 
     @classmethod
     def known_formats(cls):
@@ -1177,7 +1331,7 @@ class RemoteBzrProber(controldir.Prober):
         return set([RemoteBzrDirFormat()])
 
 
-class BzrDirFormat(controldir.ControlDirFormat):
+class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
     """ControlDirFormat base class for .bzr/ directories.
 
     Formats are placed in a dict by their format string for reference
@@ -1193,11 +1347,6 @@ class BzrDirFormat(controldir.ControlDirFormat):
 
     # _lock_class must be set in subclasses to the lock type, typ.
     # TransportLock or LockDir
-
-    @classmethod
-    def get_format_string(cls):
-        """Return the ASCII format string that identifies this format."""
-        raise NotImplementedError(cls.get_format_string)
 
     def initialize_on_transport(self, transport):
         """Initialize a new bzrdir in the base directory of a Transport."""
@@ -1326,10 +1475,13 @@ class BzrDirFormat(controldir.ControlDirFormat):
         # mode from the root directory
         temp_control = lockable_files.LockableFiles(transport,
                             '', lockable_files.TransportLock)
-        temp_control._transport.mkdir('.bzr',
-                                      # FIXME: RBC 20060121 don't peek under
-                                      # the covers
-                                      mode=temp_control._dir_mode)
+        try:
+            temp_control._transport.mkdir('.bzr',
+                # FIXME: RBC 20060121 don't peek under
+                # the covers
+                mode=temp_control._dir_mode)
+        except errors.FileExists:
+            raise errors.AlreadyControlDirError(transport.base)
         if sys.platform == 'win32' and isinstance(transport, local.LocalTransport):
             win32utils.set_file_attr_hidden(transport._abspath('.bzr'))
         file_mode = temp_control._file_mode
@@ -1339,7 +1491,7 @@ class BzrDirFormat(controldir.ControlDirFormat):
                        "This is a Bazaar control directory.\n"
                        "Do not change any files in this directory.\n"
                        "See http://bazaar.canonical.com/ for more information about Bazaar.\n"),
-                      ('branch-format', self.get_format_string()),
+                      ('branch-format', self.as_string()),
                       ]
         # NB: no need to escape relative paths that are url safe.
         control_files = lockable_files.LockableFiles(bzrdir_transport,
@@ -1389,10 +1541,19 @@ class BzrDirFormat(controldir.ControlDirFormat):
             compatible with whatever sub formats are supported by self.
         :return: None.
         """
+        other_format.features = dict(self.features)
 
     def supports_transport(self, transport):
         # bzr formats can be opened over all known transports
         return True
+
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+            basedir=None):
+        controldir.ControlDirFormat.check_support_status(self,
+            allow_unsupported=allow_unsupported, recommend_upgrade=recommend_upgrade,
+            basedir=basedir)
+        BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
+            recommend_upgrade=recommend_upgrade, basedir=basedir)
 
 
 class BzrDirMetaFormat1(BzrDirFormat):
@@ -1415,6 +1576,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
     colocated_branches = False
 
     def __init__(self):
+        BzrDirFormat.__init__(self)
         self._workingtree_format = None
         self._branch_format = None
         self._repository_format = None
@@ -1425,6 +1587,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
         if other.repository_format != self.repository_format:
             return False
         if other.workingtree_format != self.workingtree_format:
+            return False
+        if other.features != self.features:
             return False
         return True
 
@@ -1557,9 +1721,6 @@ class BzrDirMetaFormat1(BzrDirFormat):
         """See BzrDirFormat.get_format_description()."""
         return "Meta directory format 1"
 
-    def network_name(self):
-        return self.get_format_string()
-
     def _open(self, transport):
         """See BzrDirFormat._open."""
         # Create a new format instance because otherwise initialisation of new
@@ -1594,6 +1755,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
             compatible with whatever sub formats are supported by self.
         :return: None.
         """
+        super(BzrDirMetaFormat1, self)._supply_sub_formats_to(other_format)
         if getattr(self, '_repository_format', None) is not None:
             other_format.repository_format = self.repository_format
         if self._branch_format is not None:
@@ -1611,6 +1773,9 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     def __set_workingtree_format(self, wt_format):
         self._workingtree_format = wt_format
+
+    def __repr__(self):
+        return "<%r>" % (self.__class__.__name__,)
 
     workingtree_format = property(__get_workingtree_format,
                                   __set_workingtree_format)
@@ -1741,7 +1906,7 @@ class ConvertMetaToColo(controldir.Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         to_convert.transport.put_bytes('branch-format',
-            self.target_format.get_format_string())
+            self.target_format.as_string())
         return BzrDir.open_from_transport(to_convert.root_transport)
 
 
@@ -1767,7 +1932,7 @@ class ConvertMetaRemoveColo(controldir.Converter):
         finally:
             to_convert.control_files.unlock()
         to_convert.transport.put_bytes('branch-format',
-            self.target_format.get_format_string())
+            self.target_format.as_string())
         return BzrDir.open_from_transport(to_convert.root_transport)
 
 
@@ -1866,7 +2031,7 @@ class RepositoryAcquisitionPolicy(object):
         :return: A repository, is_new_flag (True if the repository was
             created).
         """
-        raise NotImplemented(RepositoryAcquisitionPolicy.acquire_repository)
+        raise NotImplementedError(RepositoryAcquisitionPolicy.acquire_repository)
 
 
 class CreateRepository(RepositoryAcquisitionPolicy):

@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
 
 # TODO: Define arguments by objects, rather than just using names.
 # Those objects can specify the expected type of the argument, which
@@ -32,6 +33,7 @@ import threading
 
 import bzrlib
 from bzrlib import (
+    config,
     cleanup,
     cmdline,
     debug,
@@ -50,11 +52,6 @@ from bzrlib.i18n import gettext
 from bzrlib.option import Option
 from bzrlib.plugin import disable_plugins, load_plugins
 from bzrlib import registry
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
-    deprecated_method,
-    )
 
 
 class CommandInfo(object):
@@ -1075,7 +1072,13 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
             argv_copy.append(a)
         i += 1
 
-    bzrlib.global_state.cmdline_overrides._from_cmdline(override_config)
+    if bzrlib.global_state is None:
+        # FIXME: Workaround for users that imported bzrlib but didn't call
+        # bzrlib.initialize -- vila 2012-01-19
+        cmdline_overrides = config.CommandLineStore()
+    else:
+        cmdline_overrides = bzrlib.global_state.cmdline_overrides
+    cmdline_overrides._from_cmdline(override_config)
 
     debug.set_debug_flags_from_config()
 
@@ -1135,7 +1138,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
             trace.debug_memory('Process status after command:', short=False)
         option._verbosity_level = saved_verbosity_level
         # Reset the overrides 
-        bzrlib.global_state.cmdline_overrides._reset()
+        cmdline_overrides._reset()
 
 
 def display_command(func):

@@ -14,13 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
 import time
 
 from bzrlib import (
-    bzrdir,
     config,
     controldir,
     debug,
@@ -39,6 +40,7 @@ from bzrlib.i18n import gettext
 """)
 
 from bzrlib import (
+    bzrdir,
     errors,
     registry,
     symbol_versioning,
@@ -78,7 +80,7 @@ class CommitBuilder(object):
     # being committed to
     updates_branch = False
 
-    def __init__(self, repository, parents, config, timestamp=None,
+    def __init__(self, repository, parents, config_stack, timestamp=None,
                  timezone=None, committer=None, revprops=None,
                  revision_id=None, lossy=False):
         """Initiate a CommitBuilder.
@@ -93,11 +95,11 @@ class CommitBuilder(object):
         :param lossy: Whether to discard data that can not be natively
             represented, when pushing to a foreign VCS 
         """
-        self._config = config
+        self._config_stack = config_stack
         self._lossy = lossy
 
         if committer is None:
-            self._committer = self._config.username()
+            self._committer = self._config_stack.get('email')
         elif not isinstance(committer, unicode):
             self._committer = committer.decode() # throw if non-ascii
         else:
@@ -711,14 +713,14 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
     def create_bundle(self, target, base, fileobj, format=None):
         return serializer.write_bundle(self, target, base, fileobj, format)
 
-    def get_commit_builder(self, branch, parents, config, timestamp=None,
+    def get_commit_builder(self, branch, parents, config_stack, timestamp=None,
                            timezone=None, committer=None, revprops=None,
                            revision_id=None, lossy=False):
         """Obtain a CommitBuilder for this repository.
 
         :param branch: Branch to commit to.
         :param parents: Revision ids of the parents of the new revision.
-        :param config: Configuration to use.
+        :param config_stack: Configuration stack to use.
         :param timestamp: Optional timestamp recorded for commit.
         :param timezone: Optional timezone for timestamp.
         :param committer: Optional committer to set for commit.
@@ -1291,6 +1293,16 @@ class MetaDirRepository(Repository):
         """Returns the policy for making working trees on new branches."""
         return not self._transport.has('no-working-trees')
 
+    @needs_write_lock
+    def update_feature_flags(self, updated_flags):
+        """Update the feature flags for this branch.
+
+        :param updated_flags: Dictionary mapping feature names to necessities
+            A necessity can be None to indicate the feature should be removed
+        """
+        self._format._update_feature_flags(updated_flags)
+        self.control_transport.put_bytes('format', self._format.as_string())
+
 
 class RepositoryFormatRegistry(controldir.ControlComponentFormatRegistry):
     """Repository format registry."""
@@ -1409,24 +1421,6 @@ class RepositoryFormat(controldir.ControlComponentFormat):
         return not self == other
 
     @classmethod
-    def find_format(klass, a_bzrdir):
-        """Return the format for the repository object in a_bzrdir.
-
-        This is used by bzr native formats that have a "format" file in
-        the repository.  Other methods may be used by different types of
-        control directory.
-        """
-        try:
-            transport = a_bzrdir.get_repository_transport(None)
-            format_string = transport.get_bytes("format")
-            return format_registry.get(format_string)
-        except errors.NoSuchFile:
-            raise errors.NoRepositoryPresent(a_bzrdir)
-        except KeyError:
-            raise errors.UnknownFormatError(format=format_string,
-                                            kind='repository')
-
-    @classmethod
     @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
     def register_format(klass, format):
         format_registry.register(format)
@@ -1441,14 +1435,6 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     def get_default_format(klass):
         """Return the current default format."""
         return format_registry.get_default()
-
-    def get_format_string(self):
-        """Return the ASCII format string that identifies this format.
-
-        Note that in pre format ?? repositories the format string is
-        not permitted nor written to disk.
-        """
-        raise NotImplementedError(self.get_format_string)
 
     def get_format_description(self):
         """Return the short description for this format."""
@@ -1521,7 +1507,7 @@ class RepositoryFormat(controldir.ControlComponentFormat):
             hook(params)
 
 
-class MetaDirRepositoryFormat(RepositoryFormat):
+class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
     """Common base class for the new repositories using the metadir layout."""
 
     rich_root_data = False
@@ -1537,7 +1523,8 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         return matching
 
     def __init__(self):
-        super(MetaDirRepositoryFormat, self).__init__()
+        RepositoryFormat.__init__(self)
+        bzrdir.BzrFormat.__init__(self)
 
     def _create_control_files(self, a_bzrdir):
         """Create the required files and the initial control_files object."""
@@ -1567,9 +1554,28 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         finally:
             control_files.unlock()
 
-    def network_name(self):
-        """Metadir formats have matching disk and network format strings."""
-        return self.get_format_string()
+    @classmethod
+    def find_format(klass, a_bzrdir):
+        """Return the format for the repository object in a_bzrdir.
+
+        This is used by bzr native formats that have a "format" file in
+        the repository.  Other methods may be used by different types of
+        control directory.
+        """
+        try:
+            transport = a_bzrdir.get_repository_transport(None)
+            format_string = transport.get_bytes("format")
+        except errors.NoSuchFile:
+            raise errors.NoRepositoryPresent(a_bzrdir)
+        return klass._find_format(format_registry, 'repository', format_string)
+
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+            basedir=None):
+        RepositoryFormat.check_support_status(self,
+            allow_unsupported=allow_unsupported, recommend_upgrade=recommend_upgrade,
+            basedir=basedir)
+        bzrdir.BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
+            recommend_upgrade=recommend_upgrade, basedir=basedir)
 
 
 # formats which have no format string are not discoverable or independently

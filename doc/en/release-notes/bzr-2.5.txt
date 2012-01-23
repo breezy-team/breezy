@@ -5,10 +5,10 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.5b5
+bzr 2.5.0
 #########
 
-:2.5b5: NOT RELEASED YET
+:2.5.0: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -26,14 +26,36 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* "bzr switch -b" in a standalone tree will now create a colocated branch.
+  (Jelmer Vernooij, #918197)
+
+* ``bzr info`` now reports when there are present (but unused) colocated
+  branches. (Jelmer Vernooij, #891646)
+
+* Checkouts can now be into target directories that already have
+  a control directory (but no branch or working tree).
+  (Jelmer Vernooij, #913980)
+
+* New HPSS call for ``BzrDir.get_branches``. (Jelmer Vernooij, #894460)
+
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
-* Properly ignore '\n' in an option reference since this cannot be part of a
-  config option identifier. (Vincent Ladeuil, #902125)
+* ``bzr branch`` now fetches revisions when branching into an empty
+  control directory. (Jelmer Vernooij, #905594)
+
+* Support scripts that don't call bzrlib.initialize() but still call run_bzr().
+  (Vincent Ladeuil, #917733)
+
+* Test for equality instead of object identity where ROOT_PARENT is concerned.
+  (Wouter van Heyst, #881142)
+
+* urllib-based HTTPS client connections now verify the server certificate
+  validity as well as the hostname.
+  (Jelmer Vernooij, Vincent Ladeuil, #651161)
 
 Documentation
 *************
@@ -46,11 +68,20 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``ControlDir`` now has a new method ``set_branch_reference`` which can
+  be used for setting branch references. (Jelmer Vernooij)
+
 Internals
 *********
 
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
+
+* A new matcher ``RevisionHistoryMatches`` has been added. (Jelmer Vernooij)
+
+* ``MutableTree`` has two new hooks ``pre_transform`` and
+  ``post_transform`` that are called for tree transform operations.
+  (Jelmer Vernooij, #912084)
 
 Testing
 *******
@@ -58,6 +89,211 @@ Testing
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
+
+
+bzr 2.5b5
+#########
+
+:2.5b5: 2012-01-12
+
+This is the fifth (and last) beta of the 2.5 series, leading to a 2.5.0
+release in February 2012. Beta releases are suitable for everyday use but
+may cause some incompatibilities with plugins.
+
+This release includes many improvements in the smart server, UI polish for
+the colocated branches, enhancements to the config framework and more
+internal uses, bug fixes related to unicode and locale support and more.
+
+All bug fixed in previous series known at the time of this release are
+included.
+
+External Compatibility Breaks
+*****************************
+
+* The '.bzr/branch/email' file is no longer read to determine the users'
+  identity. Instead, the 'email' setting in '.bzr/branch/branch.conf'
+  should be used. (Jelmer Vernooij, #903894)
+
+New Features
+************
+
+* "bzr mkdir" now includes -p (--parents) option for recursively adding
+  parent directories.
+  (Jared Hance, Jelmer Vernooij, #253529)
+
+* ``config.Option`` can now declare ``override_from_env``, a list of
+  environment variables which, when set, that takes precedence over values
+  defined in configuration files. (Vincent Ladeuil, #907279)
+
+Improvements
+************
+
+* New HPSS call for ``Repository.reconcile``. (Jelmer Vernooij, #894455)
+
+* Merge now has two new hooks ``pre_merge`` and ``post_merge``
+  that are called before and after a merge and can make
+  additional modifications to the trees involved.
+  (Jelmer Vernooij, #906877)
+
+* Override the value returned by ``sys.getfilesystemencoding()`` for the bzr
+  script to utf-8 when it would otherwise be ascii on a posix system. This
+  will mean bzr works with non-ascii files when no locale or an incorrect
+  locale is set. (Martin Packman, #794353)
+
+* ``bzr branches`` now indicates the active colocated branch.
+  (Jelmer Vernooij, #891667)
+
+* ``bzr push`` now suggests using :parent if there is a parent location
+  set. (Jelmer Vernooij)
+
+* ``bzr send`` now only opens a single connection, rather than two,
+  to the target branch.  (Jelmer Vernooij)
+
+Bug Fixes
+*********
+
+* Allow configuration option default value to be a python callable at
+  registration. (Vincent Ladeuil, #832064)
+
+* ``bzr config`` will now display the section ``[DEFAULT]`` used in
+  ``bazaar.conf``. (Vincent Ladeuil, #907268)
+
+* Configuration stores can now provides a specific quoting mechanism. This
+  is required to workaround ``configobj`` conflating quoting and list values
+  automatic conversion. (Vincent Ladeuil, #906897)
+
+* Create obsolete_packs directory when repacking if it does not
+  exist. (Jonathan Riddell, Jelmer Vernooij, #314314)
+
+* Fallback to the slower ``bzr log`` implementation when displaying a range
+  of revisions whose ancestry is not obviously on the same developement
+  line. (Vincent Ladeuil, #904744)
+
+* Make lazy imports resilient when resolved concurrently from multiple
+  threads. Now the stand-in object will behave as a proxy for the real object
+  after the initial access, rather than throwing. Assigning the object to
+  multiple names should still be avoided. (Martin von Gagern, #396819)
+
+* Not setting ``gpg_signing_key`` or setting it to ``default`` will use the
+  user email (obtained from the ``email`` configuration option or its
+  default value). (Vincent Ladeuil, Jelmer Vernooij, #904550)
+
+* Prevent spurious InconsistentDelta error when committing a move of a
+  non-ascii directory with contents. (Rory Yorke, #185211)
+
+* Properly ignore '\n' in an option reference since this cannot be part of a
+  config option identifier. (Vincent Ladeuil, #902125)
+
+* Make sure that the bzr probers are always registered when
+  bzrlib.workingtree is imported. (Jelmer Vernooij, #905218)
+
+* Report mistake trying to move a removed file with a non-ascii name without
+  UnicodeEncodeError being raised. (Martin Packman, #898541)
+
+* Safely unquote configuration values in weird edge cases (a section seen as
+  a dictionary which is not a supported use case for the configuration
+  stacks). (Vincent Ladeuil, #908050)
+
+* Stop altering ``sys.platform`` on OSX when initialising the locale.
+  (Martin Packman, #570495)
+
+* Uncommit no longer removes tags if they are part of the working
+  trees pending merges. (Jelmer Vernooij, #905462)
+
+API Changes
+***********
+
+* ``Config.signature_needed``, ``Config.signing_policy``,
+  ``Config.gpg_signing_key``, ``Config.gpg_signing_command``,
+  ``Config.checking_policy`` and ``Config.post_commit`` are now deprecated.
+  (Jelmer Vernooij)
+
+* ``Repository.get_commit_builder`` now takes a ``config_stack``
+  rather than a ``config`` argument. (Jelmer Vernooij)
+
+* Scripts using bzrlib should now ensure setlocale is called on posix
+  platforms if they need a non-ascii user encoding. (Martin Packman)
+
+* Send formats now accept a new optional argument ``submit_branch``,
+  which can be None or a Branch object for the submit branch location.
+  (Jelmer Vernooij)
+
+* ``VersionedFileRepository.add_revision`` no longer takes a ``config``
+  argument. (Jelmer Vernooij)
+
+Internals
+*********
+
+* Add HPSS call for ``Branch.get_checkout_format``. (Jelmer Vernooij, #894459)
+
+* Add HPSS call for ``Repository.pack``. (Jelmer Vernooij, #894461)
+
+* Add HPSS calls for ``Repository.iter_files_bytes``, speeding up
+  several commands including ``bzr export`` and ``bzr co --lightweight``.
+  (Jelmer Vernooij, #608640)
+
+* All bzr control directories, branch formats, repository formats and
+  working tree formats now support feature flags, which are
+  serialized in their respective format files. See
+  ``doc/developers/feature-flags.txt`` for details.
+  (Jelmer Vernooij)
+
+* ``bzrlib.urlutils`` now includes ``quote`` and ``unquote`` functions,
+  rather than importing them from ``urllib``. This prevents loading
+  of the ``socket``, ``ssl`` and ``urllib`` modules for
+  local bzr operations. (Jelmer Vernooij)
+
+* Configuration options can be SI units by using ``int_SI_from_unicode`` as
+  their ``convert_from_unicode`` helper. (Vincent Ladeuil)
+
+* Configuration stacks can now use ``StartingPathMatcher`` to select the
+  sections matching a location while respecting the order chosen by the user
+  in the configuration file: from generic sections to specific
+  sections. (Vincent Ladeuil, #832046).
+
+* Configuration stores can now save incremental changes by using
+  ``save_changes()`` instead of ``save()``. This reduces the number or
+  required input/outputs and allows stores to be shared between
+  stacks. (Vincent Ladeuil)
+
+* ControlDir now has a get_branches method that returns a dictionary
+  whose keys are the names of the branches and whose values are the
+  branches themselves. The active branch uses the key None.
+  (Neil Martinsen-Burrell)
+
+* Helper ``osutils.path_from_environ`` added for extracting a unicode path
+  from an environment variable. (Martin Packman, #832028)
+
+* Helper ``win32utils.get_environ_unicode`` added for avoiding encoding
+  problems with ``os.environ.get`` use. (Martin Packman, #262874) 
+
+* Lazy imports can now only be absolute. (Jelmer Vernooij)
+
+* Merge3Mergers now have an optional ``other_branch`` argument
+  which contains the branch from which the ``other_tree``
+  was obtained, if any. (Jelmer Vernooij)
+
+* MutableTree now has a hook ``post_build_tree`` which is called after
+  a new mutable tree has been created. (Jelmer Vernooij, #912765)
+
+* New HPSS call ``BzrDir.checkout_metadir``. (Jelmer Vernooij, #894459)
+
+* New HPSS call ``VersionedFileRepository.get_inventories``,
+  speeding up various commands including ``bzr export``,
+  ``bzr checkout`` and ``bzr cat``. (Jelmer Vernooij, #608640)
+
+* The ``ConfigCommandLineStore`` is now supported by ``bzr config`` and is
+  seen as single no-name section of configuration options. (Vincent Ladeuil)
+
+Testing
+*******
+
+* New matcher ``ContainsNoVfsCalls`` which filters a list of HPSS
+  calls for VFS requests. (Jelmer Vernooij)
+
+* New ``MemoryStack`` class allows for diskless tests and locally injected
+  configuration stacks.  Lower level tests for predefined set of options can
+  be written without setting up configuration files. (Vincent Ladeuil)
 
 
 bzr 2.5b4
@@ -74,7 +310,8 @@ the colocated branches, optimizations for revision specifiers to avoid
 history sized operations, enhancements to the config framework, bug fixes
 related to unicode paths and more.
 
-This release includes all bug fixed in previous series known at the time of
+All bug fixed in previous series known at the time of this release are
+included.
 
 External Compatibility Breaks
 *****************************
@@ -130,8 +367,7 @@ Bug Fixes
 
 * Add HPSS call for retrieving file contents from remote repositories.
   Should improve performance for lightweight checkouts and exports of
-  from remote repositories.  (Jelmer Vernooij, #368717, #762330,
-  #608640)
+  from remote repositories.  (Jelmer Vernooij, #368717, #762330, #608640)
 
 * Allow lazy compiled patterns from ``bzrlib.lazy_regex`` to be
   pickled. (Jelmer Vernooij, #893149)
@@ -168,7 +404,7 @@ Bug Fixes
   unreserved characters are unquoted in URLs. (Martin Packman, #842223)
 
 * Split segments from URLs for colocated branches without assuming the
-  combined form is a valid. (Martin Packman, #842233)
+  combined form is valid. (Martin Packman, #842233)
 
 * Support looking up revision numbers by revision id in empty branches.
   (Jelmer Vernooij, #535031)

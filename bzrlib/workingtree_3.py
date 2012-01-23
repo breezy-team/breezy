@@ -18,6 +18,8 @@
 
 """
 
+from __future__ import absolute_import
+
 import errno
 
 from bzrlib import (
@@ -34,10 +36,11 @@ from bzrlib.decorators import (
     )
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.lockdir import LockDir
+from bzrlib.mutabletree import MutableTree
 from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import (
     InventoryWorkingTree,
-    WorkingTreeFormat,
+    WorkingTreeFormatMetaDir,
     )
 
 
@@ -136,7 +139,7 @@ class WorkingTree3(PreDirStateWorkingTree):
             self.branch.unlock()
 
 
-class WorkingTreeFormat3(WorkingTreeFormat):
+class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
     """The second working tree format updated to record a format marker.
 
     This format:
@@ -154,7 +157,8 @@ class WorkingTreeFormat3(WorkingTreeFormat):
 
     supports_versioned_directories = True
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See WorkingTreeFormat.get_format_string()."""
         return "Bazaar-NG Working Tree format 3"
 
@@ -192,7 +196,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         control_files = self._open_control_files(a_bzrdir)
         control_files.create_lock()
         control_files.lock_write()
-        transport.put_bytes('format', self.get_format_string(),
+        transport.put_bytes('format', self.as_string(),
             mode=a_bzrdir._get_file_mode())
         if from_branch is not None:
             branch = from_branch
@@ -224,6 +228,8 @@ class WorkingTreeFormat3(WorkingTreeFormat):
             else:
                 wt.set_parent_trees([(revision_id, basis_tree)])
             transform.build_tree(basis_tree, wt)
+            for hook in MutableTree.hooks['post_build_tree']:
+                hook(wt)
         finally:
             # Unlock in this order so that the unlock-triggers-flush in
             # WorkingTree is given a chance to fire.
@@ -259,6 +265,3 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                                 _format=self,
                                 _bzrdir=a_bzrdir,
                                 _control_files=control_files)
-
-    def __str__(self):
-        return self.get_format_string()

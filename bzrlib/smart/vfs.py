@@ -24,6 +24,8 @@ These methods, plus 'hello' and 'get_bundle', are version 1 of the smart server
 protocol, as implemented in bzr 0.11 and later.
 """
 
+from __future__ import absolute_import
+
 import os
 
 from bzrlib import errors

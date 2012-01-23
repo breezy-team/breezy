@@ -29,13 +29,21 @@ assertions in Test Case objects, so they are recommended for new testing work.
 __all__ = [
     'HasLayout',
     'MatchesAncestry',
+    'ContainsNoVfsCalls',
     'ReturnsUnlockable',
+    'RevisionHistoryMatches',
     ]
 
 from bzrlib import (
     osutils,
     revision as _mod_revision,
     )
+from bzrlib import lazy_import
+lazy_import.lazy_import(globals(),
+"""
+from bzrlib.smart.request import request_handlers as smart_request_handlers
+from bzrlib.smart import vfs
+""")
 
 from testtools.matchers import Equals, Mismatch, Matcher
 
@@ -175,3 +183,62 @@ class HasLayout(Matcher):
         else:
             entries = self.entries
         return Equals(entries).match(actual)
+
+
+class RevisionHistoryMatches(Matcher):
+    """A matcher that checks if a branch has a specific revision history.
+
+    :ivar history: Revision history, as list of revisions. Oldest first.
+    """
+
+    def __init__(self, history):
+        Matcher.__init__(self)
+        self.expected = history
+
+    def __str__(self):
+        return 'RevisionHistoryMatches(%r)' % self.expected
+
+    def match(self, branch):
+        branch.lock_read()
+        try:
+            graph = branch.repository.get_graph()
+            history = list(graph.iter_lefthand_ancestry(
+                branch.last_revision(), [_mod_revision.NULL_REVISION]))
+            history.reverse()
+        finally:
+            branch.unlock()
+        return Equals(self.expected).match(history)
+
+
+class _NoVfsCallsMismatch(Mismatch):
+    """Mismatch describing a list of HPSS calls which includes VFS requests."""
+
+    def __init__(self, vfs_calls):
+        self.vfs_calls = vfs_calls
+
+    def describe(self):
+        return "no VFS calls expected, got: %s" % ",".join([
+            "%s(%s)" % (c.method,
+                ", ".join([repr(a) for a in c.args])) for c in self.vfs_calls])
+
+
+class ContainsNoVfsCalls(Matcher):
+    """Ensure that none of the specified calls are HPSS calls."""
+
+    def __str__(self):
+        return 'ContainsNoVfsCalls()'
+
+    @classmethod
+    def match(cls, hpss_calls):
+        vfs_calls = []
+        for call in hpss_calls:
+            try:
+                request_method = smart_request_handlers.get(call.call.method)
+            except KeyError:
+                # A method we don't know about doesn't count as a VFS method.
+                continue
+            if issubclass(request_method, vfs.VfsRequest):
+                vfs_calls.append(call.call)
+        if len(vfs_calls) == 0:
+            return None
+        return _NoVfsCallsMismatch(vfs_calls)

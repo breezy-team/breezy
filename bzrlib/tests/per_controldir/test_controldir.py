@@ -108,6 +108,17 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertRaises(errors.UninitializableFormat,
             self.bzrdir_format.initialize, t.base)
 
+    def test_multiple_initialization(self):
+        # loopback test to check the current format initializes to itself.
+        if not self.bzrdir_format.is_initializable():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            raise TestNotApplicable("format is not initializable")
+        self.bzrdir_format.initialize('.')
+        self.assertRaises(errors.AlreadyControlDirError,
+            self.bzrdir_format.initialize, '.')
+
     def test_create_null_workingtree(self):
         dir = self.make_bzrdir('dir1')
         dir.create_repository()
@@ -415,13 +426,56 @@ class TestControlDir(TestCaseWithControlDir):
                 "not support stacking")
         self.assertEqual(child.open_branch().get_stacked_on_url(), branch.base)
 
+    def test_set_branch_reference(self):
+        """set_branch_reference creates a branch reference"""
+        referenced_branch = self.make_branch('referenced')
+        dir = self.make_bzrdir('source')
+        try:
+            reference = dir.set_branch_reference(referenced_branch)
+        except errors.IncompatibleFormat:
+            # this is ok too, not all formats have to support references.
+            raise TestNotApplicable("control directory does not "
+                "support branch references")
+        self.assertEqual(
+            referenced_branch.bzrdir.root_transport.abspath('') + '/',
+            dir.get_branch_reference())
+
+    def test_set_branch_reference_on_existing_reference(self):
+        """set_branch_reference creates a branch reference"""
+        referenced_branch1 = self.make_branch('old-referenced')
+        referenced_branch2 = self.make_branch('new-referenced')
+        dir = self.make_bzrdir('source')
+        try:
+            reference = dir.set_branch_reference(referenced_branch1)
+        except errors.IncompatibleFormat:
+            # this is ok too, not all formats have to support references.
+            raise TestNotApplicable("control directory does not "
+                "support branch references")
+        reference = dir.set_branch_reference(referenced_branch2)
+        self.assertEqual(
+            referenced_branch2.bzrdir.root_transport.abspath('') + '/',
+            dir.get_branch_reference())
+
+    def test_set_branch_reference_on_existing_branch(self):
+        """set_branch_reference creates a branch reference"""
+        referenced_branch = self.make_branch('referenced')
+        dir = self.make_branch('source').bzrdir
+        try:
+            reference = dir.set_branch_reference(referenced_branch)
+        except errors.IncompatibleFormat:
+            # this is ok too, not all formats have to support references.
+            raise TestNotApplicable("control directory does not "
+                "support branch references")
+        self.assertEqual(
+            referenced_branch.bzrdir.root_transport.abspath('') + '/',
+            dir.get_branch_reference())
+
     def test_get_branch_reference_on_reference(self):
         """get_branch_reference should return the right url."""
         referenced_branch = self.make_branch('referenced')
         dir = self.make_bzrdir('source')
         try:
-            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                target_branch=referenced_branch)
+            dir.set_branch_reference(referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             raise TestNotApplicable("control directory does not "
@@ -652,8 +706,7 @@ class TestControlDir(TestCaseWithControlDir):
         referenced_branch = self.make_branch('referenced')
         dir = self.make_bzrdir('source')
         try:
-            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                target_branch=referenced_branch)
+            dir.set_branch_reference(referenced_branch)
         except errors.IncompatibleFormat:
             raise TestNotApplicable("format does not support branch "
                 "references")
@@ -672,8 +725,7 @@ class TestControlDir(TestCaseWithControlDir):
         referenced_tree.commit('1', rev_id='1', allow_pointless=True)
         dir = self.make_bzrdir('source')
         try:
-            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                target_branch=referenced_tree.branch)
+            dir.set_branch_reference(referenced_tree.branch)
         except errors.IncompatibleFormat:
             raise TestNotApplicable("format does not support branch "
                 "references")
@@ -699,8 +751,7 @@ class TestControlDir(TestCaseWithControlDir):
         referenced_tree.commit('1', rev_id='1', allow_pointless=True)
         dir = self.make_bzrdir('source')
         try:
-            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                target_branch=referenced_tree.branch)
+            dir.set_branch_reference(referenced_tree.branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             raise TestNotApplicable("format does not support "
@@ -746,7 +797,7 @@ class TestControlDir(TestCaseWithControlDir):
             source.tags.set_tag('tag-a', 'rev-2')
         except errors.TagsNotSupported:
             raise TestNotApplicable('Branch format does not support tags.')
-        source.get_config().set_user_option('branch.fetch_tags', 'True')
+        source.get_config_stack().set('branch.fetch_tags', True)
         # Now source has a tag not in its ancestry.  Sprout its controldir.
         dir = source.bzrdir
         target = dir.sprout(self.get_url('target'))
@@ -825,7 +876,7 @@ class TestControlDir(TestCaseWithControlDir):
             has_ghost_tag = False
         else:
             has_ghost_tag = True
-        source.get_config().set_user_option('branch.fetch_tags', 'True')
+        source.get_config_stack().set('branch.fetch_tags', True)
         # And ask sprout for C2
         dir = source.bzrdir
         target = dir.sprout(self.get_url('target'), revision_id='rev-c2')
@@ -851,8 +902,7 @@ class TestControlDir(TestCaseWithControlDir):
         referenced_branch = self.make_branch('referencced')
         dir = self.make_bzrdir('source')
         try:
-            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                target_branch=referenced_branch)
+            dir.set_branch_reference(referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             raise TestNotApplicable("format does not support "
@@ -878,8 +928,7 @@ class TestControlDir(TestCaseWithControlDir):
         referenced_branch = self.make_branch('referencced')
         dir = self.make_bzrdir('source')
         try:
-            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                target_branch=referenced_branch)
+            dir.set_branch_reference(referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             raise TestNotApplicable("format does not support "
@@ -1192,6 +1241,11 @@ class TestControlDir(TestCaseWithControlDir):
         else:
             self.assertEquals([], made_control.list_branches())
 
+    def test_get_branches(self):
+        repo = self.make_repository('branch-1')
+        target_branch = repo.bzrdir.create_branch()
+        self.assertEqual([""], repo.bzrdir.get_branches().keys())
+
     def test_create_repository(self):
         # a bzrdir can construct a repository for itself.
         if not self.bzrdir_format.is_initializable():
@@ -1337,7 +1391,7 @@ class TestControlDir(TestCaseWithControlDir):
             raise TestSkipped("Can't initialize %r on transport %r"
                               % (self.bzrdir_format, t))
         dir = bzrdir.BzrDir.open(t.base)
-        self.assertIs(None, dir._get_selected_branch())
+        self.assertEqual(u"", dir._get_selected_branch())
 
     def test_root_transport(self):
         dir = self.make_bzrdir('.')
@@ -1576,8 +1630,7 @@ class TestBreakLock(TestCaseWithControlDir):
         master = self.make_branch('branch')
         thisdir = self.make_bzrdir('this')
         try:
-            bzrlib.branch.BranchReferenceFormat().initialize(
-                thisdir, target_branch=master)
+            thisdir.set_branch_reference(master)
         except errors.IncompatibleFormat:
             raise TestNotApplicable("format does not support "
                 "branch references")

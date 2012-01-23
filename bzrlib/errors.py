@@ -17,6 +17,8 @@
 """Exceptions for bzr, and reporting of them.
 """
 
+from __future__ import absolute_import
+
 # TODO: is there any value in providing the .args field used by standard
 # python exceptions?   A list of values with no names seems less useful
 # to me.
@@ -698,6 +700,11 @@ class NoSubmitBranch(PathError):
        self.path = urlutils.unescape_for_display(branch.base, 'ascii')
 
 
+class AlreadyControlDirError(PathError):
+
+    _fmt = 'A control directory already exists: "%(path)s".'
+
+
 class AlreadyBranchError(PathError):
 
     _fmt = 'Already a branch: "%(path)s".'
@@ -759,6 +766,18 @@ class IncompatibleFormat(BzrError):
         BzrError.__init__(self)
         self.format = format
         self.bzrdir = bzrdir_format
+
+
+class ParseFormatError(BzrError):
+
+    _fmt = "Parse error on line %(lineno)d of %(format)s format: %(line)s"
+
+    def __init__(self, format, lineno, line, text):
+        BzrError.__init__(self)
+        self.format = format
+        self.lineno = lineno
+        self.line = line
+        self.text = text
 
 
 class IncompatibleRepositories(BzrError):
@@ -1651,6 +1670,14 @@ class InvalidHttpResponse(TransportError):
             # preserve as much info as possible to ease debug.
             orig_error = ': %r' % (orig_error,)
         TransportError.__init__(self, msg, orig_error=orig_error)
+
+
+class CertificateError(TransportError):
+
+    _fmt = "Certificate error: %(error)s"
+
+    def __init__(self, error):
+        self.error = error
 
 
 class InvalidHttpRange(InvalidHttpResponse):
@@ -3240,6 +3267,15 @@ class UnsupportedKindChange(BzrError):
         self.format = format
 
 
+class MissingFeature(BzrError):
+
+    _fmt = ("Missing feature %(feature)s not provided by this "
+            "version of Bazaar or any plugin.")
+
+    def __init__(self, feature):
+        self.feature = feature
+
+
 class PatchSyntax(BzrError):
     """Base class for patch syntax errors."""
 
@@ -3289,3 +3325,11 @@ class PatchConflict(BzrError):
         self.line_no = line_no
         self.orig_line = orig_line.rstrip('\n')
         self.patch_line = patch_line.rstrip('\n')
+
+
+class FeatureAlreadyRegistered(BzrError):
+
+    _fmt = 'The feature %(feature)s has already been registered.'
+
+    def __init__(self, feature):
+        self.feature = feature

@@ -16,6 +16,8 @@
 
 """Testing framework extensions"""
 
+from __future__ import absolute_import
+
 # NOTE: Some classes in here use camelCaseNaming() rather than
 # underscore_naming().  That's for consistency with unittest; it's not the
 # general style of bzrlib.  Please continue that consistency when adding e.g.
@@ -2732,16 +2734,20 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def setUp(self):
         super(TestCaseWithMemoryTransport, self).setUp()
-        # Ensure that ConnectedTransport doesn't leak sockets
-        def get_transport_from_url_with_cleanup(*args, **kwargs):
-            t = orig_get_transport_from_url(*args, **kwargs)
-            if isinstance(t, _mod_transport.ConnectedTransport):
-                self.addCleanup(t.disconnect)
-            return t
 
-        orig_get_transport_from_url = self.overrideAttr(
-            _mod_transport, 'get_transport_from_url',
-            get_transport_from_url_with_cleanup)
+        def _add_disconnect_cleanup(transport):
+            """Schedule disconnection of given transport at test cleanup
+
+            This needs to happen for all connected transports or leaks occur.
+
+            Note reconnections may mean we call disconnect multiple times per
+            transport which is suboptimal but seems harmless.
+            """
+            self.addCleanup(transport.disconnect)
+ 
+        _mod_transport.Transport.hooks.install_named_hook('post_connect',
+            _add_disconnect_cleanup, None)
+
         self._make_test_root()
         self.addCleanup(os.chdir, os.getcwdu())
         self.makeAndChdirToTestDir()
@@ -2753,6 +2759,7 @@ class TestCaseWithMemoryTransport(TestCase):
     def setup_smart_server_with_call_log(self):
         """Sets up a smart server as the transport server with a call log."""
         self.transport_server = test_server.SmartTCPServer_for_testing
+        self.hpss_connections = []
         self.hpss_calls = []
         import traceback
         # Skip the current stack down to the caller of
@@ -2761,11 +2768,16 @@ class TestCaseWithMemoryTransport(TestCase):
         def capture_hpss_call(params):
             self.hpss_calls.append(
                 CapturedCall(params, prefix_length))
+        def capture_connect(transport):
+            self.hpss_connections.append(transport)
         client._SmartClient.hooks.install_named_hook(
             'call', capture_hpss_call, None)
+        _mod_transport.Transport.hooks.install_named_hook(
+            'post_connect', capture_connect, None)
 
     def reset_smart_call_log(self):
         self.hpss_calls = []
+        self.hpss_connections = []
 
 
 class TestCaseInTempDir(TestCaseWithMemoryTransport):
@@ -3990,6 +4002,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_http',
         'bzrlib.tests.test_http_response',
         'bzrlib.tests.test_https_ca_bundle',
+        'bzrlib.tests.test_https_urllib',
         'bzrlib.tests.test_i18n',
         'bzrlib.tests.test_identitymap',
         'bzrlib.tests.test_ignores',

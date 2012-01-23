@@ -51,6 +51,8 @@ in the deltas to provide line annotation
 
 """
 
+from __future__ import absolute_import
+
 
 from cStringIO import StringIO
 from itertools import izip

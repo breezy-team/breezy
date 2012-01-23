@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Implementaion of urllib2 tailored to bzr needs
+"""Implementation of urllib2 tailored to bzr needs
 
 This file complements the urllib2 class hierarchy with custom classes.
 
@@ -36,6 +36,8 @@ the code, even if the header names will be titled just before sending the
 request (see AbstractHTTPHandler.do_open).
 """
 
+from __future__ import absolute_import
+
 DEBUG = 0
 
 # FIXME: Oversimplifying, two kind of exceptions should be
@@ -48,6 +50,7 @@ DEBUG = 0
 
 import errno
 import httplib
+import os
 import socket
 import urllib
 import urllib2
@@ -61,12 +64,68 @@ from bzrlib import (
     config,
     debug,
     errors,
+    lazy_import,
     osutils,
     trace,
     transport,
     urlutils,
     )
+lazy_import.lazy_import(globals(), """
+import ssl
+""")
 
+DEFAULT_CA_PATH = u"/etc/ssl/certs/ca-certificates.crt"
+
+
+def default_ca_certs():
+    if not os.path.exists(DEFAULT_CA_PATH):
+        raise ValueError("default ca certs path %s does not exist" %
+            DEFAULT_CA_PATH)
+    return DEFAULT_CA_PATH
+
+
+def ca_certs_from_store(path):
+    if not os.path.exists(path):
+        raise ValueError("ca certs path %s does not exist" % path)
+    return path
+
+
+def default_cert_reqs():
+    return u"required"
+
+
+def cert_reqs_from_store(unicode_str):
+    import ssl
+    try:
+        return {
+            "required": ssl.CERT_REQUIRED,
+            "optional": ssl.CERT_OPTIONAL,
+            "none": ssl.CERT_NONE
+            }[unicode_str]
+    except KeyError:
+        raise ValueError("invalid value %s" % unicode_str)
+
+
+opt_ssl_ca_certs = config.Option('ssl.ca_certs',
+        from_unicode=ca_certs_from_store,
+        default=default_ca_certs,
+        invalid='warning',
+        help="""\
+Path to certification authority certificates to trust.
+""")
+
+opt_ssl_cert_reqs = config.Option('ssl.cert_reqs',
+        default=default_cert_reqs,
+        from_unicode=cert_reqs_from_store,
+        invalid='error',
+        help="""\
+Whether to require a certificate from the remote side. (default:required)
+
+Possible values:
+ * none: Certificates ignored
+ * optional: Certificates not required, but validated if provided
+ * required: Certificates required, and validated
+""")
 
 checked_kerberos = False
 kerberos = None
@@ -297,11 +356,12 @@ class HTTPConnection(AbstractHTTPConnection, httplib.HTTPConnection):
 
     # XXX: Needs refactoring at the caller level.
     def __init__(self, host, port=None, proxied_host=None,
-                 report_activity=None):
+                 report_activity=None, ca_certs=None):
         AbstractHTTPConnection.__init__(self, report_activity=report_activity)
         # Use strict=True since we don't support HTTP/0.9
         httplib.HTTPConnection.__init__(self, host, port, strict=True)
         self.proxied_host = proxied_host
+        # ca_certs is ignored, it's only relevant for https
 
     def connect(self):
         if 'http' in debug.debug_flags:
@@ -310,29 +370,72 @@ class HTTPConnection(AbstractHTTPConnection, httplib.HTTPConnection):
         self._wrap_socket_for_reporting(self.sock)
 
 
-# Build the appropriate socket wrapper for ssl
-try:
-    # python 2.6 introduced a better ssl package
-    import ssl
-    _ssl_wrap_socket = ssl.wrap_socket
-except ImportError:
-    # python versions prior to 2.6 don't have ssl and ssl.wrap_socket instead
-    # they use httplib.FakeSocket
-    def _ssl_wrap_socket(sock, key_file, cert_file):
-        ssl_sock = socket.ssl(sock, key_file, cert_file)
-        return httplib.FakeSocket(sock, ssl_sock)
+# These two methods were imported from Python 3.2's ssl module
+
+def _dnsname_to_pat(dn):
+    pats = []
+    for frag in dn.split(r'.'):
+        if frag == '*':
+            # When '*' is a fragment by itself, it matches a non-empty dotless
+            # fragment.
+            pats.append('[^.]+')
+        else:
+            # Otherwise, '*' matches any dotless fragment.
+            frag = re.escape(frag)
+            pats.append(frag.replace(r'\*', '[^.]*'))
+    return re.compile(r'\A' + r'\.'.join(pats) + r'\Z', re.IGNORECASE)
+
+
+def match_hostname(cert, hostname):
+    """Verify that *cert* (in decoded format as returned by
+    SSLSocket.getpeercert()) matches the *hostname*.  RFC 2818 rules
+    are mostly followed, but IP addresses are not accepted for *hostname*.
+
+    CertificateError is raised on failure. On success, the function
+    returns nothing.
+    """
+    if not cert:
+        raise ValueError("empty or no certificate")
+    dnsnames = []
+    san = cert.get('subjectAltName', ())
+    for key, value in san:
+        if key == 'DNS':
+            if _dnsname_to_pat(value).match(hostname):
+                return
+            dnsnames.append(value)
+    if not san:
+        # The subject is only checked when subjectAltName is empty
+        for sub in cert.get('subject', ()):
+            for key, value in sub:
+                # XXX according to RFC 2818, the most specific Common Name
+                # must be used.
+                if key == 'commonName':
+                    if _dnsname_to_pat(value).match(hostname):
+                        return
+                    dnsnames.append(value)
+    if len(dnsnames) > 1:
+        raise errors.CertificateError(
+            "hostname %r doesn't match either of %s"
+            % (hostname, ', '.join(map(repr, dnsnames))))
+    elif len(dnsnames) == 1:
+        raise errors.CertificateError("hostname %r doesn't match %r" %
+                                      (hostname, dnsnames[0]))
+    else:
+        raise errors.CertificateError("no appropriate commonName or "
+            "subjectAltName fields were found")
 
 
 class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
                  proxied_host=None,
-                 report_activity=None):
+                 report_activity=None, ca_certs=None):
         AbstractHTTPConnection.__init__(self, report_activity=report_activity)
         # Use strict=True since we don't support HTTP/0.9
         httplib.HTTPSConnection.__init__(self, host, port,
                                          key_file, cert_file, strict=True)
         self.proxied_host = proxied_host
+        self.ca_certs = ca_certs
 
     def connect(self):
         if 'http' in debug.debug_flags:
@@ -343,7 +446,38 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
             self.connect_to_origin()
 
     def connect_to_origin(self):
-        ssl_sock = _ssl_wrap_socket(self.sock, self.key_file, self.cert_file)
+        # FIXME JRV 2011-12-18: Use location config here?
+        config_stack = config.GlobalStack()
+        if self.ca_certs is None:
+            ca_certs = config_stack.get('ssl.ca_certs')
+        else:
+            ca_certs = self.ca_certs
+        cert_reqs = config_stack.get('ssl.cert_reqs')
+        if cert_reqs == ssl.CERT_NONE:
+            trace.warning("not checking SSL certificates for %s: %d",
+                self.host, self.port)
+        else:
+            if ca_certs is None:
+                trace.warning(
+                    "no valid trusted SSL CA certificates file set. See "
+                    "'bzr help ssl.ca_certs' for more information on setting "
+                    "trusted CA's.")
+        try:
+            ssl_sock = ssl.wrap_socket(self.sock, self.key_file, self.cert_file,
+                cert_reqs=cert_reqs, ca_certs=ca_certs)
+        except ssl.SSLError, e:
+            if e.errno != ssl.SSL_ERROR_SSL:
+                raise
+            trace.note(
+                "To disable SSL certificate verification, use "
+                "-Ossl.cert_reqs=none. See ``bzr help ssl.ca_certs`` for "
+                "more information on specifying trusted CA certificates.")
+            raise
+        peer_cert = ssl_sock.getpeercert()
+        if (cert_reqs == ssl.CERT_REQUIRED or
+            (cert_reqs == ssl.CERT_OPTIONAL and peer_cert)):
+            match_hostname(peer_cert, self.host)
+
         # Wrap the ssl socket before anybody use it
         self._wrap_socket_for_reporting(ssl_sock)
 
@@ -451,8 +585,9 @@ class ConnectionHandler(urllib2.BaseHandler):
 
     handler_order = 1000 # after all pre-processings
 
-    def __init__(self, report_activity=None):
+    def __init__(self, report_activity=None, ca_certs=None):
         self._report_activity = report_activity
+        self.ca_certs = ca_certs
 
     def create_connection(self, request, http_connection_class):
         host = request.get_host()
@@ -466,7 +601,8 @@ class ConnectionHandler(urllib2.BaseHandler):
         try:
             connection = http_connection_class(
                 host, proxied_host=request.proxied_host,
-                report_activity=self._report_activity)
+                report_activity=self._report_activity,
+                ca_certs=self.ca_certs)
         except httplib.InvalidURL, exception:
             # There is only one occurrence of InvalidURL in httplib
             raise errors.InvalidURL(request.get_full_url(),
@@ -658,6 +794,10 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                     % (request, request.connection.sock.getsockname())
             response = connection.getresponse()
             convert_to_addinfourl = True
+        except (ssl.SSLError, errors.CertificateError):
+            # Something is wrong with either the certificate or the hostname,
+            # re-trying won't help
+            raise
         except (socket.gaierror, httplib.BadStatusLine, httplib.UnknownProtocol,
                 socket.error, httplib.HTTPException):
             response = self.retry_or_raise(http_class, request, first_try)
@@ -1655,9 +1795,10 @@ class Opener(object):
                  connection=ConnectionHandler,
                  redirect=HTTPRedirectHandler,
                  error=HTTPErrorProcessor,
-                 report_activity=None):
+                 report_activity=None,
+                 ca_certs=None):
         self._opener = urllib2.build_opener(
-            connection(report_activity=report_activity),
+            connection(report_activity=report_activity, ca_certs=ca_certs),
             redirect, error,
             ProxyHandler(),
             HTTPBasicAuthHandler(),

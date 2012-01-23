@@ -24,6 +24,7 @@ from bzrlib import (
     osutils,
     tests,
     )
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 from bzrlib.tests.script import (
     run_script,
     )
@@ -60,8 +61,7 @@ class TestBreakLock(tests.TestCaseWithTransport):
         local_branch = bzrdir.BzrDir.create_branch_convenience('repo/branch')
         local_branch.bind(self.master_branch)
         checkoutdir = bzrdir.BzrDir.create('checkout')
-        branch.BranchReferenceFormat().initialize(
-            checkoutdir, target_branch=local_branch)
+        checkoutdir.set_branch_reference(local_branch)
         self.wt = checkoutdir.create_workingtree()
 
     def test_break_lock_help(self):
@@ -138,4 +138,6 @@ class TestSmartServerBreakLock(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
+        self.assertLength(1, self.hpss_connections)
         self.assertLength(5, self.hpss_calls)

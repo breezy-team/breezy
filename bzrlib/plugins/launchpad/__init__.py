@@ -35,6 +35,8 @@ The plugin also provides the following commands:
 
 """
 
+from __future__ import absolute_import
+
 # The XMLRPC server address can be overridden by setting the environment
 # variable $BZR_LP_XMLRPC_URL
 

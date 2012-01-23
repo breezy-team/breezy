@@ -41,6 +41,8 @@ true for classes or functions (when used as a factory, or you want
 to inherit from them).
 """
 
+from __future__ import absolute_import
+
 
 class ScopeReplacer(object):
     """A lazy object that will replace itself in the appropriate scope.
@@ -51,10 +53,11 @@ class ScopeReplacer(object):
 
     __slots__ = ('_scope', '_factory', '_name', '_real_obj')
 
-    # Setting this to True will allow you to do x = y, and still access members
-    # from both variables. This should not normally be enabled, but is useful
-    # when building documentation.
-    _should_proxy = False
+    # If you to do x = y, setting this to False will disallow access to
+    # members from the second variable (i.e. x). This should normally
+    # be enabled for reasons of thread safety and documentation, but
+    # will be disabled during the selftest command to check for abuse.
+    _should_proxy = True
 
     def __init__(self, scope, factory, name):
         """Create a temporary object in the specified scope.
@@ -71,73 +74,59 @@ class ScopeReplacer(object):
         object.__setattr__(self, '_real_obj', None)
         scope[name] = self
 
-    def _replace(self):
-        """Actually replace self with other in the given scope"""
+    def _resolve(self):
+        """Return the real object for which this is a placeholder"""
         name = object.__getattribute__(self, '_name')
-        try:
+        real_obj = object.__getattribute__(self, '_real_obj')
+        if real_obj is None:
+            # No obj generated previously, so generate from factory and scope.
             factory = object.__getattribute__(self, '_factory')
             scope = object.__getattribute__(self, '_scope')
-        except AttributeError, e:
-            # Because ScopeReplacer objects only replace a single
-            # item, passing them to another variable before they are
-            # replaced would cause them to keep getting replaced
-            # (only they are replacing the wrong variable). So we
-            # make it forbidden, and try to give a good error.
+            obj = factory(self, scope, name)
+            if obj is self:
+                raise errors.IllegalUseOfScopeReplacer(name, msg="Object tried"
+                    " to replace itself, check it's not using its own scope.")
+
+            # Check if another thread has jumped in while obj was generated.
+            real_obj = object.__getattribute__(self, '_real_obj')
+            if real_obj is None:
+                # Still no prexisting obj, so go ahead and assign to scope and
+                # return. There is still a small window here where races will
+                # not be detected, but safest to avoid additional locking.
+                object.__setattr__(self, '_real_obj', obj)
+                scope[name] = obj
+                return obj
+
+        # Raise if proxying is disabled as obj has already been generated.
+        if not ScopeReplacer._should_proxy:
             raise errors.IllegalUseOfScopeReplacer(
-                name, msg="Object already cleaned up, did you assign it"
-                          " to another variable?",
-                extra=e)
-        obj = factory(self, scope, name)
-        if obj is self:
-            raise errors.IllegalUseOfScopeReplacer(name, msg="Object tried"
-                " to replace itself, check it's not using its own scope.")
-        if ScopeReplacer._should_proxy:
-            object.__setattr__(self, '_real_obj', obj)
-        scope[name] = obj
-        return obj
-
-    def _cleanup(self):
-        """Stop holding on to all the extra stuff"""
-        try:
-            del self._factory
-        except AttributeError:
-            # Oops, we just lost a race with another caller of _cleanup.  Just
-            # ignore it.
-            pass
-
-        try:
-            del self._scope
-        except AttributeError:
-            # Another race loss.  See above.
-            pass
-
-        # We keep _name, so that we can report errors
-        # del self._name
+                name, msg="Object already replaced, did you assign it"
+                          " to another variable?")
+        return real_obj
 
     def __getattribute__(self, attr):
-        obj = object.__getattribute__(self, '_real_obj')
-        if obj is None:
-            _replace = object.__getattribute__(self, '_replace')
-            obj = _replace()
-            _cleanup = object.__getattribute__(self, '_cleanup')
-            _cleanup()
+        obj = object.__getattribute__(self, '_resolve')()
         return getattr(obj, attr)
 
     def __setattr__(self, attr, value):
-        obj = object.__getattribute__(self, '_real_obj')
-        if obj is None:
-            _replace = object.__getattribute__(self, '_replace')
-            obj = _replace()
-            _cleanup = object.__getattribute__(self, '_cleanup')
-            _cleanup()
+        obj = object.__getattribute__(self, '_resolve')()
         return setattr(obj, attr, value)
 
     def __call__(self, *args, **kwargs):
-        _replace = object.__getattribute__(self, '_replace')
-        obj = _replace()
-        _cleanup = object.__getattribute__(self, '_cleanup')
-        _cleanup()
+        obj = object.__getattribute__(self, '_resolve')()
         return obj(*args, **kwargs)
+
+
+def disallow_proxying():
+    """Disallow lazily imported modules to be used as proxies.
+
+    Calling this function might cause problems with concurrent imports
+    in multithreaded environments, but will help detecting wasteful
+    indirection, so it should be called when executing unit tests.
+
+    Only lazy imports that happen after this call are affected.
+    """
+    ScopeReplacer._should_proxy = False
 
 
 class ImportReplacer(ScopeReplacer):
@@ -208,10 +197,10 @@ class ImportReplacer(ScopeReplacer):
         module_path = object.__getattribute__(self, '_module_path')
         module_python_path = '.'.join(module_path)
         if member is not None:
-            module = __import__(module_python_path, scope, scope, [member])
+            module = __import__(module_python_path, scope, scope, [member], level=0)
             return getattr(module, member)
         else:
-            module = __import__(module_python_path, scope, scope, [])
+            module = __import__(module_python_path, scope, scope, [], level=0)
             for path in module_path[1:]:
                 module = getattr(module, path)
 

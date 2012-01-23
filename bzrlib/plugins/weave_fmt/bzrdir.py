@@ -16,6 +16,8 @@
 
 """Weave-era BzrDir formats."""
 
+from __future__ import absolute_import
+
 from bzrlib.bzrdir import (
     BzrDir,
     BzrDirFormat,
@@ -81,6 +83,12 @@ class BzrDirFormatAllInOne(BzrDirFormat):
             stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
             make_working_trees=make_working_trees, shared_repo=shared_repo)
 
+    @classmethod
+    def from_string(cls, format_string):
+        if format_string != cls.get_format_string():
+            raise AssertionError("unexpected format string %r" % format_string)
+        return cls()
+
 
 class BzrDirFormat5(BzrDirFormatAllInOne):
     """Bzr control format 5.
@@ -98,7 +106,8 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
     def __eq__(self, other):
         return type(self) == type(other)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 5\n"
 
@@ -161,7 +170,8 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
     def __eq__(self, other):
         return type(self) == type(other)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 6\n"
 
@@ -669,7 +679,8 @@ class BzrDirFormat4(BzrDirFormat):
     def __eq__(self, other):
         return type(self) == type(other)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 0.0.4\n"
 
@@ -707,6 +718,12 @@ class BzrDirFormat4(BzrDirFormat):
         from bzrlib.plugins.weave_fmt.repository import RepositoryFormat4
         return RepositoryFormat4()
     repository_format = property(__return_repository_format)
+
+    @classmethod
+    def from_string(cls, format_string):
+        if format_string != cls.get_format_string():
+            raise AssertionError("unexpected format string %r" % format_string)
+        return cls()
 
 
 class BzrDirPreSplitOut(BzrDir):
@@ -910,6 +927,12 @@ class BzrDirPreSplitOut(BzrDir):
                                         hardlink=hardlink)
         return result
 
+    def set_branch_reference(self, target_branch, name=None):
+        from bzrlib.branch import BranchReferenceFormat
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
+        raise errors.IncompatibleFormat(BranchReferenceFormat, self._format)
+
 
 class BzrDir4(BzrDirPreSplitOut):
     """A .bzr version 4 control object.
@@ -949,7 +972,7 @@ class BzrDir5(BzrDirPreSplitOut):
         from bzrlib.plugins.weave_fmt.repository import RepositoryFormat5
         return RepositoryFormat5().open(self, _found=True)
 
-    def open_workingtree(self, _unsupported=False,
+    def open_workingtree(self, unsupported=False,
             recommend_upgrade=True):
         """See BzrDir.create_workingtree."""
         from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
@@ -974,8 +997,7 @@ class BzrDir6(BzrDirPreSplitOut):
         from bzrlib.plugins.weave_fmt.repository import RepositoryFormat6
         return RepositoryFormat6().open(self, _found=True)
 
-    def open_workingtree(self, _unsupported=False,
-        recommend_upgrade=True):
+    def open_workingtree(self, unsupported=False, recommend_upgrade=True):
         """See BzrDir.create_workingtree."""
         # we don't warn here about upgrades; that ought to be handled for the
         # bzrdir as a whole

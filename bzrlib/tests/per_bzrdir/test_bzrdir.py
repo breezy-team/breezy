@@ -21,6 +21,7 @@ from stat import S_ISDIR
 
 import bzrlib.branch
 from bzrlib import (
+    branch,
     bzrdir,
     errors,
     repository,
@@ -375,8 +376,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         referenced_branch = self.make_branch('referencced')
         dir = self.make_bzrdir('source')
         try:
-            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                target_branch=referenced_branch)
+            dir.set_branch_reference(referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -419,8 +419,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         referenced_branch = self.make_branch('referencced')
         dir = self.make_bzrdir('source')
         try:
-            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                target_branch=referenced_branch)
+            dir.set_branch_reference(referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -683,3 +682,13 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertEquals(
             branch.bzrdir.user_transport.list_dir("."),
             [".bzr"])
+
+    def test_get_branches(self):
+        repo = self.make_repository('branch-1')
+        try:
+            target_branch = repo.bzrdir.create_branch(name='foo')
+        except errors.NoColocatedBranchSupport:
+            raise TestNotApplicable('Format does not support colocation')
+        repo.bzrdir.set_branch_reference(target_branch)
+        self.assertEqual(set(["", 'foo']),
+                         set(repo.bzrdir.get_branches().keys()))
