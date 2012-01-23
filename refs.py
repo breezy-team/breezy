@@ -141,7 +141,7 @@ class BazaarRefsContainer(RefsContainer):
         for branch in self.dir.list_branches():
             repo = branch.repository
             if repo.has_revision(branch.last_revision()):
-                ref = branch_name_to_ref(branch.name)
+                ref = branch_name_to_ref(getattr(branch, "name", ""))
                 keys.add(ref)
             try:
                 for tag_name, revid in branch.tags.get_tag_dict().iteritems():

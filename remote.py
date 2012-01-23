@@ -240,10 +240,11 @@ class RemoteGitDir(GitDir):
         except GitProtocolError, e:
             raise parse_git_error(self.transport.external_url(), e)
 
+    def _get_default_ref(self):
+        return "refs/heads/master"
+
     def destroy_branch(self, name=None):
         refname = self._get_selected_ref(name)
-        if refname is None:
-            refname = "HEAD"
         def get_changed_refs(old_refs):
             ret = dict(old_refs)
             if not refname in ret:
@@ -496,7 +497,7 @@ class RemoteGitBranch(GitBranch):
         if self._sha is not None:
             return self._sha
         refs = self.bzrdir.get_refs_container()
-        name = branch_name_to_ref(self.name, "HEAD")
+        name = branch_name_to_ref(self.name)
         try:
             self._sha = refs[name]
         except KeyError:

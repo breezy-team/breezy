@@ -77,6 +77,9 @@ class GitDir(ControlDir):
     def checkout_metadir(self, stacked=False):
         return format_registry.make_bzrdir("default")
 
+    def _get_default_ref(self):
+        return "HEAD"
+
     def _get_selected_ref(self, branch, ref=None):
         if ref is not None and branch is not None:
             raise bzr_errors.BzrError("can't specify both ref and branch")
@@ -92,7 +95,7 @@ class GitDir(ControlDir):
         if branch is not None:
             from bzrlib.plugins.git.refs import branch_name_to_ref
             return branch_name_to_ref(branch)
-        return None
+        return self._get_default_ref()
 
     def get_config(self):
         return GitDirConfig()
@@ -321,14 +324,10 @@ class LocalGitDir(GitDir):
         if self.control_transport.base != target.bzrdir.control_transport.base:
             raise bzr_errors.IncompatibleFormat(target._format, self._format)
         ref = self._get_selected_ref(name)
-        if ref is None:
-            ref = "HEAD"
         self._git.refs.set_symbolic_ref(ref, target.ref)
 
     def get_branch_reference(self, name=None):
         ref = self._get_selected_ref(name)
-        if ref is None:
-            ref = "HEAD"
         target_ref = self._get_symref(ref)
         if target_ref is not None:
             return urlutils.join_segment_parameters(
@@ -341,8 +340,6 @@ class LocalGitDir(GitDir):
             GitSymrefBranchFormat,
             )
         ref = self._get_selected_ref(name)
-        if ref is None:
-            ref = "HEAD"
         if self._get_symref(ref) is not None:
             return GitSymrefBranchFormat()
         else:
@@ -375,8 +372,6 @@ class LocalGitDir(GitDir):
         repo = self.open_repository()
         from bzrlib.plugins.git.branch import LocalGitBranch
         ref = self._get_selected_ref(name, ref)
-        if ref is None:
-            ref = "HEAD"
         ref, sha = self._git.refs._follow(ref)
         if not ref in self._git.refs:
             raise bzr_errors.NotBranchError(self.root_transport.base,
@@ -385,8 +380,6 @@ class LocalGitDir(GitDir):
 
     def destroy_branch(self, name=None):
         refname = self._get_selected_ref(name)
-        if refname is None:
-            refname = "HEAD"
         try:
             del self._git.refs[refname]
         except KeyError:
@@ -452,8 +445,6 @@ class LocalGitDir(GitDir):
                       append_revisions_only=None, ref=None):
         refname = self._get_selected_ref(name, ref)
         from dulwich.protocol import ZERO_SHA
-        if refname is None:
-            refname = "HEAD"
         if refname in self._git.refs:
             raise bzr_errors.AlreadyBranchError(self.user_url)
         self._git.refs[refname] = ZERO_SHA
