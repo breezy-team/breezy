@@ -1,4 +1,4 @@
-bzr (2.5.0~beta5-3) UNRELEASED; urgency=low
+bzr (2.5.0~beta5-3) unstable; urgency=low
 
   * Use CommitBuilder.get_basis_delta() in commit builder tests
     (necessary for bzr-svn).
