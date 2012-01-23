@@ -1106,6 +1106,9 @@ class BzrDirMeta1Colo(BzrDirMeta1):
                 self.control_files.lock_write()
                 try:
                     branches = self._read_branch_list()
+                    dirname = urlutils.dirname(utf8_name)
+                    if dirname != "" and dirname in branches:
+                        raise errors.ParentBranchExists(utf8_name)
                     branches.append(utf8_name)
                     self._write_branch_list(branches)
                 finally:

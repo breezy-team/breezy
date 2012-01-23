@@ -705,6 +705,11 @@ class AlreadyBranchError(PathError):
     _fmt = 'Already a branch: "%(path)s".'
 
 
+class ParentBranchExists(AlreadyBranchError):
+
+    _fmt = 'Parent branch already exists: "%(path)s".'
+
+
 class BranchExistsWithoutWorkingTree(PathError):
 
     _fmt = 'Directory contains a branch, but no working tree \
