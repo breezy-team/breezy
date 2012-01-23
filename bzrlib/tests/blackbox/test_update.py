@@ -194,8 +194,7 @@ Your local commits will now show as pending merges with 'bzr status', and can be
 
         self.build_tree(['checkout1/'])
         checkout_dir = bzrdir.BzrDirMetaFormat1().initialize('checkout1')
-        branch.BranchReferenceFormat().initialize(checkout_dir,
-            target_branch=master.branch)
+        checkout_dir.set_branch_reference(master.branch)
         checkout1 = checkout_dir.create_workingtree('m1')
 
         # Create a second branch, with an extra commit
@@ -251,8 +250,7 @@ Updated to revision 2 of branch %s
 
         self.build_tree(['checkout1/'])
         checkout_dir = bzrdir.BzrDirMetaFormat1().initialize('checkout1')
-        branch.BranchReferenceFormat().initialize(checkout_dir,
-            target_branch=master.branch)
+        checkout_dir.set_branch_reference(master.branch)
         checkout1 = checkout_dir.create_workingtree('m1')
 
         # Create a second branch, with an extra commit

@@ -700,6 +700,11 @@ class NoSubmitBranch(PathError):
        self.path = urlutils.unescape_for_display(branch.base, 'ascii')
 
 
+class AlreadyControlDirError(PathError):
+
+    _fmt = 'A control directory already exists: "%(path)s".'
+
+
 class AlreadyBranchError(PathError):
 
     _fmt = 'Already a branch: "%(path)s".'
@@ -1670,6 +1675,14 @@ class InvalidHttpResponse(TransportError):
             # preserve as much info as possible to ease debug.
             orig_error = ': %r' % (orig_error,)
         TransportError.__init__(self, msg, orig_error=orig_error)
+
+
+class CertificateError(TransportError):
+
+    _fmt = "Certificate error: %(error)s"
+
+    def __init__(self, error):
+        self.error = error
 
 
 class InvalidHttpRange(InvalidHttpResponse):

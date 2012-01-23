@@ -31,6 +31,7 @@ __all__ = [
     'MatchesAncestry',
     'ContainsNoVfsCalls',
     'ReturnsUnlockable',
+    'RevisionHistoryMatches',
     ]
 
 from bzrlib import (
@@ -182,6 +183,31 @@ class HasLayout(Matcher):
         else:
             entries = self.entries
         return Equals(entries).match(actual)
+
+
+class RevisionHistoryMatches(Matcher):
+    """A matcher that checks if a branch has a specific revision history.
+
+    :ivar history: Revision history, as list of revisions. Oldest first.
+    """
+
+    def __init__(self, history):
+        Matcher.__init__(self)
+        self.expected = history
+
+    def __str__(self):
+        return 'RevisionHistoryMatches(%r)' % self.expected
+
+    def match(self, branch):
+        branch.lock_read()
+        try:
+            graph = branch.repository.get_graph()
+            history = list(graph.iter_lefthand_ancestry(
+                branch.last_revision(), [_mod_revision.NULL_REVISION]))
+            history.reverse()
+        finally:
+            branch.unlock()
+        return Equals(self.expected).match(history)
 
 
 class _NoVfsCallsMismatch(Mismatch):

@@ -887,6 +887,10 @@ class BzrDirMeta1(BzrDir):
         format = BranchFormatMetadir.find_format(self, name=name)
         return format.get_reference(self, name=name)
 
+    def set_branch_reference(self, target_branch, name=None):
+        format = _mod_branch.BranchReferenceFormat()
+        return format.initialize(self, target_branch=target_branch, name=name)
+
     def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
         if name is None:
@@ -1472,10 +1476,13 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         # mode from the root directory
         temp_control = lockable_files.LockableFiles(transport,
                             '', lockable_files.TransportLock)
-        temp_control._transport.mkdir('.bzr',
-                                      # FIXME: RBC 20060121 don't peek under
-                                      # the covers
-                                      mode=temp_control._dir_mode)
+        try:
+            temp_control._transport.mkdir('.bzr',
+                # FIXME: RBC 20060121 don't peek under
+                # the covers
+                mode=temp_control._dir_mode)
+        except errors.FileExists:
+            raise errors.AlreadyControlDirError(transport.base)
         if sys.platform == 'win32' and isinstance(transport, local.LocalTransport):
             win32utils.set_file_attr_hidden(transport._abspath('.bzr'))
         file_mode = temp_control._file_mode
