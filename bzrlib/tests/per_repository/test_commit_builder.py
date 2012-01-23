@@ -284,6 +284,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             if not builder.supports_record_entry_contents:
                 raise tests.TestNotApplicable("CommitBuilder doesn't support "
                     "record_entry_contents")
+            builder.will_record_deletes()
             ie = inventory.make_entry('directory', '', None,
                     tree.get_root_id())
             delta, version_recorded, fs_hash = builder.record_entry_contents(
@@ -299,7 +300,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             if got_new_revision:
                 self.assertEqual(('', '', ie.file_id, ie), delta)
                 # The delta should be tracked
-                self.assertEqual(delta, builder._basis_delta[-1])
+                self.assertEqual(delta, builder.get_basis_delta()[-1])
             else:
                 self.assertEqual(None, delta)
             # Directories do not get hashed.
@@ -441,7 +442,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 # the delta should be returned, and recorded in _basis_delta
                 delta = builder.record_delete("foo", "foo-id")
                 self.assertEqual(("foo", None, "foo-id", None), delta)
-                self.assertEqual(delta, builder._basis_delta[-1])
+                self.assertEqual(delta, builder.get_basis_delta()[-1])
                 builder.finish_inventory()
                 rev_id2 = builder.commit('delete foo')
             except:
@@ -463,13 +464,14 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         try:
             builder = tree.branch.get_commit_builder([rev_id])
             try:
+                builder.will_record_deletes()
                 delete_change = ('foo-id', ('foo', None), True, (True, False),
                     (tree.path2id(''), None), ('foo', None), ('file', None),
                     (False, None))
                 list(builder.record_iter_changes(tree, rev_id,
                     [delete_change]))
                 self.assertEqual(("foo", None, "foo-id", None),
-                    builder._basis_delta[0])
+                    builder.get_basis_delta()[0])
                 self.assertTrue(builder.any_changes())
                 builder.finish_inventory()
                 rev_id2 = builder.commit('delete foo')
@@ -866,6 +868,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 if not builder.supports_record_entry_contents:
                     raise tests.TestNotApplicable("CommitBuilder doesn't "
                         "support record_entry_contents")
+                builder.will_record_deletes()
                 parent_tree = tree.basis_tree()
                 parent_tree.lock_read()
                 self.addCleanup(parent_tree.unlock)
@@ -913,7 +916,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 if delta_against_basis:
                     expected_delta = (name, new_name, file_id, new_entry)
                     # The delta should be recorded
-                    self.assertEqual(expected_delta, builder._basis_delta[-1])
+                    self.assertEqual(expected_delta,
+                        builder.get_basis_delta()[-1])
                 else:
                     expected_delta = None
                 self.assertEqual(expected_delta, delta)
