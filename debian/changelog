@@ -1,3 +1,9 @@
+bzr (2.5.0~bzr6457-1) UNRELEASED; urgency=low
+
+  * New upstream snapshot.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 23 Jan 2012 23:46:42 +0100
+
 bzr (2.5.0~beta5-3) unstable; urgency=low
 
   * Use CommitBuilder.get_basis_delta() in commit builder tests

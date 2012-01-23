@@ -1782,7 +1782,7 @@ register_transport_proto('http://',
                  help="Read-only access of branches exported on the web.")
 register_transport_proto('https://',
             help="Read-only access of branches exported on the web using SSL.")
-# The default http implementation is urllib, but https is pycurl if available
+# The default http implementation is urllib, but https uses pycurl if available
 register_lazy_transport('http://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 register_lazy_transport('http://', 'bzrlib.transport.http._urllib',
