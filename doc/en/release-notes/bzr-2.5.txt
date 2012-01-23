@@ -20,6 +20,9 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* Support for colocated branches is now available in the default
+  format ("2a"). (Jelmer Vernooij)
+
 Improvements
 ************
 
