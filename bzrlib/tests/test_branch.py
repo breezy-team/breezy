@@ -575,7 +575,7 @@ class TestBranchReference(tests.TestCaseWithTransport):
         self.assertEqual(opened_branch.base, target_branch.base)
 
     def test_get_reference(self):
-        """For a BranchReference, get_reference should reutrn the location."""
+        """For a BranchReference, get_reference should return the location."""
         branch = self.make_branch('target')
         checkout = branch.create_checkout('checkout', lightweight=True)
         reference_url = branch.bzrdir.root_transport.abspath('') + '/'

@@ -1097,6 +1097,22 @@ more info
        ), out)
         self.assertEqual('', err)
 
+    def test_info_unshared_repository_with_colocated_branches(self):
+        format = bzrdir.format_registry.make_bzrdir('development-colo')
+        transport = self.get_transport()
+
+        # Create unshared repository
+        repo = self.make_repository('repo', shared=False, format=format)
+        repo.set_make_working_trees(True)
+        repo.bzrdir.create_branch(name='foo')
+        out, err = self.run_bzr('info repo')
+        self.assertEqualDiff(
+"""Unshared repository with trees and colocated branches (format: development-colo)
+Location:
+  repository: repo
+""", out)
+        self.assertEqual('', err)
+
     def assertCheckoutStatusOutput(self,
         command_string, lco_tree, shared_repo=None,
         repo_branch=None,
@@ -1256,8 +1272,7 @@ Repository:
         # Do a light checkout of the heavy one
         transport.mkdir('tree/lightcheckout')
         lco_dir = bzrdir.BzrDirMetaFormat1().initialize('tree/lightcheckout')
-        branch.BranchReferenceFormat().initialize(lco_dir,
-            target_branch=co_branch)
+        lco_dir.set_branch_reference(co_branch)
         lco_dir.create_workingtree()
         lco_tree = lco_dir.open_workingtree()
 

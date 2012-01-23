@@ -679,6 +679,29 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         b = self.open_branch(name=name)
         return b._format
 
+    def get_branches(self, possible_transports=None, ignore_fallbacks=False):
+        path = self._path_for_remote_call(self._client)
+        try:
+            response, handler = self._call_expecting_body(
+                'BzrDir.get_branches', path)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_bzrdir.get_branches()
+        if response[0] != "success":
+            raise errors.UnexpectedSmartServerResponse(response)
+        body = bencode.bdecode(handler.read_body_bytes())
+        ret = {}
+        for (name, value) in body.iteritems():
+            ret[name] = self._open_branch(name, value[0], value[1],
+                possible_transports=possible_transports,
+                ignore_fallbacks=ignore_fallbacks)
+        return ret
+
+    def set_branch_reference(self, target_branch, name=None):
+        """See BzrDir.set_branch_reference()."""
+        self._ensure_real()
+        return self._real_bzrdir.set_branch_reference(target_branch, name=name)
+
     def get_branch_reference(self, name=None):
         """See BzrDir.get_branch_reference()."""
         if name is not None:
@@ -724,10 +747,24 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         """See BzrDir._get_tree_branch()."""
         return None, self.open_branch(name=name)
 
+    def _open_branch(self, name, kind, location_or_format,
+                     ignore_fallbacks=False, possible_transports=None):
+        if kind == 'ref':
+            # a branch reference, use the existing BranchReference logic.
+            format = BranchReferenceFormat()
+            return format.open(self, name=name, _found=True,
+                location=location_or_format, ignore_fallbacks=ignore_fallbacks,
+                possible_transports=possible_transports)
+        branch_format_name = location_or_format
+        if not branch_format_name:
+            branch_format_name = None
+        format = RemoteBranchFormat(network_name=branch_format_name)
+        return RemoteBranch(self, self.find_repository(), format=format,
+            setup_stacking=not ignore_fallbacks, name=name,
+            possible_transports=possible_transports)
+
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False, possible_transports=None):
-        if name is None:
-            name = self._get_selected_branch()
         if unsupported:
             raise NotImplementedError('unsupported flag support not implemented yet.')
         if self._next_open_branch_result is not None:
@@ -736,19 +773,11 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             self._next_open_branch_result = None
             return result
         response = self._get_branch_reference()
-        if response[0] == 'ref':
-            # a branch reference, use the existing BranchReference logic.
-            format = BranchReferenceFormat()
-            return format.open(self, name=name, _found=True,
-                location=response[1], ignore_fallbacks=ignore_fallbacks,
-                possible_transports=possible_transports)
-        branch_format_name = response[1]
-        if not branch_format_name:
-            branch_format_name = None
-        format = RemoteBranchFormat(network_name=branch_format_name)
-        return RemoteBranch(self, self.find_repository(), format=format,
-            setup_stacking=not ignore_fallbacks, name=name,
-            possible_transports=possible_transports)
+        if name is None:
+            name = self._get_selected_branch()
+        return self._open_branch(name, response[0], response[1],
+            possible_transports=possible_transports,
+            ignore_fallbacks=ignore_fallbacks)
 
     def _open_repo_v1(self, path):
         verb = 'BzrDir.find_repository'
