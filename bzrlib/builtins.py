@@ -83,6 +83,74 @@ from bzrlib import (
     )
 
 
+def _get_branch_location(control_dir):
+    """Return location of branch for this control dir."""
+    try:
+        this_branch = control_dir.open_branch()
+        # This may be a heavy checkout, where we want the master branch
+        master_location = this_branch.get_bound_location()
+        if master_location is not None:
+            return master_location
+        # If not, use a local sibling
+        return this_branch.base
+    except errors.NotBranchError:
+        format = control_dir.find_branch_format()
+        if getattr(format, 'get_reference', None) is not None:
+            return format.get_reference(control_dir)
+        else:
+            return control_dir.root_transport.base
+
+
+def lookup_new_sibling_branch(control_dir, location):
+    """Lookup the location for a new sibling branch.
+
+    :param control_dir: Control directory relative to which to look up
+        the name.
+    :param location: Name of the new branch
+    :return: Full location to the new branch
+    """
+    location = directory_service.directories.dereference(location)
+    if '/' not in location and '\\' not in location:
+        # This path is meant to be relative to the existing branch
+        this_url = _get_branch_location(control_dir)
+        # Perhaps the target control dir supports colocated branches?
+        try:
+            root = controldir.ControlDir.open(this_url,
+                possible_transports=[control_dir.user_transport])
+        except errors.NotBranchError:
+            colocated = False
+        else:
+            colocated = root._format.colocated_branches
+
+        if colocated:
+            return urlutils.join_segment_parameters(this_url,
+                {"branch": urlutils.escape(location)})
+        else:
+            return urlutils.join(this_url, '..', urlutils.escape(location))
+    return location
+
+
+def lookup_sibling_branch(control_dir, location):
+    """Lookup sibling branch.
+    
+    :param control_dir: Control directory relative to which to lookup the
+        location.
+    :param location: Location to look up
+    :return: branch to open
+    """
+    try:
+        # Perhaps it's a colocated branch?
+        return control_dir.open_branch(location)
+    except (errors.NotBranchError, errors.NoColocatedBranchSupport):
+        try:
+            return Branch.open(location)
+        except errors.NotBranchError:
+            this_url = _get_branch_location(control_dir)
+            return Branch.open(
+                urlutils.join(
+                    this_url, '..', urlutils.escape(location)))
+
+
 @symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 3, 0)))
 def tree_files(file_list, default_branch=u'.', canonicalize=True,
     apply_view=True):
@@ -1394,6 +1462,11 @@ class cmd_branch(Command):
                     from_location, revision)
                 raise errors.BzrCommandError(msg)
         else:
+            try:
+                to_repo = to_dir.open_repository()
+            except errors.NoRepositoryPresent:
+                to_repo = to_dir.create_repository()
+            to_repo.fetch(br_from.repository, revision_id=revision_id)
             branch = br_from.sprout(to_dir, revision_id=revision_id)
         _merge_tags_if_possible(br_from, branch)
         # If the source branch is stacked, the new branch may
@@ -1444,13 +1517,13 @@ class cmd_branches(Command):
         else:
             dir = controldir.ControlDir.open_containing(location)[0]
             try:
-                active_branch = dir.open_branch(name=None)
+                active_branch = dir.open_branch(name="")
             except errors.NotBranchError:
                 active_branch = None
             branches = dir.get_branches()
             names = {}
             for name, branch in branches.iteritems():
-                if name is None:
+                if name == "":
                     continue
                 active = (active_branch is not None and
                           active_branch.base == branch.base)
@@ -6142,42 +6215,14 @@ class cmd_switch(Command):
             had_explicit_nick = False
         if create_branch:
             if branch is None:
-                raise errors.BzrCommandError(gettext('cannot create branch without'
-                                             ' source branch'))
-            to_location = directory_service.directories.dereference(
-                              to_location)
-            if '/' not in to_location and '\\' not in to_location:
-                # This path is meant to be relative to the existing branch
-                this_url = self._get_branch_location(control_dir)
-                # Perhaps the target control dir supports colocated branches?
-                try:
-                    root = controldir.ControlDir.open(this_url,
-                        possible_transports=[control_dir.user_transport])
-                except errors.NotBranchError:
-                    colocated = False
-                else:
-                    colocated = root._format.colocated_branches
-                if colocated:
-                    to_location = urlutils.join_segment_parameters(this_url,
-                        {"branch": urlutils.escape(to_location)})
-                else:
-                    to_location = urlutils.join(
-                        this_url, '..', urlutils.escape(to_location))
+                raise errors.BzrCommandError(
+                    gettext('cannot create branch without source branch'))
+            to_location = lookup_new_sibling_branch(control_dir, to_location)
             to_branch = branch.bzrdir.sprout(to_location,
-                                 possible_transports=[branch.bzrdir.root_transport],
-                                 source_branch=branch).open_branch()
+                 possible_transports=[branch.bzrdir.root_transport],
+                 source_branch=branch).open_branch()
         else:
-            # Perhaps it's a colocated branch?
-            try:
-                to_branch = control_dir.open_branch(to_location)
-            except (errors.NotBranchError, errors.NoColocatedBranchSupport):
-                try:
-                    to_branch = Branch.open(to_location)
-                except errors.NotBranchError:
-                    this_url = self._get_branch_location(control_dir)
-                    to_branch = Branch.open(
-                        urlutils.join(
-                            this_url, '..', urlutils.escape(to_location)))
+            to_branch = lookup_sibling_branch(control_dir, to_location)
         if revision is not None:
             revision = revision.as_revision_id(to_branch)
         switch.switch(control_dir, to_branch, force, revision_id=revision)
@@ -6187,22 +6232,6 @@ class cmd_switch(Command):
         note(gettext('Switched to branch: %s'),
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
 
-    def _get_branch_location(self, control_dir):
-        """Return location of branch for this control dir."""
-        try:
-            this_branch = control_dir.open_branch()
-            # This may be a heavy checkout, where we want the master branch
-            master_location = this_branch.get_bound_location()
-            if master_location is not None:
-                return master_location
-            # If not, use a local sibling
-            return this_branch.base
-        except errors.NotBranchError:
-            format = control_dir.find_branch_format()
-            if getattr(format, 'get_reference', None) is not None:
-                return format.get_reference(control_dir)
-            else:
-                return control_dir.root_transport.base
 
 
 class cmd_view(Command):

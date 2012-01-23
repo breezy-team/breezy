@@ -17,7 +17,6 @@
 
 """Black-box tests for bzr branches."""
 
-from bzrlib.branch import BranchReferenceFormat
 from bzrlib.tests import TestCaseWithTransport
 
 
@@ -73,7 +72,7 @@ class TestBranches(TestCaseWithTransport):
         t = self.make_repository('a', format='development-colo')
         t.bzrdir.create_branch(name='another')
         branch = t.bzrdir.create_branch(name='colocated')
-        BranchReferenceFormat().initialize(t.bzrdir, target_branch=branch)
+        t.bzrdir.set_branch_reference(target_branch=branch)
         out, err = self.run_bzr('branches a')
         self.assertEquals(out, "  another\n"
                                "* colocated\n")
