@@ -352,7 +352,7 @@ def show_bzrdir_info(a_bzrdir, verbose=False, outfile=None):
     except (NoWorkingTree, NotLocalUrl, NotBranchError):
         tree = None
         try:
-            branch = a_bzrdir.open_branch()
+            branch = a_bzrdir.open_branch(name="")
         except NotBranchError:
             branch = None
             try:
@@ -442,8 +442,13 @@ def describe_layout(repository=None, branch=None, tree=None, control=None):
             phrase = 'Shared repository'
         else:
             phrase = 'Unshared repository'
+        extra = []
         if repository.make_working_trees():
-            phrase += ' with trees'
+            extra.append('trees')
+        if len(control.get_branches()) > 0:
+            extra.append('colocated branches')
+        if extra:
+            phrase += ' with ' + " and ".join(extra)
         return phrase
     else:
         if repository.is_shared():

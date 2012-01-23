@@ -49,7 +49,13 @@ class TestingHTTPSServerMixin:
         serving = test_server.TestingTCPServerMixin.verify_request(
             self, request, client_address)
         if serving:
-            request.do_handshake()
+            try:
+                request.do_handshake()
+            except ssl.SSLError, e:
+                # FIXME: We proabaly want more tests to capture which ssl
+                # errors are worth reporting but mostly our tests want an https
+                # server that works -- vila 2012-01-19
+                return False
         return serving
 
     def ignored_exceptions_during_shutdown(self, e):
