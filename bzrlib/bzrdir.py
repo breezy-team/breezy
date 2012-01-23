@@ -1089,15 +1089,6 @@ class BzrDirMeta1(BzrDir):
         return config.TransportConfig(self.transport, 'control.conf')
 
 
-class BzrDirMeta1Colo(BzrDirMeta1):
-    """BzrDirMeta1 with support for colocated branches.
-
-    This format was originally used for testing the colocated branch
-    support for BzrDirMeta1. That support has now been merged back into
-    BzrDirMeta1.
-    """
-
-
 class BzrFormat(object):
     """Base class for all formats of things living in metadirs.
 
@@ -1546,7 +1537,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     fixed_components = False
 
-    colocated_branches = False
+    colocated_branches = True
 
     def __init__(self):
         BzrDirFormat.__init__(self)
@@ -1679,7 +1670,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
             return ConvertMetaToColo(format)
         if (type(self) is BzrDirMetaFormat1Colo and
             type(format) is BzrDirMetaFormat1):
-            return ConvertMetaRemoveColo(format)
+            return ConvertMetaToColo(format)
         if not isinstance(self, format.__class__):
             # converting away from metadir is not implemented
             raise NotImplementedError(self.get_converter)
@@ -1781,7 +1772,7 @@ class BzrDirMetaFormat1Colo(BzrDirMetaFormat1):
         # problems.
         format = BzrDirMetaFormat1Colo()
         self._supply_sub_formats_to(format)
-        return BzrDirMeta1Colo(transport, format)
+        return BzrDirMeta1(transport, format)
 
 
 BzrProber.formats.register(BzrDirMetaFormat1Colo.get_format_string(),
@@ -1883,12 +1874,12 @@ class ConvertMetaToColo(controldir.Converter):
         return BzrDir.open_from_transport(to_convert.root_transport)
 
 
-class ConvertMetaRemoveColo(controldir.Converter):
-    """Remove colocated branch support from a bzrdir."""
+class ConvertMetaToColo(controldir.Converter):
+    """Convert a 'development-colo' bzrdir to a '2a' bzrdir."""
 
     def __init__(self, target_format):
-        """Create a converter.that downgrades a colocated branch metadir
-        to a regular metadir.
+        """Create a converter that converts a 'development-colo' metadir
+        to a '2a' metadir.
 
         :param target_format: The final metadir format that is desired.
         """
@@ -1896,14 +1887,6 @@ class ConvertMetaRemoveColo(controldir.Converter):
 
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
-        to_convert.control_files.lock_write()
-        try:
-            branches = to_convert.list_branches()
-            if len(branches) > 1:
-                raise errors.BzrError("remove all but a single "
-                    "colocated branch when downgrading")
-        finally:
-            to_convert.control_files.unlock()
         to_convert.transport.put_bytes('branch-format',
             self.target_format.as_string())
         return BzrDir.open_from_transport(to_convert.root_transport)
