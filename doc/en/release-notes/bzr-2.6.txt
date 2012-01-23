@@ -26,6 +26,11 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+ * Access to HTTPS URLs now uses the urrllib implementation by default.
+   For the old pycurl-based implementation, specify ``https+pycurl://`` as
+   the URL scheme when accessing a HTTPS location.
+   (Jelmer Vernooij, #125055)
+
 Bug Fixes
 *********
 
