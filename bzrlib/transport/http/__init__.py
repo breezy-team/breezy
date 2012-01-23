@@ -118,12 +118,7 @@ class HttpTransportBase(ConnectedTransport):
         :param relpath: The relative path to the file
         """
         code, response_file = self._get(relpath, None)
-        # FIXME: some callers want an iterable... One step forward, three steps
-        # backwards :-/ And not only an iterable, but an iterable that can be
-        # seeked backwards, so we will never be able to do that.  One such
-        # known client is bzrlib.bundle.serializer.v4.get_bundle_reader. At the
-        # time of this writing it's even the only known client -- vila20071203
-        return StringIO(response_file.read())
+        return response_file
 
     def _get(self, relpath, ranges, tail_amount=0):
         """Get a file, or part of a file.
