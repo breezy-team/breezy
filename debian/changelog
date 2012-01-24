@@ -1,4 +1,4 @@
-bzr (2.5.0~bzr6458-1) UNRELEASED; urgency=low
+bzr (2.5.0~bzr6458-1) unstable; urgency=low
 
   * New upstream snapshot.
    + urllib HTTPS backend now verifies SSL certificates. Closes: #558460,
