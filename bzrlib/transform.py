@@ -47,7 +47,7 @@ from bzrlib.i18n import gettext
 """)
 from bzrlib.errors import (DuplicateKey, MalformedTransform,
                            ReusingTransform, CantMoveRoot,
-                           ExistingLimbo, ImmortalLimbo, NoFinalPath,
+                           ImmortalLimbo, NoFinalPath,
                            UnableCreateSymlink)
 from bzrlib.filters import filtered_output_bytes, ContentFilterContext
 from bzrlib.mutabletree import MutableTree

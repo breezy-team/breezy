@@ -68,6 +68,10 @@ from bzrlib.osutils import (
     realpath,
     safe_unicode,
     )
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
 from bzrlib.transport.local import LocalTransport
 from bzrlib.tree import (
     InterTree,
@@ -1150,7 +1154,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 # _make_delta if we can't get the RevisionTree
                 pass
             else:
-                delta = rev_tree.inventory._make_delta(basis_tree.inventory)
+                delta = rev_tree.inventory._make_delta(
+                    basis_tree.inventory)
                 dirstate.update_basis_by_delta(delta, rev_id)
                 updated = True
         if not updated:
@@ -1946,10 +1951,10 @@ class DirStateRevisionTree(InventoryTree):
 
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
-        id = self.inventory.path2id(path)
-        if id is None:
+        file_id = self.path2id(path)
+        if file_id is None:
             return ('missing', None, None, None)
-        entry = self._inventory[id]
+        entry = self.inventory[file_id]
         kind = entry.kind
         if kind == 'file':
             return (kind, entry.text_size, entry.executable, entry.text_sha1)
@@ -1970,11 +1975,12 @@ class DirStateRevisionTree(InventoryTree):
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         # We use a standard implementation, because DirStateRevisionTree is
         # dealing with one of the parents of the current state
-        inv = self._get_inventory()
         if from_dir is None:
+            inv = self.inventory
             from_dir_id = None
         else:
-            from_dir_id = inv.path2id(from_dir)
+            inv = self.inventory
+            from_dir_id = self.path2id(from_dir)
             if from_dir_id is None:
                 # Directory not versioned
                 return

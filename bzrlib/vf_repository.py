@@ -604,10 +604,11 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         _mod_revision.NULL_REVISION))
         # The basis inventory from a repository 
         if revtrees:
-            basis_inv = revtrees[0].inventory
+            basis_tree = revtrees[0]
         else:
-            basis_inv = self.repository.revision_tree(
-                _mod_revision.NULL_REVISION).inventory
+            basis_tree = self.repository.revision_tree(
+                _mod_revision.NULL_REVISION)
+        basis_inv = basis_tree.inventory
         if len(self.parents) > 0:
             if basis_revision_id != self.parents[0] and not ghost_basis:
                 raise Exception(
@@ -2839,7 +2840,8 @@ class InterDifferingSerializer(InterVersionedFileRepository):
             parents_parents = [key[-1] for key in parents_parents_keys]
             basis_id = _mod_revision.NULL_REVISION
             basis_tree = self.source.revision_tree(basis_id)
-            delta = parent_tree.inventory._make_delta(basis_tree.inventory)
+            delta = parent_tree.inventory._make_delta(
+                basis_tree.inventory)
             self.target.add_inventory_by_delta(
                 basis_id, delta, current_revision_id, parents_parents)
             cache[current_revision_id] = parent_tree
