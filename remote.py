@@ -107,6 +107,11 @@ def split_git_url(url):
     return (host, port, username, path)
 
 
+class RemoteGitError(BzrError):
+
+    _fmt = "Remote server error: %(message)s"
+
+
 def parse_git_error(url, message):
     """Parse a remote git server error and return a bzr exception.
 
@@ -117,7 +122,7 @@ def parse_git_error(url, message):
     if message.startswith("Could not find Repository "):
         return NotBranchError(url, message)
     # Don't know, just return it to the user as-is
-    return BzrError(message)
+    return RemoteGitError(message)
 
 
 class GitSmartTransport(Transport):
