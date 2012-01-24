@@ -103,7 +103,8 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
         self._inventory = inv
 
     def get_file_mtime(self, file_id, path=None):
-        ie = self.inventory[file_id]
+        inv, inv_file_id = self._unpack_file_id(file_id)
+        ie = inv[inv_file_id]
         try:
             revision = self._repository.get_revision(ie.revision)
         except errors.NoSuchRevision:
@@ -111,20 +112,24 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
         return revision.timestamp
 
     def get_file_size(self, file_id):
-        return self.inventory[file_id].text_size
+        inv, inv_file_id = self._unpack_file_id(file_id)
+        return inv[inv_file_id].text_size
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
-        ie = self.inventory[file_id]
+        inv, inv_file_id = self._unpack_file_id(file_id)
+        ie = inv[inv_file_id]
         if ie.kind == "file":
             return ie.text_sha1
         return None
 
     def get_file_revision(self, file_id, path=None):
-        ie = self.inventory[file_id]
+        inv, inv_file_id = self._unpack_file_id(file_id)
+        ie = inv[inv_file_id]
         return ie.revision
 
     def is_executable(self, file_id, path=None):
-        ie = self.inventory[file_id]
+        inv, inv_file_id = self._unpack_file_id(file_id)
+        ie = inv[inv_file_id]
         if ie.kind != "file":
             return False
         return ie.executable
@@ -138,8 +143,7 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
             from_dir_id = None
             inv = self.inventory
         else:
-            inv = self.inventory
-            from_dir_id = self.path2id(from_dir)
+            inv, from_dir_id = self._path2inv_file_id(from_dir)
             if from_dir_id is None:
                 # Directory not versioned
                 return
@@ -151,26 +155,29 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
             yield path, 'V', entry.kind, entry.file_id, entry
 
     def get_symlink_target(self, file_id, path=None):
-        ie = self.inventory[file_id]
+        inv, inv_file_id = self._unpack_file_id(file_id)
+        ie = inv[inv_file_id]
         # Inventories store symlink targets in unicode
         return ie.symlink_target
 
     def get_reference_revision(self, file_id, path=None):
-        return self.inventory[file_id].reference_revision
+        inv, inv_file_id = self._unpack_file_id(file_id)
+        return inv[inv_file_id].reference_revision
 
     def get_root_id(self):
         if self.inventory.root:
             return self.inventory.root.file_id
 
     def kind(self, file_id):
-        return self.inventory[file_id].kind
+        inv, inv_file_id = self._unpack_file_id(file_id)
+        return inv[inv_file_id].kind
 
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
-        file_id = self.path2id(path)
+        inv, file_id = self._path2inv_file_id(path)
         if file_id is None:
             return ('missing', None, None, None)
-        entry = self.inventory[file_id]
+        entry = inv[file_id]
         kind = entry.kind
         if kind == 'file':
             return (kind, entry.text_size, entry.executable, entry.text_sha1)
@@ -189,8 +196,7 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
 
     def walkdirs(self, prefix=""):
         _directory = 'directory'
-        inv = self.inventory
-        top_id = self.path2id(prefix)
+        inv, top_id = self._path2inv_file_id(prefix)
         if top_id is None:
             pending = []
         else:
