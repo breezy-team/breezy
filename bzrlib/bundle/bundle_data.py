@@ -576,6 +576,9 @@ class BundleTree(Tree):
             return None
         return new_path
 
+    def get_root_id(self):
+        return self.path2id('')
+
     def path2id(self, path):
         """Return the id of the file present at path in the target tree."""
         file_id = self._new_id.get(path)
@@ -586,10 +589,7 @@ class BundleTree(Tree):
             return None
         if old_path in self.deleted:
             return None
-        if getattr(self.base_tree, 'path2id', None) is not None:
-            return self.base_tree.path2id(old_path)
-        else:
-            return self.base_tree.inventory.path2id(old_path)
+        return self.base_tree.path2id(old_path)
 
     def id2path(self, file_id):
         """Return the new path in the target tree of the file with id file_id"""
@@ -656,12 +656,19 @@ class BundleTree(Tree):
             return self._kinds[file_id]
         return self.base_tree.inventory[file_id].kind
 
+    def get_file_revision(self, file_id):
+        path = self.id2path(file_id)
+        if path in self._last_changed:
+            return self._last_changed[path]
+        else:
+            return self.base_tree.get_file_revision(file_id)
+
     def is_executable(self, file_id):
         path = self.id2path(file_id)
         if path in self._executable:
             return self._executable[path]
         else:
-            return self.base_tree.inventory[file_id].executable
+            return self.base_tree.is_executable(file_id)
 
     def get_last_changed(self, file_id):
         path = self.id2path(file_id)
@@ -694,7 +701,7 @@ class BundleTree(Tree):
         This need to be called before ever accessing self.inventory
         """
         from os.path import dirname, basename
-        base_inv = self.base_tree.inventory
+        base_inv = self.base_tree.root_inventory
         inv = Inventory(None, self.revision_id)
 
         def add_entry(file_id):

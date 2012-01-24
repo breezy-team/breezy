@@ -234,8 +234,10 @@ class TestInterRepository(TestCaseWithInterRepository):
         (stacked_left_tree,
          stacked_right_tree) = stacked_branch.repository.revision_trees(
             ['left', 'right'])
-        self.assertEqual(left_tree.inventory, stacked_left_tree.inventory)
-        self.assertEqual(right_tree.inventory, stacked_right_tree.inventory)
+        self.assertEqual(
+            left_tree.root_inventory, stacked_left_tree.root_inventory)
+        self.assertEqual(
+            right_tree.root_inventory, stacked_right_tree.root_inventory)
 
         # Finally, it's not enough to see that the basis inventories are
         # present.  The texts introduced in merge (and only those) should be

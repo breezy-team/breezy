@@ -1966,7 +1966,7 @@ class InventoryWorkingTree(WorkingTree,
                 # parent tree from the repository.
                 self._cache_basis_inventory(leftmost_parent_id)
             else:
-                inv = leftmost_parent_tree.inventory
+                inv = leftmost_parent_tree.root_inventory
                 xml = self._create_basis_xml_from_inventory(
                                         leftmost_parent_id, inv)
                 self._write_basis_inventory(xml)
@@ -2262,15 +2262,17 @@ class InventoryWorkingTree(WorkingTree,
                 parent_tree = self.branch.repository.revision_tree(parent_id)
             parent_tree.lock_read()
             try:
-                if not parent_tree.has_id(file_id):
+                try:
+                    kind = parent_tree.kind(file_id)
+                except errors.NoSuchId:
                     continue
-                ie = parent_tree.inventory[file_id]
-                if ie.kind != 'file':
+                if kind != 'file':
                     # Note: this is slightly unnecessary, because symlinks and
                     # directories have a "text" which is the empty text, and we
                     # know that won't mess up annotations. But it seems cleaner
                     continue
-                parent_text_key = (file_id, ie.revision)
+                parent_text_key = (
+                    file_id, parent_tree.get_file_revision(file_id))
                 if parent_text_key not in maybe_file_parent_keys:
                     maybe_file_parent_keys.append(parent_text_key)
             finally:

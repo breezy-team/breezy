@@ -205,11 +205,13 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
                         rev.timezone, rev.committer, rev.properties,
                         new_revid)
                 try:
-                    for path, ie in tree.inventory.iter_entries():
+                    parent_tree = self.target.repository.revision_tree(
+                        parent_revid)
+                    for path, ie in tree.iter_entries_by_dir():
                         new_ie = ie.copy()
                         new_ie.revision = None
                         builder.record_entry_contents(new_ie, 
-                            [self.target.repository.revision_tree(parent_revid).inventory],
+                            [parent_tree.root_inventory],
                             path, tree, 
                             (ie.kind, ie.text_size, ie.executable, ie.text_sha1))
                     builder.finish_inventory()

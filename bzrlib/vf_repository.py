@@ -1648,7 +1648,7 @@ class VersionedFileRepository(Repository):
                             try:
                                 inv = inventory_cache[parent_id]
                             except KeyError:
-                                inv = self.revision_tree(parent_id).inventory
+                                inv = self.revision_tree(parent_id).root_inventory
                                 inventory_cache[parent_id] = inv
                             try:
                                 parent_entry = inv[text_key[0]]

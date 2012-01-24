@@ -798,7 +798,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
 
     def test_set_state_from_scratch_identical_parent(self):
         tree1, revid1 = self.make_minimal_tree()
-        inv = tree1.inventory
+        inv = tree1.root_inventory
         root_id = inv.path2id('')
         rev_tree1 = tree1.branch.repository.revision_tree(revid1)
         d_entry = ('d', '', 0, False, dirstate.DirState.NULLSTAT)

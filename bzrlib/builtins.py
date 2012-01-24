@@ -849,20 +849,20 @@ class cmd_inventory(Command):
             tree = work_tree
             extra_trees = []
 
+        self.add_cleanup(tree.lock_read().unlock)
         if file_list is not None:
             file_ids = tree.paths2ids(file_list, trees=extra_trees,
                                       require_versioned=True)
             # find_ids_across_trees may include some paths that don't
             # exist in 'tree'.
-            entries = sorted(
-                (tree.id2path(file_id), tree.inventory[file_id])
-                for file_id in file_ids if tree.has_id(file_id))
+            entries = tree.iter_entries_by_dir(specific_file_ids=file_ids)
         else:
-            entries = tree.root_inventory.entries()
+            entries = tree.iter_entries_by_dir()
 
-        self.cleanup_now()
-        for path, entry in entries:
+        for path, entry in sorted(entries):
             if kind and kind != entry.kind:
+                continue
+            if path == "":
                 continue
             if show_ids:
                 self.outf.write('%-50s %s\n' % (path, entry.file_id))

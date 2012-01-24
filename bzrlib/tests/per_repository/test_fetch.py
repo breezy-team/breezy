@@ -101,7 +101,9 @@ class TestFetchSameRepository(TestCaseWithRepository):
                               % b_bzrdir.transport)
         tree_b.commit('no change', rev_id='rev2')
         rev2_tree = knit3_repo.revision_tree('rev2')
-        self.assertEqual('rev1', rev2_tree.inventory.root.revision)
+        self.assertEqual(
+            'rev1',
+            rev2_tree.get_file_revision(rev2_tree.get_root_id()))
 
     def do_test_fetch_to_rich_root_sets_parents_correctly(self, result,
         snapshots, root_id=ROOT_ID, allow_lefthand_ghost=False):
