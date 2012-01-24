@@ -1,8 +1,10 @@
-bzr (2.5.0~bzr6457-1) UNRELEASED; urgency=low
+bzr (2.5.0~bzr6458-1) UNRELEASED; urgency=low
 
   * New upstream snapshot.
+   + urllib HTTPS backend now verifies SSL certificates. Closes: #558460,
+     LP: #651161
 
- -- Jelmer Vernooij <jelmer@debian.org>  Mon, 23 Jan 2012 23:46:42 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 24 Jan 2012 23:43:36 +0100
 
 bzr (2.5.0~beta5-3) unstable; urgency=low
 
