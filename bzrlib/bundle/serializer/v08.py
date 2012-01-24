@@ -324,15 +324,14 @@ class BundleSerializerV08(BundleSerializer):
                           path, path)
 
         for path, file_id, kind in delta.unchanged:
-            ie = new_tree.inventory[file_id]
-            new_rev = getattr(ie, 'revision', None)
+            new_rev = new_tree.get_file_revision(file_id)
             if new_rev is None:
                 continue
-            old_rev = getattr(old_tree.inventory[ie.file_id], 'revision', None)
+            old_rev = old_tree.get_file_revision(file_id)
             if new_rev != old_rev:
-                action = Action('modified', [ie.kind,
-                                             new_tree.id2path(ie.file_id)])
-                action.add_utf8_property('last-changed', ie.revision)
+                action = Action('modified', [new_tree.kind(file_id),
+                                             new_tree.id2path(file_id)])
+                action.add_utf8_property('last-changed', new_rev)
                 action.write(self.to_file)
 
 
