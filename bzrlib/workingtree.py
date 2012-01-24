@@ -1946,10 +1946,6 @@ class InventoryWorkingTree(WorkingTree,
             if entry.parent_id == orig_root_id:
                 entry.parent_id = inv.root.file_id
 
-    def all_file_ids(self):
-        """See Tree.iter_all_file_ids"""
-        return set(self.inventory)
-
     @needs_tree_write_lock
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees."""
@@ -2084,7 +2080,7 @@ class InventoryWorkingTree(WorkingTree,
         return osutils.lexists(self.abspath(path))
 
     def has_or_had_id(self, file_id):
-        if file_id == self.inventory.root.file_id:
+        if file_id == self.root_inventory.root.file_id:
             return True
         inv, inv_file_id = self._unpack_file_id(file_id)
         return inv.has_id(inv_file_id)
@@ -2222,7 +2218,8 @@ class InventoryWorkingTree(WorkingTree,
         # should probably put it back with the previous ID.
         # the read and write working inventory should not occur in this
         # function - they should be part of lock_write and unlock.
-        inv = self.inventory
+        # FIXME: nested trees
+        inv = self.root_inventory
         for f, file_id, kind in zip(files, ids, kinds):
             if file_id is None:
                 inv.add_path(f, kind=kind)
@@ -2758,7 +2755,8 @@ class InventoryWorkingTree(WorkingTree,
 
         Also does basic plausability tests.
         """
-        inv = self.inventory
+        # FIXME: Handling of nested trees
+        inv = self.root_inventory
 
         for rename_entry in rename_entries:
             # store to local variables for easier reference
@@ -2822,7 +2820,6 @@ class InventoryWorkingTree(WorkingTree,
         Depending on the value of the flag 'only_change_inv', the
         file will be moved on the file system or not.
         """
-        inv = self.inventory
         moved = []
 
         for entry in rename_entries:
@@ -2850,7 +2847,7 @@ class InventoryWorkingTree(WorkingTree,
                         " Error message is: %s" % e)
 
     def _move_entry(self, entry):
-        inv = self.inventory
+        inv = self.root_inventory
         from_rel_abs = self.abspath(entry.from_rel)
         to_rel_abs = self.abspath(entry.to_rel)
         if from_rel_abs == to_rel_abs:
@@ -2897,7 +2894,8 @@ class InventoryWorkingTree(WorkingTree,
 
     def stored_kind(self, file_id):
         """See Tree.stored_kind"""
-        return self.inventory[file_id].kind
+        inv, inv_file_id = self._unpack_file_id(file_id)
+        return inv[inv_file_id].kind
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
@@ -2910,7 +2908,7 @@ class InventoryWorkingTree(WorkingTree,
         This is the same order used by 'osutils.walkdirs'.
         """
         ## TODO: Work from given directory downwards
-        for path, dir_entry in self.inventory.directories():
+        for path, dir_entry in self.root_inventory.directories():
             # mutter("search for unknowns in %r", path)
             dirabs = self.abspath(path)
             if not isdir(dirabs):
@@ -2953,8 +2951,7 @@ class InventoryWorkingTree(WorkingTree,
         """
         _directory = 'directory'
         # get the root in the inventory
-        inv = self.inventory
-        top_id = inv.path2id(prefix)
+        inv, top_id = self._path2inv_file_id(prefix)
         if top_id is None:
             pending = []
         else:

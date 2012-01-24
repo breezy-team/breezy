@@ -858,7 +858,7 @@ class cmd_inventory(Command):
                 (tree.id2path(file_id), tree.inventory[file_id])
                 for file_id in file_ids if tree.has_id(file_id))
         else:
-            entries = tree.inventory.entries()
+            entries = tree.root_inventory.entries()
 
         self.cleanup_now()
         for path, entry in entries:
@@ -2323,14 +2323,13 @@ class cmd_added(Command):
         self.add_cleanup(wt.lock_read().unlock)
         basis = wt.basis_tree()
         self.add_cleanup(basis.lock_read().unlock)
-        basis_inv = basis.inventory
-        inv = wt.inventory
-        for file_id in inv:
-            if basis_inv.has_id(file_id):
+        root_id = wt.get_root_id()
+        for file_id in wt.all_file_ids():
+            if basis.has_id(file_id):
                 continue
-            if inv.is_root(file_id) and len(basis_inv) == 0:
+            if root_id == file_id:
                 continue
-            path = inv.id2path(file_id)
+            path = wt.id2path(file_id)
             if not os.access(osutils.pathjoin(wt.basedir, path), os.F_OK):
                 continue
             if null:

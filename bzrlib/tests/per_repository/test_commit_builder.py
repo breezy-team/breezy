@@ -49,7 +49,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         if builder.record_root_entry is True:
             tree.lock_read()
             try:
-                ie = tree.inventory.root
+                ie = tree.root_inventory.root
             finally:
                 tree.unlock()
             parent_tree = tree.branch.repository.revision_tree(

@@ -131,7 +131,8 @@ class AddFromBaseAction(AddAction):
         """
 
         if self.base_tree.has_id(parent_ie.file_id):
-            base_parent_ie = self.base_tree.inventory[parent_ie.file_id]
+            # FIXME: Handle nested trees
+            base_parent_ie = self.base_tree.root_inventory[parent_ie.file_id]
             base_child_ie = base_parent_ie.children.get(
                 osutils.basename(path))
             if base_child_ie is not None:

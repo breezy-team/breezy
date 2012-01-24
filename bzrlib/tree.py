@@ -768,6 +768,7 @@ class InventoryTree(Tree):
             yield cur_path
         # all done.
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def _get_inventory(self):
         return self._inventory
 
@@ -781,14 +782,37 @@ class InventoryTree(Tree):
             file_id = file_id[0]
         return self.inventory, file_id
 
+    def _get_root_inventory(self):
+        return self._inventory
+
+    root_inventory = property(_get_root_inventory,
+        doc="Root inventory of this tree")
+
+    def _unpack_file_id(self, file_id):
+        """Find the inventory and inventory file id for a tree file id.
+
+        :param file_id: The tree file id, as bytestring or tuple
+        :return: Inventory and inventory file id
+        """
+        if isinstance(file_id, tuple):
+            if len(file_id) != 0:
+                raise ValueError("nested trees not yet supported: %r" % file_id)
+            file_id = file_id[0]
+        return self.root_inventory, file_id
+
     @needs_read_lock
     def path2id(self, path):
         """Return the id for path in this tree."""
         return self._path2inv_file_id(path)[1]
 
     def _path2inv_file_id(self, path):
-        # for now
-        return self.inventory, self._inventory.path2id(path)
+        """Lookup a inventory and inventory file id by path.
+
+        :param path: Path to look up
+        :return: tuple with inventory and inventory file id
+        """
+        # FIXME: Support nested trees
+        return self.root_inventory, self.root_inventory.path2id(path)
 
     def id2path(self, file_id):
         """Return the path for a file id.
@@ -807,11 +831,12 @@ class InventoryTree(Tree):
         return inventory.has_id(file_id)
 
     def all_file_ids(self):
-        return set(self.inventory) # for now
+        return set(
+            [entry.file_id for path, entry in self.iter_entries_by_dir()])
 
     @deprecated_method(deprecated_in((2, 4, 0)))
     def __iter__(self):
-        return iter(self.inventory) # for now
+        return iter(self.all_file_ids())
 
     def filter_unversioned_files(self, paths):
         """Filter out paths that are versioned.
@@ -821,8 +846,7 @@ class InventoryTree(Tree):
         # NB: we specifically *don't* call self.has_filename, because for
         # WorkingTrees that can indicate files that exist on disk but that
         # are not versioned.
-        pred = self.inventory.has_filename # for now
-        return set((p for p in paths if not pred(p)))
+        return set((p for p in paths if self.path2id(p) is not None))
 
     @needs_read_lock
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
@@ -843,10 +867,12 @@ class InventoryTree(Tree):
             inventory_file_ids = []
             for tree_file_id in specific_file_ids:
                 inventory, inv_file_id = self._unpack_file_id(tree_file_id)
-                if not inventory is self.inventory: # for now
-                    raise AssertionError("%r != %r" % (inventory, self.inventory))
+                if not inventory is self.root_inventory: # for now
+                    raise AssertionError("%r != %r" % (
+                        inventory, self.root_inventory))
                 inventory_file_ids.append(inv_file_id)
-        return self.inventory.iter_entries_by_dir(
+        # FIXME: Support nested trees
+        return self.root_inventory.iter_entries_by_dir(
             specific_file_ids=inventory_file_ids, yield_parents=yield_parents)
 
     @deprecated_method(deprecated_in((2, 5, 0)))

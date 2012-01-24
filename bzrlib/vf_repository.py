@@ -604,16 +604,17 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         _mod_revision.NULL_REVISION))
         # The basis inventory from a repository 
         if revtrees:
-            basis_inv = revtrees[0].inventory
+            basis_tree = revtrees[0]
         else:
-            basis_inv = self.repository.revision_tree(
-                _mod_revision.NULL_REVISION).inventory
+            basis_tree = self.repository.revision_tree(
+                _mod_revision.NULL_REVISION)
+        basis_inv = basis_tree.root_inventory
         if len(self.parents) > 0:
             if basis_revision_id != self.parents[0] and not ghost_basis:
                 raise Exception(
                     "arbitrary basis parents not yet supported with merges")
             for revtree in revtrees[1:]:
-                for change in revtree.inventory._make_delta(basis_inv):
+                for change in revtree.root_inventory._make_delta(basis_inv):
                     if change[1] is None:
                         # Not present in this parent.
                         continue
@@ -1021,7 +1022,7 @@ class VersionedFileRepository(Repository):
             # return a new inventory, but as there is no revision tree cache in
             # repository this is safe for now - RBC 20081013
             if basis_inv is None:
-                basis_inv = basis_tree.inventory
+                basis_inv = basis_tree.root_inventory
             basis_inv.apply_delta(delta)
             basis_inv.revision_id = new_revision_id
             return (self.add_inventory(new_revision_id, basis_inv, parents),

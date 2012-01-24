@@ -68,6 +68,10 @@ from bzrlib.osutils import (
     realpath,
     safe_unicode,
     )
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
 from bzrlib.transport.local import LocalTransport
 from bzrlib.tree import (
     InterTree,
@@ -415,7 +419,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 return link_or_sha1
         return None
 
-    def _get_inventory(self):
+    def _get_root_inventory(self):
         """Get the inventory for the tree. This is only valid within a lock."""
         if 'evil' in debug.debug_flags:
             trace.mutter_callsite(2,
@@ -426,8 +430,15 @@ class DirStateWorkingTree(InventoryWorkingTree):
         self._generate_inventory()
         return self._inventory
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
+    def _get_inventory(self):
+        return self.root_inventory
+
     inventory = property(_get_inventory,
                          doc="Inventory of this Tree")
+
+    root_inventory = property(_get_root_inventory,
+        "Root inventory of this tree")
 
     @needs_read_lock
     def get_parent_ids(self):
@@ -1150,7 +1161,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 # _make_delta if we can't get the RevisionTree
                 pass
             else:
-                delta = rev_tree.inventory._make_delta(basis_tree.inventory)
+                delta = rev_tree.root_inventory._make_delta(
+                    basis_tree.root_inventory)
                 dirstate.update_basis_by_delta(delta, rev_id)
                 updated = True
         if not updated:
