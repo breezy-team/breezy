@@ -212,10 +212,12 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         rev1 = subtree.commit('commit in subdir')
         rev1_tree = subtree.basis_tree()
         rev1_tree.lock_read()
+        rev1_tree.root_inventory
         self.addCleanup(rev1_tree.unlock)
         rev2 = subtree.commit('second commit in subdir', allow_pointless=True)
         rev2_tree = subtree.basis_tree()
         rev2_tree.lock_read()
+        rev2_tree.root_inventory
         self.addCleanup(rev2_tree.unlock)
 
         tree.branch.pull(subtree.branch)

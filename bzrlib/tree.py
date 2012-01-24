@@ -864,11 +864,9 @@ class InventoryTree(Tree):
                     raise AssertionError("%r != %r" % (
                         inventory, self.root_inventory))
                 inventory_file_ids.append(inv_file_id)
-        for (path, entry) in return self.root_inventory.iter_entries_by_dir(
-            specific_file_ids=inventory_file_ids, yield_parents=yield_parents):
-            if entry.kind == 'tree-reference':
-                raise NotImplementedError(entry)
-            yield path, entry
+        # FIXME: Handle nested trees
+        return self.root_inventory.iter_entries_by_dir(
+            specific_file_ids=inventory_file_ids, yield_parents=yield_parents)
 
     @deprecated_method(deprecated_in((2, 5, 0)))
     def get_file_by_path(self, path):
@@ -1033,13 +1031,9 @@ class InterTree(InterObject):
             if (self.source.get_symlink_target(file_id) !=
                 self.target.get_symlink_target(file_id)):
                 changed_content = True
-            # XXX: Yes, the indentation below is wrong. But fixing it broke
-            # test_merge.TestMergerEntriesLCAOnDisk.
-            # test_nested_tree_subtree_renamed_and_modified. We'll wait for
-            # the fix from bzr.dev -- vila 2009026
-            elif source_kind == 'tree-reference':
-                if (self.source.get_reference_revision(file_id, source_path)
-                    != self.target.get_reference_revision(file_id, target_path)):
+        elif source_kind == 'tree-reference':
+            if (self.source.get_reference_revision(file_id, source_path)
+                != self.target.get_reference_revision(file_id, target_path)):
                     changed_content = True
         parent = (source_parent, target_parent)
         name = (source_name, target_name)
