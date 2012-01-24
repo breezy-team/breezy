@@ -365,7 +365,7 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         result_basis = tree.basis_tree()
         result_basis.lock_read()
         try:
-            self.assertEqual(expected_inventory, result_basis.inventory)
+            self.assertEqual(expected_inventory, result_basis.root_inventory)
         finally:
             result_basis.unlock()
 

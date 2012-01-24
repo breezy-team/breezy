@@ -2527,7 +2527,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
         basis_tree = self.create_tree_from_shape('basis', basis)
         target_tree = self.create_tree_from_shape('target', target)
         state = self.create_empty_dirstate()
-        state.set_state_from_scratch(active_tree.inventory,
+        state.set_state_from_scratch(active_tree.root_inventory,
             [('basis', basis_tree)], [])
         delta = target_tree.inventory._make_delta(basis_tree.inventory)
         state.update_basis_by_delta(delta, 'target')

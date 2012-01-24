@@ -75,9 +75,13 @@ class MockTree(object):
         self.root = InventoryDirectory(ROOT_ID, '', None)
 
     inventory = property(lambda x:x)
+    root_inventory = property(lambda x:x)
 
     def all_file_ids(self):
         return set(self.paths.keys())
+
+    def is_executable(self, file_id):
+        return False
 
     def __getitem__(self, file_id):
         if file_id == self.root.file_id:

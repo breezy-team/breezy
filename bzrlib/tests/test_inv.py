@@ -127,7 +127,7 @@ def apply_inventory_WT(self, basis, delta, invalid_delta=True):
     self.addCleanup(tree.unlock)
     if not invalid_delta:
         tree._validate()
-    return tree.inventory
+    return tree.root_inventory
 
 
 def _create_repo_revisions(repo, basis, delta, invalid_delta):

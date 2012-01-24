@@ -2905,7 +2905,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
                 kind = entry.kind
                 texts_possibly_new_in_tree.add((file_id, entry.revision))
             for basis_id, basis_tree in possible_trees:
-                basis_inv = basis_tree.inventory
+                basis_inv = basis_tree.root_inventory
                 for file_key in list(texts_possibly_new_in_tree):
                     file_id, file_revision = file_key
                     try:

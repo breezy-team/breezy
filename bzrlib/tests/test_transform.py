@@ -1531,8 +1531,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertPathExists("foo/bar")
         wt.lock_read()
         try:
-            self.assertEqual(wt.inventory.get_file_kind(wt.path2id("foo")),
-                    "directory")
+            self.assertEqual(wt.kind(wt.path2id("foo")), "directory")
         finally:
             wt.unlock()
         wt.commit("two")
@@ -1554,8 +1553,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertPathExists("foo")
         wt.lock_read()
         self.addCleanup(wt.unlock)
-        self.assertEqual(wt.inventory.get_file_kind(wt.path2id("foo")),
-                "symlink")
+        self.assertEqual(wt.kind(wt.path2id("foo")), "symlink")
 
     def test_dir_to_file(self):
         wt = self.make_branch_and_tree('.')
@@ -1573,8 +1571,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertPathExists("foo")
         wt.lock_read()
         self.addCleanup(wt.unlock)
-        self.assertEqual(wt.inventory.get_file_kind(wt.path2id("foo")),
-                "file")
+        self.assertEqual(wt.kind(wt.path2id("foo")), "file")
 
     def test_dir_to_hardlink(self):
         self.requireFeature(HardlinkFeature)
@@ -1595,8 +1592,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertPathExists("baz")
         wt.lock_read()
         self.addCleanup(wt.unlock)
-        self.assertEqual(wt.inventory.get_file_kind(wt.path2id("foo")),
-                "file")
+        self.assertEqual(wt.kind(wt.path2id("foo")), "file")
 
     def test_no_final_path(self):
         transform, root = self.get_transform()

@@ -1993,14 +1993,15 @@ class DirStateRevisionTree(InventoryTree):
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         # We use a standard implementation, because DirStateRevisionTree is
         # dealing with one of the parents of the current state
-        inv = self._get_inventory()
         if from_dir is None:
+            inv = self.root_inventory
             from_dir_id = None
         else:
-            from_dir_id = inv.path2id(from_dir)
+            inv, from_dir_id = inv._path2inv_file_id(from_dir)
             if from_dir_id is None:
                 # Directory not versioned
                 return
+        # FIXME: Support nested trees
         entries = inv.iter_entries(from_dir=from_dir_id, recursive=recursive)
         if inv.root is not None and not include_root and from_dir is None:
             entries.next()
@@ -2056,7 +2057,7 @@ class DirStateRevisionTree(InventoryTree):
         # So for now, we just build up the parent inventory, and extract
         # it the same way RevisionTree does.
         _directory = 'directory'
-        inv = self._get_inventory()
+        inv = self._get_root_inventory()
         top_id = inv.path2id(prefix)
         if top_id is None:
             pending = []

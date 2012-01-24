@@ -687,7 +687,7 @@ class BundleTree(Tree):
         if new_path not in self.patches:
             # If the entry does not have a patch, then the
             # contents must be the same as in the base_tree
-            ie = self.base_tree.inventory[file_id]
+            ie = self.base_tree.root_inventory[file_id]
             if ie.text_size is None:
                 return ie.text_size, ie.text_sha1
             return int(ie.text_size), ie.text_sha1
