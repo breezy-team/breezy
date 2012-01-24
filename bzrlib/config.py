@@ -73,7 +73,7 @@ up=pull
 """
 
 from __future__ import absolute_import
-
+from cStringIO import StringIO
 import os
 import sys
 
@@ -83,7 +83,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import fnmatch
 import re
-from cStringIO import StringIO
 
 from bzrlib import (
     atomicfile,
@@ -2866,6 +2865,13 @@ by the ``submit:`` revision spec.
 option_registry.register(
     Option('submit_to',
            help='''Where submissions from this branch are mailed to.'''))
+
+option_registry.register_lazy('ssl.ca_certs',
+    'bzrlib.transport.http._urllib2_wrappers', 'opt_ssl_ca_certs')
+
+option_registry.register_lazy('ssl.cert_reqs',
+    'bzrlib.transport.http._urllib2_wrappers', 'opt_ssl_cert_reqs')
+
 
 
 class Section(object):

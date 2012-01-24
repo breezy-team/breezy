@@ -60,6 +60,7 @@ from bzrlib.osutils import (
     pathjoin,
 )
 from bzrlib.merge import Merge3Merger, Merger
+from bzrlib.mutabletree import MutableTree
 from bzrlib.tests import (
     features,
     TestCaseInTempDir,
@@ -3713,3 +3714,40 @@ class TestOrphan(tests.TestCaseWithTransport):
                          remaining_conflicts.pop())
         self.assertLength(1, warnings)
         self.assertStartsWith(warnings[0], 'donttouchmypreciouuus')
+
+
+class TestTransformHooks(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestTransformHooks, self).setUp()
+        self.wt = self.make_branch_and_tree('.')
+        os.chdir('..')
+
+    def get_transform(self):
+        transform = TreeTransform(self.wt)
+        self.addCleanup(transform.finalize)
+        return transform, transform.root
+
+    def test_pre_commit_hooks(self):
+        calls = []
+        def record_pre_transform(tree, tt):
+            calls.append((tree, tt))
+        MutableTree.hooks.install_named_hook('pre_transform',
+            record_pre_transform, "Pre transform")
+        transform, root = self.get_transform()
+        old_root_id = transform.tree_file_id(root)
+        transform.apply()
+        self.assertEqual(old_root_id, self.wt.get_root_id())
+        self.assertEquals([(self.wt, transform)], calls)
+
+    def test_post_commit_hooks(self):
+        calls = []
+        def record_post_transform(tree, tt):
+            calls.append((tree, tt))
+        MutableTree.hooks.install_named_hook('post_transform',
+            record_post_transform, "Post transform")
+        transform, root = self.get_transform()
+        old_root_id = transform.tree_file_id(root)
+        transform.apply()
+        self.assertEqual(old_root_id, self.wt.get_root_id())
+        self.assertEquals([(self.wt, transform)], calls)

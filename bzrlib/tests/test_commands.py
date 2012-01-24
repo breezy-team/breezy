@@ -25,6 +25,7 @@ from bzrlib import (
     errors,
     option,
     tests,
+    trace,
     )
 from bzrlib.commands import display_command
 from bzrlib.tests import TestSkipped
@@ -370,3 +371,81 @@ class TestListCommandHook(tests.TestCase):
         cmds = list(commands.all_command_names())
         self.assertEqual(['called'], hook_calls)
         self.assertSubset(['foo', 'bar'], cmds)
+
+class TestPreAndPostCommandHooks(tests.TestCase):
+    class TestError(StandardError):
+        __doc__ = """A test exception."""
+
+    def test_pre_and_post_hooks(self):
+        hook_calls = []
+
+        def pre_command(cmd):
+            self.assertEqual([], hook_calls)
+            hook_calls.append('pre')
+
+        def post_command(cmd):
+            self.assertEqual(['pre', 'run'], hook_calls)
+            hook_calls.append('post')
+
+        def run(cmd):
+            self.assertEqual(['pre'], hook_calls)
+            hook_calls.append('run')
+
+        self.overrideAttr(builtins.cmd_rocks, 'run', run)
+        commands.install_bzr_command_hooks()
+        commands.Command.hooks.install_named_hook(
+            "pre_command", pre_command, None)
+        commands.Command.hooks.install_named_hook(
+            "post_command", post_command, None)
+
+        self.assertEqual([], hook_calls)
+        self.run_bzr(['rocks', '-Oxx=12', '-Oyy=foo'])
+        self.assertEqual(['pre', 'run', 'post'], hook_calls)
+
+    def test_post_hook_provided_exception(self):
+        hook_calls = []
+
+        def post_command(cmd):
+            hook_calls.append('post')
+
+        def run(cmd):
+            hook_calls.append('run')
+            raise self.TestError()
+
+        self.overrideAttr(builtins.cmd_rocks, 'run', run)
+        commands.install_bzr_command_hooks()
+        commands.Command.hooks.install_named_hook(
+            "post_command", post_command, None)
+
+        self.assertEqual([], hook_calls)
+        self.assertRaises(self.TestError, commands.run_bzr, [u'rocks'])
+        self.assertEqual(['run', 'post'], hook_calls)
+
+    def test_pre_command_error(self):
+        """Ensure an BzrCommandError in pre_command aborts the command"""
+
+        hook_calls = []
+
+        def pre_command(cmd):
+            hook_calls.append('pre')
+            # verify that all subclasses of BzrCommandError caught too
+            raise errors.BzrOptionError()
+
+        def post_command(cmd, e):
+            self.fail('post_command should not be called')
+
+        def run(cmd):
+            self.fail('command should not be called')
+
+        self.overrideAttr(builtins.cmd_rocks, 'run', run)
+        commands.install_bzr_command_hooks()
+        commands.Command.hooks.install_named_hook(
+            "pre_command", pre_command, None)
+        commands.Command.hooks.install_named_hook(
+            "post_command", post_command, None)
+
+        self.assertEqual([], hook_calls)
+        self.assertRaises(errors.BzrCommandError,
+                          commands.run_bzr, [u'rocks'])
+        self.assertEqual(['pre'], hook_calls)
+

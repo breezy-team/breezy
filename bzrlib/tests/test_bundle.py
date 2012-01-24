@@ -80,6 +80,9 @@ class MockTree(object):
     def get_root_id(self):
         return self.root.file_id
 
+    def get_root_id(self):
+        return self.root.file_id
+
     def all_file_ids(self):
         return set(self.paths.keys())
 

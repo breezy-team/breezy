@@ -1,0 +1,70 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 2.6b1
+#########
+
+:2.6b1: NOT RELEASED YET
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Bazaar.
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+ * Access to HTTPS URLs now uses the urrllib implementation by default.
+   For the old pycurl-based implementation, specify ``https+pycurl://`` as
+   the URL scheme when accessing a HTTPS location.
+   (Jelmer Vernooij, #125055)
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+* File ids in the ``Tree`` API can now be bytestring as previously,
+  or tuples of bytestrings.
+  (Jelmer Vernooij)
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
+..
+   vim: tw=74 ft=rst ff=unix

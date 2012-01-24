@@ -788,7 +788,7 @@ class InventoryTree(Tree):
         :return: Inventory and inventory file id
         """
         if isinstance(file_id, tuple):
-            if len(file_id) != 0:
+            if len(file_id) != 1:
                 raise ValueError("nested trees not yet supported: %r" % file_id)
             file_id = file_id[0]
         return self.root_inventory, file_id
@@ -839,7 +839,6 @@ class InventoryTree(Tree):
         # NB: we specifically *don't* call self.has_filename, because for
         # WorkingTrees that can indicate files that exist on disk but that
         # are not versioned.
-        # FIXME: Support nested trees
         return set((p for p in paths if self.path2id(p) is None))
 
     @needs_read_lock
@@ -865,9 +864,11 @@ class InventoryTree(Tree):
                     raise AssertionError("%r != %r" % (
                         inventory, self.root_inventory))
                 inventory_file_ids.append(inv_file_id)
-        # FIXME: Support nested trees
-        return self.root_inventory.iter_entries_by_dir(
-            specific_file_ids=inventory_file_ids, yield_parents=yield_parents)
+        for (path, entry) in return self.root_inventory.iter_entries_by_dir(
+            specific_file_ids=inventory_file_ids, yield_parents=yield_parents):
+            if entry.kind == 'tree-reference':
+                raise NotImplementedError(entry)
+            yield path, entry
 
     @deprecated_method(deprecated_in((2, 5, 0)))
     def get_file_by_path(self, path):
