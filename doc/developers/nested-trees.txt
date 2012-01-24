@@ -2,7 +2,7 @@
 Nested Trees
 ************
 
-:status: 2009-12-23: Draft spec; needs consideration of foreign branches
+:status: 2012-12-24: Draft spec
 
 .. sectnum::
 
@@ -21,7 +21,11 @@ Principles
 - A repository that holds a revision R should be able to reconstruct the
   whole contents of that revision, including any nested trees.  Corolary:
   if I fetch that revision, even into a branch that has no working tree, it
-  should bring across any referenced revisions.
+  should bring across any referenced revisions, or (implicitly) add fallback
+  repositories.
+
+- The introduction or possible support for nested trees should not
+  have an impact on performance.
 
 Core Concepts
 *************
@@ -35,16 +39,13 @@ treat as part of the outer tree.
 
 **Tree reference** A directory in a containing tree which contains a subtree.
 
-**Composite tree** A tree which behaves as a single tree, but is actually made
-up of several trees.
-
 
 Basic design approach
 *********************
 (see "Design decisions" for extended rationale)
-By default, commands in containing trees should behave as though the subtrees
-were plain directories.  By default, commands in subtrees should not affect the
-containing trees.
+By default, APIs and commands for containing trees should behave as though the
+subtrees were plain directories.  By default, commands in subtrees should not
+affect the containing trees.
 
 Downwards recursion
 ~~~~~~~~~~~~~~~~~~~
@@ -69,8 +70,8 @@ committing in a subtree.  Therefore, operations should not recurse upwards by
 default.  However, some users do want to have upwards recursion, so it should
 be provided as an option.
 
-Modelling nested trees as a composite tree.
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Modelling nested trees as a composite tree
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The idea that a set of nested trees behaves like a single, larger tree seems
 relatively easy to grasp.  Both for users and for developers, it provides a
 clear expectation for the behaviour of nested trees.  There are no obvious
@@ -194,38 +195,6 @@ to another Tree. Further, during ``iter_changes`` it is possible to have
 subtrees that were not encountered because they were unchanged between the
 trees (as ``iter_changes`` does not always walk the entire tree).
 
-Composite Locking
-~~~~~~~~~~~~~~~~~
-Locking a NestedTrees should lock all subtrees, to reduce the potential for new
-failure modes.  This suggests the need for an on-disk index of subtrees.
-
-CompositeTree
-~~~~~~~~~~~~~
-For some operations such as diff, status and export, knowing which directories
-are tree references is not essential.  They can be satisfied by a Tree
-implementation that papers over tree-references, making the set of nested trees
-look like a single big tree with directories instead of tree-references.  This
-implementation strategy has a limited scope, and probably a limited shelf life,
-but provides a fast way of getting coverage of several important commands.
-
-Scope
-*****
-Ultimately, all commands should support nested trees.  Initial work is focused
-on:
-
-- checkout
-- branch
-- push
-- pull
-- merge
-- revert
-- mv
-- status
-- diff
-- commit
-- export
-
-
 Data storage
 ************
 
@@ -262,11 +231,9 @@ tree-references.
 Commands
 ********
 
-The following new commands are introduced:
+The following new options are introduced:
 
-``split`` Convert a single working tree into two trees, one inside the other.
-
-``join --nested`` Cause an inner tree to be treated as a subtree.  The outer
+``join --reference`` Cause an inner tree to be treated as a subtree.  The outer
 tree's branch must be in the new "subbranches" format.  The inner tree's branch
 will be cloned into the "subbranches" branch, and the local branch will be
 replaced with a "subbranch-reference".  Finally, a tree-reference will be
@@ -275,84 +242,11 @@ added to the containing tree.
 API Changes
 ***********
 
-Introduce NestedTrees
-~~~~~~~~~~~~~~~~~~~~~
-New class to provide services for sets of nested trees, including coordinating
-locking, caching Tree instances, and mapping file-ids and paths to the
-appropriate Tree and Branch.  Includes::
-
- NestedTrees.lock_read
-
- NestedTrees.lock_write
-
- NestedTrees.unlock
-
- NestedTrees.paths_info(self, paths)
- - return a list of tuples of Tree, relpaths, where relpaths is a list of
-   relative paths, and Tree is the subtree that contains them.
-
- NestedTrees.get_tree_and_treepath
- - return the tree and relative path within that tree of a file-id
-
- NestedTrees.apply_inventory_delta
- - splits an inventory delta into the affected subtrees and applies it to them
-   all
-
- NestedTrees.iter_changes
- - provide iter_changes over a set of nested subtrees.  Emits tree-references
-   in preference to tree roots.
-
-
-Introduce NestedTreeTransform
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-New class to permit smooth recursion of TreeTransform operations like merge and
-revert even when the subtree boundaries differ.  API essentially the same as
-TreeTransform, except that tree-references can have children, as directories
-do.
-
-Introduce CompositeTree
+Tree file ids as tuples
 ~~~~~~~~~~~~~~~~~~~~~~~
-New class to provide easy transition of superficial commands like diff, status,
-export.  API is a subset of Tree API.  Additional methods::
 
- CompositeTree.maybe_composite
-
-  - return a CompositeTree if the input tree has subtrees, otherwise return the
-    input Tree.  This restricts the scope of any regressions to Trees that
-    are actually using the features.
-
-New Tree methods
-~~~~~~~~~~~~~~~~
-
- get_nested_tree_and_branch(file_id, branch)
-
- - Return a Tree and Branch for the tree-reference with the specified file_id
-
-Tree changes
-~~~~~~~~~~~~
-
- WorkingTree will cache the list of tree-references, to accelerate
- WorkingTree.iter_references.  This may be an in-memory cache, or it may
- require a new format.
-
- WorkingTree.pull recurses downwards by default.  Subtrees are pulled from the
- reference location of the specified branch.
-
- MutableTree.commit recurses downwards by default.
-
- WorkingTree.revert recurses downwards by default.
-
- Merger recurses downwards by default.  This is not equivalent to running merge
- in each of the subtrees-- it uses the tree-reference revision-id to determine
- which revision to merge into each subtree, recursively.  Merger should not
- care whether subtree boundaries have changed.  Like WorkingTree.pull, it
- fetches from the reference location of the branch associated with the tree.
-
-New Branch methods
-~~~~~~~~~~~~~~~~~~
- get_subbranch
-
- - Return branch for tree reference
+Implementation Changes
+**********************
 
 Branch changes
 ~~~~~~~~~~~~~~
@@ -1112,14 +1006,6 @@ them.  But on the other hand:
 
 will first commit to the subtree, then to the top tree.  The uncommit will
 restore both trees to their previous state.
-
-
-Shall we use a CompositeTree object as a shim to make existing commands work?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Yes.  The affected commands are diff, status, and export.  These are all
-read-only commands so there's no danger of harming user data.  The only risks
-are giving inaccurate results and poor performance.
 
 
 Some subtrees should have commits and some should not.  How?
