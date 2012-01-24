@@ -941,12 +941,11 @@ class cmd_mv(Command):
                 and rel_names[0].lower() == rel_names[1].lower()):
                 into_existing = False
             else:
-                inv = tree.inventory
                 # 'fix' the case of a potential 'from'
                 from_id = tree.path2id(
                             tree.get_canonical_inventory_path(rel_names[0]))
                 if (not osutils.lexists(names_list[0]) and
-                    from_id and inv.get_file_kind(from_id) == "directory"):
+                    from_id and tree.kind(from_id) == "directory"):
                     into_existing = False
         # move/rename
         if into_existing:

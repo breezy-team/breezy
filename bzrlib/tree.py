@@ -776,7 +776,6 @@ class InventoryTree(Tree):
                          doc="Inventory of this Tree")
 
     def _get_root_inventory(self):
-        assert self._inventory is not None, "INV MISSING %r" % self
         return self._inventory
 
     root_inventory = property(_get_root_inventory,
@@ -792,7 +791,6 @@ class InventoryTree(Tree):
             if len(file_id) != 0:
                 raise ValueError("nested trees not yet supported: %r" % file_id)
             file_id = file_id[0]
-        assert self.root_inventory is not None, "foo %r" % self.root_inventory
         return self.root_inventory, file_id
 
     @needs_read_lock
@@ -841,7 +839,8 @@ class InventoryTree(Tree):
         # NB: we specifically *don't* call self.has_filename, because for
         # WorkingTrees that can indicate files that exist on disk but that
         # are not versioned.
-        return set((p for p in paths if self.path2id(p) is not None))
+        # FIXME: Support nested trees
+        return set((p for p in paths if self.path2id(p) is None))
 
     @needs_read_lock
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):

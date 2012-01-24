@@ -2089,8 +2089,7 @@ class InventoryWorkingTree(WorkingTree,
         """
         ret = set()
         for path, ie in self.iter_entries_by_dir():
-            if osutils.lexists(self.abspath(path)):
-                ret.add(ie.file_id)
+            ret.add(ie.file_id)
         return ret
 
     @needs_tree_write_lock
