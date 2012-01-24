@@ -379,10 +379,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                                               list_current=list_current)
         return [tr for tr in iterator if tr is not None]
 
-    def all_file_ids(self):
-        """See Tree.iter_all_file_ids"""
-        raise NotImplementedError(self.all_file_ids)
-
     def __repr__(self):
         return "<%s of %s>" % (self.__class__.__name__,
                                getattr(self, 'basedir', None))
@@ -2085,17 +2081,17 @@ class InventoryWorkingTree(WorkingTree,
         inv, inv_file_id = self._unpack_file_id(file_id)
         return inv.has_id(inv_file_id)
 
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
-    def __iter__(self):
+    def all_file_ids(self):
         """Iterate through file_ids for this tree.
 
         file_ids are in a WorkingTree if they are in the working inventory
         and the working file exists.
         """
-        inv = self._inventory
-        for path, ie in inv.iter_entries():
+        ret = set()
+        for path, ie in self.iter_entries_by_dir():
             if osutils.lexists(self.abspath(path)):
-                yield ie.file_id
+                ret.add(ie.file_id)
+        return ret
 
     @needs_tree_write_lock
     def set_last_revision(self, new_revision):
@@ -2157,7 +2153,7 @@ class InventoryWorkingTree(WorkingTree,
                 _mod_revision.NULL_REVISION)
         else:
             rt = self.branch.repository.revision_tree(revision_ids[0])
-        self._write_inventory(rt.inventory)
+        self._write_inventory(rt.root_inventory)
         self.set_parent_ids(revision_ids)
 
     def flush(self):
@@ -2452,7 +2448,7 @@ class InventoryWorkingTree(WorkingTree,
             raise errors.ObjectNotLocked(self)
 
         if from_dir is None and include_root is True:
-            yield ('', 'V', 'directory', self.inventory.root.file_id, self.inventory.root)
+            yield ('', 'V', 'directory', self.get_root_id(), self.root_inventory.root)
         # Convert these into local objects to save lookup times
         pathjoin = osutils.pathjoin
         file_kind = self._kind
@@ -2471,7 +2467,7 @@ class InventoryWorkingTree(WorkingTree,
                 return
             from_dir_abspath = pathjoin(self.basedir, from_dir)
         else:
-            inv = self.inventory
+            inv = self.root_inventory
             from_dir_id = inv.root.file_id
             from_dir_abspath = self.basedir
         children = os.listdir(from_dir_abspath)

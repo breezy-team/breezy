@@ -945,7 +945,8 @@ class BundleTester(object):
         self.tree1.commit('message', rev_id='revid1')
         bundle = self.get_valid_bundle('null:', 'revid1')
         tree = self.get_bundle_tree(bundle, 'revid1')
-        self.assertEqual('revid1', tree.inventory.root.revision)
+        root_revision = tree.get_file_revision(tree.get_root_id())
+        self.assertEqual('revid1', root_revision)
 
     def test_install_revisions(self):
         self.tree1 = self.make_branch_and_tree('b1')

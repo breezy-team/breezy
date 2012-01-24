@@ -1339,7 +1339,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         # being created.
         self._inventory = None
         # generate a delta,
-        delta = inv._make_delta(self.inventory)
+        delta = inv._make_delta(self.root_inventory)
         # and apply it.
         self.apply_inventory_delta(delta)
         if had_inventory:
@@ -1928,12 +1928,19 @@ class DirStateRevisionTree(InventoryTree):
         """Return the revision id for this tree."""
         return self._revision_id
 
-    def _get_inventory(self):
+    def _get_root_inventory(self):
         if self._inventory is not None:
             return self._inventory
         self._must_be_locked()
         self._generate_inventory()
         return self._inventory
+
+    root_inventory = property(_get_root_inventory,
+                         doc="Inventory of this Tree")
+
+    @deprecated_method(deprecated_in((2, 5, 0)))
+    def _get_inventory(self):
+        return self.root_inventory
 
     inventory = property(_get_inventory,
                          doc="Inventory of this Tree")

@@ -775,14 +775,8 @@ class InventoryTree(Tree):
     inventory = property(_get_inventory,
                          doc="Inventory of this Tree")
 
-    def _unpack_file_id(self, file_id):
-        if isinstance(file_id, tuple):
-            if len(file_id) != 0:
-                raise ValueError("nested trees not yet supported: %r" % file_id)
-            file_id = file_id[0]
-        return self.inventory, file_id
-
     def _get_root_inventory(self):
+        assert self._inventory is not None, "INV MISSING %r" % self
         return self._inventory
 
     root_inventory = property(_get_root_inventory,
@@ -798,6 +792,7 @@ class InventoryTree(Tree):
             if len(file_id) != 0:
                 raise ValueError("nested trees not yet supported: %r" % file_id)
             file_id = file_id[0]
+        assert self.root_inventory is not None, "foo %r" % self.root_inventory
         return self.root_inventory, file_id
 
     @needs_read_lock
@@ -1265,7 +1260,7 @@ class InterTree(InterObject):
         :param file_id: The file_id to lookup.
         """
         try:
-            inventory = tree.inventory
+            inventory = tree.root_inventory
         except NotImplementedError:
             # No inventory available.
             try:

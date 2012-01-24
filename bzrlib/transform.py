@@ -47,7 +47,7 @@ from bzrlib.i18n import gettext
 """)
 from bzrlib.errors import (DuplicateKey, MalformedTransform,
                            ReusingTransform, CantMoveRoot,
-                           ExistingLimbo, ImmortalLimbo, NoFinalPath,
+                           ImmortalLimbo, NoFinalPath,
                            UnableCreateSymlink)
 from bzrlib.filters import filtered_output_bytes, ContentFilterContext
 from bzrlib.osutils import (
@@ -57,7 +57,6 @@ from bzrlib.osutils import (
     pathjoin,
     sha_file,
     splitpath,
-    supports_executable,
     )
 from bzrlib.progress import ProgressPhase
 from bzrlib.symbol_versioning import (
@@ -2058,9 +2057,15 @@ class _PreviewTree(tree.InventoryTree):
         pass
 
     @property
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def inventory(self):
         """This Tree does not use inventory as its backing data."""
         raise NotImplementedError(_PreviewTree.inventory)
+
+    @property
+    def root_inventory(self):
+        """This Tree does not use inventory as its backing data."""
+        raise NotImplementedError(_PreviewTree.root_inventory)
 
     def get_root_id(self):
         return self._transform.final_file_id(self._transform.root)

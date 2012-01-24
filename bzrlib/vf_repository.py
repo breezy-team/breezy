@@ -2442,7 +2442,7 @@ class StreamSource(object):
         invs_sent_so_far = set([_mod_revision.NULL_REVISION])
         inventory_cache = lru_cache.LRUCache(50)
         null_inventory = from_repo.revision_tree(
-            _mod_revision.NULL_REVISION).inventory
+            _mod_revision.NULL_REVISION).root_inventory
         # XXX: ideally the rich-root/tree-refs flags would be per-revision, not
         # per-repo (e.g.  streaming a non-rich-root revision out of a rich-root
         # repo back into a non-rich-root repo ought to be allowed)

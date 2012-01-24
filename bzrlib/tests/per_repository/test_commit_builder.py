@@ -264,7 +264,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             if not builder.supports_record_entry_contents:
                 raise tests.TestNotApplicable("CommitBuilder doesn't support "
                     "record_entry_contents")
-            entry = tree.inventory['foo-id']
+            entry = tree.root_inventory['foo-id']
             self.assertRaises(errors.RootMissing,
                 builder.record_entry_contents, entry, [], 'foo', tree,
                     tree.path_content_summary('foo'))
@@ -287,7 +287,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             ie = inventory.make_entry('directory', '', None,
                     tree.get_root_id())
             delta, version_recorded, fs_hash = builder.record_entry_contents(
-                ie, [parent_tree.inventory], '', tree,
+                ie, [parent_tree.root_inventory], '', tree,
                 tree.path_content_summary(''))
             # Regardless of repository root behaviour we should consider this a
             # pointless commit.
@@ -374,10 +374,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 if not builder.supports_record_entry_contents:
                     raise tests.TestNotApplicable("CommitBuilder doesn't "
                         "support record_entry_contents")
-                parent_invs = [basis.inventory]
+                parent_invs = [basis.root_inventory]
                 builder.will_record_deletes()
                 if builder.record_root_entry:
-                    ie = basis.inventory.root.copy()
+                    ie = basis.root_inventory.root.copy()
                     delta, _, _ = builder.record_entry_contents(ie, parent_invs,
                         '', tree, tree.path_content_summary(''))
                     if delta is not None:
@@ -434,9 +434,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                         "support record_entry_contents")
                 builder.will_record_deletes()
                 if builder.record_root_entry is True:
-                    parent_invs = [basis.inventory]
-                    del basis.inventory.root.children['foo']
-                    builder.record_entry_contents(basis.inventory.root,
+                    parent_invs = [basis.root_inventory]
+                    del basis.root_inventory.root.children['foo']
+                    builder.record_entry_contents(basis.root_inventory.root,
                         parent_invs, '', tree, tree.path_content_summary(''))
                 # the delta should be returned, and recorded in _basis_delta
                 delta = builder.record_delete("foo", "foo-id")
@@ -869,17 +869,17 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 parent_tree = tree.basis_tree()
                 parent_tree.lock_read()
                 self.addCleanup(parent_tree.unlock)
-                parent_invs = [parent_tree.inventory]
+                parent_invs = [parent_tree.root_inventory]
                 for parent_id in parent_ids[1:]:
                     parent_invs.append(tree.branch.repository.revision_tree(
-                        parent_id).inventory)
+                        parent_id).root_inventory)
                 # root
                 builder.record_entry_contents(
                     inventory.make_entry('directory', '', None,
                         tree.get_root_id()), parent_invs, '', tree,
                         tree.path_content_summary(''))
                 def commit_id(file_id):
-                    old_ie = tree.inventory[file_id]
+                    old_ie = tree.root_inventory[file_id]
                     path = tree.id2path(file_id)
                     ie = inventory.make_entry(tree.kind(file_id), old_ie.name,
                         old_ie.parent_id, file_id)
@@ -891,7 +891,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                         tree, content_summary)
 
                 file_id = tree.path2id(new_name)
-                parent_id = tree.inventory[file_id].parent_id
+                parent_id = tree.root_inventory[file_id].parent_id
                 if parent_id != tree.get_root_id():
                     commit_id(parent_id)
                 # because a change of some sort is meant to have occurred,
@@ -993,7 +993,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 self.assertEqual(inv_sha1, builder.inv_sha1)
             self.assertIs(None, builder.new_inventory)
             rev2 = builder.commit('')
-            new_inventory = builder.revision_tree().inventory
+            new_inventory = builder.revision_tree().root_inventory
             new_entry = new_inventory[file_id]
             if delta_against_basis:
                 expected_delta = (name, new_name, file_id, new_entry)

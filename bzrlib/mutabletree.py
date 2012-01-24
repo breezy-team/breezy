@@ -408,7 +408,7 @@ class MutableInventoryTree(MutableTree, tree.InventoryTree):
         :seealso Inventory.apply_delta: For details on the changes parameter.
         """
         self.flush()
-        inv = self.inventory
+        inv = self.root_inventory
         inv.apply_delta(changes)
         self._write_inventory(inv)
 
