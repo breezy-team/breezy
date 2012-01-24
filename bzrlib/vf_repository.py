@@ -2795,9 +2795,10 @@ class InterDifferingSerializer(InterVersionedFileRepository):
         """
         deltas = []
         # Generate deltas against each tree, to find the shortest.
+        # FIXME: Support nested trees
         texts_possibly_new_in_tree = set()
         for basis_id, basis_tree in possible_trees:
-            delta = tree.inventory._make_delta(basis_tree.inventory)
+            delta = tree.root_inventory._make_delta(basis_tree.root_inventory)
             for old_path, new_path, file_id, new_entry in delta:
                 if new_path is None:
                     # This file_id isn't present in the new rev, so we don't
@@ -2840,7 +2841,8 @@ class InterDifferingSerializer(InterVersionedFileRepository):
             parents_parents = [key[-1] for key in parents_parents_keys]
             basis_id = _mod_revision.NULL_REVISION
             basis_tree = self.source.revision_tree(basis_id)
-            delta = parent_tree.inventory._make_delta(basis_tree.inventory)
+            delta = parent_tree.root_inventory._make_delta(
+                basis_tree.root_inventory)
             self.target.add_inventory_by_delta(
                 basis_id, delta, current_revision_id, parents_parents)
             cache[current_revision_id] = parent_tree
@@ -3143,7 +3145,8 @@ def _install_revision(repository, rev, revision_tree, signature,
             parent_trees[p_id] = repository.revision_tree(
                                      _mod_revision.NULL_REVISION)
 
-    inv = revision_tree.inventory
+    # FIXME: Support nested trees
+    inv = revision_tree.root_inventory
     entries = inv.iter_entries()
     # backwards compatibility hack: skip the root id.
     if not repository.supports_rich_root():

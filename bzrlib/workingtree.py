@@ -2367,12 +2367,12 @@ class InventoryWorkingTree(WorkingTree,
         other_tree.lock_tree_write()
         try:
             new_parents = other_tree.get_parent_ids()
-            other_root = other_tree.inventory.root
+            other_root = other_tree.root_inventory.root
             other_root.parent_id = new_root_parent
             other_root.name = osutils.basename(other_tree_path)
-            self.inventory.add(other_root)
-            add_children(self.inventory, other_root)
-            self._write_inventory(self.inventory)
+            self.root_inventory.add(other_root)
+            add_children(self.root_inventory, other_root)
+            self._write_inventory(self.root_inventory)
             # normally we don't want to fetch whole repositories, but i think
             # here we really do want to consolidate the whole thing.
             for parent_id in other_tree.get_parent_ids():
@@ -2422,7 +2422,8 @@ class InventoryWorkingTree(WorkingTree,
             tree_bzrdir = branch_bzrdir
         wt = tree_bzrdir.create_workingtree(_mod_revision.NULL_REVISION)
         wt.set_parent_ids(self.get_parent_ids())
-        my_inv = self.inventory
+        # FIXME: Support nested trees
+        my_inv = self.root_inventory
         child_inv = inventory.Inventory(root_id=None)
         new_root = my_inv[file_id]
         my_inv.remove_recursive_id(file_id)
@@ -2695,7 +2696,7 @@ class InventoryWorkingTree(WorkingTree,
                 raise errors.BzrRenameFailedError(from_rel,to_rel,
                     errors.NotVersionedError(path=from_rel))
             # put entry back in the inventory so we can rename it
-            from_entry = basis_tree.inventory[from_id].copy()
+            from_entry = basis_tree.root_inventory[from_id].copy()
             from_inv.add(from_entry)
         else:
             from_inv, from_inv_id = self._unpack_file_id(from_id)
@@ -2829,7 +2830,6 @@ class InventoryWorkingTree(WorkingTree,
 
     def _rollback_move(self, moved):
         """Try to rollback a previous move in case of an filesystem error."""
-        inv = self.inventory
         for entry in moved:
             try:
                 self._move_entry(WorkingTree._RenameEntry(

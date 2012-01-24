@@ -58,8 +58,8 @@ class TestExecutable(TestCaseWithWorkingTree):
         tree.lock_read()
         if not ignore_inv:
             self.assertEqual(
-                [('', tree.inventory.root)],
-                list(tree.inventory.iter_entries()))
+                [('', tree.root_inventory.root)],
+                list(tree.root_inventory.iter_entries()))
         self.assertFalse(tree.has_id(self.a_id))
         self.assertFalse(tree.has_filename('a'))
         self.assertFalse(tree.has_id(self.b_id))

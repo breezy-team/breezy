@@ -756,7 +756,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
     def test_set_state_from_inventory_no_content_no_parents(self):
         # setting the current inventory is a slow but important api to support.
         tree1, revid1 = self.make_minimal_tree()
-        inv = tree1.inventory
+        inv = tree1.root_inventory
         root_id = inv.path2id('')
         expected_result = [], [
             (('', '', root_id), [
@@ -777,7 +777,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
 
     def test_set_state_from_scratch_no_parents(self):
         tree1, revid1 = self.make_minimal_tree()
-        inv = tree1.inventory
+        inv = tree1.root_inventory
         root_id = inv.path2id('')
         expected_result = [], [
             (('', '', root_id), [
@@ -856,7 +856,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
                 tree._dirstate._get_entry(0, 'foo-id'))
 
             # extract the inventory, and add something to it
-            inv = tree._get_inventory()
+            inv = tree._get_root_inventory()
             # should see the file we poked in...
             self.assertTrue(inv.has_id('foo-id'))
             self.assertTrue(inv.has_filename('foo'))
@@ -892,7 +892,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
                       ['a-id', 'b-id', 'a-b-id', 'foo-id', 'bar-id'])
             tree1.commit('rev1', rev_id='rev1')
             root_id = tree1.get_root_id()
-            inv = tree1.inventory
+            inv = tree1.root_inventory
         finally:
             tree1.unlock()
         expected_result1 = [('', '', root_id, 'd'),
@@ -1326,7 +1326,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         try:
             tree1.add(['b'], ['b-id'])
             root_id = tree1.get_root_id()
-            inv = tree1.inventory
+            inv = tree1.root_inventory
             state = dirstate.DirState.initialize('dirstate')
             try:
                 # Set the initial state with 'b'
@@ -2529,7 +2529,8 @@ class TestUpdateBasisByDelta(tests.TestCase):
         state = self.create_empty_dirstate()
         state.set_state_from_scratch(active_tree.root_inventory,
             [('basis', basis_tree)], [])
-        delta = target_tree.inventory._make_delta(basis_tree.inventory)
+        delta = target_tree.root_inventory._make_delta(
+            basis_tree.root_inventory)
         state.update_basis_by_delta(delta, 'target')
         state._validate()
         dirstate_tree = workingtree_4.DirStateRevisionTree(state,
@@ -2540,7 +2541,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
         # And the dirblock state should be identical to the state if we created
         # it from scratch.
         state2 = self.create_empty_dirstate()
-        state2.set_state_from_scratch(active_tree.inventory,
+        state2.set_state_from_scratch(active_tree.root_inventory,
             [('target', target_tree)], [])
         self.assertEqual(state2._dirblocks, state._dirblocks)
         return state
@@ -2561,7 +2562,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
         basis_tree = self.create_tree_from_shape('basis', basis)
         inv_delta = self.create_inv_delta(delta, 'target')
         state = self.create_empty_dirstate()
-        state.set_state_from_scratch(active_tree.inventory,
+        state.set_state_from_scratch(active_tree.root_inventory,
             [('basis', basis_tree)], [])
         self.assertRaises(errors.InconsistentDelta,
             state.update_basis_by_delta, inv_delta, 'target')

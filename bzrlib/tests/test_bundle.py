@@ -77,6 +77,9 @@ class MockTree(object):
     inventory = property(lambda x:x)
     root_inventory = property(lambda x:x)
 
+    def get_root_id(self):
+        return self.root.file_id
+
     def all_file_ids(self):
         return set(self.paths.keys())
 
@@ -99,7 +102,7 @@ class MockTree(object):
         for path, file_id in self.ids.iteritems():
             yield path, self[file_id]
 
-    def get_file_kind(self, file_id):
+    def kind(self, file_id):
         if file_id in self.contents:
             kind = 'file'
         else:
@@ -110,7 +113,7 @@ class MockTree(object):
         from bzrlib.inventory import (InventoryEntry, InventoryFile
                                     , InventoryDirectory, InventoryLink)
         name = os.path.basename(path)
-        kind = self.get_file_kind(file_id)
+        kind = self.kind(file_id)
         parent_id = self.parent_id(file_id)
         text_sha_1, text_size = self.contents_stats(file_id)
         if kind == 'directory':

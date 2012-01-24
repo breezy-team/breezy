@@ -301,8 +301,9 @@ class InterCHKRevisionTree(tree.InterTree):
             # required to.
             # Now walk the whole inventory, excluding the already yielded
             # file ids
+            # FIXME: Support nested trees
             changed_file_ids = set(changed_file_ids)
-            for relpath, entry in self.target.inventory.iter_entries():
+            for relpath, entry in self.target.root_inventory.iter_entries():
                 if (specific_file_ids is not None
                     and not entry.file_id in specific_file_ids):
                     continue

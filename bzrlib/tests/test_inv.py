@@ -224,7 +224,7 @@ def apply_inventory_WT_basis(test, basis, delta, invalid_delta=True):
     basis_tree = tree.basis_tree()
     basis_tree.lock_read()
     test.addCleanup(basis_tree.unlock)
-    basis_inv = basis_tree.inventory
+    basis_inv = basis_tree.root_inventory
     if target_entries:
         basis_entries = list(basis_inv.iter_entries_by_dir())
         test.assertEqual(target_entries, basis_entries)
@@ -1567,6 +1567,6 @@ class TestMutableInventoryFromTree(TestCaseWithTransport):
         self.assertEquals("a", inv['thefileid'].name)
         # The inventory should be mutable and independent of
         # the original tree
-        self.assertFalse(tree.inventory['thefileid'].executable)
+        self.assertFalse(tree.root_inventory['thefileid'].executable)
         inv['thefileid'].executable = True
-        self.assertFalse(tree.inventory['thefileid'].executable)
+        self.assertFalse(tree.root_inventory['thefileid'].executable)

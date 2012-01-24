@@ -212,12 +212,10 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         rev1 = subtree.commit('commit in subdir')
         rev1_tree = subtree.basis_tree()
         rev1_tree.lock_read()
-        rev1_tree.inventory
         self.addCleanup(rev1_tree.unlock)
         rev2 = subtree.commit('second commit in subdir', allow_pointless=True)
         rev2_tree = subtree.basis_tree()
         rev2_tree.lock_read()
-        rev2_tree.inventory
         self.addCleanup(rev2_tree.unlock)
 
         tree.branch.pull(subtree.branch)
@@ -866,7 +864,7 @@ class TestInventoryCoherency(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         # Force access to the in memory inventory to trigger bug #494221: try
         # maintaining the in-memory inventory
-        inv = tree.inventory
+        inv = tree.root_inventory
         self.assertTrue(inv.has_id('a-id'))
         self.assertTrue(inv.has_id('b-id'))
         tree.unversion(['a-id', 'b-id'])

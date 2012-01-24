@@ -398,7 +398,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual('subtree-revision',
-                         tree.inventory['subtree-id'].reference_revision)
+                         tree.get_reference_revision('subtree-id'))
 
     def test_conflicts(self):
         transform, root = self.get_transform()
@@ -2791,7 +2791,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
 
     def test_iter_changes(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
-        root = revision_tree.inventory.root.file_id
+        root = revision_tree.get_root_id()
         self.assertEqual([('a-id', ('a', 'a'), True, (True, True),
                           (root, root), ('a', 'a'), ('file', 'file'),
                           (False, False))],
@@ -2801,7 +2801,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
         changes = preview_tree.iter_changes(revision_tree,
                                             include_unchanged=True)
-        root = revision_tree.inventory.root.file_id
+        root = revision_tree.get_root_id()
 
         self.assertEqual([ROOT_ENTRY, A_ENTRY], list(changes))
 

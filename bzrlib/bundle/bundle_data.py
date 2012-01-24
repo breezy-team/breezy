@@ -625,14 +625,14 @@ class BundleTree(Tree):
         """
         base_id = self.old_contents_id(file_id)
         if (base_id is not None and
-            base_id != self.base_tree.inventory.root.file_id):
+            base_id != self.base_tree.get_root_id()):
             patch_original = self.base_tree.get_file(base_id)
         else:
             patch_original = None
         file_patch = self.patches.get(self.id2path(file_id))
         if file_patch is None:
             if (patch_original is None and
-                self.get_kind(file_id) == 'directory'):
+                self.kind(file_id) == 'directory'):
                 return StringIO()
             if patch_original is None:
                 raise AssertionError("None: %s" % file_id)
@@ -651,10 +651,10 @@ class BundleTree(Tree):
         except KeyError:
             return self.base_tree.get_symlink_target(file_id)
 
-    def get_kind(self, file_id):
+    def kind(self, file_id):
         if file_id in self._kinds:
             return self._kinds[file_id]
-        return self.base_tree.inventory[file_id].kind
+        return self.base_tree.kind(file_id)
 
     def get_file_revision(self, file_id):
         path = self.id2path(file_id)
@@ -714,7 +714,7 @@ class BundleTree(Tree):
                 parent_path = dirname(path)
                 parent_id = self.path2id(parent_path)
 
-            kind = self.get_kind(file_id)
+            kind = self.kind(file_id)
             revision_id = self.get_last_changed(file_id)
 
             name = basename(path)
@@ -747,6 +747,8 @@ class BundleTree(Tree):
     # overloading, they use the function as it was defined
     # at that instant
     inventory = property(_get_inventory)
+
+    root_inventory = property(_get_inventory)
 
     def __iter__(self):
         for path, entry in self.inventory.iter_entries():

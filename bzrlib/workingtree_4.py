@@ -1365,7 +1365,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             base_tree = trees[0][1]
         state = self.current_dirstate()
         # We don't support ghosts yet
-        state.set_state_from_scratch(base_tree.inventory, trees, [])
+        state.set_state_from_scratch(base_tree.root_inventory, trees, [])
 
 
 class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
@@ -1997,7 +1997,7 @@ class DirStateRevisionTree(InventoryTree):
             inv = self.root_inventory
             from_dir_id = None
         else:
-            inv, from_dir_id = inv._path2inv_file_id(from_dir)
+            inv, from_dir_id = self._path2inv_file_id(from_dir)
             if from_dir_id is None:
                 # Directory not versioned
                 return

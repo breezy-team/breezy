@@ -1555,10 +1555,10 @@ class cmd_renames(Command):
     def run(self, dir=u'.'):
         tree = WorkingTree.open_containing(dir)[0]
         self.add_cleanup(tree.lock_read().unlock)
-        new_inv = tree.inventory
+        new_inv = tree.root_inventory
         old_tree = tree.basis_tree()
         self.add_cleanup(old_tree.lock_read().unlock)
-        old_inv = old_tree.inventory
+        old_inv = old_tree.root_inventory
         renames = []
         iterator = tree.iter_changes(old_tree, include_unchanged=True)
         for f, paths, c, v, p, n, k, e in iterator:
@@ -2278,7 +2278,7 @@ class cmd_deleted(Command):
         self.add_cleanup(tree.lock_read().unlock)
         old = tree.basis_tree()
         self.add_cleanup(old.lock_read().unlock)
-        for path, ie in old.inventory.iter_entries():
+        for path, ie in old.iter_entries_by_dir():
             if not tree.has_id(ie.file_id):
                 self.outf.write(path)
                 if show_ids:
@@ -4580,7 +4580,8 @@ class cmd_remerge(Command):
                 if tree.kind(file_id) != "directory":
                     continue
 
-                for name, ie in tree.inventory.iter_entries(file_id):
+                # FIXME: Support nested trees
+                for name, ie in tree.root_inventory.iter_entries(file_id):
                     interesting_ids.add(ie.file_id)
             new_conflicts = conflicts.select_conflicts(tree, file_list)[0]
         else:

@@ -396,7 +396,7 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
                 self._inventory = shape
 
             def get_file_text(self, file_id, path=None):
-                ie = self.inventory[file_id]
+                ie = self.root_inventory[file_id]
                 if ie.kind != "file":
                     return ""
                 return 'a' * ie.text_size

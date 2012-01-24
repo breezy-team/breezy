@@ -56,8 +56,8 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
             inventory.InventoryFile('foo-id', 'foo', parent_id='bar-id')),
             (None, 'bar', 'bar-id', inventory.InventoryDirectory('bar-id',
             'bar', parent_id=root_id))])
-        self.assertEqual('bar/foo', wt.inventory.id2path('foo-id'))
-        self.assertEqual('bar', wt.inventory.id2path('bar-id'))
+        self.assertEqual('bar/foo', wt.id2path('foo-id'))
+        self.assertEqual('bar', wt.id2path('bar-id'))
 
     def test_remove(self):
         wt = self.make_branch_and_tree('.')
