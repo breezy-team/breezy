@@ -105,8 +105,6 @@ def default_ca_certs():
     elif sys.platform == 'sunos5':
         # XXX: Needs checking, can't trust the interweb ;) -- vila 2012-01-25
         path = u'/etc/openssl/certs/ca-certificates.crt'
-    if not os.path.exists(path):
-        raise ValueError("default ca certs path %s does not exist" % path)
     return path
 
 
