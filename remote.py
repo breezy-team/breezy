@@ -121,6 +121,11 @@ def parse_git_error(url, message):
     message = str(message).strip()
     if message.startswith("Could not find Repository "):
         return NotBranchError(url, message)
+    if message == "HEAD failed to update":
+        base_url, _ = urlutils.split_segment_parameters(url)
+        raise BzrError(
+            ("Unable to update remote HEAD branch. To update the master "
+             "branch, specify the URL %s,branch=master.") % base_url)
     # Don't know, just return it to the user as-is
     return RemoteGitError(message)
 
