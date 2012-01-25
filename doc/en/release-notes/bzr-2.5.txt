@@ -47,6 +47,10 @@ Bug Fixes
 * ``bzr branch`` now fetches revisions when branching into an empty
   control directory. (Jelmer Vernooij, #905594)
 
+* A sane default is provided for ``ssl.ca_certs`` which should points to the
+  Certificate Authority bundle for supported platforms.
+  (Vincent Ladeuil, #920455)
+
 * Support scripts that don't call bzrlib.initialize() but still call run_bzr().
   (Vincent Ladeuil, #917733)
 

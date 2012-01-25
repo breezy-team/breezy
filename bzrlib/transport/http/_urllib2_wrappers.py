@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -74,24 +74,46 @@ lazy_import.lazy_import(globals(), """
 import ssl
 """)
 
-DEFAULT_CA_PATH = u"/etc/ssl/certs/ca-certificates.crt"
 
+# Note for packagers: if there is no package providing certs for your platform,
+# the curl project produces http://curl.haxx.se/ca/cacert.pem weekly.
 
 def default_ca_certs():
-    if not os.path.exists(DEFAULT_CA_PATH):
-        raise ValueError("default ca certs path %s does not exist" %
-            DEFAULT_CA_PATH)
-    return DEFAULT_CA_PATH
+    # A default path that makes sense, even if not correct for all platforms
+    path = u"/etc/ssl/certs/ca-certificates.crt"
+    if sys.platform.startswith('linux'):
+        # Try some known locations
+        for p in (u'/etc/ssl/certs/ca-certificates.crt', # Ubuntu/debian
+                  u'/etc/pki/tls/certs/ca-bundle.crt', # Fedora/CentOS/RH
+                  u'/etc/ssl/ca-bundle.pem', # OpenSuse
+                  ):
+            if os.path.exists(p):
+                # First found wins
+                return path
+    if "bsd" in sys.platform:
+        # Our best bet is to rely on ca_root_nss being installed
+        path = u"/usr/local/share/certs/ca-root-nss.crt"
+    elif sys.platform == 'win32':
+        # FIXME: We could reuse bzrlib.transport.http.ca_bundle but import that
+        # here sounds... too hackish. Waiting for the windows installer guys
+        # feedback on which path to use -- vila 2012-01-25
+        pass
+    elif sys.platform == 'darwin':
+        # FIXME: Needs some default value for osx, waiting for osx installers
+        # guys feedback -- vila 2012-01-25
+        pass
+    elif sys.platform == 'sunos5':
+        # XXX: Needs checking, can't trust the interweb ;) -- vila 2012-01-25
+        path = u'/etc/openssl/certs/ca-certificates.crt'
+    if not os.path.exists(path):
+        raise ValueError("default ca certs path %s does not exist" % path)
+    return path
 
 
 def ca_certs_from_store(path):
     if not os.path.exists(path):
         raise ValueError("ca certs path %s does not exist" % path)
     return path
-
-
-def default_cert_reqs():
-    return u"required"
 
 
 def cert_reqs_from_store(unicode_str):
@@ -109,13 +131,13 @@ def cert_reqs_from_store(unicode_str):
 opt_ssl_ca_certs = config.Option('ssl.ca_certs',
         from_unicode=ca_certs_from_store,
         default=default_ca_certs,
-        invalid='warning',
+        invalid='error',
         help="""\
 Path to certification authority certificates to trust.
 """)
 
 opt_ssl_cert_reqs = config.Option('ssl.cert_reqs',
-        default=default_cert_reqs,
+        default=u"required",
         from_unicode=cert_reqs_from_store,
         invalid='error',
         help="""\
@@ -448,15 +470,16 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
     def connect_to_origin(self):
         # FIXME JRV 2011-12-18: Use location config here?
         config_stack = config.GlobalStack()
-        if self.ca_certs is None:
-            ca_certs = config_stack.get('ssl.ca_certs')
-        else:
-            ca_certs = self.ca_certs
         cert_reqs = config_stack.get('ssl.cert_reqs')
         if cert_reqs == ssl.CERT_NONE:
             trace.warning("not checking SSL certificates for %s: %d",
                 self.host, self.port)
+            ca_certs = None
         else:
+            if self.ca_certs is None:
+                ca_certs = config_stack.get('ssl.ca_certs')
+            else:
+                ca_certs = self.ca_certs
             if ca_certs is None:
                 trace.warning(
                     "no valid trusted SSL CA certificates file set. See "
