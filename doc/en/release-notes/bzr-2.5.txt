@@ -47,6 +47,9 @@ Bug Fixes
 * ``bzr branch`` now fetches revisions when branching into an empty
   control directory. (Jelmer Vernooij, #905594)
 
+* ``bzr send`` works on treeless branches again.
+  (Jelmer Vernooij, #921591)
+
 * Support scripts that don't call bzrlib.initialize() but still call run_bzr().
   (Vincent Ladeuil, #917733)
 
