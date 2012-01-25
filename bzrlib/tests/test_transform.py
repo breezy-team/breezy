@@ -1765,7 +1765,7 @@ class TestTransformMerge(TestCaseInTempDir):
         merge_modified = this.wt.merge_modified()
         self.assertSubset(merge_modified, modified)
         self.assertEqual(len(merge_modified), len(modified))
-        file(this.wt.id2abspath('a'), 'wb').write('booga')
+        with file(this.wt.id2abspath('a'), 'wb') as f: f.write('booga')
         modified.pop(0)
         merge_modified = this.wt.merge_modified()
         self.assertSubset(merge_modified, modified)
