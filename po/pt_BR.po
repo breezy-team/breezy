@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-01-16 15:18+0100\n"
-"PO-Revision-Date: 2012-01-20 14:44+0000\n"
+"PO-Revision-Date: 2012-01-25 03:30+0000\n"
 "Last-Translator: Ielton Ferreira Carneiro Pinto <Unknown>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2012-01-21 04:30+0000\n"
-"X-Generator: Launchpad (build 14700)\n"
+"X-Launchpad-Export-Date: 2012-01-25 04:37+0000\n"
+"X-Generator: Launchpad (build 14719)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -1081,7 +1081,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1712
 msgid "    bzr info -v"
-msgstr ""
+msgstr "    bzr info -v"
 
 #: bzrlib/builtins.py:1714
 msgid "  Display the above together with number of committers to the branch:"
@@ -1089,7 +1089,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1716
 msgid "    bzr info -vv"
-msgstr ""
+msgstr "    bzr info -vv"
 
 #: bzrlib/builtins.py:1735
 msgid "Remove files or directories."
@@ -6394,7 +6394,7 @@ msgstr ""
 #: bzrlib/hooks.py:331
 #, python-format
 msgid "Introduced in: %s"
-msgstr ""
+msgstr "Introduzido em: %s"
 
 #: bzrlib/hooks.py:334
 #, python-format
@@ -11823,7 +11823,7 @@ msgstr ""
 #: en/help_topics/hooks.txt:38 en/help_topics/hooks.txt:56
 #: en/help_topics/hooks.txt:102 en/help_topics/hooks.txt:259
 msgid "Introduced in: 2.2"
-msgstr ""
+msgstr "Introduzido em: 2.2"
 
 #: en/help_topics/hooks.txt:40
 msgid ""
@@ -11842,7 +11842,7 @@ msgstr ""
 #: en/help_topics/hooks.txt:48 en/help_topics/hooks.txt:290
 #: en/help_topics/hooks.txt:304
 msgid "Introduced in: 1.8"
-msgstr ""
+msgstr "Introduzido em: 1.8"
 
 #: en/help_topics/hooks.txt:50
 msgid ""
@@ -11872,7 +11872,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:66 en/help_topics/hooks.txt:402
 msgid "Introduced in: 1.4"
-msgstr ""
+msgstr "Introduzido em: 1.4"
 
 #: en/help_topics/hooks.txt:68
 msgid ""
@@ -11892,7 +11892,7 @@ msgstr ""
 #: en/help_topics/hooks.txt:94 en/help_topics/hooks.txt:110
 #: en/help_topics/hooks.txt:145
 msgid "Introduced in: 0.15"
-msgstr ""
+msgstr "Introduzido em: 0.15"
 
 #: en/help_topics/hooks.txt:78
 msgid ""
@@ -11961,7 +11961,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:121
 msgid "Introduced in: 1.6"
-msgstr ""
+msgstr "Introduzido em: 1.6"
 
 #: en/help_topics/hooks.txt:123
 msgid ""
@@ -11979,7 +11979,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:131
 msgid "Introduced in: 0.91"
-msgstr ""
+msgstr "Introduzido em: 0.91"
 
 #: en/help_topics/hooks.txt:133
 msgid ""
@@ -12016,7 +12016,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:156
 msgid "Introduced in: 1.9"
-msgstr ""
+msgstr "Introduzido em: 1.9"
 
 #: en/help_topics/hooks.txt:158
 msgid ""
@@ -12046,7 +12046,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:175
 msgid "Introduced in: 1.13"
-msgstr ""
+msgstr "Introduzido em: 1.13"
 
 #: en/help_topics/hooks.txt:177
 msgid ""
@@ -12064,7 +12064,7 @@ msgstr ""
 #: en/help_topics/hooks.txt:184 en/help_topics/hooks.txt:196
 #: en/help_topics/hooks.txt:205 en/help_topics/hooks.txt:448
 msgid "Introduced in: 1.17"
-msgstr ""
+msgstr "Introduzido em: 1.17"
 
 #: en/help_topics/hooks.txt:186
 msgid ""
@@ -12120,7 +12120,7 @@ msgstr ""
 #: en/help_topics/hooks.txt:248 en/help_topics/hooks.txt:370
 #: en/help_topics/hooks.txt:427
 msgid "Introduced in: 2.4"
-msgstr ""
+msgstr "Introduzido em: 2.4"
 
 #: en/help_topics/hooks.txt:220
 msgid ""
@@ -12198,7 +12198,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:267
 msgid "Introduced in: 1.14"
-msgstr ""
+msgstr "Introduzido em: 1.14"
 
 #: en/help_topics/hooks.txt:269
 msgid ""
@@ -12221,7 +12221,7 @@ msgstr ""
 #: en/help_topics/hooks.txt:278 en/help_topics/hooks.txt:297
 #: en/help_topics/hooks.txt:505
 msgid "Introduced in: 1.15"
-msgstr ""
+msgstr "Introduzido em: 1.15.0"
 
 #: en/help_topics/hooks.txt:280
 msgid ""
@@ -12282,7 +12282,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:314
 msgid "Introduced in: 2.1"
-msgstr ""
+msgstr "Introduzido em: 2.1"
 
 #: en/help_topics/hooks.txt:316
 msgid ""
@@ -12303,7 +12303,7 @@ msgstr ""
 #: en/help_topics/hooks.txt:326 en/help_topics/hooks.txt:334
 #: en/help_topics/hooks.txt:384 en/help_topics/hooks.txt:493
 msgid "Introduced in: 2.5"
-msgstr ""
+msgstr "Introduzido em: 2.5"
 
 #: en/help_topics/hooks.txt:328
 msgid ""
@@ -12337,7 +12337,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:345
 msgid "Introduced in: 1.15.0"
-msgstr ""
+msgstr "Introduzido em: 1.15.0"
 
 #: en/help_topics/hooks.txt:347
 msgid ""
@@ -12360,7 +12360,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:357
 msgid "Introduced in: 1.10"
-msgstr ""
+msgstr "Introduzido em: 1.10"
 
 #: en/help_topics/hooks.txt:359
 msgid ""
@@ -12408,7 +12408,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:392
 msgid "Introduced in: 2.0"
-msgstr ""
+msgstr "Introduzido em: 2.0"
 
 #: en/help_topics/hooks.txt:394
 msgid ""
@@ -12446,7 +12446,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:415
 msgid "Introduced in: unknown"
-msgstr ""
+msgstr "Introduzido em: desconhecido"
 
 #: en/help_topics/hooks.txt:417
 msgid ""
@@ -12483,7 +12483,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:437 en/help_topics/hooks.txt:456
 msgid "Introduced in: 0.16"
-msgstr ""
+msgstr "Introduzido em: 0.16"
 
 #: en/help_topics/hooks.txt:439
 msgid ""
@@ -12533,7 +12533,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:468 en/help_topics/hooks.txt:479
 msgid "Introduced in: 2.3"
-msgstr ""
+msgstr "Introduzido em: 2.3"
 
 #: en/help_topics/hooks.txt:470
 msgid ""
@@ -12690,11 +12690,11 @@ msgstr ""
 
 #: en/help_topics/other-formats.txt:1
 msgid "Other Storage Formats"
-msgstr ""
+msgstr "Outros formatos de armazenamento"
 
 #: en/help_topics/other-formats.txt:3
 msgid "Experimental formats are shown below."
-msgstr ""
+msgstr "Formatos experimentais são mostrados abaixo."
 
 #: en/help_topics/other-formats.txt:5
 msgid ""
@@ -12708,6 +12708,8 @@ msgid ""
 "\n"
 "Deprecated formats are shown below."
 msgstr ""
+"\n"
+"Formatos obsoletos são mostrados abaixo."
 
 #: en/help_topics/other-formats.txt:12
 msgid ""
@@ -12915,7 +12917,7 @@ msgstr ""
 #: en/help_topics/revisionspec.txt:109 en/help_topics/revisionspec.txt:119
 #: en/help_topics/revisionspec.txt:153
 msgid "    Examples::"
-msgstr ""
+msgstr "    Exemplos::"
 
 #: en/help_topics/revisionspec.txt:79
 msgid "      $ bzr diff -r submit:"
@@ -12992,7 +12994,7 @@ msgstr ""
 
 #: en/help_topics/revisionspec.txt:127
 msgid ":revno:"
-msgstr ""
+msgstr ":revno:"
 
 #: en/help_topics/revisionspec.txt:129
 msgid ""
@@ -13260,7 +13262,7 @@ msgstr ""
 
 #: en/help_topics/url-special-chars.txt:34
 msgid "These are valid but do not refer to the same file::"
-msgstr ""
+msgstr "Estes são válidos, mas não se referem ao mesmo arquivo::"
 
 #: en/help_topics/url-special-chars.txt:36
 msgid ""
@@ -13297,11 +13299,11 @@ msgstr ""
 
 #: en/help_topics/urlspec.txt:1
 msgid "URL Identifiers"
-msgstr ""
+msgstr "Identificadores de URL"
 
 #: en/help_topics/urlspec.txt:3
 msgid "Supported URL prefixes::"
-msgstr ""
+msgstr "Prefixos de URL suportados::"
 
 #: en/help_topics/urlspec.txt:5
 msgid ""
@@ -13315,10 +13317,19 @@ msgid ""
 "SSL.\n"
 "  sftp://             Access using SFTP (most SSH servers provide SFTP)."
 msgstr ""
+"  aftp:// Acessa usando FTP ativo.\n"
+"  bzr:// Acesso rápido usando o bazaar smart server.\n"
+"  bzr+ssh:// Acesso rápido usando o Bazaar smart sobre SSH.\n"
+"  file:// Acesso usando o sistema de arquivos (padrão)\n"
+"  ftp:// Acesso usando FTP passivo.\n"
+"  http:// Acesso somente leitura de ramos exportados na web.\n"
+"  https:// Acesso somente leitura de ramos exportados na web usando SSL.\n"
+"  sftp:// Acesso usando SFTP (a maioria dos servidores SSH fornecem acesso "
+"SFTP)."
 
 #: en/help_topics/urlspec.txt:14
 msgid "Supported modifiers::"
-msgstr ""
+msgstr "Modificadores suportados::"
 
 #: en/help_topics/urlspec.txt:16
 msgid "  gio+                Access using any GIO supported protocols."
