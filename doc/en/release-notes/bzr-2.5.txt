@@ -71,6 +71,9 @@ API Changes
 * ``ControlDir`` now has a new method ``set_branch_reference`` which can
   be used for setting branch references. (Jelmer Vernooij)
 
+* ``ControlDir.destroy_branch`` now raises ``NotBranchError`` rather than
+  ``NoSuchFile`` if the branch didn't exist. (Jelmer Vernooij, #921693)
+
 Internals
 *********
 
