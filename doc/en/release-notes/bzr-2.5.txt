@@ -26,7 +26,7 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
-* "bzr switch -b" in a standalone tree will now create a colocated branch.
+* ``bzr switch -b`` in a standalone tree will now create a colocated branch.
   (Jelmer Vernooij, #918197)
 
 * ``bzr info`` now reports when there are present (but unused) colocated
@@ -46,6 +46,9 @@ Bug Fixes
 
 * ``bzr branch`` now fetches revisions when branching into an empty
   control directory. (Jelmer Vernooij, #905594)
+
+* ``bzr branch`` generates correct target branch locations again if not
+  specified. (Jelmer Vernooij, #919218)
 
 * Support scripts that don't call bzrlib.initialize() but still call run_bzr().
   (Vincent Ladeuil, #917733)

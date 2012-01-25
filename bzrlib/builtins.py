@@ -1416,7 +1416,7 @@ class cmd_branch(Command):
             revision_id = br_from.last_revision()
         if to_location is None:
             to_location = getattr(br_from, "name", None)
-            if to_location is None:
+            if not to_location:
                 to_location = urlutils.derive_to_location(from_location)
         to_transport = transport.get_transport(to_location)
         try:
