@@ -1887,7 +1887,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
         os.mkdir('a')
         a = BzrDir.create_standalone_workingtree('a')
         os.mkdir('a/foo')
-        file('a/foo/bar', 'wb').write('contents')
+        with file('a/foo/bar', 'wb') as f: f.write('contents')
         os.symlink('a/foo/bar', 'a/foo/baz')
         a.add(['foo', 'foo/bar', 'foo/baz'])
         a.commit('initial commit')
