@@ -1,3 +1,11 @@
+bzr (2.5.0~bzr6458-2) UNRELEASED; urgency=low
+
+  * Ignore spurious test failures in
+  ``test_handle_request_closes_if_it_doesnt_process``, causing
+  spurious FTBFS on some architectures.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 25 Jan 2012 14:56:26 +0100
+
 bzr (2.5.0~bzr6458-1) unstable; urgency=low
 
   * New upstream snapshot.
