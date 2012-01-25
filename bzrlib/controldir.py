@@ -177,6 +177,7 @@ class ControlDir(ControlComponent):
 
         :param name: Name of the branch to destroy, None for the default 
             branch.
+        :raise NotBranchError: When the branch does not exist
         """
         raise NotImplementedError(self.destroy_branch)
 

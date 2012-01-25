@@ -833,7 +833,10 @@ class BzrDirMeta1(BzrDir):
             name = self._get_selected_branch()
         if name != "":
             raise errors.NoColocatedBranchSupport(self)
-        self.transport.delete_tree('branch')
+        try:
+            self.transport.delete_tree('branch')
+        except errors.NoSuchFile:
+            raise errors.NotBranchError(path=name, bzrdir=self)
 
     def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
@@ -1075,7 +1078,10 @@ class BzrDirMeta1Colo(BzrDirMeta1):
                 self._write_branch_list(branches)
             finally:
                 self.control_files.unlock()
-        self.transport.delete_tree(path)
+        try:
+            self.transport.delete_tree(path)
+        except errors.NoSuchFile:
+            raise errors.NotBranchError(path=name, bzrdir=self)
 
     def get_branches(self):
         """See ControlDir.get_branches."""
