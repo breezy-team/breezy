@@ -160,12 +160,16 @@ class TestFileContent(TestCaseWithTree):
         tree.lock_read()
         try:
             # Test lookup without path works
-            lines = tree.get_file('a-id').readlines()
+            file_without_path = tree.get_file('a-id')
+            lines = file_without_path.readlines()
             self.assertEqual(['foobar\n'], lines)
             # Test lookup with path works
-            lines = tree.get_file('a-id', path='a').readlines()
+            file_with_path = tree.get_file('a-id', path='a')
+            lines = file_with_path.readlines()
             self.assertEqual(['foobar\n'], lines)
         finally:
+            file_without_path.close()
+            file_with_path.close()
             tree.unlock()
 
     def test_get_file_text(self):
