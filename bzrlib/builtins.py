@@ -120,7 +120,14 @@ def lookup_new_sibling_branch(control_dir, location):
         except errors.NotBranchError:
             colocated = False
         else:
-            colocated = root._format.colocated_branches
+            try:
+                wt = control_dir.open_workingtree()
+            except (errors.NoWorkingTree, errors.NotLocalUrl):
+                colocated = False
+            else:
+                colocated = (
+                    root._format.colocated_branches and
+                    wt.bzrdir.control_url == wt.branch.bzrdir.control_url)
 
         if colocated:
             return urlutils.join_segment_parameters(this_url,
