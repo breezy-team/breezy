@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-01-16 15:18+0100\n"
-"PO-Revision-Date: 2012-01-25 03:30+0000\n"
+"PO-Revision-Date: 2012-01-25 16:12+0000\n"
 "Last-Translator: Ielton Ferreira Carneiro Pinto <Unknown>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2012-01-25 04:37+0000\n"
+"X-Launchpad-Export-Date: 2012-01-26 04:38+0000\n"
 "X-Generator: Launchpad (build 14719)\n"
 
 #: bzrlib/add.py:95
@@ -812,10 +812,13 @@ msgid ""
 "To retrieve the branch as of a particular revision, supply the --revision\n"
 "parameter, as in \"branch foo/bar -r 5\"."
 msgstr ""
+"Para conseguir o ramo de uma revisão em particular, forneça o parâmetro --"
+"revision\n"
+"como em \"branch foo/bar -r 5\"."
 
 #: bzrlib/builtins.py:1289
 msgid "The synonyms 'clone' and 'get' for this command are deprecated."
-msgstr ""
+msgstr "Os sinônimos 'clone e 'get' para esse comando são obsoletos."
 
 #: bzrlib/builtins.py:1299
 msgid "Create a branch without a working-tree."
@@ -823,7 +826,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1301
 msgid "Switch the checkout in the current directory to the new branch."
-msgstr ""
+msgstr "Alterar o checkout no diretório atual para o novo ramo."
 
 #: bzrlib/builtins.py:1304
 msgid ""
@@ -11173,12 +11176,24 @@ msgid ""
 "  $ bzr commit ../other -m \"OTHER\"\n"
 "  $ bzr merge ../other"
 msgstr ""
+"  $ bzr init\n"
+"  $ bzr mkdir foo\n"
+"  $ bzr commit -m \"BASE\"\n"
+"  $ bzr branch . ../other\n"
+"  $ rmdir foo\n"
+"  $ touch foo\n"
+"  $ bzr commit -m \"THIS\"\n"
+"  $ bzr mkdir ../other/foo/bar\n"
+"  $ bzr commit ../other -m \"OTHER\"\n"
+"  $ bzr merge ../other"
 
 #: en/help_topics/conflict-types.txt:358
 msgid ""
 "To resolve that kind of conflict, you have to decide what name should be\n"
 "retained for the file, directory or symlink involved."
 msgstr ""
+"Para resolver esse tipo de conflito, você tem que decidir o nome deve ser\n"
+"mantido para o arquivo, diretório, ou link simbólico envolvidos."
 
 #: en/help_topics/conflict-types.txt:363
 msgid ""

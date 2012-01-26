@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-01-16 15:18+0100\n"
-"PO-Revision-Date: 2012-01-22 02:00+0000\n"
-"Last-Translator: IWATA Hidetaka <Unknown>\n"
+"PO-Revision-Date: 2012-01-25 14:36+0000\n"
+"Last-Translator: hikaruworld <Unknown>\n"
 "Language-Team: Japanese <ja@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Launchpad-Export-Date: 2012-01-23 04:30+0000\n"
-"X-Generator: Launchpad (build 14700)\n"
+"X-Launchpad-Export-Date: 2012-01-26 04:38+0000\n"
+"X-Generator: Launchpad (build 14719)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -3471,18 +3471,20 @@ msgid ""
 "Show help on a command or other topic.\n"
 "    "
 msgstr ""
+"コマンドもしくは他のトピックのヘルプを表示する。\n"
+"    "
 
 #: bzrlib/builtins.py:4711
 msgid "Show help on all commands."
-msgstr ""
+msgstr "全てのコマンドのヘルプを表示する。"
 
 #: bzrlib/builtins.py:4740
 msgid "Show unmerged/unpulled revisions between two branches."
-msgstr ""
+msgstr "2つのブランチの間のmergeされていない/pullされていない リビジョンを表示する。"
 
 #: bzrlib/builtins.py:4742
 msgid "OTHER_BRANCH may be local or remote."
-msgstr ""
+msgstr "OTHER_BRANCHはlocalもしくはremoteになります。"
 
 #: bzrlib/builtins.py:4744
 msgid ""
@@ -3503,7 +3505,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4757
 msgid "        bzr missing"
-msgstr ""
+msgstr "        bzr missing"
 
 #: bzrlib/builtins.py:4759
 msgid "    Determine the missing revisions between this and another branch::"
@@ -3511,7 +3513,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4761
 msgid "        bzr missing http://server/branch"
-msgstr ""
+msgstr "        bzr missing http://server/branch"
 
 #: bzrlib/builtins.py:4763
 msgid ""
@@ -3521,7 +3523,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4766
 msgid "        bzr missing -r ..-10"
-msgstr ""
+msgstr "        bzr missing -r ..-10"
 
 #: bzrlib/builtins.py:4768
 msgid ""
@@ -3531,7 +3533,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4771
 msgid "        bzr missing --my-revision ..-10"
-msgstr ""
+msgstr "        bzr missing --my-revision ..-10"
 
 #: bzrlib/builtins.py:4778
 msgid "Reverse the order of revisions."
@@ -3539,19 +3541,19 @@ msgstr ""
 
 #: bzrlib/builtins.py:4780
 msgid "Display changes in the local branch only."
-msgstr ""
+msgstr "ローカルブランチの変更のみを表示する。"
 
 #: bzrlib/builtins.py:4781
 msgid "Same as --mine-only."
-msgstr ""
+msgstr "--mine-onlyと同じ。"
 
 #: bzrlib/builtins.py:4783
 msgid "Display changes in the remote branch only."
-msgstr ""
+msgstr "リモートブランチの変更のみを表示する。"
 
 #: bzrlib/builtins.py:4784
 msgid "Same as --theirs-only."
-msgstr ""
+msgstr "--theirs-onlyと同じ。"
 
 #: bzrlib/builtins.py:4789
 msgid ""
@@ -3637,17 +3639,19 @@ msgstr ""
 
 #: bzrlib/builtins.py:4969
 msgid "List the installed plugins."
-msgstr ""
+msgstr "インストールされたプラグインの一覧を表示する。"
 
 #: bzrlib/builtins.py:4971
 msgid ""
 "This command displays the list of installed plugins including\n"
 "version of plugin and a short description of each."
 msgstr ""
+"このコマンドは インストールされたプラグインの一覧を簡単な説明や\n"
+"バージョン情報とともに表示します。"
 
 #: bzrlib/builtins.py:4974
 msgid "--verbose shows the path where each plugin is located."
-msgstr ""
+msgstr "--verboseを指定すると各プラグインのインストール先のパスが表示されます。"
 
 #: bzrlib/builtins.py:4976
 msgid ""
