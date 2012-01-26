@@ -148,13 +148,10 @@ def _patch_filesystem_default_encoding(new_enc):
     """
     try:
         import ctypes
-    except ImportError:
-        return
-    pythonapi = getattr(ctypes, "pythonapi", None)
-    if pythonapi is None:
-        # Not CPython ctypes implementation
-        return
-    old_ptr = ctypes.c_void_p.in_dll(pythonapi, "Py_FileSystemDefaultEncoding")
+        old_ptr = ctypes.c_void_p.in_dll(ctypes.pythonapi,
+            "Py_FileSystemDefaultEncoding")
+    except (ImportError, ValueError):
+        return # No ctypes or not CPython implementation, do nothing
     new_ptr = ctypes.cast(ctypes.c_char_p(intern(new_enc)), ctypes.c_void_p)
     old_ptr.value = new_ptr.value
     if sys.getfilesystemencoding() != new_enc:
