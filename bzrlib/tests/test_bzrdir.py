@@ -1447,8 +1447,8 @@ class TestMeta1DirColoFormat(TestCaseWithTransport):
         tree.bzrdir.create_branch(name="another-colocated-branch")
         converter = tree.bzrdir._format.get_converter(
             bzrdir.BzrDirMetaFormat1())
-        self.assertRaises(errors.BzrError, converter.convert, tree.bzrdir,
-            None)
+        result = converter.convert(tree.bzrdir, bzrdir.BzrDirMetaFormat1())
+        self.assertIsInstance(result._format, bzrdir.BzrDirMetaFormat1)
 
 
 class SampleBzrFormat(bzrdir.BzrFormat):
