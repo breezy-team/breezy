@@ -23,6 +23,7 @@ from bzrlib import (
     errors as bzr_errors,
     trace,
     osutils,
+    revision as _mod_revision,
     urlutils,
     )
 from bzrlib.bzrdir import CreateRepository
@@ -390,7 +391,17 @@ class LocalGitDir(GitDir):
         raise bzr_errors.UnsupportedOperation(self.destroy_repository, self)
 
     def destroy_workingtree(self):
-        raise bzr_errors.UnsupportedOperation(self.destroy_workingtree, self)
+        wt = self.open_workingtree(recommend_upgrade=False)
+        repository = wt.branch.repository
+        empty = repository.revision_tree(_mod_revision.NULL_REVISION)
+        # We ignore the conflicts returned by wt.revert since we're about to
+        # delete the wt metadata anyway, all that should be left here are
+        # detritus. But see bug #634470 about subtree .bzr dirs.
+        conflicts = wt.revert(old_tree=empty)
+        self.destroy_workingtree_metadata()
+
+    def destroy_workingtree_metadata(self):
+        self.transport.delete('index')
 
     def needs_format_conversion(self, format=None):
         return not isinstance(self._format, format.__class__)
