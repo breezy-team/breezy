@@ -113,6 +113,8 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
 
     supports_workingtrees = False
 
+    colocated_branches = False
+
     def __init__(self):
         _mod_bzrdir.BzrDirMetaFormat1.__init__(self)
         # XXX: It's a bit ugly that the network name is here, because we'd
@@ -3122,10 +3124,10 @@ class RemoteBranchFormat(branch.BranchFormat):
         if isinstance(a_bzrdir, RemoteBzrDir):
             a_bzrdir._ensure_real()
             result = self._custom_format.initialize(a_bzrdir._real_bzrdir,
-                name, append_revisions_only=append_revisions_only)
+                name=name, append_revisions_only=append_revisions_only)
         else:
             # We assume the bzrdir is parameterised; it may not be.
-            result = self._custom_format.initialize(a_bzrdir, name,
+            result = self._custom_format.initialize(a_bzrdir, name=name,
                 append_revisions_only=append_revisions_only)
         if (isinstance(a_bzrdir, RemoteBzrDir) and
             not isinstance(result, RemoteBranch)):
@@ -3322,6 +3324,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         # will try to assign to self.tags, which is a property in this subclass.
         # And the parent's __init__ doesn't do much anyway.
         self.bzrdir = remote_bzrdir
+        self.name = name
         if _client is not None:
             self._client = _client
         else:

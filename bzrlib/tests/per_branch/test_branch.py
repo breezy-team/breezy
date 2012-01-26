@@ -319,6 +319,9 @@ class TestBranch(per_branch.TestCaseWithBranch):
         except errors.IncompatibleFormat:
             return
         self.assertEquals(0, len(repo.bzrdir.list_branches()))
+        if not self.bzrdir_format.colocated_branches:
+            raise tests.TestNotApplicable("control dir format does not support "
+                "colocated branches")
         try:
             child_branch1 = self.branch_format.initialize(repo.bzrdir, 
                 name='branch1')
