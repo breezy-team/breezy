@@ -38,6 +38,9 @@ Improvements
 
 * New HPSS call for ``BzrDir.get_branches``. (Jelmer Vernooij, #894460)
 
+* Checkouts of colocated branches are now always lightweight.
+  (Jelmer Vernooij, #918828)
+
 Bug Fixes
 *********
 

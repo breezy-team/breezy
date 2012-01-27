@@ -355,6 +355,7 @@ class BzrDir(controldir.ControlDir):
             location of this control directory.
         :param create_tree_if_local: If true, a working-tree will be created
             when working locally.
+        :return: The created control directory
         """
         operation = cleanup.OperationWithCleanups(self._sprout)
         return operation.run(url, revision_id=revision_id,
