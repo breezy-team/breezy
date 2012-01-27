@@ -2548,6 +2548,41 @@ class ListOption(Option):
         return l
 
 
+class RegistryOption(Option):
+    """Option for a choice from a registry."""
+
+    def __init__(self, name, registry, default=None, default_from_env=None,
+                 help=None, invalid=None):
+        """A registry based Option definition.
+
+        This overrides the base class so the conversion from a unicode string
+        can take quoting into account.
+        """
+        super(RegistryOption, self).__init__(
+            name, default=default, default_from_env=default_from_env,
+            from_unicode=self.from_unicode, help=self.generate_help,
+            invalid=invalid, unquote=False)
+        self.base_help = help
+        self.registry = registry
+
+    def from_unicode(self, unicode_str):
+        if not isinstance(unicode_str, basestring):
+            raise TypeError
+        try:
+            return self.registry.get(unicode_str)
+        except KeyError:
+            raise ValueError(
+                "Invalid value %s for %s."
+                "See help for a list of possible values." % (unicode_str,
+                    self.name))
+
+    def generate_help(self):
+        ret = [self.base_help, "\n\nThe following values are supported:\n"]
+        for key in self.registry.keys():
+            ret.append(" %s - %s\n" % (key, self.registry.get_help(key)))
+        return "".join(ret)
+
+
 class OptionRegistry(registry.Registry):
     """Register config options by their name.
 
