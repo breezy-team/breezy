@@ -2396,12 +2396,16 @@ class Option(object):
             raise AssertionError('%r is not supported as a default value'
                                  % (default,))
         self.default_from_env = default_from_env
-        self.help = help
+        self._help = help
         self.from_unicode = from_unicode
         self.unquote = unquote
         if invalid and invalid not in ('warning', 'error'):
             raise AssertionError("%s not supported for 'invalid'" % (invalid,))
         self.invalid = invalid
+
+    @property
+    def help(self):
+        return self._help
 
     def convert_from_unicode(self, store, unicode_value):
         if self.unquote and store is not None and unicode_value is not None:
@@ -2560,9 +2564,8 @@ class RegistryOption(Option):
         """
         super(RegistryOption, self).__init__(
             name, default=default, default_from_env=default_from_env,
-            from_unicode=self.from_unicode, help=self.generate_help,
+            from_unicode=self.from_unicode, help=help,
             invalid=invalid, unquote=False)
-        self.base_help = help
         self.registry = registry
 
     def from_unicode(self, unicode_str):
@@ -2576,8 +2579,9 @@ class RegistryOption(Option):
                 "See help for a list of possible values." % (unicode_str,
                     self.name))
 
-    def generate_help(self):
-        ret = [self.base_help, "\n\nThe following values are supported:\n"]
+    @property
+    def help(self):
+        ret = [self._help, "\n\nThe following values are supported:\n"]
         for key in self.registry.keys():
             ret.append(" %s - %s\n" % (key, self.registry.get_help(key)))
         return "".join(ret)

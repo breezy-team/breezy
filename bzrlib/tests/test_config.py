@@ -2513,7 +2513,20 @@ class TestRegistryOption(tests.TestCase, TestOptionConverterMixin):
             'The following values are supported:\n'
             ' dunno - some other option\n'
             ' someval - some option\n',
-            opt.generate_help())
+            opt.help)
+
+    def test_get_help_text(self):
+        registry = _mod_registry.Registry()
+        registry.register("someval", 1234, help="some option")
+        registry.register("dunno", 1234, help="some other option")
+        opt = self.get_option(registry)
+        self.assertEquals(
+            'A registry option.\n'
+            '\n'
+            'The following values are supported:\n'
+            ' dunno - some other option\n'
+            ' someval - some option\n',
+            opt.get_help_text())
 
 
 class TestOptionRegistry(tests.TestCase):
