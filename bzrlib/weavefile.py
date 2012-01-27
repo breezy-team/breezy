@@ -117,7 +117,7 @@ def _read_weave_v5(f, w):
     from bzrlib.weave import WeaveFormatError
 
     try:
-        lines = iter(f.read().splitlines(True))
+        lines = iter(f.readlines())
     finally:
         f.close()
 
