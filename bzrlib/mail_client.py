@@ -24,6 +24,7 @@ import tempfile
 
 import bzrlib
 from bzrlib import (
+    config as _mod_config,
     email_message,
     errors,
     msgeditor,
@@ -111,7 +112,7 @@ class Editor(MailClient):
         if body == '':
             raise errors.NoMessageSupplied()
         email_message.EmailMessage.send(self.config,
-                                        self.config.username(),
+                                        self.config.get('email'),
                                         to,
                                         subject,
                                         body,
@@ -378,7 +379,7 @@ class Claws(ExternalMailClient):
                  extension, body=None, from_=None):
         """See ExternalMailClient._compose"""
         if from_ is None:
-            from_ = self.config.get_user_option('email')
+            from_ = self.config.get('email')
         super(Claws, self)._compose(prompt, to, subject, attach_path,
                                     mime_subtype, extension, body, from_)
 
@@ -617,11 +618,11 @@ class DefaultMail(MailClient):
         """See MailClient.compose"""
         try:
             return self._mail_client().compose(prompt, to, subject,
-                                               attachment, mimie_subtype,
+                                               attachment, mime_subtype,
                                                extension, basename, body)
         except errors.MailClientNotFound:
             return Editor(self.config).compose(prompt, to, subject,
-                          attachment, mimie_subtype, extension, body)
+                          attachment, mime_subtype, extension, body)
 
     def compose_merge_request(self, to, subject, directive, basename=None,
                               body=None):
@@ -636,4 +637,5 @@ mail_client_registry.register('default', DefaultMail,
                               help=DefaultMail.__doc__)
 mail_client_registry.default_key = 'default'
 
-
+opt_mail_client = _mod_config.RegistryOption('mail_client',
+    mail_client_registry, help='E-mail client to use.')

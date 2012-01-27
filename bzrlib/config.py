@@ -2802,6 +2802,8 @@ Log format to use when displaying revisions.
 Standard log formats are ``long``, ``short`` and ``line``. Additional formats
 may be provided by plugins.
 '''))
+option_registry.register_lazy('mail_client', 'bzrlib.mail_client',
+    'opt_mail_client')
 option_registry.register(
     Option('output_encoding',
            help= 'Unicode encoding for output'
