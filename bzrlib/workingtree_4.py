@@ -1598,7 +1598,7 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
         """Overrideable method to get a bzrdir for testing."""
         # please test against something that will let us do tree references
         return bzrdir.format_registry.make_bzrdir(
-            'dirstate-with-subtree')
+            'development-subtree')
 
     _matchingbzrdir = property(__get_matchingbzrdir)
 

@@ -824,9 +824,9 @@ class ChrootedTests(TestCaseWithTransport):
 
     def test_sprout_recursive(self):
         tree = self.make_branch_and_tree('tree1',
-                                         format='dirstate-with-subtree')
+                                         format='development-subtree')
         sub_tree = self.make_branch_and_tree('tree1/subtree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         sub_tree.set_root_id('subtree-root')
         tree.add_reference(sub_tree)
         self.build_tree(['tree1/subtree/file'])
@@ -849,9 +849,9 @@ class ChrootedTests(TestCaseWithTransport):
 
     def test_sprout_recursive_treeless(self):
         tree = self.make_branch_and_tree('tree1',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         sub_tree = self.make_branch_and_tree('tree1/subtree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         tree.add_reference(sub_tree)
         self.build_tree(['tree1/subtree/file'])
         sub_tree.add('file')
@@ -863,7 +863,7 @@ class ChrootedTests(TestCaseWithTransport):
         # FIXME: subtree/.bzr is left here which allows the test to pass (or
         # fail :-( ) -- vila 20100909
         repo = self.make_repository('repo', shared=True,
-            format='dirstate-with-subtree')
+            format='development-subtree')
         repo.set_make_working_trees(False)
         # FIXME: we just deleted the workingtree and now we want to use it ????
         # At a minimum, we should use tree.branch below (but this fails too
@@ -1021,7 +1021,7 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         otherdir = bzrdir.format_registry.make_bzrdir('knit')
         self.assertEqual(otherdir, mydir)
         self.assertFalse(otherdir != mydir)
-        otherdir2 = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
+        otherdir2 = bzrdir.format_registry.make_bzrdir('development-subtree')
         self.assertNotEqual(otherdir2, mydir)
         self.assertFalse(otherdir2 == mydir)
 

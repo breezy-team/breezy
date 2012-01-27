@@ -87,7 +87,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestTreeTransform, self).setUp()
-        self.wt = self.make_branch_and_tree('.', format='dirstate-with-subtree')
+        self.wt = self.make_branch_and_tree('.', format='development-subtree')
         os.chdir('..')
 
     def get_transform(self):
@@ -1901,9 +1901,9 @@ class TestBuildTree(tests.TestCaseWithTransport):
 
     def test_build_with_references(self):
         tree = self.make_branch_and_tree('source',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         subtree = self.make_branch_and_tree('source/subtree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         tree.add_reference(subtree)
         tree.commit('a revision')
         tree.branch.create_checkout('target')
