@@ -1,4 +1,4 @@
-bzr (2.5.0~bzr6458-2) UNRELEASED; urgency=low
+bzr (2.5.0~bzr6458-2) unstable; urgency=low
 
   * Ignore spurious test failures in
   ``test_handle_request_closes_if_it_doesnt_process``, causing
