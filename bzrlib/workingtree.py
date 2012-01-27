@@ -261,6 +261,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
     def supports_views(self):
         return self.views.supports_views()
 
+    def get_config_stack(self):
+        return self.branch.get_config_stack()
+
     @staticmethod
     def open(path=None, _unsupported=False):
         """Open an existing working tree at path.

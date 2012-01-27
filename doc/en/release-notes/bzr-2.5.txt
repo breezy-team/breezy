@@ -75,6 +75,9 @@ API Changes
 * ``ControlDir`` now has a new method ``set_branch_reference`` which can
   be used for setting branch references. (Jelmer Vernooij)
 
+* New convenience API method ``WorkingTree.get_config_stack``.
+  (Jelmer Vernooij)
+
 Internals
 *********
 
