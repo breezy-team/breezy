@@ -58,7 +58,6 @@ class TestTreeWithCommits(TestCaseWithTransport):
     def test_empty_no_root(self):
         null_tree = self.t.branch.repository.revision_tree(
             revision.NULL_REVISION)
-        self.assertIs(None, null_tree.inventory.root)
         self.assertIs(None, null_tree.get_root_id())
 
     def test_get_file_revision_root(self):

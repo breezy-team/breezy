@@ -211,8 +211,8 @@ class Inter1and2Helper(object):
     def _find_root_ids(self, revs, parent_map, graph):
         revision_root = {}
         for tree in self.iter_rev_trees(revs):
-            revision_id = tree.inventory.root.revision
             root_id = tree.get_root_id()
+            revision_id = tree.get_file_revision(root_id, u"")
             revision_root[revision_id] = root_id
         # Find out which parents we don't already know root ids for
         parents = set()

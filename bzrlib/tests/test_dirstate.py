@@ -2529,7 +2529,8 @@ class TestUpdateBasisByDelta(tests.TestCase):
         state = self.create_empty_dirstate()
         state.set_state_from_scratch(active_tree.inventory,
             [('basis', basis_tree)], [])
-        delta = target_tree.inventory._make_delta(basis_tree.inventory)
+        delta = target_tree.inventory._make_delta(
+            basis_tree.inventory)
         state.update_basis_by_delta(delta, 'target')
         state._validate()
         dirstate_tree = workingtree_4.DirStateRevisionTree(state,

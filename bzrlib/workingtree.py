@@ -379,10 +379,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                                               list_current=list_current)
         return [tr for tr in iterator if tr is not None]
 
-    def all_file_ids(self):
-        """See Tree.iter_all_file_ids"""
-        raise NotImplementedError(self.all_file_ids)
-
     def __repr__(self):
         return "<%s of %s>" % (self.__class__.__name__,
                                getattr(self, 'basedir', None))
@@ -1946,10 +1942,6 @@ class InventoryWorkingTree(WorkingTree,
             if entry.parent_id == orig_root_id:
                 entry.parent_id = inv.root.file_id
 
-    def all_file_ids(self):
-        """See Tree.iter_all_file_ids"""
-        return set(self.inventory)
-
     @needs_tree_write_lock
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees."""
@@ -2077,10 +2069,9 @@ class InventoryWorkingTree(WorkingTree,
 
     def has_id(self, file_id):
         # files that have been deleted are excluded
-        inv = self.inventory
-        if not inv.has_id(file_id):
+        if not self.inventory.has_id(file_id):
             return False
-        path = inv.id2path(file_id)
+        path = self.inventory.id2path(file_id)
         return osutils.lexists(self.abspath(path))
 
     def has_or_had_id(self, file_id):
@@ -2088,17 +2079,16 @@ class InventoryWorkingTree(WorkingTree,
             return True
         return self.inventory.has_id(file_id)
 
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
-    def __iter__(self):
+    def all_file_ids(self):
         """Iterate through file_ids for this tree.
 
         file_ids are in a WorkingTree if they are in the working inventory
         and the working file exists.
         """
-        inv = self._inventory
-        for path, ie in inv.iter_entries():
-            if osutils.lexists(self.abspath(path)):
-                yield ie.file_id
+        ret = set()
+        for path, ie in self.iter_entries_by_dir():
+            ret.add(ie.file_id)
+        return ret
 
     @needs_tree_write_lock
     def set_last_revision(self, new_revision):
@@ -2178,7 +2168,7 @@ class InventoryWorkingTree(WorkingTree,
     def get_file_mtime(self, file_id, path=None):
         """See Tree.get_file_mtime."""
         if not path:
-            path = self.inventory.id2path(file_id)
+            path = self.id2path(file_id)
         try:
             return os.lstat(self.abspath(path)).st_mtime
         except OSError, e:
@@ -2192,7 +2182,7 @@ class InventoryWorkingTree(WorkingTree,
             # For unversioned files on win32, we just assume they are not
             # executable
             return False
-        return self._inventory[file_id].executable
+        return self.inventory[file_id].executable
 
     def _is_executable_from_path_and_stat_from_stat(self, path, stat_result):
         mode = stat_result.st_mode
@@ -2200,7 +2190,7 @@ class InventoryWorkingTree(WorkingTree,
 
     def is_executable(self, file_id, path=None):
         if not self._supports_executable():
-            return self._inventory[file_id].executable
+            return self.inventory[file_id].executable
         else:
             if not path:
                 path = self.id2path(file_id)
@@ -2267,15 +2257,17 @@ class InventoryWorkingTree(WorkingTree,
                 parent_tree = self.branch.repository.revision_tree(parent_id)
             parent_tree.lock_read()
             try:
-                if not parent_tree.has_id(file_id):
+                try:
+                    kind = parent_tree.kind(file_id)
+                except errors.NoSuchId:
                     continue
-                ie = parent_tree.inventory[file_id]
-                if ie.kind != 'file':
+                if kind != 'file':
                     # Note: this is slightly unnecessary, because symlinks and
                     # directories have a "text" which is the empty text, and we
                     # know that won't mess up annotations. But it seems cleaner
                     continue
-                parent_text_key = (file_id, ie.revision)
+                parent_text_key = (
+                    file_id, parent_tree.get_file_revision(file_id))
                 if parent_text_key not in maybe_file_parent_keys:
                     maybe_file_parent_keys.append(parent_text_key)
             finally:
@@ -2335,7 +2327,7 @@ class InventoryWorkingTree(WorkingTree,
             for s in _mod_rio.RioReader(hashfile):
                 # RioReader reads in Unicode, so convert file_ids back to utf8
                 file_id = osutils.safe_file_id(s.get("file_id"), warn=False)
-                if not self.inventory.has_id(file_id):
+                if not self.has_id(file_id):
                     continue
                 text_hash = s.get("hash")
                 if text_hash == self.get_file_sha1(file_id):
@@ -2451,9 +2443,8 @@ class InventoryWorkingTree(WorkingTree,
         if not self.is_locked():
             raise errors.ObjectNotLocked(self)
 
-        inv = self.inventory
         if from_dir is None and include_root is True:
-            yield ('', 'V', 'directory', inv.root.file_id, inv.root)
+            yield ('', 'V', 'directory', self.get_root_id(), self.inventory.root)
         # Convert these into local objects to save lookup times
         pathjoin = osutils.pathjoin
         file_kind = self._kind
@@ -2466,12 +2457,14 @@ class InventoryWorkingTree(WorkingTree,
 
         # directory file_id, relative path, absolute path, reverse sorted children
         if from_dir is not None:
-            from_dir_id = inv.path2id(from_dir)
+            inv = self.inventory
+            from_dir_id = self.path2id(from_dir)
             if from_dir_id is None:
                 # Directory not versioned
                 return
             from_dir_abspath = pathjoin(self.basedir, from_dir)
         else:
+            inv = self.inventory
             from_dir_id = inv.root.file_id
             from_dir_abspath = self.basedir
         children = os.listdir(from_dir_abspath)
@@ -2606,7 +2599,6 @@ class InventoryWorkingTree(WorkingTree,
         # check destination directory
         if isinstance(from_paths, basestring):
             raise ValueError()
-        inv = self.inventory
         to_abs = self.abspath(to_dir)
         if not isdir(to_abs):
             raise errors.BzrMoveFailedError('',to_dir,
@@ -2614,12 +2606,12 @@ class InventoryWorkingTree(WorkingTree,
         if not self.has_filename(to_dir):
             raise errors.BzrMoveFailedError('',to_dir,
                 errors.NotInWorkingDirectory(to_dir))
-        to_dir_id = inv.path2id(to_dir)
+        to_dir_id = self.path2id(to_dir)
         if to_dir_id is None:
             raise errors.BzrMoveFailedError('',to_dir,
                 errors.NotVersionedError(path=to_dir))
 
-        to_dir_ie = inv[to_dir_id]
+        to_dir_ie = self.inventory[to_dir_id]
         if to_dir_ie.kind != 'directory':
             raise errors.BzrMoveFailedError('',to_dir,
                 errors.NotADirectory(to_abs))
@@ -2627,12 +2619,12 @@ class InventoryWorkingTree(WorkingTree,
         # create rename entries and tuples
         for from_rel in from_paths:
             from_tail = splitpath(from_rel)[-1]
-            from_id = inv.path2id(from_rel)
+            from_id = self.path2id(from_rel)
             if from_id is None:
                 raise errors.BzrMoveFailedError(from_rel,to_dir,
                     errors.NotVersionedError(path=from_rel))
 
-            from_entry = inv[from_id]
+            from_entry = self.inventory[from_id]
             from_parent_id = from_entry.parent_id
             to_rel = pathjoin(to_dir, from_tail)
             rename_entry = InventoryWorkingTree._RenameEntry(
@@ -2657,7 +2649,7 @@ class InventoryWorkingTree(WorkingTree,
             # restore the inventory on error
             self._inventory_is_modified = original_modified
             raise
-        self._write_inventory(inv)
+        self._write_inventory(self.inventory)
         return rename_tuples
 
     @needs_tree_write_lock
@@ -2683,12 +2675,11 @@ class InventoryWorkingTree(WorkingTree,
 
         Everything else results in an error.
         """
-        inv = self.inventory
         rename_entries = []
 
         # create rename entries and tuples
         from_tail = splitpath(from_rel)[-1]
-        from_id = inv.path2id(from_rel)
+        from_id = self.path2id(from_rel)
         if from_id is None:
             # if file is missing in the inventory maybe it's in the basis_tree
             basis_tree = self.branch.basis_tree()
@@ -2698,12 +2689,12 @@ class InventoryWorkingTree(WorkingTree,
                     errors.NotVersionedError(path=from_rel))
             # put entry back in the inventory so we can rename it
             from_entry = basis_tree.inventory[from_id].copy()
-            inv.add(from_entry)
+            self.inventory.add(from_entry)
         else:
-            from_entry = inv[from_id]
+            from_entry = self.inventory[from_id]
         from_parent_id = from_entry.parent_id
         to_dir, to_tail = os.path.split(to_rel)
-        to_dir_id = inv.path2id(to_dir)
+        to_dir_id = self.path2id(to_dir)
         rename_entry = InventoryWorkingTree._RenameEntry(from_rel=from_rel,
                                      from_id=from_id,
                                      from_tail=from_tail,
@@ -2731,7 +2722,7 @@ class InventoryWorkingTree(WorkingTree,
                from_id, from_rel, to_rel, to_dir, to_dir_id)
 
         self._move(rename_entries)
-        self._write_inventory(inv)
+        self._write_inventory(self.inventory)
 
     class _RenameEntry(object):
         def __init__(self, from_rel, from_id, from_tail, from_parent_id,
@@ -2817,7 +2808,6 @@ class InventoryWorkingTree(WorkingTree,
         Depending on the value of the flag 'only_change_inv', the
         file will be moved on the file system or not.
         """
-        inv = self.inventory
         moved = []
 
         for entry in rename_entries:
@@ -2830,7 +2820,6 @@ class InventoryWorkingTree(WorkingTree,
 
     def _rollback_move(self, moved):
         """Try to rollback a previous move in case of an filesystem error."""
-        inv = self.inventory
         for entry in moved:
             try:
                 self._move_entry(WorkingTree._RenameEntry(

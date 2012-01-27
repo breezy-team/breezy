@@ -623,7 +623,7 @@ class _SmartAddHelper(object):
             # nb: this relies on someone else checking that the path we're using
             # doesn't contain symlinks.
             parent_ie = self._convert_to_directory(parent_ie, inv_dirname)
-        file_id = self.action(self.tree.inventory, parent_ie, path, kind)
+        file_id = self.action(self.tree, parent_ie, path, kind)
         entry = _mod_inventory.make_entry(kind, basename, parent_ie.file_id,
             file_id=file_id)
         self._invdelta[inv_path] = (None, inv_path, entry.file_id, entry)

@@ -777,7 +777,7 @@ class InventoryTree(Tree):
     @needs_read_lock
     def path2id(self, path):
         """Return the id for path in this tree."""
-        return self._inventory.path2id(path)
+        return self.inventory.path2id(path)
 
     def id2path(self, file_id):
         """Return the path for a file id.
@@ -793,11 +793,12 @@ class InventoryTree(Tree):
         return self.inventory.has_id(file_id)
 
     def all_file_ids(self):
-        return set(self.inventory)
+        return set(
+            [entry.file_id for path, entry in self.iter_entries_by_dir()])
 
     @deprecated_method(deprecated_in((2, 4, 0)))
     def __iter__(self):
-        return iter(self.inventory)
+        return iter(self.all_file_ids())
 
     def filter_unversioned_files(self, paths):
         """Filter out paths that are versioned.
@@ -807,8 +808,7 @@ class InventoryTree(Tree):
         # NB: we specifically *don't* call self.has_filename, because for
         # WorkingTrees that can indicate files that exist on disk but that
         # are not versioned.
-        pred = self.inventory.has_filename
-        return set((p for p in paths if not pred(p)))
+        return set((p for p in paths if self.path2id(p) is None))
 
     @needs_read_lock
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):

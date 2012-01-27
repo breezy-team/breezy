@@ -1091,8 +1091,8 @@ class Merge3Merger(object):
         other_root = self.tt.trans_id_file_id(other_root_file_id)
         if other_root == self.tt.root:
             return
-        if self.this_tree.inventory.has_id(
-            self.other_tree.inventory.root.file_id):
+        if self.this_tree.has_id(
+            self.other_tree.get_root_id()):
             # the other tree's root is a non-root in the current tree (as
             # when a previously unrelated branch is merged into another)
             return
@@ -1948,13 +1948,13 @@ class MergeIntoMergeType(Merge3Merger):
             raise PathNotInTree(self._source_subpath, "Source tree")
         subdir = other_inv[subdir_id]
         parent_in_target = osutils.dirname(self._target_subdir)
-        target_id = self.this_tree.inventory.path2id(parent_in_target)
+        target_id = self.this_tree.path2id(parent_in_target)
         if target_id is None:
             raise PathNotInTree(self._target_subdir, "Target tree")
         name_in_target = osutils.basename(self._target_subdir)
         merge_into_root = subdir.copy()
         merge_into_root.name = name_in_target
-        if self.this_tree.inventory.has_id(merge_into_root.file_id):
+        if self.this_tree.has_id(merge_into_root.file_id):
             # Give the root a new file-id.
             # This can happen fairly easily if the directory we are
             # incorporating is the root, and both trees have 'TREE_ROOT' as
