@@ -820,7 +820,7 @@ class BzrDirMeta1(BzrDir):
 
     def create_branch(self, name=None, repository=None,
             append_revisions_only=None):
-        """See BzrDir.create_branch."""
+        """See ControlDir.create_branch."""
         if name is None:
             name = self._get_selected_branch()
         return self._format.get_branch_format().initialize(self, name=name,
@@ -828,7 +828,7 @@ class BzrDirMeta1(BzrDir):
                 append_revisions_only=append_revisions_only)
 
     def destroy_branch(self, name=None):
-        """See BzrDir.create_branch."""
+        """See ControlDir.destroy_branch."""
         if name is None:
             name = self._get_selected_branch()
         if name != "":
@@ -836,7 +836,8 @@ class BzrDirMeta1(BzrDir):
         try:
             self.transport.delete_tree('branch')
         except errors.NoSuchFile:
-            raise errors.NotBranchError(path=name, bzrdir=self)
+            raise errors.NotBranchError(path=urlutils.join(self.transport.base,
+                'branch'), bzrdir=self)
 
     def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
@@ -1081,7 +1082,7 @@ class BzrDirMeta1Colo(BzrDirMeta1):
         try:
             self.transport.delete_tree(path)
         except errors.NoSuchFile:
-            raise errors.NotBranchError(path=name, bzrdir=self)
+            raise errors.NotBranchError(path=path, bzrdir=self)
 
     def get_branches(self):
         """See ControlDir.get_branches."""
