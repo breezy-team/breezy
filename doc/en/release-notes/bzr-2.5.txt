@@ -50,6 +50,9 @@ Bug Fixes
 * ``bzr branch`` generates correct target branch locations again if not
   specified. (Jelmer Vernooij, #919218)
 
+* ``bzr send`` works on treeless branches again.
+  (Jelmer Vernooij, #921591)
+
 * Support scripts that don't call bzrlib.initialize() but still call run_bzr().
   (Vincent Ladeuil, #917733)
 
