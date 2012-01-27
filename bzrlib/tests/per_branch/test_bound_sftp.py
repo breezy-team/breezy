@@ -103,7 +103,7 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
     def test_bound_commit(self):
         b_base, wt_child = self.create_branches()
 
-        open('child/a', 'wb').write('new contents\n')
+        with open('child/a', 'wb') as f: f.write('new contents\n')
         wt_child.commit('modified a', rev_id='r@c-2')
 
         self.assertEqual(['r@b-1', 'r@c-2'], wt_child.branch.revision_history())
@@ -113,10 +113,10 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
         # Make sure commit fails if out of date.
         b_base, wt_child = self.create_branches()
 
-        open('base/a', 'wb').write('new base contents\n')
+        with open('base/a', 'wb') as f: f.write('new base contents\n')
         b_base.bzrdir.open_workingtree().commit('base', rev_id='r@b-2')
 
-        open('child/b', 'wb').write('new b child contents\n')
+        with open('child/b', 'wb') as f: f.write('new b child contents\n')
         self.assertRaises(errors.BoundBranchOutOfDate,
                 wt_child.commit, 'child', rev_id='r@c-2')
 
@@ -139,7 +139,7 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
 
         wt_child2 = wt_child.branch.create_checkout('child2')
 
-        open('child2/a', 'wb').write('new contents\n')
+        with open('child2/a', 'wb') as f: f.write('new contents\n')
         self.assertRaises(errors.CommitToDoubleBoundBranch,
                 wt_child2.commit, 'child2', rev_id='r@d-2')
 
@@ -153,10 +153,10 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
         __unused_t = self.get_transport()
 
         wt_base = b_base.bzrdir.open_workingtree()
-        open('base/a', 'wb').write('new base contents\n')
+        with open('base/a', 'wb') as f: f.write('new base contents\n')
         wt_base.commit('base', rev_id='r@b-2')
 
-        open('child/b', 'wb').write('new b child contents\n')
+        with open('child/b', 'wb') as f: f.write('new b child contents\n')
         self.assertRaises(errors.BoundBranchOutOfDate,
                 wt_child.commit, 'child', rev_id='r@c-2')
         self.assertEqual(['r@b-1'], wt_child.branch.revision_history())
@@ -181,7 +181,7 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
 
         sftp_b_base.bind(sftp_b_newbase)
 
-        open('child/a', 'wb').write('new contents\n')
+        with open('child/a', 'wb') as f: f.write('new contents\n')
         self.assertRaises(errors.CommitToDoubleBoundBranch,
                 wt_child.commit, 'failure', rev_id='r@c-2')
 
@@ -193,13 +193,13 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
         b_base, wt_child = self.create_branches()
 
         wt_child.branch.unbind()
-        open('child/a', 'ab').write('child contents\n')
+        with open('child/a', 'ab') as f: f.write('child contents\n')
         wt_child_rev = wt_child.commit('child', rev_id='r@c-2')
 
         self.assertEqual(['r@b-1', 'r@c-2'], wt_child.branch.revision_history())
         self.assertEqual(['r@b-1'], b_base.revision_history())
 
-        open('base/b', 'ab').write('base contents\n')
+        with open('base/b', 'ab') as f: f.write('base contents\n')
         b_base.bzrdir.open_workingtree().commit('base', rev_id='r@b-2')
         self.assertEqual(['r@b-1', 'r@b-2'], b_base.revision_history())
 
@@ -225,7 +225,7 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
 
         wt_child.branch.unbind()
 
-        open('a', 'ab').write('base changes\n')
+        with open('a', 'ab') as f: f.write('base changes\n')
         wt_base = b_base.bzrdir.open_workingtree()
         wt_base.commit('base', rev_id='r@b-2')
         self.assertEqual(['r@b-1', 'r@b-2'], b_base.revision_history())
@@ -288,7 +288,7 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
 
         wt_other = wt_child.bzrdir.sprout('other').open_workingtree()
 
-        open('other/c', 'wb').write('file c\n')
+        with open('other/c', 'wb') as f: f.write('file c\n')
         wt_other.add('c')
         wt_other.commit('adding c', rev_id='r@d-2')
 
@@ -312,7 +312,7 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
     def test_commit_fails(self):
         b_base, wt_child = self.create_branches()
 
-        open('a', 'ab').write('child adds some text\n')
+        with open('a', 'ab') as f: f.write('child adds some text\n')
 
         # this deletes the branch from memory
         del b_base

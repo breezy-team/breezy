@@ -220,8 +220,8 @@ class TestDiffFiles(tests.TestCaseInTempDir):
         lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
 
         cmd = ['diff', '-u', '--binary', 'old', 'new']
-        open('old', 'wb').write('\x00foobar\n')
-        open('new', 'wb').write('foo\x00bar\n')
+        with open('old', 'wb') as f: f.write('\x00foobar\n')
+        with open('new', 'wb') as f: f.write('foo\x00bar\n')
         pipe = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                                      stdin=subprocess.PIPE)
         out, err = pipe.communicate()
@@ -1191,8 +1191,8 @@ class TestPatienceDiffLibFiles(tests.TestCaseInTempDir):
                  'how are you today?\n']
         txt_b = ['hello there\n',
                  'how are you today?\n']
-        open('a1', 'wb').writelines(txt_a)
-        open('b1', 'wb').writelines(txt_b)
+        with open('a1', 'wb') as f: f.writelines(txt_a)
+        with open('b1', 'wb') as f: f.writelines(txt_b)
 
         unified_diff_files = patiencediff.unified_diff_files
         psm = self._PatienceSequenceMatcher
@@ -1208,8 +1208,8 @@ class TestPatienceDiffLibFiles(tests.TestCaseInTempDir):
 
         txt_a = map(lambda x: x+'\n', 'abcdefghijklmnop')
         txt_b = map(lambda x: x+'\n', 'abcdefxydefghijklmnop')
-        open('a2', 'wb').writelines(txt_a)
-        open('b2', 'wb').writelines(txt_b)
+        with open('a2', 'wb') as f: f.writelines(txt_a)
+        with open('b2', 'wb') as f: f.writelines(txt_b)
 
         # This is the result with LongestCommonSubstring matching
         self.assertEquals(['--- a2\n',

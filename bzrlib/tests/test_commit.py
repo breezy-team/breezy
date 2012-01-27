@@ -82,12 +82,12 @@ class TestCommit(TestCaseWithTransport):
         """Commit and check two versions of a single file."""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-        file('hello', 'w').write('hello world')
+        with file('hello', 'w') as f: f.write('hello world')
         wt.add('hello')
         rev1 = wt.commit(message='add hello')
         file_id = wt.path2id('hello')
 
-        file('hello', 'w').write('version 2')
+        with file('hello', 'w') as f: f.write('version 2')
         rev2 = wt.commit(message='commit 2')
 
         eq = self.assertEquals
@@ -111,7 +111,7 @@ class TestCommit(TestCaseWithTransport):
         """Attempt a lossy commit to a native branch."""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-        file('hello', 'w').write('hello world')
+        with file('hello', 'w') as f: f.write('hello world')
         wt.add('hello')
         revid = wt.commit(message='add hello', rev_id='revid', lossy=True)
         self.assertEquals('revid', revid)
@@ -122,7 +122,7 @@ class TestCommit(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.',
             format=test_foreign.DummyForeignVcsDirFormat())
         b = wt.branch
-        file('hello', 'w').write('hello world')
+        with file('hello', 'w') as f: f.write('hello world')
         wt.add('hello')
         revid = wt.commit(message='add hello', lossy=True,
             timestamp=1302659388, timezone=0)
@@ -135,7 +135,7 @@ class TestCommit(TestCaseWithTransport):
             format=test_foreign.DummyForeignVcsDirFormat())
         wt = foreign_branch.create_checkout("local")
         b = wt.branch
-        file('local/hello', 'w').write('hello world')
+        with file('local/hello', 'w') as f: f.write('hello world')
         wt.add('hello')
         revid = wt.commit(message='add hello', lossy=True,
             timestamp=1302659388, timezone=0)
@@ -149,7 +149,7 @@ class TestCommit(TestCaseWithTransport):
         """Test a commit with a missing file"""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-        file('hello', 'w').write('hello world')
+        with file('hello', 'w') as f: f.write('hello world')
         wt.add(['hello'], ['hello-id'])
         wt.commit(message='add hello')
 
@@ -187,7 +187,7 @@ class TestCommit(TestCaseWithTransport):
         """Commit refuses unless there are changes or it's forced."""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-        file('hello', 'w').write('hello')
+        with file('hello', 'w') as f: f.write('hello')
         wt.add(['hello'])
         wt.commit(message='add hello')
         self.assertEquals(b.revno(), 1)
@@ -213,15 +213,15 @@ class TestCommit(TestCaseWithTransport):
         """Selective commit in tree with deletions"""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-        file('hello', 'w').write('hello')
-        file('buongia', 'w').write('buongia')
+        with file('hello', 'w') as f: f.write('hello')
+        with file('buongia', 'w') as f: f.write('buongia')
         wt.add(['hello', 'buongia'],
               ['hello-id', 'buongia-id'])
         wt.commit(message='add files',
                  rev_id='test@rev-1')
 
         os.remove('hello')
-        file('buongia', 'w').write('new text')
+        with file('buongia', 'w') as f: f.write('new text')
         wt.commit(message='update text',
                  specific_files=['buongia'],
                  allow_pointless=False,
@@ -336,7 +336,7 @@ class TestCommit(TestCaseWithTransport):
         """Commit with a removed file"""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-        file('hello', 'w').write('hello world')
+        with file('hello', 'w') as f: f.write('hello world')
         wt.add(['hello'], ['hello-id'])
         wt.commit(message='add hello')
         wt.remove('hello')
@@ -351,7 +351,7 @@ class TestCommit(TestCaseWithTransport):
         b = wt.branch
         rev_ids = []
         for i in range(4):
-            file('hello', 'w').write((str(i) * 4) + '\n')
+            with file('hello', 'w') as f: f.write((str(i) * 4) + '\n')
             if i == 0:
                 wt.add(['hello'], ['hello-id'])
             rev_id = 'test@rev-%d' % (i+1)
@@ -380,9 +380,9 @@ class TestCommit(TestCaseWithTransport):
         from bzrlib.errors import StrictCommitFailed
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-        file('hello', 'w').write('hello world')
+        with file('hello', 'w') as f: f.write('hello world')
         wt.add('hello')
-        file('goodbye', 'w').write('goodbye cruel world!')
+        with file('goodbye', 'w') as f: f.write('goodbye cruel world!')
         self.assertRaises(StrictCommitFailed, wt.commit,
             message='add hello but not goodbye', strict=True)
 
@@ -391,7 +391,7 @@ class TestCommit(TestCaseWithTransport):
         should work."""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-        file('hello', 'w').write('hello world')
+        with file('hello', 'w') as f: f.write('hello world')
         wt.add('hello')
         wt.commit(message='add hello', strict=True)
 
@@ -399,9 +399,9 @@ class TestCommit(TestCaseWithTransport):
         """Try and commit with unknown files and strict = False, should work."""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-        file('hello', 'w').write('hello world')
+        with file('hello', 'w') as f: f.write('hello world')
         wt.add('hello')
-        file('goodbye', 'w').write('goodbye cruel world!')
+        with file('goodbye', 'w') as f: f.write('goodbye cruel world!')
         wt.commit(message='add hello but not goodbye', strict=False)
 
     def test_nonstrict_commit_without_unknowns(self):
@@ -409,7 +409,7 @@ class TestCommit(TestCaseWithTransport):
         should work."""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-        file('hello', 'w').write('hello world')
+        with file('hello', 'w') as f: f.write('hello world')
         wt.add('hello')
         wt.commit(message='add hello', strict=False)
 

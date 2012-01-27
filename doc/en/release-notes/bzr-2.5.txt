@@ -105,6 +105,8 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Be more careful about closing open files for pypy interoperability.
+  (Wouter van Heyst)
 
 bzr 2.5b5
 #########
