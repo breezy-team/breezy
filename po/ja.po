@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-01-16 15:18+0100\n"
-"PO-Revision-Date: 2012-01-25 14:36+0000\n"
-"Last-Translator: hikaruworld <Unknown>\n"
+"PO-Revision-Date: 2012-01-26 15:16+0000\n"
+"Last-Translator: IWATA Hidetaka <Unknown>\n"
 "Language-Team: Japanese <ja@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Launchpad-Export-Date: 2012-01-26 04:38+0000\n"
-"X-Generator: Launchpad (build 14719)\n"
+"X-Launchpad-Export-Date: 2012-01-27 04:30+0000\n"
+"X-Generator: Launchpad (build 14727)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -3399,6 +3399,10 @@ msgid ""
 "will be reverted.  If the revision is not specified with '--revision', the\n"
 "last committed revision is used."
 msgstr ""
+"ファイルのリストを指定すると、そのファイルだけが元に戻されます。\n"
+"そうでない場合は、全てのファイルが対象になります。--revisionで\n"
+"リビジョンを指定しない場合は、最後にコミットされたリビジョンが使用\n"
+"されます。"
 
 #: bzrlib/builtins.py:4630
 msgid ""
@@ -3408,6 +3412,11 @@ msgid ""
 "affecting the changes introduced by the last commit (-1).  To remove\n"
 "certain changes on a hunk-by-hunk basis, see the shelve command."
 msgstr ""
+"以前のリビジョンに戻さずにいくつかの変更を取り除くには、mergeをかわりに\n"
+"使用します。例えば、\"merge . -r -2..-3\" (.を忘れないように)で、最終リビジョン\n"
+"(-1)での変更はそのままで、その一つ前のリビジョン(-2)での変更だけを取り\n"
+"除くことができます。特定の変更をハンクごと取り除く方法は、shelveをご覧\n"
+"ください。"
 
 #: bzrlib/builtins.py:4636
 msgid ""
@@ -3415,6 +3424,9 @@ msgid ""
 "first.  (Files changed only by merge are not backed up.)  Backup files have\n"
 "'.~#~' appended to their name, where # is a number."
 msgstr ""
+"デフォルトでは、手で変更されたファイルは最初にバックアップされます。(merge\n"
+"コマンドで変更されただけのファイルはバックアップされません)バックアップ\n"
+"ファイル名は、元の名前に「.~#~」(#は数字)を付け足したものになります。"
 
 #: bzrlib/builtins.py:4640
 msgid ""
@@ -3423,6 +3435,10 @@ msgid ""
 "name.  If you name a directory, all the contents of that directory will be\n"
 "reverted."
 msgstr ""
+"ファイル名を指定するときは、現在のファイル名か、対象リビジョン時点でのファイル\n"
+"名かを使うことができます。つまり、ファイル名指定で「削除の取り消し」のために\n"
+"revertを使うことができます。ディレクトリを指定した場合は、その配下のすべての\n"
+"変更が取り消されます。"
 
 #: bzrlib/builtins.py:4645
 msgid ""
@@ -3431,6 +3447,10 @@ msgid ""
 "created as above.  Directories containing unknown files will not be\n"
 "deleted."
 msgstr ""
+"対象のリビジョン以降にファイルが新しく追加されている場合は、そのファイルは\n"
+"削除されます。削除されるファイルが変更されている場合は、上記の通りに\n"
+"バックアップされます。バージョン管理外のファイルを含むディレクトリは削除され\n"
+"ません。"
 
 #: bzrlib/builtins.py:4650
 msgid ""
@@ -3537,7 +3557,7 @@ msgstr "        bzr missing --my-revision ..-10"
 
 #: bzrlib/builtins.py:4778
 msgid "Reverse the order of revisions."
-msgstr ""
+msgstr "リビジョンの表示順を逆転する。"
 
 #: bzrlib/builtins.py:4780
 msgid "Display changes in the local branch only."
@@ -3607,7 +3627,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4934
 msgid "Compress the data within a repository."
-msgstr ""
+msgstr "リポジトリ内のデータを圧縮する。"
 
 #: bzrlib/builtins.py:4936
 msgid ""
