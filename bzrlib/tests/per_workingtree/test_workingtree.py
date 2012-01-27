@@ -121,7 +121,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(('filename', 'V', 'directory', 'file-id'),
                          result[0][:4])
 
-    def get_get_config(self):
+    def test_get_config(self):
         # Smoke test that all working trees succeed getting a config
         wt = self.make_branch_and_tree('.')
         conf = wt.get_config_stack()
