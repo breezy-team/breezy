@@ -715,6 +715,15 @@ class ParentBranchExists(AlreadyBranchError):
     _fmt = 'Parent branch already exists: "%(path)s".'
 
 
+class ChildBranchExists(AlreadyBranchError):
+
+    _fmt = 'Child branch %(child)s already exists, unable to create %(path)s".'
+
+    def __init__(self, path, child):
+        self.path = path
+        self.child = child
+
+
 class BranchExistsWithoutWorkingTree(PathError):
 
     _fmt = 'Directory contains a branch, but no working tree \
