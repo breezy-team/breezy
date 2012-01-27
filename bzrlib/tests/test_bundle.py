@@ -83,6 +83,7 @@ class MockTree(object):
         return set(self.paths.keys())
 
     def is_executable(self, file_id):
+        # Not all the files are executable.
         return False
 
     def __getitem__(self, file_id):
