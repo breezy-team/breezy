@@ -82,9 +82,12 @@ Internals
 
 * A new matcher ``RevisionHistoryMatches`` has been added. (Jelmer Vernooij)
 
+* Add new module ``bzrlib.url_policy_open``. (Jelmer Vernooij, #850843)
+
 * ``MutableTree`` has two new hooks ``pre_transform`` and
   ``post_transform`` that are called for tree transform operations.
   (Jelmer Vernooij, #912084)
+
 
 Testing
 *******
