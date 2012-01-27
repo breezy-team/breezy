@@ -1463,7 +1463,7 @@ class TestMeta1DirColoFormat(TestCaseWithTransport):
         tree.bzrdir.create_branch(name='fool/bla')
         tree.bzrdir.create_branch(name='foo/bar')
         self.assertRaises(
-            errors.ChildBranchExists, tree.bzrdir.create_branch,
+            errors.AlreadyBranchError, tree.bzrdir.create_branch,
             name='foo')
 
 

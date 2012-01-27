@@ -1112,12 +1112,11 @@ class BzrDirMeta1Colo(BzrDirMeta1):
                     branches = self._read_branch_list()
                     dirname = urlutils.dirname(utf8_name)
                     if dirname != "" and dirname in branches:
-                        raise errors.ParentBranchExists(utf8_name)
+                        raise errors.ParentBranchExists(name)
                     child_branches = [
                         b.startswith(utf8_name+"/") for b in branches]
                     if any(child_branches):
-                        raise errors.ChildBranchExists(utf8_name,
-                            child_branches[0])
+                        raise errors.AlreadyBranchError(name)
                     branches.append(utf8_name)
                     self._write_branch_list(branches)
                 finally:
