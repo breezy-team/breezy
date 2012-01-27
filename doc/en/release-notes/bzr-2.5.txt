@@ -36,6 +36,9 @@ Improvements
   a control directory (but no branch or working tree).
   (Jelmer Vernooij, #913980)
 
+* Colocated branches can now have names including forward slashes, to
+  allow for namespaces. (Jelmer Vernooij, #907980)
+
 * New HPSS call for ``BzrDir.get_branches``. (Jelmer Vernooij, #894460)
 
 * Checkouts of colocated branches are now always lightweight.
