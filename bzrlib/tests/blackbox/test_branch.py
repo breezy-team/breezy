@@ -65,6 +65,14 @@ class TestBranch(tests.TestCaseWithTransport):
         self.assertFalse(b._transport.has('branch-name'))
         b.bzrdir.open_workingtree().commit(message='foo', allow_pointless=True)
 
+    def test_branch_no_to_location(self):
+        """The to_location is derived from the source branch name."""
+        os.mkdir("something")
+        a = self.example_branch('something/a').branch
+        self.run_bzr('branch something/a')
+        b = branch.Branch.open('a')
+        self.assertEquals(b.last_revision_info(), a.last_revision_info())
+
     def test_into_colocated(self):
         """Branch from a branch into a colocated branch."""
         self.example_branch('a')
