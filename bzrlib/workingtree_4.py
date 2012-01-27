@@ -1873,21 +1873,24 @@ class DirStateRevisionTree(InventoryTree):
 
     @needs_read_lock
     def get_file_revision(self, file_id):
-        return self.inventory[file_id].revision
+        inv, inv_file_id = self._unpack_file_id(file_id)
+        return inv[inv_file_id].revision
 
     def get_file(self, file_id, path=None):
         return StringIO(self.get_file_text(file_id))
 
     def get_file_size(self, file_id):
         """See Tree.get_file_size"""
-        return self.inventory[file_id].text_size
+        inv, inv_file_id = self._unpack_file_id(file_id)
+        return inv[inv_file_id].text_size
 
     def get_file_text(self, file_id, path=None):
         _, content = list(self.iter_files_bytes([(file_id, None)]))[0]
         return ''.join(content)
 
     def get_reference_revision(self, file_id, path=None):
-        return self.inventory[file_id].reference_revision
+        inv, inv_file_id = self._unpack_file_id(file_id)
+        return inv[inv_file_id].reference_revision
 
     def iter_files_bytes(self, desired_files):
         """See Tree.iter_files_bytes.
@@ -1947,10 +1950,10 @@ class DirStateRevisionTree(InventoryTree):
 
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
-        file_id = self.path2id(path)
-        if file_id is None:
+        inv, inv_file_id = self._path2inv_file_id(path)
+        if inv_file_id is None:
             return ('missing', None, None, None)
-        entry = self.inventory[file_id]
+        entry = inv[inv_file_id]
         kind = entry.kind
         if kind == 'file':
             return (kind, entry.text_size, entry.executable, entry.text_sha1)
@@ -1960,7 +1963,8 @@ class DirStateRevisionTree(InventoryTree):
             return (kind, None, None, None)
 
     def is_executable(self, file_id, path=None):
-        ie = self.inventory[file_id]
+        inv, inv_file_id = self._unpack_file_id(file_id)
+        ie = inv[inv_file_id]
         if ie.kind != "file":
             return False
         return ie.executable
@@ -1975,8 +1979,7 @@ class DirStateRevisionTree(InventoryTree):
             inv = self.inventory
             from_dir_id = None
         else:
-            inv = self.inventory
-            from_dir_id = self.path2id(from_dir)
+            inv, from_dir_id = self._path2inv_file_id(from_dir)
             if from_dir_id is None:
                 # Directory not versioned
                 return

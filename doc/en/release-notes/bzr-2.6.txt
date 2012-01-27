@@ -48,6 +48,10 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* File ids in the ``Tree`` API can now be bytestring as previously,
+  or tuples of bytestrings.
+  (Jelmer Vernooij)
+
 Internals
 *********
 
