@@ -2555,7 +2555,7 @@ class ListOption(Option):
 class RegistryOption(Option):
     """Option for a choice from a registry."""
 
-    def __init__(self, name, registry, default=None, default_from_env=None,
+    def __init__(self, name, registry, default_from_env=None,
                  help=None, invalid=None):
         """A registry based Option definition.
 
@@ -2563,7 +2563,8 @@ class RegistryOption(Option):
         can take quoting into account.
         """
         super(RegistryOption, self).__init__(
-            name, default=default, default_from_env=default_from_env,
+            name, default=lambda: unicode(registry.default_key),
+            default_from_env=default_from_env,
             from_unicode=self.from_unicode, help=help,
             invalid=invalid, unquote=False)
         self.registry = registry
@@ -2682,6 +2683,8 @@ option_registry.register(
            help="""\
 Whether revisions associated with tags should be fetched.
 """))
+option_registry.register_lazy('bzr.transform.orphan_policy',
+    'bzrlib.transform', 'opt_transform_orphan')
 option_registry.register(
     Option('bzr.workingtree.worth_saving_limit', default=10,
            from_unicode=int_from_store,  invalid='warning',
