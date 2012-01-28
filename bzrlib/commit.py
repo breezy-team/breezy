@@ -372,7 +372,7 @@ class Commit(object):
         elif self.reporter is None:
             self.reporter = self._select_reporter()
         if self.config_stack is None:
-            self.config_stack = self.branch.get_config_stack()
+            self.config_stack = self.work_tree.get_config_stack()
 
         self._set_specific_file_ids()
 
