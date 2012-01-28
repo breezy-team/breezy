@@ -272,7 +272,7 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
         """
         os.mkdir('tmp')
         plugin_name = 'bzr_plugin_a_%s' % (osutils.rand_chars(4),)
-        open('tmp/'+plugin_name+'.py', 'wb').write(contents)
+        with open('tmp/'+plugin_name+'.py', 'wb') as f: f.write(contents)
         return plugin_name
 
     def create_simple_plugin(self):

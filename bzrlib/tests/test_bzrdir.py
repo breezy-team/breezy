@@ -1450,6 +1450,22 @@ class TestMeta1DirColoFormat(TestCaseWithTransport):
         result = converter.convert(tree.bzrdir, bzrdir.BzrDirMetaFormat1())
         self.assertIsInstance(result._format, bzrdir.BzrDirMetaFormat1)
 
+    def test_nested(self):
+        tree = self.make_branch_and_tree('.', format='development-colo')
+        tree.bzrdir.create_branch(name='foo')
+        tree.bzrdir.create_branch(name='fool/bla')
+        self.assertRaises(
+            errors.ParentBranchExists, tree.bzrdir.create_branch,
+            name='foo/bar')
+
+    def test_parent(self):
+        tree = self.make_branch_and_tree('.', format='development-colo')
+        tree.bzrdir.create_branch(name='fool/bla')
+        tree.bzrdir.create_branch(name='foo/bar')
+        self.assertRaises(
+            errors.AlreadyBranchError, tree.bzrdir.create_branch,
+            name='foo')
+
 
 class SampleBzrFormat(bzrdir.BzrFormat):
 

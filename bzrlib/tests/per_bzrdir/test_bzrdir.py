@@ -125,8 +125,8 @@ class TestBzrDir(TestCaseWithBzrDir):
                     self.assertTrue(S_ISDIR(target.stat(path).st_mode))
                     directories.append(path)
                 else:
-                    self.assertEqualDiff(source.get(path).read(),
-                                         target.get(path).read(),
+                    self.assertEqualDiff(source.get_bytes(path),
+                                         target.get_bytes(path),
                                          "text for file %r differs:\n" % path)
 
     def assertRepositoryHasSameItems(self, left_repo, right_repo):

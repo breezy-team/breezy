@@ -36,7 +36,7 @@ class TestRevno(tests.TestCaseWithTransport):
         bzr('init')
         self.assertEquals(int(bzr('revno')), 0)
 
-        open('foo', 'wb').write('foo\n')
+        with open('foo', 'wb') as f: f.write('foo\n')
         bzr('add foo')
         bzr('commit -m foo')
         self.assertEquals(int(bzr('revno')), 1)

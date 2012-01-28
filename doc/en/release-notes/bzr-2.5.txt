@@ -29,7 +29,7 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
-* "bzr switch -b" in a standalone tree will now create a colocated branch.
+* ``bzr switch -b`` in a standalone tree will now create a colocated branch.
   (Jelmer Vernooij, #918197)
 
 * ``bzr info`` now reports when there are present (but unused) colocated
@@ -39,7 +39,13 @@ Improvements
   a control directory (but no branch or working tree).
   (Jelmer Vernooij, #913980)
 
+* Colocated branches can now have names including forward slashes, to
+  allow for namespaces. (Jelmer Vernooij, #907980)
+
 * New HPSS call for ``BzrDir.get_branches``. (Jelmer Vernooij, #894460)
+
+* Checkouts of colocated branches are now always lightweight.
+  (Jelmer Vernooij, #918828)
 
 Bug Fixes
 *********
@@ -49,6 +55,12 @@ Bug Fixes
 
 * ``bzr branch`` now fetches revisions when branching into an empty
   control directory. (Jelmer Vernooij, #905594)
+
+* ``bzr branch`` generates correct target branch locations again if not
+  specified. (Jelmer Vernooij, #919218)
+
+* ``bzr send`` works on treeless branches again.
+  (Jelmer Vernooij, #921591)
 
 * Support scripts that don't call bzrlib.initialize() but still call run_bzr().
   (Vincent Ladeuil, #917733)
@@ -82,9 +94,12 @@ Internals
 
 * A new matcher ``RevisionHistoryMatches`` has been added. (Jelmer Vernooij)
 
+* Add new module ``bzrlib.url_policy_open``. (Jelmer Vernooij, #850843)
+
 * ``MutableTree`` has two new hooks ``pre_transform`` and
   ``post_transform`` that are called for tree transform operations.
   (Jelmer Vernooij, #912084)
+
 
 Testing
 *******
@@ -93,6 +108,8 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Be more careful about closing open files for pypy interoperability.
+  (Wouter van Heyst)
 
 bzr 2.5b5
 #########

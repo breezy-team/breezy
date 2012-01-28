@@ -355,6 +355,7 @@ class BzrDir(controldir.ControlDir):
             location of this control directory.
         :param create_tree_if_local: If true, a working-tree will be created
             when working locally.
+        :return: The created control directory
         """
         operation = cleanup.OperationWithCleanups(self._sprout)
         return operation.run(url, revision_id=revision_id,
@@ -955,20 +956,25 @@ class BzrDirMeta1(BzrDir):
         except NotImplementedError:
             raise errors.IncompatibleFormat(branch_format, self._format)
         if name != "":
-            try:
-                self.transport.mkdir('branches', mode=self._get_mkdir_mode())
-            except errors.FileExists:
-                pass
             branches = self._read_branch_list()
             utf8_name = name.encode("utf-8")
             if not utf8_name in branches:
                 self.control_files.lock_write()
                 try:
                     branches = self._read_branch_list()
+                    dirname = urlutils.dirname(utf8_name)
+                    if dirname != "" and dirname in branches:
+                        raise errors.ParentBranchExists(name)
+                    child_branches = [
+                        b.startswith(utf8_name+"/") for b in branches]
+                    if any(child_branches):
+                        raise errors.AlreadyBranchError(name)
                     branches.append(utf8_name)
                     self._write_branch_list(branches)
                 finally:
                     self.control_files.unlock()
+        branch_transport = self.transport.clone(path)
+        branch_transport.create_prefix()
         try:
             self.transport.mkdir(path, mode=self._get_mkdir_mode())
         except errors.FileExists:
