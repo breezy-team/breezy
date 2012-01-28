@@ -139,7 +139,7 @@ bzr: ERROR: No changes to commit.\
         self.requireFeature(features.UnicodeFilenameFeature)
         file_name = u'\N{euro sign}'
         self.run_bzr(['init'])
-        open(file_name, 'w').write('hello world')
+        with open(file_name, 'w') as f: f.write('hello world')
         self.run_bzr(['add'])
         out, err = self.run_bzr(['commit', '-m', file_name])
         reflags = re.MULTILINE|re.DOTALL|re.UNICODE
@@ -157,7 +157,7 @@ bzr: ERROR: No changes to commit.\
         try:
             osutils.get_terminal_encoding = lambda trace=None: 'ascii'
             file_name = u'foo\u1234'
-            open(file_name, 'w').write('hello world')
+            with open(file_name, 'w') as f: f.write('hello world')
             self.run_bzr(['add'])
             out, err = self.run_bzr(['commit', '-m', file_name])
             reflags = re.MULTILINE|re.DOTALL|re.UNICODE

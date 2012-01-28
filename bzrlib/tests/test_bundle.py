@@ -656,10 +656,10 @@ class BundleTester(object):
         bundle = self.get_valid_bundle('null:', 'a@cset-0-4')
 
         # Modified files
-        open('b1/sub/dir/WithCaps.txt', 'ab').write('\nAdding some text\n')
-        open('b1/sub/dir/ pre space', 'ab').write(
+        with open('b1/sub/dir/WithCaps.txt', 'ab') as f: f.write('\nAdding some text\n')
+        with open('b1/sub/dir/ pre space', 'ab') as f: f.write(
              '\r\nAdding some\r\nDOS format lines\r\n')
-        open('b1/sub/dir/nolastnewline.txt', 'ab').write('\n')
+        with open('b1/sub/dir/nolastnewline.txt', 'ab') as f: f.write('\n')
         self.tree1.rename_one('sub/dir/ pre space',
                               'sub/ start space')
         self.tree1.commit('Modified files', rev_id='a@cset-0-5')
@@ -814,12 +814,12 @@ class BundleTester(object):
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
 
-        open('b1/one', 'wb').write('one\n')
+        with open('b1/one', 'wb') as f: f.write('one\n')
         self.tree1.add('one')
         self.tree1.commit('add file', rev_id='a@cset-0-1')
-        open('b1/one', 'wb').write('two\n')
+        with open('b1/one', 'wb') as f: f.write('two\n')
         self.tree1.commit('modify', rev_id='a@cset-0-2')
-        open('b1/one', 'wb').write('three\n')
+        with open('b1/one', 'wb') as f: f.write('three\n')
         self.tree1.commit('modify', rev_id='a@cset-0-3')
         bundle_file = StringIO()
         rev_ids = write_bundle(self.tree1.branch.repository, 'a@cset-0-3',
@@ -904,7 +904,7 @@ class BundleTester(object):
         bundle = self.get_valid_bundle('null:', 'white-1')
 
         # Modified
-        open('b1/trailing space ', 'ab').write('add some text\n')
+        with open('b1/trailing space ', 'ab') as f: f.write('add some text\n')
         self.tree1.commit('add text', rev_id='white-2')
 
         bundle = self.get_valid_bundle('white-1', 'white-2')
