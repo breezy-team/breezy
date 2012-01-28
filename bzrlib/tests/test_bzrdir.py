@@ -857,7 +857,7 @@ class ChrootedTests(TestCaseWithTransport):
         sub_tree.add('file')
         tree.commit('Initial commit')
         # The following line force the orhaning to reveal bug #634470
-        tree.branch.get_config().set_user_option(
+        tree.branch.get_config_stack().set(
             'bzr.transform.orphan_policy', 'move')
         tree.bzrdir.destroy_workingtree()
         # FIXME: subtree/.bzr is left here which allows the test to pass (or
