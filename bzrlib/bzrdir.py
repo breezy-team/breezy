@@ -852,8 +852,9 @@ class BzrDirMeta1(BzrDir):
 
     def __init__(self, _transport, _format):
         super(BzrDirMeta1, self).__init__(_transport, _format)
-        self.control_files = lockable_files.LockableFiles(self.control_transport,
-            self._format._lock_file_name, self._format._lock_class)
+        self.control_files = lockable_files.LockableFiles(
+            self.control_transport, self._format._lock_file_name,
+            self._format._lock_class)
 
     def can_convert_format(self):
         """See BzrDir.can_convert_format()."""
@@ -974,9 +975,10 @@ class BzrDirMeta1(BzrDir):
                 finally:
                     self.control_files.unlock()
         branch_transport = self.transport.clone(path)
-        branch_transport.create_prefix()
+        mode = self._get_mkdir_mode()
+        branch_transport.create_prefix(mode=mode)
         try:
-            self.transport.mkdir(path, mode=self._get_mkdir_mode())
+            self.transport.mkdir(path, mode=mode)
         except errors.FileExists:
             pass
         return self.transport.clone(path)
