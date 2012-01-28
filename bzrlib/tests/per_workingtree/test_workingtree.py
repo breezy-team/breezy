@@ -125,7 +125,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # Smoke test that all working trees succeed getting a config
         wt = self.make_branch_and_tree('.')
         conf = wt.get_config_stack()
-        self.assertIsInstance(conf, conf.Stack)
+        self.assertIsInstance(conf, config.Stack)
 
     def test_open_containing(self):
         branch = self.make_branch_and_tree('.').branch
