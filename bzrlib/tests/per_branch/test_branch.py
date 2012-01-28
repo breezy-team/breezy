@@ -22,7 +22,6 @@ from bzrlib import (
     config,
     delta as _mod_delta,
     errors,
-    gpg,
     merge,
     osutils,
     urlutils,
@@ -529,7 +528,7 @@ class TestBranchFormat(per_branch.TestCaseWithBranch):
             looked_up_format = registry.get(network_name)
             self.assertEqual(format.__class__, looked_up_format.__class__)
 
-    def get_get_config_calls(self):
+    def test_get_config_calls(self):
         # Smoke test that all branch succeed getting a config
         br = self.make_branch('.')
         br.get_config()
