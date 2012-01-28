@@ -82,6 +82,12 @@ class RangeFile(object):
         # Default to the whole file of unspecified size
         self.set_range(0, -1)
 
+    def close(self):
+        """Close this file.
+
+        Dummy implementation for consistency with the 'file' API.
+        """
+
     def set_range(self, start, size):
         """Change the range mapping"""
         self._start = start

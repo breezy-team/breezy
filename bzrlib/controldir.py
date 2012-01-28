@@ -778,7 +778,8 @@ class ControlDir(ControlComponent):
         return controldir._get_tree_branch()
 
     @classmethod
-    def open_containing_tree_or_branch(klass, location):
+    def open_containing_tree_or_branch(klass, location,
+            possible_transports=None):
         """Return the branch and working tree contained by a location.
 
         Returns (tree, branch, relpath).
@@ -787,7 +788,8 @@ class ControlDir(ControlComponent):
         raised
         relpath is the portion of the path that is contained by the branch.
         """
-        controldir, relpath = klass.open_containing(location)
+        controldir, relpath = klass.open_containing(location,
+            possible_transports=possible_transports)
         tree, branch = controldir._get_tree_branch()
         return tree, branch, relpath
 

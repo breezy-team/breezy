@@ -45,7 +45,11 @@ def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None):
         source_repository = control_dir.open_branch().repository
     except errors.NotBranchError:
         source_repository = to_branch.repository
-    _set_branch_location(control_dir, to_branch, force)
+    to_branch.lock_read()
+    try:
+        _set_branch_location(control_dir, to_branch, force)
+    finally:
+        to_branch.unlock()
     tree = control_dir.open_workingtree()
     _update(tree, source_repository, quiet, revision_id)
     _run_post_switch_hooks(control_dir, to_branch, force, revision_id)
@@ -109,15 +113,19 @@ def _set_branch_location(control, to_branch, force=False):
         else:
             # If this is a standalone tree and the new branch
             # is derived from this one, create a lightweight checkout.
-            graph = b.repository.get_graph(to_branch.repository)
-            if (b.bzrdir._format.colocated_branches and
-                 (force or graph.is_ancestor(b.last_revision(),
-                    to_branch.last_revision()))):
-                b.bzrdir.destroy_branch()
-                b.bzrdir.set_branch_reference(to_branch, name="")
-            else:
-                raise errors.BzrCommandError(gettext('Cannot switch a branch, '
-                    'only a checkout.'))
+            b.lock_read()
+            try:
+                graph = b.repository.get_graph(to_branch.repository)
+                if (b.bzrdir._format.colocated_branches and
+                     (force or graph.is_ancestor(b.last_revision(),
+                        to_branch.last_revision()))):
+                    b.bzrdir.destroy_branch()
+                    b.bzrdir.set_branch_reference(to_branch, name="")
+                else:
+                    raise errors.BzrCommandError(gettext('Cannot switch a branch, '
+                        'only a checkout.'))
+            finally:
+                b.unlock()
 
 
 def _any_local_commits(this_branch, possible_transports):
