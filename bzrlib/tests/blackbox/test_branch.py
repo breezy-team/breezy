@@ -155,14 +155,15 @@ class TestBranch(tests.TestCaseWithTransport):
         #  => new branch will be created, but switch fails and the current
         #     branch is unmodified
         self.example_branch('a')
-        self.make_branch_and_tree('current')
+        tree = self.make_branch_and_tree('current')
+        c1 = tree.commit('some diverged change')
         self.run_bzr_error(['Cannot switch a branch, only a checkout'],
             'branch --switch ../a ../b', working_dir='current')
         a = branch.Branch.open('a')
         b = branch.Branch.open('b')
         self.assertEqual(a.last_revision(), b.last_revision())
         work = branch.Branch.open('current')
-        self.assertEqual(work.last_revision(), _mod_revision.NULL_REVISION)
+        self.assertEqual(work.last_revision(), c1)
 
     def test_branch_into_empty_dir(self):
         t = self.example_branch('source')
