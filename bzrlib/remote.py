@@ -59,7 +59,7 @@ from bzrlib.revisiontree import InventoryRevisionTree
 from bzrlib.repository import RepositoryWriteLockResult, _LazyListJoin
 from bzrlib.serializer import format_registry as serializer_format_registry
 from bzrlib.trace import mutter, note, warning, log_exception_quietly
-from bzrlib.versionedfile import ChunkedContentFactory, FulltextContentFactory
+from bzrlib.versionedfile import FulltextContentFactory
 
 
 _DEFAULT_SEARCH_DEPTH = 100
@@ -629,6 +629,8 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
                       append_revisions_only=None):
         if name is None:
             name = self._get_selected_branch()
+        if name != "":
+            raise errors.NoColocatedBranchSupport(self)
         # as per meta1 formats - just delegate to the format object which may
         # be parameterised.
         real_branch = self._format.get_branch_format().initialize(self,
@@ -653,9 +655,13 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
     def destroy_branch(self, name=None):
         """See BzrDir.destroy_branch"""
+        if name is None:
+            name = self._get_selected_branch()
+        if name != "":
+            raise errors.NoColocatedBranchSupport(self)
         path = self._path_for_remote_call(self._client)
         try:
-            if name is not None:
+            if name != "":
                 args = (name, )
             else:
                 args = ()
@@ -701,13 +707,18 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
     def set_branch_reference(self, target_branch, name=None):
         """See BzrDir.set_branch_reference()."""
+        if name is None:
+            name = self._get_selected_branch()
+        if name != "":
+            raise errors.NoColocatedBranchSupport(self)
         self._ensure_real()
         return self._real_bzrdir.set_branch_reference(target_branch, name=name)
 
     def get_branch_reference(self, name=None):
         """See BzrDir.get_branch_reference()."""
-        if name is not None:
-            # XXX JRV20100304: Support opening colocated branches
+        if name is None:
+            name = self._get_selected_branch()
+        if name != "":
             raise errors.NoColocatedBranchSupport(self)
         response = self._get_branch_reference()
         if response[0] == 'ref':

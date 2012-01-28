@@ -72,6 +72,8 @@ class TestNoColocatedSupport(per_controldir.TestCaseWithControlDir):
     def test_set_branch_reference(self):
         referenced = self.make_branch('referenced')
         made_control = self.make_bzrdir_with_repo()
+        self.assertFalse(made_control._format.colocated_branches,
+                         self.bzrdir_format)
         self.assertRaises(errors.NoColocatedBranchSupport,
             made_control.set_branch_reference, referenced, name="colo")
 
