@@ -35,6 +35,7 @@ from bzrlib import (
     mail_client,
     ui,
     urlutils,
+    registry as _mod_registry,
     remote,
     tests,
     trace,
@@ -2478,6 +2479,54 @@ class TestListOption(tests.TestCase, TestOptionConverterMixin):
         self.assertConverted([u'42'], opt, u'42')
         # A single string
         self.assertConverted([u'bar'], opt, u'bar')
+
+
+class TestRegistryOption(tests.TestCase, TestOptionConverterMixin):
+
+    def get_option(self, registry):
+        return config.RegistryOption('foo', registry,
+                help='A registry option.')
+
+    def test_convert_invalid(self):
+        registry = _mod_registry.Registry()
+        opt = self.get_option(registry)
+        self.assertConvertInvalid(opt, [1])
+        self.assertConvertInvalid(opt, u"notregistered")
+
+    def test_convert_valid(self):
+        registry = _mod_registry.Registry()
+        registry.register("someval", 1234)
+        opt = self.get_option(registry)
+        # Using a bare str() just in case
+        self.assertConverted(1234, opt, "someval")
+        self.assertConverted(1234, opt, u'someval')
+        self.assertConverted(None, opt, None)
+
+    def test_help(self):
+        registry = _mod_registry.Registry()
+        registry.register("someval", 1234, help="some option")
+        registry.register("dunno", 1234, help="some other option")
+        opt = self.get_option(registry)
+        self.assertEquals(
+            'A registry option.\n'
+            '\n'
+            'The following values are supported:\n'
+            ' dunno - some other option\n'
+            ' someval - some option\n',
+            opt.help)
+
+    def test_get_help_text(self):
+        registry = _mod_registry.Registry()
+        registry.register("someval", 1234, help="some option")
+        registry.register("dunno", 1234, help="some other option")
+        opt = self.get_option(registry)
+        self.assertEquals(
+            'A registry option.\n'
+            '\n'
+            'The following values are supported:\n'
+            ' dunno - some other option\n'
+            ' someval - some option\n',
+            opt.get_help_text())
 
 
 class TestOptionRegistry(tests.TestCase):

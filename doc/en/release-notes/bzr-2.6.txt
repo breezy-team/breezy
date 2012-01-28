@@ -52,6 +52,9 @@ API Changes
   or tuples of bytestrings.
   (Jelmer Vernooij)
 
+* New configuration option class ``RegistryOption`` which is backed
+  onto a registry. (Jelmer Vernooij)
+
 Internals
 *********
 
