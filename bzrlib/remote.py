@@ -778,6 +778,10 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False, possible_transports=None):
+        if name is None:
+            name = self._get_selected_branch()
+        if name != "":
+            raise errors.NoColocatedBranchSupport(self)
         if unsupported:
             raise NotImplementedError('unsupported flag support not implemented yet.')
         if self._next_open_branch_result is not None:
@@ -786,8 +790,6 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             self._next_open_branch_result = None
             return result
         response = self._get_branch_reference()
-        if name is None:
-            name = self._get_selected_branch()
         return self._open_branch(name, response[0], response[1],
             possible_transports=possible_transports,
             ignore_fallbacks=ignore_fallbacks)
