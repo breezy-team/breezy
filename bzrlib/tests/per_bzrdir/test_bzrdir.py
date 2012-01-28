@@ -125,8 +125,8 @@ class TestBzrDir(TestCaseWithBzrDir):
                     self.assertTrue(S_ISDIR(target.stat(path).st_mode))
                     directories.append(path)
                 else:
-                    self.assertEqualDiff(source.get(path).read(),
-                                         target.get(path).read(),
+                    self.assertEqualDiff(source.get_bytes(path),
+                                         target.get_bytes(path),
                                          "text for file %r differs:\n" % path)
 
     def assertRepositoryHasSameItems(self, left_repo, right_repo):
@@ -685,10 +685,9 @@ class TestBzrDir(TestCaseWithBzrDir):
 
     def test_get_branches(self):
         repo = self.make_repository('branch-1')
-        try:
-            target_branch = repo.bzrdir.create_branch(name='foo')
-        except errors.NoColocatedBranchSupport:
+        if not repo.bzrdir._format.colocated_branches:
             raise TestNotApplicable('Format does not support colocation')
+        target_branch = repo.bzrdir.create_branch(name='foo')
         repo.bzrdir.set_branch_reference(target_branch)
         self.assertEqual(set(["", 'foo']),
                          set(repo.bzrdir.get_branches().keys()))
