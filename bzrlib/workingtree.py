@@ -262,6 +262,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         return self.views.supports_views()
 
     def get_config_stack(self):
+        """Retrieve the config stack for this tree.
+
+        :return: A ``bzrlib.config.Stack``
+        """
+        # For the moment, just provide the branch config stack.
         return self.branch.get_config_stack()
 
     @staticmethod
