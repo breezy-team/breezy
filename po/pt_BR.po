@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-01-16 15:18+0100\n"
-"PO-Revision-Date: 2012-01-27 04:29+0000\n"
+"PO-Revision-Date: 2012-01-28 00:35+0000\n"
 "Last-Translator: Ielton Ferreira Carneiro Pinto <Unknown>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2012-01-27 04:30+0000\n"
+"X-Launchpad-Export-Date: 2012-01-28 04:30+0000\n"
 "X-Generator: Launchpad (build 14727)\n"
 
 #: bzrlib/add.py:95
@@ -2334,7 +2334,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3365
 msgid ":Things to note:"
-msgstr ""
+msgstr ":Notas:"
 
 #: bzrlib/builtins.py:3367
 msgid ""
@@ -2357,11 +2357,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:3384
 msgid "Description of the new revision."
-msgstr ""
+msgstr "Descrição da nova revisão."
 
 #: bzrlib/builtins.py:3387
 msgid "Commit even if nothing has changed."
-msgstr ""
+msgstr "Usar commit, mesmo que nada tenha mudado."
 
 #: bzrlib/builtins.py:3391
 msgid "Take commit message from this file."
@@ -2540,7 +2540,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3626
 msgid "        bzr check --tree --branch foo"
-msgstr ""
+msgstr "        bzr check --tree --branch foo"
 
 #: bzrlib/builtins.py:3628
 msgid "    Check only the repository at 'bar'::"
@@ -2548,7 +2548,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3630
 msgid "        bzr check --repo bar"
-msgstr ""
+msgstr "        bzr check --repo bar"
 
 #: bzrlib/builtins.py:3632
 msgid "    Check everything at 'baz'::"
@@ -2556,7 +2556,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3634
 msgid "        bzr check baz"
-msgstr ""
+msgstr "        bzr check baz"
 
 #: bzrlib/builtins.py:3640
 msgid "Check the branch related to the current directory."
@@ -2646,7 +2646,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3722
 msgid "        bzr whoami --email"
-msgstr ""
+msgstr "        bzr whoami --email"
 
 #: bzrlib/builtins.py:3724
 msgid "    Set the current user::"
@@ -2654,7 +2654,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3726
 msgid "        bzr whoami \"Frank Chu <fchu@example.com>\""
-msgstr ""
+msgstr "        bzr whoami \"Frank Chu <fchu@example.com>\""
 
 #: bzrlib/builtins.py:3730
 msgid "Display email address only."
@@ -2696,7 +2696,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3810
 msgid "        bzr alias"
-msgstr ""
+msgstr "        bzr alias"
 
 #: bzrlib/builtins.py:3812
 msgid "    Show the alias specified for 'll'::"
@@ -2704,7 +2704,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3814
 msgid "        bzr alias ll"
-msgstr ""
+msgstr "        bzr alias ll"
 
 #: bzrlib/builtins.py:3816
 msgid "    Set an alias for 'll'::"
@@ -2712,7 +2712,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3818
 msgid "        bzr alias ll=\"log --line -r-10..-1\""
-msgstr ""
+msgstr "        bzr alias ll=\"log --line -r-10..-1\""
 
 #: bzrlib/builtins.py:3820
 msgid "    To remove an alias for 'll'::"
@@ -2720,7 +2720,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3822
 msgid "        bzr alias --remove ll"
-msgstr ""
+msgstr "        bzr alias --remove ll"
 
 #: bzrlib/builtins.py:3827
 msgid "Remove the alias."
@@ -2858,7 +2858,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4200
 msgid "        bzr merge ../bzr.dev"
-msgstr ""
+msgstr "        bzr merge ../bzr.dev"
 
 #: bzrlib/builtins.py:4202
 msgid "    To merge changes up to and including revision 82 from bzr.dev::"
@@ -2866,7 +2866,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4204
 msgid "        bzr merge -r 82 ../bzr.dev"
-msgstr ""
+msgstr "        bzr merge -r 82 ../bzr.dev"
 
 #: bzrlib/builtins.py:4206
 msgid "    To merge the changes introduced by 82, without previous changes::"
@@ -2874,7 +2874,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4208
 msgid "        bzr merge -r 81..82 ../bzr.dev"
-msgstr ""
+msgstr "        bzr merge -r 81..82 ../bzr.dev"
 
 #: bzrlib/builtins.py:4210
 msgid "    To apply a merge directive contained in /tmp/merge::"
@@ -2882,7 +2882,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4212
 msgid "        bzr merge /tmp/merge"
-msgstr ""
+msgstr "        bzr merge /tmp/merge"
 
 #: bzrlib/builtins.py:4214
 msgid ""
@@ -3005,7 +3005,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4544
 msgid "        bzr remerge --show-base"
-msgstr ""
+msgstr "        bzr remerge --show-base"
 
 #: bzrlib/builtins.py:4546
 msgid ""
@@ -3015,7 +3015,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4549
 msgid "        bzr remerge --merge-type weave --reprocess foobar"
-msgstr ""
+msgstr "        bzr remerge --merge-type weave --reprocess foobar"
 
 #: bzrlib/builtins.py:4556
 msgid "Show base revision text in conflicts."
@@ -3141,7 +3141,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4757
 msgid "        bzr missing"
-msgstr ""
+msgstr "        bzr missing"
 
 #: bzrlib/builtins.py:4759
 msgid "    Determine the missing revisions between this and another branch::"
@@ -3149,7 +3149,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4761
 msgid "        bzr missing http://server/branch"
-msgstr ""
+msgstr "        bzr missing http://server/branch"
 
 #: bzrlib/builtins.py:4763
 msgid ""
@@ -3159,7 +3159,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4766
 msgid "        bzr missing -r ..-10"
-msgstr ""
+msgstr "        bzr missing -r ..-10"
 
 #: bzrlib/builtins.py:4768
 msgid ""
@@ -3169,11 +3169,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:4771
 msgid "        bzr missing --my-revision ..-10"
-msgstr ""
+msgstr "        bzr missing --my-revision ..-10"
 
 #: bzrlib/builtins.py:4778
 msgid "Reverse the order of revisions."
-msgstr ""
+msgstr "Inverter a ordem das revisões"
 
 #: bzrlib/builtins.py:4780
 msgid "Display changes in the local branch only."
@@ -3231,19 +3231,19 @@ msgstr[1] ""
 
 #: bzrlib/builtins.py:4915
 msgid "This branch has no new revisions.\n"
-msgstr ""
+msgstr "Esse ramo não tem novas revisões.\n"
 
 #: bzrlib/builtins.py:4918
 msgid "Other branch has no new revisions.\n"
-msgstr ""
+msgstr "Outro ramo não tem novas revisões.\n"
 
 #: bzrlib/builtins.py:4923
 msgid "Branches are up to date.\n"
-msgstr ""
+msgstr "Ramos estão atualizados.\n"
 
 #: bzrlib/builtins.py:4934
 msgid "Compress the data within a repository."
-msgstr ""
+msgstr "Comprimir os dados em um repositório."
 
 #: bzrlib/builtins.py:4936
 msgid ""
@@ -3251,6 +3251,9 @@ msgid ""
 "bazaar supports automatic packing of repository, this operation is\n"
 "normally not required to be done manually."
 msgstr ""
+"Essa operação comprimi dados em um repositório bazaar. Como\n"
+"o bazaar fornece o empacotamento automático de repositório, essa operação\n"
+"normalmente não é necessária ser feito manualmente."
 
 #: bzrlib/builtins.py:4940
 msgid ""
@@ -3271,11 +3274,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:4955
 msgid "Delete obsolete packs to save disk space."
-msgstr ""
+msgstr "Excluir pacotes obsoletos para economizar espaço em disco."
 
 #: bzrlib/builtins.py:4969
 msgid "List the installed plugins."
-msgstr ""
+msgstr "Lista os plugins instalados."
 
 #: bzrlib/builtins.py:4971
 msgid ""
@@ -3318,7 +3321,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:5029
 msgid "Show the origin of each line in a file."
-msgstr ""
+msgstr "Mostra a origem de cada linha em um arquivo."
 
 #: bzrlib/builtins.py:5031
 msgid ""
@@ -3334,7 +3337,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:5042
 msgid "Show annotations on all lines."
-msgstr ""
+msgstr "Mostrar anotações em todas as linhas."
 
 #: bzrlib/builtins.py:5043
 msgid "Show commit date in annotations."
@@ -3370,10 +3373,11 @@ msgstr ""
 #: bzrlib/builtins.py:5167
 msgid "No location supplied.  This format does not remember old locations."
 msgstr ""
+"Sem localização fornecida. Este formato não se lembra de locais antigos."
 
 #: bzrlib/builtins.py:5172
 msgid "Branch is already bound"
-msgstr ""
+msgstr "O ramo já está ligado."
 
 #: bzrlib/builtins.py:5174
 msgid "No location supplied and no previous location known"
@@ -3395,7 +3399,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:5200
 msgid "Local branch is not bound"
-msgstr ""
+msgstr "O ramo local náo está associado"
 
 #: bzrlib/builtins.py:5204
 msgid "Remove the last committed revision."
@@ -3428,7 +3432,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:5226
 msgid "Say yes to all questions."
-msgstr ""
+msgstr "Diga sim para todas as questões."
 
 #: bzrlib/builtins.py:5228
 msgid "Keep tags that point to removed revisions."
@@ -3456,7 +3460,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:5304
 msgid "Canceled\n"
-msgstr ""
+msgstr "Cancelado\n"
 
 #: bzrlib/builtins.py:5311
 #, python-format
@@ -3494,6 +3498,10 @@ msgid ""
 "    bzr break-lock bzr+ssh://example.com/bzr/foo\n"
 "    bzr break-lock --conf ~/.bazaar"
 msgstr ""
+":Exemplos:\n"
+"    bzr break-lock\n"
+"    bzr break-lock bzr+ssh://example.com/bzr/foo\n"
+"    bzr break-lock --conf ~/.bazaar"
 
 #: bzrlib/builtins.py:5336
 msgid "LOCATION is the directory where the config lock is."
@@ -3509,7 +3517,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:5374
 msgid "Run the bzr server."
-msgstr ""
+msgstr "Execute o servidor bzr."
 
 #: bzrlib/builtins.py:5380
 msgid "Serve on stdin/out for use from inetd or sshd."
@@ -3758,7 +3766,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:5730
 msgid "Body for the email."
-msgstr ""
+msgstr "Corpo para o e-mail."
 
 #: bzrlib/builtins.py:5783
 msgid "Do not include a bundle in the merge directive."
@@ -3834,20 +3842,20 @@ msgstr ""
 
 #: bzrlib/builtins.py:5852
 msgid "Replace existing tags."
-msgstr ""
+msgstr "Substituir as tags existentes."
 
 #: bzrlib/builtins.py:5867
 msgid "No tag specified to delete."
-msgstr ""
+msgstr "Sem tag especifica para apagar."
 
 #: bzrlib/builtins.py:5869
 #, python-format
 msgid "Deleted tag %s."
-msgstr ""
+msgstr "Tag %s apagada."
 
 #: bzrlib/builtins.py:5883
 msgid "Please specify a tag name."
-msgstr ""
+msgstr "Por favor, especifique o nome da tag."
 
 #: bzrlib/builtins.py:5891
 #, python-format
@@ -3857,12 +3865,12 @@ msgstr ""
 #: bzrlib/builtins.py:5895
 #, python-format
 msgid "Created tag %s."
-msgstr ""
+msgstr "Tag %s criada."
 
 #: bzrlib/builtins.py:5897
 #, python-format
 msgid "Updated tag %s."
-msgstr ""
+msgstr "Tag %s atualizada."
 
 #: bzrlib/builtins.py:5901
 msgid "List tags."
@@ -4088,7 +4096,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:6235
 msgid "    bzr view"
-msgstr ""
+msgstr "    bzr view"
 
 #: bzrlib/builtins.py:6237
 msgid "  To delete the current view::"
@@ -4096,7 +4104,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:6239
 msgid "    bzr view --delete"
-msgstr ""
+msgstr "    bzr view --delete"
 
 #: bzrlib/builtins.py:6241
 msgid "  To disable the current view without deleting it::"
@@ -4104,7 +4112,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:6243
 msgid "    bzr view --switch off"
-msgstr ""
+msgstr "    bzr view --switch off"
 
 #: bzrlib/builtins.py:6245
 msgid "  To define a named view and switch to it::"
@@ -4120,7 +4128,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:6251
 msgid "    bzr view --name view-name"
-msgstr ""
+msgstr "    bzr view --name view-name"
 
 #: bzrlib/builtins.py:6253
 msgid "  To delete a named view::"
@@ -4128,7 +4136,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:6255
 msgid "    bzr view --name view-name --delete"
-msgstr ""
+msgstr "    bzr view --name view-name --delete"
 
 #: bzrlib/builtins.py:6257
 msgid "  To switch to a named view::"
@@ -4136,7 +4144,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:6259
 msgid "    bzr view --switch view-name"
-msgstr ""
+msgstr "    bzr view --switch view-name"
 
 #: bzrlib/builtins.py:6261
 msgid "  To list all views defined::"
@@ -4144,7 +4152,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:6263
 msgid "    bzr view --all"
-msgstr ""
+msgstr "    bzr view --all"
 
 #: bzrlib/builtins.py:6265
 msgid "  To delete all views::"
@@ -4152,7 +4160,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:6267
 msgid "    bzr view --delete --all"
-msgstr ""
+msgstr "    bzr view --delete --all"
 
 #: bzrlib/builtins.py:6274
 msgid "Apply list or delete action to all views."
@@ -4776,11 +4784,13 @@ msgid ""
 ":Usage:\n"
 "%s\n"
 msgstr ""
+":Uso:\n"
+"%s\n"
 
 #: bzrlib/commands.py:492
 #, python-format
 msgid ":Usage:   %s\n"
-msgstr ""
+msgstr ":Uso: %s\n"
 
 #: bzrlib/commands.py:511
 #, python-format
@@ -6784,22 +6794,24 @@ msgid ""
 ":Examples:\n"
 "  Show the Launchpad ID of the current user::"
 msgstr ""
+":Exemplos:\n"
+"  Mostra o ID do launchpad do usuário atual::"
 
 #: bzrlib/plugins/launchpad/__init__.py:250
 msgid "      bzr launchpad-login"
-msgstr ""
+msgstr "      bzr launchpad-login"
 
 #: bzrlib/plugins/launchpad/__init__.py:252
 msgid "  Set the Launchpad ID of the current user to 'bob'::"
-msgstr ""
+msgstr "  Define um ID do launchpad para o usuário 'bob'::"
 
 #: bzrlib/plugins/launchpad/__init__.py:254
 msgid "      bzr launchpad-login bob"
-msgstr ""
+msgstr "      bzr launchpad-login bob"
 
 #: bzrlib/plugins/launchpad/__init__.py:261
 msgid "Don't check that the user name is valid."
-msgstr ""
+msgstr "Não verifique se o nome de usuário é válido."
 
 #: bzrlib/plugins/launchpad/__init__.py:276
 #: bzrlib/plugins/launchpad/__init__.py:287
@@ -6808,12 +6820,12 @@ msgstr ""
 
 #: bzrlib/plugins/launchpad/__init__.py:279
 msgid "No Launchpad user ID configured.\n"
-msgstr ""
+msgstr "Nenhum ID de usuário launchpad configurado.\n"
 
 #: bzrlib/plugins/launchpad/__init__.py:290
 #, python-format
 msgid "Launchpad user ID set to '%s'.\n"
-msgstr ""
+msgstr "ID de usuário launchpad definido como '%s'.\n"
 
 #: bzrlib/plugins/launchpad/__init__.py:298
 msgid "Ask Launchpad to mirror a branch now."
@@ -6846,7 +6858,7 @@ msgstr ""
 
 #: bzrlib/plugins/launchpad/__init__.py:332
 msgid "  bzr lp-propose-merge --review jrandom --review review-team=qa"
-msgstr ""
+msgstr "  bzr lp-propose-merge --review jrandom --review review-team=qa"
 
 #: bzrlib/plugins/launchpad/__init__.py:334
 msgid ""
@@ -8602,19 +8614,19 @@ msgstr ""
 
 #: en/help_topics/authentication.txt:25
 msgid "Instead of using::"
-msgstr ""
+msgstr "Em vez de usar::"
 
 #: en/help_topics/authentication.txt:27
 msgid "  bzr branch ftp://joe:secret@host.com/path/to/my/branch"
-msgstr ""
+msgstr "  bzr branch ftp://joe:secret@host.com/caminho/para/meu/ramo"
 
 #: en/help_topics/authentication.txt:29
 msgid "you simply use::"
-msgstr ""
+msgstr "você simplesmente usa::"
 
 #: en/help_topics/authentication.txt:31
 msgid "  bzr branch ftp://host.com/path/to/my/branch"
-msgstr ""
+msgstr "  bzr branch ftp://host.com/caminho/para/meu/ramo"
 
 #: en/help_topics/authentication.txt:33
 msgid ""
