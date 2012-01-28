@@ -2865,7 +2865,10 @@ by the ``submit:`` revision spec.
 option_registry.register(
     Option('submit_to',
            help='''Where submissions from this branch are mailed to.'''))
-
+option_registry.register(
+    ListOption('suppress_warnings',
+           default=[],
+           help="List of warning classes to suppress."))
 option_registry.register_lazy('ssl.ca_certs',
     'bzrlib.transport.http._urllib2_wrappers', 'opt_ssl_ca_certs')
 

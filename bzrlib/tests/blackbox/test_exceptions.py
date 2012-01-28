@@ -141,8 +141,8 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
 
     def test_repository_deprecation_warning_suppressed_global(self):
         """Old formats give a warning"""
-        conf = config.GlobalConfig()
-        conf.set_user_option('suppress_warnings', 'format_deprecation')
+        conf = config.GlobalStack()
+        conf.set('suppress_warnings', 'format_deprecation')
         self.make_obsolete_repo('foo')
         self.enable_deprecation_warning()
         out, err = self.run_bzr('status', working_dir='foo')
@@ -151,8 +151,8 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
     def test_repository_deprecation_warning_suppressed_locations(self):
         """Old formats give a warning"""
         self.make_obsolete_repo('foo')
-        conf = config.LocationConfig(osutils.pathjoin(self.test_dir, 'foo'))
-        conf.set_user_option('suppress_warnings', 'format_deprecation')
+        conf = config.LocationStack(osutils.pathjoin(self.test_dir, 'foo'))
+        conf.set('suppress_warnings', 'format_deprecation')
         self.enable_deprecation_warning()
         out, err = self.run_bzr('status', working_dir='foo')
         self.check_warning(False)
@@ -160,8 +160,8 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
     def test_repository_deprecation_warning_suppressed_branch(self):
         """Old formats give a warning"""
         tree = self.make_obsolete_repo('foo')
-        conf = tree.branch.get_config()
-        conf.set_user_option('suppress_warnings', 'format_deprecation')
+        conf = tree.branch.get_config_stack()
+        conf.set('suppress_warnings', 'format_deprecation')
         self.enable_deprecation_warning()
         out, err = self.run_bzr('status', working_dir='foo')
         self.check_warning(False)
