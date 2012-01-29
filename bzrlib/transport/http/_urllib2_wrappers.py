@@ -77,23 +77,18 @@ import ssl
 
 # Note for packagers: if there is no package providing certs for your platform,
 # the curl project produces http://curl.haxx.se/ca/cacert.pem weekly.
+ssl_ca_certs_known_locations = [
+    u'/etc/ssl/certs/ca-certificates.crt', # Ubuntu/debian/gentoo
+    u'/etc/pki/tls/certs/ca-bundle.crt', # Fedora/CentOS/RH
+    u'/etc/ssl/ca-bundle.pem', # OpenSuse
+    u'/etc/ssl/cert.pem', # OpenSuse
+    u"/usr/local/share/certs/ca-root-nss.crt", # FreeBSD
+    # XXX: Needs checking, can't trust the interweb ;) -- vila 2012-01-25
+    u'/etc/openssl/certs/ca-certificates.crt', # Solaris
+    ]
 
 def default_ca_certs():
-    # A default path that makes sense, even if not correct for all platforms
-    path = u"/etc/ssl/certs/ca-certificates.crt"
-    if sys.platform.startswith('linux'):
-        # Try some known locations
-        for p in (u'/etc/ssl/certs/ca-certificates.crt', # Ubuntu/debian
-                  u'/etc/pki/tls/certs/ca-bundle.crt', # Fedora/CentOS/RH
-                  u'/etc/ssl/ca-bundle.pem', # OpenSuse
-                  ):
-            if os.path.exists(p):
-                # First found wins
-                return path
-    if "bsd" in sys.platform:
-        # Our best bet is to rely on ca_root_nss being installed
-        path = u"/usr/local/share/certs/ca-root-nss.crt"
-    elif sys.platform == 'win32':
+    if sys.platform == 'win32':
         # FIXME: We could reuse bzrlib.transport.http.ca_bundle but import that
         # here sounds... too hackish. Waiting for the windows installer guys
         # feedback on which path to use -- vila 2012-01-25
@@ -102,10 +97,16 @@ def default_ca_certs():
         # FIXME: Needs some default value for osx, waiting for osx installers
         # guys feedback -- vila 2012-01-25
         pass
-    elif sys.platform == 'sunos5':
-        # XXX: Needs checking, can't trust the interweb ;) -- vila 2012-01-25
-        path = u'/etc/openssl/certs/ca-certificates.crt'
-    return path
+    else:
+        # Try known locations for friendly OSes providing the root certificates
+        # without making them hard to use for any https client.
+        for path in ssl_ca_certs_known_locations:
+            if os.path.exists(path):
+                # First found wins
+                return path
+    # A default path that makes sense and will be mentioned in the error
+    # presented to the user, even if not correct for all platforms
+    return ssl_ca_certs_known_locations[0]
 
 
 def ca_certs_from_store(path):
