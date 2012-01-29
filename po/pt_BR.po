@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-01-16 15:18+0100\n"
-"PO-Revision-Date: 2012-01-28 00:35+0000\n"
+"PO-Revision-Date: 2012-01-28 16:06+0000\n"
 "Last-Translator: Ielton Ferreira Carneiro Pinto <Unknown>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2012-01-28 04:30+0000\n"
+"X-Launchpad-Export-Date: 2012-01-29 04:30+0000\n"
 "X-Generator: Launchpad (build 14727)\n"
 
 #: bzrlib/add.py:95
@@ -1936,6 +1936,8 @@ msgid ""
 "List files in a tree.\n"
 "    "
 msgstr ""
+"Lista os arquivos em uma árvore.\n"
+"    "
 
 #: bzrlib/builtins.py:2865
 msgid "Recurse into subdirectories."
@@ -1947,15 +1949,15 @@ msgstr ""
 
 #: bzrlib/builtins.py:2869
 msgid "Print unknown files."
-msgstr ""
+msgstr "Imprimir arquivos desconhecidos."
 
 #: bzrlib/builtins.py:2870
 msgid "Print versioned files."
-msgstr ""
+msgstr "Imprimir arquivos versionados."
 
 #: bzrlib/builtins.py:2873
 msgid "Print ignored files."
-msgstr ""
+msgstr "Imprimir arquivos ignorados."
 
 #: bzrlib/builtins.py:2875
 msgid "List entries of a particular kind: file, directory, symlink."
@@ -2658,7 +2660,7 @@ msgstr "        bzr whoami \"Frank Chu <fchu@example.com>\""
 
 #: bzrlib/builtins.py:3730
 msgid "Display email address only."
-msgstr ""
+msgstr "Mostra apenas o endereço de email."
 
 #: bzrlib/builtins.py:3732
 msgid "Set identity for the current branch instead of globally."
@@ -2724,7 +2726,7 @@ msgstr "        bzr alias --remove ll"
 
 #: bzrlib/builtins.py:3827
 msgid "Remove the alias."
-msgstr ""
+msgstr "Remove o atalho."
 
 #: bzrlib/builtins.py:3845
 msgid "bzr alias --remove expects an alias to remove."
@@ -2742,11 +2744,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:4090
 msgid "Show version of bzr."
-msgstr ""
+msgstr "Mostra a versão do bzr."
 
 #: bzrlib/builtins.py:4094
 msgid "Print just the version number."
-msgstr ""
+msgstr "Mostra apenas o número da versão."
 
 #: bzrlib/builtins.py:4113
 msgid "It sure does!\n"
@@ -2924,7 +2926,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4246
 msgid "Select changes interactively."
-msgstr ""
+msgstr "Selecione mudanças interativamente."
 
 #: bzrlib/builtins.py:4268
 msgid ""
@@ -3112,7 +3114,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4711
 msgid "Show help on all commands."
-msgstr ""
+msgstr "Mostrar ajuda sobre todos os comandos."
 
 #: bzrlib/builtins.py:4740
 msgid "Show unmerged/unpulled revisions between two branches."
@@ -3177,7 +3179,7 @@ msgstr "Inverter a ordem das revisões"
 
 #: bzrlib/builtins.py:4780
 msgid "Display changes in the local branch only."
-msgstr ""
+msgstr "Mostrar mudanças somente no ramo local."
 
 #: bzrlib/builtins.py:4781
 msgid "Same as --mine-only."
@@ -3612,7 +3614,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:5593 bzrlib/send.py:108
 msgid "No public branch specified or known"
-msgstr ""
+msgstr "Nenhum ramo público especificado ou conhecido"
 
 #: bzrlib/builtins.py:5598
 msgid "bzr merge-directive takes at most two one revision identifiers"
@@ -3938,11 +3940,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:6009
 msgid "Repository type"
-msgstr ""
+msgstr "Tipo de repositório"
 
 #: bzrlib/builtins.py:6010
 msgid "Location fo the repository."
-msgstr ""
+msgstr "Local para o repositório."
 
 #: bzrlib/builtins.py:6012
 msgid ""
@@ -9004,15 +9006,15 @@ msgstr ""
 
 #: en/help_topics/bugs.txt:11
 msgid "    bzr commit --fixes <tracker>:<id>"
-msgstr ""
+msgstr "    bzr commit --fixes <tracker>:<id>"
 
 #: en/help_topics/bugs.txt:13 en/help_topics/configuration.txt:398
 msgid "or::"
-msgstr ""
+msgstr "ou::"
 
 #: en/help_topics/bugs.txt:15
 msgid "    bzr commit --fixes <id>"
-msgstr ""
+msgstr "    bzr commit --fixes <id>"
 
 #: en/help_topics/bugs.txt:17
 msgid ""
@@ -9072,6 +9074,8 @@ msgid ""
 "Launchpad\n"
 "---------"
 msgstr ""
+"Launchpad\n"
+"---------"
 
 #: en/help_topics/bugs.txt:54
 msgid ""
@@ -9272,12 +9276,16 @@ msgid ""
 "Configuration Settings\n"
 "======================="
 msgstr ""
+"Definições de configuração\n"
+"======================="
 
 #: en/help_topics/configuration.txt:4
 msgid ""
 "Environment settings\n"
 "---------------------"
 msgstr ""
+"Configurações de ambiente\n"
+"---------------------"
 
 #: en/help_topics/configuration.txt:7
 msgid ""
@@ -9340,6 +9348,8 @@ msgid ""
 "BZR_HOME\n"
 "~~~~~~~~"
 msgstr ""
+"BZR_HOME\n"
+"~~~~~~~~"
 
 #: en/help_topics/configuration.txt:37
 msgid "Override the home directory used by Bazaar."
@@ -9350,6 +9360,8 @@ msgid ""
 "BZR_SSH\n"
 "~~~~~~~"
 msgstr ""
+"BZR_SSH\n"
+"~~~~~~~"
 
 #: en/help_topics/configuration.txt:42
 msgid "Select a different SSH implementation."
@@ -9360,6 +9372,8 @@ msgid ""
 "BZR_PDB\n"
 "~~~~~~~"
 msgstr ""
+"BZR_PDB\n"
+"~~~~~~~"
 
 #: en/help_topics/configuration.txt:47
 msgid "Control whether to launch a debugger on error."
@@ -9376,6 +9390,8 @@ msgid ""
 "BZR_REMOTE_PATH\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"BZR_REMOTE_PATH\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:55
 msgid "Path to the Bazaar executable to use when using the bzr+ssh protocol."
@@ -9390,6 +9406,8 @@ msgid ""
 "BZR_EDITOR\n"
 "~~~~~~~~~~"
 msgstr ""
+"BZR_EDITOR\n"
+"~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:62
 msgid "Path to the editor Bazaar should use for commit messages, etc."
@@ -9400,6 +9418,8 @@ msgid ""
 "BZR_LOG\n"
 "~~~~~~~"
 msgstr ""
+"BZR_LOG\n"
+"~~~~~~~"
 
 #: en/help_topics/configuration.txt:67
 msgid ""
@@ -9425,6 +9445,9 @@ msgid ""
 "BZR_PLUGIN_PATH\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"\n"
+"BZR_PLUGIN_PATH\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:80
 msgid ""
@@ -9506,7 +9529,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:121
 msgid "  BZR_PLUGIN_PATH='/path/to/my/other/plugins'"
-msgstr ""
+msgstr "  BZR_PLUGIN_PATH='/path/to/my/other/plugins'"
 
 #: en/help_topics/configuration.txt:123
 msgid "Disabling the site directory while retaining the user directory::"
@@ -9537,6 +9560,8 @@ msgid ""
 "BZR_DISABLE_PLUGINS\n"
 "~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"BZR_DISABLE_PLUGINS\n"
+"~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:138
 msgid ""
@@ -9566,6 +9591,8 @@ msgid ""
 "BZR_PLUGINS_AT\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"BZR_PLUGINS_AT\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:154
 msgid ""
@@ -9599,6 +9626,8 @@ msgid ""
 "Example:\n"
 "~~~~~~~~"
 msgstr ""
+"Exemplo:\n"
+"~~~~~~~~"
 
 #: en/help_topics/configuration.txt:175
 msgid ""
@@ -9611,6 +9640,8 @@ msgid ""
 "BZRPATH\n"
 "~~~~~~~"
 msgstr ""
+"BZRPATH\n"
+"~~~~~~~"
 
 #: en/help_topics/configuration.txt:181
 msgid "The path where Bazaar should look for shell plugin external commands."
@@ -9632,6 +9663,8 @@ msgid ""
 "  http_proxy=http://proxy.example.com:3128/ \n"
 "  https_proxy=http://proxy.example.com:3128/"
 msgstr ""
+"  http_proxy=http://proxy.example.com:3128/ \n"
+"  https_proxy=http://proxy.example.com:3128/"
 
 #: en/help_topics/configuration.txt:192
 msgid ""
@@ -9639,12 +9672,17 @@ msgid ""
 "Configuration files\n"
 "-------------------"
 msgstr ""
+"\n"
+"Arquivos de configuração\n"
+"-------------------"
 
 #: en/help_topics/configuration.txt:196
 msgid ""
 "Location\n"
 "~~~~~~~~"
 msgstr ""
+"Localização\n"
+"~~~~~~~~"
 
 #: en/help_topics/configuration.txt:199
 msgid ""
@@ -9704,6 +9742,8 @@ msgid ""
 "Comments\n"
 "^^^^^^^^"
 msgstr ""
+"Comentários\n"
+"^^^^^^^^"
 
 #: en/help_topics/configuration.txt:229
 msgid ""
@@ -9726,7 +9766,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:239
 msgid "    [DEFAULT]"
-msgstr ""
+msgstr "    [DEFAULT]"
 
 #: en/help_topics/configuration.txt:241
 msgid ""
@@ -9749,6 +9789,8 @@ msgid ""
 "    [http://mybranches.isp.com/~jdoe/branchdir]\n"
 "    [/home/jdoe/branches/]"
 msgstr ""
+"    [http://mybranches.isp.com/~jdoe/branchdir]\n"
+"    [/home/jdoe/branches/]"
 
 #: en/help_topics/configuration.txt:253
 msgid ""
@@ -9768,6 +9810,8 @@ msgid ""
 "    email            = John Doe <jdoe@isp.com>\n"
 "    gpg_signing_key  = Amy Pond <amy@example.com>"
 msgstr ""
+"    email            = John Doe <jdoe@isp.com>\n"
+"    gpg_signing_key  = Amy Pond <amy@example.com>"
 
 #: en/help_topics/configuration.txt:263
 msgid ""
@@ -9930,6 +9974,10 @@ msgid ""
 "    editor            = /usr/bin/vim\n"
 "    create_signatures = when-required"
 msgstr ""
+"    [DEFAULT]\n"
+"    email             = John Doe <jdoe@isp.com>\n"
+"    editor            = /usr/bin/vim\n"
+"    create_signatures = when-required"
 
 #: en/help_topics/configuration.txt:356
 msgid ""
@@ -9953,12 +10001,16 @@ msgid ""
 "    [/home/jdoe/branches/nethack]\n"
 "    email = Nethack Admin <nethack@nethack.com>"
 msgstr ""
+"    [/home/jdoe/branches/nethack]\n"
+"    email = Nethack Admin <nethack@nethack.com>"
 
 #: en/help_topics/configuration.txt:369
 msgid ""
 "    [http://hypothetical.site.com/branches/devel-branch]\n"
 "    create_signatures = always"
 msgstr ""
+"    [http://hypothetical.site.com/branches/devel-branch]\n"
+"    create_signatures = always"
 
 #: en/help_topics/configuration.txt:372
 msgid ""
@@ -10020,6 +10072,8 @@ msgid ""
 "email\n"
 "~~~~~"
 msgstr ""
+"email\n"
+"~~~~~"
 
 #: en/help_topics/configuration.txt:405
 msgid ""
@@ -10036,6 +10090,8 @@ msgid ""
 "editor\n"
 "~~~~~~"
 msgstr ""
+"editor\n"
+"~~~~~~"
 
 #: en/help_topics/configuration.txt:413
 msgid ""
@@ -10210,6 +10266,8 @@ msgid ""
 "bzr_remote_path\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"bzr_remote_path\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:502
 msgid ""
@@ -10234,6 +10292,8 @@ msgid ""
 "smtp_server\n"
 "~~~~~~~~~~~"
 msgstr ""
+"smtp_server\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:514
 msgid ""
@@ -10246,6 +10306,8 @@ msgid ""
 "smtp_username, smtp_password\n"
 "~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"smtp_username, smtp_password\n"
+"~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:520
 msgid ""
@@ -10274,6 +10336,8 @@ msgid ""
 "mail_client\n"
 "~~~~~~~~~~~"
 msgstr ""
+"mail_client\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:536
 msgid ""
@@ -10331,6 +10395,8 @@ msgid ""
 "submit_branch\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"submit_branch\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:569
 msgid ""
@@ -10346,6 +10412,8 @@ msgid ""
 "public_branch\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"public_branch\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:576
 msgid ""
@@ -10447,6 +10515,8 @@ msgid ""
 "parent_location\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"parent_location\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:630
 msgid ""
@@ -10461,6 +10531,8 @@ msgid ""
 "push_location\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"push_location\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:637
 msgid ""
@@ -10473,6 +10545,8 @@ msgid ""
 "push_strict\n"
 "~~~~~~~~~~~"
 msgstr ""
+"push_strict\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:643
 msgid ""
@@ -10485,6 +10559,8 @@ msgid ""
 "dpush_strict\n"
 "~~~~~~~~~~~~"
 msgstr ""
+"dpush_strict\n"
+"~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:649
 msgid ""
@@ -11163,6 +11239,16 @@ msgid ""
 "  $ bzr commit ../other -m \"OTHER\"\n"
 "  $ bzr merge ../other"
 msgstr ""
+"  $ bzr init\n"
+"  $ bzr mkdir white\n"
+"  $ bzr mkdir black\n"
+"  $ bzr commit -m \"BASE\"\n"
+"  $ bzr branch . ../other\n"
+"  $ bzr mv white black\n"
+"  $ bzr commit -m \"THIS\"\n"
+"  $ bzr mv ../other/black ../other/white\n"
+"  $ bzr commit ../other -m \"OTHER\"\n"
+"  $ bzr merge ../other"
 
 #: en/help_topics/conflict-types.txt:322
 msgid ""
@@ -11939,6 +12025,8 @@ msgid ""
 "post_commit\n"
 "~~~~~~~~~~~"
 msgstr ""
+"post_commit\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:76 en/help_topics/hooks.txt:86
 #: en/help_topics/hooks.txt:94 en/help_topics/hooks.txt:110
@@ -11959,6 +12047,8 @@ msgid ""
 "post_pull\n"
 "~~~~~~~~~"
 msgstr ""
+"post_pull\n"
+"~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:88
 msgid ""
@@ -11971,6 +12061,8 @@ msgid ""
 "post_push\n"
 "~~~~~~~~~"
 msgstr ""
+"post_push\n"
+"~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:96
 msgid ""
@@ -11983,6 +12075,8 @@ msgid ""
 "post_switch\n"
 "~~~~~~~~~~~"
 msgstr ""
+"post_switch\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:104
 msgid ""
@@ -11995,6 +12089,8 @@ msgid ""
 "post_uncommit\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"post_uncommit\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:112
 msgid ""
@@ -12028,6 +12124,8 @@ msgid ""
 "pre_commit\n"
 "~~~~~~~~~~"
 msgstr ""
+"pre_commit\n"
+"~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:131
 msgid "Introduced in: 0.91"
@@ -12973,7 +13071,7 @@ msgstr "    Exemplos::"
 
 #: en/help_topics/revisionspec.txt:79
 msgid "      $ bzr diff -r submit:"
-msgstr ""
+msgstr "      $ bzr diff -r submit:"
 
 #: en/help_topics/revisionspec.txt:81
 msgid ":ancestor:"
@@ -13038,11 +13136,11 @@ msgstr ""
 
 #: en/help_topics/revisionspec.txt:123
 msgid ":tag:"
-msgstr ""
+msgstr ":tag:"
 
 #: en/help_topics/revisionspec.txt:125
 msgid "    Tags are stored in the branch and created by the 'tag' command."
-msgstr ""
+msgstr "    Tags são armazenadas no ramo e criadas pelo comando 'tag'."
 
 #: en/help_topics/revisionspec.txt:127
 msgid ":revno:"
