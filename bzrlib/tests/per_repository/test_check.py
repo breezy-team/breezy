@@ -23,22 +23,6 @@ from bzrlib import (
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
-class TestNoSpuriousInconsistentAncestors(TestCaseWithRepository):
-
-    def test_two_files_different_versions_no_inconsistencies_bug_165071(self):
-        """Two files, with different versions can be clean."""
-        tree = self.make_branch_and_tree('.')
-        self.build_tree(['foo'])
-        tree.smart_add(['.'])
-        revid1 = tree.commit('1')
-        self.build_tree(['bar'])
-        tree.smart_add(['.'])
-        revid2 = tree.commit('2')
-        check_object = tree.branch.repository.check([revid1, revid2])
-        check_object.report_results(verbose=True)
-        self.assertContainsRe(self.get_log(), "0 unreferenced text versions")
-
-
 class TestCleanRepository(TestCaseWithRepository):
 
     def test_new_repo(self):
@@ -46,7 +30,7 @@ class TestCleanRepository(TestCaseWithRepository):
         branch.lock_write()
         self.addCleanup(branch.unlock)
         self.overrideEnv('BZR_EMAIL', 'foo@sample.com')
-        builder = branch.get_commit_builder([], branch.get_config())
+        builder = branch.get_commit_builder([], branch.get_config_stack())
         list(builder.record_iter_changes(None, _mod_revision.NULL_REVISION, [
             ('TREE_ROOT', (None, ''), True, (False, True), (None, None),
             (None, ''), (None, 'directory'), (None, False))]))

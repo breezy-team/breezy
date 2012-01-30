@@ -16,6 +16,7 @@
 
 """Classes to provide name-to-object registry-like support."""
 
+from __future__ import absolute_import
 
 from bzrlib.pyutils import get_named_object
 

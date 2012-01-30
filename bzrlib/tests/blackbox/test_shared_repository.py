@@ -18,10 +18,11 @@
 
 import os
 
-from bzrlib import osutils
 from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
 import bzrlib.errors as errors
 from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests.matchers import ContainsNoVfsCalls
+
 
 class TestSharedRepo(TestCaseInTempDir):
 
@@ -80,7 +81,7 @@ Location:
     def test_branch_tree(self):
         self.run_bzr("init-repo --trees a")
         self.run_bzr("init --format=default b")
-        file('b/hello', 'wt').write('bar')
+        with file('b/hello', 'wt') as f: f.write('bar')
         self.run_bzr("add b/hello")
         self.run_bzr("commit -m bar b/hello")
 
@@ -120,7 +121,9 @@ Location:
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(15, self.hpss_calls)
+        self.assertLength(11, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
     def test_notification_on_branch_from_repository(self):
         out, err = self.run_bzr("init-repository -q a")

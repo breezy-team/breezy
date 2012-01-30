@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
-
 """Code to show logs of changes.
 
 Various flavors of log can be produced:
@@ -49,6 +47,8 @@ listing other things that were changed in the same revision, but not
 all the changes since the previous revision that touched hello.c.
 """
 
+from __future__ import absolute_import
+
 import codecs
 from cStringIO import StringIO
 from itertools import (
@@ -65,8 +65,8 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 
 from bzrlib import (
-    bzrdir,
     config,
+    controldir,
     diff,
     errors,
     foreign,
@@ -105,7 +105,10 @@ def find_touching_revisions(branch, file_id):
     last_ie = None
     last_path = None
     revno = 1
-    for revision_id in branch.revision_history():
+    graph = branch.repository.get_graph()
+    history = list(graph.iter_lefthand_ancestry(branch.last_revision(),
+        [_mod_revision.NULL_REVISION]))
+    for revision_id in reversed(history):
         this_inv = branch.repository.get_inventory(revision_id)
         if this_inv.has_id(file_id):
             this_ie = this_inv[file_id]
@@ -338,7 +341,7 @@ def format_signature_validity(rev_id, repo):
     from bzrlib import gpg
 
     gpg_strategy = gpg.GPGStrategy(None)
-    result = repo.verify_revision(rev_id, gpg_strategy)
+    result = repo.verify_revision_signature(rev_id, gpg_strategy)
     if result[0] == gpg.SIGNATURE_VALID:
         return "valid signature from {0}".format(result[1])
     if result[0] == gpg.SIGNATURE_KEY_MISSING:
@@ -577,20 +580,32 @@ def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
         and (not generate_merge_revisions
              or not _has_merges(branch, end_rev_id))):
         # If a single revision is requested, check we can handle it
-        iter_revs = _generate_one_revision(branch, end_rev_id, br_rev_id,
-                                           br_revno)
-    elif not generate_merge_revisions:
-        # If we only want to see linear revisions, we can iterate ...
-        iter_revs = _generate_flat_revisions(branch, start_rev_id, end_rev_id,
-                                             direction, exclude_common_ancestry)
-        if direction == 'forward':
-            iter_revs = reversed(iter_revs)
-    else:
-        iter_revs = _generate_all_revisions(branch, start_rev_id, end_rev_id,
-                                            direction, delayed_graph_generation,
-                                            exclude_common_ancestry)
-        if direction == 'forward':
-            iter_revs = _rebase_merge_depth(reverse_by_depth(list(iter_revs)))
+        return  _generate_one_revision(branch, end_rev_id, br_rev_id,
+                                       br_revno)
+    if not generate_merge_revisions:
+        try:
+            # If we only want to see linear revisions, we can iterate ...
+            iter_revs = _linear_view_revisions(
+                branch, start_rev_id, end_rev_id,
+                exclude_common_ancestry=exclude_common_ancestry)
+            # If a start limit was given and it's not obviously an
+            # ancestor of the end limit, check it before outputting anything
+            if (direction == 'forward'
+                or (start_rev_id and not _is_obvious_ancestor(
+                        branch, start_rev_id, end_rev_id))):
+                    iter_revs = list(iter_revs)
+            if direction == 'forward':
+                iter_revs = reversed(iter_revs)
+            return iter_revs
+        except _StartNotLinearAncestor:
+            # Switch to the slower implementation that may be able to find a
+            # non-obvious ancestor out of the left-hand history.
+            pass
+    iter_revs = _generate_all_revisions(branch, start_rev_id, end_rev_id,
+                                        direction, delayed_graph_generation,
+                                        exclude_common_ancestry)
+    if direction == 'forward':
+        iter_revs = _rebase_merge_depth(reverse_by_depth(list(iter_revs)))
     return iter_revs
 
 
@@ -601,23 +616,6 @@ def _generate_one_revision(branch, rev_id, br_rev_id, br_revno):
     else:
         revno_str = _compute_revno_str(branch, rev_id)
         return [(rev_id, revno_str, 0)]
-
-
-def _generate_flat_revisions(branch, start_rev_id, end_rev_id, direction,
-                             exclude_common_ancestry=False):
-    result = _linear_view_revisions(
-        branch, start_rev_id, end_rev_id,
-        exclude_common_ancestry=exclude_common_ancestry)
-    # If a start limit was given and it's not obviously an
-    # ancestor of the end limit, check it before outputting anything
-    if direction == 'forward' or (start_rev_id
-        and not _is_obvious_ancestor(branch, start_rev_id, end_rev_id)):
-        try:
-            result = list(result)
-        except _StartNotLinearAncestor:
-            raise errors.BzrCommandError(gettext('Start revision not found in'
-                ' left-hand history of end revision.'))
-    return result
 
 
 def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
@@ -1796,20 +1794,21 @@ class LogFormatterRegistry(registry.Registry):
         return self.get(name)(*args, **kwargs)
 
     def get_default(self, branch):
-        return self.get(branch.get_config().log_format())
+        c = branch.get_config_stack()
+        return self.get(c.get('log_format'))
 
 
 log_formatter_registry = LogFormatterRegistry()
 
 
 log_formatter_registry.register('short', ShortLogFormatter,
-                                'Moderately short log format')
+                                'Moderately short log format.')
 log_formatter_registry.register('long', LongLogFormatter,
-                                'Detailed log format')
+                                'Detailed log format.')
 log_formatter_registry.register('line', LineLogFormatter,
-                                'Log format with one line per revision')
+                                'Log format with one line per revision.')
 log_formatter_registry.register('gnu-changelog', GnuChangelogLogFormatter,
-                                'Format used by GNU ChangeLog files')
+                                'Format used by GNU ChangeLog files.')
 
 
 def register_formatter(name, formatter):
@@ -2024,8 +2023,9 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
       kind is one of values 'directory', 'file', 'symlink', 'tree-reference'.
       branch will be read-locked.
     """
-    from builtins import _get_revision_range
-    tree, b, path = bzrdir.BzrDir.open_containing_tree_or_branch(file_list[0])
+    from bzrlib.builtins import _get_revision_range
+    tree, b, path = controldir.ControlDir.open_containing_tree_or_branch(
+        file_list[0])
     add_cleanup(b.lock_read().unlock)
     # XXX: It's damn messy converting a list of paths to relative paths when
     # those paths might be deleted ones, they might be on a case-insensitive

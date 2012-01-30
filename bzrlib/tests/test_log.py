@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@ from bzrlib import (
     registry,
     revision,
     revisionspec,
-    symbol_versioning,
     tests,
     )
 
@@ -251,7 +250,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         wt.commit(message='add file1 and file2')
         self.run_bzr('branch parent child')
         os.unlink('child/file1')
-        file('child/file2', 'wb').write('hello\n')
+        with file('child/file2', 'wb') as f: f.write('hello\n')
         self.run_bzr(['commit', '-m', 'remove file1 and modify file2',
             'child'])
         os.chdir('parent')
@@ -1570,7 +1569,7 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
     def assertLogRevnos(self, expected_revnos, b, start, end,
                         exclude_common_ancestry, generate_merge_revisions=True):
         # FIXME: the layering in log makes it hard to test intermediate levels,
-        # I wish adding filters with their parameters were easier...
+        # I wish adding filters with their parameters was easier...
         # -- vila 20100413
         iter_revs = log._calc_view_revisions(
             b, start, end, direction='reverse',
@@ -1636,3 +1635,4 @@ class TestLogDefaults(TestCaseForLogFormatter):
         log.Logger(b, request).show(log_formatter)
         # should now only have 2 revisions:
         self.assertEquals(len(log_formatter.revisions), 2)
+

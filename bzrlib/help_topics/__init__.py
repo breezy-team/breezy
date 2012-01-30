@@ -33,7 +33,7 @@ be used in the help text, producing sensible input to a manual while
 rendering on the screen naturally.
 """
 
-import sys
+from __future__ import absolute_import
 
 import bzrlib
 from bzrlib import (
@@ -331,6 +331,10 @@ command.  (e.g. ``bzr --profile help``).
                will be a pickle.
 --coverage     Generate line coverage report in the specified directory.
 
+-Oname=value   Override the ``name`` config option setting it to ``value`` for
+               the duration of the command.  This can be used multiple times if
+               several options need to be overridden.
+
 See http://doc.bazaar.canonical.com/developers/profiling.html for more
 information on profiling.
 
@@ -618,6 +622,8 @@ BZR_PROGRESS_BAR    Override the progress display. Values are 'none' or 'text'.
 BZR_PDB             Control whether to launch a debugger on error.
 BZR_SIGQUIT_PDB     Control whether SIGQUIT behaves normally or invokes a
                     breakin debugger.
+BZR_TEXTUI_INPUT    Force console input mode for prompts to line-based (instead
+                    of char-based).
 =================== ===========================================================
 """
 
@@ -763,6 +769,9 @@ topic_registry.register('files', _files,
                         'Information on configuration and log files')
 topic_registry.register_lazy('hooks', 'bzrlib.hooks', 'hooks_help_text',
                         'Points at which custom processing can be added')
+topic_registry.register_lazy('location-alias', 'bzrlib.directory_service',
+                        'AliasDirectory.help_text',
+                        'Aliases for remembered locations')
 
 # Load some of the help topics from files. Note that topics which reproduce API
 # details will tend to skew (quickly usually!) so please seek other solutions
@@ -775,8 +784,6 @@ topic_registry.register('conflict-types', _load_from_file,
                         'Types of conflicts and what to do about them')
 topic_registry.register('debug-flags', _load_from_file,
                         'Options to show or record debug information')
-topic_registry.register('location-alias', _load_from_file,
-                        'Aliases for remembered locations')
 topic_registry.register('log-formats', _load_from_file,
                         'Details on the logging formats available')
 topic_registry.register('url-special-chars', _load_from_file,

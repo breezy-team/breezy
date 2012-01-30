@@ -22,6 +22,8 @@ To get a WorkingTree, call bzrdir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 import os
 import sys
@@ -55,7 +57,10 @@ from bzrlib.inventory import Inventory, ROOT_ID, entry_factory
 from bzrlib.lock import LogicalLockResult
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.lockdir import LockDir
-from bzrlib.mutabletree import needs_tree_write_lock
+from bzrlib.mutabletree import (
+    MutableTree,
+    needs_tree_write_lock,
+    )
 from bzrlib.osutils import (
     file_kind,
     isdir,
@@ -71,7 +76,7 @@ from bzrlib.tree import (
 from bzrlib.workingtree import (
     InventoryWorkingTree,
     WorkingTree,
-    WorkingTreeFormat,
+    WorkingTreeFormatMetaDir,
     )
 
 
@@ -476,25 +481,17 @@ class DirStateWorkingTree(InventoryWorkingTree):
             return False # Missing entries are not executable
         return entry[1][0][3] # Executable?
 
-    if not osutils.supports_executable():
-        def is_executable(self, file_id, path=None):
-            """Test if a file is executable or not.
+    def is_executable(self, file_id, path=None):
+        """Test if a file is executable or not.
 
-            Note: The caller is expected to take a read-lock before calling this.
-            """
+        Note: The caller is expected to take a read-lock before calling this.
+        """
+        if not self._supports_executable():
             entry = self._get_entry(file_id=file_id, path=path)
             if entry == (None, None):
                 return False
             return entry[1][0][3]
-
-        _is_executable_from_path_and_stat = \
-            _is_executable_from_path_and_stat_from_basis
-    else:
-        def is_executable(self, file_id, path=None):
-            """Test if a file is executable or not.
-
-            Note: The caller is expected to take a read-lock before calling this.
-            """
+        else:
             self._must_be_locked()
             if not path:
                 path = self.id2path(file_id)
@@ -969,7 +966,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     all_versioned = False
                     break
             if not all_versioned:
-                raise errors.PathsNotVersionedError(paths)
+                raise errors.PathsNotVersionedError(
+                    [p.decode('utf-8') for p in paths])
         # -- remove redundancy in supplied paths to prevent over-scanning --
         search_paths = osutils.minimum_path_selection(paths)
         # sketch:
@@ -1024,7 +1022,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
             found_dir_names = set(dir_name_id[:2] for dir_name_id in found)
             for dir_name in split_paths:
                 if dir_name not in found_dir_names:
-                    raise errors.PathsNotVersionedError(paths)
+                    raise errors.PathsNotVersionedError(
+                        [p.decode('utf-8') for p in paths])
 
         for dir_name_id, trees_info in found.iteritems():
             for index in search_indexes:
@@ -1446,7 +1445,7 @@ class WorkingTree6(ContentFilteringDirStateWorkingTree):
         return views.PathBasedViews(self)
 
 
-class DirStateWorkingTreeFormat(WorkingTreeFormat):
+class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
 
     missing_parent_conflicts = True
 
@@ -1482,7 +1481,7 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat):
         control_files = self._open_control_files(a_bzrdir)
         control_files.create_lock()
         control_files.lock_write()
-        transport.put_bytes('format', self.get_format_string(),
+        transport.put_bytes('format', self.as_string(),
             mode=a_bzrdir._get_file_mode())
         if from_branch is not None:
             branch = from_branch
@@ -1548,6 +1547,8 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat):
                 transform.build_tree(basis, wt, accelerator_tree,
                                      hardlink=hardlink,
                                      delta_from_tree=delta_from_tree)
+                for hook in MutableTree.hooks['post_build_tree']:
+                    hook(wt)
             finally:
                 basis.unlock()
         finally:
@@ -1608,7 +1609,7 @@ class WorkingTreeFormat4(DirStateWorkingTreeFormat):
     This format:
         - exists within a metadir controlling .bzr
         - includes an explicit version marker for the workingtree control
-          files, separate from the BzrDir format
+          files, separate from the ControlDir format
         - modifies the hash cache format
         - is new in bzr 0.15
         - uses a LockDir to guard access to it.
@@ -1618,7 +1619,8 @@ class WorkingTreeFormat4(DirStateWorkingTreeFormat):
 
     _tree_class = WorkingTree4
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See WorkingTreeFormat.get_format_string()."""
         return "Bazaar Working Tree Format 4 (bzr 0.15)\n"
 
@@ -1635,7 +1637,8 @@ class WorkingTreeFormat5(DirStateWorkingTreeFormat):
 
     _tree_class = WorkingTree5
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See WorkingTreeFormat.get_format_string()."""
         return "Bazaar Working Tree Format 5 (bzr 1.11)\n"
 
@@ -1655,7 +1658,8 @@ class WorkingTreeFormat6(DirStateWorkingTreeFormat):
 
     _tree_class = WorkingTree6
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See WorkingTreeFormat.get_format_string()."""
         return "Bazaar Working Tree Format 6 (bzr 1.14)\n"
 
@@ -2174,7 +2178,7 @@ class InterDirStateTree(InterTree):
                 path_entries = state._entries_for_path(path)
                 if not path_entries:
                     # this specified path is not present at all: error
-                    not_versioned.append(path)
+                    not_versioned.append(path.decode('utf-8'))
                     continue
                 found_versioned = False
                 # for each id at this path
@@ -2188,7 +2192,7 @@ class InterDirStateTree(InterTree):
                 if not found_versioned:
                     # none of the indexes was not 'absent' at all ids for this
                     # path.
-                    not_versioned.append(path)
+                    not_versioned.append(path.decode('utf-8'))
             if len(not_versioned) > 0:
                 raise errors.PathsNotVersionedError(not_versioned)
         # -- remove redundancy in supplied specific_files to prevent over-scanning --
@@ -2261,7 +2265,7 @@ class Converter3to4(object):
     def update_format(self, tree):
         """Change the format marker."""
         tree._transport.put_bytes('format',
-            self.target_format.get_format_string(),
+            self.target_format.as_string(),
             mode=tree.bzrdir._get_file_mode())
 
 
@@ -2284,7 +2288,7 @@ class Converter4to5(object):
     def update_format(self, tree):
         """Change the format marker."""
         tree._transport.put_bytes('format',
-            self.target_format.get_format_string(),
+            self.target_format.as_string(),
             mode=tree.bzrdir._get_file_mode())
 
 
@@ -2313,5 +2317,5 @@ class Converter4or5to6(object):
     def update_format(self, tree):
         """Change the format marker."""
         tree._transport.put_bytes('format',
-            self.target_format.get_format_string(),
+            self.target_format.as_string(),
             mode=tree.bzrdir._get_file_mode())

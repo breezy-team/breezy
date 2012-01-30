@@ -14,23 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
 """Progress indicators.
 
 The usual way to use this is via bzrlib.ui.ui_factory.nested_progress_bar which
 will manage a conceptual stack of nested activities.
 """
 
+from __future__ import absolute_import
 
-import sys
 import time
 import os
-
-
-from bzrlib.symbol_versioning import (
-    deprecated_in,
-    deprecated_method,
-    )
 
 
 def _supports_progress(f):

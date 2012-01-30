@@ -16,6 +16,8 @@
 
 """A sphinx/docutil writer producing texinfo output."""
 
+from __future__ import absolute_import
+
 from docutils import (
     nodes,
     writers,

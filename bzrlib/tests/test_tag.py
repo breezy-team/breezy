@@ -116,7 +116,7 @@ class TestTagMerging(TestCaseWithTransport):
         # overwrite conflicts
         updates, conflicts = a.tags.merge_to(b.tags, overwrite=True)
         self.assertEqual(list(conflicts), [])
-        self.assertEqual({u'tag-1': 'x', u'tag-2': 'z'}, updates)
+        self.assertEqual({u'tag-2': 'z'}, updates)
         self.assertEqual('z', b.tags.lookup_tag('tag-2'))
 
 

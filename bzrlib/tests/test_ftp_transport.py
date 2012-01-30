@@ -16,7 +16,6 @@
 
 import ftplib
 import getpass
-import urllib
 
 from bzrlib import (
     config,
@@ -24,6 +23,7 @@ from bzrlib import (
     tests,
     transport,
     ui,
+    urlutils,
     )
 
 from bzrlib.transport import ftp
@@ -85,9 +85,9 @@ class TestFTPTestServerUI(TestCaseWithFTPServer):
         parsed_url = transport.ConnectedTransport._split_url(base)
         new_url = parsed_url.clone()
         new_url.user = self.user
-        new_url.quoted_user = urllib.quote(self.user)
+        new_url.quoted_user = urlutils.quote(self.user)
         new_url.password = self.password
-        new_url.quoted_password = urllib.quote(self.password)
+        new_url.quoted_password = urlutils.quote(self.password)
         return str(new_url)
 
     def test_no_prompt_for_username(self):

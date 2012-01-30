@@ -720,6 +720,11 @@ create_delta_index_from_delta(const struct source_info *src,
 
     max_num_entries = (src->size - 1)  / RABIN_WINDOW;
 
+    if (!max_num_entries) {
+        *fresh = old_index;
+        return DELTA_OK;
+    }
+
     /* allocate an array to hold whatever entries we find */
     entries = malloc(sizeof(*entry) * max_num_entries);
     if (!entries) /* malloc failure */

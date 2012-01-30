@@ -16,6 +16,8 @@
 
 """Auto-detect of CA bundle for SSL connections"""
 
+from __future__ import absolute_import
+
 import os
 import sys
 from bzrlib.trace import mutter

@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007 Lukáš Lalinský <lalinsky@gmail.com>
-# Copyright (C) 2007,2009 Alexander Belchenko <bialix@ukr.net>
-# Copyright 2011 Canonical Ltd.
+# Copyright (C) 2007,2009,2011 Canonical Ltd.
 #
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or (at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,11 +14,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-# This code is bring from bzr-explorer and modified for bzr.
+# This code is from bzr-explorer and modified for bzr.
 
 """build_mo command for setup.py"""
+
+from __future__ import absolute_import
 
 from distutils import log
 from distutils.core import Command

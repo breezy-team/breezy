@@ -16,8 +16,10 @@
 
 """UI helper for the push command."""
 
+from __future__ import absolute_import
+
 from bzrlib import (
-    bzrdir,
+    controldir,
     errors,
     revision as _mod_revision,
     transport,
@@ -79,7 +81,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
     """
     to_transport = transport.get_transport(location)
     try:
-        dir_to = bzrdir.BzrDir.open_from_transport(to_transport)
+        dir_to = controldir.ControlDir.open_from_transport(to_transport)
     except errors.NotBranchError:
         # Didn't find anything
         dir_to = None
@@ -90,11 +92,11 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                 revision_id=revision_id, stacked_on=stacked_on,
                 create_prefix=create_prefix, use_existing_dir=use_existing_dir,
                 no_tree=no_tree)
+        except errors.AlreadyControlDirError, err:
+            raise errors.BzrCommandError(gettext(
+                "Target directory %s already contains a .bzr directory, "
+                "but it is not valid.") % (location,))
         except errors.FileExists, err:
-            if err.path.endswith('/.bzr'):
-                raise errors.BzrCommandError(gettext(
-                    "Target directory %s already contains a .bzr directory, "
-                    "but it is not valid.") % (location,))
             if not use_existing_dir:
                 raise errors.BzrCommandError(gettext("Target directory %s"
                      " already exists, but does not have a .bzr"
@@ -150,7 +152,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                 "push to %s. You may want to use dpush instead.") % 
                     e.target_branch.mapping.vcs.abbreviation)
         except errors.NoRepositoryPresent:
-            # we have a bzrdir but no branch or repository
+            # we have a controldir but no branch or repository
             # XXX: Figure out what to do other than complain.
             raise errors.BzrCommandError(gettext("At %s you have a valid .bzr"
                 " control directory, but not a branch or repository. This"

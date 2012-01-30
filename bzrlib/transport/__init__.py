@@ -26,6 +26,8 @@ The Transport returned has methods to read, write and manipulate files within
 it.
 """
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 import sys
 
@@ -33,7 +35,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
 from stat import S_ISDIR
-import urllib
 import urlparse
 
 from bzrlib import (
@@ -51,7 +52,10 @@ from bzrlib.symbol_versioning import (
 from bzrlib.trace import (
     mutter,
     )
-from bzrlib import registry
+from bzrlib import (
+    hooks,
+    registry,
+    )
 
 
 # a dictionary of open file streams. Keys are absolute paths, values are
@@ -282,6 +286,16 @@ class AppendBasedFileStream(FileStream):
         self.transport.append_bytes(self.relpath, bytes)
 
 
+class TransportHooks(hooks.Hooks):
+    """Mapping of hook names to registered callbacks for transport hooks"""
+    def __init__(self):
+        super(TransportHooks, self).__init__()
+        self.add_hook("post_connect",
+            "Called after a new connection is established or a reconnect "
+            "occurs. The sole argument passed is either the connected "
+            "transport or smart medium instance.", (2, 5))
+
+
 class Transport(object):
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
@@ -306,11 +320,14 @@ class Transport(object):
     #       where the biggest benefit between combining reads and
     #       and seeking is. Consider a runtime auto-tune.
     _bytes_to_read_before_seek = 0
+    
+    hooks = TransportHooks()
 
     def __init__(self, base):
         super(Transport, self).__init__()
         self.base = base
-        self._segment_parameters = urlutils.split_segment_parameters(base)[1]
+        (self._raw_base, self._segment_parameters) = (
+            urlutils.split_segment_parameters(base))
 
     def _translate_error(self, e, path, raise_generic=True):
         """Translate an IOError or OSError into an appropriate bzr error.
@@ -347,7 +364,7 @@ class Transport(object):
         """
         raise NotImplementedError(self.clone)
 
-    def create_prefix(self):
+    def create_prefix(self, mode=None):
         """Create all the directories leading down to self.base."""
         cur_transport = self
         needed = [cur_transport]
@@ -359,7 +376,7 @@ class Transport(object):
                     "Failed to create path prefix for %s."
                     % cur_transport.base)
             try:
-                new_transport.mkdir('.')
+                new_transport.mkdir('.', mode=mode)
             except errors.NoSuchFile:
                 needed.append(new_transport)
                 cur_transport = new_transport
@@ -370,9 +387,9 @@ class Transport(object):
         # Now we only need to create child directories
         while needed:
             cur_transport = needed.pop()
-            cur_transport.ensure_base()
+            cur_transport.ensure_base(mode=mode)
 
-    def ensure_base(self):
+    def ensure_base(self, mode=None):
         """Ensure that the directory this transport references exists.
 
         This will create a directory if it doesn't exist.
@@ -382,7 +399,7 @@ class Transport(object):
         # than permission". We attempt to create the directory, and just
         # suppress FileExists and PermissionDenied (for Windows) exceptions.
         try:
-            self.mkdir('.')
+            self.mkdir('.', mode=mode)
         except (errors.FileExists, errors.PermissionDenied):
             return False
         else:
@@ -414,6 +431,22 @@ class Transport(object):
         """Return the segment parameters for the top segment of the URL.
         """
         return self._segment_parameters
+
+    def set_segment_parameter(self, name, value):
+        """Set a segment parameter.
+
+        :param name: Segment parameter name (urlencoded string)
+        :param value: Segment parameter value (urlencoded string)
+        """
+        if value is None:
+            try:
+                del self._segment_parameters[name]
+            except KeyError:
+                pass
+        else:
+            self._segment_parameters[name] = value
+        self.base = urlutils.join_segment_parameters(
+            self._raw_base, self._segment_parameters)
 
     def _pump(self, from_file, to_file):
         """Most children will need to copy from one file-like
@@ -1398,12 +1431,12 @@ class ConnectedTransport(Transport):
 
         :return: The corresponding URL.
         """
-        netloc = urllib.quote(host)
+        netloc = urlutils.quote(host)
         if user is not None:
             # Note that we don't put the password back even if we
             # have one so that it doesn't get accidentally
             # exposed.
-            netloc = '%s@%s' % (urllib.quote(user), netloc)
+            netloc = '%s@%s' % (urlutils.quote(user), netloc)
         if port is not None:
             netloc = '%s:%d' % (netloc, port)
         path = urlutils.escape(path)
@@ -1478,6 +1511,8 @@ class ConnectedTransport(Transport):
         """
         self._shared_connection.connection = connection
         self._shared_connection.credentials = credentials
+        for hook in self.hooks["post_connect"]:
+            hook(self)
 
     def _get_connection(self):
         """Returns the transport specific connection object."""
@@ -1747,7 +1782,7 @@ register_transport_proto('http://',
                  help="Read-only access of branches exported on the web.")
 register_transport_proto('https://',
             help="Read-only access of branches exported on the web using SSL.")
-# The default http implementation is urllib, but https is pycurl if available
+# The default http implementation is urllib, but https uses pycurl if available
 register_lazy_transport('http://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 register_lazy_transport('http://', 'bzrlib.transport.http._urllib',

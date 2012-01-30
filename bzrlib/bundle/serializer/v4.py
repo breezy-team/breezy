@@ -14,12 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 import bz2
 import re
 
 from bzrlib import (
-    diff,
     errors,
     iterablefile,
     lru_cache,
@@ -33,7 +34,7 @@ from bzrlib import (
     versionedfile as _mod_versionedfile,
     )
 from bzrlib.bundle import bundle_data, serializer as bundle_serializer
-from bzrlib.i18n import gettext, ngettext
+from bzrlib.i18n import ngettext
 from bzrlib import bencode
 
 

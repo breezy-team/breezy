@@ -16,6 +16,8 @@
 
 """Weave-era working tree objects."""
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 
 from bzrlib import (
@@ -28,6 +30,7 @@ from bzrlib import (
     xml5,
     )
 from bzrlib.decorators import needs_read_lock
+from bzrlib.mutabletree import MutableTree
 from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import (
     WorkingTreeFormat,
@@ -111,6 +114,8 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             parent_trees = [(revision_id, basis_tree)]
         wt.set_parent_trees(parent_trees)
         transform.build_tree(basis_tree, wt)
+        for hook in MutableTree.hooks['post_build_tree']:
+            hook(wt)
         return wt
 
     def __init__(self):

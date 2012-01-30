@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
 """Copying of history from one branch to another.
 
 The basic plan is that every branch knows the history of everything
@@ -23,14 +22,16 @@ branch operation we copy history from the source into the destination
 branch.
 """
 
+from __future__ import absolute_import
+
 import operator
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
-    graph as _mod_graph,
     tsort,
     versionedfile,
+    vf_search,
     )
 """)
 from bzrlib import (
@@ -161,13 +162,13 @@ class RepoFetcher(object):
         elif self._last_revision == NULL_REVISION:
             # fetch_spec is None + last_revision is null => empty fetch.
             # explicit limit of no revisions needed
-            return _mod_graph.EmptySearchResult()
+            return vf_search.EmptySearchResult()
         elif self._last_revision is not None:
-            return _mod_graph.NotInOtherForRevs(self.to_repository,
+            return vf_search.NotInOtherForRevs(self.to_repository,
                 self.from_repository, [self._last_revision],
                 find_ghosts=self.find_ghosts).execute()
         else: # self._last_revision is None:
-            return _mod_graph.EverythingNotInOther(self.to_repository,
+            return vf_search.EverythingNotInOther(self.to_repository,
                 self.from_repository,
                 find_ghosts=self.find_ghosts).execute()
 
@@ -389,11 +390,11 @@ class FetchSpecFactory(object):
                     "limit is only supported with a source branch set")
             # Caller hasn't specified any revisions or source branch
             if self.target_repo_kind == TargetRepoKinds.EMPTY:
-                return _mod_graph.EverythingResult(self.source_repo)
+                return vf_search.EverythingResult(self.source_repo)
             else:
                 # We want everything not already in the target (or target's
                 # fallbacks).
-                return _mod_graph.EverythingNotInOther(
+                return vf_search.EverythingNotInOther(
                     self.target_repo, self.source_repo).execute()
         heads_to_fetch = set(self._explicit_rev_ids)
         if self.source_branch is not None:
@@ -416,7 +417,7 @@ class FetchSpecFactory(object):
             # heads_to_fetch will almost certainly be present so this doesn't
             # matter much.
             all_heads = heads_to_fetch.union(if_present_fetch)
-            ret = _mod_graph.PendingAncestryResult(all_heads, self.source_repo)
+            ret = vf_search.PendingAncestryResult(all_heads, self.source_repo)
             if self.limit is not None:
                 graph = self.source_repo.get_graph()
                 topo_order = list(graph.iter_topo_order(ret.get_keys()))
@@ -424,6 +425,6 @@ class FetchSpecFactory(object):
                 ret = self.source_repo.revision_ids_to_search_result(result_set)
             return ret
         else:
-            return _mod_graph.NotInOtherForRevs(self.target_repo, self.source_repo,
+            return vf_search.NotInOtherForRevs(self.target_repo, self.source_repo,
                 required_ids=heads_to_fetch, if_present_ids=if_present_fetch,
                 limit=self.limit).execute()

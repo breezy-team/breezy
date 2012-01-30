@@ -353,8 +353,8 @@ class TestMergeDirectiveBranch(object):
 
     def make_trees(self):
         tree_a = self.make_branch_and_tree('tree_a')
-        tree_a.branch.get_config().set_user_option('email',
-            'J. Random Hacker <jrandom@example.com>')
+        tree_a.branch.get_config_stack().set(
+            'email', 'J. Random Hacker <jrandom@example.com>')
         self.build_tree_contents([('tree_a/file', 'content_a\ncontent_b\n'),
                                   ('tree_a/file_2', 'content_x\rcontent_y\r')])
         tree_a.add(['file', 'file_2'])
@@ -462,7 +462,7 @@ class TestMergeDirectiveBranch(object):
         time = 453
         timezone = 7200
         class FakeBranch(object):
-            def get_config(self):
+            def get_config_stack(self):
                 return self
             def gpg_signing_command(self):
                 return 'loopback'

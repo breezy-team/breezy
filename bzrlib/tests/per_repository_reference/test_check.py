@@ -17,7 +17,6 @@
 """Tests for check on a repository with external references."""
 
 import bzrlib.ui
-from bzrlib import errors
 from bzrlib.tests.per_repository_reference import (
     TestCaseWithExternalReferenceRepository,
     )
@@ -31,7 +30,7 @@ class TestCheck(TestCaseWithExternalReferenceRepository):
         tree.add(['file'], ['file-id'])
         rev1_id = tree.commit('one')
         referring = self.make_branch_and_tree('referring')
-        readonly_base = self.readonly_repository('base')
+        readonly_base = self.readonly_repository(tree.branch.repository)
         referring.branch.repository.add_fallback_repository(readonly_base)
         local_tree = referring.branch.create_checkout('local')
         self.build_tree_contents([('local/file', 'change')])

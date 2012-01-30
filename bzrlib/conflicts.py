@@ -17,6 +17,8 @@
 # TODO: 'bzr resolve' should accept a directory name and work from that
 # point down
 
+from __future__ import absolute_import
+
 import os
 
 from bzrlib.lazy_import import lazy_import
@@ -50,7 +52,7 @@ class cmd_conflicts(commands.Command):
     Merge will do its best to combine the changes in two branches, but there
     are some kinds of problems only a human can fix.  When it encounters those,
     it will mark a conflict.  A conflict means that you need to fix something,
-    before you should commit.
+    before you can commit.
 
     Conflicts normally are listed as short, human-readable messages.  If --text
     is supplied, the pathnames of files with text conflicts are listed,
@@ -80,13 +82,13 @@ resolve_action_registry = registry.Registry()
 
 
 resolve_action_registry.register(
-    'done', 'done', 'Marks the conflict as resolved' )
+    'done', 'done', 'Marks the conflict as resolved.')
 resolve_action_registry.register(
     'take-this', 'take_this',
-    'Resolve the conflict preserving the version in the working tree' )
+    'Resolve the conflict preserving the version in the working tree.')
 resolve_action_registry.register(
     'take-other', 'take_other',
-    'Resolve the conflict taking the merged version into account' )
+    'Resolve the conflict taking the merged version into account.')
 resolve_action_registry.default_key = 'done'
 
 class ResolveActionOption(option.RegistryOption):
@@ -104,7 +106,7 @@ class cmd_resolve(commands.Command):
     Merge will do its best to combine the changes in two branches, but there
     are some kinds of problems only a human can fix.  When it encounters those,
     it will mark a conflict.  A conflict means that you need to fix something,
-    before you should commit.
+    before you can commit.
 
     Once you have fixed a problem, use "bzr resolve" to automatically mark
     text conflicts as fixed, "bzr resolve FILE" to mark a specific conflict as

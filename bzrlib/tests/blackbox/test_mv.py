@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -120,13 +120,10 @@ class TestMove(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         tree.add(['sub1', 'sub1/sub2', 'sub1/hello.txt'])
 
-        os.chdir('sub1/sub2')
-        self.run_bzr('mv ../hello.txt .')
-        self.assertPathExists('./hello.txt')
+        self.run_bzr('mv ../hello.txt .', working_dir='sub1/sub2')
+        self.assertPathExists('sub1/sub2/hello.txt')
 
-        os.chdir('..')
-        self.run_bzr('mv sub2/hello.txt .')
-        os.chdir('..')
+        self.run_bzr('mv sub2/hello.txt .', working_dir='sub1')
         self.assertMoved('sub1/sub2/hello.txt','sub1/hello.txt')
 
     def test_mv_change_case_file(self):
@@ -186,6 +183,12 @@ class TestMove(TestCaseWithTransport):
 
         self.run_bzr('move a b')
         self.run_bzr('rename b a')
+
+    def test_mv_no_root(self):
+        tree = self.make_branch_and_tree('.')
+        self.run_bzr_error(
+            ["bzr: ERROR: can not move root of branch"],
+            'mv . a')
 
     def test_mv_through_symlinks(self):
         self.requireFeature(SymlinkFeature)
@@ -514,4 +517,15 @@ class TestMove(TestCaseWithTransport):
         tree = self.make_branch_and_tree(".")
         self.build_tree([u"\xA7"])
         out, err = self.run_bzr_error(["Could not rename", "not versioned"],
+            ["mv", u"\xA7", "b"])
+
+    def test_mv_removed_non_ascii(self):
+        """Clear error on mv of a removed non-ascii file, see lp:898541"""
+        self.requireFeature(UnicodeFilenameFeature)
+        tree = self.make_branch_and_tree(".")
+        self.build_tree([u"\xA7"])
+        tree.add([u"\xA7"])
+        tree.commit(u"Adding \xA7")
+        os.remove(u"\xA7")
+        out, err = self.run_bzr_error(["Could not rename", "not exist"],
             ["mv", u"\xA7", "b"])

@@ -18,7 +18,10 @@
 
 from testtools.matchers import *
 
+from bzrlib.smart.client import CallHookParams
+
 from bzrlib.tests import (
+    CapturedCall,
     TestCase,
     TestCaseWithTransport,
     )
@@ -146,3 +149,56 @@ class TestHasLayout(TestCaseWithTransport):
         self.assertEquals(
             "[u'', u'a'] != [u'', u'a', u'b/', u'b/c']",
             mismatch.describe())
+
+
+class TestContainsNoVfsCalls(TestCase):
+
+    def _make_call(self, method, args):
+        return CapturedCall(CallHookParams(method, args, None, None, None), 0)
+
+    def test__str__(self):
+        self.assertEqual("ContainsNoVfsCalls()", str(ContainsNoVfsCalls()))
+
+    def test_empty(self):
+        self.assertIs(None, ContainsNoVfsCalls().match([]))
+
+    def test_no_vfs_calls(self):
+        calls = [self._make_call("Branch.get_config_file", [])]
+        self.assertIs(None, ContainsNoVfsCalls().match(calls))
+
+    def test_ignores_unknown(self):
+        calls = [self._make_call("unknown", [])]
+        self.assertIs(None, ContainsNoVfsCalls().match(calls))
+
+    def test_match(self):
+        calls = [self._make_call("append", ["file"]),
+                 self._make_call("Branch.get_config_file", [])]
+        mismatch = ContainsNoVfsCalls().match(calls)
+        self.assertIsNot(None, mismatch)
+        self.assertEquals([calls[0].call], mismatch.vfs_calls)
+        self.assertEquals("no VFS calls expected, got: append('file')""",
+                mismatch.describe())
+
+
+class TestRevisionHistoryMatches(TestCaseWithTransport):
+
+    def test_empty(self):
+        tree = self.make_branch_and_tree('.')
+        matcher = RevisionHistoryMatches([])
+        self.assertIs(None, matcher.match(tree.branch))
+
+    def test_matches(self):
+        tree = self.make_branch_and_tree('.')
+        tree.commit('msg1', rev_id='a')
+        tree.commit('msg2', rev_id='b')
+        matcher = RevisionHistoryMatches(['a', 'b'])
+        self.assertIs(None, matcher.match(tree.branch))
+
+    def test_mismatch(self):
+        tree = self.make_branch_and_tree('.')
+        tree.commit('msg1', rev_id='a')
+        tree.commit('msg2', rev_id='b')
+        matcher = RevisionHistoryMatches(['a', 'b', 'c'])
+        self.assertEquals(
+            "['a', 'b', 'c'] != ['a', 'b']",
+            matcher.match(tree.branch).describe())

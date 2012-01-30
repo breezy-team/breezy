@@ -218,14 +218,14 @@ desired.
 
 """
 
+from __future__ import absolute_import
+
 import bisect
-import binascii
 import errno
 import operator
 import os
 from stat import S_IEXEC
 import stat
-import struct
 import sys
 import time
 import zlib
@@ -249,50 +249,6 @@ from bzrlib import (
 # just an error code.
 ERROR_PATH_NOT_FOUND = 3
 ERROR_DIRECTORY = 267
-
-
-if not getattr(struct, '_compile', None):
-    # Cannot pre-compile the dirstate pack_stat
-    def pack_stat(st, _encode=binascii.b2a_base64, _pack=struct.pack):
-        """Convert stat values into a packed representation."""
-        return _encode(_pack('>LLLLLL', st.st_size, int(st.st_mtime),
-            int(st.st_ctime), st.st_dev, st.st_ino & 0xFFFFFFFF,
-            st.st_mode))[:-1]
-else:
-    # compile the struct compiler we need, so as to only do it once
-    from _struct import Struct
-    _compiled_pack = Struct('>LLLLLL').pack
-    def pack_stat(st, _encode=binascii.b2a_base64, _pack=_compiled_pack):
-        """Convert stat values into a packed representation."""
-        # jam 20060614 it isn't really worth removing more entries if we
-        # are going to leave it in packed form.
-        # With only st_mtime and st_mode filesize is 5.5M and read time is 275ms
-        # With all entries, filesize is 5.9M and read time is maybe 280ms
-        # well within the noise margin
-
-        # base64 encoding always adds a final newline, so strip it off
-        # The current version
-        return _encode(_pack(st.st_size, int(st.st_mtime), int(st.st_ctime),
-            st.st_dev, st.st_ino & 0xFFFFFFFF, st.st_mode))[:-1]
-        # This is 0.060s / 1.520s faster by not encoding as much information
-        # return _encode(_pack('>LL', int(st.st_mtime), st.st_mode))[:-1]
-        # This is not strictly faster than _encode(_pack())[:-1]
-        # return '%X.%X.%X.%X.%X.%X' % (
-        #      st.st_size, int(st.st_mtime), int(st.st_ctime),
-        #      st.st_dev, st.st_ino, st.st_mode)
-        # Similar to the _encode(_pack('>LL'))
-        # return '%X.%X' % (int(st.st_mtime), st.st_mode)
-
-
-def _unpack_stat(packed_stat):
-    """Turn a packed_stat back into the stat fields.
-
-    This is meant as a debugging tool, should not be used in real code.
-    """
-    (st_size, st_mtime, st_ctime, st_dev, st_ino,
-     st_mode) = struct.unpack('>LLLLLL', binascii.a2b_base64(packed_stat))
-    return dict(st_size=st_size, st_mtime=st_mtime, st_ctime=st_ctime,
-                st_dev=st_dev, st_ino=st_ino, st_mode=st_mode)
 
 
 class SHA1Provider(object):
@@ -1605,16 +1561,19 @@ class DirState(object):
                     else:
                         source_path = child_basename
                     if new_path_utf8:
-                        target_path = new_path_utf8 + source_path[len(old_path):]
+                        target_path = \
+                            new_path_utf8 + source_path[len(old_path_utf8):]
                     else:
-                        if old_path == '':
+                        if old_path_utf8 == '':
                             raise AssertionError("cannot rename directory to"
                                                  " itself")
-                        target_path = source_path[len(old_path) + 1:]
+                        target_path = source_path[len(old_path_utf8) + 1:]
                     adds.append((None, target_path, entry[0][2], entry[1][1], False))
                     deletes.append(
                         (source_path, target_path, entry[0][2], None, False))
-                deletes.append((old_path_utf8, new_path, file_id, None, False))
+                deletes.append(
+                    (old_path_utf8, new_path_utf8, file_id, None, False))
+
         self._check_delta_ids_absent(new_ids, delta, 1)
         try:
             # Finish expunging deletes/first half of renames.
@@ -1896,7 +1855,7 @@ class DirState(object):
                     file_id, "This parent is not a directory.")
 
     def _observed_sha1(self, entry, sha1, stat_value,
-        _stat_to_minikind=_stat_to_minikind, _pack_stat=pack_stat):
+        _stat_to_minikind=_stat_to_minikind):
         """Note the sha1 of a file.
 
         :param entry: The entry the sha1 is for.
@@ -1908,14 +1867,13 @@ class DirState(object):
         except KeyError:
             # Unhandled kind
             return None
-        packed_stat = _pack_stat(stat_value)
         if minikind == 'f':
             if self._cutoff_time is None:
                 self._sha_cutoff_time()
             if (stat_value.st_mtime < self._cutoff_time
                 and stat_value.st_ctime < self._cutoff_time):
                 entry[1][0] = ('f', sha1, stat_value.st_size, entry[1][0][3],
-                               packed_stat)
+                               pack_stat(stat_value))
                 self._mark_modified([entry])
 
     def _sha_cutoff_time(self):
@@ -1966,7 +1924,7 @@ class DirState(object):
             # paths are produced by UnicodeDirReader on purpose.
             abspath = abspath.encode(fs_encoding)
         target = os.readlink(abspath)
-        if fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
+        if fs_encoding not in ('utf-8', 'ascii'):
             # Change encoding if needed
             target = target.decode(fs_encoding).encode('UTF-8')
         return target
@@ -2474,9 +2432,9 @@ class DirState(object):
             raise errors.BzrError('missing num_entries line')
         self._num_entries = int(num_entries_line[len('num_entries: '):-1])
 
-    def sha1_from_stat(self, path, stat_result, _pack_stat=pack_stat):
+    def sha1_from_stat(self, path, stat_result):
         """Find a sha1 given a stat lookup."""
-        return self._get_packed_stat_index().get(_pack_stat(stat_result), None)
+        return self._get_packed_stat_index().get(pack_stat(stat_result), None)
 
     def _get_packed_stat_index(self):
         """Get a packed_stat index of self._dirblocks."""
@@ -3397,8 +3355,7 @@ class DirState(object):
 
 
 def py_update_entry(state, entry, abspath, stat_value,
-                 _stat_to_minikind=DirState._stat_to_minikind,
-                 _pack_stat=pack_stat):
+                 _stat_to_minikind=DirState._stat_to_minikind):
     """Update the entry based on what is actually on disk.
 
     This function only calculates the sha if it needs to - if the entry is
@@ -3417,7 +3374,7 @@ def py_update_entry(state, entry, abspath, stat_value,
     except KeyError:
         # Unhandled kind
         return None
-    packed_stat = _pack_stat(stat_value)
+    packed_stat = pack_stat(stat_value)
     (saved_minikind, saved_link_or_sha1, saved_file_size,
      saved_executable, saved_packed_stat) = entry[1][0]
 
@@ -4296,6 +4253,7 @@ try:
         _bisect_path_left,
         _bisect_path_right,
         cmp_by_dirs,
+        pack_stat,
         ProcessEntryC as _process_entry,
         update_entry as update_entry,
         )
@@ -4307,6 +4265,7 @@ except ImportError, e:
         _bisect_path_left,
         _bisect_path_right,
         cmp_by_dirs,
+        pack_stat,
         )
     # FIXME: It would be nice to be able to track moved lines so that the
     # corresponding python code can be moved to the _dirstate_helpers_py

@@ -16,14 +16,15 @@
 
 """A collection of function for handling URL operations."""
 
+from __future__ import absolute_import
+
 import os
 import re
 import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from posixpath import split as _posix_split, normpath as _posix_normpath
-import urllib
+from posixpath import split as _posix_split
 import urlparse
 
 from bzrlib import (
@@ -60,13 +61,87 @@ def dirname(url, exclude_trailing_slash=True):
     return split(url, exclude_trailing_slash=exclude_trailing_slash)[0]
 
 
+# Private copies of quote and unquote, copied from Python's
+# urllib module because urllib unconditionally imports socket, which imports
+# ssl.
+
+always_safe = ('ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+               'abcdefghijklmnopqrstuvwxyz'
+               '0123456789' '_.-')
+_safe_map = {}
+for i, c in zip(xrange(256), str(bytearray(xrange(256)))):
+    _safe_map[c] = c if (i < 128 and c in always_safe) else '%{0:02X}'.format(i)
+_safe_quoters = {}
+
+
+def quote(s, safe='/'):
+    """quote('abc def') -> 'abc%20def'
+
+    Each part of a URL, e.g. the path info, the query, etc., has a
+    different set of reserved characters that must be quoted.
+
+    RFC 2396 Uniform Resource Identifiers (URI): Generic Syntax lists
+    the following reserved characters.
+
+    reserved    = ";" | "/" | "?" | ":" | "@" | "&" | "=" | "+" |
+                  "$" | ","
+
+    Each of these characters is reserved in some component of a URL,
+    but not necessarily in all of them.
+
+    By default, the quote function is intended for quoting the path
+    section of a URL.  Thus, it will not encode '/'.  This character
+    is reserved, but in typical usage the quote function is being
+    called on a path where the existing slash characters are used as
+    reserved characters.
+    """
+    # fastpath
+    if not s:
+        if s is None:
+            raise TypeError('None object cannot be quoted')
+        return s
+    cachekey = (safe, always_safe)
+    try:
+        (quoter, safe) = _safe_quoters[cachekey]
+    except KeyError:
+        safe_map = _safe_map.copy()
+        safe_map.update([(c, c) for c in safe])
+        quoter = safe_map.__getitem__
+        safe = always_safe + safe
+        _safe_quoters[cachekey] = (quoter, safe)
+    if not s.rstrip(safe):
+        return s
+    return ''.join(map(quoter, s))
+
+
+_hexdig = '0123456789ABCDEFabcdef'
+_hextochr = dict((a + b, chr(int(a + b, 16)))
+                 for a in _hexdig for b in _hexdig)
+
+def unquote(s):
+    """unquote('abc%20def') -> 'abc def'."""
+    res = s.split('%')
+    # fastpath
+    if len(res) == 1:
+        return s
+    s = res[0]
+    for item in res[1:]:
+        try:
+            s += _hextochr[item[:2]] + item[2:]
+        except KeyError:
+            s += '%' + item
+        except UnicodeDecodeError:
+            s += unichr(int(item[:2], 16)) + item[2:]
+    return s
+
+
 def escape(relpath):
     """Escape relpath to be a valid url."""
     if isinstance(relpath, unicode):
         relpath = relpath.encode('utf-8')
     # After quoting and encoding, the path should be perfectly
     # safe as a plain ASCII string, str() just enforces this
-    return str(urllib.quote(relpath, safe='/~'))
+    return str(quote(relpath, safe='/~'))
 
 
 def file_relpath(base, path):
@@ -78,8 +153,8 @@ def file_relpath(base, path):
         raise ValueError('Length of base (%r) must equal or'
             ' exceed the platform minimum url length (which is %d)' %
             (base, MIN_ABS_FILEURL_LENGTH))
-    base = local_path_from_url(base)
-    path = local_path_from_url(path)
+    base = osutils.normpath(local_path_from_url(base))
+    path = osutils.normpath(local_path_from_url(path))
     return escape(osutils.relpath(base, path))
 
 
@@ -201,8 +276,7 @@ def _posix_local_path_to_url(path):
     """
     # importing directly from posixpath allows us to test this
     # on non-posix platforms
-    return 'file://' + escape(_posix_normpath(
-        osutils._posix_abspath(path)))
+    return 'file://' + escape(osutils._posix_abspath(path))
 
 
 def _win32_local_path_from_url(url):
@@ -442,11 +516,15 @@ def split_segment_parameters_raw(url):
     :param url: A relative or absolute URL
     :return: (url, subsegments)
     """
-    (parent_url, child_dir) = split(url)
-    subsegments = child_dir.split(",")
-    if len(subsegments) == 1:
+    # GZ 2011-11-18: Dodgy removing the terminal slash like this, function
+    #                operates on urls not url+segments, and Transport classes
+    #                should not be blindly adding slashes in the first place. 
+    lurl = strip_trailing_slash(url)
+    # Segments begin at first comma after last forward slash, if one exists
+    segment_start = lurl.find(",", lurl.rfind("/")+1)
+    if segment_start == -1:
         return (url, [])
-    return (join(parent_url, subsegments[0]), subsegments[1:])
+    return (lurl[:segment_start], lurl[segment_start+1:].split(","))
 
 
 def split_segment_parameters(url):
@@ -563,7 +641,7 @@ def unescape(url):
     This returns a Unicode path from a URL
     """
     # jam 20060427 URLs are supposed to be ASCII only strings
-    #       If they are passed in as unicode, urllib.unquote
+    #       If they are passed in as unicode, unquote
     #       will return a UNICODE string, which actually contains
     #       utf-8 bytes. So we have to ensure that they are
     #       plain ASCII strings, or the final .decode will
@@ -574,7 +652,7 @@ def unescape(url):
     except UnicodeError, e:
         raise errors.InvalidURL(url, 'URL was not a plain ASCII url: %s' % (e,))
 
-    unquoted = urllib.unquote(url)
+    unquoted = unquote(url)
     try:
         unicode_path = unquoted.decode('utf-8')
     except UnicodeError, e:
@@ -739,20 +817,20 @@ class URL(object):
             port, quoted_path):
         self.scheme = scheme
         self.quoted_host = quoted_host
-        self.host = urllib.unquote(self.quoted_host)
+        self.host = unquote(self.quoted_host)
         self.quoted_user = quoted_user
         if self.quoted_user is not None:
-            self.user = urllib.unquote(self.quoted_user)
+            self.user = unquote(self.quoted_user)
         else:
             self.user = None
         self.quoted_password = quoted_password
         if self.quoted_password is not None:
-            self.password = urllib.unquote(self.quoted_password)
+            self.password = unquote(self.quoted_password)
         else:
             self.password = None
         self.port = port
-        self.quoted_path = quoted_path
-        self.path = urllib.unquote(self.quoted_path)
+        self.quoted_path = _url_hex_escapes_re.sub(_unescape_safe_chars, quoted_path)
+        self.path = unquote(self.quoted_path)
 
     def __eq__(self, other):
         return (isinstance(other, self.__class__) and
@@ -836,6 +914,7 @@ class URL(object):
         """
         if not isinstance(relpath, str):
             raise errors.InvalidURL(relpath)
+        relpath = _url_hex_escapes_re.sub(_unescape_safe_chars, relpath)
         if relpath.startswith('/'):
             base_parts = []
         else:
@@ -867,7 +946,7 @@ class URL(object):
         if offset is not None:
             relative = unescape(offset).encode('utf-8')
             path = self._combine_paths(self.path, relative)
-            path = urllib.quote(path)
+            path = quote(path, safe="/~")
         else:
             path = self.quoted_path
         return self.__class__(self.scheme, self.quoted_user,

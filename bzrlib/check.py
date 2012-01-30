@@ -47,12 +47,14 @@ check_refs are tuples (kind, value). Currently defined kinds are:
   indicating that the revision was found/not found.
 """
 
+from __future__ import absolute_import
+
 from bzrlib import (
     errors,
     ui,
     )
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
+from bzrlib.controldir import ControlDir
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import note
 from bzrlib.workingtree import WorkingTree
@@ -386,7 +388,7 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
     """
     try:
         base_tree, branch, repo, relpath = \
-                        BzrDir.open_containing_tree_branch_or_repository(path)
+                        ControlDir.open_containing_tree_branch_or_repository(path)
     except errors.NotBranchError:
         base_tree = branch = repo = None
 

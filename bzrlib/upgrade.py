@@ -16,6 +16,7 @@
 
 """bzr upgrade logic."""
 
+from __future__ import absolute_import
 
 from bzrlib import (
     errors,
@@ -23,8 +24,8 @@ from bzrlib import (
     ui,
     urlutils,
     )
-from bzrlib.bzrdir import (
-    BzrDir,
+from bzrlib.controldir import (
+    ControlDir,
     format_registry,
     )
 from bzrlib.i18n import gettext
@@ -54,7 +55,7 @@ class Convert(object):
         if control_dir is not None:
             self.bzrdir = control_dir
         else:
-            self.bzrdir = BzrDir.open_unsupported(url)
+            self.bzrdir = ControlDir.open_unsupported(url)
         if isinstance(self.bzrdir, RemoteBzrDir):
             self.bzrdir._ensure_real()
             self.bzrdir = self.bzrdir._real_bzrdir
@@ -139,7 +140,7 @@ def upgrade(url, format=None, clean_up=False, dry_run=False):
     :param dry_run: show what would happen but don't actually do any upgrades
     :return: the list of exceptions encountered
     """
-    control_dirs = [BzrDir.open_unsupported(url)]
+    control_dirs = [ControlDir.open_unsupported(url)]
     attempted, succeeded, exceptions = smart_upgrade(control_dirs,
         format, clean_up=clean_up, dry_run=dry_run)
     if len(attempted) > 1:
@@ -284,6 +285,10 @@ def _convert_items(items, format, clean_up, dry_run, label=None):
         try:
             if not dry_run:
                 cv = Convert(control_dir=control_dir, format=format)
+        except errors.UpToDateFormat, ex:
+            ui.ui_factory.note(str(ex))
+            succeeded.append(control_dir)
+            continue
         except Exception, ex:
             trace.warning('conversion error: %s' % ex)
             exceptions.append(ex)

@@ -22,11 +22,11 @@ import os
 
 from bzrlib import (
     branch,
-    branchbuilder,
     bzrdir,
     config,
     errors,
     osutils,
+    revision as _mod_revision,
     symbol_versioning,
     tests,
     trace,
@@ -37,6 +37,7 @@ from bzrlib.errors import (
     PathsNotVersionedError,
     )
 from bzrlib.inventory import Inventory
+from bzrlib.mutabletree import MutableTree
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.tests import (
     features,
@@ -174,7 +175,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
 
         self.build_tree(['hello.txt'])
-        file('hello.txt', 'w').write('initial hello')
+        with file('hello.txt', 'w') as f: f.write('initial hello')
 
         self.assertRaises(PathsNotVersionedError,
                           tree.revert, ['hello.txt'])
@@ -182,7 +183,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.commit('create initial hello.txt')
 
         self.check_file_contents('hello.txt', 'initial hello')
-        file('hello.txt', 'w').write('new hello')
+        with file('hello.txt', 'w') as f: f.write('new hello')
         self.check_file_contents('hello.txt', 'new hello')
 
         # revert file modified since last revision
@@ -196,7 +197,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.check_file_contents('hello.txt.~1~', 'new hello')
 
         # backup files are numbered
-        file('hello.txt', 'w').write('new hello2')
+        with file('hello.txt', 'w') as f: f.write('new hello2')
         tree.revert(['hello.txt'])
         self.check_file_contents('hello.txt', 'initial hello')
         self.check_file_contents('hello.txt.~1~', 'new hello')
@@ -205,7 +206,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_revert_missing(self):
         # Revert a file that has been deleted since last commit
         tree = self.make_branch_and_tree('.')
-        file('hello.txt', 'w').write('initial hello')
+        with file('hello.txt', 'w') as f: f.write('initial hello')
         tree.add('hello.txt')
         tree.commit('added hello.txt')
         os.unlink('hello.txt')
@@ -249,7 +250,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
         wt.commit('create initial state')
 
-        revid = b.revision_history()[0]
+        revid = b.last_revision()
         self.log('first revision_id is {%s}' % revid)
 
         tree = b.repository.revision_tree(revid)
@@ -309,6 +310,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_clone_trivial(self):
         wt = self.make_branch_and_tree('source')
         cloned_dir = wt.bzrdir.clone('target')
+        cloned = cloned_dir.open_workingtree()
+        self.assertEqual(cloned.get_parent_ids(), wt.get_parent_ids())
+
+    def test_clone_empty(self):
+        wt = self.make_branch_and_tree('source')
+        cloned_dir = wt.bzrdir.clone('target', revision_id=_mod_revision.NULL_REVISION)
         cloned = cloned_dir.open_workingtree()
         self.assertEqual(cloned.get_parent_ids(), wt.get_parent_ids())
 
@@ -445,6 +452,23 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             revision_id='a')
         self.assertEqual(['a'], made_tree.get_parent_ids())
 
+    def test_post_build_tree_hook(self):
+        calls = []
+        def track_post_build_tree(tree):
+            calls.append(tree.last_revision())
+        source = self.make_branch_and_tree('source')
+        source.commit('a', rev_id='a', allow_pointless=True)
+        source.commit('b', rev_id='b', allow_pointless=True)
+        self.build_tree(['new/'])
+        made_control = self.bzrdir_format.initialize('new')
+        source.branch.repository.clone(made_control)
+        source.branch.clone(made_control)
+        MutableTree.hooks.install_named_hook("post_build_tree",
+            track_post_build_tree, "Test")
+        made_tree = self.workingtree_format.initialize(made_control,
+            revision_id='a')
+        self.assertEqual(['a'], calls)
+
     def test_update_sets_last_revision(self):
         # working tree formats from the meta-dir format and newer support
         # setting the last revision on a tree independently of that on the
@@ -466,8 +490,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # current format
         self.build_tree(['checkout/', 'tree/file'])
         checkout = bzrdir.BzrDirMetaFormat1().initialize('checkout')
-        branch.BranchReferenceFormat().initialize(checkout,
-            target_branch=main_branch)
+        checkout.set_branch_reference(main_branch)
         old_tree = self.workingtree_format.initialize(checkout)
         # now commit to 'tree'
         wt.add('file')
@@ -534,8 +557,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # current format
         self.build_tree(['checkout/', 'tree/file'])
         checkout = bzrdir.BzrDirMetaFormat1().initialize('checkout')
-        branch.BranchReferenceFormat().initialize(checkout,
-            target_branch=main_branch)
+        checkout.set_branch_reference(main_branch)
         old_tree = self.workingtree_format.initialize(checkout)
         # now commit to 'tree'
         wt.add('file')
@@ -623,8 +645,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # which should have pivoted the local tip into a merge
         self.assertEqual([master_tip, 'bar'], tree.get_parent_ids())
         # and the local branch history should match the masters now.
-        self.assertEqual(master_tree.branch.revision_history(),
-            tree.branch.revision_history())
+        self.assertEqual(master_tree.branch.last_revision(),
+            tree.branch.last_revision())
 
     def test_update_takes_revision_parameter(self):
         wt = self.make_branch_and_tree('wt')
@@ -686,16 +708,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def make_merge_conflicts(self):
         from bzrlib.merge import merge_inner
         tree = self.make_branch_and_tree('mine')
-        file('mine/bloo', 'wb').write('one')
-        file('mine/blo', 'wb').write('on')
+        with file('mine/bloo', 'wb') as f: f.write('one')
+        with file('mine/blo', 'wb') as f: f.write('on')
         tree.add(['bloo', 'blo'])
         tree.commit("blah", allow_pointless=False)
         base = tree.branch.repository.revision_tree(tree.last_revision())
         bzrdir.BzrDir.open("mine").sprout("other")
-        file('other/bloo', 'wb').write('two')
+        with file('other/bloo', 'wb') as f: f.write('two')
         othertree = WorkingTree.open('other')
         othertree.commit('blah', allow_pointless=False)
-        file('mine/bloo', 'wb').write('three')
+        with file('mine/bloo', 'wb') as f: f.write('three')
         tree.commit("blah", allow_pointless=False)
         merge_inner(tree.branch, othertree, base, this_tree=tree)
         return tree
@@ -954,6 +976,24 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = tree.bzrdir.open_workingtree()
         self.assertFalse(tree.case_sensitive)
 
+    def test_supports_executable(self):
+        self.build_tree(['filename'])
+        tree = self.make_branch_and_tree('.')
+        tree.add('filename')
+        self.assertIsInstance(tree._supports_executable(), bool)
+        if tree._supports_executable():
+            tree.lock_read()
+            try:
+                self.assertFalse(tree.is_executable(tree.path2id('filename')))
+            finally:
+                tree.unlock()
+            os.chmod('filename', 0755)
+            self.addCleanup(tree.lock_read().unlock)
+            self.assertTrue(tree.is_executable(tree.path2id('filename')))
+        else:
+            self.addCleanup(tree.lock_read().unlock)
+            self.assertFalse(tree.is_executable(tree.path2id('filename')))
+
     def test_all_file_ids_with_missing(self):
         tree = self.make_branch_and_tree('tree')
         tree.lock_write()
@@ -1004,9 +1044,9 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
             4 5-M
             |
             W
-         """
-        builder = self.make_branch_builder(".",
-            format=self.workingtree_format._matchingbzrdir)
+        """
+        format = self.workingtree_format.get_controldir_for_branch()
+        builder = self.make_branch_builder(".", format=format)
         builder.start_series()
         # mainline
         builder.build_snapshot(

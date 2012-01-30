@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
 
 from cStringIO import StringIO
 import shutil
@@ -251,25 +252,10 @@ class Shelver(object):
         diff_file.seek(0)
         return patches.parse_patch(diff_file)
 
-    def prompt(self, message):
-        """Prompt the user for a character.
+    def prompt(self, message, choices, default):
+        return ui.ui_factory.choose(message, choices, default=default)
 
-        :param message: The message to prompt a user with.
-        :return: A character.
-        """
-        if not sys.stdin.isatty():
-            # Since there is no controlling terminal we will hang when trying
-            # to prompt the user, better abort now.  See
-            # https://code.launchpad.net/~bialix/bzr/shelve-no-tty/+merge/14905
-            # for more context.
-            raise errors.BzrError(gettext("You need a controlling terminal."))
-        sys.stdout.write(message)
-        char = osutils.getchar()
-        sys.stdout.write("\r" + ' ' * len(message) + '\r')
-        sys.stdout.flush()
-        return char
-
-    def prompt_bool(self, question, long=False, allow_editor=False):
+    def prompt_bool(self, question, allow_editor=False):
         """Prompt the user with a yes/no question.
 
         This may be overridden by self.auto.  It may also *set* self.auto.  It
@@ -279,16 +265,19 @@ class Shelver(object):
         """
         if self.auto:
             return True
-        editor_string = ''
-        if long:
-            if allow_editor:
-                editor_string = '(E)dit manually, '
-            prompt = ' [(y)es, (N)o, %s(f)inish, or (q)uit]' % editor_string
+        alternatives_chars = 'yn'
+        alternatives = '&yes\n&No'
+        if allow_editor:
+            alternatives_chars += 'e'
+            alternatives += '\n&edit manually'
+        alternatives_chars += 'fq'
+        alternatives += '\n&finish\n&quit'
+        choice = self.prompt(question, alternatives, 1)
+        if choice is None:
+            # EOF.
+            char = 'n'
         else:
-            if allow_editor:
-                editor_string = 'e'
-            prompt = ' [yN%sfq?]' % editor_string
-        char = self.prompt(question + prompt)
+            char = alternatives_chars[choice]
         if char == 'y':
             return True
         elif char == 'e' and allow_editor:
@@ -296,8 +285,6 @@ class Shelver(object):
         elif char == 'f':
             self.auto = True
             return True
-        elif char == '?':
-            return self.prompt_bool(question, long=True)
         if char == 'q':
             raise errors.UserAbort()
         else:

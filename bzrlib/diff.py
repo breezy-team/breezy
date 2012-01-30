@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 import difflib
 import os
 import re
@@ -27,9 +29,9 @@ import subprocess
 import tempfile
 
 from bzrlib import (
-    bzrdir,
-    cmdline,
     cleanup,
+    cmdline,
+    controldir,
     errors,
     osutils,
     patiencediff,
@@ -356,7 +358,7 @@ def get_trees_and_branches_to_diff_locked(
     if old_url is None:
         old_url = default_location
     working_tree, branch, relpath = \
-        bzrdir.BzrDir.open_containing_tree_or_branch(old_url)
+        controldir.ControlDir.open_containing_tree_or_branch(old_url)
     lock_tree_or_branch(working_tree, branch)
     if consider_relpath and relpath != '':
         if working_tree is not None and apply_view:
@@ -370,7 +372,7 @@ def get_trees_and_branches_to_diff_locked(
         new_url = default_location
     if new_url != old_url:
         working_tree, branch, relpath = \
-            bzrdir.BzrDir.open_containing_tree_or_branch(new_url)
+            controldir.ControlDir.open_containing_tree_or_branch(new_url)
         lock_tree_or_branch(working_tree, branch)
         if consider_relpath and relpath != '':
             if working_tree is not None and apply_view:

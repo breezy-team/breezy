@@ -22,7 +22,9 @@ from bzrlib import (
     osutils,
     repository,
     )
+from bzrlib.remote import RemoteRepository
 from bzrlib.versionedfile import VersionedFiles
+from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.per_repository_chk import TestCaseWithRepositoryCHK
 
 
@@ -221,7 +223,9 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         # check our setup: B-id and C-id should have identical chk root keys.
         inv_b = b.repository.get_inventory('B-id')
         inv_c = b.repository.get_inventory('C-id')
-        self.assertEqual(inv_b.id_to_entry.key(), inv_c.id_to_entry.key())
+        if not isinstance(repo, RemoteRepository):
+            # Remote repositories always return plain inventories
+            self.assertEqual(inv_b.id_to_entry.key(), inv_c.id_to_entry.key())
         # Now, manually insert objects for a stacked repo with only revision
         # C-id:
         # We need ('revisions', 'C-id'), ('inventories', 'C-id'),
@@ -250,6 +254,9 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         for a parent inventory of a new revision is missing.
         """
         repo = self.make_repository('damaged-repo')
+        if isinstance(repo, RemoteRepository):
+            raise TestNotApplicable(
+                "Unable to obtain CHKInventory from remote repo")
         b = self.make_branch_with_multiple_chk_nodes()
         src_repo = b.repository
         src_repo.lock_read()
@@ -293,6 +300,9 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         for a parent inventory of a new revision is missing.
         """
         repo = self.make_repository('damaged-repo')
+        if isinstance(repo, RemoteRepository):
+            raise TestNotApplicable(
+                "Unable to obtain CHKInventory from remote repo")
         b = self.make_branch_with_multiple_chk_nodes()
         b.lock_read()
         self.addCleanup(b.unlock)

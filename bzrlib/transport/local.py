@@ -19,6 +19,8 @@
 This is a fairly thin wrapper on regular file IO.
 """
 
+from __future__ import absolute_import
+
 import os
 from stat import ST_MODE, S_ISDIR, S_IMODE
 import sys
@@ -146,9 +148,7 @@ class LocalTransport(transport.Transport):
         if abspath is None:
             abspath = u'.'
 
-        return urlutils.file_relpath(
-            urlutils.strip_trailing_slash(self.base),
-            urlutils.strip_trailing_slash(abspath))
+        return urlutils.file_relpath(self.base, abspath)
 
     def has(self, relpath):
         return os.access(self._abspath(relpath), os.F_OK)
@@ -257,7 +257,7 @@ class LocalTransport(transport.Transport):
             if mode is not None and mode != S_IMODE(st.st_mode):
                 # Because of umask, we may still need to chmod the file.
                 # But in the general case, we won't have to
-                os.chmod(abspath, mode)
+                osutils.chmod_if_possible(abspath, mode)
             writer(fd)
         finally:
             os.close(fd)
@@ -316,12 +316,13 @@ class LocalTransport(transport.Transport):
             local_mode = mode
         try:
             os.mkdir(abspath, local_mode)
-            if mode is not None:
-                # It is probably faster to just do the chmod, rather than
-                # doing a stat, and then trying to compare
-                os.chmod(abspath, mode)
         except (IOError, OSError),e:
             self._translate_error(e, abspath)
+        if mode is not None:
+            try:
+                osutils.chmod_if_possible(abspath, mode)
+            except (IOError, OSError), e:
+                self._translate_error(e, abspath)
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
@@ -359,7 +360,7 @@ class LocalTransport(transport.Transport):
         if mode is not None and mode != S_IMODE(st.st_mode):
             # Because of umask, we may still need to chmod the file.
             # But in the general case, we won't have to
-            os.chmod(file_abspath, mode)
+            osutils.chmod_if_possible(file_abspath, mode)
         return st.st_size
 
     def append_file(self, relpath, f, mode=None):
@@ -458,7 +459,7 @@ class LocalTransport(transport.Transport):
                     otherpath = other._abspath(path)
                     shutil.copy(mypath, otherpath)
                     if mode is not None:
-                        os.chmod(otherpath, mode)
+                        osutils.chmod_if_possible(otherpath, mode)
                 except (IOError, OSError),e:
                     self._translate_error(e, path)
                 count += 1
@@ -540,9 +541,7 @@ class LocalTransport(transport.Transport):
             """See Transport.symlink."""
             abs_link_dirpath = urlutils.dirname(self.abspath(link_name))
             source_rel = urlutils.file_relpath(
-                urlutils.strip_trailing_slash(abs_link_dirpath),
-                urlutils.strip_trailing_slash(self.abspath(source))
-            )
+                abs_link_dirpath, self.abspath(source))
 
             try:
                 os.symlink(source_rel, self._abspath(link_name))
@@ -567,7 +566,7 @@ class EmulatedWin32LocalTransport(LocalTransport):
         self._local_base = urlutils._win32_local_path_from_url(base)
 
     def abspath(self, relpath):
-        path = osutils.normpath(osutils.pathjoin(
+        path = osutils._win32_normpath(osutils.pathjoin(
                     self._local_base, urlutils.unescape(relpath)))
         return urlutils._win32_local_path_to_url(path)
 

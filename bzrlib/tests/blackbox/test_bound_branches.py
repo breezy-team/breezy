@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,14 +17,12 @@
 
 """Tests of bound branches (binding, unbinding, commit, etc) command."""
 
-import os
-
 from bzrlib import (
+    branch,
+    bzrdir,
     errors,
     tests,
     )
-from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import script
 
 
@@ -42,40 +40,38 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         child_tree = branch.create_checkout('child')
 
         self.check_revno(1, 'child')
-        d = BzrDir.open('child')
+        d = bzrdir.BzrDir.open('child')
         self.assertNotEqual(None, d.open_branch().get_master_branch())
 
         return base_tree, child_tree
 
     def check_revno(self, val, loc='.'):
         self.assertEqual(
-            val, len(BzrDir.open(loc).open_branch().revision_history()))
+            val, bzrdir.BzrDir.open(loc).open_branch().last_revision_info()[0])
 
     def test_simple_binding(self):
         tree = self.make_branch_and_tree('base')
         self.build_tree(['base/a', 'base/b'])
         tree.add('a', 'b')
         tree.commit(message='init')
-        branch = tree.branch
 
         tree.bzrdir.sprout('child')
 
-        os.chdir('child')
-        self.run_bzr('bind ../base')
+        self.run_bzr('bind ../base', working_dir='child')
 
-        d = BzrDir.open('')
+        d = bzrdir.BzrDir.open('child')
         self.assertNotEqual(None, d.open_branch().get_master_branch())
 
-        self.run_bzr('unbind')
+        self.run_bzr('unbind', working_dir='child')
         self.assertEqual(None, d.open_branch().get_master_branch())
 
-        self.run_bzr('unbind', retcode=3)
+        self.run_bzr('unbind', retcode=3, working_dir='child')
 
     def test_bind_branch6(self):
         branch1 = self.make_branch('branch1', format='dirstate-tags')
-        os.chdir('branch1')
-        error = self.run_bzr('bind', retcode=3)[1]
-        self.assertContainsRe(error, 'no previous location known')
+        error = self.run_bzr('bind', retcode=3, working_dir='branch1')[1]
+        self.assertEndsWith(
+            error, 'No location supplied and no previous location known\n')
 
     def setup_rebind(self, format):
         branch1 = self.make_branch('branch1')
@@ -85,16 +81,16 @@ class TestBoundBranches(tests.TestCaseWithTransport):
 
     def test_rebind_branch6(self):
         self.setup_rebind('dirstate-tags')
-        os.chdir('branch2')
-        self.run_bzr('bind')
-        b = Branch.open('.')
-        self.assertContainsRe(b.get_bound_location(), '\/branch1\/$')
+        self.run_bzr('bind', working_dir='branch2')
+        b = branch.Branch.open('branch2')
+        self.assertEndsWith(b.get_bound_location(), '/branch1/')
 
     def test_rebind_branch5(self):
         self.setup_rebind('knit')
-        os.chdir('branch2')
-        error = self.run_bzr('bind', retcode=3)[1]
-        self.assertContainsRe(error, 'old locations')
+        error = self.run_bzr('bind', retcode=3, working_dir='branch2')[1]
+        self.assertEndsWith(
+            error, 'No location supplied.  This format does not remember'
+            ' old locations.\n')
 
     def test_bound_commit(self):
         child_tree = self.create_branches()[1]
@@ -134,9 +130,8 @@ class TestBoundBranches(tests.TestCaseWithTransport):
 
         child2_tree = child_tree.bzrdir.sprout('child2').open_workingtree()
 
-        os.chdir('child2')
         # Double binding succeeds, but committing to child2 should fail
-        self.run_bzr('bind ../child')
+        self.run_bzr('bind ../child', working_dir='child2')
 
         self.assertRaises(errors.CommitToDoubleBoundBranch,
                 child2_tree.commit, message='child2', allow_pointless=True)
@@ -152,12 +147,11 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         self.check_revno(2, 'base')
 
         self.check_revno(1, 'child')
-        os.chdir('child')
-        self.run_bzr("commit -m child", retcode=3)
-        self.check_revno(1)
-        self.run_bzr('unbind')
+        self.run_bzr("commit -m child", retcode=3, working_dir='child')
+        self.check_revno(1, 'child')
+        self.run_bzr('unbind', working_dir='child')
         child_tree.commit(message='child')
-        self.check_revno(2)
+        self.check_revno(2, 'child')
 
     def test_commit_remote_bound(self):
         # It is not possible to commit to a branch
@@ -165,14 +159,13 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         base_tree, child_tree = self.create_branches()
         base_tree.bzrdir.sprout('newbase')
 
-        os.chdir('base')
         # There is no way to know that B has already
         # been bound by someone else, otherwise it
         # might be nice if this would fail
-        self.run_bzr('bind ../newbase')
+        self.run_bzr('bind ../newbase', working_dir='base')
 
-        os.chdir('../child')
-        self.run_bzr('commit -m failure --unchanged', retcode=3)
+        self.run_bzr('commit -m failure --unchanged', retcode=3,
+                     working_dir='child')
 
     def test_pull_updates_both(self):
         base_tree = self.create_branches()[0]
@@ -181,13 +174,11 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         newchild_tree.commit(message='newchild')
         self.check_revno(2, 'newchild')
 
-        os.chdir('child')
         # The pull should succeed, and update
         # the bound parent branch
-        self.run_bzr('pull ../newchild')
-        self.check_revno(2)
-
-        self.check_revno(2, '../base')
+        self.run_bzr('pull ../newchild', working_dir='child')
+        self.check_revno(2, 'child')
+        self.check_revno(2, 'base')
 
     def test_pull_local_updates_local(self):
         base_tree = self.create_branches()[0]
@@ -196,68 +187,59 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         newchild_tree.commit(message='newchild')
         self.check_revno(2, 'newchild')
 
-        os.chdir('child')
         # The pull should succeed, and update
         # the bound parent branch
-        self.run_bzr('pull ../newchild --local')
-        self.check_revno(2)
-
-        self.check_revno(1, '../base')
+        self.run_bzr('pull ../newchild --local', working_dir='child')
+        self.check_revno(2, 'child')
+        self.check_revno(1, 'base')
 
     def test_bind_diverged(self):
         base_tree, child_tree = self.create_branches()
         base_branch = base_tree.branch
         child_branch = child_tree.branch
 
-        os.chdir('child')
-        self.run_bzr('unbind')
+        self.run_bzr('unbind', working_dir='child')
 
         child_tree.commit(message='child', allow_pointless=True)
-        self.check_revno(2)
+        self.check_revno(2, 'child')
 
-        os.chdir('..')
         self.check_revno(1, 'base')
         base_tree.commit(message='base', allow_pointless=True)
         self.check_revno(2, 'base')
 
-        os.chdir('child')
         # These branches have diverged, but bind should succeed anyway
-        self.run_bzr('bind ../base')
+        self.run_bzr('bind ../base', working_dir='child')
 
         # This should turn the local commit into a merge
         child_tree.update()
         child_tree.commit(message='merged')
-        self.check_revno(3)
-
-        # After binding, the revision history should be unaltered
-        # take a copy before
-        base_history = base_branch.revision_history()
-        child_history = child_branch.revision_history()
+        self.check_revno(3, 'child')
+        self.assertEquals(child_tree.branch.last_revision(),
+                          base_tree.branch.last_revision())
 
     def test_bind_parent_ahead(self):
         base_tree = self.create_branches()[0]
 
-        os.chdir('child')
-        self.run_bzr('unbind')
+        self.run_bzr('unbind', working_dir='child')
 
         base_tree.commit(message='base', allow_pointless=True)
 
-        self.check_revno(1)
-        self.run_bzr('bind ../base')
+        self.check_revno(1, 'child')
+        self.run_bzr('bind ../base', working_dir='child')
 
         # binding does not pull data:
-        self.check_revno(1)
-        self.run_bzr('unbind')
+        self.check_revno(1, 'child')
+        self.run_bzr('unbind', working_dir='child')
 
         # Check and make sure it also works if parent is ahead multiple
         base_tree.commit(message='base 3', allow_pointless=True)
         base_tree.commit(message='base 4', allow_pointless=True)
         base_tree.commit(message='base 5', allow_pointless=True)
-        self.check_revno(5, '../base')
+        self.check_revno(5, 'base')
 
-        self.check_revno(1)
-        self.run_bzr('bind ../base')
-        self.check_revno(1)
+        self.check_revno(1, 'child')
+        self.run_bzr('bind ../base', working_dir='child')
+        self.check_revno(1, 'child')
 
     def test_bind_child_ahead(self):
         # test binding when the master branches history is a prefix of the
@@ -265,60 +247,33 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         # be altered
         child_tree = self.create_branches()[1]
 
-        os.chdir('child')
-        self.run_bzr('unbind')
+        self.run_bzr('unbind', working_dir='child')
         child_tree.commit(message='child', allow_pointless=True)
-        self.check_revno(2)
-        self.check_revno(1, '../base')
+        self.check_revno(2, 'child')
+        self.check_revno(1, 'base')
 
-        self.run_bzr('bind ../base')
-        self.check_revno(1, '../base')
+        self.run_bzr('bind ../base', working_dir='child')
+        self.check_revno(1, 'base')
 
         # Check and make sure it also works if child is ahead multiple
-        self.run_bzr('unbind')
+        self.run_bzr('unbind', working_dir='child')
         child_tree.commit(message='child 3', allow_pointless=True)
         child_tree.commit(message='child 4', allow_pointless=True)
         child_tree.commit(message='child 5', allow_pointless=True)
-        self.check_revno(5)
+        self.check_revno(5, 'child')
 
-        self.check_revno(1, '../base')
-        self.run_bzr('bind ../base')
-        self.check_revno(1, '../base')
+        self.check_revno(1, 'base')
+        self.run_bzr('bind ../base', working_dir='child')
+        self.check_revno(1, 'base')
 
     def test_bind_fail_if_missing(self):
         """We should not be able to bind to a missing branch."""
         tree = self.make_branch_and_tree('tree_1')
         tree.commit('dummy commit')
-        self.run_bzr_error(['Not a branch.*no-such-branch/'], ['bind', '../no-such-branch'],
-                            working_dir='tree_1')
+        self.run_bzr_error(['Not a branch.*no-such-branch/'],
+                           ['bind', '../no-such-branch'],
+                           working_dir='tree_1')
         self.assertIs(None, tree.branch.get_bound_location())
-
-    def test_bind_nick(self):
-        """Bind should not update implicit nick."""
-        base = self.make_branch_and_tree('base')
-        child = self.make_branch_and_tree('child')
-        os.chdir('child')
-        self.assertEqual(child.branch.nick, 'child')
-        self.assertEqual(child.branch.get_config().has_explicit_nickname(),
-            False)
-        self.run_bzr('bind ../base')
-        self.assertEqual(child.branch.nick, base.branch.nick)
-        self.assertEqual(child.branch.get_config().has_explicit_nickname(),
-            False)
-
-    def test_bind_explicit_nick(self):
-        """Bind should update explicit nick."""
-        base = self.make_branch_and_tree('base')
-        child = self.make_branch_and_tree('child')
-        os.chdir('child')
-        child.branch.nick = "explicit_nick"
-        self.assertEqual(child.branch.nick, "explicit_nick")
-        self.assertEqual(child.branch.get_config()._get_explicit_nickname(),
-            "explicit_nick")
-        self.run_bzr('bind ../base')
-        self.assertEqual(child.branch.nick, base.branch.nick)
-        self.assertEqual(child.branch.get_config()._get_explicit_nickname(),
-            base.branch.nick)
 
     def test_commit_after_merge(self):
         base_tree, child_tree = self.create_branches()
@@ -333,7 +288,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         self.build_tree_contents([('other/c', 'file c\n')])
         other_tree.add('c')
         other_tree.commit(message='adding c')
-        new_rev_id = other_branch.revision_history()[-1]
+        new_rev_id = other_branch.last_revision()
 
         child_tree.merge_from_branch(other_branch)
 
@@ -348,13 +303,9 @@ class TestBoundBranches(tests.TestCaseWithTransport):
 
         # Commit should succeed, and cause merged revisions to
         # be pulled into base
-        os.chdir('child')
-        self.run_bzr(['commit', '-m', 'merge other'])
-
-        self.check_revno(2)
-
-        self.check_revno(2, '../base')
-
+        self.run_bzr(['commit', '-m', 'merge other'], working_dir='child')
+        self.check_revno(2, 'child')
+        self.check_revno(2, 'base')
         self.assertTrue(base_tree.branch.repository.has_revision(new_rev_id))
 
     def test_pull_overwrite(self):
@@ -381,12 +332,11 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         self.check_revno(2, 'child')
         self.check_revno(2, 'base')
 
-        os.chdir('child')
-        self.run_bzr('pull --overwrite ../other')
+        self.run_bzr('pull --overwrite ../other', working_dir='child')
 
         # both the local and master should have been updated.
-        self.check_revno(4)
-        self.check_revno(4, '../base')
+        self.check_revno(4, 'child')
+        self.check_revno(4, 'base')
 
     def test_bind_directory(self):
         """Test --directory option"""
@@ -397,7 +347,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         branch = tree.branch
         tree.bzrdir.sprout('child')
         self.run_bzr('bind --directory=child base')
-        d = BzrDir.open('child')
+        d = bzrdir.BzrDir.open('child')
         self.assertNotEqual(None, d.open_branch().get_master_branch())
         self.run_bzr('unbind -d child')
         self.assertEqual(None, d.open_branch().get_master_branch())

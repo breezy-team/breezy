@@ -14,16 +14,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Reconfigure a bzrdir into a new tree/branch/repository layout.
+"""Reconfigure a controldir into a new tree/branch/repository layout.
 
 Various types of reconfiguration operation are available either by
 constructing a class or using a factory method on Reconfigure.
 """
 
+from __future__ import absolute_import
+
 
 from bzrlib import (
     branch,
-    bzrdir,
+    controldir,
     errors,
     trace,
     ui,
@@ -344,7 +346,8 @@ class Reconfigure(object):
                 reference_branch.repository.fetch(self.repository)
             elif self.local_branch is not None and not self._destroy_branch:
                 up = self.local_branch.user_transport.clone('..')
-                up_bzrdir = bzrdir.BzrDir.open_containing_from_transport(up)[0]
+                up_bzrdir = controldir.ControlDir.open_containing_from_transport(
+                    up)[0]
                 new_repo = up_bzrdir.find_repository()
                 new_repo.fetch(self.repository)
         last_revision_info = None
@@ -366,8 +369,7 @@ class Reconfigure(object):
         else:
             local_branch = self.local_branch
         if self._create_reference:
-            format = branch.BranchReferenceFormat().initialize(self.bzrdir,
-                target_branch=reference_branch)
+            self.bzrdir.set_branch_reference(reference_branch)
         if self._destroy_tree:
             self.bzrdir.destroy_workingtree()
         if self._create_tree:

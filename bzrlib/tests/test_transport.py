@@ -16,6 +16,7 @@
 
 
 from cStringIO import StringIO
+import errno
 import os
 import subprocess
 import sys
@@ -442,6 +443,29 @@ class TestChrootServer(tests.TestCase):
         self.assertEqual('chroot-%d:///' % id(server), server.get_url())
 
 
+class TestHooks(tests.TestCase):
+    """Basic tests for transport hooks"""
+
+    def _get_connected_transport(self):
+        return transport.ConnectedTransport("bogus:nowhere")
+
+    def test_transporthooks_initialisation(self):
+        """Check all expected transport hook points are set up"""
+        hookpoint = transport.TransportHooks()
+        self.assertTrue("post_connect" in hookpoint,
+            "post_connect not in %s" % (hookpoint,))
+
+    def test_post_connect(self):
+        """Ensure the post_connect hook is called when _set_transport is"""
+        calls = []
+        transport.Transport.hooks.install_named_hook("post_connect",
+            calls.append, None)
+        t = self._get_connected_transport()
+        self.assertLength(0, calls)
+        t._set_connection("connection", "auth")
+        self.assertEqual(calls, [t])
+
+
 class PathFilteringDecoratorTransportTest(tests.TestCase):
     """Pathfilter decoration specific tests."""
 
@@ -736,6 +760,29 @@ class TestLocalTransports(tests.TestCase):
         here = osutils.abspath('.')
         t = transport.get_transport(here)
         self.assertEquals(t.local_abspath(''), here)
+
+
+class TestLocalTransportMutation(tests.TestCaseInTempDir):
+
+    def test_local_transport_mkdir(self):
+        here = osutils.abspath('.')
+        t = transport.get_transport(here)
+        t.mkdir('test')
+        self.assertTrue(os.path.exists('test'))
+
+    def test_local_transport_mkdir_permission_denied(self):
+        # See https://bugs.launchpad.net/bzr/+bug/606537
+        here = osutils.abspath('.')
+        t = transport.get_transport(here)
+        def fake_chmod(path, mode):
+            e = OSError('permission denied')
+            e.errno = errno.EPERM
+            raise e
+        self.overrideAttr(os, 'chmod', fake_chmod)
+        t.mkdir('test')
+        t.mkdir('test2', mode=0707)
+        self.assertTrue(os.path.exists('test'))
+        self.assertTrue(os.path.exists('test2'))
 
 
 class TestLocalTransportWriteStream(tests.TestCaseWithTransport):

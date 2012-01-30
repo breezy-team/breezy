@@ -60,6 +60,7 @@ from bzrlib.osutils import (
     pathjoin,
 )
 from bzrlib.merge import Merge3Merger, Merger
+from bzrlib.mutabletree import MutableTree
 from bzrlib.tests import (
     features,
     TestCaseInTempDir,
@@ -1476,8 +1477,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         # The rename will fail because the target directory is not empty (but
         # raises FileExists anyway).
         err = self.assertRaises(errors.FileExists, tt_helper)
-        self.assertContainsRe(str(err),
-            "^File exists: .+/baz")
+        self.assertEndsWith(err.path, "/baz")
 
     def test_two_directories_clash(self):
         def tt_helper():
@@ -1495,8 +1495,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
                 wt.unlock()
                 raise
         err = self.assertRaises(errors.FileExists, tt_helper)
-        self.assertContainsRe(str(err),
-            "^File exists: .+/foo")
+        self.assertEndsWith(err.path, "/foo")
 
     def test_two_directories_clash_finalize(self):
         def tt_helper():
@@ -1514,8 +1513,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
                 tt.finalize()
                 raise
         err = self.assertRaises(errors.FileExists, tt_helper)
-        self.assertContainsRe(str(err),
-            "^File exists: .+/foo")
+        self.assertEndsWith(err.path, "/foo")
 
     def test_file_to_directory(self):
         wt = self.make_branch_and_tree('.')
@@ -1767,7 +1765,7 @@ class TestTransformMerge(TestCaseInTempDir):
         merge_modified = this.wt.merge_modified()
         self.assertSubset(merge_modified, modified)
         self.assertEqual(len(merge_modified), len(modified))
-        file(this.wt.id2abspath('a'), 'wb').write('booga')
+        with file(this.wt.id2abspath('a'), 'wb') as f: f.write('booga')
         modified.pop(0)
         merge_modified = this.wt.merge_modified()
         self.assertSubset(merge_modified, modified)
@@ -1889,7 +1887,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
         os.mkdir('a')
         a = BzrDir.create_standalone_workingtree('a')
         os.mkdir('a/foo')
-        file('a/foo/bar', 'wb').write('contents')
+        with file('a/foo/bar', 'wb') as f: f.write('contents')
         os.symlink('a/foo/bar', 'a/foo/baz')
         a.add(['foo', 'foo/bar', 'foo/baz'])
         a.commit('initial commit')
@@ -3720,3 +3718,40 @@ class TestOrphan(tests.TestCaseWithTransport):
                          remaining_conflicts.pop())
         self.assertLength(1, warnings)
         self.assertStartsWith(warnings[0], 'donttouchmypreciouuus')
+
+
+class TestTransformHooks(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestTransformHooks, self).setUp()
+        self.wt = self.make_branch_and_tree('.')
+        os.chdir('..')
+
+    def get_transform(self):
+        transform = TreeTransform(self.wt)
+        self.addCleanup(transform.finalize)
+        return transform, transform.root
+
+    def test_pre_commit_hooks(self):
+        calls = []
+        def record_pre_transform(tree, tt):
+            calls.append((tree, tt))
+        MutableTree.hooks.install_named_hook('pre_transform',
+            record_pre_transform, "Pre transform")
+        transform, root = self.get_transform()
+        old_root_id = transform.tree_file_id(root)
+        transform.apply()
+        self.assertEqual(old_root_id, self.wt.get_root_id())
+        self.assertEquals([(self.wt, transform)], calls)
+
+    def test_post_commit_hooks(self):
+        calls = []
+        def record_post_transform(tree, tt):
+            calls.append((tree, tt))
+        MutableTree.hooks.install_named_hook('post_transform',
+            record_post_transform, "Post transform")
+        transform, root = self.get_transform()
+        old_root_id = transform.tree_file_id(root)
+        transform.apply()
+        self.assertEqual(old_root_id, self.wt.get_root_id())
+        self.assertEquals([(self.wt, transform)], calls)

@@ -19,13 +19,18 @@
 See RFC2228 for details.
 """
 
+from __future__ import absolute_import
+
 import base64, ftplib
 
 from bzrlib import (
     errors,
     )
 from bzrlib.i18n import gettext
-from bzrlib.trace import mutter
+from bzrlib.trace import (
+    mutter,
+    note,
+    )
 from bzrlib.transport.ftp import FtpTransport
 
 try:
@@ -80,8 +85,8 @@ class GSSAPIFtp(ftplib.FTP):
                         if not ((resp.startswith('235 ') and rc == 1) or
                                 (resp.startswith('335 ') and rc == 0)):
                             raise ftplib.error_reply, resp
-            trace.note(gettext("Authenticated as %s") %
-                            kerberos.authGSSClientUserName(self.vc))
+            note(gettext("Authenticated as %s") %
+                 kerberos.authGSSClientUserName(self.vc))
 
             # Monkey patch ftplib
             self.putcmd = self.mic_putcmd

@@ -17,7 +17,10 @@
 
 import os
 
-from bzrlib import check, osutils
+from bzrlib import (
+    check,
+    osutils,
+    )
 from bzrlib.errors import PointlessCommit
 from bzrlib.tests import (
     TestCaseWithTransport,
@@ -25,6 +28,7 @@ from bzrlib.tests import (
 from bzrlib.tests.features import (
     SymlinkFeature,
     )
+from bzrlib.tests.matchers import RevisionHistoryMatches
 
 
 class TestCommitMerge(TestCaseWithTransport):
@@ -55,8 +59,11 @@ class TestCommitMerge(TestCaseWithTransport):
         wty.commit('merge from x', rev_id='y@u-0-2', allow_pointless=False)
 
         self.assertEquals(by.revno(), 3)
-        self.assertEquals(list(by.revision_history()),
-                          [base_rev, 'y@u-0-1', 'y@u-0-2'])
+        graph = wty.branch.repository.get_graph()
+        self.addCleanup(wty.lock_read().unlock)
+        self.assertThat(by,
+            RevisionHistoryMatches([base_rev, 'y@u-0-1', 'y@u-0-2'])
+            )
         rev = by.repository.get_revision('y@u-0-2')
         self.assertEquals(rev.parent_ids,
                           ['y@u-0-1', 'x@u-0-1'])

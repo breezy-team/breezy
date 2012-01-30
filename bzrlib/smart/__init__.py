@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006,2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,6 +32,8 @@ manipulate files on the server in `bzrlib.transport.remote`.
 The protocol is described in doc/developers/network-protocol.txt.
 
 """
+
+from __future__ import absolute_import
 
 # TODO: A plain integer from query_version is too simple; should give some
 # capabilities too?

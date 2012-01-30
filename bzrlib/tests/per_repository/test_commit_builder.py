@@ -39,7 +39,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         branch = self.make_branch('.')
         branch.repository.lock_write()
         builder = branch.repository.get_commit_builder(
-            branch, [], branch.get_config())
+            branch, [], branch.get_config_stack())
         self.assertIsInstance(builder, repository.CommitBuilder)
         self.assertTrue(builder.random_revid)
         branch.repository.commit_write_group()
@@ -148,6 +148,21 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual('foo bar blah', rev.message)
 
+    def test_updates_branch(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        try:
+            builder = tree.branch.get_commit_builder([])
+            list(builder.record_iter_changes(tree, tree.last_revision(),
+                tree.iter_changes(tree.basis_tree())))
+            builder.finish_inventory()
+            will_update_branch = builder.updates_branch
+            rev_id = builder.commit('might update the branch')
+        finally:
+            tree.unlock()
+        actually_updated_branch = (tree.branch.last_revision() == rev_id)
+        self.assertEquals(actually_updated_branch, will_update_branch)
+
     def test_commit_with_revision_id_record_entry_contents(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
@@ -233,6 +248,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 except:
                     builder.abort()
                     raise
+                else:
+                    builder.commit("msg")
             self.assertRaises(errors.RootMissing, do_commit)
         finally:
             tree.unlock()
@@ -267,6 +284,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             if not builder.supports_record_entry_contents:
                 raise tests.TestNotApplicable("CommitBuilder doesn't support "
                     "record_entry_contents")
+            builder.will_record_deletes()
             ie = inventory.make_entry('directory', '', None,
                     tree.get_root_id())
             delta, version_recorded, fs_hash = builder.record_entry_contents(
@@ -282,7 +300,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             if got_new_revision:
                 self.assertEqual(('', '', ie.file_id, ie), delta)
                 # The delta should be tracked
-                self.assertEqual(delta, builder._basis_delta[-1])
+                self.assertEqual(delta, builder.get_basis_delta()[-1])
             else:
                 self.assertEqual(None, delta)
             # Directories do not get hashed.
@@ -306,6 +324,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             # pointless commit.
             self.assertFalse(builder.any_changes())
             builder.finish_inventory()
+            builder.commit('')
             builder_tree = builder.revision_tree()
             new_root_id = builder_tree.get_root_id()
             new_root_revision = builder_tree.get_file_revision(new_root_id)
@@ -316,7 +335,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 # We should see a new root revision
                 self.assertNotEqual(old_revision_id, new_root_revision)
         finally:
-            builder.abort()
             tree.unlock()
 
     def test_commit_record_entry_contents(self):
@@ -424,7 +442,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 # the delta should be returned, and recorded in _basis_delta
                 delta = builder.record_delete("foo", "foo-id")
                 self.assertEqual(("foo", None, "foo-id", None), delta)
-                self.assertEqual(delta, builder._basis_delta[-1])
+                self.assertEqual(delta, builder.get_basis_delta()[-1])
                 builder.finish_inventory()
                 rev_id2 = builder.commit('delete foo')
             except:
@@ -446,13 +464,14 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         try:
             builder = tree.branch.get_commit_builder([rev_id])
             try:
+                builder.will_record_deletes()
                 delete_change = ('foo-id', ('foo', None), True, (True, False),
                     (tree.path2id(''), None), ('foo', None), ('file', None),
                     (False, None))
                 list(builder.record_iter_changes(tree, rev_id,
                     [delete_change]))
                 self.assertEqual(("foo", None, "foo-id", None),
-                    builder._basis_delta[0])
+                    builder.get_basis_delta()[0])
                 self.assertTrue(builder.any_changes())
                 builder.finish_inventory()
                 rev_id2 = builder.commit('delete foo')
@@ -849,6 +868,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 if not builder.supports_record_entry_contents:
                     raise tests.TestNotApplicable("CommitBuilder doesn't "
                         "support record_entry_contents")
+                builder.will_record_deletes()
                 parent_tree = tree.basis_tree()
                 parent_tree.lock_read()
                 self.addCleanup(parent_tree.unlock)
@@ -896,7 +916,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 if delta_against_basis:
                     expected_delta = (name, new_name, file_id, new_entry)
                     # The delta should be recorded
-                    self.assertEqual(expected_delta, builder._basis_delta[-1])
+                    self.assertEqual(expected_delta,
+                        builder.get_basis_delta()[-1])
                 else:
                     expected_delta = None
                 self.assertEqual(expected_delta, delta)
@@ -937,6 +958,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             # record_entry_contents.
             parent_ids = tree.get_parent_ids()
             builder = tree.branch.get_commit_builder(parent_ids)
+            builder.will_record_deletes()
             parent_tree = tree.basis_tree()
             parent_tree.lock_read()
             self.addCleanup(parent_tree.unlock)
@@ -958,15 +980,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 self.assertEqualStat(result[2][1], tree_file_stat[1])
             else:
                 self.assertEqual([], result)
-            delta = builder._basis_delta
-            delta_dict = dict((change[2], change) for change in delta)
-            version_recorded = (file_id in delta_dict and
-                delta_dict[file_id][3] is not None and
-                delta_dict[file_id][3].revision == builder._new_revision_id)
-            if records_version:
-                self.assertTrue(version_recorded)
-            else:
-                self.assertFalse(version_recorded)
             self.assertIs(None, builder.new_inventory)
             builder.finish_inventory()
             if tree.branch.repository._format.supports_full_versioned_files:
@@ -975,6 +988,17 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                                 [inv_key])[inv_key]
                 self.assertEqual(inv_sha1, builder.inv_sha1)
             self.assertIs(None, builder.new_inventory)
+            rev2 = builder.commit('')
+            delta = builder.get_basis_delta()
+            delta_dict = dict((change[2], change) for change in delta)
+            version_recorded = (file_id in delta_dict and
+                delta_dict[file_id][3] is not None and
+                delta_dict[file_id][3].revision == rev2)
+            if records_version:
+                self.assertTrue(version_recorded)
+            else:
+                self.assertFalse(version_recorded)
+
             new_inventory = builder.revision_tree().inventory
             new_entry = new_inventory[file_id]
             if delta_against_basis:
@@ -983,7 +1007,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             else:
                 expected_delta = None
                 self.assertFalse(version_recorded)
-            rev2 = builder.commit('')
             tree.set_parent_ids([rev2])
         except:
             builder.abort()
@@ -1278,7 +1301,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         make_before(path)
 
         def change_kind():
-            osutils.delete_any(path)
+            if osutils.file_kind(path) == "directory":
+                osutils.rmtree(path)
+            else:
+                osutils.delete_any(path)
             make_after(path)
 
         self._add_commit_change_check_changed(tree, path, change_kind,
@@ -1289,16 +1315,26 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             expect_fs_hash=True)
 
     def test_last_modified_dir_file_ric(self):
-        self._check_kind_change(self.make_dir, self.make_file,
-            expect_fs_hash=True,
-            mini_commit=self.mini_commit_record_iter_changes)
+        try:
+            self._check_kind_change(self.make_dir, self.make_file,
+                expect_fs_hash=True,
+                mini_commit=self.mini_commit_record_iter_changes)
+        except errors.UnsupportedKindChange:
+            raise tests.TestSkipped(
+                "tree does not support changing entry kind from "
+                "directory to file")
 
     def test_last_modified_dir_link(self):
         self._check_kind_change(self.make_dir, self.make_link)
 
     def test_last_modified_dir_link_ric(self):
-        self._check_kind_change(self.make_dir, self.make_link,
-            mini_commit=self.mini_commit_record_iter_changes)
+        try:
+            self._check_kind_change(self.make_dir, self.make_link,
+                mini_commit=self.mini_commit_record_iter_changes)
+        except errors.UnsupportedKindChange:
+            raise tests.TestSkipped(
+                "tree does not support changing entry kind from "
+                "directory to link")
 
     def test_last_modified_link_file(self):
         self._check_kind_change(self.make_link, self.make_file,
@@ -1335,7 +1371,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         branch.repository.lock_write()
         self.addCleanup(branch.repository.unlock)
         self.assertRaises(ValueError, branch.repository.get_commit_builder,
-            branch, [], branch.get_config(),
+            branch, [], branch.get_config_stack(),
             revprops={'invalid': u'property\rwith\r\ninvalid chars'})
 
     def test_commit_builder_commit_with_invalid_message(self):
@@ -1343,7 +1379,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         branch.repository.lock_write()
         self.addCleanup(branch.repository.unlock)
         builder = branch.repository.get_commit_builder(branch, [],
-            branch.get_config())
+            branch.get_config_stack())
         self.addCleanup(branch.repository.abort_write_group)
         self.assertRaises(ValueError, builder.commit,
             u'Invalid\r\ncommit message\r\n')
@@ -1355,7 +1391,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.addCleanup(branch.repository.unlock)
         self.assertRaises(UnicodeDecodeError,
             branch.repository.get_commit_builder,
-            branch, [], branch.get_config(),
+            branch, [], branch.get_config_stack(),
             committer="Erik B\xe5gfors <erik@example.com>")
 
     def test_stacked_repositories_reject_commit_builder(self):
@@ -1372,10 +1408,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.addCleanup(repo_local.lock_write().unlock)
         if not repo_local._format.supports_chks:
             self.assertRaises(errors.BzrError, repo_local.get_commit_builder,
-                branch, [], branch.get_config())
+                branch, [], branch.get_config_stack())
         else:
             builder = repo_local.get_commit_builder(branch, [],
-                                                    branch.get_config())
+                                                    branch.get_config_stack())
             builder.abort()
 
     def test_committer_no_username(self):
