@@ -31,12 +31,68 @@ The main two IDs are:
 
 :Revision IDs: The unique identifier of a single revision, such as
   ``pqm@pqm.ubuntu.com-20110201161347-ao76mv267gc1b5v2``
-:File IDs: The unique identifier of a single file.  It is allocated when
-  a user does ``bzr add`` and is unchanged by renames.
+:File IDs: The unique identifier of a single file.
 
 By convention, in the bzrlib API, parameters of methods that are expected
 to be IDs (as opposed to keys, revision numbers, or some other handle)
 will end in ``id``, e.g.  ``revid`` or ``file_id``.
+
+Ids may be stored directly or they can be inferred from other
+data. Native Bazaar formats store ids directly; foreign VCS
+support usually generates them somehow. For example, the
+Git commit with SHA ``fb235a3be6372e40ff7f7ebbcd7905a08cb04444``
+is referred to with the revision ID
+``git-v1:fb235a3be6372e40ff7f7ebbcd7905a08cb04444``. IDs are expected
+to be persistent
+
+File ids
+--------
+
+File ids are unique identifiers for files. There are three slightly different
+categories of file ids.
+
+Tree file ids
+~~~~~~~~~~~~~
+
+Tree file ids are used in the ``Tree`` API and can either be UTF-8 encoded
+bytestrings or tuples of UTF-8 encoded bytestrings. Plain bytestrings
+are considered to be the equivalent of a 1-tuple containing that
+bytestring.
+
+Tree file ids should be considered valid only for a specific tree context.
+Note that this is a stricter interpretation than what the current bzr
+format implementation provides - its file ids are persistent across runs
+and across revisions.
+
+For some formats (most notably bzr's own formats) it's possible for the
+implementation to specify the file id to use. In other case the tree
+mandates a specific file id.
+
+Inventory file ids
+~~~~~~~~~~~~~~~~~~
+
+Inventories are specific to the bzr native format and are the main layer
+below the ``Tree`` implementation of bzr. File ids in inventories can
+only be UTF-8 encoded bytestrings. A single Tree object can be associated
+with multiple inventories if there are nested trees.
+
+Tree file ids for bzr formats are a tuple of inventory file ids for the file
+in question. Each non-last item in the tuple refers to the tree
+reference of an inner tree. The last item in the tuple refers to the
+actual file. This means that lookups of file ids doesn't scale with
+the number of nested trees.
+
+Inventory file ids are only relevant for native Bazaar formats; foreign
+formats don't use inventories.
+
+Transform ids
+~~~~~~~~~~~~~
+
+Transform ids are used during tree transform operations (used by e.g. merge).
+The same transform id is expected to be used for two instances of the
+same file. At the moment transform ids are directly derived from file
+ids, but in the future they could be based on other data too (e.g.
+automatic rename detection or format-specific rules).
 
 Keys
 ====
