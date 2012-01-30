@@ -2909,6 +2909,10 @@ option_registry.register(
     ListOption('suppress_warnings',
            default=[],
            help="List of warning classes to suppress."))
+option_registry.register(
+    Option('validate_signatures_in_log', default=False,
+           from_unicode=bool_from_store, invalid='warning',
+           help='''Whether to validate signatures in bzr log.'''))
 option_registry.register_lazy('ssl.ca_certs',
     'bzrlib.transport.http._urllib2_wrappers', 'opt_ssl_ca_certs')
 
