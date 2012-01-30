@@ -189,6 +189,20 @@ as WorkingTree may have unversioned files not described in that mapping).
 Trees have an inventory and parents (an ordered list of zero or more
 revision IDs).
 
+The implementation of ``Tree`` for Bazaar's own formats is based around
+``Inventory`` objects which describe the shape of the tree. Each tree has
+at least one inventory associated with it, which is available as the
+``root_inventory`` attribute on tree. The tree can have more inventories
+associated with it if there are references to other trees in it. These
+references are indicated with ``tree-reference`` inventory entry at the
+point where the other tree is nested. The tree reference entry contains
+sufficient information for looking up the inventory associated with the
+nested tree. There can be multiple layers of nesting.
+
+Not each ``Tree`` implementation will necessarily have an associated
+``root_inventory``, as not all implementations of ``Tree`` are based
+around inventories (most notably, implementations of foreign VCS file
+formats).
 
 WorkingTree
 ===========
