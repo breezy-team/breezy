@@ -186,8 +186,9 @@ class TestGitBlackBox(ExternalBase):
         r.do_commit(ref="refs/heads/abranch", committer="Joe <joe@example.com>", message="Dummy")
         r.do_commit(ref="refs/heads/bbranch", committer="Joe <joe@example.com>", message="Dummy")
         self.run_bzr(["git-import", "a", "b"])
-        self.assertEquals(set(["abranch", "bbranch", ".bzr"]),
-                set(os.listdir("b")))
+        self.assertEquals(set([".bzr"]), set(os.listdir("b")))
+        self.assertEquals(set(["abranch", "bbranch"]),
+                set(BzrDir.open("b").get_branches().keys()))
 
     def test_git_import_incremental(self):
         r = GitRepo.init("a", mkdir=True)
@@ -196,7 +197,9 @@ class TestGitBlackBox(ExternalBase):
         r.do_commit(ref="refs/heads/abranch", committer="Joe <joe@example.com>", message="Dummy")
         self.run_bzr(["git-import", "a", "b"])
         self.run_bzr(["git-import", "a", "b"])
-        self.assertEquals(set(["abranch", ".bzr"]), set(os.listdir("b")))
+        self.assertEquals(set([".bzr"]), set(os.listdir("b")))
+        b = BzrDir.open("b")
+        self.assertEquals(["abranch"], b.get_branches().keys())
 
     def test_git_import_tags(self):
         r = GitRepo.init("a", mkdir=True)
@@ -205,9 +208,11 @@ class TestGitBlackBox(ExternalBase):
         cid = r.do_commit(ref="refs/heads/abranch", committer="Joe <joe@example.com>", message="Dummy")
         r["refs/tags/atag"] = cid
         self.run_bzr(["git-import", "a", "b"])
-        self.assertEquals(set(["abranch", ".bzr"]), set(os.listdir("b")))
-        b = Branch.open("b/abranch")
-        self.assertEquals(["atag"], b.tags.get_tag_dict().keys())
+        self.assertEquals(set([".bzr"]), set(os.listdir("b")))
+        b = BzrDir.open("b")
+        self.assertEquals(["abranch"], b.get_branches().keys())
+        self.assertEquals(["atag"],
+                b.open_branch("abranch").tags.get_tag_dict().keys())
 
     def test_git_import_colo(self):
         if bzrlib_version < (2, 5, 0):
