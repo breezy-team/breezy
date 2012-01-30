@@ -2396,12 +2396,16 @@ class Option(object):
             raise AssertionError('%r is not supported as a default value'
                                  % (default,))
         self.default_from_env = default_from_env
-        self.help = help
+        self._help = help
         self.from_unicode = from_unicode
         self.unquote = unquote
         if invalid and invalid not in ('warning', 'error'):
             raise AssertionError("%s not supported for 'invalid'" % (invalid,))
         self.invalid = invalid
+
+    @property
+    def help(self):
+        return self._help
 
     def convert_from_unicode(self, store, unicode_value):
         if self.unquote and store is not None and unicode_value is not None:
@@ -2546,6 +2550,42 @@ class ListOption(Option):
             # We rely on ConfigObj providing us with a list already
             l = maybe_list
         return l
+
+
+class RegistryOption(Option):
+    """Option for a choice from a registry."""
+
+    def __init__(self, name, registry, default_from_env=None,
+                 help=None, invalid=None):
+        """A registry based Option definition.
+
+        This overrides the base class so the conversion from a unicode string
+        can take quoting into account.
+        """
+        super(RegistryOption, self).__init__(
+            name, default=lambda: unicode(registry.default_key),
+            default_from_env=default_from_env,
+            from_unicode=self.from_unicode, help=help,
+            invalid=invalid, unquote=False)
+        self.registry = registry
+
+    def from_unicode(self, unicode_str):
+        if not isinstance(unicode_str, basestring):
+            raise TypeError
+        try:
+            return self.registry.get(unicode_str)
+        except KeyError:
+            raise ValueError(
+                "Invalid value %s for %s."
+                "See help for a list of possible values." % (unicode_str,
+                    self.name))
+
+    @property
+    def help(self):
+        ret = [self._help, "\n\nThe following values are supported:\n"]
+        for key in self.registry.keys():
+            ret.append(" %s - %s\n" % (key, self.registry.get_help(key)))
+        return "".join(ret)
 
 
 class OptionRegistry(registry.Registry):
@@ -2865,7 +2905,14 @@ by the ``submit:`` revision spec.
 option_registry.register(
     Option('submit_to',
            help='''Where submissions from this branch are mailed to.'''))
-
+option_registry.register(
+    ListOption('suppress_warnings',
+           default=[],
+           help="List of warning classes to suppress."))
+option_registry.register(
+    Option('validate_signatures_in_log', default=False,
+           from_unicode=bool_from_store, invalid='warning',
+           help='''Whether to validate signatures in bzr log.'''))
 option_registry.register_lazy('ssl.ca_certs',
     'bzrlib.transport.http._urllib2_wrappers', 'opt_ssl_ca_certs')
 

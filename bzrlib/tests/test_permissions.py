@@ -83,7 +83,7 @@ class TestPermissions(TestCaseWithTransport):
 
         t = self.make_branch_and_tree('.')
         b = t.branch
-        open('a', 'wb').write('foo\n')
+        with open('a', 'wb') as f: f.write('foo\n')
         # ensure check_mode_r works with capital-letter file-ids like TREE_ROOT
         t.add('a', 'CAPS-ID')
         t.commit('foo')
@@ -104,13 +104,13 @@ class TestPermissions(TestCaseWithTransport):
         self.assertEqualMode(0644, b.bzrdir._get_file_mode())
 
         # Modifying a file shouldn't break the permissions
-        open('a', 'wb').write('foo2\n')
+        with open('a', 'wb') as f: f.write('foo2\n')
         t.commit('foo2')
         # The mode should be maintained after commit
         check_mode_r(self, '.bzr', 0644, 0755)
 
         # Adding a new file should maintain the permissions
-        open('b', 'wb').write('new b\n')
+        with open('b', 'wb') as f: f.write('new b\n')
         t.add('b')
         t.commit('new b')
         check_mode_r(self, '.bzr', 0644, 0755)
@@ -125,11 +125,11 @@ class TestPermissions(TestCaseWithTransport):
         self.assertEqualMode(0775, b.bzrdir._get_dir_mode())
         self.assertEqualMode(0664, b.bzrdir._get_file_mode())
 
-        open('a', 'wb').write('foo3\n')
+        with open('a', 'wb') as f: f.write('foo3\n')
         t.commit('foo3')
         check_mode_r(self, '.bzr', 0664, 0775)
 
-        open('c', 'wb').write('new c\n')
+        with open('c', 'wb') as f: f.write('new c\n')
         t.add('c')
         t.commit('new c')
         check_mode_r(self, '.bzr', 0664, 0775)
@@ -157,11 +157,11 @@ class TestPermissions(TestCaseWithTransport):
         self.assertEqualMode(02775, b.bzrdir._get_dir_mode())
         self.assertEqualMode(0664, b.bzrdir._get_file_mode())
 
-        open('a', 'wb').write('foo4\n')
+        with open('a', 'wb') as f: f.write('foo4\n')
         t.commit('foo4')
         check_mode_r(self, '.bzr', 0664, 02775)
 
-        open('d', 'wb').write('new d\n')
+        with open('d', 'wb') as f: f.write('new d\n')
         t.add('d')
         t.commit('new d')
         check_mode_r(self, '.bzr', 0664, 02775)
@@ -182,7 +182,7 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         os.mkdir('local')
         t_local = self.make_branch_and_tree('local')
         b_local = t_local.branch
-        open('local/a', 'wb').write('foo\n')
+        with open('local/a', 'wb') as f: f.write('foo\n')
         t_local.add('a')
         t_local.commit('foo')
 
@@ -212,13 +212,13 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         self.assertEqualMode(0755, b_sftp.bzrdir._get_dir_mode())
         self.assertEqualMode(0644, b_sftp.bzrdir._get_file_mode())
 
-        open('local/a', 'wb').write('foo2\n')
+        with open('local/a', 'wb') as f: f.write('foo2\n')
         t_local.commit('foo2')
         b_sftp.pull(b_local)
         # The mode should be maintained after commit
         check_mode_r(self, 'sftp/.bzr', 0644, 0755)
 
-        open('local/b', 'wb').write('new b\n')
+        with open('local/b', 'wb') as f: f.write('new b\n')
         t_local.add('b')
         t_local.commit('new b')
         b_sftp.pull(b_local)
@@ -235,12 +235,12 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         self.assertEqualMode(0775, b_sftp.bzrdir._get_dir_mode())
         self.assertEqualMode(0664, b_sftp.bzrdir._get_file_mode())
 
-        open('local/a', 'wb').write('foo3\n')
+        with open('local/a', 'wb') as f: f.write('foo3\n')
         t_local.commit('foo3')
         b_sftp.pull(b_local)
         check_mode_r(self, 'sftp/.bzr', 0664, 0775)
 
-        open('local/c', 'wb').write('new c\n')
+        with open('local/c', 'wb') as f: f.write('new c\n')
         t_local.add('c')
         t_local.commit('new c')
         b_sftp.pull(b_local)

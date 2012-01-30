@@ -309,7 +309,7 @@ class TestPlugins(BaseTestPlugins):
         # check the plugin is not loaded already
         self.assertPluginUnknown('plugin')
         # write a plugin that _cannot_ fail to load.
-        file('plugin.py', 'w').write(source + '\n')
+        with file('plugin.py', 'w') as f: f.write(source + '\n')
         self.addCleanup(self.teardown_plugin)
         plugin.load_from_path(['.'])
 

@@ -83,10 +83,11 @@ from bzrlib import (
     )
 
 
-def _get_branch_location(control_dir):
+def _get_branch_location(control_dir, possible_transports=None):
     """Return location of branch for this control dir."""
     try:
-        this_branch = control_dir.open_branch()
+        this_branch = control_dir.open_branch(
+            possible_transports=possible_transports)
         # This may be a heavy checkout, where we want the master branch
         master_location = this_branch.get_bound_location()
         if master_location is not None:
@@ -101,7 +102,34 @@ def _get_branch_location(control_dir):
             return control_dir.root_transport.base
 
 
-def lookup_new_sibling_branch(control_dir, location):
+def _is_colocated(control_dir, possible_transports=None):
+    """Check if the branch in control_dir is colocated.
+
+    :param control_dir: Control directory
+    :return: Boolean indicating whether 
+    """
+    # This path is meant to be relative to the existing branch
+    this_url = _get_branch_location(control_dir,
+        possible_transports=possible_transports)
+    # Perhaps the target control dir supports colocated branches?
+    try:
+        root = controldir.ControlDir.open(this_url,
+            possible_transports=possible_transports)
+    except errors.NotBranchError:
+        return (False, this_url)
+    else:
+        try:
+            wt = control_dir.open_workingtree()
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            return (False, this_url)
+        else:
+            return (
+                root._format.colocated_branches and
+                control_dir.control_url == root.control_url,
+                this_url)
+
+
+def lookup_new_sibling_branch(control_dir, location, possible_transports=None):
     """Lookup the location for a new sibling branch.
 
     :param control_dir: Control directory relative to which to look up
@@ -111,16 +139,7 @@ def lookup_new_sibling_branch(control_dir, location):
     """
     location = directory_service.directories.dereference(location)
     if '/' not in location and '\\' not in location:
-        # This path is meant to be relative to the existing branch
-        this_url = _get_branch_location(control_dir)
-        # Perhaps the target control dir supports colocated branches?
-        try:
-            root = controldir.ControlDir.open(this_url,
-                possible_transports=[control_dir.user_transport])
-        except errors.NotBranchError:
-            colocated = False
-        else:
-            colocated = root._format.colocated_branches
+        (colocated, this_url) = _is_colocated(control_dir, possible_transports)
 
         if colocated:
             return urlutils.join_segment_parameters(this_url,
@@ -130,7 +149,7 @@ def lookup_new_sibling_branch(control_dir, location):
     return location
 
 
-def lookup_sibling_branch(control_dir, location):
+def lookup_sibling_branch(control_dir, location, possible_transports=None):
     """Lookup sibling branch.
     
     :param control_dir: Control directory relative to which to lookup the
@@ -140,7 +159,8 @@ def lookup_sibling_branch(control_dir, location):
     """
     try:
         # Perhaps it's a colocated branch?
-        return control_dir.open_branch(location)
+        return control_dir.open_branch(location, 
+            possible_transports=possible_transports)
     except (errors.NotBranchError, errors.NoColocatedBranchSupport):
         try:
             return Branch.open(location)
@@ -1415,7 +1435,7 @@ class cmd_branch(Command):
             revision_id = br_from.last_revision()
         if to_location is None:
             to_location = getattr(br_from, "name", None)
-            if to_location is None:
+            if not to_location:
                 to_location = urlutils.derive_to_location(from_location)
         to_transport = transport.get_transport(to_location)
         try:
@@ -2769,7 +2789,7 @@ class cmd_log(Command):
             self.add_cleanup(b.lock_read().unlock)
             rev1, rev2 = _get_revision_range(revision, b, self.name())
 
-        if b.get_config().validate_signatures_in_log():
+        if b.get_config_stack().get('validate_signatures_in_log'):
             signatures = True
 
         if signatures:
@@ -6200,14 +6220,17 @@ class cmd_switch(Command):
         from bzrlib import switch
         tree_location = directory
         revision = _get_one_revision('switch', revision)
-        control_dir = controldir.ControlDir.open_containing(tree_location)[0]
+        possible_transports = []
+        control_dir = controldir.ControlDir.open_containing(tree_location,
+            possible_transports=possible_transports)[0]
         if to_location is None:
             if revision is None:
                 raise errors.BzrCommandError(gettext('You must supply either a'
                                              ' revision or a location'))
             to_location = tree_location
         try:
-            branch = control_dir.open_branch()
+            branch = control_dir.open_branch(
+                possible_transports=possible_transports)
             had_explicit_nick = branch.get_config().has_explicit_nickname()
         except errors.NotBranchError:
             branch = None
@@ -6216,9 +6239,10 @@ class cmd_switch(Command):
             if branch is None:
                 raise errors.BzrCommandError(
                     gettext('cannot create branch without source branch'))
-            to_location = lookup_new_sibling_branch(control_dir, to_location)
+            to_location = lookup_new_sibling_branch(control_dir, to_location,
+                 possible_transports=possible_transports)
             to_branch = branch.bzrdir.sprout(to_location,
-                 possible_transports=[branch.bzrdir.root_transport],
+                 possible_transports=possible_transports,
                  source_branch=branch).open_branch()
         else:
             to_branch = lookup_sibling_branch(control_dir, to_location)

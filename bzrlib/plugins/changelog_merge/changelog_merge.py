@@ -20,7 +20,11 @@ from __future__ import absolute_import
 
 import difflib
 
-from bzrlib import debug, merge, urlutils
+from bzrlib import (
+    debug,
+    merge,
+    urlutils,
+    )
 from bzrlib.merge3 import Merge3
 from bzrlib.trace import mutter
 

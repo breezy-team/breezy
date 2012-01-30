@@ -516,7 +516,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
 
     def test_unique_root_id_per_tree(self):
         # each time you initialize a new tree, it gets a different root id
-        format_name = 'dirstate-with-subtree'
+        format_name = 'development-subtree'
         tree1 = self.make_branch_and_tree('tree1',
             format=format_name)
         tree2 = self.make_branch_and_tree('tree2',
@@ -552,12 +552,12 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tag', format='dirstate-tags')
         self.assertEqual(inventory.ROOT_ID, tree.get_root_id())
         tree = self.make_branch_and_tree('subtree',
-                                         format='dirstate-with-subtree')
+                                         format='development-subtree')
         self.assertNotEqual(inventory.ROOT_ID, tree.get_root_id())
 
     def test_non_subtree_with_nested_trees(self):
         # prior to dirstate, st/diff/commit ignored nested trees.
-        # dirstate, as opposed to dirstate-with-subtree, should
+        # dirstate, as opposed to development-subtree, should
         # behave the same way.
         tree = self.make_branch_and_tree('.', format='dirstate')
         self.assertFalse(tree.supports_tree_reference())
@@ -603,8 +603,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree.unlock()
 
     def test_with_subtree_supports_tree_references(self):
-        # dirstate-with-subtree should support tree-references.
-        tree = self.make_branch_and_tree('.', format='dirstate-with-subtree')
+        # development-subtree should support tree-references.
+        tree = self.make_branch_and_tree('.', format='development-subtree')
         self.assertTrue(tree.supports_tree_reference())
         # having checked this is on, the tree interface, and intertree
         # interface tests, will proceed to test the subtree support of

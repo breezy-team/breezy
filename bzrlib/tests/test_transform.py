@@ -88,7 +88,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestTreeTransform, self).setUp()
-        self.wt = self.make_branch_and_tree('.', format='dirstate-with-subtree')
+        self.wt = self.make_branch_and_tree('.', format='development-subtree')
         os.chdir('..')
 
     def get_transform(self):
@@ -1761,7 +1761,7 @@ class TestTransformMerge(TestCaseInTempDir):
         merge_modified = this.wt.merge_modified()
         self.assertSubset(merge_modified, modified)
         self.assertEqual(len(merge_modified), len(modified))
-        file(this.wt.id2abspath('a'), 'wb').write('booga')
+        with file(this.wt.id2abspath('a'), 'wb') as f: f.write('booga')
         modified.pop(0)
         merge_modified = this.wt.merge_modified()
         self.assertSubset(merge_modified, modified)
@@ -1883,7 +1883,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
         os.mkdir('a')
         a = BzrDir.create_standalone_workingtree('a')
         os.mkdir('a/foo')
-        file('a/foo/bar', 'wb').write('contents')
+        with file('a/foo/bar', 'wb') as f: f.write('contents')
         os.symlink('a/foo/bar', 'a/foo/baz')
         a.add(['foo', 'foo/bar', 'foo/baz'])
         a.commit('initial commit')
@@ -1898,9 +1898,9 @@ class TestBuildTree(tests.TestCaseWithTransport):
 
     def test_build_with_references(self):
         tree = self.make_branch_and_tree('source',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         subtree = self.make_branch_and_tree('source/subtree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         tree.add_reference(subtree)
         tree.commit('a revision')
         tree.branch.create_checkout('target')
@@ -3634,7 +3634,7 @@ class TestOrphan(tests.TestCaseWithTransport):
         self.assertRaises(NotImplementedError, tt.new_orphan, 'foo', 'bar')
 
     def _set_orphan_policy(self, wt, policy):
-        wt.branch.get_config().set_user_option('bzr.transform.orphan_policy',
+        wt.branch.get_config_stack().set('bzr.transform.orphan_policy',
                                                policy)
 
     def _prepare_orphan(self, wt):

@@ -419,7 +419,7 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
         backing = self.get_transport()
         request = self._request_class(backing)
         result = self._make_repository_and_result(
-            format='dirstate-with-subtree')
+            format='development-subtree')
         # check the test will be valid
         self.assertEqual('yes', result.args[2])
         self.assertEqual('yes', result.args[3])
@@ -430,9 +430,9 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
         backing = self.get_transport()
         request = self._request_class(backing)
         result = self._make_repository_and_result(
-            format='dirstate-with-subtree')
+            format='development-subtree')
         # check the test will be valid
-        self.assertEqual('no', result.args[4])
+        self.assertEqual('yes', result.args[4])
         self.assertEqual(result, request.execute(''))
 
 

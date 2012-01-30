@@ -68,10 +68,6 @@ from bzrlib.osutils import (
     realpath,
     safe_unicode,
     )
-from bzrlib.symbol_versioning import (
-    deprecated_in,
-    deprecated_method,
-    )
 from bzrlib.transport.local import LocalTransport
 from bzrlib.tree import (
     InterTree,
@@ -259,8 +255,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
         :return: an integer. -1 means never save.
         """
-        # FIXME: We want a WorkingTreeStack here -- vila 20110812
-        conf = config.BranchStack(self.branch)
+        conf = self.get_config_stack()
         return conf.get('bzr.workingtree.worth_saving_limit')
 
     def filter_unversioned_files(self, paths):
@@ -1610,7 +1605,7 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
         """Overrideable method to get a bzrdir for testing."""
         # please test against something that will let us do tree references
         return bzrdir.format_registry.make_bzrdir(
-            'dirstate-with-subtree')
+            'development-subtree')
 
     _matchingbzrdir = property(__get_matchingbzrdir)
 
