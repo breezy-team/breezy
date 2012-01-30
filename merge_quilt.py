@@ -25,7 +25,7 @@ from __future__ import absolute_import
 import errno
 import shutil
 import tempfile
-from bzrlib.revisiontree import RevisionTree
+from bzrlib.mutabletree import MutableTree
 from bzrlib import (
     errors,
     merge as _mod_merge,
@@ -81,15 +81,15 @@ def tree_unapply_patches(orig_tree, orig_branch=None, force=False):
 
     target_dir = tempfile.mkdtemp()
     try:
-        if isinstance(orig_tree, RevisionTree):
-            tree = orig_branch.create_checkout(target_dir, lightweight=True,
-                accelerator_tree=orig_tree, revision_id=orig_tree.get_revision_id())
-        else:
+        if isinstance(orig_tree, MutableTree):
             tree = orig_branch.create_checkout(target_dir, lightweight=True,
                 revision_id=orig_tree.last_revision(), accelerator_tree=orig_tree)
             merger = _mod_merge.Merger.from_uncommitted(tree, orig_tree)
             merger.merge_type = NoUnapplyingMerger
             merger.do_merge()
+        else:
+            tree = orig_branch.create_checkout(target_dir, lightweight=True,
+                accelerator_tree=orig_tree, revision_id=orig_tree.get_revision_id())
         trace.mutter("Applying quilt patches for %r in %s", orig_tree, target_dir)
         quilt_pop_all(working_dir=tree.basedir, force=force)
         return tree, target_dir
