@@ -581,4 +581,3 @@ class TestPullOutput(script.TestCaseWithTransportAndScript):
             2>+N  file
             2>All changes applied successfully.
             """)
->>>>>>> MERGE-SOURCE
