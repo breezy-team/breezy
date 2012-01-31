@@ -126,9 +126,14 @@ def cert_reqs_from_store(unicode_str):
 opt_ssl_ca_certs = config.Option('ssl.ca_certs',
         from_unicode=ca_certs_from_store,
         default=default_ca_certs,
-        invalid='error',
+        invalid='warning',
         help="""\
 Path to certification authority certificates to trust.
+
+This should be a valid path to a bundle containing all root Certificate
+Authorities used to verify an https server certificate.
+
+Use ssl.cert_reqs=none to disable certificate verification.
 """)
 
 opt_ssl_cert_reqs = config.Option('ssl.cert_reqs',
@@ -466,7 +471,7 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
         config_stack = config.GlobalStack()
         cert_reqs = config_stack.get('ssl.cert_reqs')
         if cert_reqs == ssl.CERT_NONE:
-            trace.warning("not checking SSL certificates for %s: %d",
+            trace.warning("Not checking SSL certificate for %s: %d",
                 self.host, self.port)
             ca_certs = None
         else:
@@ -476,19 +481,18 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
                 ca_certs = self.ca_certs
             if ca_certs is None:
                 trace.warning(
-                    "no valid trusted SSL CA certificates file set. See "
+                    "No valid trusted SSL CA certificates file set. See "
                     "'bzr help ssl.ca_certs' for more information on setting "
-                    "trusted CA's.")
+                    "trusted CAs.")
         try:
             ssl_sock = ssl.wrap_socket(self.sock, self.key_file, self.cert_file,
                 cert_reqs=cert_reqs, ca_certs=ca_certs)
         except ssl.SSLError, e:
-            if e.errno != ssl.SSL_ERROR_SSL:
-                raise
-            trace.note(
-                "To disable SSL certificate verification, use "
-                "-Ossl.cert_reqs=none. See ``bzr help ssl.ca_certs`` for "
-                "more information on specifying trusted CA certificates.")
+            if e.errno == ssl.SSL_ERROR_SSL:
+                trace.note(
+                    "To disable SSL certificate verification, use "
+                    "-Ossl.cert_reqs=none. See ``bzr help ssl.ca_certs`` for "
+                    "more information on specifying trusted CAs.")
             raise
         if cert_reqs == ssl.CERT_REQUIRED:
             peer_cert = ssl_sock.getpeercert()

@@ -53,9 +53,18 @@ class CaCertsConfigTests(TestCaseInTempDir):
         self.assertEquals(path, stack.get('ssl.ca_certs'))
 
     def test_specified_doesnt_exist(self):
-        path = os.path.join(self.test_dir, "nonexisting.pem")
-        stack = self.get_stack("ssl.ca_certs = %s\n" % path)
-        self.assertRaises(ConfigOptionValueError, stack.get, 'ssl.ca_certs')
+        stack = self.get_stack('')
+        # Disable the default value mechanism to force the behavior we want
+        self.overrideAttr(_urllib2_wrappers.opt_ssl_ca_certs, 'default',
+                          os.path.join(self.test_dir, u"nonexisting.pem"))
+        self.warnings = []
+        def warning(*args):
+            self.warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+        self.assertEquals(None, stack.get('ssl.ca_certs'))
+        self.assertLength(1, self.warnings)
+        self.assertContainsRe(self.warnings[0],
+                              "is not valid for \"ssl.ca_certs\"")
 
 
 class CertReqsConfigTests(TestCaseInTempDir):
