@@ -488,11 +488,12 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
             ssl_sock = ssl.wrap_socket(self.sock, self.key_file, self.cert_file,
                 cert_reqs=cert_reqs, ca_certs=ca_certs)
         except ssl.SSLError, e:
-            if e.errno == ssl.SSL_ERROR_SSL:
-                trace.note(
-                    "To disable SSL certificate verification, use "
-                    "-Ossl.cert_reqs=none. See ``bzr help ssl.ca_certs`` for "
-                    "more information on specifying trusted CAs.")
+            trace.note(
+                "\n"
+                "See `bzr help ssl.ca_certs` for how to specify trusted CA"
+                "certificates.\n"
+                "Pass -Ossl.cert_reqs=none to disable certificate "
+                "verification entirely.\n")
             raise
         if cert_reqs == ssl.CERT_REQUIRED:
             peer_cert = ssl_sock.getpeercert()
