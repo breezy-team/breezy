@@ -5,10 +5,10 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.5.0
+bzr 2.5b6
 #########
 
-:2.5.0: NOT RELEASED YET
+:2.5b6: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
