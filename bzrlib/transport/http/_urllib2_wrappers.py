@@ -77,7 +77,7 @@ import ssl
 
 # Note for packagers: if there is no package providing certs for your platform,
 # the curl project produces http://curl.haxx.se/ca/cacert.pem weekly.
-ssl_ca_certs_known_locations = [
+_ssl_ca_certs_known_locations = [
     u'/etc/ssl/certs/ca-certificates.crt', # Ubuntu/debian/gentoo
     u'/etc/pki/tls/certs/ca-bundle.crt', # Fedora/CentOS/RH
     u'/etc/ssl/ca-bundle.pem', # OpenSuse
@@ -100,13 +100,13 @@ def default_ca_certs():
     else:
         # Try known locations for friendly OSes providing the root certificates
         # without making them hard to use for any https client.
-        for path in ssl_ca_certs_known_locations:
+        for path in _ssl_ca_certs_known_locations:
             if os.path.exists(path):
                 # First found wins
                 return path
     # A default path that makes sense and will be mentioned in the error
     # presented to the user, even if not correct for all platforms
-    return ssl_ca_certs_known_locations[0]
+    return _ssl_ca_certs_known_locations[0]
 
 
 def ca_certs_from_store(path):
@@ -120,7 +120,6 @@ def cert_reqs_from_store(unicode_str):
     try:
         return {
             "required": ssl.CERT_REQUIRED,
-            "optional": ssl.CERT_OPTIONAL,
             "none": ssl.CERT_NONE
             }[unicode_str]
     except KeyError:
@@ -144,8 +143,7 @@ Whether to require a certificate from the remote side. (default:required)
 
 Possible values:
  * none: Certificates ignored
- * optional: Certificates not required, but validated if provided
- * required: Certificates required, and validated
+ * required: Certificates required and validated
 """)
 
 checked_kerberos = False
@@ -495,9 +493,8 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
                 "-Ossl.cert_reqs=none. See ``bzr help ssl.ca_certs`` for "
                 "more information on specifying trusted CA certificates.")
             raise
-        peer_cert = ssl_sock.getpeercert()
-        if (cert_reqs == ssl.CERT_REQUIRED or
-            (cert_reqs == ssl.CERT_OPTIONAL and peer_cert)):
+        if cert_reqs == ssl.CERT_REQUIRED:
+            peer_cert = ssl_sock.getpeercert()
             match_hostname(peer_cert, self.host)
 
         # Wrap the ssl socket before anybody use it

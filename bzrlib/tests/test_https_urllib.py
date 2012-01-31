@@ -67,8 +67,6 @@ class CertReqsConfigTests(TestCaseInTempDir):
     def test_from_string(self):
         stack = config.MemoryStack("ssl.cert_reqs = none\n")
         self.assertEquals(ssl.CERT_NONE, stack.get("ssl.cert_reqs"))
-        stack = config.MemoryStack("ssl.cert_reqs = optional\n")
-        self.assertEquals(ssl.CERT_OPTIONAL, stack.get("ssl.cert_reqs"))
         stack = config.MemoryStack("ssl.cert_reqs = required\n")
         self.assertEquals(ssl.CERT_REQUIRED, stack.get("ssl.cert_reqs"))
         stack = config.MemoryStack("ssl.cert_reqs = invalid\n")
