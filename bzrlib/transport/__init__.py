@@ -364,7 +364,7 @@ class Transport(object):
         """
         raise NotImplementedError(self.clone)
 
-    def create_prefix(self):
+    def create_prefix(self, mode=None):
         """Create all the directories leading down to self.base."""
         cur_transport = self
         needed = [cur_transport]
@@ -376,7 +376,7 @@ class Transport(object):
                     "Failed to create path prefix for %s."
                     % cur_transport.base)
             try:
-                new_transport.mkdir('.')
+                new_transport.mkdir('.', mode=mode)
             except errors.NoSuchFile:
                 needed.append(new_transport)
                 cur_transport = new_transport
@@ -387,9 +387,9 @@ class Transport(object):
         # Now we only need to create child directories
         while needed:
             cur_transport = needed.pop()
-            cur_transport.ensure_base()
+            cur_transport.ensure_base(mode=mode)
 
-    def ensure_base(self):
+    def ensure_base(self, mode=None):
         """Ensure that the directory this transport references exists.
 
         This will create a directory if it doesn't exist.
@@ -399,7 +399,7 @@ class Transport(object):
         # than permission". We attempt to create the directory, and just
         # suppress FileExists and PermissionDenied (for Windows) exceptions.
         try:
-            self.mkdir('.')
+            self.mkdir('.', mode=mode)
         except (errors.FileExists, errors.PermissionDenied):
             return False
         else:

@@ -152,7 +152,7 @@ class TestMerge(TestCaseWithTransport):
     def test_create_rename(self):
         """Rename an inventory entry while creating the file"""
         tree =self.make_branch_and_tree('.')
-        file('name1', 'wb').write('Hello')
+        with file('name1', 'wb') as f: f.write('Hello')
         tree.add('name1')
         tree.commit(message="hello")
         tree.rename_one('name1', 'name2')
@@ -165,7 +165,7 @@ class TestMerge(TestCaseWithTransport):
         os.mkdir('dirname1')
         tree.add('dirname1')
         filename = pathjoin('dirname1', 'name1')
-        file(filename, 'wb').write('Hello')
+        with file(filename, 'wb') as f: f.write('Hello')
         tree.add(filename)
         tree.commit(message="hello")
         filename2 = pathjoin('dirname1', 'name2')

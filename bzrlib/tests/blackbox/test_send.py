@@ -24,6 +24,7 @@ from bzrlib import (
     merge_directive,
     tests,
     )
+from bzrlib.controldir import ControlDir
 from bzrlib.bundle import serializer
 from bzrlib.transport import memory
 from bzrlib.tests import (
@@ -329,6 +330,10 @@ class TestSendStrictWithoutChanges(tests.TestCaseWithTransport,
     def setUp(self):
         super(TestSendStrictWithoutChanges, self).setUp()
         self.make_parent_and_local_branches()
+
+    def test_send_without_workingtree(self):
+        ControlDir.open("local").destroy_workingtree()
+        self.assertSendSucceeds([])
 
     def test_send_default(self):
         self.assertSendSucceeds([])
