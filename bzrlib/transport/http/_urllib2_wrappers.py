@@ -89,10 +89,7 @@ _ssl_ca_certs_known_locations = [
 
 def default_ca_certs():
     if sys.platform == 'win32':
-        # FIXME: We could reuse bzrlib.transport.http.ca_bundle but import that
-        # here sounds... too hackish. Waiting for the windows installer guys
-        # feedback on which path to use -- vila 2012-01-25
-        pass
+        return os.path.join(os.path.dirname(sys.executable), u"ca_bundle.crt")
     elif sys.platform == 'darwin':
         # FIXME: Needs some default value for osx, waiting for osx installers
         # guys feedback -- vila 2012-01-25
