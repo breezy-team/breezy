@@ -1539,12 +1539,8 @@ def config_dir():
         if base is None:
             base = win32utils.get_home_location()
         return osutils.pathjoin(base, 'bazaar', '2.0')
-    if sys.platform == 'darwin':
-        if base is None:
-            base = osutils._get_home_dir()
-        return osutils.pathjoin(base, '.bazaar')
-    else:
-        if base is None:
+    if base is None:
+        if sys.platform != 'darwin':
             xdg_dir = osutils.path_from_environ('XDG_CONFIG_HOME')
             if xdg_dir is None:
                 xdg_dir = osutils.pathjoin(osutils._get_home_dir(), ".config")
@@ -1553,8 +1549,8 @@ def config_dir():
                 trace.mutter(
                     "Using configuration in XDG directory %s." % xdg_dir)
                 return xdg_dir
-            base = osutils._get_home_dir()
-        return osutils.pathjoin(base, ".bazaar")
+        base = osutils._get_home_dir()
+    return osutils.pathjoin(base, ".bazaar")
 
 
 def config_filename():
