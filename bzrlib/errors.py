@@ -1761,7 +1761,8 @@ class ParseConfigError(BzrError):
 
 class ConfigOptionValueError(BzrError):
 
-    _fmt = """Bad value "%(value)s" for option "%(name)s"."""
+    _fmt = ('Bad value "%(value)s" for option "%(name)s".\n'
+            'See ``bzr help %(name)s``')
 
     def __init__(self, name, value):
         BzrError.__init__(self, name=name, value=value)
