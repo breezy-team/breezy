@@ -2095,6 +2095,34 @@ class TestCreationOps(tests.TestCaseInTempDir):
         self.assertEquals(self.gid, s.st_gid)
 
 
+class TestPathFromEnviron(tests.TestCase):
+
+    def test_is_unicode(self):
+        self.overrideEnv('BZR_TEST_PATH', './anywhere at all/')
+        path = osutils.path_from_environ('BZR_TEST_PATH')
+        self.assertIsInstance(path, unicode)
+        self.assertEqual(u'./anywhere at all/', path)
+
+    def test_posix_path_env_ascii(self):
+        self.overrideEnv('BZR_TEST_PATH', '/tmp')
+        home = osutils._posix_path_from_environ('BZR_TEST_PATH')
+        self.assertIsInstance(home, unicode)
+        self.assertEqual(u'/tmp', home)
+
+    def test_posix_path_env_unicode(self):
+        self.requireFeature(features.ByteStringNamedFilesystem)
+        self.overrideEnv('BZR_TEST_PATH', '/home/\xa7test')
+        self.overrideAttr(osutils, "_fs_enc", "iso8859-1")
+        self.assertEqual(u'/home/\xa7test',
+            osutils._posix_path_from_environ('BZR_TEST_PATH'))
+        osutils._fs_enc = "iso8859-5"
+        self.assertEqual(u'/home/\u0407test',
+            osutils._posix_path_from_environ('BZR_TEST_PATH'))
+        osutils._fs_enc = "utf-8"
+        self.assertRaises(errors.BadFilenameEncoding,
+            osutils._posix_path_from_environ, 'BZR_TEST_PATH')
+
+
 class TestGetHomeDir(tests.TestCase):
 
     def test_is_unicode(self):
