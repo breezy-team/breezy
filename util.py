@@ -29,8 +29,6 @@ import tempfile
 import os
 import re
 
-from distro_info import DebianDistroInfo, UbuntuDistroInfo
-
 from bzrlib.trace import mutter
 
 try:
@@ -77,10 +75,18 @@ from bzrlib.plugins.builddeb.errors import (
     )
 
 
-DEBIAN_RELEASES = DebianDistroInfo().all
+try:
+    from distro_info import DebianDistroInfo, UbuntuDistroInfo
+except ImportError:
+    DEBIAN_RELEASES = []
+    UBUNTU_RELEASES = []
+else:
+    # distro info is not available
+    DEBIAN_RELEASES = DebianDistroInfo().all
+    UBUNTU_RELEASES = UbuntuDistroInfo().all
+
 DEBIAN_RELEASES.extend(['stable', 'testing', 'unstable', 'frozen'])
 DEBIAN_POCKETS = ('', '-security', '-proposed-updates', '-backports')
-UBUNTU_RELEASES = UbuntuDistroInfo().all
 UBUNTU_POCKETS = ('', '-proposed', '-updates', '-security', '-backports')
 
 

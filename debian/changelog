@@ -1,8 +1,10 @@
 bzr-builddeb (2.8.3) UNRELEASED; urgency=low
 
   * Fix patch unapplying from DirStateRevisionTrees. LP: #923688
+  * Bump distro-info dependency back to a recommends, to ease
+    backporting.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Mon, 30 Jan 2012 14:37:51 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 01 Feb 2012 13:20:49 +0100
 
 bzr-builddeb (2.8.2) unstable; urgency=low
 
