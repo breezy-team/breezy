@@ -194,16 +194,15 @@ def _rollover_trace_maybe(trace_fname):
 
 
 def _get_bzr_log_filename():
-    bzr_log = os.environ.get('BZR_LOG')
+    bzr_log = osutils.path_from_environ('BZR_LOG')
     if bzr_log:
         return bzr_log
-    home = os.environ.get('BZR_HOME')
+    home = osutils.path_from_environ('BZR_HOME')
     if home is None:
-        if sys.platform == 'win32':
-            from bzrlib import win32utils
-            home = win32utils.get_home_location()
-        else:
-            home = os.path.expanduser('~')
+        # GZ 2012-02-01: Logging to the home dir is bad, but XDG is unclear
+        #                over what would be better. On windows, bug 240550
+        #                suggests LOCALAPPDATA be used instead.
+        home = osutils._get_home_dir()
     return os.path.join(home, '.bzr.log')
 
 
