@@ -1532,12 +1532,8 @@ def config_dir():
 
     TODO: Global option --config-dir to override this.
     """
-    base = os.environ.get('BZR_HOME', None)
+    base = osutils.path_from_environ('BZR_HOME')
     if sys.platform == 'win32':
-        # environ variables on Windows are in user encoding/mbcs. So decode
-        # before using one
-        if base is not None:
-            base = base.decode('mbcs')
         if base is None:
             base = win32utils.get_appdata_location_unicode()
         if base is None:
@@ -1548,25 +1544,21 @@ def config_dir():
             raise errors.BzrError('You must have one of BZR_HOME, APPDATA,'
                                   ' or HOME set')
         return osutils.pathjoin(base, 'bazaar', '2.0')
-    else:
-        if base is not None:
-            base = base.decode(osutils._fs_enc)
     if sys.platform == 'darwin':
         if base is None:
-            # this takes into account $HOME
-            base = os.path.expanduser("~")
+            base = osutils._get_home_dir()
         return osutils.pathjoin(base, '.bazaar')
     else:
         if base is None:
-            xdg_dir = os.environ.get('XDG_CONFIG_HOME', None)
+            xdg_dir = osutils.path_from_environ('XDG_CONFIG_HOME')
             if xdg_dir is None:
-                xdg_dir = osutils.pathjoin(os.path.expanduser("~"), ".config")
+                xdg_dir = osutils.pathjoin(osutils._get_home_dir(), ".config")
             xdg_dir = osutils.pathjoin(xdg_dir, 'bazaar')
             if osutils.isdir(xdg_dir):
                 trace.mutter(
                     "Using configuration in XDG directory %s." % xdg_dir)
                 return xdg_dir
-            base = os.path.expanduser("~")
+            base = osutils._get_home_dir()
         return osutils.pathjoin(base, ".bazaar")
 
 
