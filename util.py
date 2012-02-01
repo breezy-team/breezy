@@ -78,6 +78,7 @@ _DEBIAN_RELEASES = None
 _UBUNTU_RELEASES = None
 
 def _get_release_names():
+    global _DEBIAN_RELEASES, _UBUNTU_RELEASES
     try:
         from distro_info import DebianDistroInfo, UbuntuDistroInfo
     except ImportError:
