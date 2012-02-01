@@ -1431,7 +1431,7 @@ class cmd_dep3_patch(Command):
 
     """
 
-    takes_args = ["location"]
+    takes_args = ["location?"]
 
     directory_opt = Option('directory',
                            help='Packaging tree for which to generate patch.',
@@ -1442,7 +1442,8 @@ class cmd_dep3_patch(Command):
 
     takes_options = [directory_opt, "revision", "change", no_upstream_check_opt]
 
-    def run(self, location, directory=".", revision=None, no_upstream_check=False):
+    def run(self, location=".", directory=".", revision=None,
+            no_upstream_check=False):
         from bzrlib.plugins.builddeb.dep3 import (
             determine_applied_upstream,
             determine_forwarded,
@@ -1471,14 +1472,15 @@ class cmd_dep3_patch(Command):
             [base_revid])
         if len(interesting_revision_ids) == 0:
             raise BzrCommandError(gettext("No unmerged revisions"))
-        (bugs, authors, last_update) = gather_bugs_and_authors(branch.repository,
-            interesting_revision_ids)
+        (bugs, authors, last_update) = gather_bugs_and_authors(
+            branch.repository, interesting_revision_ids)
         config = branch.get_config()
         description = config.get_user_option("description")
         if description is None:
             # if there's just one revision in the mainline history, use
             # that revisions commits message
-            lhs_history = graph.iter_lefthand_ancestry(revision_id, [base_revid])
+            lhs_history = graph.iter_lefthand_ancestry(revision_id,
+                [base_revid])
             rev = branch.repository.get_revision(lhs_history.next())
             try:
                 lhs_history.next()
@@ -1490,9 +1492,10 @@ class cmd_dep3_patch(Command):
         builddeb_config = debuild_config(packaging_tree, True)
         if not no_upstream_check and builddeb_config.upstream_branch:
             upstream_branch = Branch.open(builddeb_config.upstream_branch)
-            applied_upstream = determine_applied_upstream(upstream_branch, branch,
+            applied_upstream = determine_applied_upstream(upstream_branch,
+                branch, revision_id)
+            forwarded = determine_forwarded(upstream_branch, branch,
                 revision_id)
-            forwarded = determine_forwarded(upstream_branch, branch, revision_id)
         else:
             applied_upstream = None
             forwarded = None

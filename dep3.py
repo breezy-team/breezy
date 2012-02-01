@@ -101,7 +101,8 @@ def gather_bugs_and_authors(repository, interesting_revision_ids):
     return (bugs, authors, last_update)
 
 
-def determine_applied_upstream(upstream_branch, feature_branch, feature_revid=None):
+def determine_applied_upstream(upstream_branch, feature_branch,
+        feature_revid=None):
     """Check if a particular revision has been merged upstream.
 
     :param upstream_branch: Upstream branch object
@@ -112,7 +113,8 @@ def determine_applied_upstream(upstream_branch, feature_branch, feature_revid=No
     """
     if feature_revid is None:
         feature_revid = feature_branch.last_revision()
-    upstream_graph = feature_branch.repository.get_graph(upstream_branch.repository)
+    upstream_graph = feature_branch.repository.get_graph(
+        upstream_branch.repository)
     merger = upstream_graph.find_lefthand_merger(feature_revid,
         upstream_branch.last_revision())
     if merger is not None:
@@ -169,9 +171,11 @@ def write_dep3_patch(f, branch, base_revid, target_revid, description=None,
     :param authors: Sequence of authors of this patch
     :param last_update: Timestamp for last time this patch was updated
     """
-    write_dep3_patch_header(f, bugs=bugs, authors=authors, last_update=last_update,
-            description=description, revision_id=target_revid, origin=origin,
-            applied_upstream=applied_upstream, forwarded=forwarded)
+    write_dep3_patch_header(f, bugs=bugs, authors=authors,
+        last_update=last_update, description=description,
+        revision_id=target_revid, origin=origin,
+        applied_upstream=applied_upstream, forwarded=forwarded)
     old_tree = branch.repository.revision_tree(base_revid)
     new_tree = branch.repository.revision_tree(target_revid)
-    diff.show_diff_trees(old_tree, new_tree, f, old_label='old/', new_label='new/')
+    diff.show_diff_trees(old_tree, new_tree, f, old_label='old/',
+                         new_label='new/')
