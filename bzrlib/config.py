@@ -92,7 +92,6 @@ from bzrlib import (
     lazy_regex,
     library_state,
     lockdir,
-    mail_client,
     mergetools,
     osutils,
     symbol_versioning,
@@ -239,16 +238,6 @@ class Config(object):
             return None
         return diff.DiffFromTool.from_string(cmd, old_tree, new_tree,
                                              sys.stdout)
-
-    def get_mail_client(self):
-        """Get a mail client to use"""
-        selected_client = self.get_user_option('mail_client')
-        _registry = mail_client.mail_client_registry
-        try:
-            mail_client_class = _registry.get(selected_client)
-        except KeyError:
-            raise errors.UnknownMailClient(selected_client)
-        return mail_client_class(self)
 
     def _get_signature_checking(self):
         """Template method to override signature checking policy."""
