@@ -1224,10 +1224,10 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
             return
         try:
             if branch is None:
-                conf = config.GlobalConfig()
+                conf = config.GlobalStack()
             else:
-                conf = branch.get_config()
-            if conf.suppress_warning('format_deprecation'):
+                conf = branch.get_config_stack()
+            if 'format_deprecation' in conf.get('suppress_warnings'):
                 return
             warning("Format %s for %s is deprecated -"
                     " please use 'bzr upgrade' to get better performance"

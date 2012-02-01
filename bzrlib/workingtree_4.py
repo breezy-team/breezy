@@ -255,8 +255,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
         :return: an integer. -1 means never save.
         """
-        # FIXME: We want a WorkingTreeStack here -- vila 20110812
-        conf = config.BranchStack(self.branch)
+        conf = self.get_config_stack()
         return conf.get('bzr.workingtree.worth_saving_limit')
 
     def filter_unversioned_files(self, paths):

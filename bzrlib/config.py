@@ -2555,7 +2555,7 @@ class ListOption(Option):
 class RegistryOption(Option):
     """Option for a choice from a registry."""
 
-    def __init__(self, name, registry, default=None, default_from_env=None,
+    def __init__(self, name, registry, default_from_env=None,
                  help=None, invalid=None):
         """A registry based Option definition.
 
@@ -2563,7 +2563,8 @@ class RegistryOption(Option):
         can take quoting into account.
         """
         super(RegistryOption, self).__init__(
-            name, default=default, default_from_env=default_from_env,
+            name, default=lambda: unicode(registry.default_key),
+            default_from_env=default_from_env,
             from_unicode=self.from_unicode, help=help,
             invalid=invalid, unquote=False)
         self.registry = registry
@@ -2906,7 +2907,14 @@ by the ``submit:`` revision spec.
 option_registry.register(
     Option('submit_to',
            help='''Where submissions from this branch are mailed to.'''))
-
+option_registry.register(
+    ListOption('suppress_warnings',
+           default=[],
+           help="List of warning classes to suppress."))
+option_registry.register(
+    Option('validate_signatures_in_log', default=False,
+           from_unicode=bool_from_store, invalid='warning',
+           help='''Whether to validate signatures in bzr log.'''))
 option_registry.register_lazy('ssl.ca_certs',
     'bzrlib.transport.http._urllib2_wrappers', 'opt_ssl_ca_certs')
 
