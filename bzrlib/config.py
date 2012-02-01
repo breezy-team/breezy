@@ -1538,8 +1538,11 @@ def config_dir():
             base = win32utils.get_appdata_location()
         if base is None:
             base = win32utils.get_home_location()
+        # GZ 2012-02-01: Really the two level subdirs only make sense inside
+        #                APPDATA, but hard to move. See bug 348640 for more.
         return osutils.pathjoin(base, 'bazaar', '2.0')
     if base is None:
+        # GZ 2012-02-01: What does OSX use instead of XDG if anything?
         if sys.platform != 'darwin':
             xdg_dir = osutils.path_from_environ('XDG_CONFIG_HOME')
             if xdg_dir is None:
