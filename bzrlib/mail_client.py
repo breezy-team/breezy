@@ -638,4 +638,4 @@ mail_client_registry.register('default', DefaultMail,
 mail_client_registry.default_key = 'default'
 
 opt_mail_client = _mod_config.RegistryOption('mail_client',
-    mail_client_registry, help='E-mail client to use.')
+        mail_client_registry, help='E-mail client to use.', invalid='error')

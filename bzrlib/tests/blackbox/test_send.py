@@ -199,10 +199,10 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
             ), 'send -f branch')
         b.get_config_stack().set('mail_client', 'bogus')
         self.run_send([])
-        self.run_bzr_error(('Unknown mail client: bogus',),
+        self.run_bzr_error(('Bad value "bogus" for option "mail_client"',),
                            'send -f branch --mail-to jrandom@example.org')
         b.get_config_stack().set('submit_to', 'jrandom@example.org')
-        self.run_bzr_error(('Unknown mail client: bogus',),
+        self.run_bzr_error(('Bad value "bogus" for option "mail_client"',),
                            'send -f branch')
 
     def test_mailto_child_option(self):
@@ -211,7 +211,8 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         b.get_config_stack().set('mail_client', 'bogus')
         parent = branch.Branch.open('parent')
         parent.get_config_stack().set('child_submit_to', 'somebody@example.org')
-        self.run_bzr_error(('Unknown mail client: bogus',), 'send -f branch')
+        self.run_bzr_error(('Bad value "bogus" for option "mail_client"',),
+                'send -f branch')
 
     def test_format(self):
         md = self.get_MD(['--format=4'])
