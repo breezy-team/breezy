@@ -66,6 +66,9 @@ Bug Fixes
 * ``bzr send`` works on treeless branches again.
   (Jelmer Vernooij, #921591)
 
+* ``bzr version`` no longer throws a UnicodeDecodeError if the .bzr.log path
+  contains non-ascii characters. (Martin Packman, #312841)
+
 * Support scripts that don't call bzrlib.initialize() but still call run_bzr().
   (Vincent Ladeuil, #917733)
 
