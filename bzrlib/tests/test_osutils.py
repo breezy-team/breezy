@@ -2095,6 +2095,35 @@ class TestCreationOps(tests.TestCaseInTempDir):
         self.assertEquals(self.gid, s.st_gid)
 
 
+class TestGetHomeDir(tests.TestCase):
+
+    def test_is_unicode(self):
+        home = osutils._get_home_dir()
+        self.assertIsInstance(home, unicode)
+
+    def test_posix_homeless(self):
+        self.overrideEnv('HOME', None)
+        home = osutils._get_home_dir()
+        self.assertIsInstance(home, unicode)
+
+    def test_posix_home_ascii(self):
+        self.overrideEnv('HOME', '/home/test')
+        home = osutils._posix_get_home_dir()
+        self.assertIsInstance(home, unicode)
+        self.assertEqual(u'/home/test', home)
+
+    def test_posix_home_unicode(self):
+        self.requireFeature(features.ByteStringNamedFilesystem)
+        self.overrideEnv('HOME', '/home/\xa7test')
+        self.overrideAttr(osutils, "_fs_enc", "iso8859-1")
+        self.assertEqual(u'/home/\xa7test', osutils._posix_get_home_dir())
+        osutils._fs_enc = "iso8859-5"
+        self.assertEqual(u'/home/\u0407test', osutils._posix_get_home_dir())
+        osutils._fs_enc = "utf-8"
+        self.assertRaises(errors.BadFilenameEncoding,
+            osutils._posix_get_home_dir)
+
+
 class TestGetuserUnicode(tests.TestCase):
 
     def test_is_unicode(self):
