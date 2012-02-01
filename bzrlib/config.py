@@ -1535,14 +1535,9 @@ def config_dir():
     base = osutils.path_from_environ('BZR_HOME')
     if sys.platform == 'win32':
         if base is None:
-            base = win32utils.get_appdata_location_unicode()
+            base = win32utils.get_appdata_location()
         if base is None:
-            base = os.environ.get('HOME', None)
-            if base is not None:
-                base = base.decode('mbcs')
-        if base is None:
-            raise errors.BzrError('You must have one of BZR_HOME, APPDATA,'
-                                  ' or HOME set')
+            base = win32utils.get_home_location()
         return osutils.pathjoin(base, 'bazaar', '2.0')
     if sys.platform == 'darwin':
         if base is None:
