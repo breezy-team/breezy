@@ -1524,7 +1524,7 @@ def ensure_config_dir_exists(path=None):
 
 
 def config_dir():
-    """Return per-user configuration directory.
+    """Return per-user configuration directory as unicode string
 
     By default this is %APPDATA%/bazaar/2.0 on Windows, ~/.bazaar on Mac OS X
     and Linux.  On Linux, if there is a $XDG_CONFIG_HOME/bazaar directory,
@@ -1542,7 +1542,7 @@ def config_dir():
         #                APPDATA, but hard to move. See bug 348640 for more.
         return osutils.pathjoin(base, 'bazaar', '2.0')
     if base is None:
-        # GZ 2012-02-01: What does OSX use instead of XDG if anything?
+        # GZ 2012-02-01: What should OSX use instead of XDG if anything?
         if sys.platform != 'darwin':
             xdg_dir = osutils.path_from_environ('XDG_CONFIG_HOME')
             if xdg_dir is None:
