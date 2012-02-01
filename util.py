@@ -74,18 +74,35 @@ from bzrlib.plugins.builddeb.errors import (
     UnparseableChangelog,
     )
 
+_DEBIAN_RELEASES = None
+_UBUNTU_RELEASES = None
 
-try:
-    from distro_info import DebianDistroInfo, UbuntuDistroInfo
-except ImportError:
-    DEBIAN_RELEASES = []
-    UBUNTU_RELEASES = []
-else:
-    # distro info is not available
-    DEBIAN_RELEASES = DebianDistroInfo().all
-    UBUNTU_RELEASES = UbuntuDistroInfo().all
+def _get_release_names():
+    try:
+        from distro_info import DebianDistroInfo, UbuntuDistroInfo
+    except ImportError:
+        warning("distro_info not available. Unable to retrieve current "
+            "list of releases.")
+        _DEBIAN_RELEASES = []
+        _UBUNTU_RELEASES = []
+    else:
+        # distro info is not available
+        _DEBIAN_RELEASES = DebianDistroInfo().all
+        _UBUNTU_RELEASES = UbuntuDistroInfo().all
 
-DEBIAN_RELEASES.extend(['stable', 'testing', 'unstable', 'frozen'])
+    _DEBIAN_RELEASES.extend(['stable', 'testing', 'unstable', 'frozen'])
+
+
+def debian_releases():
+    if _DEBIAN_RELEASES is None:
+        _get_release_names()
+    return _DEBIAN_RELEASES
+
+def ubuntu_releases():
+    if _UBUNTU_RELEASES is None:
+        _get_release_names()
+    return _UBUNTU_RELEASES
+
 DEBIAN_POCKETS = ('', '-security', '-proposed-updates', '-backports')
 UBUNTU_POCKETS = ('', '-proposed', '-updates', '-security', '-backports')
 
@@ -252,8 +269,8 @@ def suite_to_distribution(suite):
     :return: "debian", "ubuntu", or None if the distribution couldn't be
         inferred.
     """
-    all_debian = [r + t for r in DEBIAN_RELEASES for t in DEBIAN_POCKETS]
-    all_ubuntu = [r + t for r in UBUNTU_RELEASES for t in UBUNTU_POCKETS]
+    all_debian = [r + t for r in debian_releases() for t in DEBIAN_POCKETS]
+    all_ubuntu = [r + t for r in ubuntu_releases() for t in UBUNTU_POCKETS]
     if suite in all_debian:
         return "debian"
     if suite in all_ubuntu:
@@ -622,12 +639,12 @@ def _find_previous_upload(cl):
     :raise NoPreviousUpload: Raised when there is no previous upload
     """
     current_target = find_last_distribution(cl)
-    all_debian = [r + t for r in DEBIAN_RELEASES for t in DEBIAN_POCKETS]
-    all_ubuntu = [r + t for r in UBUNTU_RELEASES for t in UBUNTU_POCKETS]
+    all_debian = [r + t for r in debian_releases() for t in DEBIAN_POCKETS]
+    all_ubuntu = [r + t for r in ubuntu_releases() for t in UBUNTU_POCKETS]
     if current_target in all_debian:
         match_targets = (current_target,)
     elif current_target in all_ubuntu:
-        match_targets = UBUNTU_RELEASES
+        match_targets = ubuntu_releases()
         if "-" in current_target:
             match_targets += tuple([current_target.split("-", 1)[0]
                 + t for t in UBUNTU_POCKETS])
