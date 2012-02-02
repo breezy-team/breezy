@@ -2799,6 +2799,7 @@ class WorkingTreeFormat(object):
         try:
             transport = a_bzrdir.get_workingtree_transport(None)
             format_string = transport.get_bytes("format")
+            format_string = bzrdir.extract_format_string(format_string)
             return klass._formats[format_string]
         except errors.NoSuchFile:
             raise errors.NoWorkingTree(base=transport.base)
