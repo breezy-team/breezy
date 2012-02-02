@@ -342,6 +342,15 @@ def _posix_path_from_environ(key):
         raise errors.BadFilenameEncoding(val, _fs_enc)
 
 
+def _posix_get_home_dir():
+    """Get the home directory of the current user as a unicode path"""
+    path = posixpath.expanduser("~")
+    try:
+        return path.decode(_fs_enc)
+    except UnicodeDecodeError:
+        raise errors.BadFilenameEncoding(path, _fs_enc)
+
+
 def _posix_getuser_unicode():
     """Get username from environment or password database as unicode"""
     name = getpass.getuser()
@@ -448,6 +457,7 @@ realpath = _posix_realpath
 pathjoin = os.path.join
 normpath = _posix_normpath
 path_from_environ = _posix_path_from_environ
+_get_home_dir = _posix_get_home_dir
 getuser_unicode = _posix_getuser_unicode
 getcwd = os.getcwdu
 rename = os.rename
@@ -511,6 +521,7 @@ if sys.platform == 'win32':
     if f is not None:
         get_unicode_argv = f
     path_from_environ = win32utils.get_environ_unicode
+    _get_home_dir = win32utils.get_home_location
     getuser_unicode = win32utils.get_user_name
 
 elif sys.platform == 'darwin':

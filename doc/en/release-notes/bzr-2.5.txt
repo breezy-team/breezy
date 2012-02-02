@@ -5,10 +5,10 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.5.0
+bzr 2.5b6
 #########
 
-:2.5.0: NOT RELEASED YET
+:2.5b6: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -59,11 +59,18 @@ Bug Fixes
 * ``bzr branch`` now fetches revisions when branching into an empty
   control directory. (Jelmer Vernooij, #905594)
 
+* A sane default is provided for ``ssl.ca_certs`` which should points to the
+  Certificate Authority bundle for supported platforms.
+  (Vincent Ladeuil, #920455)
+
 * ``bzr branch`` generates correct target branch locations again if not
   specified. (Jelmer Vernooij, #919218)
 
 * ``bzr send`` works on treeless branches again.
   (Jelmer Vernooij, #921591)
+
+* ``bzr version`` no longer throws a UnicodeDecodeError if the .bzr.log path
+  contains non-ascii characters. (Martin Packman, #312841)
 
 * Support scripts that don't call bzrlib.initialize() but still call run_bzr().
   (Vincent Ladeuil, #917733)
@@ -88,6 +95,9 @@ API Changes
 
 * ``ControlDir`` now has a new method ``set_branch_reference`` which can
   be used for setting branch references. (Jelmer Vernooij)
+
+* ``ControlDir.destroy_branch`` now raises ``NotBranchError`` rather than
+  ``NoSuchFile`` if the branch didn't exist. (Jelmer Vernooij, #921693)
 
 Internals
 *********
