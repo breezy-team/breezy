@@ -90,6 +90,9 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``config.config_dir`` and related functions now always return paths as
+  unicode. (Martin Packman, #825826)
+
 * ``ControlDir`` now has a new method ``set_branch_reference`` which can
   be used for setting branch references. (Jelmer Vernooij)
 
