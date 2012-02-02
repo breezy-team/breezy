@@ -1904,48 +1904,6 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
             location='http://example.com/specific')
         self.assertEqual(my_config.get_user_option('option'), 'exact')
 
-    def test_get_mail_client(self):
-        config = self.get_branch_config()
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.DefaultMail)
-
-        # Specific clients
-        config.set_user_option('mail_client', 'evolution')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.Evolution)
-
-        config.set_user_option('mail_client', 'kmail')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.KMail)
-
-        config.set_user_option('mail_client', 'mutt')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.Mutt)
-
-        config.set_user_option('mail_client', 'thunderbird')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.Thunderbird)
-
-        # Generic options
-        config.set_user_option('mail_client', 'default')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.DefaultMail)
-
-        config.set_user_option('mail_client', 'editor')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.Editor)
-
-        config.set_user_option('mail_client', 'mapi')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.MAPIClient)
-
-        config.set_user_option('mail_client', 'xdg-email')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.XDGEmail)
-
-        config.set_user_option('mail_client', 'firebird')
-        self.assertRaises(errors.UnknownMailClient, config.get_mail_client)
-
 
 class TestMailAddressExtraction(tests.TestCase):
 
@@ -4889,3 +4847,56 @@ class EmailOptionTests(tests.TestCase):
         self.overrideEnv('BZR_EMAIL', None)
         self.overrideEnv('EMAIL', 'jelmer@samba.org')
         self.assertEquals('jelmer@debian.org', conf.get('email'))
+
+
+class MailClientOptionTests(tests.TestCase):
+
+    def test_default(self):
+        conf = config.MemoryStack('')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.DefaultMail)
+
+    def test_evolution(self):
+        conf = config.MemoryStack('mail_client=evolution')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.Evolution)
+
+    def test_kmail(self):
+        conf = config.MemoryStack('mail_client=kmail')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.KMail)
+
+    def test_mutt(self):
+        conf = config.MemoryStack('mail_client=mutt')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.Mutt)
+
+    def test_thunderbird(self):
+        conf = config.MemoryStack('mail_client=thunderbird')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.Thunderbird)
+
+    def test_explicit_default(self):
+        conf = config.MemoryStack('mail_client=default')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.DefaultMail)
+
+    def test_editor(self):
+        conf = config.MemoryStack('mail_client=editor')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.Editor)
+
+    def test_mapi(self):
+        conf = config.MemoryStack('mail_client=mapi')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.MAPIClient)
+
+    def test_xdg_email(self):
+        conf = config.MemoryStack('mail_client=xdg-email')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.XDGEmail)
+
+    def test_unknown(self):
+        conf = config.MemoryStack('mail_client=firebird')
+        self.assertRaises(errors.ConfigOptionValueError, conf.get,
+                'mail_client')
