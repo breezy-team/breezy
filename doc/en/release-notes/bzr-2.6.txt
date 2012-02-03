@@ -58,6 +58,9 @@ API Changes
 * New configuration option class ``RegistryOption`` which is backed
   onto a registry. (Jelmer Vernooij)
 
+* New convenience API method ``WorkingTree.get_config_stack``.
+  (Jelmer Vernooij)
+
 Internals
 *********
 

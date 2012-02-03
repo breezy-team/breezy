@@ -5,10 +5,11 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.5b6
+bzr 2.5.0
 #########
 
-:2.5b6: NOT RELEASED YET
+:Codename: Phillip
+:2.5.0: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -20,14 +21,73 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
-* Support for colocated branches is now available in the default
-  format ("2a"). (Jelmer Vernooij)
-
 Improvements
 ************
 
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
+bzr 2.5b6
+#########
+
+:2.5b6: 2012-02-02
+
+This is the sixth (and last (really)) beta of the 2.5 series, leading to a
+2.5.0 release in March 2012. Beta releases are suitable for everyday use
+but may cause some incompatibilities with plugins.
+
+This introduces the support for colocated branches into the '2a' format in a
+backward compatible way, fix more glitches in the colocated UI, verify https
+certificates for the urllib https client implementation, fix some more
+unicode issues and more.
+
+All bugs fixed in previous series known at the time of this release are
+included.
+
+External Compatibility Breaks
+*****************************
+
+None.
+
+New Features
+************
+
+* Support for colocated branches is now available in the default
+  format ("2a"). (Jelmer Vernooij)
+
+Improvements
+************
 
 * ``bzr switch -b`` in a standalone tree will now create a colocated branch.
   (Jelmer Vernooij, #918197)
@@ -54,9 +114,6 @@ Improvements
 Bug Fixes
 *********
 
-.. Fixes for situations where bzr would previously crash or give incorrect
-   or undesirable results.
-
 * ``bzr branch`` now fetches revisions when branching into an empty
   control directory. (Jelmer Vernooij, #905594)
 
@@ -70,6 +127,9 @@ Bug Fixes
 * ``bzr send`` works on treeless branches again.
   (Jelmer Vernooij, #921591)
 
+* ``bzr version`` no longer throws a UnicodeDecodeError if the .bzr.log path
+  contains non-ascii characters. (Martin Packman, #312841)
+
 * Support scripts that don't call bzrlib.initialize() but still call run_bzr().
   (Vincent Ladeuil, #917733)
 
@@ -80,16 +140,12 @@ Bug Fixes
   validity as well as the hostname.
   (Jelmer Vernooij, Vincent Ladeuil, #651161)
 
-Documentation
-*************
-
-.. Improved or updated documentation.
 
 API Changes
 ***********
 
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
+* ``config.config_dir`` and related functions now always return paths as
+  unicode. (Martin Packman, #825826)
 
 * ``ControlDir`` now has a new method ``set_branch_reference`` which can
   be used for setting branch references. (Jelmer Vernooij)
@@ -97,14 +153,8 @@ API Changes
 * ``ControlDir.destroy_branch`` now raises ``NotBranchError`` rather than
   ``NoSuchFile`` if the branch didn't exist. (Jelmer Vernooij, #921693)
 
-* New convenience API method ``WorkingTree.get_config_stack``.
-  (Jelmer Vernooij)
-
 Internals
 *********
-
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
 
 * A new matcher ``RevisionHistoryMatches`` has been added. (Jelmer Vernooij)
 
@@ -117,10 +167,6 @@ Internals
 
 Testing
 *******
-
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
 
 * Be more careful about closing open files for pypy interoperability.
   (Wouter van Heyst)
