@@ -188,8 +188,8 @@ class TestSwitch(TestCaseWithTransport):
         revid2 = tree.commit('rev2')
         self.run_bzr(['switch', '-b', 'anotherbranch'])
         self.assertEquals(
-            ['', 'anotherbranch'],
-            tree.branch.bzrdir.get_branches().keys())
+            set(['', 'anotherbranch']),
+            set(tree.branch.bzrdir.get_branches().keys()))
 
     def test_switch_into_unrelated_colocated(self):
         # Create a new colocated branch from an existing non-colocated branch.
