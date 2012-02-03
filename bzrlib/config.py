@@ -1513,7 +1513,7 @@ def ensure_config_dir_exists(path=None):
 
 
 def config_dir():
-    """Return per-user configuration directory.
+    """Return per-user configuration directory as unicode string
 
     By default this is %APPDATA%/bazaar/2.0 on Windows, ~/.bazaar on Mac OS X
     and Linux.  On Linux, if there is a $XDG_CONFIG_HOME/bazaar directory,
@@ -1521,42 +1521,28 @@ def config_dir():
 
     TODO: Global option --config-dir to override this.
     """
-    base = os.environ.get('BZR_HOME', None)
+    base = osutils.path_from_environ('BZR_HOME')
     if sys.platform == 'win32':
-        # environ variables on Windows are in user encoding/mbcs. So decode
-        # before using one
-        if base is not None:
-            base = base.decode('mbcs')
         if base is None:
-            base = win32utils.get_appdata_location_unicode()
+            base = win32utils.get_appdata_location()
         if base is None:
-            base = os.environ.get('HOME', None)
-            if base is not None:
-                base = base.decode('mbcs')
-        if base is None:
-            raise errors.BzrError('You must have one of BZR_HOME, APPDATA,'
-                                  ' or HOME set')
+            base = win32utils.get_home_location()
+        # GZ 2012-02-01: Really the two level subdirs only make sense inside
+        #                APPDATA, but hard to move. See bug 348640 for more.
         return osutils.pathjoin(base, 'bazaar', '2.0')
-    else:
-        if base is not None:
-            base = base.decode(osutils._fs_enc)
-    if sys.platform == 'darwin':
-        if base is None:
-            # this takes into account $HOME
-            base = os.path.expanduser("~")
-        return osutils.pathjoin(base, '.bazaar')
-    else:
-        if base is None:
-            xdg_dir = os.environ.get('XDG_CONFIG_HOME', None)
+    if base is None:
+        # GZ 2012-02-01: What should OSX use instead of XDG if anything?
+        if sys.platform != 'darwin':
+            xdg_dir = osutils.path_from_environ('XDG_CONFIG_HOME')
             if xdg_dir is None:
-                xdg_dir = osutils.pathjoin(os.path.expanduser("~"), ".config")
+                xdg_dir = osutils.pathjoin(osutils._get_home_dir(), ".config")
             xdg_dir = osutils.pathjoin(xdg_dir, 'bazaar')
             if osutils.isdir(xdg_dir):
                 trace.mutter(
                     "Using configuration in XDG directory %s." % xdg_dir)
                 return xdg_dir
-            base = os.path.expanduser("~")
-        return osutils.pathjoin(base, ".bazaar")
+        base = osutils._get_home_dir()
+    return osutils.pathjoin(base, ".bazaar")
 
 
 def config_filename():

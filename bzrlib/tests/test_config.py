@@ -577,6 +577,9 @@ class TestConfigPath(tests.TestCase):
     def test_config_dir(self):
         self.assertEqual(config.config_dir(), self.bzr_home)
 
+    def test_config_dir_is_unicode(self):
+        self.assertIsInstance(config.config_dir(), unicode)
+
     def test_config_filename(self):
         self.assertEqual(config.config_filename(),
                          self.bzr_home + '/bazaar.conf')
