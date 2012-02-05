@@ -235,6 +235,22 @@ class GitRevisionTree(revisiontree.RevisionTree):
             return None, False, None
         return entry.kind, entry.executable, None
 
+    def path_content_summary(self, path):
+        """See Tree.path_content_summary."""
+        try:
+            (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree, path)
+        except KeyError:
+            return ('missing', None, None, None)
+        kind = mode_kind(mode)
+        if kind == 'file':
+            executable = mode_is_executable(mode)
+            contents = self.store[hexsha].data
+            return (kind, len(contents), executable, osutils.sha_string(contents))
+        elif kind == 'symlink':
+            return (kind, None, None, self.store[hexsha].data)
+        else:
+            return (kind, None, None, None)
+
 
 def tree_delta_from_git_changes(changes, mapping,
         (old_fileid_map, new_fileid_map), specific_file=None,
