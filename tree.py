@@ -76,6 +76,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
             return None
         return self._fileid_map.lookup_file_id(path.encode('utf-8'))
 
+    def all_file_ids(self):
+        return set(self._fileid_map.all_file_ids())
+
     def get_root_id(self):
         return self.path2id("")
 

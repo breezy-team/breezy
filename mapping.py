@@ -598,6 +598,9 @@ class GitFileIdMap(object):
         self.paths = None
         self.mapping = mapping
 
+    def all_file_ids(self):
+        return self.file_ids.values()
+
     def set_file_id(self, path, file_id):
         assert type(path) is str
         assert type(file_id) is str
