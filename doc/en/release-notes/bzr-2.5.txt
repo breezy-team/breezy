@@ -57,6 +57,9 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Stop depending on the particular CPython ordering of dictionary keys
+  when testing the result of BzrDir.get_branches.
+  (Wouter van Heyst)
 
 bzr 2.5b6
 #########
