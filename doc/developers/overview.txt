@@ -166,9 +166,8 @@ See also:
 Control directory
 =================
 
-Control directories are responsible for storing versioning data. Each
-control directory (such as ".bzr/") can contain zero or one repositories,
-zero or one working trees and zero or more branches.
+Each control directory (such as ".bzr/") can contain zero or one
+repositories, zero or one working trees and zero or more branches.
 
 The ``BzrDir`` class is the ``ControlDir`` implementation that is
 responsible for the ".bzr/" directory and its implementation. Plugins
