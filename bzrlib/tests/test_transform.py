@@ -3713,7 +3713,7 @@ class TestOrphan(tests.TestCaseWithTransport):
         self.assertEqual(('deleting parent', 'Not deleting', 'new-1'),
                          remaining_conflicts.pop())
         self.assertLength(1, warnings)
-        self.assertStartsWith(warnings[0], 'donttouchmypreciouuus')
+        self.assertStartsWith(warnings[0], 'Value "donttouchmypreciouuus" ')
 
 
 class TestTransformHooks(tests.TestCaseWithTransport):

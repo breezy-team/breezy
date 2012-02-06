@@ -55,7 +55,7 @@ check_signatures - this option will control whether bzr will require good gpg
                    turns on create_signatures.
 create_signatures - this option controls whether bzr will always create
                     gpg signatures or not on commits.  There is an unused
-                    option which in future is expected to work if               
+                    option which in future is expected to work if
                     branch settings require signatures.
 log_format - this option sets the default log format.  Possible values are
              long, short, line, or a plugin can register new formats.
@@ -2658,6 +2658,8 @@ option_registry.register(
            help="""\
 Whether revisions associated with tags should be fetched.
 """))
+option_registry.register_lazy(
+    'bzr.transform.orphan_policy', 'bzrlib.transform', 'opt_transform_orphan')
 option_registry.register(
     Option('bzr.workingtree.worth_saving_limit', default=10,
            from_unicode=int_from_store,  invalid='warning',
