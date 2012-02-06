@@ -26,7 +26,6 @@ from bzrlib import (
     errors,
     msgeditor,
     osutils,
-    tests,
     trace,
     )
 from bzrlib.msgeditor import (
@@ -81,8 +80,7 @@ added:
 """)
 
     def make_multiple_pending_tree(self):
-        config.GlobalStack().set_user_option('email',
-                                              'Bilbo Baggins <bb@hobbit.net>')
+        config.GlobalStack().set('email', 'Bilbo Baggins <bb@hobbit.net>')
         tree = self.make_branch_and_tree('a')
         tree.commit('Initial checkin.', timestamp=1230912900, timezone=0)
         tree2 = tree.bzrdir.clone('b').open_workingtree()
