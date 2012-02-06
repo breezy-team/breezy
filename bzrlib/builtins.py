@@ -6453,8 +6453,8 @@ class cmd_remove_branch(Command):
     def run(self, location=None):
         if location is None:
             location = "."
-        branch = Branch.open_containing(location)[0]
-        branch.bzrdir.destroy_branch()
+        cdir = controldir.ControlDir.open_containing(location)[0]
+        cdir.destroy_branch()
 
 
 class cmd_shelve(Command):

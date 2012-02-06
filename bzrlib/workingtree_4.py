@@ -68,6 +68,10 @@ from bzrlib.osutils import (
     realpath,
     safe_unicode,
     )
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
 from bzrlib.transport.local import LocalTransport
 from bzrlib.tree import (
     InterTree,
