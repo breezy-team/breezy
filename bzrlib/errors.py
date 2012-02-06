@@ -1761,7 +1761,8 @@ class ParseConfigError(BzrError):
 
 class ConfigOptionValueError(BzrError):
 
-    _fmt = """Bad value "%(value)s" for option "%(name)s"."""
+    _fmt = ('Bad value "%(value)s" for option "%(name)s".\n'
+            'See ``bzr help %(name)s``')
 
     def __init__(self, name, value):
         BzrError.__init__(self, name=name, value=value)
@@ -2765,14 +2766,6 @@ class NoMessageSupplied(BzrError):
 class NoMailAddressSpecified(BzrError):
 
     _fmt = "No mail-to address (--mail-to) or output (-o) specified."
-
-
-class UnknownMailClient(BzrError):
-
-    _fmt = "Unknown mail client: %(mail_client)s"
-
-    def __init__(self, mail_client):
-        BzrError.__init__(self, mail_client=mail_client)
 
 
 class MailClientNotFound(BzrError):

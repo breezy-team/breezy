@@ -2789,7 +2789,7 @@ class cmd_log(Command):
             self.add_cleanup(b.lock_read().unlock)
             rev1, rev2 = _get_revision_range(revision, b, self.name())
 
-        if b.get_config().validate_signatures_in_log():
+        if b.get_config_stack().get('validate_signatures_in_log'):
             signatures = True
 
         if signatures:
@@ -6452,8 +6452,8 @@ class cmd_remove_branch(Command):
     def run(self, location=None):
         if location is None:
             location = "."
-        branch = Branch.open_containing(location)[0]
-        branch.bzrdir.destroy_branch()
+        cdir = controldir.ControlDir.open_containing(location)[0]
+        cdir.destroy_branch()
 
 
 class cmd_shelve(Command):

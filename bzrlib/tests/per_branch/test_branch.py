@@ -22,7 +22,6 @@ from bzrlib import (
     config,
     delta as _mod_delta,
     errors,
-    gpg,
     merge,
     osutils,
     urlutils,
