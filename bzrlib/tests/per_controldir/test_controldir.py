@@ -159,6 +159,14 @@ class TestControlDir(TestCaseWithControlDir):
         bzrdir.create_branch()
         bzrdir.open_branch()
 
+    def test_destroy_branch_no_branch(self):
+        branch = self.make_repository('branch')
+        bzrdir = branch.bzrdir
+        try:
+            self.assertRaises(errors.NotBranchError, bzrdir.destroy_branch)
+        except (errors.UnsupportedOperation, errors.TransportNotPossible):
+            raise TestNotApplicable('Format does not support destroying branch')
+
     def test_destroy_repository(self):
         repo = self.make_repository('repository')
         bzrdir = repo.bzrdir

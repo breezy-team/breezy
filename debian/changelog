@@ -1,3 +1,11 @@
+bzr (2.5.0~bzr6473-1) UNRELEASED; urgency=low
+
+  * New upstream snapshot.
+   + No longer attempts to create directories with empty name.
+     Closes: #657349
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 07 Feb 2012 16:24:36 +0100
+
 bzr (2.5.0~bzr6458-2) unstable; urgency=low
 
   * Ignore spurious test failures in

@@ -163,7 +163,7 @@ class ControlDir(ControlComponent):
         """Create a branch in this ControlDir.
 
         :param name: Name of the colocated branch to create, None for
-            the default branch.
+            the user selected branch or "" for the active branch.
         :param append_revisions_only: Whether this branch should only allow
             appending new revisions to its history.
 
@@ -175,8 +175,9 @@ class ControlDir(ControlComponent):
     def destroy_branch(self, name=None):
         """Destroy a branch in this ControlDir.
 
-        :param name: Name of the branch to destroy, None for the default 
-            branch.
+        :param name: Name of the branch to destroy, None for the 
+            user selected branch or "" for the active branch.
+        :raise NotBranchError: When the branch does not exist
         """
         raise NotImplementedError(self.destroy_branch)
 
@@ -302,7 +303,7 @@ class ControlDir(ControlComponent):
     def _get_selected_branch(self):
         """Return the name of the branch selected by the user.
 
-        :return: Name of the branch selected by the user, or None.
+        :return: Name of the branch selected by the user, or "".
         """
         branch = self.root_transport.get_segment_parameters().get("branch")
         if branch is None:
@@ -778,7 +779,8 @@ class ControlDir(ControlComponent):
         return controldir._get_tree_branch()
 
     @classmethod
-    def open_containing_tree_or_branch(klass, location):
+    def open_containing_tree_or_branch(klass, location,
+            possible_transports=None):
         """Return the branch and working tree contained by a location.
 
         Returns (tree, branch, relpath).
@@ -787,7 +789,8 @@ class ControlDir(ControlComponent):
         raised
         relpath is the portion of the path that is contained by the branch.
         """
-        controldir, relpath = klass.open_containing(location)
+        controldir, relpath = klass.open_containing(location,
+            possible_transports=possible_transports)
         tree, branch = controldir._get_tree_branch()
         return tree, branch, relpath
 
