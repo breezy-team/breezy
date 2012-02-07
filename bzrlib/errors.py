@@ -710,6 +710,11 @@ class AlreadyBranchError(PathError):
     _fmt = 'Already a branch: "%(path)s".'
 
 
+class ParentBranchExists(AlreadyBranchError):
+
+    _fmt = 'Parent branch already exists: "%(path)s".'
+
+
 class BranchExistsWithoutWorkingTree(PathError):
 
     _fmt = 'Directory contains a branch, but no working tree \
@@ -1756,7 +1761,8 @@ class ParseConfigError(BzrError):
 
 class ConfigOptionValueError(BzrError):
 
-    _fmt = """Bad value "%(value)s" for option "%(name)s"."""
+    _fmt = ('Bad value "%(value)s" for option "%(name)s".\n'
+            'See ``bzr help %(name)s``')
 
     def __init__(self, name, value):
         BzrError.__init__(self, name=name, value=value)

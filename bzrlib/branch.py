@@ -1469,6 +1469,10 @@ class Branch(controldir.ControlComponent):
                 pass
             else:
                 raise errors.AlreadyControlDirError(t.base)
+            if checkout.control_transport.base == self.bzrdir.control_transport.base:
+                # When checking out to the same control directory,
+                # always create a lightweight checkout
+                lightweight = True
 
         if lightweight:
             from_branch = checkout.set_branch_reference(target_branch=self)

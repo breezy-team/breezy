@@ -565,7 +565,7 @@ class TestBzrDirGetBranches(TestRemote):
         a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         result = a_bzrdir.get_branches()
-        self.assertEquals(["", "foo"], result.keys())
+        self.assertEquals(set(["", "foo"]), set(result.keys()))
         self.assertEqual(
             [('call_expecting_body', 'BzrDir.get_branches', ('quack/',)),
              ('call', 'BzrDir.find_repositoryV3', ('quack/', )),
@@ -587,18 +587,6 @@ class TestBzrDirDestroyBranch(TestRemote):
         a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         a_bzrdir.destroy_branch()
-        self.assertFinished(client)
-
-    def test_destroy_named(self):
-        transport = self.get_transport('quack')
-        referenced = self.make_branch('referenced')
-        client = FakeClient(transport.base)
-        client.add_expected_call(
-            'BzrDir.destroy_branch', ('quack/', "foo"),
-            'success', ('ok',)),
-        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
-            _client=client)
-        a_bzrdir.destroy_branch("foo")
         self.assertFinished(client)
 
 
