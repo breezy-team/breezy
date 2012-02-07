@@ -2673,6 +2673,15 @@ affects the behavior of updating the dirstate file after we notice that
 a file has been touched.
 '''))
 option_registry.register(
+    Option('bugtracker', default=None,
+           help='''\
+Default bug tracker to use.
+
+This bug tracker will be used for example when marking bugs
+as fixed using ``bzr commit --fixes``, if no explicit
+bug tracker was specified.
+'''))
+option_registry.register(
     Option('check_signatures', default=CHECK_IF_POSSIBLE,
            from_unicode=signature_policy_from_unicode,
            help='''\
@@ -2897,7 +2906,6 @@ option_registry.register_lazy('ssl.ca_certs',
 
 option_registry.register_lazy('ssl.cert_reqs',
     'bzrlib.transport.http._urllib2_wrappers', 'opt_ssl_cert_reqs')
-
 
 
 class Section(object):

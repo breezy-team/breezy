@@ -628,7 +628,7 @@ altered in u2
             "Commit refused."],
             'commit -m add-b --fixes=123',
             working_dir='tree')
-        tree.branch.get_config().set_user_option("bugtracker", "lp")
+        tree.branch.get_config_stack().set("bugtracker", "lp")
         self.run_bzr('commit -m hello --fixes=234 tree/hello.txt')
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         self.assertEqual('https://launchpad.net/bugs/234 fixed',

@@ -3515,8 +3515,8 @@ class cmd_commit(Command):
             tokens = fixed_bug.split(':')
             if len(tokens) == 1:
                 if default_bugtracker is None:
-                    branch_config = branch.get_config()
-                    default_bugtracker = branch_config.get_user_option(
+                    branch_config = branch.get_config_stack()
+                    default_bugtracker = branch_config.get(
                         "bugtracker")
                 if default_bugtracker is None:
                     raise errors.BzrCommandError(gettext(
