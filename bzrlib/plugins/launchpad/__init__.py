@@ -54,6 +54,7 @@ from bzrlib.i18n import gettext
 from bzrlib import (
     branch as _mod_branch,
     bzrdir,
+    config as _mod_config,
     lazy_regex,
     # Since we are a built-in plugin we share the bzrlib version
     version_info,
@@ -72,9 +73,9 @@ from bzrlib.errors import (
     )
 from bzrlib.help_topics import topic_registry
 from bzrlib.option import (
-        Option,
-        ListOption,
-)
+    Option,
+    ListOption,
+    )
 
 
 class cmd_register_branch(Command):
@@ -507,11 +508,9 @@ def _check_is_up_to_date(the_branch):
     info = _get_package_branch_info(the_branch.base)
     if info is None:
         return
-    c = the_branch.get_config()
-    verbosity = c.get_user_option('launchpad.packaging_verbosity')
-    if verbosity is not None:
-        verbosity = verbosity.lower()
-    if verbosity == 'off':
+    c = the_branch.get_configs_stack()
+    verbosity = c.get('launchpad.packaging_verbosity')
+    if not verbosity:
         trace.mutter('not checking %s because verbosity is turned off'
                      % (the_branch.base,))
         return
@@ -577,3 +576,20 @@ For more information see http://help.launchpad.net/
 topic_registry.register('launchpad',
     _launchpad_help,
     'Using Bazaar with Launchpad.net')
+
+def packaging_verbosity_from_store(text):
+    if text.lower() == 'off':
+        return False
+    return True
+
+_mod_config.option_registry.register(
+    Option('launchpad.packaging_verbosity', default=None,
+          from_unicode=packaging_verbosity_from_store,
+          help="""\
+Whether to warn if a UDD package import branch is accessed that is out of date.
+
+Setting this option to 'off' will disable verbosity.
+"""))
+_mod_config.option_registry.register(
+    Option('launchpad_username', default=None,
+        help="The username to login with when conneting to Launchpad."))
