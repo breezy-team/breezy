@@ -508,7 +508,7 @@ def _check_is_up_to_date(the_branch):
     info = _get_package_branch_info(the_branch.base)
     if info is None:
         return
-    c = the_branch.get_configs_stack()
+    c = the_branch.get_config_stack()
     verbosity = c.get('launchpad.packaging_verbosity')
     if not verbosity:
         trace.mutter('not checking %s because verbosity is turned off'
@@ -577,19 +577,14 @@ topic_registry.register('launchpad',
     _launchpad_help,
     'Using Bazaar with Launchpad.net')
 
-def packaging_verbosity_from_store(text):
-    if text.lower() == 'off':
-        return False
-    return True
-
 _mod_config.option_registry.register(
-    Option('launchpad.packaging_verbosity', default=None,
-          from_unicode=packaging_verbosity_from_store,
+    _mod_config.Option('launchpad.packaging_verbosity', default=True,
+          from_unicode=_mod_config.bool_from_store,
           help="""\
 Whether to warn if a UDD package import branch is accessed that is out of date.
 
 Setting this option to 'off' will disable verbosity.
 """))
 _mod_config.option_registry.register(
-    Option('launchpad_username', default=None,
+    _mod_config.Option('launchpad_username', default=None,
         help="The username to login with when conneting to Launchpad."))
