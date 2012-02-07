@@ -211,7 +211,7 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
                         new_ie = ie.copy()
                         new_ie.revision = None
                         builder.record_entry_contents(new_ie, 
-                            [parent_tree.inventory],
+                            [parent_tree.root_inventory],
                             path, tree, 
                             (ie.kind, ie.text_size, ie.executable, ie.text_sha1))
                     builder.finish_inventory()

@@ -1974,7 +1974,7 @@ class InventoryWorkingTree(WorkingTree,
                 # parent tree from the repository.
                 self._cache_basis_inventory(leftmost_parent_id)
             else:
-                inv = leftmost_parent_tree.inventory
+                inv = leftmost_parent_tree.root_inventory
                 xml = self._create_basis_xml_from_inventory(
                                         leftmost_parent_id, inv)
                 self._write_basis_inventory(xml)
@@ -2084,7 +2084,7 @@ class InventoryWorkingTree(WorkingTree,
         return osutils.lexists(self.abspath(path))
 
     def has_or_had_id(self, file_id):
-        if file_id == self.inventory.root.file_id:
+        if file_id == self.root_inventory.root.file_id:
             return True
         inv, inv_file_id = self._unpack_file_id(file_id)
         return inv.has_id(inv_file_id)
@@ -2160,7 +2160,7 @@ class InventoryWorkingTree(WorkingTree,
                 _mod_revision.NULL_REVISION)
         else:
             rt = self.branch.repository.revision_tree(revision_ids[0])
-        self._write_inventory(rt.inventory)
+        self._write_inventory(rt.root_inventory)
         self.set_parent_ids(revision_ids)
 
     def flush(self):
@@ -2221,7 +2221,8 @@ class InventoryWorkingTree(WorkingTree,
         # should probably put it back with the previous ID.
         # the read and write working inventory should not occur in this
         # function - they should be part of lock_write and unlock.
-        inv = self.inventory
+        # FIXME: nested trees
+        inv = self.root_inventory
         for f, file_id, kind in zip(files, ids, kinds):
             if file_id is None:
                 inv.add_path(f, kind=kind)
@@ -2374,12 +2375,12 @@ class InventoryWorkingTree(WorkingTree,
         other_tree.lock_tree_write()
         try:
             new_parents = other_tree.get_parent_ids()
-            other_root = other_tree.inventory.root
+            other_root = other_tree.root_inventory.root
             other_root.parent_id = new_root_parent
             other_root.name = osutils.basename(other_tree_path)
-            self.inventory.add(other_root)
-            add_children(self.inventory, other_root)
-            self._write_inventory(self.inventory)
+            self.root_inventory.add(other_root)
+            add_children(self.root_inventory, other_root)
+            self._write_inventory(self.root_inventory)
             # normally we don't want to fetch whole repositories, but i think
             # here we really do want to consolidate the whole thing.
             for parent_id in other_tree.get_parent_ids():
@@ -2428,7 +2429,8 @@ class InventoryWorkingTree(WorkingTree,
             tree_bzrdir = branch_bzrdir
         wt = tree_bzrdir.create_workingtree(_mod_revision.NULL_REVISION)
         wt.set_parent_ids(self.get_parent_ids())
-        my_inv = self.inventory
+        # FIXME: Support nested trees
+        my_inv = self.root_inventory
         child_inv = inventory.Inventory(root_id=None)
         new_root = my_inv[file_id]
         my_inv.remove_recursive_id(file_id)
@@ -2455,7 +2457,7 @@ class InventoryWorkingTree(WorkingTree,
             raise errors.ObjectNotLocked(self)
 
         if from_dir is None and include_root is True:
-            yield ('', 'V', 'directory', self.get_root_id(), self.inventory.root)
+            yield ('', 'V', 'directory', self.get_root_id(), self.root_inventory.root)
         # Convert these into local objects to save lookup times
         pathjoin = osutils.pathjoin
         file_kind = self._kind
@@ -2474,7 +2476,7 @@ class InventoryWorkingTree(WorkingTree,
                 return
             from_dir_abspath = pathjoin(self.basedir, from_dir)
         else:
-            inv = self.inventory
+            inv = self.root_inventory
             from_dir_id = inv.root.file_id
             from_dir_abspath = self.basedir
         children = os.listdir(from_dir_abspath)
@@ -2603,6 +2605,8 @@ class InventoryWorkingTree(WorkingTree,
         rename_entries = []
         rename_tuples = []
 
+        invs_to_write = set()
+
         # check for deprecated use of signature
         if to_dir is None:
             raise TypeError('You must supply a target directory')
@@ -2699,7 +2703,7 @@ class InventoryWorkingTree(WorkingTree,
                 raise errors.BzrRenameFailedError(from_rel,to_rel,
                     errors.NotVersionedError(path=from_rel))
             # put entry back in the inventory so we can rename it
-            from_entry = basis_tree.inventory[from_id].copy()
+            from_entry = basis_tree.root_inventory[from_id].copy()
             from_inv.add(from_entry)
         else:
             from_inv, from_inv_id = self._unpack_file_id(from_id)
@@ -2756,7 +2760,8 @@ class InventoryWorkingTree(WorkingTree,
 
         Also does basic plausability tests.
         """
-        inv = self.inventory
+        # FIXME: Handling of nested trees
+        inv = self.root_inventory
 
         for rename_entry in rename_entries:
             # store to local variables for easier reference
@@ -2846,7 +2851,7 @@ class InventoryWorkingTree(WorkingTree,
                         " Error message is: %s" % e)
 
     def _move_entry(self, entry):
-        inv = self.inventory
+        inv = self.root_inventory
         from_rel_abs = self.abspath(entry.from_rel)
         to_rel_abs = self.abspath(entry.to_rel)
         if from_rel_abs == to_rel_abs:
@@ -2907,7 +2912,7 @@ class InventoryWorkingTree(WorkingTree,
         This is the same order used by 'osutils.walkdirs'.
         """
         ## TODO: Work from given directory downwards
-        for path, dir_entry in self.inventory.directories():
+        for path, dir_entry in self.root_inventory.directories():
             # mutter("search for unknowns in %r", path)
             dirabs = self.abspath(path)
             if not isdir(dirabs):

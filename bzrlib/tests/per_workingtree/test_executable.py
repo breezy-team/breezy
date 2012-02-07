@@ -58,8 +58,8 @@ class TestExecutable(TestCaseWithWorkingTree):
         tree.lock_read()
         if not ignore_inv:
             self.assertEqual(
-                [('', tree.inventory.root)],
-                list(tree.inventory.iter_entries()))
+                [('', tree.root_inventory.root)],
+                list(tree.root_inventory.iter_entries()))
         self.assertFalse(tree.has_id(self.a_id))
         self.assertFalse(tree.has_filename('a'))
         self.assertFalse(tree.has_id(self.b_id))
@@ -181,8 +181,8 @@ class TestExecutable(TestCaseWithWorkingTree):
             self.wt._is_executable_from_path_and_stat_from_basis
         rev_id1 = self.wt.commit('one')
         rev_tree1 = self.wt.branch.repository.revision_tree(rev_id1)
-        a_executable = rev_tree1.inventory[self.a_id].executable
-        b_executable = rev_tree1.inventory[self.b_id].executable
+        a_executable = rev_tree1.root_inventory[self.a_id].executable
+        b_executable = rev_tree1.root_inventory[self.b_id].executable
         self.assertIsNot(None, a_executable)
         self.assertTrue(a_executable)
         self.assertIsNot(None, b_executable)

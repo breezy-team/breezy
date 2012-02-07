@@ -687,7 +687,7 @@ class BundleTree(Tree):
         if new_path not in self.patches:
             # If the entry does not have a patch, then the
             # contents must be the same as in the base_tree
-            ie = self.base_tree.inventory[file_id]
+            ie = self.base_tree.root_inventory[file_id]
             if ie.text_size is None:
                 return ie.text_size, ie.text_sha1
             return int(ie.text_size), ie.text_sha1
@@ -701,7 +701,7 @@ class BundleTree(Tree):
         This need to be called before ever accessing self.inventory
         """
         from os.path import dirname, basename
-        base_inv = self.base_tree.inventory
+        base_inv = self.base_tree.root_inventory
         inv = Inventory(None, self.revision_id)
 
         def add_entry(file_id):
@@ -747,6 +747,8 @@ class BundleTree(Tree):
     # overloading, they use the function as it was defined
     # at that instant
     inventory = property(_get_inventory)
+
+    root_inventory = property(_get_inventory)
 
     def __iter__(self):
         for path, entry in self.inventory.iter_entries():

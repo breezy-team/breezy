@@ -2666,8 +2666,8 @@ class TestSmartServerRepositoryPack(tests.TestCaseWithMemoryTransport):
 class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
 
     def _get_serialized_inventory_delta(self, repository, base_revid, revid):
-        base_inv = repository.revision_tree(base_revid).inventory
-        inv = repository.revision_tree(revid).inventory
+        base_inv = repository.revision_tree(base_revid).root_inventory
+        inv = repository.revision_tree(revid).root_inventory
         inv_delta = inv._make_delta(base_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(True, False)
         return "".join(serializer.delta_to_lines(base_revid, revid, inv_delta))

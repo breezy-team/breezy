@@ -768,11 +768,18 @@ class InventoryTree(Tree):
             yield cur_path
         # all done.
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def _get_inventory(self):
         return self._inventory
 
     inventory = property(_get_inventory,
                          doc="Inventory of this Tree")
+
+    def _get_root_inventory(self):
+        return self._inventory
+
+    root_inventory = property(_get_root_inventory,
+        doc="Root inventory of this tree")
 
     def _unpack_file_id(self, file_id):
         """Find the inventory and inventory file id for a tree file id.
@@ -784,7 +791,7 @@ class InventoryTree(Tree):
             if len(file_id) != 1:
                 raise ValueError("nested trees not yet supported: %r" % file_id)
             file_id = file_id[0]
-        return self.inventory, file_id
+        return self.root_inventory, file_id
 
     @needs_read_lock
     def path2id(self, path):
@@ -797,7 +804,8 @@ class InventoryTree(Tree):
         :param path: Path to look up
         :return: tuple with inventory and inventory file id
         """
-        return self.inventory, self.inventory.path2id(path)
+        # FIXME: Support nested trees
+        return self.root_inventory, self.root_inventory.path2id(path)
 
     def id2path(self, file_id):
         """Return the path for a file id.
@@ -852,11 +860,12 @@ class InventoryTree(Tree):
             inventory_file_ids = []
             for tree_file_id in specific_file_ids:
                 inventory, inv_file_id = self._unpack_file_id(tree_file_id)
-                if not inventory is self.inventory: # for now
+                if not inventory is self.root_inventory: # for now
                     raise AssertionError("%r != %r" % (
-                        inventory, self.inventory))
+                        inventory, self.root_inventory))
                 inventory_file_ids.append(inv_file_id)
-        return self.inventory.iter_entries_by_dir(
+        # FIXME: Handle nested trees
+        return self.root_inventory.iter_entries_by_dir(
             specific_file_ids=inventory_file_ids, yield_parents=yield_parents)
 
     @deprecated_method(deprecated_in((2, 5, 0)))
@@ -1022,13 +1031,9 @@ class InterTree(InterObject):
             if (self.source.get_symlink_target(file_id) !=
                 self.target.get_symlink_target(file_id)):
                 changed_content = True
-            # XXX: Yes, the indentation below is wrong. But fixing it broke
-            # test_merge.TestMergerEntriesLCAOnDisk.
-            # test_nested_tree_subtree_renamed_and_modified. We'll wait for
-            # the fix from bzr.dev -- vila 2009026
-            elif source_kind == 'tree-reference':
-                if (self.source.get_reference_revision(file_id, source_path)
-                    != self.target.get_reference_revision(file_id, target_path)):
+        elif source_kind == 'tree-reference':
+            if (self.source.get_reference_revision(file_id, source_path)
+                != self.target.get_reference_revision(file_id, target_path)):
                     changed_content = True
         parent = (source_parent, target_parent)
         name = (source_name, target_name)
@@ -1249,7 +1254,7 @@ class InterTree(InterObject):
         :param file_id: The file_id to lookup.
         """
         try:
-            inventory = tree.inventory
+            inventory = tree.root_inventory
         except NotImplementedError:
             # No inventory available.
             try:
@@ -1480,7 +1485,7 @@ class MultiWalker(object):
             return (None, None)
         else:
             self._out_of_order_processed.add(file_id)
-            cur_ie = other_tree.inventory[file_id]
+            cur_ie = other_tree.root_inventory[file_id]
             return (cur_path, cur_ie)
 
     def iter_all(self):

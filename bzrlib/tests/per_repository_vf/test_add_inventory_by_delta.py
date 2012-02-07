@@ -92,8 +92,8 @@ class TestAddInventoryByDelta(TestCaseWithRepository):
         tree.basis_tree()
         revtree.lock_read()
         self.addCleanup(revtree.unlock)
-        old_inv = tree.branch.repository.revision_tree(revision.NULL_REVISION).inventory
-        new_inv = revtree.inventory
+        old_inv = tree.branch.repository.revision_tree(revision.NULL_REVISION).root_inventory
+        new_inv = revtree.root_inventory
         delta = self.make_inv_delta(old_inv, new_inv)
         repo_direct = self._get_repo_in_write_group('direct')
         add_validator = repo_direct.add_inventory(revid, new_inv, [])

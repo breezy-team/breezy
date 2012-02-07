@@ -940,8 +940,8 @@ class Merge3Merger(object):
         result = []
         walker = _mod_tree.MultiWalker(self.other_tree, self._lca_trees)
 
-        base_inventory = self.base_tree.inventory
-        this_inventory = self.this_tree.inventory
+        base_inventory = self.base_tree.root_inventory
+        this_inventory = self.this_tree.root_inventory
         for path, file_id, other_ie, lca_values in walker.iter_all():
             # Is this modified at all from any of the other trees?
             if other_ie is None:
@@ -1261,7 +1261,7 @@ class Merge3Merger(object):
     def merge_names(self, file_id):
         def get_entry(tree):
             if tree.has_id(file_id):
-                return tree.inventory[file_id]
+                return tree.root_inventory[file_id]
             else:
                 return None
         this_entry = get_entry(self.this_tree)
@@ -1940,7 +1940,7 @@ class MergeIntoMergeType(Merge3Merger):
 
     def _entries_to_incorporate(self):
         """Yields pairs of (inventory_entry, new_parent)."""
-        other_inv = self.other_tree.inventory
+        other_inv = self.other_tree.root_inventory
         subdir_id = other_inv.path2id(self._source_subpath)
         if subdir_id is None:
             # XXX: The error would be clearer if it gave the URL of the source

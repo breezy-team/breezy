@@ -608,13 +608,13 @@ class VersionedFileCommitBuilder(CommitBuilder):
         else:
             basis_tree = self.repository.revision_tree(
                 _mod_revision.NULL_REVISION)
-        basis_inv = basis_tree.inventory
+        basis_inv = basis_tree.root_inventory
         if len(self.parents) > 0:
             if basis_revision_id != self.parents[0] and not ghost_basis:
                 raise Exception(
                     "arbitrary basis parents not yet supported with merges")
             for revtree in revtrees[1:]:
-                for change in revtree.inventory._make_delta(basis_inv):
+                for change in revtree.root_inventory._make_delta(basis_inv):
                     if change[1] is None:
                         # Not present in this parent.
                         continue
@@ -1022,7 +1022,7 @@ class VersionedFileRepository(Repository):
             # return a new inventory, but as there is no revision tree cache in
             # repository this is safe for now - RBC 20081013
             if basis_inv is None:
-                basis_inv = basis_tree.inventory
+                basis_inv = basis_tree.root_inventory
             basis_inv.apply_delta(delta)
             basis_inv.revision_id = new_revision_id
             return (self.add_inventory(new_revision_id, basis_inv, parents),
@@ -1648,7 +1648,7 @@ class VersionedFileRepository(Repository):
                             try:
                                 inv = inventory_cache[parent_id]
                             except KeyError:
-                                inv = self.revision_tree(parent_id).inventory
+                                inv = self.revision_tree(parent_id).root_inventory
                                 inventory_cache[parent_id] = inv
                             try:
                                 parent_entry = inv[text_key[0]]
@@ -2442,7 +2442,7 @@ class StreamSource(object):
         invs_sent_so_far = set([_mod_revision.NULL_REVISION])
         inventory_cache = lru_cache.LRUCache(50)
         null_inventory = from_repo.revision_tree(
-            _mod_revision.NULL_REVISION).inventory
+            _mod_revision.NULL_REVISION).root_inventory
         # XXX: ideally the rich-root/tree-refs flags would be per-revision, not
         # per-repo (e.g.  streaming a non-rich-root revision out of a rich-root
         # repo back into a non-rich-root repo ought to be allowed)
@@ -2795,9 +2795,10 @@ class InterDifferingSerializer(InterVersionedFileRepository):
         """
         deltas = []
         # Generate deltas against each tree, to find the shortest.
+        # FIXME: Support nested trees
         texts_possibly_new_in_tree = set()
         for basis_id, basis_tree in possible_trees:
-            delta = tree.inventory._make_delta(basis_tree.inventory)
+            delta = tree.root_inventory._make_delta(basis_tree.root_inventory)
             for old_path, new_path, file_id, new_entry in delta:
                 if new_path is None:
                     # This file_id isn't present in the new rev, so we don't
@@ -2840,8 +2841,8 @@ class InterDifferingSerializer(InterVersionedFileRepository):
             parents_parents = [key[-1] for key in parents_parents_keys]
             basis_id = _mod_revision.NULL_REVISION
             basis_tree = self.source.revision_tree(basis_id)
-            delta = parent_tree.inventory._make_delta(
-                basis_tree.inventory)
+            delta = parent_tree.root_inventory._make_delta(
+                basis_tree.root_inventory)
             self.target.add_inventory_by_delta(
                 basis_id, delta, current_revision_id, parents_parents)
             cache[current_revision_id] = parent_tree
@@ -2906,7 +2907,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
                 kind = entry.kind
                 texts_possibly_new_in_tree.add((file_id, entry.revision))
             for basis_id, basis_tree in possible_trees:
-                basis_inv = basis_tree.inventory
+                basis_inv = basis_tree.root_inventory
                 for file_key in list(texts_possibly_new_in_tree):
                     file_id, file_revision = file_key
                     try:
@@ -3144,7 +3145,8 @@ def _install_revision(repository, rev, revision_tree, signature,
             parent_trees[p_id] = repository.revision_tree(
                                      _mod_revision.NULL_REVISION)
 
-    inv = revision_tree.inventory
+    # FIXME: Support nested trees
+    inv = revision_tree.root_inventory
     entries = inv.iter_entries()
     # backwards compatibility hack: skip the root id.
     if not repository.supports_rich_root():

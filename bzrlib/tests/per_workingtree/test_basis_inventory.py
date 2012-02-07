@@ -40,7 +40,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
 
         self.assertTrue(t._transport.has('basis-inventory-cache'))
 
-        basis_inv = t.basis_tree().inventory
+        basis_inv = t.basis_tree().root_inventory
         self.assertEquals('r1', basis_inv.revision_id)
 
         store_inv = b.repository.get_inventory('r1')

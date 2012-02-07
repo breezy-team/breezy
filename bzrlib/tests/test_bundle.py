@@ -75,6 +75,10 @@ class MockTree(object):
         self.root = InventoryDirectory(ROOT_ID, '', None)
 
     inventory = property(lambda x:x)
+    root_inventory = property(lambda x:x)
+
+    def get_root_id(self):
+        return self.root.file_id
 
     def get_root_id(self):
         return self.root.file_id

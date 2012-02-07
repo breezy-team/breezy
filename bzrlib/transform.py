@@ -2056,9 +2056,15 @@ class _PreviewTree(tree.InventoryTree):
         pass
 
     @property
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def inventory(self):
         """This Tree does not use inventory as its backing data."""
         raise NotImplementedError(_PreviewTree.inventory)
+
+    @property
+    def root_inventory(self):
+        """This Tree does not use inventory as its backing data."""
+        raise NotImplementedError(_PreviewTree.root_inventory)
 
     def get_root_id(self):
         return self._transform.final_file_id(self._transform.root)

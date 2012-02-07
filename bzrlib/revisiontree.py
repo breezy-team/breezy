@@ -141,7 +141,7 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
         # The only files returned by this are those from the version
         if from_dir is None:
             from_dir_id = None
-            inv = self.inventory
+            inv = self.root_inventory
         else:
             inv, from_dir_id = self._path2inv_file_id(from_dir)
             if from_dir_id is None:
@@ -165,8 +165,8 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
         return inv[inv_file_id].reference_revision
 
     def get_root_id(self):
-        if self.inventory.root:
-            return self.inventory.root.file_id
+        if self.root_inventory.root:
+            return self.root_inventory.root.file_id
 
     def kind(self, file_id):
         inv, inv_file_id = self._unpack_file_id(file_id)
@@ -252,8 +252,8 @@ class InterCHKRevisionTree(tree.InterTree):
             and isinstance(target, RevisionTree)):
             try:
                 # Only CHK inventories have id_to_entry attribute
-                source.inventory.id_to_entry
-                target.inventory.id_to_entry
+                source.root_inventory.id_to_entry
+                target.root_inventory.id_to_entry
                 return True
             except AttributeError:
                 pass
@@ -277,8 +277,9 @@ class InterCHKRevisionTree(tree.InterTree):
         # to CHKInventory.iter_changes and do a better job there -- vila
         # 20090304
         changed_file_ids = set()
-        for result in self.target.inventory.iter_changes(
-                self.source.inventory):
+        # FIXME: nested tree support
+        for result in self.target.root_inventory.iter_changes(
+                self.source.root_inventory):
             if specific_file_ids is not None:
                 file_id = result[0]
                 if file_id not in specific_file_ids:
@@ -300,8 +301,9 @@ class InterCHKRevisionTree(tree.InterTree):
             # required to.
             # Now walk the whole inventory, excluding the already yielded
             # file ids
+            # FIXME: Support nested trees
             changed_file_ids = set(changed_file_ids)
-            for relpath, entry in self.target.inventory.iter_entries():
+            for relpath, entry in self.target.root_inventory.iter_entries():
                 if (specific_file_ids is not None
                     and not entry.file_id in specific_file_ids):
                     continue
