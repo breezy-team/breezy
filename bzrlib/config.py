@@ -4007,11 +4007,6 @@ class BranchOnlyStack(_CompatibleStack):
         self.branch = branch
 
 
-# Use a an empty dict to initialize an empty configobj avoiding all
-# parsing and encoding checks
-_quoting_config = configobj.ConfigObj(
-    {}, encoding='utf-8', interpolation=False, list_values=True)
-
 class cmd_config(commands.Command):
     __doc__ = """Display, set or remove a configuration option.
 
