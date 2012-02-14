@@ -227,7 +227,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             raise AssertionError(kind[1])
         if (path[0] not in (None, "") and
             tree.has_id(parent[0]) and
-            tree.root_inventory[parent[0]].kind == "directory"):
+            tree.kind(parent[0]) == "directory"):
             # Removal
             new_trees[posixpath.dirname(path[0])] = parent[0]
 
@@ -528,8 +528,8 @@ class BazaarObjectStore(BaseObjectStore):
                 return self._lookup_revision_sha1(entry.reference_revision)
             else:
                 raise AssertionError("unknown entry kind '%s'" % entry.kind)
-        tree = directory_to_tree(bzr_tree.root_inventory[fileid], get_ie_sha1, unusual_modes,
-            self.mapping.BZR_DUMMY_FILE)
+        tree = directory_to_tree(bzr_tree.root_inventory[fileid], get_ie_sha1,
+                unusual_modes, self.mapping.BZR_DUMMY_FILE)
         if (bzr_tree.get_root_id() == fileid and
             self.mapping.BZR_FILE_IDS_FILE is not None):
             if tree is None:
