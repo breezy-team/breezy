@@ -57,13 +57,20 @@ from bzrlib.inventory import Inventory, ROOT_ID, entry_factory
 from bzrlib.lock import LogicalLockResult
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.lockdir import LockDir
-from bzrlib.mutabletree import needs_tree_write_lock
+from bzrlib.mutabletree import (
+    MutableTree,
+    needs_tree_write_lock,
+    )
 from bzrlib.osutils import (
     file_kind,
     isdir,
     pathjoin,
     realpath,
     safe_unicode,
+    )
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
     )
 from bzrlib.transport.local import LocalTransport
 from bzrlib.tree import (
@@ -252,8 +259,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
         :return: an integer. -1 means never save.
         """
-        # FIXME: We want a WorkingTreeStack here -- vila 20110812
-        conf = config.BranchStack(self.branch)
+        conf = self.get_config_stack()
         return conf.get('bzr.workingtree.worth_saving_limit')
 
     def filter_unversioned_files(self, paths):
@@ -412,7 +418,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 return link_or_sha1
         return None
 
-    def _get_inventory(self):
+    def _get_root_inventory(self):
         """Get the inventory for the tree. This is only valid within a lock."""
         if 'evil' in debug.debug_flags:
             trace.mutter_callsite(2,
@@ -423,8 +429,15 @@ class DirStateWorkingTree(InventoryWorkingTree):
         self._generate_inventory()
         return self._inventory
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
+    def _get_inventory(self):
+        return self.root_inventory
+
     inventory = property(_get_inventory,
                          doc="Inventory of this Tree")
+
+    root_inventory = property(_get_root_inventory,
+        "Root inventory of this tree")
 
     @needs_read_lock
     def get_parent_ids(self):
@@ -678,7 +691,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
         if self._inventory is not None:
             update_inventory = True
-            inv = self.inventory
+            inv = self.root_inventory
             to_dir_id = to_entry[0][2]
             to_dir_ie = inv[to_dir_id]
         else:
@@ -1033,7 +1046,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
         This is a meaningless operation for dirstate, but we obey it anyhow.
         """
-        return self.inventory
+        return self.root_inventory
 
     @needs_read_lock
     def revision_tree(self, revision_id):
@@ -1147,7 +1160,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 # _make_delta if we can't get the RevisionTree
                 pass
             else:
-                delta = rev_tree.inventory._make_delta(basis_tree.inventory)
+                delta = rev_tree.root_inventory._make_delta(
+                    basis_tree.root_inventory)
                 dirstate.update_basis_by_delta(delta, rev_id)
                 updated = True
         if not updated:
@@ -1324,7 +1338,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         # being created.
         self._inventory = None
         # generate a delta,
-        delta = inv._make_delta(self.inventory)
+        delta = inv._make_delta(self.root_inventory)
         # and apply it.
         self.apply_inventory_delta(delta)
         if had_inventory:
@@ -1350,7 +1364,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             base_tree = trees[0][1]
         state = self.current_dirstate()
         # We don't support ghosts yet
-        state.set_state_from_scratch(base_tree.inventory, trees, [])
+        state.set_state_from_scratch(base_tree.root_inventory, trees, [])
 
 
 class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
@@ -1544,6 +1558,8 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
                 transform.build_tree(basis, wt, accelerator_tree,
                                      hardlink=hardlink,
                                      delta_from_tree=delta_from_tree)
+                for hook in MutableTree.hooks['post_build_tree']:
+                    hook(wt)
             finally:
                 basis.unlock()
         finally:
@@ -1593,7 +1609,7 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
         """Overrideable method to get a bzrdir for testing."""
         # please test against something that will let us do tree references
         return bzrdir.format_registry.make_bzrdir(
-            'dirstate-with-subtree')
+            'development-subtree')
 
     _matchingbzrdir = property(__get_matchingbzrdir)
 
@@ -1867,21 +1883,24 @@ class DirStateRevisionTree(InventoryTree):
 
     @needs_read_lock
     def get_file_revision(self, file_id):
-        return self.inventory[file_id].revision
+        inv, inv_file_id = self._unpack_file_id(file_id)
+        return inv[inv_file_id].revision
 
     def get_file(self, file_id, path=None):
         return StringIO(self.get_file_text(file_id))
 
     def get_file_size(self, file_id):
         """See Tree.get_file_size"""
-        return self.inventory[file_id].text_size
+        inv, inv_file_id = self._unpack_file_id(file_id)
+        return inv[inv_file_id].text_size
 
     def get_file_text(self, file_id, path=None):
         _, content = list(self.iter_files_bytes([(file_id, None)]))[0]
         return ''.join(content)
 
     def get_reference_revision(self, file_id, path=None):
-        return self.inventory[file_id].reference_revision
+        inv, inv_file_id = self._unpack_file_id(file_id)
+        return inv[inv_file_id].reference_revision
 
     def iter_files_bytes(self, desired_files):
         """See Tree.iter_files_bytes.
@@ -1911,12 +1930,19 @@ class DirStateRevisionTree(InventoryTree):
         """Return the revision id for this tree."""
         return self._revision_id
 
-    def _get_inventory(self):
+    def _get_root_inventory(self):
         if self._inventory is not None:
             return self._inventory
         self._must_be_locked()
         self._generate_inventory()
         return self._inventory
+
+    root_inventory = property(_get_root_inventory,
+                         doc="Inventory of this Tree")
+
+    @deprecated_method(deprecated_in((2, 5, 0)))
+    def _get_inventory(self):
+        return self.root_inventory
 
     inventory = property(_get_inventory,
                          doc="Inventory of this Tree")
@@ -1941,10 +1967,10 @@ class DirStateRevisionTree(InventoryTree):
 
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
-        id = self.inventory.path2id(path)
-        if id is None:
+        inv, inv_file_id = self._path2inv_file_id(path)
+        if inv_file_id is None:
             return ('missing', None, None, None)
-        entry = self._inventory[id]
+        entry = inv[inv_file_id]
         kind = entry.kind
         if kind == 'file':
             return (kind, entry.text_size, entry.executable, entry.text_sha1)
@@ -1954,7 +1980,8 @@ class DirStateRevisionTree(InventoryTree):
             return (kind, None, None, None)
 
     def is_executable(self, file_id, path=None):
-        ie = self.inventory[file_id]
+        inv, inv_file_id = self._unpack_file_id(file_id)
+        ie = inv[inv_file_id]
         if ie.kind != "file":
             return False
         return ie.executable
@@ -1965,14 +1992,15 @@ class DirStateRevisionTree(InventoryTree):
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         # We use a standard implementation, because DirStateRevisionTree is
         # dealing with one of the parents of the current state
-        inv = self._get_inventory()
         if from_dir is None:
+            inv = self.root_inventory
             from_dir_id = None
         else:
-            from_dir_id = inv.path2id(from_dir)
+            inv, from_dir_id = self._path2inv_file_id(from_dir)
             if from_dir_id is None:
                 # Directory not versioned
                 return
+        # FIXME: Support nested trees
         entries = inv.iter_entries(from_dir=from_dir_id, recursive=recursive)
         if inv.root is not None and not include_root and from_dir is None:
             entries.next()
@@ -2028,7 +2056,7 @@ class DirStateRevisionTree(InventoryTree):
         # So for now, we just build up the parent inventory, and extract
         # it the same way RevisionTree does.
         _directory = 'directory'
-        inv = self._get_inventory()
+        inv = self._get_root_inventory()
         top_id = inv.path2id(prefix)
         if top_id is None:
             pending = []

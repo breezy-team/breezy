@@ -30,6 +30,7 @@ from bzrlib import (
     xml5,
     )
 from bzrlib.decorators import needs_read_lock
+from bzrlib.mutabletree import MutableTree
 from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import (
     WorkingTreeFormat,
@@ -104,7 +105,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
                          _bzrdir=a_bzrdir,
                          _control_files=branch.control_files)
         basis_tree = branch.repository.revision_tree(revision_id)
-        if basis_tree.inventory.root is not None:
+        if basis_tree.get_root_id() is not None:
             wt.set_root_id(basis_tree.get_root_id())
         # set the parent list and cache the basis tree.
         if _mod_revision.is_null(revision_id):
@@ -113,6 +114,8 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             parent_trees = [(revision_id, basis_tree)]
         wt.set_parent_trees(parent_trees)
         transform.build_tree(basis_tree, wt)
+        for hook in MutableTree.hooks['post_build_tree']:
+            hook(wt)
         return wt
 
     def __init__(self):

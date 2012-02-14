@@ -20,8 +20,11 @@ from __future__ import absolute_import
 
 import difflib
 
-from bzrlib import merge
-from bzrlib import debug
+from bzrlib import (
+    debug,
+    merge,
+    urlutils,
+    )
 from bzrlib.merge3 import Merge3
 from bzrlib.trace import mutter
 
@@ -71,7 +74,7 @@ class ChangeLogMerger(merge.ConfigurableFileMerger):
         :param params: A MergeHookParams describing the file to merge
         :param tree: a Tree, e.g. self.merger.this_tree.
         """
-        return tree.inventory[params.file_id].name
+        return urlutils.basename(tree.id2path(params.file_id))
 
     def merge_text(self, params):
         """Merge changelog changes.

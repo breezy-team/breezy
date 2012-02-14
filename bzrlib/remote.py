@@ -59,7 +59,7 @@ from bzrlib.revisiontree import InventoryRevisionTree
 from bzrlib.repository import RepositoryWriteLockResult, _LazyListJoin
 from bzrlib.serializer import format_registry as serializer_format_registry
 from bzrlib.trace import mutter, note, warning, log_exception_quietly
-from bzrlib.versionedfile import ChunkedContentFactory, FulltextContentFactory
+from bzrlib.versionedfile import FulltextContentFactory
 
 
 _DEFAULT_SEARCH_DEPTH = 100
@@ -112,6 +112,8 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
     """Format representing bzrdirs accessed via a smart server"""
 
     supports_workingtrees = False
+
+    colocated_branches = False
 
     def __init__(self):
         _mod_bzrdir.BzrDirMetaFormat1.__init__(self)
@@ -625,6 +627,10 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
     def create_branch(self, name=None, repository=None,
                       append_revisions_only=None):
+        if name is None:
+            name = self._get_selected_branch()
+        if name != "":
+            raise errors.NoColocatedBranchSupport(self)
         # as per meta1 formats - just delegate to the format object which may
         # be parameterised.
         real_branch = self._format.get_branch_format().initialize(self,
@@ -649,9 +655,13 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
     def destroy_branch(self, name=None):
         """See BzrDir.destroy_branch"""
+        if name is None:
+            name = self._get_selected_branch()
+        if name != "":
+            raise errors.NoColocatedBranchSupport(self)
         path = self._path_for_remote_call(self._client)
         try:
-            if name is not None:
+            if name != "":
                 args = (name, )
             else:
                 args = ()
@@ -677,10 +687,38 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         b = self.open_branch(name=name)
         return b._format
 
+    def get_branches(self, possible_transports=None, ignore_fallbacks=False):
+        path = self._path_for_remote_call(self._client)
+        try:
+            response, handler = self._call_expecting_body(
+                'BzrDir.get_branches', path)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_bzrdir.get_branches()
+        if response[0] != "success":
+            raise errors.UnexpectedSmartServerResponse(response)
+        body = bencode.bdecode(handler.read_body_bytes())
+        ret = {}
+        for (name, value) in body.iteritems():
+            ret[name] = self._open_branch(name, value[0], value[1],
+                possible_transports=possible_transports,
+                ignore_fallbacks=ignore_fallbacks)
+        return ret
+
+    def set_branch_reference(self, target_branch, name=None):
+        """See BzrDir.set_branch_reference()."""
+        if name is None:
+            name = self._get_selected_branch()
+        if name != "":
+            raise errors.NoColocatedBranchSupport(self)
+        self._ensure_real()
+        return self._real_bzrdir.set_branch_reference(target_branch, name=name)
+
     def get_branch_reference(self, name=None):
         """See BzrDir.get_branch_reference()."""
-        if name is not None:
-            # XXX JRV20100304: Support opening colocated branches
+        if name is None:
+            name = self._get_selected_branch()
+        if name != "":
             raise errors.NoColocatedBranchSupport(self)
         response = self._get_branch_reference()
         if response[0] == 'ref':
@@ -722,8 +760,28 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         """See BzrDir._get_tree_branch()."""
         return None, self.open_branch(name=name)
 
+    def _open_branch(self, name, kind, location_or_format,
+                     ignore_fallbacks=False, possible_transports=None):
+        if kind == 'ref':
+            # a branch reference, use the existing BranchReference logic.
+            format = BranchReferenceFormat()
+            return format.open(self, name=name, _found=True,
+                location=location_or_format, ignore_fallbacks=ignore_fallbacks,
+                possible_transports=possible_transports)
+        branch_format_name = location_or_format
+        if not branch_format_name:
+            branch_format_name = None
+        format = RemoteBranchFormat(network_name=branch_format_name)
+        return RemoteBranch(self, self.find_repository(), format=format,
+            setup_stacking=not ignore_fallbacks, name=name,
+            possible_transports=possible_transports)
+
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False, possible_transports=None):
+        if name is None:
+            name = self._get_selected_branch()
+        if name != "":
+            raise errors.NoColocatedBranchSupport(self)
         if unsupported:
             raise NotImplementedError('unsupported flag support not implemented yet.')
         if self._next_open_branch_result is not None:
@@ -732,19 +790,9 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             self._next_open_branch_result = None
             return result
         response = self._get_branch_reference()
-        if response[0] == 'ref':
-            # a branch reference, use the existing BranchReference logic.
-            format = BranchReferenceFormat()
-            return format.open(self, name=name, _found=True,
-                location=response[1], ignore_fallbacks=ignore_fallbacks,
-                possible_transports=possible_transports)
-        branch_format_name = response[1]
-        if not branch_format_name:
-            branch_format_name = None
-        format = RemoteBranchFormat(network_name=branch_format_name)
-        return RemoteBranch(self, self.find_repository(), format=format,
-            setup_stacking=not ignore_fallbacks, name=name,
-            possible_transports=possible_transports)
+        return self._open_branch(name, response[0], response[1],
+            possible_transports=possible_transports,
+            ignore_fallbacks=ignore_fallbacks)
 
     def _open_repo_v1(self, path):
         verb = 'BzrDir.find_repository'
@@ -3089,10 +3137,10 @@ class RemoteBranchFormat(branch.BranchFormat):
         if isinstance(a_bzrdir, RemoteBzrDir):
             a_bzrdir._ensure_real()
             result = self._custom_format.initialize(a_bzrdir._real_bzrdir,
-                name, append_revisions_only=append_revisions_only)
+                name=name, append_revisions_only=append_revisions_only)
         else:
             # We assume the bzrdir is parameterised; it may not be.
-            result = self._custom_format.initialize(a_bzrdir, name,
+            result = self._custom_format.initialize(a_bzrdir, name=name,
                 append_revisions_only=append_revisions_only)
         if (isinstance(a_bzrdir, RemoteBzrDir) and
             not isinstance(result, RemoteBranch)):
@@ -3102,6 +3150,8 @@ class RemoteBranchFormat(branch.BranchFormat):
 
     def initialize(self, a_bzrdir, name=None, repository=None,
                    append_revisions_only=None):
+        if name is None:
+            name = a_bzrdir._get_selected_branch()
         # 1) get the network name to use.
         if self._custom_format:
             network_name = self._custom_format.network_name()
@@ -3122,7 +3172,7 @@ class RemoteBranchFormat(branch.BranchFormat):
         # Creating on a remote bzr dir.
         # 2) try direct creation via RPC
         path = a_bzrdir._path_for_remote_call(a_bzrdir._client)
-        if name is not None:
+        if name != "":
             # XXX JRV20100304: Support creating colocated branches
             raise errors.NoColocatedBranchSupport(self)
         verb = 'BzrDir.create_branch'
@@ -3273,6 +3323,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         # will try to assign to self.tags, which is a property in this subclass.
         # And the parent's __init__ doesn't do much anyway.
         self.bzrdir = remote_bzrdir
+        self.name = name
         if _client is not None:
             self._client = _client
         else:

@@ -99,6 +99,9 @@ Format:
         branch: Branch format 5
     repository: Knit repository format 1
 
+Control directory:
+         1 branches
+
 In the working tree:
          0 unchanged
          0 modified
@@ -129,6 +132,9 @@ Format:
   working tree: Working tree format 3
         branch: Branch format 5
     repository: Knit repository format 1
+
+Control directory:
+         1 branches
 
 In the working tree:
          0 unchanged
@@ -184,6 +190,9 @@ Format:
         branch: Branch format 5
     repository: Knit repository format 1
 
+Control directory:
+         1 branches
+
 In the working tree:
          1 unchanged
          0 modified
@@ -230,6 +239,9 @@ Format:
         branch: %s
     repository: %s
 
+Control directory:
+         1 branches
+
 In the working tree:
          1 unchanged
          0 modified
@@ -273,6 +285,9 @@ Format:
         branch: Branch format 5
     repository: %s
 
+Control directory:
+         1 branches
+
 In the working tree:
          1 unchanged
          0 modified
@@ -315,6 +330,9 @@ Format:
   working tree: Working tree format 3
         branch: Branch format 5
     repository: Knit repository format 1
+
+Control directory:
+         1 branches
 
 In the working tree:
          1 unchanged
@@ -361,6 +379,9 @@ Format:
         branch: Branch format 5
     repository: Knit repository format 1
 
+Control directory:
+         1 branches
+
 In the working tree:
          1 unchanged
          0 modified
@@ -399,6 +420,9 @@ Format:
   working tree: Working tree format 3
         branch: Branch format 5
     repository: %s
+
+Control directory:
+         1 branches
 
 Branch is out of date: missing 1 revision.
 
@@ -439,6 +463,9 @@ Format:
         branch: Branch format 5
     repository: %s
 
+Control directory:
+         1 branches
+
 Branch is out of date: missing 1 revision.
 
 In the working tree:
@@ -477,6 +504,9 @@ Format:
   working tree: Working tree format 3
         branch: Branch format 5
     repository: Knit repository format 1
+
+Control directory:
+         1 branches
 
 Working tree is out of date: missing 1 revision.
 
@@ -517,6 +547,9 @@ Format:
         branch: %s
     repository: %s
 
+Control directory:
+         1 branches
+
 Branch history:
          0 revisions
 
@@ -545,6 +578,9 @@ Format:
        control: Meta directory format 1
     repository: %s
 
+Control directory:
+         0 branches
+
 Repository:
          0 revisions
 """ % ('repo', format.repository_format.get_format_description(),
@@ -566,6 +602,9 @@ Format:
        control: Meta directory format 1
         branch: %s
     repository: %s
+
+Control directory:
+         1 branches
 
 Branch history:
          0 revisions
@@ -611,6 +650,9 @@ Format:
         branch: %s
     repository: %s
 
+Control directory:
+         1 branches
+
 In the working tree:
          1 unchanged
          0 modified
@@ -648,6 +690,9 @@ Format:
   working tree: Working tree format 6
         branch: %s
     repository: %s
+
+Control directory:
+         1 branches
 
 Branch is out of date: missing 1 revision.
 
@@ -687,6 +732,9 @@ Format:
   working tree: Working tree format 6
         branch: %s
     repository: %s
+
+Control directory:
+         1 branches
 
 In the working tree:
          1 unchanged
@@ -730,6 +778,9 @@ Format:
         branch: %s
     repository: %s
 
+Control directory:
+         1 branches
+
 Working tree is out of date: missing 1 revision.
 
 In the working tree:
@@ -769,6 +820,9 @@ Format:
         branch: %s
     repository: %s
 
+Control directory:
+         1 branches
+
 Branch history:
          2 revisions
          0 days old
@@ -794,6 +848,9 @@ Format:
        control: Meta directory format 1
     repository: %s
 
+Control directory:
+         0 branches
+
 Repository:
          2 revisions
 """ % (format.repository_format.get_format_description(),
@@ -816,6 +873,9 @@ Location:
 Format:
        control: Meta directory format 1
     repository: %s
+
+Control directory:
+         0 branches
 
 Create working tree for new branches inside the repository.
 
@@ -844,6 +904,9 @@ Format:
   working tree: Working tree format 3
         branch: %s
     repository: %s
+
+Control directory:
+         1 branches
 
 In the working tree:
          0 unchanged
@@ -884,6 +947,9 @@ Format:
   working tree: Working tree format 3
         branch: %s
     repository: %s
+
+Control directory:
+         1 branches
 
 In the working tree:
          1 unchanged
@@ -926,6 +992,9 @@ Format:
         branch: %s
     repository: %s
 
+Control directory:
+         1 branches
+
 In the working tree:
          0 unchanged
          0 modified
@@ -965,6 +1034,9 @@ Format:
         branch: %s
     repository: %s
 
+Control directory:
+         1 branches
+
 In the working tree:
          1 unchanged
          0 modified
@@ -1000,6 +1072,9 @@ Format:
        control: Meta directory format 1
     repository: %s
 
+Control directory:
+         0 branches
+
 Create working tree for new branches inside the repository.
 
 Repository:
@@ -1026,6 +1101,9 @@ Format:
        control: Meta directory format 1
     repository: %s
 
+Control directory:
+         0 branches
+
 Create working tree for new branches inside the repository.
 
 Repository:
@@ -1050,6 +1128,9 @@ Format:
   working tree: Working tree format 3
         branch: %s
     repository: %s
+
+Control directory:
+         1 branches
 
 In the working tree:
          0 unchanged
@@ -1088,6 +1169,9 @@ Format:
        control: Meta directory format 1
     repository: %s
 
+Control directory:
+         0 branches
+
 Create working tree for new branches inside the repository.
 
 Repository:
@@ -1095,6 +1179,22 @@ Repository:
 more info
 """ % (format.repository_format.get_format_description(),
        ), out)
+        self.assertEqual('', err)
+
+    def test_info_unshared_repository_with_colocated_branches(self):
+        format = bzrdir.format_registry.make_bzrdir('development-colo')
+        transport = self.get_transport()
+
+        # Create unshared repository
+        repo = self.make_repository('repo', shared=False, format=format)
+        repo.set_make_working_trees(True)
+        repo.bzrdir.create_branch(name='foo')
+        out, err = self.run_bzr('info repo')
+        self.assertEqualDiff(
+"""Unshared repository with trees and colocated branches (format: development-colo)
+Location:
+  repository: repo
+""", out)
         self.assertEqual('', err)
 
     def assertCheckoutStatusOutput(self,
@@ -1211,6 +1311,9 @@ Format:
         branch: %s
     repository: %s
 %s
+Control directory:
+         1 branches
+
 In the working tree:
          0 unchanged
          0 modified
@@ -1256,8 +1359,7 @@ Repository:
         # Do a light checkout of the heavy one
         transport.mkdir('tree/lightcheckout')
         lco_dir = bzrdir.BzrDirMetaFormat1().initialize('tree/lightcheckout')
-        branch.BranchReferenceFormat().initialize(lco_dir,
-            target_branch=co_branch)
+        lco_dir.set_branch_reference(co_branch)
         lco_dir.create_workingtree()
         lco_tree = lco_dir.open_workingtree()
 
@@ -1387,6 +1489,9 @@ Format:
   working tree: Working tree format 6
         branch: Branch format 7
     repository: Repository format 2a - rich roots, group compression and chk inventories
+
+Control directory:
+         1 branches
 
 In the working tree:
          0 unchanged

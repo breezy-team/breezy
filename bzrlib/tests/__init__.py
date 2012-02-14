@@ -247,7 +247,7 @@ class ExtendedTestResult(testtools.TextTestResult):
     different types of display.
 
     When a test finishes, in whatever way, it calls one of the addSuccess,
-    addFailure or addError classes.  These in turn may redirect to a more
+    addFailure or addError methods.  These in turn may redirect to a more
     specific case for the special test results supported by our extended
     tests.
 
@@ -4002,6 +4002,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_http',
         'bzrlib.tests.test_http_response',
         'bzrlib.tests.test_https_ca_bundle',
+        'bzrlib.tests.test_https_urllib',
         'bzrlib.tests.test_i18n',
         'bzrlib.tests.test_identitymap',
         'bzrlib.tests.test_ignores',
@@ -4056,6 +4057,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_revisiontree',
         'bzrlib.tests.test_rio',
         'bzrlib.tests.test_rules',
+        'bzrlib.tests.test_url_policy_open',
         'bzrlib.tests.test_sampler',
         'bzrlib.tests.test_scenarios',
         'bzrlib.tests.test_script',

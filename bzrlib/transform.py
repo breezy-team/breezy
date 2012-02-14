@@ -22,6 +22,7 @@ from stat import S_ISREG, S_IEXEC
 import time
 
 from bzrlib import (
+    config as _mod_config,
     errors,
     lazy_import,
     registry,
@@ -47,9 +48,10 @@ from bzrlib.i18n import gettext
 """)
 from bzrlib.errors import (DuplicateKey, MalformedTransform,
                            ReusingTransform, CantMoveRoot,
-                           ExistingLimbo, ImmortalLimbo, NoFinalPath,
+                           ImmortalLimbo, NoFinalPath,
                            UnableCreateSymlink)
 from bzrlib.filters import filtered_output_bytes, ContentFilterContext
+from bzrlib.mutabletree import MutableTree
 from bzrlib.osutils import (
     delete_any,
     file_kind,
@@ -57,7 +59,6 @@ from bzrlib.osutils import (
     pathjoin,
     sha_file,
     splitpath,
-    supports_executable,
     )
 from bzrlib.progress import ProgressPhase
 from bzrlib.symbol_versioning import (
@@ -156,6 +157,8 @@ class TreeTransformBase(object):
         """
         if self._tree is None:
             return
+        for hook in MutableTree.hooks['post_transform']:
+            hook(self._tree, self)
         self._tree.unlock()
         self._tree = None
 
@@ -230,7 +233,7 @@ class TreeTransformBase(object):
         irrelevant.
 
         """
-        new_roots = [k for k, v in self._new_parent.iteritems() if v is
+        new_roots = [k for k, v in self._new_parent.iteritems() if v ==
                      ROOT_PARENT]
         if len(new_roots) < 1:
             return
@@ -626,7 +629,7 @@ class TreeTransformBase(object):
         for trans_id in self._new_parent:
             seen = set()
             parent_id = trans_id
-            while parent_id is not ROOT_PARENT:
+            while parent_id != ROOT_PARENT:
                 seen.add(parent_id)
                 try:
                     parent_id = self.final_parent(parent_id)
@@ -642,7 +645,7 @@ class TreeTransformBase(object):
         """If parent directories are versioned, children must be versioned."""
         conflicts = []
         for parent_id, children in by_parent.iteritems():
-            if parent_id is ROOT_PARENT:
+            if parent_id == ROOT_PARENT:
                 continue
             if self.final_file_id(parent_id) is not None:
                 continue
@@ -741,7 +744,7 @@ class TreeTransformBase(object):
         """Children must have a directory parent"""
         conflicts = []
         for parent_id, children in by_parent.iteritems():
-            if parent_id is ROOT_PARENT:
+            if parent_id == ROOT_PARENT:
                 continue
             no_children = True
             for child_id in children:
@@ -1403,21 +1406,8 @@ class DiskTreeTransform(TreeTransformBase):
         delete_any(self._limbo_name(trans_id))
 
     def new_orphan(self, trans_id, parent_id):
-        # FIXME: There is no tree config, so we use the branch one (it's weird
-        # to define it this way as orphaning can only occur in a working tree,
-        # but that's all we have (for now). It will find the option in
-        # locations.conf or bazaar.conf though) -- vila 20100916
-        conf = self._tree.branch.get_config()
-        conf_var_name = 'bzr.transform.orphan_policy'
-        orphan_policy = conf.get_user_option(conf_var_name)
-        default_policy = orphaning_registry.default_key
-        if orphan_policy is None:
-            orphan_policy = default_policy
-        if orphan_policy not in orphaning_registry:
-            trace.warning('%s (from %s) is not a known policy, defaulting '
-                'to %s' % (orphan_policy, conf_var_name, default_policy))
-            orphan_policy = default_policy
-        handle_orphan = orphaning_registry.get(orphan_policy)
+        conf = self._tree.get_config_stack()
+        handle_orphan = conf.get('bzr.transform.orphan_policy')
         handle_orphan(self, trans_id, parent_id)
 
 
@@ -1484,6 +1474,12 @@ orphaning_registry.register(
     'move', move_orphan,
     'Move orphans into the bzr-orphans directory.')
 orphaning_registry._set_default_key('conflict')
+
+
+opt_transform_orphan = _mod_config.RegistryOption(
+    'bzr.transform.orphan_policy', orphaning_registry,
+    help='Policy for orphaned files during transform operations.',
+    invalid='warning')
 
 
 class TreeTransform(DiskTreeTransform):
@@ -1722,6 +1718,8 @@ class TreeTransform(DiskTreeTransform):
             calculating one.
         :param _mover: Supply an alternate FileMover, for testing
         """
+        for hook in MutableTree.hooks['pre_transform']:
+            hook(self._tree, self)
         if not no_conflicts:
             self._check_malformed()
         child_pb = ui.ui_factory.nested_progress_bar()
@@ -2058,9 +2056,15 @@ class _PreviewTree(tree.InventoryTree):
         pass
 
     @property
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def inventory(self):
         """This Tree does not use inventory as its backing data."""
         raise NotImplementedError(_PreviewTree.inventory)
+
+    @property
+    def root_inventory(self):
+        """This Tree does not use inventory as its backing data."""
+        raise NotImplementedError(_PreviewTree.root_inventory)
 
     def get_root_id(self):
         return self._transform.final_file_id(self._transform.root)

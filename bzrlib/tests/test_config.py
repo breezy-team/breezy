@@ -35,6 +35,7 @@ from bzrlib import (
     mail_client,
     ui,
     urlutils,
+    registry as _mod_registry,
     remote,
     tests,
     trace,
@@ -575,6 +576,9 @@ class TestConfigPath(tests.TestCase):
 
     def test_config_dir(self):
         self.assertEqual(config.config_dir(), self.bzr_home)
+
+    def test_config_dir_is_unicode(self):
+        self.assertIsInstance(config.config_dir(), unicode)
 
     def test_config_filename(self):
         self.assertEqual(config.config_filename(),
@@ -1903,48 +1907,6 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
             location='http://example.com/specific')
         self.assertEqual(my_config.get_user_option('option'), 'exact')
 
-    def test_get_mail_client(self):
-        config = self.get_branch_config()
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.DefaultMail)
-
-        # Specific clients
-        config.set_user_option('mail_client', 'evolution')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.Evolution)
-
-        config.set_user_option('mail_client', 'kmail')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.KMail)
-
-        config.set_user_option('mail_client', 'mutt')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.Mutt)
-
-        config.set_user_option('mail_client', 'thunderbird')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.Thunderbird)
-
-        # Generic options
-        config.set_user_option('mail_client', 'default')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.DefaultMail)
-
-        config.set_user_option('mail_client', 'editor')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.Editor)
-
-        config.set_user_option('mail_client', 'mapi')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.MAPIClient)
-
-        config.set_user_option('mail_client', 'xdg-email')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.XDGEmail)
-
-        config.set_user_option('mail_client', 'firebird')
-        self.assertRaises(errors.UnknownMailClient, config.get_mail_client)
-
 
 class TestMailAddressExtraction(tests.TestCase):
 
@@ -2478,6 +2440,54 @@ class TestListOption(tests.TestCase, TestOptionConverterMixin):
         self.assertConverted([u'42'], opt, u'42')
         # A single string
         self.assertConverted([u'bar'], opt, u'bar')
+
+
+class TestRegistryOption(tests.TestCase, TestOptionConverterMixin):
+
+    def get_option(self, registry):
+        return config.RegistryOption('foo', registry,
+                help='A registry option.')
+
+    def test_convert_invalid(self):
+        registry = _mod_registry.Registry()
+        opt = self.get_option(registry)
+        self.assertConvertInvalid(opt, [1])
+        self.assertConvertInvalid(opt, u"notregistered")
+
+    def test_convert_valid(self):
+        registry = _mod_registry.Registry()
+        registry.register("someval", 1234)
+        opt = self.get_option(registry)
+        # Using a bare str() just in case
+        self.assertConverted(1234, opt, "someval")
+        self.assertConverted(1234, opt, u'someval')
+        self.assertConverted(None, opt, None)
+
+    def test_help(self):
+        registry = _mod_registry.Registry()
+        registry.register("someval", 1234, help="some option")
+        registry.register("dunno", 1234, help="some other option")
+        opt = self.get_option(registry)
+        self.assertEquals(
+            'A registry option.\n'
+            '\n'
+            'The following values are supported:\n'
+            ' dunno - some other option\n'
+            ' someval - some option\n',
+            opt.help)
+
+    def test_get_help_text(self):
+        registry = _mod_registry.Registry()
+        registry.register("someval", 1234, help="some option")
+        registry.register("dunno", 1234, help="some other option")
+        opt = self.get_option(registry)
+        self.assertEquals(
+            'A registry option.\n'
+            '\n'
+            'The following values are supported:\n'
+            ' dunno - some other option\n'
+            ' someval - some option\n',
+            opt.get_help_text())
 
 
 class TestOptionRegistry(tests.TestCase):
@@ -3366,8 +3376,7 @@ class TestLocationSection(tests.TestCase):
 
     def get_section(self, options, extra_path):
         section = config.Section('foo', options)
-        # We don't care about the length so we use '0'
-        return config.LocationSection(section, 0, extra_path)
+        return config.LocationSection(section, extra_path)
 
     def test_simple_option(self):
         section = self.get_section({'foo': 'bar'}, '')
@@ -3410,9 +3419,7 @@ section=/quux/quux
                            '/quux/quux'],
                           [section.id for _, section in store.get_sections()])
         matcher = config.LocationMatcher(store, '/foo/bar/quux')
-        sections = [section for s, section in matcher.get_sections()]
-        self.assertEquals([3, 2],
-                          [section.length for section in sections])
+        sections = [section for _, section in matcher.get_sections()]
         self.assertEquals(['/foo/bar', '/foo'],
                           [section.id for section in sections])
         self.assertEquals(['quux', 'bar/quux'],
@@ -3429,9 +3436,7 @@ section=/foo/bar
         self.assertEquals(['/foo', '/foo/bar'],
                           [section.id for _, section in store.get_sections()])
         matcher = config.LocationMatcher(store, '/foo/bar/baz')
-        sections = [section for s, section in matcher.get_sections()]
-        self.assertEquals([3, 2],
-                          [section.length for section in sections])
+        sections = [section for _, section in matcher.get_sections()]
         self.assertEquals(['/foo/bar', '/foo'],
                           [section.id for section in sections])
         self.assertEquals(['baz', 'bar/baz'],
@@ -3460,6 +3465,90 @@ foo:policy = appendpath
             expected_location = '/dir/subdir'
         matcher = config.LocationMatcher(store, expected_url)
         self.assertEquals(expected_location, matcher.location)
+
+
+class TestStartingPathMatcher(TestStore):
+
+    def setUp(self):
+        super(TestStartingPathMatcher, self).setUp()
+        # Any simple store is good enough
+        self.store = config.IniFileStore()
+
+    def assertSectionIDs(self, expected, location, content):
+        self.store._load_from_string(content)
+        matcher = config.StartingPathMatcher(self.store, location)
+        sections = list(matcher.get_sections())
+        self.assertLength(len(expected), sections)
+        self.assertEqual(expected, [section.id for _, section in sections])
+        return sections
+
+    def test_empty(self):
+        self.assertSectionIDs([], self.get_url(), '')
+
+    def test_url_vs_local_paths(self):
+        # The matcher location is an url and the section names are local paths
+        sections = self.assertSectionIDs(['/foo/bar', '/foo'],
+                                         'file:///foo/bar/baz', '''\
+[/foo]
+[/foo/bar]
+''')
+
+    def test_local_path_vs_url(self):
+        # The matcher location is a local path and the section names are urls
+        sections = self.assertSectionIDs(['file:///foo/bar', 'file:///foo'],
+                                         '/foo/bar/baz', '''\
+[file:///foo]
+[file:///foo/bar]
+''')
+
+
+    def test_no_name_section_included_when_present(self):
+        # Note that other tests will cover the case where the no-name section
+        # is empty and as such, not included.
+        sections = self.assertSectionIDs(['/foo/bar', '/foo', None],
+                                         '/foo/bar/baz', '''\
+option = defined so the no-name section exists
+[/foo]
+[/foo/bar]
+''')
+        self.assertEquals(['baz', 'bar/baz', '/foo/bar/baz'],
+                          [s.locals['relpath'] for _, s in sections])
+
+    def test_order_reversed(self):
+        self.assertSectionIDs(['/foo/bar', '/foo'], '/foo/bar/baz', '''\
+[/foo]
+[/foo/bar]
+''')
+
+    def test_unrelated_section_excluded(self):
+        self.assertSectionIDs(['/foo/bar', '/foo'], '/foo/bar/baz', '''\
+[/foo]
+[/foo/qux]
+[/foo/bar]
+''')
+
+    def test_glob_included(self):
+        sections = self.assertSectionIDs(['/foo/*/baz', '/foo/b*', '/foo'],
+                                         '/foo/bar/baz', '''\
+[/foo]
+[/foo/qux]
+[/foo/b*]
+[/foo/*/baz]
+''')
+        # Note that 'baz' as a relpath for /foo/b* is not fully correct, but
+        # nothing really is... as far using {relpath} to append it to something
+        # else, this seems good enough though.
+        self.assertEquals(['', 'baz', 'bar/baz'],
+                          [s.locals['relpath'] for _, s in sections])
+
+    def test_respect_order(self):
+        self.assertSectionIDs(['/foo', '/foo/b*', '/foo/*/baz'],
+                              '/foo/bar/baz', '''\
+[/foo/*/baz]
+[/foo/qux]
+[/foo/b*]
+[/foo]
+''')
 
 
 class TestNameMatcher(TestStore):
@@ -4792,3 +4881,56 @@ class EmailOptionTests(tests.TestCase):
         self.overrideEnv('BZR_EMAIL', None)
         self.overrideEnv('EMAIL', 'jelmer@samba.org')
         self.assertEquals('jelmer@debian.org', conf.get('email'))
+
+
+class MailClientOptionTests(tests.TestCase):
+
+    def test_default(self):
+        conf = config.MemoryStack('')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.DefaultMail)
+
+    def test_evolution(self):
+        conf = config.MemoryStack('mail_client=evolution')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.Evolution)
+
+    def test_kmail(self):
+        conf = config.MemoryStack('mail_client=kmail')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.KMail)
+
+    def test_mutt(self):
+        conf = config.MemoryStack('mail_client=mutt')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.Mutt)
+
+    def test_thunderbird(self):
+        conf = config.MemoryStack('mail_client=thunderbird')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.Thunderbird)
+
+    def test_explicit_default(self):
+        conf = config.MemoryStack('mail_client=default')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.DefaultMail)
+
+    def test_editor(self):
+        conf = config.MemoryStack('mail_client=editor')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.Editor)
+
+    def test_mapi(self):
+        conf = config.MemoryStack('mail_client=mapi')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.MAPIClient)
+
+    def test_xdg_email(self):
+        conf = config.MemoryStack('mail_client=xdg-email')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.XDGEmail)
+
+    def test_unknown(self):
+        conf = config.MemoryStack('mail_client=firebird')
+        self.assertRaises(errors.ConfigOptionValueError, conf.get,
+                'mail_client')

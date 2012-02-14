@@ -700,9 +700,19 @@ class NoSubmitBranch(PathError):
        self.path = urlutils.unescape_for_display(branch.base, 'ascii')
 
 
+class AlreadyControlDirError(PathError):
+
+    _fmt = 'A control directory already exists: "%(path)s".'
+
+
 class AlreadyBranchError(PathError):
 
     _fmt = 'Already a branch: "%(path)s".'
+
+
+class ParentBranchExists(AlreadyBranchError):
+
+    _fmt = 'Parent branch already exists: "%(path)s".'
 
 
 class BranchExistsWithoutWorkingTree(PathError):
@@ -1667,6 +1677,14 @@ class InvalidHttpResponse(TransportError):
         TransportError.__init__(self, msg, orig_error=orig_error)
 
 
+class CertificateError(TransportError):
+
+    _fmt = "Certificate error: %(error)s"
+
+    def __init__(self, error):
+        self.error = error
+
+
 class InvalidHttpRange(InvalidHttpResponse):
 
     _fmt = "Invalid http range %(range)r for %(path)s: %(msg)s"
@@ -1743,7 +1761,8 @@ class ParseConfigError(BzrError):
 
 class ConfigOptionValueError(BzrError):
 
-    _fmt = """Bad value "%(value)s" for option "%(name)s"."""
+    _fmt = ('Bad value "%(value)s" for option "%(name)s".\n'
+            'See ``bzr help %(name)s``')
 
     def __init__(self, name, value):
         BzrError.__init__(self, name=name, value=value)
@@ -2747,14 +2766,6 @@ class NoMessageSupplied(BzrError):
 class NoMailAddressSpecified(BzrError):
 
     _fmt = "No mail-to address (--mail-to) or output (-o) specified."
-
-
-class UnknownMailClient(BzrError):
-
-    _fmt = "Unknown mail client: %(mail_client)s"
-
-    def __init__(self, mail_client):
-        BzrError.__init__(self, mail_client=mail_client)
 
 
 class MailClientNotFound(BzrError):

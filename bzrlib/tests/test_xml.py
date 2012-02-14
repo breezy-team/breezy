@@ -414,12 +414,6 @@ class TestSerializer(TestCase):
         self.assertEqual('tree-root-321', inv2['nested-id'].parent_id)
         self.assertEqual('rev-outer', inv2['nested-id'].revision)
         self.assertEqual('rev-inner', inv2['nested-id'].reference_revision)
-        self.assertRaises(errors.UnsupportedInventoryKind,
-                          s_v6.read_inventory_from_string,
-                          txt.replace('format="7"', 'format="6"'))
-        self.assertRaises(errors.UnsupportedInventoryKind,
-                          s_v5.read_inventory_from_string,
-                          txt.replace('format="7"', 'format="5"'))
 
     def test_roundtrip_inventory_v8(self):
         inv = self.get_sample_inventory()

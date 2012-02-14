@@ -355,6 +355,7 @@ class BzrDir(controldir.ControlDir):
             location of this control directory.
         :param create_tree_if_local: If true, a working-tree will be created
             when working locally.
+        :return: The created control directory
         """
         operation = cleanup.OperationWithCleanups(self._sprout)
         return operation.run(url, revision_id=revision_id,
@@ -809,10 +810,51 @@ class BzrDirMeta1(BzrDir):
     present within a BzrDir.
     """
 
+    def _get_branch_path(self, name):
+        """Obtain the branch path to use.
+
+        This uses the API specified branch name first, and then falls back to
+        the branch name specified in the URL. If neither of those is specified,
+        it uses the default branch.
+
+        :param name: Optional branch name to use
+        :return: Relative path to branch
+        """
+        if name == "":
+            return 'branch'
+        return urlutils.join('branches', name.encode("utf-8"))
+
+    def _read_branch_list(self):
+        """Read the branch list.
+
+        :return: List of utf-8 encoded branch names.
+        """
+        try:
+            f = self.control_transport.get('branch-list')
+        except errors.NoSuchFile:
+            return []
+
+        ret = []
+        try:
+            for name in f:
+                ret.append(name.rstrip("\n"))
+        finally:
+            f.close()
+        return ret
+
+    def _write_branch_list(self, branches):
+        """Write out the branch list.
+
+        :param branches: List of utf-8 branch names to write
+        """
+        self.transport.put_bytes('branch-list',
+            "".join([name+"\n" for name in branches]))
+
     def __init__(self, _transport, _format):
         super(BzrDirMeta1, self).__init__(_transport, _format)
-        self.control_files = lockable_files.LockableFiles(self.control_transport,
-            self._format._lock_file_name, self._format._lock_class)
+        self.control_files = lockable_files.LockableFiles(
+            self.control_transport, self._format._lock_file_name,
+            self._format._lock_class)
 
     def can_convert_format(self):
         """See BzrDir.can_convert_format()."""
@@ -820,7 +862,7 @@ class BzrDirMeta1(BzrDir):
 
     def create_branch(self, name=None, repository=None,
             append_revisions_only=None):
-        """See BzrDir.create_branch."""
+        """See ControlDir.create_branch."""
         if name is None:
             name = self._get_selected_branch()
         return self._format.get_branch_format().initialize(self, name=name,
@@ -828,10 +870,26 @@ class BzrDirMeta1(BzrDir):
                 append_revisions_only=append_revisions_only)
 
     def destroy_branch(self, name=None):
-        """See BzrDir.create_branch."""
-        if name is not None:
-            raise errors.NoColocatedBranchSupport(self)
-        self.transport.delete_tree('branch')
+        """See ControlDir.destroy_branch."""
+        if name is None:
+            name = self._get_selected_branch()
+        path = self._get_branch_path(name)
+        if name != "":
+            self.control_files.lock_write()
+            try:
+                branches = self._read_branch_list()
+                try:
+                    branches.remove(name.encode("utf-8"))
+                except ValueError:
+                    raise errors.NotBranchError(name)
+                self._write_branch_list(branches)
+            finally:
+                self.control_files.unlock()
+        try:
+            self.transport.delete_tree(path)
+        except errors.NoSuchFile:
+            raise errors.NotBranchError(path=urlutils.join(self.transport.base,
+                path), bzrdir=self)
 
     def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
@@ -885,23 +943,49 @@ class BzrDirMeta1(BzrDir):
         format = BranchFormatMetadir.find_format(self, name=name)
         return format.get_reference(self, name=name)
 
+    def set_branch_reference(self, target_branch, name=None):
+        format = _mod_branch.BranchReferenceFormat()
+        return format.initialize(self, target_branch=target_branch, name=name)
+
     def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
-        if name is not None:
-            raise errors.NoColocatedBranchSupport(self)
+        if name is None:
+            name = self._get_selected_branch()
+        path = self._get_branch_path(name)
         # XXX: this shouldn't implicitly create the directory if it's just
         # promising to get a transport -- mbp 20090727
         if branch_format is None:
-            return self.transport.clone('branch')
+            return self.transport.clone(path)
         try:
             branch_format.get_format_string()
         except NotImplementedError:
             raise errors.IncompatibleFormat(branch_format, self._format)
+        if name != "":
+            branches = self._read_branch_list()
+            utf8_name = name.encode("utf-8")
+            if not utf8_name in branches:
+                self.control_files.lock_write()
+                try:
+                    branches = self._read_branch_list()
+                    dirname = urlutils.dirname(utf8_name)
+                    if dirname != "" and dirname in branches:
+                        raise errors.ParentBranchExists(name)
+                    child_branches = [
+                        b.startswith(utf8_name+"/") for b in branches]
+                    if any(child_branches):
+                        raise errors.AlreadyBranchError(name)
+                    branches.append(utf8_name)
+                    self._write_branch_list(branches)
+                finally:
+                    self.control_files.unlock()
+        branch_transport = self.transport.clone(path)
+        mode = self._get_mkdir_mode()
+        branch_transport.create_prefix(mode=mode)
         try:
-            self.transport.mkdir('branch', mode=self._get_mkdir_mode())
+            self.transport.mkdir(path, mode=mode)
         except errors.FileExists:
             pass
-        return self.transport.clone('branch')
+        return self.transport.clone(path)
 
     def get_repository_transport(self, repository_format):
         """See BzrDir.get_repository_transport()."""
@@ -930,6 +1014,19 @@ class BzrDirMeta1(BzrDir):
         except errors.FileExists:
             pass
         return self.transport.clone('checkout')
+
+    def get_branches(self):
+        """See ControlDir.get_branches."""
+        ret = {}
+        try:
+            ret[""] = self.open_branch(name="")
+        except (errors.NotBranchError, errors.NoRepositoryPresent):
+            pass
+
+        for name in self._read_branch_list():
+            ret[name] = self.open_branch(name=name.decode('utf-8'))
+
+        return ret
 
     def has_workingtree(self):
         """Tell if this bzrdir contains a working tree.
@@ -1002,117 +1099,6 @@ class BzrDirMeta1(BzrDir):
 
     def _get_config(self):
         return config.TransportConfig(self.transport, 'control.conf')
-
-
-class BzrDirMeta1Colo(BzrDirMeta1):
-    """BzrDirMeta1 with support for colocated branches.
-
-    This format is experimental, and will eventually be merged back into
-    BzrDirMeta1.
-    """
-
-    def _get_branch_path(self, name):
-        """Obtain the branch path to use.
-
-        This uses the API specified branch name first, and then falls back to
-        the branch name specified in the URL. If neither of those is specified,
-        it uses the default branch.
-
-        :param name: Optional branch name to use
-        :return: Relative path to branch
-        """
-        if name is None:
-            return 'branch'
-        return urlutils.join('branches', name.encode("utf-8"))
-
-    def _read_branch_list(self):
-        """Read the branch list.
-
-        :return: List of utf-8 encoded branch names.
-        """
-        try:
-            f = self.control_transport.get('branch-list')
-        except errors.NoSuchFile:
-            return []
-
-        ret = []
-        try:
-            for name in f:
-                ret.append(name.rstrip("\n"))
-        finally:
-            f.close()
-        return ret
-
-    def _write_branch_list(self, branches):
-        """Write out the branch list.
-
-        :param branches: List of utf-8 branch names to write
-        """
-        self.transport.put_bytes('branch-list',
-            "".join([name+"\n" for name in branches]))
-
-    def destroy_branch(self, name=None):
-        """See BzrDir.create_branch."""
-        if name is None:
-            name = self._get_selected_branch()
-        path = self._get_branch_path(name)
-        if name is not None:
-            self.control_files.lock_write()
-            try:
-                branches = self._read_branch_list()
-                try:
-                    branches.remove(name.encode("utf-8"))
-                except ValueError:
-                    raise errors.NotBranchError(name)
-                self._write_branch_list(branches)
-            finally:
-                self.control_files.unlock()
-        self.transport.delete_tree(path)
-
-    def get_branches(self):
-        """See ControlDir.get_branches."""
-        ret = {}
-        try:
-            ret[None] = self.open_branch()
-        except (errors.NotBranchError, errors.NoRepositoryPresent):
-            pass
-
-        for name in self._read_branch_list():
-            ret[name] = self.open_branch(name.decode('utf-8'))
-
-        return ret
-
-    def get_branch_transport(self, branch_format, name=None):
-        """See BzrDir.get_branch_transport()."""
-        path = self._get_branch_path(name)
-        # XXX: this shouldn't implicitly create the directory if it's just
-        # promising to get a transport -- mbp 20090727
-        if branch_format is None:
-            return self.transport.clone(path)
-        try:
-            branch_format.get_format_string()
-        except NotImplementedError:
-            raise errors.IncompatibleFormat(branch_format, self._format)
-        if name is not None:
-            try:
-                self.transport.mkdir('branches', mode=self._get_mkdir_mode())
-            except errors.FileExists:
-                pass
-            branches = self._read_branch_list()
-            utf8_name = name.encode("utf-8")
-            if not utf8_name in branches:
-                self.control_files.lock_write()
-                try:
-                    branches = self._read_branch_list()
-                    branches.append(utf8_name)
-                    self._write_branch_list(branches)
-                finally:
-                    self.control_files.unlock()
-        try:
-            self.transport.mkdir(path, mode=self._get_mkdir_mode())
-        except errors.FileExists:
-            pass
-        return self.transport.clone(path)
 
 
 class BzrFormat(object):
@@ -1465,10 +1451,13 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         # mode from the root directory
         temp_control = lockable_files.LockableFiles(transport,
                             '', lockable_files.TransportLock)
-        temp_control._transport.mkdir('.bzr',
-                                      # FIXME: RBC 20060121 don't peek under
-                                      # the covers
-                                      mode=temp_control._dir_mode)
+        try:
+            temp_control._transport.mkdir('.bzr',
+                # FIXME: RBC 20060121 don't peek under
+                # the covers
+                mode=temp_control._dir_mode)
+        except errors.FileExists:
+            raise errors.AlreadyControlDirError(transport.base)
         if sys.platform == 'win32' and isinstance(transport, local.LocalTransport):
             win32utils.set_file_attr_hidden(transport._abspath('.bzr'))
         file_mode = temp_control._file_mode
@@ -1560,7 +1549,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     fixed_components = False
 
-    colocated_branches = False
+    colocated_branches = True
 
     def __init__(self):
         BzrDirFormat.__init__(self)
@@ -1693,7 +1682,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
             return ConvertMetaToColo(format)
         if (type(self) is BzrDirMetaFormat1Colo and
             type(format) is BzrDirMetaFormat1):
-            return ConvertMetaRemoveColo(format)
+            return ConvertMetaToColo(format)
         if not isinstance(self, format.__class__):
             # converting away from metadir is not implemented
             raise NotImplementedError(self.get_converter)
@@ -1795,7 +1784,7 @@ class BzrDirMetaFormat1Colo(BzrDirMetaFormat1):
         # problems.
         format = BzrDirMetaFormat1Colo()
         self._supply_sub_formats_to(format)
-        return BzrDirMeta1Colo(transport, format)
+        return BzrDirMeta1(transport, format)
 
 
 BzrProber.formats.register(BzrDirMetaFormat1Colo.get_format_string(),
@@ -1897,12 +1886,12 @@ class ConvertMetaToColo(controldir.Converter):
         return BzrDir.open_from_transport(to_convert.root_transport)
 
 
-class ConvertMetaRemoveColo(controldir.Converter):
-    """Remove colocated branch support from a bzrdir."""
+class ConvertMetaToColo(controldir.Converter):
+    """Convert a 'development-colo' bzrdir to a '2a' bzrdir."""
 
     def __init__(self, target_format):
-        """Create a converter.that downgrades a colocated branch metadir
-        to a regular metadir.
+        """Create a converter that converts a 'development-colo' metadir
+        to a '2a' metadir.
 
         :param target_format: The final metadir format that is desired.
         """
@@ -1910,14 +1899,6 @@ class ConvertMetaRemoveColo(controldir.Converter):
 
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
-        to_convert.control_files.lock_write()
-        try:
-            branches = to_convert.list_branches()
-            if len(branches) > 1:
-                raise errors.BzrError("remove all but a single "
-                    "colocated branch when downgrading")
-        finally:
-            to_convert.control_files.unlock()
         to_convert.transport.put_bytes('branch-format',
             self.target_format.as_string())
         return BzrDir.open_from_transport(to_convert.root_transport)

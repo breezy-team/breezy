@@ -205,11 +205,13 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
                         rev.timezone, rev.committer, rev.properties,
                         new_revid)
                 try:
-                    for path, ie in tree.inventory.iter_entries():
+                    parent_tree = self.target.repository.revision_tree(
+                        parent_revid)
+                    for path, ie in tree.iter_entries_by_dir():
                         new_ie = ie.copy()
                         new_ie.revision = None
                         builder.record_entry_contents(new_ie, 
-                            [self.target.repository.revision_tree(parent_revid).inventory],
+                            [parent_tree.root_inventory],
                             path, tree, 
                             (ie.kind, ie.text_size, ie.executable, ie.text_sha1))
                     builder.finish_inventory()
@@ -240,6 +242,8 @@ class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):
 
     def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
             found_repository=None):
+        if name is None:
+            name = a_bzrdir._get_selected_branch()
         if not _found:
             raise NotImplementedError
         try:
@@ -251,7 +255,8 @@ class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):
             return DummyForeignVcsBranch(_format=self,
                               _control_files=control_files,
                               a_bzrdir=a_bzrdir,
-                              _repository=found_repository)
+                              _repository=found_repository,
+                              name=name)
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
 
@@ -317,7 +322,9 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
 
     def open_branch(self, name=None, unsupported=False, ignore_fallbacks=True,
             possible_transports=None):
-        if name is not None:
+        if name is None:
+            name = self._get_selected_branch()
+        if name != "":
             raise errors.NoColocatedBranchSupport(self)
         return self._format.get_branch_format().open(self, _found=True)
 
@@ -424,7 +431,7 @@ class WorkingTreeFileUpdateTests(tests.TestCaseWithTransport):
         foreign.update_workingtree_fileids(wt, target_basis)
         wt.lock_read()
         try:
-            self.assertEquals(set([root_id, "bla-b"]), set(wt.inventory))
+            self.assertEquals(set([root_id, "bla-b"]), set(wt.all_file_ids()))
         finally:
             wt.unlock()
 

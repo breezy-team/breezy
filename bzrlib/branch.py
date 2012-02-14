@@ -1457,19 +1457,34 @@ class Branch(controldir.ControlComponent):
         t = transport.get_transport(to_location)
         t.ensure_base()
         format = self._get_checkout_format(lightweight=lightweight)
-        if lightweight:
+        try:
             checkout = format.initialize_on_transport(t)
-            from_branch = BranchReferenceFormat().initialize(checkout, 
-                target_branch=self)
+        except errors.AlreadyControlDirError:
+            # It's fine if the control directory already exists,
+            # as long as there is no existing branch and working tree.
+            checkout = controldir.ControlDir.open_from_transport(t)
+            try:
+                checkout.open_branch()
+            except errors.NotBranchError:
+                pass
+            else:
+                raise errors.AlreadyControlDirError(t.base)
+            if checkout.control_transport.base == self.bzrdir.control_transport.base:
+                # When checking out to the same control directory,
+                # always create a lightweight checkout
+                lightweight = True
+
+        if lightweight:
+            from_branch = checkout.set_branch_reference(target_branch=self)
         else:
-            checkout_branch = controldir.ControlDir.create_branch_convenience(
-                to_location, force_new_tree=False, format=format)
-            checkout = checkout_branch.bzrdir
+            policy = checkout.determine_repository_policy()
+            repo = policy.acquire_repository()[0]
+            checkout_branch = checkout.create_branch()
             checkout_branch.bind(self)
             # pull up to the specified revision_id to set the initial
             # branch tip correctly, and seed it with history.
             checkout_branch.pull(self, stop_revision=revision_id)
-            from_branch=None
+            from_branch = None
         tree = checkout.create_workingtree(revision_id,
                                            from_branch=from_branch,
                                            accelerator_tree=accelerator_tree,
@@ -2038,6 +2053,8 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
         :param name: Name of colocated branch to create, if any
         :return: a branch in this format
         """
+        if name is None:
+            name = a_bzrdir._get_selected_branch()
         mutter('creating branch %r in %s', self, a_bzrdir.user_url)
         branch_transport = a_bzrdir.get_branch_transport(self, name=name)
         control_files = lockable_files.LockableFiles(branch_transport,
@@ -2060,6 +2077,8 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
     def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
             found_repository=None, possible_transports=None):
         """See BranchFormat.open()."""
+        if name is None:
+            name = a_bzrdir._get_selected_branch()
         if not _found:
             format = BranchFormatMetadir.find_format(a_bzrdir, name=name)
             if format.__class__ != self.__class__:
@@ -2305,12 +2324,13 @@ class BranchReferenceFormat(BranchFormatMetadir):
         mutter('creating branch reference in %s', a_bzrdir.user_url)
         if a_bzrdir._format.fixed_components:
             raise errors.IncompatibleFormat(self, a_bzrdir._format)
+        if name is None:
+            name = a_bzrdir._get_selected_branch()
         branch_transport = a_bzrdir.get_branch_transport(self, name=name)
         branch_transport.put_bytes('location',
             target_branch.user_url)
         branch_transport.put_bytes('format', self.as_string())
-        branch = self.open(
-            a_bzrdir, name, _found=True,
+        branch = self.open(a_bzrdir, name, _found=True,
             possible_transports=[target_branch.bzrdir.root_transport])
         self._run_post_branch_init_hooks(a_bzrdir, name, branch)
         return branch
@@ -2342,6 +2362,8 @@ class BranchReferenceFormat(BranchFormatMetadir):
             a_bzrdir.
         :param possible_transports: An optional reusable transports list.
         """
+        if name is None:
+            name = a_bzrdir._get_selected_branch()
         if not _found:
             format = BranchFormatMetadir.find_format(a_bzrdir, name=name)
             if format.__class__ != self.__class__:
@@ -2351,8 +2373,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
             location = self.get_reference(a_bzrdir, name)
         real_bzrdir = controldir.ControlDir.open(
             location, possible_transports=possible_transports)
-        result = real_bzrdir.open_branch(name=name, 
-            ignore_fallbacks=ignore_fallbacks,
+        result = real_bzrdir.open_branch(ignore_fallbacks=ignore_fallbacks,
             possible_transports=possible_transports)
         # this changes the behaviour of result.clone to create a new reference
         # rather than a copy of the content of the branch.
@@ -2445,10 +2466,11 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """Create new branch object at a particular location."""
         if a_bzrdir is None:
             raise ValueError('a_bzrdir must be supplied')
-        else:
-            self.bzrdir = a_bzrdir
+        if name is None:
+            raise ValueError('name must be supplied')
+        self.bzrdir = a_bzrdir
         self._user_transport = self.bzrdir.transport.clone('..')
-        if name is not None:
+        if name != "":
             self._user_transport.set_segment_parameter(
                 "branch", urlutils.escape(name))
         self._base = self._user_transport.base

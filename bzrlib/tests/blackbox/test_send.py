@@ -24,6 +24,7 @@ from bzrlib import (
     merge_directive,
     tests,
     )
+from bzrlib.controldir import ControlDir
 from bzrlib.bundle import serializer
 from bzrlib.transport import memory
 from bzrlib.tests import (
@@ -192,25 +193,26 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
 
     def test_mailto_option(self):
         b = branch.Branch.open('branch')
-        b.get_config().set_user_option('mail_client', 'editor')
+        b.get_config_stack().set('mail_client', 'editor')
         self.run_bzr_error(
             ('No mail-to address \\(--mail-to\\) or output \\(-o\\) specified',
             ), 'send -f branch')
-        b.get_config().set_user_option('mail_client', 'bogus')
+        b.get_config_stack().set('mail_client', 'bogus')
         self.run_send([])
-        self.run_bzr_error(('Unknown mail client: bogus',),
+        self.run_bzr_error(('Bad value "bogus" for option "mail_client"',),
                            'send -f branch --mail-to jrandom@example.org')
         b.get_config_stack().set('submit_to', 'jrandom@example.org')
-        self.run_bzr_error(('Unknown mail client: bogus',),
+        self.run_bzr_error(('Bad value "bogus" for option "mail_client"',),
                            'send -f branch')
 
     def test_mailto_child_option(self):
         """Make sure that child_submit_to is used."""
         b = branch.Branch.open('branch')
-        b.get_config().set_user_option('mail_client', 'bogus')
+        b.get_config_stack().set('mail_client', 'bogus')
         parent = branch.Branch.open('parent')
         parent.get_config_stack().set('child_submit_to', 'somebody@example.org')
-        self.run_bzr_error(('Unknown mail client: bogus',), 'send -f branch')
+        self.run_bzr_error(('Bad value "bogus" for option "mail_client"',),
+                'send -f branch')
 
     def test_format(self):
         md = self.get_MD(['--format=4'])
@@ -328,6 +330,10 @@ class TestSendStrictWithoutChanges(tests.TestCaseWithTransport,
     def setUp(self):
         super(TestSendStrictWithoutChanges, self).setUp()
         self.make_parent_and_local_branches()
+
+    def test_send_without_workingtree(self):
+        ControlDir.open("local").destroy_workingtree()
+        self.assertSendSucceeds([])
 
     def test_send_default(self):
         self.assertSendSucceeds([])

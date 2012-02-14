@@ -129,3 +129,20 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         self.assertTrue(len(out) > 0)
         self.assertContainsRe(out, r"(?m)^  Bazaar log file: " + bzr_log)
         self.assertPathDoesNotExist(default_log)
+
+    def test_unicode_bzr_log(self):
+        uni_val = u"\xa7"
+        enc = osutils.get_user_encoding()
+        try:
+            str_val = uni_val.encode(enc)
+        except UnicodeEncodeError:
+            self.skip("Test string %r unrepresentable in user encoding %s" % (
+                uni_val, enc))
+        self.overrideEnv('BZR_HOME', self.test_base_dir)
+        self.overrideEnv("BZR_LOG",
+            os.path.join(self.test_base_dir, uni_val).encode(enc))
+        out, err = self.run_bzr_subprocess("version")
+        uni_out = out.decode(enc)
+        self.assertContainsRe(uni_out, u"(?m)^  Bazaar log file: .*/\xa7$")
+
+

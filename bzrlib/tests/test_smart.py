@@ -28,6 +28,7 @@ import bz2
 import zlib
 
 from bzrlib import (
+    bencode,
     branch as _mod_branch,
     bzrdir,
     errors,
@@ -418,7 +419,7 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
         backing = self.get_transport()
         request = self._request_class(backing)
         result = self._make_repository_and_result(
-            format='dirstate-with-subtree')
+            format='development-subtree')
         # check the test will be valid
         self.assertEqual('yes', result.args[2])
         self.assertEqual('yes', result.args[3])
@@ -429,9 +430,9 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
         backing = self.get_transport()
         request = self._request_class(backing)
         result = self._make_repository_and_result(
-            format='dirstate-with-subtree')
+            format='development-subtree')
         # check the test will be valid
-        self.assertEqual('no', result.args[4])
+        self.assertEqual('yes', result.args[4])
         self.assertEqual(result, request.execute(''))
 
 
@@ -455,6 +456,32 @@ class TestSmartServerBzrDirRequestGetConfigFile(
         request_class = smart_dir.SmartServerBzrDirRequestConfigFile
         request = request_class(backing)
         expected = smart_req.SuccessfulSmartServerResponse((), '')
+        self.assertEqual(expected, request.execute(''))
+
+
+class TestSmartServerBzrDirRequestGetBranches(
+    tests.TestCaseWithMemoryTransport):
+    """Tests for BzrDir.get_branches."""
+
+    def test_simple(self):
+        backing = self.get_transport()
+        branch = self.make_branch('.')
+        request_class = smart_dir.SmartServerBzrDirRequestGetBranches
+        request = request_class(backing)
+        local_result = bencode.bencode(
+            {"": ("branch", branch._format.network_name())})
+        expected = smart_req.SuccessfulSmartServerResponse(
+            ("success", ), local_result)
+        self.assertEqual(expected, request.execute(''))
+
+    def test_empty(self):
+        backing = self.get_transport()
+        dir = self.make_bzrdir('.')
+        request_class = smart_dir.SmartServerBzrDirRequestGetBranches
+        request = request_class(backing)
+        local_result = bencode.bencode({})
+        expected = smart_req.SuccessfulSmartServerResponse(
+            ('success',), local_result)
         self.assertEqual(expected, request.execute(''))
 
 
@@ -485,7 +512,7 @@ class TestSmartServerRequestInitializeBzrDir(tests.TestCaseWithMemoryTransport):
         backing = self.get_transport()
         request = smart_dir.SmartServerRequestInitializeBzrDir(backing)
         self.make_bzrdir('subdir')
-        self.assertRaises(errors.FileExists,
+        self.assertRaises(errors.AlreadyControlDirError,
             request.execute, 'subdir')
 
 
@@ -2503,6 +2530,8 @@ class TestHandlers(tests.TestCase):
             smart_dir.SmartServerBzrDirRequestCheckoutMetaDir)
         self.assertHandlerEqual('BzrDir.cloning_metadir',
             smart_dir.SmartServerBzrDirRequestCloningMetaDir)
+        self.assertHandlerEqual('BzrDir.get_branches',
+            smart_dir.SmartServerBzrDirRequestGetBranches)
         self.assertHandlerEqual('BzrDir.get_config_file',
             smart_dir.SmartServerBzrDirRequestConfigFile)
         self.assertHandlerEqual('BzrDir.open_branch',
@@ -2640,8 +2669,8 @@ class TestSmartServerRepositoryPack(tests.TestCaseWithMemoryTransport):
 class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
 
     def _get_serialized_inventory_delta(self, repository, base_revid, revid):
-        base_inv = repository.revision_tree(base_revid).inventory
-        inv = repository.revision_tree(revid).inventory
+        base_inv = repository.revision_tree(base_revid).root_inventory
+        inv = repository.revision_tree(revid).root_inventory
         inv_delta = inv._make_delta(base_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(True, False)
         return "".join(serializer.delta_to_lines(base_revid, revid, inv_delta))

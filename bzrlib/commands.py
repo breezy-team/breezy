@@ -33,6 +33,7 @@ import threading
 
 import bzrlib
 from bzrlib import (
+    config,
     cleanup,
     cmdline,
     debug,
@@ -689,11 +690,15 @@ class Command(object):
         """
         class_run = self.run
         def run(*args, **kwargs):
+            for hook in Command.hooks['pre_command']:
+                hook(self)
             self._operation = cleanup.OperationWithCleanups(class_run)
             try:
                 return self._operation.run_simple(*args, **kwargs)
             finally:
                 del self._operation
+                for hook in Command.hooks['post_command']:
+                    hook(self)
         self.run = run
 
     def run(self):
@@ -787,6 +792,12 @@ class CommandHooks(Hooks):
             " is safe to mutate - e.g. to remove a command. "
             "list_commands should return the updated set of command names.",
             (1, 17))
+        self.add_hook('pre_command',
+            "Called prior to executing a command. Called with the command "
+            "object.", (2, 5))
+        self.add_hook('post_command',
+            "Called after executing a command. Called with the command "
+            "object.", (2, 5))
 
 Command.hooks = CommandHooks()
 
@@ -1071,7 +1082,13 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
             argv_copy.append(a)
         i += 1
 
-    bzrlib.global_state.cmdline_overrides._from_cmdline(override_config)
+    if bzrlib.global_state is None:
+        # FIXME: Workaround for users that imported bzrlib but didn't call
+        # bzrlib.initialize -- vila 2012-01-19
+        cmdline_overrides = config.CommandLineStore()
+    else:
+        cmdline_overrides = bzrlib.global_state.cmdline_overrides
+    cmdline_overrides._from_cmdline(override_config)
 
     debug.set_debug_flags_from_config()
 
@@ -1131,7 +1148,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
             trace.debug_memory('Process status after command:', short=False)
         option._verbosity_level = saved_verbosity_level
         # Reset the overrides 
-        bzrlib.global_state.cmdline_overrides._reset()
+        cmdline_overrides._reset()
 
 
 def display_command(func):

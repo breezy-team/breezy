@@ -408,7 +408,7 @@ class MutableInventoryTree(MutableTree, tree.InventoryTree):
         :seealso Inventory.apply_delta: For details on the changes parameter.
         """
         self.flush()
-        inv = self.inventory
+        inv = self.root_inventory
         inv.apply_delta(changes)
         self._write_inventory(inv)
 
@@ -520,7 +520,18 @@ class MutableTreeHooks(hooks.Hooks):
             "called with a bzrlib.mutabletree.PostCommitHookParams object. "
             "The mutable tree the commit was performed on is available via "
             "the mutable_tree attribute of that object.", (2, 0))
-
+        self.add_hook('pre_transform',
+            "Called before a tree transform on this tree. The hook is called "
+            "with the tree that is being transformed and the transform.",
+            (2, 5))
+        self.add_hook('post_build_tree',
+            "Called after a completely new tree is built. The hook is "
+            "called with the tree as its only argument.", (2, 5))
+        self.add_hook('post_transform',
+            "Called after a tree transform has been performed on a tree. "
+            "The hook is called with the tree that is being transformed and "
+            "the transform.",
+            (2, 5))
 
 # install the default hooks into the MutableTree class.
 MutableTree.hooks = MutableTreeHooks()
@@ -612,7 +623,7 @@ class _SmartAddHelper(object):
             # nb: this relies on someone else checking that the path we're using
             # doesn't contain symlinks.
             parent_ie = self._convert_to_directory(parent_ie, inv_dirname)
-        file_id = self.action(self.tree.inventory, parent_ie, path, kind)
+        file_id = self.action(self.tree, parent_ie, path, kind)
         entry = _mod_inventory.make_entry(kind, basename, parent_ie.file_id,
             file_id=file_id)
         self._invdelta[inv_path] = (None, inv_path, entry.file_id, entry)

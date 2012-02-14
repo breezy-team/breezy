@@ -35,7 +35,7 @@ class NonAsciiTest(TestCaseWithTransport):
         except UnicodeEncodeError:
             raise TestSkipped("filesystem can't accomodate nonascii names")
             return
-        file(pathjoin(br_dir, "a"), "w").write("hello")
+        with file(pathjoin(br_dir, "a"), "w") as f: f.write("hello")
         wt.add(["a"], ["a-id"])
 
 

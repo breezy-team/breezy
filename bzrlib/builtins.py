@@ -83,6 +83,94 @@ from bzrlib import (
     )
 
 
+def _get_branch_location(control_dir, possible_transports=None):
+    """Return location of branch for this control dir."""
+    try:
+        this_branch = control_dir.open_branch(
+            possible_transports=possible_transports)
+        # This may be a heavy checkout, where we want the master branch
+        master_location = this_branch.get_bound_location()
+        if master_location is not None:
+            return master_location
+        # If not, use a local sibling
+        return this_branch.base
+    except errors.NotBranchError:
+        format = control_dir.find_branch_format()
+        if getattr(format, 'get_reference', None) is not None:
+            return format.get_reference(control_dir)
+        else:
+            return control_dir.root_transport.base
+
+
+def _is_colocated(control_dir, possible_transports=None):
+    """Check if the branch in control_dir is colocated.
+
+    :param control_dir: Control directory
+    :return: Boolean indicating whether 
+    """
+    # This path is meant to be relative to the existing branch
+    this_url = _get_branch_location(control_dir,
+        possible_transports=possible_transports)
+    # Perhaps the target control dir supports colocated branches?
+    try:
+        root = controldir.ControlDir.open(this_url,
+            possible_transports=possible_transports)
+    except errors.NotBranchError:
+        return (False, this_url)
+    else:
+        try:
+            wt = control_dir.open_workingtree()
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            return (False, this_url)
+        else:
+            return (
+                root._format.colocated_branches and
+                control_dir.control_url == root.control_url,
+                this_url)
+
+
+def lookup_new_sibling_branch(control_dir, location, possible_transports=None):
+    """Lookup the location for a new sibling branch.
+
+    :param control_dir: Control directory relative to which to look up
+        the name.
+    :param location: Name of the new branch
+    :return: Full location to the new branch
+    """
+    location = directory_service.directories.dereference(location)
+    if '/' not in location and '\\' not in location:
+        (colocated, this_url) = _is_colocated(control_dir, possible_transports)
+
+        if colocated:
+            return urlutils.join_segment_parameters(this_url,
+                {"branch": urlutils.escape(location)})
+        else:
+            return urlutils.join(this_url, '..', urlutils.escape(location))
+    return location
+
+
+def lookup_sibling_branch(control_dir, location, possible_transports=None):
+    """Lookup sibling branch.
+    
+    :param control_dir: Control directory relative to which to lookup the
+        location.
+    :param location: Location to look up
+    :return: branch to open
+    """
+    try:
+        # Perhaps it's a colocated branch?
+        return control_dir.open_branch(location, 
+            possible_transports=possible_transports)
+    except (errors.NotBranchError, errors.NoColocatedBranchSupport):
+        try:
+            return Branch.open(location)
+        except errors.NotBranchError:
+            this_url = _get_branch_location(control_dir)
+            return Branch.open(
+                urlutils.join(
+                    this_url, '..', urlutils.escape(location)))
+
+
 @symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 3, 0)))
 def tree_files(file_list, default_branch=u'.', canonicalize=True,
     apply_view=True):
@@ -849,20 +937,20 @@ class cmd_inventory(Command):
             tree = work_tree
             extra_trees = []
 
+        self.add_cleanup(tree.lock_read().unlock)
         if file_list is not None:
             file_ids = tree.paths2ids(file_list, trees=extra_trees,
                                       require_versioned=True)
             # find_ids_across_trees may include some paths that don't
             # exist in 'tree'.
-            entries = sorted(
-                (tree.id2path(file_id), tree.inventory[file_id])
-                for file_id in file_ids if tree.has_id(file_id))
+            entries = tree.iter_entries_by_dir(specific_file_ids=file_ids)
         else:
-            entries = tree.inventory.entries()
+            entries = tree.iter_entries_by_dir()
 
-        self.cleanup_now()
-        for path, entry in entries:
+        for path, entry in sorted(entries):
             if kind and kind != entry.kind:
+                continue
+            if path == "":
                 continue
             if show_ids:
                 self.outf.write('%-50s %s\n' % (path, entry.file_id))
@@ -941,12 +1029,11 @@ class cmd_mv(Command):
                 and rel_names[0].lower() == rel_names[1].lower()):
                 into_existing = False
             else:
-                inv = tree.inventory
                 # 'fix' the case of a potential 'from'
                 from_id = tree.path2id(
                             tree.get_canonical_inventory_path(rel_names[0]))
                 if (not osutils.lexists(names_list[0]) and
-                    from_id and inv.get_file_kind(from_id) == "directory"):
+                    from_id and tree.stored_kind(from_id) == "directory"):
                     into_existing = False
         # move/rename
         if into_existing:
@@ -1350,7 +1437,7 @@ class cmd_branch(Command):
             revision_id = br_from.last_revision()
         if to_location is None:
             to_location = getattr(br_from, "name", None)
-            if to_location is None:
+            if not to_location:
                 to_location = urlutils.derive_to_location(from_location)
         to_transport = transport.get_transport(to_location)
         try:
@@ -1396,6 +1483,11 @@ class cmd_branch(Command):
                     from_location, revision)
                 raise errors.BzrCommandError(msg)
         else:
+            try:
+                to_repo = to_dir.open_repository()
+            except errors.NoRepositoryPresent:
+                to_repo = to_dir.create_repository()
+            to_repo.fetch(br_from.repository, revision_id=revision_id)
             branch = br_from.sprout(to_dir, revision_id=revision_id)
         _merge_tags_if_possible(br_from, branch)
         # If the source branch is stacked, the new branch may
@@ -1446,13 +1538,13 @@ class cmd_branches(Command):
         else:
             dir = controldir.ControlDir.open_containing(location)[0]
             try:
-                active_branch = dir.open_branch(name=None)
+                active_branch = dir.open_branch(name="")
             except errors.NotBranchError:
                 active_branch = None
             branches = dir.get_branches()
             names = {}
             for name, branch in branches.iteritems():
-                if name is None:
+                if name == "":
                     continue
                 active = (active_branch is not None and
                           active_branch.base == branch.base)
@@ -1558,10 +1650,10 @@ class cmd_renames(Command):
     def run(self, dir=u'.'):
         tree = WorkingTree.open_containing(dir)[0]
         self.add_cleanup(tree.lock_read().unlock)
-        new_inv = tree.inventory
+        new_inv = tree.root_inventory
         old_tree = tree.basis_tree()
         self.add_cleanup(old_tree.lock_read().unlock)
-        old_inv = old_tree.inventory
+        old_inv = old_tree.root_inventory
         renames = []
         iterator = tree.iter_changes(old_tree, include_unchanged=True)
         for f, paths, c, v, p, n, k, e in iterator:
@@ -2281,7 +2373,7 @@ class cmd_deleted(Command):
         self.add_cleanup(tree.lock_read().unlock)
         old = tree.basis_tree()
         self.add_cleanup(old.lock_read().unlock)
-        for path, ie in old.inventory.iter_entries():
+        for path, ie in old.iter_entries_by_dir():
             if not tree.has_id(ie.file_id):
                 self.outf.write(path)
                 if show_ids:
@@ -2325,14 +2417,13 @@ class cmd_added(Command):
         self.add_cleanup(wt.lock_read().unlock)
         basis = wt.basis_tree()
         self.add_cleanup(basis.lock_read().unlock)
-        basis_inv = basis.inventory
-        inv = wt.inventory
-        for file_id in inv:
-            if basis_inv.has_id(file_id):
+        root_id = wt.get_root_id()
+        for file_id in wt.all_file_ids():
+            if basis.has_id(file_id):
                 continue
-            if inv.is_root(file_id) and len(basis_inv) == 0:
+            if root_id == file_id:
                 continue
-            path = inv.id2path(file_id)
+            path = wt.id2path(file_id)
             if not os.access(osutils.pathjoin(wt.basedir, path), os.F_OK):
                 continue
             if null:
@@ -2700,7 +2791,7 @@ class cmd_log(Command):
             self.add_cleanup(b.lock_read().unlock)
             rev1, rev2 = _get_revision_range(revision, b, self.name())
 
-        if b.get_config().validate_signatures_in_log():
+        if b.get_config_stack().get('validate_signatures_in_log'):
             signatures = True
 
         if signatures:
@@ -3426,8 +3517,8 @@ class cmd_commit(Command):
             tokens = fixed_bug.split(':')
             if len(tokens) == 1:
                 if default_bugtracker is None:
-                    branch_config = branch.get_config()
-                    default_bugtracker = branch_config.get_user_option(
+                    branch_config = branch.get_config_stack()
+                    default_bugtracker = branch_config.get(
                         "bugtracker")
                 if default_bugtracker is None:
                     raise errors.BzrCommandError(gettext(
@@ -4172,7 +4263,7 @@ class cmd_merge(Command):
     Merge will do its best to combine the changes in two branches, but there
     are some kinds of problems only a human can fix.  When it encounters those,
     it will mark a conflict.  A conflict means that you need to fix something,
-    before you should commit.
+    before you can commit.
 
     Use bzr resolve when you have fixed a problem.  See also bzr conflicts.
 
@@ -4586,7 +4677,8 @@ class cmd_remerge(Command):
                 if tree.kind(file_id) != "directory":
                     continue
 
-                for name, ie in tree.inventory.iter_entries(file_id):
+                # FIXME: Support nested trees
+                for name, ie in tree.root_inventory.iter_entries(file_id):
                     interesting_ids.add(ie.file_id)
             new_conflicts = conflicts.select_conflicts(tree, file_list)[0]
         else:
@@ -6135,56 +6227,32 @@ class cmd_switch(Command):
         from bzrlib import switch
         tree_location = directory
         revision = _get_one_revision('switch', revision)
-        control_dir = controldir.ControlDir.open_containing(tree_location)[0]
+        possible_transports = []
+        control_dir = controldir.ControlDir.open_containing(tree_location,
+            possible_transports=possible_transports)[0]
         if to_location is None:
             if revision is None:
                 raise errors.BzrCommandError(gettext('You must supply either a'
                                              ' revision or a location'))
             to_location = tree_location
         try:
-            branch = control_dir.open_branch()
+            branch = control_dir.open_branch(
+                possible_transports=possible_transports)
             had_explicit_nick = branch.get_config().has_explicit_nickname()
         except errors.NotBranchError:
             branch = None
             had_explicit_nick = False
         if create_branch:
             if branch is None:
-                raise errors.BzrCommandError(gettext('cannot create branch without'
-                                             ' source branch'))
-            to_location = directory_service.directories.dereference(
-                              to_location)
-            if '/' not in to_location and '\\' not in to_location:
-                # This path is meant to be relative to the existing branch
-                this_url = self._get_branch_location(control_dir)
-                # Perhaps the target control dir supports colocated branches?
-                try:
-                    root = controldir.ControlDir.open(this_url,
-                        possible_transports=[control_dir.user_transport])
-                except errors.NotBranchError:
-                    colocated = False
-                else:
-                    colocated = root._format.colocated_branches
-                if colocated:
-                    to_location = urlutils.join_segment_parameters(this_url,
-                        {"branch": urlutils.escape(to_location)})
-                else:
-                    to_location = urlutils.join(
-                        this_url, '..', urlutils.escape(to_location))
+                raise errors.BzrCommandError(
+                    gettext('cannot create branch without source branch'))
+            to_location = lookup_new_sibling_branch(control_dir, to_location,
+                 possible_transports=possible_transports)
             to_branch = branch.bzrdir.sprout(to_location,
-                                 possible_transports=[branch.bzrdir.root_transport],
-                                 source_branch=branch).open_branch()
+                 possible_transports=possible_transports,
+                 source_branch=branch).open_branch()
         else:
-            # Perhaps it's a colocated branch?
-            try:
-                to_branch = control_dir.open_branch(to_location)
-            except (errors.NotBranchError, errors.NoColocatedBranchSupport):
-                try:
-                    to_branch = Branch.open(to_location)
-                except errors.NotBranchError:
-                    this_url = self._get_branch_location(control_dir)
-                    to_branch = Branch.open(
-                        urlutils.join(
-                            this_url, '..', urlutils.escape(to_location)))
+            to_branch = lookup_sibling_branch(control_dir, to_location)
         if revision is not None:
             revision = revision.as_revision_id(to_branch)
         switch.switch(control_dir, to_branch, force, revision_id=revision)
@@ -6194,22 +6262,6 @@ class cmd_switch(Command):
         note(gettext('Switched to branch: %s'),
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
 
-    def _get_branch_location(self, control_dir):
-        """Return location of branch for this control dir."""
-        try:
-            this_branch = control_dir.open_branch()
-            # This may be a heavy checkout, where we want the master branch
-            master_location = this_branch.get_bound_location()
-            if master_location is not None:
-                return master_location
-            # If not, use a local sibling
-            return this_branch.base
-        except errors.NotBranchError:
-            format = control_dir.find_branch_format()
-            if getattr(format, 'get_reference', None) is not None:
-                return format.get_reference(control_dir)
-            else:
-                return control_dir.root_transport.base
 
 
 class cmd_view(Command):
@@ -6408,8 +6460,8 @@ class cmd_remove_branch(Command):
     def run(self, location=None):
         if location is None:
             location = "."
-        branch = Branch.open_containing(location)[0]
-        branch.bzrdir.destroy_branch()
+        cdir = controldir.ControlDir.open_containing(location)[0]
+        cdir.destroy_branch()
 
 
 class cmd_shelve(Command):

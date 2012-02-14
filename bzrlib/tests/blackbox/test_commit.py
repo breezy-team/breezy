@@ -139,7 +139,7 @@ bzr: ERROR: No changes to commit.\
         self.requireFeature(features.UnicodeFilenameFeature)
         file_name = u'\N{euro sign}'
         self.run_bzr(['init'])
-        open(file_name, 'w').write('hello world')
+        with open(file_name, 'w') as f: f.write('hello world')
         self.run_bzr(['add'])
         out, err = self.run_bzr(['commit', '-m', file_name])
         reflags = re.MULTILINE|re.DOTALL|re.UNICODE
@@ -157,7 +157,7 @@ bzr: ERROR: No changes to commit.\
         try:
             osutils.get_terminal_encoding = lambda trace=None: 'ascii'
             file_name = u'foo\u1234'
-            open(file_name, 'w').write('hello world')
+            with open(file_name, 'w') as f: f.write('hello world')
             self.run_bzr(['add'])
             out, err = self.run_bzr(['commit', '-m', file_name])
             reflags = re.MULTILINE|re.DOTALL|re.UNICODE
@@ -628,7 +628,7 @@ altered in u2
             "Commit refused."],
             'commit -m add-b --fixes=123',
             working_dir='tree')
-        tree.branch.get_config().set_user_option("bugtracker", "lp")
+        tree.branch.get_config_stack().set("bugtracker", "lp")
         self.run_bzr('commit -m hello --fixes=234 tree/hello.txt')
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         self.assertEqual('https://launchpad.net/bugs/234 fixed',
@@ -859,12 +859,12 @@ altered in u2
         Regression test for bug 185211.
         """
         tree = self.make_branch_and_tree('.')
-        self.build_tree([u'abc\xc3/', u'abc\xc3/foo'])
+        self.build_tree([u'abc\xa7/', u'abc\xa7/foo'])
 
-        tree.add([u'abc\xc3/', u'abc\xc3/foo'])
+        tree.add([u'abc\xa7/', u'abc\xa7/foo'])
         tree.commit('checkin')
 
-        tree.rename_one(u'abc\xc3','abc')
+        tree.rename_one(u'abc\xa7','abc')
 
         self.run_bzr('ci -m "non-ascii mv"')
 
