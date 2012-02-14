@@ -78,7 +78,11 @@ class LRUTreeCache(object):
     def __init__(self, repository):
         def approx_tree_size(tree):
             # Very rough estimate, 250 per inventory entry
-            return len(tree.root_inventory) * 250
+            try:
+                inv = tree.root_inventory
+            except AttributeError:
+                inv = tree.inventory
+            return len(inv) * 250
         self.repository = repository
         self._cache = lru_cache.LRUSizeCache(max_size=MAX_TREE_CACHE_SIZE,
             after_cleanup_size=None, compute_size=approx_tree_size)
@@ -248,9 +252,9 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         items = new_trees.items()
         new_trees = {}
         for path, file_id in items:
-            parent_id = tree.root_inventory[file_id].parent_id
-            if parent_id is not None:
+            if path != "":
                 parent_path = urlutils.dirname(path)
+                parent_id = tree.path2id(parent_path)
                 new_trees[parent_path] = parent_id
             trees[path] = file_id
 
@@ -278,10 +282,15 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             else:
                 raise AssertionError
 
+    try:
+        inv = tree.root_inventory
+    except AttributeError:
+        inv = tree.inventory
+
     for path in sorted(trees.keys(), reverse=True):
         file_id = trees[path]
         assert tree.kind(file_id) == 'directory'
-        ie = tree.root_inventory[file_id]
+        ie = inv[file_id]
         obj = directory_to_tree(ie.children, ie_to_hexsha, unusual_modes,
             dummy_file_name, path == "")
         if obj is not None:
@@ -528,7 +537,11 @@ class BazaarObjectStore(BaseObjectStore):
                 return self._lookup_revision_sha1(entry.reference_revision)
             else:
                 raise AssertionError("unknown entry kind '%s'" % entry.kind)
-        tree = directory_to_tree(bzr_tree.root_inventory[fileid].children,
+        try:
+            inv = bzr_tree.root_inventory
+        except AttributeError:
+            inv = bzr_tree.inventory
+        tree = directory_to_tree(inv[fileid].children,
                 get_ie_sha1, unusual_modes, self.mapping.BZR_DUMMY_FILE,
                 bzr_tree.get_root_id() == fileid)
         if (bzr_tree.get_root_id() == fileid and
