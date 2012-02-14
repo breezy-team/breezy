@@ -311,37 +311,36 @@ class RoundtripRevisionsFromGit(tests.TestCase):
 class DirectoryToTreeTests(tests.TestCase):
 
     def test_empty(self):
-        ie = InventoryDirectory('foo', 'foo', 'foo')
-        t = directory_to_tree(ie, None, {}, None)
+        t = directory_to_tree({}, None, {}, None, allow_empty=False)
         self.assertEquals(None, t)
 
     def test_empty_dir(self):
-        ie = InventoryDirectory('foo', 'foo', 'foo')
         child_ie = InventoryDirectory('bar', 'bar', 'bar')
-        ie.children['bar'] = child_ie
-        t = directory_to_tree(ie, lambda x: None, {}, None)
+        children = {'bar': child_ie}
+        t = directory_to_tree(children, lambda x: None, {}, None,
+                allow_empty=False)
         self.assertEquals(None, t)
 
     def test_empty_dir_dummy_files(self):
-        ie = InventoryDirectory('foo', 'foo', 'foo')
         child_ie = InventoryDirectory('bar', 'bar', 'bar')
-        ie.children['bar'] = child_ie
-        t = directory_to_tree(ie, lambda x: None, {}, ".mydummy")
+        children = {'bar':child_ie}
+        t = directory_to_tree(children, lambda x: None, {}, ".mydummy",
+                allow_empty=False)
         self.assertTrue(".mydummy" in t)
 
     def test_empty_root(self):
-        ie = InventoryDirectory('foo', 'foo', None)
         child_ie = InventoryDirectory('bar', 'bar', 'bar')
-        ie.children['bar'] = child_ie
-        t = directory_to_tree(ie, lambda x: None, {}, None)
+        children = {'bar': child_ie}
+        t = directory_to_tree(children, lambda x: None, {}, None,
+                allow_empty=True)
         self.assertEquals(Tree(), t)
 
     def test_with_file(self):
-        ie = InventoryDirectory('foo', 'foo', 'foo')
         child_ie = InventoryFile('bar', 'bar', 'bar')
-        ie.children['bar'] = child_ie
+        children = {"bar": child_ie}
         b = Blob.from_string("bla")
-        t1 = directory_to_tree(ie, lambda x: b.id, {}, None)
+        t1 = directory_to_tree(children, lambda x: b.id, {}, None,
+                allow_empty=False)
         t2 = Tree()
         t2.add("bar", 0100644, b.id)
         self.assertEquals(t1, t2)

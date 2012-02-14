@@ -241,11 +241,11 @@ class BzrGitCacheFormat(object):
 class CacheUpdater(object):
     """Base class for objects that can update a bzr-git cache."""
 
-    def add_object(self, obj, ie, path):
+    def add_object(self, obj, bzr_key_data, path):
         """Add an object.
 
         :param obj: Object type ("commit", "blob" or "tree")
-        :param ie: Inventory entry (for blob/tree) or testament_sha in case
+        :param bzr_key_data: bzr key store data or testament_sha in case
             of commit
         :param path: Path of the object (optional)
         """
@@ -283,20 +283,20 @@ class DictCacheUpdater(CacheUpdater):
         self._commit = None
         self._entries = []
 
-    def add_object(self, obj, ie, path):
+    def add_object(self, obj, bzr_key_data, path):
         if obj.type_name == "commit":
             self._commit = obj
-            assert type(ie) is dict
+            assert type(bzr_key_data) is dict
             key = self.revid
-            type_data = (self.revid, self._commit.tree, ie)
+            type_data = (self.revid, self._commit.tree, bzr_key_data)
             self.cache.idmap._by_revid[self.revid] = obj.id
         elif obj.type_name in ("blob", "tree"):
-            if ie is not None:
+            if bzr_key_data is not None:
                 if obj.type_name == "blob":
-                    revision = ie.revision
+                    revision = bzr_key_data[1]
                 else:
                     revision = self.revid
-                key = type_data = (ie.file_id, revision)
+                key = type_data = (bzr_key_data[0], revision)
                 self.cache.idmap._by_fileid.setdefault(type_data[1], {})[type_data[0]] = obj.id
         else:
             raise AssertionError
@@ -350,17 +350,17 @@ class SqliteCacheUpdater(CacheUpdater):
         self._trees = []
         self._blobs = []
 
-    def add_object(self, obj, ie, path):
+    def add_object(self, obj, bzr_key_data, path):
         if obj.type_name == "commit":
             self._commit = obj
-            self._testament3_sha1 = ie.get("testament3-sha1")
-            assert type(ie) is dict
+            assert type(bzr_key_data) is dict
+            self._testament3_sha1 = bzr_key_data.get("testament3-sha1")
         elif obj.type_name == "tree":
-            if ie is not None:
-                self._trees.append((obj.id, ie.file_id, self.revid))
+            if bzr_key_data is not None:
+                self._trees.append((obj.id, bzr_key_data[0], self.revid))
         elif obj.type_name == "blob":
-            if ie is not None:
-                self._blobs.append((obj.id, ie.file_id, ie.revision))
+            if bzr_key_data is not None:
+                self._blobs.append((obj.id, bzr_key_data[0], bzr_key_data[1]))
         else:
             raise AssertionError
 
@@ -513,26 +513,27 @@ class TdbCacheUpdater(CacheUpdater):
         self._commit = None
         self._entries = []
 
-    def add_object(self, obj, ie, path):
+    def add_object(self, obj, bzr_key_data, path):
         sha = obj.sha().digest()
         if obj.type_name == "commit":
             self.db["commit\0" + self.revid] = "\0".join((sha, obj.tree))
-            assert type(ie) is dict, "was %r" % ie
+            assert type(bzr_key_data) is dict, "was %r" % bzr_key_data
             type_data = (self.revid, obj.tree)
             try:
-                type_data += (ie["testament3-sha1"],)
+                type_data += (bzr_key_data["testament3-sha1"],)
             except KeyError:
                 pass
             self._commit = obj
         elif obj.type_name == "blob":
-            if ie is None:
+            if bzr_key_data is None:
                 return
-            self.db["\0".join(("blob", ie.file_id, ie.revision))] = sha
-            type_data = (ie.file_id, ie.revision)
+            self.db["\0".join(("blob", bzr_key_data[0], bzr_key_data[1]))] = sha
+            type_data = bzr_key_data
         elif obj.type_name == "tree":
-            if ie is None:
+            if bzr_key_data is None:
                 return
-            type_data = (ie.file_id, self.revid)
+            (file_id, ) = bzr_key_data
+            type_data = (file_id, self.revid)
         else:
             raise AssertionError
         entry = "\0".join((obj.type_name, ) + type_data) + "\n"
@@ -721,24 +722,22 @@ class IndexCacheUpdater(CacheUpdater):
         self._entries = []
         self._cache_objs = set()
 
-    def add_object(self, obj, ie, path):
+    def add_object(self, obj, bzr_key_data, path):
         if obj.type_name == "commit":
             self._commit = obj
-            assert type(ie) is dict
+            assert type(bzr_key_data) is dict
             self.cache.idmap._add_git_sha(obj.id, "commit",
-                (self.revid, obj.tree, ie))
+                (self.revid, obj.tree, bzr_key_data))
             self.cache.idmap._add_node(("commit", self.revid, "X"),
                 " ".join((obj.id, obj.tree)))
             self._cache_objs.add((obj, path))
         elif obj.type_name == "blob":
-            self.cache.idmap._add_git_sha(obj.id, "blob",
-                (ie.file_id, ie.revision))
-            self.cache.idmap._add_node(("blob", ie.file_id, ie.revision), obj.id)
-            if ie.kind == "symlink":
-                self._cache_objs.add((obj, path))
+            self.cache.idmap._add_git_sha(obj.id, "blob", bzr_key_data)
+            self.cache.idmap._add_node(("blob", bzr_key_data[0],
+                bzr_key_data[1]), obj.id)
         elif obj.type_name == "tree":
             self.cache.idmap._add_git_sha(obj.id, "tree",
-                (ie.file_id, self.revid))
+                (bzr_key_data[0], self.revid))
             self._cache_objs.add((obj, path))
         else:
             raise AssertionError

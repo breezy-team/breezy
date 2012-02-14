@@ -95,9 +95,7 @@ class TestGitShaMap:
         updater.add_object(self._get_test_commit(), { "testament3-sha1": "Test" }, None)
         b = Blob()
         b.data = "TEH BLOB"
-        ie = InventoryFile("myfileid", "somename", ROOT_ID)
-        ie.revision = "myrevid"
-        updater.add_object(b, ie, None)
+        updater.add_object(b, ("myfileid", "myrevid"), None)
         updater.finish()
         self.map.commit_write_group()
         self.assertEquals(
@@ -113,9 +111,7 @@ class TestGitShaMap:
             "testament3-sha1": "mytestamentsha" }, None)
         t = Tree()
         t.add("somename", stat.S_IFREG, Blob().id)
-        ie = InventoryDirectory("fileid", "myname", ROOT_ID)
-        ie.revision = "irrelevant"
-        updater.add_object(t, ie, "")
+        updater.add_object(t, ("fileid", ), "")
         updater.finish()
         self.map.commit_write_group()
         self.assertEquals([("tree", ("fileid", "myrevid"))],

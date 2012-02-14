@@ -204,5 +204,6 @@ class TreeToObjectsTests(TestCaseWithTransport):
 
     def test_no_changes(self):
         tree = self.make_branch_and_tree('.')
+        self.addCleanup(tree.lock_read().unlock)
         entries = list(_tree_to_objects(tree, [tree], self.idmap, {}))
         self.assertEquals([], entries)
