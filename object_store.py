@@ -270,8 +270,8 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             elif ie.kind == "directory":
                 # Not all cache backends store the tree information, 
                 # calculate again from scratch
-                ret = directory_to_tree(ie, ie_to_hexsha, unusual_modes,
-                    dummy_file_name)
+                ret = directory_to_tree(ie.children, ie_to_hexsha,
+                    unusual_modes, dummy_file_name, ie.parent_id is not None)
                 if ret is None:
                     return ret
                 return ret.id
@@ -280,10 +280,10 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
 
     for path in sorted(trees.keys(), reverse=True):
         file_id = trees[path]
+        assert tree.kind(file_id) == 'directory'
         ie = tree.root_inventory[file_id]
-        assert ie.kind == "directory"
-        obj = directory_to_tree(ie, ie_to_hexsha, unusual_modes,
-            dummy_file_name)
+        obj = directory_to_tree(ie.children, ie_to_hexsha, unusual_modes,
+            dummy_file_name, path == "")
         if obj is not None:
             yield path, obj, (file_id, )
             shamap[file_id] = obj.id
@@ -528,8 +528,9 @@ class BazaarObjectStore(BaseObjectStore):
                 return self._lookup_revision_sha1(entry.reference_revision)
             else:
                 raise AssertionError("unknown entry kind '%s'" % entry.kind)
-        tree = directory_to_tree(bzr_tree.root_inventory[fileid], get_ie_sha1,
-                unusual_modes, self.mapping.BZR_DUMMY_FILE)
+        tree = directory_to_tree(bzr_tree.root_inventory[fileid].children,
+                get_ie_sha1, unusual_modes, self.mapping.BZR_DUMMY_FILE,
+                bzr_tree.get_root_id() == fileid)
         if (bzr_tree.get_root_id() == fileid and
             self.mapping.BZR_FILE_IDS_FILE is not None):
             if tree is None:

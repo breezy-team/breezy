@@ -545,10 +545,11 @@ def entry_mode(entry):
     return object_mode(entry.kind, entry.executable)
 
 
-def directory_to_tree(entry, lookup_ie_sha1, unusual_modes, empty_file_name):
+def directory_to_tree(children, lookup_ie_sha1, unusual_modes, empty_file_name,
+                      allow_empty=False):
     """Create a Git Tree object from a Bazaar directory.
 
-    :param entry: Inventory entry
+    :param children: Children inventory entries
     :param lookup_ie_sha1: Lookup the Git SHA1 for a inventory entry
     :param unusual_modes: Dictionary with unusual file modes by file ids
     :param empty_file_name: Name to use for dummy files in empty directories,
@@ -556,8 +557,8 @@ def directory_to_tree(entry, lookup_ie_sha1, unusual_modes, empty_file_name):
     """
     from dulwich.objects import Blob, Tree
     tree = Tree()
-    for name, value in entry.children.iteritems():
-        ie = entry.children[name]
+    for name, value in children.iteritems():
+        ie = children[name]
         try:
             mode = unusual_modes[ie.file_id]
         except KeyError:
@@ -565,7 +566,7 @@ def directory_to_tree(entry, lookup_ie_sha1, unusual_modes, empty_file_name):
         hexsha = lookup_ie_sha1(ie)
         if hexsha is not None:
             tree.add(name.encode("utf-8"), mode, hexsha)
-    if entry.parent_id is not None and len(tree) == 0:
+    if not allow_empty and len(tree) == 0:
         # Only the root can be an empty tree
         if empty_file_name is not None:
             tree.add(empty_file_name, stat.S_IFREG | 0644, Blob().id)
