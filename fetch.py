@@ -175,7 +175,7 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
     new_path = path.decode("utf-8")
     invdelta.append((old_path, new_path, file_id, ie))
     if base_hexsha != hexsha:
-        store_updater.add_object(blob, ie, path)
+        store_updater.add_object(blob, (ie.file_id, ie.revision), path)
     return invdelta
 
 
@@ -319,7 +319,7 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
     if base_tree is not None and type(base_tree) is Tree:
         invdelta.extend(remove_disappeared_children(base_inv, old_path,
             base_tree, existing_children, lookup_object))
-    store_updater.add_object(tree, ie, path)
+    store_updater.add_object(tree, (file_id, ), path)
     return invdelta, child_modes
 
 

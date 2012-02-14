@@ -221,7 +221,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                 try:
                     find_unchanged_parent_ie(file_id, kind[1], target, other_parent_trees)
                 except KeyError:
-                    yield path[1], blob, tree.root_inventory[file_id]
+                    yield path[1], blob, (file_id, tree.get_file_revision(file_id, path[1]))
             new_trees[posixpath.dirname(path[1])] = parent[1]
         elif kind[1] not in (None, "directory"):
             raise AssertionError(kind[1])
@@ -236,7 +236,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         [(file_id, (path, file_id)) for (path, file_id) in new_blobs]):
         obj = Blob()
         obj.chunked = chunks
-        yield path, obj, tree.root_inventory[file_id]
+        yield path, obj, (file_id, tree.get_file_revision(file_id, path))
         shamap[file_id] = obj.id
 
     for path in unusual_modes:
@@ -279,13 +279,14 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                 raise AssertionError
 
     for path in sorted(trees.keys(), reverse=True):
-        ie = tree.root_inventory[trees[path]]
+        file_id = trees[path]
+        ie = tree.root_inventory[file_id]
         assert ie.kind == "directory"
         obj = directory_to_tree(ie, ie_to_hexsha, unusual_modes,
             dummy_file_name)
         if obj is not None:
-            yield path, obj, ie
-            shamap[ie.file_id] = obj.id
+            yield path, obj, (file_id, )
+            shamap[file_id] = obj.id
 
 
 class PackTupleIterable(object):
@@ -420,14 +421,14 @@ class BazaarObjectStore(BaseObjectStore):
         parent_trees = self.tree_cache.revision_trees(
             [p for p in rev.parent_ids if p in present_parents])
         root_tree = None
-        for path, obj, ie in _tree_to_objects(tree, parent_trees,
+        for path, obj, bzr_key_data in _tree_to_objects(tree, parent_trees,
                 self._cache.idmap, unusual_modes, self.mapping.BZR_DUMMY_FILE):
             if path == "":
                 root_tree = obj
-                root_ie = ie
+                root_key_data = bzr_key_data
                 # Don't yield just yet
             else:
-                yield path, obj, ie
+                yield path, obj, bzr_key_data
         if root_tree is None:
             # Pointless commit - get the tree sha elsewhere
             if not rev.parent_ids:
@@ -435,14 +436,14 @@ class BazaarObjectStore(BaseObjectStore):
             else:
                 base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
                 root_tree = self[self[base_sha1].tree]
-            root_ie = tree.root_inventory.root
+            root_key_data = (tree.get_root_id(), )
         if not lossy and self.mapping.BZR_FILE_IDS_FILE is not None:
             b = self._create_fileid_map_blob(tree)
             if b is not None:
                 root_tree[self.mapping.BZR_FILE_IDS_FILE] = (
                     (stat.S_IFREG | 0644), b.id)
                 yield self.mapping.BZR_FILE_IDS_FILE, b, None
-        yield "", root_tree, root_ie
+        yield "", root_tree, root_key_data
         if not lossy:
             testament3 = StrictTestament3(rev, tree)
             verifiers = { "testament3-sha1": testament3.as_sha1() }
