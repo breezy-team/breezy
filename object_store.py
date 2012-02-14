@@ -77,8 +77,8 @@ class LRUTreeCache(object):
 
     def __init__(self, repository):
         def approx_tree_size(tree):
-            # Very rough estimate, 1k per inventory entry
-            return len(tree.inventory) * 1024
+            # Very rough estimate, 250 per inventory entry
+            return len(tree.root_inventory) * 250
         self.repository = repository
         self._cache = lru_cache.LRUSizeCache(max_size=MAX_TREE_CACHE_SIZE,
             after_cleanup_size=None, compute_size=approx_tree_size)
@@ -175,67 +175,69 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
     except IndexError:
         base_tree = tree._repository.revision_tree(NULL_REVISION)
         other_parent_trees = []
-    def find_unchanged_parent_ie(ie, parent_trees):
-        assert ie.kind in ("symlink", "file")
+    def find_unchanged_parent_ie(file_id, kind, other, parent_trees):
         for ptree in parent_trees:
             try:
-                pie = ptree.inventory[ie.file_id]
+                pkind = ptree.kind(file_id)
             except errors.NoSuchId:
                 pass
             else:
-                if (pie.text_sha1 == ie.text_sha1 and
-                    pie.kind == ie.kind and
-                    pie.symlink_target == ie.symlink_target):
-                    return pie
+                if kind == "file":
+                    if (pkind == "file" and 
+                        ptree.get_file_sha1(file_id) == other):
+                        return pie
+                if kind == "symlink":
+                    if (pkind == "symlink" and
+                        ptree.get_symlink_target(file_id) == other):
+                        return pie
         raise KeyError
 
     # Find all the changed blobs
     for (file_id, path, changed_content, versioned, parent, name, kind,
          executable) in tree.iter_changes(base_tree):
         if kind[1] == "file":
-            ie = tree.inventory[file_id]
             if changed_content:
                 try:
-                    pie = find_unchanged_parent_ie(ie, other_parent_trees)
+                    pie = find_unchanged_parent_ie(file_id, kind[1], tree.get_file_sha1(file_id), other_parent_trees)
                 except KeyError:
                     pass
                 else:
                     try:
-                        shamap[ie.file_id] = idmap.lookup_blob_id(
+                        shamap[file_id] = idmap.lookup_blob_id(
                             pie.file_id, pie.revision)
                     except KeyError:
                         # no-change merge ?
                         blob = Blob()
-                        blob.data = tree.get_file_text(ie.file_id)
-                        shamap[ie.file_id] = blob.id
+                        blob.data = tree.get_file_text(file_id)
+                        shamap[file_id] = blob.id
             if not file_id in shamap:
-                new_blobs.append((path[1], ie))
+                new_blobs.append((path[1], file_id))
             new_trees[posixpath.dirname(path[1])] = parent[1]
         elif kind[1] == "symlink":
-            ie = tree.inventory[file_id]
             if changed_content:
-                blob = symlink_to_blob(ie)
+                target = tree.get_symlink_target(file_id)
+                blob = symlink_to_blob(target)
                 shamap[file_id] = blob.id
                 try:
-                    find_unchanged_parent_ie(ie, other_parent_trees)
+                    find_unchanged_parent_ie(file_id, kind[1], target, other_parent_trees)
                 except KeyError:
-                    yield path[1], blob, ie
+                    yield path[1], blob, tree.root_inventory[file_id]
             new_trees[posixpath.dirname(path[1])] = parent[1]
         elif kind[1] not in (None, "directory"):
             raise AssertionError(kind[1])
         if (path[0] not in (None, "") and
             tree.has_id(parent[0]) and
-            tree.inventory[parent[0]].kind == "directory"):
+            tree.root_inventory[parent[0]].kind == "directory"):
             # Removal
             new_trees[posixpath.dirname(path[0])] = parent[0]
 
     # Fetch contents of the blobs that were changed
-    for (path, ie), chunks in tree.iter_files_bytes(
-        [(ie.file_id, (path, ie)) for (path, ie) in new_blobs]):
+    for (path, file_id), chunks in tree.iter_files_bytes(
+        [(file_id, (path, file_id)) for (path, file_id) in new_blobs]):
         obj = Blob()
         obj.chunked = chunks
-        yield path, obj, ie
-        shamap[ie.file_id] = obj.id
+        yield path, obj, tree.root_inventory[file_id]
+        shamap[file_id] = obj.id
 
     for path in unusual_modes:
         parent_path = posixpath.dirname(path)
@@ -246,7 +248,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         items = new_trees.items()
         new_trees = {}
         for path, file_id in items:
-            parent_id = tree.inventory[file_id].parent_id
+            parent_id = tree.root_inventory[file_id].parent_id
             if parent_id is not None:
                 parent_path = urlutils.dirname(path)
                 new_trees[parent_path] = parent_id
@@ -277,7 +279,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                 raise AssertionError
 
     for path in sorted(trees.keys(), reverse=True):
-        ie = tree.inventory[trees[path]]
+        ie = tree.root_inventory[trees[path]]
         assert ie.kind == "directory"
         obj = directory_to_tree(ie, ie_to_hexsha, unusual_modes,
             dummy_file_name)
@@ -433,7 +435,7 @@ class BazaarObjectStore(BaseObjectStore):
             else:
                 base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
                 root_tree = self[self[base_sha1].tree]
-            root_ie = tree.inventory.root
+            root_ie = tree.root_inventory.root
         if not lossy and self.mapping.BZR_FILE_IDS_FILE is not None:
             b = self._create_fileid_map_blob(tree)
             if b is not None:
@@ -525,7 +527,7 @@ class BazaarObjectStore(BaseObjectStore):
                 return self._lookup_revision_sha1(entry.reference_revision)
             else:
                 raise AssertionError("unknown entry kind '%s'" % entry.kind)
-        tree = directory_to_tree(bzr_tree.inventory[fileid], get_ie_sha1, unusual_modes,
+        tree = directory_to_tree(bzr_tree.root_inventory[fileid], get_ie_sha1, unusual_modes,
             self.mapping.BZR_DUMMY_FILE)
         if (bzr_tree.get_root_id() == fileid and
             self.mapping.BZR_FILE_IDS_FILE is not None):

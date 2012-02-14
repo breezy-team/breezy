@@ -483,10 +483,9 @@ foreign_vcs_git = ForeignGit()
 default_mapping = mapping_registry.get_default()()
 
 
-def symlink_to_blob(entry):
+def symlink_to_blob(symlink_target):
     from dulwich.objects import Blob
     blob = Blob()
-    symlink_target = entry.symlink_target
     if type(symlink_target) == unicode:
         symlink_target = symlink_target.encode('utf-8')
     blob.data = symlink_target
