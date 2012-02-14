@@ -283,14 +283,15 @@ class InterToLocalGitRepository(InterToGitRepository):
                     self.source_store, self.source, pb)
                 for (old_revid, git_sha) in object_generator.import_revisions(
                     todo, lossy=lossy):
-                    try:
-                        self.mapping.revision_id_bzr_to_foreign(old_revid)
-                    except errors.InvalidRevisionId:
-                        self.target_refs[self.mapping.revid_as_refname(old_revid)] = git_sha
                     if lossy:
                         new_revid = self.mapping.revision_id_foreign_to_bzr(git_sha)
                     else:
                         new_revid = old_revid
+                        try:
+                            self.mapping.revision_id_bzr_to_foreign(old_revid)
+                        except errors.InvalidRevisionId:
+                            refname = self.mapping.revid_as_refname(old_revid)
+                            self.target_refs[refname] = git_sha
                     revidmap[old_revid] = (git_sha, new_revid)
                 self.target_store.add_objects(object_generator)
                 return revidmap
