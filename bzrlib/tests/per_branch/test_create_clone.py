@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -133,7 +133,6 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         trunk = tree.branch.create_clone_on_transport(
             self.get_transport('trunk'))
         revid = tree.commit('a second commit')
-        source = tree.branch
         target_transport = self.get_transport('target')
         self.hook_calls = []
         branch.Branch.hooks.install_named_hook(

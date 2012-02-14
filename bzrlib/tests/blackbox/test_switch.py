@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2012 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -153,8 +153,11 @@ class TestSwitch(TestCaseWithTransport):
         branchb_id = tree2.commit('bar')
         checkout = tree1.branch.create_checkout('heavyco/a', lightweight=False)
         self.run_bzr(['switch', 'branchb'], working_dir='heavyco/a')
+        # Refresh checkout as 'switch' modified it
+        checkout = checkout.bzrdir.open_workingtree()
         self.assertEqual(branchb_id, checkout.last_revision())
-        self.assertEqual(tree2.branch.base, checkout.branch.get_bound_location())
+        self.assertEqual(tree2.branch.base,
+                         checkout.branch.get_bound_location())
 
     def test_switch_finds_relative_unicode_branch(self):
         """Switch will find 'foo' relative to the branch the checkout is of."""

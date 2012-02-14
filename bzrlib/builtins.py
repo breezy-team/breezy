@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1205,6 +1205,8 @@ class cmd_pull(Command):
             # Remembers if asked explicitly or no previous location is set
             if (remember
                 or (remember is None and branch_to.get_parent() is None)):
+                # FIXME: This shouldn't be done before the pull
+                # succeeds... -- vila 2012-01-02
                 branch_to.set_parent(branch_from.base)
 
         if revision is not None:
@@ -3861,7 +3863,9 @@ class cmd_whoami(Command):
             if directory is None:
                 c = Branch.open_containing(u'.')[0].get_config_stack()
             else:
-                c = Branch.open(directory).get_config_stack()
+                b = Branch.open(directory)
+                self.add_cleanup(b.lock_write().unlock)
+                c = b.get_config_stack()
         else:
             c = _mod_config.GlobalStack()
         c.set('email', name)
@@ -5261,10 +5265,12 @@ class cmd_bind(Command):
             else:
                 if location is None:
                     if b.get_bound_location() is not None:
-                        raise errors.BzrCommandError(gettext('Branch is already bound'))
+                        raise errors.BzrCommandError(
+                            gettext('Branch is already bound'))
                     else:
-                        raise errors.BzrCommandError(gettext('No location supplied '
-                            'and no previous location known'))
+                        raise errors.BzrCommandError(
+                            gettext('No location supplied'
+                                    ' and no previous location known'))
         b_other = Branch.open(location)
         try:
             b.bind(b_other)
@@ -5680,6 +5686,7 @@ class cmd_merge_directive(Command):
         if public_branch is None:
             public_branch = stored_public_branch
         elif stored_public_branch is None:
+            # FIXME: Should be done only if we succeed ? -- vila 2012-01-03
             branch.set_public_branch(public_branch)
         if not include_bundle and public_branch is None:
             raise errors.BzrCommandError(gettext('No public branch specified or'
