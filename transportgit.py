@@ -182,6 +182,7 @@ class TransportRefsContainer(RefsContainer):
             f = self.transport.get(name)
         except NoSuchFile:
             return None
+        f = StringIO(f.read())
         try:
             header = f.read(len(SYMREF))
             if header == SYMREF:
@@ -306,6 +307,12 @@ class TransportRepo(BaseRepo):
         if refs_text is not None:
             from dulwich.repo import InfoRefsContainer # dulwich >= 0.8.2
             refs_container = InfoRefsContainer(StringIO(refs_text))
+            try:
+                head = TransportRefsContainer(self._controltransport).read_loose_ref("HEAD")
+            except KeyError:
+                pass
+            else:
+                refs_container._refs["HEAD"] = head
         else:
             refs_container = TransportRefsContainer(self._controltransport)
         super(TransportRepo, self).__init__(object_store, 
@@ -422,8 +429,7 @@ class TransportObjectStore(PackBasedObjectStore):
             return []
         ret = []
         try:
-            for l in f.readlines():
-                l = l.rstrip("\n")
+            for l in f.read().splitlines():
                 if l[0] == "#":
                     continue
                 if os.path.isabs(l):
@@ -440,8 +446,7 @@ class TransportObjectStore(PackBasedObjectStore):
             return self.pack_transport.list_dir(".")
         else:
             ret = []
-            for line in f.readlines():
-                line = line.rstrip("\n")
+            for line in f.read().splitlines():
                 if not line:
                     continue
                 (kind, name) = line.split(" ", 1)
