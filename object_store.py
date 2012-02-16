@@ -275,7 +275,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                 # Not all cache backends store the tree information, 
                 # calculate again from scratch
                 ret = directory_to_tree(ie.children, ie_to_hexsha,
-                    unusual_modes, dummy_file_name, ie.parent_id is not None)
+                    unusual_modes, dummy_file_name, ie.parent_id is None)
                 if ret is None:
                     return ret
                 return ret.id
