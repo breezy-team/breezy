@@ -33,6 +33,10 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Disable ssl certificate verification on osx and windows until a native
+  access to the the root certificates is provided there.
+  (Vincent Ladeuil, #929179)
+
 Documentation
 *************
 
