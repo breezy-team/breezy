@@ -27,6 +27,9 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* The names of colocated branches are used as branch nicks if no nick is
+  specified. (Aaron Bentley)
+
 Bug Fixes
 *********
 

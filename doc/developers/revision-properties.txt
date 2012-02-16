@@ -35,9 +35,9 @@ by bzrlib:
  * ``author`` - Single author of the change. This property is deprecated in
    favour of ``authors``. It should no longer be set by any code, but will
    still be read. It is ignored if ``authors`` is set in the same revision.
- * ``branch-nick`` - Nickname of the branch. It's either the directory name
-   or manually set by ``bzr nick``. The value is set automatically in
-   ``MutableTree.commit``.
+ * ``branch-nick`` - Nickname of the branch. This can be specified by the user,
+   but it defaults to the colocated branch name or the branch's directory name.
+   The value is set automatically in ``MutableTree.commit``.
  * ``bugs`` - A list of bug URLs and their statuses. The list is separated
    by the new-line character (\\n) and each entry is in format
    '<URL> <status>'. Currently, bzrlib uses only status 'fixed'. See
