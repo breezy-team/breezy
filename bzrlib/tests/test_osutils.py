@@ -181,6 +181,13 @@ class TestRename(tests.TestCaseInTempDir):
         shape = sorted(os.listdir('.'))
         self.assertEquals(['A', 'B'], shape)
 
+    def test_rename_exception(self):
+        try:
+            osutils.rename('nonexistent_path', 'different_nonexistent_path')
+        except OSError, e:
+            self.assertEqual(e.old_filename, 'nonexistent_path')
+            self.assertEqual(e.new_filename, 'different_nonexistent_path')
+
 
 class TestRandChars(tests.TestCase):
 

@@ -450,6 +450,29 @@ def _mac_getcwd():
     return unicodedata.normalize('NFC', os.getcwdu())
 
 
+def _rename_wrap_exception(rename_func):
+    """Adds extra information to any exceptions that come from rename().
+
+    The exception has an updated message and 'old_filename' and 'new_filename'
+    attributes.
+    """
+
+    def _rename_wrapper(old, new):
+        try:
+            rename_func(old, new)
+        except OSError, e:
+            detailed_error = OSError(e.errno, e.strerror +
+                                " [occurred when renaming '%s' to '%s']" %
+                                (old, new))
+            detailed_error.old_filename = old
+            detailed_error.new_filename = new
+            raise detailed_error
+
+    return _rename_wrapper
+
+# Default rename wraps os.rename()
+rename = _rename_wrap_exception(os.rename)
+
 # Default is to just use the python builtins, but these can be rebound on
 # particular platforms.
 abspath = _posix_abspath
@@ -460,7 +483,6 @@ path_from_environ = _posix_path_from_environ
 _get_home_dir = _posix_get_home_dir
 getuser_unicode = _posix_getuser_unicode
 getcwd = os.getcwdu
-rename = os.rename
 dirname = os.path.dirname
 basename = os.path.basename
 split = os.path.split
@@ -488,7 +510,7 @@ if sys.platform == 'win32':
     normpath = _win32_normpath
     getcwd = _win32_getcwd
     mkdtemp = _win32_mkdtemp
-    rename = _win32_rename
+    rename = _rename_wrap_exception(_win32_rename)
     try:
         from bzrlib import _walkdirs_win32
     except ImportError:
