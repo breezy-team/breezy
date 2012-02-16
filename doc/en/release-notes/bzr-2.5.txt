@@ -34,7 +34,7 @@ Bug Fixes
    or undesirable results.
 
 * Disable ssl certificate verification on osx and windows until a native
-  access to the the root certificates is prodived there.
+  access to the the root certificates is provided there.
   (Vincent Ladeuil, #929179)
 
 Documentation
