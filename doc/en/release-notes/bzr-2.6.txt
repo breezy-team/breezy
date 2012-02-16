@@ -70,6 +70,11 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* Turn config option expansion on by default. The only options for which
+  this should be disable are templates which should already have used
+  conf.get(option, expand=False) or conf.get_user_option(option,
+  expand=False). (Vincent Ladeuil)
+
 Testing
 *******
 
