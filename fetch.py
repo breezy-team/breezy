@@ -42,10 +42,8 @@ from bzrlib import (
     )
 from bzrlib.errors import (
     BzrError,
-    NoSuchId,
     )
 from bzrlib.inventory import (
-    Inventory,
     InventoryDirectory,
     InventoryFile,
     InventoryLink,
