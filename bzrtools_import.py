@@ -227,7 +227,7 @@ def _import_archive(tree, archive_file, file_ids_from, target_tree=None):
     tt = TreeTransform(tree)
     try:
         removed = set()
-        for path, entry in tree.inventory.iter_entries():
+        for path, entry in tree.iter_entries_by_dir():
             if entry.parent_id is None:
                 continue
             trans_id = tt.trans_id_tree_path(path)
