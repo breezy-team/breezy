@@ -189,11 +189,11 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                 if kind == "file":
                     if (pkind == "file" and 
                         ptree.get_file_sha1(file_id) == other):
-                        return pie
+                        return (file_id, ptree.get_file_revision(file_id))
                 if kind == "symlink":
                     if (pkind == "symlink" and
                         ptree.get_symlink_target(file_id) == other):
-                        return pie
+                        return (file_id, ptree.get_file_revision(file_id))
         raise KeyError
 
     # Find all the changed blobs
@@ -202,13 +202,13 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         if kind[1] == "file":
             if changed_content:
                 try:
-                    pie = find_unchanged_parent_ie(file_id, kind[1], tree.get_file_sha1(file_id), other_parent_trees)
+                    (pfile_id, prevision) = find_unchanged_parent_ie(file_id, kind[1], tree.get_file_sha1(file_id), other_parent_trees)
                 except KeyError:
                     pass
                 else:
                     try:
                         shamap[file_id] = idmap.lookup_blob_id(
-                            pie.file_id, pie.revision)
+                            pfile_id, prevision)
                     except KeyError:
                         # no-change merge ?
                         blob = Blob()
