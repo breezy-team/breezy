@@ -187,6 +187,8 @@ class TestRename(tests.TestCaseInTempDir):
         except OSError, e:
             self.assertEqual(e.old_filename, 'nonexistent_path')
             self.assertEqual(e.new_filename, 'different_nonexistent_path')
+            self.assertTrue('nonexistent_path' in e.strerror)
+            self.assertTrue('different_nonexistent_path' in e.strerror)
 
 
 class TestRandChars(tests.TestCase):
