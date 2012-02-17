@@ -3,7 +3,7 @@ bzr-builddeb (2.8.3) UNRELEASED; urgency=low
   * Fix patch unapplying from DirStateRevisionTrees. LP: #923688
   * Bump distro-info dependency back to a recommends, to ease
     backporting.
-  * Cope with the deprecation of Tree.inventory in bzr/2.6.
+  * Cope with the deprecation of Tree.inventory in bzr/2.6. LP: #934247
 
  -- Jelmer Vernooij <jelmer@debian.org>  Fri, 17 Feb 2012 15:38:41 +0100
 
