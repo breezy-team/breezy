@@ -3796,7 +3796,7 @@ class Stack(object):
             # anything else
             value = env[name]
         else:
-            value = self.get(name, expand=False)
+            value = self.get(name, expand=False, convert=False)
             value = self._expand_options_in_string(value, env, _refs)
         return value
 
