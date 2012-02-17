@@ -1650,10 +1650,8 @@ class cmd_renames(Command):
     def run(self, dir=u'.'):
         tree = WorkingTree.open_containing(dir)[0]
         self.add_cleanup(tree.lock_read().unlock)
-        new_inv = tree.root_inventory
         old_tree = tree.basis_tree()
         self.add_cleanup(old_tree.lock_read().unlock)
-        old_inv = old_tree.root_inventory
         renames = []
         iterator = tree.iter_changes(old_tree, include_unchanged=True)
         for f, paths, c, v, p, n, k, e in iterator:
