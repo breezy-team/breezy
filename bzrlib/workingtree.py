@@ -2912,7 +2912,9 @@ class InventoryWorkingTree(WorkingTree,
         This is the same order used by 'osutils.walkdirs'.
         """
         ## TODO: Work from given directory downwards
-        for path, dir_entry in self.root_inventory.directories():
+        for path, dir_entry in self.iter_entries_by_dir():
+            if dir_entry.kind != 'directory':
+                continue
             # mutter("search for unknowns in %r", path)
             dirabs = self.abspath(path)
             if not isdir(dirabs):
