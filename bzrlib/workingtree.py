@@ -2084,7 +2084,7 @@ class InventoryWorkingTree(WorkingTree,
         return osutils.lexists(self.abspath(path))
 
     def has_or_had_id(self, file_id):
-        if file_id == self.root_inventory.root.file_id:
+        if file_id == self.get_root_id():
             return True
         inv, inv_file_id = self._unpack_file_id(file_id)
         return inv.has_id(inv_file_id)
