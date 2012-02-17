@@ -404,7 +404,7 @@ class PristineTarSource(UpstreamSource):
             dest = os.path.join(tmpdir, "orig")
             tree.lock_read()
             try:
-                for (dp, ie) in tree.inventory.iter_entries():
+                for (dp, ie) in tree.iter_entries_by_dir():
                     ie._read_tree_state(dp, tree)
                 export(tree, dest, format='dir', subdir=subdir)
             finally:
