@@ -6,6 +6,12 @@ bzr-fastimport Release Notes
 
 0.13 UNRELEASED
 
+Compatibility
+-------------
+
+* Avoid using Tree.inventory directly, which is deprecated in bzr 2.6.
+  (Jelmer Vernooij)
+
 0.12 2012-02-09
 
 Bug fixes
