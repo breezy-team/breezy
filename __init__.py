@@ -296,7 +296,10 @@ def post_build_tree_quilt(tree):
 
 
 def pre_merge_fix_ancestry(merger):
-    from bzrlib.plugins.builddeb.config import BUILD_TYPE_NATIVE
+    from bzrlib.plugins.builddeb.config import (
+        BUILD_TYPE_NORMAL,
+        BUILD_TYPE_SPLIT,
+        )
     from bzrlib.plugins.builddeb.util import debuild_config
     from bzrlib.plugins.builddeb.merge_package import fix_ancestry_as_needed
     from bzrlib.workingtree import WorkingTree
@@ -309,8 +312,8 @@ def pre_merge_fix_ancestry(merger):
         return
     this_config = debuild_config(merger.this_tree, merger.this_tree)
     other_config = debuild_config(merger.other_tree, merger.other_tree)
-    if not (this_config.build_type == BUILD_TYPE_NATIVE or
-            other_config.build_type == BUILD_TYPE_NATIVE):
+    if (this_config.build_type in (BUILD_TYPE_NORMAL, BUILD_TYPE_SPLIT) and
+        other_config.build_type in (BUILD_TYPE_NORMAL, BUILD_TYPE_SPLIT)):
         from bzrlib import trace
         from bzrlib.plugins.builddeb.errors import PackageVersionNotPresent
         try:
