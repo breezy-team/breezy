@@ -27,11 +27,18 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* The names of colocated branches are used as branch nicks if no nick is
+  specified. (Aaron Bentley)
+
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* Disable ssl certificate verification on osx and windows until a native
+  access to the the root certificates is provided there.
+  (Vincent Ladeuil, #929179)
 
 Documentation
 *************
@@ -57,6 +64,9 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Stop depending on the particular CPython ordering of dictionary keys
+  when testing the result of BzrDir.get_branches.
+  (Wouter van Heyst)
 
 bzr 2.5b6
 #########

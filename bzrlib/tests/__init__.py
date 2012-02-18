@@ -2658,10 +2658,11 @@ class TestCaseWithMemoryTransport(TestCase):
         self.test_home_dir = self.test_dir + "/MemoryTransportMissingHomeDir"
         self.permit_dir(self.test_dir)
 
-    def make_branch(self, relpath, format=None):
+    def make_branch(self, relpath, format=None, name=None):
         """Create a branch on the transport at relpath."""
         repo = self.make_repository(relpath, format=format)
-        return repo.bzrdir.create_branch(append_revisions_only=False)
+        return repo.bzrdir.create_branch(append_revisions_only=False,
+                                         name=name)
 
     def get_default_format(self):
         return 'default'
