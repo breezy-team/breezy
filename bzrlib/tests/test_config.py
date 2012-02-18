@@ -1197,6 +1197,10 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         b = self.make_branch('!repo')
         self.assertEqual('!repo', b.get_config().get_nickname())
 
+    def test_autonick_uses_branch_name(self):
+        b = self.make_branch('foo', name='bar')
+        self.assertEqual('bar', b.get_config().get_nickname())
+
     def test_warn_if_masked(self):
         warnings = []
         def warning(*args):

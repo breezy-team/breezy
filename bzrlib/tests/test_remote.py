@@ -565,7 +565,7 @@ class TestBzrDirGetBranches(TestRemote):
         a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         result = a_bzrdir.get_branches()
-        self.assertEquals(["", "foo"], result.keys())
+        self.assertEquals(set(["", "foo"]), set(result.keys()))
         self.assertEqual(
             [('call_expecting_body', 'BzrDir.get_branches', ('quack/',)),
              ('call', 'BzrDir.find_repositoryV3', ('quack/', )),
