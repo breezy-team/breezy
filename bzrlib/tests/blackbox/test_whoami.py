@@ -19,6 +19,7 @@
 
 import bzrlib
 from bzrlib import (
+    branch,
     config,
     errors,
     tests,
@@ -50,11 +51,14 @@ class TestWhoami(tests.TestCaseWithTransport):
         out = self.run_bzr("whoami --email 'foo <foo@example.com>'", 3)[0]
         self.assertEquals("", out)
 
+    def set_branch_email(self, b, email):
+        b.get_config_stack().set('email', email)
+
     def test_whoami_branch(self):
         """branch specific user identity works."""
         wt = self.make_branch_and_tree('.')
         b = bzrlib.branch.Branch.open('.')
-        b.get_config_stack().set('email', 'Branch Identity <branch@identi.ty>')
+        self.set_branch_email(b, 'Branch Identity <branch@identi.ty>')
         self.assertWhoAmI('Branch Identity <branch@identi.ty>')
         self.assertWhoAmI('branch@identi.ty', '--email')
 
@@ -79,8 +83,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         """
         wt = self.make_branch_and_tree('.')
         b = bzrlib.branch.Branch.open('.')
-        b.get_config_stack().set(
-            'email', u'Branch Identity \u20ac ' + '<branch@identi.ty>')
+        self.set_branch_email(b, u'Branch Identity \u20ac <branch@identi.ty>')
         self.assertWhoAmI('Branch Identity ? <branch@identi.ty>',
                           encoding='ascii')
         self.assertWhoAmI('branch@identi.ty', '--email',
@@ -100,20 +103,20 @@ class TestWhoami(tests.TestCaseWithTransport):
         self.overrideEnv('EMAIL', None)
         self.overrideEnv('BZR_EMAIL', None)
         # Also, make sure that it's not inferred from mailname.
-        self.overrideAttr(config, '_auto_user_id',
-            lambda: (None, None))
+        self.overrideAttr(config, '_auto_user_id', lambda: (None, None))
         out, err = self.run_bzr(['whoami'], 3)
         self.assertContainsRe(err, 'Unable to determine your name')
 
     def test_whoami_directory(self):
         """Test --directory option."""
         wt = self.make_branch_and_tree('subdir')
-        c = wt.branch.get_config_stack()
-        c.set('email', 'Branch Identity <branch@identi.ty>')
+        self.set_branch_email(wt.branch, 'Branch Identity <branch@identi.ty>')
         self.assertWhoAmI('Branch Identity <branch@identi.ty>',
                           '--directory', 'subdir')
         self.run_bzr(['whoami', '--directory', 'subdir', '--branch',
                       'Changed Identity <changed@identi.ty>'])
+        # Refresh wt as 'whoami' modified it
+        wt = wt.bzrdir.open_workingtree()
         c = wt.branch.get_config_stack()
         self.assertEquals('Changed Identity <changed@identi.ty>',
                           c.get('email'))
@@ -121,8 +124,7 @@ class TestWhoami(tests.TestCaseWithTransport):
     def test_whoami_remote_directory(self):
         """Test --directory option with a remote directory."""
         wt = self.make_branch_and_tree('subdir')
-        c = wt.branch.get_config_stack()
-        c.set('email', 'Branch Identity <branch@identi.ty>')
+        self.set_branch_email(wt.branch, 'Branch Identity <branch@identi.ty>')
         url = self.get_readonly_url() + '/subdir'
         self.assertWhoAmI('Branch Identity <branch@identi.ty>',
                           '--directory', url)
@@ -131,7 +133,7 @@ class TestWhoami(tests.TestCaseWithTransport):
                       'Changed Identity <changed@identi.ty>'])
         # The identity has been set in the branch config (but not the global
         # config)
-        c = wt.branch.get_config_stack()
+        c = branch.Branch.open(url).get_config_stack()
         self.assertEquals('Changed Identity <changed@identi.ty>',
                           c.get('email'))
         # Ensuring that the value does not come from the bazaar.conf file

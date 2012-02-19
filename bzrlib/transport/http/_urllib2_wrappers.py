@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -74,14 +74,35 @@ lazy_import.lazy_import(globals(), """
 import ssl
 """)
 
-DEFAULT_CA_PATH = u"/etc/ssl/certs/ca-certificates.crt"
 
-
+# Note for packagers: if there is no package providing certs for your platform,
+# the curl project produces http://curl.haxx.se/ca/cacert.pem weekly.
+_ssl_ca_certs_known_locations = [
+    u'/etc/ssl/certs/ca-certificates.crt', # Ubuntu/debian/gentoo
+    u'/etc/pki/tls/certs/ca-bundle.crt', # Fedora/CentOS/RH
+    u'/etc/ssl/ca-bundle.pem', # OpenSuse
+    u'/etc/ssl/cert.pem', # OpenSuse
+    u"/usr/local/share/certs/ca-root-nss.crt", # FreeBSD
+    # XXX: Needs checking, can't trust the interweb ;) -- vila 2012-01-25
+    u'/etc/openssl/certs/ca-certificates.crt', # Solaris
+    ]
 def default_ca_certs():
-    if not os.path.exists(DEFAULT_CA_PATH):
-        raise ValueError("default ca certs path %s does not exist" %
-            DEFAULT_CA_PATH)
-    return DEFAULT_CA_PATH
+    if sys.platform == 'win32':
+        return os.path.join(os.path.dirname(sys.executable), u"ca_bundle.crt")
+    elif sys.platform == 'darwin':
+        # FIXME: Needs some default value for osx, waiting for osx installers
+        # guys feedback -- vila 2012-01-25
+        pass
+    else:
+        # Try known locations for friendly OSes providing the root certificates
+        # without making them hard to use for any https client.
+        for path in _ssl_ca_certs_known_locations:
+            if os.path.exists(path):
+                # First found wins
+                return path
+    # A default path that makes sense and will be mentioned in the error
+    # presented to the user, even if not correct for all platforms
+    return _ssl_ca_certs_known_locations[0]
 
 
 def ca_certs_from_store(path):
@@ -90,21 +111,23 @@ def ca_certs_from_store(path):
     return path
 
 
-def default_cert_reqs():
-    return u"required"
-
-
 def cert_reqs_from_store(unicode_str):
     import ssl
     try:
         return {
             "required": ssl.CERT_REQUIRED,
-            "optional": ssl.CERT_OPTIONAL,
             "none": ssl.CERT_NONE
             }[unicode_str]
     except KeyError:
         raise ValueError("invalid value %s" % unicode_str)
 
+def default_ca_reqs():
+    if sys.platform in ('win32', 'darwin'):
+        # FIXME: Once we get a native access to root certificates there, this
+        # won't needed anymore. See http://pad.lv/920455 -- vila 2012-02-15
+        return u'none'
+    else:
+        return u'required'
 
 opt_ssl_ca_certs = config.Option('ssl.ca_certs',
         from_unicode=ca_certs_from_store,
@@ -112,10 +135,15 @@ opt_ssl_ca_certs = config.Option('ssl.ca_certs',
         invalid='warning',
         help="""\
 Path to certification authority certificates to trust.
+
+This should be a valid path to a bundle containing all root Certificate
+Authorities used to verify an https server certificate.
+
+Use ssl.cert_reqs=none to disable certificate verification.
 """)
 
 opt_ssl_cert_reqs = config.Option('ssl.cert_reqs',
-        default=default_cert_reqs,
+        default=default_ca_reqs,
         from_unicode=cert_reqs_from_store,
         invalid='error',
         help="""\
@@ -123,8 +151,7 @@ Whether to require a certificate from the remote side. (default:required)
 
 Possible values:
  * none: Certificates ignored
- * optional: Certificates not required, but validated if provided
- * required: Certificates required, and validated
+ * required: Certificates required and validated
 """)
 
 checked_kerberos = False
@@ -448,34 +475,34 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
     def connect_to_origin(self):
         # FIXME JRV 2011-12-18: Use location config here?
         config_stack = config.GlobalStack()
-        if self.ca_certs is None:
-            ca_certs = config_stack.get('ssl.ca_certs')
-        else:
-            ca_certs = self.ca_certs
         cert_reqs = config_stack.get('ssl.cert_reqs')
         if cert_reqs == ssl.CERT_NONE:
-            trace.warning("not checking SSL certificates for %s: %d",
+            trace.warning("Not checking SSL certificate for %s: %d",
                 self.host, self.port)
+            ca_certs = None
         else:
+            if self.ca_certs is None:
+                ca_certs = config_stack.get('ssl.ca_certs')
+            else:
+                ca_certs = self.ca_certs
             if ca_certs is None:
                 trace.warning(
-                    "no valid trusted SSL CA certificates file set. See "
+                    "No valid trusted SSL CA certificates file set. See "
                     "'bzr help ssl.ca_certs' for more information on setting "
-                    "trusted CA's.")
+                    "trusted CAs.")
         try:
             ssl_sock = ssl.wrap_socket(self.sock, self.key_file, self.cert_file,
                 cert_reqs=cert_reqs, ca_certs=ca_certs)
         except ssl.SSLError, e:
-            if e.errno != ssl.SSL_ERROR_SSL:
-                raise
             trace.note(
-                "To disable SSL certificate verification, use "
-                "-Ossl.cert_reqs=none. See ``bzr help ssl.ca_certs`` for "
-                "more information on specifying trusted CA certificates.")
+                "\n"
+                "See `bzr help ssl.ca_certs` for how to specify trusted CA"
+                "certificates.\n"
+                "Pass -Ossl.cert_reqs=none to disable certificate "
+                "verification entirely.\n")
             raise
-        peer_cert = ssl_sock.getpeercert()
-        if (cert_reqs == ssl.CERT_REQUIRED or
-            (cert_reqs == ssl.CERT_OPTIONAL and peer_cert)):
+        if cert_reqs == ssl.CERT_REQUIRED:
+            peer_cert = ssl_sock.getpeercert()
             match_hostname(peer_cert, self.host)
 
         # Wrap the ssl socket before anybody use it

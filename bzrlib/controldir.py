@@ -1,4 +1,4 @@
-# Copyright (C) 2010, 2011 Canonical Ltd
+# Copyright (C) 2010, 2011, 2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -163,7 +163,7 @@ class ControlDir(ControlComponent):
         """Create a branch in this ControlDir.
 
         :param name: Name of the colocated branch to create, None for
-            the default branch.
+            the user selected branch or "" for the active branch.
         :param append_revisions_only: Whether this branch should only allow
             appending new revisions to its history.
 
@@ -175,8 +175,9 @@ class ControlDir(ControlComponent):
     def destroy_branch(self, name=None):
         """Destroy a branch in this ControlDir.
 
-        :param name: Name of the branch to destroy, None for the default 
-            branch.
+        :param name: Name of the branch to destroy, None for the 
+            user selected branch or "" for the active branch.
+        :raise NotBranchError: When the branch does not exist
         """
         raise NotImplementedError(self.destroy_branch)
 
@@ -302,7 +303,7 @@ class ControlDir(ControlComponent):
     def _get_selected_branch(self):
         """Return the name of the branch selected by the user.
 
-        :return: Name of the branch selected by the user, or None.
+        :return: Name of the branch selected by the user, or "".
         """
         branch = self.root_transport.get_segment_parameters().get("branch")
         if branch is None:
@@ -405,6 +406,7 @@ class ControlDir(ControlComponent):
             repository_to.fetch(source.repository, revision_id=revision_id)
             br_to = source.clone(self, revision_id=revision_id)
             if source.get_push_location() is None or remember:
+                # FIXME: Should be done only if we succeed ? -- vila 2012-01-18
                 source.set_push_location(br_to.base)
             push_result.stacked_on = None
             push_result.branch_push_result = None
@@ -416,6 +418,7 @@ class ControlDir(ControlComponent):
         else:
             # We have successfully opened the branch, remember if necessary:
             if source.get_push_location() is None or remember:
+                # FIXME: Should be done only if we succeed ? -- vila 2012-01-18
                 source.set_push_location(br_to.base)
             try:
                 tree_to = self.open_workingtree()
@@ -778,7 +781,8 @@ class ControlDir(ControlComponent):
         return controldir._get_tree_branch()
 
     @classmethod
-    def open_containing_tree_or_branch(klass, location):
+    def open_containing_tree_or_branch(klass, location,
+            possible_transports=None):
         """Return the branch and working tree contained by a location.
 
         Returns (tree, branch, relpath).
@@ -787,7 +791,8 @@ class ControlDir(ControlComponent):
         raised
         relpath is the portion of the path that is contained by the branch.
         """
-        controldir, relpath = klass.open_containing(location)
+        controldir, relpath = klass.open_containing(location,
+            possible_transports=possible_transports)
         tree, branch = controldir._get_tree_branch()
         return tree, branch, relpath
 

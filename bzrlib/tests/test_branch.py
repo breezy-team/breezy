@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -356,8 +356,8 @@ class TestBranch67(object):
         self.assertPathDoesNotExist('a/.bzr/branch/parent')
         self.assertEqual('http://example.com', branch.get_parent())
         branch.set_push_location('sftp://example.com')
-        config = branch.get_config_stack()
-        self.assertEqual('sftp://example.com', config.get('push_location'))
+        conf = branch.get_config_stack()
+        self.assertEqual('sftp://example.com', conf.get('push_location'))
         branch.set_bound_location('ftp://example.com')
         self.assertPathDoesNotExist('a/.bzr/branch/bound')
         self.assertEqual('ftp://example.com', branch.get_bound_location())

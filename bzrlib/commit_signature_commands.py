@@ -59,11 +59,11 @@ class cmd_sign_my_commits(Command):
             bzrdir = controldir.ControlDir.open(location)
         branch = bzrdir.open_branch()
         repo = branch.repository
-        branch_config = branch.get_config()
+        branch_config = branch.get_config_stack()
 
         if committer is None:
-            committer = branch_config.username()
-        gpg_strategy = gpg.GPGStrategy(branch.get_config_stack())
+            committer = branch_config.get('email')
+        gpg_strategy = gpg.GPGStrategy(branch_config)
 
         count = 0
         repo.lock_write()
