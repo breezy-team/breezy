@@ -41,17 +41,18 @@ format_registry = registry.Registry()
 def send(target_branch, revision, public_branch, remember,
          format, no_bundle, no_patch, output, from_, mail_to, message, body,
          to_file, strict=None):
+    possible_transports = []
     tree, branch = controldir.ControlDir.open_containing_tree_or_branch(
-        from_)[:2]
-    possible_transports = [tree.bzrdir.transport, branch.bzrdir.transport]
+        from_, possible_transports=possible_transports)[:2]
     # we may need to write data into branch's repository to calculate
     # the data to send.
     branch.lock_write()
     try:
         if output is None:
+            config_stack = branch.get_config_stack()
             if mail_to is None:
-                mail_to = branch.get_config_stack().get('submit_to')
-            mail_client = branch.get_config().get_mail_client()
+                mail_to = config_stack.get('submit_to')
+            mail_client = config_stack.get('mail_client')(config_stack)
             if (not getattr(mail_client, 'supports_body', False)
                 and body is not None):
                 raise errors.BzrCommandError(gettext(

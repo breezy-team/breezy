@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1469,6 +1469,10 @@ class Branch(controldir.ControlComponent):
                 pass
             else:
                 raise errors.AlreadyControlDirError(t.base)
+            if checkout.control_transport.base == self.bzrdir.control_transport.base:
+                # When checking out to the same control directory,
+                # always create a lightweight checkout
+                lightweight = True
 
         if lightweight:
             from_branch = checkout.set_branch_reference(target_branch=self)
@@ -2477,6 +2481,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         self.control_files = _control_files
         self._transport = _control_files._transport
         self.repository = _repository
+        self.conf_store = None
         Branch.__init__(self, possible_transports)
 
     def __str__(self):
@@ -2498,7 +2503,9 @@ class BzrBranch(Branch, _RelockDebugMixin):
         return _mod_config.TransportConfig(self._transport, 'branch.conf')
 
     def _get_config_store(self):
-        return _mod_config.BranchStore(self)
+        if self.conf_store is None:
+            self.conf_store =  _mod_config.BranchStore(self)
+        return self.conf_store
 
     def is_locked(self):
         return self.control_files.is_locked()
@@ -2553,6 +2560,8 @@ class BzrBranch(Branch, _RelockDebugMixin):
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
+        if self.conf_store is not None:
+            self.conf_store.save_changes()
         try:
             self.control_files.unlock()
         finally:
@@ -3241,9 +3250,13 @@ class Converter5to6(object):
 
         # Copy source data into target
         new_branch._write_last_revision_info(*branch.last_revision_info())
-        new_branch.set_parent(branch.get_parent())
-        new_branch.set_bound_location(branch.get_bound_location())
-        new_branch.set_push_location(branch.get_push_location())
+        new_branch.lock_write()
+        try:
+            new_branch.set_parent(branch.get_parent())
+            new_branch.set_bound_location(branch.get_bound_location())
+            new_branch.set_push_location(branch.get_push_location())
+        finally:
+            new_branch.unlock()
 
         # New branch has no tags by default
         new_branch.tags._set_tag_dict({})
@@ -3255,11 +3268,15 @@ class Converter5to6(object):
 
         # Clean up old files
         new_branch._transport.delete('revision-history')
+        branch.lock_write()
         try:
-            branch.set_parent(None)
-        except errors.NoSuchFile:
-            pass
-        branch.set_bound_location(None)
+            try:
+                branch.set_parent(None)
+            except errors.NoSuchFile:
+                pass
+            branch.set_bound_location(None)
+        finally:
+            branch.unlock()
 
 
 class Converter6to7(object):

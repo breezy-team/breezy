@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Canonical Ltd
+# Copyright (C) 2011,2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -41,18 +41,10 @@ class CaCertsConfigTests(TestCaseInTempDir):
     def get_stack(self, content):
         return config.MemoryStack(content.encode('utf-8'))
 
-    def test_default_raises_value_error(self):
-        stack = self.get_stack("")
-        self.overrideAttr(_urllib2_wrappers, "DEFAULT_CA_PATH",
-                "/i-do-not-exist")
-        self.assertRaises(ValueError, stack.get, 'ssl.ca_certs')
-
     def test_default_exists(self):
-        self.build_tree(['cacerts.pem'])
+        """Check that the default we provide exists for the tested platform."""
         stack = self.get_stack("")
-        path = os.path.join(self.test_dir, "cacerts.pem")
-        self.overrideAttr(_urllib2_wrappers, "DEFAULT_CA_PATH", path)
-        self.assertEquals(path, stack.get('ssl.ca_certs'))
+        self.assertPathExists(stack.get('ssl.ca_certs'))
 
     def test_specified(self):
         self.build_tree(['cacerts.pem'])
@@ -61,14 +53,15 @@ class CaCertsConfigTests(TestCaseInTempDir):
         self.assertEquals(path, stack.get('ssl.ca_certs'))
 
     def test_specified_doesnt_exist(self):
-        path = os.path.join(self.test_dir, "nonexisting.pem")
-        stack = self.get_stack("ssl.ca_certs = %s\n" % path)
+        stack = self.get_stack('')
+        # Disable the default value mechanism to force the behavior we want
+        self.overrideAttr(_urllib2_wrappers.opt_ssl_ca_certs, 'default',
+                          os.path.join(self.test_dir, u"nonexisting.pem"))
         self.warnings = []
         def warning(*args):
             self.warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
-        self.assertEquals(_urllib2_wrappers.DEFAULT_CA_PATH,
-                          stack.get('ssl.ca_certs'))
+        self.assertEquals(None, stack.get('ssl.ca_certs'))
         self.assertLength(1, self.warnings)
         self.assertContainsRe(self.warnings[0],
                               "is not valid for \"ssl.ca_certs\"")
@@ -83,8 +76,6 @@ class CertReqsConfigTests(TestCaseInTempDir):
     def test_from_string(self):
         stack = config.MemoryStack("ssl.cert_reqs = none\n")
         self.assertEquals(ssl.CERT_NONE, stack.get("ssl.cert_reqs"))
-        stack = config.MemoryStack("ssl.cert_reqs = optional\n")
-        self.assertEquals(ssl.CERT_OPTIONAL, stack.get("ssl.cert_reqs"))
         stack = config.MemoryStack("ssl.cert_reqs = required\n")
         self.assertEquals(ssl.CERT_REQUIRED, stack.get("ssl.cert_reqs"))
         stack = config.MemoryStack("ssl.cert_reqs = invalid\n")

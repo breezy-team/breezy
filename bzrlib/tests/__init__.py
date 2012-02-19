@@ -247,7 +247,7 @@ class ExtendedTestResult(testtools.TextTestResult):
     different types of display.
 
     When a test finishes, in whatever way, it calls one of the addSuccess,
-    addFailure or addError classes.  These in turn may redirect to a more
+    addFailure or addError methods.  These in turn may redirect to a more
     specific case for the special test results supported by our extended
     tests.
 
@@ -2658,10 +2658,11 @@ class TestCaseWithMemoryTransport(TestCase):
         self.test_home_dir = self.test_dir + "/MemoryTransportMissingHomeDir"
         self.permit_dir(self.test_dir)
 
-    def make_branch(self, relpath, format=None):
+    def make_branch(self, relpath, format=None, name=None):
         """Create a branch on the transport at relpath."""
         repo = self.make_repository(relpath, format=format)
-        return repo.bzrdir.create_branch(append_revisions_only=False)
+        return repo.bzrdir.create_branch(append_revisions_only=False,
+                                         name=name)
 
     def get_default_format(self):
         return 'default'
@@ -4057,6 +4058,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_revisiontree',
         'bzrlib.tests.test_rio',
         'bzrlib.tests.test_rules',
+        'bzrlib.tests.test_url_policy_open',
         'bzrlib.tests.test_sampler',
         'bzrlib.tests.test_scenarios',
         'bzrlib.tests.test_script',

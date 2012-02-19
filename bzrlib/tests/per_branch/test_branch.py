@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@ from bzrlib import (
     config,
     delta as _mod_delta,
     errors,
-    gpg,
     merge,
     osutils,
     urlutils,
@@ -318,11 +317,17 @@ class TestBranch(per_branch.TestCaseWithBranch):
             repo = self.make_repository('.', shared=True)
         except errors.IncompatibleFormat:
             return
+        if repo.bzrdir._format.colocated_branches:
+            raise tests.TestNotApplicable(
+                "control dir does not support colocated branches")
         self.assertEquals(0, len(repo.bzrdir.list_branches()))
+        if not self.bzrdir_format.colocated_branches:
+            raise tests.TestNotApplicable("control dir format does not support "
+                "colocated branches")
         try:
             child_branch1 = self.branch_format.initialize(repo.bzrdir, 
                 name='branch1')
-        except (errors.UninitializableFormat, errors.NoColocatedBranchSupport):
+        except errors.UninitializableFormat:
             # branch references are not default init'able and
             # not all bzrdirs support colocated branches.
             return
@@ -523,7 +528,7 @@ class TestBranchFormat(per_branch.TestCaseWithBranch):
             looked_up_format = registry.get(network_name)
             self.assertEqual(format.__class__, looked_up_format.__class__)
 
-    def get_get_config_calls(self):
+    def test_get_config_calls(self):
         # Smoke test that all branch succeed getting a config
         br = self.make_branch('.')
         br.get_config()
@@ -773,22 +778,6 @@ class TestBound(per_branch.TestCaseWithBranch):
         self.assertNotEqual(None, branch.get_master_branch())
         branch.unbind()
         self.assertEqual(None, branch.get_master_branch())
-
-    def test_unlocked_does_not_cache_master_branch(self):
-        """Unlocked branches do not cache the result of get_master_branch."""
-        master = self.make_branch('master')
-        branch1 = self.make_branch('branch')
-        try:
-            branch1.bind(master)
-        except errors.UpgradeRequired:
-            raise tests.TestNotApplicable('Format does not support binding')
-        # Open branch1 again
-        branch2 = branch1.bzrdir.open_branch()
-        self.assertNotEqual(None, branch1.get_master_branch())
-        # Unbind the branch via branch2.  branch1 isn't locked so will
-        # immediately return the new value for get_master_branch.
-        branch2.unbind()
-        self.assertEqual(None, branch1.get_master_branch())
 
     def test_bind_clears_cached_master_branch(self):
         """b.bind clears any cached value of b.get_master_branch."""

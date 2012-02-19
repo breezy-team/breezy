@@ -34,19 +34,19 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         # Make sure the basis file is created by a commit
         t = self.make_branch_and_tree('.')
         b = t.branch
-        open('a', 'wb').write('a\n')
+        with open('a', 'wb') as f: f.write('a\n')
         t.add('a')
         t.commit('a', rev_id='r1')
 
         self.assertTrue(t._transport.has('basis-inventory-cache'))
 
-        basis_inv = t.basis_tree().inventory
+        basis_inv = t.basis_tree().root_inventory
         self.assertEquals('r1', basis_inv.revision_id)
 
         store_inv = b.repository.get_inventory('r1')
         self.assertEqual([], store_inv._make_delta(basis_inv))
 
-        open('b', 'wb').write('b\n')
+        with open('b', 'wb') as f: f.write('b\n')
         t.add('b')
         t.commit('b', rev_id='r2')
 
@@ -69,7 +69,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
                 % (self.workingtree_format,))
         t = self.make_branch_and_tree('.')
         b = t.branch
-        open('a', 'wb').write('a\n')
+        with open('a', 'wb') as f: f.write('a\n')
         t.add('a')
         t.commit('a', rev_id='r1')
         t._transport.put_bytes('basis-inventory-cache', 'booga')

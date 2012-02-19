@@ -1292,7 +1292,7 @@ class DirState(object):
                     parent_trees.append((parent_id, parent_tree))
                     parent_tree.lock_read()
                 result.set_parent_trees(parent_trees, [])
-                result.set_state_from_inventory(tree.inventory)
+                result.set_state_from_inventory(tree.root_inventory)
             finally:
                 for revid, parent_tree in parent_trees:
                     parent_tree.unlock()

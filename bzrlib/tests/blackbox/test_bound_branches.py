@@ -127,12 +127,13 @@ class TestBoundBranches(tests.TestCaseWithTransport):
 
     def test_double_binding(self):
         child_tree = self.create_branches()[1]
-
-        child2_tree = child_tree.bzrdir.sprout('child2').open_workingtree()
+        child_tree.bzrdir.sprout('child2')
 
         # Double binding succeeds, but committing to child2 should fail
         self.run_bzr('bind ../child', working_dir='child2')
 
+        # Refresh the child tree object as 'unbind' modified it
+        child2_tree = bzrdir.BzrDir.open('child2').open_workingtree()
         self.assertRaises(errors.CommitToDoubleBoundBranch,
                 child2_tree.commit, message='child2', allow_pointless=True)
 
@@ -150,6 +151,8 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         self.run_bzr("commit -m child", retcode=3, working_dir='child')
         self.check_revno(1, 'child')
         self.run_bzr('unbind', working_dir='child')
+        # Refresh the child tree/branch objects as 'unbind' modified them
+        child_tree = child_tree.bzrdir.open_workingtree()
         child_tree.commit(message='child')
         self.check_revno(2, 'child')
 
@@ -200,6 +203,8 @@ class TestBoundBranches(tests.TestCaseWithTransport):
 
         self.run_bzr('unbind', working_dir='child')
 
+        # Refresh the child tree/branch objects as 'unbind' modified them
+        child_tree = child_tree.bzrdir.open_workingtree()
         child_tree.commit(message='child', allow_pointless=True)
         self.check_revno(2, 'child')
 
@@ -210,6 +215,8 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         # These branches have diverged, but bind should succeed anyway
         self.run_bzr('bind ../base', working_dir='child')
 
+        # Refresh the child tree/branch objects as 'bind' modified them
+        child_tree = child_tree.bzrdir.open_workingtree()
         # This should turn the local commit into a merge
         child_tree.update()
         child_tree.commit(message='merged')
@@ -248,6 +255,8 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         child_tree = self.create_branches()[1]
 
         self.run_bzr('unbind', working_dir='child')
+        # Refresh the child tree/branch objects as 'bind' modified them
+        child_tree = child_tree.bzrdir.open_workingtree()
         child_tree.commit(message='child', allow_pointless=True)
         self.check_revno(2, 'child')
         self.check_revno(1, 'base')

@@ -824,9 +824,9 @@ class ChrootedTests(TestCaseWithTransport):
 
     def test_sprout_recursive(self):
         tree = self.make_branch_and_tree('tree1',
-                                         format='dirstate-with-subtree')
+                                         format='development-subtree')
         sub_tree = self.make_branch_and_tree('tree1/subtree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         sub_tree.set_root_id('subtree-root')
         tree.add_reference(sub_tree)
         self.build_tree(['tree1/subtree/file'])
@@ -849,21 +849,21 @@ class ChrootedTests(TestCaseWithTransport):
 
     def test_sprout_recursive_treeless(self):
         tree = self.make_branch_and_tree('tree1',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         sub_tree = self.make_branch_and_tree('tree1/subtree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         tree.add_reference(sub_tree)
         self.build_tree(['tree1/subtree/file'])
         sub_tree.add('file')
         tree.commit('Initial commit')
         # The following line force the orhaning to reveal bug #634470
-        tree.branch.get_config().set_user_option(
+        tree.branch.get_config_stack().set(
             'bzr.transform.orphan_policy', 'move')
         tree.bzrdir.destroy_workingtree()
         # FIXME: subtree/.bzr is left here which allows the test to pass (or
         # fail :-( ) -- vila 20100909
         repo = self.make_repository('repo', shared=True,
-            format='dirstate-with-subtree')
+            format='development-subtree')
         repo.set_make_working_trees(False)
         # FIXME: we just deleted the workingtree and now we want to use it ????
         # At a minimum, we should use tree.branch below (but this fails too
@@ -1021,7 +1021,7 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         otherdir = bzrdir.format_registry.make_bzrdir('knit')
         self.assertEqual(otherdir, mydir)
         self.assertFalse(otherdir != mydir)
-        otherdir2 = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
+        otherdir2 = bzrdir.format_registry.make_bzrdir('development-subtree')
         self.assertNotEqual(otherdir2, mydir)
         self.assertFalse(otherdir2 == mydir)
 
@@ -1447,8 +1447,24 @@ class TestMeta1DirColoFormat(TestCaseWithTransport):
         tree.bzrdir.create_branch(name="another-colocated-branch")
         converter = tree.bzrdir._format.get_converter(
             bzrdir.BzrDirMetaFormat1())
-        self.assertRaises(errors.BzrError, converter.convert, tree.bzrdir,
-            None)
+        result = converter.convert(tree.bzrdir, bzrdir.BzrDirMetaFormat1())
+        self.assertIsInstance(result._format, bzrdir.BzrDirMetaFormat1)
+
+    def test_nested(self):
+        tree = self.make_branch_and_tree('.', format='development-colo')
+        tree.bzrdir.create_branch(name='foo')
+        tree.bzrdir.create_branch(name='fool/bla')
+        self.assertRaises(
+            errors.ParentBranchExists, tree.bzrdir.create_branch,
+            name='foo/bar')
+
+    def test_parent(self):
+        tree = self.make_branch_and_tree('.', format='development-colo')
+        tree.bzrdir.create_branch(name='fool/bla')
+        tree.bzrdir.create_branch(name='foo/bar')
+        self.assertRaises(
+            errors.AlreadyBranchError, tree.bzrdir.create_branch,
+            name='foo')
 
 
 class SampleBzrFormat(bzrdir.BzrFormat):

@@ -51,6 +51,9 @@ class MemoryTree(mutabletree.MutableInventoryTree):
         self._locks = 0
         self._lock_mode = None
 
+    def get_config_stack(self):
+        return self.branch.get_config_stack()
+
     def is_control_filename(self, filename):
         # Memory tree doesn't have any control filenames
         return False
