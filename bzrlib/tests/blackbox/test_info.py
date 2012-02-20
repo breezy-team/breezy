@@ -57,6 +57,15 @@ class TestInfo(tests.TestCaseWithTransport):
             '  control directory: ctrl\n')
         self.assertEquals(err, '')
 
+    def test_info_empty_controldir_verbose(self):
+        self.make_bzrdir('ctrl')
+        out, err = self.run_bzr('info -v ctrl')
+        self.assertEquals(out,
+            'Empty control directory (format: 2a or pack-0.92)\n'
+            'Location:\n'
+            '  control directory: ctrl\n')
+        self.assertEquals(err, '')
+
     def test_info_dangling_branch_reference(self):
         br = self.make_branch('target')
         br.create_checkout('from', lightweight=True)
