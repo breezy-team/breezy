@@ -80,9 +80,6 @@ class MockTree(object):
     def get_root_id(self):
         return self.root.file_id
 
-    def get_root_id(self):
-        return self.root.file_id
-
     def all_file_ids(self):
         return set(self.paths.keys())
 
@@ -114,8 +111,8 @@ class MockTree(object):
         return kind
 
     def make_entry(self, file_id, path):
-        from bzrlib.inventory import (InventoryEntry, InventoryFile
-                                    , InventoryDirectory, InventoryLink)
+        from bzrlib.inventory import (InventoryFile , InventoryDirectory,
+            InventoryLink)
         name = os.path.basename(path)
         kind = self.kind(file_id)
         parent_id = self.parent_id(file_id)
@@ -157,6 +154,12 @@ class MockTree(object):
 
     def get_file_revision(self, file_id):
         return self.inventory[file_id].revision
+
+    def get_file_size(self, file_id):
+        return self.inventory[file_id].text_size
+
+    def get_file_sha1(self, file_id):
+        return self.inventory[file_id].text_sha1
 
     def contents_stats(self, file_id):
         if file_id not in self.contents:
@@ -326,7 +329,7 @@ class BTreeTester(tests.TestCase):
         self.assertTrue(btree.path2id("grandparent/parent/file") is None)
 
     def sorted_ids(self, tree):
-        ids = list(tree)
+        ids = list(tree.all_file_ids())
         ids.sort()
         return ids
 

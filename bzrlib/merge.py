@@ -1260,9 +1260,9 @@ class Merge3Merger(object):
 
     def merge_names(self, file_id):
         def get_entry(tree):
-            if tree.has_id(file_id):
+            try:
                 return tree.root_inventory[file_id]
-            else:
+            except errors.NoSuchId:
                 return None
         this_entry = get_entry(self.this_tree)
         other_entry = get_entry(self.other_tree)
