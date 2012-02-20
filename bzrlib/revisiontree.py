@@ -242,6 +242,19 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
         annotations = annotator.annotate_flat(text_key)
         return [(key[-1], line) for key, line in annotations]
 
+    def __eq__(self, other):
+        if self is other:
+            return True
+        if isinstance(other, InventoryRevisionTree):
+            return (self.root_inventory == other.root_inventory)
+        return False
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __hash__(self):
+        raise ValueError('not hashable')
+
 
 class InterCHKRevisionTree(tree.InterTree):
     """Fast path optimiser for RevisionTrees with CHK inventories."""
