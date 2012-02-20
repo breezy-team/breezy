@@ -414,11 +414,12 @@ def show_component_info(control, repository, branch=None, working=None,
     if branch is not None:
         show_committers = verbose >= 2
         stats = _show_branch_stats(branch, show_committers, outfile)
-    else:
+    elif repository is not None:
         stats = repository.gather_stats()
-    if branch is None and working is None:
+    if branch is None and working is None and repository is not None:
         _show_repository_info(repository, outfile)
-    _show_repository_stats(repository, stats, outfile)
+    if repository is not None:
+        _show_repository_stats(repository, stats, outfile)
 
 
 def describe_layout(repository=None, branch=None, tree=None, control=None):
