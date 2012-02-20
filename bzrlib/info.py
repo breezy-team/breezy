@@ -200,9 +200,10 @@ def _show_format_info(control=None, repository=None, branch=None,
             repository._format.get_format_description())
 
 
-def _show_locking_info(repository, branch=None, working=None, outfile=None):
+def _show_locking_info(repository=None, branch=None, working=None,
+        outfile=None):
     """Show locking status of working, branch and repository."""
-    if (repository.get_physical_lock_status() or
+    if (repository and repository.get_physical_lock_status() or
         (branch and branch.get_physical_lock_status()) or
         (working and working.get_physical_lock_status())):
         outfile.write('\n')
