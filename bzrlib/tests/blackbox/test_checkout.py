@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,11 +16,7 @@
 
 """Tests for the 'checkout' CLI command."""
 
-from cStringIO import StringIO
 import os
-import re
-import shutil
-import sys
 
 from bzrlib import (
     branch as _mod_branch,
@@ -31,9 +27,7 @@ from bzrlib import (
 from bzrlib.tests import (
     TestCaseWithTransport,
     )
-from bzrlib.tests import (
-    KnownFailure,
-    )
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 from bzrlib.tests.features import (
     HardlinkFeature,
     )
@@ -81,6 +75,13 @@ class TestCheckout(TestCaseWithTransport):
         result = bzrdir.BzrDir.open('checkout')
         self.assertEqual(['1'], result.open_workingtree().get_parent_ids())
         self.assertPathDoesNotExist('checkout/added_in_2')
+
+    def test_checkout_into_empty_dir(self):
+        self.make_bzrdir('checkout')
+        out, err = self.run_bzr(['checkout', 'branch', 'checkout'])
+        result = bzrdir.BzrDir.open('checkout')
+        tree = result.open_workingtree()
+        branch = result.open_branch()
 
     def test_checkout_reconstitutes_working_trees(self):
         # doing a 'bzr checkout' in the directory of a branch with no tree
@@ -139,12 +140,11 @@ class TestCheckout(TestCaseWithTransport):
     def test_checkout_in_branch_with_r(self):
         branch = _mod_branch.Branch.open('branch')
         branch.bzrdir.destroy_workingtree()
-        os.chdir('branch')
-        self.run_bzr('checkout -r 1')
-        tree = workingtree.WorkingTree.open('.')
+        self.run_bzr('checkout -r 1', working_dir='branch')
+        tree = workingtree.WorkingTree.open('branch')
         self.assertEqual('1', tree.last_revision())
         branch.bzrdir.destroy_workingtree()
-        self.run_bzr('checkout -r 0')
+        self.run_bzr('checkout -r 0', working_dir='branch')
         self.assertEqual('null:', tree.last_revision())
 
     def test_checkout_files_from(self):
@@ -175,3 +175,53 @@ class TestCheckout(TestCaseWithTransport):
         second_stat = os.stat('second/file1')
         target_stat = os.stat('target/file1')
         self.assertEqual(second_stat, target_stat)
+
+    def test_colo_checkout(self):
+        source = self.make_branch_and_tree('source', format='development-colo')
+        self.build_tree(['source/file1'])
+        source.add('file1')
+        source.commit('added file')
+        target = source.bzrdir.sprout('file:second,branch=somebranch',
+            create_tree_if_local=False)
+        out, err = self.run_bzr('checkout file:,branch=somebranch .',
+            working_dir='second')
+        # We should always be creating a lighweight checkout for colocated
+        # branches.
+        self.assertEquals(
+            target.open_branch(name='somebranch').base,
+            target.get_branch_reference(name=""))
+
+
+class TestSmartServerCheckout(TestCaseWithTransport):
+
+    def test_heavyweight_checkout(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['checkout', self.get_url('from'), 'target'])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(10, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
+
+    def test_lightweight_checkout(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['checkout', '--lightweight', self.get_url('from'),
+            'target'])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(15, self.hpss_calls)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

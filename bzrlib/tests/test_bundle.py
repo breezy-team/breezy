@@ -16,9 +16,8 @@
 
 from cStringIO import StringIO
 import os
-import socket
+import SocketServer
 import sys
-import threading
 
 from bzrlib import (
     bzrdir,
@@ -28,7 +27,6 @@ from bzrlib import (
     merge,
     osutils,
     revision as _mod_revision,
-    symbol_versioning,
     tests,
     treebuilder,
     )
@@ -42,13 +40,12 @@ from bzrlib.bundle.serializer.v09 import BundleSerializerV09
 from bzrlib.bundle.serializer.v4 import BundleSerializerV4
 from bzrlib.repofmt import knitrepo
 from bzrlib.tests import (
-    test_read_bundle,
+    features,
     test_commit,
+    test_read_bundle,
+    test_server,
     )
 from bzrlib.transform import TreeTransform
-from bzrlib.tests import (
-    features,
-    )
 
 
 def get_text(vf, key):
@@ -510,9 +507,7 @@ class BundleTester(object):
                 new.unlock()
                 old.unlock()
         if not _mod_revision.is_null(rev_id):
-            rh = self.b1.revision_history()
-            self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-                tree.branch.set_revision_history, rh[:rh.index(rev_id)+1])
+            tree.branch.generate_revision_history(rev_id)
             tree.update()
             delta = tree.changes_from(self.b1.repository.revision_tree(rev_id))
             self.assertFalse(delta.has_changed(),
@@ -654,10 +649,10 @@ class BundleTester(object):
         bundle = self.get_valid_bundle('null:', 'a@cset-0-4')
 
         # Modified files
-        open('b1/sub/dir/WithCaps.txt', 'ab').write('\nAdding some text\n')
-        open('b1/sub/dir/ pre space', 'ab').write(
+        with open('b1/sub/dir/WithCaps.txt', 'ab') as f: f.write('\nAdding some text\n')
+        with open('b1/sub/dir/ pre space', 'ab') as f: f.write(
              '\r\nAdding some\r\nDOS format lines\r\n')
-        open('b1/sub/dir/nolastnewline.txt', 'ab').write('\n')
+        with open('b1/sub/dir/nolastnewline.txt', 'ab') as f: f.write('\n')
         self.tree1.rename_one('sub/dir/ pre space',
                               'sub/ start space')
         self.tree1.commit('Modified files', rev_id='a@cset-0-5')
@@ -812,12 +807,12 @@ class BundleTester(object):
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
 
-        open('b1/one', 'wb').write('one\n')
+        with open('b1/one', 'wb') as f: f.write('one\n')
         self.tree1.add('one')
         self.tree1.commit('add file', rev_id='a@cset-0-1')
-        open('b1/one', 'wb').write('two\n')
+        with open('b1/one', 'wb') as f: f.write('two\n')
         self.tree1.commit('modify', rev_id='a@cset-0-2')
-        open('b1/one', 'wb').write('three\n')
+        with open('b1/one', 'wb') as f: f.write('three\n')
         self.tree1.commit('modify', rev_id='a@cset-0-3')
         bundle_file = StringIO()
         rev_ids = write_bundle(self.tree1.branch.repository, 'a@cset-0-3',
@@ -902,7 +897,7 @@ class BundleTester(object):
         bundle = self.get_valid_bundle('null:', 'white-1')
 
         # Modified
-        open('b1/trailing space ', 'ab').write('add some text\n')
+        with open('b1/trailing space ', 'ab') as f: f.write('add some text\n')
         self.tree1.commit('add text', rev_id='white-2')
 
         bundle = self.get_valid_bundle('white-1', 'white-2')
@@ -1423,8 +1418,8 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
             from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
-            new_config = test_commit.MustSignConfig(branch)
-            commit.Commit(config=new_config).commit(message="base",
+            new_config = test_commit.MustSignConfig()
+            commit.Commit(config_stack=new_config).commit(message="base",
                                                     allow_pointless=True,
                                                     rev_id='B',
                                                     working_tree=tree_a)
@@ -1839,7 +1834,7 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
         bundle, then the ConnectionReset error should be propagated.
         """
         # Instantiate a server that will provoke a ConnectionReset
-        sock_server = _DisconnectingTCPServer()
+        sock_server = DisconnectingServer()
         self.start_server(sock_server)
         # We don't really care what the url is since the server will close the
         # connection without interpreting it
@@ -1847,35 +1842,21 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
         self.assertRaises(errors.ConnectionReset, read_mergeable_from_url, url)
 
 
-class _DisconnectingTCPServer(object):
-    """A TCP server that immediately closes any connection made to it."""
+class DisconnectingHandler(SocketServer.BaseRequestHandler):
+    """A request handler that immediately closes any connection made to it."""
 
-    def start_server(self):
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.bind(('127.0.0.1', 0))
-        self.sock.listen(1)
-        self.port = self.sock.getsockname()[1]
-        self.thread = threading.Thread(
-            name='%s (port %d)' % (self.__class__.__name__, self.port),
-            target=self.accept_and_close)
-        self.thread.start()
+    def handle(self):
+        self.request.close()
 
-    def accept_and_close(self):
-        conn, addr = self.sock.accept()
-        conn.shutdown(socket.SHUT_RDWR)
-        conn.close()
+
+class DisconnectingServer(test_server.TestingTCPServerInAThread):
+
+    def __init__(self):
+        super(DisconnectingServer, self).__init__(
+            ('127.0.0.1', 0),
+            test_server.TestingTCPServer,
+            DisconnectingHandler)
 
     def get_url(self):
-        return 'bzr://127.0.0.1:%d/' % (self.port,)
-
-    def stop_server(self):
-        try:
-            # make sure the thread dies by connecting to the listening socket,
-            # just in case the test failed to do so.
-            conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            conn.connect(self.sock.getsockname())
-            conn.close()
-        except socket.error:
-            pass
-        self.sock.close()
-        self.thread.join()
+        """Return the url of the server"""
+        return "bzr://%s:%d/" % self.server.server_address

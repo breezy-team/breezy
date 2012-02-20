@@ -18,7 +18,10 @@
 
 from testtools.matchers import *
 
+from bzrlib.smart.client import CallHookParams
+
 from bzrlib.tests import (
+    CapturedCall,
     TestCase,
     TestCaseWithTransport,
     )
@@ -116,11 +119,11 @@ class TestHasLayout(TestCaseWithTransport):
         t = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/c'])
         t.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
-        self.assertThat(t, HasLayout(['', 'a', 'b', 'b/c']))
+        self.assertThat(t, HasLayout(['', 'a', 'b/', 'b/c']))
         self.assertThat(t, HasLayout(
             [('', t.get_root_id()),
              ('a', 'a-id'),
-             ('b', 'b-id'),
+             ('b/', 'b-id'),
              ('b/c', 'c-id')]))
 
     def test_mismatch(self):
@@ -130,5 +133,72 @@ class TestHasLayout(TestCaseWithTransport):
         mismatch = HasLayout(['a']).match(t)
         self.assertIsNot(None, mismatch)
         self.assertEquals(
-            "[u'', u'a', u'b', u'b/c'] != ['a']",
+            "['a'] != [u'', u'a', u'b/', u'b/c']",
             mismatch.describe())
+
+    def test_no_dirs(self):
+        # Some tree/repository formats do not support versioned directories
+        t = self.make_branch_and_tree('.')
+        t.has_versioned_directories = lambda: False
+        self.build_tree(['a', 'b/', 'b/c'])
+        t.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
+        self.assertIs(None, HasLayout(['', 'a', 'b/', 'b/c']).match(t))
+        self.assertIs(None, HasLayout(['', 'a', 'b/', 'b/c', 'd/']).match(t))
+        mismatch = HasLayout([u'', u'a', u'd/']).match(t)
+        self.assertIsNot(None, mismatch)
+        self.assertEquals(
+            "[u'', u'a'] != [u'', u'a', u'b/', u'b/c']",
+            mismatch.describe())
+
+
+class TestContainsNoVfsCalls(TestCase):
+
+    def _make_call(self, method, args):
+        return CapturedCall(CallHookParams(method, args, None, None, None), 0)
+
+    def test__str__(self):
+        self.assertEqual("ContainsNoVfsCalls()", str(ContainsNoVfsCalls()))
+
+    def test_empty(self):
+        self.assertIs(None, ContainsNoVfsCalls().match([]))
+
+    def test_no_vfs_calls(self):
+        calls = [self._make_call("Branch.get_config_file", [])]
+        self.assertIs(None, ContainsNoVfsCalls().match(calls))
+
+    def test_ignores_unknown(self):
+        calls = [self._make_call("unknown", [])]
+        self.assertIs(None, ContainsNoVfsCalls().match(calls))
+
+    def test_match(self):
+        calls = [self._make_call("append", ["file"]),
+                 self._make_call("Branch.get_config_file", [])]
+        mismatch = ContainsNoVfsCalls().match(calls)
+        self.assertIsNot(None, mismatch)
+        self.assertEquals([calls[0].call], mismatch.vfs_calls)
+        self.assertEquals("no VFS calls expected, got: append('file')""",
+                mismatch.describe())
+
+
+class TestRevisionHistoryMatches(TestCaseWithTransport):
+
+    def test_empty(self):
+        tree = self.make_branch_and_tree('.')
+        matcher = RevisionHistoryMatches([])
+        self.assertIs(None, matcher.match(tree.branch))
+
+    def test_matches(self):
+        tree = self.make_branch_and_tree('.')
+        tree.commit('msg1', rev_id='a')
+        tree.commit('msg2', rev_id='b')
+        matcher = RevisionHistoryMatches(['a', 'b'])
+        self.assertIs(None, matcher.match(tree.branch))
+
+    def test_mismatch(self):
+        tree = self.make_branch_and_tree('.')
+        tree.commit('msg1', rev_id='a')
+        tree.commit('msg2', rev_id='b')
+        matcher = RevisionHistoryMatches(['a', 'b', 'c'])
+        self.assertEquals(
+            "['a', 'b', 'c'] != ['a', 'b']",
+            matcher.match(tree.branch).describe())

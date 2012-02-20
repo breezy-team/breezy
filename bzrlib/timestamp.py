@@ -14,8 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 import calendar
 import time
+import re
 
 from bzrlib import osutils
 
@@ -124,18 +127,30 @@ def format_patch_date(secs, offset=0):
             date_fmt='%Y-%m-%d %H:%M:%S')
 
 
+# Format for patch dates: %Y-%m-%d %H:%M:%S [+-]%H%M
+# Groups: 1 = %Y-%m-%d %H:%M:%S; 2 = [+-]%H; 3 = %M
+RE_PATCHDATE = re.compile("(\d+-\d+-\d+\s+\d+:\d+:\d+)\s*([+-]\d\d)(\d\d)$")
+RE_PATCHDATE_NOOFFSET = re.compile("\d+-\d+-\d+\s+\d+:\d+:\d+$")
+
 def parse_patch_date(date_str):
     """Parse a patch-style date into a POSIX timestamp and offset.
 
     Inverse of format_patch_date.
     """
-    secs_str = date_str[:-6]
-    offset_str = date_str[-5:]
-    if len(offset_str) != 5:
-        raise ValueError(
-            "invalid timezone %r" % offset_str)
-    offset_hours, offset_mins = offset_str[:3], offset_str[3:]
-    offset = int(offset_hours) * 3600 + int(offset_mins) * 60
+    match = RE_PATCHDATE.match(date_str)
+    if match is None:
+        if RE_PATCHDATE_NOOFFSET.match(date_str) is not None:
+            raise ValueError("time data %r is missing a timezone offset"
+                % date_str)
+        else:
+            raise ValueError("time data %r does not match format " % date_str
+                + "'%Y-%m-%d %H:%M:%S %z'")
+    secs_str = match.group(1)
+    offset_hours, offset_mins = int(match.group(2)), int(match.group(3))
+    if abs(offset_hours) >= 24 or offset_mins >= 60:
+        raise ValueError("invalid timezone %r" %
+            (match.group(2) + match.group(3)))
+    offset = offset_hours * 3600 + offset_mins * 60
     tm_time = time.strptime(secs_str, '%Y-%m-%d %H:%M:%S')
     # adjust seconds according to offset before converting to POSIX
     # timestamp, to avoid edge problems

@@ -23,6 +23,7 @@ import os
 
 from bzrlib import ignores
 from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests.script import run_script
 
 
 class TestBzrTools(TestCaseWithTransport):
@@ -88,3 +89,30 @@ class TestBzrTools(TestCaseWithTransport):
         self.assertPathDoesNotExist('a/unknown')
         self.assertPathDoesNotExist('a/ignored')
         self.assertPathExists('a/added')
+
+    def test_clean_tree_interactive(self):
+        wt = self.make_branch_and_tree('.')
+        self.touch('bar')
+        self.touch('foo')
+        run_script(self, """
+        $ bzr clean-tree
+        bar
+        foo
+        2>Are you sure you wish to delete these? ([y]es, [n]o): no
+        <n
+        Canceled
+        """)
+        self.assertPathExists('bar')
+        self.assertPathExists('foo')
+        run_script(self, """
+        $ bzr clean-tree
+        bar
+        foo
+        2>Are you sure you wish to delete these? ([y]es, [n]o): yes
+        <y
+        2>deleting paths:
+        2>  bar
+        2>  foo
+        """)
+        self.assertPathDoesNotExist('bar')
+        self.assertPathDoesNotExist('foo')

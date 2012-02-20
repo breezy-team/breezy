@@ -16,3 +16,5 @@
 
 """Placeholder to allow sphinx writer imports."""
 
+from __future__ import absolute_import
+

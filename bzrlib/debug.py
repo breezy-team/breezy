@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
 """Set of flags that enable different debug behaviour.
 
 These are set with eg ``-Dlock`` on the bzr command line or in
@@ -23,6 +22,8 @@ These are set with eg ``-Dlock`` on the bzr command line or in
 See `bzr help debug-flags` or `bzrlib/help_topics/en/debug-flags.txt`
 for a list of the available options.
 """
+
+from __future__ import absolute_import
 
 debug_flags = set()
 

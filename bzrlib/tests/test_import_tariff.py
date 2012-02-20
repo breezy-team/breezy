@@ -167,6 +167,7 @@ class TestImportTariffs(ImportTariffTestCase):
             'bzrlib.cmd_version_info',
             'bzrlib.externalcommand',
             'bzrlib.filters',
+            'bzrlib.hashcache',
             # foreign branch plugins import the foreign_vcs_registry from 
             # bzrlib.foreign so it can't be blacklisted
             'bzrlib.gpg',
@@ -185,11 +186,18 @@ class TestImportTariffs(ImportTariffTestCase):
             'bzrlib.smart.server',
             'bzrlib.transform',
             'bzrlib.version_info_formats.format_rio',
+            'bzrlib.xml_serializer',
+            'bzrlib.xml8',
             'getpass',
             'kerberos',
+            'ssl',
+            'socket',
             'smtplib',
             'tarfile',
             'tempfile',
+            'termios',
+            'tty',
+            'urllib',
             ] + old_format_modules)
         # TODO: similar test for repository-only operations, checking we avoid
         # loading wt-specific stuff
@@ -235,6 +243,7 @@ class TestImportTariffs(ImportTariffTestCase):
             'bzrlib._dirstate_helpers_pyx',
             'bzrlib.externalcommand',
             'bzrlib.filters',
+            'bzrlib.hashcache',
             # foreign branch plugins import the foreign_vcs_registry from 
             # bzrlib.foreign so it can't be blacklisted
             'bzrlib.gpg',
@@ -251,9 +260,13 @@ class TestImportTariffs(ImportTariffTestCase):
             'bzrlib.transform',
             'bzrlib.version_info_formats.format_rio',
             'bzrlib.workingtree_4',
+            'bzrlib.xml_serializer',
+            'bzrlib.xml8',
             'getpass',
             'kerberos',
             'smtplib',
             'tarfile',
             'tempfile',
+            'termios',
+            'tty',
             ] + old_format_modules)

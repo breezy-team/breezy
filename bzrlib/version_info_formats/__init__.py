@@ -16,10 +16,15 @@
 
 """Routines for extracting all version information from a bzr branch."""
 
+from __future__ import absolute_import
+
 import time
 
 from bzrlib.osutils import local_time_offset, format_date
-from bzrlib import registry
+from bzrlib import (
+    registry,
+    revision as _mod_revision,
+    )
 
 
 def create_date_str(timestamp=None, offset=None):
@@ -45,7 +50,8 @@ class VersionInfoBuilder(object):
                 check_for_clean=False,
                 include_revision_history=False,
                 include_file_revisions=False,
-                template=None):
+                template=None,
+                revision_id=None):
         """Build up information about the given branch.
         If working_tree is given, it can be checked for changes.
 
@@ -61,9 +67,9 @@ class VersionInfoBuilder(object):
             include the explicit last-changed revision for each file.
         :param template: Template for the output formatting, not used by
             all builders.
+        :param revision_id: Revision id to print version for (optional)
         """
         self._branch = branch
-        self._working_tree = working_tree
         self._check = check_for_clean
         self._include_history = include_revision_history
         self._include_file_revs = include_file_revisions
@@ -71,7 +77,15 @@ class VersionInfoBuilder(object):
 
         self._clean = None
         self._file_revisions = {}
-        self._revision_history_info= []
+        self._revision_id = revision_id
+
+        if self._revision_id is None:
+            self._tree = working_tree
+            self._working_tree = working_tree
+        else:
+            self._tree = self._branch.repository.revision_tree(self._revision_id)
+            # the working tree is not relevant if an explicit revision was specified
+            self._working_tree = None
 
     def _extract_file_revisions(self):
         """Extract the working revisions for all files"""
@@ -79,13 +93,13 @@ class VersionInfoBuilder(object):
         # Things seem clean if we never look :)
         self._clean = True
 
-        if self._working_tree is not None:
+        if self._working_tree is self._tree:
             basis_tree = self._working_tree.basis_tree()
             # TODO: jam 20070215 The working tree should actually be locked at
             #       a higher level, but this will do for now.
             self._working_tree.lock_read()
         else:
-            basis_tree = self._branch.basis_tree()
+            basis_tree = self._branch.repository.revision_tree(self._revision_id)
 
         basis_tree.lock_read()
         try:
@@ -93,7 +107,7 @@ class VersionInfoBuilder(object):
             for info in basis_tree.list_files(include_root=True):
                 self._file_revisions[info[0]] = info[-1].revision
 
-            if not self._check or self._working_tree is None:
+            if not self._check or self._working_tree is not self._tree:
                 return
 
             delta = self._working_tree.changes_from(basis_tree,
@@ -130,31 +144,28 @@ class VersionInfoBuilder(object):
             if self._working_tree is not None:
                 self._working_tree.unlock()
 
-    def _extract_revision_history(self):
+    def _iter_revision_history(self):
         """Find the messages for all revisions in history."""
 
-        # Unfortunately, there is no WorkingTree.revision_history
-        rev_hist = self._branch.revision_history()
-        if self._working_tree is not None:
-            last_rev = self._working_tree.last_revision()
-            if last_rev not in rev_hist:
-                raise AssertionError(
-                    "Working Tree's last revision not in branch.revision_history")
-            rev_hist = rev_hist[:rev_hist.index(last_rev)+1]
+        last_rev = self._get_revision_id()
 
         repository =  self._branch.repository
         repository.lock_read()
         try:
-            for revision_id in rev_hist:
+            graph = repository.get_graph()
+            revhistory = list(graph.iter_lefthand_ancestry(
+                last_rev, [_mod_revision.NULL_REVISION]))
+            for revision_id in reversed(revhistory):
                 rev = repository.get_revision(revision_id)
-                self._revision_history_info.append(
-                    (rev.revision_id, rev.message,
-                     rev.timestamp, rev.timezone))
+                yield (rev.revision_id, rev.message,
+                       rev.timestamp, rev.timezone)
         finally:
             repository.unlock()
 
     def _get_revision_id(self):
         """Get the revision id we are working on."""
+        if self._revision_id is not None:
+            return self._revision_id
         if self._working_tree is not None:
             return self._working_tree.last_revision()
         return self._branch.last_revision()

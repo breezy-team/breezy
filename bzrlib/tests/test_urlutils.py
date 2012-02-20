@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,12 @@ import os
 import sys
 
 from bzrlib import osutils, urlutils, win32utils
-from bzrlib.errors import InvalidURL, InvalidURLJoin, InvalidRebaseURLs
+from bzrlib.errors import (
+    InvalidURL,
+    InvalidURLJoin,
+    InvalidRebaseURLs,
+    PathNotChild,
+    )
 from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
 
 
@@ -457,6 +462,12 @@ class TestUrlToPath(TestCase):
         self.assertEqual(('file:///C:', '/foo'), extract('file://', '/C:/foo'))
         self.assertEqual(('file:///d|', '/path'), extract('file://', '/d|/path'))
         self.assertRaises(InvalidURL, extract, 'file://', '/path')
+        # Root drives without slash treated as invalid, see bug #841322
+        self.assertEqual(('file:///C:', '/'), extract('file://', '/C:/'))
+        self.assertRaises(InvalidURL, extract, 'file://', '/C:')
+        # Invalid without drive separator or following forward slash
+        self.assertRaises(InvalidURL, extract, 'file://', '/C')
+        self.assertRaises(InvalidURL, extract, 'file://', '/C:ool')
 
     def test_split(self):
         # Test bzrlib.urlutils.split()
@@ -495,6 +506,7 @@ class TestUrlToPath(TestCase):
 
     def test_split_segment_parameters_raw(self):
         split_segment_parameters_raw = urlutils.split_segment_parameters_raw
+        # Check relative references with absolute paths
         self.assertEquals(("/some/path", []),
             split_segment_parameters_raw("/some/path"))
         self.assertEquals(("/some/path", ["tip"]),
@@ -505,19 +517,22 @@ class TestUrlToPath(TestCase):
             split_segment_parameters_raw("/somedir/path,heads%2Ftip"))
         self.assertEquals(("/somedir/path", ["heads%2Ftip", "bar"]),
             split_segment_parameters_raw("/somedir/path,heads%2Ftip,bar"))
-        self.assertEquals(("/", ["key1=val1"]),
+        # Check relative references with relative paths
+        self.assertEquals(("", ["key1=val1"]),
             split_segment_parameters_raw(",key1=val1"))
         self.assertEquals(("foo/", ["key1=val1"]),
             split_segment_parameters_raw("foo/,key1=val1"))
-        self.assertEquals(("/foo", ["key1=val1"]),
+        self.assertEquals(("foo", ["key1=val1"]),
             split_segment_parameters_raw("foo,key1=val1"))
         self.assertEquals(("foo/base,la=bla/other/elements", []),
             split_segment_parameters_raw("foo/base,la=bla/other/elements"))
         self.assertEquals(("foo/base,la=bla/other/elements", ["a=b"]),
             split_segment_parameters_raw("foo/base,la=bla/other/elements,a=b"))
+        # TODO: Check full URLs as well as relative references
 
     def test_split_segment_parameters(self):
         split_segment_parameters = urlutils.split_segment_parameters
+        # Check relative references with absolute paths
         self.assertEquals(("/some/path", {}),
             split_segment_parameters("/some/path"))
         self.assertEquals(("/some/path", {"branch": "tip"}),
@@ -532,7 +547,8 @@ class TestUrlToPath(TestCase):
                 "/somedir/path,ref=heads%2Ftip,key1=val1"))
         self.assertEquals(("/somedir/path", {"ref": "heads%2F=tip"}),
             split_segment_parameters("/somedir/path,ref=heads%2F=tip"))
-        self.assertEquals(("/", {"key1": "val1"}),
+        # Check relative references with relative paths
+        self.assertEquals(("", {"key1": "val1"}),
             split_segment_parameters(",key1=val1"))
         self.assertEquals(("foo/", {"key1": "val1"}),
             split_segment_parameters("foo/,key1=val1"))
@@ -541,6 +557,7 @@ class TestUrlToPath(TestCase):
         self.assertEquals(("foo/base,key1=val1/other/elements",
             {"key2": "val2"}), split_segment_parameters(
                 "foo/base,key1=val1/other/elements,key2=val2"))
+        # TODO: Check full URLs as well as relative references
 
     def test_win32_strip_local_trailing_slash(self):
         strip = urlutils._win32_strip_local_trailing_slash
@@ -708,7 +725,7 @@ class TestUrlToPath(TestCase):
 
 
 class TestCwdToURL(TestCaseInTempDir):
-    """Test that local_path_to_url works base on the cwd"""
+    """Test that local_path_to_url works based on the cwd"""
 
     def test_dot(self):
         # This test will fail if getcwd is not ascii
@@ -905,3 +922,124 @@ class TestURL(TestCase):
         url3 = url.clone()
         self.assertIsNot(url, url3)
         self.assertEquals(url, url3)
+
+
+class TestFileRelpath(TestCase):
+
+    # GZ 2011-11-18: A way to override all path handling functions to one
+    #                platform or another for testing would be nice.
+
+    def _with_posix_paths(self):
+        self.overrideAttr(urlutils, "local_path_from_url",
+            urlutils._posix_local_path_from_url)
+        self.overrideAttr(urlutils, "MIN_ABS_FILEURL_LENGTH", len("file:///"))
+        self.overrideAttr(osutils, "normpath", osutils._posix_normpath)
+        self.overrideAttr(osutils, "abspath", osutils._posix_abspath)
+        self.overrideAttr(osutils, "normpath", osutils._posix_normpath)
+        self.overrideAttr(osutils, "pathjoin", osutils.posixpath.join)
+        self.overrideAttr(osutils, "split", osutils.posixpath.split)
+        self.overrideAttr(osutils, "MIN_ABS_PATHLENGTH", 1)
+
+    def _with_win32_paths(self):
+        self.overrideAttr(urlutils, "local_path_from_url",
+            urlutils._win32_local_path_from_url)
+        self.overrideAttr(urlutils, "MIN_ABS_FILEURL_LENGTH",
+            urlutils.WIN32_MIN_ABS_FILEURL_LENGTH)
+        self.overrideAttr(osutils, "abspath", osutils._win32_abspath)
+        self.overrideAttr(osutils, "normpath", osutils._win32_normpath)
+        self.overrideAttr(osutils, "pathjoin", osutils._win32_pathjoin)
+        self.overrideAttr(osutils, "split", osutils.ntpath.split)
+        self.overrideAttr(osutils, "MIN_ABS_PATHLENGTH", 3)
+
+    def test_same_url_posix(self):
+        self._with_posix_paths()
+        self.assertEquals("",
+            urlutils.file_relpath("file:///a", "file:///a"))
+        self.assertEquals("",
+            urlutils.file_relpath("file:///a", "file:///a/"))
+        self.assertEquals("",
+            urlutils.file_relpath("file:///a/", "file:///a"))
+
+    def test_same_url_win32(self):
+        self._with_win32_paths()
+        self.assertEquals("",
+            urlutils.file_relpath("file:///A:/", "file:///A:/"))
+        self.assertEquals("",
+            urlutils.file_relpath("file:///A|/", "file:///A:/"))
+        self.assertEquals("",
+            urlutils.file_relpath("file:///A:/b/", "file:///A:/b/"))
+        self.assertEquals("",
+            urlutils.file_relpath("file:///A:/b", "file:///A:/b/"))
+        self.assertEquals("",
+            urlutils.file_relpath("file:///A:/b/", "file:///A:/b"))
+
+    def test_child_posix(self):
+        self._with_posix_paths()
+        self.assertEquals("b",
+            urlutils.file_relpath("file:///a", "file:///a/b"))
+        self.assertEquals("b",
+            urlutils.file_relpath("file:///a/", "file:///a/b"))
+        self.assertEquals("b/c",
+            urlutils.file_relpath("file:///a", "file:///a/b/c"))
+
+    def test_child_win32(self):
+        self._with_win32_paths()
+        self.assertEquals("b",
+            urlutils.file_relpath("file:///A:/", "file:///A:/b"))
+        self.assertEquals("b",
+            urlutils.file_relpath("file:///A|/", "file:///A:/b"))
+        self.assertEquals("c",
+            urlutils.file_relpath("file:///A:/b", "file:///A:/b/c"))
+        self.assertEquals("c",
+            urlutils.file_relpath("file:///A:/b/", "file:///A:/b/c"))
+        self.assertEquals("c/d",
+            urlutils.file_relpath("file:///A:/b", "file:///A:/b/c/d"))
+
+    def test_sibling_posix(self):
+        self._with_posix_paths()
+        self.assertRaises(PathNotChild,
+            urlutils.file_relpath, "file:///a/b", "file:///a/c")
+        self.assertRaises(PathNotChild,
+            urlutils.file_relpath, "file:///a/b/", "file:///a/c")
+        self.assertRaises(PathNotChild,
+            urlutils.file_relpath, "file:///a/b/", "file:///a/c/")
+
+    def test_sibling_win32(self):
+        self._with_win32_paths()
+        self.assertRaises(PathNotChild,
+            urlutils.file_relpath, "file:///A:/b", "file:///A:/c")
+        self.assertRaises(PathNotChild,
+            urlutils.file_relpath, "file:///A:/b/", "file:///A:/c")
+        self.assertRaises(PathNotChild,
+            urlutils.file_relpath, "file:///A:/b/", "file:///A:/c/")
+
+    def test_parent_posix(self):
+        self._with_posix_paths()
+        self.assertRaises(PathNotChild,
+            urlutils.file_relpath, "file:///a/b", "file:///a")
+        self.assertRaises(PathNotChild,
+            urlutils.file_relpath, "file:///a/b", "file:///a/")
+
+    def test_parent_win32(self):
+        self._with_win32_paths()
+        self.assertRaises(PathNotChild,
+            urlutils.file_relpath, "file:///A:/b", "file:///A:/")
+        self.assertRaises(PathNotChild,
+            urlutils.file_relpath, "file:///A:/b/c", "file:///A:/b")
+
+
+class QuoteTests(TestCase):
+
+    def test_quote(self):
+        self.assertEqual('abc%20def', urlutils.quote('abc def'))
+        self.assertEqual('abc%2Fdef', urlutils.quote('abc/def', safe=''))
+        self.assertEqual('abc/def', urlutils.quote('abc/def', safe='/'))
+
+    def test_quote_tildes(self):
+        self.assertEqual('%7Efoo', urlutils.quote('~foo'))
+        self.assertEqual('~foo', urlutils.quote('~foo', safe='/~'))
+
+    def test_unquote(self):
+        self.assertEqual('%', urlutils.unquote('%25'))
+        self.assertEqual('\xc3\xa5', urlutils.unquote('%C3%A5'))
+        self.assertEqual(u"\xe5", urlutils.unquote(u'\xe5'))

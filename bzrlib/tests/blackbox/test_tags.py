@@ -17,7 +17,7 @@
 """Tests for commands related to tags"""
 
 from bzrlib import (
-    branchbuilder,
+    errors,
     tag,
     transform,
     )
@@ -28,6 +28,7 @@ from bzrlib.tests import (
     script,
     TestCaseWithTransport,
     )
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 from bzrlib.workingtree import WorkingTree
 
 
@@ -75,10 +76,25 @@ class TestTagging(TestCaseWithTransport):
         # can also delete an existing tag
         out, err = self.run_bzr('tag --delete -d branch tag2')
         # cannot replace an existing tag normally
-        out, err = self.run_bzr('tag -d branch NEWTAG', retcode=3)
+        out, err = self.run_bzr('tag -d branch NEWTAG -r0', retcode=3)
         self.assertContainsRe(err, 'Tag NEWTAG already exists\\.')
         # ... but can if you use --force
-        out, err = self.run_bzr('tag -d branch NEWTAG --force')
+        out, err = self.run_bzr('tag -d branch NEWTAG --force -r0')
+        self.assertEquals("Updated tag NEWTAG.\n", err)
+
+    def test_tag_same_revision(self):
+        t = self.make_branch_and_tree('branch')
+        t.commit(allow_pointless=True, message='initial commit',
+            rev_id='first-revid')
+        t.commit(allow_pointless=True, message='second commit',
+            rev_id='second-revid')
+        out, err = self.run_bzr('tag -rrevid:first-revid -d branch NEWTAG')
+        out, err = self.run_bzr('tag -rrevid:first-revid -d branch NEWTAG')
+        self.assertContainsRe(err,
+            'Tag NEWTAG already exists for that revision\\.')
+        out, err = self.run_bzr('tag -rrevid:second-revid -d branch NEWTAG',
+            retcode=3)
+        self.assertContainsRe(err, 'Tag NEWTAG already exists\\.')
 
     def test_tag_delete_requires_name(self):
         out, err = self.run_bzr('tag -d branch', retcode=3)
@@ -254,6 +270,17 @@ class TestTagging(TestCaseWithTransport):
         self.assertEquals(err, '')
         self.assertContainsRe(out, r'tagD  *3\n')
 
+    def test_list_tags_dotted_revnos_unsupported(self):
+        tree = self.make_branch_and_tree('branch')
+        rev1 = tree.commit("rev1")
+        tree.branch.tags.set_tag("mytag", rev1)
+        def revision_id_to_dotted_revno(self, revid):
+            raise errors.UnsupportedOperation(revision_id_to_dotted_revno, self)
+        self.overrideAttr(Branch, "revision_id_to_dotted_revno",
+            revision_id_to_dotted_revno)
+        out, err = self.run_bzr('tags -d branch', encoding='utf-8')
+        self.assertEquals(out, 'mytag                ?\n')
+
     def test_list_tags_revision_filtering(self):
         tree1 = self.make_branch_and_tree('.')
         tree1.commit(allow_pointless=True, message='revision 1',
@@ -380,3 +407,42 @@ class TestTagging(TestCaseWithTransport):
             'tag2                 2\n'
             'unknown              ?\n')
         self.assertEqual('', err)
+
+
+class TestSmartServerCat(TestCaseWithTransport):
+
+    def test_set_tag(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        t.commit("message")
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['tag', "-d", self.get_url('branch'), "tagname"])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(9, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
+
+    def test_show_tags(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        t.commit("message")
+        t.branch.tags.set_tag("sometag", "rev1")
+        t.branch.tags.set_tag("sometag", "rev2")
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['tags', "-d", self.get_url('branch')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(6, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

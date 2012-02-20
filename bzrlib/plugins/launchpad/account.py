@@ -20,13 +20,15 @@ This allows the user to configure their Launchpad user ID once, rather
 than once for each place that needs to take it into account.
 """
 
+from __future__ import absolute_import
+
 from bzrlib import (
     errors,
     trace,
     transport,
     )
 from bzrlib.config import AuthenticationConfig, GlobalConfig
-
+from bzrlib.i18n import gettext
 
 LAUNCHPAD_BASE = 'https://launchpad.net/'
 
@@ -61,7 +63,7 @@ def get_lp_login(_config=None):
         auth_username = _get_auth_user(auth)
         # Auto-upgrading
         if auth_username is None:
-            trace.note('Setting ssh/sftp usernames for launchpad.net.')
+            trace.note(gettext('Setting ssh/sftp usernames for launchpad.net.'))
             _set_auth_user(username, auth)
         elif auth_username != username:
             raise MismatchedUsernames()

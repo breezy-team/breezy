@@ -150,7 +150,7 @@ class TestEmailMessage(TestCase):
 
     def test_send(self):
         class FakeConfig:
-            def get_user_option(self, option):
+            def get(self, option):
                 return None
 
         messages = []

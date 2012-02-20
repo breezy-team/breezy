@@ -13,15 +13,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
 """\
 This contains functionality for installing bundles into repositories
 """
 
+from __future__ import absolute_import
+
 from bzrlib import ui
-from bzrlib.progress import ProgressPhase
+from bzrlib.i18n import gettext
 from bzrlib.merge import Merger
-from bzrlib.vf_repository import install_revision
+from bzrlib.progress import ProgressPhase
 from bzrlib.trace import note
+from bzrlib.vf_repository import install_revision
 
 
 def install_bundle(repository, bundle_reader):
@@ -33,7 +37,7 @@ def install_bundle(repository, bundle_reader):
     try:
         real_revisions = bundle_reader.real_revisions
         for i, revision in enumerate(reversed(real_revisions)):
-            pb.update("Install revisions",i, len(real_revisions))
+            pb.update(gettext("Install revisions"),i, len(real_revisions))
             if repository.has_revision(revision.revision_id):
                 continue
             cset_tree = bundle_reader.revision_tree(repository,
@@ -64,7 +68,7 @@ def merge_bundle(reader, tree, check_clean, merge_type,
         merger.pp.next_phase()
         merger.find_base()
         if merger.base_rev_id == merger.other_rev_id:
-            note("Nothing to do.")
+            note(gettext("Nothing to do."))
             return 0
         merger.merge_type = merge_type
         merger.show_base = show_base

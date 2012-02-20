@@ -16,6 +16,7 @@
 
 """Reconcilers are able to fix some potential data errors in a branch."""
 
+from __future__ import absolute_import
 
 __all__ = [
     'KnitReconciler',
@@ -35,6 +36,7 @@ from bzrlib import (
 from bzrlib.trace import mutter
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import AdapterFactory, FulltextContentFactory
+from bzrlib.i18n import gettext
 
 
 def reconcile(dir, canonicalize_chks=False):
@@ -92,33 +94,33 @@ class Reconciler(object):
             # Nothing to check here
             self.fixed_branch_history = None
             return
-        ui.ui_factory.note('Reconciling branch %s' % self.branch.base)
+        ui.ui_factory.note(gettext('Reconciling branch %s') % self.branch.base)
         branch_reconciler = self.branch.reconcile(thorough=True)
         self.fixed_branch_history = branch_reconciler.fixed_history
 
     def _reconcile_repository(self):
         self.repo = self.bzrdir.find_repository()
-        ui.ui_factory.note('Reconciling repository %s' %
+        ui.ui_factory.note(gettext('Reconciling repository %s') %
             self.repo.user_url)
-        self.pb.update("Reconciling repository", 0, 1)
+        self.pb.update(gettext("Reconciling repository"), 0, 1)
         if self.canonicalize_chks:
             try:
                 self.repo.reconcile_canonicalize_chks
             except AttributeError:
                 raise errors.BzrError(
-                    "%s cannot canonicalize CHKs." % (self.repo,))
+                    gettext("%s cannot canonicalize CHKs.") % (self.repo,))
             repo_reconciler = self.repo.reconcile_canonicalize_chks()
         else:
             repo_reconciler = self.repo.reconcile(thorough=True)
         self.inconsistent_parents = repo_reconciler.inconsistent_parents
         self.garbage_inventories = repo_reconciler.garbage_inventories
         if repo_reconciler.aborted:
-            ui.ui_factory.note(
-                'Reconcile aborted: revision index has inconsistent parents.')
-            ui.ui_factory.note(
-                'Run "bzr check" for more details.')
+            ui.ui_factory.note(gettext(
+                'Reconcile aborted: revision index has inconsistent parents.'))
+            ui.ui_factory.note(gettext(
+                'Run "bzr check" for more details.'))
         else:
-            ui.ui_factory.note('Reconciliation complete.')
+            ui.ui_factory.note(gettext('Reconciliation complete.'))
 
 
 class BranchReconciler(object):
@@ -161,13 +163,14 @@ class BranchReconciler(object):
             # set_revision_history, as this will regenerate it again.
             # Not really worth a whole BranchReconciler class just for this,
             # though.
-            ui.ui_factory.note('Fixing last revision info %s => %s' % (
-                 last_revno, len(real_history)))
+            ui.ui_factory.note(gettext('Fixing last revision info {0} '\
+                                       ' => {1}').format(
+                                       last_revno, len(real_history)))
             self.branch.set_last_revision_info(len(real_history),
                                                last_revision_id)
         else:
             self.fixed_history = False
-            ui.ui_factory.note('revision_history ok.')
+            ui.ui_factory.note(gettext('revision_history ok.'))
 
 
 class RepoReconciler(object):
@@ -228,7 +231,7 @@ class RepoReconciler(object):
         (self.thorough) are treated as requiring the reweave.
         """
         transaction = self.repo.get_transaction()
-        self.pb.update('Reading inventory data')
+        self.pb.update(gettext('Reading inventory data'))
         self.inventory = self.repo.inventories
         self.revisions = self.repo.revisions
         # the total set of revisions to process
@@ -248,11 +251,11 @@ class RepoReconciler(object):
         # (no garbage inventories or we are not doing a thorough check)
         if (not self.inconsistent_parents and
             (not self.garbage_inventories or not self.thorough)):
-            ui.ui_factory.note('Inventory ok.')
+            ui.ui_factory.note(gettext('Inventory ok.'))
             return
-        self.pb.update('Backing up inventory', 0, 0)
+        self.pb.update(gettext('Backing up inventory'), 0, 0)
         self.repo._backup_inventory()
-        ui.ui_factory.note('Backup inventory created.')
+        ui.ui_factory.note(gettext('Backup inventory created.'))
         new_inventories = self.repo._temp_inventories()
 
         # we have topological order of revisions and non ghost parents ready.
@@ -268,10 +271,10 @@ class RepoReconciler(object):
         if not (set(new_inventories.keys()) ==
             set([(revid,) for revid in self.pending])):
             raise AssertionError()
-        self.pb.update('Writing weave')
+        self.pb.update(gettext('Writing weave'))
         self.repo._activate_new_inventory()
         self.inventory = None
-        ui.ui_factory.note('Inventory regenerated.')
+        ui.ui_factory.note(gettext('Inventory regenerated.'))
 
     def _new_inv_parents(self, revision_key):
         """Lookup ghost-filtered parents for revision_key."""
@@ -365,24 +368,24 @@ class KnitReconciler(RepoReconciler):
     def _load_indexes(self):
         """Load indexes for the reconciliation."""
         self.transaction = self.repo.get_transaction()
-        self.pb.update('Reading indexes', 0, 2)
+        self.pb.update(gettext('Reading indexes'), 0, 2)
         self.inventory = self.repo.inventories
-        self.pb.update('Reading indexes', 1, 2)
+        self.pb.update(gettext('Reading indexes'), 1, 2)
         self.repo._check_for_inconsistent_revision_parents()
         self.revisions = self.repo.revisions
-        self.pb.update('Reading indexes', 2, 2)
+        self.pb.update(gettext('Reading indexes'), 2, 2)
 
     def _gc_inventory(self):
         """Remove inventories that are not referenced from the revision store."""
-        self.pb.update('Checking unused inventories', 0, 1)
+        self.pb.update(gettext('Checking unused inventories'), 0, 1)
         self._check_garbage_inventories()
-        self.pb.update('Checking unused inventories', 1, 3)
+        self.pb.update(gettext('Checking unused inventories'), 1, 3)
         if not self.garbage_inventories:
-            ui.ui_factory.note('Inventory ok.')
+            ui.ui_factory.note(gettext('Inventory ok.'))
             return
-        self.pb.update('Backing up inventory', 0, 0)
+        self.pb.update(gettext('Backing up inventory'), 0, 0)
         self.repo._backup_inventory()
-        ui.ui_factory.note('Backup Inventory created')
+        ui.ui_factory.note(gettext('Backup Inventory created'))
         # asking for '' should never return a non-empty weave
         new_inventories = self.repo._temp_inventories()
         # we have topological order of revisions and non ghost parents ready.
@@ -399,10 +402,10 @@ class KnitReconciler(RepoReconciler):
         # the revisionds list
         if not(set(new_inventories.keys()) == set(revision_keys)):
             raise AssertionError()
-        self.pb.update('Writing weave')
+        self.pb.update(gettext('Writing weave'))
         self.repo._activate_new_inventory()
         self.inventory = None
-        ui.ui_factory.note('Inventory regenerated.')
+        ui.ui_factory.note(gettext('Inventory regenerated.'))
 
     def _fix_text_parents(self):
         """Fix bad versionedfile parent entries.
@@ -440,7 +443,7 @@ class KnitReconciler(RepoReconciler):
             versions_list.append(text_key[1])
         # Do the reconcile of individual weaves.
         for num, file_id in enumerate(per_id_bad_parents):
-            self.pb.update('Fixing text parents', num,
+            self.pb.update(gettext('Fixing text parents'), num,
                            len(per_id_bad_parents))
             versions_with_bad_parents = per_id_bad_parents[file_id]
             id_unused_versions = set(key[-1] for key in unused_versions

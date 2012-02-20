@@ -53,24 +53,25 @@ class BranchStatus(TestCaseWithTransport):
             status._show_shelve_summary,
             'bzr status')
 
-    def assertStatus(self, expected_lines, working_tree,
+    def assertStatus(self, expected_lines, working_tree, specific_files=None,
         revision=None, short=False, pending=True, verbose=False):
         """Run status in working_tree and look for output.
 
         :param expected_lines: The lines to look for.
         :param working_tree: The tree to run status in.
         """
-        output_string = self.status_string(working_tree, revision, short,
+        output_string = self.status_string(working_tree, specific_files, revision, short,
                 pending, verbose)
         self.assertEqual(expected_lines, output_string.splitlines(True))
 
-    def status_string(self, wt, revision=None, short=False, pending=True,
-        verbose=False):
+    def status_string(self, wt, specific_files=None, revision=None,
+        short=False, pending=True, verbose=False):
         # use a real file rather than StringIO because it doesn't handle
         # Unicode very well.
         tof = codecs.getwriter('utf-8')(TemporaryFile())
-        show_tree_status(wt, to_file=tof, revision=revision, short=short,
-                show_pending=pending, verbose=verbose)
+        show_tree_status(wt, specific_files=specific_files, to_file=tof,
+                revision=revision, short=short, show_pending=pending,
+                verbose=verbose)
         tof.seek(0)
         return tof.read().decode('utf-8')
 
@@ -569,14 +570,22 @@ class BranchStatus(TestCaseWithTransport):
             ],
             wt)
         self.run_bzr(['shelve', '--all', '-m', 'bar'])
-        self.build_tree(['spam.c'])
+        self.build_tree(['eggs.c', 'spam.c'])
+        wt.add('eggs.c')
         wt.add('spam.c')
         self.assertStatus([
                 'added:\n',
+                '  eggs.c\n',
                 '  spam.c\n',
                 '2 shelves exist. See "bzr shelve --list" for details.\n',
             ],
             wt)
+        self.assertStatus([
+                'added:\n',
+                '  spam.c\n',
+            ],
+            wt,
+            specific_files=['spam.c'])
 
 
 class CheckoutStatus(BranchStatus):
@@ -589,8 +598,7 @@ class CheckoutStatus(BranchStatus):
     def make_branch_and_tree(self, relpath):
         source = self.make_branch(pathjoin('..', relpath))
         checkout = bzrdir.BzrDirMetaFormat1().initialize(relpath)
-        bzrlib.branch.BranchReferenceFormat().initialize(checkout,
-            target_branch=source)
+        checkout.set_branch_reference(source)
         return checkout.create_workingtree()
 
 

@@ -32,7 +32,6 @@ import threading
 import bzrlib
 from bzrlib import (
     bzrdir,
-    cethread,
     config,
     debug,
     errors,
@@ -128,22 +127,29 @@ def vary_by_http_activity():
         ('urllib,http', dict(_activity_server=ActivityHTTPServer,
                             _transport=_urllib.HttpTransport_urllib,)),
         ]
-    if features.HTTPSServerFeature.available():
-        activity_scenarios.append(
-            ('urllib,https', dict(_activity_server=ActivityHTTPSServer,
-                                _transport=_urllib.HttpTransport_urllib,)),)
     if features.pycurl.available():
         activity_scenarios.append(
             ('pycurl,http', dict(_activity_server=ActivityHTTPServer,
                                 _transport=PyCurlTransport,)),)
-        if features.HTTPSServerFeature.available():
-            from bzrlib.tests import (
-                ssl_certs,
-                )
-            # FIXME: Until we have a better way to handle self-signed
-            # certificates (like allowing them in a test specific
-            # authentication.conf for example), we need some specialized pycurl
-            # transport for tests.
+    if features.HTTPSServerFeature.available():
+        # FIXME: Until we have a better way to handle self-signed certificates
+        # (like allowing them in a test specific authentication.conf for
+        # example), we need some specialized pycurl/urllib transport for tests.
+        # -- vila 2012-01-20
+        from bzrlib.tests import (
+            ssl_certs,
+            )
+        class HTTPS_urllib_transport(_urllib.HttpTransport_urllib):
+
+            def __init__(self, base, _from_transport=None):
+                super(HTTPS_urllib_transport, self).__init__(
+                    base, _from_transport=_from_transport,
+                    ca_certs=ssl_certs.build_path('ca.crt'))
+
+        activity_scenarios.append(
+            ('urllib,https', dict(_activity_server=ActivityHTTPSServer,
+                                  _transport=HTTPS_urllib_transport,)),)
+        if features.pycurl.available():
             class HTTPS_pycurl_transport(PyCurlTransport):
 
                 def __init__(self, base, _from_transport=None):
@@ -1997,6 +2003,7 @@ class Test_redirected_to(tests.TestCase):
         self.assertIsInstance(r, type(t))
         # Both transports share the some connection
         self.assertEqual(t._get_connection(), r._get_connection())
+        self.assertEquals('http://www.example.com/foo/subdir/', r.base)
 
     def test_redirected_to_self_with_slash(self):
         t = self._transport('http://www.example.com/foo')
@@ -2013,18 +2020,29 @@ class Test_redirected_to(tests.TestCase):
         r = t._redirected_to('http://www.example.com/foo',
                              'http://foo.example.com/foo/subdir')
         self.assertIsInstance(r, type(t))
+        self.assertEquals('http://foo.example.com/foo/subdir/',
+            r.external_url())
 
     def test_redirected_to_same_host_sibling_protocol(self):
         t = self._transport('http://www.example.com/foo')
         r = t._redirected_to('http://www.example.com/foo',
                              'https://www.example.com/foo')
         self.assertIsInstance(r, type(t))
+        self.assertEquals('https://www.example.com/foo/',
+            r.external_url())
 
     def test_redirected_to_same_host_different_protocol(self):
         t = self._transport('http://www.example.com/foo')
         r = t._redirected_to('http://www.example.com/foo',
                              'ftp://www.example.com/foo')
         self.assertNotEquals(type(r), type(t))
+        self.assertEquals('ftp://www.example.com/foo/', r.external_url())
+
+    def test_redirected_to_same_host_specific_implementation(self):
+        t = self._transport('http://www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'https+urllib://www.example.com/foo')
+        self.assertEquals('https://www.example.com/foo/', r.external_url())
 
     def test_redirected_to_different_host_same_user(self):
         t = self._transport('http://joe@www.example.com/foo')
@@ -2032,6 +2050,7 @@ class Test_redirected_to(tests.TestCase):
                              'https://foo.example.com/foo')
         self.assertIsInstance(r, type(t))
         self.assertEqual(t._parsed_url.user, r._parsed_url.user)
+        self.assertEquals('https://joe@foo.example.com/foo/', r.external_url())
 
 
 class PredefinedRequestHandler(http_server.TestingHTTPRequestHandler):
@@ -2107,18 +2126,17 @@ class TestActivityMixin(object):
         tests.TestCase.setUp(self)
         self.server = self._activity_server(self._protocol_version)
         self.server.start_server()
+        self.addCleanup(self.server.stop_server)
         _activities = {} # Don't close over self and create a cycle
         def report_activity(t, bytes, direction):
             count = _activities.get(direction, 0)
             count += bytes
             _activities[direction] = count
         self.activities = _activities
-
         # We override at class level because constructors may propagate the
         # bound method and render instance overriding ineffective (an
         # alternative would be to define a specific ui factory instead...)
         self.overrideAttr(self._transport, '_report_activity', report_activity)
-        self.addCleanup(self.server.stop_server)
 
     def get_transport(self):
         t = self._transport(self.server.get_url())

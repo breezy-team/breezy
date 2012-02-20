@@ -432,7 +432,7 @@ class TestStaticTuple(tests.TestCase):
         # amount of referenced memory. Unfortunately gc.get_referents() first
         # checks the IS_GC flag before it traverses anything. We could write a
         # helper func, but that won't work for the generic implementation...
-        self.requireFeature(features.meliae_feature)
+        self.requireFeature(features.meliae)
         from meliae import scanner
         strs = ['foo', 'bar', 'baz', 'bing']
         k = self.module.StaticTuple(*strs)
@@ -443,7 +443,7 @@ class TestStaticTuple(tests.TestCase):
         self.assertEqual(sorted(refs), sorted(scanner.get_referents(k)))
 
     def test_nested_referents(self):
-        self.requireFeature(features.meliae_feature)
+        self.requireFeature(features.meliae)
         from meliae import scanner
         strs = ['foo', 'bar', 'baz', 'bing']
         k1 = self.module.StaticTuple(*strs[:2])

@@ -42,7 +42,10 @@ check-nodocs: extensions
 	set -e
 	# Generate a stream for PQM to watch.
 	-$(RM) -f selftest.log
-	$(PYTHON) -Werror -Wignore::ImportWarning -O ./bzr selftest --subunit $(tests) | tee selftest.log
+	echo `date` ": selftest starts" 1>&2
+	$(PYTHON) -Werror -Wignore::ImportWarning -O ./bzr selftest -Oselftest.timeout=120 \
+	  --subunit $(tests) | tee selftest.log
+	echo `date` ": selftest ends" 1>&2
 	# An empty log file should catch errors in the $(PYTHON)
 	# command above (the '|' swallow any errors since 'make'
 	# sees the 'tee' exit code for the whole line
@@ -429,7 +432,7 @@ TRANSLATABLE_PYFILES:=$(shell find bzrlib -name '*.py' \
 		)
 
 po/bzr.pot: $(PYFILES) $(DOCFILES)
-	$(PYTHON) ./bzr export-pot > po/bzr.pot
+	$(PYTHON) ./bzr export-pot --include-duplicates > po/bzr.pot
 	echo $(TRANSLATABLE_PYFILES) | xargs \
 	  xgettext --package-name "bzr" \
 	  --msgid-bugs-address "<bazaar@canonical.com>" \

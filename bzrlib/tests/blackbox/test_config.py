@@ -17,17 +17,16 @@
 
 """Black-box tests for bzr config."""
 
-import os
-
 from bzrlib import (
     config,
-    errors,
     tests,
     )
 from bzrlib.tests import (
     script,
     test_config as _t_config,
     )
+from bzrlib.tests.matchers import ContainsNoVfsCalls
+
 
 class TestWithoutConfig(tests.TestCaseWithTransport):
 
@@ -80,6 +79,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         script.run_script(self, '''\
             $ bzr config -d tree
             bazaar:
+              [DEFAULT]
               multiline = """1
             2
             """
@@ -96,14 +96,19 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
             ''')
 
     def test_list_all_values(self):
+        config.option_registry.register(config.ListOption('list'))
+        self.addCleanup(config.option_registry.remove, 'list')
         self.bazaar_config.set_user_option('list', [1, 'a', 'with, a comma'])
         script.run_script(self, '''\
             $ bzr config -d tree
             bazaar:
+              [DEFAULT]
               list = 1, a, "with, a comma"
             ''')
 
     def test_list_value_only(self):
+        config.option_registry.register(config.ListOption('list'))
+        self.addCleanup(config.option_registry.remove, 'list')
         self.bazaar_config.set_user_option('list', [1, 'a', 'with, a comma'])
         script.run_script(self, '''\
             $ bzr config -d tree list
@@ -115,6 +120,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         script.run_script(self, '''\
             $ bzr config -d tree
             bazaar:
+              [DEFAULT]
               hello = world
             ''')
 
@@ -136,8 +142,21 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         script.run_script(self, '''\
             $ bzr config
             bazaar:
+              [DEFAULT]
               hello = world
             ''')
+
+    def test_cmd_line(self):
+        self.bazaar_config.set_user_option('hello', 'world')
+        script.run_script(self, '''\
+            $ bzr config -Ohello=bzr
+            cmdline:
+              hello = bzr
+            bazaar:
+              [DEFAULT]
+              hello = world
+            ''')
+
 
 class TestConfigDisplayWithPolicy(tests.TestCaseWithTransport):
 
@@ -189,7 +208,7 @@ class TestConfigActive(tests.TestCaseWithTransport):
         # We need to delete the locations definition that overrides the branch
         # one
         script.run_script(self, '''\
-            $ bzr config -d tree --remove file
+            $ bzr config -d tree --scope locations --remove file
             $ bzr config -d tree file
             branch
             ''')
@@ -210,6 +229,7 @@ class TestConfigSetOption(tests.TestCaseWithTransport):
             $ bzr config --scope bazaar hello=world
             $ bzr config -d tree --all hello
             bazaar:
+              [DEFAULT]
               hello = world
             ''')
 
@@ -218,6 +238,7 @@ class TestConfigSetOption(tests.TestCaseWithTransport):
             $ bzr config -d tree --scope bazaar hello=world
             $ bzr config -d tree --all hello
             bazaar:
+              [DEFAULT]
               hello = world
             ''')
 
@@ -286,22 +307,25 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
             branch:
               file = branch
             bazaar:
+              [DEFAULT]
               file = bazaar
             ''')
 
     def test_branch_config_default(self):
         script.run_script(self, '''\
-            $ bzr config -d tree --remove file
+            $ bzr config -d tree --scope locations --remove file
             $ bzr config -d tree --all file
             branch:
               file = branch
             bazaar:
+              [DEFAULT]
               file = bazaar
             ''')
         script.run_script(self, '''\
             $ bzr config -d tree --remove file
             $ bzr config -d tree --all file
             bazaar:
+              [DEFAULT]
               file = bazaar
             ''')
 
@@ -313,11 +337,30 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
               [.../work/tree]
               file = locations
             bazaar:
+              [DEFAULT]
               file = bazaar
             ''')
         script.run_script(self, '''\
-            $ bzr config -d tree --remove file
+            $ bzr config -d tree --scope locations --remove file
             $ bzr config -d tree --all file
             bazaar:
+              [DEFAULT]
               file = bazaar
             ''')
+
+
+class TestSmartServerConfig(tests.TestCaseWithTransport):
+
+    def test_simple_branch_config(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['config', '-d', self.get_url('branch')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(5, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

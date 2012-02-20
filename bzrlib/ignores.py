@@ -16,6 +16,8 @@
 
 """Lists of ignore files, etc."""
 
+from __future__ import absolute_import
+
 import errno
 import os
 from cStringIO import StringIO
@@ -27,9 +29,8 @@ from bzrlib import (
     atomicfile,
     config,
     globbing,
+    trace,
     )
-
-from trace import warning
 """)
 
 # ~/.bazaar/ignore will be filled out using
@@ -72,7 +73,8 @@ def parse_ignore_file(f):
                 unicode_lines.append(line.decode('utf-8'))
             except UnicodeDecodeError:
                 # report error about line (idx+1)
-                warning('.bzrignore: On Line #%d, malformed utf8 character. '
+                trace.warning(
+                        '.bzrignore: On Line #%d, malformed utf8 character. '
                         'Ignoring line.' % (line_number+1))
 
     # Append each line to ignore list if it's not a comment line

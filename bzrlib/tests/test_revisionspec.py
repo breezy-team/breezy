@@ -20,6 +20,7 @@ import time
 from bzrlib import (
     errors,
     revision as _mod_revision,
+    symbol_versioning,
     )
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.revisionspec import (
@@ -118,7 +119,10 @@ class TestRevisionSpecBase(TestRevisionSpec):
         # If wants_revision_history = True, then _match_on should get the
         # branch revision history
         spec = RevisionSpecMatchOnTrap('foo', _internal=True)
-        spec.in_history(self.tree.branch)
+        spec.wants_revision_history = True
+        self.callDeprecated(['RevisionSpec.wants_revision_history was '
+            'deprecated in 2.5 (RevisionSpecMatchOnTrap).'],
+            spec.in_history, self.tree.branch)
 
         self.assertEqual((self.tree.branch, ['r1' ,'r2']),
                          spec.last_call)
@@ -127,7 +131,6 @@ class TestRevisionSpecBase(TestRevisionSpec):
         # If wants_revision_history = False, then _match_on should get None for
         # the branch revision history
         spec = RevisionSpecMatchOnTrap('foo', _internal=True)
-        spec.wants_revision_history = False
         spec.in_history(self.tree.branch)
 
         self.assertEqual((self.tree.branch, None), spec.last_call)
@@ -150,7 +153,7 @@ class RevisionSpec_bork(RevisionSpec):
 
     def _match_on(self, branch, revs):
         if self.spec == "bork":
-            return RevisionInfo.from_revision_id(branch, "r1", revs)
+            return RevisionInfo.from_revision_id(branch, "r1")
         else:
             raise errors.InvalidRevisionSpec(self.spec, branch)
 

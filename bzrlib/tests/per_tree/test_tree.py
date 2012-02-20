@@ -158,15 +158,21 @@ class TestFileContent(TestCaseWithTree):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content_2(work_tree)
         tree.lock_read()
+        self.addCleanup(tree.unlock)
+        # Test lookup without path works
+        file_without_path = tree.get_file('a-id')
         try:
-            # Test lookup without path works
-            lines = tree.get_file('a-id').readlines()
-            self.assertEqual(['foobar\n'], lines)
-            # Test lookup with path works
-            lines = tree.get_file('a-id', path='a').readlines()
+            lines = file_without_path.readlines()
             self.assertEqual(['foobar\n'], lines)
         finally:
-            tree.unlock()
+            file_without_path.close()
+        # Test lookup with path works
+        file_with_path = tree.get_file('a-id', path='a')
+        try:
+            lines = file_with_path.readlines()
+            self.assertEqual(['foobar\n'], lines)
+        finally:
+            file_with_path.close()
 
     def test_get_file_text(self):
         work_tree = self.make_branch_and_tree('wt')
@@ -323,3 +329,11 @@ class TestGetFileVerifier(TestCaseWithTree):
         if kind == "SHA1":
             expected = osutils.sha_strings('file content')
             self.assertEqual(expected, data)
+
+
+class TestHasVersionedDirectories(TestCaseWithTree):
+
+    def test_has_versioned_directories(self):
+        work_tree = self.make_branch_and_tree('tree')
+        tree = self._convert_tree(work_tree)
+        self.assertSubset([tree.has_versioned_directories()], (True, False))

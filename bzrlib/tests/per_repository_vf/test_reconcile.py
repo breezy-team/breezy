@@ -349,9 +349,10 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         # we should add a lower level api to allow constructing such cases.
 
         # first off the common logic:
-        tree = self.make_branch_and_tree('wrong-first-parent')
-        second_tree = self.make_branch_and_tree('reversed-secondary-parents')
-        for t in [tree, second_tree]:
+        self.first_tree = self.make_branch_and_tree('wrong-first-parent')
+        self.second_tree = self.make_branch_and_tree(
+            'reversed-secondary-parents')
+        for t in [self.first_tree, self.second_tree]:
             t.commit('1', rev_id='1')
             uncommit(t.branch, tree=t)
             t.commit('2', rev_id='2')
@@ -360,10 +361,10 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
             uncommit(t.branch, tree=t)
         #second_tree = self.make_branch_and_tree('reversed-secondary-parents')
         #second_tree.pull(tree) # XXX won't copy the repo?
-        repo_secondary = second_tree.branch.repository
+        repo_secondary = self.second_tree.branch.repository
 
         # now setup the wrong-first parent case
-        repo = tree.branch.repository
+        repo = self.first_tree.branch.repository
         repo.lock_write()
         repo.start_write_group()
         inv = Inventory(revision_id='wrong-first-parent')
@@ -406,9 +407,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
 
     def test_reconcile_wrong_order(self):
         # a wrong order in primary parents is optionally correctable
-        t = self.get_transport().clone('wrong-first-parent')
-        d = bzrlib.bzrdir.BzrDir.open_from_transport(t)
-        repo = d.open_repository()
+        repo = self.first_tree.branch.repository
         repo.lock_read()
         try:
             g = repo.get_graph()
@@ -417,7 +416,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
                 raise TestSkipped('wrong-first-parent is not setup for testing')
         finally:
             repo.unlock()
-        self.checkUnreconciled(d, repo.reconcile())
+        self.checkUnreconciled(repo.bzrdir, repo.reconcile())
         # nothing should have been altered yet : inventories without
         # revisions are not data loss incurring for current format
         reconciler = repo.reconcile(thorough=True)
@@ -435,8 +434,6 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
 
     def test_reconcile_wrong_order_secondary_inventory(self):
         # a wrong order in the parents for inventories is ignored.
-        t = self.get_transport().clone('reversed-secondary-parents')
-        d = bzrlib.bzrdir.BzrDir.open_from_transport(t)
-        repo = d.open_repository()
-        self.checkUnreconciled(d, repo.reconcile())
-        self.checkUnreconciled(d, repo.reconcile(thorough=True))
+        repo = self.second_tree.branch.repository
+        self.checkUnreconciled(repo.bzrdir, repo.reconcile())
+        self.checkUnreconciled(repo.bzrdir, repo.reconcile(thorough=True))

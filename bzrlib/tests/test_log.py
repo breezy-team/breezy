@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@ from bzrlib import (
     registry,
     revision,
     revisionspec,
-    symbol_versioning,
     tests,
     )
 
@@ -251,7 +250,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         wt.commit(message='add file1 and file2')
         self.run_bzr('branch parent child')
         os.unlink('child/file1')
-        file('child/file2', 'wb').write('hello\n')
+        with file('child/file2', 'wb') as f: f.write('hello\n')
         self.run_bzr(['commit', '-m', 'remove file1 and modify file2',
             'child'])
         os.chdir('parent')
@@ -323,7 +322,7 @@ class TestShortLogFormatter(TestCaseForLogFormatter):
     1 Joe Foo\t2005-11-22
       rev-1
 
-Use --include-merges or -n0 to see merged revisions.
+Use --include-merged or -n0 to see merged revisions.
 """,
             wt.branch, log.ShortLogFormatter,
             formatter_kwargs=dict(show_advice=True))
@@ -1335,7 +1334,7 @@ class TestLogWithBugs(TestCaseForLogFormatter, TestLogMixin):
         self.assertFormatterResult("""\
 ------------------------------------------------------------
 revno: 2
-fixes bug(s): test://bug/id test://bug/2
+fixes bugs: test://bug/id test://bug/2
 author: Joe Bar <joe@bar.com>
 committer: Joe Foo <joe@foo.com>
 branch nick: work
@@ -1346,7 +1345,7 @@ message:
   message
 ------------------------------------------------------------
 revno: 1
-fixes bug(s): test://bug/id
+fixes bug: test://bug/id
 committer: Joe Foo <joe@foo.com>
 branch nick: work
 timestamp: Tue 2005-11-22 00:00:00 +0000
@@ -1359,13 +1358,13 @@ message:
         tree = self.make_commits_with_bugs()
         self.assertFormatterResult("""\
     2 Joe Bar\t2005-11-22
-      fixes bug(s): test://bug/id test://bug/2
+      fixes bugs: test://bug/id test://bug/2
       multiline
       log
       message
 
     1 Joe Foo\t2005-11-22
-      fixes bug(s): test://bug/id
+      fixes bug: test://bug/id
       simple log message
 
 """,
@@ -1570,7 +1569,7 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
     def assertLogRevnos(self, expected_revnos, b, start, end,
                         exclude_common_ancestry, generate_merge_revisions=True):
         # FIXME: the layering in log makes it hard to test intermediate levels,
-        # I wish adding filters with their parameters were easier...
+        # I wish adding filters with their parameters was easier...
         # -- vila 20100413
         iter_revs = log._calc_view_revisions(
             b, start, end, direction='reverse',
@@ -1636,3 +1635,4 @@ class TestLogDefaults(TestCaseForLogFormatter):
         log.Logger(b, request).show(log_formatter)
         # should now only have 2 revisions:
         self.assertEquals(len(log_formatter.revisions), 2)
+

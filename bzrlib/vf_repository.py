@@ -16,6 +16,8 @@
 
 """Repository formats built around versioned files."""
 
+from __future__ import absolute_import
+
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -23,6 +25,7 @@ import itertools
 
 from bzrlib import (
     check,
+    config as _mod_config,
     debug,
     fetch as _mod_fetch,
     fifo_cache,
@@ -38,11 +41,13 @@ from bzrlib import (
     tsort,
     ui,
     versionedfile,
+    vf_search,
     )
 
 from bzrlib.recordcounter import RecordCounter
 from bzrlib.revisiontree import InventoryRevisionTree
 from bzrlib.testament import Testament
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib import (
@@ -64,13 +69,13 @@ from bzrlib.repository import (
     CommitBuilder,
     InterRepository,
     MetaDirRepository,
-    MetaDirRepositoryFormat,
+    RepositoryFormatMetaDir,
     Repository,
     RepositoryFormat,
     )
 
 from bzrlib.trace import (
-    mutter,
+    mutter
     )
 
 
@@ -79,6 +84,7 @@ class VersionedFileRepositoryFormat(RepositoryFormat):
 
     supports_full_versioned_files = True
     supports_versioned_directories = True
+    supports_unreferenced_revisions = True
 
     # Should commit add an inventory, or an inventory delta to the repository.
     _commit_inv_deltas = True
@@ -103,11 +109,11 @@ class VersionedFileCommitBuilder(CommitBuilder):
     # the default CommitBuilder does not manage trees whose root is versioned.
     _versioned_root = False
 
-    def __init__(self, repository, parents, config, timestamp=None,
+    def __init__(self, repository, parents, config_stack, timestamp=None,
                  timezone=None, committer=None, revprops=None,
                  revision_id=None, lossy=False):
         super(VersionedFileCommitBuilder, self).__init__(repository,
-            parents, config, timestamp, timezone, committer, revprops,
+            parents, config_stack, timestamp, timezone, committer, revprops,
             revision_id, lossy)
         try:
             basis_id = self.parents[0]
@@ -194,8 +200,13 @@ class VersionedFileCommitBuilder(CommitBuilder):
                        revision_id=self._new_revision_id,
                        properties=self._revprops)
         rev.parent_ids = self.parents
-        self.repository.add_revision(self._new_revision_id, rev,
-            self.new_inventory, self._config)
+        if self._config_stack.get('create_signatures') == _mod_config.SIGN_ALWAYS:
+            testament = Testament(rev, self.revision_tree())
+            plaintext = testament.as_short_text()
+            self.repository.store_revision_signature(
+                gpg.GPGStrategy(self._config_stack), plaintext,
+                self._new_revision_id)
+        self.repository._add_revision(rev)
         self._ensure_fallback_inventories()
         self.repository.commit_write_group()
         return self._new_revision_id
@@ -419,8 +430,8 @@ class VersionedFileCommitBuilder(CommitBuilder):
                 return None, False, None
         # XXX: Friction: parent_candidates should return a list not a dict
         #      so that we don't have to walk the inventories again.
-        parent_candiate_entries = ie.parent_candidates(parent_invs)
-        head_set = self._heads(ie.file_id, parent_candiate_entries.keys())
+        parent_candidate_entries = ie.parent_candidates(parent_invs)
+        head_set = self._heads(ie.file_id, parent_candidate_entries.keys())
         heads = []
         for inv in parent_invs:
             if inv.has_id(ie.file_id):
@@ -441,7 +452,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
             store = True
         if not store:
             # There is a single head, look it up for comparison
-            parent_entry = parent_candiate_entries[heads[0]]
+            parent_entry = parent_candidate_entries[heads[0]]
             # if the non-content specific data has changed, we'll be writing a
             # node:
             if (parent_entry.parent_id != ie.parent_id or
@@ -559,7 +570,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
         :param iter_changes: An iter_changes iterator with the changes to apply
             to basis_revision_id. The iterator must not include any items with
             a current kind of None - missing items must be either filtered out
-            or errored-on beefore record_iter_changes sees the item.
+            or errored-on before record_iter_changes sees the item.
         :param _entry_factory: Private method to bind entry_factory locally for
             performance.
         :return: A generator of (file_id, relpath, fs_hash) tuples for use with
@@ -918,11 +929,13 @@ class VersionedFileRepository(Repository):
         """
         if not self._format.supports_external_lookups:
             raise errors.UnstackableRepositoryFormat(self._format, self.base)
+        # This can raise an exception, so should be done before we lock the
+        # fallback repository.
+        self._check_fallback_repository(repository)
         if self.is_locked():
             # This repository will call fallback.unlock() when we transition to
             # the unlocked state, so we make sure to increment the lock count
             repository.lock_read()
-        self._check_fallback_repository(repository)
         self._fallback_repositories.append(repository)
         self.texts.add_fallback_versioned_files(repository.texts)
         self.inventories.add_fallback_versioned_files(repository.inventories)
@@ -1025,28 +1038,17 @@ class VersionedFileRepository(Repository):
         self.inventories._access.flush()
         return result
 
-    def add_revision(self, revision_id, rev, inv=None, config=None):
+    def add_revision(self, revision_id, rev, inv=None):
         """Add rev to the revision store as revision_id.
 
         :param revision_id: the revision id to use.
         :param rev: The revision object.
         :param inv: The inventory for the revision. if None, it will be looked
                     up in the inventory storer
-        :param config: If None no digital signature will be created.
-                       If supplied its signature_needed method will be used
-                       to determine if a signature should be made.
         """
         # TODO: jam 20070210 Shouldn't we check rev.revision_id and
         #       rev.parent_ids?
         _mod_revision.check_not_reserved_id(revision_id)
-        if config is not None and config.signature_needed():
-            if inv is None:
-                inv = self.get_inventory(revision_id)
-            tree = InventoryRevisionTree(self, inv, revision_id)
-            testament = Testament(rev, tree)
-            plaintext = testament.as_short_text()
-            self.store_revision_signature(
-                gpg.GPGStrategy(config), plaintext, revision_id)
         # check inventory present
         if not self.inventories.get_parent_map([(revision_id,)]):
             if inv is None:
@@ -1085,7 +1087,7 @@ class VersionedFileRepository(Repository):
         keys = {'chk_bytes':set(), 'inventories':set(), 'texts':set()}
         kinds = ['chk_bytes', 'texts']
         count = len(checker.pending_keys)
-        bar.update("inventories", 0, 2)
+        bar.update(gettext("inventories"), 0, 2)
         current_keys = checker.pending_keys
         checker.pending_keys = {}
         # Accumulate current checks.
@@ -1111,7 +1113,7 @@ class VersionedFileRepository(Repository):
             del keys['inventories']
         else:
             return
-        bar.update("texts", 1)
+        bar.update(gettext("texts"), 1)
         while (checker.pending_keys or keys['chk_bytes']
             or keys['texts']):
             # Something to check.
@@ -1196,7 +1198,7 @@ class VersionedFileRepository(Repository):
         """Instantiate a VersionedFileRepository.
 
         :param _format: The format of the repository on disk.
-        :param a_bzrdir: The BzrDir of the repository.
+        :param controldir: The ControlDir of the repository.
         :param control_files: Control files to use for locking, etc.
         """
         # In the future we will have a single api for all stores for
@@ -1204,6 +1206,8 @@ class VersionedFileRepository(Repository):
         # this construct will accept instances of those things.
         super(VersionedFileRepository, self).__init__(_format, a_bzrdir,
             control_files)
+        self._transport = control_files._transport
+        self.base = self._transport.base
         # for tests
         self._reconcile_does_inventory_gc = True
         self._reconcile_fixes_text_parents = False
@@ -1213,6 +1217,54 @@ class VersionedFileRepository(Repository):
         # Is it safe to return inventory entries directly from the entry cache,
         # rather copying them?
         self._safe_to_return_from_cache = False
+
+    def fetch(self, source, revision_id=None, find_ghosts=False,
+            fetch_spec=None):
+        """Fetch the content required to construct revision_id from source.
+
+        If revision_id is None and fetch_spec is None, then all content is
+        copied.
+
+        fetch() may not be used when the repository is in a write group -
+        either finish the current write group before using fetch, or use
+        fetch before starting the write group.
+
+        :param find_ghosts: Find and copy revisions in the source that are
+            ghosts in the target (and not reachable directly by walking out to
+            the first-present revision in target from revision_id).
+        :param revision_id: If specified, all the content needed for this
+            revision ID will be copied to the target.  Fetch will determine for
+            itself which content needs to be copied.
+        :param fetch_spec: If specified, a SearchResult or
+            PendingAncestryResult that describes which revisions to copy.  This
+            allows copying multiple heads at once.  Mutually exclusive with
+            revision_id.
+        """
+        if fetch_spec is not None and revision_id is not None:
+            raise AssertionError(
+                "fetch_spec and revision_id are mutually exclusive.")
+        if self.is_in_write_group():
+            raise errors.InternalBzrError(
+                "May not fetch while in a write group.")
+        # fast path same-url fetch operations
+        # TODO: lift out to somewhere common with RemoteRepository
+        # <https://bugs.launchpad.net/bzr/+bug/401646>
+        if (self.has_same_location(source)
+            and fetch_spec is None
+            and self._has_same_fallbacks(source)):
+            # check that last_revision is in 'from' and then return a
+            # no-operation.
+            if (revision_id is not None and
+                not _mod_revision.is_null(revision_id)):
+                self.get_revision(revision_id)
+            return 0, []
+        inter = InterRepository.get(source, self)
+        if (fetch_spec is not None and
+            not getattr(inter, "supports_fetch_spec", False)):
+            raise errors.UnsupportedOperation(
+                "fetch_spec not supported for %r" % inter)
+        return inter.fetch(revision_id=revision_id,
+            find_ghosts=find_ghosts, fetch_spec=fetch_spec)
 
     @needs_read_lock
     def gather_stats(self, revid=None, committers=None):
@@ -1228,14 +1280,14 @@ class VersionedFileRepository(Repository):
             # result['size'] = t
         return result
 
-    def get_commit_builder(self, branch, parents, config, timestamp=None,
+    def get_commit_builder(self, branch, parents, config_stack, timestamp=None,
                            timezone=None, committer=None, revprops=None,
                            revision_id=None, lossy=False):
         """Obtain a CommitBuilder for this repository.
 
         :param branch: Branch to commit to.
         :param parents: Revision ids of the parents of the new revision.
-        :param config: Configuration to use.
+        :param config_stack: Configuration stack to use.
         :param timestamp: Optional timestamp recorded for commit.
         :param timezone: Optional timezone for timestamp.
         :param committer: Optional committer to set for commit.
@@ -1248,7 +1300,7 @@ class VersionedFileRepository(Repository):
             raise errors.BzrError("Cannot commit directly to a stacked branch"
                 " in pre-2a formats. See "
                 "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
-        result = self._commit_builder_class(self, parents, config,
+        result = self._commit_builder_class(self, parents, config_stack,
             timestamp, timezone, committer, revprops, revision_id,
             lossy)
         self.start_write_group()
@@ -1510,7 +1562,7 @@ class VersionedFileRepository(Repository):
             text_keys[(file_id, revision_id)] = callable_data
         for record in self.texts.get_record_stream(text_keys, 'unordered', True):
             if record.storage_kind == 'absent':
-                raise errors.RevisionNotPresent(record.key, self)
+                raise errors.RevisionNotPresent(record.key[1], record.key[0])
             yield text_keys[record.key], record.get_bytes_as('chunked')
 
     def _generate_text_key_index(self, text_key_references=None,
@@ -1566,7 +1618,7 @@ class VersionedFileRepository(Repository):
         batch_size = 10 # should be ~150MB on a 55K path tree
         batch_count = len(revision_order) / batch_size + 1
         processed_texts = 0
-        pb.update("Calculating text parents", processed_texts, text_count)
+        pb.update(gettext("Calculating text parents"), processed_texts, text_count)
         for offset in xrange(batch_count):
             to_query = revision_order[offset * batch_size:(offset + 1) *
                 batch_size]
@@ -1575,7 +1627,7 @@ class VersionedFileRepository(Repository):
             for revision_id in to_query:
                 parent_ids = ancestors[revision_id]
                 for text_key in revision_keys[revision_id]:
-                    pb.update("Calculating text parents", processed_texts)
+                    pb.update(gettext("Calculating text parents"), processed_texts)
                     processed_texts += 1
                     candidate_parents = []
                     for parent_id in parent_ids:
@@ -1651,7 +1703,7 @@ class VersionedFileRepository(Repository):
         num_file_ids = len(file_ids)
         for file_id, altered_versions in file_ids.iteritems():
             if pb is not None:
-                pb.update("Fetch texts", count, num_file_ids)
+                pb.update(gettext("Fetch texts"), count, num_file_ids)
             count += 1
             yield ("file", file_id, altered_versions)
 
@@ -1694,13 +1746,19 @@ class VersionedFileRepository(Repository):
         if ((None in revision_ids)
             or (_mod_revision.NULL_REVISION in revision_ids)):
             raise ValueError('cannot get null revision inventory')
-        return self._iter_inventories(revision_ids, ordering)
+        for inv, revid in self._iter_inventories(revision_ids, ordering):
+            if inv is None:
+                raise errors.NoSuchRevision(self, revid)
+            yield inv
 
     def _iter_inventories(self, revision_ids, ordering):
         """single-document based inventory iteration."""
         inv_xmls = self._iter_inventory_xmls(revision_ids, ordering)
         for text, revision_id in inv_xmls:
-            yield self._deserialise_inventory(revision_id, text)
+            if text is None:
+                yield None, revision_id
+            else:
+                yield self._deserialise_inventory(revision_id, text), revision_id
 
     def _iter_inventory_xmls(self, revision_ids, ordering):
         if ordering is None:
@@ -1724,7 +1782,7 @@ class VersionedFileRepository(Repository):
                 else:
                     yield ''.join(chunks), record.key[-1]
             else:
-                raise errors.NoSuchRevision(self, record.key)
+                yield None, record.key[-1]
             if order_as_requested:
                 # Yield as many results as we can while preserving order.
                 while next_key in text_chunks:
@@ -1759,10 +1817,9 @@ class VersionedFileRepository(Repository):
     def _get_inventory_xml(self, revision_id):
         """Get serialized inventory as a string."""
         texts = self._iter_inventory_xmls([revision_id], 'unordered')
-        try:
-            text, revision_id = texts.next()
-        except StopIteration:
-            raise errors.HistoryMissing(self, 'inventory', revision_id)
+        text, revision_id = texts.next()
+        if text is None:
+            raise errors.NoSuchRevision(self, revision_id)
         return text
 
     @needs_read_lock
@@ -1842,6 +1899,19 @@ class VersionedFileRepository(Repository):
     def get_file_graph(self):
         """Return the graph walker for text revisions."""
         return graph.Graph(self.texts)
+
+    def revision_ids_to_search_result(self, result_set):
+        """Convert a set of revision ids to a graph SearchResult."""
+        result_parents = set()
+        for parents in self.get_graph().get_parent_map(
+            result_set).itervalues():
+            result_parents.update(parents)
+        included_keys = result_set.intersection(result_parents)
+        start_keys = result_set.difference(included_keys)
+        exclude_keys = result_parents.difference(result_set)
+        result = vf_search.SearchResult(start_keys, exclude_keys,
+            len(result_set), result_set)
+        return result
 
     def _get_versioned_file_checker(self, text_key_references=None,
         ancestors=None):
@@ -1933,7 +2003,7 @@ class MetaDirVersionedFileRepository(MetaDirRepository,
             control_files)
 
 
-class MetaDirVersionedFileRepositoryFormat(MetaDirRepositoryFormat,
+class MetaDirVersionedFileRepositoryFormat(RepositoryFormatMetaDir,
         VersionedFileRepositoryFormat):
     """Base class for repository formats using versioned files in metadirs."""
 
@@ -2462,13 +2532,13 @@ class _VersionedFileChecker(object):
             self.text_index.iterkeys()])
         # text keys is now grouped by file_id
         n_versions = len(self.text_index)
-        progress_bar.update('loading text store', 0, n_versions)
+        progress_bar.update(gettext('loading text store'), 0, n_versions)
         parent_map = self.repository.texts.get_parent_map(self.text_index)
         # On unlistable transports this could well be empty/error...
         text_keys = self.repository.texts.keys()
         unused_keys = frozenset(text_keys) - set(self.text_index)
         for num, key in enumerate(self.text_index.iterkeys()):
-            progress_bar.update('checking text graph', num, n_versions)
+            progress_bar.update(gettext('checking text graph'), num, n_versions)
             correct_parents = self.calculate_file_version_parents(key)
             try:
                 knit_parents = parent_map[key]
@@ -2483,6 +2553,8 @@ class _VersionedFileChecker(object):
 class InterVersionedFileRepository(InterRepository):
 
     _walk_to_common_revisions_batch_size = 50
+
+    supports_fetch_spec = True
 
     @needs_write_lock
     def fetch(self, revision_id=None, find_ghosts=False,
@@ -2565,7 +2637,9 @@ class InterVersionedFileRepository(InterRepository):
                 searcher.stop_searching_any(stop_revs)
             if searcher_exhausted:
                 break
-        return searcher.get_result()
+        (started_keys, excludes, included_keys) = searcher.get_state()
+        return vf_search.SearchResult(started_keys, excludes,
+            len(included_keys), included_keys)
 
     @needs_read_lock
     def search_missing_revision_ids(self,
@@ -2918,7 +2992,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
         for offset in range(0, len(revision_ids), batch_size):
             self.target.start_write_group()
             try:
-                pb.update('Transferring revisions', offset,
+                pb.update(gettext('Transferring revisions'), offset,
                           len(revision_ids))
                 batch = revision_ids[offset:offset+batch_size]
                 basis_id = self._fetch_batch(batch, basis_id, cache)
@@ -2932,7 +3006,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
                     hints.extend(hint)
         if hints and self.target._format.pack_compresses:
             self.target.pack(hint=hints)
-        pb.update('Transferring revisions', len(revision_ids),
+        pb.update(gettext('Transferring revisions'), len(revision_ids),
                   len(revision_ids))
 
     @needs_write_lock
@@ -3047,7 +3121,7 @@ def install_revisions(repository, iterable, num_revisions=None, pb=None):
             _install_revision(repository, revision, revision_tree, signature,
                 inventory_cache)
             if pb is not None:
-                pb.update('Transferring revisions', n + 1, num_revisions)
+                pb.update(gettext('Transferring revisions'), n + 1, num_revisions)
     except:
         repository.abort_write_group()
         raise

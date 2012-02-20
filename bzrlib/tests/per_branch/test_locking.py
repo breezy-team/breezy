@@ -42,13 +42,13 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
         self.locks = []
         b = lock_helpers.LockWrapper(self.locks, self.get_branch(), 'b')
         b.repository = lock_helpers.LockWrapper(self.locks, b.repository, 'r')
-        bcf = b.control_files
+        bcf = getattr(b, "control_files", None)
         rcf = getattr(b.repository, 'control_files', None)
         if rcf is None:
             self.combined_branch = False
         else:
             # Look out for branch types that reuse their control files
-            self.combined_control = bcf is rcf
+            self.combined_control = bcf is rcf and bcf is not None
         try:
             b.control_files = lock_helpers.LockWrapper(
                 self.locks, b.control_files, 'bc')
