@@ -60,10 +60,14 @@ class TestInfo(tests.TestCaseWithTransport):
     def test_info_empty_controldir_verbose(self):
         self.make_bzrdir('ctrl')
         out, err = self.run_bzr('info -v ctrl')
-        self.assertEquals(out,
+        self.assertEqualDiff(out,
             'Empty control directory (format: 2a or pack-0.92)\n'
             'Location:\n'
-            '  control directory: ctrl\n')
+            '  control directory: ctrl\n\n'
+            'Format:\n'
+            '       control: Meta directory format 1\n\n'
+            'Control directory:\n'
+            '         0 branches\n')
         self.assertEquals(err, '')
 
     def test_info_dangling_branch_reference(self):
