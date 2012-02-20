@@ -19,6 +19,7 @@
 from cStringIO import StringIO
 
 import os
+import urllib
 
 from dulwich.errors import (
     NotGitRepository,
@@ -87,7 +88,7 @@ class TransportRefsContainer(RefsContainer):
         keys = set()
         try:
             iter_files = self.transport.clone(base).iter_files_recursive()
-            keys.update(("%s/%s" % (base, refname)).strip("/") for 
+            keys.update(("%s/%s" % (base, urllib.unquote(refname))).strip("/") for 
                     refname in iter_files if check_ref_format("%s/%s" % (base, refname)))
         except (TransportNotPossible, NoSuchFile):
             pass
@@ -107,7 +108,7 @@ class TransportRefsContainer(RefsContainer):
         try:
             iter_files = list(self.transport.clone("refs").iter_files_recursive())
             for filename in iter_files:
-                refname = "refs/%s" % filename
+                refname = "refs/%s" % urllib.unquote(filename)
                 if check_ref_format(refname):
                     keys.add(refname)
         except (TransportNotPossible, NoSuchFile):

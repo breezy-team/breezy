@@ -252,6 +252,7 @@ class cmd_git_apply(Command):
         :param f: Patch file to read.
         :param signoff: Add Signed-Off-By flag.
         """
+        from bzrlib.plugins.git import gettext
         from bzrlib.errors import BzrCommandError
         from dulwich.patch import git_am_patch_split
         import subprocess

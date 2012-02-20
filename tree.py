@@ -311,6 +311,7 @@ def changes_from_git_changes(changes, mapping, specific_file=None,
             oldparent = None
         else:
             oldpath = oldpath.decode("utf-8")
+            assert oldmode is not None
             oldexe = mode_is_executable(oldmode)
             oldkind = mode_kind(oldmode)
             try:
@@ -328,8 +329,13 @@ def changes_from_git_changes(changes, mapping, specific_file=None,
             newparent = None
         else:
             newpath = newpath.decode("utf-8")
-            newexe = mode_is_executable(newmode)
-            newkind = mode_kind(newmode)
+            assert newmode is not None
+            if newmode is not None:
+                newexe = mode_is_executable(newmode)
+                newkind = mode_kind(newmode)
+            else:
+                newexe = False
+                newkind = None
             try:
                 newparentpath, newname = newpath.rsplit("/", 1)
             except ValueError:

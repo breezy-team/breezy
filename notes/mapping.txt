@@ -41,3 +41,4 @@ escaping invalid characters in them:
 
  * _ is mapped to __
  * spaces are mapped to _s
+ * \x0c is mapped to _c
