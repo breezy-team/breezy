@@ -245,7 +245,9 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
 
     for path in unusual_modes:
         parent_path = posixpath.dirname(path)
-        new_trees[parent_path] = tree.path2id(parent_path)
+        file_id = tree.path2id(parent_path)
+        assert file_id is not None, "Unable to find file id for %r" % parent_path
+        new_trees[parent_path] = file_id
 
     trees = {}
     while new_trees:
