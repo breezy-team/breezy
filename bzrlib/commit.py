@@ -64,12 +64,14 @@ from bzrlib.errors import (BzrError, PointlessCommit,
                            ConflictsInTree,
                            StrictCommitFailed
                            )
-from bzrlib.osutils import (get_user_encoding,
-                            is_inside_any,
-                            minimum_path_selection,
-                            splitpath,
-                            )
-from bzrlib.trace import mutter, note, is_quiet
+from bzrlib.osutils import (
+    get_user_encoding,
+    has_symlinks,
+    is_inside_any,
+    minimum_path_selection,
+    splitpath,
+    )
+from bzrlib.trace import mutter, note, is_quiet, warning
 from bzrlib.inventory import Inventory, InventoryEntry, make_entry
 from bzrlib import symbol_versioning
 from bzrlib.urlutils import unescape_for_display
@@ -722,6 +724,10 @@ class Commit(object):
                 # 'missing' path
                 if report_changes:
                     reporter.missing(new_path)
+                if change[6][0] == 'symlink' and not has_symlinks():
+                    warning('Ignoring "%s" as symlinks are not supported on '
+                        'this platform.' % (change[1][0],))
+                    continue
                 deleted_ids.append(change[0])
                 # Reset the new path (None) and new versioned flag (False)
                 change = (change[0], (change[1][0], None), change[2],
