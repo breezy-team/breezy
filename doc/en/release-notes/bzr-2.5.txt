@@ -36,6 +36,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Show locks in ``bzr info`` on control directories without a
+  repository. (Jelmer Vernooij, #936767)
+
 * Disable ssl certificate verification on osx and windows until a native
   access to the the root certificates is provided there.
   (Vincent Ladeuil, #929179)
