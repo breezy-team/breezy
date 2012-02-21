@@ -2903,21 +2903,6 @@ class NoTemplate(BzrError):
     _fmt = 'No template specified.'
 
 
-class UnableCreateSymlink(BzrError):
-
-    _fmt = 'Unable to create symlink %(path_str)son this platform'
-
-    def __init__(self, path=None):
-        path_str = ''
-        if path:
-            try:
-                path_str = repr(str(path))
-            except UnicodeEncodeError:
-                path_str = repr(path)
-            path_str += ' '
-        self.path_str = path_str
-
-
 class UnsupportedTimezoneFormat(BzrError):
 
     _fmt = ('Unsupported timezone format "%(timezone)s", '

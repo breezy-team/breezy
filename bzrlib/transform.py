@@ -46,10 +46,14 @@ from bzrlib import (
     )
 from bzrlib.i18n import gettext
 """)
-from bzrlib.errors import (DuplicateKey, MalformedTransform,
-                           ReusingTransform, CantMoveRoot,
-                           ImmortalLimbo, NoFinalPath,
-                           UnableCreateSymlink)
+from bzrlib.errors import (
+    CantMoveRoot,
+    DuplicateKey,
+    ImmortalLimbo,
+    MalformedTransform,
+    NoFinalPath,
+    ReusingTransform,
+    )
 from bzrlib.filters import filtered_output_bytes, ContentFilterContext
 from bzrlib.mutabletree import MutableTree
 from bzrlib.osutils import (
