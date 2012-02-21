@@ -200,7 +200,8 @@ class Tree(object):
 
         :param file_id: File id of the directory/tree-reference
         :param path: Optional path of the directory
-        :return: Iterator over (name, entry) tuples
+        :raise NoSuchId: When the file_id does not exist
+        :return: Iterator over entries in the directory
         """
         raise NotImplementedError(self.iter_child_entries)
 
@@ -883,7 +884,7 @@ class InventoryTree(Tree):
     @needs_read_lock
     def iter_child_entries(self, file_id, path=None):
         inv, inv_file_id = self._unpack_file_id(file_id)
-        return inv[inv_file_id].children.iteritems()
+        return inv[inv_file_id].children.itervalues()
 
     @deprecated_method(deprecated_in((2, 5, 0)))
     def get_file_by_path(self, path):

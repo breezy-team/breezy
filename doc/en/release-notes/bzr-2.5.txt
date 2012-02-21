@@ -51,6 +51,8 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* New API method ``Tree.iter_child_entries``.  (Jelmer Vernooij)
+
 Internals
 *********
 
