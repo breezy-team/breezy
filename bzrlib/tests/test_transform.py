@@ -788,22 +788,18 @@ class TestTreeTransform(tests.TestCaseWithTransport):
                             u'\N{Euro Sign}wizard2',
                             u'b\N{Euro Sign}hind_curtain')
 
-    def test_unable_create_symlink(self):
+    def test_unsupported_symlink_no_conflict(self):
         def tt_helper():
             wt = self.make_branch_and_tree('.')
-            tt = TreeTransform(wt)  # TreeTransform obtains write lock
-            try:
-                tt.new_symlink('foo', tt.root, 'bar')
-                tt.apply()
-            finally:
-                wt.unlock()
+            tt = TreeTransform(wt)
+            self.addCleanup(tt.finalize)
+            tt.new_symlink('foo', tt.root, 'bar')
+            result = tt.find_conflicts()
+            self.assertEqual([], result)
         os_symlink = getattr(os, 'symlink', None)
         os.symlink = None
         try:
-            err = self.assertRaises(errors.UnableCreateSymlink, tt_helper)
-            self.assertEquals(
-                "Unable to create symlink 'foo' on this platform",
-                str(err))
+            tt_helper()
         finally:
             if os_symlink:
                 os.symlink = os_symlink
