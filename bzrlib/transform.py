@@ -1397,8 +1397,8 @@ class DiskTreeTransform(TreeTransformBase):
                 path = None
             trace.warning('Unable to create symlink "%s" on this platform.'
                 % (path,))
-        # We add symlink to _new_contents even if they are not
-        # added. These entries are subsequently used to avoid
+        # We add symlink to _new_contents even if they are unsupported
+        # and not created. These entries are subsequently used to avoid
         # conflicts on platforms that don't support symlink
         unique_add(self._new_contents, trans_id, 'symlink')
 
