@@ -195,6 +195,15 @@ class Tree(object):
         """
         raise NotImplementedError(self.iter_entries_by_dir)
 
+    def iter_child_entries(self, file_id, path=None):
+        """Iterate over the children of a directory or tree reference.
+
+        :param file_id: File id of the directory/tree-reference
+        :param path: Optional path of the directory
+        :return: Iterator over (name, entry) tuples
+        """
+        raise NotImplementedError(self.iter_child_entries)
+
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         """List all files in this tree.
 
@@ -870,6 +879,11 @@ class InventoryTree(Tree):
         # FIXME: Handle nested trees
         return self.root_inventory.iter_entries_by_dir(
             specific_file_ids=inventory_file_ids, yield_parents=yield_parents)
+
+    @needs_read_lock
+    def iter_child_entries(self, file_id, path=None):
+        inv, inv_file_id = self._unpack_file_id(file_id)
+        return inv[inv_file_id].children.iteritems()
 
     @deprecated_method(deprecated_in((2, 5, 0)))
     def get_file_by_path(self, path):
