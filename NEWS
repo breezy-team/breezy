@@ -8,6 +8,9 @@
 
    * Internationalization support. (Jonathan Riddell)
 
+   * In-progress rebases are now mentioned in 'bzr status'.
+     (Jelmer Vernooij)
+
 0.6.2	2011-03-02
 
   BUG FIXES
