@@ -114,6 +114,7 @@ class GitTags(tag.BasicTags):
             peeled = refs.get_peeled(k)
             if peeled is None:
                 peeled = self.repository.bzrdir._git.object_store.peel_sha(unpeeled).id
+            assert type(tag_name) is unicode
             yield (tag_name, peeled, unpeeled,
                    self.branch.lookup_foreign_revision_id(peeled))
 
