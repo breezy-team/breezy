@@ -399,7 +399,7 @@ class CommitBuilderRevisionRewriter(object):
         self.map_ids = map_ids
 
     def _process_file(self, old_ie, oldtree, oldrevid, newrevid,
-                      old_parent_invs, new_parent_invs, path):
+                      old_parent_trees, new_parent_trees, path):
         ie = old_ie.copy()
         # Either this file was modified last in this revision,
         # in which case it has to be rewritten
@@ -418,11 +418,11 @@ class CommitBuilderRevisionRewriter(object):
             old_file_id = oldtree.path2id(path)
             assert old_file_id is not None
             ie = None
-            for (old_pinv, new_pinv) in zip(old_parent_invs, new_parent_invs):
-                if (old_pinv.has_id(old_file_id) and
-                    old_pinv[old_file_id].revision == old_ie.revision):
+            for (old_ptree, new_ptree) in zip(old_parent_trees, new_parent_trees):
+                if (old_ptree.has_id(old_file_id) and
+                    old_ptree.get_file_revision(old_file_id) == old_ie.revision):
                     try:
-                        ie = new_pinv[old_ie.file_id].copy()
+                        ie = new_ptree.inventory[old_ie.file_id].copy()
                     except NoSuchId:
                         # Empty directories (or directories with only
                         # empty-directory children) not in the new inventory
@@ -467,7 +467,7 @@ class CommitBuilderRevisionRewriter(object):
             revprops=revprops, revision_id=newrevid, **kwargs)
         try:
             # Check what new_ie.file_id should be
-            # use old and new parent inventories to generate new_id map
+            # use old and new parent trees to generate new_id map
             nonghost_oldparents = self._get_present_revisions(oldrev.parent_ids)
             nonghost_newparents = self._get_present_revisions(new_parents)
             oldtree = self.repository.revision_tree(oldrevid)
@@ -477,16 +477,16 @@ class CommitBuilderRevisionRewriter(object):
                 mappedtree = MapTree(oldtree, fileid_map)
             else:
                 mappedtree = oldtree
-            old_parent_invs = list(self.repository.iter_inventories(nonghost_oldparents))
-            new_parent_invs = list(self.repository.iter_inventories(nonghost_newparents))
+            old_parent_trees = list(self.repository.revision_trees(nonghost_oldparents))
+            new_parent_trees = list(self.repository.revision_trees(nonghost_newparents))
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 for i, (path, old_ie) in enumerate(mappedtree.iter_entries_by_dir()):
                     ie = self._process_file(old_ie, oldtree, oldrevid, newrevid,
-                        old_parent_invs, new_parent_invs, path)
+                        old_parent_trees, new_parent_trees, path)
                     if ie is not None:
                         builder.record_entry_contents(ie,
-                                new_parent_invs, path, mappedtree,
+                                [t.inventory for t in new_parent_trees], path, mappedtree,
                                 mappedtree.path_content_summary(path))
             finally:
                 pb.finished()
