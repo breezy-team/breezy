@@ -26,52 +26,13 @@ def map_file_ids(repository, old_parents, new_parents):
     assert len(old_parents) == len(new_parents)
     ret = {}
     for (oldp, newp) in zip(old_parents, new_parents):
-        oldinv = repository.get_inventory(oldp)
-        newinv = repository.get_inventory(newp)
-        for path, ie in oldinv.iter_entries():
-            if newinv.has_filename(path):
-                ret[ie.file_id] = newinv.path2id(path)
+        oldtree = repository.revision_tree(oldp)
+        newtree = repository.revision_tree(newp)
+        for path, ie in oldtree.iter_entries_by_dir():
+            file_id = newtree.path2id(path)
+            if file_id is not None:
+                ret[ie.file_id] = file_id
     return ret
-
-
-class MapInventory(object):
-    """Maps the file ids in an inventory."""
-
-    def __init__(self, oldinv, maptree):
-        self.oldinv = oldinv
-        self.maptree = maptree
-
-    def map_ie(self, ie):
-        """Fix the references to old file ids in an inventory entry.
-
-        :param ie: Inventory entry to map
-        :return: New inventory entry
-        """
-        new_ie = ie.copy()
-        new_ie.file_id = self.maptree.new_id(new_ie.file_id)
-        new_ie.parent_id = self.maptree.new_id(new_ie.parent_id)
-        return new_ie
-
-    def __len__(self):
-        """See Inventory.__len__()."""
-        return len(self.oldinv)
-
-    def iter_entries(self):
-        """See Inventory.iter_entries()."""
-        for path, ie in self.oldinv.iter_entries():
-            yield path, self.map_ie(ie)
-
-    def path2id(self, path):
-        """See Inventory.path2id()."""
-        return self.maptree.new_id(self.oldinv.path2id(path))
-
-    def id2path(self, id):
-        """See Inventory.id2path()."""
-        return self.oldinv.id2path(self.maptree.old_id(id))
-
-    def has_id(self, id):
-        """See Inventory.has_id()."""
-        return self.oldinv.has_id(self.maptree.old_id(id))
 
 
 class MapTree(object):
@@ -86,7 +47,6 @@ class MapTree(object):
         """
         self.oldtree = oldtree
         self.map = fileid_map
-        self.inventory = MapInventory(self.oldtree.inventory, self)
 
     def old_id(self, file_id):
         """Look up the original file id of a file.
@@ -142,3 +102,31 @@ class MapTree(object):
     def path_content_summary(self, path):
         "See Tree.path_content_summary()."""
         return self.oldtree.path_content_summary(path)
+
+    def map_ie(self, ie):
+        """Fix the references to old file ids in an inventory entry.
+
+        :param ie: Inventory entry to map
+        :return: New inventory entry
+        """
+        new_ie = ie.copy()
+        new_ie.file_id = self.new_id(new_ie.file_id)
+        new_ie.parent_id = self.new_id(new_ie.parent_id)
+        return new_ie
+
+    def iter_entries_by_dir(self):
+        """See Tree.iter_entries_by_dir."""
+        for path, ie in self.oldtree.iter_entries_by_dir():
+            yield path, self.map_ie(ie)
+
+    def path2id(self, path):
+        file_id = self.oldtree.path2id(path)
+        if file_id is None:
+            return None
+        return self.new_id(file_id)
+
+    def id2path(self, file_id):
+        return self.oldtree.id2path(self.old_id(file_id=file_id))
+
+    def has_id(self, file_id):
+        return self.oldtree.has_id(self.old_id(file_id=file_id))

@@ -28,6 +28,7 @@ from bzrlib.graph import (
     )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.tests.matchers import RevisionHistoryMatches
 
 from bzrlib.plugins.rewrite.rebase import (
     marshall_rebase_plan,
@@ -648,8 +649,8 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         replayer.commit_rebase(oldrev, "E'")
         newrev = newwt.branch.repository.get_revision("E'")
         self.assertEquals(["D'"], newrev.parent_ids)
-        self.assertEquals(["A", "B", "C", "D'", "E'"],
-                          newwt.branch.revision_history())
+        self.assertThat(newwt.branch,
+                RevisionHistoryMatches(["A", "B", "C", "D'", "E'"]))
 
 
 class TestReplaySnapshotError(TestCase):

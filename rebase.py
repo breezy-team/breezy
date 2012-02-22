@@ -415,7 +415,7 @@ class CommitBuilderRevisionRewriter(object):
             # which case the right revision should be used
             # one of the old parents had this revision, so find that
             # and then use the matching new parent
-            old_file_id = oldtree.inventory.path2id(path)
+            old_file_id = oldtree.path2id(path)
             assert old_file_id is not None
             ie = None
             for (old_pinv, new_pinv) in zip(old_parent_invs, new_parent_invs):
@@ -481,8 +481,7 @@ class CommitBuilderRevisionRewriter(object):
             new_parent_invs = list(self.repository.iter_inventories(nonghost_newparents))
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                for i, (path, old_ie) in enumerate(mappedtree.inventory.iter_entries()):
-                    pb.update('upgrading file', i, len(mappedtree.inventory))
+                for i, (path, old_ie) in enumerate(mappedtree.iter_entries_by_dir()):
                     ie = self._process_file(old_ie, oldtree, oldrevid, newrevid,
                         old_parent_invs, new_parent_invs, path)
                     if ie is not None:

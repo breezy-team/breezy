@@ -48,21 +48,6 @@ class EmptyMapTreeTests(TestCaseWithTransport):
         self.assertTrue(self.oldtree.has_filename('foo'))
         self.assertFalse(self.maptree.has_filename('bar'))
 
-    def test_inventory_len(self):
-        self.oldtree.lock_write()
-        builder = TreeBuilder()
-        builder.start_tree(self.oldtree)
-        builder.build(['foo'])
-        builder.build(['bar'])
-        builder.build(['bla'])
-        builder.finish_tree()
-        self.maptree = MapTree(self.oldtree, {})
-        self.oldtree.unlock()
-        self.oldtree.lock_read()
-        self.assertEquals(4, len(self.oldtree.inventory))
-        self.oldtree.unlock()
-        self.assertEquals(4, len(self.maptree.inventory))
-
     def test_path2id(self):
         self.oldtree.lock_write()
         self.addCleanup(self.oldtree.unlock)
@@ -73,8 +58,8 @@ class EmptyMapTreeTests(TestCaseWithTransport):
         builder.build(['bla'])
         builder.finish_tree()
         self.maptree = MapTree(self.oldtree, {})
-        self.assertEquals(self.oldtree.inventory.path2id("foo"),
-                          self.maptree.inventory.path2id("foo"))
+        self.assertEquals(self.oldtree.path2id("foo"),
+                          self.maptree.path2id("foo"))
 
     def test_id2path(self):
         self.oldtree.lock_write()
@@ -87,8 +72,7 @@ class EmptyMapTreeTests(TestCaseWithTransport):
         builder.finish_tree()
         self.maptree = MapTree(self.oldtree, {})
         self.assertEquals("foo",
-                          self.maptree.inventory.id2path(
-                              self.maptree.inventory.path2id("foo")))
+                self.maptree.id2path(self.maptree.path2id("foo")))
 
     def test_has_id(self):
         self.oldtree.lock_write()
@@ -100,9 +84,9 @@ class EmptyMapTreeTests(TestCaseWithTransport):
         builder.build(['bla'])
         builder.finish_tree()
         self.maptree = MapTree(self.oldtree, {})
-        self.assertTrue(self.maptree.inventory.has_id(
-                              self.maptree.inventory.path2id("foo")))
-        self.assertFalse(self.maptree.inventory.has_id("bar"))
+        self.assertTrue(self.maptree.has_id(
+                              self.maptree.path2id("foo")))
+        self.assertFalse(self.maptree.has_id("bar"))
 
 
 class MapFileIdTests(TestCase):

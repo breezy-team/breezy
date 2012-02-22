@@ -82,8 +82,8 @@ class TestRebaseSimple(ExternalBase):
         os.chdir('../feature')
         self.assertEquals("Base branch is descendant of current branch. Pulling instead.\n",
             self.run_bzr('rebase ../main')[0])
-        self.assertEquals(Branch.open("../feature").revision_history(),
-                          Branch.open("../main").revision_history())
+        self.assertEquals(Branch.open("../feature").last_revision_info(),
+                          Branch.open("../main").last_revision_info())
 
     def test_no_pending_merges(self):
         self.run_bzr_error(['bzr: ERROR: No pending merges present.\n'],
@@ -343,9 +343,9 @@ class ReplayTests(ExternalBase):
         open('hello', 'w').write("my data")
         self.run_bzr('add')
         self.run_bzr('commit -m this')
-        self.assertEquals(1, len(branch.revision_history()))
+        self.assertEquals(1, branch.revno())
         self.run_bzr('replay -r1 ../main')
-        self.assertEquals(2, len(branch.revision_history()))
+        self.assertEquals(2, branch.revno())
         self.assertTrue(os.path.exists('bar'))
 
     def test_replay_open_range(self):
@@ -364,7 +364,7 @@ class ReplayTests(ExternalBase):
         open('hello', 'w').write("my data")
         self.run_bzr('add')
         self.run_bzr('commit -m this')
-        self.assertEquals(1, len(branch.revision_history()))
+        self.assertEquals(1, branch.revno())
         self.run_bzr('replay -r1.. ../main')
-        self.assertEquals(3, len(branch.revision_history()))
+        self.assertEquals(3, branch.revno())
         self.assertTrue(os.path.exists('bar'))
