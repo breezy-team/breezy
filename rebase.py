@@ -27,7 +27,6 @@ from bzrlib.errors import (
     NoSuchFile,
     UnknownFormatError,
     NoCommonAncestor,
-    NoSuchId,
     UnrelatedBranches,
     )
 from bzrlib.generate_ids import gen_revision_id
@@ -375,16 +374,6 @@ def rebase(repository, replace_map, revision_rewriter):
             revision_rewriter(revid, newrevid, newparents)
     finally:
         pb.finished()
-
-
-class ReplayParentsInconsistent(BzrError):
-    """Raised when parents were inconsistent."""
-    _fmt = """Parents were inconsistent while replaying commit for file id %(fileid)s, revision %(revid)s."""
-
-    def __init__(self, fileid, revid):
-        BzrError.__init__(self)
-        self.fileid = fileid
-        self.revid = revid
 
 
 def wrap_iter_changes(old_iter_changes, map_tree):
