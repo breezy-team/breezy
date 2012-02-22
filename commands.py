@@ -49,9 +49,7 @@ def finish_rebase(state, wt, replace_map, replayer):
             " Resolve the conflict and run 'bzr rebase-continue' or "
             "run 'bzr rebase-abort'."))
     # Remove plan file
-    wt.update_feature_flags({"rebase-v1": None})
     state.remove_plan()
-
 
 
 class cmd_rebase(Command):
@@ -220,7 +218,6 @@ class cmd_rebase(Command):
 
             if not dry_run:
                 # Write plan file
-                wt.update_feature_flags({"rebase-v1": "required"})
                 state.write_plan(replace_map)
 
                 replayer = WorkingTreeRevisionRewriter(wt, state, merge_type=merge_type)
@@ -255,7 +252,6 @@ class cmd_rebase_abort(Command):
             except NoSuchFile:
                 raise BzrCommandError("No rebase to abort")
             complete_revert(wt, [last_rev_info[1]])
-            wt.update_feature_flags({"rebase-v1": None})
             state.remove_plan()
         finally:
             wt.unlock()

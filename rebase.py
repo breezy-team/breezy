@@ -112,6 +112,7 @@ class RebaseState1(RebaseState):
 
     def write_plan(self, replace_map):
         """See `RebaseState`."""
+        self.wt.update_feature_flags({"rebase-v1": "write-required"})
         content = marshall_rebase_plan(self.wt.branch.last_revision_info(),
             replace_map)
         assert type(content) == str
@@ -119,6 +120,7 @@ class RebaseState1(RebaseState):
 
     def remove_plan(self):
         """See `RebaseState`."""
+        self.wt.update_feature_flags({"rebase-v1": None})
         self.transport.put_bytes(REBASE_PLAN_FILENAME, '')
 
     def write_active_revid(self, revid):
