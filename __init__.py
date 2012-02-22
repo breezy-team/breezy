@@ -23,9 +23,14 @@ patches, the user can resolve the conflict and continue the rebase using the
 
 from __future__ import absolute_import
 
+from bzrlib import errors
 import bzrlib
 import bzrlib.api
 from bzrlib.commands import plugin_cmds
+
+from bzrlib.bzrdir import BzrFormat
+
+BzrFormat.register_feature("rebase-v1")
 
 from bzrlib.plugins.rewrite.info import (
     bzr_commands,
@@ -52,6 +57,29 @@ if __name__ == 'bzrlib.plugins.rebase':
 for cmd in bzr_commands:
     plugin_cmds.register_lazy("cmd_%s" % cmd, [],
         "bzrlib.plugins.rewrite.commands")
+
+
+def show_rebase_summary(params):
+    features = getattr(params.new_tree._format, "features", None)
+    if not "rebase-v1" in features:
+        return
+    from bzrlib.plugins.rewrite.rebase import (
+        RebaseState1,
+        rebase_todo,
+        )
+    state = RebaseState1(params.new_tree)
+    try:
+        replace_map = state.read_plan()[1]
+    except errors.NoSuchFile:
+        return
+    todo = list(rebase_todo(params.new_tree.branch.repository, replace_map))
+    params.to_file.write('Rebase in progress. (%d revisions left)\n' % len(todo))
+
+
+from bzrlib.hooks import install_lazy_named_hook
+
+install_lazy_named_hook('bzrlib.status', 'hooks', 'post_status',
+    show_rebase_summary, 'rewrite status')
 
 
 def test_suite():

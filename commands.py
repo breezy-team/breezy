@@ -37,6 +37,23 @@ from bzrlib.trace import (
 from bzrlib.plugins.rewrite import gettext
 
 
+def finish_rebase(state, wt, replace_map, replayer):
+    from bzrlib.plugins.rewrite.rebase import (
+        rebase,
+        )
+    try:
+        # Start executing plan from current Branch.last_revision()
+        rebase(wt.branch.repository, replace_map, replayer)
+    except ConflictsInTree:
+        raise BzrCommandError(gettext("A conflict occurred replaying a commit."
+            " Resolve the conflict and run 'bzr rebase-continue' or "
+            "run 'bzr rebase-abort'."))
+    # Remove plan file
+    wt.update_feature_flags({"rebase-v1": None})
+    state.remove_plan()
+
+
+
 class cmd_rebase(Command):
     """Re-base a branch.
 
@@ -203,19 +220,12 @@ class cmd_rebase(Command):
 
             if not dry_run:
                 # Write plan file
+                wt.update_feature_flags({"rebase-v1": "required"})
                 state.write_plan(replace_map)
 
-                # Start executing plan
-                try:
-                    rebase(wt.branch.repository, replace_map,
-                        WorkingTreeRevisionRewriter(wt, state,
-                            merge_type=merge_type))
-                except ConflictsInTree:
-                    raise BzrCommandError(gettext("A conflict occurred replaying a "
-                        "commit. Resolve the conflict and run "
-                        "'bzr rebase-continue' or run 'bzr rebase-abort'."))
-                # Remove plan file
-                state.remove_plan()
+                replayer = WorkingTreeRevisionRewriter(wt, state, merge_type=merge_type)
+
+                finish_rebase(state, wt, replace_map, replayer)
         finally:
             wt.unlock()
 
@@ -245,6 +255,7 @@ class cmd_rebase_abort(Command):
             except NoSuchFile:
                 raise BzrCommandError("No rebase to abort")
             complete_revert(wt, [last_rev_info[1]])
+            wt.update_feature_flags({"rebase-v1": None})
             state.remove_plan()
         finally:
             wt.unlock()
@@ -261,7 +272,6 @@ class cmd_rebase_continue(Command):
     def run(self, merge_type=None, directory="."):
         from bzrlib.plugins.rewrite.rebase import (
             RebaseState1,
-            rebase,
             WorkingTreeRevisionRewriter,
             )
         from bzrlib.workingtree import WorkingTree
@@ -284,15 +294,7 @@ class cmd_rebase_continue(Command):
             if oldrevid is not None:
                 oldrev = wt.branch.repository.get_revision(oldrevid)
                 replayer.commit_rebase(oldrev, replace_map[oldrevid][0])
-            try:
-                # Start executing plan from current Branch.last_revision()
-                rebase(wt.branch.repository, replace_map, replayer)
-            except ConflictsInTree:
-                raise BzrCommandError(gettext("A conflict occurred replaying a commit."
-                    " Resolve the conflict and run 'bzr rebase-continue' or "
-                    "run 'bzr rebase-abort'."))
-            # Remove plan file
-            state.remove_plan()
+            finish_rebase(state, wt, replace_map, replayer)
         finally:
             wt.unlock()
 

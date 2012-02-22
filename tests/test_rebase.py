@@ -41,7 +41,6 @@ from bzrlib.plugins.rewrite.rebase import (
     REBASE_CURRENT_REVID_FILENAME,
     RebaseState1,
     ReplaySnapshotError,
-    ReplayParentsInconsistent,
     WorkingTreeRevisionRewriter,
     )
 
@@ -636,10 +635,6 @@ class TestReplayWorkingtree(TestCaseWithTransport):
 
 
 class TestReplaySnapshotError(TestCase):
+
     def test_create(self):
         ReplaySnapshotError("message")
-
-
-class TestReplayParentsInconsistent(TestCase):
-    def test_create(self):
-        ReplayParentsInconsistent("afileid", "arevid")
