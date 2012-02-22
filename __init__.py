@@ -33,13 +33,9 @@ from bzrlib.plugins.rewrite.info import (
     bzr_compatible_versions,
     )
 
-try:
-    from bzrlib.i18n import load_plugin_translations
-except ImportError: # No translations for bzr < 2.5
-    gettext = lambda x: x
-else:
-    translation = load_plugin_translations("bzr-rewrite")
-    gettext = translation.ugettext
+from bzrlib.i18n import load_plugin_translations
+translation = load_plugin_translations("bzr-rewrite")
+gettext = translation.ugettext
 
 if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]
