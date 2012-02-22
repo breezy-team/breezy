@@ -351,7 +351,9 @@ class RebaseTodoTests(TestCase):
                 list(rebase_todo(Repository(), { "bla": ("bloe", []),
                                                  "ha": ("hee", [])})))
 
+
 class ReplaySnapshotTests(TestCaseWithTransport):
+
     def test_single_revision(self):
         wt = self.make_branch_and_tree(".")
         self.build_tree(['afile'])
@@ -369,26 +371,6 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         self.assertEquals(oldrev.timezone, newrev.timezone)
         inv = wt.branch.repository.get_inventory("newcommit")
         self.assertEquals("newcommit", inv[inv.path2id("afile")].revision)
-
-    def test_parents_different(self):
-        """CommitBuilderRevisionRewriter() relies on the fact that the contents of
-        the old and new parents is equal (at least concerning tree shape). If
-        it turns out it isn't, an exception should be raised."""
-        wt = self.make_branch_and_tree(".")
-        wt.commit("bloe", rev_id="base")
-        self.build_tree(['afile', 'notherfile'])
-        wt.add(["afile"])
-        wt.commit("bla", rev_id="oldparent")
-        wt.add(["notherfile"])
-        wt.commit("bla", rev_id="oldcommit")
-        # this should raise an exception since oldcommit is being rewritten
-        # but 'afile' is present in the old parents but not in the new ones.
-        wt.branch.repository.lock_write()
-        self.assertRaises(
-                ReplayParentsInconsistent,
-                CommitBuilderRevisionRewriter(wt.branch.repository),
-                "oldcommit", "newcommit", ("base",))
-        wt.branch.repository.unlock()
 
     def test_two_revisions(self):
         wt = self.make_branch_and_tree("old")

@@ -387,6 +387,17 @@ class ReplayParentsInconsistent(BzrError):
         self.revid = revid
 
 
+def wrap_iter_changes(old_iter_changes, map_tree):
+    for (file_id, path, changed_content, versioned, (old_parent, new_parent), name, kind,
+            executable) in old_iter_changes:
+        if old_parent is not None:
+            old_parent = map_tree.new_id(old_parent)
+        if new_parent is not None:
+            new_parent = map_tree.new_id(new_parent)
+        yield (map_tree.new_id(file_id), path, changed_content, versioned,
+                (old_parent, new_parent), name, kind, executable)
+
+
 class CommitBuilderRevisionRewriter(object):
     """Revision rewriter that use commit builder.
 
@@ -396,45 +407,6 @@ class CommitBuilderRevisionRewriter(object):
     def __init__(self, repository, map_ids=True):
         self.repository = repository
         self.map_ids = map_ids
-
-    def _process_file(self, old_ie, oldtree, oldrevid, newrevid,
-                      old_parent_trees, new_parent_trees, path):
-        ie = old_ie.copy()
-        # Either this file was modified last in this revision,
-        # in which case it has to be rewritten
-        if old_ie.revision == oldrevid:
-            if self.repository.texts.has_key((ie.file_id, newrevid)):
-                # Use the existing text
-                ie.revision = newrevid
-            else:
-                # Create a new text
-                ie.revision = None
-        else:
-            # or it was already there before the commit, in
-            # which case the right revision should be used
-            # one of the old parents had this revision, so find that
-            # and then use the matching new parent
-            old_file_id = oldtree.path2id(path)
-            assert old_file_id is not None
-            ie = None
-            for (old_ptree, new_ptree) in zip(old_parent_trees, new_parent_trees):
-                if (old_ptree.has_id(old_file_id) and
-                    old_ptree.get_file_revision(old_file_id) == old_ie.revision):
-                    try:
-                        ie = new_ptree.inventory[old_ie.file_id].copy()
-                    except NoSuchId:
-                        # Empty directories (or directories with only
-                        # empty-directory children) not in the new inventory
-                        # can arise when different import strategies are
-                        # used on a foreign branch that doesn't natively
-                        # represent directories.  We can skip these, and
-                        # fail later if the directory contains any files.
-                        if old_ie.kind == 'directory':
-                            return None
-                        raise ReplayParentsInconsistent(old_ie.file_id, old_ie.revision)
-                    break
-            assert ie is not None
-        return ie
 
     def _get_present_revisions(self, revids):
         return tuple([p for p in revids if self.repository.has_revision(p)])
@@ -455,36 +427,38 @@ class CommitBuilderRevisionRewriter(object):
         revprops = dict(oldrev.properties)
         revprops[REVPROP_REBASE_OF] = oldrevid
 
+        # Check what new_ie.file_id should be
+        # use old and new parent trees to generate new_id map
+        nonghost_oldparents = self._get_present_revisions(oldrev.parent_ids)
+        nonghost_newparents = self._get_present_revisions(new_parents)
+        oldtree = self.repository.revision_tree(oldrevid)
+        if self.map_ids:
+            fileid_map = map_file_ids(self.repository, nonghost_oldparents,
+                nonghost_newparents)
+            mappedtree = MapTree(oldtree, fileid_map)
+        else:
+            mappedtree = oldtree
+
+        try:
+            old_base = nonghost_oldparents[0]
+        except IndexError:
+            old_base = NULL_REVISION
+        try:
+            new_base = new_parents[0]
+        except IndexError:
+            new_base = NULL_REVISION
+        old_base_tree = self.repository.revision_tree(old_base)
+        old_iter_changes = oldtree.iter_changes(old_base_tree)
+        iter_changes = wrap_iter_changes(old_iter_changes, mappedtree)
         builder = self.repository.get_commit_builder(branch=None,
             parents=new_parents, committer=oldrev.committer,
             timestamp=oldrev.timestamp, timezone=oldrev.timezone,
             revprops=revprops, revision_id=newrevid,
             config_stack=_mod_config.GlobalStack())
         try:
-            # Check what new_ie.file_id should be
-            # use old and new parent trees to generate new_id map
-            nonghost_oldparents = self._get_present_revisions(oldrev.parent_ids)
-            nonghost_newparents = self._get_present_revisions(new_parents)
-            oldtree = self.repository.revision_tree(oldrevid)
-            if self.map_ids:
-                fileid_map = map_file_ids(self.repository, nonghost_oldparents,
-                    nonghost_newparents)
-                mappedtree = MapTree(oldtree, fileid_map)
-            else:
-                mappedtree = oldtree
-            old_parent_trees = list(self.repository.revision_trees(nonghost_oldparents))
-            new_parent_trees = list(self.repository.revision_trees(nonghost_newparents))
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
-                for i, (path, old_ie) in enumerate(mappedtree.iter_entries_by_dir()):
-                    ie = self._process_file(old_ie, oldtree, oldrevid, newrevid,
-                        old_parent_trees, new_parent_trees, path)
-                    if ie is not None:
-                        builder.record_entry_contents(ie,
-                                [t.inventory for t in new_parent_trees], path, mappedtree,
-                                mappedtree.path_content_summary(path))
-            finally:
-                pb.finished()
+            for (file_id, relpath, fs_hash) in builder.record_iter_changes(
+                    mappedtree, new_base, iter_changes):
+                pass
             builder.finish_inventory()
             return builder.commit(oldrev.message)
         except:
