@@ -36,6 +36,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``bzr rmbranch`` now supports removing colocated branches.
+  (Jelmer Vernooij, #920653)
+
 * Show locks in ``bzr info`` on control directories without a
   repository. (Jelmer Vernooij, #936767)
 
