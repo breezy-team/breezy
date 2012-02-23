@@ -1102,10 +1102,11 @@ class Merge3Merger(object):
             # other_root doesn't have a physical representation. We still need
             # to move any references to the actual root of the tree.
             other_root_is_present = False
-        # 'other_tree.inventory.root' is not present in this tree. We are
+        # the other tree root is not present in this tree. We are
         # calling adjust_path for children which *want* to be present with a
         # correct place to go.
-        for child_id in self.other_tree.iter_children(self.other_tree.get_root_id()):
+        for child_id in self.other_tree.iter_children(
+                self.other_tree.get_root_id()):
             trans_id = self.tt.trans_id_file_id(child_id)
             if not other_root_is_present:
                 if self.tt.final_kind(trans_id) is not None:
