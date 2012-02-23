@@ -18,7 +18,7 @@
 """Black-box tests for bzr rmbranch."""
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     )
 from bzrlib.tests import (
     TestCaseWithTransport,
@@ -42,7 +42,7 @@ class TestRemoveBranch(TestCaseWithTransport):
         # Remove a local branch.
         self.example_branch('a')
         self.run_bzr('rmbranch a')
-        dir = bzrdir.BzrDir.open('a')
+        dir = controldir.ControlDir.open('a')
         self.assertFalse(dir.has_branch())
         self.assertPathExists('a/hello')
         self.assertPathExists('a/goodbye')
@@ -57,7 +57,7 @@ class TestRemoveBranch(TestCaseWithTransport):
         # location argument defaults to current directory
         self.example_branch('a')
         self.run_bzr('rmbranch', working_dir='a')
-        dir = bzrdir.BzrDir.open('a')
+        dir = controldir.ControlDir.open('a')
         self.assertFalse(dir.has_branch())
 
     def test_remove_colo(self):
@@ -66,7 +66,7 @@ class TestRemoveBranch(TestCaseWithTransport):
         tree.bzrdir.create_branch(name="otherbranch")
         self.assertTrue(tree.bzrdir.has_branch('otherbranch'))
         self.run_bzr('rmbranch %s,branch=otherbranch' % tree.bzrdir.user_url)
-        dir = bzrdir.BzrDir.open('a')
+        dir = controldir.ControlDir.open('a')
         self.assertFalse(dir.has_branch('otherbranch'))
         self.assertTrue(dir.has_branch())
 

@@ -25,7 +25,7 @@ from bzrlib import (
     plugins as _mod_plugins,
     trace,
     )
-from bzrlib.bzrdir import BzrDir
+from bzrlib.controldir import ControlDir
 from bzrlib.smart import medium
 from bzrlib.transport import remote
 
@@ -223,7 +223,7 @@ class TestImportTariffs(ImportTariffTestCase):
         client_medium = medium.SmartSimplePipesClientMedium(
             process.stdout, process.stdin, url)
         transport = remote.RemoteTransport(url, medium=client_medium)
-        branch = BzrDir.open_from_transport(transport).open_branch()
+        branch = ControlDir.open_from_transport(transport).open_branch()
         process.stdin.close()
         # Hide stdin from the subprocess module, so it won't fail to close it.
         process.stdin = None

@@ -18,8 +18,8 @@
 
 from bzrlib import (
     branch,
-    bzrdir,
     config,
+    controldir,
     errors,
     osutils,
     tests,
@@ -54,13 +54,13 @@ class TestBreakLock(tests.TestCaseWithTransport):
              'repo/',
              'repo/branch/',
              'checkout/'])
-        bzrdir.BzrDir.create('master-repo').create_repository()
-        self.master_branch = bzrdir.BzrDir.create_branch_convenience(
+        controldir.ControlDir.create('master-repo').create_repository()
+        self.master_branch = controldir.ControlDir.create_branch_convenience(
             'master-repo/master-branch')
-        bzrdir.BzrDir.create('repo').create_repository()
-        local_branch = bzrdir.BzrDir.create_branch_convenience('repo/branch')
+        controldir.ControlDir.create('repo').create_repository()
+        local_branch = controldir.ControlDir.create_branch_convenience('repo/branch')
         local_branch.bind(self.master_branch)
-        checkoutdir = bzrdir.BzrDir.create('checkout')
+        checkoutdir = controldir.ControlDir.create('checkout')
         checkoutdir.set_branch_reference(local_branch)
         self.wt = checkoutdir.create_workingtree()
 

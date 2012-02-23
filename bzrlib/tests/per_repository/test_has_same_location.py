@@ -17,7 +17,7 @@
 """Tests for implementations of Repository.has_same_location."""
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     transport,
     )
 from bzrlib.remote import (
@@ -119,7 +119,7 @@ class TestHasSameLocation(TestCaseWithRepository):
                 self.get_vfs_only_url()).delete_tree('other')
             other_repo = self.make_repository('other', format='knit')
         # Make sure the other_repo is not a RemoteRepository.
-        other_bzrdir = bzrdir.BzrDir.open(self.get_vfs_only_url('other'))
+        other_bzrdir = controldir.ControlDir.open(self.get_vfs_only_url('other'))
         other_repo = other_bzrdir.open_repository()
         self.assertDifferentRepo(repo, other_repo)
 

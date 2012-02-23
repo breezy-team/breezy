@@ -22,7 +22,7 @@ import socket
 import sys
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     errors,
     osutils,
     urlutils,
@@ -207,7 +207,7 @@ class TestErrors(TestCaseWithTransport):
             'There is no public branch set for "%s".' % url, str(error))
 
     def test_no_repo(self):
-        dir = bzrdir.BzrDir.create(self.get_url())
+        dir = controldir.ControlDir.create(self.get_url())
         error = errors.NoRepositoryPresent(dir)
         self.assertNotEqual(-1, str(error).find((dir.transport.clone('..').base)))
         self.assertEqual(-1, str(error).find((dir.transport.base)))

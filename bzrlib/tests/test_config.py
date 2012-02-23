@@ -27,8 +27,8 @@ from testtools import matchers
 #import bzrlib specific imports here
 from bzrlib import (
     branch,
-    bzrdir,
     config,
+    controldir,
     diff,
     errors,
     osutils,
@@ -115,7 +115,7 @@ config.test_store_builder_registry.register('branch', build_branch_store)
 
 def build_control_store(test):
     build_backing_branch(test, 'branch')
-    b = bzrdir.BzrDir.open('branch')
+    b = controldir.ControlDir.open('branch')
     return config.ControlStore(b)
 config.test_store_builder_registry.register('control', build_control_store)
 
@@ -1142,7 +1142,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
 
     def test_get_config(self):
         """The Branch.get_config method works properly"""
-        b = bzrdir.BzrDir.create_standalone_workingtree('.').branch
+        b = controldir.ControlDir.create_standalone_workingtree('.').branch
         my_config = b.get_config()
         self.assertIs(my_config.get_user_option('wacky'), None)
         my_config.set_user_option('wacky', 'unlikely')
@@ -2203,7 +2203,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
         self.assertGetHook(remote_branch._get_config(), 'file', 'branch')
 
     def test_get_hook_remote_bzrdir(self):
-        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        remote_bzrdir = controldir.ControlDir.open(self.get_url('tree'))
         conf = remote_bzrdir._get_config()
         conf.set_option('remotedir', 'file')
         self.assertGetHook(conf, 'file', 'remotedir')
@@ -2231,7 +2231,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
     def test_set_hook_remote_bzrdir(self):
         remote_branch = branch.Branch.open(self.get_url('tree'))
         self.addCleanup(remote_branch.lock_write().unlock)
-        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        remote_bzrdir = controldir.ControlDir.open(self.get_url('tree'))
         self.assertSetHook(remote_bzrdir._get_config(), 'file', 'remotedir')
 
     def assertLoadHook(self, expected_nb_calls, name, conf_class, *conf_args):
@@ -2254,7 +2254,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
         self.assertLoadHook(1, 'file', remote.RemoteBranchConfig, remote_branch)
 
     def test_load_hook_remote_bzrdir(self):
-        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        remote_bzrdir = controldir.ControlDir.open(self.get_url('tree'))
         # The config file doesn't exist, set an option to force its creation
         conf = remote_bzrdir._get_config()
         conf.set_option('remotedir', 'file')
@@ -2285,7 +2285,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
     def test_save_hook_remote_bzrdir(self):
         remote_branch = branch.Branch.open(self.get_url('tree'))
         self.addCleanup(remote_branch.lock_write().unlock)
-        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        remote_bzrdir = controldir.ControlDir.open(self.get_url('tree'))
         self.assertSaveHook(remote_bzrdir._get_config())
 
 

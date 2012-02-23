@@ -26,8 +26,8 @@ from testtools import matchers
 
 from bzrlib import (
     branch,
-    bzrdir,
     conflicts,
+    controldir,
     merge_directive,
     osutils,
     tests,
@@ -75,7 +75,7 @@ class TestMerge(tests.TestCaseWithTransport):
         return tree, other
 
     def test_merge_reprocess(self):
-        d = bzrdir.BzrDir.create_standalone_workingtree('.')
+        d = controldir.ControlDir.create_standalone_workingtree('.')
         d.commit('h')
         self.run_bzr('merge . --reprocess --merge-type weave')
 

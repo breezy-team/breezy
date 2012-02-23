@@ -2854,7 +2854,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         # stacking policy to honour; create a bzr dir with an unshared
         # repository (but not a branch - our code would be trying to escape
         # then!) to stop them, and permit it to be read.
-        # control = bzrdir.BzrDir.create(self.test_base_dir)
+        # control = controldir.ControlDir.create(self.test_base_dir)
         # control.create_repository()
         self.test_home_dir = self.test_base_dir + '/home'
         os.mkdir(self.test_home_dir)

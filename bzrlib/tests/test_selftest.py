@@ -1944,7 +1944,7 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
     def test_make_branch_and_tree_with_format(self):
         # we should be able to supply a format to make_branch_and_tree
         self.make_branch_and_tree('a', format=bzrlib.bzrdir.BzrDirMetaFormat1())
-        self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('a')._format,
+        self.assertIsInstance(bzrlib.controldir.ControlDir.open('a')._format,
                               bzrlib.bzrdir.BzrDirMetaFormat1)
 
     def test_make_branch_and_memory_tree(self):

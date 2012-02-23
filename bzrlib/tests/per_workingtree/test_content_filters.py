@@ -18,7 +18,7 @@
 
 import os
 
-from bzrlib.bzrdir import BzrDir
+from bzrlib.controldir import ControlDir
 from bzrlib.filters import ContentFilter
 from bzrlib.switch import switch
 from bzrlib.workingtree import WorkingTree
@@ -330,7 +330,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         self.assertFileEqual("fOO tXT", 'checkout/file1.txt')
 
         # Switch it to branch-b and check the tree is updated
-        checkout_control_dir = BzrDir.open_containing('checkout')[0]
+        checkout_control_dir = ControlDir.open_containing('checkout')[0]
         switch(checkout_control_dir, source.branch)
         self.assertFileEqual("fOO rocks!", 'checkout/file1.txt')
         self.assertFileEqual("hELLO wORLD", 'checkout/file4.txt')

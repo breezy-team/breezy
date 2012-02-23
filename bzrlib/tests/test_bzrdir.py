@@ -212,21 +212,21 @@ class SampleBzrDir(bzrdir.BzrDir):
     """A sample BzrDir implementation to allow testing static methods."""
 
     def create_repository(self, shared=False):
-        """See BzrDir.create_repository."""
+        """See ControlDir.create_repository."""
         return "A repository"
 
     def open_repository(self):
-        """See BzrDir.open_repository."""
+        """See ControlDir.open_repository."""
         return SampleRepository(self)
 
     def create_branch(self, name=None):
-        """See BzrDir.create_branch."""
+        """See ControlDir.create_branch."""
         if name is not None:
             raise NoColocatedBranchSupport(self)
         return SampleBranch(self)
 
     def create_workingtree(self):
-        """See BzrDir.create_workingtree."""
+        """See ControlDir.create_workingtree."""
         return "A tree"
 
 

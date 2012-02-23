@@ -27,7 +27,7 @@ from bzrlib import (
     remote,
     urlutils,
     )
-from bzrlib.bzrdir import BzrDir
+from bzrlib.controldir import ControlDir
 from bzrlib.tests import multiply_tests
 from bzrlib.tests.per_repository import (
     all_repository_format_scenarios,
@@ -49,7 +49,7 @@ class TestCaseWithExternalReferenceRepository(TestCaseWithRepository):
 
     def readonly_repository(self, repo):
         relpath = urlutils.basename(repo.bzrdir.user_url.rstrip('/'))
-        return BzrDir.open_from_transport(
+        return ControlDir.open_from_transport(
             self.get_readonly_transport(relpath)).open_repository()
 
 
