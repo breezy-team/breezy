@@ -39,6 +39,9 @@ Bug Fixes
 * ``bzr rmbranch`` now supports removing colocated branches.
   (Jelmer Vernooij, #920653)
 
+* ``bzr rmbranch`` no longer removes active branches unless ``--force``
+  is specified. (Jelmer Vernooij, #922953)
+
 * Show locks in ``bzr info`` on control directories without a
   repository. (Jelmer Vernooij, #936767)
 
