@@ -60,7 +60,7 @@ from testtools import content
 import bzrlib
 from bzrlib import (
     branchbuilder,
-    bzrdir,
+    controldir,
     chk_map,
     commands as _mod_commands,
     config,
@@ -1328,7 +1328,7 @@ class TestCase(testtools.TestCase):
         # hook into bzr dir opening. This leaves a small window of error for
         # transport tests, but they are well known, and we can improve on this
         # step.
-        bzrdir.BzrDir.hooks.install_named_hook("pre_open",
+        controldir.ControlDir.hooks.install_named_hook("pre_open",
             self._preopen_isolate_transport, "Check bzr directories are safe.")
 
     def _ndiff_strings(self, a, b):
@@ -2603,7 +2603,7 @@ class TestCaseWithMemoryTransport(TestCase):
         # http://pad.lv/825027).
         self.assertIs(None, os.environ.get('BZR_HOME', None))
         os.environ['BZR_HOME'] = root
-        wt = bzrdir.BzrDir.create_standalone_workingtree(root)
+        wt = controldir.ControlDir.create_standalone_workingtree(root)
         del os.environ['BZR_HOME']
         # Hack for speed: remember the raw bytes of the dirstate file so that
         # we don't need to re-open the wt to check it hasn't changed.
@@ -2680,7 +2680,7 @@ class TestCaseWithMemoryTransport(TestCase):
         if format is None:
             format = self.get_default_format()
         if isinstance(format, basestring):
-            format = bzrdir.format_registry.make_bzrdir(format)
+            format = controldir.format_registry.make_bzrdir(format)
         return format
 
     def make_bzrdir(self, relpath, format=None):
@@ -3000,7 +3000,8 @@ class TestCaseWithTransport(TestCaseInTempDir):
             if self.vfs_transport_factory is test_server.LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.
-                local_controldir= bzrdir.BzrDir.open(self.get_vfs_only_url(relpath))
+                local_controldir = controldir.ControlDir.open(
+                    self.get_vfs_only_url(relpath))
                 wt = local_controldir.create_workingtree()
                 if wt.branch._format != b._format:
                     wt._branch = b

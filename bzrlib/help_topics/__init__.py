@@ -739,13 +739,13 @@ topic_registry.register("revisionspec", _help_on_revisionspec,
 topic_registry.register('basic', _basic_help, "Basic commands", SECT_HIDDEN)
 topic_registry.register('topics', _help_on_topics, "Topics list", SECT_HIDDEN)
 def get_current_formats_topic(topic):
-    from bzrlib import bzrdir
+    from bzrlib import controldir
     return "Current Storage Formats\n\n" + \
-        bzrdir.format_registry.help_topic(topic)
+        controldir.format_registry.help_topic(topic)
 def get_other_formats_topic(topic):
-    from bzrlib import bzrdir
+    from bzrlib import controldir
     return "Other Storage Formats\n\n" + \
-        bzrdir.format_registry.help_topic(topic)
+        controldir.format_registry.help_topic(topic)
 topic_registry.register('current-formats', get_current_formats_topic,
     'Current storage formats')
 topic_registry.register('other-formats', get_other_formats_topic,

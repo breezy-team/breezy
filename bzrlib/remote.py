@@ -1051,7 +1051,7 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
             network_name = self._network_name
         else:
             # Select the current bzrlib default and ask for that.
-            reference_bzrdir_format = _mod_bzrdir.format_registry.get('default')()
+            reference_bzrdir_format = controldir.format_registry.get('default')()
             reference_format = reference_bzrdir_format.repository_format
             network_name = reference_format.network_name()
         # 2) try direct creation via RPC
@@ -3157,7 +3157,7 @@ class RemoteBranchFormat(branch.BranchFormat):
             network_name = self._custom_format.network_name()
         else:
             # Select the current bzrlib default and ask for that.
-            reference_bzrdir_format = _mod_bzrdir.format_registry.get('default')()
+            reference_bzrdir_format = controldir.format_registry.get('default')()
             reference_format = reference_bzrdir_format.get_branch_format()
             self._custom_format = reference_format
             network_name = reference_format.network_name()

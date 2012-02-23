@@ -18,7 +18,7 @@
 """Tests for upgrades of various stacking situations."""
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     check,
     errors,
     tests,
@@ -71,7 +71,7 @@ class TestStackUpgrade(tests.TestCaseWithTransport):
         self.assertTrue(stacked.open_branch().get_stacked_on_url())
         # now we'll upgrade the underlying branch, then upgrade the stacked
         # branch, and this should still work.
-        new_format = bzrdir.format_registry.make_bzrdir(
+        new_format = controldir.format_registry.make_bzrdir(
             self.scenario_new_format)
         upgrade('base', new_format)
         # in some cases you'll get an error if the underlying model has
@@ -81,10 +81,10 @@ class TestStackUpgrade(tests.TestCaseWithTransport):
                 stacked.open_branch)
         else:
             check.check_dwim('stacked', False, True, True)
-        stacked = bzrdir.BzrDir.open('stacked')
+        stacked = controldir.ControlDir.open('stacked')
         # but we can upgrade the stacked repository
         upgrade('stacked', new_format)
         # and now it opens ok
-        stacked = bzrdir.BzrDir.open('stacked')
+        stacked = controldir.ControlDir.open('stacked')
         # And passes check.
         check.check_dwim('stacked', False, True, True)

@@ -24,7 +24,7 @@ from stat import S_ISDIR
 from bzrlib.btree_index import BTreeGraphIndex
 from bzrlib.index import GraphIndex
 from bzrlib import (
-    bzrdir,
+    controldir,
     errors,
     inventory,
     osutils,
@@ -59,7 +59,7 @@ class TestPackRepository(TestCaseWithTransport):
     """
 
     def get_format(self):
-        return bzrdir.format_registry.make_bzrdir(self.format_name)
+        return controldir.format_registry.make_bzrdir(self.format_name)
 
     def test_attribute__fetch_order(self):
         """Packs do not need ordered data retrieval."""
@@ -869,7 +869,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         super(TestPackRepositoryStacking, self).setUp()
 
     def get_format(self):
-        return bzrdir.format_registry.make_bzrdir(self.format_name)
+        return controldir.format_registry.make_bzrdir(self.format_name)
 
     def test_stack_checks_rich_root_compatibility(self):
         # early versions of the packing code relied on pack internals to
@@ -1000,7 +1000,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
 class TestKeyDependencies(TestCaseWithTransport):
 
     def get_format(self):
-        return bzrdir.format_registry.make_bzrdir(self.format_name)
+        return controldir.format_registry.make_bzrdir(self.format_name)
 
     def create_source_and_target(self):
         builder = self.make_branch_builder('source', format=self.get_format())
@@ -1085,7 +1085,7 @@ class TestSmartServerAutopack(TestCaseWithTransport):
         self.hpss_calls.append(params.method)
 
     def get_format(self):
-        return bzrdir.format_registry.make_bzrdir(self.format_name)
+        return controldir.format_registry.make_bzrdir(self.format_name)
 
     def test_autopack_or_streaming_rpc_is_used_when_using_hpss(self):
         # Make local and remote repos
@@ -1093,7 +1093,7 @@ class TestSmartServerAutopack(TestCaseWithTransport):
         tree = self.make_branch_and_tree('local', format=format)
         self.make_branch_and_tree('remote', format=format)
         remote_branch_url = self.smart_server.get_url() + 'remote'
-        remote_branch = bzrdir.BzrDir.open(remote_branch_url).open_branch()
+        remote_branch = controldir.ControlDir.open(remote_branch_url).open_branch()
         # Make 9 local revisions, and push them one at a time to the remote
         # repo to produce 9 pack files.
         for x in range(9):
