@@ -18,9 +18,7 @@
 import os
 
 from bzrlib import (
-    bzrdir,
     osutils,
-    repository,
     tests,
     workingtree,
     )
