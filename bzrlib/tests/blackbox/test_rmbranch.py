@@ -80,6 +80,18 @@ class TestRemoveBranch(TestCaseWithTransport):
         self.assertFalse(dir.has_branch('otherbranch'))
         self.assertTrue(dir.has_branch())
 
+    def test_remove_active_colo_branch(self):
+        # Remove a colocated branch.
+        dir = self.make_repository('a').bzrdir
+        branch = dir.create_branch('otherbranch')
+        branch.create_checkout('a')
+        self.run_bzr_error(['Use --force to remove active branch.'],
+            'rmbranch otherbranch -d %s' % branch.bzrdir.user_url)
+        self.assertTrue(dir.has_branch('otherbranch'))
+        self.run_bzr('rmbranch --force otherbranch -d %s' % branch.bzrdir.user_url)
+        self.assertFalse(dir.has_branch('otherbranch'))
+        self.assertTrue(dir.has_branch())
+
 
 class TestSmartServerRemoveBranch(TestCaseWithTransport):
 
