@@ -5479,12 +5479,13 @@ class cmd_serve(Command):
                help="Protocol to serve.",
                lazy_registry=('bzrlib.transport', 'transport_server_registry'),
                value_switches=True),
+        Option('listen',
+               help='Listen for connections on nominated address.', type=str),
         Option('port',
-               help='Listen for connections on nominated port of the form '
-                    '[hostname:]portnumber.  Passing 0 as the port number will '
-                    'result in a dynamically allocated port.  The default port '
-                    'depends on the protocol.',
-               type=str),
+               help='Listen for connections on nominated port.  Passing 0 as '
+                    'the port number will result in a dynamically allocated '
+                    'port.  The default port depends on the protocol.',
+               type=int),
         custom_help('directory',
                help='Serve contents of this directory.'),
         Option('allow-writes',
@@ -5500,39 +5501,19 @@ class cmd_serve(Command):
                help='Override the default idle client timeout (5min).'),
         ]
 
-    def get_host_and_port(self, port):
-        """Return the host and port to run the smart server on.
-
-        If 'port' is None, None will be returned for the host and port.
-
-        If 'port' has a colon in it, the string before the colon will be
-        interpreted as the host.
-
-        :param port: A string of the port to run the server on.
-        :return: A tuple of (host, port), where 'host' is a host name or IP,
-            and port is an integer TCP/IP port.
-        """
-        host = None
-        if port is not None:
-            if ':' in port:
-                host, port = port.split(':')
-            port = int(port)
-        return host, port
-
-    def run(self, port=None, inet=False, directory=None, allow_writes=False,
-            protocol=None, client_timeout=None):
+    def run(self, listen=None, port=None, inet=False, directory=None,
+            allow_writes=False, protocol=None, client_timeout=None):
         from bzrlib import transport
         if directory is None:
             directory = os.getcwd()
         if protocol is None:
             protocol = transport.transport_server_registry.get()
-        host, port = self.get_host_and_port(port)
         url = transport.location_to_url(directory)
         if not allow_writes:
             url = 'readonly+' + url
         t = transport.get_transport_from_url(url)
         try:
-            protocol(t, host, port, inet, client_timeout)
+            protocol(t, listen, port, inet, client_timeout)
         except TypeError, e:
             # We use symbol_versioning.deprecated_in just so that people
             # grepping can find it here.
