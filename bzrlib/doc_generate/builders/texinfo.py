@@ -41,4 +41,5 @@ class TexinfoBuilder(_text_builder.TextBuilder):
 
 
 def setup(app):
+    import pdb; pdb.set_trace()
     app.add_builder(TexinfoBuilder)

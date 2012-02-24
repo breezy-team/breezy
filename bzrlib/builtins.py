@@ -3872,8 +3872,9 @@ class cmd_whoami(Command):
 class cmd_nick(Command):
     __doc__ = """Print or set the branch nickname.
 
-    If unset, the tree root directory name is used as the nickname.
-    To print the current nickname, execute with no argument.
+    If unset, the colocated branch name is used for colocated branches, and
+    the branch directory name is used for other branches.  To print the
+    current nickname, execute with no argument.
 
     Bound branches use the nickname of its master branch unless it is set
     locally.
