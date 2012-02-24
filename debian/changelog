@@ -1,8 +1,12 @@
 bzr (2.5.0-1) UNRELEASED; urgency=low
 
   * New upstream release.
+  * New zlib versions are slightly more efficient.
+   + Add build dependency on zlib >= 1.2.6.
+   + Add 06_new_zlib patch to fix test failures expecting slightly larger
+     output in bzrlib.tests.test_btree_index.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Fri, 24 Feb 2012 12:45:53 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 24 Feb 2012 18:13:29 +0100
 
 bzr (2.5.0~bzr6473-1) unstable; urgency=low
 
