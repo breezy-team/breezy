@@ -255,7 +255,7 @@ class MutableTree(tree.Tree):
             # working copy as compared to the repository.
             # Also, exclude root as mention in the above fast path.
             changes = filter(
-                lambda c: (c[6][0] != 'symlink') and (c[4] != (None, None)),
+                lambda c: c[6][0] != 'symlink' and c[4] != (None, None),
                 changes)
             if len(changes) > 0:
                 return True
