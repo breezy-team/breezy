@@ -145,6 +145,10 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
     def test_branch_reference(self):
         referenced = self.make_branch('referenced')
         repo = self.make_repository('repo')
-        repo.bzrdir.set_branch_reference(referenced, name='foo')
+        try:
+            repo.bzrdir.set_branch_reference(referenced, name='foo')
+        except errors.IncompatibleFormat:
+            raise tests.TestNotApplicable(
+                'Control dir does not support creating branch references.')
         self.assertEquals(referenced.base,
             repo.bzrdir.get_branch_reference('foo'))
