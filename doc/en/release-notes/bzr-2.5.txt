@@ -30,6 +30,10 @@ Improvements
 * The names of colocated branches are used as branch nicks if no nick is
   specified. (Aaron Bentley)
 
+* Branches with symlinks can now be checked out on Windows. Symlinks are
+  ignored with a warning and they are not seen on Windows.
+  (Parth Malwankar, #81689)
+
 Bug Fixes
 *********
 
