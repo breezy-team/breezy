@@ -88,7 +88,7 @@ _ssl_ca_certs_known_locations = [
     ]
 def default_ca_certs():
     if sys.platform == 'win32':
-        return os.path.join(os.path.dirname(sys.executable), u"ca_bundle.crt")
+        return os.path.join(os.path.dirname(sys.executable), u"cacert.pem")
     elif sys.platform == 'darwin':
         # FIXME: Needs some default value for osx, waiting for osx installers
         # guys feedback -- vila 2012-01-25

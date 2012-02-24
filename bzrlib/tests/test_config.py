@@ -3674,6 +3674,41 @@ class TestMemoryStack(tests.TestCase):
         self.assertEquals('bar', conf.get('foo'))
 
 
+class TestStackIterSections(tests.TestCase):
+
+    def test_empty_stack(self):
+        conf = config.Stack([])
+        sections = list(conf.iter_sections())
+        self.assertLength(0, sections)
+
+    def test_empty_store(self):
+        store = config.IniFileStore()
+        store._load_from_string('')
+        conf = config.Stack([store.get_sections])
+        sections = list(conf.iter_sections())
+        self.assertLength(0, sections)
+
+    def test_simple_store(self):
+        store = config.IniFileStore()
+        store._load_from_string('foo=bar')
+        conf = config.Stack([store.get_sections])
+        tuples = list(conf.iter_sections())
+        self.assertLength(1, tuples)
+        (found_store, found_section) = tuples[0]
+        self.assertIs(store, found_store)
+
+    def test_two_stores(self):
+        store1 = config.IniFileStore()
+        store1._load_from_string('foo=bar')
+        store2 = config.IniFileStore()
+        store2._load_from_string('bar=qux')
+        conf = config.Stack([store1.get_sections, store2.get_sections])
+        tuples = list(conf.iter_sections())
+        self.assertLength(2, tuples)
+        self.assertIs(store1, tuples[0][0])
+        self.assertIs(store2, tuples[1][0])
+
+
 class TestStackWithTransport(tests.TestCaseWithTransport):
 
     scenarios = [(key, {'get_stack': builder}) for key, builder
@@ -3959,8 +3994,11 @@ bar=middle,{baz}
 baz=end
 list={foo}
 ''')
-        self.registry.register(
-            config.ListOption('list'))
+        self.registry.register(config.ListOption('list'))
+        # Register an intermediate option as a list to ensure no conversion
+        # happen while expanding. Conversion should only occur for the original
+        # option ('list' here).
+        self.registry.register(config.ListOption('baz'))
         self.assertEquals(['start', 'middle', 'end'],
                            self.conf.get('list', expand=True))
 
