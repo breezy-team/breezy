@@ -162,10 +162,6 @@ Improvements
 
 * New HPSS call for ``BzrDir.get_branches``. (Jelmer Vernooij, #894460)
 
-* Two new command hooks, ``pre_command`` and ``post_command``,
-  provide notification before and after a command has been run.
-  (Brian de Alwis, Jelmer Vernooij)
-
 Bug Fixes
 *********
 

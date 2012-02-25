@@ -794,10 +794,10 @@ class CommandHooks(Hooks):
             (1, 17))
         self.add_hook('pre_command',
             "Called prior to executing a command. Called with the command "
-            "object.", (2, 5))
+            "object.", (2, 6))
         self.add_hook('post_command',
             "Called after executing a command. Called with the command "
-            "object.", (2, 5))
+            "object.", (2, 6))
 
 Command.hooks = CommandHooks()
 
