@@ -6,6 +6,7 @@ Uploaders: Jeff Bailey <jbailey@raspberryginger.com>,
            Wouter van Heyst <larstiq@larstiq.dyndns.org>,
            Reinhard Tartler <siretart@tauware.de>,
            Jelmer Vernooij <jelmer@debian.org>
+Build-Conflicts: python-gpgme, python-sphinx
 Build-Depends: cython-dbg | python-pyrex,
                ca-certificates,
                debhelper (>> 8.1.0~),
