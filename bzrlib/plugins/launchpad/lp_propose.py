@@ -205,6 +205,8 @@ class Proposer(object):
         if self.approve:
             self.call_webservice(mp.setStatus, status='Approved')
         if self.fixes:
+            if self.fixes.startswith('lp:'):
+                self.fixes = self.fixes[3:]
             self.call_webservice(
                 self.source_branch.lp.linkBug,
                 bug=self.launchpad.bugs[int(self.fixes)])
