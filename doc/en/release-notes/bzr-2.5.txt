@@ -175,6 +175,9 @@ Bug Fixes
 * Fixed loading of external merge tools from config to properly decode
   command-lines which contain embedded quotes. (Gordon Tyler, #828803)
 
+* Fixed problem with getting errors about failing to open /dev/tty when using
+  Bazaar Explorer to sign commits. (Mark Grandi, #847388)
+
 Documentation
 *************
 
