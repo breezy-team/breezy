@@ -342,7 +342,7 @@ class cmd_lp_propose_merge(Command):
                             help='Commit message.'),
                      Option('approve',
                             help='Mark the proposal as approved immediately.'),
-                     Option('link-bug', 'The bug this proposal fixes.', int),
+                     Option('fixes', 'The bug this proposal fixes.', int),
                      ListOption('review', short_name='R', type=unicode,
                             help='Requested reviewer and optional type.')]
 
@@ -351,7 +351,7 @@ class cmd_lp_propose_merge(Command):
     aliases = ['lp-submit', 'lp-propose']
 
     def run(self, submit_branch=None, review=None, staging=False,
-            message=None, approve=False, link_bug=None):
+            message=None, approve=False, fixes=None):
         from bzrlib.plugins.launchpad import lp_propose
         tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
             '.')
@@ -372,7 +372,7 @@ class cmd_lp_propose_merge(Command):
             target = _mod_branch.Branch.open(submit_branch)
         proposer = lp_propose.Proposer(tree, branch, target, message,
                                        reviews, staging, approve=approve,
-                                       link_bug=link_bug)
+                                       fixes=fixes)
         proposer.check_proposal()
         proposer.create_proposal()
 

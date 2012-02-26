@@ -52,7 +52,7 @@ class Proposer(object):
     hooks = ProposeMergeHooks()
 
     def __init__(self, tree, source_branch, target_branch, message, reviews,
-                 staging=False, approve=False, link_bug=None):
+                 staging=False, approve=False, fixes=None):
         """Constructor.
 
         :param tree: The working tree for the source branch.
@@ -90,7 +90,7 @@ class Proposer(object):
                             for reviewer, review_type in
                             reviews]
         self.approve = approve
-        self.link_bug = link_bug
+        self.fixes = fixes
 
     def get_comment(self, prerequisite_branch):
         """Determine the initial comment for the merge proposal."""
@@ -204,10 +204,10 @@ class Proposer(object):
             review_types=review_types)
         if self.approve:
             self.call_webservice(mp.setStatus, status='Approved')
-        if self.link_bug:
+        if self.fixes:
             self.call_webservice(
                 self.source_branch.lp.linkBug,
-                bug=self.launchpad.bugs[self.link_bug])
+                bug=self.launchpad.bugs[int(self.fixes)])
         webbrowser.open(lp_api.canonical_url(mp))
 
 
