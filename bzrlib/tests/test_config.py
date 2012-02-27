@@ -2369,6 +2369,10 @@ class TestOption(tests.TestCase):
         opt = config.Option('foo', default=bar_not_unicode)
         self.assertRaises(AssertionError, opt.get_default)
 
+    def test_get_help_topic(self):
+        opt = config.Option('foo')
+        self.assertEquals('foo', opt.get_help_topic())
+
 
 class TestOptionConverterMixin(object):
 

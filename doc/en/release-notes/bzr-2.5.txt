@@ -32,6 +32,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Make sure configuration options can provide their own help topic.
+  (Jelmer Vernooij, #941672)
+
 Documentation
 *************
 
