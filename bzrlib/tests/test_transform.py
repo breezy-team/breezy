@@ -1568,12 +1568,13 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         try:
             tt.create_symlink("bar", foo_trans_id)
             tt.apply()
-            self.assertContainsRe(
-                log.getvalue(),
-                'bzr: warning: Unable to create symlink "foo" on this platform')
         finally:
             if os_symlink:
                 os.symlink = os_symlink
+        self.assertContainsRe(
+            log.getvalue(),
+            'bzr: warning: Unable to create symlink "foo" '
+            'on this platform')
 
     def test_dir_to_file(self):
         wt = self.make_branch_and_tree('.')
@@ -2789,6 +2790,36 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.assertEqual(lines[0], "=== added file 'file2'")
         # 3 lines of diff administrivia
         self.assertEqual(lines[4], "+content B")
+
+    def test_diff_no_symlink_support(self):
+        self.requireFeature(SymlinkFeature)
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('a', 'content 1')])
+        tree.set_root_id('TREE_ROOT')
+        tree.add('a', 'a-id')
+        os.symlink('a', 'foo')
+        tree.add('foo', 'foo-id')
+        tree.commit('rev1', rev_id='rev1')
+        revision_tree = tree.branch.repository.revision_tree('rev1')
+        preview = TransformPreview(revision_tree)
+        self.addCleanup(preview.finalize)
+        preview.delete_versioned(preview.trans_id_tree_path('foo'))
+        preview_tree = preview.get_preview_tree()
+        out = StringIO()
+        log = StringIO()
+        trace.push_log_file(log)
+        os_symlink = getattr(os, 'symlink', None)
+        os.symlink = None
+        try:
+            show_diff_trees(revision_tree, preview_tree, out)
+            lines = out.getvalue().splitlines()
+        finally:
+            if os_symlink:
+                os.symlink = os_symlink
+        self.assertContainsRe(
+            log.getvalue(),
+            'bzr: warning: Ignoring "foo" as symlinks are not supported '
+            'on this platform')
 
     def test_transform_conflicts(self):
         revision_tree = self.create_tree()
