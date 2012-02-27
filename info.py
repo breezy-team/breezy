@@ -1,7 +1,7 @@
 #!/usr/bin/python
 bzr_plugin_name = 'rewrite'
 
-bzr_plugin_version = (0, 6, 3, 'dev', 0)
+bzr_plugin_version = (0, 6, 3, 'final', 0)
 
 bzr_compatible_versions = [(2, 5, 0)]
 
