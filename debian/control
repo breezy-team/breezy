@@ -6,7 +6,7 @@ Uploaders: Jeff Bailey <jbailey@raspberryginger.com>,
            Wouter van Heyst <larstiq@larstiq.dyndns.org>,
            Reinhard Tartler <siretart@tauware.de>,
            Jelmer Vernooij <jelmer@debian.org>
-Build-Conflicts: python-gpgme
+Build-Conflicts: python-gpgme, python-sphinx
 Build-Depends: cython-dbg | python-pyrex,
                ca-certificates,
                debhelper (>> 8.1.0~),
@@ -21,7 +21,8 @@ Build-Depends: cython-dbg | python-pyrex,
                python-paramiko,
                python-pycurl-dbg,
                python-subunit,
-               python-testtools (>= 0.9.5~)
+               python-testtools (>= 0.9.5~),
+               zlib1g (>= 1:1.2.6)
 Standards-Version: 3.9.2
 X-Python-Version: >= 2.6
 Vcs-Bzr: http://bzr.debian.org/pkg-bazaar/bzr/2.4

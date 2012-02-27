@@ -4,6 +4,24 @@ bzr (2.6.0~bzr6469-1) UNRELEASED; urgency=low
 
  -- Jelmer Vernooij <jelmer@debian.org>  Sun, 19 Feb 2012 18:10:49 +0100
 
+bzr (2.5.0-1) unstable; urgency=low
+
+  * New upstream release.
+  * New zlib versions are slightly more efficient.
+   + Add build dependency on zlib >= 1.2.6.
+   + Add 06_new_zlib patch to fix test failures expecting slightly larger
+     output in bzrlib.tests.test_btree_index.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 24 Feb 2012 18:13:29 +0100
+
+bzr (2.5.0~bzr6473-1) unstable; urgency=low
+
+  * New upstream snapshot.
+   + No longer attempts to create directories with empty name.
+     Closes: #657349
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 07 Feb 2012 16:24:36 +0100
+
 bzr (2.5.0~bzr6458-2) unstable; urgency=low
 
   * Ignore spurious test failures in

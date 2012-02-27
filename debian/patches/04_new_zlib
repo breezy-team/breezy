@@ -1,0 +1,98 @@
+Author: Jelmer Vernooij <jelmer@debian.org>
+Description: Cope with slightly more efficient newer versions of zlib (>= 1.2.6)
+Status: Not yet upstream; not fit for upstreaming as-is because it breaks support for older versions of zlib
+Bug: http://pad.lv/940453
+
+=== modified file 'bzrlib/tests/test_btree_index.py'
+--- old/bzrlib/tests/test_btree_index.py	2011-12-08 11:27:06 +0000
++++ new/bzrlib/tests/test_btree_index.py	2012-02-25 14:01:11 +0000
+@@ -199,7 +199,7 @@
+         temp_file = builder.finish()
+         content = temp_file.read()
+         del temp_file
+-        self.assertEqual(9283, len(content))
++        self.assertEqual(9281, len(content))
+         self.assertEqual(
+             "B+Tree Graph Index 2\nnode_ref_lists=0\nkey_elements=1\nlen=400\n"
+             "row_lengths=1,2\n",
+@@ -255,7 +255,7 @@
+         temp_file = builder.finish()
+         content = temp_file.read()
+         del temp_file
+-        self.assertEqual(9283, len(content))
++        self.assertEqual(9281, len(content))
+         self.assertEqual(
+             "B+Tree Graph Index 2\nnode_ref_lists=0\nkey_elements=1\nlen=400\n"
+             "row_lengths=1,2\n",
+@@ -700,7 +700,7 @@
+         # The entire index should have been read, as it is one page long.
+         self.assertEqual([('readv', 'index', [(0, size)], False, None)],
+             t._activity)
+-        self.assertEqual(1173, size)
++        self.assertEqual(1169, size)
+ 
+     def test_with_offset_no_size(self):
+         index = self.make_index_with_offset(key_elements=1, ref_lists=1,
+@@ -750,7 +750,7 @@
+             builder.add_node(*node)
+         t = transport.get_transport_from_url('trace+' + self.get_url(''))
+         size = t.put_file('index', builder.finish())
+-        self.assertEqual(17692, size)
++        self.assertEqual(17687, size)
+         index = btree_index.BTreeGraphIndex(t, 'index', size)
+         del t._activity[:]
+         self.assertEqual([], t._activity)
+@@ -773,7 +773,7 @@
+         # The entire index should have been read linearly.
+         self.assertEqual([('readv', 'index', [(0, size)], False, None)],
+                          t._activity)
+-        self.assertEqual(1488, size)
++        self.assertEqual(1487, size)
+ 
+     def test_validate_two_pages(self):
+         builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2)
+@@ -783,7 +783,7 @@
+         t = transport.get_transport_from_url('trace+' + self.get_url(''))
+         size = t.put_file('index', builder.finish())
+         # Root page, 2 leaf pages
+-        self.assertEqual(9339, size)
++        self.assertEqual(9336, size)
+         index = btree_index.BTreeGraphIndex(t, 'index', size)
+         del t._activity[:]
+         self.assertEqual([], t._activity)
+@@ -791,7 +791,7 @@
+         # The entire index should have been read linearly.
+         self.assertEqual(
+             [('readv', 'index', [(0, 4096)], False, None),
+-             ('readv', 'index', [(4096, 4096), (8192, 1147)], False, None)],
++             ('readv', 'index', [(4096, 4096), (8192, 1144)], False, None)],
+             t._activity)
+         # XXX: TODO: write some badly-ordered nodes, and some pointers-to-wrong
+         # node and make validate find them.
+@@ -860,7 +860,7 @@
+             builder.add_node(*node)
+         t = transport.get_transport_from_url('trace+' + self.get_url(''))
+         size = t.put_file('index', builder.finish())
+-        self.assertEqual(1303220, size, 'number of expected bytes in the'
++        self.assertEqual(1303219, size, 'number of expected bytes in the'
+                                         ' output changed')
+         page_size = btree_index._PAGE_SIZE
+         del builder
+@@ -883,14 +883,14 @@
+         # The entire index should have been read
+         total_pages = sum(index._row_lengths)
+         self.assertEqual(total_pages, index._row_offsets[-1])
+-        self.assertEqual(1303220, size)
++        self.assertEqual(1303219, size)
+         # The start of the leaves
+         first_byte = index._row_offsets[-2] * page_size
+         readv_request = []
+         for offset in range(first_byte, size, page_size):
+             readv_request.append((offset, page_size))
+         # The last page is truncated
+-        readv_request[-1] = (readv_request[-1][0], 1303220 % page_size)
++        readv_request[-1] = (readv_request[-1][0], 1303219 % page_size)
+         expected = [('readv', 'index', [(0, page_size)], False, None),
+              ('readv',  'index', readv_request, False, None)]
+         if expected != t._activity:
+
