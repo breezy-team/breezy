@@ -1,8 +1,8 @@
-bzr (2.6.0~bzr6469-1) UNRELEASED; urgency=low
+bzr (2.6.0~bzr6476-1) UNRELEASED; urgency=low
 
   * New upstream snapshot.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Sun, 19 Feb 2012 18:10:49 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 27 Feb 2012 02:33:00 +0100
 
 bzr (2.5.0-1) unstable; urgency=low
 
