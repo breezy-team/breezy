@@ -60,6 +60,8 @@ for cmd in bzr_commands:
 
 
 def show_rebase_summary(params):
+    if getattr(params.new_tree, "_format", None) is None:
+        return
     features = getattr(params.new_tree._format, "features", None)
     if not "rebase-v1" in features:
         return
