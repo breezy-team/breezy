@@ -532,13 +532,16 @@ class Tree(object):
         return find_ids_across_trees(paths, [self] + list(trees), require_versioned)
 
     def iter_children(self, file_id):
-        entry = self.iter_entries_by_dir([file_id]).next()[1]
-        for child in getattr(entry, 'children', {}).itervalues():
-            yield child.file_id
+        """Iterate over the file ids of the children of an entry.
+
+        :param file_id: File id of the entry
+        :return: Iterator over child file ids.
+        """
+        raise NotImplementedError(self.iter_children)
 
     def lock_read(self):
         """Lock this tree for multiple read only operations.
-        
+
         :return: A bzrlib.lock.LogicalLockResult.
         """
         pass
@@ -871,6 +874,12 @@ class InventoryTree(Tree):
     @deprecated_method(deprecated_in((2, 5, 0)))
     def get_file_by_path(self, path):
         return self.get_file(self.path2id(path), path)
+
+    def iter_children(self, file_id, path=None):
+        """See Tree.iter_children."""
+        entry = self.iter_entries_by_dir([file_id]).next()[1]
+        for child in getattr(entry, 'children', {}).itervalues():
+            yield child.file_id
 
 
 def find_ids_across_trees(filenames, trees, require_versioned=True):
@@ -1335,8 +1344,8 @@ class InterTree(InterObject):
                         if old_entry is None:
                             # Reusing a discarded change.
                             old_entry = self._get_entry(self.source, file_id)
-                        for child in old_entry.children.values():
-                            precise_file_ids.add(child.file_id)
+                        for child in self.source.iter_children(file_id):
+                            precise_file_ids.add(child)
                     changed_file_ids.add(result[0])
                     yield result
 

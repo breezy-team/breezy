@@ -2084,7 +2084,7 @@ class InventoryWorkingTree(WorkingTree,
         return osutils.lexists(self.abspath(path))
 
     def has_or_had_id(self, file_id):
-        if file_id == self.root_inventory.root.file_id:
+        if file_id == self.get_root_id():
             return True
         inv, inv_file_id = self._unpack_file_id(file_id)
         return inv.has_id(inv_file_id)
@@ -2912,7 +2912,9 @@ class InventoryWorkingTree(WorkingTree,
         This is the same order used by 'osutils.walkdirs'.
         """
         ## TODO: Work from given directory downwards
-        for path, dir_entry in self.root_inventory.directories():
+        for path, dir_entry in self.iter_entries_by_dir():
+            if dir_entry.kind != 'directory':
+                continue
             # mutter("search for unknowns in %r", path)
             dirabs = self.abspath(path)
             if not isdir(dirabs):

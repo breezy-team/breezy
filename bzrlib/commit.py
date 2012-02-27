@@ -834,11 +834,9 @@ class Commit(object):
         deleted_paths = {}
         # XXX: Note that entries may have the wrong kind because the entry does
         # not reflect the status on disk.
-        # FIXME: Nested trees
-        work_inv = self.work_tree.root_inventory
         # NB: entries will include entries within the excluded ids/paths
         # because iter_entries_by_dir has no 'exclude' facility today.
-        entries = work_inv.iter_entries_by_dir(
+        entries = self.work_tree.iter_entries_by_dir(
             specific_file_ids=self.specific_file_ids, yield_parents=True)
         for path, existing_ie in entries:
             file_id = existing_ie.file_id

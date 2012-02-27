@@ -34,11 +34,18 @@ Improvements
 * Avoid 'Invalid range access' errors when whole files are retrieved with
   transport.http.get() . (Vincent Ladeuil, #924746)
 
+* Two new command hooks, ``pre_command`` and ``post_command``,
+  provide notification before and after a command has been run.
+  (Brian de Alwis, Jelmer Vernooij)
+
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* Fix ``bzr config`` display for ``RegistryOption`` values.
+  (Vincent Ladeuil, #930182)
 
 Documentation
 *************
