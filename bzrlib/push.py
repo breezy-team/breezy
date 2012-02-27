@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -92,11 +92,11 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                 revision_id=revision_id, stacked_on=stacked_on,
                 create_prefix=create_prefix, use_existing_dir=use_existing_dir,
                 no_tree=no_tree)
+        except errors.AlreadyControlDirError, err:
+            raise errors.BzrCommandError(gettext(
+                "Target directory %s already contains a .bzr directory, "
+                "but it is not valid.") % (location,))
         except errors.FileExists, err:
-            if err.path.endswith('/.bzr'):
-                raise errors.BzrCommandError(gettext(
-                    "Target directory %s already contains a .bzr directory, "
-                    "but it is not valid.") % (location,))
             if not use_existing_dir:
                 raise errors.BzrCommandError(gettext("Target directory %s"
                      " already exists, but does not have a .bzr"
@@ -135,6 +135,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         # Remembers if asked explicitly or no previous location is set
         if (remember
             or (remember is None and br_from.get_push_location() is None)):
+            # FIXME: Should be done only if we succeed ? -- vila 2012-01-18
             br_from.set_push_location(br_to.base)
     else:
         if stacked_on is not None:

@@ -82,9 +82,7 @@ class AddWithSkipLargeAction(AddAction):
             return False
         opt_name = 'add.maximum_file_size'
         if self._maxSize is None:
-            # FIXME: We use the branch config as there is no tree config
-            # -- vila 2011-12-16
-            config = tree.branch.get_config_stack()
+            config = tree.get_config_stack()
             self._maxSize = config.get(opt_name)
         if stat_value is None:
             file_size = os.path.getsize(path);
@@ -131,7 +129,8 @@ class AddFromBaseAction(AddAction):
         """
 
         if self.base_tree.has_id(parent_ie.file_id):
-            base_parent_ie = self.base_tree.inventory[parent_ie.file_id]
+            # FIXME: Handle nested trees
+            base_parent_ie = self.base_tree.root_inventory[parent_ie.file_id]
             base_child_ie = base_parent_ie.children.get(
                 osutils.basename(path))
             if base_child_ie is not None:

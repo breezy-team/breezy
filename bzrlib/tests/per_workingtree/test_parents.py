@@ -365,7 +365,7 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         result_basis = tree.basis_tree()
         result_basis.lock_read()
         try:
-            self.assertEqual(expected_inventory, result_basis.inventory)
+            self.assertEqual(expected_inventory, result_basis.root_inventory)
         finally:
             result_basis.unlock()
 
@@ -396,7 +396,7 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
                 self._inventory = shape
 
             def get_file_text(self, file_id, path=None):
-                ie = self.inventory[file_id]
+                ie = self.root_inventory[file_id]
                 if ie.kind != "file":
                     return ""
                 return 'a' * ie.text_size

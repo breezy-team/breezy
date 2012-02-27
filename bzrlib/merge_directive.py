@@ -260,7 +260,7 @@ class BaseMergeDirective(object):
         :param sign: If True, gpg-sign the email
         :return: an email message
         """
-        mail_from = branch.get_config().username()
+        mail_from = branch.get_config_stack().get('email')
         if self.message is not None:
             subject = self.message
         else:

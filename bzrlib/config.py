@@ -55,7 +55,7 @@ check_signatures - this option will control whether bzr will require good gpg
                    turns on create_signatures.
 create_signatures - this option controls whether bzr will always create
                     gpg signatures or not on commits.  There is an unused
-                    option which in future is expected to work if               
+                    option which in future is expected to work if
                     branch settings require signatures.
 log_format - this option sets the default log format.  Possible values are
              long, short, line, or a plugin can register new formats.
@@ -92,7 +92,6 @@ from bzrlib import (
     lazy_regex,
     library_state,
     lockdir,
-    mail_client,
     mergetools,
     osutils,
     symbol_versioning,
@@ -239,16 +238,6 @@ class Config(object):
             return None
         return diff.DiffFromTool.from_string(cmd, old_tree, new_tree,
                                              sys.stdout)
-
-    def get_mail_client(self):
-        """Get a mail client to use"""
-        selected_client = self.get_user_option('mail_client')
-        _registry = mail_client.mail_client_registry
-        try:
-            mail_client_class = _registry.get(selected_client)
-        except KeyError:
-            raise errors.UnknownMailClient(selected_client)
-        return mail_client_class(self)
 
     def _get_signature_checking(self):
         """Template method to override signature checking policy."""
@@ -1482,6 +1471,8 @@ class BranchConfig(Config):
         value = self._get_explicit_nickname()
         if value is not None:
             return value
+        if self.branch.name:
+            return self.branch.name
         return urlutils.unescape(self.branch.base.split('/')[-2])
 
     def has_explicit_nickname(self):
@@ -1524,7 +1515,7 @@ def ensure_config_dir_exists(path=None):
 
 
 def config_dir():
-    """Return per-user configuration directory.
+    """Return per-user configuration directory as unicode string
 
     By default this is %APPDATA%/bazaar/2.0 on Windows, ~/.bazaar on Mac OS X
     and Linux.  On Linux, if there is a $XDG_CONFIG_HOME/bazaar directory,
@@ -1532,42 +1523,28 @@ def config_dir():
 
     TODO: Global option --config-dir to override this.
     """
-    base = os.environ.get('BZR_HOME', None)
+    base = osutils.path_from_environ('BZR_HOME')
     if sys.platform == 'win32':
-        # environ variables on Windows are in user encoding/mbcs. So decode
-        # before using one
-        if base is not None:
-            base = base.decode('mbcs')
         if base is None:
-            base = win32utils.get_appdata_location_unicode()
+            base = win32utils.get_appdata_location()
         if base is None:
-            base = os.environ.get('HOME', None)
-            if base is not None:
-                base = base.decode('mbcs')
-        if base is None:
-            raise errors.BzrError('You must have one of BZR_HOME, APPDATA,'
-                                  ' or HOME set')
+            base = win32utils.get_home_location()
+        # GZ 2012-02-01: Really the two level subdirs only make sense inside
+        #                APPDATA, but hard to move. See bug 348640 for more.
         return osutils.pathjoin(base, 'bazaar', '2.0')
-    else:
-        if base is not None:
-            base = base.decode(osutils._fs_enc)
-    if sys.platform == 'darwin':
-        if base is None:
-            # this takes into account $HOME
-            base = os.path.expanduser("~")
-        return osutils.pathjoin(base, '.bazaar')
-    else:
-        if base is None:
-            xdg_dir = os.environ.get('XDG_CONFIG_HOME', None)
+    if base is None:
+        # GZ 2012-02-01: What should OSX use instead of XDG if anything?
+        if sys.platform != 'darwin':
+            xdg_dir = osutils.path_from_environ('XDG_CONFIG_HOME')
             if xdg_dir is None:
-                xdg_dir = osutils.pathjoin(os.path.expanduser("~"), ".config")
+                xdg_dir = osutils.pathjoin(osutils._get_home_dir(), ".config")
             xdg_dir = osutils.pathjoin(xdg_dir, 'bazaar')
             if osutils.isdir(xdg_dir):
                 trace.mutter(
                     "Using configuration in XDG directory %s." % xdg_dir)
                 return xdg_dir
-            base = os.path.expanduser("~")
-        return osutils.pathjoin(base, ".bazaar")
+        base = osutils._get_home_dir()
+    return osutils.pathjoin(base, ".bazaar")
 
 
 def config_filename():
@@ -2396,12 +2373,16 @@ class Option(object):
             raise AssertionError('%r is not supported as a default value'
                                  % (default,))
         self.default_from_env = default_from_env
-        self.help = help
+        self._help = help
         self.from_unicode = from_unicode
         self.unquote = unquote
         if invalid and invalid not in ('warning', 'error'):
             raise AssertionError("%s not supported for 'invalid'" % (invalid,))
         self.invalid = invalid
+
+    @property
+    def help(self):
+        return self._help
 
     def convert_from_unicode(self, store, unicode_value):
         if self.unquote and store is not None and unicode_value is not None:
@@ -2548,6 +2529,42 @@ class ListOption(Option):
         return l
 
 
+class RegistryOption(Option):
+    """Option for a choice from a registry."""
+
+    def __init__(self, name, registry, default_from_env=None,
+                 help=None, invalid=None):
+        """A registry based Option definition.
+
+        This overrides the base class so the conversion from a unicode string
+        can take quoting into account.
+        """
+        super(RegistryOption, self).__init__(
+            name, default=lambda: unicode(registry.default_key),
+            default_from_env=default_from_env,
+            from_unicode=self.from_unicode, help=help,
+            invalid=invalid, unquote=False)
+        self.registry = registry
+
+    def from_unicode(self, unicode_str):
+        if not isinstance(unicode_str, basestring):
+            raise TypeError
+        try:
+            return self.registry.get(unicode_str)
+        except KeyError:
+            raise ValueError(
+                "Invalid value %s for %s."
+                "See help for a list of possible values." % (unicode_str,
+                    self.name))
+
+    @property
+    def help(self):
+        ret = [self._help, "\n\nThe following values are supported:\n"]
+        for key in self.registry.keys():
+            ret.append(" %s - %s\n" % (key, self.registry.get_help(key)))
+        return "".join(ret)
+
+
 class OptionRegistry(registry.Registry):
     """Register config options by their name.
 
@@ -2643,6 +2660,8 @@ option_registry.register(
            help="""\
 Whether revisions associated with tags should be fetched.
 """))
+option_registry.register_lazy(
+    'bzr.transform.orphan_policy', 'bzrlib.transform', 'opt_transform_orphan')
 option_registry.register(
     Option('bzr.workingtree.worth_saving_limit', default=10,
            from_unicode=int_from_store,  invalid='warning',
@@ -2654,6 +2673,15 @@ stat-cache changes. Regardless of this setting, we will always rewrite
 the dirstate file if a file is added/removed/renamed/etc. This flag only
 affects the behavior of updating the dirstate file after we notice that
 a file has been touched.
+'''))
+option_registry.register(
+    Option('bugtracker', default=None,
+           help='''\
+Default bug tracker to use.
+
+This bug tracker will be used for example when marking bugs
+as fixed using ``bzr commit --fixes``, if no explicit
+bug tracker was specified.
 '''))
 option_registry.register(
     Option('check_signatures', default=CHECK_IF_POSSIBLE,
@@ -2763,6 +2791,8 @@ Log format to use when displaying revisions.
 Standard log formats are ``long``, ``short`` and ``line``. Additional formats
 may be provided by plugins.
 '''))
+option_registry.register_lazy('mail_client', 'bzrlib.mail_client',
+    'opt_mail_client')
 option_registry.register(
     Option('output_encoding',
            help= 'Unicode encoding for output'
@@ -2865,6 +2895,19 @@ by the ``submit:`` revision spec.
 option_registry.register(
     Option('submit_to',
            help='''Where submissions from this branch are mailed to.'''))
+option_registry.register(
+    ListOption('suppress_warnings',
+           default=[],
+           help="List of warning classes to suppress."))
+option_registry.register(
+    Option('validate_signatures_in_log', default=False,
+           from_unicode=bool_from_store, invalid='warning',
+           help='''Whether to validate signatures in bzr log.'''))
+option_registry.register_lazy('ssl.ca_certs',
+    'bzrlib.transport.http._urllib2_wrappers', 'opt_ssl_ca_certs')
+
+option_registry.register_lazy('ssl.cert_reqs',
+    'bzrlib.transport.http._urllib2_wrappers', 'opt_ssl_cert_reqs')
 
 
 class Section(object):
@@ -3375,20 +3418,6 @@ class BranchStore(TransportIniFileStore):
         self.branch = branch
         self.id = 'branch'
 
-    def lock_write(self, token=None):
-        return self.branch.lock_write(token)
-
-    def unlock(self):
-        return self.branch.unlock()
-
-    @needs_write_lock
-    def save(self):
-        # We need to be able to override the undecorated implementation
-        self.save_without_locking()
-
-    def save_without_locking(self):
-        super(BranchStore, self).save()
-
 
 class ControlStore(LockableIniFileStore):
 
@@ -3898,7 +3927,7 @@ class LocationStack(_CompatibleStack):
             lstore, mutable_section_id=location)
 
 
-class BranchStack(_CompatibleStack):
+class BranchStack(Stack):
     """Per-location options falling back to branch then global options stack.
 
     The following sections are queried:
@@ -3929,6 +3958,24 @@ class BranchStack(_CompatibleStack):
             bstore)
         self.branch = branch
 
+    def lock_write(self, token=None):
+        return self.branch.lock_write(token)
+
+    def unlock(self):
+        return self.branch.unlock()
+
+    @needs_write_lock
+    def set(self, name, value):
+        super(BranchStack, self).set(name, value)
+        # Unlocking the branch will trigger a store.save_changes() so the last
+        # unlock saves all the changes.
+
+    @needs_write_lock
+    def remove(self, name):
+        super(BranchStack, self).remove(name)
+        # Unlocking the branch will trigger a store.save_changes() so the last
+        # unlock saves all the changes.
+
 
 class RemoteControlStack(_CompatibleStack):
     """Remote control-only options stack."""
@@ -3945,7 +3992,7 @@ class RemoteControlStack(_CompatibleStack):
         self.bzrdir = bzrdir
 
 
-class BranchOnlyStack(_CompatibleStack):
+class BranchOnlyStack(Stack):
     """Branch-only options stack."""
 
     # FIXME: _BranchOnlyStack only uses branch.conf and is used only for the
@@ -3958,6 +4005,24 @@ class BranchOnlyStack(_CompatibleStack):
             [NameMatcher(bstore, None).get_sections],
             bstore)
         self.branch = branch
+
+    def lock_write(self, token=None):
+        return self.branch.lock_write(token)
+
+    def unlock(self):
+        return self.branch.unlock()
+
+    @needs_write_lock
+    def set(self, name, value):
+        super(BranchOnlyStack, self).set(name, value)
+        # Force a write to persistent storage
+        self.store.save_changes()
+
+    @needs_write_lock
+    def remove(self, name):
+        super(BranchOnlyStack, self).remove(name)
+        # Force a write to persistent storage
+        self.store.save_changes()
 
 
 # Use a an empty dict to initialize an empty configobj avoiding all
@@ -4031,12 +4096,15 @@ class cmd_config(commands.Command):
                 # Set the option value
                 self._set_config_option(name, value, directory, scope)
 
-    def _get_stack(self, directory, scope=None):
+    def _get_stack(self, directory, scope=None, write_access=False):
         """Get the configuration stack specified by ``directory`` and ``scope``.
 
         :param directory: Where the configurations are derived from.
 
         :param scope: A specific config to start from.
+
+        :param write_access: Whether a write access to the stack will be
+            attempted.
         """
         # FIXME: scope should allow access to plugin-specific stacks (even
         # reduced to the plugin-specific store), related to
@@ -4050,6 +4118,8 @@ class cmd_config(commands.Command):
                 (_, br, _) = (
                     controldir.ControlDir.open_containing_tree_or_branch(
                         directory))
+                if write_access:
+                    self.add_cleanup(br.lock_write().unlock)
                 return br.get_config_stack()
             raise errors.NoSuchConfig(scope)
         else:
@@ -4057,6 +4127,8 @@ class cmd_config(commands.Command):
                 (_, br, _) = (
                     controldir.ControlDir.open_containing_tree_or_branch(
                         directory))
+                if write_access:
+                    self.add_cleanup(br.lock_write().unlock)
                 return br.get_config_stack()
             except errors.NotBranchError:
                 return LocationStack(directory)
@@ -4107,14 +4179,14 @@ class cmd_config(commands.Command):
                         self.outf.write('  %s = %s\n' % (oname, value))
 
     def _set_config_option(self, name, value, directory, scope):
-        conf = self._get_stack(directory, scope)
+        conf = self._get_stack(directory, scope, write_access=True)
         conf.set(name, value)
 
     def _remove_config_option(self, name, directory, scope):
         if name is None:
             raise errors.BzrCommandError(
                 '--remove expects an option to remove.')
-        conf = self._get_stack(directory, scope)
+        conf = self._get_stack(directory, scope, write_access=True)
         try:
             conf.remove(name)
         except KeyError:

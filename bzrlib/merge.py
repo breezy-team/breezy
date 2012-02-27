@@ -940,8 +940,8 @@ class Merge3Merger(object):
         result = []
         walker = _mod_tree.MultiWalker(self.other_tree, self._lca_trees)
 
-        base_inventory = self.base_tree.inventory
-        this_inventory = self.this_tree.inventory
+        base_inventory = self.base_tree.root_inventory
+        this_inventory = self.this_tree.root_inventory
         for path, file_id, other_ie, lca_values in walker.iter_all():
             # Is this modified at all from any of the other trees?
             if other_ie is None:
@@ -1091,8 +1091,8 @@ class Merge3Merger(object):
         other_root = self.tt.trans_id_file_id(other_root_file_id)
         if other_root == self.tt.root:
             return
-        if self.this_tree.inventory.has_id(
-            self.other_tree.inventory.root.file_id):
+        if self.this_tree.has_id(
+            self.other_tree.get_root_id()):
             # the other tree's root is a non-root in the current tree (as
             # when a previously unrelated branch is merged into another)
             return
@@ -1261,7 +1261,7 @@ class Merge3Merger(object):
     def merge_names(self, file_id):
         def get_entry(tree):
             if tree.has_id(file_id):
-                return tree.inventory[file_id]
+                return tree.root_inventory[file_id]
             else:
                 return None
         this_entry = get_entry(self.this_tree)
@@ -1940,7 +1940,7 @@ class MergeIntoMergeType(Merge3Merger):
 
     def _entries_to_incorporate(self):
         """Yields pairs of (inventory_entry, new_parent)."""
-        other_inv = self.other_tree.inventory
+        other_inv = self.other_tree.root_inventory
         subdir_id = other_inv.path2id(self._source_subpath)
         if subdir_id is None:
             # XXX: The error would be clearer if it gave the URL of the source
@@ -1948,13 +1948,13 @@ class MergeIntoMergeType(Merge3Merger):
             raise PathNotInTree(self._source_subpath, "Source tree")
         subdir = other_inv[subdir_id]
         parent_in_target = osutils.dirname(self._target_subdir)
-        target_id = self.this_tree.inventory.path2id(parent_in_target)
+        target_id = self.this_tree.path2id(parent_in_target)
         if target_id is None:
             raise PathNotInTree(self._target_subdir, "Target tree")
         name_in_target = osutils.basename(self._target_subdir)
         merge_into_root = subdir.copy()
         merge_into_root.name = name_in_target
-        if self.this_tree.inventory.has_id(merge_into_root.file_id):
+        if self.this_tree.has_id(merge_into_root.file_id):
             # Give the root a new file-id.
             # This can happen fairly easily if the directory we are
             # incorporating is the root, and both trees have 'TREE_ROOT' as

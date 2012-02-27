@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,12 +28,12 @@ from cStringIO import StringIO
 import zlib
 
 from bzrlib import (
+    bencode,
     branch,
     bzrdir,
     config,
     controldir,
     errors,
-    graph as _mod_graph,
     inventory,
     inventory_delta,
     remote,
@@ -541,6 +541,40 @@ class TestBzrDirCheckoutMetaDir(TestRemote):
         self.assertFinished(client)
 
 
+class TestBzrDirGetBranches(TestRemote):
+
+    def test_get_branches(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        branch_name = reference_bzrdir_format.get_branch_format().network_name()
+        client.add_success_response_with_body(
+            bencode.bencode({
+                "foo": ("branch", branch_name),
+                "": ("branch", branch_name)}), "success")
+        client.add_success_response(
+            'ok', '', 'no', 'no', 'no',
+                reference_bzrdir_format.repository_format.network_name())
+        client.add_error_response('NotStacked')
+        client.add_success_response(
+            'ok', '', 'no', 'no', 'no',
+                reference_bzrdir_format.repository_format.network_name())
+        client.add_error_response('NotStacked')
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
+            _client=client)
+        result = a_bzrdir.get_branches()
+        self.assertEquals(set(["", "foo"]), set(result.keys()))
+        self.assertEqual(
+            [('call_expecting_body', 'BzrDir.get_branches', ('quack/',)),
+             ('call', 'BzrDir.find_repositoryV3', ('quack/', )),
+             ('call', 'Branch.get_stacked_on_url', ('quack/', )),
+             ('call', 'BzrDir.find_repositoryV3', ('quack/', )),
+             ('call', 'Branch.get_stacked_on_url', ('quack/', ))],
+            client._calls)
+
+
 class TestBzrDirDestroyBranch(TestRemote):
 
     def test_destroy_default(self):
@@ -553,18 +587,6 @@ class TestBzrDirDestroyBranch(TestRemote):
         a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         a_bzrdir.destroy_branch()
-        self.assertFinished(client)
-
-    def test_destroy_named(self):
-        transport = self.get_transport('quack')
-        referenced = self.make_branch('referenced')
-        client = FakeClient(transport.base)
-        client.add_expected_call(
-            'BzrDir.destroy_branch', ('quack/', "foo"),
-            'success', ('ok',)),
-        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
-            _client=client)
-        a_bzrdir.destroy_branch("foo")
         self.assertFinished(client)
 
 
@@ -1274,7 +1296,7 @@ class TestBranchSetParentLocation(RemoteBranchTestCase):
         verb = 'Branch.set_parent_location'
         self.disable_verb(verb)
         branch.set_parent('http://foo/')
-        self.assertLength(13, self.hpss_calls)
+        self.assertLength(14, self.hpss_calls)
 
 
 class TestBranchGetTagsBytes(RemoteBranchTestCase):
@@ -1433,34 +1455,31 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         return branch
 
     def test_backwards_compatible(self):
-        branch = self.make_branch_with_tags()
-        c = branch.get_config_stack()
-        c.set('branch.fetch_tags', True)
-        self.addCleanup(branch.lock_read().unlock)
+        br = self.make_branch_with_tags()
+        br.get_config_stack().set('branch.fetch_tags', True)
+        self.addCleanup(br.lock_read().unlock)
         # Disable the heads_to_fetch verb
         verb = 'Branch.heads_to_fetch'
         self.disable_verb(verb)
         self.reset_smart_call_log()
-        result = branch.heads_to_fetch()
+        result = br.heads_to_fetch()
         self.assertEqual((set(['tip']), set(['rev-1', 'rev-2'])), result)
         self.assertEqual(
-            ['Branch.last_revision_info', 'Branch.get_config_file',
-             'Branch.get_tags_bytes'],
+            ['Branch.last_revision_info', 'Branch.get_tags_bytes'],
             [call.call.method for call in self.hpss_calls])
 
     def test_backwards_compatible_no_tags(self):
-        branch = self.make_branch_with_tags()
-        c = branch.get_config_stack()
-        c.set('branch.fetch_tags', False)
-        self.addCleanup(branch.lock_read().unlock)
+        br = self.make_branch_with_tags()
+        br.get_config_stack().set('branch.fetch_tags', False)
+        self.addCleanup(br.lock_read().unlock)
         # Disable the heads_to_fetch verb
         verb = 'Branch.heads_to_fetch'
         self.disable_verb(verb)
         self.reset_smart_call_log()
-        result = branch.heads_to_fetch()
+        result = br.heads_to_fetch()
         self.assertEqual((set(['tip']), set()), result)
         self.assertEqual(
-            ['Branch.last_revision_info', 'Branch.get_config_file'],
+            ['Branch.last_revision_info'],
             [call.call.method for call in self.hpss_calls])
 
 
@@ -2051,6 +2070,9 @@ class TestBranchGetPutConfigStore(RemoteBranchTestCase):
             'Branch.get_config_file', ('memory:///', ),
             'success', ('ok', ), "# line 1\n")
         client.add_expected_call(
+            'Branch.get_config_file', ('memory:///', ),
+            'success', ('ok', ), "# line 1\n")
+        client.add_expected_call(
             'Branch.put_config_file', ('memory:///', 'branch token',
             'repo token'),
             'success', ('ok',))
@@ -2067,6 +2089,7 @@ class TestBranchGetPutConfigStore(RemoteBranchTestCase):
         self.assertEqual(
             [('call', 'Branch.get_stacked_on_url', ('memory:///',)),
              ('call', 'Branch.lock_write', ('memory:///', '', '')),
+             ('call_expecting_body', 'Branch.get_config_file', ('memory:///',)),
              ('call_expecting_body', 'Branch.get_config_file', ('memory:///',)),
              ('call_with_body_bytes_expecting_body', 'Branch.put_config_file',
                  ('memory:///', 'branch token', 'repo token'),

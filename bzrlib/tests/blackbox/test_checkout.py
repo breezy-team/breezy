@@ -76,6 +76,13 @@ class TestCheckout(TestCaseWithTransport):
         self.assertEqual(['1'], result.open_workingtree().get_parent_ids())
         self.assertPathDoesNotExist('checkout/added_in_2')
 
+    def test_checkout_into_empty_dir(self):
+        self.make_bzrdir('checkout')
+        out, err = self.run_bzr(['checkout', 'branch', 'checkout'])
+        result = bzrdir.BzrDir.open('checkout')
+        tree = result.open_workingtree()
+        branch = result.open_branch()
+
     def test_checkout_reconstitutes_working_trees(self):
         # doing a 'bzr checkout' in the directory of a branch with no tree
         # or a 'bzr checkout path' with path the name of a directory with
@@ -169,6 +176,21 @@ class TestCheckout(TestCaseWithTransport):
         target_stat = os.stat('target/file1')
         self.assertEqual(second_stat, target_stat)
 
+    def test_colo_checkout(self):
+        source = self.make_branch_and_tree('source', format='development-colo')
+        self.build_tree(['source/file1'])
+        source.add('file1')
+        source.commit('added file')
+        target = source.bzrdir.sprout('file:second,branch=somebranch',
+            create_tree_if_local=False)
+        out, err = self.run_bzr('checkout file:,branch=somebranch .',
+            working_dir='second')
+        # We should always be creating a lighweight checkout for colocated
+        # branches.
+        self.assertEquals(
+            target.open_branch(name='somebranch').base,
+            target.get_branch_reference(name=""))
+
 
 class TestSmartServerCheckout(TestCaseWithTransport):
 
@@ -201,5 +223,5 @@ class TestSmartServerCheckout(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(15, self.hpss_calls)
+        self.assertLength(13, self.hpss_calls)
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

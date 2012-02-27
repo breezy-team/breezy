@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2012 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -153,8 +153,11 @@ class TestSwitch(TestCaseWithTransport):
         branchb_id = tree2.commit('bar')
         checkout = tree1.branch.create_checkout('heavyco/a', lightweight=False)
         self.run_bzr(['switch', 'branchb'], working_dir='heavyco/a')
+        # Refresh checkout as 'switch' modified it
+        checkout = checkout.bzrdir.open_workingtree()
         self.assertEqual(branchb_id, checkout.last_revision())
-        self.assertEqual(tree2.branch.base, checkout.branch.get_bound_location())
+        self.assertEqual(tree2.branch.base,
+                         checkout.branch.get_bound_location())
 
     def test_switch_finds_relative_unicode_branch(self):
         """Switch will find 'foo' relative to the branch the checkout is of."""
@@ -178,13 +181,38 @@ class TestSwitch(TestCaseWithTransport):
         self.assertPathExists('checkout/file-1')
         self.assertPathDoesNotExist('checkout/file-2')
 
+    def test_switch_into_colocated(self):
+        # Create a new colocated branch from an existing non-colocated branch.
+        tree = self.make_branch_and_tree('.', format='development-colo')
+        self.build_tree(['file-1', 'file-2'])
+        tree.add('file-1')
+        revid1 = tree.commit('rev1')
+        tree.add('file-2')
+        revid2 = tree.commit('rev2')
+        self.run_bzr(['switch', '-b', 'anotherbranch'])
+        self.assertEquals(
+            set(['', 'anotherbranch']),
+            set(tree.branch.bzrdir.get_branches().keys()))
+
+    def test_switch_into_unrelated_colocated(self):
+        # Create a new colocated branch from an existing non-colocated branch.
+        tree = self.make_branch_and_tree('.', format='development-colo')
+        self.build_tree(['file-1', 'file-2'])
+        tree.add('file-1')
+        revid1 = tree.commit('rev1')
+        tree.add('file-2')
+        revid2 = tree.commit('rev2')
+        tree.bzrdir.create_branch(name='foo')
+        self.run_bzr_error(['Cannot switch a branch, only a checkout.'],
+            'switch foo')
+        self.run_bzr(['switch', '--force', 'foo'])
+
     def test_switch_existing_colocated(self):
         # Create a branch branch-1 that initially is a checkout of 'foo'
         # Use switch to change it to 'anotherbranch'
         repo = self.make_repository('branch-1', format='development-colo')
         target_branch = repo.bzrdir.create_branch(name='foo')
-        branch.BranchReferenceFormat().initialize(
-            repo.bzrdir, target_branch=target_branch)
+        repo.bzrdir.set_branch_reference(target_branch)
         tree = repo.bzrdir.create_workingtree()
         self.build_tree(['branch-1/file-1', 'branch-1/file-2'])
         tree.add('file-1')
@@ -203,8 +231,7 @@ class TestSwitch(TestCaseWithTransport):
         # Use switch to create 'anotherbranch' which derives from that
         repo = self.make_repository('branch-1', format='development-colo')
         target_branch = repo.bzrdir.create_branch(name='foo')
-        branch.BranchReferenceFormat().initialize(
-            repo.bzrdir, target_branch=target_branch)
+        repo.bzrdir.set_branch_reference(target_branch)
         tree = repo.bzrdir.create_workingtree()
         self.build_tree(['branch-1/file-1', 'branch-1/file-2'])
         tree.add('file-1')
@@ -223,8 +250,7 @@ class TestSwitch(TestCaseWithTransport):
         self.requireFeature(UnicodeFilenameFeature)
         repo = self.make_repository('branch-1', format='development-colo')
         target_branch = repo.bzrdir.create_branch(name='foo')
-        branch.BranchReferenceFormat().initialize(
-            repo.bzrdir, target_branch=target_branch)
+        repo.bzrdir.set_branch_reference(target_branch)
         tree = repo.bzrdir.create_workingtree()
         self.build_tree(['branch-1/file-1', 'branch-1/file-2'])
         tree.add('file-1')

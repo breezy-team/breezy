@@ -65,6 +65,14 @@ class TestBranch(tests.TestCaseWithTransport):
         self.assertFalse(b._transport.has('branch-name'))
         b.bzrdir.open_workingtree().commit(message='foo', allow_pointless=True)
 
+    def test_branch_no_to_location(self):
+        """The to_location is derived from the source branch name."""
+        os.mkdir("something")
+        a = self.example_branch('something/a').branch
+        self.run_bzr('branch something/a')
+        b = branch.Branch.open('a')
+        self.assertEquals(b.last_revision_info(), a.last_revision_info())
+
     def test_into_colocated(self):
         """Branch from a branch into a colocated branch."""
         self.example_branch('a')
@@ -147,14 +155,21 @@ class TestBranch(tests.TestCaseWithTransport):
         #  => new branch will be created, but switch fails and the current
         #     branch is unmodified
         self.example_branch('a')
-        self.make_branch_and_tree('current')
+        tree = self.make_branch_and_tree('current')
+        c1 = tree.commit('some diverged change')
         self.run_bzr_error(['Cannot switch a branch, only a checkout'],
             'branch --switch ../a ../b', working_dir='current')
         a = branch.Branch.open('a')
         b = branch.Branch.open('b')
         self.assertEqual(a.last_revision(), b.last_revision())
         work = branch.Branch.open('current')
-        self.assertEqual(work.last_revision(), _mod_revision.NULL_REVISION)
+        self.assertEqual(work.last_revision(), c1)
+
+    def test_branch_into_empty_dir(self):
+        t = self.example_branch('source')
+        self.make_bzrdir('target')
+        self.run_bzr("branch source target")
+        self.assertEquals(2, len(t.branch.repository.all_revision_ids()))
 
     def test_branch_switch_checkout(self):
         # Checkout in the current directory:

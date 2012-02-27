@@ -954,7 +954,7 @@ class CHKInventoryRepository(PackRepository):
             else:
                 basis_tree = self.revision_tree(basis_revision_id)
                 basis_tree.lock_read()
-                basis_inv = basis_tree.inventory
+                basis_inv = basis_tree.root_inventory
         try:
             result = basis_inv.create_by_apply_delta(delta, new_revision_id,
                 propagate_caches=propagate_caches)
