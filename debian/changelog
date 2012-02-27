@@ -1,8 +1,37 @@
-bzr (2.6~bzr6439-1) UNRELEASED; urgency=low
+bzr (2.6.0~bzr6469-1) UNRELEASED; urgency=low
 
   * New upstream snapshot.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Mon, 16 Jan 2012 22:23:06 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Sun, 19 Feb 2012 18:10:49 +0100
+
+bzr (2.5.0~bzr6458-2) unstable; urgency=low
+
+  * Ignore spurious test failures in
+  ``test_handle_request_closes_if_it_doesnt_process``, causing
+  spurious FTBFS on some architectures.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 25 Jan 2012 14:56:26 +0100
+
+bzr (2.5.0~bzr6458-1) unstable; urgency=low
+
+  * New upstream snapshot.
+   + urllib HTTPS backend now verifies SSL certificates. Closes: #558460,
+     LP: #651161
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 24 Jan 2012 23:43:36 +0100
+
+bzr (2.5.0~beta5-3) unstable; urgency=low
+
+  * Use CommitBuilder.get_basis_delta() in commit builder tests
+    (necessary for bzr-svn).
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sun, 22 Jan 2012 20:35:57 +0100
+
+bzr (2.5.0~beta5-2) unstable; urgency=low
+
+  * Add patch to use empty string for default colocated branch name.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 20 Jan 2012 18:00:20 +0100
 
 bzr (2.5.0~beta5-1) unstable; urgency=low
 

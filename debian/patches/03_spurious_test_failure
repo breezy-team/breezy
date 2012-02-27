@@ -1,0 +1,22 @@
+Description: Fix a spurious test failure
+Author: Jelmer Vernooij <jelmer@debian.org>
+Status: Not forwarded upstream (workaround)
+
+=== modified file 'bzrlib/tests/test_test_server.py'
+--- old/bzrlib/tests/test_test_server.py	2011-11-24 15:48:29 +0000
++++ new/bzrlib/tests/test_test_server.py	2012-01-25 13:54:00 +0000
+@@ -74,7 +74,12 @@
+         return self.sock.sendall(s)
+ 
+     def read(self, bufsize=4096):
+-        return self.sock.recv(bufsize)
++        try:
++            return self.sock.recv(bufsize)
++        except socket.error, e:
++            if e.errno == errno.ECONNRESET:
++                return ""
++            raise
+ 
+ 
+ class TCPConnectionHandler(SocketServer.BaseRequestHandler):
+
