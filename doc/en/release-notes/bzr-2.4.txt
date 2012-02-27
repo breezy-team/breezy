@@ -79,6 +79,9 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Account for slightly improved compression with newer versions of zlib in
+  ``bt.test_btree_index`` tests. (Martin Packman, #940453)
+
 
 bzr 2.4.2
 #########

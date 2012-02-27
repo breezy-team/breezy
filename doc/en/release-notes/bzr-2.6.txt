@@ -38,6 +38,10 @@ Improvements
   ignored with a warning and they are not seen on Windows.
   (Parth Malwankar, #81689)
 
+* Two new command hooks, ``pre_command`` and ``post_command``,
+  provide notification before and after a command has been run.
+  (Brian de Alwis, Jelmer Vernooij)
+
 Bug Fixes
 *********
 
