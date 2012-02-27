@@ -1395,8 +1395,8 @@ class DiskTreeTransform(TreeTransformBase):
                 path = FinalPaths(self).get_path(trans_id)
             except KeyError:
                 path = None
-            trace.warning('Unable to create symlink "%s" on this platform.'
-                % (path,))
+            trace.warning('bzr: warning: Unable to create symlink "%s" on '
+                'this platform.' % (path,))
         # We add symlink to _new_contents even if they are unsupported
         # and not created. These entries are subsequently used to avoid
         # conflicts on platforms that don't support symlink

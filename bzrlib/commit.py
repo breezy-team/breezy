@@ -725,8 +725,8 @@ class Commit(object):
                 if report_changes:
                     reporter.missing(new_path)
                 if change[6][0] == 'symlink' and not has_symlinks():
-                    warning('Ignoring "%s" as symlinks are not supported on '
-                        'this platform.' % (change[1][0],))
+                    warning('bzr: warning: Ignoring "%s" as symlinks are not '
+                        'supported on this platform.' % (change[1][0],))
                     continue
                 deleted_ids.append(change[0])
                 # Reset the new path (None) and new versioned flag (False)

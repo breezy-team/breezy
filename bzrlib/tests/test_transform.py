@@ -1552,6 +1552,29 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.addCleanup(wt.unlock)
         self.assertEqual(wt.kind(wt.path2id("foo")), "symlink")
 
+    def test_file_to_symlink_unsupported(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['foo'])
+        wt.add(['foo'])
+        wt.commit("one")
+        tt = TreeTransform(wt)
+        self.addCleanup(tt.finalize)
+        foo_trans_id = tt.trans_id_tree_path("foo")
+        tt.delete_contents(foo_trans_id)
+        log = StringIO()
+        trace.push_log_file(log)
+        os_symlink = getattr(os, 'symlink', None)
+        os.symlink = None
+        try:
+            tt.create_symlink("bar", foo_trans_id)
+            tt.apply()
+            self.assertContainsRe(
+                log.getvalue(),
+                'bzr: warning: Unable to create symlink "foo" on this platform')
+        finally:
+            if os_symlink:
+                os.symlink = os_symlink
+
     def test_dir_to_file(self):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['foo/', 'foo/bar'])
