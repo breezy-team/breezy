@@ -75,9 +75,20 @@ class MockTree(object):
         self.root = InventoryDirectory(ROOT_ID, '', None)
 
     inventory = property(lambda x:x)
+    root_inventory = property(lambda x:x)
+
+    def get_root_id(self):
+        return self.root.file_id
+
+    def get_root_id(self):
+        return self.root.file_id
 
     def all_file_ids(self):
         return set(self.paths.keys())
+
+    def is_executable(self, file_id):
+        # Not all the files are executable.
+        return False
 
     def __getitem__(self, file_id):
         if file_id == self.root.file_id:
@@ -95,7 +106,7 @@ class MockTree(object):
         for path, file_id in self.ids.iteritems():
             yield path, self[file_id]
 
-    def get_file_kind(self, file_id):
+    def kind(self, file_id):
         if file_id in self.contents:
             kind = 'file'
         else:
@@ -106,7 +117,7 @@ class MockTree(object):
         from bzrlib.inventory import (InventoryEntry, InventoryFile
                                     , InventoryDirectory, InventoryLink)
         name = os.path.basename(path)
-        kind = self.get_file_kind(file_id)
+        kind = self.kind(file_id)
         parent_id = self.parent_id(file_id)
         text_sha_1, text_size = self.contents_stats(file_id)
         if kind == 'directory':
@@ -649,10 +660,10 @@ class BundleTester(object):
         bundle = self.get_valid_bundle('null:', 'a@cset-0-4')
 
         # Modified files
-        open('b1/sub/dir/WithCaps.txt', 'ab').write('\nAdding some text\n')
-        open('b1/sub/dir/ pre space', 'ab').write(
+        with open('b1/sub/dir/WithCaps.txt', 'ab') as f: f.write('\nAdding some text\n')
+        with open('b1/sub/dir/ pre space', 'ab') as f: f.write(
              '\r\nAdding some\r\nDOS format lines\r\n')
-        open('b1/sub/dir/nolastnewline.txt', 'ab').write('\n')
+        with open('b1/sub/dir/nolastnewline.txt', 'ab') as f: f.write('\n')
         self.tree1.rename_one('sub/dir/ pre space',
                               'sub/ start space')
         self.tree1.commit('Modified files', rev_id='a@cset-0-5')
@@ -807,12 +818,12 @@ class BundleTester(object):
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
 
-        open('b1/one', 'wb').write('one\n')
+        with open('b1/one', 'wb') as f: f.write('one\n')
         self.tree1.add('one')
         self.tree1.commit('add file', rev_id='a@cset-0-1')
-        open('b1/one', 'wb').write('two\n')
+        with open('b1/one', 'wb') as f: f.write('two\n')
         self.tree1.commit('modify', rev_id='a@cset-0-2')
-        open('b1/one', 'wb').write('three\n')
+        with open('b1/one', 'wb') as f: f.write('three\n')
         self.tree1.commit('modify', rev_id='a@cset-0-3')
         bundle_file = StringIO()
         rev_ids = write_bundle(self.tree1.branch.repository, 'a@cset-0-3',
@@ -897,7 +908,7 @@ class BundleTester(object):
         bundle = self.get_valid_bundle('null:', 'white-1')
 
         # Modified
-        open('b1/trailing space ', 'ab').write('add some text\n')
+        with open('b1/trailing space ', 'ab') as f: f.write('add some text\n')
         self.tree1.commit('add text', rev_id='white-2')
 
         bundle = self.get_valid_bundle('white-1', 'white-2')
@@ -945,7 +956,8 @@ class BundleTester(object):
         self.tree1.commit('message', rev_id='revid1')
         bundle = self.get_valid_bundle('null:', 'revid1')
         tree = self.get_bundle_tree(bundle, 'revid1')
-        self.assertEqual('revid1', tree.inventory.root.revision)
+        root_revision = tree.get_file_revision(tree.get_root_id())
+        self.assertEqual('revid1', root_revision)
 
     def test_install_revisions(self):
         self.tree1 = self.make_branch_and_tree('b1')

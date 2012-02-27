@@ -46,7 +46,7 @@ class TestStatus(TestCaseWithTransport):
         self.assertContainsRe(output.getvalue(), 'empty commit')
 
     def make_multiple_pending_tree(self):
-        config.GlobalConfig().set_user_option('email', 'Joe Foo <joe@foo.com>')
+        config.GlobalStack().set('email', 'Joe Foo <joe@foo.com>')
         tree = self.make_branch_and_tree('a')
         tree.commit('commit 1', timestamp=1196796819, timezone=0)
         tree2 = tree.bzrdir.clone('b').open_workingtree()
@@ -102,7 +102,7 @@ class TestStatus(TestCaseWithTransport):
 
     def test_pending_with_ghosts(self):
         """Test when a pending merge's ancestry includes ghosts."""
-        config.GlobalConfig().set_user_option('email', 'Joe Foo <joe@foo.com>')
+        config.GlobalStack().set('email', 'Joe Foo <joe@foo.com>')
         tree = self.make_branch_and_tree('a')
         tree.commit('empty commit')
         tree2 = tree.bzrdir.clone('b').open_workingtree()

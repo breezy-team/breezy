@@ -19,6 +19,7 @@
 import os
 import xmlrpclib
 
+import bzrlib
 from bzrlib import (
     debug,
     errors,
@@ -29,6 +30,7 @@ from bzrlib.branch import Branch
 from bzrlib.directory_service import directories
 from bzrlib.tests import (
     features,
+    ssl_certs,
     TestCaseInTempDir,
     TestCaseWithMemoryTransport
 )
@@ -452,12 +454,15 @@ class TestXMLRPCTransport(tests.TestCase):
         tests.TestCase.setUp(self)
         self.server = self.server_class()
         self.server.start_server()
+        self.addCleanup(self.server.stop_server)
         # Ensure we don't clobber env
         self.overrideEnv('BZR_LP_XMLRPC_URL', None)
-
-    def tearDown(self):
-        self.server.stop_server()
-        tests.TestCase.tearDown(self)
+        # Ensure we use the right certificates for https.
+        # FIXME: There should be a better way but the only alternative I can
+        # think of involves carrying the ca_certs through the lp_registration
+        # infrastructure to _urllib2_wrappers... -- vila 2012-01-20
+        bzrlib.global_state.cmdline_overrides._from_cmdline(
+            ['ssl.ca_certs=%s' % ssl_certs.build_path('ca.crt')])
 
     def set_canned_response(self, server, path):
         response_format = '''HTTP/1.1 200 OK\r

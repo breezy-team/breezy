@@ -40,9 +40,10 @@ class TestNoColocatedSupport(per_controldir.TestCaseWithControlDir):
             raise tests.TestNotApplicable('Control dir format not supported')
         t = self.get_transport()
         try:
-            made_control = self.bzrdir_format.initialize(t.base)
+            made_control = self.make_bzrdir('.', format=self.bzrdir_format)
         except errors.UninitializableFormat:
             raise tests.TestNotApplicable('Control dir format not initializable')
+        self.assertEquals(made_control._format, self.bzrdir_format)
         made_repo = made_control.create_repository()
         return made_control
 
@@ -69,8 +70,14 @@ class TestNoColocatedSupport(per_controldir.TestCaseWithControlDir):
         self.assertRaises(errors.NoColocatedBranchSupport,
             made_control.get_branch_reference, "colo")
 
+    def test_set_branch_reference(self):
+        referenced = self.make_branch('referenced')
+        made_control = self.make_bzrdir_with_repo()
+        self.assertRaises(errors.NoColocatedBranchSupport,
+            made_control.set_branch_reference, referenced, name="colo")
+
     def test_get_branches(self):
         made_control = self.make_bzrdir_with_repo()
         made_control.create_branch()
         self.assertEqual(made_control.get_branches().keys(),
-                         [None])
+                         [""])

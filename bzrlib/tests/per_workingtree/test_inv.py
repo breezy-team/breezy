@@ -30,7 +30,7 @@ class TestRevert(TestCaseWithWorkingTree):
         wt.lock_tree_write()
         self.addCleanup(wt.unlock)
         self.assertEqual(len(wt.all_file_ids()), 1)
-        open('b1/a', 'wb').write('a test\n')
+        with open('b1/a', 'wb') as f: f.write('a test\n')
         wt.add('a')
         self.assertEqual(len(wt.all_file_ids()), 2)
         wt.flush() # workaround revert doing wt._write_inventory for now.
@@ -56,8 +56,8 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
             inventory.InventoryFile('foo-id', 'foo', parent_id='bar-id')),
             (None, 'bar', 'bar-id', inventory.InventoryDirectory('bar-id',
             'bar', parent_id=root_id))])
-        self.assertEqual('bar/foo', wt.inventory.id2path('foo-id'))
-        self.assertEqual('bar', wt.inventory.id2path('bar-id'))
+        self.assertEqual('bar/foo', wt.id2path('foo-id'))
+        self.assertEqual('bar', wt.id2path('bar-id'))
 
     def test_remove(self):
         wt = self.make_branch_and_tree('.')

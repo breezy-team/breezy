@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010, 2011 Canonical Ltd
+# Copyright (C) 2009-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 
 
 from bzrlib import (
+    branch,
     tests,
     )
 from bzrlib.tests import (
@@ -144,10 +145,8 @@ class TestDpushStrictMixin(object):
             'to', format=test_foreign.DummyForeignVcsDirFormat())
 
     def set_config_push_strict(self, value):
-        # set config var (any of bazaar.conf, locations.conf, branch.conf
-        # should do)
-        conf = self.tree.branch.get_config_stack()
-        conf.set('dpush_strict', value)
+        br = branch.Branch.open('local')
+        br.get_config_stack().set('dpush_strict', value)
 
     _default_command = ['dpush', '../to']
 

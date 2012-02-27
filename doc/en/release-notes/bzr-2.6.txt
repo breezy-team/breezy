@@ -26,6 +26,14 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* Access to HTTPS URLs now uses the urrllib implementation by default.
+  For the old pycurl-based implementation, specify ``https+pycurl://`` as
+  the URL scheme when accessing a HTTPS location.
+  (Jelmer Vernooij, #125055)
+
+* Avoid 'Invalid range access' errors when whole files are retrieved with
+  transport.http.get() . (Vincent Ladeuil, #924746)
+
 Bug Fixes
 *********
 
@@ -42,6 +50,19 @@ API Changes
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* File ids in the ``Tree`` API can now be bytestring as previously,
+  or tuples of bytestrings.
+  (Jelmer Vernooij)
+
+* ``mail_client`` now accepts a configuration stack object rather than
+  an old style Config object. (Jelmer Vernooij)
+
+* New configuration option class ``RegistryOption`` which is backed
+  onto a registry. (Jelmer Vernooij)
+
+* New convenience API method ``WorkingTree.get_config_stack``.
+  (Jelmer Vernooij)
 
 Internals
 *********

@@ -606,6 +606,9 @@ request_handlers.register_lazy(
     'BzrDir.find_repositoryV3', 'bzrlib.smart.bzrdir',
     'SmartServerRequestFindRepositoryV3', info='read')
 request_handlers.register_lazy(
+    'BzrDir.get_branches', 'bzrlib.smart.bzrdir',
+    'SmartServerBzrDirRequestGetBranches', info='read')
+request_handlers.register_lazy(
     'BzrDir.get_config_file', 'bzrlib.smart.bzrdir',
     'SmartServerBzrDirRequestConfigFile', info='read')
 request_handlers.register_lazy(

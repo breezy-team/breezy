@@ -58,7 +58,6 @@ class TestTreeWithCommits(TestCaseWithTransport):
     def test_empty_no_root(self):
         null_tree = self.t.branch.repository.revision_tree(
             revision.NULL_REVISION)
-        self.assertIs(None, null_tree.inventory.root)
         self.assertIs(None, null_tree.get_root_id())
 
     def test_get_file_revision_root(self):
@@ -76,6 +75,6 @@ class TestTreeWithCommits(TestCaseWithTransport):
 
     def test_get_file_mtime_ghost(self):
         file_id = iter(self.rev_tree.all_file_ids()).next()
-        self.rev_tree.inventory[file_id].revision = 'ghostrev'
+        self.rev_tree.root_inventory[file_id].revision = 'ghostrev'
         self.assertRaises(errors.FileTimestampUnavailable, 
             self.rev_tree.get_file_mtime, file_id)

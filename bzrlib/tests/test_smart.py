@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@ import bz2
 import zlib
 
 from bzrlib import (
+    bencode,
     branch as _mod_branch,
     bzrdir,
     errors,
@@ -418,7 +419,7 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
         backing = self.get_transport()
         request = self._request_class(backing)
         result = self._make_repository_and_result(
-            format='dirstate-with-subtree')
+            format='development-subtree')
         # check the test will be valid
         self.assertEqual('yes', result.args[2])
         self.assertEqual('yes', result.args[3])
@@ -429,9 +430,9 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
         backing = self.get_transport()
         request = self._request_class(backing)
         result = self._make_repository_and_result(
-            format='dirstate-with-subtree')
+            format='development-subtree')
         # check the test will be valid
-        self.assertEqual('no', result.args[4])
+        self.assertEqual('yes', result.args[4])
         self.assertEqual(result, request.execute(''))
 
 
@@ -455,6 +456,32 @@ class TestSmartServerBzrDirRequestGetConfigFile(
         request_class = smart_dir.SmartServerBzrDirRequestConfigFile
         request = request_class(backing)
         expected = smart_req.SuccessfulSmartServerResponse((), '')
+        self.assertEqual(expected, request.execute(''))
+
+
+class TestSmartServerBzrDirRequestGetBranches(
+    tests.TestCaseWithMemoryTransport):
+    """Tests for BzrDir.get_branches."""
+
+    def test_simple(self):
+        backing = self.get_transport()
+        branch = self.make_branch('.')
+        request_class = smart_dir.SmartServerBzrDirRequestGetBranches
+        request = request_class(backing)
+        local_result = bencode.bencode(
+            {"": ("branch", branch._format.network_name())})
+        expected = smart_req.SuccessfulSmartServerResponse(
+            ("success", ), local_result)
+        self.assertEqual(expected, request.execute(''))
+
+    def test_empty(self):
+        backing = self.get_transport()
+        dir = self.make_bzrdir('.')
+        request_class = smart_dir.SmartServerBzrDirRequestGetBranches
+        request = request_class(backing)
+        local_result = bencode.bencode({})
+        expected = smart_req.SuccessfulSmartServerResponse(
+            ('success',), local_result)
         self.assertEqual(expected, request.execute(''))
 
 
@@ -485,7 +512,7 @@ class TestSmartServerRequestInitializeBzrDir(tests.TestCaseWithMemoryTransport):
         backing = self.get_transport()
         request = smart_dir.SmartServerRequestInitializeBzrDir(backing)
         self.make_bzrdir('subdir')
-        self.assertRaises(errors.FileExists,
+        self.assertRaises(errors.AlreadyControlDirError,
             request.execute, 'subdir')
 
 
@@ -1296,6 +1323,8 @@ class TestSmartServerBranchRequestSetParent(TestLockedBranch):
         finally:
             branch.unlock()
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(()), response)
+        # Refresh branch as SetParentLocation modified it
+        branch = branch.bzrdir.open_branch()
         self.assertEqual(None, branch.get_parent())
 
     def test_set_parent_something(self):
@@ -1305,11 +1334,12 @@ class TestSmartServerBranchRequestSetParent(TestLockedBranch):
         branch_token, repo_token = self.get_lock_tokens(branch)
         try:
             response = request.execute('base', branch_token, repo_token,
-            'http://bar/')
+                                       'http://bar/')
         finally:
             branch.unlock()
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(()), response)
-        self.assertEqual('http://bar/', branch.get_parent())
+        refreshed = _mod_branch.Branch.open(branch.base)
+        self.assertEqual('http://bar/', refreshed.get_parent())
 
 
 class TestSmartServerBranchRequestGetTagsBytes(
@@ -2500,6 +2530,8 @@ class TestHandlers(tests.TestCase):
             smart_dir.SmartServerBzrDirRequestCheckoutMetaDir)
         self.assertHandlerEqual('BzrDir.cloning_metadir',
             smart_dir.SmartServerBzrDirRequestCloningMetaDir)
+        self.assertHandlerEqual('BzrDir.get_branches',
+            smart_dir.SmartServerBzrDirRequestGetBranches)
         self.assertHandlerEqual('BzrDir.get_config_file',
             smart_dir.SmartServerBzrDirRequestConfigFile)
         self.assertHandlerEqual('BzrDir.open_branch',
@@ -2637,8 +2669,8 @@ class TestSmartServerRepositoryPack(tests.TestCaseWithMemoryTransport):
 class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
 
     def _get_serialized_inventory_delta(self, repository, base_revid, revid):
-        base_inv = repository.revision_tree(base_revid).inventory
-        inv = repository.revision_tree(revid).inventory
+        base_inv = repository.revision_tree(base_revid).root_inventory
+        inv = repository.revision_tree(revid).root_inventory
         inv_delta = inv._make_delta(base_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(True, False)
         return "".join(serializer.delta_to_lines(base_revid, revid, inv_delta))

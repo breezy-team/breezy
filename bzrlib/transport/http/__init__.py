@@ -21,7 +21,7 @@ There are separate implementation modules for each http client implementation.
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
+import os
 import re
 import urlparse
 import sys
@@ -119,12 +119,7 @@ class HttpTransportBase(ConnectedTransport):
         :param relpath: The relative path to the file
         """
         code, response_file = self._get(relpath, None)
-        # FIXME: some callers want an iterable... One step forward, three steps
-        # backwards :-/ And not only an iterable, but an iterable that can be
-        # seeked backwards, so we will never be able to do that.  One such
-        # known client is bzrlib.bundle.serializer.v4.get_bundle_reader. At the
-        # time of this writing it's even the only known client -- vila20071203
-        return StringIO(response_file.read())
+        return response_file
 
     def _get(self, relpath, ranges, tail_amount=0):
         """Get a file, or part of a file.
@@ -242,7 +237,7 @@ class HttpTransportBase(ConnectedTransport):
                     # Split the received chunk
                     for offset, size in cur_coal.ranges:
                         start = cur_coal.start + offset
-                        rfile.seek(start, 0)
+                        rfile.seek(start, os.SEEK_SET)
                         data = rfile.read(size)
                         data_len = len(data)
                         if data_len != size:

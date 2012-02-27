@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2011 Canonical Ltd
+# Copyright (C) 2007-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,49 +31,59 @@ class TestInfo(tests.TestCaseWithTransport):
     def test_describe_standalone_layout(self):
         tree = self.make_branch_and_tree('tree')
         self.assertEqual('Empty control directory', info.describe_layout())
-        self.assertEqual('Unshared repository with trees',
-            info.describe_layout(tree.branch.repository))
+        self.assertEqual(
+            'Unshared repository with trees and colocated branches',
+            info.describe_layout(tree.branch.repository, control=tree.bzrdir))
         tree.branch.repository.set_make_working_trees(False)
-        self.assertEqual('Unshared repository',
-            info.describe_layout(tree.branch.repository))
+        self.assertEqual('Unshared repository with colocated branches',
+            info.describe_layout(tree.branch.repository, control=tree.bzrdir))
         self.assertEqual('Standalone branch',
-            info.describe_layout(tree.branch.repository, tree.branch))
+            info.describe_layout(tree.branch.repository, tree.branch,
+                control=tree.bzrdir))
         self.assertEqual('Standalone branchless tree',
-            info.describe_layout(tree.branch.repository, None, tree))
+            info.describe_layout(tree.branch.repository, None, tree,
+                control=tree.bzrdir))
         self.assertEqual('Standalone tree',
-            info.describe_layout(tree.branch.repository, tree.branch, tree))
+            info.describe_layout(tree.branch.repository, tree.branch, tree,
+                control=tree.bzrdir))
         tree.branch.bind(tree.branch)
         self.assertEqual('Bound branch',
-            info.describe_layout(tree.branch.repository, tree.branch))
+            info.describe_layout(tree.branch.repository, tree.branch,
+                control=tree.bzrdir))
         self.assertEqual('Checkout',
-            info.describe_layout(tree.branch.repository, tree.branch, tree))
+            info.describe_layout(tree.branch.repository, tree.branch, tree,
+                control=tree.bzrdir))
         checkout = tree.branch.create_checkout('checkout', lightweight=True)
         self.assertEqual('Lightweight checkout',
             info.describe_layout(checkout.branch.repository, checkout.branch,
-                                 checkout))
+                                 checkout, control=tree.bzrdir))
 
     def test_describe_repository_layout(self):
         repository = self.make_repository('.', shared=True)
         tree = controldir.ControlDir.create_branch_convenience('tree',
             force_new_tree=True).bzrdir.open_workingtree()
-        self.assertEqual('Shared repository with trees',
-            info.describe_layout(tree.branch.repository))
+        self.assertEqual('Shared repository with trees and colocated branches',
+            info.describe_layout(tree.branch.repository, control=tree.bzrdir))
         repository.set_make_working_trees(False)
-        self.assertEqual('Shared repository',
-            info.describe_layout(tree.branch.repository))
+        self.assertEqual('Shared repository with colocated branches',
+            info.describe_layout(tree.branch.repository, control=tree.bzrdir))
         self.assertEqual('Repository branch',
-            info.describe_layout(tree.branch.repository, tree.branch))
+            info.describe_layout(tree.branch.repository, tree.branch,
+                control=tree.bzrdir))
         self.assertEqual('Repository branchless tree',
-            info.describe_layout(tree.branch.repository, None, tree))
+            info.describe_layout(tree.branch.repository, None, tree,
+                control=tree.bzrdir))
         self.assertEqual('Repository tree',
-            info.describe_layout(tree.branch.repository, tree.branch, tree))
+            info.describe_layout(tree.branch.repository, tree.branch, tree,
+                control=tree.bzrdir))
         tree.branch.bind(tree.branch)
         self.assertEqual('Repository checkout',
-            info.describe_layout(tree.branch.repository, tree.branch, tree))
+            info.describe_layout(tree.branch.repository, tree.branch, tree,
+                control=tree.bzrdir))
         checkout = tree.branch.create_checkout('checkout', lightweight=True)
         self.assertEqual('Lightweight checkout',
             info.describe_layout(checkout.branch.repository, checkout.branch,
-                                 checkout))
+                                 checkout, control=tree.bzrdir))
 
     def assertTreeDescription(self, format):
         """Assert a tree's format description matches expectations"""
@@ -312,10 +322,14 @@ class TestInfo(tests.TestCaseWithTransport):
 
     def test_gather_related_braches(self):
         branch = self.make_branch('.')
-        branch.set_public_branch('baz')
-        branch.set_push_location('bar')
-        branch.set_parent('foo')
-        branch.set_submit_branch('qux')
+        branch.lock_write()
+        try:
+            branch.set_public_branch('baz')
+            branch.set_push_location('bar')
+            branch.set_parent('foo')
+            branch.set_submit_branch('qux')
+        finally:
+            branch.unlock()
         self.assertEqual(
             [('public branch', 'baz'), ('push branch', 'bar'),
              ('parent branch', 'foo'), ('submit branch', 'qux')],
