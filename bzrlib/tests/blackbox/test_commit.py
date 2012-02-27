@@ -628,7 +628,7 @@ altered in u2
             "Commit refused."],
             'commit -m add-b --fixes=123',
             working_dir='tree')
-        tree.branch.get_config().set_user_option("bugtracker", "lp")
+        tree.branch.get_config_stack().set("bugtracker", "lp")
         self.run_bzr('commit -m hello --fixes=234 tree/hello.txt')
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         self.assertEqual('https://launchpad.net/bugs/234 fixed',
@@ -887,7 +887,7 @@ class TestSmartServerCommit(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(214, self.hpss_calls)
+        self.assertLength(211, self.hpss_calls)
         self.assertLength(2, self.hpss_connections)
         self.expectFailure("commit still uses VFS calls",
             self.assertThat, self.hpss_calls, ContainsNoVfsCalls)

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -937,20 +937,20 @@ class cmd_inventory(Command):
             tree = work_tree
             extra_trees = []
 
+        self.add_cleanup(tree.lock_read().unlock)
         if file_list is not None:
             file_ids = tree.paths2ids(file_list, trees=extra_trees,
                                       require_versioned=True)
             # find_ids_across_trees may include some paths that don't
             # exist in 'tree'.
-            entries = sorted(
-                (tree.id2path(file_id), tree.inventory[file_id])
-                for file_id in file_ids if tree.has_id(file_id))
+            entries = tree.iter_entries_by_dir(specific_file_ids=file_ids)
         else:
-            entries = tree.inventory.entries()
+            entries = tree.iter_entries_by_dir()
 
-        self.cleanup_now()
-        for path, entry in entries:
+        for path, entry in sorted(entries):
             if kind and kind != entry.kind:
+                continue
+            if path == "":
                 continue
             if show_ids:
                 self.outf.write('%-50s %s\n' % (path, entry.file_id))
@@ -1029,12 +1029,11 @@ class cmd_mv(Command):
                 and rel_names[0].lower() == rel_names[1].lower()):
                 into_existing = False
             else:
-                inv = tree.inventory
                 # 'fix' the case of a potential 'from'
                 from_id = tree.path2id(
                             tree.get_canonical_inventory_path(rel_names[0]))
                 if (not osutils.lexists(names_list[0]) and
-                    from_id and inv.get_file_kind(from_id) == "directory"):
+                    from_id and tree.stored_kind(from_id) == "directory"):
                     into_existing = False
         # move/rename
         if into_existing:
@@ -1206,6 +1205,8 @@ class cmd_pull(Command):
             # Remembers if asked explicitly or no previous location is set
             if (remember
                 or (remember is None and branch_to.get_parent() is None)):
+                # FIXME: This shouldn't be done before the pull
+                # succeeds... -- vila 2012-01-02
                 branch_to.set_parent(branch_from.base)
 
         if revision is not None:
@@ -1649,10 +1650,8 @@ class cmd_renames(Command):
     def run(self, dir=u'.'):
         tree = WorkingTree.open_containing(dir)[0]
         self.add_cleanup(tree.lock_read().unlock)
-        new_inv = tree.inventory
         old_tree = tree.basis_tree()
         self.add_cleanup(old_tree.lock_read().unlock)
-        old_inv = old_tree.inventory
         renames = []
         iterator = tree.iter_changes(old_tree, include_unchanged=True)
         for f, paths, c, v, p, n, k, e in iterator:
@@ -2372,7 +2371,7 @@ class cmd_deleted(Command):
         self.add_cleanup(tree.lock_read().unlock)
         old = tree.basis_tree()
         self.add_cleanup(old.lock_read().unlock)
-        for path, ie in old.inventory.iter_entries():
+        for path, ie in old.iter_entries_by_dir():
             if not tree.has_id(ie.file_id):
                 self.outf.write(path)
                 if show_ids:
@@ -2416,14 +2415,13 @@ class cmd_added(Command):
         self.add_cleanup(wt.lock_read().unlock)
         basis = wt.basis_tree()
         self.add_cleanup(basis.lock_read().unlock)
-        basis_inv = basis.inventory
-        inv = wt.inventory
-        for file_id in inv:
-            if basis_inv.has_id(file_id):
+        root_id = wt.get_root_id()
+        for file_id in wt.all_file_ids():
+            if basis.has_id(file_id):
                 continue
-            if inv.is_root(file_id) and len(basis_inv) == 0:
+            if root_id == file_id:
                 continue
-            path = inv.id2path(file_id)
+            path = wt.id2path(file_id)
             if not os.access(osutils.pathjoin(wt.basedir, path), os.F_OK):
                 continue
             if null:
@@ -2791,7 +2789,7 @@ class cmd_log(Command):
             self.add_cleanup(b.lock_read().unlock)
             rev1, rev2 = _get_revision_range(revision, b, self.name())
 
-        if b.get_config().validate_signatures_in_log():
+        if b.get_config_stack().get('validate_signatures_in_log'):
             signatures = True
 
         if signatures:
@@ -3517,8 +3515,8 @@ class cmd_commit(Command):
             tokens = fixed_bug.split(':')
             if len(tokens) == 1:
                 if default_bugtracker is None:
-                    branch_config = branch.get_config()
-                    default_bugtracker = branch_config.get_user_option(
+                    branch_config = branch.get_config_stack()
+                    default_bugtracker = branch_config.get(
                         "bugtracker")
                 if default_bugtracker is None:
                     raise errors.BzrCommandError(gettext(
@@ -3863,7 +3861,9 @@ class cmd_whoami(Command):
             if directory is None:
                 c = Branch.open_containing(u'.')[0].get_config_stack()
             else:
-                c = Branch.open(directory).get_config_stack()
+                b = Branch.open(directory)
+                self.add_cleanup(b.lock_write().unlock)
+                c = b.get_config_stack()
         else:
             c = _mod_config.GlobalStack()
         c.set('email', name)
@@ -4676,7 +4676,8 @@ class cmd_remerge(Command):
                 if tree.kind(file_id) != "directory":
                     continue
 
-                for name, ie in tree.inventory.iter_entries(file_id):
+                # FIXME: Support nested trees
+                for name, ie in tree.root_inventory.iter_entries(file_id):
                     interesting_ids.add(ie.file_id)
             new_conflicts = conflicts.select_conflicts(tree, file_list)[0]
         else:
@@ -5263,10 +5264,12 @@ class cmd_bind(Command):
             else:
                 if location is None:
                     if b.get_bound_location() is not None:
-                        raise errors.BzrCommandError(gettext('Branch is already bound'))
+                        raise errors.BzrCommandError(
+                            gettext('Branch is already bound'))
                     else:
-                        raise errors.BzrCommandError(gettext('No location supplied '
-                            'and no previous location known'))
+                        raise errors.BzrCommandError(
+                            gettext('No location supplied'
+                                    ' and no previous location known'))
         b_other = Branch.open(location)
         try:
             b.bind(b_other)
@@ -5682,6 +5685,7 @@ class cmd_merge_directive(Command):
         if public_branch is None:
             public_branch = stored_public_branch
         elif stored_public_branch is None:
+            # FIXME: Should be done only if we succeed ? -- vila 2012-01-03
             branch.set_public_branch(public_branch)
         if not include_bundle and public_branch is None:
             raise errors.BzrCommandError(gettext('No public branch specified or'

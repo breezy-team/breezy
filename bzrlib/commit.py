@@ -372,7 +372,7 @@ class Commit(object):
         elif self.reporter is None:
             self.reporter = self._select_reporter()
         if self.config_stack is None:
-            self.config_stack = self.branch.get_config_stack()
+            self.config_stack = self.work_tree.get_config_stack()
 
         self._set_specific_file_ids()
 
@@ -667,7 +667,7 @@ class Commit(object):
         # entries and the order is preserved when doing this.
         if self.use_record_iter_changes:
             return
-        self.basis_inv = self.basis_tree.inventory
+        self.basis_inv = self.basis_tree.root_inventory
         self.parent_invs = [self.basis_inv]
         for revision in self.parents[1:]:
             if self.branch.repository.has_revision(revision):
@@ -834,10 +834,9 @@ class Commit(object):
         deleted_paths = {}
         # XXX: Note that entries may have the wrong kind because the entry does
         # not reflect the status on disk.
-        work_inv = self.work_tree.inventory
         # NB: entries will include entries within the excluded ids/paths
         # because iter_entries_by_dir has no 'exclude' facility today.
-        entries = work_inv.iter_entries_by_dir(
+        entries = self.work_tree.iter_entries_by_dir(
             specific_file_ids=self.specific_file_ids, yield_parents=True)
         for path, existing_ie in entries:
             file_id = existing_ie.file_id

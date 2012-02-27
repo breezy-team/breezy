@@ -95,7 +95,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
             """
             ''')
 
-    def test_list_all_values(self):
+    def test_list_value_all(self):
         config.option_registry.register(config.ListOption('list'))
         self.addCleanup(config.option_registry.remove, 'list')
         self.bazaar_config.set_user_option('list', [1, 'a', 'with, a comma'])
@@ -106,13 +106,31 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
               list = 1, a, "with, a comma"
             ''')
 
-    def test_list_value_only(self):
+    def test_list_value_one(self):
         config.option_registry.register(config.ListOption('list'))
         self.addCleanup(config.option_registry.remove, 'list')
         self.bazaar_config.set_user_option('list', [1, 'a', 'with, a comma'])
         script.run_script(self, '''\
             $ bzr config -d tree list
             1, a, "with, a comma"
+            ''')
+
+    def test_registry_value_all(self):
+        self.bazaar_config.set_user_option('bzr.transform.orphan_policy',
+                                           u'move')
+        script.run_script(self, '''\
+            $ bzr config -d tree
+            bazaar:
+              [DEFAULT]
+              bzr.transform.orphan_policy = move
+            ''')
+
+    def test_registry_value_one(self):
+        self.bazaar_config.set_user_option('bzr.transform.orphan_policy',
+                                           u'move')
+        script.run_script(self, '''\
+            $ bzr config -d tree bzr.transform.orphan_policy
+            move
             ''')
 
     def test_bazaar_config(self):

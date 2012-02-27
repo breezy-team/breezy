@@ -227,9 +227,9 @@ class TestMerge(TestCaseWithTransport):
 
     def test_nested_merge(self):
         tree = self.make_branch_and_tree('tree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         sub_tree = self.make_branch_and_tree('tree/sub-tree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         sub_tree.set_root_id('sub-tree-root')
         self.build_tree_contents([('tree/sub-tree/file', 'text1')])
         sub_tree.add('file')
@@ -2634,11 +2634,11 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # Tested with a real WT, because BranchBuilder/MemoryTree don't handle
         # 'tree-reference'
         wt = self.make_branch_and_tree('tree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         wt.lock_write()
         self.addCleanup(wt.unlock)
         sub_tree = self.make_branch_and_tree('tree/sub-tree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         wt.set_root_id('a-root-id')
         sub_tree.set_root_id('sub-tree-root')
         self.build_tree_contents([('tree/sub-tree/file', 'text1')])
@@ -2669,11 +2669,11 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # Tested with a real WT, because BranchBuilder/MemoryTree don't handle
         # 'tree-reference'
         wt = self.make_branch_and_tree('tree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         wt.lock_write()
         self.addCleanup(wt.unlock)
         sub_tree = self.make_branch_and_tree('tree/sub',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         wt.set_root_id('a-root-id')
         sub_tree.set_root_id('sub-tree-root')
         self.build_tree_contents([('tree/sub/file', 'text1')])
@@ -2708,11 +2708,11 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # Tested with a real WT, because BranchBuilder/MemoryTree don't handle
         # 'tree-reference'
         wt = self.make_branch_and_tree('tree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         wt.lock_write()
         self.addCleanup(wt.unlock)
         sub_tree = self.make_branch_and_tree('tree/sub',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         wt.set_root_id('a-root-id')
         sub_tree.set_root_id('sub-tree-root')
         self.build_tree_contents([('tree/sub/file', 'text1')])
@@ -2751,11 +2751,11 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # Tested with a real WT, because BranchBuilder/MemoryTree don't handle
         # 'tree-reference'
         wt = self.make_branch_and_tree('tree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         wt.lock_write()
         self.addCleanup(wt.unlock)
         sub_tree = self.make_branch_and_tree('tree/sub',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         wt.set_root_id('a-root-id')
         sub_tree.set_root_id('sub-tree-root')
         self.build_tree_contents([('tree/sub/file', 'text1')])

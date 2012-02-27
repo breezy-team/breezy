@@ -433,9 +433,9 @@ class TestLockDir(TestCaseWithTransport):
         self.assertContainsRe(info_list['time_ago'], r'^\d+ seconds? ago$')
 
     def test_lock_without_email(self):
-        global_config = config.GlobalConfig()
+        global_config = config.GlobalStack()
         # Intentionally has no email address
-        global_config.set_user_option('email', 'User Identity')
+        global_config.set('email', 'User Identity')
         ld1 = self.get_lock()
         ld1.create()
         ld1.lock_write()

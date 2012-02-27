@@ -1,0 +1,89 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 2.6b1
+#########
+
+:2.6b1: NOT RELEASED YET
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Bazaar.
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+* Access to HTTPS URLs now uses the urrllib implementation by default.
+  For the old pycurl-based implementation, specify ``https+pycurl://`` as
+  the URL scheme when accessing a HTTPS location.
+  (Jelmer Vernooij, #125055)
+
+* Avoid 'Invalid range access' errors when whole files are retrieved with
+  transport.http.get() . (Vincent Ladeuil, #924746)
+
+* Two new command hooks, ``pre_command`` and ``post_command``,
+  provide notification before and after a command has been run.
+  (Brian de Alwis, Jelmer Vernooij)
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+* Fix ``bzr config`` display for ``RegistryOption`` values.
+  (Vincent Ladeuil, #930182)
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+* File ids in the ``Tree`` API can now be bytestring as previously,
+  or tuples of bytestrings.
+  (Jelmer Vernooij)
+
+* ``mail_client`` now accepts a configuration stack object rather than
+  an old style Config object. (Jelmer Vernooij)
+
+* New configuration option class ``RegistryOption`` which is backed
+  onto a registry. (Jelmer Vernooij)
+
+* New convenience API method ``WorkingTree.get_config_stack``.
+  (Jelmer Vernooij)
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
+..
+   vim: tw=74 ft=rst ff=unix

@@ -121,6 +121,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(('filename', 'V', 'directory', 'file-id'),
                          result[0][:4])
 
+    def test_get_config_stack(self):
+        # Smoke test that all working trees succeed getting a config
+        wt = self.make_branch_and_tree('.')
+        conf = wt.get_config_stack()
+        self.assertIsInstance(conf, config.Stack)
+
     def test_open_containing(self):
         branch = self.make_branch_and_tree('.').branch
         local_base = urlutils.local_path_from_url(branch.base)
@@ -1200,7 +1206,7 @@ class TestWorthSavingLimit(TestCaseWithWorkingTree):
 
     def test_set_in_branch(self):
         wt = self.make_wt_with_worth_saving_limit()
-        conf = config.BranchStack(wt.branch)
+        conf = wt.get_config_stack()
         conf.set('bzr.workingtree.worth_saving_limit', '20')
         self.assertEqual(20, wt._worth_saving_limit())
         ds = wt.current_dirstate()
@@ -1208,7 +1214,7 @@ class TestWorthSavingLimit(TestCaseWithWorkingTree):
 
     def test_invalid(self):
         wt = self.make_wt_with_worth_saving_limit()
-        conf = config.BranchStack(wt.branch)
+        conf = wt.get_config_stack()
         conf.set('bzr.workingtree.worth_saving_limit', 'a')
         # If the config entry is invalid, default to 10
         warnings = []
