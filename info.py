@@ -22,7 +22,7 @@ bzr_plugin_name = "mtn"
 # versions ending in 'final' mean release (well tested, etc)
 bzr_plugin_version = (0, 0, 1, 'dev', 0)
 
-bzr_compatible_versions = [(2, x, 0) for x in [3, 4]]
+bzr_compatible_versions = [(2, x, 0) for x in [3, 4, 5]]
 
 bzr_minimum_version = bzr_compatible_versions[0]
 
