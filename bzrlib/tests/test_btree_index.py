@@ -888,12 +888,12 @@ class TestBTreeIndex(BTreeTestCase):
         for offset in range(first_byte, size, page_size):
             readv_request.append((offset, page_size))
         # The last page is truncated
-        readv_request[-1] = (readv_request[-1][0], 1303220 % page_size)
+        readv_request[-1] = (readv_request[-1][0], size % page_size)
         expected = [('readv', 'index', [(0, page_size)], False, None),
              ('readv',  'index', readv_request, False, None)]
         if expected != t._activity:
             self.assertEqualDiff(pprint.pformat(expected),
-                                 pprint.pformat(transport._activity))
+                                 pprint.pformat(t._activity))
 
     def _test_iter_entries_references_resolved(self):
         index = self.make_index(1, nodes=[
