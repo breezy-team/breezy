@@ -343,7 +343,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             # This gives metadir branches something they can convert to.
             # it would be nice to have a 'latest' vs 'default' concept.
             format = controldir.format_registry.make_bzrdir(
-                'dirstate-with-subtree')
+                'development-subtree')
             upgrade.upgrade(repo.bzrdir.root_transport.base, format=format)
         except errors.UpToDateFormat:
             # this is in the most current format already.

@@ -49,9 +49,10 @@ def send(target_branch, revision, public_branch, remember,
     branch.lock_write()
     try:
         if output is None:
+            config_stack = branch.get_config_stack()
             if mail_to is None:
-                mail_to = branch.get_config_stack().get('submit_to')
-            mail_client = branch.get_config().get_mail_client()
+                mail_to = config_stack.get('submit_to')
+            mail_client = config_stack.get('mail_client')(config_stack)
             if (not getattr(mail_client, 'supports_body', False)
                 and body is not None):
                 raise errors.BzrCommandError(gettext(

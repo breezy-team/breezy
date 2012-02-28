@@ -1096,7 +1096,7 @@ class TestSmartServerLog(tests.TestCaseWithTransport):
         # upwards without agreement from bzr's network support maintainers.
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
         self.assertLength(1, self.hpss_connections)
-        self.assertLength(10, self.hpss_calls)
+        self.assertLength(9, self.hpss_calls)
 
     def test_verbose_log(self):
         self.setup_smart_server_with_call_log()
@@ -1111,7 +1111,7 @@ class TestSmartServerLog(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(11, self.hpss_calls)
+        self.assertLength(10, self.hpss_calls)
         self.assertLength(1, self.hpss_connections)
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
@@ -1128,6 +1128,6 @@ class TestSmartServerLog(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(15, self.hpss_calls)
+        self.assertLength(14, self.hpss_calls)
         self.assertLength(1, self.hpss_connections)
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

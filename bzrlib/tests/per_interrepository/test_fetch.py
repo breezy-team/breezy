@@ -77,7 +77,7 @@ class TestInterRepository(TestCaseWithInterRepository):
             self.addCleanup(tree.unlock)
             tree.get_file_text('file1')
             for file_id in tree.all_file_ids():
-                if tree.inventory[file_id].kind == "file":
+                if tree.kind(file_id) == "file":
                     tree.get_file(file_id).read()
 
         # makes a target version repo
@@ -234,8 +234,10 @@ class TestInterRepository(TestCaseWithInterRepository):
         (stacked_left_tree,
          stacked_right_tree) = stacked_branch.repository.revision_trees(
             ['left', 'right'])
-        self.assertEqual(left_tree.inventory, stacked_left_tree.inventory)
-        self.assertEqual(right_tree.inventory, stacked_right_tree.inventory)
+        self.assertEqual(
+            left_tree.root_inventory, stacked_left_tree.root_inventory)
+        self.assertEqual(
+            right_tree.root_inventory, stacked_right_tree.root_inventory)
 
         # Finally, it's not enough to see that the basis inventories are
         # present.  The texts introduced in merge (and only those) should be
@@ -296,7 +298,8 @@ class TestInterRepository(TestCaseWithInterRepository):
         stacked_branch.lock_read()
         self.addCleanup(stacked_branch.unlock)
         stacked_second_tree = stacked_branch.repository.revision_tree('second')
-        self.assertEqual(second_tree.inventory, stacked_second_tree.inventory)
+        self.assertEqual(second_tree.root_inventory,
+            stacked_second_tree.root_inventory)
         # Finally, it's not enough to see that the basis inventories are
         # present.  The texts introduced in merge (and only those) should be
         # present, and also generating a stream should succeed without blowing
@@ -380,8 +383,8 @@ class TestInterRepository(TestCaseWithInterRepository):
         (stacked_left_tree,
          stacked_right_tree) = new_stacked_branch.repository.revision_trees(
             ['left', 'right'])
-        self.assertEqual(left_tree.inventory, stacked_left_tree.inventory)
-        self.assertEqual(right_tree.inventory, stacked_right_tree.inventory)
+        self.assertEqual(left_tree, stacked_left_tree)
+        self.assertEqual(right_tree, stacked_right_tree)
         # Finally, it's not enough to see that the basis inventories are
         # present.  The texts introduced in merge (and only those) should be
         # present, and also generating a stream should succeed without blowing

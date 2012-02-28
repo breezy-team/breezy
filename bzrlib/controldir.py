@@ -1,4 +1,4 @@
-# Copyright (C) 2010, 2011 Canonical Ltd
+# Copyright (C) 2010, 2011, 2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -406,6 +406,7 @@ class ControlDir(ControlComponent):
             repository_to.fetch(source.repository, revision_id=revision_id)
             br_to = source.clone(self, revision_id=revision_id)
             if source.get_push_location() is None or remember:
+                # FIXME: Should be done only if we succeed ? -- vila 2012-01-18
                 source.set_push_location(br_to.base)
             push_result.stacked_on = None
             push_result.branch_push_result = None
@@ -417,6 +418,7 @@ class ControlDir(ControlComponent):
         else:
             # We have successfully opened the branch, remember if necessary:
             if source.get_push_location() is None or remember:
+                # FIXME: Should be done only if we succeed ? -- vila 2012-01-18
                 source.set_push_location(br_to.base)
             try:
                 tree_to = self.open_workingtree()

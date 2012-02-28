@@ -105,7 +105,7 @@ class TestReference(TestCaseWithTree):
         tree = self.create_nested()
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        entry = tree.inventory['sub-root']
+        entry = tree.root_inventory['sub-root']
         self.assertEqual([(u'subtree', 'sub-root')],
             list(tree.iter_references()))
 
