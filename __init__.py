@@ -108,12 +108,5 @@ for name in [
         "fast_import_info",
         "fast_import_query",
         "fast_export",
-        "fast_export_from_cvs",
-        "fast_export_from_darcs",
-        "fast_export_from_hg",
-        "fast_export_from_git",
-        "fast_export_from_mtn",
-        "fast_export_from_p4",
-        "fast_export_from_svn"
         ]:
     plugin_cmds.register_lazy("cmd_%s" % name, [], "bzrlib.plugins.fastimport.cmds")

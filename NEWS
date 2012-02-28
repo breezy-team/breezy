@@ -6,6 +6,14 @@ bzr-fastimport Release Notes
 
 0.13 UNRELEASED
 
+Changes
+-------
+
+* bzr-fastimport no longer ships exporters for various other version
+  control systems. The versions of these exporters shipped with bzr-fastimport
+  have been outdated for some time. Better and more recent exporters
+  are widely available.
+
 Compatibility
 -------------
 
