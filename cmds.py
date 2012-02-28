@@ -548,11 +548,17 @@ class cmd_fast_export(Command):
     format used by tools such as bzr fast-import, git-fast-import and
     hg-fast-import.
 
+    It takes two optional arguments: the source bzr branch to export and
+    the destination to write the file to write the fastimport stream to.
+
+    If no source is specified, it will search for a branch in the
+    current directory.
+
     If no destination is given or the destination is '-', standard output
     is used. Otherwise, the destination is the name of a file. If the
     destination ends in '.gz', the output will be compressed into gzip
     format.
- 
+
     :Round-tripping:
 
      Recent versions of the fast-import specification support features
@@ -563,7 +569,7 @@ class cmd_fast_export(Command):
      new branch should produce similar, if not identical, results.
 
      .. note::
-    
+
         Be aware that the new repository may appear to have similar history
         but internally it is quite different with new revision-ids and
         file-ids assigned. As a consequence, the ability to easily merge
@@ -631,7 +637,7 @@ class cmd_fast_export(Command):
     """
     hidden = False
     _see_also = ['fast-import', 'fast-import-filter']
-    takes_args = ['source', 'destination?']
+    takes_args = ['source?', 'destination?']
     takes_options = ['verbose', 'revision',
                     Option('git-branch', short_name='b', type=str,
                         argname='FILE',
@@ -662,7 +668,7 @@ class cmd_fast_export(Command):
                         ),
                      ]
     encoding_type = 'exact'
-    def run(self, source, destination=None, verbose=False,
+    def run(self, source=None, destination=None, verbose=False,
         git_branch="master", checkpoint=10000, marks=None,
         import_marks=None, export_marks=None, revision=None,
         plain=True, rewrite_tag_names=False, baseline=False):
@@ -674,6 +680,8 @@ class cmd_fast_export(Command):
             import_marks = export_marks = marks
 
         # Open the source
+        if source is None:
+            source = "."
         branch = Branch.open_containing(source)[0]
         outf = exporter._get_output_stream(destination)
         exporter = exporter.BzrFastExporter(branch,

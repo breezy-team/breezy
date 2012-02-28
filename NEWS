@@ -15,6 +15,11 @@ Compatibility
 * Reimport some modules removed from python-fastimport 0.9.2.
   (Jelmer Vernooij, #693507)
 
+Improvements
+------------
+
+* Document the SOURCE argument for ``bzr fast-export``. (Jelmer Vernooij, #672926)
+
 0.12 2012-02-09
 
 Bug fixes
