@@ -50,7 +50,8 @@ class RemoteHelperTests(TestCaseWithTransport):
     def setUp(self):
         super(RemoteHelperTests, self).setUp()
         self.local_dir = self.make_branch_and_tree('local', format='git').bzrdir
-        self.remote_dir = self.make_branch_and_tree('remote').bzrdir
+        self.remote_tree = self.make_branch_and_tree('remote')
+        self.remote_dir = self.remote_tree.bzrdir
         self.shortname = 'bzr'
         self.helper = RemoteHelper(self.local_dir, self.shortname, self.remote_dir)
 
@@ -71,4 +72,22 @@ class RemoteHelperTests(TestCaseWithTransport):
         self.helper.cmd_list(f, [])
         self.assertEquals(
             '0000000000000000000000000000000000000000 HEAD\n\n',
+            f.getvalue())
+
+    def test_import(self):
+        self.build_tree_contents([("remote/afile", "somecontent")])
+        self.remote_tree.add(["afile"])
+        self.remote_tree.commit("A commit message", timestamp=1330445983,
+            timezone=0, committer='Somebody <jrandom@example.com>')
+        f = StringIO()
+        self.helper.cmd_import(f, ["import", "refs/heads/master"])
+        self.assertEquals(
+            'commit refs/heads/master\n'
+            'mark :1\n'
+            'committer Somebody <jrandom@example.com> 1330445983 +0000\n'
+            'data 16\n'
+            'A commit message\n'
+            'M 644 inline afile\n'
+            'data 11\n'
+            'somecontent\n',
             f.getvalue())

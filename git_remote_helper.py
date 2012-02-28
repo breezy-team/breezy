@@ -144,7 +144,7 @@ class RemoteHelper(object):
             dest_branch_name = None
         remote_branch = self.remote_dir.open_branch(name=dest_branch_name)
         exporter = fastexporter.BzrFastExporter(remote_branch,
-            outf=outf, git_branch=argv[1],
+            outf=outf, ref=argv[1],
             checkpoint=None, import_marks_file=None,
             export_marks_file=None, revision=None,
             verbose=None, plain_format=True,
