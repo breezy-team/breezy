@@ -38,13 +38,9 @@ Documentation
 To view the documentation after installation:
 
     bzr help fastimport
- 
 
 Licensing
 ---------
-
-For copyright and licensing details of the exporters, see the relevant
-files in the exporters/ directory.
 
 Otherwise this plugin is (C) Copyright Canonical Limited 2008 under the
 GPL Version 2 or later. Please see the file COPYING.txt for the licence
