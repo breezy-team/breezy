@@ -81,11 +81,7 @@ class TestCheckAvailability(tests.TestCaseInTempDir):
         self.assertTrue(mergetools.check_availability(sys.executable))
 
     def test_exe_on_path(self):
-        if sys.platform == 'win32':
-            exe = 'cmd.exe'
-        else:
-            exe = 'sh'
-        self.assertTrue(mergetools.check_availability(exe))
+        self.assertTrue(mergetools.check_availability('python'))
 
     def test_nonexistent(self):
         self.assertFalse(mergetools.check_availability('DOES NOT EXIST'))
@@ -111,6 +107,19 @@ class TestInvoke(tests.TestCaseInTempDir):
             ('test.txt.THIS', 'this stuff'),
             ('test.txt.OTHER', 'other stuff'),
         ))
+        
+    def test_invoke_expands_exe_path(self):
+        self.overrideEnv('PATH', os.path.dirname(sys.executable))
+        def dummy_invoker(exe, args, cleanup):
+            self._exe = exe
+            self._args = args
+            cleanup(0)
+            return 0
+        command = '%s {result}' % os.path.basename(sys.executable)
+        retcode = mergetools.invoke(command, 'test.txt', dummy_invoker)
+        self.assertEqual(0, retcode)
+        self.assertEqual(sys.executable, self._exe)
+        self.assertEqual(['test.txt'], self._args)
         
     def test_success(self):
         def dummy_invoker(exe, args, cleanup):

@@ -32,6 +32,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Fixed merge tool availability checking and invocation to search the
+  Windows App Path registry in addition to the PATH. (Gordon Tyler, #939605)
+
 Documentation
 *************
 
