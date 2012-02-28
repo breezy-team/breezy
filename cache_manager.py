@@ -25,11 +25,11 @@ from bzrlib import lru_cache, trace
 from bzrlib.plugins.fastimport import (
     branch_mapper,
     )
+from bzrlib.plugins.fastimport.reftracker import (
+    RefTracker,
+    )
 from fastimport.helpers import (
     single_plural,
-    )
-from fastimport.reftracker import (
-    RefTracker,
     )
 
 

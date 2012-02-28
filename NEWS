@@ -12,6 +12,9 @@ Compatibility
 * Avoid using Tree.inventory directly, which is deprecated in bzr 2.6.
   (Jelmer Vernooij)
 
+* Reimport some modules removed from python-fastimport 0.9.2.
+  (Jelmer Vernooij, #693507)
+
 0.12 2012-02-09
 
 Bug fixes

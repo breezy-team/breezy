@@ -307,7 +307,7 @@ class cmd_fast_import(Command):
     def _generate_info(self, source):
         from cStringIO import StringIO
         from fastimport import parser
-        from fastimport.processors import info_processor
+        from bzrlib.plugins.fastimport.processors import info_processor
         stream = _get_source_stream(source)
         output = StringIO()
         try:
@@ -477,7 +477,7 @@ class cmd_fast_import_info(Command):
     takes_options = ['verbose']
     def run(self, source, verbose=False):
         load_fastimport()
-        from fastimport.processors import info_processor
+        from bzrlib.plugins.fastimport.processors import info_processor
         return _run(source, info_processor.InfoProcessor, verbose=verbose)
 
 

@@ -40,6 +40,7 @@ except ImportError:
 from bzrlib.plugins.fastimport import (
     branch_updater,
     cache_manager,
+    idmapfile,
     marks_file,
     revision_store,
     )
@@ -47,7 +48,6 @@ from fastimport import (
     commands,
     errors as plugin_errors,
     helpers,
-    idmapfile,
     processor,
     )
 
