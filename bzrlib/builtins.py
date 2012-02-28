@@ -6492,7 +6492,7 @@ class cmd_remove_branch(Command):
             if (active_branch is not None and
                 br.control_url == active_branch.control_url):
                 raise errors.BzrCommandError(
-                    gettext("Use --force to remove active branch."))
+                    gettext("Branch is active. Use --force to remove it."))
         br.bzrdir.destroy_branch(br.name)
 
 

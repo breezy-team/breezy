@@ -41,7 +41,7 @@ class TestRemoveBranch(TestCaseWithTransport):
     def test_remove_local(self):
         # Remove a local branch.
         tree = self.example_tree('a')
-        self.run_bzr_error(['Use --force to remove active branch.\n'],
+        self.run_bzr_error(['Branch is active. Use --force to remove it.\n'],
             'rmbranch a')
         self.run_bzr('rmbranch --force a')
         dir = bzrdir.BzrDir.open('a')
@@ -66,7 +66,7 @@ class TestRemoveBranch(TestCaseWithTransport):
     def test_no_arg(self):
         # location argument defaults to current directory
         self.example_tree('a')
-        self.run_bzr_error(['Use --force to remove active branch.\n'],
+        self.run_bzr_error(['Branch is active. Use --force to remove it.\n'],
             'rmbranch a')
         self.run_bzr('rmbranch --force', working_dir='a')
         dir = bzrdir.BzrDir.open('a')
@@ -97,7 +97,7 @@ class TestRemoveBranch(TestCaseWithTransport):
         dir = self.make_repository('a').bzrdir
         branch = dir.create_branch('otherbranch')
         branch.create_checkout('a')
-        self.run_bzr_error(['Use --force to remove active branch.\n'],
+        self.run_bzr_error(['Branch is active. Use --force to remove it.\n'],
             'rmbranch otherbranch -d %s' % branch.bzrdir.user_url)
         self.assertTrue(dir.has_branch('otherbranch'))
         self.run_bzr('rmbranch --force otherbranch -d %s' % branch.bzrdir.user_url)
