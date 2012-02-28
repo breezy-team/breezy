@@ -146,7 +146,7 @@ def sanitize_ref_name_for_git(refname):
 
 class BzrFastExporter(object):
 
-    def __init__(self, source, outf, git_branch=None, checkpoint=-1,
+    def __init__(self, source, outf, ref=None, checkpoint=-1,
         import_marks_file=None, export_marks_file=None, revision=None,
         verbose=False, plain_format=False, rewrite_tags=False,
         baseline=False):
@@ -163,7 +163,7 @@ class BzrFastExporter(object):
         """
         self.branch = source
         self.outf = outf
-        self.git_branch = git_branch
+        self.ref = ref
         self.checkpoint = checkpoint
         self.import_marks_file = import_marks_file
         self.export_marks_file = export_marks_file
@@ -195,7 +195,7 @@ class BzrFastExporter(object):
                     marks_info.items())
                 # These are no longer included in the marks file
                 #self.branch_names = marks_info[1]
- 
+
     def interesting_history(self):
         if self.revision:
             rev1, rev2 = builtins._get_revision_range(self.revision,
@@ -233,9 +233,9 @@ class BzrFastExporter(object):
             if not self.plain_format:
                 self.emit_features()
             if self.baseline:
-                self.emit_baseline(interesting.pop(0), self.git_branch)
+                self.emit_baseline(interesting.pop(0), self.ref)
             for revid in interesting:
-                self.emit_commit(revid, self.git_branch)
+                self.emit_commit(revid, self.ref)
             if self.branch.supports_tags():
                 self.emit_tags()
         finally:
@@ -311,17 +311,15 @@ class BzrFastExporter(object):
         for feature in sorted(commands.FEATURE_NAMES):
             self.print_cmd(commands.FeatureCommand(feature))
 
-    def emit_baseline(self, revid, git_branch):
+    def emit_baseline(self, revid, ref):
         # Emit a full source tree of the first commit's parent
-        git_ref = 'refs/heads/%s' % (git_branch,)
         revobj = self.branch.repository.get_revision(revid)
         mark = 1
         self.revid_to_mark[revid] = mark
         file_cmds = self._get_filecommands(bzrlib.revision.NULL_REVISION, revid)
-        self.print_cmd(self._get_commit_command(git_ref, mark, revobj,
-            file_cmds))
+        self.print_cmd(self._get_commit_command(ref, mark, revobj, file_cmds))
 
-    def emit_commit(self, revid, git_branch):
+    def emit_commit(self, revid, ref):
         if revid in self.revid_to_mark or revid in self.excluded_revisions:
             return
 
@@ -336,7 +334,7 @@ class BzrFastExporter(object):
         # Get the primary parent
         # TODO: Consider the excluded revisions when deciding the parents.
         # Currently, a commit with parents that are excluded ought to be
-        # triggering the git_branch calculation below (and it is not).
+        # triggering the ref calculation below (and it is not).
         # IGC 20090824
         ncommits = len(self.revid_to_mark)
         nparents = len(revobj.parent_ids)
@@ -346,18 +344,16 @@ class BzrFastExporter(object):
                 # output. We need to create a new temporary branch for it
                 # otherwise git-fast-import will assume the previous commit
                 # was this one's parent
-                git_branch = self._next_tmp_branch_name()
+                ref = self._next_tmp_ref()
             parent = bzrlib.revision.NULL_REVISION
         else:
             parent = revobj.parent_ids[0]
 
         # Print the commit
-        git_ref = 'refs/heads/%s' % (git_branch,)
         mark = ncommits + 1
         self.revid_to_mark[revid] = mark
         file_cmds = self._get_filecommands(parent, revid)
-        self.print_cmd(self._get_commit_command(git_ref, mark, revobj,
-            file_cmds))
+        self.print_cmd(self._get_commit_command(ref, mark, revobj, file_cmds))
 
         # Report progress and checkpoint if it's time for that
         self.report_progress(ncommits)
@@ -622,7 +618,7 @@ class BzrFastExporter(object):
                         continue
                 self.print_cmd(commands.ResetCommand(git_ref, ":" + str(mark)))
 
-    def _next_tmp_branch_name(self):
+    def _next_tmp_ref(self):
         """Return a unique branch name. The name will start with "tmp"."""
         prefix = 'tmp'
         if prefix not in self.branch_names:
@@ -630,4 +626,4 @@ class BzrFastExporter(object):
         else:
             self.branch_names[prefix] += 1
             prefix = '%s.%d' % (prefix, self.branch_names[prefix])
-        return prefix
+        return 'refs/heads/%s' % prefix

@@ -677,7 +677,7 @@ class cmd_fast_export(Command):
         branch = Branch.open_containing(source)[0]
         outf = exporter._get_output_stream(destination)
         exporter = exporter.BzrFastExporter(branch,
-            outf=outf, git_branch=git_branch, checkpoint=checkpoint,
+            outf=outf, ref="refs/heads/%s" % git_branch, checkpoint=checkpoint,
             import_marks_file=import_marks, export_marks_file=export_marks,
             revision=revision, verbose=verbose, plain_format=plain,
             rewrite_tags=rewrite_tag_names, baseline=baseline)
