@@ -20,11 +20,15 @@
 from cStringIO import StringIO
 import os
 
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+    TestCaseWithTransport,
+    TestSkipped,
+    )
 
 from bzrlib.plugins.git.git_remote_helper import (
     RemoteHelper,
     open_local_dir,
+    fastexporter,
     )
 
 
@@ -75,6 +79,8 @@ class RemoteHelperTests(TestCaseWithTransport):
             f.getvalue())
 
     def test_import(self):
+        if fastexporter is None:
+            raise TestSkipped("bzr-fastimport not available")
         self.build_tree_contents([("remote/afile", "somecontent")])
         self.remote_tree.add(["afile"])
         self.remote_tree.commit("A commit message", timestamp=1330445983,
