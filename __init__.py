@@ -24,12 +24,6 @@ Source it.
 
 The normal import recipe is::
 
-  bzr fast-export-from-xxx SOURCE project.fi
-  bzr fast-import project.fi project.bzr
-
-If fast-export-from-xxx doesn't exist yet for the tool you're importing
-from, the alternative recipe is::
-
   front-end > project.fi
   bzr fast-import project.fi project.bzr
 
@@ -41,22 +35,7 @@ compressed to gzip format after it is generated like this::
   bzr fast-import project.fi.gz project.bzr
 
 The list of known front-ends and their status is documented on
-http://bazaar-vcs.org/BzrFastImport/FrontEnds. The fast-export-from-xxx
-commands provide simplified access to these so that the majority of users
-can generate a fast-import dump file without needing to study up on all
-the options - and the best combination of them to use - for the front-end
-relevant to them. In some cases, a fast-export-from-xxx wrapper will require
-that certain dependencies are installed so it checks for these before
-starting. A wrapper may also provide a limited set of options. See the
-online help for the individual commands for details::
-
-  bzr help fast-export-from-cvs
-  bzr help fast-export-from-darcs
-  bzr help fast-export-from-hg
-  bzr help fast-export-from-git
-  bzr help fast-export-from-mtn
-  bzr help fast-export-from-p4
-  bzr help fast-export-from-svn
+http://bazaar-vcs.org/BzrFastImport/FrontEnds.
 
 Once a fast-import dump file is created, it can be imported into a
 Bazaar repository using the fast-import command. If required, you can

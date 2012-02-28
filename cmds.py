@@ -72,16 +72,15 @@ class cmd_fast_import(Command):
       bzr fast-import project.fi project.bzr
 
     Numerous commands are provided for generating a fast-import file
-    to use as input. These are named fast-export-from-xxx where xxx
-    is one of cvs, darcs, git, hg, mtn, p4 or svn.
+    to use as input. 
     To specify standard input as the input stream, use a
     source name of '-' (instead of project.fi). If the source name
     ends in '.gz', it is assumed to be compressed in gzip format.
-    
+
     project.bzr will be created if it doesn't exist. If it exists
     already, it should be empty or be an existing Bazaar repository
     or branch. If not specified, the current directory is assumed.
- 
+
     fast-import will intelligently select the format to use when
     creating a repository or branch. If you are running Bazaar 1.17
     up to Bazaar 2.0, the default format for Bazaar 2.x ("2a") is used.
@@ -200,27 +199,30 @@ class cmd_fast_import(Command):
 
      Import a Subversion repository into Bazaar::
 
-       bzr fast-export-from-svn /svn/repo/path project.fi
+       svn-fast-export /svn/repo/path > project.fi
        bzr fast-import project.fi project.bzr
 
      Import a CVS repository into Bazaar::
 
-       bzr fast-export-from-cvs /cvs/repo/path project.fi
+       cvs2git /cvs/repo/path > project.fi
        bzr fast-import project.fi project.bzr
 
      Import a Git repository into Bazaar::
 
-       bzr fast-export-from-git /git/repo/path project.fi
+       cd /git/repo/path
+       git fast-export --all > project.fi
        bzr fast-import project.fi project.bzr
 
      Import a Mercurial repository into Bazaar::
 
-       bzr fast-export-from-hg /hg/repo/path project.fi
+       cd /hg/repo/path
+       hg fast-export > project.fi
        bzr fast-import project.fi project.bzr
 
      Import a Darcs repository into Bazaar::
 
-       bzr fast-export-from-darcs /darcs/repo/path project.fi
+       cd /darcs/repo/path
+       darcs-fast-export > project.fi
        bzr fast-import project.fi project.bzr
     """
     hidden = False
