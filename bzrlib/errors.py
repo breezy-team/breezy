@@ -2768,14 +2768,6 @@ class NoMailAddressSpecified(BzrError):
     _fmt = "No mail-to address (--mail-to) or output (-o) specified."
 
 
-class UnknownMailClient(BzrError):
-
-    _fmt = "Unknown mail client: %(mail_client)s"
-
-    def __init__(self, mail_client):
-        BzrError.__init__(self, mail_client=mail_client)
-
-
 class MailClientNotFound(BzrError):
 
     _fmt = "Unable to find mail client with the following names:"\

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1296,7 +1296,7 @@ class TestBranchSetParentLocation(RemoteBranchTestCase):
         verb = 'Branch.set_parent_location'
         self.disable_verb(verb)
         branch.set_parent('http://foo/')
-        self.assertLength(13, self.hpss_calls)
+        self.assertLength(14, self.hpss_calls)
 
 
 class TestBranchGetTagsBytes(RemoteBranchTestCase):
@@ -1455,34 +1455,31 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         return branch
 
     def test_backwards_compatible(self):
-        branch = self.make_branch_with_tags()
-        c = branch.get_config_stack()
-        c.set('branch.fetch_tags', True)
-        self.addCleanup(branch.lock_read().unlock)
+        br = self.make_branch_with_tags()
+        br.get_config_stack().set('branch.fetch_tags', True)
+        self.addCleanup(br.lock_read().unlock)
         # Disable the heads_to_fetch verb
         verb = 'Branch.heads_to_fetch'
         self.disable_verb(verb)
         self.reset_smart_call_log()
-        result = branch.heads_to_fetch()
+        result = br.heads_to_fetch()
         self.assertEqual((set(['tip']), set(['rev-1', 'rev-2'])), result)
         self.assertEqual(
-            ['Branch.last_revision_info', 'Branch.get_config_file',
-             'Branch.get_tags_bytes'],
+            ['Branch.last_revision_info', 'Branch.get_tags_bytes'],
             [call.call.method for call in self.hpss_calls])
 
     def test_backwards_compatible_no_tags(self):
-        branch = self.make_branch_with_tags()
-        c = branch.get_config_stack()
-        c.set('branch.fetch_tags', False)
-        self.addCleanup(branch.lock_read().unlock)
+        br = self.make_branch_with_tags()
+        br.get_config_stack().set('branch.fetch_tags', False)
+        self.addCleanup(br.lock_read().unlock)
         # Disable the heads_to_fetch verb
         verb = 'Branch.heads_to_fetch'
         self.disable_verb(verb)
         self.reset_smart_call_log()
-        result = branch.heads_to_fetch()
+        result = br.heads_to_fetch()
         self.assertEqual((set(['tip']), set()), result)
         self.assertEqual(
-            ['Branch.last_revision_info', 'Branch.get_config_file'],
+            ['Branch.last_revision_info'],
             [call.call.method for call in self.hpss_calls])
 
 
@@ -2073,6 +2070,9 @@ class TestBranchGetPutConfigStore(RemoteBranchTestCase):
             'Branch.get_config_file', ('memory:///', ),
             'success', ('ok', ), "# line 1\n")
         client.add_expected_call(
+            'Branch.get_config_file', ('memory:///', ),
+            'success', ('ok', ), "# line 1\n")
+        client.add_expected_call(
             'Branch.put_config_file', ('memory:///', 'branch token',
             'repo token'),
             'success', ('ok',))
@@ -2089,6 +2089,7 @@ class TestBranchGetPutConfigStore(RemoteBranchTestCase):
         self.assertEqual(
             [('call', 'Branch.get_stacked_on_url', ('memory:///',)),
              ('call', 'Branch.lock_write', ('memory:///', '', '')),
+             ('call_expecting_body', 'Branch.get_config_file', ('memory:///',)),
              ('call_expecting_body', 'Branch.get_config_file', ('memory:///',)),
              ('call_with_body_bytes_expecting_body', 'Branch.put_config_file',
                  ('memory:///', 'branch token', 'repo token'),

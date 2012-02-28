@@ -425,8 +425,8 @@ class TestReportFreshness(tests.TestCaseWithMemoryTransport):
             lambda x: ('ubuntu', 'natty', 'bzr'))
         self.overrideAttr(lp_api_lite, 'LatestPublication',
             lambda *args: self.fail('Tried to query launchpad'))
-        c = self.branch.get_config()
-        c.set_user_option('launchpad.packaging_verbosity', 'off')
+        c = self.branch.get_config_stack()
+        c.set('launchpad.packaging_verbosity', 'off')
         orig_log_len = len(self.get_log())
         launchpad._check_is_up_to_date(self.branch)
         new_content = self.get_log()[orig_log_len:]

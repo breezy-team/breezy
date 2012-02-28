@@ -233,7 +233,8 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
     def test_annotated_edited_merged_file_revnos(self):
         wt = self._create_merged_file()
         out, err = self.run_bzr(['annotate', 'file'])
-        email = config.extract_email_address(wt.branch.get_config().username())
+        email = config.extract_email_address(
+            wt.branch.get_config_stack().get('email'))
         self.assertEqual(
             '3?    %-7s | local\n'
             '1     test@ho | foo\n'

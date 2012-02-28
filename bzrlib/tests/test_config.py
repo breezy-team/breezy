@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@ from bzrlib import (
     mail_client,
     ui,
     urlutils,
+    registry as _mod_registry,
     remote,
     tests,
     trace,
@@ -1910,48 +1911,6 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
             location='http://example.com/specific')
         self.assertEqual(my_config.get_user_option('option'), 'exact')
 
-    def test_get_mail_client(self):
-        config = self.get_branch_config()
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.DefaultMail)
-
-        # Specific clients
-        config.set_user_option('mail_client', 'evolution')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.Evolution)
-
-        config.set_user_option('mail_client', 'kmail')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.KMail)
-
-        config.set_user_option('mail_client', 'mutt')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.Mutt)
-
-        config.set_user_option('mail_client', 'thunderbird')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.Thunderbird)
-
-        # Generic options
-        config.set_user_option('mail_client', 'default')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.DefaultMail)
-
-        config.set_user_option('mail_client', 'editor')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.Editor)
-
-        config.set_user_option('mail_client', 'mapi')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.MAPIClient)
-
-        config.set_user_option('mail_client', 'xdg-email')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.XDGEmail)
-
-        config.set_user_option('mail_client', 'firebird')
-        self.assertRaises(errors.UnknownMailClient, config.get_mail_client)
-
 
 class TestMailAddressExtraction(tests.TestCase):
 
@@ -2487,6 +2446,54 @@ class TestListOption(tests.TestCase, TestOptionConverterMixin):
         self.assertConverted([u'bar'], opt, u'bar')
 
 
+class TestRegistryOption(tests.TestCase, TestOptionConverterMixin):
+
+    def get_option(self, registry):
+        return config.RegistryOption('foo', registry,
+                help='A registry option.')
+
+    def test_convert_invalid(self):
+        registry = _mod_registry.Registry()
+        opt = self.get_option(registry)
+        self.assertConvertInvalid(opt, [1])
+        self.assertConvertInvalid(opt, u"notregistered")
+
+    def test_convert_valid(self):
+        registry = _mod_registry.Registry()
+        registry.register("someval", 1234)
+        opt = self.get_option(registry)
+        # Using a bare str() just in case
+        self.assertConverted(1234, opt, "someval")
+        self.assertConverted(1234, opt, u'someval')
+        self.assertConverted(None, opt, None)
+
+    def test_help(self):
+        registry = _mod_registry.Registry()
+        registry.register("someval", 1234, help="some option")
+        registry.register("dunno", 1234, help="some other option")
+        opt = self.get_option(registry)
+        self.assertEquals(
+            'A registry option.\n'
+            '\n'
+            'The following values are supported:\n'
+            ' dunno - some other option\n'
+            ' someval - some option\n',
+            opt.help)
+
+    def test_get_help_text(self):
+        registry = _mod_registry.Registry()
+        registry.register("someval", 1234, help="some option")
+        registry.register("dunno", 1234, help="some other option")
+        opt = self.get_option(registry)
+        self.assertEquals(
+            'A registry option.\n'
+            '\n'
+            'The following values are supported:\n'
+            ' dunno - some other option\n'
+            ' someval - some option\n',
+            opt.get_help_text())
+
+
 class TestOptionRegistry(tests.TestCase):
 
     def setUp(self):
@@ -2921,6 +2928,11 @@ class TestMutableStore(TestStore):
     def test_save_emptied_succeeds(self):
         store = self.get_store(self)
         store._load_from_string('foo=bar\n')
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
+        if self.store_id in ('branch', 'remote_branch'):
+            # branch stores requires write locked branches
+            self.addCleanup(store.branch.lock_write().unlock)
         section = store.get_mutable_section(None)
         section.remove('foo')
         store.save()
@@ -2947,6 +2959,11 @@ class TestMutableStore(TestStore):
 
     def test_set_option_in_empty_store(self):
         store = self.get_store(self)
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
+        if self.store_id in ('branch', 'remote_branch'):
+            # branch stores requires write locked branches
+            self.addCleanup(store.branch.lock_write().unlock)
         section = store.get_mutable_section(None)
         section.set('foo', 'bar')
         store.save()
@@ -2958,6 +2975,11 @@ class TestMutableStore(TestStore):
     def test_set_option_in_default_section(self):
         store = self.get_store(self)
         store._load_from_string('')
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
+        if self.store_id in ('branch', 'remote_branch'):
+            # branch stores requires write locked branches
+            self.addCleanup(store.branch.lock_write().unlock)
         section = store.get_mutable_section(None)
         section.set('foo', 'bar')
         store.save()
@@ -2969,6 +2991,11 @@ class TestMutableStore(TestStore):
     def test_set_option_in_named_section(self):
         store = self.get_store(self)
         store._load_from_string('')
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
+        if self.store_id in ('branch', 'remote_branch'):
+            # branch stores requires write locked branches
+            self.addCleanup(store.branch.lock_write().unlock)
         section = store.get_mutable_section('baz')
         section.set('foo', 'bar')
         store.save()
@@ -2978,8 +3005,13 @@ class TestMutableStore(TestStore):
         self.assertSectionContent(('baz', {'foo': 'bar'}), sections[0])
 
     def test_load_hook(self):
-        # We first needs to ensure that the store exists
+        # First, we need to ensure that the store exists
         store = self.get_store(self)
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
+        if self.store_id in ('branch', 'remote_branch'):
+            # branch stores requires write locked branches
+            self.addCleanup(store.branch.lock_write().unlock)
         section = store.get_mutable_section('baz')
         section.set('foo', 'bar')
         store.save()
@@ -3001,6 +3033,11 @@ class TestMutableStore(TestStore):
         config.ConfigHooks.install_named_hook('save', hook, None)
         self.assertLength(0, calls)
         store = self.get_store(self)
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
+        if self.store_id in ('branch', 'remote_branch'):
+            # branch stores requires write locked branches
+            self.addCleanup(store.branch.lock_write().unlock)
         section = store.get_mutable_section('baz')
         section.set('foo', 'bar')
         store.save()
@@ -3637,6 +3674,41 @@ class TestMemoryStack(tests.TestCase):
         self.assertEquals('bar', conf.get('foo'))
 
 
+class TestStackIterSections(tests.TestCase):
+
+    def test_empty_stack(self):
+        conf = config.Stack([])
+        sections = list(conf.iter_sections())
+        self.assertLength(0, sections)
+
+    def test_empty_store(self):
+        store = config.IniFileStore()
+        store._load_from_string('')
+        conf = config.Stack([store.get_sections])
+        sections = list(conf.iter_sections())
+        self.assertLength(0, sections)
+
+    def test_simple_store(self):
+        store = config.IniFileStore()
+        store._load_from_string('foo=bar')
+        conf = config.Stack([store.get_sections])
+        tuples = list(conf.iter_sections())
+        self.assertLength(1, tuples)
+        (found_store, found_section) = tuples[0]
+        self.assertIs(store, found_store)
+
+    def test_two_stores(self):
+        store1 = config.IniFileStore()
+        store1._load_from_string('foo=bar')
+        store2 = config.IniFileStore()
+        store2._load_from_string('bar=qux')
+        conf = config.Stack([store1.get_sections, store2.get_sections])
+        tuples = list(conf.iter_sections())
+        self.assertLength(2, tuples)
+        self.assertIs(store1, tuples[0][0])
+        self.assertIs(store2, tuples[1][0])
+
+
 class TestStackWithTransport(tests.TestCaseWithTransport):
 
     scenarios = [(key, {'get_stack': builder}) for key, builder
@@ -3832,7 +3904,8 @@ class TestStackExpandOptions(tests.TestCaseWithTransport):
         super(TestStackExpandOptions, self).setUp()
         self.overrideAttr(config, 'option_registry', config.OptionRegistry())
         self.registry = config.option_registry
-        self.conf = build_branch_stack(self)
+        store = config.TransportIniFileStore(self.get_transport(), 'foo.conf')
+        self.conf = config.Stack([store.get_sections], store)
 
     def assertExpansion(self, expected, string, env=None):
         self.assertEquals(expected, self.conf.expand_options(string, env))
@@ -3921,8 +3994,11 @@ bar=middle,{baz}
 baz=end
 list={foo}
 ''')
-        self.registry.register(
-            config.ListOption('list'))
+        self.registry.register(config.ListOption('list'))
+        # Register an intermediate option as a list to ensure no conversion
+        # happen while expanding. Conversion should only occur for the original
+        # option ('list' here).
+        self.registry.register(config.ListOption('baz'))
         self.assertEquals(['start', 'middle', 'end'],
                            self.conf.get('list', expand=True))
 
@@ -4847,3 +4923,56 @@ class EmailOptionTests(tests.TestCase):
         self.overrideEnv('BZR_EMAIL', None)
         self.overrideEnv('EMAIL', 'jelmer@samba.org')
         self.assertEquals('jelmer@debian.org', conf.get('email'))
+
+
+class MailClientOptionTests(tests.TestCase):
+
+    def test_default(self):
+        conf = config.MemoryStack('')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.DefaultMail)
+
+    def test_evolution(self):
+        conf = config.MemoryStack('mail_client=evolution')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.Evolution)
+
+    def test_kmail(self):
+        conf = config.MemoryStack('mail_client=kmail')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.KMail)
+
+    def test_mutt(self):
+        conf = config.MemoryStack('mail_client=mutt')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.Mutt)
+
+    def test_thunderbird(self):
+        conf = config.MemoryStack('mail_client=thunderbird')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.Thunderbird)
+
+    def test_explicit_default(self):
+        conf = config.MemoryStack('mail_client=default')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.DefaultMail)
+
+    def test_editor(self):
+        conf = config.MemoryStack('mail_client=editor')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.Editor)
+
+    def test_mapi(self):
+        conf = config.MemoryStack('mail_client=mapi')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.MAPIClient)
+
+    def test_xdg_email(self):
+        conf = config.MemoryStack('mail_client=xdg-email')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.XDGEmail)
+
+    def test_unknown(self):
+        conf = config.MemoryStack('mail_client=firebird')
+        self.assertRaises(errors.ConfigOptionValueError, conf.get,
+                'mail_client')

@@ -247,7 +247,7 @@ class TestAdd(tests.TestCaseWithTransport):
         self.build_tree_contents([('small.txt', '0\n')])
         self.build_tree_contents([('big.txt', '01234567890123456789\n')])
         self.build_tree_contents([('big2.txt', '01234567890123456789\n')])
-        tree.branch.get_config().set_user_option('add.maximum_file_size', 5)
+        tree.branch.get_config_stack().set('add.maximum_file_size', 5)
         out = self.run_bzr('add')[0]
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals(['adding small.txt'], results)
