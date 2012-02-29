@@ -1,8 +1,9 @@
-bzr (2.6.0~bzr6476-1) UNRELEASED; urgency=low
+bzr (2.6.0~bzr6478-1) UNRELEASED; urgency=low
 
   * New upstream snapshot.
+   + Drop 04_new_zlib; a fix is now provided upstream.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Mon, 27 Feb 2012 02:33:00 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 29 Feb 2012 12:38:09 +0100
 
 bzr (2.5.0-1) unstable; urgency=low
 
