@@ -2791,7 +2791,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         # 3 lines of diff administrivia
         self.assertEqual(lines[4], "+content B")
 
-    def test_diff_no_symlink_support(self):
+    def test_unsupported_symlink_diff(self):
         self.requireFeature(SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('a', 'content 1')])
