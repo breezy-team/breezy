@@ -72,16 +72,15 @@ class cmd_fast_import(Command):
       bzr fast-import project.fi project.bzr
 
     Numerous commands are provided for generating a fast-import file
-    to use as input. These are named fast-export-from-xxx where xxx
-    is one of cvs, darcs, git, hg, mtn, p4 or svn.
+    to use as input. 
     To specify standard input as the input stream, use a
     source name of '-' (instead of project.fi). If the source name
     ends in '.gz', it is assumed to be compressed in gzip format.
-    
+
     project.bzr will be created if it doesn't exist. If it exists
     already, it should be empty or be an existing Bazaar repository
     or branch. If not specified, the current directory is assumed.
- 
+
     fast-import will intelligently select the format to use when
     creating a repository or branch. If you are running Bazaar 1.17
     up to Bazaar 2.0, the default format for Bazaar 2.x ("2a") is used.
@@ -200,27 +199,30 @@ class cmd_fast_import(Command):
 
      Import a Subversion repository into Bazaar::
 
-       bzr fast-export-from-svn /svn/repo/path project.fi
+       svn-fast-export /svn/repo/path > project.fi
        bzr fast-import project.fi project.bzr
 
      Import a CVS repository into Bazaar::
 
-       bzr fast-export-from-cvs /cvs/repo/path project.fi
+       cvs2git /cvs/repo/path > project.fi
        bzr fast-import project.fi project.bzr
 
      Import a Git repository into Bazaar::
 
-       bzr fast-export-from-git /git/repo/path project.fi
+       cd /git/repo/path
+       git fast-export --all > project.fi
        bzr fast-import project.fi project.bzr
 
      Import a Mercurial repository into Bazaar::
 
-       bzr fast-export-from-hg /hg/repo/path project.fi
+       cd /hg/repo/path
+       hg fast-export > project.fi
        bzr fast-import project.fi project.bzr
 
      Import a Darcs repository into Bazaar::
 
-       bzr fast-export-from-darcs /darcs/repo/path project.fi
+       cd /darcs/repo/path
+       darcs-fast-export > project.fi
        bzr fast-import project.fi project.bzr
     """
     hidden = False
@@ -690,228 +692,3 @@ class cmd_fast_export(Command):
             revision=revision, verbose=verbose, plain_format=plain,
             rewrite_tags=rewrite_tag_names, baseline=baseline)
         return exporter.run()
-
-
-class cmd_fast_export_from_cvs(Command):
-    """Generate a fast-import file from a CVS repository.
-
-    Destination is a dump file, typically named xxx.fi where xxx is
-    the name of the project. If '-' is given, standard output is used.
-
-    cvs2svn 2.3 or later must be installed as its cvs2bzr script is used
-    under the covers to do the export.
-    
-    The source must be the path on your filesystem to the part of the
-    repository you wish to convert. i.e. either that path or a parent
-    directory must contain a CVSROOT subdirectory. The path may point to
-    either the top of a repository or to a path within it. In the latter
-    case, only that project within the repository will be converted.
-
-    .. note::
-       Remote access to the repository is not sufficient - the path
-       must point into a copy of the repository itself. See
-       http://cvs2svn.tigris.org/faq.html#repoaccess for instructions
-       on how to clone a remote CVS repository locally.
-
-    By default, the trunk, branches and tags are all exported. If you
-    only want the trunk, use the `--trunk-only` option.
-
-    By default, filenames, log messages and author names are expected
-    to be encoded in ascii. Use the `--encoding` option to specify an
-    alternative. If multiple encodings are used, specify the option
-    multiple times. For a list of valid encoding names, see
-    http://docs.python.org/lib/standard-encodings.html.
-
-    Windows users need to install GNU sort and use the `--sort`
-    option to specify its location. GNU sort can be downloaded from
-    http://unxutils.sourceforge.net/.
-    """
-    hidden = False
-    _see_also = ['fast-import', 'fast-import-filter']
-    takes_args = ['source', 'destination']
-    takes_options = ['verbose',
-                    Option('trunk-only',
-                        help="Export just the trunk, ignoring tags and branches."
-                        ),
-                    ListOption('encoding', type=str, argname='CODEC',
-                        help="Encoding used for filenames, commit messages "
-                             "and author names if not ascii."
-                        ),
-                    Option('sort', type=str, argname='PATH',
-                        help="GNU sort program location if not on the path."
-                        ),
-                    ]
-    encoding_type = 'exact'
-    def run(self, source, destination, verbose=False, trunk_only=False,
-        encoding=None, sort=None):
-        load_fastimport()
-        from bzrlib.plugins.fastimport.exporters import fast_export_from
-        custom = []
-        if trunk_only:
-            custom.append("--trunk-only")
-        if encoding:
-            for enc in encoding:
-                custom.extend(['--encoding', enc])
-        if sort:
-            custom.extend(['--sort', sort])
-        fast_export_from(source, destination, 'cvs', verbose, custom)
-
-
-class cmd_fast_export_from_darcs(Command):
-    """Generate a fast-import file from a Darcs repository.
-
-    Destination is a dump file, typically named xxx.fi where xxx is
-    the name of the project. If '-' is given, standard output is used.
-
-    Darcs 2.2 or later must be installed as various subcommands are
-    used to access the source repository. The source may be a network
-    URL but using a local URL is recommended for performance reasons.
-    """
-    hidden = False
-    _see_also = ['fast-import', 'fast-import-filter']
-    takes_args = ['source', 'destination']
-    takes_options = ['verbose',
-                    Option('encoding', type=str, argname='CODEC',
-                        help="Encoding used for commit messages if not utf-8."
-                        ),
-                    ]
-    encoding_type = 'exact'
-    def run(self, source, destination, verbose=False, encoding=None):
-        from bzrlib.plugins.fastimport.exporters import fast_export_from
-        custom = None
-        if encoding is not None:
-            custom = ['--encoding', encoding]
-        fast_export_from(source, destination, 'darcs', verbose, custom)
-
-
-class cmd_fast_export_from_hg(Command):
-    """Generate a fast-import file from a Mercurial repository.
-
-    Destination is a dump file, typically named xxx.fi where xxx is
-    the name of the project. If '-' is given, standard output is used.
-
-    Mercurial 1.2 or later must be installed as its libraries are used
-    to access the source repository. Given the APIs currently used,
-    the source repository must be a local file, not a network URL.
-    """
-    hidden = False
-    _see_also = ['fast-import', 'fast-import-filter']
-    takes_args = ['source', 'destination']
-    takes_options = ['verbose']
-    encoding_type = 'exact'
-    def run(self, source, destination, verbose=False):
-        load_fastimport()
-        from bzrlib.plugins.fastimport.exporters import fast_export_from
-        fast_export_from(source, destination, 'hg', verbose)
-
-
-class cmd_fast_export_from_git(Command):
-    """Generate a fast-import file from a Git repository.
-
-    Destination is a dump file, typically named xxx.fi where xxx is
-    the name of the project. If '-' is given, standard output is used.
-
-    Git 1.6 or later must be installed as the git fast-export
-    subcommand is used under the covers to generate the stream.
-    The source must be a local directory.
-
-    .. note::
-    
-       Earlier versions of Git may also work fine but are
-       likely to receive less active support if problems arise.
-    """
-    hidden = False
-    _see_also = ['fast-import', 'fast-import-filter']
-    takes_args = ['source', 'destination']
-    takes_options = ['verbose']
-    encoding_type = 'exact'
-    def run(self, source, destination, verbose=False):
-        load_fastimport()
-        from bzrlib.plugins.fastimport.exporters import fast_export_from
-        fast_export_from(source, destination, 'git', verbose)
-
-
-class cmd_fast_export_from_mtn(Command):
-    """Generate a fast-import file from a Monotone repository.
-
-    Destination is a dump file, typically named xxx.fi where xxx is
-    the name of the project. If '-' is given, standard output is used.
-
-    Monotone 0.43 or later must be installed as the mtn git_export
-    subcommand is used under the covers to generate the stream.
-    The source must be a local directory.
-    """
-    hidden = False
-    _see_also = ['fast-import', 'fast-import-filter']
-    takes_args = ['source', 'destination']
-    takes_options = ['verbose']
-    encoding_type = 'exact'
-    def run(self, source, destination, verbose=False):
-        load_fastimport()
-        from bzrlib.plugins.fastimport.exporters import fast_export_from
-        fast_export_from(source, destination, 'mtn', verbose)
-
-
-class cmd_fast_export_from_p4(Command):
-    """Generate a fast-import file from a Perforce repository.
-
-    Source is a Perforce depot path, e.g., //depot/project
-
-    Destination is a dump file, typically named xxx.fi where xxx is
-    the name of the project. If '-' is given, standard output is used.
-
-    bzrp4 must be installed as its p4_fast_export.py module is used under
-    the covers to do the export.  bzrp4 can be downloaded from
-    https://launchpad.net/bzrp4/.
-
-    The P4PORT environment variable must be set, and you must be logged
-    into the Perforce server.
-
-    By default, only the HEAD changelist is exported.  To export all
-    changelists, append '@all' to the source.  To export a revision range,
-    append a comma-delimited pair of changelist numbers to the source,
-    e.g., '100,200'.
-    """
-    hidden = False
-    _see_also = ['fast-import', 'fast-import-filter']
-    takes_args = ['source', 'destination']
-    takes_options = []
-    encoding_type = 'exact'
-    def run(self, source, destination, verbose=False):
-        load_fastimport()
-        from bzrlib.plugins.fastimport.exporters import fast_export_from
-        custom = []
-        fast_export_from(source, destination, 'p4', verbose, custom)
-
-
-class cmd_fast_export_from_svn(Command):
-    """Generate a fast-import file from a Subversion repository.
-
-    Destination is a dump file, typically named xxx.fi where xxx is
-    the name of the project. If '-' is given, standard output is used.
-
-    Python-Subversion (Python bindings to the Subversion APIs)
-    1.4 or later must be installed as this library is used to
-    access the source repository. The source may be a network URL
-    but using a local URL is recommended for performance reasons.
-    """
-    hidden = False
-    _see_also = ['fast-import', 'fast-import-filter']
-    takes_args = ['source', 'destination']
-    takes_options = ['verbose',
-                    Option('trunk-path', type=str, argname="STR",
-                        help="Path in repo to /trunk.\n"
-                              "May be `regex:/cvs/(trunk)/proj1/(.*)` in "
-                              "which case the first group is used as the "
-                              "branch name and the second group is used "
-                              "to match files.",
-                        ),
-                    ]
-    encoding_type = 'exact'
-    def run(self, source, destination, verbose=False, trunk_path=None):
-        load_fastimport()
-        from bzrlib.plugins.fastimport.exporters import fast_export_from
-        custom = []
-        if trunk_path is not None:
-            custom.extend(['--trunk-path', trunk_path])
-        fast_export_from(source, destination, 'svn', verbose, custom)
