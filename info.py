@@ -8,6 +8,6 @@ bzr_commands = [
     "fast-export",
     ]
 
-bzr_plugin_version = (0, 13, 0, 'dev', 0)
+bzr_plugin_version = (0, 13, 0, 'final', 0)
 bzr_minimum_version = (2, 0, 0)
 bzr_maximum_version = None
