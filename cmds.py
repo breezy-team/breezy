@@ -31,12 +31,17 @@ def _run(source, processor_factory, verbose=False, user_map=None, **kwargs):
     :param processor_factory: a callable for creating a processor
     :param user_map: if not None, the file containing the user map.
     """
+    from fastimport.errors import ParsingError
+    from bzrlib.errors import BzrCommandError
     from fastimport import parser
     stream = _get_source_stream(source)
     user_mapper = _get_user_mapper(user_map)
     proc = processor_factory(verbose=verbose, **kwargs)
     p = parser.ImportParser(stream, verbose=verbose, user_mapper=user_mapper)
-    return proc.process(p.iter_commands)
+    try:
+        return proc.process(p.iter_commands)
+    except ParsingError, e:
+        raise BzrCommandError("%d: Parse error: %s" % (e.lineno, e))
 
 
 def _get_source_stream(source):
@@ -309,13 +314,18 @@ class cmd_fast_import(Command):
     def _generate_info(self, source):
         from cStringIO import StringIO
         from fastimport import parser
+        from fastimport.errors import ParsingError
+        from bzrlib.errors import BzrCommandError
         from bzrlib.plugins.fastimport.processors import info_processor
         stream = _get_source_stream(source)
         output = StringIO()
         try:
             proc = info_processor.InfoProcessor(verbose=True, outf=output)
             p = parser.ImportParser(stream)
-            return_code = proc.process(p.iter_commands)
+            try:
+                return_code = proc.process(p.iter_commands)
+            except ParsingError, e:
+                raise BzrCommandError("%d: Parse error: %s" % (e.lineno, e))
             lines = output.getvalue().splitlines()
         finally:
             output.close()
@@ -442,12 +452,16 @@ class cmd_fast_import_filter(Command):
                     " a newer python-fastimport to use "
                     "--dont-squash-empty-commits")
 
+        from fastimport.errors import ParsingError
         from fastimport import parser
         stream = _get_source_stream(source)
         user_mapper = _get_user_mapper(user_map)
         proc = filter_processor.FilterProcessor(params=params, verbose=verbose)
         p = parser.ImportParser(stream, verbose=verbose, user_mapper=user_mapper)
-        return proc.process(p.iter_commands)
+        try:
+            return proc.process(p.iter_commands)
+        except ParsingError, e:
+            raise BzrCommandError("%d: Parse error: %s" % (e.lineno, e))
 
 
 class cmd_fast_import_info(Command):

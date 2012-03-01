@@ -6,6 +6,12 @@ bzr-fastimport Release Notes
 
 0.14 UNRELEASED
 
+Bug fixes
+---------
+
+* Print sane error when a fastimport file is incomplete.
+  (Jelmer Vernooij, #937972)
+
 0.13 2012-02-29
 
 Changes

@@ -228,6 +228,16 @@ class TestFastImport(ExternalBase):
         data = self.run_bzr("fast-import file.fi br")[0]
         self.assertEquals(1, tree.branch.revno())
 
+    def test_missing_bytes(self):
+        self.build_tree_contents([('empty.fi', """
+commit refs/heads/master
+mark :1
+committer
+data 15
+""")])
+        self.make_branch_and_tree("br")
+        self.run_bzr_error(['bzr: ERROR: 4: Parse error: line 4: Command commit is missing section committer\n'], "fast-import empty.fi br")
+
 
 class TestFastImportFilter(ExternalBase):
 
