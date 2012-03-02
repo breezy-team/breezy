@@ -148,17 +148,18 @@ def quilt_push(working_dir, patch, patches_dir=None, series_file=None, quiet=Non
             patches_dir=patches_dir, series_file=series_file, quiet=quiet)
 
 
-def quilt_applied(working_dir, patches_dir=None, series_file=None):
+def quilt_applied(tree):
     """Find the list of applied quilt patches.
 
-    :param working_dir: Directory to work in
-    :param patches_dir: Optional patches directory
-    :param series_file: Optional series file
     """
+    file_id = tree.path2id(".pc/applied-patches")
+    if file_id is None:
+        return []
     try:
-        return run_quilt(["applied"], working_dir=working_dir, patches_dir=patches_dir, series_file=series_file).splitlines()
-    except QuiltError, e:
-        if e.retcode == 1:
+        return [patch.rstrip("\n") for patch in tree.get_file_lines(file_id, ".pc/applied-patches")]
+    except (IOError, OSError), e:
+        if e.errno == errno.ENOENT:
+            # File has already been removed
             return []
         raise
 

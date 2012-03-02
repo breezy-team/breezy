@@ -22,7 +22,6 @@
 
 from __future__ import absolute_import
 
-import errno
 import shutil
 import tempfile
 from bzrlib.mutabletree import MutableTree
@@ -60,23 +59,9 @@ def tree_unapply_patches(orig_tree, orig_branch=None, force=False):
     """
     if orig_branch is None:
         orig_branch = orig_tree.branch
-    series_file_id = orig_tree.path2id("debian/patches/series")
-    if series_file_id is None:
-        # No quilt patches
-        return orig_tree, None
-    applied_patches_id = orig_tree.path2id(".pc/applied-patches")
-    if applied_patches_id is None:
-        return orig_tree, None
-    try:
-        applied_patches = orig_tree.get_file_text(applied_patches_id, ".pc/applied-patches")
-    except (IOError, OSError), e:
-        if e.errno == errno.ENOENT:
-            # File has already been removed
-            return orig_tree, None
-        raise
-
-    # Don't do any processing if there are no unapplied patches
+    applied_patches = quilt_applied(orig_tree)
     if not applied_patches:
+        # No quilt patches
         return orig_tree, None
 
     target_dir = tempfile.mkdtemp()
@@ -105,11 +90,7 @@ def post_process_quilt_patches(tree, old_patches, policy):
     :param old_patches: List of patches applied before the operation (usually a merge)
     """
     new_patches = tree.get_file_lines(tree.path2id("debian/patches/series"))
-    applied_file_id = tree.path2id(".pc/applied-patches")
-    if applied_file_id is not None:
-        applied_patches = tree.get_file_lines(applied_file_id, ".pc/applied-patches")
-    else:
-        applied_patches = []
+    applied_patches = quilt_applied(tree)
     if policy == "applied":
         to_apply = []
         for p in new_patches:
@@ -139,7 +120,7 @@ def post_process_quilt_patches(tree, old_patches, policy):
 def start_commit_quilt_patches(tree):
     config = debuild_config(tree, False)
     policy = config.quilt_commit_policy
-    applied_patches = quilt_applied(tree.basedir)
+    applied_patches = quilt_applied(tree)
     unapplied_patches = quilt_unapplied(tree.basedir)
     if policy is None:
         # No policy set - just warn about having both applied and unapplied

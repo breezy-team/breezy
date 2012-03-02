@@ -73,11 +73,11 @@ class QuiltTests(TestCaseWithTransport):
         quilt_pop_all("source", quiet=True)
 
     def test_applied_empty(self):
-        self.make_empty_quilt_dir("source")
+        source = self.make_empty_quilt_dir("source")
         self.build_tree_contents([
             ("source/debian/patches/series", "patch1.diff\n"),
             ("source/debian/patches/patch1.diff", "foob ar")])
-        self.assertEquals([], quilt_applied("source"))
+        self.assertEquals([], quilt_applied(source))
 
     def test_unapplied(self):
         self.make_empty_quilt_dir("source")
