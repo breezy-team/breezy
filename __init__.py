@@ -387,7 +387,11 @@ def update_git_cache(repository, revid):
     store = BazaarObjectStore(repository)
     store.lock_write()
     try:
-        parent_revisions = set(repository.get_parent_map([revid])[revid])
+        try:
+            parent_revisions = set(repository.get_parent_map([revid])[revid])
+        except KeyError:
+            # Isn't this a bit odd - how can a revision that was just committed be missing?
+            return
         missing_revisions = store._missing_revisions(parent_revisions)
         if not missing_revisions:
             # Only update if the cache was up to date previously
@@ -404,9 +408,9 @@ def post_commit_update_cache(local_branch, master_branch, old_revno, old_revid,
 
 
 def loggerhead_git_hook(branch_app, environ):
-    from bzrlib.config import GlobalConfig
     branch = branch_app.branch
-    if GlobalConfig().get_user_option('http_git') != 'True':
+    config_stack = branch.get_config_stack()
+    if config_stack.get('http_git'):
         return None
     from bzrlib.plugins.git.server import git_http_hook
     return git_http_hook(branch, environ['REQUEST_METHOD'],
@@ -427,6 +431,21 @@ directories.register_lazy('github:', 'bzrlib.plugins.git.directory',
 directories.register_lazy('git@github.com:', 'bzrlib.plugins.git.directory',
                           'GitHubDirectory',
                           'GitHub directory.')
+
+from bzrlib.config import (
+    option_registry,
+    Option,
+    bool_from_store,
+    )
+
+option_registry.register(
+    Option('git.http',
+           default=None, from_unicode=bool_from_store, invalid='warning',
+           help='''\
+Allow fetching of Git packs over HTTP.
+
+This enables support for fetching Git packs over HTTP in Loggerhead.
+'''))
 
 def test_suite():
     from bzrlib.plugins.git import tests
