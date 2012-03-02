@@ -19,6 +19,7 @@
 #
 
 import os
+import shutil
 import tarfile
 
 from bzrlib.errors import (NoSuchFile,
@@ -63,6 +64,7 @@ class TestRepackTarball(TestCaseInTempDir):
     def create_old_tarball(self):
         self.create_basedir()
         self.build_tarball(self.basedir, self.old_tarball)
+        shutil.rmtree(self.basedir)
 
     def test_create_old_tarball(self):
         self.create_old_tarball()

@@ -50,7 +50,7 @@ except ImportError: # bzr < 2.5
 
 
 def make_new_upstream_dir(source, dest):
-    os.rename(source, dest)
+    shutil.copytree(source, dest)
 
 
 def make_new_upstream_tarball(source, dest):
@@ -59,7 +59,6 @@ def make_new_upstream_tarball(source, dest):
         tar.add(source)
     finally:
         tar.close()
-    shutil.rmtree(source)
 
 
 def make_new_upstream_tarball_bz2(source, dest):
@@ -68,7 +67,6 @@ def make_new_upstream_tarball_bz2(source, dest):
         tar.add(source)
     finally:
         tar.close()
-    shutil.rmtree(source)
 
 
 def make_new_upstream_tarball_zip(source, dest):
@@ -82,7 +80,6 @@ def make_new_upstream_tarball_zip(source, dest):
                 zip.write(os.path.join(dirpath, name))
     finally:
         zip.close()
-    shutil.rmtree(source)
 
 
 def make_new_upstream_tarball_bare(source, dest):
@@ -91,21 +88,18 @@ def make_new_upstream_tarball_bare(source, dest):
         tar.add(source)
     finally:
         tar.close()
-    shutil.rmtree(source)
 
 
 def make_new_upstream_tarball_xz(source, dest):
-    import lzma
-    f = lzma.LZMAFile(dest, 'w')
+    uncompressed = dest + ".temp"
+    tar = tarfile.open(uncompressed, 'w')
     try:
-        tar = tarfile.open(None, 'w', f)
-        try:
-            tar.add(source)
-        finally:
-            tar.close()
+        tar.add(source)
     finally:
-        f.close()
-    shutil.rmtree(source)
+        tar.close()
+    subprocess.check_call(["xz", "-z", uncompressed])
+    os.rename(uncompressed+".xz", dest)
+
 
 def make_new_upstream_tarball_lzma(source, dest):
     import lzma
@@ -118,7 +112,6 @@ def make_new_upstream_tarball_lzma(source, dest):
             tar.close()
     finally:
         f.close()
-    shutil.rmtree(source)
 
 
 def load_tests(standard_tests, module, loader):
@@ -163,7 +156,7 @@ def load_tests(standard_tests, module, loader):
                               old_tarball='../package-0.2.tar.bz2')),
                  ('.tar.xz', dict(build_tarball=make_new_upstream_tarball_xz,
                               old_tarball='../package-0.2.tar.xz',
-                              _test_needs_features=[LzmaFeature])),
+                              _test_needs_features=[XzFeature])),
                  ('.tar.lzma', dict(build_tarball=make_new_upstream_tarball_lzma,
                               old_tarball='../package-0.2.tar.lzma',
                               _test_needs_features=[LzmaFeature])),
@@ -456,4 +449,5 @@ class SourcePackageBuilder(object):
         shutil.rmtree(basedir)
 
 
+XzFeature = ExecutableFeature("xz")
 LzmaFeature = ModuleAvailableFeature("lzma")

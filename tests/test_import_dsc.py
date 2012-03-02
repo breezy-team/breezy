@@ -21,6 +21,7 @@
 
 import os
 import shutil
+import subprocess
 import tarfile
 
 try:
@@ -45,6 +46,8 @@ except ImportError: # bzr < 2.5
         Feature,
         SymlinkFeature,
         )
+
+from bzrlib.plugins.builddeb.tests import make_new_upstream_tarball_xz
 
 ## Copied from bzrlib.tests.test_fetch from bzr-2.5
 def revision_history(branch):
@@ -945,7 +948,6 @@ class DistributionBranchTests(BuilddebTestCase):
     def test_import_upstream_with_lzma_tarball(self):
         self.requireFeature(PristineTarFeature)
         self.requireFeature(LzmaFeature)
-        import lzma
         version = Version("0.1-1")
         name = "package"
         basedir = name + "-" + str(version.upstream_version)
@@ -968,15 +970,7 @@ class DistributionBranchTests(BuilddebTestCase):
                 "occaecat cupidatat non proident, sunt in culpa qui officia "
                 "deserunt mollit anim id est laborum.")
         tar_path = "package_0.1.orig.tar.xz"
-        f = lzma.LZMAFile(tar_path, 'w')
-        try:
-            tf = tarfile.open(None, 'w', f)
-            try:
-                tf.add(basedir)
-            finally:
-                tf.close()
-        finally:
-            f.close()
+        make_new_upstream_tarball_xz(basedir, tar_path)
         try:
             self.db1.import_upstream(basedir, "package", version.upstream_version,
                 {}, upstream_tarballs=[(os.path.abspath(tar_path), None, self.fake_md5_1)])

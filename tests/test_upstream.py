@@ -49,6 +49,8 @@ from bzrlib.plugins.builddeb.errors import (
     )
 from bzrlib.plugins.builddeb.tests import (
     LzmaFeature,
+    XzFeature,
+    make_new_upstream_tarball_xz,
     TestCaseWithTransport,
     )
 from bzrlib.plugins.builddeb.upstream import (
@@ -923,13 +925,10 @@ class TarfileSourceTests(TestCaseWithTransport):
 
     def test_fetch_tarball_xz(self):
         self.requireFeature(LzmaFeature)
+        self.requireFeature(XzFeature)
         import lzma
-        lzma_f = lzma.LZMAFile("foo-1.0.tar.xz", 'w')
-        try:
-            tar = tarfile.open("foo-1.0.tar", "w", lzma_f)
-            tar.close()
-        finally:
-            lzma_f.close()
+        os.mkdir("empty")
+        make_new_upstream_tarball_xz("empty", "foo-1.0.tar.xz")
         source = TarfileSource("foo-1.0.tar.xz", "1.0")
         os.mkdir("bar")
         self.assertEquals(["bar/foo_1.0.orig.tar.xz"],
