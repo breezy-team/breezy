@@ -366,7 +366,7 @@ class GitBranch(ForeignBranch):
 
     def get_child_submit_format(self):
         """Return the preferred format of submissions to this branch."""
-        ret = self.get_config().get_user_option("child_submit_format")
+        ret = self.get_config_stack().get("child_submit_format")
         if ret is not None:
             return ret
         return "git"
@@ -588,7 +588,7 @@ class LocalGitBranch(GitBranch):
 
     def get_push_location(self):
         """See Branch.get_push_location."""
-        push_loc = self.get_config().get_user_option('push_location')
+        push_loc = self.get_config_stack().get('push_location')
         return push_loc
 
     def set_push_location(self, location):
@@ -722,8 +722,8 @@ class InterFromGitBranch(branch.GenericInterBranch):
     def fetch_objects(self, stop_revision, fetch_tags, limit=None):
         interrepo = self._get_interrepo(self.source, self.target)
         if fetch_tags is None:
-            c = self.source.get_config()
-            fetch_tags = c.get_user_option_as_bool('branch.fetch_tags')
+            c = self.source.get_config_stack()
+            fetch_tags = c.get('branch.fetch_tags')
         def determine_wants(heads):
             if self.source.ref is not None and not self.source.ref in heads:
                 raise NoSuchRef(self.source.ref, self.source.user_url, heads.keys())
@@ -1016,8 +1016,8 @@ class InterToGitBranch(branch.GenericInterBranch):
         main_ref = self.target.ref or "refs/heads/master"
         refs = { main_ref: (None, stop_revision) }
         if fetch_tags is None:
-            c = self.source.get_config()
-            fetch_tags = c.get_user_option_as_bool('branch.fetch_tags')
+            c = self.source.get_config_stack()
+            fetch_tags = c.get('branch.fetch_tags')
         for name, revid in self.source.tags.get_tag_dict().iteritems():
             if self.source.repository.has_revision(revid):
                 ref = tag_name_to_ref(name)
