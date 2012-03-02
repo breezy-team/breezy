@@ -215,7 +215,6 @@ def pre_merge_quilt(merger):
         merger.working_tree.path2id("debian/patches/series") is None):
         return
 
-
     from bzrlib import trace
     from bzrlib.plugins.builddeb.util import debuild_config
     config = debuild_config(merger.working_tree, merger.working_tree)
@@ -230,14 +229,12 @@ def pre_merge_quilt(merger):
         return
 
     from bzrlib.plugins.builddeb.errors import QuiltUnapplyError
-    from bzrlib.plugins.builddeb.quilt import quilt_pop_all, QuiltError
+    from bzrlib.plugins.builddeb.quilt import quilt_pop_all, quilt_series, QuiltError
     from bzrlib.plugins.builddeb.merge_quilt import tree_unapply_patches
     trace.note("Unapplying quilt patches to prevent spurious conflicts")
     merger._quilt_tempdirs = []
-    series_file_id = merger.working_tree.path2id("debian/patches/series")
-    if series_file_id is not None:
-        merger._old_quilt_series = merger.working_tree.get_file_lines(series_file_id)
-    if series_file_id is not None:
+    merger._old_quilt_series = quilt_series(merger.working_tree)
+    if merger._old_quilt_series:
         quilt_pop_all(working_dir=merger.working_tree.basedir)
     try:
         merger.this_tree, this_dir = tree_unapply_patches(merger.this_tree,

@@ -156,7 +156,9 @@ def quilt_applied(tree):
     if file_id is None:
         return []
     try:
-        return [patch.rstrip("\n") for patch in tree.get_file_lines(file_id, ".pc/applied-patches")]
+        return [patch.rstrip("\n") for patch in
+            tree.get_file_lines(file_id, ".pc/applied-patches")
+            if patch.strip() != ""]
     except (IOError, OSError), e:
         if e.errno == errno.ENOENT:
             # File has already been removed
@@ -180,12 +182,20 @@ def quilt_unapplied(working_dir, patches_dir=None, series_file=None):
         raise
 
 
-def quilt_series(working_dir, patches_dir=None, series_file=None):
+def quilt_series(tree):
     """Find the list of patches.
 
-    :param working_dir: Directory to work in
-    :param patches_dir: Optional patches directory
-    :param series_file: Optional series file
+    :param tree: Tree to read from
     """
-    return run_quilt(["series"], working_dir=working_dir, patches_dir=patches_dir, series_file=series_file).splitlines()
-
+    file_id = tree.path2id("debian/patches/series")
+    if file_id is None:
+        return []
+    try:
+        return [patch.rstrip("\n") for patch in
+            tree.get_file_lines(file_id, "debian/patches/series")
+            if patch.strip() != ""]
+    except (IOError, OSError), e:
+        if e.errno == errno.ENOENT:
+            # File has already been removed
+            return []
+        raise

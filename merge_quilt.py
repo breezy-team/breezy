@@ -39,6 +39,7 @@ from bzrlib.plugins.builddeb.quilt import (
     quilt_pop_all,
     quilt_push,
     quilt_push_all,
+    quilt_series,
     )
 from bzrlib.plugins.builddeb.util import debuild_config
 
@@ -89,7 +90,7 @@ def post_process_quilt_patches(tree, old_patches, policy):
     :param tree: Working tree to work in
     :param old_patches: List of patches applied before the operation (usually a merge)
     """
-    new_patches = tree.get_file_lines(tree.path2id("debian/patches/series"))
+    new_patches = quilt_series(tree)
     applied_patches = quilt_applied(tree)
     if policy == "applied":
         to_apply = []

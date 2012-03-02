@@ -54,15 +54,16 @@ class QuiltTests(TestCaseWithTransport):
         return source
 
     def test_series_all_empty(self):
-        self.make_empty_quilt_dir("source")
-        self.assertEquals([], quilt_series("source"))
+        source = self.make_empty_quilt_dir("source")
+        self.assertEquals([], quilt_series(source))
 
     def test_series_all(self):
-        self.make_empty_quilt_dir("source")
+        source = self.make_empty_quilt_dir("source")
         self.build_tree_contents([
             ("source/debian/patches/series", "patch1.diff\n"),
             ("source/debian/patches/patch1.diff", TRIVIAL_PATCH)])
-        self.assertEquals(["patch1.diff"], quilt_series("source"))
+        source.smart_add(["source/debian"])
+        self.assertEquals(["patch1.diff"], quilt_series(source))
 
     def test_push_all_empty(self):
         self.make_empty_quilt_dir("source")
