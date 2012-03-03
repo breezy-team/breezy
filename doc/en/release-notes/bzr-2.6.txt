@@ -34,8 +34,9 @@ Improvements
 * Avoid 'Invalid range access' errors when whole files are retrieved with
   transport.http.get() . (Vincent Ladeuil, #924746)
 
-* Branches with symlinks can now be checked out on Windows. Symlinks are
-  ignored with a warning and they are not seen on Windows.
+* Branches with symlinks are now supported on Windows. Symlinks are
+  ignored by operations like branch, diff etc. with a warning as Symlinks
+  are not created on Windows.
   (Parth Malwankar, #81689)
 
 * Two new command hooks, ``pre_command`` and ``post_command``,
