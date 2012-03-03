@@ -7,8 +7,10 @@ bzr-builddeb (2.8.3) UNRELEASED; urgency=low
   * Generate xz files with the 'xz' utility rather than the Python
     'lzma' module, as the latter uses options not supported by pristine-
     xz. Closes: #660721
+  * Merge fix from Joel Pickett to fix typo in orig-dir option help
+    description. LP: #945413
 
- -- Jelmer Vernooij <jelmer@debian.org>  Fri, 02 Mar 2012 15:04:57 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Sat, 03 Mar 2012 16:59:22 +0100
 
 bzr-builddeb (2.8.2) unstable; urgency=low
 

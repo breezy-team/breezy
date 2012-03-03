@@ -70,7 +70,7 @@ split_opt = Option('split',
 build_dir_opt = Option('build-dir',
     help="The dir to use for building.", type=str)
 orig_dir_opt = Option('orig-dir',
-    help="Directory containing the .orig.tar.gz files. For use when only"
+    help="Directory containing the .orig.tar.gz files. For use when only "
        +"debian/ is versioned.", type=str)
 native_opt = Option('native',
     help="Build a native package.")
