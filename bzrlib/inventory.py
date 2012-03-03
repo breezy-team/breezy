@@ -218,7 +218,7 @@ class InventoryEntry(object):
         Traceback (most recent call last):
         InvalidEntryName: Invalid entry name: src/hello.c
         """
-        if '/' in name or '\\' in name:
+        if '/' in name:
             raise errors.InvalidEntryName(name=name)
         self.file_id = file_id
         self.revision = None
