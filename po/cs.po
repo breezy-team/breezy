@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-02-02 17:39+0100\n"
-"PO-Revision-Date: 2012-03-01 21:56+0000\n"
+"PO-Revision-Date: 2012-03-02 21:46+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-03-02 04:30+0000\n"
+"X-Launchpad-Export-Date: 2012-03-03 04:30+0000\n"
 "X-Generator: Launchpad (build 14886)\n"
 
 #: bzrlib/add.py:95
@@ -158,6 +158,10 @@ msgid ""
 "to Subversion's status command. To get output similar to svn -q,\n"
 "use bzr status -SV."
 msgstr ""
+"Nezapomeňte, že --short nebo -S vypisuje příznaky stavu pro každou položku,\n"
+"podobně jako příkaz status v Subversion. Abyste dostali výstup podobný svn -"
+"q\n"
+"použijte bzr status -SV."
 
 #: bzrlib/builtins.py:341
 msgid ""
@@ -166,6 +170,10 @@ msgid ""
 "files or directories is reported.  If a directory is given, status\n"
 "is reported for everything inside that directory."
 msgstr ""
+"Pokud nejsou zadány žádné argumenty, je zobrazen stav\n"
+"celého pracovního adresáře. Jinak je zobrazen stav zadaného\n"
+"souboru či adresáře. Pokud je zadán adresář,\n"
+"je zobrazen stav všeho uvnitř tohoto adresáře."
 
 #: bzrlib/builtins.py:346
 msgid ""
@@ -174,12 +182,19 @@ msgid ""
 "To skip the display of pending merge information altogether, use\n"
 "the no-pending option or specify a file/directory."
 msgstr ""
+"Předtím, než jsou sloučení odevzdána, jsou zobrazeny nevyřízené\n"
+"vrcholové revize sloučení. Pro zobrazení všech nevyřízených revizi použije "
+"volbu -v.\n"
+"Abyste zobrazení informací o sloučení přeskočili úplně, použijte\n"
+"volbu no-pending nebo zadejte soubor/složku."
 
 #: bzrlib/builtins.py:351
 msgid ""
 "To compare the working directory to a specific revision, pass a\n"
 "single revision to the revision argument."
 msgstr ""
+"Pro porovnání pracovního adresáře na určitou revizi, předejte\n"
+"jednu revizi do argumentu revize."
 
 #: bzrlib/builtins.py:354
 msgid ""
@@ -187,70 +202,77 @@ msgid ""
 "two revisions, pass a revision range to the revision argument.\n"
 "This will produce the same results as calling 'bzr diff --summarize'."
 msgstr ""
+"Abyste viděli, které soubory se v určité revizi změnili , nebo mezi\n"
+"dvěma revizemi, předejte rozsah revizí do argumentu revizí.\n"
+"Toto vytvoří stejný výsledek jako volání 'bzr diff --summarize'."
 
 #: bzrlib/builtins.py:363
 msgid "Use short status indicators."
-msgstr ""
+msgstr "Použijt krátké indikátory stavi"
 
 #: bzrlib/builtins.py:365
 msgid "Only show versioned files."
-msgstr ""
+msgstr "Zobrazit pouze soubory s verzí."
 
 #: bzrlib/builtins.py:367
 msgid "Don't show pending merges."
-msgstr ""
+msgstr "Nezobrazovat nevyřízená sloučení."
 
 #: bzrlib/builtins.py:370
 msgid "Do not mark object type using indicator."
-msgstr ""
+msgstr "Neoznačovat typ objektu pomocí indikátoru."
 
 #: bzrlib/builtins.py:385
 msgid "bzr status --revision takes exactly one or two revision specifiers"
 msgstr ""
+"bzr status --revision přijímá právě jeden nebo dva specifikátory revize"
 
 #: bzrlib/builtins.py:429 bzrlib/builtins.py:5183
 msgid "You can only supply one of revision_id or --revision"
-msgstr ""
+msgstr "Můžete zadat pouze jednu z revision_id nebo --revision"
 
 #: bzrlib/builtins.py:432 bzrlib/builtins.py:5185
 msgid "You must supply either --revision or a revision_id"
-msgstr ""
+msgstr "Musíte zadat buď --revision nebo revision_id"
 
 #: bzrlib/builtins.py:439
 #, python-format
 msgid "Repository %r does not support access to raw revision texts"
-msgstr ""
+msgstr "Úložiště %r nepodporuje přístup k vlastním textům revizí"
 
 #: bzrlib/builtins.py:450
 msgid "The repository {0} contains no revision {1}."
-msgstr ""
+msgstr "Úložiště {0} neobsahuje revizi {1}."
 
 #: bzrlib/builtins.py:457
 msgid "You cannot specify a NULL revision."
-msgstr ""
+msgstr "Nemůžete zadat nulovou revizi."
 
 #: bzrlib/builtins.py:549
 msgid "Remove the working tree from a given branch/checkout."
-msgstr ""
+msgstr "Odstranit pracovní strom ze zadané větve/získání."
 
 #: bzrlib/builtins.py:551
 msgid ""
 "Since a lightweight checkout is little more than a working tree\n"
 "this will refuse to run against one."
 msgstr ""
+"Protože odlehčené získání je trošku více než pracovní strom\n"
+"toto odmítne být v nějakém spuštěno."
 
 #: bzrlib/builtins.py:554
 msgid "To re-create the working tree, use \"bzr checkout\"."
-msgstr ""
+msgstr "Pro znovuvytvoření pracovního stromu použijte \"bzr checkout\"."
 
 #: bzrlib/builtins.py:560
 msgid ""
 "Remove the working tree even if it has uncommitted or shelved changes."
 msgstr ""
+"Odstranit pracovní strom i když má neodevzdané nebo uskladněné změny."
 
 #: bzrlib/builtins.py:574
 msgid "No working tree to remove"
-msgstr ""
+msgstr "Žádný pracovní strom k odstranění"
 
 #: bzrlib/builtins.py:576
 msgid "You cannot remove the working tree of a remote path"
