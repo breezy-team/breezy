@@ -9,8 +9,9 @@ bzr-builddeb (2.8.3) UNRELEASED; urgency=low
     xz. Closes: #660721
   * Merge fix from Joel Pickett to fix typo in orig-dir option help
     description. LP: #945413
+  * Bump standards version to 3.9.3 (no changes).
 
- -- Jelmer Vernooij <jelmer@debian.org>  Sat, 03 Mar 2012 16:59:22 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Sat, 03 Mar 2012 20:47:07 +0100
 
 bzr-builddeb (2.8.2) unstable; urgency=low
 
