@@ -15,11 +15,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import os
+from StringIO import StringIO
+
 from bzrlib import (
     bzrdir,
     conflicts,
     errors,
     symbol_versioning,
+    trace,
     transport,
     workingtree,
     workingtree_3,
@@ -28,6 +32,7 @@ from bzrlib import (
 from bzrlib.lockdir import LockDir
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
+from bzrlib.tests.features import SymlinkFeature
 from bzrlib.workingtree import (
     TreeEntry,
     TreeDirectory,
@@ -500,6 +505,36 @@ class TestAutoResolve(TestCaseWithTransport):
         self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          resolved)
         self.assertPathDoesNotExist('this/hello.BASE')
+
+    def test_unsupported_symlink_auto_resolve(self):
+        self.requireFeature(SymlinkFeature)
+        base = self.make_branch_and_tree('base')
+        self.build_tree_contents([('base/hello', 'Hello')])
+        base.add('hello', 'hello_id')
+        base.commit('commit 0')
+        other = base.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('other/hello', 'Hello')])
+        os.symlink('other/hello', 'other/foo')
+        other.add('foo', 'foo_id')
+        other.commit('commit symlink')
+        this = base.bzrdir.sprout('this').open_workingtree()
+        self.assertPathExists('this/hello')
+        self.build_tree_contents([('this/hello', 'Hello')])
+        this.commit('commit 2')
+        log = StringIO()
+        trace.push_log_file(log)
+        os_symlink = getattr(os, 'symlink', None)
+        os.symlink = None
+        try:
+            this.merge_from_branch(other.branch)
+        finally:
+            if os_symlink:
+                os.symlink = os_symlink
+        self.assertContainsRe(
+            log.getvalue(),
+            'bzr: warning: Unable to create symlink "foo" '
+            'on this platform')
+
 
     def test_auto_resolve_dir(self):
         tree = self.make_branch_and_tree('tree')
