@@ -655,6 +655,7 @@ create_signatures=always
             basis.unlock()
 
     def test_unsupported_symlink_commit(self):
+        self.requireFeature(SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello'])
         tree.add('hello')
