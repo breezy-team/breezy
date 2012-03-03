@@ -44,6 +44,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* It is now possible to version files with backslashes in their name
+  on platforms that support it. (Jelmer Vernooij, #81844)
+
 * Fix ``bzr config`` display for ``RegistryOption`` values.
   (Vincent Ladeuil, #930182)
 
