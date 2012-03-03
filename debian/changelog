@@ -1,4 +1,4 @@
-bzr-builddeb (2.8.3) UNRELEASED; urgency=low
+bzr-builddeb (2.8.3) unstable; urgency=low
 
   * Fix patch unapplying from DirStateRevisionTrees. LP: #923688
   * Bump distro-info dependency back to a recommends, to ease
