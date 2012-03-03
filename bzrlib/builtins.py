@@ -356,7 +356,7 @@ class cmd_status(Command):
     This will produce the same results as calling 'bzr diff --summarize'.
     """
 
-    # TODO: --no-recurse, --recurse options
+    # TODO: --no-recurse/-N, --recurse options
 
     takes_args = ['file*']
     takes_options = ['show-ids', 'revision', 'change', 'verbose',
@@ -791,7 +791,8 @@ class cmd_add(Command):
     takes_args = ['file*']
     takes_options = [
         Option('no-recurse',
-               help="Don't recursively add the contents of directories."),
+               help="Don't recursively add the contents of directories.",
+               short_name='N'),
         Option('dry-run',
                help="Show what would be done, but don't actually do anything."),
         'verbose',

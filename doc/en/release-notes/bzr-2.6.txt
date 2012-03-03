@@ -31,6 +31,9 @@ Improvements
   the URL scheme when accessing a HTTPS location.
   (Jelmer Vernooij, #125055)
 
+* Add short option alias ``-N`` for ``--no-recurse``.
+  (Jelmer Vernooij, #945904)
+
 * Avoid 'Invalid range access' errors when whole files are retrieved with
   transport.http.get() . (Vincent Ladeuil, #924746)
 
