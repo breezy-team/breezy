@@ -66,17 +66,15 @@ def fetch(outf, wants, shortname, remote_dir, local_dir):
     remote_repo = remote_dir.find_repository()
     local_repo = local_dir.find_repository()
     inter = InterRepository.get(remote_repo, local_repo)
-    def update_refs(heads):
-        ret = {}
-        for (sha1, ref) in wants:
-            ret[ref] = (sha1, None)
-        return ret
+    revs = []
+    for (sha1, ref) in wants:
+        revs.append((sha1, None))
     if (isinstance(remote_repo, GitRepository) and
         isinstance(local_repo, GitRepository)):
         lossy = False
     else:
         lossy = True
-    inter.fetch_refs(update_refs, lossy=lossy)
+    inter.fetch_objects(revs, lossy=lossy)
     outf.write("\n")
 
 

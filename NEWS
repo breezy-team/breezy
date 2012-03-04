@@ -1,5 +1,9 @@
 0.6.8	UNRELEASED
 
+ BUG FIXES
+
+  * Fixes duplicate tag warnings in 'git-remote-bzr' helper. (Jelmer Vernooij, #905275)
+
 0.6.7	2012-01-25
 
  CHANGES

@@ -20,17 +20,29 @@
 from cStringIO import StringIO
 import os
 
+from dulwich.repo import Repo
+
 from bzrlib.tests import (
     TestCaseWithTransport,
     TestSkipped,
     )
 
+from bzrlib.plugins.git.object_store import get_object_store
 from bzrlib.plugins.git.git_remote_helper import (
     RemoteHelper,
     open_local_dir,
     fastexporter,
     fetch,
     )
+
+
+def map_to_git_sha1(dir, bzr_revid):
+    object_store = get_object_store(dir.open_repository())
+    object_store.lock_read()
+    try:
+        return object_store._lookup_revision_sha1(bzr_revid)
+    finally:
+        object_store.unlock()
 
 
 class OpenLocalDirTests(TestCaseWithTransport):
@@ -67,6 +79,21 @@ class FetchTests(TestCaseWithTransport):
     def test_no_wants(self):
         r = self.fetch([])
         self.assertEquals("\n", r)
+
+    def test_unknown(self):
+        r = self.fetch([("11" * 20, "refs/heads/master")])
+        self.assertEquals("\n", r)
+
+    def test_simple(self):
+        self.build_tree(['remote/foo'])
+        self.remote_tree.add("foo")
+        revid = self.remote_tree.commit("msg")
+        git_sha1 = map_to_git_sha1(self.remote_dir, revid)
+        out = self.fetch([(git_sha1, 'HEAD')])
+        self.assertEquals(out, "\n")
+        r = Repo('local')
+        self.assertTrue(git_sha1 in r.object_store)
+        self.assertEquals({'HEAD': '0000000000000000000000000000000000000000'}, r.get_refs())
 
 
 class RemoteHelperTests(TestCaseWithTransport):

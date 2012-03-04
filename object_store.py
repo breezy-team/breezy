@@ -501,9 +501,8 @@ class BazaarObjectStore(BaseObjectStore):
             if blob.id != expected_sha and blob.data == "":
                 # Perhaps it's a symlink ?
                 tree = self.tree_cache.revision_tree(revision)
-                entry = tree.inventory[fileid]
-                if entry.kind == 'symlink':
-                    blob = symlink_to_blob(entry)
+                if tree.kind(fileid) == 'symlink':
+                    blob = symlink_to_blob(tree.get_symlink_target(fileid))
             _check_expected_sha(expected_sha, blob)
             yield blob
 
