@@ -29,6 +29,7 @@ from bzrlib.plugins.git.git_remote_helper import (
     RemoteHelper,
     open_local_dir,
     fastexporter,
+    fetch,
     )
 
 
@@ -47,6 +48,25 @@ class OpenLocalDirTests(TestCaseWithTransport):
     def test_from_dir(self):
         self.make_branch_and_tree('.', format='git')
         open_local_dir()
+
+
+class FetchTests(TestCaseWithTransport):
+
+    def setUp(self):
+        super(FetchTests, self).setUp()
+        self.local_dir = self.make_branch_and_tree('local', format='git').bzrdir
+        self.remote_tree = self.make_branch_and_tree('remote')
+        self.remote_dir = self.remote_tree.bzrdir
+        self.shortname = 'bzr'
+
+    def fetch(self, wants):
+        outf = StringIO()
+        fetch(outf, wants, self.shortname, self.remote_dir, self.local_dir)
+        return outf.getvalue()
+
+    def test_no_wants(self):
+        r = self.fetch([])
+        self.assertEquals("\n", r)
 
 
 class RemoteHelperTests(TestCaseWithTransport):
