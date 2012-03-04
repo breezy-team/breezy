@@ -80,10 +80,6 @@ class FetchTests(TestCaseWithTransport):
         r = self.fetch([])
         self.assertEquals("\n", r)
 
-    def test_unknown(self):
-        r = self.fetch([("11" * 20, "refs/heads/master")])
-        self.assertEquals("\n", r)
-
     def test_simple(self):
         self.build_tree(['remote/foo'])
         self.remote_tree.add("foo")
