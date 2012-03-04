@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-02-02 17:39+0100\n"
-"PO-Revision-Date: 2012-03-02 21:46+0000\n"
+"PO-Revision-Date: 2012-03-03 21:56+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-03-03 04:30+0000\n"
+"X-Launchpad-Export-Date: 2012-03-04 04:38+0000\n"
 "X-Generator: Launchpad (build 14886)\n"
 
 #: bzrlib/add.py:95
@@ -276,51 +276,55 @@ msgstr "Žádný pracovní strom k odstranění"
 
 #: bzrlib/builtins.py:576
 msgid "You cannot remove the working tree of a remote path"
-msgstr ""
+msgstr "Nemůžete odtranit pracovní strom ze vzdálené cesty"
 
 #: bzrlib/builtins.py:585
 msgid "You cannot remove the working tree from a lightweight checkout"
-msgstr ""
+msgstr "Nemůžete odstranit pracovní strom z odlehčeného získání"
 
 #: bzrlib/builtins.py:625
 msgid ""
 "The tree does not appear to be corrupt. You probably want \"bzr revert\" "
 "instead. Use \"--force\" if you are sure you want to reset the working tree."
 msgstr ""
+"Strom se nezdá být poškozen. Pravděpodobně chcete použít \"bzr revert\" "
+"místo toho. Pokud chcete pracovní strom resetovat předejte \"--force\"."
 
 #: bzrlib/builtins.py:636
 msgid ""
 ", the header appears corrupt, try passing -r -1 to set the state to the last "
 "commit"
 msgstr ""
+", hlavička se zdá být poškozena, zkuste předat -r -1 pro nastavení stavu na "
+"poslední odevzdání"
 
 #: bzrlib/builtins.py:640
 msgid "failed to reset the tree state{0}"
-msgstr ""
+msgstr "nelze resetovat stav stromu{0}"
 
 #: bzrlib/builtins.py:644
 msgid "Show current revision number."
-msgstr ""
+msgstr "Zobrazit číslo současné revize."
 
 #: bzrlib/builtins.py:646
 msgid "This is equal to the number of revisions on this branch."
-msgstr ""
+msgstr "Toto se rovná počtu revizí v této větvi."
 
 #: bzrlib/builtins.py:659
 msgid "--tree and --revision can not be used together"
-msgstr ""
+msgstr "--tree a --revision nelze použít dohromady"
 
 #: bzrlib/builtins.py:676 bzrlib/builtins.py:5967
 msgid "Tags can only be placed on a single revision, not on a range"
-msgstr ""
+msgstr "Značky mohou být umístěny pouze na jednu revizi, ne na rozsah"
 
 #: bzrlib/builtins.py:700
 msgid "Show revno of working tree."
-msgstr ""
+msgstr "Zobrazit číslo revize pracovního stromu."
 
 #: bzrlib/builtins.py:748
 msgid "Add specified files or directories."
-msgstr ""
+msgstr "Přidat určené soubory nebo adresáře."
 
 #: bzrlib/builtins.py:750
 msgid ""
@@ -328,6 +332,9 @@ msgid ""
 "of whether they were previously ignored.  A warning is given if\n"
 "any of the named files are already versioned."
 msgstr ""
+"V nerekurzivním režimu budou přidány všechny pojmenované položky, bez\n"
+"ohledu na to, zdali byli předtím ignorovány. Pokud je kterýkoli pojmenovaný\n"
+"soubory již s verzí, budete varováni."
 
 #: bzrlib/builtins.py:754
 msgid ""
@@ -339,18 +346,29 @@ msgid ""
 "are added.  This search proceeds recursively into versioned\n"
 "directories.  If no names are given '.' is assumed."
 msgstr ""
+"V rekurzivním režimu (výchozí), je se soubory zacházeno stejným\n"
+"způsobem, ale pro adresáře je chování jiné. O adresářích, které\n"
+"jsou již s verzí nebudete varováni. Všechny adresáře,\n"
+"ať už jsou s verzi, nebo bez, jsou prohledány pro soubory nebo\n"
+"podadresáře, které nejsou ani s verzí, ani ignorovány a tyto\n"
+"jsou přidány. Toto hledání pokračuje rekurzivně do adresářů\n"
+"s verzí. Pokud nejsou zadány žádné názvy, předpokládá se '.'"
 
 #: bzrlib/builtins.py:762
 msgid ""
 "A warning will be printed when nested trees are encountered,\n"
 "unless they are explicitly ignored."
 msgstr ""
+"Bude vypsáno varování, když budou zjištěny vnořené stromy,\n"
+"pokud nejsou výslovně ignorovány."
 
 #: bzrlib/builtins.py:765
 msgid ""
 "Therefore simply saying 'bzr add' will version all files that\n"
 "are currently unknown."
 msgstr ""
+"Proto jednoduchým zadáním 'bzr add' opatří verzí všechny soubory, které\n"
+"jsou v současnosti neznámé."
 
 #: bzrlib/builtins.py:768
 msgid ""
@@ -359,12 +377,18 @@ msgid ""
 "you should never need to explicitly add a directory, they'll just\n"
 "get added when you add a file in the directory."
 msgstr ""
+"Přidáním souboru, jehož nadřazený adresář je bez verze implicitně\n"
+"přidá i nadřazeného atd. až do kořene. To znamená,\n"
+"že byste nikdy neměli potřebovat explicitně přidat adresář, ty budou\n"
+"přidány, když přidáte soubor v tomto adresáři.."
 
 #: bzrlib/builtins.py:773
 msgid ""
 "--dry-run will show which files would be added, but not actually\n"
 "add them."
 msgstr ""
+"--dry-run zobrazí které soubory budou přidány,ale ve skutečnosti\n"
+"je nepřidá."
 
 #: bzrlib/builtins.py:776
 msgid ""
@@ -376,12 +400,22 @@ msgid ""
 "adds as a conflict). It is also useful when merging another project\n"
 "into a subdirectory of this one."
 msgstr ""
+"--file-ids-from se pokusí použít id souborů ze zadané cesty.\n"
+"Vyhledává id snažíc se najít shodující se nadřazený adresář se\n"
+"stejným názvem a pak čistě podle cesty. Tato volba je potřeba málokdy\n"
+"ale může být užitečná při přidávání stejného logického souboru do dvou\n"
+"větví, které budou později sloučeny (bez toho, aniž by z obou různých\n"
+"přidání vzešel konflikt). Může být také užitečná při slučování jiného "
+"projektu\n"
+"do podadresáře tohoto."
 
 #: bzrlib/builtins.py:784
 msgid ""
 "Any files matching patterns in the ignore list will not be added\n"
 "unless they are explicitly mentioned."
 msgstr ""
+"Všechny soubory shodující se se seznamem ignorování nebudou přidány\n"
+"pokud nejsou výslovně zmíněny."
 
 #: bzrlib/builtins.py:787
 msgid ""
@@ -389,48 +423,52 @@ msgid ""
 "add.maximum_file_size will be skipped. Named items are never skipped due\n"
 "to file size."
 msgstr ""
+"V rekurzivním režimu soubory větší než volba nastavení \n"
+"add.maximum_file_size budou přeskočeny. Pojmenované položky nejsou nikdy\n"
+"přeskočeny kvůli velikosti"
 
 #: bzrlib/builtins.py:794
 msgid "Don't recursively add the contents of directories."
-msgstr ""
+msgstr "Nepřidávat obsah adresářů rekurzivně."
 
 #: bzrlib/builtins.py:800
 msgid "Lookup file ids from this tree."
-msgstr ""
+msgstr "Vyhledat id v tomto stromu"
 
 #: bzrlib/builtins.py:836
 msgid "ignored {0} matching \"{1}\"\n"
-msgstr ""
+msgstr "{0} ignorováno, shoda s \"{1}\"\n"
 
 #: bzrlib/builtins.py:841
 msgid "Create a new versioned directory."
-msgstr ""
+msgstr "Vytvořit nový adresář s verzí."
 
 #: bzrlib/builtins.py:843
 msgid "This is equivalent to creating the directory and then adding it."
-msgstr ""
+msgstr "Toto se rovná vytvoření a přidání adresáře."
 
 #: bzrlib/builtins.py:850
 msgid "No error if existing, make parent directories as needed."
 msgstr ""
+"Žádná chyba pokud existuje, vytvořit nadřazené adresáře, jak je potřeba."
 
 #: bzrlib/builtins.py:884
 #, python-format
 msgid "added %s\n"
-msgstr ""
+msgstr "přidáno %s\n"
 
 #: bzrlib/builtins.py:926
 #, python-format
 msgid "invalid kind %r specified"
-msgstr ""
+msgstr "zadán neplatný druh %r"
 
 #: bzrlib/builtins.py:963
 msgid "Move or rename a file."
-msgstr ""
+msgstr "Přesunout nebo přejmnovat soubor."
 
 #: bzrlib/builtins.py:965
 msgid "    bzr mv SOURCE... DESTINATION"
-msgstr ""
+msgstr "    bzr mv ZDROJ... CÍL"
 
 #: bzrlib/builtins.py:967
 msgid ""
