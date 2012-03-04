@@ -27,6 +27,7 @@ from dulwich.objects import (
     Blob,
     Commit,
     Tree,
+    parse_timezone,
     )
 
 from bzrlib.plugins.git import tests
@@ -276,6 +277,18 @@ class RoundtripRevisionsFromGit(tests.TestCase):
         c.committer = "Committer <Committer>"
         c.commit_time = 4
         c.commit_timezone = -60 * 3
+        c.author_time = 5
+        c.author_timezone = 60 * 2
+        c.author = "Author <author>"
+        self.assertRoundtripCommit(c)
+
+    def test_commit_double_negative_timezone(self):
+        c = Commit()
+        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = "Some message"
+        c.committer = "Committer <Committer>"
+        c.commit_time = 4
+        (c.commit_timezone, c._commit_timezone_neg_utc) = parse_timezone("--700")
         c.author_time = 5
         c.author_timezone = 60 * 2
         c.author = "Author <author>"

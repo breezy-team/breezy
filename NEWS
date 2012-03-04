@@ -4,6 +4,11 @@
 
   * Fixes duplicate tag warnings in 'git-remote-bzr' helper. (Jelmer Vernooij, #905275)
 
+ TESTS
+
+  * Add test to verify that certain invalid timezones ("--700") are
+    roundtripped correctly. (Jelmer Vernooij, #697828)
+
 0.6.7	2012-01-25
 
  CHANGES
