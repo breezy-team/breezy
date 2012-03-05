@@ -537,7 +537,12 @@ class GitWorkingTree(workingtree.WorkingTree):
     def get_file_verifier(self, file_id, path=None, stat_value=None):
         if path is None:
             path = self.id2path(file_id)
-        return ("GIT", self.index[path][-2])
+        try:
+            return ("GIT", self.index[path][-2])
+        except KeyError:
+            if self._has_dir(path):
+                return ("GIT", None)
+            raise errors.NoSuchId(self, file_id)
 
     @needs_read_lock
     def get_file_sha1(self, file_id, path=None, stat_value=None):
