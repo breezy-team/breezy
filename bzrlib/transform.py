@@ -2117,6 +2117,10 @@ class _PreviewTree(tree.InventoryTree):
         return cur_parent
 
     def path2id(self, path):
+        if isinstance(path, list):
+            if path == []:
+                path = [""]
+            path = osutils.pathjoin(*path)
         return self._transform.final_file_id(self._path2trans_id(path))
 
     def id2path(self, file_id):
