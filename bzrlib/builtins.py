@@ -86,27 +86,27 @@ from bzrlib import (
 def _get_branch_location(control_dir, possible_transports=None):
     """Return location of branch for this control dir."""
     try:
-        this_branch = control_dir.open_branch(
-            possible_transports=possible_transports)
-        # This may be a heavy checkout, where we want the master branch
-        master_location = this_branch.get_bound_location()
-        if master_location is not None:
-            return master_location
-        # If not, use a local sibling
-        return this_branch.base
+        target = control_dir.get_branch_reference()
     except errors.NotBranchError:
-        format = control_dir.find_branch_format()
-        if getattr(format, 'get_reference', None) is not None:
-            return format.get_reference(control_dir)
-        else:
-            return control_dir.root_transport.base
+        return control_dir.root_transport.base
+    if target is not None:
+        return target
+    this_branch = control_dir.open_branch(
+        possible_transports=possible_transports)
+    # This may be a heavy checkout, where we want the master branch
+    master_location = this_branch.get_bound_location()
+    if master_location is not None:
+        return master_location
+    # If not, use a local sibling
+    return this_branch.base
 
 
 def _is_colocated(control_dir, possible_transports=None):
     """Check if the branch in control_dir is colocated.
 
     :param control_dir: Control directory
-    :return: Boolean indicating whether 
+    :return: Tuple with boolean indicating whether the branch is colocated
+        and the full URL to the actual branch
     """
     # This path is meant to be relative to the existing branch
     this_url = _get_branch_location(control_dir,
@@ -132,8 +132,7 @@ def _is_colocated(control_dir, possible_transports=None):
 def lookup_new_sibling_branch(control_dir, location, possible_transports=None):
     """Lookup the location for a new sibling branch.
 
-    :param control_dir: Control directory relative to which to look up
-        the name.
+    :param control_dir: Control directory to find sibling branches from
     :param location: Name of the new branch
     :return: Full location to the new branch
     """
@@ -150,7 +149,7 @@ def lookup_new_sibling_branch(control_dir, location, possible_transports=None):
 
 
 def open_sibling_branch(control_dir, location, possible_transports=None):
-    """Open a branch, possibly a sibling.
+    """Open a branch, possibly a sibling of another.
 
     :param control_dir: Control directory relative to which to lookup the
         location.
@@ -189,11 +188,36 @@ def open_nearby_branch(near=None, location=None, possible_transports=None):
         possible_transports=possible_transports)
 
 
-@symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 3, 0)))
-def tree_files(file_list, default_branch=u'.', canonicalize=True,
-    apply_view=True):
-    return internal_tree_files(file_list, default_branch, canonicalize,
-        apply_view)
+def iter_sibling_branches(control_dir, possible_transports=None):
+    """Iterate over the siblings of a branch.
+
+    :param control_dir: Control directory for which to look up the siblings
+    :return: Iterator over tuples with branch name and branch object
+    """
+    seen_urls = set()
+    try:
+        reference = control_dir.get_branch_reference()
+    except errors.NotBranchError:
+        # There is no active branch, just return the colocated branches.
+        for name, branch in control_dir.get_branches().iteritems():
+            yield name, branch
+        return
+    if reference is not None:
+        ref_branch = Branch.open(reference,
+            possible_transports=possible_transports)
+    else:
+        ref_branch = None
+    if ref_branch is None or ref_branch.name:
+        if ref_branch is not None:
+            control_dir = ref_branch.bzrdir
+        for name, branch in control_dir.get_branches().iteritems():
+            yield name, branch
+    else:
+        repo = ref_branch.bzrdir.find_repository()
+        for branch in repo.find_branches(using=True):
+            name = urlutils.relative_url(repo.user_url,
+                branch.user_url).rstrip("/")
+            yield name, branch
 
 
 def tree_files_for_add(file_list):
@@ -259,36 +283,6 @@ def _get_one_revision_tree(command_name, revisions, branch=None, tree=None):
         revision = _get_one_revision(command_name, revisions)
         rev_tree = revision.as_tree(branch)
     return rev_tree
-
-
-# XXX: Bad function name; should possibly also be a class method of
-# WorkingTree rather than a function.
-@symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 3, 0)))
-def internal_tree_files(file_list, default_branch=u'.', canonicalize=True,
-    apply_view=True):
-    """Convert command-line paths to a WorkingTree and relative paths.
-
-    Deprecated: use WorkingTree.open_containing_paths instead.
-
-    This is typically used for command-line processors that take one or
-    more filenames, and infer the workingtree that contains them.
-
-    The filenames given are not required to exist.
-
-    :param file_list: Filenames to convert.
-
-    :param default_branch: Fallback tree path to use if file_list is empty or
-        None.
-
-    :param apply_view: if True and a view is set, apply it or check that
-        specified files are within it
-
-    :return: workingtree, [relative_paths]
-    """
-    return WorkingTree.open_containing_paths(
-        file_list, default_directory='.',
-        canonicalize=True,
-        apply_view=True)
 
 
 def _get_view_info_for_change_reporter(tree):
@@ -1559,9 +1553,8 @@ class cmd_branches(Command):
                 active_branch = dir.open_branch(name="")
             except errors.NotBranchError:
                 active_branch = None
-            branches = dir.get_branches()
             names = {}
-            for name, branch in branches.iteritems():
+            for name, branch in iter_sibling_branches(dir):
                 if name == "":
                     continue
                 active = (active_branch is not None and
