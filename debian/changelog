@@ -1,4 +1,4 @@
-bzr (2.5.0-2) UNRELEASED; urgency=low
+bzr (2.5.0-2) unstable; urgency=low
 
   * Use parseable format for copyright file.
   * Bump standards version to 3.9.3.
