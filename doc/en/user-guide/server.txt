@@ -97,7 +97,7 @@ This example runs ``bzr serve`` on `localhost` port `1234`.
 
 server::
 
-    bzr serve --port=localhost:1234 --directory=/srv/bzr/repo
+    bzr serve --listen=localhost --port=1234 --directory=/srv/bzr/repo
 
 client::
 
