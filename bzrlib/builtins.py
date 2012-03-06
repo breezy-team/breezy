@@ -149,9 +149,9 @@ def lookup_new_sibling_branch(control_dir, location, possible_transports=None):
     return location
 
 
-def lookup_sibling_branch(control_dir, location, possible_transports=None):
-    """Lookup sibling branch.
-    
+def open_sibling_branch(control_dir, location, possible_transports=None):
+    """Open a branch, possibly a sibling.
+
     :param control_dir: Control directory relative to which to lookup the
         location.
     :param location: Location to look up
@@ -162,13 +162,31 @@ def lookup_sibling_branch(control_dir, location, possible_transports=None):
         return control_dir.open_branch(location, 
             possible_transports=possible_transports)
     except (errors.NotBranchError, errors.NoColocatedBranchSupport):
+        this_url = _get_branch_location(control_dir)
+        return Branch.open(
+            urlutils.join(
+                this_url, '..', urlutils.escape(location)))
+
+
+def open_nearby_branch(near=None, location=None, possible_transports=None):
+    """Open a nearby branch.
+
+    :param near: Optional location of container from which to open branch
+    :param location: Location of the branch
+    :return: Branch instance
+    """
+    if near is None:
+        if location is None:
+            location = "."
         try:
-            return Branch.open(location)
+            return Branch.open(location,
+                possible_transports=possible_transports)
         except errors.NotBranchError:
-            this_url = _get_branch_location(control_dir)
-            return Branch.open(
-                urlutils.join(
-                    this_url, '..', urlutils.escape(location)))
+            near = "."
+    cdir = controldir.ControlDir.open(near,
+        possible_transports=possible_transports)
+    return open_sibling_branch(cdir, location,
+        possible_transports=possible_transports)
 
 
 @symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 3, 0)))
@@ -6232,7 +6250,12 @@ class cmd_switch(Command):
                  possible_transports=possible_transports,
                  source_branch=branch).open_branch()
         else:
-            to_branch = lookup_sibling_branch(control_dir, to_location)
+            try:
+                to_branch = Branch.open(to_location,
+                    possible_transports=possible_transports)
+            except errors.NotBranchError:
+                to_branch = open_sibling_branch(control_dir, to_location,
+                    possible_transports=possible_transports)
         if revision is not None:
             revision = revision.as_revision_id(to_branch)
         switch.switch(control_dir, to_branch, force, revision_id=revision)
@@ -6435,13 +6458,13 @@ class cmd_remove_branch(Command):
 
     takes_args = ["location?"]
 
+    takes_options = ['directory']
+
     aliases = ["rmbranch"]
 
-    def run(self, location=None):
-        if location is None:
-            location = "."
-        cdir = controldir.ControlDir.open_containing(location)[0]
-        cdir.destroy_branch()
+    def run(self, directory=None, location=None):
+        br = open_nearby_branch(near=directory, location=location)
+        br.bzrdir.destroy_branch(br.name)
 
 
 class cmd_shelve(Command):
