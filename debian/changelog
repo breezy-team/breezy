@@ -4,8 +4,9 @@ bzr (2.5.0-2) UNRELEASED; urgency=low
   * Bump standards version to 3.9.3.
   * Add 05_allow_no_slash_controldirs: Allow control directories to not
     support creating branches with forward slashes in their name.
+  * Add basic test for autopkgtest.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Tue, 06 Mar 2012 01:25:53 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 06 Mar 2012 01:27:01 +0100
 
 bzr (2.5.0-1) unstable; urgency=low
 
