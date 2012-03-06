@@ -76,7 +76,7 @@ class TestRemoveBranch(TestCaseWithTransport):
         tree.bzrdir.create_branch(name="otherbranch")
         self.assertTrue(tree.bzrdir.has_branch('otherbranch'))
         self.run_bzr('rmbranch otherbranch -d %s' % tree.bzrdir.user_url)
-        dir = bzrdir.BzrDir.open('a')
+        dir = controldir.ControlDir.open('a')
         self.assertFalse(dir.has_branch('otherbranch'))
         self.assertTrue(dir.has_branch())
 
