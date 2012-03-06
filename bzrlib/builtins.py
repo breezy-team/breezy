@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -132,7 +132,8 @@ def _is_colocated(control_dir, possible_transports=None):
 def lookup_new_sibling_branch(control_dir, location, possible_transports=None):
     """Lookup the location for a new sibling branch.
 
-    :param branch: Branch relative to which to look up the name.
+    :param control_dir: Control directory relative to which to look up the
+        name.
     :param location: Name of the new branch
     :return: Full location to the new branch
     """
@@ -173,7 +174,7 @@ def lookup_sibling_branch(control_dir, location, possible_transports=None):
 def iter_sibling_branches(control_dir, possible_transports=None):
     """Iterate over the siblings of a branch.
 
-    :param branch: Branch for which to look up the siblings
+    :param control_dir: Control directory for which to look up the siblings
     :return: Iterator over tuples with branch name and branch object
     """
     seen_urls = set()
@@ -185,7 +186,8 @@ def iter_sibling_branches(control_dir, possible_transports=None):
             yield name, branch
         return
     if reference is not None:
-        ref_branch = Branch.open(reference, possible_transports=possible_transports)
+        ref_branch = Branch.open(reference,
+            possible_transports=possible_transports)
     else:
         ref_branch = None
     if ref_branch is None or ref_branch.name:
@@ -196,7 +198,8 @@ def iter_sibling_branches(control_dir, possible_transports=None):
     else:
         repo = ref_branch.bzrdir.find_repository()
         for branch in repo.find_branches(using=True):
-            name = urlutils.relative_url(repo.user_url, branch.user_url).rstrip("/")
+            name = urlutils.relative_url(repo.user_url,
+                branch.user_url).rstrip("/")
             yield name, branch
 
 
@@ -1531,9 +1534,8 @@ class cmd_branches(Command):
                 active_branch = dir.open_branch(name="")
             except errors.NotBranchError:
                 active_branch = None
-            branches = iter_sibling_branches(dir)
             names = {}
-            for name, branch in branches:
+            for name, branch in iter_sibling_branches(dir):
                 if name == "":
                     continue
                 active = (active_branch is not None and
