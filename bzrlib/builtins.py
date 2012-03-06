@@ -105,7 +105,7 @@ def _is_colocated(control_dir, possible_transports=None):
     """Check if the branch in control_dir is colocated.
 
     :param control_dir: Control directory
-    :return: Boolean indicating whether the branch is colocated
+    :return: Tuple with boolean indicating whether the branch is colocated
         and the full URL to the actual branch
     """
     # This path is meant to be relative to the existing branch
@@ -132,8 +132,7 @@ def _is_colocated(control_dir, possible_transports=None):
 def lookup_new_sibling_branch(control_dir, location, possible_transports=None):
     """Lookup the location for a new sibling branch.
 
-    :param control_dir: Control directory relative to which to look up the
-        name.
+    :param control_dir: Control directory to find sibling branches from
     :param location: Name of the new branch
     :return: Full location to the new branch
     """
