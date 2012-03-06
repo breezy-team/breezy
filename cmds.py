@@ -1429,6 +1429,17 @@ class cmd_dh_make(Command):
 class cmd_dep3_patch(Command):
     """Format the changes in a branch as a DEP-3 patch.
 
+    This will generate a patch file containing as much information
+    specified by DEP-3 (http://dep.debian.net/deps/dep3/) as possible.
+
+    The patch will contain all changes that are not merged into
+    the current branch (either that in the current working directory
+    or specified by --directory) but are present and committed
+    in the branch at the specified location.
+
+    To generate the "Status" header, this command will check the
+    upstream branch to verify if the change has made it upstream,
+    unless --no-upstream-check was specified.
     """
 
     takes_args = ["location?"]
