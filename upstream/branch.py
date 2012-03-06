@@ -24,6 +24,7 @@ from bzrlib.branch import Branch
 from bzrlib.errors import (
     InvalidRevisionId,
     InvalidRevisionSpec,
+    NoSuchTag,
     )
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import note
@@ -242,7 +243,7 @@ class UpstreamBranchSource(UpstreamSource):
             try:
                 return RevisionSpec.from_string(
                     revspec).as_revision_id(self.upstream_branch)
-            except InvalidRevisionSpec:
+            except (InvalidRevisionSpec, NoSuchTag):
                 raise PackageVersionNotPresent(package, version, self)
         raise PackageVersionNotPresent(package, version, self)
 

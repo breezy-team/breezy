@@ -479,6 +479,16 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         self.assertRaises(PackageVersionNotPresent,
             source.version_as_revision, "foo", "2.1+bzr4242")
 
+    def test_version_as_revision_no_tag(self):
+        # There is no relevant revspec known
+        config = DebBuildConfig(
+            [('user.conf', True), ('default.conf', False)],
+            branch=self.tree.branch)
+        source = UpstreamBranchSource(self.tree.branch, {"2.1": "tag:foo"},
+            config=config)
+        self.assertRaises(PackageVersionNotPresent,
+            source.version_as_revision, "foo", "2.1")
+
 
 class LazyUpstreamBranchSourceTests(TestCaseWithTransport):
     """Tests for LazyUpstreamBranchSource."""

@@ -1,3 +1,9 @@
+bzr-builddeb (2.8.4) UNRELEASED; urgency=low
+
+  * Cope with missing tags when looking up upstream versions.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 06 Mar 2012 13:52:37 +0100
+
 bzr-builddeb (2.8.3) unstable; urgency=low
 
   * Fix patch unapplying from DirStateRevisionTrees. LP: #923688
