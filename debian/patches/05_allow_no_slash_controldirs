@@ -1,0 +1,37 @@
+Description: Allow creating branches with a slash in their name
+Author: Jelmer Vernooij <jelmer@samba.org>
+Status: submitted upstream
+
+=== modified file 'bzrlib/errors.py'
+--- old/bzrlib/errors.py	2012-02-02 12:10:04 +0000
++++ new/bzrlib/errors.py	2012-03-05 23:50:00 +0000
+@@ -710,6 +710,15 @@
+     _fmt = 'Already a branch: "%(path)s".'
+ 
+ 
++class InvalidBranchName(PathError):
++
++    _fmt = "Invalid branch name: %(name)s"
++
++    def __init__(self, name):
++        BzrError.__init__(self)
++        self.name = name
++
++
+ class ParentBranchExists(AlreadyBranchError):
+ 
+     _fmt = 'Parent branch already exists: "%(path)s".'
+
+=== modified file 'bzrlib/tests/per_controldir_colo/test_supported.py'
+--- old/bzrlib/tests/per_controldir_colo/test_supported.py	2012-03-05 23:34:55 +0000
++++ new/bzrlib/tests/per_controldir_colo/test_supported.py	2012-03-05 23:50:00 +0000
+@@ -139,7 +139,7 @@
+         repo = self.make_repository('branch-1')
+         try:
+             target_branch = repo.bzrdir.create_branch(name='foo/bar')
+-        except errors.InvalidEntryName:
++        except errors.InvalidBranchName:
+             raise tests.TestNotApplicable(
+                 "format does not support branches with / in their name")
+         self.assertEqual(['foo/bar'], repo.bzrdir.get_branches().keys())
+
