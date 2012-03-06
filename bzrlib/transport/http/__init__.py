@@ -21,6 +21,7 @@ There are separate implementation modules for each http client implementation.
 
 from __future__ import absolute_import
 
+import os
 import re
 import urlparse
 import sys
@@ -236,7 +237,7 @@ class HttpTransportBase(ConnectedTransport):
                     # Split the received chunk
                     for offset, size in cur_coal.ranges:
                         start = cur_coal.start + offset
-                        rfile.seek(start, 0)
+                        rfile.seek(start, os.SEEK_SET)
                         data = rfile.read(size)
                         data_len = len(data)
                         if data_len != size:

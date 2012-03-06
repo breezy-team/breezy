@@ -62,10 +62,20 @@ class TestRemoveBranch(TestCaseWithTransport):
 
     def test_remove_colo(self):
         # Remove a colocated branch.
-        tree = self.example_branch('a', format='development-colo')
+        tree = self.example_branch('a')
         tree.bzrdir.create_branch(name="otherbranch")
         self.assertTrue(tree.bzrdir.has_branch('otherbranch'))
         self.run_bzr('rmbranch %s,branch=otherbranch' % tree.bzrdir.user_url)
+        dir = bzrdir.BzrDir.open('a')
+        self.assertFalse(dir.has_branch('otherbranch'))
+        self.assertTrue(dir.has_branch())
+
+    def test_remove_colo_directory(self):
+        # Remove a colocated branch.
+        tree = self.example_branch('a')
+        tree.bzrdir.create_branch(name="otherbranch")
+        self.assertTrue(tree.bzrdir.has_branch('otherbranch'))
+        self.run_bzr('rmbranch otherbranch -d %s' % tree.bzrdir.user_url)
         dir = bzrdir.BzrDir.open('a')
         self.assertFalse(dir.has_branch('otherbranch'))
         self.assertTrue(dir.has_branch())
@@ -83,6 +93,6 @@ class TestSmartServerRemoveBranch(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(2, self.hpss_calls)
+        self.assertLength(5, self.hpss_calls)
         self.assertLength(1, self.hpss_connections)
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

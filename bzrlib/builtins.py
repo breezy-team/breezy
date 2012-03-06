@@ -149,8 +149,8 @@ def lookup_new_sibling_branch(control_dir, location, possible_transports=None):
     return location
 
 
-def lookup_sibling_branch(control_dir, location, possible_transports=None):
-    """Lookup sibling branch.
+def open_sibling_branch(control_dir, location, possible_transports=None):
+    """Open a branch, possibly a sibling of another.
 
     :param control_dir: Control directory relative to which to lookup the
         location.
@@ -162,13 +162,31 @@ def lookup_sibling_branch(control_dir, location, possible_transports=None):
         return control_dir.open_branch(location, 
             possible_transports=possible_transports)
     except (errors.NotBranchError, errors.NoColocatedBranchSupport):
+        this_url = _get_branch_location(control_dir)
+        return Branch.open(
+            urlutils.join(
+                this_url, '..', urlutils.escape(location)))
+
+
+def open_nearby_branch(near=None, location=None, possible_transports=None):
+    """Open a nearby branch.
+
+    :param near: Optional location of container from which to open branch
+    :param location: Location of the branch
+    :return: Branch instance
+    """
+    if near is None:
+        if location is None:
+            location = "."
         try:
-            return Branch.open(location)
+            return Branch.open(location,
+                possible_transports=possible_transports)
         except errors.NotBranchError:
-            this_url = _get_branch_location(control_dir)
-            return Branch.open(
-                urlutils.join(
-                    this_url, '..', urlutils.escape(location)))
+            near = "."
+    cdir = controldir.ControlDir.open(near,
+        possible_transports=possible_transports)
+    return open_sibling_branch(cdir, location,
+        possible_transports=possible_transports)
 
 
 def iter_sibling_branches(control_dir, possible_transports=None):
@@ -1200,6 +1218,8 @@ class cmd_pull(Command):
             # Remembers if asked explicitly or no previous location is set
             if (remember
                 or (remember is None and branch_to.get_parent() is None)):
+                # FIXME: This shouldn't be done before the pull
+                # succeeds... -- vila 2012-01-02
                 branch_to.set_parent(branch_from.base)
 
         if revision is not None:
@@ -1642,10 +1662,8 @@ class cmd_renames(Command):
     def run(self, dir=u'.'):
         tree = WorkingTree.open_containing(dir)[0]
         self.add_cleanup(tree.lock_read().unlock)
-        new_inv = tree.root_inventory
         old_tree = tree.basis_tree()
         self.add_cleanup(old_tree.lock_read().unlock)
-        old_inv = old_tree.root_inventory
         renames = []
         iterator = tree.iter_changes(old_tree, include_unchanged=True)
         for f, paths, c, v, p, n, k, e in iterator:
@@ -3855,7 +3873,9 @@ class cmd_whoami(Command):
             if directory is None:
                 c = Branch.open_containing(u'.')[0].get_config_stack()
             else:
-                c = Branch.open(directory).get_config_stack()
+                b = Branch.open(directory)
+                self.add_cleanup(b.lock_write().unlock)
+                c = b.get_config_stack()
         else:
             c = _mod_config.GlobalStack()
         c.set('email', name)
@@ -3864,8 +3884,9 @@ class cmd_whoami(Command):
 class cmd_nick(Command):
     __doc__ = """Print or set the branch nickname.
 
-    If unset, the tree root directory name is used as the nickname.
-    To print the current nickname, execute with no argument.
+    If unset, the colocated branch name is used for colocated branches, and
+    the branch directory name is used for other branches.  To print the
+    current nickname, execute with no argument.
 
     Bound branches use the nickname of its master branch unless it is set
     locally.
@@ -5255,10 +5276,12 @@ class cmd_bind(Command):
             else:
                 if location is None:
                     if b.get_bound_location() is not None:
-                        raise errors.BzrCommandError(gettext('Branch is already bound'))
+                        raise errors.BzrCommandError(
+                            gettext('Branch is already bound'))
                     else:
-                        raise errors.BzrCommandError(gettext('No location supplied '
-                            'and no previous location known'))
+                        raise errors.BzrCommandError(
+                            gettext('No location supplied'
+                                    ' and no previous location known'))
         b_other = Branch.open(location)
         try:
             b.bind(b_other)
@@ -5468,12 +5491,13 @@ class cmd_serve(Command):
                help="Protocol to serve.",
                lazy_registry=('bzrlib.transport', 'transport_server_registry'),
                value_switches=True),
+        Option('listen',
+               help='Listen for connections on nominated address.', type=str),
         Option('port',
-               help='Listen for connections on nominated port of the form '
-                    '[hostname:]portnumber.  Passing 0 as the port number will '
-                    'result in a dynamically allocated port.  The default port '
-                    'depends on the protocol.',
-               type=str),
+               help='Listen for connections on nominated port.  Passing 0 as '
+                    'the port number will result in a dynamically allocated '
+                    'port.  The default port depends on the protocol.',
+               type=int),
         custom_help('directory',
                help='Serve contents of this directory.'),
         Option('allow-writes',
@@ -5489,39 +5513,19 @@ class cmd_serve(Command):
                help='Override the default idle client timeout (5min).'),
         ]
 
-    def get_host_and_port(self, port):
-        """Return the host and port to run the smart server on.
-
-        If 'port' is None, None will be returned for the host and port.
-
-        If 'port' has a colon in it, the string before the colon will be
-        interpreted as the host.
-
-        :param port: A string of the port to run the server on.
-        :return: A tuple of (host, port), where 'host' is a host name or IP,
-            and port is an integer TCP/IP port.
-        """
-        host = None
-        if port is not None:
-            if ':' in port:
-                host, port = port.split(':')
-            port = int(port)
-        return host, port
-
-    def run(self, port=None, inet=False, directory=None, allow_writes=False,
-            protocol=None, client_timeout=None):
+    def run(self, listen=None, port=None, inet=False, directory=None,
+            allow_writes=False, protocol=None, client_timeout=None):
         from bzrlib import transport
         if directory is None:
             directory = os.getcwd()
         if protocol is None:
             protocol = transport.transport_server_registry.get()
-        host, port = self.get_host_and_port(port)
         url = transport.location_to_url(directory)
         if not allow_writes:
             url = 'readonly+' + url
         t = transport.get_transport_from_url(url)
         try:
-            protocol(t, host, port, inet, client_timeout)
+            protocol(t, listen, port, inet, client_timeout)
         except TypeError, e:
             # We use symbol_versioning.deprecated_in just so that people
             # grepping can find it here.
@@ -5674,6 +5678,7 @@ class cmd_merge_directive(Command):
         if public_branch is None:
             public_branch = stored_public_branch
         elif stored_public_branch is None:
+            # FIXME: Should be done only if we succeed ? -- vila 2012-01-03
             branch.set_public_branch(public_branch)
         if not include_bundle and public_branch is None:
             raise errors.BzrCommandError(gettext('No public branch specified or'
@@ -6239,7 +6244,12 @@ class cmd_switch(Command):
                  possible_transports=possible_transports,
                  source_branch=branch).open_branch()
         else:
-            to_branch = lookup_sibling_branch(control_dir, to_location)
+            try:
+                to_branch = Branch.open(to_location,
+                    possible_transports=possible_transports)
+            except errors.NotBranchError:
+                to_branch = open_sibling_branch(control_dir, to_location,
+                    possible_transports=possible_transports)
         if revision is not None:
             revision = revision.as_revision_id(to_branch)
         switch.switch(control_dir, to_branch, force, revision_id=revision)
@@ -6442,13 +6452,13 @@ class cmd_remove_branch(Command):
 
     takes_args = ["location?"]
 
+    takes_options = ['directory']
+
     aliases = ["rmbranch"]
 
-    def run(self, location=None):
-        if location is None:
-            location = "."
-        cdir = controldir.ControlDir.open_containing(location)[0]
-        cdir.destroy_branch()
+    def run(self, directory=None, location=None):
+        br = open_nearby_branch(near=directory, location=location)
+        br.bzrdir.destroy_branch(br.name)
 
 
 class cmd_shelve(Command):

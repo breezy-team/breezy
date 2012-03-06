@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1196,6 +1196,10 @@ class TestBranchConfig(tests.TestCaseWithTransport):
     def test_autonick_urlencoded(self):
         b = self.make_branch('!repo')
         self.assertEqual('!repo', b.get_config().get_nickname())
+
+    def test_autonick_uses_branch_name(self):
+        b = self.make_branch('foo', name='bar')
+        self.assertEqual('bar', b.get_config().get_nickname())
 
     def test_warn_if_masked(self):
         warnings = []
@@ -2924,6 +2928,11 @@ class TestMutableStore(TestStore):
     def test_save_emptied_succeeds(self):
         store = self.get_store(self)
         store._load_from_string('foo=bar\n')
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
+        if self.store_id in ('branch', 'remote_branch'):
+            # branch stores requires write locked branches
+            self.addCleanup(store.branch.lock_write().unlock)
         section = store.get_mutable_section(None)
         section.remove('foo')
         store.save()
@@ -2950,6 +2959,11 @@ class TestMutableStore(TestStore):
 
     def test_set_option_in_empty_store(self):
         store = self.get_store(self)
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
+        if self.store_id in ('branch', 'remote_branch'):
+            # branch stores requires write locked branches
+            self.addCleanup(store.branch.lock_write().unlock)
         section = store.get_mutable_section(None)
         section.set('foo', 'bar')
         store.save()
@@ -2961,6 +2975,11 @@ class TestMutableStore(TestStore):
     def test_set_option_in_default_section(self):
         store = self.get_store(self)
         store._load_from_string('')
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
+        if self.store_id in ('branch', 'remote_branch'):
+            # branch stores requires write locked branches
+            self.addCleanup(store.branch.lock_write().unlock)
         section = store.get_mutable_section(None)
         section.set('foo', 'bar')
         store.save()
@@ -2972,6 +2991,11 @@ class TestMutableStore(TestStore):
     def test_set_option_in_named_section(self):
         store = self.get_store(self)
         store._load_from_string('')
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
+        if self.store_id in ('branch', 'remote_branch'):
+            # branch stores requires write locked branches
+            self.addCleanup(store.branch.lock_write().unlock)
         section = store.get_mutable_section('baz')
         section.set('foo', 'bar')
         store.save()
@@ -2981,8 +3005,13 @@ class TestMutableStore(TestStore):
         self.assertSectionContent(('baz', {'foo': 'bar'}), sections[0])
 
     def test_load_hook(self):
-        # We first needs to ensure that the store exists
+        # First, we need to ensure that the store exists
         store = self.get_store(self)
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
+        if self.store_id in ('branch', 'remote_branch'):
+            # branch stores requires write locked branches
+            self.addCleanup(store.branch.lock_write().unlock)
         section = store.get_mutable_section('baz')
         section.set('foo', 'bar')
         store.save()
@@ -3004,6 +3033,11 @@ class TestMutableStore(TestStore):
         config.ConfigHooks.install_named_hook('save', hook, None)
         self.assertLength(0, calls)
         store = self.get_store(self)
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
+        if self.store_id in ('branch', 'remote_branch'):
+            # branch stores requires write locked branches
+            self.addCleanup(store.branch.lock_write().unlock)
         section = store.get_mutable_section('baz')
         section.set('foo', 'bar')
         store.save()
@@ -3640,6 +3674,41 @@ class TestMemoryStack(tests.TestCase):
         self.assertEquals('bar', conf.get('foo'))
 
 
+class TestStackIterSections(tests.TestCase):
+
+    def test_empty_stack(self):
+        conf = config.Stack([])
+        sections = list(conf.iter_sections())
+        self.assertLength(0, sections)
+
+    def test_empty_store(self):
+        store = config.IniFileStore()
+        store._load_from_string('')
+        conf = config.Stack([store.get_sections])
+        sections = list(conf.iter_sections())
+        self.assertLength(0, sections)
+
+    def test_simple_store(self):
+        store = config.IniFileStore()
+        store._load_from_string('foo=bar')
+        conf = config.Stack([store.get_sections])
+        tuples = list(conf.iter_sections())
+        self.assertLength(1, tuples)
+        (found_store, found_section) = tuples[0]
+        self.assertIs(store, found_store)
+
+    def test_two_stores(self):
+        store1 = config.IniFileStore()
+        store1._load_from_string('foo=bar')
+        store2 = config.IniFileStore()
+        store2._load_from_string('bar=qux')
+        conf = config.Stack([store1.get_sections, store2.get_sections])
+        tuples = list(conf.iter_sections())
+        self.assertLength(2, tuples)
+        self.assertIs(store1, tuples[0][0])
+        self.assertIs(store2, tuples[1][0])
+
+
 class TestStackWithTransport(tests.TestCaseWithTransport):
 
     scenarios = [(key, {'get_stack': builder}) for key, builder
@@ -3835,7 +3904,8 @@ class TestStackExpandOptions(tests.TestCaseWithTransport):
         super(TestStackExpandOptions, self).setUp()
         self.overrideAttr(config, 'option_registry', config.OptionRegistry())
         self.registry = config.option_registry
-        self.conf = build_branch_stack(self)
+        store = config.TransportIniFileStore(self.get_transport(), 'foo.conf')
+        self.conf = config.Stack([store.get_sections], store)
 
     def assertExpansion(self, expected, string, env=None):
         self.assertEquals(expected, self.conf.expand_options(string, env))
@@ -3924,8 +3994,11 @@ bar=middle,{baz}
 baz=end
 list={foo}
 ''')
-        self.registry.register(
-            config.ListOption('list'))
+        self.registry.register(config.ListOption('list'))
+        # Register an intermediate option as a list to ensure no conversion
+        # happen while expanding. Conversion should only occur for the original
+        # option ('list' here).
+        self.registry.register(config.ListOption('baz'))
         self.assertEquals(['start', 'middle', 'end'],
                            self.conf.get('list', expand=True))
 

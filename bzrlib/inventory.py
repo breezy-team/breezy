@@ -850,22 +850,6 @@ class CommonInventory(object):
             descend(self.root, u'')
         return accum
 
-    def directories(self):
-        """Return (path, entry) pairs for all directories, including the root.
-        """
-        accum = []
-        def descend(parent_ie, parent_path):
-            accum.append((parent_path, parent_ie))
-
-            kids = [(ie.name, ie) for ie in parent_ie.children.itervalues() if ie.kind == 'directory']
-            kids.sort()
-
-            for name, child_ie in kids:
-                child_path = osutils.pathjoin(parent_path, name)
-                descend(child_ie, child_path)
-        descend(self.root, u'')
-        return accum
-
     def path2id(self, relpath):
         """Walk down through directories to return entry of last component.
 

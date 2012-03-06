@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -778,22 +778,6 @@ class TestBound(per_branch.TestCaseWithBranch):
         self.assertNotEqual(None, branch.get_master_branch())
         branch.unbind()
         self.assertEqual(None, branch.get_master_branch())
-
-    def test_unlocked_does_not_cache_master_branch(self):
-        """Unlocked branches do not cache the result of get_master_branch."""
-        master = self.make_branch('master')
-        branch1 = self.make_branch('branch')
-        try:
-            branch1.bind(master)
-        except errors.UpgradeRequired:
-            raise tests.TestNotApplicable('Format does not support binding')
-        # Open branch1 again
-        branch2 = branch1.bzrdir.open_branch()
-        self.assertNotEqual(None, branch1.get_master_branch())
-        # Unbind the branch via branch2.  branch1 isn't locked so will
-        # immediately return the new value for get_master_branch.
-        branch2.unbind()
-        self.assertEqual(None, branch1.get_master_branch())
 
     def test_bind_clears_cached_master_branch(self):
         """b.bind clears any cached value of b.get_master_branch."""
