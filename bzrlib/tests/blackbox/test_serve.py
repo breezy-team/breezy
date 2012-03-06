@@ -34,7 +34,7 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
+from bzrlib.controldir import ControlDir
 from bzrlib.smart import client, medium
 from bzrlib.smart.server import (
     BzrServerFactory,
@@ -221,7 +221,7 @@ class TestBzrServe(TestBzrServeBase):
         process, transport = self.start_server_inet(['--allow-writes'])
 
         # We get a working branch, and can create a directory
-        branch = BzrDir.open_from_transport(transport).open_branch()
+        branch = ControlDir.open_from_transport(transport).open_branch()
         self.make_read_requests(branch)
         transport.mkdir('adir')
         self.assertInetServerShutsdownCleanly(process)
@@ -263,7 +263,7 @@ class TestBzrServe(TestBzrServeBase):
         log_fname = os.getcwd() + '/server.log'
         self.overrideEnv('BZR_LOG', log_fname)
         process, transport = self.start_server_inet(['-Dhpss'])
-        branch = BzrDir.open_from_transport(transport).open_branch()
+        branch = ControlDir.open_from_transport(transport).open_branch()
         self.make_read_requests(branch)
         self.assertInetServerShutsdownCleanly(process)
         f = open(log_fname, 'rb')

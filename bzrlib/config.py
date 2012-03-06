@@ -2174,8 +2174,8 @@ class BzrDirConfig(object):
 
         It may be set to a location, or None.
 
-        This policy affects all branches contained by this bzrdir, except for
-        those under repositories.
+        This policy affects all branches contained by this control dir, except
+        for those under repositories.
         """
         if self._config is None:
             raise errors.BzrError("Cannot set configuration in %s" % self._bzrdir)
@@ -2189,8 +2189,8 @@ class BzrDirConfig(object):
 
         This will either be a location, or None.
 
-        This policy affects all branches contained by this bzrdir, except for
-        those under repositories.
+        This policy affects all branches contained by this control dir, except
+        for those under repositories.
         """
         if self._config is None:
             return None

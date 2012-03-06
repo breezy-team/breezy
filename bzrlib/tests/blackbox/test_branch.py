@@ -363,12 +363,12 @@ class TestBranchStacked(tests.TestCaseWithTransport):
 
     def assertRevisionInRepository(self, repo_path, revid):
         """Check that a revision is in a repo, disregarding stacking."""
-        repo = bzrdir.BzrDir.open(repo_path).open_repository()
+        repo = controldir.ControlDir.open(repo_path).open_repository()
         self.assertTrue(repo.has_revision(revid))
 
     def assertRevisionNotInRepository(self, repo_path, revid):
         """Check that a revision is not in a repo, disregarding stacking."""
-        repo = bzrdir.BzrDir.open(repo_path).open_repository()
+        repo = controldir.ControlDir.open(repo_path).open_repository()
         self.assertFalse(repo.has_revision(revid))
 
     def assertRevisionsInBranchRepository(self, revid_list, branch_path):
@@ -400,7 +400,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
         # capable of supporting stacking, but not actually have a stacked_on
         # branch configured
         self.assertRaises(errors.NotStacked,
-            bzrdir.BzrDir.open('newbranch').open_branch().get_stacked_on_url)
+            controldir.ControlDir.open('newbranch').open_branch().get_stacked_on_url)
 
     def test_branch_stacked_branch_stacked(self):
         """Asking to stack on a stacked branch does work"""

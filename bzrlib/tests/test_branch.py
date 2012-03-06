@@ -28,6 +28,7 @@ from bzrlib import (
     branch as _mod_branch,
     bzrdir,
     config,
+    controldir,
     errors,
     symbol_versioning,
     tests,
@@ -244,7 +245,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
         # but open_downlevel will work
         self.assertEqual(
             format.open(dir),
-            bzrdir.BzrDir.open(self.get_url()).open_branch(unsupported=True))
+            controldir.ControlDir.open(self.get_url()).open_branch(unsupported=True))
         # unregister the format
         self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
             _mod_branch.BranchFormat.unregister_format, format)
@@ -488,7 +489,7 @@ class BzrBranch8(tests.TestCaseWithTransport):
 
     def make_branch(self, location, format=None):
         if format is None:
-            format = bzrdir.format_registry.make_bzrdir('1.9')
+            format = controldir.format_registry.make_bzrdir('1.9')
             format.set_branch_format(_mod_branch.BzrBranchFormat8())
         return tests.TestCaseWithTransport.make_branch(
             self, location, format=format)

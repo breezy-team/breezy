@@ -32,7 +32,7 @@ import stat
 
 from bzrlib import tests
 from bzrlib.branch import BzrBranch
-from bzrlib.bzrdir import BzrDir
+from bzrlib.controldir import ControlDir
 from bzrlib.remote import RemoteBranchFormat
 from bzrlib.tests.test_permissions import check_mode_r
 
@@ -126,7 +126,7 @@ class TestPermissions(tests.TestCaseWithTransport):
             raise tests.TestNotApplicable('Remote branches have no'
                                           ' permission logic')
         self.make_branch_and_tree('.')
-        bzrdir = BzrDir.open('.')
+        bzrdir = ControlDir.open('.')
         # Monkey patch the transport
         _orig_stat = bzrdir.transport.stat
         def null_perms_stat(*args, **kwargs):

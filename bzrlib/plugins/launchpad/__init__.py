@@ -53,8 +53,8 @@ from bzrlib.i18n import gettext
 
 from bzrlib import (
     branch as _mod_branch,
-    bzrdir,
     config as _mod_config,
+    controldir,
     lazy_regex,
     # Since we are a built-in plugin we share the bzrlib version
     version_info,
@@ -353,7 +353,7 @@ class cmd_lp_propose_merge(Command):
     def run(self, submit_branch=None, review=None, staging=False,
             message=None, approve=False, fixes=None):
         from bzrlib.plugins.launchpad import lp_propose
-        tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
+        tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
             '.')
         if review is None:
             reviews = None

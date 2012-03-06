@@ -32,6 +32,7 @@ from testtools.matchers import DocTestMatches
 import bzrlib
 from bzrlib import (
         bzrdir,
+        controldir,
         debug,
         errors,
         osutils,
@@ -1628,7 +1629,8 @@ class WritableEndToEndTests(SmartTCPTests):
         transport = self.transport
         t = self.backing_transport
         bzrdir.BzrDirFormat.get_default_format().initialize_on_transport(t)
-        result_dir = bzrdir.BzrDir.open_containing_from_transport(transport)
+        result_dir = controldir.ControlDir.open_containing_from_transport(
+            transport)
 
 
 class ReadOnlyEndToEndTests(SmartTCPTests):

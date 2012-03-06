@@ -2054,7 +2054,7 @@ class cmd_init(Command):
          RegistryOption('format',
                 help='Specify a format for this branch. '
                 'See "help formats".',
-                lazy_registry=('bzrlib.bzrdir', 'format_registry'),
+                lazy_registry=('bzrlib.controldir', 'format_registry'),
                 converter=lambda name: controldir.format_registry.make_bzrdir(name),
                 value_switches=True,
                 title="Branch format",

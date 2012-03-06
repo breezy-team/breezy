@@ -21,8 +21,8 @@ import sys
 import time
 
 from bzrlib import (
-    bzrdir,
     config,
+    controldir,
     errors,
     tests,
     transport as _mod_transport,
@@ -191,12 +191,12 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
 
     def test_push_support(self):
         self.build_tree(['a/', 'a/foo'])
-        t = bzrdir.BzrDir.create_standalone_workingtree('a')
+        t = controldir.ControlDir.create_standalone_workingtree('a')
         b = t.branch
         t.add('foo')
         t.commit('foo', rev_id='a1')
 
-        b2 = bzrdir.BzrDir.create_branch_and_repo(self.get_url('/b'))
+        b2 = controldir.ControlDir.create_branch_and_repo(self.get_url('/b'))
         b2.pull(b)
 
         self.assertEquals(b2.last_revision(), 'a1')

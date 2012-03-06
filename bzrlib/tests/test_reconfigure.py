@@ -16,7 +16,7 @@
 
 from bzrlib import (
     branch as _mod_branch,
-    bzrdir,
+    controldir,
     errors,
     reconfigure,
     repository,
@@ -72,7 +72,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         checkout = branch.create_checkout('checkout')
         reconfiguration = reconfigure.Reconfigure.to_branch(checkout.bzrdir)
         reconfiguration.apply()
-        reconfigured = bzrdir.BzrDir.open('checkout').open_branch()
+        reconfigured = controldir.ControlDir.open('checkout').open_branch()
         self.assertIs(None, reconfigured.get_bound_location())
 
     def prepare_lightweight_checkout_to_branch(self):
@@ -445,7 +445,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
             r"Requested reconfiguration of '.*' is not supported.")
 
     def test_lightweight_checkout_to_tree_preserves_reference_locations(self):
-        format = bzrdir.format_registry.make_bzrdir('1.9')
+        format = controldir.format_registry.make_bzrdir('1.9')
         format.set_branch_format(_mod_branch.BzrBranchFormat8())
         tree = self.make_branch_and_tree('tree', format=format)
         tree.branch.set_reference_info('file_id', 'path', '../location')

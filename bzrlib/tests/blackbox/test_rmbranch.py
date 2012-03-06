@@ -18,7 +18,7 @@
 """Black-box tests for bzr rmbranch."""
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     )
 from bzrlib.tests import (
     TestCaseWithTransport,
@@ -44,7 +44,7 @@ class TestRemoveBranch(TestCaseWithTransport):
         self.run_bzr_error(['Branch is active. Use --force to remove it.\n'],
             'rmbranch a')
         self.run_bzr('rmbranch --force a')
-        dir = bzrdir.BzrDir.open('a')
+        dir = controldir.ControlDir.open('a')
         self.assertFalse(dir.has_branch())
         self.assertPathExists('a/hello')
         self.assertPathExists('a/goodbye')
@@ -60,7 +60,7 @@ class TestRemoveBranch(TestCaseWithTransport):
         tree = self.example_tree('a')
         tree.bzrdir.destroy_workingtree()
         self.run_bzr('rmbranch', working_dir='a')
-        dir = bzrdir.BzrDir.open('a')
+        dir = controldir.ControlDir.open('a')
         self.assertFalse(dir.has_branch())
 
     def test_no_arg(self):
@@ -69,7 +69,7 @@ class TestRemoveBranch(TestCaseWithTransport):
         self.run_bzr_error(['Branch is active. Use --force to remove it.\n'],
             'rmbranch a')
         self.run_bzr('rmbranch --force', working_dir='a')
-        dir = bzrdir.BzrDir.open('a')
+        dir = controldir.ControlDir.open('a')
         self.assertFalse(dir.has_branch())
 
     def test_remove_colo(self):
@@ -78,7 +78,7 @@ class TestRemoveBranch(TestCaseWithTransport):
         tree.bzrdir.create_branch(name="otherbranch")
         self.assertTrue(tree.bzrdir.has_branch('otherbranch'))
         self.run_bzr('rmbranch %s,branch=otherbranch' % tree.bzrdir.user_url)
-        dir = bzrdir.BzrDir.open('a')
+        dir = controldir.ControlDir.open('a')
         self.assertFalse(dir.has_branch('otherbranch'))
         self.assertTrue(dir.has_branch())
 
@@ -88,7 +88,7 @@ class TestRemoveBranch(TestCaseWithTransport):
         tree.bzrdir.create_branch(name="otherbranch")
         self.assertTrue(tree.bzrdir.has_branch('otherbranch'))
         self.run_bzr('rmbranch otherbranch -d %s' % tree.bzrdir.user_url)
-        dir = bzrdir.BzrDir.open('a')
+        dir = controldir.ControlDir.open('a')
         self.assertFalse(dir.has_branch('otherbranch'))
         self.assertTrue(dir.has_branch())
 

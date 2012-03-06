@@ -24,7 +24,7 @@ and then upgraded to the new format."""
 
 from bzrlib import (
     branch,
-    bzrdir,
+    controldir,
     tests,
     upgrade,
     workingtree,
@@ -45,7 +45,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
         b.set_parent('file:///EF')
         b.set_bound_location('file:///GH')
         b.set_push_location('file:///IJ')
-        target = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
+        target = controldir.format_registry.make_bzrdir('dirstate-with-subtree')
         converter = b.bzrdir._format.get_converter(target)
         converter.convert(b.bzrdir, None)
         new_branch = branch.Branch.open(self.get_url('branch'))
@@ -64,7 +64,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
 
     def test_convert_branch7_branch8(self):
         b = self.make_branch('branch', format='1.9')
-        target = bzrdir.format_registry.make_bzrdir('1.9')
+        target = controldir.format_registry.make_bzrdir('1.9')
         target.set_branch_format(branch.BzrBranchFormat8())
         converter = b.bzrdir._format.get_converter(target)
         converter.convert(b.bzrdir, None)
@@ -75,7 +75,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
     def test_convert_knit_dirstate_empty(self):
         # test that asking for an upgrade from knit to dirstate works.
         tree = self.make_branch_and_tree('tree', format='knit')
-        target = bzrdir.format_registry.make_bzrdir('dirstate')
+        target = controldir.format_registry.make_bzrdir('dirstate')
         converter = tree.bzrdir._format.get_converter(target)
         converter.convert(tree.bzrdir, None)
         new_tree = workingtree.WorkingTree.open('tree')
@@ -88,7 +88,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree', format='knit')
         self.build_tree(['tree/file'])
         tree.add(['file'], ['file-id'])
-        target = bzrdir.format_registry.make_bzrdir('dirstate')
+        target = controldir.format_registry.make_bzrdir('dirstate')
         converter = tree.bzrdir._format.get_converter(target)
         converter.convert(tree.bzrdir, None)
         new_tree = workingtree.WorkingTree.open('tree')
@@ -99,7 +99,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
         # test that asking for an upgrade from knit to dirstate works.
         tree = self.make_branch_and_tree('tree', format='knit')
         rev_id = tree.commit('first post')
-        target = bzrdir.format_registry.make_bzrdir('dirstate')
+        target = controldir.format_registry.make_bzrdir('dirstate')
         converter = tree.bzrdir._format.get_converter(target)
         converter.convert(tree.bzrdir, None)
         new_tree = workingtree.WorkingTree.open('tree')
@@ -116,7 +116,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
         rev_id2 = tree.commit('second post')
         rev_id3 = merge_tree.commit('second merge post')
         tree.merge_from_branch(merge_tree.branch)
-        target = bzrdir.format_registry.make_bzrdir('dirstate')
+        target = controldir.format_registry.make_bzrdir('dirstate')
         converter = tree.bzrdir._format.get_converter(target)
         converter.convert(tree.bzrdir, None)
         new_tree = workingtree.WorkingTree.open('tree')
@@ -130,8 +130,8 @@ class TestUpgrade(tests.TestCaseWithTransport):
 
 class TestSmartUpgrade(tests.TestCaseWithTransport):
 
-    from_format = bzrdir.format_registry.make_bzrdir("pack-0.92")
-    to_format = bzrdir.format_registry.make_bzrdir("2a")
+    from_format = controldir.format_registry.make_bzrdir("pack-0.92")
+    to_format = controldir.format_registry.make_bzrdir("2a")
 
     def make_standalone_branch(self):
         wt = self.make_branch_and_tree("branch1", format=self.from_format)
@@ -170,9 +170,9 @@ class TestSmartUpgrade(tests.TestCaseWithTransport):
             format=self.from_format)
         # Note: self.make_branch() always creates a new repo at the location
         # so we need to avoid using that here ...
-        b1 = bzrdir.BzrDir.create_branch_convenience("repo/branch1",
+        b1 = controldir.ControlDir.create_branch_convenience("repo/branch1",
             format=self.from_format)
-        b2 = bzrdir.BzrDir.create_branch_convenience("repo/branch2",
+        b2 = controldir.ControlDir.create_branch_convenience("repo/branch2",
             format=self.from_format)
         return repo.bzrdir
 

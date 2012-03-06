@@ -2045,7 +2045,7 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
 
     def _initialize_helper(self, a_bzrdir, utf8_files, name=None,
                            repository=None):
-        """Initialize a branch in a bzrdir, with specified files
+        """Initialize a branch in a control dir, with specified files
 
         :param a_bzrdir: The bzrdir to initialize the branch in
         :param utf8_files: The files to create as a list of

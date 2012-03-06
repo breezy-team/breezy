@@ -20,18 +20,18 @@ from itertools import izip
 
 import bzrlib.branch
 from bzrlib import (
-    bzrdir,
+    bzrdir as _mod_bzrdir,
     check,
     controldir,
     errors,
     gpg,
     osutils,
+    revision as _mod_revision,
     transport,
     ui,
     urlutils,
     workingtree,
     )
-import bzrlib.revision
 from bzrlib.tests import (
     fixtures,
     ChrootedTestCase,
@@ -124,7 +124,7 @@ class TestControlDir(TestCaseWithControlDir):
         dir.create_repository()
         dir.create_branch()
         try:
-            wt = dir.create_workingtree(revision_id=bzrlib.revision.NULL_REVISION)
+            wt = dir.create_workingtree(revision_id=_mod_revision.NULL_REVISION)
         except (errors.NotLocalUrl, errors.UnsupportedOperation):
             raise TestSkipped("cannot make working tree with transport %r"
                               % dir.transport)
@@ -186,7 +186,7 @@ class TestControlDir(TestCaseWithControlDir):
         e.g. NotLocalUrl) if there is no working tree.
         """
         dir = self.make_bzrdir('source')
-        vfs_dir = bzrdir.BzrDir.open(self.get_vfs_only_url('source'))
+        vfs_dir = controldir.ControlDir.open(self.get_vfs_only_url('source'))
         if vfs_dir.has_workingtree():
             # This ControlDir format doesn't support ControlDirs without
             # working trees, so this test is irrelevant.
@@ -232,7 +232,7 @@ class TestControlDir(TestCaseWithControlDir):
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.bzrdir.open_branch().generate_revision_history(
-            bzrlib.revision.NULL_REVISION)
+            _mod_revision.NULL_REVISION)
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         # Copy the content (i.e. revisions) from the 'commit_tree' branch's
@@ -265,7 +265,7 @@ class TestControlDir(TestCaseWithControlDir):
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.branch.bzrdir.open_branch().generate_revision_history(
-            bzrlib.revision.NULL_REVISION)
+            _mod_revision.NULL_REVISION)
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         tree.branch.repository.copy_content_into(shared_repo)
@@ -293,7 +293,7 @@ class TestControlDir(TestCaseWithControlDir):
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.branch.bzrdir.open_branch().generate_revision_history(
-            bzrlib.revision.NULL_REVISION)
+            _mod_revision.NULL_REVISION)
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         source = self.make_repository('source')
@@ -365,7 +365,7 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertEqual('1', target.open_branch().last_revision())
 
     def test_clone_on_transport_preserves_repo_format(self):
-        if self.bzrdir_format == bzrdir.format_registry.make_bzrdir('default'):
+        if self.bzrdir_format == controldir.format_registry.make_bzrdir('default'):
             format = 'knit'
         else:
             format = None
@@ -552,7 +552,7 @@ class TestControlDir(TestCaseWithControlDir):
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.bzrdir.open_branch().generate_revision_history(
-            bzrlib.revision.NULL_REVISION)
+            _mod_revision.NULL_REVISION)
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         source = self.make_repository('source')
@@ -581,7 +581,7 @@ class TestControlDir(TestCaseWithControlDir):
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.bzrdir.open_branch().generate_revision_history(
-            bzrlib.revision.NULL_REVISION)
+            _mod_revision.NULL_REVISION)
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         tree.branch.repository.copy_content_into(shared_repo)
@@ -606,7 +606,7 @@ class TestControlDir(TestCaseWithControlDir):
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.bzrdir.open_branch().generate_revision_history(
-            bzrlib.revision.NULL_REVISION)
+            _mod_revision.NULL_REVISION)
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         tree.branch.repository.copy_content_into(shared_repo)
@@ -634,7 +634,7 @@ class TestControlDir(TestCaseWithControlDir):
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.bzrdir.open_branch().generate_revision_history(
-            bzrlib.revision.NULL_REVISION)
+            _mod_revision.NULL_REVISION)
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         source = self.make_repository('source')
@@ -661,7 +661,7 @@ class TestControlDir(TestCaseWithControlDir):
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         br = tree.bzrdir.open_branch()
-        br.set_last_revision_info(0, bzrlib.revision.NULL_REVISION)
+        br.set_last_revision_info(0, _mod_revision.NULL_REVISION)
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         source = self.make_repository('source')
@@ -1048,7 +1048,7 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertEqual(self.bzrdir_format,
                          controldir.ControlDirFormat.find_format(readonly_t))
         direct_opened_dir = self.bzrdir_format.open(readonly_t)
-        opened_dir = bzrdir.BzrDir.open(t.base)
+        opened_dir = controldir.ControlDir.open(t.base)
         self.assertEqual(made_control._format,
                          opened_dir._format)
         self.assertEqual(direct_opened_dir._format,
@@ -1086,7 +1086,7 @@ class TestControlDir(TestCaseWithControlDir):
 
     def test_format_initialize_on_transport_ex_force_new_repo_True(self):
         t = self.get_transport('repo')
-        repo_fmt = bzrdir.format_registry.make_bzrdir('1.9')
+        repo_fmt = controldir.format_registry.make_bzrdir('1.9')
         repo_name = repo_fmt.repository_format.network_name()
         repo = repo_fmt.initialize_on_transport_ex(t,
             repo_format_name=repo_name, shared_repo=True)[0]
@@ -1097,7 +1097,7 @@ class TestControlDir(TestCaseWithControlDir):
 
     def test_format_initialize_on_transport_ex_force_new_repo_False(self):
         t = self.get_transport('repo')
-        repo_fmt = bzrdir.format_registry.make_bzrdir('1.9')
+        repo_fmt = controldir.format_registry.make_bzrdir('1.9')
         repo_name = repo_fmt.repository_format.network_name()
         repo = repo_fmt.initialize_on_transport_ex(t,
             repo_format_name=repo_name, shared_repo=True)[0]
@@ -1115,7 +1115,7 @@ class TestControlDir(TestCaseWithControlDir):
     def test_format_initialize_on_transport_ex_repo_fmt_name_followed(self):
         t = self.get_transport('dir')
         # 1.6 is likely to never be default
-        fmt = bzrdir.format_registry.make_bzrdir('1.6')
+        fmt = controldir.format_registry.make_bzrdir('1.6')
         repo_name = fmt.repository_format.network_name()
         repo, control = self.assertInitializeEx(t, repo_format_name=repo_name)
         if self.bzrdir_format.fixed_components:
@@ -1144,7 +1144,7 @@ class TestControlDir(TestCaseWithControlDir):
             self.assertTrue(repo.is_write_locked())
             self.addCleanup(repo.unlock)
         self.assertIsInstance(control, controldir.ControlDir)
-        opened = bzrdir.BzrDir.open(t.base)
+        opened = controldir.ControlDir.open(t.base)
         expected_format = self.bzrdir_format
         if not isinstance(expected_format, RemoteBzrDirFormat):
             self.assertEqual(control._format.network_name(),
@@ -1383,7 +1383,7 @@ class TestControlDir(TestCaseWithControlDir):
         except (errors.NotLocalUrl, errors.UnsupportedOperation):
             raise TestSkipped("Can't initialize %r on transport %r"
                               % (self.bzrdir_format, t))
-        dir = bzrdir.BzrDir.open(t.base+",branch=foo")
+        dir = controldir.ControlDir.open(t.base+",branch=foo")
         self.assertEquals({"branch": "foo"},
             dir.user_transport.get_segment_parameters())
         self.assertEquals("foo", dir._get_selected_branch())
@@ -1398,7 +1398,7 @@ class TestControlDir(TestCaseWithControlDir):
         except (errors.NotLocalUrl, errors.UnsupportedOperation):
             raise TestSkipped("Can't initialize %r on transport %r"
                               % (self.bzrdir_format, t))
-        dir = bzrdir.BzrDir.open(t.base)
+        dir = controldir.ControlDir.open(t.base)
         self.assertEqual(u"", dir._get_selected_branch())
 
     def test_root_transport(self):
@@ -1473,7 +1473,7 @@ class TestControlDir(TestCaseWithControlDir):
             raise TestNotApplicable("format does not support "
                 "nesting repositories")
         child_repo = self.make_repository('childrepo')
-        opened_control = bzrdir.BzrDir.open(self.get_url('childrepo'))
+        opened_control = controldir.ControlDir.open(self.get_url('childrepo'))
         found_repo = opened_control.find_repository()
         self.assertEqual(child_repo.bzrdir.root_transport.base,
                          found_repo.bzrdir.root_transport.base)
@@ -1493,7 +1493,7 @@ class TestControlDir(TestCaseWithControlDir):
         self.get_transport().mkdir('childrepo')
         child_control = self.bzrdir_format.initialize(url)
         child_repo = child_control.create_repository(shared=True)
-        opened_control = bzrdir.BzrDir.open(self.get_url('childrepo'))
+        opened_control = controldir.ControlDir.open(self.get_url('childrepo'))
         found_repo = opened_control.find_repository()
         self.assertEqual(child_repo.bzrdir.root_transport.base,
                          found_repo.bzrdir.root_transport.base)
@@ -1713,14 +1713,14 @@ class TestTransportConfig(TestCaseWithControlDir):
         except errors.BzrError, e:
             if 'Cannot set config' in str(e):
                 self.assertFalse(
-                    isinstance(my_dir, (bzrdir.BzrDirMeta1, RemoteBzrDir)),
+                    isinstance(my_dir, (_mod_bzrdir.BzrDirMeta1, RemoteBzrDir)),
                     "%r should support configs" % my_dir)
                 raise TestNotApplicable(
                     'This BzrDir format does not support configs.')
             else:
                 raise
         self.assertEqual('http://example.com', config.get_default_stack_on())
-        my_dir2 = bzrdir.BzrDir.open(self.get_url('.'))
+        my_dir2 = controldir.ControlDir.open(self.get_url('.'))
         config2 = my_dir2.get_config()
         self.assertEqual('http://example.com', config2.get_default_stack_on())
 
@@ -1748,7 +1748,7 @@ class ChrootedControlDirTests(ChrootedTestCase):
             return
         except errors.NoRepositoryPresent:
             pass
-        made_control = bzrdir.BzrDir.open(self.get_readonly_url('subdir'))
+        made_control = controldir.ControlDir.open(self.get_readonly_url('subdir'))
         self.assertRaises(errors.NoRepositoryPresent,
                           made_control.find_repository)
 
