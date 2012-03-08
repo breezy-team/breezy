@@ -21,7 +21,7 @@ import os
 
 from bzrlib import (
     branch,
-    bzrdir,
+    controldir,
     errors,
     tests,
     )
@@ -39,9 +39,9 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
 
     def create_branches(self):
         self.build_tree(['base/', 'base/a', 'base/b'])
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         try:
-            wt_base = bzrdir.BzrDir.create_standalone_workingtree(
+            wt_base = controldir.ControlDir.create_standalone_workingtree(
                 self.get_url('base'), format=format)
         except errors.NotLocalUrl:
             raise tests.TestSkipped('Not a local URL')
@@ -63,7 +63,7 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
     def test_simple_binding(self):
         self.build_tree(['base/', 'base/a', 'base/b', 'child/'])
         try:
-            wt_base = bzrdir.BzrDir.create_standalone_workingtree(
+            wt_base = controldir.ControlDir.create_standalone_workingtree(
                 self.get_url('base'))
         except errors.NotLocalUrl:
             raise tests.TestSkipped('Not a local URL')
@@ -76,8 +76,8 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
         # manually make a branch we can bind, because the default format
         # may not be bindable-from, and we want to test the side effects etc
         # of bondage.
-        format = bzrdir.format_registry.make_bzrdir('knit')
-        b_child = bzrdir.BzrDir.create_branch_convenience(
+        format = controldir.format_registry.make_bzrdir('knit')
+        b_child = controldir.ControlDir.create_branch_convenience(
             'child', format=format)
         self.assertEqual(None, b_child.get_bound_location())
         self.assertEqual(None, b_child.get_master_branch())
@@ -144,7 +144,6 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
                 wt_child2.commit, 'child2', rev_id='r@d-2')
 
     def test_unbinding(self):
-        from bzrlib import transport
         b_base, wt_child = self.create_branches()
 
         # TestCaseWithSFTPServer only allows you to connect one time

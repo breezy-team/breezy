@@ -31,14 +31,30 @@ Improvements
   the URL scheme when accessing a HTTPS location.
   (Jelmer Vernooij, #125055)
 
+* Add short option alias ``-N`` for ``--no-recurse``.
+  (Jelmer Vernooij, #945904)
+
 * Avoid 'Invalid range access' errors when whole files are retrieved with
   transport.http.get() . (Vincent Ladeuil, #924746)
+
+* ``bzr rmbranch`` now supports removing colocated branches.
+  (Jelmer Vernooij, #920653)
+
+* ``bzr rmbranch`` no longer removes active branches unless ``--force``
+  is specified. (Jelmer Vernooij, #922953)
+
+* Two new command hooks, ``pre_command`` and ``post_command``,
+  provide notification before and after a command has been run.
+  (Brian de Alwis, Jelmer Vernooij)
 
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* Fix ``bzr config`` display for ``RegistryOption`` values.
+  (Vincent Ladeuil, #930182)
 
 Documentation
 *************

@@ -49,7 +49,7 @@ class ConvertOldTestToMeta(controldir.Converter):
             'branch-format',
             bzrdir.BzrDirMetaFormat1().get_format_string(),
             mode=to_convert._get_file_mode())
-        return bzrdir.BzrDir.open(to_convert.user_url)
+        return controldir.ControlDir.open(to_convert.user_url)
 
 
 class OldBzrDirFormat(bzrdir.BzrDirMetaFormat1):
@@ -155,7 +155,7 @@ finished
 """ % (display_url, display_url, display_url, display_url, backup_dir), out)
         self.assertEqualDiff("", err)
         self.assertTrue(isinstance(
-            bzrdir.BzrDir.open(self.get_url(path))._format,
+            controldir.ControlDir.open(self.get_url(path))._format,
             bzrdir.BzrDirMetaFormat1))
 
     def test_upgrade_explicit_knit(self):
@@ -179,7 +179,7 @@ finished
 """ % (display_url, display_url, display_url, display_url, backup_dir),
                              out)
         self.assertEqualDiff("", err)
-        converted_dir = bzrdir.BzrDir.open(self.get_url('branch'))
+        converted_dir = controldir.ControlDir.open(self.get_url('branch'))
         self.assertTrue(isinstance(converted_dir._format,
                                    bzrdir.BzrDirMetaFormat1))
         self.assertTrue(isinstance(converted_dir.open_repository()._format,
@@ -196,9 +196,9 @@ finished
         self.run_bzr('upgrade --format=2a branch-foo %s' % (option_str,))
 
     def assertBranchFormat(self, dir, format):
-        branch = bzrdir.BzrDir.open_tree_or_branch(self.get_url(dir))[1]
+        branch = controldir.ControlDir.open_tree_or_branch(self.get_url(dir))[1]
         branch_format = branch._format
-        meta_format = bzrdir.format_registry.make_bzrdir(format)
+        meta_format = controldir.format_registry.make_bzrdir(format)
         expected_format = meta_format.get_branch_format()
         self.assertEqual(expected_format, branch_format)
 
@@ -245,7 +245,7 @@ finished
 """ % (display_url, display_url, display_url, display_url, backup_dir2), out)
         self.assertEqualDiff("", err)
         self.assertTrue(isinstance(
-            bzrdir.BzrDir.open(self.get_url("old_format_branch"))._format,
+            controldir.ControlDir.open(self.get_url("old_format_branch"))._format,
             bzrdir.BzrDirMetaFormat1))
         self.assertTrue(t.has(backup_dir2))
 

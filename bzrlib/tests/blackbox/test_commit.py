@@ -30,7 +30,7 @@ from bzrlib import (
     ignores,
     msgeditor,
     )
-from bzrlib.bzrdir import BzrDir
+from bzrlib.controldir import ControlDir
 from bzrlib.tests import (
     test_foreign,
     features,
@@ -117,7 +117,7 @@ bzr: ERROR: No changes to commit.\
     def prepare_simple_history(self):
         """Prepare and return a working tree with one commit of one file"""
         # Commit with modified file should say so
-        wt = BzrDir.create_standalone_workingtree('.')
+        wt = ControlDir.create_standalone_workingtree('.')
         self.build_tree(['hello.txt', 'extra.txt'])
         wt.add(['hello.txt'])
         wt.commit(message='added')
@@ -225,7 +225,7 @@ bzr: ERROR: No changes to commit.\
     def test_verbose_commit_with_unknown(self):
         """Unknown files should not be listed by default in verbose output"""
         # Is that really the best policy?
-        wt = BzrDir.create_standalone_workingtree('.')
+        wt = ControlDir.create_standalone_workingtree('.')
         self.build_tree(['hello.txt', 'extra.txt'])
         wt.add(['hello.txt'])
         out,err = self.run_bzr('commit -m added')
@@ -757,7 +757,7 @@ altered in u2
         # "UnlockableTransport error trying to commit in checkout of readonly
         # branch"
         self.make_branch('master')
-        master = BzrDir.open_from_transport(
+        master = ControlDir.open_from_transport(
             self.get_readonly_transport('master')).open_branch()
         master.create_checkout('checkout')
         out, err = self.run_bzr(['commit', '--unchanged', '-mfoo', 'checkout'],

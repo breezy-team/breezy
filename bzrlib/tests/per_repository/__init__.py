@@ -25,7 +25,6 @@ rather than in tests/per_branch/*.py.
 """
 
 from bzrlib import (
-    bzrdir,
     repository,
     )
 from bzrlib.remote import RemoteRepositoryFormat

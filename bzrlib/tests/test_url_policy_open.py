@@ -22,10 +22,12 @@ from bzrlib.branch import (
     BranchReferenceFormat,
     )
 from bzrlib.bzrdir import (
-    BzrDir,
     BzrProber,
     )
-from bzrlib.controldir import ControlDirFormat
+from bzrlib.controldir import (
+    ControlDir,
+    ControlDirFormat,
+    )
 from bzrlib.errors import NotBranchError
 from bzrlib.url_policy_open import (
     BadUrl,
@@ -182,9 +184,9 @@ class TestBranchOpenerStacking(TestCaseWithTransport):
         self.assertRaises(NotBranchError, opener.open, ".")
         self.assertEquals(1, len(TrackingProber.seen_urls))
         TrackingProber.seen_urls = []
-        # And make sure it's registered in such a way that BzrDir.open would
+        # And make sure it's registered in such a way that ControlDir.open would
         # use it.
-        self.assertRaises(NotBranchError, BzrDir.open, ".")
+        self.assertRaises(NotBranchError, ControlDir.open, ".")
         self.assertEquals(1, len(TrackingProber.seen_urls))
 
     def test_allowed_url(self):

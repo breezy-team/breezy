@@ -18,7 +18,7 @@
 
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     inventory,
     tests,
     )
@@ -28,7 +28,7 @@ from bzrlib.tests.matchers import ContainsNoVfsCalls
 class TrivialTest(tests.TestCaseWithTransport):
 
     def test_trivial_reconcile(self):
-        t = bzrdir.BzrDir.create_standalone_workingtree('.')
+        t = controldir.ControlDir.create_standalone_workingtree('.')
         (out, err) = self.run_bzr('reconcile')
         if t.branch.repository._reconcile_backsup_inventory:
             does_backup_text = "Inventory ok.\n"
@@ -45,7 +45,7 @@ class TrivialTest(tests.TestCaseWithTransport):
         self.assertEqualDiff(err, "")
 
     def test_does_something_reconcile(self):
-        t = bzrdir.BzrDir.create_standalone_workingtree('.')
+        t = controldir.ControlDir.create_standalone_workingtree('.')
         # an empty inventory with no revision will trigger reconciliation.
         repo = t.branch.repository
         inv = inventory.Inventory(revision_id='missing')

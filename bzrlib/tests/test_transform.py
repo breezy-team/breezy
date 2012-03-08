@@ -34,7 +34,6 @@ from bzrlib import (
     transform,
     urlutils,
     )
-from bzrlib.bzrdir import BzrDir
 from bzrlib.conflicts import (
     DeletingParent,
     DuplicateEntry,
@@ -44,6 +43,7 @@ from bzrlib.conflicts import (
     ParentLoop,
     UnversionedParent,
 )
+from bzrlib.controldir import ControlDir
 from bzrlib.diff import show_diff_trees
 from bzrlib.errors import (
     DuplicateKey,
@@ -1645,7 +1645,7 @@ class TransformGroup(object):
     def __init__(self, dirname, root_id):
         self.name = dirname
         os.mkdir(dirname)
-        self.wt = BzrDir.create_standalone_workingtree(dirname)
+        self.wt = ControlDir.create_standalone_workingtree(dirname)
         self.wt.set_root_id(root_id)
         self.b = self.wt.branch
         self.tt = TreeTransform(self.wt)
@@ -1881,13 +1881,13 @@ class TestBuildTree(tests.TestCaseWithTransport):
     def test_build_tree_with_symlinks(self):
         self.requireFeature(SymlinkFeature)
         os.mkdir('a')
-        a = BzrDir.create_standalone_workingtree('a')
+        a = ControlDir.create_standalone_workingtree('a')
         os.mkdir('a/foo')
         with file('a/foo/bar', 'wb') as f: f.write('contents')
         os.symlink('a/foo/bar', 'a/foo/baz')
         a.add(['foo', 'foo/bar', 'foo/baz'])
         a.commit('initial commit')
-        b = BzrDir.create_standalone_workingtree('b')
+        b = ControlDir.create_standalone_workingtree('b')
         basis = a.basis_tree()
         basis.lock_read()
         self.addCleanup(basis.unlock)

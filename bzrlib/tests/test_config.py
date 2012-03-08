@@ -27,8 +27,8 @@ from testtools import matchers
 #import bzrlib specific imports here
 from bzrlib import (
     branch,
-    bzrdir,
     config,
+    controldir,
     diff,
     errors,
     osutils,
@@ -115,7 +115,7 @@ config.test_store_builder_registry.register('branch', build_branch_store)
 
 def build_control_store(test):
     build_backing_branch(test, 'branch')
-    b = bzrdir.BzrDir.open('branch')
+    b = controldir.ControlDir.open('branch')
     return config.ControlStore(b)
 config.test_store_builder_registry.register('control', build_control_store)
 
@@ -1085,7 +1085,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
 
     def test_get_config(self):
         """The Branch.get_config method works properly"""
-        b = bzrdir.BzrDir.create_standalone_workingtree('.').branch
+        b = controldir.ControlDir.create_standalone_workingtree('.').branch
         my_config = b.get_config()
         self.assertIs(my_config.get_user_option('wacky'), None)
         my_config.set_user_option('wacky', 'unlikely')
@@ -1139,6 +1139,10 @@ class TestBranchConfig(tests.TestCaseWithTransport):
     def test_autonick_urlencoded(self):
         b = self.make_branch('!repo')
         self.assertEqual('!repo', b.get_config().get_nickname())
+
+    def test_autonick_uses_branch_name(self):
+        b = self.make_branch('foo', name='bar')
+        self.assertEqual('bar', b.get_config().get_nickname())
 
     def test_warn_if_masked(self):
         warnings = []
@@ -2142,7 +2146,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
         self.assertGetHook(remote_branch._get_config(), 'file', 'branch')
 
     def test_get_hook_remote_bzrdir(self):
-        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        remote_bzrdir = controldir.ControlDir.open(self.get_url('tree'))
         conf = remote_bzrdir._get_config()
         conf.set_option('remotedir', 'file')
         self.assertGetHook(conf, 'file', 'remotedir')
@@ -2170,7 +2174,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
     def test_set_hook_remote_bzrdir(self):
         remote_branch = branch.Branch.open(self.get_url('tree'))
         self.addCleanup(remote_branch.lock_write().unlock)
-        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        remote_bzrdir = controldir.ControlDir.open(self.get_url('tree'))
         self.assertSetHook(remote_bzrdir._get_config(), 'file', 'remotedir')
 
     def assertLoadHook(self, expected_nb_calls, name, conf_class, *conf_args):
@@ -2193,7 +2197,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
         self.assertLoadHook(1, 'file', remote.RemoteBranchConfig, remote_branch)
 
     def test_load_hook_remote_bzrdir(self):
-        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        remote_bzrdir = controldir.ControlDir.open(self.get_url('tree'))
         # The config file doesn't exist, set an option to force its creation
         conf = remote_bzrdir._get_config()
         conf.set_option('remotedir', 'file')
@@ -2224,7 +2228,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
     def test_save_hook_remote_bzrdir(self):
         remote_branch = branch.Branch.open(self.get_url('tree'))
         self.addCleanup(remote_branch.lock_write().unlock)
-        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        remote_bzrdir = controldir.ControlDir.open(self.get_url('tree'))
         self.assertSaveHook(remote_bzrdir._get_config())
 
 
@@ -2266,6 +2270,10 @@ class TestOption(tests.TestCase):
             return 'bar'
         opt = config.Option('foo', default=bar_not_unicode)
         self.assertRaises(AssertionError, opt.get_default)
+
+    def test_get_help_topic(self):
+        opt = config.Option('foo')
+        self.assertEquals('foo', opt.get_help_topic())
 
 
 class TestOptionConverterMixin(object):
@@ -3613,6 +3621,41 @@ class TestMemoryStack(tests.TestCase):
         self.assertEquals('bar', conf.get('foo'))
 
 
+class TestStackIterSections(tests.TestCase):
+
+    def test_empty_stack(self):
+        conf = config.Stack([])
+        sections = list(conf.iter_sections())
+        self.assertLength(0, sections)
+
+    def test_empty_store(self):
+        store = config.IniFileStore()
+        store._load_from_string('')
+        conf = config.Stack([store.get_sections])
+        sections = list(conf.iter_sections())
+        self.assertLength(0, sections)
+
+    def test_simple_store(self):
+        store = config.IniFileStore()
+        store._load_from_string('foo=bar')
+        conf = config.Stack([store.get_sections])
+        tuples = list(conf.iter_sections())
+        self.assertLength(1, tuples)
+        (found_store, found_section) = tuples[0]
+        self.assertIs(store, found_store)
+
+    def test_two_stores(self):
+        store1 = config.IniFileStore()
+        store1._load_from_string('foo=bar')
+        store2 = config.IniFileStore()
+        store2._load_from_string('bar=qux')
+        conf = config.Stack([store1.get_sections, store2.get_sections])
+        tuples = list(conf.iter_sections())
+        self.assertLength(2, tuples)
+        self.assertIs(store1, tuples[0][0])
+        self.assertIs(store2, tuples[1][0])
+
+
 class TestStackWithTransport(tests.TestCaseWithTransport):
 
     scenarios = [(key, {'get_stack': builder}) for key, builder
@@ -3898,8 +3941,11 @@ bar=middle,{baz}
 baz=end
 list={foo}
 ''')
-        self.registry.register(
-            config.ListOption('list'))
+        self.registry.register(config.ListOption('list'))
+        # Register an intermediate option as a list to ensure no conversion
+        # happen while expanding. Conversion should only occur for the original
+        # option ('list' here).
+        self.registry.register(config.ListOption('baz'))
         self.assertEquals(['start', 'middle', 'end'],
                            self.conf.get('list', expand=True))
 

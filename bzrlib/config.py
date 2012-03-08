@@ -1448,6 +1448,8 @@ class BranchConfig(Config):
         value = self._get_explicit_nickname()
         if value is not None:
             return value
+        if self.branch.name:
+            return self.branch.name
         return urlutils.unescape(self.branch.base.split('/')[-2])
 
     def has_explicit_nickname(self):
@@ -2149,8 +2151,8 @@ class BzrDirConfig(object):
 
         It may be set to a location, or None.
 
-        This policy affects all branches contained by this bzrdir, except for
-        those under repositories.
+        This policy affects all branches contained by this control dir, except
+        for those under repositories.
         """
         if self._config is None:
             raise errors.BzrError("Cannot set configuration in %s" % self._bzrdir)
@@ -2164,8 +2166,8 @@ class BzrDirConfig(object):
 
         This will either be a location, or None.
 
-        This policy affects all branches contained by this bzrdir, except for
-        those under repositories.
+        This policy affects all branches contained by this control dir, except
+        for those under repositories.
         """
         if self._config is None:
             return None
@@ -2409,6 +2411,9 @@ class Option(object):
             else:
                 value = self.default
         return value
+
+    def get_help_topic(self):
+        return self.name
 
     def get_help_text(self, additional_see_also=None, plain=True):
         result = self.help
@@ -3620,7 +3625,17 @@ class Stack(object):
         self.store = store
         self.mutable_section_id = mutable_section_id
 
-    def get(self, name, expand=True):
+    def iter_sections(self):
+        """Iterate all the defined sections."""
+        # Ensuring lazy loading is achieved by delaying section matching (which
+        # implies querying the persistent storage) until it can't be avoided
+        # anymore by using callables to describe (possibly empty) section
+        # lists.
+        for sections in self.sections_def:
+            for store, section in sections():
+                yield store, section
+
+    def get(self, name, expand=True, convert=True):
         """Return the *first* option value found in the sections.
 
         This is where we guarantee that sections coming from Store are loaded
@@ -3632,6 +3647,9 @@ class Stack(object):
         :param name: The queried option.
 
         :param expand: Whether options references should be expanded.
+
+        :param convert: Whether the option value should be converted from
+            unicode (do nothing for non-registered options).
 
         :returns: The value of the option.
         """
@@ -3659,7 +3677,7 @@ class Stack(object):
                                       % (name, type(val)))
                 if opt is None:
                     val = found_store.unquote(val)
-                else:
+                elif convert:
                     val = opt.convert_from_unicode(found_store, val)
             return val
 
@@ -3669,17 +3687,10 @@ class Stack(object):
             value = opt.get_override()
             value = expand_and_convert(value)
         if value is None:
-            # Ensuring lazy loading is achieved by delaying section matching
-            # (which implies querying the persistent storage) until it can't be
-            # avoided anymore by using callables to describe (possibly empty)
-            # section lists.
-            for sections in self.sections_def:
-                for store, section in sections():
-                    value = section.get(name)
-                    if value is not None:
-                        found_store = store
-                        break
+            for store, section in self.iter_sections():
+                value = section.get(name)
                 if value is not None:
+                    found_store = store
                     break
             value = expand_and_convert(value)
             if opt is not None and value is None:
@@ -3751,7 +3762,7 @@ class Stack(object):
             # anything else
             value = env[name]
         else:
-            value = self.get(name, expand=False)
+            value = self.get(name, expand=False, convert=False)
             value = self._expand_options_in_string(value, env, _refs)
         return value
 
@@ -3998,11 +4009,6 @@ class BranchOnlyStack(Stack):
         self.store.save_changes()
 
 
-# Use a an empty dict to initialize an empty configobj avoiding all
-# parsing and encoding checks
-_quoting_config = configobj.ConfigObj(
-    {}, encoding='utf-8', interpolation=False, list_values=True)
-
 class cmd_config(commands.Command):
     __doc__ = """Display, set or remove a configuration option.
 
@@ -4106,12 +4112,17 @@ class cmd_config(commands.Command):
             except errors.NotBranchError:
                 return LocationStack(directory)
 
+    def _quote_multiline(self, value):
+        if '\n' in value:
+            value = '"""' + value + '"""'
+        return value
+
     def _show_value(self, name, directory, scope):
         conf = self._get_stack(directory, scope)
-        value = conf.get(name, expand=True)
+        value = conf.get(name, expand=True, convert=False)
         if value is not None:
             # Quote the value appropriately
-            value = _quoting_config._quote(value)
+            value = self._quote_multiline(value)
             self.outf.write('%s\n' % (value,))
         else:
             raise errors.NoSuchConfigOption(name)
@@ -4125,31 +4136,23 @@ class cmd_config(commands.Command):
         cur_store_id = None
         cur_section = None
         conf = self._get_stack(directory, scope)
-        for sections in conf.sections_def:
-            for store, section in sections():
-                for oname in section.iter_option_names():
-                    if name.search(oname):
-                        if cur_store_id != store.id:
-                            # Explain where the options are defined
-                            self.outf.write('%s:\n' % (store.id,))
-                            cur_store_id = store.id
-                            cur_section = None
-                        if (section.id is not None
-                            and cur_section != section.id):
-                            # Display the section id as it appears in the store
-                            # (None doesn't appear by definition)
-                            self.outf.write('  [%s]\n' % (section.id,))
-                            cur_section = section.id
-                        value = section.get(oname, expand=False)
-                        # Since we don't use the stack, we need to restore a
-                        # proper quoting.
-                        try:
-                            opt = option_registry.get(oname)
-                            value = opt.convert_from_unicode(store, value)
-                        except KeyError:
-                            value = store.unquote(value)
-                        value = _quoting_config._quote(value)
-                        self.outf.write('  %s = %s\n' % (oname, value))
+        for store, section in conf.iter_sections():
+            for oname in section.iter_option_names():
+                if name.search(oname):
+                    if cur_store_id != store.id:
+                        # Explain where the options are defined
+                        self.outf.write('%s:\n' % (store.id,))
+                        cur_store_id = store.id
+                        cur_section = None
+                    if (section.id is not None and cur_section != section.id):
+                        # Display the section id as it appears in the store
+                        # (None doesn't appear by definition)
+                        self.outf.write('  [%s]\n' % (section.id,))
+                        cur_section = section.id
+                    value = section.get(oname, expand=False)
+                    # Quote the value appropriately
+                    value = self._quote_multiline(value)
+                    self.outf.write('  %s = %s\n' % (oname, value))
 
     def _set_config_option(self, name, value, directory, scope):
         conf = self._get_stack(directory, scope, write_access=True)
