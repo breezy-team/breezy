@@ -701,17 +701,17 @@ class TestBranchOptions(tests.TestCaseWithTransport):
         finally:
             copy.unlock()
         self.assertFalse(self.branch.is_locked())
+        result = self.branch.get_config_stack().get('foo')
         self.expectFailure('Unlocked branches cache their configs',
-            self.assertEqual, 'bar',
-            self.branch.get_config_stack().get('foo'))
+            self.assertEqual, 'bar', result)
 
     def test_set_from_config_get_from_config_stack(self):
         self.branch.lock_write()
         self.addCleanup(self.branch.unlock)
         self.branch.get_config().set_user_option('foo', 'bar')
+        result = self.branch.get_config_stack().get('foo')
         self.expectFailure('BranchStack uses cache after set_user_option',
-                           self.assertEqual, 'bar',
-                           self.branch.get_config_stack().get('foo'))
+                           self.assertEqual, 'bar', result)
 
     def test_set_from_config_stack_get_from_config(self):
         self.branch.lock_write()
@@ -725,8 +725,9 @@ class TestBranchOptions(tests.TestCaseWithTransport):
         self.addCleanup(self.branch.unlock)
         self.branch.get_config_stack().set('foo', 'bar')
         copy = _mod_branch.Branch.open(self.branch.base)
+        result = copy.get_config_stack().get('foo')
         self.expectFailure("Config writes are not cached.", self.assertIs,
-                           None, copy.get_config_stack().get('foo'))
+                           None, result)
 
 
 class TestPullResult(tests.TestCase):
