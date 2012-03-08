@@ -702,6 +702,7 @@ class TestBranchOptions(tests.TestCaseWithTransport):
             copy.unlock()
         self.assertFalse(self.branch.is_locked())
         result = self.branch.get_config_stack().get('foo')
+        # Bug: https://bugs.launchpad.net/bzr/+bug/948339
         self.expectFailure('Unlocked branches cache their configs',
             self.assertEqual, 'bar', result)
 
@@ -710,6 +711,7 @@ class TestBranchOptions(tests.TestCaseWithTransport):
         self.addCleanup(self.branch.unlock)
         self.branch.get_config().set_user_option('foo', 'bar')
         result = self.branch.get_config_stack().get('foo')
+        # https://bugs.launchpad.net/bzr/+bug/948344
         self.expectFailure('BranchStack uses cache after set_user_option',
                            self.assertEqual, 'bar', result)
 
@@ -726,6 +728,7 @@ class TestBranchOptions(tests.TestCaseWithTransport):
         self.branch.get_config_stack().set('foo', 'bar')
         copy = _mod_branch.Branch.open(self.branch.base)
         result = copy.get_config_stack().get('foo')
+        # Bug: https://bugs.launchpad.net/bzr/+bug/948339
         self.expectFailure("Config writes are not cached.", self.assertIs,
                            None, result)
 
