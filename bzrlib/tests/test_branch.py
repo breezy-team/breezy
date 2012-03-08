@@ -694,6 +694,45 @@ class TestBranchOptions(tests.TestCaseWithTransport):
             'Value "not-a-bool" is not valid for "append_revisions_only"',
             self.warnings[0])
 
+    def test_use_fresh_values(self):
+        copy = _mod_branch.Branch.open(self.branch.base)
+        copy.lock_write()
+        try:
+            copy.get_config_stack().set('foo', 'bar')
+        finally:
+            copy.unlock()
+        self.assertFalse(self.branch.is_locked())
+        result = self.branch.get_config_stack().get('foo')
+        # Bug: https://bugs.launchpad.net/bzr/+bug/948339
+        self.expectFailure('Unlocked branches cache their configs',
+            self.assertEqual, 'bar', result)
+
+    def test_set_from_config_get_from_config_stack(self):
+        self.branch.lock_write()
+        self.addCleanup(self.branch.unlock)
+        self.branch.get_config().set_user_option('foo', 'bar')
+        result = self.branch.get_config_stack().get('foo')
+        # https://bugs.launchpad.net/bzr/+bug/948344
+        self.expectFailure('BranchStack uses cache after set_user_option',
+                           self.assertEqual, 'bar', result)
+
+    def test_set_from_config_stack_get_from_config(self):
+        self.branch.lock_write()
+        self.addCleanup(self.branch.unlock)
+        self.branch.get_config_stack().set('foo', 'bar')
+        self.assertEqual('bar',
+                         self.branch.get_config().get_user_option('foo'))
+
+    def test_set_delays_write(self):
+        self.branch.lock_write()
+        self.addCleanup(self.branch.unlock)
+        self.branch.get_config_stack().set('foo', 'bar')
+        copy = _mod_branch.Branch.open(self.branch.base)
+        result = copy.get_config_stack().get('foo')
+        # Bug: https://bugs.launchpad.net/bzr/+bug/948339
+        self.expectFailure("Config writes are not cached.", self.assertIs,
+                           None, result)
+
 
 class TestPullResult(tests.TestCase):
 
