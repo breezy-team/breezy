@@ -259,3 +259,14 @@ class TestGitBlackBox(ExternalBase):
         self.build_tree_contents([("bzrb/foo", "hello from bzr")])
         self.run_bzr(["commit", "-m", "msg", "bzrb"])
         self.run_bzr(["dpush", "-d", "bzrb", "gitr"])
+
+    def test_dpush_from_bound(self):
+        r = GitRepo.init("gitr", mkdir=True)
+        self.build_tree_contents([("gitr/foo", "hello from git")])
+        r.stage("foo")
+        r.do_commit("message", committer="Somebody <user@example.com>")
+        self.run_bzr(["branch", "gitr", "bzrm"])
+        self.run_bzr(["checkout", "bzrm", "bzrb"])
+        self.build_tree_contents([("bzrb/foo", "hello from bzr")])
+        self.run_bzr(["commit", "-m", "msg", "bzrb"])
+        self.run_bzr(["dpush", "-d", "bzrb", "gitr"])
