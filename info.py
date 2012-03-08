@@ -1,4 +1,6 @@
 #!/usr/bin/python
+from __future__ import absolute_import
+
 bzr_plugin_name = 'rewrite'
 
 bzr_plugin_version = (0, 6, 4, 'dev', 0)
