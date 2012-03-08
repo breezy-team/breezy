@@ -775,7 +775,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
                 result.new_git_head, remote_refs = self._update_revisions(
                     stop_revision, overwrite=overwrite)
                 tags_ret  = self.source.tags.merge_to(
-                    self.target.tags, overwrite)
+                        self.target.tags, overwrite, ignore_master=True)
                 if isinstance(tags_ret, tuple):
                     result.tag_updates, result.tag_conflicts = tags_ret
                 else:
