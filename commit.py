@@ -17,6 +17,7 @@
 
 """Support for committing in native Git working trees."""
 
+from __future__ import absolute_import
 
 from dulwich.index import (
     commit_tree,

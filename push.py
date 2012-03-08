@@ -16,6 +16,8 @@
 
 """Push implementation that simply prints message saying push is not supported."""
 
+from __future__ import absolute_import
+
 from dulwich.objects import ZERO_SHA
 from dulwich.walk import Walker
 

@@ -16,6 +16,8 @@
 
 """File graph access."""
 
+from __future__ import absolute_import
+
 from dulwich.errors import (
     NotTreeError,
     )

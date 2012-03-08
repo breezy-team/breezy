@@ -45,6 +45,8 @@ This extra metadata is stored in so-called "supplements":
   * TreeSupplement
 """
 
+from __future__ import absolute_import
+
 from bzrlib import osutils
 
 from cStringIO import StringIO

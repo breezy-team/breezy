@@ -20,6 +20,8 @@
 
 """Remote helper for git for accessing bzr repositories."""
 
+from __future__ import absolute_import
+
 CAPABILITIES = ["fetch", "option", "push"]
 
 import os

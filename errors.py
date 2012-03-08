@@ -17,6 +17,7 @@
 
 """A grouping of Exceptions for bzr-git"""
 
+from __future__ import absolute_import
 
 from dulwich import errors as git_errors
 

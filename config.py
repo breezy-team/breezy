@@ -16,6 +16,8 @@
 
 """Config file handling for Git."""
 
+from __future__ import absolute_import
+
 from bzrlib import (
     config,
     )

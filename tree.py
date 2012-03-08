@@ -17,6 +17,8 @@
 
 """Git Trees."""
 
+from __future__ import absolute_import
+
 from dulwich.object_store import tree_lookup_path
 import stat
 import posixpath

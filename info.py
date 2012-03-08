@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 bzr_plugin_name = "git"
 
 dulwich_minimum_version = (0, 8, 2)

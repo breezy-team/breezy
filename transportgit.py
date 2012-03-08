@@ -16,6 +16,8 @@
 
 """A Git repository implementation that uses a Bazaar transport."""
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 
 import os

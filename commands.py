@@ -20,6 +20,8 @@
 
 """Git-specific subcommands for Bazaar."""
 
+from __future__ import absolute_import
+
 from bzrlib.commands import (
     Command,
     display_command,

@@ -17,6 +17,8 @@
 
 """An adapter between a Git Repository and a Bazaar Branch"""
 
+from __future__ import absolute_import
+
 from bzrlib import (
     check,
     errors,

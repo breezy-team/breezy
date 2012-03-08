@@ -17,6 +17,8 @@
 
 """An adapter between a Git Branch and a Bazaar Branch"""
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 from collections import defaultdict
 
