@@ -207,8 +207,8 @@ Update the source code
    found at <https://launchpad.net/bzr/+milestone/x.y.z>.
 
 #. Merge into your branch all previous stable series fixes that haven't been
-   merged yet. For example, if you're releasing 2.5.x, make sure the fixes
-   on 2.4, 2.3, etc have already been merged up::
+   merged yet. For example, if you're releasing 2.6.x, make sure the fixes
+   on 2.5, 2.4, 2.3, etc have already been merged up::
 
      bzr merge lp:bzr/2.4
 
@@ -225,30 +225,30 @@ Update the source code
 
    For beta releases use::
 
-       version_info = (2, 5, 0, 'beta', SERIAL)
+       version_info = (2, 6, 0, 'beta', SERIAL)
 
-   For instance 2.5b5::
+   For instance 2.6b1::
 
-       version_info = (2, 5, 0, 'beta', 5)
+       version_info = (2, 6, 0, 'beta', 1)
 
    For stable releases use::
 
-       version_info = (2, 5, 0, 'final', 0)
+       version_info = (2, 6, 0, 'final', 0)
 
 #. Update the ``./doc/en/release-notes/`` section for this release.
 
    Check that all news entries related to this release have been added in
-   the right section. For example, if you're releasing 2.5b5, the following
-   command should display a a single chuk diff for the 2.5b5 release::
+   the right section. For example, if you're releasing 2.6b1, the following
+   command should display a a single chuk diff for the 2.6b1 release::
 
-     bzr diff -rbzr-2.5b4.. doc/en/release-notes/bzr-2.5.txt
+     bzr diff -rbzr-2.6b1.. doc/en/release-notes/bzr-2.6.txt
 
    Fill out the date and a description of the release under the existing
    header (the diff above will help you summarizing). If there isn't one,
    follow the instructions above for using the ``release-template.txt`` file
    and remind people that they should document their changes there ;)
 
-   See *2.5b5* or similar for an example of what this looks like.
+   See *2.6b1* or similar for an example of what this looks like.
 
 #. Add or check the summary of the release into the "What's New" document.
 
@@ -352,7 +352,7 @@ Update the source code
 
 #. Tag the new release::
 
-     bzr tag bzr-2.3.1
+     bzr tag bzr-2.6.0
 
 #. Push those changes to a bzr branch that is public and accessible on the
    Internet. PQM will pull from this branch when it attempts to merge your
@@ -360,7 +360,7 @@ Update the source code
    release branch::
 
      bzr push
-     bzr pqm-submit -m "(vila) Release 2.3.1 (Vincent Ladeuil)"
+     bzr pqm-submit -m "(vila) Release 2.6.0 (Vincent Ladeuil)"
 
    Note that ``bzr push`` should mention updating one tag (which you just
    created). If it doesn't, double-check that you created (and pushed) this
@@ -517,7 +517,7 @@ Announcing the source freeze
    control the process as tightly so guessing the date is not appropriate.
 
    For the final beta release include in your announcement a notice of
-   API and translation freezes nothing that public methods should not
+   API and translation freezes noting that public methods should not
    be removed or changed and strings should not be added or changed.
 
 #. Pause for a few days. 
@@ -527,7 +527,7 @@ Publishing the release
 ----------------------
 
 There is normally a delay of a few days after the source freeze to allow
-for binaries to be built on various platforms.  Once they have been built,
+for binaries to be built for various platforms. Once they have been built,
 we have a releasable product.  The next step is to make it generally
 available to the world.
 
@@ -538,9 +538,17 @@ available to the world.
    pushed to this branch are refreshed by a cron job on escudero.)
 
 #. Check that the documentation for this release is available in
-   <http://doc.bazaar.canonical.com>.  It should be automatically build when the
-   branch is created, by a cron script ``update-bzr-docs`` on
-   ``escudero``.
+   <http://doc.bazaar.canonical.com>.  It should be automatically build when
+   the branch is created, by a cron script ``update-bzr-docs`` on
+   ``escudero``. When the first release is created in a new series, a branch
+   needs to be created on escudero::
+
+     ssh escudero.canonical.com
+     sudo -u bzr-web -s
+     cd /srv/doc.bazaar.canonical.com/
+     bzr branch http://bazaar.launchpad.net/~bzr-pqm/bzr/2.5 bzr.2.5
+
+   And the ``update-bzr-docs`` needs to refer to it.
 
 
 Announcing the release
@@ -614,10 +622,6 @@ Now that the release is publicly available, tell people about it.
      links. Conversely, when creating the first beta in a development
      series, create these links again. Check all links when doing other
      kinds of release.
-
-   * Set direct download: When releasing a new stable release, this should
-     point to the corresponding launchpad page:
-     <https://launchpad.net/bzr/x.y/x.y.z/>
 
 #. Update `<http://en.wikipedia.org/wiki/Bazaar_(software)>`_ -- this should
    be done for the stable and beta releases.
