@@ -22,7 +22,6 @@ from dulwich.repo import (
 
 import os
 
-from bzrlib.branch import Branch
 from bzrlib import (
     version_info as bzrlib_version,
     )
@@ -250,3 +249,13 @@ class TestGitBlackBox(ExternalBase):
         self.assertEquals(stderr, "")
         self.assertTrue("refs/tags/atag -> " in stdout)
         self.assertTrue("HEAD -> " in stdout)
+
+    def test_dpush(self):
+        r = GitRepo.init("gitr", mkdir=True)
+        self.build_tree_contents([("gitr/foo", "hello from git")])
+        r.stage("foo")
+        r.do_commit("message", committer="Somebody <user@example.com>")
+        self.run_bzr(["branch", "gitr", "bzrb"])
+        self.build_tree_contents([("bzrb/foo", "hello from bzr")])
+        self.run_bzr(["commit", "-m", "msg", "bzrb"])
+        self.run_bzr(["dpush", "-d", "bzrb", "gitr"])
