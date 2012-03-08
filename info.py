@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 bzr_plugin_name = 'stats'
 
 bzr_plugin_version = (0, 2, 0, 'dev', 0)
