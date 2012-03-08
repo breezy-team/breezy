@@ -195,27 +195,6 @@ class ConfigObj(configobj.ConfigObj):
         return self[section][name]
 
 
-# FIXME: Until we can guarantee that each config file is loaded once and
-# only once for a given bzrlib session, we don't want to re-read the file every
-# time we query for an option so we cache the value (bad ! watch out for tests
-# needing to restore the proper value). -- vila 20110219
-_expand_default_value = None
-def _get_expand_default_value():
-    global _expand_default_value
-    if _expand_default_value is not None:
-        return _expand_default_value
-    conf = GlobalConfig()
-    # Note that we must not use None for the expand value below or we'll run
-    # into infinite recursion. Using False really would be quite silly ;)
-    expand = conf.get_user_option_as_bool('bzr.config.expand', expand=True)
-    if expand is None:
-        # This is an opt-in feature, you *really* need to clearly say you want
-        # to activate it !
-        expand = False
-    _expand_default_value = expand
-    return expand
-
-
 class Config(object):
     """A configuration policy - what username, editor, gpg needs etc."""
 
@@ -373,7 +352,7 @@ class Config(object):
         """Template method to provide a user option."""
         return None
 
-    def get_user_option(self, option_name, expand=None):
+    def get_user_option(self, option_name, expand=True):
         """Get a generic option - no special process, no default.
 
         :param option_name: The queried option.
@@ -382,8 +361,6 @@ class Config(object):
 
         :returns: The value of the option.
         """
-        if expand is None:
-            expand = _get_expand_default_value()
         value = self._get_user_option(option_name)
         if expand:
             if isinstance(value, list):
@@ -637,7 +614,7 @@ class Config(object):
         for (oname, value, section, conf_id, parser) in self._get_options():
             if oname.startswith('bzr.mergetool.'):
                 tool_name = oname[len('bzr.mergetool.'):]
-                tools[tool_name] = self.get_user_option(oname)
+                tools[tool_name] = self.get_user_option(oname, False)
         trace.mutter('loaded merge tools: %r' % tools)
         return tools
 
@@ -3658,7 +3635,7 @@ class Stack(object):
             for store, section in sections():
                 yield store, section
 
-    def get(self, name, expand=None, convert=True):
+    def get(self, name, expand=True, convert=True):
         """Return the *first* option value found in the sections.
 
         This is where we guarantee that sections coming from Store are loaded
@@ -3677,8 +3654,6 @@ class Stack(object):
         :returns: The value of the option.
         """
         # FIXME: No caching of options nor sections yet -- vila 20110503
-        if expand is None:
-            expand = _get_expand_default_value()
         value = None
         found_store = None # Where the option value has been found
         # If the option is registered, it may provide additional info about
