@@ -30,6 +30,7 @@ Homepage: http://bazaar-vcs.org
 Dm-Upload-Allowed: yes
 
 Package: bzr
+Recommends: python-gpgme
 Architecture: all
 Depends: python-bzrlib (>= ${source:Version}),
          python-bzrlib (<= ${source:Version}.1~),

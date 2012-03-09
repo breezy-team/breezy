@@ -1,3 +1,9 @@
+bzr (2.5.0-3) UNRELEASED; urgency=low
+
+  * Recommend python-gpgme in the bzr package. Closes: #663272
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sat, 10 Mar 2012 00:50:49 +0100
+
 bzr (2.5.0-2) unstable; urgency=low
 
   * Use parseable format for copyright file.
