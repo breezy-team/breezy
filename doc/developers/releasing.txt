@@ -253,6 +253,11 @@ Update the source code
 
 #. Add or check the summary of the release into the "What's New" document.
 
+  If this is the first release in a new series, make sure to update the
+  introduction and mentions the date of this first release and until when
+  the series is expected to be supported. Looking at ``bzr annotate`` for
+  previous series should give you the right hints.
+
 #. To check that all bugs mentioned in the release notes are actually
    marked as closed in Launchpad, you can run
    ``tools/check-newsbugs.py``::
