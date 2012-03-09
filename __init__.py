@@ -68,6 +68,9 @@ class CVSDirFormat(ControlDirFormat):
            basedir=None):
         raise CVSUnsupportedError(self)
 
+    def supports_transport(self, transport):
+        return False
+
     @classmethod
     def probe_transport(klass, transport):
         """Our format is present if the transport ends in 'CVS/'."""
