@@ -64,6 +64,9 @@ class MonotoneDirFormat(controldir.ControlDirFormat):
     def is_supported(self):
         return False
 
+    def supports_transport(self, transport):
+        return False
+
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
            basedir=None):
         raise MonotoneUnsupportedError(self)
