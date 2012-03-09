@@ -71,6 +71,11 @@ class MonotoneDirFormat(controldir.ControlDirFormat):
            basedir=None):
         raise MonotoneUnsupportedError(self)
 
+    def open(self, transport):
+        # Raise NotBranchError if there is nothing there
+        MonotoneProber().probe_transport(transport)
+        raise NotImplementedError(self.open)
+
 
 class MonotoneProber(controldir.Prober):
 
