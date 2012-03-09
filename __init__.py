@@ -93,6 +93,11 @@ class CVSProber(Prober):
     def known_formats(cls):
         return set([CVSDirFormat()])
 
+    def open(self, transport):
+        # Raise NotBranchError if there is nothing there
+        CVSProber().probe_transport(transport)
+        raise NotImplementedError(self.open)
+
 
 if has_controldir:
     ControlDirFormat.register_prober(CVSProber)
