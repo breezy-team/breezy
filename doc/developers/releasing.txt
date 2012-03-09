@@ -550,6 +550,10 @@ available to the world.
 
    And the ``update-bzr-docs`` needs to refer to it.
 
+   The ``lp:bzr-alldocs`` branch also needs to be updated when a new series
+   is introduced, see the ``README`` file there for more instructions
+   (looking at the branch history is also a good way to understand what
+   needs to be done and to document any policy changes).
 
 Announcing the release
 ----------------------
