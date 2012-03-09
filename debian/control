@@ -12,7 +12,7 @@ Standards-Version: 3.9.3
 
 Package: bzr-builddeb
 Architecture: all
-Depends: bzr (>= 2.1~), python-debian (>= 0.1.11), python-apt, ${python:Depends}, dpkg-dev, fakeroot, devscripts (>= 2.10.59), patchutils, pristine-tar, ${misc:Depends}
+Depends: bzr (>= 2.1~), python-debian (>= 0.1.11), python-apt, ${python:Depends}, dpkg-dev, fakeroot, devscripts (>= 2.10.59), patchutils, pristine-tar, quilt, ${misc:Depends}
 Recommends: python-launchpadlib, libalgorithm-merge-perl, python-distro-info
 Suggests: bzr-svn (>= 0.4.10), python-lzma
 Provides: bzr-buildpackage
