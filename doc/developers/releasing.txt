@@ -138,6 +138,7 @@ To start a new series cycle:
        cp template.txt bzr-x.y.txt  # e.g. bzr-2.6.txt
        bzr add bzr-x.y.txt
 
+#. Update ``doc/en/index.txt`` to point to the new whats-new file.
 
 At the start of a release cycle
 ===============================
