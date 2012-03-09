@@ -5524,19 +5524,7 @@ class cmd_serve(Command):
         if not allow_writes:
             url = 'readonly+' + url
         t = transport.get_transport_from_url(url)
-        try:
-            protocol(t, listen, port, inet, client_timeout)
-        except TypeError, e:
-            # We use symbol_versioning.deprecated_in just so that people
-            # grepping can find it here.
-            # symbol_versioning.deprecated_in((2, 5, 0))
-            symbol_versioning.warn(
-                'Got TypeError(%s)\ntrying to call protocol: %s.%s\n'
-                'Most likely it needs to be updated to support a'
-                ' "timeout" parameter (added in bzr 2.5.0)'
-                % (e, protocol.__module__, protocol),
-                DeprecationWarning)
-            protocol(t, host, port, inet)
+        protocol(t, listen, port, inet, client_timeout)
 
 
 class cmd_join(Command):
