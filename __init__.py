@@ -315,11 +315,11 @@ transport_server_registry.register_lazy('git',
 transport_server_registry.register_lazy('git-receive-pack',
     'bzrlib.plugins.git.server',
     'serve_git_receive_pack',
-    help='Git Smart server receive pack command (inetd mode only)')
+    help='Git Smart server receive pack command. (inetd mode only)')
 transport_server_registry.register_lazy('git-upload-pack',
     'bzrlib.plugins.git.server',
     'serve_git_upload_pack',
-    help='Git Smart server upload pack command (inetd mode only)')
+    help='Git Smart server upload pack command. (inetd mode only)')
 
 from bzrlib.repository import (
     format_registry as repository_format_registry,
