@@ -130,6 +130,19 @@ bzr (2.5.0~beta1-1) experimental; urgency=medium
 
  -- Jelmer Vernooij <jelmer@debian.org>  Tue, 06 Sep 2011 17:05:06 +0200
 
+bzr (2.4.2-2) unstable; urgency=low
+
+  * Fix bzrlib.osutils.local_concurrency() when used on GNU/kFreeBSD
+    with Python's multiprocessing module available. Closes: #647690
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 07 Nov 2011 17:15:56 +0100
+
+bzr (2.4.2-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 04 Nov 2011 23:16:04 +0100
+
 bzr (2.4.1-1) unstable; urgency=low
 
   * New upstream release.
