@@ -1,4 +1,4 @@
-# Czech translation for bzr
+# Vietnamese translation for bzr
 # Copyright (c) 2012 Rosetta Contributors and Canonical Ltd 2012
 # This file is distributed under the same license as the bzr package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2012.
@@ -8,83 +8,78 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-02-02 17:39+0100\n"
-"PO-Revision-Date: 2012-03-09 20:25+0000\n"
-"Last-Translator: Zbyněk Schwarz <Unknown>\n"
-"Language-Team: Czech <cs@li.org>\n"
+"PO-Revision-Date: 2012-03-10 02:28+0000\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: Vietnamese <vi@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
 "X-Launchpad-Export-Date: 2012-03-10 04:36+0000\n"
 "X-Generator: Launchpad (build 14914)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
-msgstr "přeskakování {0} (větší než {1} z {2} bajtů)"
+msgstr ""
 
 #: bzrlib/branch.py:872
 msgid "Unstacking"
-msgstr "Odstraňování ze zásobníku"
+msgstr ""
 
 #: bzrlib/branch.py:3205
 #, python-format
 msgid "Pushed up to revision %d."
-msgstr "Odesláno až na revizi %d"
+msgstr ""
 
 #: bzrlib/branch.py:3207
 #, python-format
 msgid "%d tag updated."
 msgid_plural "%d tags updated."
-msgstr[0] "%d značka aktualizována"
-msgstr[1] "%d značky aktualizovány"
-msgstr[2] "%d značek aktualizováno"
+msgstr[0] ""
+msgstr[1] ""
 
 #: bzrlib/branch.py:3210
 msgid "No new revisions or tags to push."
-msgstr "Žádné nové revize nebo značky k odeslání."
+msgstr ""
 
 #: bzrlib/branch.py:3212
 msgid "No new revisions to push."
-msgstr "Žádné nové revize k odeslání."
+msgstr ""
 
 #: bzrlib/branch.py:3232
 msgid "checked branch {0} format {1}"
-msgstr "zkontrolována větev {0} formát {1}"
+msgstr ""
 
 #: bzrlib/branch.py:3235
 #, python-format
 msgid "found error:%s"
-msgstr "nalezena chyba:%s"
+msgstr ""
 
 #: bzrlib/builtins.py:209 bzrlib/builtins.py:3016 bzrlib/workingtree.py:315
 #, python-format
 msgid "Ignoring files outside view. View is %s"
-msgstr "Ignorování souborů mimo zobrazení. Zobrazení je %s"
+msgstr ""
 
 #: bzrlib/builtins.py:218
 #, python-format
 msgid "bzr %s --revision takes exactly one revision identifier"
-msgstr "bzr %s --revision přijímá právě jeden identifikátor revize"
+msgstr ""
 
 #: bzrlib/builtins.py:303
 msgid "Display status summary."
-msgstr "Zobrazit souhrn stavů."
+msgstr ""
 
 #: bzrlib/builtins.py:305
 msgid ""
 "This reports on versioned and unknown files, reporting them\n"
 "grouped by state.  Possible states are:"
 msgstr ""
-"Toto zaznamenává neznámé soubory a soubory s verzí, nahlašuje je\n"
-"seřazené podle stavu. Možné stavy jsou:"
 
 #: bzrlib/builtins.py:308
 msgid ""
 "added\n"
 "    Versioned in the working copy but not in the previous revision."
 msgstr ""
-"přidáno\n"
-"    S verzí v pracovní kopii ale ne v předchozí revizi."
 
 #: bzrlib/builtins.py:311
 msgid ""
@@ -92,9 +87,6 @@ msgid ""
 "    Versioned in the previous revision but removed or deleted\n"
 "    in the working copy."
 msgstr ""
-"odstraněno\n"
-"    S verzí v předchozí revizi ale odstraněno nebo smazáno\n"
-"    v pracovní kopii."
 
 #: bzrlib/builtins.py:315
 msgid ""
@@ -103,34 +95,24 @@ msgid ""
 "    the text may also have changed.  This includes files whose\n"
 "    parent directory was renamed."
 msgstr ""
-"přejmenováno\n"
-"    Cesta tohoto souboru byla od předchozí revize změněna;\n"
-"    text se také mohl změnit. To zahrnuje soubory, jejichž\n"
-"    nadřazená složka byla přejmenována."
 
 #: bzrlib/builtins.py:320
 msgid ""
 "modified\n"
 "    Text has changed since the previous revision."
 msgstr ""
-"změněno\n"
-"    Text se od předchozí revize změnil."
 
 #: bzrlib/builtins.py:323
 msgid ""
 "kind changed\n"
 "    File kind has been changed (e.g. from file to directory)."
 msgstr ""
-"druh se změnil\n"
-"    Druh souboru byl změněn (např. ze souboru na složku)."
 
 #: bzrlib/builtins.py:326
 msgid ""
 "unknown\n"
 "    Not versioned and not matching an ignore pattern."
 msgstr ""
-"neznámé\n"
-"    Bez verze a neshoduje se se vzorcem ignorování."
 
 #: bzrlib/builtins.py:329
 msgid ""
@@ -139,18 +121,12 @@ msgid ""
 "character: '/', '@' or '*' respectively. These decorations can be\n"
 "disabled using the '--no-classify' option."
 msgstr ""
-"Dále Bazaar označuje typ pro adresáře, symbolické odkazy a\n"
-"soubory se změněným bitem spuštění pomocí koncového\n"
-"znaku: '/', '@' nebo '*' v tomto pořadí. Tato označení mohou\n"
-"být zakázána pomocí možnosti '--no-classify'."
 
 #: bzrlib/builtins.py:334
 msgid ""
 "To see ignored files use 'bzr ignored'.  For details on the\n"
 "changes to file texts, use 'bzr diff'."
 msgstr ""
-"Pro zobrazení ignorovaných souborů použijte 'bzr ignored'. Pro podrobnosti\n"
-"o změnách provedených v textových souborech použijte 'bzr diff'."
 
 #: bzrlib/builtins.py:337
 msgid ""
@@ -158,10 +134,6 @@ msgid ""
 "to Subversion's status command. To get output similar to svn -q,\n"
 "use bzr status -SV."
 msgstr ""
-"Nezapomeňte, že --short nebo -S vypisuje příznaky stavu pro každou položku,\n"
-"podobně jako příkaz status v Subversion. Abyste dostali výstup podobný svn -"
-"q\n"
-"použijte bzr status -SV."
 
 #: bzrlib/builtins.py:341
 msgid ""
@@ -170,10 +142,6 @@ msgid ""
 "files or directories is reported.  If a directory is given, status\n"
 "is reported for everything inside that directory."
 msgstr ""
-"Pokud nejsou zadány žádné argumenty, je zobrazen stav\n"
-"celého pracovního adresáře. Jinak je zobrazen stav zadaného\n"
-"souboru či adresáře. Pokud je zadán adresář,\n"
-"je zobrazen stav všeho uvnitř tohoto adresáře."
 
 #: bzrlib/builtins.py:346
 msgid ""
@@ -182,19 +150,12 @@ msgid ""
 "To skip the display of pending merge information altogether, use\n"
 "the no-pending option or specify a file/directory."
 msgstr ""
-"Předtím, než jsou sloučení odevzdána, jsou zobrazeny nevyřízené\n"
-"vrcholové revize sloučení. Pro zobrazení všech nevyřízených revizi použije "
-"volbu -v.\n"
-"Abyste zobrazení informací o sloučení přeskočili úplně, použijte\n"
-"volbu no-pending nebo zadejte soubor/složku."
 
 #: bzrlib/builtins.py:351
 msgid ""
 "To compare the working directory to a specific revision, pass a\n"
 "single revision to the revision argument."
 msgstr ""
-"Pro porovnání pracovního adresáře na určitou revizi, předejte\n"
-"jednu revizi do argumentu revize."
 
 #: bzrlib/builtins.py:354
 msgid ""
@@ -202,129 +163,118 @@ msgid ""
 "two revisions, pass a revision range to the revision argument.\n"
 "This will produce the same results as calling 'bzr diff --summarize'."
 msgstr ""
-"Abyste viděli, které soubory se v určité revizi změnili , nebo mezi\n"
-"dvěma revizemi, předejte rozsah revizí do argumentu revizí.\n"
-"Toto vytvoří stejný výsledek jako volání 'bzr diff --summarize'."
 
 #: bzrlib/builtins.py:363
 msgid "Use short status indicators."
-msgstr "Použijt krátké indikátory stavi"
+msgstr ""
 
 #: bzrlib/builtins.py:365
 msgid "Only show versioned files."
-msgstr "Zobrazit pouze soubory s verzí."
+msgstr ""
 
 #: bzrlib/builtins.py:367
 msgid "Don't show pending merges."
-msgstr "Nezobrazovat nevyřízená sloučení."
+msgstr ""
 
 #: bzrlib/builtins.py:370
 msgid "Do not mark object type using indicator."
-msgstr "Neoznačovat typ objektu pomocí indikátoru."
+msgstr ""
 
 #: bzrlib/builtins.py:385
 msgid "bzr status --revision takes exactly one or two revision specifiers"
 msgstr ""
-"bzr status --revision přijímá právě jeden nebo dva specifikátory revize"
 
 #: bzrlib/builtins.py:429 bzrlib/builtins.py:5183
 msgid "You can only supply one of revision_id or --revision"
-msgstr "Můžete zadat pouze jednu z revision_id nebo --revision"
+msgstr ""
 
 #: bzrlib/builtins.py:432 bzrlib/builtins.py:5185
 msgid "You must supply either --revision or a revision_id"
-msgstr "Musíte zadat buď --revision nebo revision_id"
+msgstr ""
 
 #: bzrlib/builtins.py:439
 #, python-format
 msgid "Repository %r does not support access to raw revision texts"
-msgstr "Úložiště %r nepodporuje přístup k vlastním textům revizí"
+msgstr ""
 
 #: bzrlib/builtins.py:450
 msgid "The repository {0} contains no revision {1}."
-msgstr "Úložiště {0} neobsahuje revizi {1}."
+msgstr ""
 
 #: bzrlib/builtins.py:457
 msgid "You cannot specify a NULL revision."
-msgstr "Nemůžete zadat nulovou revizi."
+msgstr ""
 
 #: bzrlib/builtins.py:549
 msgid "Remove the working tree from a given branch/checkout."
-msgstr "Odstranit pracovní strom ze zadané větve/získání."
+msgstr ""
 
 #: bzrlib/builtins.py:551
 msgid ""
 "Since a lightweight checkout is little more than a working tree\n"
 "this will refuse to run against one."
 msgstr ""
-"Protože odlehčené získání je trošku více než pracovní strom\n"
-"toto odmítne být v nějakém spuštěno."
 
 #: bzrlib/builtins.py:554
 msgid "To re-create the working tree, use \"bzr checkout\"."
-msgstr "Pro znovuvytvoření pracovního stromu použijte \"bzr checkout\"."
+msgstr ""
 
 #: bzrlib/builtins.py:560
 msgid ""
 "Remove the working tree even if it has uncommitted or shelved changes."
 msgstr ""
-"Odstranit pracovní strom i když má neodevzdané nebo uskladněné změny."
 
 #: bzrlib/builtins.py:574
 msgid "No working tree to remove"
-msgstr "Žádný pracovní strom k odstranění"
+msgstr ""
 
 #: bzrlib/builtins.py:576
 msgid "You cannot remove the working tree of a remote path"
-msgstr "Nemůžete odtranit pracovní strom ze vzdálené cesty"
+msgstr ""
 
 #: bzrlib/builtins.py:585
 msgid "You cannot remove the working tree from a lightweight checkout"
-msgstr "Nemůžete odstranit pracovní strom z odlehčeného získání"
+msgstr ""
 
 #: bzrlib/builtins.py:625
 msgid ""
 "The tree does not appear to be corrupt. You probably want \"bzr revert\" "
 "instead. Use \"--force\" if you are sure you want to reset the working tree."
 msgstr ""
-"Strom se nezdá být poškozen. Pravděpodobně chcete použít \"bzr revert\" "
-"místo toho. Pokud chcete pracovní strom resetovat předejte \"--force\"."
 
 #: bzrlib/builtins.py:636
 msgid ""
 ", the header appears corrupt, try passing -r -1 to set the state to the last "
 "commit"
 msgstr ""
-", hlavička se zdá být poškozena, zkuste předat -r -1 pro nastavení stavu na "
-"poslední odevzdání"
 
 #: bzrlib/builtins.py:640
 msgid "failed to reset the tree state{0}"
-msgstr "nelze resetovat stav stromu{0}"
+msgstr ""
 
 #: bzrlib/builtins.py:644
 msgid "Show current revision number."
-msgstr "Zobrazit číslo současné revize."
+msgstr ""
 
 #: bzrlib/builtins.py:646
 msgid "This is equal to the number of revisions on this branch."
-msgstr "Toto se rovná počtu revizí v této větvi."
+msgstr ""
 
 #: bzrlib/builtins.py:659
 msgid "--tree and --revision can not be used together"
-msgstr "--tree a --revision nelze použít dohromady"
+msgstr ""
 
 #: bzrlib/builtins.py:676 bzrlib/builtins.py:5967
 msgid "Tags can only be placed on a single revision, not on a range"
-msgstr "Značky mohou být umístěny pouze na jednu revizi, ne na rozsah"
+msgstr ""
 
 #: bzrlib/builtins.py:700
 msgid "Show revno of working tree."
-msgstr "Zobrazit číslo revize pracovního stromu."
+msgstr ""
 
 #: bzrlib/builtins.py:748
 msgid "Add specified files or directories."
-msgstr "Přidat určené soubory nebo adresáře."
+msgstr ""
 
 #: bzrlib/builtins.py:750
 msgid ""
@@ -332,9 +282,6 @@ msgid ""
 "of whether they were previously ignored.  A warning is given if\n"
 "any of the named files are already versioned."
 msgstr ""
-"V nerekurzivním režimu budou přidány všechny pojmenované položky, bez\n"
-"ohledu na to, zdali byli předtím ignorovány. Pokud je kterýkoli pojmenovaný\n"
-"soubory již s verzí, budete varováni."
 
 #: bzrlib/builtins.py:754
 msgid ""
@@ -346,29 +293,18 @@ msgid ""
 "are added.  This search proceeds recursively into versioned\n"
 "directories.  If no names are given '.' is assumed."
 msgstr ""
-"V rekurzivním režimu (výchozí), je se soubory zacházeno stejným\n"
-"způsobem, ale pro adresáře je chování jiné. O adresářích, které\n"
-"jsou již s verzí nebudete varováni. Všechny adresáře,\n"
-"ať už jsou s verzi, nebo bez, jsou prohledány pro soubory nebo\n"
-"podadresáře, které nejsou ani s verzí, ani ignorovány a tyto\n"
-"jsou přidány. Toto hledání pokračuje rekurzivně do adresářů\n"
-"s verzí. Pokud nejsou zadány žádné názvy, předpokládá se '.'"
 
 #: bzrlib/builtins.py:762
 msgid ""
 "A warning will be printed when nested trees are encountered,\n"
 "unless they are explicitly ignored."
 msgstr ""
-"Bude vypsáno varování, když budou zjištěny vnořené stromy,\n"
-"pokud nejsou výslovně ignorovány."
 
 #: bzrlib/builtins.py:765
 msgid ""
 "Therefore simply saying 'bzr add' will version all files that\n"
 "are currently unknown."
 msgstr ""
-"Proto jednoduchým zadáním 'bzr add' opatří verzí všechny soubory, které\n"
-"jsou v současnosti neznámé."
 
 #: bzrlib/builtins.py:768
 msgid ""
@@ -377,18 +313,12 @@ msgid ""
 "you should never need to explicitly add a directory, they'll just\n"
 "get added when you add a file in the directory."
 msgstr ""
-"Přidáním souboru, jehož nadřazený adresář je bez verze implicitně\n"
-"přidá i nadřazeného atd. až do kořene. To znamená,\n"
-"že byste nikdy neměli potřebovat explicitně přidat adresář, ty budou\n"
-"přidány, když přidáte soubor v tomto adresáři.."
 
 #: bzrlib/builtins.py:773
 msgid ""
 "--dry-run will show which files would be added, but not actually\n"
 "add them."
 msgstr ""
-"--dry-run zobrazí které soubory budou přidány,ale ve skutečnosti\n"
-"je nepřidá."
 
 #: bzrlib/builtins.py:776
 msgid ""
@@ -400,22 +330,12 @@ msgid ""
 "adds as a conflict). It is also useful when merging another project\n"
 "into a subdirectory of this one."
 msgstr ""
-"--file-ids-from se pokusí použít id souborů ze zadané cesty.\n"
-"Vyhledává id snažíc se najít shodující se nadřazený adresář se\n"
-"stejným názvem a pak čistě podle cesty. Tato volba je potřeba málokdy\n"
-"ale může být užitečná při přidávání stejného logického souboru do dvou\n"
-"větví, které budou později sloučeny (bez toho, aniž by z obou různých\n"
-"přidání vzešel konflikt). Může být také užitečná při slučování jiného "
-"projektu\n"
-"do podadresáře tohoto."
 
 #: bzrlib/builtins.py:784
 msgid ""
 "Any files matching patterns in the ignore list will not be added\n"
 "unless they are explicitly mentioned."
 msgstr ""
-"Všechny soubory shodující se se seznamem ignorování nebudou přidány\n"
-"pokud nejsou výslovně zmíněny."
 
 #: bzrlib/builtins.py:787
 msgid ""
@@ -423,52 +343,48 @@ msgid ""
 "add.maximum_file_size will be skipped. Named items are never skipped due\n"
 "to file size."
 msgstr ""
-"V rekurzivním režimu soubory větší než volba nastavení \n"
-"add.maximum_file_size budou přeskočeny. Pojmenované položky nejsou nikdy\n"
-"přeskočeny kvůli velikosti"
 
 #: bzrlib/builtins.py:794
 msgid "Don't recursively add the contents of directories."
-msgstr "Nepřidávat obsah adresářů rekurzivně."
+msgstr ""
 
 #: bzrlib/builtins.py:800
 msgid "Lookup file ids from this tree."
-msgstr "Vyhledat id v tomto stromu"
+msgstr ""
 
 #: bzrlib/builtins.py:836
 msgid "ignored {0} matching \"{1}\"\n"
-msgstr "{0} ignorováno, shoda s \"{1}\"\n"
+msgstr ""
 
 #: bzrlib/builtins.py:841
 msgid "Create a new versioned directory."
-msgstr "Vytvořit nový adresář s verzí."
+msgstr ""
 
 #: bzrlib/builtins.py:843
 msgid "This is equivalent to creating the directory and then adding it."
-msgstr "Toto se rovná vytvoření a přidání adresáře."
+msgstr ""
 
 #: bzrlib/builtins.py:850
 msgid "No error if existing, make parent directories as needed."
 msgstr ""
-"Žádná chyba pokud existuje, vytvořit nadřazené adresáře, jak je potřeba."
 
 #: bzrlib/builtins.py:884
 #, python-format
 msgid "added %s\n"
-msgstr "přidáno %s\n"
+msgstr ""
 
 #: bzrlib/builtins.py:926
 #, python-format
 msgid "invalid kind %r specified"
-msgstr "zadán neplatný druh %r"
+msgstr ""
 
 #: bzrlib/builtins.py:963
 msgid "Move or rename a file."
-msgstr "Přesunout nebo přejmnovat soubor."
+msgstr ""
 
 #: bzrlib/builtins.py:965
 msgid "    bzr mv SOURCE... DESTINATION"
-msgstr "    bzr mv ZDROJ... CÍL"
+msgstr ""
 
 #: bzrlib/builtins.py:967
 msgid ""
@@ -476,9 +392,6 @@ msgid ""
 "are moved into it.  Otherwise, there must be exactly two arguments\n"
 "and the file is changed to a new name."
 msgstr ""
-"Pokud poslední argument je adresář s verzí, všechny ostatní názvy\n"
-"jsou do něho přesunuty. Jinak musí být zadány právě dva argumenty\n"
-"a soubor je přeměněn na nový název."
 
 #: bzrlib/builtins.py:971
 msgid ""
@@ -488,57 +401,52 @@ msgid ""
 "its internal inventory to reflect that change.\n"
 "The same is valid when moving many SOURCE files to a DESTINATION."
 msgstr ""
-"Pokud STARÝNÁZEV v souborovém systému neexistuje, ale je s verzi a\n"
-"NOVÝNÁZEV ano, ale bez verze, mv předpokládá, že soubor byl ručně\n"
-"přesunut a pouze aktualizuje svůj vnitřní inventář, aby tuto změnu odrážel.\n"
-"To stejné platí při přesunu mnoha ZDROJOVÝCH souborů do CÍLE."
 
 #: bzrlib/builtins.py:977
 msgid "Files cannot be moved between branches."
-msgstr "Soubory nemohou být přesouvány mezi větvemi."
+msgstr ""
 
 #: bzrlib/builtins.py:984
 msgid ""
 "Move only the bzr identifier of the file, because the file has already been "
 "moved."
 msgstr ""
-"Přesunout pouze bzr identifikátor souboru, protože soubor již byl přesunut."
 
 #: bzrlib/builtins.py:986
 msgid "Automatically guess renames."
-msgstr "Automaticky hádat přejmenování."
+msgstr ""
 
 #: bzrlib/builtins.py:987
 msgid "Avoid making changes when guessing renames."
-msgstr "Vyhnout se provádění změn při hádání přejmenování."
+msgstr ""
 
 #: bzrlib/builtins.py:996
 msgid "--dry-run requires --auto."
-msgstr "--dry-run vyžaduje --auto."
+msgstr ""
 
 #: bzrlib/builtins.py:1000
 msgid "missing file argument"
-msgstr "chybí souborový argument"
+msgstr ""
 
 #: bzrlib/builtins.py:1004
 msgid "can not move root of branch"
-msgstr "nelze přesunout kořen větve"
+msgstr ""
 
 #: bzrlib/builtins.py:1010
 msgid "Only one path may be specified to --auto."
-msgstr "Pro --auto může být zadána pouze jedna cesta."
+msgstr ""
 
 #: bzrlib/builtins.py:1013
 msgid "--after cannot be specified with --auto."
-msgstr "--after nemůže být určeno pomocí --auto."
+msgstr ""
 
 #: bzrlib/builtins.py:1050
 msgid "to mv multiple files the destination must be a versioned directory"
-msgstr "pro přesun mnoha souborů musí být cíl adresář s verzí"
+msgstr ""
 
 #: bzrlib/builtins.py:1102
 msgid "Turn this branch into a mirror of another branch."
-msgstr "Přeměnit tuto větvi do odrazu jiné větve"
+msgstr ""
 
 #: bzrlib/builtins.py:1104
 msgid ""
@@ -547,10 +455,6 @@ msgid ""
 "commit is one that has not been merged (directly or indirectly) into the \n"
 "parent."
 msgstr ""
-"Standardně tento příkaz funguje ve větvích, které se neliší.\n"
-"Větve jsou považovány za odlišné, pokud nejnovější odevzdání \n"
-"cílové větve je to, které nebylo sloučeno (přímo či nepřímo) do \n"
-"nadřazené."
 
 #: bzrlib/builtins.py:1109
 msgid ""
@@ -558,9 +462,6 @@ msgid ""
 "from one into the other.  Once one branch has merged, the other should\n"
 "be able to pull it again."
 msgstr ""
-"Pokud jsou větve odlišné, můžete použít 'bzr merge' pro včlenění změn\n"
-"z jedné do druhé. Jakmile je jedna větev sloučena, druhá by měla\n"
-"být schopna ji znovu stáhnout."
 
 #: bzrlib/builtins.py:1113
 msgid ""
@@ -568,9 +469,6 @@ msgid ""
 "match the remote one, use pull --overwrite. This will work even if the two\n"
 "branches have diverged."
 msgstr ""
-"Pokud chcete nahradit Vše místní změny a aby Vaše větev\n"
-"odpovídala vzdálené větvi, použijte pull --overwrite. Toto bude fungovat\n"
-"i když se větve liší."
 
 #: bzrlib/builtins.py:1117
 msgid ""
@@ -579,10 +477,6 @@ msgid ""
 "location to use the default.  To change the default, use --remember. The\n"
 "value will only be saved if the remote location can be accessed."
 msgstr ""
-"Pokud není nastaveno žádné výchozí umístění, první stáhnutí tak učiní\n"
-"(použijte --no-remember abyste tomu předešli). Poté můžete umístění\n"
-"vynechat pro použití výchozího. Pro jeho změnu použijte --remember.\n"
-"Hodnota bude uložena pouze když je vzdálené prostředí dostupné."
 
 #: bzrlib/builtins.py:1122
 msgid ""
@@ -590,9 +484,6 @@ msgid ""
 "configuration option. You can use a different format by overriding it with\n"
 "-Olog_format=<other_format>."
 msgstr ""
-"Volba --verbose zobrazí stahované revize pomocí volby nastavení log_format\n"
-"Můžete použít jiný formáty tím, že tento potlačíte pomocí\n"
-"-Olog_format=<jiný_formát>."
 
 #: bzrlib/builtins.py:1126
 msgid ""
@@ -600,63 +491,54 @@ msgid ""
 "or in the form of a path to a file containing a merge directive generated\n"
 "with bzr send."
 msgstr ""
-"Poznámka: Umístění může být zadáno buď ve formě větve,\n"
-"nebo cesty k souboru obsahující příkaz ke sloučení vytvořený\n"
-"pomocí bzr send."
 
 #: bzrlib/builtins.py:1134
 msgid "Show logs of pulled revisions."
-msgstr "Zobrazit záznam tažených revizí."
+msgstr ""
 
 #: bzrlib/builtins.py:1136
 msgid ""
 "Branch to pull into, rather than the one containing the working directory."
-msgstr "Větev, do které stáhnout raději, než ta obsahující pracovní adresář."
+msgstr ""
 
 #: bzrlib/builtins.py:1139
 msgid ""
 "Perform a local pull in a bound branch.  Local pulls are not applied to the "
 "master branch."
 msgstr ""
-"Provést místní stažení do vázané větve. Místní stažení nejsou použita na "
-"hlavní větev."
 
 #: bzrlib/builtins.py:1168
 msgid "Need working tree for --show-base."
-msgstr "Pro --show-base je potřeba pracovní strom."
+msgstr ""
 
 #: bzrlib/builtins.py:1184
 msgid "No pull location known or specified."
-msgstr "Umístění pro stažení není známo či zadáno."
+msgstr ""
 
 #: bzrlib/builtins.py:1190
 #, python-format
 msgid "Using saved parent location: %s\n"
-msgstr "Používání uloženého umístění nadřazené: %s\n"
+msgstr ""
 
 #: bzrlib/builtins.py:1197 bzrlib/builtins.py:4393
 msgid "Cannot use -r with merge directives or bundles"
-msgstr "Nelze použít -r s příkazy sloučení nebo svazky"
+msgstr ""
 
 #: bzrlib/builtins.py:1238
 msgid "Update a mirror of this branch."
-msgstr "Aktualizovat zrcadlo této větve."
+msgstr ""
 
 #: bzrlib/builtins.py:1240
 msgid ""
 "The target branch will not have its working tree populated because this\n"
 "is both expensive, and is not supported on remote file systems."
 msgstr ""
-"Cílová větev nebude mít svůj pracovní strom vyplněn, protože je to\n"
-"jak náročné, tak to není podporováno na vzdálených souborových systémech."
 
 #: bzrlib/builtins.py:1243
 msgid ""
 "Some smart servers or protocols *may* put the working tree in place in\n"
 "the future."
 msgstr ""
-"Některé chytré servery nebo protokoly *mohou* v budoucnu\n"
-"pracovní strom umístit."
 
 #: bzrlib/builtins.py:1246
 msgid ""
@@ -664,17 +546,12 @@ msgid ""
 "considered diverged if the destination branch's most recent commit is one\n"
 "that has not been merged (directly or indirectly) by the source branch."
 msgstr ""
-"Tento příkaz funguje pouze ve větvích, které se neliší.  Větve jsou\n"
-"považovány za odlišné, pokud nejnovější odevzdání cílové větve je to,\n"
-"které nebylo sloučeno (přímo či nepřímo) zdrojovou větví."
 
 #: bzrlib/builtins.py:1250
 msgid ""
 "If branches have diverged, you can use 'bzr push --overwrite' to replace\n"
 "the other branch completely, discarding its unmerged changes."
 msgstr ""
-"Pokud se větve liší, můžete použít 'bzr push --overwrite' pro úplné\n"
-"nahrazení druhé větve, čímž zahodíte její nesloučené změny."
 
 #: bzrlib/builtins.py:1253
 msgid ""
@@ -682,9 +559,6 @@ msgid ""
 "do a merge (see bzr help merge) from the other branch, and commit that.\n"
 "After that you will be able to do a push without '--overwrite'."
 msgstr ""
-"Pokud chcete zajistit, že máte různé změny v druhé větvi,\n"
-"proveďte sloučení (viz bzr help merge) z druh větvě a to odevzdejte.\n"
-"Poté budete moci provést odeslání bez '--overwrite'."
 
 #: bzrlib/builtins.py:1257
 msgid ""
@@ -693,10 +567,6 @@ msgid ""
 "location to use the default.  To change the default, use --remember. The\n"
 "value will only be saved if the remote location can be accessed."
 msgstr ""
-"Pokud není nastaveno žádné výchozí umístění, první stáhnutí tak učiní\n"
-"(použijte --no-remember abyste tomu předešli). Poté můžete umístění\n"
-"vynechat pro použití výchozího. Pro jeho změnu použijte --remember.\n"
-"Hodnota bude uložena pouze když je vzdálené prostředí dostupné."
 
 #: bzrlib/builtins.py:1262
 msgid ""
@@ -704,29 +574,23 @@ msgid ""
 "configuration option. You can use a different format by overriding it with\n"
 "-Olog_format=<other_format>."
 msgstr ""
-"Volba --verbose zobrazí odesílané revize pomocí volby nastavení log_format\n"
-"Můžete použít jiný formáty tím, že tento potlačíte pomocí\n"
-"-Olog_format=<jiný_formát>."
 
 #: bzrlib/builtins.py:1273 bzrlib/foreign.py:272
 msgid ""
 "Branch to push from, rather than the one containing the working directory."
-msgstr "Větev z které odesílat, raději než ta obsahující pracovní adresář."
+msgstr ""
 
 #: bzrlib/builtins.py:1276
 msgid ""
 "By default push will fail if the target directory exists, but does not "
 "already have a control directory.  This flag will allow push to proceed."
 msgstr ""
-"Standardně odesílání selže, pokud cílový adresář existuje, ale nemá "
-"kontrolní adresář. Tento příznak povolí odesílání pokračovat."
 
 #: bzrlib/builtins.py:1281
 msgid ""
 "Create a stacked branch that references the public location of the parent "
 "branch."
 msgstr ""
-"Vytvoří skládanou větev, která má odkazy na veřejná umístění nadřazené větve."
 
 #: bzrlib/builtins.py:1284
 msgid ""
@@ -734,25 +598,20 @@ msgid ""
 "history. Only the work not present in the referenced branch is included in "
 "the branch created."
 msgstr ""
-"Vytvořit skládanou větev, která odkazuje na jinou větev pro historii "
-"odevzdávání. Pouze ta práce, která není přítomna v odkazované větvi, je "
-"zahrnuta ve vytvořené větvi."
 
 #: bzrlib/builtins.py:1289 bzrlib/foreign.py:279
 msgid ""
 "Refuse to push if there are uncommitted changes in the working tree, --no-"
 "strict disables the check."
 msgstr ""
-"Zamítnou odesílání, pokud jsou v pracovním stromu neodevzdané větve, --no-"
-"strict tuto kontrolu zakáže."
 
 #: bzrlib/builtins.py:1292
 msgid "Don't populate the working tree, even for protocols that support it."
-msgstr "Nevyplňovat pracovní strom i pro protokoly, které to podporují."
+msgstr ""
 
 #: bzrlib/builtins.py:1336
 msgid "Could not determine branch to refer to."
-msgstr "Nelze zjistit větev, na kterou odkazovat."
+msgstr ""
 
 #: bzrlib/builtins.py:1345
 #, python-format
@@ -760,21 +619,19 @@ msgid ""
 "No push location known or specified. To push to the parent branch (at %s), "
 "use 'bzr push :parent'."
 msgstr ""
-"Umístění pro odeslání není známo či zadáno. Pro odeslání do nadřazené větve "
-"( %s) použijte 'bzr push :parent'."
 
 #: bzrlib/builtins.py:1351 bzrlib/foreign.py:306
 msgid "No push location known or specified."
-msgstr "Umístění pro odeslání není známo či zadáno."
+msgstr ""
 
 #: bzrlib/builtins.py:1355
 #, python-format
 msgid "Using saved push location: %s"
-msgstr "Použito uložené umístění odeslání: %s"
+msgstr ""
 
 #: bzrlib/builtins.py:1365
 msgid "Create a new branch that is a copy of an existing branch."
-msgstr "Vytvořit novou větev, která j kopie existující."
+msgstr ""
 
 #: bzrlib/builtins.py:1367
 msgid ""
@@ -786,120 +643,104 @@ msgid ""
 "identifier, if any. For example, \"branch lp:foo-bar\" will attempt to\n"
 "create ./foo-bar."
 msgstr ""
-"Pokud UMÍSTĚNÍ_DO je vynecháno, bude použita část z UMÍSTĚNÍ_Z.\n"
-"Jinými slovy \"větev ../bla/ble\" se pokusí vytvořit ./ble.\n"
-"Pokud UMÍSTĚNÍ_Z nemá vnořen žádný / má vnořen oddělovač cesty, UMÍSTĚNÍ_DO\n"
-"je odvozeno z UMÍSTĚNÍ_z oddělením předního schématu nebo identifikátoru\n"
-"jednotky, pokud nějaký je. Například \"branch lp:bla-ble\" se pokusí\n"
-"vytvořit ./bla-ble."
 
 #: bzrlib/builtins.py:1374
 msgid ""
 "To retrieve the branch as of a particular revision, supply the --revision\n"
 "parameter, as in \"branch foo/bar -r 5\"."
 msgstr ""
-"Pro získání větve od určité revize, předejte parametr --revision\n"
-"např. \"branch bla/ble -r 5\"."
 
 #: bzrlib/builtins.py:1377
 msgid "The synonyms 'clone' and 'get' for this command are deprecated."
-msgstr "Synonyma 'clone' a 'get' pro tento příkaz jsou zastaralé."
+msgstr ""
 
 #: bzrlib/builtins.py:1387
 msgid "Create a branch without a working-tree."
-msgstr "Vytvořit větev bez pracovního stromu."
+msgstr ""
 
 #: bzrlib/builtins.py:1389
 msgid "Switch the checkout in the current directory to the new branch."
-msgstr "Překlopit získání  v současném adresáři do nové větve."
+msgstr ""
 
 #: bzrlib/builtins.py:1392
 msgid ""
 "Create a stacked branch referring to the source branch. The new branch will "
 "depend on the availability of the source branch for all operations."
 msgstr ""
-"Vytvořit skládanou větev odkazující na zdrojovou větev. Nová větev bude "
-"záviset ve všech operacích na dostupnosti zdrojové."
 
 #: bzrlib/builtins.py:1396
 msgid "Do not use a shared repository, even if available."
-msgstr "Nepoužívat sdílené úložiště, i když je dostupné."
+msgstr ""
 
 #: bzrlib/builtins.py:1398
 msgid ""
 "By default branch will fail if the target directory exists, but does not "
 "already have a control directory.  This flag will allow branch to proceed."
 msgstr ""
-"Standardně větev selže, pokud cílový adresář existuje, ale neobsahuje "
-"kontrolní adresář. Tento příznak dovolí větvi pokračovat."
 
 #: bzrlib/builtins.py:1403
 msgid "Bind new branch to from location."
-msgstr "Svázat novou větev s umístění z."
+msgstr ""
 
 #: bzrlib/builtins.py:1450
 #, python-format
 msgid "Target directory \"%s\" already exists."
-msgstr "Cílový adresář \"%s\" již existuje."
+msgstr ""
 
 #: bzrlib/builtins.py:1462
 #, python-format
 msgid "Parent of \"%s\" does not exist."
-msgstr "Nadřazený \"%s\" neexistuje."
+msgstr ""
 
 #: bzrlib/builtins.py:1481
 msgid "The branch {0} has no revision {1}."
-msgstr "Větev {0} nemá revizi {1}"
+msgstr ""
 
 #: bzrlib/builtins.py:1496 bzrlib/push.py:53
 #, python-format
 msgid "Created new stacked branch referring to %s."
-msgstr "Vytvořena nová skládaná větev odkazující na %s"
+msgstr ""
 
 #: bzrlib/builtins.py:1500
 #, python-format
 msgid "Branched %d revision."
 msgid_plural "Branched %d revisions."
-msgstr[0] "Rozvětvena %d revize"
-msgstr[1] "Rozvětveny %d revize"
-msgstr[2] "Rozvětveno %d revizí"
+msgstr[0] ""
+msgstr[1] ""
 
 #: bzrlib/builtins.py:1505
 #, python-format
 msgid "New branch bound to %s"
-msgstr "Nová větev svázána s %s"
+msgstr ""
 
 #: bzrlib/builtins.py:1510 bzrlib/builtins.py:6256
 #, python-format
 msgid "Switched to branch: %s"
-msgstr "Překlopeno na větev: %s"
+msgstr ""
 
 #: bzrlib/builtins.py:1515
 msgid "List the branches available at the current location."
-msgstr "Zobrazit větvě dostupné v současném umístění"
+msgstr ""
 
 #: bzrlib/builtins.py:1517
 msgid ""
 "This command will print the names of all the branches at the current\n"
 "location."
 msgstr ""
-"Tento příkaz vypíše názvy všech větví v současném\n"
-"umístění."
 
 #: bzrlib/builtins.py:1524
 msgid ""
 "Recursively scan for branches rather than just looking in the specified "
 "location."
 msgstr ""
-"Rekurzivně prohledat větve raději než jenom hledat v zadaném umístění"
 
 #: bzrlib/builtins.py:1554
 msgid "(default)"
-msgstr "(výchozí)"
+msgstr ""
 
 #: bzrlib/builtins.py:1566
 msgid "Create a new checkout of an existing branch."
-msgstr "Vytvořit nové získání existující větve."
+msgstr ""
 
 #: bzrlib/builtins.py:1568
 msgid ""
@@ -910,12 +751,6 @@ msgid ""
 "or if it was never created - i.e. if you pushed the branch to its current\n"
 "location using SFTP."
 msgstr ""
-"Pokud UMÍSTĚNÍ_VĚTVE je vynecháno, získání zrekonstruuje pracovní strom pro\n"
-"větev nalezenou v '.'. Toto je užitečné, když jste odstranili pracovní "
-"strom\n"
-"nebo když nikdy nebyl vytvořen - t.j. pokud jste odeslali větev do jejího "
-"současného\n"
-"umístění pomoc SFTP."
 
 #: bzrlib/builtins.py:1573
 msgid ""
@@ -928,14 +763,6 @@ msgid ""
 "identifier, if any. For example, \"checkout lp:foo-bar\" will attempt to\n"
 "create ./foo-bar."
 msgstr ""
-"Pokud UMÍSTĚNÍ_DO je vynecháno, bude použita poslední složka "
-"UMÍSTĚNÍ_VĚTVE.\n"
-"Jinými slovy, \"checkout ../foo/bar\"se pokusí vytvořit ./bar.\n"
-"Pokud UMÍSTĚNÍ_VĚTVE nemá / nebo vnořený oddělovač cesty, UMÍSTĚNÍ_DO\n"
-"bude odvozeno z UMÍSTĚNÍ_VĚTVE oddělením předního schématu nebo "
-"identifikátoru\n"
-"jednotky, pokud nějaký je. Například \"checkout lp:foo-bar\" se pokusí\n"
-"vytvořit ./foo-bar."
 
 #: bzrlib/builtins.py:1580
 msgid ""
@@ -946,10 +773,6 @@ msgid ""
 "old\n"
 "code.)"
 msgstr ""
-"Pro získání větve z určité revize, zadejte parametr --revision\n"
-"jako např. \"checkout foo/bar -r 5\". Nezapomeňte, že toto bude\n"
-"okamžitě zastaralé [takže nemůžete odevzdávat] ale může to\n"
-"být užitečné (např. pro prozkoumání starého kódu.)"
 
 #: bzrlib/builtins.py:1590
 msgid ""
@@ -958,29 +781,24 @@ msgid ""
 "operations like diff and status without such access, and also support local "
 "commits."
 msgstr ""
-"Provést odlehčené získání. Odlehčená získání závisí na přístupu k větvi pro "
-"každou operaci. Normální získání mohou provádět běžné operafe jako rozdíl a "
-"stav bez takového přístupu a také podporují místní odevzdání."
 
 #: bzrlib/builtins.py:1597
 msgid "Get file contents from this tree."
-msgstr "Získat obsahy souboru z tohoto stromu."
+msgstr ""
 
 #: bzrlib/builtins.py:1599
 msgid "Hard-link working tree files where possible."
-msgstr "Kde je možné použit pevné odkazy na soubory pracovního stromu."
+msgstr ""
 
 #: bzrlib/builtins.py:1640
 msgid ""
 "Show list of renamed files.\n"
 "    "
 msgstr ""
-"Zobrazit seznam přejmenovaných souborů.\n"
-"    "
 
 #: bzrlib/builtins.py:1670
 msgid "Update a working tree to a new revision."
-msgstr "Aktualizovat pracovní strom na novou revizi."
+msgstr ""
 
 #: bzrlib/builtins.py:1672
 msgid ""
@@ -988,17 +806,12 @@ msgid ""
 "branch, or the specified revision) into the working tree, and then make\n"
 "that revision the basis revision for the working tree.  "
 msgstr ""
-"Toto provede sloučení cílové revize (vrchol větvě,\n"
-"nebo určené revize) do pracovního stromu a pak tato\n"
-"větev bude sloužit jako základní revize pracovního stromu  "
 
 #: bzrlib/builtins.py:1676
 msgid ""
 "You can use this to visit an older revision, or to update a working tree\n"
 "that is out of date from its branch."
 msgstr ""
-"Toto můžete použít pro navštívení starší revize, nebo pro aktualizaci\n"
-"pracovního stromu, který je zastaralý oproti své větvi."
 
 #: bzrlib/builtins.py:1679
 msgid ""
@@ -1007,18 +820,12 @@ msgid ""
 "these changes, use 'bzr revert'.  The uncommitted changes may conflict\n"
 "with the changes brought in by the change in basis revision."
 msgstr ""
-"Pokud jsou ve stromu neodevzdané změny, budou přeneseny\n"
-"a zůstanou jako neodevzdané i po aktualizaci. Pro zahození\n"
-"těchto změn použijte 'bzr revert'. Neodevzdané změny mohou\n"
-"odporovat změnám, které se vyskytnou v základní revizi."
 
 #: bzrlib/builtins.py:1684
 msgid ""
 "If the tree's branch is bound to a master branch, bzr will also update\n"
 "the branch from the master."
 msgstr ""
-"Pokud větev stromu je svázána s hlavní větví, bzr také zaktualizuje\n"
-"větev z hlavní větve."
 
 #: bzrlib/builtins.py:1687
 msgid ""
@@ -1029,12 +836,6 @@ msgid ""
 "revision, use 'bzr revert' with a '-r' option, or use 'bzr cat' to write\n"
 "out the old content of that file to a new location."
 msgstr ""
-"Nemůžete aktualizovat pouze jeden soubor nebo adresář, protože každý\n"
-"pracovní strom Bazaar má jenom jednu základní revizi. Pokud chcete\n"
-"obnovit soubor, který byl místně smazán, použijte 'bzr revert' místo 'bzr\n"
-"update'. Pokud chcete obnovit soubor do stavu v předchozí revizi\n"
-"použijte 'bzr revert' s volbou'-r', nebo 'bzr cat' pro výpis starého\n"
-"obsahu tohoto souboru do nového umístění."
 
 #: bzrlib/builtins.py:1694
 msgid ""
@@ -1042,22 +843,18 @@ msgid ""
 "working tree to update.  By default, the working tree that contains the \n"
 "current working directory is used."
 msgstr ""
-"Argument 'dir', pokud je zadán, musí být umístění kořene\n"
-"pracovního stromu pro aktualizaci. Standardně je použit \n"
-"pracovní strom, který obsahuje současný pracovní adresář."
 
 #: bzrlib/builtins.py:1710
 msgid "bzr update --revision takes exactly one revision"
-msgstr "bzr update --revision přebírá právě jednu revizi"
+msgstr ""
 
 #: bzrlib/builtins.py:1718
 msgid "bzr update can only update a whole tree, not a file or subdirectory"
 msgstr ""
-"bzr update může aktualizovat pouze celý strom, ne soubor nebo podadresář"
 
 #: bzrlib/builtins.py:1749
 msgid "Tree is up to date at revision {0} of branch {1}"
-msgstr "Strom je aktuální na revizi {0} ve větvi {1}"
+msgstr ""
 
 #: bzrlib/builtins.py:1765
 #, python-format
@@ -1065,32 +862,26 @@ msgid ""
 "branch has no revision %s\n"
 "bzr update --revision only works for a revision in the branch history"
 msgstr ""
-"větev nemá žádnou revizi %s\n"
-"bzr update --revision pouze funguje pro revizi v historii větve"
 
 #: bzrlib/builtins.py:1771
 msgid "Updated to revision {0} of branch {1}"
-msgstr "Aktualizováno na revizi {0} ve větvi {1}"
+msgstr ""
 
 #: bzrlib/builtins.py:1775
 msgid ""
 "Your local commits will now show as pending merges with 'bzr status', and "
 "can be committed with 'bzr commit'."
 msgstr ""
-"Vaše místní odevzdání budou nyní zobrazena jako nevyřízená sloučení pomocí "
-"'bzr status' a můžou být odevzdána pomocí 'bzr commit'."
 
 #: bzrlib/builtins.py:1784
 msgid "Show information about a working tree, branch or repository."
-msgstr "Zobrazení informací o pracovním stromu, větvi nebo úložišti."
+msgstr ""
 
 #: bzrlib/builtins.py:1786
 msgid ""
 "This command will show all known locations and formats associated to the\n"
 "tree, branch or repository."
 msgstr ""
-"Tento příkaz zobrazí všechny známá umístění a formáty spojené se\n"
-"stromem, větví, nebo úložištěm."
 
 #: bzrlib/builtins.py:1789
 msgid ""
@@ -1098,27 +889,23 @@ msgid ""
 "To see extended statistic information, use a verbosity level of 2 or\n"
 "higher by specifying the verbose option multiple times, e.g. -vv."
 msgstr ""
-"V podrobném režimu budou statistické informace zahrnuty v každém hlášení.\n"
-"Pro zobrazení rozšířených statistických informací použijte úroveň "
-"podrobnosti 2\n"
-"nebo vyšší zadáním volby podrobnosti vícekrát, např. -vv."
 
 #: bzrlib/builtins.py:1793
 msgid "Branches and working trees will also report any missing revisions."
-msgstr "Větve a pracovní stromy také ohlásí jakékoli chybějící revize."
+msgstr ""
 
 #: bzrlib/builtins.py:1795 bzrlib/builtins.py:3715 bzrlib/builtins.py:4845
 #: bzrlib/builtins.py:6442
 msgid ":Examples:"
-msgstr ":Příklady:"
+msgstr ""
 
 #: bzrlib/builtins.py:1797
 msgid "  Display information on the format and related locations:"
-msgstr "  Zobrazení informací o formátu a souvisejících umístěních:"
+msgstr ""
 
 #: bzrlib/builtins.py:1799
 msgid "    bzr info"
-msgstr "    bzr info"
+msgstr ""
 
 #: bzrlib/builtins.py:1801
 msgid ""
@@ -1126,25 +913,22 @@ msgid ""
 "  basic statistics (like the number of files in the working tree and\n"
 "  number of revisions in the branch and repository):"
 msgstr ""
-"  Zobrazení informací spolu s rozšířenými informacemi o formátu a\n"
-"  základními statistikami (jako počet souborů v pracovním stromu a\n"
-"  počet revizí ve větvi a úložišti):"
 
 #: bzrlib/builtins.py:1805
 msgid "    bzr info -v"
-msgstr "    bzr info -v"
+msgstr ""
 
 #: bzrlib/builtins.py:1807
 msgid "  Display the above together with number of committers to the branch:"
-msgstr "  Zobrazí informace výše spolu s počtem odevzdávajících do větve:"
+msgstr ""
 
 #: bzrlib/builtins.py:1809
 msgid "    bzr info -vv"
-msgstr "    bzr info -vv"
+msgstr ""
 
 #: bzrlib/builtins.py:1828
 msgid "Remove files or directories."
-msgstr "Odstranit soubory nebo adresáře."
+msgstr ""
 
 #: bzrlib/builtins.py:1830
 msgid ""
@@ -1154,57 +938,48 @@ msgid ""
 "parameters are given Bazaar will scan for files that are being tracked by\n"
 "Bazaar but missing in your tree and stop tracking them for you."
 msgstr ""
-"Tímto Bazaar přestane sledovat změny v zadané souboru. Bud je\n"
-"smaže, pokud mohou být snadno obnoveny použitím revert, jinak\n"
-"budou zálohovány (použitím přípony formy .~#~). Pokud nejsou\n"
-"zadány žádné volby nebo parametry, Bazaar prohledá soubory,\n"
-"které jsou jím sledovány , ale ve Vašem stromě chybí a přestane je\n"
-"pro Vás sledovat."
 
 #: bzrlib/builtins.py:1838
 msgid "Only remove files that have never been committed."
-msgstr "Odstranit pouze soubory, které nikdy nebyly odevzdány."
+msgstr ""
 
 #: bzrlib/builtins.py:1840
 msgid "The file deletion mode to be used."
-msgstr "Režim smazání souborů, který bude použit."
+msgstr ""
 
 #: bzrlib/builtins.py:1841
 msgid "Deletion Strategy"
-msgstr "Strategie smazání"
+msgstr ""
 
 #: bzrlib/builtins.py:1842
 msgid "Backup changed files (default)."
-msgstr "Zálohovat změněné soubory (výchozí)."
+msgstr ""
 
 #: bzrlib/builtins.py:1843
 msgid "Delete from bzr but leave the working copy."
-msgstr "Smazat z bzr ale ponechat pracovní kopii."
+msgstr ""
 
 #: bzrlib/builtins.py:1844
 msgid "Don't backup changed files."
-msgstr "Nezálohovat změněné soubory."
+msgstr ""
 
 #: bzrlib/builtins.py:1845
 msgid ""
 "Delete all the specified files, even if they can not be recovered and even "
 "if they are non-empty directories. (deprecated, use no-backup)"
 msgstr ""
-"Smazat všechny určené soubory, i když nemohou být obnoveny a i když se "
-"vyskytují neprázdné adresáře. (zastaralé, použijte no-backup)"
 
 #: bzrlib/builtins.py:1854
 msgid "(The --force option is deprecated, rather use --no-backup in future.)"
 msgstr ""
-"(Volba -force je zastaralá, raději v budoucnu používejte --no-backup.)"
 
 #: bzrlib/builtins.py:1871
 msgid "No matching files."
-msgstr "Žádné schodující se soubory."
+msgstr ""
 
 #: bzrlib/builtins.py:1932
 msgid "Reconcile bzr metadata in a branch."
-msgstr "Sladit metadata bzr ve větvi."
+msgstr ""
 
 #: bzrlib/builtins.py:1934
 msgid ""
@@ -1213,10 +988,6 @@ msgid ""
 "need to run this command if 'bzr check' or a bzr developer\n"
 "advises you to run it."
 msgstr ""
-"Toto může spravit neshody dat, které mohly být způsobeny\n"
-"předchozími operacemi s duchy nebo aktualizacemi bzr.\n"
-"Tento příkaz byste měli spouštět pouze, pokud Vás k tomu vyzve\n"
-"'bzr check' nebo vývojář bzr."
 
 #: bzrlib/builtins.py:1939
 msgid ""
@@ -1225,23 +996,16 @@ msgid ""
 "id which was not present in very early bzr versions is represented\n"
 "correctly in both branches."
 msgstr ""
-"Pokud je zadána druhá větev, bude proveden pokus o sladění\n"
-"napříč větvemi, což tyto data zkontroluje  jako id kořenu stromu,\n"
-"které nebylo přítomno ve velmi starých verzích bzr a které je\n"
-"správně zastoupeno v obou větvích."
 
 #: bzrlib/builtins.py:1944
 msgid ""
 "At the same time it is run it may recompress data resulting in\n"
 "a potential saving in disk space or performance gain."
 msgstr ""
-"Zároveň může při spuštění komprimovat data, což může mít za\n"
-"následek potenciální uvolnění místa na disku nebo zrychlení operací."
 
 #: bzrlib/builtins.py:1947
 msgid "The branch *MUST* be on a listable system such as local disk or sftp."
 msgstr ""
-"Větev *MUSÍ* být v systému schopném výpisu jako místní disk nebo sftp."
 
 #: bzrlib/builtins.py:2014 bzrlib/builtins.py:2132 bzrlib/builtins.py:3750
 msgid ""
@@ -1249,32 +1013,26 @@ msgid ""
 "Uses group-compress storage.\n"
 "Provides rich roots which are a one-way transition.\n"
 msgstr ""
-"Formát pro bzr řady 2.0\n"
-"Používá ukládání ve skupinové komprimaci.\n"
 
 #: bzrlib/builtins.py:2014 bzrlib/builtins.py:2132 bzrlib/builtins.py:3750
 msgid ""
 "Pack-based format used in 1.x series. Introduced in 0.92. Interoperates with "
 "bzr repositories before 0.92 but cannot be read by bzr < 0.92. "
 msgstr ""
-"Formát založený na balíčcích použitý v řadě 1.x. Zavedený v 0.92. "
-"Spolupracuje s repozitáři bzr před 0.92 ale nemůže být přečten bzr < 0.92 "
 
 #: bzrlib/builtins.py:2014 bzrlib/builtins.py:2132 bzrlib/builtins.py:3750
 msgid "The 2a format with experimental support for colocated branches.\n"
-msgstr "Formát 2a s experimentální podporou souběžných větví.\n"
+msgstr ""
 
 #: bzrlib/builtins.py:2015
 msgid "Make a directory into a versioned branch."
-msgstr "Udělat z adresáře větev s verzí."
+msgstr ""
 
 #: bzrlib/builtins.py:2017
 msgid ""
 "Use this to create an empty branch, or before importing an\n"
 "existing project."
 msgstr ""
-"Toto použijte pro vytvoření prázdné větve, nebo před importem\n"
-"existujícího projektu."
 
 #: bzrlib/builtins.py:2020
 msgid ""
@@ -1283,22 +1041,16 @@ msgid ""
 "init creates a standalone branch which carries its own history\n"
 "in the .bzr directory."
 msgstr ""
-"Pokud existuje úložiště v nadřazeném adresáři umístění, pak\n"
-"bude historie větve uložena v úložišti. Jinak init vytvoří\n"
-"samostatnou větev která má svoji vlastní historii\n"
-"v adresáři .bzr."
 
 #: bzrlib/builtins.py:2025
 msgid ""
 "If there is already a branch at the location but it has no working tree,\n"
 "the tree can be populated with 'bzr checkout'."
 msgstr ""
-"pokud již v umístění existuje  větev, ale nemá žádný pracovní strom,\n"
-"je strom vyplněn pomocí 'bzr checkout'."
 
 #: bzrlib/builtins.py:2028
 msgid "Recipe for importing a tree of files::"
-msgstr "Postup pro import sromu souborů::"
+msgstr ""
 
 #: bzrlib/builtins.py:2030
 msgid ""
@@ -1308,31 +1060,24 @@ msgid ""
 "    bzr status\n"
 "    bzr commit -m \"imported project\""
 msgstr ""
-"    cd ~/project\n"
-"    bzr init\n"
-"    bzr add .\n"
-"    bzr status\n"
-"    bzr commit -m \"imported project\""
 
 #: bzrlib/builtins.py:2041
 msgid ""
 "Create the path leading up to the branch if it does not already exist."
-msgstr "Vytvoří cestu vedoucí k větvi, pokud již neexistuje."
+msgstr ""
 
 #: bzrlib/builtins.py:2044
 msgid "Specify a format for this branch. See \"help formats\"."
-msgstr "Určí formát pro tuto větev. Viz \"help formats\"."
+msgstr ""
 
 #: bzrlib/builtins.py:2052
 msgid ""
 "Never change revnos or the existing log.  Append revisions to it only."
 msgstr ""
-"Nikdy neměnit čísla revizí nebo existující záznam. Pouze ho připojit k "
-"revizím."
 
 #: bzrlib/builtins.py:2055
 msgid "Create a branch without a working tree."
-msgstr "Vytvořit větev bz pracovního stromu."
+msgstr ""
 
 #: bzrlib/builtins.py:2075 bzrlib/push.py:110
 #, python-format
@@ -1340,29 +1085,24 @@ msgid ""
 "Parent directory of %s does not exist.\n"
 "You may supply --create-prefix to create all leading parent directories."
 msgstr ""
-"Nadřazený adresář %s neexistuje.\n"
-"Můžete zadat --create-prefix pro vytvoření všech předních nadřazených "
-"adresářů."
 
 #: bzrlib/builtins.py:2109
 msgid ""
 "This branch format cannot be set to append-revisions-only.  Try --default."
 msgstr ""
-"Tento formát větve nemůže být nastaven na append-revisions-only. Zkuste --"
-"default."
 
 #: bzrlib/builtins.py:2120
 msgid "Created a {0} (format: {1})\n"
-msgstr "Vytvořeno {0} (formát: {1})\n"
+msgstr ""
 
 #: bzrlib/builtins.py:2129
 #, python-format
 msgid "Using shared repository: %s\n"
-msgstr "Používání sdíleného úložiště: %s\n"
+msgstr ""
 
 #: bzrlib/builtins.py:2133
 msgid "Create a shared repository for branches to share storage space."
-msgstr "Vytvořit sdílené úložiště pro větve pro sdílení úložného prostoru."
+msgstr ""
 
 #: bzrlib/builtins.py:2135
 msgid ""
@@ -1371,10 +1111,6 @@ msgid ""
 "with shared history, this reduces the amount of storage needed and \n"
 "speeds up the creation of new branches."
 msgstr ""
-"Nově větve vytvořené v adresáři úložiště budou ukládat svoje\n"
-"revize v úložišti, ne v adresáři větve. Pro větve s sdílenou\n"
-"historií toto snižuje množství potřebného prostoru a \n"
-"zrychlí tvorbu nových větví."
 
 #: bzrlib/builtins.py:2140
 msgid ""
@@ -1385,32 +1121,22 @@ msgid ""
 "store branches which are interacted with through checkouts or remote\n"
 "branches, such as on a server."
 msgstr ""
-"Pokud je předána volba --no-trees, pak větev v úložišti\n"
-"nebude standardně mít pracovní strom. Stále budou \n"
-"existovat jako adresáře na disku, ale nebudou mít \n"
-"oddělené kopie souborů v určité revizi. Toto může být\n"
-"užitečné pro úložiště, která ukládají větve s kterými se\n"
-"pracuje pomocí získání nebo vzdálených větví, například na serveru."
 
 #: bzrlib/builtins.py:2147
 msgid ""
 ":Examples:\n"
 "    Create a shared repository holding just branches::"
 msgstr ""
-":Příklady:\n"
-"    Vytvoření sdíleného úložiště obsahující pouze větve::"
 
 #: bzrlib/builtins.py:2150
 msgid ""
 "        bzr init-repo --no-trees repo\n"
 "        bzr init repo/trunk"
 msgstr ""
-"        bzr init-repo --no-trees repo\n"
-"        bzr init repo/trunk"
 
 #: bzrlib/builtins.py:2153
 msgid "    Make a lightweight checkout elsewhere::"
-msgstr "    Vytvořit odlehčené získání někde jinde::"
+msgstr ""
 
 #: bzrlib/builtins.py:2155
 msgid ""
@@ -1418,28 +1144,23 @@ msgid ""
 "        cd trunk-checkout\n"
 "        (add files here)"
 msgstr ""
-"        bzr checkout --lightweight repo/trunk trunk-checkout\n"
-"        cd trunk-checkout\n"
-"        (zde přidejte soubory)"
 
 #: bzrlib/builtins.py:2163
 msgid ""
 "Specify a format for this repository. See \"bzr help formats\" for details."
 msgstr ""
-"Zadejte formát pro toto úložiště. Pro podrobnosti zadejte \"bzr help "
-"formats\"."
 
 #: bzrlib/builtins.py:2167
 msgid "Repository format"
-msgstr "Formát úložiště"
+msgstr ""
 
 #: bzrlib/builtins.py:2169
 msgid "Branches in the repository will default to not having a working tree."
-msgstr "Větve v úložišti standardně nemají pracovní stromy."
+msgstr ""
 
 #: bzrlib/builtins.py:2195
 msgid "Show differences in the working tree, between revisions or branches."
-msgstr "Zobrazit rozdíly v pracovním stromu mezi revizemi a větvemi."
+msgstr ""
 
 #: bzrlib/builtins.py:2197
 msgid ""
@@ -1450,21 +1171,12 @@ msgid ""
 "the first argument, if any, or the current tree if no arguments are\n"
 "given."
 msgstr ""
-"Pokud nejsou zadány žádné argumenty, jsou zobrazeny všechny změny\n"
-"současného stromu. Pokud zadáte soubory, zobrazí se pouze změny\n"
-"v těchto souborech.\n"
-"Vzdálené a mnohonásobné větve mohou být porovnány pomocí voleb\n"
-"--old a --new. Pokud nejsou zadány, bude výchozí odvozeno z prvního\n"
-"argumentu, když nějaký je, nebo ze současného stromu, při zadání bez\n"
-"argumentů."
 
 #: bzrlib/builtins.py:2204
 msgid ""
 "\"bzr diff -p1\" is equivalent to \"bzr diff --prefix old/:new/\", and\n"
 "produces patches suitable for \"patch -p1\"."
 msgstr ""
-"\"bzr diff -p1\" se rovná \"bzr diff --prefix old/:new/\" a\n"
-"vytváří záplaty vhodné pro \"patch -p1\"."
 
 #: bzrlib/builtins.py:2207
 msgid ""
@@ -1475,11 +1187,6 @@ msgid ""
 "revision ranges used by \"bzr log\" which includes the first revision\n"
 "in the range."
 msgstr ""
-"Nezapomeňte, že při používání argumentu -r s rozsahem revizí jsou\n"
-"rozdíly vypočítávány mezi dvěma zadanými revizemi. To je, příkaz\n"
-"nezobrazuje změny vyskytující se v první revizi v rozsahu. Toto se \n"
-"liší od výkladu rozsahů revizí použitých v \"bzr log\", který zahrnuje\n"
-"první revizi v rozsahu."
 
 #: bzrlib/builtins.py:2214
 msgid ""
@@ -1489,55 +1196,48 @@ msgid ""
 "    3 - error\n"
 "    0 - no change"
 msgstr ""
-":Výstupní hodnoty:\n"
-"    1 - změněno\n"
-"    2 - nezastupitelné změny\n"
-"    3 - chyba\n"
-"    0 - beze změny"
 
 #: bzrlib/builtins.py:2220
 msgid ""
 ":Examples:\n"
 "    Shows the difference in the working tree versus the last commit::"
 msgstr ""
-":Příklady:\n"
-"    Zobrazí rozdíl mezi pracovním stromem a posledním odevzdáním::"
 
 #: bzrlib/builtins.py:2223
 msgid "        bzr diff"
-msgstr "        bzr diff"
+msgstr ""
 
 #: bzrlib/builtins.py:2225
 msgid "    Difference between the working tree and revision 1::"
-msgstr "    Rozdíl mezi pracovním stromem a revizí 1::"
+msgstr ""
 
 #: bzrlib/builtins.py:2227
 msgid "        bzr diff -r1"
-msgstr "        bzr diff -r1"
+msgstr ""
 
 #: bzrlib/builtins.py:2229
 msgid "    Difference between revision 3 and revision 1::"
-msgstr "    Rozdíl mezi revizí 3 a revizí 1::"
+msgstr ""
 
 #: bzrlib/builtins.py:2231
 msgid "        bzr diff -r1..3"
-msgstr "        bzr diff -r1..3"
+msgstr ""
 
 #: bzrlib/builtins.py:2233
 msgid "    Difference between revision 3 and revision 1 for branch xxx::"
-msgstr "    Rozdíl mezi revizí 3 a revizí 1 ve větvi xxx::"
+msgstr ""
 
 #: bzrlib/builtins.py:2235
 msgid "        bzr diff -r1..3 xxx"
-msgstr "        bzr diff -r1..3 xxx"
+msgstr ""
 
 #: bzrlib/builtins.py:2237
 msgid "    The changes introduced by revision 2 (equivalent to -r1..2)::"
-msgstr "    Změny obsažené v revizi 2 (stejné jako -r1..2)::"
+msgstr ""
 
 #: bzrlib/builtins.py:2239
 msgid "        bzr diff -c2"
-msgstr "        bzr diff -c2"
+msgstr ""
 
 #: bzrlib/builtins.py:2241
 msgid ""
@@ -1545,9 +1245,6 @@ msgid ""
 "    \n"
 "        bzr diff -cX"
 msgstr ""
-"    Pro ozbrazení změn obsažených v revizi X::\n"
-"    \n"
-"        bzr diff -cX"
 
 #: bzrlib/builtins.py:2245
 msgid ""
@@ -1555,61 +1252,56 @@ msgid ""
 "    compared to the left hand parent. To see the changes against\n"
 "    another parent, use::"
 msgstr ""
-"    Nezapomeňte, že v případě sloučení, volba -c zobrazí změny\n"
-"    porovnané s nadřazenou vlevo. Pro zobrazení změn proti\n"
-"    jiné nadřazené, použijte::"
 
 #: bzrlib/builtins.py:2249
 msgid "        bzr diff -r<chosen_parent>..X"
-msgstr "        bzr diff -r<zvolená_nadřazená>..X"
+msgstr ""
 
 #: bzrlib/builtins.py:2251
 msgid ""
 "    The changes between the current revision and the previous revision\n"
 "    (equivalent to -c-1 and -r-2..-1)"
 msgstr ""
-"    Změny mezi současnou a předchozí revizí\n"
-"    (stejné jako -c-1 a -r-2..-1)"
 
 #: bzrlib/builtins.py:2254
 msgid "        bzr diff -r-2.."
-msgstr "        bzr diff -r-2.."
+msgstr ""
 
 #: bzrlib/builtins.py:2256
 msgid "    Show just the differences for file NEWS::"
-msgstr "    Zobrazit rozdíly pouze pro soubor NEWS::"
+msgstr ""
 
 #: bzrlib/builtins.py:2258
 msgid "        bzr diff NEWS"
-msgstr "        bzr diff NEWS"
+msgstr ""
 
 #: bzrlib/builtins.py:2260
 msgid "    Show the differences in working tree xxx for file NEWS::"
-msgstr "    Zobrazit rozdíly pro soubor NEWS v pracovním stromu xxx::"
+msgstr ""
 
 #: bzrlib/builtins.py:2262
 msgid "        bzr diff xxx/NEWS"
-msgstr "        bzr diff xxx/NEWS"
+msgstr ""
 
 #: bzrlib/builtins.py:2264
 msgid "    Show the differences from branch xxx to this working tree:"
-msgstr "    Zobrazit rozdíly od větve xxx po tento pracovní strom:"
+msgstr ""
 
 #: bzrlib/builtins.py:2266
 msgid "        bzr diff --old xxx"
-msgstr "        bzr diff --old xxx"
+msgstr ""
 
 #: bzrlib/builtins.py:2268
 msgid "    Show the differences between two branches for file NEWS::"
-msgstr "    Zobrazit rozdíly pro soubor NEWS mezi dvěma větvemi::"
+msgstr ""
 
 #: bzrlib/builtins.py:2270
 msgid "        bzr diff --old xxx --new yyy NEWS"
-msgstr "        bzr diff --old xxx --new yyy NEWS"
+msgstr ""
 
 #: bzrlib/builtins.py:2272
 msgid "    Same as 'bzr diff' but prefix paths with old/ and new/::"
-msgstr "    Stejné jako 'bzr diff' jen cesty dostanou předponu old/ a new/::"
+msgstr ""
 
 #: bzrlib/builtins.py:2274
 msgid ""
@@ -1619,89 +1311,77 @@ msgid ""
 "    \n"
 "        bzr diff --using /usr/bin/diff --diff-options -wu"
 msgstr ""
-"        bzr diff --prefix old/:new/\n"
-"        \n"
-"    Zobrazí rozdíly pomocí vlastního programu rozdílů s volbami::\n"
-"    \n"
-"        bzr diff --using /usr/bin/diff --možnosti- rozdílů -wu"
 
 #: bzrlib/builtins.py:2284
 msgid "Pass these options to the external diff program."
-msgstr "Tyo možnosti úředejte externímu programu rozdílů."
+msgstr ""
 
 #: bzrlib/builtins.py:2287
 msgid ""
 "Set prefixes added to old and new filenames, as two values separated by a "
 "colon. (eg \"old/:new/\")."
 msgstr ""
-"Nastaví předpony přidané ke starým a novým názvům souborů jako dvě hodnoty "
-"oddělené dvojtečkou. (např. \"old/:new/\")."
 
 #: bzrlib/builtins.py:2290
 msgid "Branch/tree to compare from."
-msgstr "Větev/strom z kterého porovnávat."
+msgstr ""
 
 #: bzrlib/builtins.py:2294
 msgid "Branch/tree to compare to."
-msgstr "Větev/strom s kterým porovnávat."
+msgstr ""
 
 #: bzrlib/builtins.py:2300
 msgid "Use this command to compare files."
-msgstr "Tento příkaz použijte pro porovnání souborů."
+msgstr ""
 
 #: bzrlib/builtins.py:2305
 msgid "Diff format to use."
-msgstr "Formát rozdílů k použití."
+msgstr ""
 
 #: bzrlib/builtins.py:2307
 msgid "Diff format"
-msgstr "Formát rozdílů"
+msgstr ""
 
 #: bzrlib/builtins.py:2329
 msgid "--prefix expects two values separated by a colon (eg \"old/:new/\")"
 msgstr ""
-"--prefix očekává dvě hodnoty oddělené dvojtečkou (např \"old/:new/\")"
 
 #: bzrlib/builtins.py:2333
 msgid "bzr diff --revision takes exactly one or two revision specifiers"
-msgstr "bzr diff --revision vyžaduje jeden nebo dva specifikátory revize"
+msgstr ""
 
 #: bzrlib/builtins.py:2338 bzrlib/builtins.py:2736 bzrlib/builtins.py:2749
 #: bzrlib/builtins.py:2757 bzrlib/builtins.py:4919
 msgid "{0} and {1} are mutually exclusive"
-msgstr "{0} a {1} jsou vzájemně se vylučující"
+msgstr ""
 
 #: bzrlib/builtins.py:2358
 msgid ""
 "List files deleted in the working tree.\n"
 "    "
 msgstr ""
-"Soubory seznamu smazány v pracovním stromu.\n"
-"    "
 
 #: bzrlib/builtins.py:2436
 msgid "Show the tree root directory."
-msgstr "Zobrazit adresář kořenu stromu."
+msgstr ""
 
 #: bzrlib/builtins.py:2438
 msgid ""
 "The root is the nearest enclosing directory with a .bzr control\n"
 "directory."
 msgstr ""
-"Kořen je nejbližší obklopující adresář s kontrolním\n"
-"adresářem .bzr."
 
 #: bzrlib/builtins.py:2453
 msgid "The limit argument must be an integer."
-msgstr "Argument omezení musí být celé číslo."
+msgstr ""
 
 #: bzrlib/builtins.py:2461
 msgid "The levels argument must be an integer."
-msgstr "Argument úrovně musí být celé číslo."
+msgstr ""
 
 #: bzrlib/builtins.py:2466
 msgid "Show historical log for a branch or subset of a branch."
-msgstr "Zobrazit historický záznam větve nebo podmnožiny větve."
+msgstr ""
 
 #: bzrlib/builtins.py:2468
 msgid ""
@@ -1710,10 +1390,6 @@ msgid ""
 "are given, the branch containing the working directory is logged.\n"
 "Here are some simple examples::"
 msgstr ""
-"log je výchozí nástroj bzr pro prozkoumávání historie větve.\n"
-"Používaná větev je vzata z prvního parametru. Pokud parametry\n"
-"nejsou předány, je zaznamenána větev obsahující pracovní adresář.\n"
-"Zde jsou jisté jednoduché příklady::"
 
 #: bzrlib/builtins.py:2473
 msgid ""
@@ -1721,9 +1397,6 @@ msgid ""
 "  bzr log foo.py                log a file in its branch\n"
 "  bzr log http://server/branch  log a branch on a server"
 msgstr ""
-"  bzr log                       zaznamenat současnou větev\n"
-"  bzr log foo.py                zaznamenat soubor ve větvi\n"
-"  bzr log http://server/větev  zaznamenat větev na serveru"
 
 #: bzrlib/builtins.py:2477
 msgid ""
@@ -1734,16 +1407,10 @@ msgid ""
 "merged revisions are shown indented under the revision in which they\n"
 "were merged."
 msgstr ""
-"Filtrování, seřazení a informace zobrazené v každé revizi\n"
-"mohou být kontrolovány tak jak je vysvětleno níže. Standardně\n"
-"jsou všechny revize zobrazeny v topologickém seřazení, takže\n"
-"nové revize jsou zobrazeny před staršími a následníci jsou vždycky\n"
-"zobrazeny před předchůdci. Pokud je toto zakázáno, sloučené\n"
-"revize jsou zobrazeny s odsazením pod revizi, v které byly sloučeny."
 
 #: bzrlib/builtins.py:2484
 msgid ":Output control:"
-msgstr ":Kontrola výstupu:"
+msgstr ""
 
 #: bzrlib/builtins.py:2486
 msgid ""
@@ -1752,18 +1419,12 @@ msgid ""
 "  and ``line``. The default is long. See ``bzr help log-formats``\n"
 "  for more details on log formats."
 msgstr ""
-"  Formát záznamu kontroluje jak jsou informace o každé revizi\n"
-"  zobrazeny. Stadnardní formáty záznamu se nazývají ``long``, ``short``\n"
-"  a ``line``. Výchozí je long. Viz ``bzr help log-formats``\n"
-"  pro podrobnosti o formátech záznamu."
 
 #: bzrlib/builtins.py:2491
 msgid ""
 "  The following options can be used to control what information is\n"
 "  displayed::"
 msgstr ""
-"  Následující volby mhou být použito pro určení zobrazených\n"
-"  informací::"
 
 #: bzrlib/builtins.py:2494
 msgid ""
@@ -1773,11 +1434,6 @@ msgid ""
 "    -p          display a diff (patch) for each revision\n"
 "    --show-ids  display revision-ids (and file-ids), not just revnos"
 msgstr ""
-"    -l N        zobrazí maximálně N revizí\n"
-"    -n N        zobrazí N úrovní revizí (0 pro všechny, 1 pro sbalené)\n"
-"    -v          zobrazí souhrn stavu (delta) pro každou revizi\n"
-"    -p          zobrazí rozdíl (záplatu) pro každou revizi\n"
-"    --show-ids  zobrazí id revizí (a souborů), nejen čísla"
 
 #: bzrlib/builtins.py:2500
 msgid ""
@@ -1785,9 +1441,6 @@ msgid ""
 "  log format. If the -n option is not used, the standard log formats show\n"
 "  just the top level (mainline)."
 msgstr ""
-"  Nezapomeňte, že výchozí počet úrovní k zobrazení je funkce\n"
-"  formátu záznamu. Pokud volba -n není použita, standardní formáty\n"
-"  záznamu zobrazí pouze nejvyšší úroveň (hlavní čáru)."
 
 #: bzrlib/builtins.py:2504
 msgid ""
@@ -1795,13 +1448,10 @@ msgid ""
 "  the changes explained using words like ``added`` and ``modified``\n"
 "  instead, use the -vv option."
 msgstr ""
-"  Shrnutí stavu jsou zobrazeny pomocí příznaků jako A, M, atd.\n"
-"  Abyste místo toho viděli změny vysvětlené pomocí slov jako\n"
-"  ``přidáno`` a ``změněno``, použijte volbu -vv."
 
 #: bzrlib/builtins.py:2508
 msgid ":Ordering control:"
-msgstr ":Kontrola pořadí:"
+msgstr ""
 
 #: bzrlib/builtins.py:2510
 msgid ""
@@ -1810,23 +1460,16 @@ msgid ""
 "  time taken to produce a log, though --forward does not incrementally\n"
 "  display revisions like --reverse does when it can."
 msgstr ""
-"  Pro zobrazení od nejstarší po nejnovější, použijte volbu --forward.\n"
-"  Ve většině případů použití této možnosti bude mít malý dopad\n"
-"  na celkový čas nutný pro vytvoření záznamu, i když --forward\n"
-"  revize nezobrazuje postupně tak jako to dělá --reverse když může."
 
 #: bzrlib/builtins.py:2515
 msgid ":Revision filtering:"
-msgstr ":Filtrování revizí:"
+msgstr ""
 
 #: bzrlib/builtins.py:2517
 msgid ""
 "  The -r option can be used to specify what revision or range of revisions\n"
 "  to filter against. The various forms are shown below::"
 msgstr ""
-"  Volba -r  může být použita pro určení proti které revizi nebo rozsahu "
-"revizi\n"
-"  filtrovat. Různé formy jsou zobrazeny níže::"
 
 #: bzrlib/builtins.py:2520
 msgid ""
@@ -1835,18 +1478,12 @@ msgid ""
 "    -r..Y    display up to and including revision Y\n"
 "    -rX..Y   display from X to Y inclusive"
 msgstr ""
-"    -rX      zobrazí revizi X\n"
-"    -rX..    zobrazí revizi X a pozdější\n"
-"    -r..Y    zobrazí až po a včetně revize Y\n"
-"    -rX..Y   zobrazí od X do Y včetně"
 
 #: bzrlib/builtins.py:2525
 msgid ""
 "  See ``bzr help revisionspec`` for details on how to specify X and Y.\n"
 "  Some common examples are given below::"
 msgstr ""
-"  Viz ``bzr help revisionspec`` pro podrobnosti jak zadat X a Y.\n"
-"  Některé běžné příklady jsou zadány níže::"
 
 #: bzrlib/builtins.py:2528
 msgid ""
@@ -1857,12 +1494,6 @@ msgid ""
 "                        branch and the one at location path\n"
 "    -rdate:yesterday..  show changes since yesterday"
 msgstr ""
-"    -r-1                zobrazit pouze špičku\n"
-"    -r-10..             zobrazit posledních 10 hlavních revizí\n"
-"    -rsubmit:..         zobrazit co je v této větvi nového\n"
-"    -rancestor:path..   zobrazí změny od spolčeného předka této\n"
-"                        větve a větve v cestě umístění\n"
-"    -rdate:yesterday..  zobrazit změny od včerejšího dne"
 
 #: bzrlib/builtins.py:2535
 msgid ""
@@ -1873,14 +1504,6 @@ msgid ""
 "  along the way. If multi-level logging is used (-n0), X may be\n"
 "  a nested merge revision and the log will be truncated accordingly."
 msgstr ""
-"  Při zaznamenávání rozsahu revizí pomocí -rX..Y. záznam\n"
-"  začne u revize Y a prohledává zpětně historii hlavních\n"
-"  (\"levých\") nadřazených dokud nenajde X. Při záznamu\n"
-"  pouze horní úrovně (pomocí -n1) je nahlášeny chyba,\n"
-"  pokud X není během operace nalezeno. Pokud je\n"
-"  použito mnohaúrovňové zaznamenávání (-n0), X může\n"
-"  být vnořená revize sloučení a záznam bude zkrácen\n"
-"  odpovídajícím způsobem."
 
 #: bzrlib/builtins.py:2542
 msgid ":Path filtering:"
