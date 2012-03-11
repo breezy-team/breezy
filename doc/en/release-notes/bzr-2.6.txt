@@ -80,6 +80,9 @@ API Changes
 * ``mail_client`` now accepts a configuration stack object rather than
   an old style Config object. (Jelmer Vernooij)
 
+* New method ``Repository.verify_revision_signatures``.
+  (Jelmer Vernooij)
+
 * New configuration option class ``RegistryOption`` which is backed
   onto a registry. (Jelmer Vernooij)
 

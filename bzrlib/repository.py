@@ -1198,7 +1198,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         :return: Iterator over tuples with revision id, result and keys
         """
         for revid in revision_ids:
-            (result, key) = self.verify_revision_signature(revid)
+            (result, key) = self.verify_revision_signature(revid, gpg_strategy)
             yield revid, result, key
 
     def has_signature_for_revision_id(self, revision_id):
