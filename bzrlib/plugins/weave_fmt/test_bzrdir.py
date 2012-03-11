@@ -27,6 +27,7 @@ import sys
 from bzrlib import (
     branch,
     bzrdir,
+    controldir,
     errors,
     repository,
     upgrade,
@@ -66,7 +67,7 @@ class TestFormat5(TestCaseWithTransport):
             self.assertTrue(ctrl_2 is ctrl_3)
         check_dir_components_use_same_lock(dir)
         # and if we open it normally.
-        dir = bzrdir.BzrDir.open(self.get_url())
+        dir = controldir.ControlDir.open(self.get_url())
         check_dir_components_use_same_lock(dir)
 
     def test_can_convert(self):
@@ -100,7 +101,7 @@ class TestFormat6(TestCaseWithTransport):
             self.assertTrue(ctrl_2 is ctrl_3)
         check_dir_components_use_same_lock(dir)
         # and if we open it normally.
-        dir = bzrdir.BzrDir.open(self.get_url())
+        dir = controldir.ControlDir.open(self.get_url())
         check_dir_components_use_same_lock(dir)
 
     def test_can_convert(self):
@@ -302,7 +303,7 @@ class TestUpgrade(TestCaseWithTransport):
         # At this point, we have a format6 branch without checkout files.
         upgrade.upgrade('.', bzrdir.BzrDirMetaFormat1())
         # The upgrade should not have set up a working tree.
-        control = bzrdir.BzrDir.open('.')
+        control = controldir.ControlDir.open('.')
         self.assertFalse(control.has_workingtree())
         # We have covered the scope of this test, we may as well check that
         # upgrade has not eaten our data, even if it's a bit redundant with
@@ -319,7 +320,7 @@ class TestUpgrade(TestCaseWithTransport):
         eq = self.assertEquals
         self.build_tree_contents(_upgrade1_template)
         upgrade.upgrade(u'.')
-        control = bzrdir.BzrDir.open('.')
+        control = controldir.ControlDir.open('.')
         b = control.open_branch()
         # tsk, peeking under the covers.
         self.assertIsInstance(
@@ -389,7 +390,7 @@ class TestUpgrade(TestCaseWithTransport):
 
     def test_upgrade_makes_dir_weaves(self):
         self.build_tree_contents(_upgrade_dir_template)
-        old_repodir = bzrdir.BzrDir.open_unsupported('.')
+        old_repodir = controldir.ControlDir.open_unsupported('.')
         old_repo_format = old_repodir.open_repository()._format
         upgrade.upgrade('.')
         # this is the path to the literal file. As format changes
@@ -544,7 +545,7 @@ class TestBoundBranch(TestCaseWithTransport):
         self.build_tree(['master/', 'child/'])
         self.make_branch_and_tree('master')
         self.make_branch_and_tree('child',
-                        format=bzrdir.format_registry.make_bzrdir('weave'))
+                        format=controldir.format_registry.make_bzrdir('weave'))
         os.chdir('child')
 
     def test_bind_format_6_bzrdir(self):

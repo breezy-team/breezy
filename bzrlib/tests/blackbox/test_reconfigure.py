@@ -15,12 +15,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     errors,
     tests,
     workingtree,
     )
-from bzrlib.branchbuilder import BranchBuilder
 from bzrlib.tests.script import TestCaseWithTransportAndScript
 
 
@@ -86,7 +85,7 @@ class TestReconfigure(TestCaseWithTransportAndScript):
 
     def test_use_shared_to_standalone(self):
         repo = self.make_repository('repo', shared=True)
-        branch = bzrdir.BzrDir.create_branch_convenience('repo/tree')
+        branch = controldir.ControlDir.create_branch_convenience('repo/tree')
         self.assertNotEqual(branch.bzrdir.root_transport.base,
             branch.repository.bzrdir.root_transport.base)
         self.run_bzr('reconfigure --standalone', working_dir='repo/tree')
@@ -126,7 +125,7 @@ class TestReconfigure(TestCaseWithTransportAndScript):
 
     def test_make_without_trees_leaves_tree_alone(self):
         repo = self.make_repository('repo', shared=True)
-        branch = bzrdir.BzrDir.create_branch_convenience('repo/branch')
+        branch = controldir.ControlDir.create_branch_convenience('repo/branch')
         tree = workingtree.WorkingTree.open('repo/branch')
         self.build_tree(['repo/branch/foo'])
         tree.add('foo')
@@ -137,7 +136,7 @@ class TestReconfigure(TestCaseWithTransportAndScript):
 
     def test_shared_format_to_standalone(self, format=None):
         repo = self.make_repository('repo', shared=True, format=format)
-        branch = bzrdir.BzrDir.create_branch_convenience('repo/tree')
+        branch = controldir.ControlDir.create_branch_convenience('repo/tree')
         self.assertNotEqual(branch.bzrdir.root_transport.base,
             branch.repository.bzrdir.root_transport.base)
         tree = workingtree.WorkingTree.open('repo/tree')

@@ -18,7 +18,6 @@
 import os
 
 from bzrlib import (
-    bzrdir,
     conflicts,
     errors,
     option,

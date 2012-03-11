@@ -38,6 +38,7 @@ from bzrlib import (
     cache_utf8,
     config,
     conflicts as _mod_conflicts,
+    controldir,
     debug,
     dirstate,
     errors,
@@ -1608,7 +1609,7 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
     def _get_matchingbzrdir(self):
         """Overrideable method to get a bzrdir for testing."""
         # please test against something that will let us do tree references
-        return bzrdir.format_registry.make_bzrdir(
+        return controldir.format_registry.make_bzrdir(
             'development-subtree')
 
     _matchingbzrdir = property(__get_matchingbzrdir)

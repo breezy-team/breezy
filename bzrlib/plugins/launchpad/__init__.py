@@ -53,8 +53,8 @@ from bzrlib.i18n import gettext
 
 from bzrlib import (
     branch as _mod_branch,
-    bzrdir,
     config as _mod_config,
+    controldir,
     lazy_regex,
     # Since we are a built-in plugin we share the bzrlib version
     version_info,
@@ -342,6 +342,7 @@ class cmd_lp_propose_merge(Command):
                             help='Commit message.'),
                      Option('approve',
                             help='Mark the proposal as approved immediately.'),
+                     Option('fixes', 'The bug this proposal fixes.', str),
                      ListOption('review', short_name='R', type=unicode,
                             help='Requested reviewer and optional type.')]
 
@@ -350,9 +351,9 @@ class cmd_lp_propose_merge(Command):
     aliases = ['lp-submit', 'lp-propose']
 
     def run(self, submit_branch=None, review=None, staging=False,
-            message=None, approve=False):
+            message=None, approve=False, fixes=None):
         from bzrlib.plugins.launchpad import lp_propose
-        tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
+        tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
             '.')
         if review is None:
             reviews = None
@@ -370,7 +371,8 @@ class cmd_lp_propose_merge(Command):
         else:
             target = _mod_branch.Branch.open(submit_branch)
         proposer = lp_propose.Proposer(tree, branch, target, message,
-                                       reviews, staging, approve=approve)
+                                       reviews, staging, approve=approve,
+                                       fixes=fixes)
         proposer.check_proposal()
         proposer.create_proposal()
 

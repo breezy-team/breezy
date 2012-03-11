@@ -349,11 +349,11 @@ class TestVfsHas(tests.TestCase):
 class TestRemote(tests.TestCaseWithMemoryTransport):
 
     def get_branch_format(self):
-        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_bzrdir_format = controldir.format_registry.get('default')()
         return reference_bzrdir_format.get_branch_format()
 
     def get_repo_format(self):
-        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_bzrdir_format = controldir.format_registry.get('default')()
         return reference_bzrdir_format.repository_format
 
     def assertFinished(self, fake_client):
@@ -475,7 +475,7 @@ class TestBzrDirCloningMetaDir(TestRemote):
         transport = transport.clone('quack')
         self.make_bzrdir('quack')
         client = FakeClient(transport.base)
-        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_bzrdir_format = controldir.format_registry.get('default')()
         control_name = reference_bzrdir_format.network_name()
         client.add_expected_call(
             'BzrDir.cloning_metadir', ('quack/', 'False'),
@@ -509,7 +509,7 @@ class TestBzrDirCheckoutMetaDir(TestRemote):
     def test__get_checkout_format(self):
         transport = MemoryTransport()
         client = FakeClient(transport.base)
-        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_bzrdir_format = controldir.format_registry.get('default')()
         control_name = reference_bzrdir_format.network_name()
         client.add_expected_call(
             'BzrDir.checkout_metadir', ('quack/', ),
@@ -546,7 +546,7 @@ class TestBzrDirGetBranches(TestRemote):
     def test_get_branches(self):
         transport = MemoryTransport()
         client = FakeClient(transport.base)
-        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_bzrdir_format = controldir.format_registry.get('default')()
         branch_name = reference_bzrdir_format.get_branch_format().network_name()
         client.add_success_response_with_body(
             bencode.bencode({
@@ -854,7 +854,7 @@ class TestBzrDirCreateBranch(TestRemote):
         transport = transport.clone('quack')
         self.make_repository('quack')
         client = FakeClient(transport.base)
-        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_bzrdir_format = controldir.format_registry.get('default')()
         reference_format = reference_bzrdir_format.get_branch_format()
         network_name = reference_format.network_name()
         reference_repo_fmt = reference_bzrdir_format.repository_format
@@ -882,7 +882,7 @@ class TestBzrDirCreateBranch(TestRemote):
         # Client's medium rooted a transport root (not at the bzrdir)
         client = FakeClient(transport.base)
         transport = transport.clone('quack')
-        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_bzrdir_format = controldir.format_registry.get('default')()
         reference_format = reference_bzrdir_format.get_branch_format()
         network_name = reference_format.network_name()
         reference_repo_fmt = reference_bzrdir_format.repository_format
@@ -918,7 +918,7 @@ class TestBzrDirCreateRepository(TestRemote):
         transport = transport.clone('quack')
         self.make_bzrdir('quack')
         client = FakeClient(transport.base)
-        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_bzrdir_format = controldir.format_registry.get('default')()
         reference_format = reference_bzrdir_format.repository_format
         network_name = reference_format.network_name()
         client.add_expected_call(
@@ -3964,7 +3964,7 @@ class TestStacking(tests.TestCaseWithTransport):
         :result: The revision ids in the stream, in the order seen,
             the topological order of revisions in the source.
         """
-        unordered_format = bzrdir.format_registry.get(format)()
+        unordered_format = controldir.format_registry.get(format)()
         target_repository_format = unordered_format.repository_format
         # Cross check
         self.assertEqual(order, target_repository_format._fetch_order)
@@ -4273,7 +4273,7 @@ class TestRepositoryIterInventories(TestRemoteRepository):
     def test_single_empty(self):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
-        fmt = bzrdir.format_registry.get('2a')().repository_format
+        fmt = controldir.format_registry.get('2a')().repository_format
         repo._format = fmt
         stream = [('inventory-deltas', [
             versionedfile.FulltextContentFactory('somerevid', None, None,

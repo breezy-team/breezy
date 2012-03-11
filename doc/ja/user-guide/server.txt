@@ -100,7 +100,7 @@ inetd.confに渡される ``--directory`` オプションに相対的な `bzr://
 
 サーバー::
 
-    bzr serve --port=localhost:1234 --directory=/srv/bzr/repo
+    bzr serve --listen=localhost --port=1234 --directory=/srv/bzr/repo
 
 クライアント::
 

@@ -31,8 +31,17 @@ Improvements
   the URL scheme when accessing a HTTPS location.
   (Jelmer Vernooij, #125055)
 
+* Add short option alias ``-N`` for ``--no-recurse``.
+  (Jelmer Vernooij, #945904)
+
 * Avoid 'Invalid range access' errors when whole files are retrieved with
   transport.http.get() . (Vincent Ladeuil, #924746)
+
+* ``bzr rmbranch`` now supports removing colocated branches.
+  (Jelmer Vernooij, #920653)
+
+* ``bzr rmbranch`` no longer removes active branches unless ``--force``
+  is specified. (Jelmer Vernooij, #922953)
 
 * Two new command hooks, ``pre_command`` and ``post_command``,
   provide notification before and after a command has been run.
@@ -76,6 +85,11 @@ Internals
 
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
+
+* Turn config option expansion on by default. The only options for which
+  this should be disabled are templates which should already have used
+  conf.get(option, expand=False) or conf.get_user_option(option,
+  expand=False). (Vincent Ladeuil)
 
 Testing
 *******

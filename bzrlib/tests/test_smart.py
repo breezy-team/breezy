@@ -30,7 +30,7 @@ import zlib
 from bzrlib import (
     bencode,
     branch as _mod_branch,
-    bzrdir,
+    controldir,
     errors,
     gpg,
     inventory_delta,
@@ -121,7 +121,7 @@ class TestByteStreamToStream(tests.TestCase):
         stream = [('text', [versionedfile.FulltextContentFactory(('k1',), None,
             None, 'foo')]),('text', [
             versionedfile.FulltextContentFactory(('k2',), None, None, 'bar')])]
-        fmt = bzrdir.format_registry.get('pack-0.92')().repository_format
+        fmt = controldir.format_registry.get('pack-0.92')().repository_format
         bytes = smart_repo._stream_to_byte_stream(stream, fmt)
         streams = []
         # Iterate the resulting iterable; checking that we get only one stream
@@ -333,7 +333,7 @@ class TestSmartServerRequestCreateRepository(tests.TestCaseWithMemoryTransport):
         self.make_bzrdir('.')
         request_class = smart_dir.SmartServerRequestCreateRepository
         request = request_class(backing)
-        reference_bzrdir_format = bzrdir.format_registry.get('pack-0.92')()
+        reference_bzrdir_format = controldir.format_registry.get('pack-0.92')()
         reference_format = reference_bzrdir_format.repository_format
         network_name = reference_format.network_name()
         expected = smart_req.SuccessfulSmartServerResponse(
@@ -493,7 +493,7 @@ class TestSmartServerRequestInitializeBzrDir(tests.TestCaseWithMemoryTransport):
         request = smart_dir.SmartServerRequestInitializeBzrDir(backing)
         self.assertEqual(smart_req.SmartServerResponse(('ok', )),
             request.execute(''))
-        made_dir = bzrdir.BzrDir.open_from_transport(backing)
+        made_dir = controldir.ControlDir.open_from_transport(backing)
         # no branch, tree or repository is expected with the current
         # default formart.
         self.assertRaises(errors.NoWorkingTree, made_dir.open_workingtree)
@@ -533,7 +533,7 @@ class TestSmartServerRequestBzrDirInitializeEx(
                                            'False', '', '', '')),
             request.execute(name, '', 'True', 'False', 'False', '', '', '', '',
                             'False'))
-        made_dir = bzrdir.BzrDir.open_from_transport(backing)
+        made_dir = controldir.ControlDir.open_from_transport(backing)
         # no branch, tree or repository is expected with the current
         # default format.
         self.assertRaises(errors.NoWorkingTree, made_dir.open_workingtree)
@@ -2691,7 +2691,7 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
             versionedfile.FulltextContentFactory('somerev', None, None,
                 self._get_serialized_inventory_delta(
                     t.branch.repository, 'null:', 'somerev'))])]
-        fmt = bzrdir.format_registry.get('2a')().repository_format
+        fmt = controldir.format_registry.get('2a')().repository_format
         self.assertEquals(
             "".join(response.body_stream),
             "".join(smart_repo._stream_to_byte_stream(stream, fmt)))

@@ -17,7 +17,7 @@
 """Tests for fetch between repositories of the same type."""
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     errors,
     gpg,
     remote,
@@ -67,7 +67,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         tree_a.add('foo', 'file1')
         tree_a.commit('rev1', rev_id='rev1')
         # create a knit-3 based format to fetch into
-        f = bzrdir.format_registry.make_bzrdir('development-subtree')
+        f = controldir.format_registry.make_bzrdir('development-subtree')
         try:
             format = tree_a.branch.repository._format
             format.check_conversion_target(f.repository_format)

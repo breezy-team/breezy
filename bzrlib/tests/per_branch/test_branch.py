@@ -18,7 +18,7 @@
 
 from bzrlib import (
     branch as _mod_branch,
-    bzrdir,
+    controldir,
     config,
     delta as _mod_delta,
     errors,
@@ -708,7 +708,7 @@ class TestFormat(per_branch.TestCaseWithBranch):
         self.assertIsInstance(made_branch, _mod_branch.Branch)
 
         # find it via bzrdir opening:
-        opened_control = bzrdir.BzrDir.open(readonly_t.base)
+        opened_control = controldir.ControlDir.open(readonly_t.base)
         direct_opened_branch = opened_control.open_branch()
         self.assertEqual(direct_opened_branch.__class__, made_branch.__class__)
         self.assertEqual(opened_control, direct_opened_branch.bzrdir)
@@ -849,13 +849,13 @@ class TestIgnoreFallbacksParameter(per_branch.TestCaseWithBranch):
     def test_fallbacks_not_opened(self):
         stacked = self.make_branch_with_fallback()
         self.get_transport('').rename('fallback', 'moved')
-        reopened_dir = bzrdir.BzrDir.open(stacked.base)
+        reopened_dir = controldir.ControlDir.open(stacked.base)
         reopened = reopened_dir.open_branch(ignore_fallbacks=True)
         self.assertEqual([], reopened.repository._fallback_repositories)
 
     def test_fallbacks_are_opened(self):
         stacked = self.make_branch_with_fallback()
-        reopened_dir = bzrdir.BzrDir.open(stacked.base)
+        reopened_dir = controldir.ControlDir.open(stacked.base)
         reopened = reopened_dir.open_branch(ignore_fallbacks=False)
         self.assertLength(1, reopened.repository._fallback_repositories)
 

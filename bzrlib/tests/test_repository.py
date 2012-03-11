@@ -45,6 +45,7 @@ from bzrlib.tests import (
     )
 from bzrlib import (
     bzrdir,
+    controldir,
     errors,
     inventory,
     osutils,
@@ -66,7 +67,7 @@ from bzrlib.repofmt import (
 class TestDefaultFormat(TestCase):
 
     def test_get_set_default_format(self):
-        old_default = bzrdir.format_registry.get('default')
+        old_default = controldir.format_registry.get('default')
         private_default = old_default().repository_format.__class__
         old_format = repository.format_registry.get_default()
         self.assertTrue(isinstance(old_format, private_default))
@@ -74,9 +75,9 @@ class TestDefaultFormat(TestCase):
             my_bzrdir = bzrdir.BzrDirMetaFormat1()
             my_bzrdir.repository_format = SampleRepositoryFormat()
             return my_bzrdir
-        bzrdir.format_registry.remove('default')
-        bzrdir.format_registry.register('sample', make_sample_bzrdir, '')
-        bzrdir.format_registry.set_default('sample')
+        controldir.format_registry.remove('default')
+        controldir.format_registry.register('sample', make_sample_bzrdir, '')
+        controldir.format_registry.set_default('sample')
         # creating a repository should now create an instrumented dir.
         try:
             # the default branch format is used by the meta dir format
@@ -85,9 +86,9 @@ class TestDefaultFormat(TestCase):
             result = dir.create_repository()
             self.assertEqual(result, 'A bzr repository dir')
         finally:
-            bzrdir.format_registry.remove('default')
-            bzrdir.format_registry.remove('sample')
-            bzrdir.format_registry.register('default', old_default, '')
+            controldir.format_registry.remove('default')
+            controldir.format_registry.remove('sample')
+            controldir.format_registry.register('default', old_default, '')
         self.assertIsInstance(repository.format_registry.get_default(),
                               old_format.__class__)
 
@@ -236,13 +237,13 @@ class TestFormatKnit1(TestCaseWithTransport):
     def test_attribute__fetch_order(self):
         """Knits need topological data insertion."""
         repo = self.make_repository('.',
-                format=bzrdir.format_registry.get('knit')())
+                format=controldir.format_registry.get('knit')())
         self.assertEqual('topological', repo._format._fetch_order)
 
     def test_attribute__fetch_uses_deltas(self):
         """Knits reuse deltas."""
         repo = self.make_repository('.',
-                format=bzrdir.format_registry.get('knit')())
+                format=controldir.format_registry.get('knit')())
         self.assertEqual(True, repo._format._fetch_uses_deltas)
 
     def test_disk_layout(self):
@@ -334,7 +335,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         is valid when the api is not being abused.
         """
         repo = self.make_repository('.',
-                format=bzrdir.format_registry.get('knit')())
+                format=controldir.format_registry.get('knit')())
         inv_xml = '<inventory format="5">\n</inventory>\n'
         inv = repo._deserialise_inventory('test-rev-id', inv_xml)
         self.assertEqual('test-rev-id', inv.root.revision)
@@ -342,7 +343,7 @@ class TestFormatKnit1(TestCaseWithTransport):
     def test_deserialise_uses_global_revision_id(self):
         """If it is set, then we re-use the global revision id"""
         repo = self.make_repository('.',
-                format=bzrdir.format_registry.get('knit')())
+                format=controldir.format_registry.get('knit')())
         inv_xml = ('<inventory format="5" revision_id="other-rev-id">\n'
                    '</inventory>\n')
         # Arguably, the deserialise_inventory should detect a mismatch, and
@@ -355,7 +356,7 @@ class TestFormatKnit1(TestCaseWithTransport):
 
     def test_supports_external_lookups(self):
         repo = self.make_repository('.',
-                format=bzrdir.format_registry.get('knit')())
+                format=controldir.format_registry.get('knit')())
         self.assertFalse(repo._format.supports_external_lookups)
 
 
@@ -994,7 +995,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
 class TestRepositoryPackCollection(TestCaseWithTransport):
 
     def get_format(self):
-        return bzrdir.format_registry.make_bzrdir('pack-0.92')
+        return controldir.format_registry.make_bzrdir('pack-0.92')
 
     def get_packs(self):
         format = self.get_format()

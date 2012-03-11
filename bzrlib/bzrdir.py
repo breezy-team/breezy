@@ -1370,7 +1370,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         :param shared_repo: Control whether made repositories are shared or
             not.
         :param vfs_only: If True do not attempt to use a smart server
-        :return: repo, bzrdir, require_stacking, repository_policy. repo is
+        :return: repo, controldir, require_stacking, repository_policy. repo is
             None if none was created or found, bzrdir is always valid.
             require_stacking is the result of examining the stacked_on
             parameter and any stacking policy found for the target.
