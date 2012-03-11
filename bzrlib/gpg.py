@@ -108,7 +108,7 @@ class LoopbackGPGStrategy(object):
         all_verifiable = True
         for rev_id in revisions:
             verification_result, uid =\
-                repository.verify_revision_signature(rev_id,self)
+                repository.verify_revision_signature(rev_id, self)
             result.append([rev_id, verification_result, uid])
             count[verification_result] += 1
             if verification_result != SIGNATURE_VALID:
@@ -230,10 +230,10 @@ class GPGStrategy(object):
 
     def verify(self, content, testament):
         """Check content has a valid signature.
-        
+
         :param content: the commit signature
         :param testament: the valid testament string for the commit
-        
+
         :return: SIGNATURE_VALID or a failed SIGNATURE_ value, key uid if valid
         """
         try:
@@ -308,7 +308,7 @@ class GPGStrategy(object):
 
     def set_acceptable_keys(self, command_line_input):
         """Set the acceptable keys for verifying with this GPGStrategy.
-        
+
         :param command_line_input: comma separated list of patterns from
                                 command line
         :return: nothing
@@ -346,12 +346,12 @@ class GPGStrategy(object):
     def do_verifications(self, revisions, repository,
                             process_events_callback=None):
         """do verifications on a set of revisions
-        
+
         :param revisions: list of revision ids to verify
         :param repository: repository object
         :param process_events_callback: method to call for GUI frontends that
-                                                want to keep their UI refreshed
-        
+            want to keep their UI refreshed
+
         :return: count dictionary of results of each type,
                  result list for each revision,
                  boolean True if all results are verified successfully
