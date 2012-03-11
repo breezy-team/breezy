@@ -2,7 +2,11 @@
 
  BUG FIXES
 
-  * Fixes duplicate tag warnings in 'git-remote-bzr' helper. (Jelmer Vernooij, #905275)
+  * Fixes duplicate tag warnings in 'git-remote-bzr' helper.
+    (Jelmer Vernooij, #905275)
+
+  * Don't suggest development-subtree when submodules are encountered.
+    (Jelmer Vernooij, #951494)
 
  TESTS
 
