@@ -18,7 +18,7 @@
 
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     errors,
     )
 from bzrlib.tag import (
@@ -69,8 +69,8 @@ class TestTagRevisionRenames(TestCaseWithTransport):
 class TestTagMerging(TestCaseWithTransport):
 
     def make_knit_branch(self, relpath):
-        old_bdf = bzrdir.format_registry.make_bzrdir('knit')
-        return bzrdir.BzrDir.create_branch_convenience(relpath, format=old_bdf)
+        old_bdf = controldir.format_registry.make_bzrdir('knit')
+        return controldir.ControlDir.create_branch_convenience(relpath, format=old_bdf)
 
     def make_branch_supporting_tags(self, relpath):
         return self.make_branch(relpath, format='dirstate-tags')

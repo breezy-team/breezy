@@ -22,7 +22,7 @@ import os
 from bzrlib import (
     branch,
     builtins,
-    bzrdir,
+    controldir,
     check,
     errors,
     memorytree,
@@ -173,7 +173,7 @@ class TestPush(per_branch.TestCaseWithBranch):
             if self.vfs_transport_factory is test_server.LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.
-                local_controldir= bzrdir.BzrDir.open(
+                local_controldir = controldir.ControlDir.open(
                     self.get_vfs_only_url('repo/tree'))
                 tree = local_controldir.create_workingtree()
             else:
@@ -355,7 +355,7 @@ class TestPushHook(per_branch.TestCaseWithBranch):
             # remotebranches can't be bound.  Let's instead make a new local
             # branch of the default type, which does allow binding.
             # See https://bugs.launchpad.net/bzr/+bug/112020
-            local = bzrdir.BzrDir.create_branch_convenience('local2')
+            local = controldir.ControlDir.create_branch_convenience('local2')
             local.bind(target)
         source = self.make_branch('source')
         branch.Branch.hooks.install_named_hook(

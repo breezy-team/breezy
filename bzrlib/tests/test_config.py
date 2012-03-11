@@ -27,8 +27,8 @@ from testtools import matchers
 #import bzrlib specific imports here
 from bzrlib import (
     branch,
-    bzrdir,
     config,
+    controldir,
     diff,
     errors,
     osutils,
@@ -115,7 +115,7 @@ config.test_store_builder_registry.register('branch', build_branch_store)
 
 def build_control_store(test):
     build_backing_branch(test, 'branch')
-    b = bzrdir.BzrDir.open('branch')
+    b = controldir.ControlDir.open('branch')
     return config.ControlStore(b)
 config.test_store_builder_registry.register('control', build_control_store)
 
@@ -689,63 +689,6 @@ class TestIniConfigSaving(tests.TestCaseInTempDir):
         self.assertFileEqual(content, 'test.conf')
 
 
-class TestIniConfigOptionExpansionDefaultValue(tests.TestCaseInTempDir):
-    """What is the default value of expand for config options.
-
-    This is an opt-in beta feature used to evaluate whether or not option
-    references can appear in dangerous place raising exceptions, disapearing
-    (and as such corrupting data) or if it's safe to activate the option by
-    default.
-
-    Note that these tests relies on config._expand_default_value being already
-    overwritten in the parent class setUp.
-    """
-
-    def setUp(self):
-        super(TestIniConfigOptionExpansionDefaultValue, self).setUp()
-        self.config = None
-        self.warnings = []
-        def warning(*args):
-            self.warnings.append(args[0] % args[1:])
-        self.overrideAttr(trace, 'warning', warning)
-
-    def get_config(self, expand):
-        c = config.GlobalConfig.from_string('bzr.config.expand=%s' % (expand,),
-                                            save=True)
-        return c
-
-    def assertExpandIs(self, expected):
-        actual = config._get_expand_default_value()
-        #self.config.get_user_option_as_bool('bzr.config.expand')
-        self.assertEquals(expected, actual)
-
-    def test_default_is_None(self):
-        self.assertEquals(None, config._expand_default_value)
-
-    def test_default_is_False_even_if_None(self):
-        self.config = self.get_config(None)
-        self.assertExpandIs(False)
-
-    def test_default_is_False_even_if_invalid(self):
-        self.config = self.get_config('<your choice>')
-        self.assertExpandIs(False)
-        # ...
-        # Huh ? My choice is False ? Thanks, always happy to hear that :D
-        # Wait, you've been warned !
-        self.assertLength(1, self.warnings)
-        self.assertEquals(
-            'Value "<your choice>" is not a boolean for "bzr.config.expand"',
-            self.warnings[0])
-
-    def test_default_is_True(self):
-        self.config = self.get_config(True)
-        self.assertExpandIs(True)
-
-    def test_default_is_False(self):
-        self.config = self.get_config(False)
-        self.assertExpandIs(False)
-
-
 class TestIniConfigOptionExpansion(tests.TestCase):
     """Test option expansion from the IniConfig level.
 
@@ -1142,7 +1085,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
 
     def test_get_config(self):
         """The Branch.get_config method works properly"""
-        b = bzrdir.BzrDir.create_standalone_workingtree('.').branch
+        b = controldir.ControlDir.create_standalone_workingtree('.').branch
         my_config = b.get_config()
         self.assertIs(my_config.get_user_option('wacky'), None)
         my_config.set_user_option('wacky', 'unlikely')
@@ -2203,7 +2146,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
         self.assertGetHook(remote_branch._get_config(), 'file', 'branch')
 
     def test_get_hook_remote_bzrdir(self):
-        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        remote_bzrdir = controldir.ControlDir.open(self.get_url('tree'))
         conf = remote_bzrdir._get_config()
         conf.set_option('remotedir', 'file')
         self.assertGetHook(conf, 'file', 'remotedir')
@@ -2231,7 +2174,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
     def test_set_hook_remote_bzrdir(self):
         remote_branch = branch.Branch.open(self.get_url('tree'))
         self.addCleanup(remote_branch.lock_write().unlock)
-        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        remote_bzrdir = controldir.ControlDir.open(self.get_url('tree'))
         self.assertSetHook(remote_bzrdir._get_config(), 'file', 'remotedir')
 
     def assertLoadHook(self, expected_nb_calls, name, conf_class, *conf_args):
@@ -2254,7 +2197,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
         self.assertLoadHook(1, 'file', remote.RemoteBranchConfig, remote_branch)
 
     def test_load_hook_remote_bzrdir(self):
-        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        remote_bzrdir = controldir.ControlDir.open(self.get_url('tree'))
         # The config file doesn't exist, set an option to force its creation
         conf = remote_bzrdir._get_config()
         conf.set_option('remotedir', 'file')
@@ -2285,7 +2228,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
     def test_save_hook_remote_bzrdir(self):
         remote_branch = branch.Branch.open(self.get_url('tree'))
         self.addCleanup(remote_branch.lock_write().unlock)
-        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        remote_bzrdir = controldir.ControlDir.open(self.get_url('tree'))
         self.assertSaveHook(remote_bzrdir._get_config())
 
 
@@ -2327,6 +2270,10 @@ class TestOption(tests.TestCase):
             return 'bar'
         opt = config.Option('foo', default=bar_not_unicode)
         self.assertRaises(AssertionError, opt.get_default)
+
+    def test_get_help_topic(self):
+        opt = config.Option('foo')
+        self.assertEquals('foo', opt.get_help_topic())
 
 
 class TestOptionConverterMixin(object):

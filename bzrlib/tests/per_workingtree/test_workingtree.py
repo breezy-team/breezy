@@ -24,6 +24,7 @@ from bzrlib import (
     branch,
     bzrdir,
     config,
+    controldir,
     errors,
     osutils,
     revision as _mod_revision,
@@ -719,7 +720,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.add(['bloo', 'blo'])
         tree.commit("blah", allow_pointless=False)
         base = tree.branch.repository.revision_tree(tree.last_revision())
-        bzrdir.BzrDir.open("mine").sprout("other")
+        controldir.ControlDir.open("mine").sprout("other")
         with file('other/bloo', 'wb') as f: f.write('two')
         othertree = WorkingTree.open('other')
         othertree.commit('blah', allow_pointless=False)

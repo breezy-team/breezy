@@ -20,7 +20,6 @@ from cStringIO import StringIO
 
 from bzrlib import (
     branch,
-    bzrdir,
     merge_directive,
     tests,
     )
@@ -63,7 +62,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
 
     def setUp(self):
         super(TestSend, self).setUp()
-        grandparent_tree = bzrdir.BzrDir.create_standalone_workingtree(
+        grandparent_tree = ControlDir.create_standalone_workingtree(
             'grandparent')
         self.build_tree_contents([('grandparent/file1', 'grandparent')])
         grandparent_tree.add('file1')
@@ -275,7 +274,7 @@ class TestSendStrictMixin(TestSendMixin):
 
     def make_parent_and_local_branches(self):
         # Create a 'parent' branch as the base
-        self.parent_tree = bzrdir.BzrDir.create_standalone_workingtree('parent')
+        self.parent_tree = ControlDir.create_standalone_workingtree('parent')
         self.build_tree_contents([('parent/file', 'parent')])
         self.parent_tree.add('file')
         self.parent_tree.commit('first commit', rev_id='parent')

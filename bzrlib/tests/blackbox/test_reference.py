@@ -17,7 +17,7 @@
 
 from bzrlib import (
     branch as _mod_branch,
-    bzrdir,
+    controldir,
     )
 from bzrlib.tests import TestCaseWithTransport
 
@@ -25,7 +25,7 @@ from bzrlib.tests import TestCaseWithTransport
 class TestReference(TestCaseWithTransport):
 
     def get_default_format(self):
-        format = bzrdir.format_registry.make_bzrdir('1.9')
+        format = controldir.format_registry.make_bzrdir('1.9')
         format.set_branch_format(_mod_branch.BzrBranchFormat8())
         return format
 

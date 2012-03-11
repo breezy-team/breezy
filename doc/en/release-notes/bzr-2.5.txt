@@ -26,11 +26,18 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* ``bzr branches`` will now also list sibling branches when
+  the current location is a lightweight checkout of a branch in
+  a shared repository. (Jelmer Vernooij)
+
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* Make sure configuration options can provide their own help topic.
+  (Jelmer Vernooij, #941672)
 
 Documentation
 *************

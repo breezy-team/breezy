@@ -231,7 +231,7 @@ Repository:
         # Branch and bind to standalone, needs upgrade to metadir
         # (creates backup as unknown)
         branch1.bzrdir.sprout('bound')
-        knit1_format = bzrdir.format_registry.make_bzrdir('knit')
+        knit1_format = controldir.format_registry.make_bzrdir('knit')
         upgrade.upgrade('bound', knit1_format)
         branch3 = controldir.ControlDir.open('bound').open_branch()
         branch3.bind(branch1)
@@ -328,7 +328,7 @@ Repository:
         tree5 = branch1.create_checkout('lightcheckout', lightweight=True)
         branch5 = tree5.branch
         out, err = self.run_bzr('info -v lightcheckout')
-        if "metaweave" in bzrdir.format_registry:
+        if "metaweave" in controldir.format_registry:
             format_description = "knit or metaweave"
         else:
             format_description = "knit"
@@ -546,7 +546,7 @@ Repository:
 
     def test_info_standalone_no_tree(self):
         # create standalone branch without a working tree
-        format = bzrdir.format_registry.make_bzrdir('default')
+        format = controldir.format_registry.make_bzrdir('default')
         branch = self.make_branch('branch')
         repo = branch.repository
         out, err = self.run_bzr('info branch -v')
@@ -575,7 +575,7 @@ Repository:
         self.assertEqual('', err)
 
     def test_info_shared_repository(self):
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         transport = self.get_transport()
 
         # Create shared repository
@@ -871,7 +871,7 @@ Repository:
         self.assertEqual('', err)
 
     def test_info_shared_repository_with_trees(self):
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         transport = self.get_transport()
 
         # Create shared repository with working trees
@@ -1098,7 +1098,7 @@ Repository:
         self.assertEqual('', err)
 
     def test_info_shared_repository_with_tree_in_root(self):
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         transport = self.get_transport()
 
         # Create shared repository with working trees
@@ -1166,7 +1166,7 @@ Repository:
         self.assertEqual('', err)
 
     def test_info_repository_hook(self):
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         def repo_info(repo, stats, outf):
             outf.write("more info\n")
         info.hooks.install_named_hook('repository', repo_info, None)
@@ -1195,7 +1195,7 @@ more info
         self.assertEqual('', err)
 
     def test_info_unshared_repository_with_colocated_branches(self):
-        format = bzrdir.format_registry.make_bzrdir('development-colo')
+        format = controldir.format_registry.make_bzrdir('development-colo')
         transport = self.get_transport()
 
         # Create unshared repository
