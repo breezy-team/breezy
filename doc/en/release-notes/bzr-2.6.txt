@@ -43,6 +43,9 @@ Improvements
 * ``bzr rmbranch`` no longer removes active branches unless ``--force``
   is specified. (Jelmer Vernooij, #922953)
 
+* ``bzr verify-signatures`` now shows a progress bar.
+  (Jelmer Vernooij)
+
 * Two new command hooks, ``pre_command`` and ``post_command``,
   provide notification before and after a command has been run.
   (Brian de Alwis, Jelmer Vernooij)

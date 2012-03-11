@@ -48,6 +48,45 @@ SIGNATURE_NOT_SIGNED = 3
 SIGNATURE_EXPIRED = 4
 
 
+def bulk_verify_signatures(repository, revids, strategy,
+        process_events_callback=None):
+    """Do verifications on a set of revisions
+
+    :param repository: repository object
+    :param revids: list of revision ids to verify
+    :param strategy: GPG strategy to use
+    :param process_events_callback: method to call for GUI frontends that
+        want to keep their UI refreshed
+
+    :return: count dictionary of results of each type,
+             result list for each revision,
+             boolean True if all results are verified successfully
+    """
+    count = {SIGNATURE_VALID: 0,
+             SIGNATURE_KEY_MISSING: 0,
+             SIGNATURE_NOT_VALID: 0,
+             SIGNATURE_NOT_SIGNED: 0,
+             SIGNATURE_EXPIRED: 0}
+    result = []
+    all_verifiable = True
+    total = len(revids)
+    pb = ui.ui_factory.nested_progress_bar()
+    try:
+        for i, rev_id in enumerate(revids):
+            pb.update("verifying signatures", i, total)
+            verification_result, uid =\
+                repository.verify_revision_signature(rev_id, strategy)
+            result.append([rev_id, verification_result, uid])
+            count[verification_result] += 1
+            if verification_result != SIGNATURE_VALID:
+                all_verifiable = False
+            if process_events_callback is not None:
+                process_events_callback()
+    finally:
+        pb.finished()
+    return (count, result, all_verifiable)
+
+
 class DisabledGPGStrategy(object):
     """A GPG Strategy that makes everything fail."""
 
@@ -99,21 +138,7 @@ class LoopbackGPGStrategy(object):
                     self.acceptable_keys.append(pattern)
 
     def do_verifications(self, revisions, repository):
-        count = {SIGNATURE_VALID: 0,
-                 SIGNATURE_KEY_MISSING: 0,
-                 SIGNATURE_NOT_VALID: 0,
-                 SIGNATURE_NOT_SIGNED: 0,
-                 SIGNATURE_EXPIRED: 0}
-        result = []
-        all_verifiable = True
-        for rev_id in revisions:
-            verification_result, uid =\
-                repository.verify_revision_signature(rev_id, self)
-            result.append([rev_id, verification_result, uid])
-            count[verification_result] += 1
-            if verification_result != SIGNATURE_VALID:
-                all_verifiable = False
-        return (count, result, all_verifiable)
+        return bulk_verify_signatures(repository, revisions, self)
 
     def valid_commits_message(self, count):
         return gettext(u"{0} commits with valid signatures").format(
@@ -356,23 +381,8 @@ class GPGStrategy(object):
                  result list for each revision,
                  boolean True if all results are verified successfully
         """
-        count = {SIGNATURE_VALID: 0,
-                 SIGNATURE_KEY_MISSING: 0,
-                 SIGNATURE_NOT_VALID: 0,
-                 SIGNATURE_NOT_SIGNED: 0,
-                 SIGNATURE_EXPIRED: 0}
-        result = []
-        all_verifiable = True
-        for rev_id in revisions:
-            verification_result, uid =\
-                repository.verify_revision_signature(rev_id, self)
-            result.append([rev_id, verification_result, uid])
-            count[verification_result] += 1
-            if verification_result != SIGNATURE_VALID:
-                all_verifiable = False
-            if process_events_callback is not None:
-                process_events_callback()
-        return (count, result, all_verifiable)
+        return bulk_verify_signatures(repository, revisions, self,
+            process_events_callback)
 
     def verbose_valid_message(self, result):
         """takes a verify result and returns list of signed commits strings"""

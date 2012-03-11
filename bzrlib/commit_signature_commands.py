@@ -134,6 +134,7 @@ class cmd_verify_signatures(Command):
         def write_verbose(string):
             self.outf.write("  " + string + "\n")
 
+        self.add_cleanup(repo.lock_read().unlock)
         #get our list of revisions
         revisions = []
         if revision is not None:
@@ -154,7 +155,6 @@ class cmd_verify_signatures(Command):
             #all revisions by default including merges
             graph = repo.get_graph()
             revisions = []
-            repo.lock_read()
             for rev_id, parents in graph.iter_ancestry(
                     [branch.last_revision()]):
                 if _mod_revision.is_null(rev_id):
@@ -163,7 +163,6 @@ class cmd_verify_signatures(Command):
                     # Ignore ghosts
                     continue
                 revisions.append(rev_id)
-            repo.unlock()
         count, result, all_verifiable =\
                                 gpg_strategy.do_verifications(revisions, repo)
         if all_verifiable:
