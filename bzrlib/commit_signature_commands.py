@@ -19,15 +19,12 @@
 
 from __future__ import absolute_import
 
-from bzrlib.lazy_import import lazy_import
-lazy_import(globals(), """
 from bzrlib import (
     controldir,
     errors,
     gpg,
     revision as _mod_revision,
     )
-""")
 from bzrlib.commands import Command
 from bzrlib.option import Option
 from bzrlib.i18n import gettext, ngettext
@@ -164,7 +161,7 @@ class cmd_verify_signatures(Command):
                     continue
                 revisions.append(rev_id)
         count, result, all_verifiable =\
-                                gpg_strategy.do_verifications(revisions, repo)
+                                gpg.bulk_verify_signatures(revisions, repo, gpg_strategy)
         if all_verifiable:
                write(gettext("All commits signed with verifiable keys"))
                if verbose:

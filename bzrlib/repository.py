@@ -1174,10 +1174,10 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
     @needs_read_lock
     def verify_revision_signature(self, revision_id, gpg_strategy):
         """Verify the signature on a revision.
-        
+
         :param revision_id: the revision to verify
         :gpg_strategy: the GPGStrategy object to used
-        
+
         :return: gpg.SIGNATURE_VALID or a failed SIGNATURE_ value
         """
         if not self.has_signature_for_revision_id(revision_id):
@@ -1188,6 +1188,15 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         plaintext = testament.as_short_text()
 
         return gpg_strategy.verify(signature, plaintext)
+
+    @needs_read_lock
+    def verify_revision_signatures(self, revision_ids, gpg_strategy):
+        """Verify revision signatures for a number of revisions.
+
+        :param revision_id: the revision to verify
+        :gpg_strategy: the GPGStrategy object to used
+
+        """
 
     def has_signature_for_revision_id(self, revision_id):
         """Query for a revision signature for revision_id in the repository."""

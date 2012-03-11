@@ -40,6 +40,11 @@ from bzrlib.i18n import (
     )
 """)
 
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
+
 #verification results
 SIGNATURE_VALID = 0
 SIGNATURE_KEY_MISSING = 1
@@ -137,6 +142,7 @@ class LoopbackGPGStrategy(object):
                 else:
                     self.acceptable_keys.append(pattern)
 
+    @deprecated_method(deprecated_in((2, 6, 0)))
     def do_verifications(self, revisions, repository):
         return bulk_verify_signatures(repository, revisions, self)
 
@@ -368,6 +374,7 @@ class GPGStrategy(object):
                             "No GnuPG key results for pattern: {0}"
                                 ).format(pattern))
 
+    @deprecated_method(deprecated_in((2, 6, 0)))
     def do_verifications(self, revisions, repository,
                             process_events_callback=None):
         """do verifications on a set of revisions
