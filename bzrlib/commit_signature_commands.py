@@ -32,6 +32,7 @@ from bzrlib.commands import Command
 from bzrlib.option import Option
 from bzrlib.i18n import gettext, ngettext
 
+
 class cmd_sign_my_commits(Command):
     __doc__ = """Sign all commits by a given committer.
 
@@ -85,7 +86,7 @@ class cmd_sign_my_commits(Command):
                         continue
                     # We have a revision without a signature who has a
                     # matching committer, start signing
-                    print rev_id
+                    self.outf.write("%s\n" % rev_id)
                     count += 1
                     if not dry_run:
                         repo.sign_revision(rev_id, gpg_strategy)
@@ -96,7 +97,9 @@ class cmd_sign_my_commits(Command):
                 repo.commit_write_group()
         finally:
             repo.unlock()
-        print 'Signed %d revisions' % (count,)
+        self.outf.write(
+            ngettext('Signed %d revision.\n', 'Signed %d revisions.\n', count),
+            count)
 
 
 class cmd_verify_signatures(Command):
@@ -164,8 +167,7 @@ class cmd_verify_signatures(Command):
         count, result, all_verifiable =\
                                 gpg_strategy.do_verifications(revisions, repo)
         if all_verifiable:
-               write(gettext(
-                            "All commits signed with verifiable keys"))
+               write(gettext("All commits signed with verifiable keys"))
                if verbose:
                    write(gpg_strategy.verbose_valid_message(result))
                return 0
