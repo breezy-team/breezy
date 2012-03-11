@@ -1195,8 +1195,11 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
 
         :param revision_id: the revision to verify
         :gpg_strategy: the GPGStrategy object to used
-
+        :return: Iterator over tuples with revision id, result and keys
         """
+        for revid in revision_ids:
+            (result, key) = self.verify_revision_signature(revid)
+            yield revid, result, key
 
     def has_signature_for_revision_id(self, revision_id):
         """Query for a revision signature for revision_id in the repository."""

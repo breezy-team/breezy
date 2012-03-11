@@ -95,7 +95,7 @@ class cmd_sign_my_commits(Command):
         finally:
             repo.unlock()
         self.outf.write(
-            ngettext('Signed %d revision.\n', 'Signed %d revisions.\n', count),
+            ngettext('Signed %d revision.\n', 'Signed %d revisions.\n', count) %
             count)
 
 
@@ -161,34 +161,31 @@ class cmd_verify_signatures(Command):
                     continue
                 revisions.append(rev_id)
         count, result, all_verifiable =\
-                                gpg.bulk_verify_signatures(revisions, repo, gpg_strategy)
+                                gpg.bulk_verify_signatures(repo, revisions, gpg_strategy)
         if all_verifiable:
                write(gettext("All commits signed with verifiable keys"))
                if verbose:
-                   write(gpg_strategy.verbose_valid_message(result))
+                   write(gpg.verbose_valid_message(result))
                return 0
         else:
-            write(gpg_strategy.valid_commits_message(count))
+            write(gpg.valid_commits_message(count))
             if verbose:
-               for message in gpg_strategy.verbose_valid_message(result):
+               for message in gpg.verbose_valid_message(result):
                    write_verbose(message)
-            write(gpg_strategy.expired_commit_message(count))
+            write(gpg.expired_commit_message(count))
             if verbose:
-               for message in gpg_strategy.verbose_expired_key_message(result,
-                                                                          repo):
+               for message in gpg.verbose_expired_key_message(result, repo):
                    write_verbose(message)
-            write(gpg_strategy.unknown_key_message(count))
+            write(gpg.unknown_key_message(count))
             if verbose:
-                for message in gpg_strategy.verbose_missing_key_message(result):
+                for message in gpg.verbose_missing_key_message(result):
                     write_verbose(message)
-            write(gpg_strategy.commit_not_valid_message(count))
+            write(gpg.commit_not_valid_message(count))
             if verbose:
-                for message in gpg_strategy.verbose_not_valid_message(result,
-                                                                        repo):
+                for message in gpg.verbose_not_valid_message(result, repo):
                    write_verbose(message)
-            write(gpg_strategy.commit_not_signed_message(count))
+            write(gpg.commit_not_signed_message(count))
             if verbose:
-                for message in gpg_strategy.verbose_not_signed_message(result,
-                                                                          repo):
+                for message in gpg.verbose_not_signed_message(result, repo):
                     write_verbose(message)
             return 1
