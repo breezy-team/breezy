@@ -2111,13 +2111,16 @@ class CHKInventory(CommonInventory):
     def path2id(self, relpath):
         """See CommonInventory.path2id()."""
         # TODO: perhaps support negative hits?
-        result = self._path_to_fileid_cache.get(relpath, None)
-        if result is not None:
-            return result
         if isinstance(relpath, basestring):
             names = osutils.splitpath(relpath)
         else:
             names = relpath
+            if relpath == []:
+                relpath = [""]
+            relpath = osutils.pathjoin(*relpath)
+        result = self._path_to_fileid_cache.get(relpath, None)
+        if result is not None:
+            return result
         current_id = self.root_id
         if current_id is None:
             return None

@@ -95,6 +95,9 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* ``Tree.path2id`` now once again accepts a list of path elements
+  in addition to a path. (Jelmer Vernooij)
+
 * Turn config option expansion on by default. The only options for which
   this should be disabled are templates which should already have used
   conf.get(option, expand=False) or conf.get_user_option(option,
@@ -106,7 +109,6 @@ Testing
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
-
 
 ..
    vim: tw=74 ft=rst ff=unix
