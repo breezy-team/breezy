@@ -43,6 +43,9 @@ Improvements
 * ``bzr rmbranch`` no longer removes active branches unless ``--force``
   is specified. (Jelmer Vernooij, #922953)
 
+* ``bzr verify-signatures`` now shows a progress bar.
+  (Jelmer Vernooij)
+
 * Two new command hooks, ``pre_command`` and ``post_command``,
   provide notification before and after a command has been run.
   (Brian de Alwis, Jelmer Vernooij)
@@ -67,12 +70,18 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``GPGStrategy.do_verifications`` has been deprecated.
+  (Jelmer Vernooij)
+
 * File ids in the ``Tree`` API can now be bytestring as previously,
   or tuples of bytestrings.
   (Jelmer Vernooij)
 
 * ``mail_client`` now accepts a configuration stack object rather than
   an old style Config object. (Jelmer Vernooij)
+
+* New method ``Repository.verify_revision_signatures``.
+  (Jelmer Vernooij)
 
 * New configuration option class ``RegistryOption`` which is backed
   onto a registry. (Jelmer Vernooij)
