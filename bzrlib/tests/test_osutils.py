@@ -2225,6 +2225,14 @@ class TestFindExecutableInPath(tests.TestCase):
         self.assertTrue(
             osutils.find_executable_on_path('THIS SHOULD NOT EXIST') is None)
         self.assertTrue(osutils.find_executable_on_path('file.txt') is None)
+        
+    def test_windows_app_path(self):
+        if sys.platform != 'win32':
+            raise tests.TestSkipped('test requires win32')
+        # Override PATH env var so that exe can only be found on App Path
+        self.overrideEnv('PATH', '')
+        # Internt Explorer is always registered in the App Path
+        self.assertTrue(osutils.find_executable_on_path('iexplore') is not None)
 
     def test_other(self):
         if sys.platform == 'win32':

@@ -36,6 +36,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Fixed merge tool availability checking and invocation to search the
+  Windows App Path registry in addition to the PATH. (Gordon Tyler, #939605)
+
 * Make sure configuration options can provide their own help topic.
   (Jelmer Vernooij, #941672)
 
@@ -1078,6 +1081,9 @@ Bug Fixes
 * TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
   operations that use it, like merge, can now create trees without a root.
   (Aaron Bentley)
+
+* Fixed problem with getting errors about failing to open /dev/tty when using
+  Bazaar Explorer to sign commits. (Mark Grandi, #847388)
 
 Documentation
 *************
