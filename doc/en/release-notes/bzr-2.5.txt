@@ -32,6 +32,10 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Connecting with HTTPS via HTTP now correctly uses the host name of the
+  destination rather than the proxy when checking certificates.
+  (Martin Packman, #944696)
+
 * Fixed merge tool availability checking and invocation to search the
   Windows App Path registry in addition to the PATH. (Gordon Tyler, #939605)
 
