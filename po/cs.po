@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-02-02 17:39+0100\n"
-"PO-Revision-Date: 2012-03-10 22:02+0000\n"
+"PO-Revision-Date: 2012-03-11 21:11+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-03-11 04:30+0000\n"
-"X-Generator: Launchpad (build 14914)\n"
+"X-Launchpad-Export-Date: 2012-03-12 04:30+0000\n"
+"X-Generator: Launchpad (build 14933)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -130,7 +130,7 @@ msgid ""
 "    Not versioned and not matching an ignore pattern."
 msgstr ""
 "neznámé\n"
-"    Bez verze a neshoduje se se vzorcem ignorování."
+"    Bez verze a neshoduje se se vzorem ignorování."
 
 #: bzrlib/builtins.py:329
 msgid ""
@@ -1892,6 +1892,9 @@ msgid ""
 "  will be filtered to show only those revisions that changed the\n"
 "  nominated files or directories."
 msgstr ""
+"  Pokud jsou parametry zadány a první není větev, záznam\n"
+"  bude filtrován aby zobrazoval pouze ty revize, které změnili\n"
+"  zadané soubory nebo adresáře."
 
 #: bzrlib/builtins.py:2548
 msgid ""
@@ -1899,12 +1902,17 @@ msgid ""
 "  deleted file, specify a revision range so that the file existed at\n"
 "  the end or start of the range."
 msgstr ""
+"  Názvy souborů jsou chápány v jejich historickém kontextu. Pro\n"
+"  zaznamenání smazaného souboru zadejte rozsah revizí tak, aby\n"
+"  soubor existoval na konci nebo začátku rozsahu."
 
 #: bzrlib/builtins.py:2552
 msgid ""
 "  Historical context is also important when interpreting pathnames of\n"
 "  renamed files/directories. Consider the following example:"
 msgstr ""
+"  Historický kontext je také důležitý při výkladu názvů cest\n"
+"  přejmenovaných souborů/adresářů. Zvažte následující příklad:"
 
 #: bzrlib/builtins.py:2555
 msgid ""
@@ -1912,6 +1920,9 @@ msgid ""
 "  * revision 2: modify tutorial.txt\n"
 "  * revision 3: rename tutorial.txt to guide.txt; add tutorial.txt"
 msgstr ""
+"  * revize 1: přidána výuka.txt\n"
+"  * revize 2: výuka.txt změněna\n"
+"  * revize 3: výuka.txt přejmenována na průvodce.txt; výuka.txt přidána"
 
 #: bzrlib/builtins.py:2559
 msgid "  In this case:"
@@ -1920,23 +1931,28 @@ msgstr "  V tomto případě:"
 #: bzrlib/builtins.py:2561
 msgid "  * ``bzr log guide.txt`` will log the file added in revision 1"
 msgstr ""
+"  * ``bzr log průvodce.txt`` soubor zaznamená jako přidaný v revizi 1"
 
 #: bzrlib/builtins.py:2563
 msgid ""
 "  * ``bzr log tutorial.txt`` will log the new file added in revision 3"
-msgstr ""
+msgstr "  * ``bzr log výuka.txt`` soubor zaznamená jako přidaný v revizi 3"
 
 #: bzrlib/builtins.py:2565
 msgid ""
 "  * ``bzr log -r2 -p tutorial.txt`` will show the changes made to\n"
 "    the original file in revision 2."
 msgstr ""
+"  * ``bzr log -r2 -p výuka.txt`` zobrazí změny provedené v\n"
+"    původním souboru v revizi 2."
 
 #: bzrlib/builtins.py:2568
 msgid ""
 "  * ``bzr log -r2 -p guide.txt`` will display an error message as there\n"
 "    was no file called guide.txt in revision 2."
 msgstr ""
+"  * ``bzr log -r2 -p průvodce.txt`` zobrazí chybovou zprávu protože\n"
+"    v revizi 2 neexistoval žádný soubor jménem výuka.txt."
 
 #: bzrlib/builtins.py:2571
 msgid ""
@@ -1944,10 +1960,13 @@ msgid ""
 "  explicitly ask for this (and no way to stop logging a file back\n"
 "  until it was last renamed)."
 msgstr ""
+"  Přejmenování jsou vždycky následována záznamem. Záměrně pro\n"
+"  nemusíte výslovně žádat  (a neexistuje způsob jak zastavit aby\n"
+"  soubor byl zaznamenán zpět do doby posledního přejmenování)."
 
 #: bzrlib/builtins.py:2575
 msgid ":Other filtering:"
-msgstr ""
+msgstr ":Jiné filtrování:"
 
 #: bzrlib/builtins.py:2577
 msgid ""
@@ -1957,10 +1976,15 @@ msgid ""
 "  expressions. --match-author, --match-bugs, --match-committer and\n"
 "  --match-message can be used to only match a specific field."
 msgstr ""
+"  Volba --match může být použita k nalezení revizí, které odpovídají\n"
+"  regulárnímu výrazu ve zprávě odevzdání, odevzdávajícímu, autorovi\n"
+"  nebo chybě. Zadáním volby několikrát bude provádět shodu se všemi\n"
+"  zadanými výrazy, --match-author, --match-bugs, --match-committer a\n"
+"  --match-message může být použito pro porovnání s určitým polem."
 
 #: bzrlib/builtins.py:2583
 msgid ":Tips & tricks:"
-msgstr ""
+msgstr ":Tipy a tríky:"
 
 #: bzrlib/builtins.py:2585
 msgid ""
@@ -1970,11 +1994,15 @@ msgid ""
 "  Guide <http://doc.bazaar.canonical.com/plugins/en/> and\n"
 "  <http://wiki.bazaar.canonical.com/IDEIntegration>.  "
 msgstr ""
+"  Nástroje rozhraní a IDE jsou často lepší pro procházení historie než \n"
+"  nástroje příkazové řádky: můžete vyzkoušet qlog nebo viz z qbzr\n"
+"  nebo bzr-gtk, prostředí průzkumníka bzr nebo internetové rozhraní\n"
+"  Loggerhead. Další informace můžete nalézt v průvodci zásuvnými moduly  "
 
 #: bzrlib/builtins.py:2591
 msgid ""
 "  You may find it useful to add the aliases below to ``bazaar.conf``::"
-msgstr ""
+msgstr "  Možná Vám přijde užitečné přidat přezdívky do ``bazaar.conf``::"
 
 #: bzrlib/builtins.py:2593
 msgid ""
@@ -1983,6 +2011,10 @@ msgid ""
 "    top = log -l10 --line\n"
 "    show = log -v -p"
 msgstr ""
+"    [ALIASES]\n"
+"    tip = log -r-1\n"
+"    top = log -l10 --line\n"
+"    show = log -v -p"
 
 #: bzrlib/builtins.py:2598
 msgid ""
@@ -1990,12 +2022,17 @@ msgid ""
 "  will show the last 10 mainline revisions. To see the details of a\n"
 "  particular revision X,  ``bzr show -rX``."
 msgstr ""
+"  ``bzr tip`` pak zobrazí poslední revizi zatímco ``bzr top``\n"
+"  zobrazí posledních 10 hlavních revizí. Pro zobrazení podrobností\n"
+"  určité revize X, zadejte  ``bzr show -rX``."
 
 #: bzrlib/builtins.py:2602
 msgid ""
 "  If you are interested in looking deeper into a particular merge X,\n"
 "  use ``bzr log -n0 -rX``."
 msgstr ""
+"  Pokud máte zájem o hlubším pohlédnutí do určitého sloučení X,\n"
+"  použijte ``bzr log -n0 -rX``."
 
 #: bzrlib/builtins.py:2605
 msgid ""
@@ -2004,6 +2041,10 @@ msgid ""
 "  With or without that fix, it is recommended that a revision range\n"
 "  be given when using the -v option."
 msgstr ""
+"  ``bzr log -v`` ve větvi s dlouhou historií je v současnosti\n"
+"  velmi pomalý. Oprava pro tento problém je nyní ve vývoji.\n"
+"  I s či bez této opravy je doporučeno, aby spolu s volbou -v\n"
+"  byl zadán rozsah revizí."
 
 #: bzrlib/builtins.py:2610
 msgid ""
@@ -2012,6 +2053,10 @@ msgid ""
 "  Among other features, this plugin can find all revisions containing\n"
 "  a list of words but not others."
 msgstr ""
+"  bzr má obecný full-textový zásuvný modul, bzr-search, který může být\n"
+"  použit k nalezení revizí shodující se s uživatelskými jmény, zprávami\n"
+"  odevzdání atd. Mezi další funkce patří nalezení revizí obsahující\n"
+"  seznam slov, ale ne ostatních."
 
 #: bzrlib/builtins.py:2615
 msgid ""
@@ -2020,6 +2065,10 @@ msgid ""
 "  the historycache plugin. This plugin buffers historical information\n"
 "  trading disk space for faster speed."
 msgstr ""
+"  Při prozkoumávání historie mimo hlavní čáru ve velkých projektech\n"
+"  s hlubokou historií může být výkon záznamu velmi vylepšen instalací\n"
+"  zásuvného modulu historycache. Tento modul ukládá historické\n"
+"  informace do mezipaměti čímž vyměňuje místo na disku za rychlost."
 
 #: bzrlib/builtins.py:2624
 msgid "Show from oldest to newest."
@@ -2043,7 +2092,7 @@ msgstr "Autoři"
 
 #: bzrlib/builtins.py:2643
 msgid "Number of levels to display - 0 for all, 1 for flat."
-msgstr ""
+msgstr "Počet úrovní k zobrazení - 0 všechny, 1 ploché."
 
 #: bzrlib/builtins.py:2653
 msgid "Limit the output to the first N revisions."
@@ -2055,110 +2104,114 @@ msgstr "Zobrazit změny provedené v každé revizi jako záplatu."
 
 #: bzrlib/builtins.py:2660
 msgid "Show merged revisions like --levels 0 does."
-msgstr ""
+msgstr "Zobrazit sloučené revize tak jako --levels 0."
 
 #: bzrlib/builtins.py:2664
 msgid "Do not report commits with more than one parent."
-msgstr ""
+msgstr "Neoznamovat odevzdání s více než jedním nadřazeným."
 
 #: bzrlib/builtins.py:2666
 msgid ""
 "Display only the revisions that are not part of both ancestries (require -"
 "rX..Y)."
 msgstr ""
+"Zobrazit pouze revize, které nejsou součástí obou rodových původů (vyžaduje -"
+"rX..Y)."
 
 #: bzrlib/builtins.py:2670
 msgid "Show digital signature validity."
-msgstr ""
+msgstr "Zobrazit platnost digitálního podpisu."
 
 #: bzrlib/builtins.py:2673
 msgid "Show revisions whose properties match this expression."
-msgstr ""
+msgstr "Zobrazit revize jejichž vlastnosti odpovídají tomuto výrazu."
 
 #: bzrlib/builtins.py:2677
 msgid "Show revisions whose message matches this expression."
-msgstr ""
+msgstr "Zobrazit revize jejichž zpráva odpovídá tomuto výrazu."
 
 #: bzrlib/builtins.py:2681
 msgid "Show revisions whose committer matches this expression."
-msgstr ""
+msgstr "Zobrazit revize jejichž odevzdávající odpovídá tomuto výrazu."
 
 #: bzrlib/builtins.py:2685
 msgid "Show revisions whose authors match this expression."
-msgstr ""
+msgstr "Zobrazit revize jejichž autoři odpovídaji tomuto výrazu."
 
 #: bzrlib/builtins.py:2689
 msgid "Show revisions whose bugs match this expression."
-msgstr ""
+msgstr "Zobrazit revize jejichž chyby odpovídají tomuto výrazu."
 
 #: bzrlib/builtins.py:2743
 msgid "--exclude-common-ancestry requires -r with two revisions"
-msgstr ""
+msgstr "--exclude-common-ancestry vyžaduje -r s fvěma revizemi"
 
 #: bzrlib/builtins.py:2771
 #, python-format
 msgid "Path unknown at end or start of revision range: %s"
-msgstr ""
+msgstr "Na konci nebo začítku rozsahu revizí je neznámá cesta: %s"
 
 #: bzrlib/builtins.py:2888
 #, python-format
 msgid "bzr %s doesn't accept two revisions in different branches."
-msgstr ""
+msgstr "bzr %s nepřijímá dvě rvize v různých větvích."
 
 #: bzrlib/builtins.py:2904
 #, python-format
 msgid "bzr %s --revision takes one or two values."
-msgstr ""
+msgstr "bzr %s --revision očekává jednu nebo dvě hodnoty."
 
 #: bzrlib/builtins.py:2949
 msgid ""
 "List files in a tree.\n"
 "    "
 msgstr ""
+"Zobrazit soubory ve stormu.\n"
+"    "
 
 #: bzrlib/builtins.py:2958
 msgid "Recurse into subdirectories."
-msgstr ""
+msgstr "Rekurzivně do podadresářů."
 
 #: bzrlib/builtins.py:2960
 msgid "Print paths relative to the root of the branch."
-msgstr ""
+msgstr "Vypsat cesty související s kořenem větve."
 
 #: bzrlib/builtins.py:2962
 msgid "Print unknown files."
-msgstr ""
+msgstr "Vypsat neznámé soubory."
 
 #: bzrlib/builtins.py:2963
 msgid "Print versioned files."
-msgstr ""
+msgstr "Vypsat soubory s verzí."
 
 #: bzrlib/builtins.py:2966
 msgid "Print ignored files."
-msgstr ""
+msgstr "Vypsat ignorované soubory."
 
 #: bzrlib/builtins.py:2968
 msgid "List entries of a particular kind: file, directory, symlink."
-msgstr ""
+msgstr "Vypsat záznamy určitého druhu: soubor, adresář, symbolický odkaz."
 
 #: bzrlib/builtins.py:2981
 msgid "invalid kind specified"
-msgstr ""
+msgstr "Zadán neplatný druh"
 
 #: bzrlib/builtins.py:2984
 msgid "Cannot set both --verbose and --null"
-msgstr ""
+msgstr "Nelze nastavit --verbose a --null najednou"
 
 #: bzrlib/builtins.py:2993
 msgid "cannot specify both --from-root and PATH"
-msgstr ""
+msgstr "Nelze zadat --from-root a PATH najednou"
 
 #: bzrlib/builtins.py:3080
 msgid "Ignore specified files or patterns."
-msgstr ""
+msgstr "Ignorovat zadané soubory nebo vzory."
 
 #: bzrlib/builtins.py:3082
 msgid "See ``bzr help patterns`` for details on the syntax of patterns."
-msgstr ""
+msgstr "Viz ``bzr help patterns`` pro podrobnosti o syntaxi vzorů."
 
 #: bzrlib/builtins.py:3084
 msgid ""
@@ -2168,6 +2221,11 @@ msgid ""
 ".bzrignore file to be versioned. Creating a .bzrignore file without\n"
 "the use of the ignore command will require an explicit add command."
 msgstr ""
+"Pokud soubor .bzrignore neexistuje, příkaz ignore ho\n"
+"vytvoří a přidá do něj zadané soubory nebo vzory.\n"
+"Příkaz ignore ho také automaticky opatří  verzí.\n"
+"Vytvoření souboru .bzrignore bez použití příkazu\n"
+"vyžaduje výslovné zadání příkazu add."
 
 #: bzrlib/builtins.py:3090
 msgid ""
@@ -2176,6 +2234,10 @@ msgid ""
 "using this command or directly by using an editor, be sure to commit\n"
 "it."
 msgstr ""
+"Pro odstranění vzorů ze seznamu ignorování upravte soubor\n"
+". bzrignore. Po přidání, úpravě nebo smazání tohoto souboru\n"
+"buď použitím tohoto příkazu nebo přímo pomocí editoru\n"
+"se ujistěte, že ho odevzdáte."
 
 #: bzrlib/builtins.py:3095
 msgid ""
@@ -2185,6 +2247,12 @@ msgid ""
 "Global ignores are not touched by this command. The global ignore file\n"
 "can be edited directly using an editor."
 msgstr ""
+"Bazaar také podporuje globální soubor ignorování ~/.bazaar/ignore.\n"
+"Ve Windows může být nalezen v adresáři dat aplikací například\n"
+"C:\\Documents and Settings\\<uživatel>\\Application Data\\Bazaar\\2.0\\"
+"ignore.\n"
+"Globální ignorování nejsou zasažna tímto příkazem. Soubor může být upraven\n"
+"přímo pomocí editoru."
 
 #: bzrlib/builtins.py:3101
 msgid ""
@@ -2192,12 +2260,18 @@ msgid ""
 "precedence over regular ignores.  Such exceptions are used to specify\n"
 "files that should be versioned which would otherwise be ignored."
 msgstr ""
+"Vzory, které před sebou mají '!' jsou výjimky vzorů ignorování a\n"
+"mají přednost před normálními ignorováními. Takové výjimky jsou\n"
+"použity pro určení souborů, které by měly být s verzí a které by\n"
+"v jiných případech byly ignorovány."
 
 #: bzrlib/builtins.py:3105
 msgid ""
 "Patterns prefixed with '!!' act as regular ignore patterns, but have\n"
 "precedence over the '!' exception patterns."
 msgstr ""
+"Vzory, které před sebou mají '!!' jsou normální vzorce ignorování\n"
+"ale mají přednost před vzorci výjimek s '!'."
 
 #: bzrlib/builtins.py:3108
 msgid ""
@@ -2206,62 +2280,72 @@ msgid ""
 "* Ignore patterns containing shell wildcards must be quoted from\n"
 "  the shell on Unix."
 msgstr ""
+":Poznámky: \n"
+"    \n"
+"* vzory ignorování obsahující zástupné znaky prostředí musí být\n"
+"  v Unix zadávány v uvozovkách."
 
 #: bzrlib/builtins.py:3113
 msgid ""
 "* Ignore patterns starting with \"#\" act as comments in the ignore file.\n"
 "  To ignore patterns that begin with that character, use the \"RE:\" prefix."
 msgstr ""
+"* vzory ignorování začínající s \"#\" se chovají jako komentáře v souboru "
+"ignorování.\n"
+"  Pro ignorování vzorců, které začínají tímto znakem, použijte předponu "
+"\"RE:\"."
 
 #: bzrlib/builtins.py:3116
 msgid ""
 ":Examples:\n"
 "    Ignore the top level Makefile::"
 msgstr ""
+":Příklady:\n"
+"    Ignorování souboru Makefile v nejvyšší úrovni::"
 
 #: bzrlib/builtins.py:3119
 msgid "        bzr ignore ./Makefile"
-msgstr ""
+msgstr "        bzr ignore ./Makefile"
 
 #: bzrlib/builtins.py:3121
 msgid "    Ignore .class files in all directories...::"
-msgstr ""
+msgstr "    Ignorovat soubory .class ve všech adresářích...::"
 
 #: bzrlib/builtins.py:3123
 msgid "        bzr ignore \"*.class\""
-msgstr ""
+msgstr "        bzr ignore \"*.class\""
 
 #: bzrlib/builtins.py:3125
 msgid "    ...but do not ignore \"special.class\"::"
-msgstr ""
+msgstr "    ...ale neignorovat \"special.class\"::"
 
 #: bzrlib/builtins.py:3127
 msgid "        bzr ignore \"!special.class\""
-msgstr ""
+msgstr "        bzr ignore \"!special.class\""
 
 #: bzrlib/builtins.py:3129
 msgid "    Ignore files whose name begins with the \"#\" character::"
-msgstr ""
+msgstr "    ignorovat soubory, jejichž název začíná znakem \"#\"::"
 
 #: bzrlib/builtins.py:3131
 msgid "        bzr ignore \"RE:^#\""
-msgstr ""
+msgstr "        bzr ignore \"RE:^#\""
 
 #: bzrlib/builtins.py:3133 bzrlib/builtins.py:3137
 msgid "    Ignore .o files under the lib directory::"
-msgstr ""
+msgstr "    Ignorovat soubory .o v adresáři lib::"
 
 #: bzrlib/builtins.py:3135
 msgid "        bzr ignore \"lib/**/*.o\""
-msgstr ""
+msgstr "        bzr ignore \"lib/**/*.o\""
 
 #: bzrlib/builtins.py:3139
 msgid "        bzr ignore \"RE:lib/.*\\.o\""
-msgstr ""
+msgstr "        bzr ignore \"RE:lib/.*\\.o\""
 
 #: bzrlib/builtins.py:3141
 msgid "    Ignore everything but the \"debian\" toplevel directory::"
-msgstr ""
+msgstr "    Ignorovat vše, kromě adresáře \"debian\" v nejvyšší úrovni::"
 
 #: bzrlib/builtins.py:3143
 msgid ""
@@ -2274,25 +2358,35 @@ msgid ""
 "        bzr ignore \"!./local\"\n"
 "        bzr ignore \"!!*~\""
 msgstr ""
+"        bzr ignore \"RE:(?!debian/).*\"\n"
+"    \n"
+"    Ignorovat vše kromě adresáře \"local\" v njvyšší úrovni,\n"
+"    ale vždy ignorovat automaticky ukládané soubory \n"
+"    končící na ~, i v local/::\n"
+"    \n"
+"        bzr ignore \"*\"\n"
+"        bzr ignore \"!./local\"\n"
+"        bzr ignore \"!!*~\""
 
 #: bzrlib/builtins.py:3157
 msgid "Display the default ignore rules that bzr uses."
-msgstr ""
+msgstr "Zobrazit výchozí pravidla ignorování, které používá bzr."
 
 #: bzrlib/builtins.py:3169
 msgid "ignore requires at least one NAME_PATTERN or --default-rules."
-msgstr ""
+msgstr "ignore vyžaduje alespoň jeden VZOR_NÁZVU nebo --default-rules."
 
 #: bzrlib/builtins.py:3180
 #, python-format
 msgid "Invalid ignore pattern found. %s"
 msgid_plural "Invalid ignore patterns found. %s"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Nalezen vzor ignorování. %s"
+msgstr[1] "Nalezeny vzory ignorování. %s"
+msgstr[2] "Nalezeny vzory ignorování. %s"
 
 #: bzrlib/builtins.py:3189
 msgid "NAME_PATTERN should not be an absolute path"
-msgstr ""
+msgstr "VZOREC_NÁZVU by neměl být absolutní cesta"
 
 #: bzrlib/builtins.py:3202
 #, python-format
@@ -2303,38 +2397,46 @@ msgid ""
 "These files will continue to be version controlled unless you 'bzr remove' "
 "them.\n"
 msgstr ""
+"Varování: následující soubory jsou spravovány a shodují se s Vaším vzorem "
+"ignorování:\n"
+"%s\n"
+"Tyto soubory budou stále pod správou verzi, dokud je neodstraníte s 'bzr "
+"remove'.\n"
 
 #: bzrlib/builtins.py:3209
 msgid "List ignored files and the patterns that matched them."
-msgstr ""
+msgstr "Vypsat ignorované soubory a vzory, které se snimi shodují."
 
 #: bzrlib/builtins.py:3211
 msgid ""
 "List all the ignored files and the ignore pattern that caused the file to\n"
 "be ignored."
 msgstr ""
+"Vypsat všechny ignorované soubory a vzor ignorování, který způsobil, že\n"
+"soubor je ignorován."
 
 #: bzrlib/builtins.py:3214
 msgid "Alternatively, to list just the files::"
-msgstr ""
+msgstr "Alternativně, pro pouhý výpis souborů::"
 
 #: bzrlib/builtins.py:3216
 msgid "    bzr ls --ignored"
-msgstr ""
+msgstr "    bzr ls --ignored"
 
 #: bzrlib/builtins.py:3250
 #, python-format
 msgid "not a valid revision-number: %r"
-msgstr ""
+msgstr "není platné číslo revize: %r"
 
 #: bzrlib/builtins.py:3257
 msgid ""
 "Export current or past revision to a destination directory or archive."
 msgstr ""
+"Exportovat současnou nebo minulou revizi do cílového adresáře nebo archivu."
 
 #: bzrlib/builtins.py:3259
 msgid "If no revision is specified this exports the last committed revision."
-msgstr ""
+msgstr "Pokud není zadána revize, toto exportuje poslední odevzdanou revizi."
 
 #: bzrlib/builtins.py:3261
 msgid ""
