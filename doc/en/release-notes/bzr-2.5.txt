@@ -42,7 +42,7 @@ Documentation
   1.1.2 now provides a better one. Most of the documentation can now be
   generated to the texinfo format with ``make texinfo-sphinx``. This will
   generate both the ``.texi`` files and the ``.info`` ones.
- (Vincent Ladeuil, #940164)
+  (Vincent Ladeuil, #940164)
 
 API Changes
 ***********
