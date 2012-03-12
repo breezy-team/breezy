@@ -431,6 +431,7 @@ def get_qbzr_py2exe_info(includes, excludes, packages, data_files):
     # PyQt4 itself still escapes the plugin detection code for some reason...
     includes.append('PyQt4.QtCore')
     includes.append('PyQt4.QtGui')
+    includes.append('PyQt4.QtTest')
     includes.append('sip') # extension module required for Qt.
     packages.append('pygments') # colorizer for qbzr
     packages.append('docutils') # html formatting
