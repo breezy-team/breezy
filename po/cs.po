@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-02-02 17:39+0100\n"
-"PO-Revision-Date: 2012-03-11 21:11+0000\n"
+"PO-Revision-Date: 2012-03-12 16:07+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-03-12 04:30+0000\n"
+"X-Launchpad-Export-Date: 2012-03-13 04:36+0000\n"
 "X-Generator: Launchpad (build 14933)\n"
 
 #: bzrlib/add.py:95
@@ -2444,6 +2444,9 @@ msgid ""
 "given, try to find the format with the extension. If no extension\n"
 "is found exports to a directory (equivalent to --format=dir)."
 msgstr ""
+"Formát může být název \"exportéra\" jako tar, tgz, tbz2.  Pokud žádný\n"
+"není zadán, je snaha o nalezení pomocí přípony. Pokud přípona není\n"
+"nalezena, je exportováno do adresáře (stejné jako --format=dir)."
 
 #: bzrlib/builtins.py:3265
 msgid ""
@@ -2451,17 +2454,24 @@ msgid ""
 "container formats (tar, zip, etc). If it is not supplied it will default\n"
 "to the exported filename. The root option has no effect for 'dir' format."
 msgstr ""
+"Pokud je zadán kořen, bude použit jako kořenový adresář uvnitř\n"
+"formátů kontejneru (tar, zip, etc). Pokud zadán není, standardně\n"
+"použije název exportovaného souboru. Volba root nemá vlvi na\n"
+"formát 'dir'."
 
 #: bzrlib/builtins.py:3269
 msgid ""
 "If branch is omitted then the branch containing the current working\n"
 "directory will be used."
 msgstr ""
+"Pokud je vynechána větev, pak bude použita větev obsahující současný\n"
+"pracovní strom."
 
 #: bzrlib/builtins.py:3272
 msgid ""
 "Note: Export of tree with non-ASCII filenames to zip is not supported."
 msgstr ""
+"Poznámka: Export stromu do zip s názvy souborů mimo ASCII není podporován."
 
 #: bzrlib/builtins.py:3274
 msgid ""
@@ -2475,73 +2485,86 @@ msgid ""
 "     zip                          .zip\n"
 "  =================       ========================="
 msgstr ""
+"  =================       ============================\n"
+"  Podporované formáty       Automaticky zjištěno podle přípony\n"
+"  =================       ============================\n"
+"     dir                         (žádný)\n"
+"     tar                          .tar\n"
+"     tbz2                    .tar.bz2, .tbz2\n"
+"     tgz                      .tar.gz, .tgz\n"
+"     zip                          .zip\n"
+"  =================       ============================"
 
 #: bzrlib/builtins.py:3288
 msgid "Type of file to export to."
-msgstr ""
+msgstr "T yp souboru do kterého exportovat."
 
 #: bzrlib/builtins.py:3291
 msgid "Apply content filters to export the convenient form."
-msgstr ""
+msgstr "Použít filtry obsahu pro export do vhodné formy."
 
 #: bzrlib/builtins.py:3295
 msgid "Name of the root directory inside the exported file."
-msgstr ""
+msgstr "Název kořenového adresáře uvnitř exportovaného souboru."
 
 #: bzrlib/builtins.py:3297
 msgid ""
 "Set modification time of files to that of the last revision in which it was "
 "changed."
 msgstr ""
+"Nastavit čas změny souborů na ten od poslední revize, v které byly změněny."
 
 #: bzrlib/builtins.py:3300
 msgid ""
 "Export the working tree contents rather than that of the last revision."
 msgstr ""
+"Exportovat obsahy pracovního stromu spíše, než obsah poslední revize."
 
 #: bzrlib/builtins.py:3319
 msgid "--uncommitted requires a working tree"
-msgstr ""
+msgstr "--uncomitted vyžaduje pracovní strom"
 
 #: bzrlib/builtins.py:3328
 #, python-format
 msgid "Unsupported export format: %s"
-msgstr ""
+msgstr "Nepodporovaný formát exportu: %s"
 
 #: bzrlib/builtins.py:3332
 msgid ""
 "Write the contents of a file as of a given revision to standard output."
-msgstr ""
+msgstr "Vypsat obsahy souboru od dané revize na standadrdní výstup."
 
 #: bzrlib/builtins.py:3334
 msgid "If no revision is nominated, the last revision is used."
-msgstr ""
+msgstr "Pokud není zadána žádná revize, je použita poslední."
 
 #: bzrlib/builtins.py:3336
 msgid ""
 "Note: Take care to redirect standard output when using this command on a\n"
 "binary file."
 msgstr ""
+"Poznámka: Ujistěte se, že standardní výstup přesměrujete při použití tohoto\n"
+"příkazu na binární soubor."
 
 #: bzrlib/builtins.py:3342
 msgid "The path name in the old tree."
-msgstr ""
+msgstr "Název cesty v starém stromu."
 
 #: bzrlib/builtins.py:3343
 msgid "Apply content filters to display the convenience form."
-msgstr ""
+msgstr "Použít filtry obsahu k zobrazení vhodné formy."
 
 #: bzrlib/builtins.py:3354
 msgid "bzr cat --revision takes exactly one revision specifier"
-msgstr ""
+msgstr "bzr cat --revision přebírá právě jeden specifikátor revize."
 
 #: bzrlib/builtins.py:3379 bzrlib/builtins.py:3391
 msgid "{0!r} is not present in revision {1}"
-msgstr ""
+msgstr "{0!r} není přítomno v revizi {1}"
 
 #: bzrlib/builtins.py:3414
 msgid "Commit changes into a new revision."
-msgstr ""
+msgstr "Odevzdat změny do nové revize."
 
 #: bzrlib/builtins.py:3416
 msgid ""
@@ -2552,6 +2575,13 @@ msgid ""
 "the user to enter the message. To see the changed files in the\n"
 "boilerplate text loaded into the editor, use the --show-diff option."
 msgstr ""
+"Pro každé odevzdání musí být zadána zpráva pro vysvětlení.\n"
+"Toto je často prováděno pomocí volby --message (zpráva získána z\n"
+"příkazové řádky) nebo pomocí volby --file (zpráva získána ze souboru).\n"
+"Pokud ani jedna z těchto voleb není zadána, je otevřen editor,\n"
+"kde uživatel zprávu zadá. Pro zobrazení změněného souboru v\n"
+"často používaném textu načteném do editoru, použijte volbu\n"
+"--show-diff."
 
 #: bzrlib/builtins.py:3423
 msgid ""
@@ -2559,10 +2589,12 @@ msgid ""
 "commit is assumed to be the author. These defaults can be overridden\n"
 "as explained below."
 msgstr ""
+"Standardně je odevzdán celý strom a osoba, která toto provádí\n"
+"ke považována za autora. Toto může být potlačeno jak je vysvětleno níže."
 
 #: bzrlib/builtins.py:3427
 msgid ":Selective commits:"
-msgstr ""
+msgstr ":Výběrová odevzdání:"
 
 #: bzrlib/builtins.py:3429
 msgid ""
@@ -2570,6 +2602,9 @@ msgid ""
 "  committed.  If a directory is specified then the directory and\n"
 "  everything within it is committed."
 msgstr ""
+"  Pokud jsou zadány vybrané soubory jsou odevdány pouze jejich\n"
+"  změny. Pokud je zadán adresář, pak je adresář odevzdán \n"
+"  se svým obsahem."
 
 #: bzrlib/builtins.py:3433
 msgid ""
@@ -2577,18 +2612,21 @@ msgid ""
 "  For example, to commit only changes within foo, but not changes\n"
 "  within foo/bar::"
 msgstr ""
+"  Když jsou zadány výjimky, mají přednost před vybranými soubory.\n"
+"  Například, pro odevzdání změn uvnitř foom ale beze změn\n"
+"  uvnitř foo/bar::"
 
 #: bzrlib/builtins.py:3437
 msgid "    bzr commit foo -x foo/bar"
-msgstr ""
+msgstr "    bzr commit foo -x foo/bar"
 
 #: bzrlib/builtins.py:3439
 msgid "  A selective commit after a merge is not yet supported."
-msgstr ""
+msgstr "  Výběrové odevzdání po sloučení není zatím podporováno."
 
 #: bzrlib/builtins.py:3441
 msgid ":Custom authors:"
-msgstr ""
+msgstr ":Vlastní autoři:"
 
 #: bzrlib/builtins.py:3443
 msgid ""
@@ -2599,10 +2637,15 @@ msgid ""
 "  the change you can specify the option multiple times, once for each\n"
 "  author."
 msgstr ""
+"  Pokud autor změny není stejná osoba jako odevzdávající,\n"
+"  můžete zadat jméno autora pomocí volby --author. Jméno\n"
+"  by mělo být ve stejném formátu jako id odevzdávajícího, tedy\n"
+"  \"Josef Novák <jnov@priklad.cz>\". Pokud má změna více než jednoho\n"
+"  autora, můžete volbu zadat vícekrát, jednou za každého autora."
 
 #: bzrlib/builtins.py:3450
 msgid ":Checks:"
-msgstr ""
+msgstr ":Kontroly:"
 
 #: bzrlib/builtins.py:3452
 msgid ""
@@ -2612,10 +2655,15 @@ msgid ""
 "  checks can be implemented by defining hooks. See ``bzr help hooks``\n"
 "  for details."
 msgstr ""
+"  Běžnou chybou je zapomenout přidat nový soubor nebo adresář\n"
+"  před spuštěním příkazu odevzdání. Volba --strict vyhledá\n"
+"  neznámé soubory a pokud je nalezne, odevzdání přeruší. Pokročilejší\n"
+"  kontrolypřed odevzdáním mohou být zavedeny určením háků. Viz\n"
+"  ``bzr help hooks`` pro podrobnosti."
 
 #: bzrlib/builtins.py:3458
 msgid ":Things to note:"
-msgstr ""
+msgstr ":Věci k poznamenání:"
 
 #: bzrlib/builtins.py:3460
 msgid ""
@@ -2623,6 +2671,9 @@ msgid ""
 "  mistake in the commit message say, you can use the uncommit command\n"
 "  to undo it. See ``bzr help uncommit`` for details."
 msgstr ""
+"  Pokud omylem odevzdáte špatné změny, nebo ve zprávě odevzdání\n"
+"  provedete hrubku, můžete odevzdání vrátit zpět pomocí příkazu uncommit.\n"
+"  Viz ``bzr help uncommit`` pro podrobnosti."
 
 #: bzrlib/builtins.py:3464
 msgid ""
@@ -2631,58 +2682,71 @@ msgid ""
 "  option can be used to record the association between a revision and\n"
 "  one or more bugs. See ``bzr help bugs`` for details."
 msgstr ""
+"  Háky mohou být také nastaveny ke spuštění po odevzdání. To Vám\n"
+"  umožňuje spustit aktualizace vnějších systémů jako sledování chyb.\n"
+"  Volba --fixes může být použita pro zaznamenání propojení mezi\n"
+"  revizí a jednou nebo více chyb. Viz ``bzr help bugs`` pro podrobnosti."
 
 #: bzrlib/builtins.py:3474
 msgid "Do not consider changes made to a given path."
-msgstr ""
+msgstr "Neuvažovat změny provedené v zadané cestě."
 
 #: bzrlib/builtins.py:3477
 msgid "Description of the new revision."
-msgstr ""
+msgstr "Popis nové revize"
 
 #: bzrlib/builtins.py:3480
 msgid "Commit even if nothing has changed."
-msgstr ""
+msgstr "Odevzdat, i když se nic nezměnilo."
 
 #: bzrlib/builtins.py:3484
 msgid "Take commit message from this file."
-msgstr ""
+msgstr "Zprávu odevzdání vzít z tohoto souboru."
 
 #: bzrlib/builtins.py:3486
 msgid "Refuse to commit if there are unknown files in the working tree."
 msgstr ""
+"Odmítnout odevzdat, když se v pracovním stromu vyskytují neznámé soubory."
 
 #: bzrlib/builtins.py:3489
 msgid ""
 "Manually set a commit time using commit date format, e.g. '2009-10-10 "
 "08:00:00 +0100'."
 msgstr ""
+"Ručně nastavit čas odevzdání pomocí formátu data odevzdání, např. '2009-10-"
+"10 08:00:00 +0100'."
 
 #: bzrlib/builtins.py:3492
 msgid "Mark a bug as being fixed by this revision (see \"bzr help bugs\")."
-msgstr ""
+msgstr "Označit chybu jako vyřešenou touto revizí (viz \"bzr help bugs\")."
 
 #: bzrlib/builtins.py:3495
 msgid "Set the author's name, if it's different from the committer."
-msgstr ""
+msgstr "Nastavit jméno autora, pokud se liší od odevzdávajícího."
 
 #: bzrlib/builtins.py:3498
 msgid ""
 "Perform a local commit in a bound branch.  Local commits are not pushed to "
 "the master branch until a normal commit is performed."
 msgstr ""
+"Provést místní odevzdání ve svázané větvi. Místní odevzdání nejsou odeslána "
+"do hlavní větve, dokud není provedeno normální odevzdání."
 
 #: bzrlib/builtins.py:3504
 msgid ""
 "When no message is supplied, show the diff along with the status summary in "
 "the message editor."
 msgstr ""
+"Když není zadána žádná zpráva, zobrazit rozdíl spolu se souhrnem stavu v "
+"editoru zpráv."
 
 #: bzrlib/builtins.py:3507
 msgid ""
 "When committing to a foreign version control system do not push data that "
 "can not be natively represented."
 msgstr ""
+"Při odevzdávání do jiného systému pro správu verzí  neodesílat data, která "
+"nemohou být přirozeně zastoupena."
 
 #: bzrlib/builtins.py:3525
 #, python-format
@@ -2691,6 +2755,9 @@ msgid ""
 "default bug tracker using the `bugtracker` option.\n"
 "See \"bzr help bugs\" for more information on this feature. Commit refused."
 msgstr ""
+"Pro chybu %s nebyl zadán systém pro sledování. Použijte formu 'tracker:id' "
+"nebo zadejte výchozí systém pro sledování chyb použitím volby `bugtracker`.\n"
+"Viz \"bzr help bugs\" pro více informací o této funkci. Odeslání zamítnuto."
 
 #: bzrlib/builtins.py:3534
 #, python-format
@@ -2699,11 +2766,14 @@ msgid ""
 "for more information on this feature.\n"
 "Commit refused."
 msgstr ""
+"Neplatná chyba %s. Musí být ve formě 'tracker:id'. Viz \"bzr help bugs\" pro "
+"více informací o této funkci.\n"
+"Odeslání zamítnuto."
 
 #: bzrlib/builtins.py:3543
 #, python-format
 msgid "Unrecognized bug %s. Commit refused."
-msgstr ""
+msgstr "Nerozpoznaná chyba %s. Odevzdání zamítnuto."
 
 #: bzrlib/builtins.py:3546
 #, python-format
@@ -2711,10 +2781,12 @@ msgid ""
 "%s\n"
 "Commit refused."
 msgstr ""
+"%s\n"
+"Odevzdání zamítnuto."
 
 #: bzrlib/builtins.py:3570
 msgid "Could not parse --commit-time: "
-msgstr ""
+msgstr "Nelze zpracovat --commit-time: "
 
 #: bzrlib/builtins.py:3610
 msgid "please specify either --message or --file"
