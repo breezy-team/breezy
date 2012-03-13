@@ -31,6 +31,7 @@ from bzrlib import (
     help_topics,
     osutils,
     plugin,
+    ui,
     utextwrap,
     )
 
@@ -38,7 +39,7 @@ from bzrlib import (
 def help(topic=None, outfile=None):
     """Write the help for the specific topic to outfile"""
     if outfile is None:
-        outfile = sys.stdout
+        outfile = ui.ui_factory.make_output_stream()
 
     indices = HelpIndices()
 
@@ -63,7 +64,7 @@ def help(topic=None, outfile=None):
 def help_commands(outfile=None):
     """List all commands"""
     if outfile is None:
-        outfile = sys.stdout
+        outfile = ui.ui_factory.make_output_stream()
     outfile.write(_help_commands_to_text('commands'))
 
 

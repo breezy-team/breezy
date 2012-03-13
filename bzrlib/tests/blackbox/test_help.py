@@ -19,12 +19,16 @@
 """
 
 
-import bzrlib
-from bzrlib import config
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib import (
+    config,
+    i18n,
+    tests,
+    )
+
+from bzrlib.tests.test_i18n import ZzzTranslations
 
 
-class TestHelp(TestCaseWithTransport):
+class TestHelp(tests.TestCaseWithTransport):
 
     def test_help_basic(self):
         for cmd in ['--help', 'help', '-h', '-?']:
@@ -175,3 +179,27 @@ cat=cat
 
         self.assertEqual("'bzr c' is an alias for 'bzr cat'.\n",
                          self.run_bzr('help c')[0])
+
+
+class TestTranslatedHelp(tests.TestCaseWithTransport):
+    """Tests for display of translated help topics"""
+
+    def setUp(self):
+        super(TestTranslatedHelp, self).setUp()
+        self.overrideAttr(i18n, '_translations', ZzzTranslations())
+
+    def test_help_command_utf8(self):
+        out, err = self.run_bzr(["help", "push"], encoding="utf-8")
+        self.assertContainsRe(out, "zz\xc3\xa5{{:See also:")
+
+    def test_help_switch_utf8(self):
+        out, err = self.run_bzr(["push", "--help"], encoding="utf-8")
+        self.assertContainsRe(out, "zz\xc3\xa5{{:See also:")
+
+    def test_help_command_ascii(self):
+        out, err = self.run_bzr(["help", "push"], encoding="ascii")
+        self.assertContainsRe(out, "zz\\?{{:See also:")
+
+    def test_help_switch_ascii(self):
+        out, err = self.run_bzr(["push", "--help"], encoding="ascii")
+        self.assertContainsRe(out, "zz\\?{{:See also:")
