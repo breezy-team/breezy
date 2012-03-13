@@ -18,7 +18,7 @@
 
 from bzrlib import (
     branch,
-    bzrdir,
+    controldir,
     check,
     errors,
     )
@@ -107,12 +107,12 @@ class TestStacking(TestCaseWithBranch):
 
     def assertRevisionInRepository(self, repo_path, revid):
         """Check that a revision is in a repository, disregarding stacking."""
-        repo = bzrdir.BzrDir.open(repo_path).open_repository()
+        repo = controldir.ControlDir.open(repo_path).open_repository()
         self.assertTrue(repo.has_revision(revid))
 
     def assertRevisionNotInRepository(self, repo_path, revid):
         """Check that a revision is not in a repository, disregarding stacking."""
-        repo = bzrdir.BzrDir.open(repo_path).open_repository()
+        repo = controldir.ControlDir.open(repo_path).open_repository()
         self.assertFalse(repo.has_revision(revid))
 
     def test_get_graph_stacked(self):
@@ -150,7 +150,8 @@ class TestStacking(TestCaseWithBranch):
         self.assertRevisionNotInRepository('newbranch', trunk_revid)
         tree = new_dir.open_branch().create_checkout('local')
         new_branch_revid = tree.commit('something local')
-        self.assertRevisionNotInRepository('mainline', new_branch_revid)
+        self.assertRevisionNotInRepository(
+            trunk_tree.branch.base, new_branch_revid)
         self.assertRevisionInRepository('newbranch', new_branch_revid)
 
     def test_sprout_stacked_from_smart_server(self):
@@ -164,14 +165,15 @@ class TestStacking(TestCaseWithBranch):
             raise TestNotApplicable(e)
         # Now serve the original mainline from a smart server
         remote_transport = self.make_smart_server('mainline')
-        remote_bzrdir = bzrdir.BzrDir.open_from_transport(remote_transport)
+        remote_bzrdir = controldir.ControlDir.open_from_transport(remote_transport)
         # and make branch from the smart server which is stacked
         new_dir = remote_bzrdir.sprout('newbranch', stacked=True)
         # stacked repository
         self.assertRevisionNotInRepository('newbranch', trunk_revid)
         tree = new_dir.open_branch().create_checkout('local')
         new_branch_revid = tree.commit('something local')
-        self.assertRevisionNotInRepository('mainline', new_branch_revid)
+        self.assertRevisionNotInRepository(trunk_tree.branch.user_url,
+            new_branch_revid)
         self.assertRevisionInRepository('newbranch', new_branch_revid)
 
     def test_unstack_fetches(self):
@@ -482,7 +484,9 @@ class TestStacking(TestCaseWithBranch):
         rtree = target.repository.revision_tree('rev2')
         rtree.lock_read()
         self.addCleanup(rtree.unlock)
-        self.assertEqual('new content', rtree.get_file_by_path('a').read())
+        self.assertEqual(
+            'new content',
+            rtree.get_file_text(rtree.path2id('a'), 'a'))
         self.check_lines_added_or_present(target, 'rev2')
 
     def test_transform_fallback_location_hook(self):
@@ -510,6 +514,8 @@ class TestStacking(TestCaseWithBranch):
         try:
             repo = self.make_repository('repo', shared=True)
         except errors.IncompatibleFormat:
+            raise TestNotApplicable()
+        if not repo._format.supports_nesting_repositories:
             raise TestNotApplicable()
         # Avoid make_branch, which produces standalone branches.
         bzrdir = self.make_bzrdir('repo/stack-on')
@@ -546,7 +552,7 @@ class TestStacking(TestCaseWithBranch):
         self.assertEqual({}, repo.get_parent_map(['rev1']))
         # revision_history should work, even though the history is spread over
         # multiple repositories.
-        self.assertLength(2, stacked.branch.revision_history())
+        self.assertEquals((2, 'rev2'), stacked.branch.last_revision_info())
 
 
 class TestStackingConnections(
@@ -568,7 +574,7 @@ class TestStackingConnections(
         stacked.set_last_revision_info(1, 'rev-base')
         stacked_relative = self.make_branch('stacked_relative',
                                             format=self.bzrdir_format)
-        stacked_relative.set_stacked_on_url('../base')
+        stacked_relative.set_stacked_on_url(base_tree.branch.user_url)
         stacked.set_last_revision_info(1, 'rev-base')
         self.start_logging_connections()
 

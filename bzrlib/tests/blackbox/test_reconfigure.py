@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2009 Canonical Ltd
+# Copyright (C) 2007-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,15 +15,15 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     errors,
     tests,
     workingtree,
     )
-from bzrlib.branchbuilder import BranchBuilder
+from bzrlib.tests.script import TestCaseWithTransportAndScript
 
 
-class TestReconfigure(tests.TestCaseWithTransport):
+class TestReconfigure(TestCaseWithTransportAndScript):
 
     def test_no_type(self):
         branch = self.make_branch('branch')
@@ -85,7 +85,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_use_shared_to_standalone(self):
         repo = self.make_repository('repo', shared=True)
-        branch = bzrdir.BzrDir.create_branch_convenience('repo/tree')
+        branch = controldir.ControlDir.create_branch_convenience('repo/tree')
         self.assertNotEqual(branch.bzrdir.root_transport.base,
             branch.repository.bzrdir.root_transport.base)
         self.run_bzr('reconfigure --standalone', working_dir='repo/tree')
@@ -125,7 +125,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_make_without_trees_leaves_tree_alone(self):
         repo = self.make_repository('repo', shared=True)
-        branch = bzrdir.BzrDir.create_branch_convenience('repo/branch')
+        branch = controldir.ControlDir.create_branch_convenience('repo/branch')
         tree = workingtree.WorkingTree.open('repo/branch')
         self.build_tree(['repo/branch/foo'])
         tree.add('foo')
@@ -136,7 +136,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_shared_format_to_standalone(self, format=None):
         repo = self.make_repository('repo', shared=True, format=format)
-        branch = bzrdir.BzrDir.create_branch_convenience('repo/tree')
+        branch = controldir.ControlDir.create_branch_convenience('repo/tree')
         self.assertNotEqual(branch.bzrdir.root_transport.base,
             branch.repository.bzrdir.root_transport.base)
         tree = workingtree.WorkingTree.open('repo/tree')
@@ -175,14 +175,44 @@ class TestReconfigure(tests.TestCaseWithTransport):
         self.run_bzr('revert', working_dir='checkout')
         self.check_file_contents('checkout/file', 'foo\n')
 
-    def test_lightweight_knit_checkout_to_tree(self, format=None):
+    def test_lightweight_knit_checkout_to_tree(self):
         self.test_lightweight_format_checkout_to_tree('knit')
 
-    def test_lightweight_pack092_checkout_to_tree(self, format=None):
+    def test_lightweight_pack092_checkout_to_tree(self):
         self.test_lightweight_format_checkout_to_tree('pack-0.92')
 
-    def test_lightweight_rich_root_pack_checkout_to_tree(self, format=None):
+    def test_lightweight_rich_root_pack_checkout_to_tree(self):
         self.test_lightweight_format_checkout_to_tree('rich-root-pack')
+
+    def test_branch_and_use_shared(self):
+        self.run_script("""\
+$ bzr init -q branch
+$ echo foo > branch/foo
+$ bzr add -q branch/foo
+$ bzr commit -q -m msg branch
+$ bzr init-repo -q .
+$ bzr reconfigure --branch --use-shared branch
+$ bzr info branch
+Repository branch (format: ...)
+Location:
+  shared repository: .
+  repository branch: branch
+""")
+
+    def test_use_shared_and_branch(self):
+        self.run_script("""\
+$ bzr init -q branch
+$ echo foo > branch/foo
+$ bzr add -q branch/foo
+$ bzr commit -q -m msg branch
+$ bzr init-repo -q .
+$ bzr reconfigure --use-shared --branch branch
+$ bzr info branch
+Repository branch (format: ...)
+Location:
+  shared repository: .
+  repository branch: branch
+""")
 
 
 class TestReconfigureStacking(tests.TestCaseWithTransport):
@@ -211,20 +241,19 @@ class TestReconfigureStacking(tests.TestCaseWithTransport):
         branch_2 = tree_2.branch
         # now reconfigure to be stacked
         out, err = self.run_bzr('reconfigure --stacked-on b1 b2')
-        self.assertContainsRe(out,
-            '^.*/b2/ is now stacked on ../b1\n$')
+        self.assertContainsRe(out, '^.*/b2/ is now stacked on ../b1\n$')
         self.assertEquals('', err)
         # can also give the absolute URL of the branch, and it gets stored 
         # as a relative path if possible
         out, err = self.run_bzr('reconfigure --stacked-on %s b2'
-            % (self.get_url('b1'),))
-        self.assertContainsRe(out,
-            '^.*/b2/ is now stacked on ../b1\n$')
+                                % (self.get_url('b1'),))
+        self.assertContainsRe(out, '^.*/b2/ is now stacked on ../b1\n$')
         self.assertEquals('', err)
+        # Refresh the branch as 'reconfigure' modified it
+        branch_2 = branch_2.bzrdir.open_branch()
         # It should be given a relative URL to the destination, if possible,
         # because that's most likely to work across different transports
-        self.assertEquals(branch_2.get_stacked_on_url(),
-            '../b1')
+        self.assertEquals('../b1', branch_2.get_stacked_on_url())
         # commit, and it should be stored into b2's repo
         self.build_tree_contents([('foo', 'new foo')])
         tree_2.commit('update foo')
@@ -233,8 +262,9 @@ class TestReconfigureStacking(tests.TestCaseWithTransport):
         self.assertContainsRe(out,
             '^.*/b2/ is now not stacked\n$')
         self.assertEquals('', err)
-        self.assertRaises(errors.NotStacked,
-            branch_2.get_stacked_on_url)
+        # Refresh the branch as 'reconfigure' modified it
+        branch_2 = branch_2.bzrdir.open_branch()
+        self.assertRaises(errors.NotStacked, branch_2.get_stacked_on_url)
 
     # XXX: Needs a test for reconfiguring stacking and shape at the same time;
     # no branch at location; stacked-on is not a branch; quiet mode.

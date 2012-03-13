@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 from bzrlib import (
     errors,
     hooks,
@@ -25,6 +27,7 @@ import webbrowser
 from bzrlib import (
     msgeditor,
     )
+from bzrlib.i18n import gettext
 from bzrlib.plugins.launchpad import (
     lp_api,
     lp_registration,
@@ -49,7 +52,7 @@ class Proposer(object):
     hooks = ProposeMergeHooks()
 
     def __init__(self, tree, source_branch, target_branch, message, reviews,
-                 staging=False, approve=False):
+                 staging=False, approve=False, fixes=None):
         """Constructor.
 
         :param tree: The working tree for the source branch.
@@ -87,6 +90,7 @@ class Proposer(object):
                             for reviewer, review_type in
                             reviews]
         self.approve = approve
+        self.fixes = fixes
 
     def get_comment(self, prerequisite_branch):
         """Determine the initial comment for the merge proposal."""
@@ -142,8 +146,8 @@ class Proposer(object):
             if mp.queue_status in ('Merged', 'Rejected'):
                 continue
             if mp.target_branch.self_link == self.target_branch.lp.self_link:
-                raise errors.BzrCommandError(
-                    'There is already a branch merge proposal: %s' %
+                raise errors.BzrCommandError(gettext(
+                    'There is already a branch merge proposal: %s') %
                     lp_api.canonical_url(mp))
 
     def _get_prerequisite_branch(self):
@@ -200,6 +204,12 @@ class Proposer(object):
             review_types=review_types)
         if self.approve:
             self.call_webservice(mp.setStatus, status='Approved')
+        if self.fixes:
+            if self.fixes.startswith('lp:'):
+                self.fixes = self.fixes[3:]
+            self.call_webservice(
+                self.source_branch.lp.linkBug,
+                bug=self.launchpad.bugs[int(self.fixes)])
         webbrowser.open(lp_api.canonical_url(mp))
 
 

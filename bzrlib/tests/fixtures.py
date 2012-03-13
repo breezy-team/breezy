@@ -125,3 +125,36 @@ def build_branch_with_non_ancestral_rev(branch_builder):
     source.set_last_revision_info(1, 'rev-1')
     return source
 
+
+def make_branch_and_populated_tree(testcase):
+    """Make a simple branch and tree.
+
+    The tree holds some added but uncommitted files.
+    """
+    # TODO: Either accept or return the names of the files, so the caller
+    # doesn't need to be bound to the particular files created? -- mbp
+    # 20110705
+    tree = testcase.make_branch_and_tree('t')
+    testcase.build_tree_contents([('t/hello', 'hello world')])
+    tree.add(['hello'], ['hello-id'])
+    return tree
+
+
+class TimeoutFixture(object):
+    """Kill a test with sigalarm if it runs too long.
+    
+    Only works on Unix at present.
+    """
+
+    def __init__(self, timeout_secs):
+        import signal
+        self.timeout_secs = timeout_secs
+        self.alarm_fn = getattr(signal, 'alarm', None)
+
+    def setUp(self):
+        if self.alarm_fn is not None:
+            self.alarm_fn(self.timeout_secs)
+
+    def cleanUp(self):
+        if self.alarm_fn is not None:
+            self.alarm_fn(0)

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,14 +18,12 @@
 """Tests for the update command of bzr."""
 
 import os
-import re
 
 from bzrlib import (
     branch,
     bzrdir,
     osutils,
     tests,
-    urlutils,
     workingtree,
     )
 from bzrlib.tests.script import ScriptRunner
@@ -196,8 +194,7 @@ Your local commits will now show as pending merges with 'bzr status', and can be
 
         self.build_tree(['checkout1/'])
         checkout_dir = bzrdir.BzrDirMetaFormat1().initialize('checkout1')
-        branch.BranchReferenceFormat().initialize(checkout_dir,
-            target_branch=master.branch)
+        checkout_dir.set_branch_reference(master.branch)
         checkout1 = checkout_dir.create_workingtree('m1')
 
         # Create a second branch, with an extra commit
@@ -253,8 +250,7 @@ Updated to revision 2 of branch %s
 
         self.build_tree(['checkout1/'])
         checkout_dir = bzrdir.BzrDirMetaFormat1().initialize('checkout1')
-        branch.BranchReferenceFormat().initialize(checkout_dir,
-            target_branch=master.branch)
+        checkout_dir.set_branch_reference(master.branch)
         checkout1 = checkout_dir.create_workingtree('m1')
 
         # Create a second branch, with an extra commit
@@ -456,3 +452,31 @@ master
 >>>>>>> MERGE-SOURCE
 ''',
                              'lightweight/file')
+
+
+    def test_no_upgrade_single_file(self):
+        """There's one basis revision per tree.
+
+        Since you can't actually change the basis for a single file at the
+        moment, we don't let you think you can.
+
+        See bug 557886.
+        """
+        self.make_branch_and_tree('.')
+        self.build_tree_contents([('a/',),
+            ('a/file', 'content')])
+        sr = ScriptRunner()
+        sr.run_script(self, '''
+            $ bzr update ./a
+            2>bzr: ERROR: bzr update can only update a whole tree, not a file or subdirectory
+            $ bzr update ./a/file
+            2>bzr: ERROR: bzr update can only update a whole tree, not a file or subdirectory
+            $ bzr update .
+            2>Tree is up to date at revision 0 of branch ...
+            $ cd a
+            $ bzr update .
+            2>bzr: ERROR: bzr update can only update a whole tree, not a file or subdirectory
+            # however, you can update the whole tree from a subdirectory
+            $ bzr update
+            2>Tree is up to date at revision 0 of branch ...
+            ''')

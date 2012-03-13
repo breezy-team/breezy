@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 from bzrlib import registry
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -48,8 +50,14 @@ rather than a full URL. This looks like::
 
     bzr commit --fixes <tracker>:<id>
 
+or::
+
+    bzr commit --fixes <id>
+
 where "<tracker>" is an identifier for the bug tracker, and "<id>" is the
 identifier for that bug within the bugtracker, usually the bug number.
+If "<tracker>" is not specified the ``bugtracker`` set in the branch
+or global configuration is used.
 
 Bazaar knows about a few bug trackers that have many users. If
 you use one of these bug trackers then there is no setup required to

@@ -20,13 +20,15 @@ This allows the user to configure their Launchpad user ID once, rather
 than once for each place that needs to take it into account.
 """
 
+from __future__ import absolute_import
+
 from bzrlib import (
     errors,
     trace,
     transport,
     )
-from bzrlib.config import AuthenticationConfig, GlobalConfig
-
+from bzrlib.config import AuthenticationConfig, GlobalStack
+from bzrlib.i18n import gettext
 
 LAUNCHPAD_BASE = 'https://launchpad.net/'
 
@@ -53,15 +55,15 @@ def get_lp_login(_config=None):
         disagree about username.
     """
     if _config is None:
-        _config = GlobalConfig()
+        _config = GlobalStack()
 
-    username = _config.get_user_option('launchpad_username')
+    username = _config.get('launchpad_username')
     if username is not None:
         auth = AuthenticationConfig()
         auth_username = _get_auth_user(auth)
         # Auto-upgrading
         if auth_username is None:
-            trace.note('Setting ssh/sftp usernames for launchpad.net.')
+            trace.note(gettext('Setting ssh/sftp usernames for launchpad.net.'))
             _set_auth_user(username, auth)
         elif auth_username != username:
             raise MismatchedUsernames()
@@ -70,8 +72,8 @@ def get_lp_login(_config=None):
 
 def _set_global_option(username, _config=None):
     if _config is None:
-        _config = GlobalConfig()
-    _config.set_user_option('launchpad_username', username)
+        _config = GlobalStack()
+    _config.set('launchpad_username', username)
 
 
 def set_lp_login(username, _config=None):
@@ -100,7 +102,7 @@ def check_lp_login(username, _transport=None):
     uploaded SSH keys.
     """
     if _transport is None:
-        _transport = transport.get_transport(LAUNCHPAD_BASE)
+        _transport = transport.get_transport_from_url(LAUNCHPAD_BASE)
 
     try:
         data = _transport.get_bytes('~%s/+sshkeys' % username)

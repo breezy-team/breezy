@@ -18,7 +18,7 @@
 
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     errors,
     )
 from bzrlib.tag import (
@@ -26,7 +26,6 @@ from bzrlib.tag import (
     DisabledTags,
     )
 from bzrlib.tests import (
-    KnownFailure,
     TestCase,
     TestCaseWithTransport,
     )
@@ -70,8 +69,8 @@ class TestTagRevisionRenames(TestCaseWithTransport):
 class TestTagMerging(TestCaseWithTransport):
 
     def make_knit_branch(self, relpath):
-        old_bdf = bzrdir.format_registry.make_bzrdir('knit')
-        return bzrdir.BzrDir.create_branch_convenience(relpath, format=old_bdf)
+        old_bdf = controldir.format_registry.make_bzrdir('knit')
+        return controldir.ControlDir.create_branch_convenience(relpath, format=old_bdf)
 
     def make_branch_supporting_tags(self, relpath):
         return self.make_branch(relpath, format='dirstate-tags')
@@ -110,12 +109,14 @@ class TestTagMerging(TestCaseWithTransport):
         self.assertRaises(errors.NoSuchTag, a.tags.lookup_tag, 'tag-2')
         # conflicting merge
         a.tags.set_tag('tag-2', 'z')
-        conflicts = a.tags.merge_to(b.tags)
+        updates, conflicts = a.tags.merge_to(b.tags)
+        self.assertEqual({}, updates)
         self.assertEqual(list(conflicts), [('tag-2', 'z', 'y')])
         self.assertEqual('y', b.tags.lookup_tag('tag-2'))
         # overwrite conflicts
-        conflicts = a.tags.merge_to(b.tags, overwrite=True)
+        updates, conflicts = a.tags.merge_to(b.tags, overwrite=True)
         self.assertEqual(list(conflicts), [])
+        self.assertEqual({u'tag-2': 'z'}, updates)
         self.assertEqual('z', b.tags.lookup_tag('tag-2'))
 
 
@@ -168,7 +169,7 @@ class TestTagsInCheckouts(TestCaseWithTransport):
         child.update()
         # and deletion of tags should also propagate
         master.tags.delete_tag('foo')
-        raise KnownFailure("tag deletion does not propagate: "
+        self.knownFailure("tag deletion does not propagate: "
             "https://bugs.launchpad.net/bzr/+bug/138802")
         self.assertRaises(errors.NoSuchTag,
             child.tags.lookup_tag, 'foo')

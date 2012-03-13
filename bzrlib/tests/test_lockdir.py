@@ -17,7 +17,6 @@
 """Tests for LockDir"""
 
 import os
-import sys
 import time
 
 import bzrlib
@@ -44,9 +43,9 @@ from bzrlib.lockdir import (
 from bzrlib.tests import (
     features,
     TestCase,
+    TestCaseInTempDir,
     TestCaseWithTransport,
     )
-from bzrlib.trace import note
 
 # These tests are run on the default transport provided by the test framework
 # (typically a local disk transport).  That can be changed by the --transport
@@ -434,9 +433,9 @@ class TestLockDir(TestCaseWithTransport):
         self.assertContainsRe(info_list['time_ago'], r'^\d+ seconds? ago$')
 
     def test_lock_without_email(self):
-        global_config = config.GlobalConfig()
+        global_config = config.GlobalStack()
         # Intentionally has no email address
-        global_config.set_user_option('email', 'User Identity')
+        global_config.set('email', 'User Identity')
         ld1 = self.get_lock()
         ld1.create()
         ld1.lock_write()
@@ -465,7 +464,8 @@ class TestLockDir(TestCaseWithTransport):
     def test_lock_with_buggy_rename(self):
         # test that lock acquisition handles servers which pretend they
         # renamed correctly but that actually fail
-        t = transport.get_transport('brokenrename+' + self.get_url())
+        t = transport.get_transport_from_url(
+            'brokenrename+' + self.get_url())
         ld1 = LockDir(t, 'test_lock')
         ld1.create()
         ld1.attempt_lock()
@@ -655,7 +655,7 @@ class TestLockDirHooks(TestCaseWithTransport):
         self.assertEqual([], self._calls)
 
 
-class TestLockHeldInfo(TestCase):
+class TestLockHeldInfo(TestCaseInTempDir):
     """Can get information about the lock holder, and detect whether they're
     still alive."""
 
@@ -684,11 +684,10 @@ class TestLockHeldInfo(TestCase):
 
     def test_lock_holder_dead_process(self):
         """Detect that the holder (this process) is still running."""
+        self.overrideAttr(lockdir, 'get_host_name',
+            lambda: 'aproperhostname')
         info = LockHeldInfo.for_this_process(None)
         info.info_dict['pid'] = '123123123'
-        if sys.platform == 'win32':
-            self.knownFailure(
-                'live lock holder detection not implemented yet on win32')
         self.assertTrue(info.is_lock_holder_known_dead())
 
     def test_lock_holder_other_machine(self):
@@ -731,6 +730,8 @@ class TestStaleLockDir(TestCaseWithTransport):
 
         This generates a warning but no other user interaction.
         """
+        self.overrideAttr(lockdir, 'get_host_name',
+            lambda: 'aproperhostname')
         # This is off by default at present; see the discussion in the bug.
         # If you change the default, don't forget to update the docs.
         config.GlobalConfig().set_user_option('locks.steal_dead', True)

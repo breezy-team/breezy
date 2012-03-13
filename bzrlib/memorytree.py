@@ -19,6 +19,7 @@
 See MemoryTree for more details.
 """
 
+from __future__ import absolute_import
 
 import os
 
@@ -49,6 +50,9 @@ class MemoryTree(mutabletree.MutableInventoryTree):
         self._branch_revision_id = revision_id
         self._locks = 0
         self._lock_mode = None
+
+    def get_config_stack(self):
+        return self.branch.get_config_stack()
 
     def is_control_filename(self, filename):
         # Memory tree doesn't have any control filenames

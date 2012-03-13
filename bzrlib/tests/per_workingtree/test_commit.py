@@ -19,8 +19,8 @@ import os
 
 from bzrlib import (
     branch,
-    bzrdir,
     conflicts,
+    controldir,
     errors,
     mutabletree,
     osutils,
@@ -264,7 +264,7 @@ class TestCommit(TestCaseWithWorkingTree):
         del master
         # check its corrupted.
         self.assertRaises(errors.UnknownFormatError,
-                          bzrdir.BzrDir.open,
+                          controldir.ControlDir.open,
                           'master')
         tree.commit('foo', rev_id='foo', local=True)
 
@@ -552,7 +552,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         """Make sure a start commit hook can modify the tree that is
         committed."""
         def start_commit_hook_adds_file(tree):
-            open(tree.abspath("newfile"), 'w').write("data")
+            with open(tree.abspath("newfile"), 'w') as f: f.write("data")
             tree.add(["newfile"])
         def restoreDefaults():
             mutabletree.MutableTree.hooks['start_commit'] = []
@@ -573,7 +573,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
                 mutabletree.PostCommitHookParams))
             self.assertTrue(isinstance(params.mutable_tree,
                 mutabletree.MutableTree))
-            open(tree.abspath("newfile"), 'w').write("data")
+            with open(tree.abspath("newfile"), 'w') as f: f.write("data")
             params.mutable_tree.add(["newfile"])
         tree = self.make_branch_and_tree('.')
         mutabletree.MutableTree.hooks.install_named_hook(

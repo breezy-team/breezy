@@ -18,6 +18,8 @@
 """Text UI, write output to the console.
 """
 
+from __future__ import absolute_import
+
 import os
 import sys
 import time
@@ -43,6 +45,116 @@ from bzrlib.ui import (
     )
 
 
+class _ChooseUI(object):
+
+    """ Helper class for choose implementation.
+    """
+
+    def __init__(self, ui, msg, choices, default):
+        self.ui = ui
+        self._setup_mode()
+        self._build_alternatives(msg, choices, default)
+
+    def _setup_mode(self):
+        """Setup input mode (line-based, char-based) and echo-back.
+
+        Line-based input is used if the BZR_TEXTUI_INPUT environment
+        variable is set to 'line-based', or if there is no controlling
+        terminal.
+        """
+        if os.environ.get('BZR_TEXTUI_INPUT') != 'line-based' and \
+           self.ui.stdin == sys.stdin and self.ui.stdin.isatty():
+            self.line_based = False
+            self.echo_back = True
+        else:
+            self.line_based = True
+            self.echo_back = not self.ui.stdin.isatty()
+
+    def _build_alternatives(self, msg, choices, default):
+        """Parse choices string.
+
+        Setup final prompt and the lists of choices and associated
+        shortcuts.
+        """
+        index = 0
+        help_list = []
+        self.alternatives = {}
+        choices = choices.split('\n')
+        if default is not None and default not in range(0, len(choices)):
+            raise ValueError("invalid default index")
+        for c in choices:
+            name = c.replace('&', '').lower()
+            choice = (name, index)
+            if name in self.alternatives:
+                raise ValueError("duplicated choice: %s" % name)
+            self.alternatives[name] = choice
+            shortcut = c.find('&')
+            if -1 != shortcut and (shortcut + 1) < len(c):
+                help = c[:shortcut]
+                help += '[' + c[shortcut + 1] + ']'
+                help += c[(shortcut + 2):]
+                shortcut = c[shortcut + 1]
+            else:
+                c = c.replace('&', '')
+                shortcut = c[0]
+                help = '[%s]%s' % (shortcut, c[1:])
+            shortcut = shortcut.lower()
+            if shortcut in self.alternatives:
+                raise ValueError("duplicated shortcut: %s" % shortcut)
+            self.alternatives[shortcut] = choice
+            # Add redirections for default.
+            if index == default:
+                self.alternatives[''] = choice
+                self.alternatives['\r'] = choice
+            help_list.append(help)
+            index += 1
+
+        self.prompt = u'%s (%s): ' % (msg, ', '.join(help_list))
+
+    def _getline(self):
+        line = self.ui.stdin.readline()
+        if '' == line:
+            raise EOFError
+        return line.strip()
+
+    def _getchar(self):
+        char = osutils.getchar()
+        if char == chr(3): # INTR
+            raise KeyboardInterrupt
+        if char == chr(4): # EOF (^d, C-d)
+            raise EOFError
+        return char
+
+    def interact(self):
+        """Keep asking the user until a valid choice is made.
+        """
+        if self.line_based:
+            getchoice = self._getline
+        else:
+            getchoice = self._getchar
+        iter = 0
+        while True:
+            iter += 1
+            if 1 == iter or self.line_based:
+                self.ui.prompt(self.prompt)
+            try:
+                choice = getchoice()
+            except EOFError:
+                self.ui.stderr.write('\n')
+                return None
+            except KeyboardInterrupt:
+                self.ui.stderr.write('\n')
+                raise KeyboardInterrupt
+            choice = choice.lower()
+            if choice not in self.alternatives:
+                # Not a valid choice, keep on asking.
+                continue
+            name, index = self.alternatives[choice]
+            if self.echo_back:
+                self.ui.stderr.write(name + '\n')
+            return index
+
+
 class TextUIFactory(UIFactory):
     """A UI factory for Text user interefaces."""
 
@@ -61,6 +173,27 @@ class TextUIFactory(UIFactory):
         # paints progress, network activity, etc
         self._progress_view = self.make_progress_view()
 
+    def choose(self, msg, choices, default=None):
+        """Prompt the user for a list of alternatives.
+
+        Support both line-based and char-based editing.
+
+        In line-based mode, both the shortcut and full choice name are valid
+        answers, e.g. for choose('prompt', '&yes\n&no'): 'y', ' Y ', ' yes',
+        'YES ' are all valid input lines for choosing 'yes'.
+
+        An empty line, when in line-based mode, or pressing enter in char-based
+        mode will select the default choice (if any).
+
+        Choice is echoed back if:
+        - input is char-based; which means a controlling terminal is available,
+          and osutils.getchar is used
+        - input is line-based, and no controlling terminal is available
+        """
+
+        choose_ui = _ChooseUI(self, msg, choices, default)
+        return choose_ui.interact()
+
     def be_quiet(self, state):
         if state and not self._quiet:
             self.clear_term()
@@ -77,18 +210,6 @@ class TextUIFactory(UIFactory):
         # bar _is_ going to the terminal, we shouldn't need
         # to clear it.  We might need to separately check for the case of
         self._progress_view.clear()
-
-    def get_boolean(self, prompt):
-        while True:
-            self.prompt(prompt + "? [y/n]: ")
-            line = self.stdin.readline().lower()
-            if line in ('y\n', 'yes\n'):
-                return True
-            elif line in ('n\n', 'no\n'):
-                return False
-            elif line in ('', None):
-                # end-of-file; possibly should raise an error here instead
-                return None
 
     def get_integer(self, prompt):
         while True:
@@ -205,6 +326,7 @@ class TextUIFactory(UIFactory):
             prompt = prompt % kwargs
         prompt = prompt.encode(osutils.get_terminal_encoding(), 'replace')
         self.clear_term()
+        self.stdout.flush()
         self.stderr.write(prompt)
 
     def report_transport_activity(self, transport, byte_count, direction):

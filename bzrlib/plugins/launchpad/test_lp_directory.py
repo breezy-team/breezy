@@ -19,6 +19,7 @@
 import os
 import xmlrpclib
 
+import bzrlib
 from bzrlib import (
     debug,
     errors,
@@ -28,6 +29,8 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.directory_service import directories
 from bzrlib.tests import (
+    features,
+    ssl_certs,
     TestCaseInTempDir,
     TestCaseWithMemoryTransport
 )
@@ -50,7 +53,7 @@ def load_tests(standard_tests, module, loader):
     transport_scenarios = [
         ('http', dict(server_class=PreCannedHTTPServer,)),
         ]
-    if tests.HTTPSServerFeature.available():
+    if features.HTTPSServerFeature.available():
         transport_scenarios.append(
             ('https', dict(server_class=PreCannedHTTPSServer,)),
             )
@@ -119,6 +122,17 @@ class LocalDirectoryURLTests(TestCaseInTempDir):
         # care that you are asking for 'ubuntu'
         self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/ubuntu',
                            'lp:ubuntu')
+
+    def test_ubuntu_invalid(self):
+        """Invalid ubuntu urls don't crash.
+
+        :seealso: http://pad.lv/843900
+        """
+        # This ought to be natty-updates.
+        self.assertRaises(errors.InvalidURL,
+            self.assertResolve,
+            '',
+            'ubuntu:natty/updates/smartpm')
 
     def test_ubuntu_apt(self):
         self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/ubuntu/apt',
@@ -425,7 +439,7 @@ class PreCannedHTTPServer(PreCannedServerMixin, http_server.HttpServer):
     pass
 
 
-if tests.HTTPSServerFeature.available():
+if features.HTTPSServerFeature.available():
     from bzrlib.tests import https_server
     class PreCannedHTTPSServer(PreCannedServerMixin, https_server.HTTPSServer):
         pass
@@ -440,12 +454,15 @@ class TestXMLRPCTransport(tests.TestCase):
         tests.TestCase.setUp(self)
         self.server = self.server_class()
         self.server.start_server()
+        self.addCleanup(self.server.stop_server)
         # Ensure we don't clobber env
         self.overrideEnv('BZR_LP_XMLRPC_URL', None)
-
-    def tearDown(self):
-        self.server.stop_server()
-        tests.TestCase.tearDown(self)
+        # Ensure we use the right certificates for https.
+        # FIXME: There should be a better way but the only alternative I can
+        # think of involves carrying the ca_certs through the lp_registration
+        # infrastructure to _urllib2_wrappers... -- vila 2012-01-20
+        bzrlib.global_state.cmdline_overrides._from_cmdline(
+            ['ssl.ca_certs=%s' % ssl_certs.build_path('ca.crt')])
 
     def set_canned_response(self, server, path):
         response_format = '''HTTP/1.1 200 OK\r

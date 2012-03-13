@@ -18,17 +18,17 @@
 
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     inventory,
-    repository,
     tests,
     )
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 
 
 class TrivialTest(tests.TestCaseWithTransport):
 
     def test_trivial_reconcile(self):
-        t = bzrdir.BzrDir.create_standalone_workingtree('.')
+        t = controldir.ControlDir.create_standalone_workingtree('.')
         (out, err) = self.run_bzr('reconcile')
         if t.branch.repository._reconcile_backsup_inventory:
             does_backup_text = "Inventory ok.\n"
@@ -45,7 +45,7 @@ class TrivialTest(tests.TestCaseWithTransport):
         self.assertEqualDiff(err, "")
 
     def test_does_something_reconcile(self):
-        t = bzrdir.BzrDir.create_standalone_workingtree('.')
+        t = controldir.ControlDir.create_standalone_workingtree('.')
         # an empty inventory with no revision will trigger reconciliation.
         repo = t.branch.repository
         inv = inventory.Inventory(revision_id='missing')
@@ -72,3 +72,20 @@ class TrivialTest(tests.TestCaseWithTransport):
                      does_backup_text))
         self.assertEqualDiff(expected, out)
         self.assertEqualDiff(err, "")
+
+
+class TestSmartServerReconcile(tests.TestCaseWithTransport):
+
+    def test_simple_reconcile(self):
+        self.setup_smart_server_with_call_log()
+        self.make_branch('branch')
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['reconcile', self.get_url('branch')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(10, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

@@ -21,7 +21,6 @@
 from StringIO import StringIO
 import os
 import stat
-import sys
 import tarfile
 import time
 import zipfile
@@ -29,10 +28,12 @@ import zipfile
 
 from bzrlib import (
     export,
-    osutils,
-    tests,
     )
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+    features,
+    TestCaseWithTransport,
+    )
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 
 
 class TestExport(TestCaseWithTransport):
@@ -98,7 +99,7 @@ class TestExport(TestCaseWithTransport):
                          sorted(ball.getnames()))
 
     def test_tar_export_unicode_filename(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('tar')
         # FIXME: using fname = u'\xe5.txt' below triggers a bug revealed since
         # bzr.dev revno 4216 but more related to OSX/working trees/unicode than
@@ -116,7 +117,7 @@ class TestExport(TestCaseWithTransport):
 
     def test_tar_export_unicode_basedir(self):
         """Test for bug #413406"""
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         basedir = u'\N{euro sign}'
         os.mkdir(basedir)
         self.run_bzr(['init', basedir])
@@ -191,10 +192,8 @@ class TestExport(TestCaseWithTransport):
     def test_tbz2_export(self):
         self.run_tar_export_disk_and_stdout('tbz2', 'bz2')
 
-    # TODO: test_xz_export, I don't have pylzma working here to test it.
-
     def test_zip_export_unicode(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('zip')
         fname = u'\N{Euro Sign}.txt'
         self.build_tree(['zip/' + fname])
@@ -404,6 +403,23 @@ class TestExport(TestCaseWithTransport):
         self.assertEqual(['goodbye', 'hello'], sorted(os.listdir('latest')))
         self.check_file_contents('latest/goodbye', 'baz')
 
+    def test_export_uncommitted(self):
+        """Test --uncommitted option"""
+        self.example_branch()
+        os.chdir('branch')
+        self.build_tree_contents([('goodbye', 'uncommitted data')])
+        self.run_bzr(['export', '--uncommitted', 'latest'])
+        self.check_file_contents('latest/goodbye', 'uncommitted data')
+
+    def test_export_uncommitted_no_tree(self):
+        """Test --uncommitted option only works with a working tree."""
+        tree = self.example_branch()
+        tree.bzrdir.destroy_workingtree()
+        os.chdir('branch')
+        self.run_bzr_error(
+            ['bzr: ERROR: --uncommitted requires a working tree'],
+            'export --uncommitted latest')
+
     def test_zip_export_per_file_timestamps(self):
         tree = self.example_branch()
         self.build_tree_contents([('branch/har', 'foo')])
@@ -415,3 +431,23 @@ class TestExport(TestCaseWithTransport):
         zfile = zipfile.ZipFile('test.zip')
         info = zfile.getinfo("test/har")
         self.assertEquals(time.localtime(timestamp)[:6], info.date_time)
+
+
+class TestSmartServerExport(TestCaseWithTransport):
+
+    def test_simple_export(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        t.commit("message")
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['export', "foo.tar.gz", self.get_url('branch')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(7, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

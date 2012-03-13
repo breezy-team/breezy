@@ -16,11 +16,7 @@
 
 """Testing framework extensions"""
 
-# TODO: Perhaps there should be an API to find out if bzr running under the
-# test suite -- some plugins might want to avoid making intrusive changes if
-# this is the case.  However, we want behaviour under to test to diverge as
-# little as possible, so this should be used rarely if it's added at all.
-# (Suggestion from j-a-meinel, 2005-11-24)
+from __future__ import absolute_import
 
 # NOTE: Some classes in here use camelCaseNaming() rather than
 # underscore_naming().  That's for consistency with unittest; it's not the
@@ -42,6 +38,7 @@ import pprint
 import random
 import re
 import shlex
+import site
 import stat
 import subprocess
 import sys
@@ -63,10 +60,11 @@ from testtools import content
 import bzrlib
 from bzrlib import (
     branchbuilder,
-    bzrdir,
+    controldir,
     chk_map,
     commands as _mod_commands,
     config,
+    i18n,
     debug,
     errors,
     hooks,
@@ -94,13 +92,19 @@ from bzrlib.transport import (
     memory,
     pathfilter,
     )
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
 from bzrlib.tests import (
+    fixtures,
     test_server,
     TestUtil,
     treeshape,
     )
 from bzrlib.ui import NullProgressView
 from bzrlib.ui.text import TextUIFactory
+from bzrlib.tests.features import _CompatabilityThunkFeature
 
 # Mark this python module as being part of the implementation
 # of unittest: this gives us better tracebacks where the last
@@ -213,6 +217,27 @@ def restore_os_environ(test):
         osutils.set_or_unset_env(var, value)
 
 
+def _clear__type_equality_funcs(test):
+    """Cleanup bound methods stored on TestCase instances
+
+    Clear the dict breaking a few (mostly) harmless cycles in the affected
+    unittests released with Python 2.6 and initial Python 2.7 versions.
+
+    For a few revisions between Python 2.7.1 and Python 2.7.2 that annoyingly
+    shipped in Oneiric, an object with no clear method was used, hence the
+    extra complications, see bug 809048 for details.
+    """
+    type_equality_funcs = getattr(test, "_type_equality_funcs", None)
+    if type_equality_funcs is not None:
+        tef_clear = getattr(type_equality_funcs, "clear", None)
+        if tef_clear is None:
+            tef_instance_dict = getattr(type_equality_funcs, "__dict__", None)
+            if tef_instance_dict is not None:
+                tef_clear = tef_instance_dict.clear
+        if tef_clear is not None:
+            tef_clear()
+
+
 class ExtendedTestResult(testtools.TextTestResult):
     """Accepts, reports and accumulates the results of running tests.
 
@@ -222,7 +247,7 @@ class ExtendedTestResult(testtools.TextTestResult):
     different types of display.
 
     When a test finishes, in whatever way, it calls one of the addSuccess,
-    addFailure or addError classes.  These in turn may redirect to a more
+    addFailure or addError methods.  These in turn may redirect to a more
     specific case for the special test results supported by our extended
     tests.
 
@@ -386,9 +411,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         getDetails = getattr(test, "getDetails", None)
         if getDetails is not None:
             getDetails().clear()
-        type_equality_funcs = getattr(test, "_type_equality_funcs", None)
-        if type_equality_funcs is not None:
-            type_equality_funcs.clear()
+        _clear__type_equality_funcs(test)
         self._traceback_from_test = None
 
     def startTests(self):
@@ -494,6 +517,10 @@ class ExtendedTestResult(testtools.TextTestResult):
     def addNotApplicable(self, test, reason):
         self.not_applicable_count += 1
         self.report_not_applicable(test, reason)
+
+    def _count_stored_tests(self):
+        """Count of tests instances kept alive due to not succeeding"""
+        return self.error_count + self.failure_count + self.known_failure_count
 
     def _post_mortem(self, tb=None):
         """Start a PDB post mortem session."""
@@ -972,9 +999,21 @@ class TestCase(testtools.TestCase):
 
     def setUp(self):
         super(TestCase, self).setUp()
+
+        timeout = config.GlobalStack().get('selftest.timeout')
+        if timeout:
+            timeout_fixture = fixtures.TimeoutFixture(timeout)
+            timeout_fixture.setUp()
+            self.addCleanup(timeout_fixture.cleanUp)
+
         for feature in getattr(self, '_test_needs_features', []):
             self.requireFeature(feature)
         self._cleanEnvironment()
+
+        if bzrlib.global_state is not None:
+            self.overrideAttr(bzrlib.global_state, 'cmdline_overrides',
+                              config.CommandLineStore())
+
         self._silenceUI()
         self._startLogFile()
         self._benchcalls = []
@@ -987,10 +1026,6 @@ class TestCase(testtools.TestCase):
         # between tests.  We should get rid of this altogether: bug 656694. --
         # mbp 20101008
         self.overrideAttr(bzrlib.trace, '_verbosity_level', 0)
-        # Isolate config option expansion until its default value for bzrlib is
-        # settled on or a the FIXME associated with _get_expand_default_value
-        # is addressed -- vila 20110219
-        self.overrideAttr(config, '_expand_default_value', None)
         self._log_files = set()
         # Each key in the ``_counters`` dict holds a value for a different
         # counter. When the test ends, addDetail() should be used to output the
@@ -998,11 +1033,15 @@ class TestCase(testtools.TestCase):
         self._counters = {}
         if 'config_stats' in selftest_debug_flags:
             self._install_config_stats_hooks()
+        # Do not use i18n for tests (unless the test reverses this)
+        i18n.disable_i18n()
 
     def debug(self):
         # debug a frame up.
         import pdb
-        pdb.Pdb().set_trace(sys._getframe().f_back)
+        # The sys preserved stdin/stdout should allow blackbox tests debugging
+        pdb.Pdb(stdin=sys.__stdin__, stdout=sys.__stdout__
+                ).set_trace(sys._getframe().f_back)
 
     def discardDetail(self, name):
         """Extend the addDetail, getDetails api so we can remove a detail.
@@ -1163,7 +1202,7 @@ class TestCase(testtools.TestCase):
 
     def permit_dir(self, name):
         """Permit a directory to be used by this test. See permit_url."""
-        name_transport = _mod_transport.get_transport(name)
+        name_transport = _mod_transport.get_transport_from_path(name)
         self.permit_url(name)
         self.permit_url(name_transport.base)
 
@@ -1248,7 +1287,7 @@ class TestCase(testtools.TestCase):
         self.addCleanup(transport_server.stop_server)
         # Obtain a real transport because if the server supplies a password, it
         # will be hidden from the base on the client side.
-        t = _mod_transport.get_transport(transport_server.get_url())
+        t = _mod_transport.get_transport_from_url(transport_server.get_url())
         # Some transport servers effectively chroot the backing transport;
         # others like SFTPServer don't - users of the transport can walk up the
         # transport to read the entire backing transport. This wouldn't matter
@@ -1285,7 +1324,7 @@ class TestCase(testtools.TestCase):
         # hook into bzr dir opening. This leaves a small window of error for
         # transport tests, but they are well known, and we can improve on this
         # step.
-        bzrdir.BzrDir.hooks.install_named_hook("pre_open",
+        controldir.ControlDir.hooks.install_named_hook("pre_open",
             self._preopen_isolate_transport, "Check bzr directories are safe.")
 
     def _ndiff_strings(self, a, b):
@@ -1689,10 +1728,7 @@ class TestCase(testtools.TestCase):
         return result
 
     def _startLogFile(self):
-        """Send bzr and test log messages to a temporary file.
-
-        The file is removed as the test is torn down.
-        """
+        """Setup a in-memory target for bzr and testcase log messages"""
         pseudo_log_file = StringIO()
         def _get_log_contents_for_weird_testtools_api():
             return [pseudo_log_file.getvalue().decode(
@@ -1705,14 +1741,13 @@ class TestCase(testtools.TestCase):
         self.addCleanup(self._finishLogFile)
 
     def _finishLogFile(self):
-        """Finished with the log file.
-
-        Close the file and delete it.
-        """
+        """Flush and dereference the in-memory log for this testcase"""
         if trace._trace_file:
             # flush the log file, to get all content
             trace._trace_file.flush()
         trace.pop_log_file(self._log_memento)
+        # The logging module now tracks references for cleanup so discard ours
+        del self._log_memento
 
     def thisFailsStrictLockCheck(self):
         """It is known that this test would fail with -Dstrict_locks.
@@ -1729,6 +1764,9 @@ class TestCase(testtools.TestCase):
 
     def overrideAttr(self, obj, attr_name, new=_unitialized_attr):
         """Overrides an object attribute restoring it after the test.
+
+        :note: This should be used with discretion; you should think about
+        whether it's better to make the code testable without monkey-patching.
 
         :param obj: The object that will be mutated.
 
@@ -1760,6 +1798,26 @@ class TestCase(testtools.TestCase):
         self.addCleanup(osutils.set_or_unset_env, name, value)
         return value
 
+    def recordCalls(self, obj, attr_name):
+        """Monkeypatch in a wrapper that will record calls.
+
+        The monkeypatch is automatically removed when the test concludes.
+
+        :param obj: The namespace holding the reference to be replaced;
+            typically a module, class, or object.
+        :param attr_name: A string for the name of the attribute to 
+            patch.
+        :returns: A list that will be extended with one item every time the
+            function is called, with a tuple of (args, kwargs).
+        """
+        calls = []
+
+        def decorator(*args, **kwargs):
+            calls.append((args, kwargs))
+            return orig(*args, **kwargs)
+        orig = self.overrideAttr(obj, attr_name, decorator)
+        return calls
+
     def _cleanEnvironment(self):
         for name, value in isolated_environ.iteritems():
             self.overrideEnv(name, value)
@@ -1772,8 +1830,31 @@ class TestCase(testtools.TestCase):
         self._preserved_lazy_hooks.clear()
 
     def knownFailure(self, reason):
-        """This test has failed for some known reason."""
-        raise KnownFailure(reason)
+        """Declare that this test fails for a known reason
+
+        Tests that are known to fail should generally be using expectedFailure
+        with an appropriate reverse assertion if a change could cause the test
+        to start passing. Conversely if the test has no immediate prospect of
+        succeeding then using skip is more suitable.
+
+        When this method is called while an exception is being handled, that
+        traceback will be used, otherwise a new exception will be thrown to
+        provide one but won't be reported.
+        """
+        self._add_reason(reason)
+        try:
+            exc_info = sys.exc_info()
+            if exc_info != (None, None, None):
+                self._report_traceback(exc_info)
+            else:
+                try:
+                    raise self.failureException(reason)
+                except self.failureException:
+                    exc_info = sys.exc_info()
+            # GZ 02-08-2011: Maybe cleanup this err.exc_info attribute too?
+            raise testtools.testcase._ExpectedFailure(exc_info)
+        finally:
+            del exc_info
 
     def _suppress_log(self):
         """Remove the log info from details."""
@@ -1907,8 +1988,8 @@ class TestCase(testtools.TestCase):
 
         self.log('run bzr: %r', args)
         # FIXME: don't call into logging here
-        handler = logging.StreamHandler(stderr)
-        handler.setLevel(logging.INFO)
+        handler = trace.EncodedStreamHandler(stderr, errors="replace",
+            level=logging.INFO)
         logger = logging.getLogger('')
         logger.addHandler(handler)
         old_ui_factory = ui.ui_factory
@@ -2102,6 +2183,11 @@ class TestCase(testtools.TestCase):
 
         if env_changes is None:
             env_changes = {}
+        # Because $HOME is set to a tempdir for the context of a test, modules
+        # installed in the user dir will not be found unless $PYTHONUSERBASE
+        # gets set to the computed directory of this parent process.
+        if site.USER_BASE is not None:
+            env_changes["PYTHONUSERBASE"] = site.USER_BASE
         old_env = {}
 
         def cleanup_environment():
@@ -2298,8 +2384,10 @@ class TestCase(testtools.TestCase):
         from bzrlib.smart import request
         request_handlers = request.request_handlers
         orig_method = request_handlers.get(verb)
+        orig_info = request_handlers.get_info(verb)
         request_handlers.remove(verb)
-        self.addCleanup(request_handlers.register, verb, orig_method)
+        self.addCleanup(request_handlers.register, verb, orig_method,
+            info=orig_info)
 
 
 class CapturedCall(object):
@@ -2366,7 +2454,7 @@ class TestCaseWithMemoryTransport(TestCase):
 
         :param relpath: a path relative to the base url.
         """
-        t = _mod_transport.get_transport(self.get_url(relpath))
+        t = _mod_transport.get_transport_from_url(self.get_url(relpath))
         self.assertFalse(t.is_readonly())
         return t
 
@@ -2378,7 +2466,8 @@ class TestCaseWithMemoryTransport(TestCase):
 
         :param relpath: a path relative to the base url.
         """
-        t = _mod_transport.get_transport(self.get_readonly_url(relpath))
+        t = _mod_transport.get_transport_from_url(
+            self.get_readonly_url(relpath))
         self.assertTrue(t.is_readonly())
         return t
 
@@ -2505,7 +2594,13 @@ class TestCaseWithMemoryTransport(TestCase):
         real branch.
         """
         root = TestCaseWithMemoryTransport.TEST_ROOT
-        wt = bzrdir.BzrDir.create_standalone_workingtree(root)
+        # Make sure we get a readable and accessible home for .bzr.log
+        # and/or config files, and not fallback to weird defaults (see
+        # http://pad.lv/825027).
+        self.assertIs(None, os.environ.get('BZR_HOME', None))
+        os.environ['BZR_HOME'] = root
+        wt = controldir.ControlDir.create_standalone_workingtree(root)
+        del os.environ['BZR_HOME']
         # Hack for speed: remember the raw bytes of the dirstate file so that
         # we don't need to re-open the wt to check it hasn't changed.
         TestCaseWithMemoryTransport._SAFETY_NET_PRISTINE_DIRSTATE = (
@@ -2518,7 +2613,7 @@ class TestCaseWithMemoryTransport(TestCase):
         propagating. This method ensures than a test did not leaked.
         """
         root = TestCaseWithMemoryTransport.TEST_ROOT
-        t = _mod_transport.get_transport(root)
+        t = _mod_transport.get_transport_from_path(root)
         self.permit_url(t.base)
         if (t.get_bytes('.bzr/checkout/dirstate') != 
                 TestCaseWithMemoryTransport._SAFETY_NET_PRISTINE_DIRSTATE):
@@ -2559,10 +2654,30 @@ class TestCaseWithMemoryTransport(TestCase):
         self.test_home_dir = self.test_dir + "/MemoryTransportMissingHomeDir"
         self.permit_dir(self.test_dir)
 
-    def make_branch(self, relpath, format=None):
+    def make_branch(self, relpath, format=None, name=None):
         """Create a branch on the transport at relpath."""
         repo = self.make_repository(relpath, format=format)
-        return repo.bzrdir.create_branch()
+        return repo.bzrdir.create_branch(append_revisions_only=False,
+                                         name=name)
+
+    def get_default_format(self):
+        return 'default'
+
+    def resolve_format(self, format):
+        """Resolve an object to a ControlDir format object.
+
+        The initial format object can either already be
+        a ControlDirFormat, None (for the default format),
+        or a string with the name of the control dir format.
+
+        :param format: Object to resolve
+        :return A ControlDirFormat instance
+        """
+        if format is None:
+            format = self.get_default_format()
+        if isinstance(format, basestring):
+            format = controldir.format_registry.make_bzrdir(format)
+        return format
 
     def make_bzrdir(self, relpath, format=None):
         try:
@@ -2572,15 +2687,12 @@ class TestCaseWithMemoryTransport(TestCase):
             t = _mod_transport.get_transport(maybe_a_url)
             if len(segments) > 1 and segments[-1] not in ('', '.'):
                 t.ensure_base()
-            if format is None:
-                format = 'default'
-            if isinstance(format, basestring):
-                format = bzrdir.format_registry.make_bzrdir(format)
+            format = self.resolve_format(format)
             return format.initialize_on_transport(t)
         except errors.UninitializableFormat:
             raise TestSkipped("Format %s is not initializable." % format)
 
-    def make_repository(self, relpath, shared=False, format=None):
+    def make_repository(self, relpath, shared=None, format=None):
         """Create a repository on our default transport at relpath.
 
         Note that relpath must be a relative path, not a full url.
@@ -2597,7 +2709,7 @@ class TestCaseWithMemoryTransport(TestCase):
             backing_server = self.get_server()
         smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(smart_server, backing_server)
-        remote_transport = _mod_transport.get_transport(smart_server.get_url()
+        remote_transport = _mod_transport.get_transport_from_url(smart_server.get_url()
                                                    ).clone(path)
         return remote_transport
 
@@ -2619,15 +2731,20 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def setUp(self):
         super(TestCaseWithMemoryTransport, self).setUp()
-        # Ensure that ConnectedTransport doesn't leak sockets
-        def get_transport_with_cleanup(*args, **kwargs):
-            t = orig_get_transport(*args, **kwargs)
-            if isinstance(t, _mod_transport.ConnectedTransport):
-                self.addCleanup(t.disconnect)
-            return t
 
-        orig_get_transport = self.overrideAttr(_mod_transport, 'get_transport',
-                                               get_transport_with_cleanup)
+        def _add_disconnect_cleanup(transport):
+            """Schedule disconnection of given transport at test cleanup
+
+            This needs to happen for all connected transports or leaks occur.
+
+            Note reconnections may mean we call disconnect multiple times per
+            transport which is suboptimal but seems harmless.
+            """
+            self.addCleanup(transport.disconnect)
+ 
+        _mod_transport.Transport.hooks.install_named_hook('post_connect',
+            _add_disconnect_cleanup, None)
+
         self._make_test_root()
         self.addCleanup(os.chdir, os.getcwdu())
         self.makeAndChdirToTestDir()
@@ -2639,6 +2756,7 @@ class TestCaseWithMemoryTransport(TestCase):
     def setup_smart_server_with_call_log(self):
         """Sets up a smart server as the transport server with a call log."""
         self.transport_server = test_server.SmartTCPServer_for_testing
+        self.hpss_connections = []
         self.hpss_calls = []
         import traceback
         # Skip the current stack down to the caller of
@@ -2647,11 +2765,16 @@ class TestCaseWithMemoryTransport(TestCase):
         def capture_hpss_call(params):
             self.hpss_calls.append(
                 CapturedCall(params, prefix_length))
+        def capture_connect(transport):
+            self.hpss_connections.append(transport)
         client._SmartClient.hooks.install_named_hook(
             'call', capture_hpss_call, None)
+        _mod_transport.Transport.hooks.install_named_hook(
+            'post_connect', capture_connect, None)
 
     def reset_smart_call_log(self):
         self.hpss_calls = []
+        self.hpss_connections = []
 
 
 class TestCaseInTempDir(TestCaseWithMemoryTransport):
@@ -2727,7 +2850,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         # stacking policy to honour; create a bzr dir with an unshared
         # repository (but not a branch - our code would be trying to escape
         # then!) to stop them, and permit it to be read.
-        # control = bzrdir.BzrDir.create(self.test_base_dir)
+        # control = controldir.ControlDir.create(self.test_base_dir)
         # control.create_repository()
         self.test_home_dir = self.test_base_dir + '/home'
         os.mkdir(self.test_home_dir)
@@ -2768,7 +2891,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                 "a list or a tuple. Got %r instead" % (shape,))
         # It's OK to just create them using forward slashes on windows.
         if transport is None or transport.is_readonly():
-            transport = _mod_transport.get_transport(".")
+            transport = _mod_transport.get_transport_from_path(".")
         for name in shape:
             self.assertIsInstance(name, basestring)
             if name[-1] == '/':
@@ -2859,6 +2982,10 @@ class TestCaseWithTransport(TestCaseInTempDir):
         # this obviously requires a format that supports branch references
         # so check for that by checking bzrdir.BzrDirFormat.get_default_format()
         # RBC 20060208
+        format = self.resolve_format(format=format)
+        if not format.supports_workingtrees:
+            b = self.make_branch(relpath+'.branch', format=format)
+            return b.create_checkout(relpath, lightweight=True)
         b = self.make_branch(relpath, format=format)
         try:
             return b.bzrdir.create_workingtree()
@@ -2869,7 +2996,8 @@ class TestCaseWithTransport(TestCaseInTempDir):
             if self.vfs_transport_factory is test_server.LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.
-                local_controldir= bzrdir.BzrDir.open(self.get_vfs_only_url(relpath))
+                local_controldir = controldir.ControlDir.open(
+                    self.get_vfs_only_url(relpath))
                 wt = local_controldir.create_workingtree()
                 if wt.branch._format != b._format:
                     wt._branch = b
@@ -3163,6 +3291,9 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                             result_decorators=result_decorators,
                             )
     runner.stop_on_failure=stop_on_failure
+    if isinstance(suite, unittest.TestSuite):
+        # Empty out _tests list of passed suite and populate new TestSuite
+        suite._tests[:], suite = [], TestSuite(suite)
     # built in decorator factories:
     decorators = [
         random_order(random_seed, runner),
@@ -3266,34 +3397,17 @@ def identity_decorator(suite):
 
 class TestDecorator(TestUtil.TestSuite):
     """A decorator for TestCase/TestSuite objects.
-    
-    Usually, subclasses should override __iter__(used when flattening test
-    suites), which we do to filter, reorder, parallelise and so on, run() and
-    debug().
+
+    Contains rather than flattening suite passed on construction
     """
 
-    def __init__(self, suite):
-        TestUtil.TestSuite.__init__(self)
-        self.addTest(suite)
+    def __init__(self, suite=None):
+        super(TestDecorator, self).__init__()
+        if suite is not None:
+            self.addTest(suite)
 
-    def countTestCases(self):
-        cases = 0
-        for test in self:
-            cases += test.countTestCases()
-        return cases
-
-    def debug(self):
-        for test in self:
-            test.debug()
-
-    def run(self, result):
-        # Use iteration on self, not self._tests, to allow subclasses to hook
-        # into __iter__.
-        for test in self:
-            if result.shouldStop:
-                break
-            test.run(result)
-        return result
+    # Don't need subclass run method with suite emptying
+    run = unittest.TestSuite.run
 
 
 class CountingDecorator(TestDecorator):
@@ -3310,90 +3424,50 @@ class ExcludeDecorator(TestDecorator):
     """A decorator which excludes test matching an exclude pattern."""
 
     def __init__(self, suite, exclude_pattern):
-        TestDecorator.__init__(self, suite)
-        self.exclude_pattern = exclude_pattern
-        self.excluded = False
-
-    def __iter__(self):
-        if self.excluded:
-            return iter(self._tests)
-        self.excluded = True
-        suite = exclude_tests_by_re(self, self.exclude_pattern)
-        del self._tests[:]
-        self.addTests(suite)
-        return iter(self._tests)
+        super(ExcludeDecorator, self).__init__(
+            exclude_tests_by_re(suite, exclude_pattern))
 
 
 class FilterTestsDecorator(TestDecorator):
     """A decorator which filters tests to those matching a pattern."""
 
     def __init__(self, suite, pattern):
-        TestDecorator.__init__(self, suite)
-        self.pattern = pattern
-        self.filtered = False
-
-    def __iter__(self):
-        if self.filtered:
-            return iter(self._tests)
-        self.filtered = True
-        suite = filter_suite_by_re(self, self.pattern)
-        del self._tests[:]
-        self.addTests(suite)
-        return iter(self._tests)
+        super(FilterTestsDecorator, self).__init__(
+            filter_suite_by_re(suite, pattern))
 
 
 class RandomDecorator(TestDecorator):
     """A decorator which randomises the order of its tests."""
 
     def __init__(self, suite, random_seed, stream):
-        TestDecorator.__init__(self, suite)
-        self.random_seed = random_seed
-        self.randomised = False
-        self.stream = stream
-
-    def __iter__(self):
-        if self.randomised:
-            return iter(self._tests)
-        self.randomised = True
-        self.stream.write("Randomizing test order using seed %s\n\n" %
-            (self.actual_seed()))
+        random_seed = self.actual_seed(random_seed)
+        stream.write("Randomizing test order using seed %s\n\n" %
+            (random_seed,))
         # Initialise the random number generator.
-        random.seed(self.actual_seed())
-        suite = randomize_suite(self)
-        del self._tests[:]
-        self.addTests(suite)
-        return iter(self._tests)
+        random.seed(random_seed)
+        super(RandomDecorator, self).__init__(randomize_suite(suite))
 
-    def actual_seed(self):
-        if self.random_seed == "now":
+    @staticmethod
+    def actual_seed(seed):
+        if seed == "now":
             # We convert the seed to a long to make it reuseable across
             # invocations (because the user can reenter it).
-            self.random_seed = long(time.time())
+            return long(time.time())
         else:
             # Convert the seed to a long if we can
             try:
-                self.random_seed = long(self.random_seed)
-            except:
+                return long(seed)
+            except (TypeError, ValueError):
                 pass
-        return self.random_seed
+        return seed
 
 
 class TestFirstDecorator(TestDecorator):
     """A decorator which moves named tests to the front."""
 
     def __init__(self, suite, pattern):
-        TestDecorator.__init__(self, suite)
-        self.pattern = pattern
-        self.filtered = False
-
-    def __iter__(self):
-        if self.filtered:
-            return iter(self._tests)
-        self.filtered = True
-        suites = split_suite_by_re(self, self.pattern)
-        del self._tests[:]
-        self.addTests(suites)
-        return iter(self._tests)
+        super(TestFirstDecorator, self).__init__()
+        self.addTests(split_suite_by_re(suite, pattern))
 
 
 def partition_tests(suite, count):
@@ -3431,7 +3505,7 @@ def fork_for_tests(suite):
     """
     concurrency = osutils.local_concurrency()
     result = []
-    from subunit import TestProtocolClient, ProtocolTestCase
+    from subunit import ProtocolTestCase
     from subunit.test_results import AutoTimingTestResultDecorator
     class TestInOtherProcess(ProtocolTestCase):
         # Should be in subunit, I think. RBC.
@@ -3443,30 +3517,42 @@ def fork_for_tests(suite):
             try:
                 ProtocolTestCase.run(self, result)
             finally:
-                os.waitpid(self.pid, 0)
+                pid, status = os.waitpid(self.pid, 0)
+            # GZ 2011-10-18: If status is nonzero, should report to the result
+            #                that something went wrong.
 
     test_blocks = partition_tests(suite, concurrency)
+    # Clear the tests from the original suite so it doesn't keep them alive
+    suite._tests[:] = []
     for process_tests in test_blocks:
-        process_suite = TestUtil.TestSuite()
-        process_suite.addTests(process_tests)
+        process_suite = TestUtil.TestSuite(process_tests)
+        # Also clear each split list so new suite has only reference
+        process_tests[:] = []
         c2pread, c2pwrite = os.pipe()
         pid = os.fork()
         if pid == 0:
-            workaround_zealous_crypto_random()
             try:
+                stream = os.fdopen(c2pwrite, 'wb', 1)
+                workaround_zealous_crypto_random()
                 os.close(c2pread)
                 # Leave stderr and stdout open so we can see test noise
                 # Close stdin so that the child goes away if it decides to
                 # read from stdin (otherwise its a roulette to see what
                 # child actually gets keystrokes for pdb etc).
                 sys.stdin.close()
-                sys.stdin = None
-                stream = os.fdopen(c2pwrite, 'wb', 1)
                 subunit_result = AutoTimingTestResultDecorator(
-                    TestProtocolClient(stream))
+                    SubUnitBzrProtocolClient(stream))
                 process_suite.run(subunit_result)
-            finally:
-                os._exit(0)
+            except:
+                # Try and report traceback on stream, but exit with error even
+                # if stream couldn't be created or something else goes wrong.
+                # The traceback is formatted to a string and written in one go
+                # to avoid interleaving lines from multiple failing children.
+                try:
+                    stream.write(traceback.format_exc())
+                finally:
+                    os._exit(1)
+            os._exit(0)
         else:
             os.close(c2pwrite)
             stream = os.fdopen(c2pread, 'rb', 1)
@@ -3578,7 +3664,8 @@ class ProfileResult(testtools.ExtendedToOriginalDecorator):
 #                           with proper exclusion rules.
 #   -Ethreads               Will display thread ident at creation/join time to
 #                           help track thread leaks
-
+#   -Euncollected_cases     Display the identity of any test cases that weren't
+#                           deallocated after being completed.
 #   -Econfig_stats          Will collect statistics using addDetail
 selftest_debug_flags = set()
 
@@ -3819,7 +3906,6 @@ def _test_suite_testmod_names():
         'bzrlib.doc',
         'bzrlib.tests.blackbox',
         'bzrlib.tests.commands',
-        'bzrlib.tests.doc_generate',
         'bzrlib.tests.per_branch',
         'bzrlib.tests.per_bzrdir',
         'bzrlib.tests.per_controldir',
@@ -3889,13 +3975,16 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_email_message',
         'bzrlib.tests.test_eol_filters',
         'bzrlib.tests.test_errors',
+        'bzrlib.tests.test_estimate_compressed_size',
         'bzrlib.tests.test_export',
         'bzrlib.tests.test_export_pot',
         'bzrlib.tests.test_extract',
+        'bzrlib.tests.test_features',
         'bzrlib.tests.test_fetch',
         'bzrlib.tests.test_fixtures',
         'bzrlib.tests.test_fifo_cache',
         'bzrlib.tests.test_filters',
+        'bzrlib.tests.test_filter_tree',
         'bzrlib.tests.test_ftp_transport',
         'bzrlib.tests.test_foreign',
         'bzrlib.tests.test_generate_docs',
@@ -3910,6 +3999,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_http',
         'bzrlib.tests.test_http_response',
         'bzrlib.tests.test_https_ca_bundle',
+        'bzrlib.tests.test_https_urllib',
         'bzrlib.tests.test_i18n',
         'bzrlib.tests.test_identitymap',
         'bzrlib.tests.test_ignores',
@@ -3964,6 +4054,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_revisiontree',
         'bzrlib.tests.test_rio',
         'bzrlib.tests.test_rules',
+        'bzrlib.tests.test_url_policy_open',
         'bzrlib.tests.test_sampler',
         'bzrlib.tests.test_scenarios',
         'bzrlib.tests.test_script',
@@ -3976,6 +4067,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_smart',
         'bzrlib.tests.test_smart_add',
         'bzrlib.tests.test_smart_request',
+        'bzrlib.tests.test_smart_signals',
         'bzrlib.tests.test_smart_transport',
         'bzrlib.tests.test_smtp_connection',
         'bzrlib.tests.test_source',
@@ -4012,6 +4104,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_version',
         'bzrlib.tests.test_version_info',
         'bzrlib.tests.test_versionedfile',
+        'bzrlib.tests.test_vf_search',
         'bzrlib.tests.test_weave',
         'bzrlib.tests.test_whitebox',
         'bzrlib.tests.test_win32utils',
@@ -4292,6 +4385,7 @@ def permute_tests_for_extension(standard_tests, loader, py_module_name,
         the module is available.
     """
 
+    from bzrlib.tests.features import ModuleAvailableFeature
     py_module = pyutils.get_named_object(py_module_name)
     scenarios = [
         ('python', {'module': py_module}),
@@ -4338,157 +4432,6 @@ def _rmtree_temp_dir(dirname, test_id=None):
                          % (os.path.basename(dirname), printable_e))
 
 
-class Feature(object):
-    """An operating system Feature."""
-
-    def __init__(self):
-        self._available = None
-
-    def available(self):
-        """Is the feature available?
-
-        :return: True if the feature is available.
-        """
-        if self._available is None:
-            self._available = self._probe()
-        return self._available
-
-    def _probe(self):
-        """Implement this method in concrete features.
-
-        :return: True if the feature is available.
-        """
-        raise NotImplementedError
-
-    def __str__(self):
-        if getattr(self, 'feature_name', None):
-            return self.feature_name()
-        return self.__class__.__name__
-
-
-class _SymlinkFeature(Feature):
-
-    def _probe(self):
-        return osutils.has_symlinks()
-
-    def feature_name(self):
-        return 'symlinks'
-
-SymlinkFeature = _SymlinkFeature()
-
-
-class _HardlinkFeature(Feature):
-
-    def _probe(self):
-        return osutils.has_hardlinks()
-
-    def feature_name(self):
-        return 'hardlinks'
-
-HardlinkFeature = _HardlinkFeature()
-
-
-class _OsFifoFeature(Feature):
-
-    def _probe(self):
-        return getattr(os, 'mkfifo', None)
-
-    def feature_name(self):
-        return 'filesystem fifos'
-
-OsFifoFeature = _OsFifoFeature()
-
-
-class _UnicodeFilenameFeature(Feature):
-    """Does the filesystem support Unicode filenames?"""
-
-    def _probe(self):
-        try:
-            # Check for character combinations unlikely to be covered by any
-            # single non-unicode encoding. We use the characters
-            # - greek small letter alpha (U+03B1) and
-            # - braille pattern dots-123456 (U+283F).
-            os.stat(u'\u03b1\u283f')
-        except UnicodeEncodeError:
-            return False
-        except (IOError, OSError):
-            # The filesystem allows the Unicode filename but the file doesn't
-            # exist.
-            return True
-        else:
-            # The filesystem allows the Unicode filename and the file exists,
-            # for some reason.
-            return True
-
-UnicodeFilenameFeature = _UnicodeFilenameFeature()
-
-
-class _CompatabilityThunkFeature(Feature):
-    """This feature is just a thunk to another feature.
-
-    It issues a deprecation warning if it is accessed, to let you know that you
-    should really use a different feature.
-    """
-
-    def __init__(self, dep_version, module, name,
-                 replacement_name, replacement_module=None):
-        super(_CompatabilityThunkFeature, self).__init__()
-        self._module = module
-        if replacement_module is None:
-            replacement_module = module
-        self._replacement_module = replacement_module
-        self._name = name
-        self._replacement_name = replacement_name
-        self._dep_version = dep_version
-        self._feature = None
-
-    def _ensure(self):
-        if self._feature is None:
-            depr_msg = self._dep_version % ('%s.%s'
-                                            % (self._module, self._name))
-            use_msg = ' Use %s.%s instead.' % (self._replacement_module,
-                                               self._replacement_name)
-            symbol_versioning.warn(depr_msg + use_msg, DeprecationWarning)
-            # Import the new feature and use it as a replacement for the
-            # deprecated one.
-            self._feature = pyutils.get_named_object(
-                self._replacement_module, self._replacement_name)
-
-    def _probe(self):
-        self._ensure()
-        return self._feature._probe()
-
-
-class ModuleAvailableFeature(Feature):
-    """This is a feature than describes a module we want to be available.
-
-    Declare the name of the module in __init__(), and then after probing, the
-    module will be available as 'self.module'.
-
-    :ivar module: The module if it is available, else None.
-    """
-
-    def __init__(self, module_name):
-        super(ModuleAvailableFeature, self).__init__()
-        self.module_name = module_name
-
-    def _probe(self):
-        try:
-            self._module = __import__(self.module_name, {}, {}, [''])
-            return True
-        except ImportError:
-            return False
-
-    @property
-    def module(self):
-        if self.available(): # Make sure the probe has been done
-            return self._module
-        return None
-
-    def feature_name(self):
-        return self.module_name
-
-
 def probe_unicode_in_user_encoding():
     """Try to encode several unicode strings to use in unicode-aware tests.
     Return first successfull match.
@@ -4522,170 +4465,15 @@ def probe_bad_non_ascii(encoding):
     return None
 
 
-class _HTTPSServerFeature(Feature):
-    """Some tests want an https Server, check if one is available.
-
-    Right now, the only way this is available is under python2.6 which provides
-    an ssl module.
-    """
-
-    def _probe(self):
-        try:
-            import ssl
-            return True
-        except ImportError:
-            return False
-
-    def feature_name(self):
-        return 'HTTPSServer'
-
-
-HTTPSServerFeature = _HTTPSServerFeature()
-
-
-class _UnicodeFilename(Feature):
-    """Does the filesystem support Unicode filenames?"""
-
-    def _probe(self):
-        try:
-            os.stat(u'\u03b1')
-        except UnicodeEncodeError:
-            return False
-        except (IOError, OSError):
-            # The filesystem allows the Unicode filename but the file doesn't
-            # exist.
-            return True
-        else:
-            # The filesystem allows the Unicode filename and the file exists,
-            # for some reason.
-            return True
-
-UnicodeFilename = _UnicodeFilename()
-
-
-class _ByteStringNamedFilesystem(Feature):
-    """Is the filesystem based on bytes?"""
-
-    def _probe(self):
-        if os.name == "posix":
-            return True
-        return False
-
-ByteStringNamedFilesystem = _ByteStringNamedFilesystem()
-
-
-class _UTF8Filesystem(Feature):
-    """Is the filesystem UTF-8?"""
-
-    def _probe(self):
-        if osutils._fs_enc.upper() in ('UTF-8', 'UTF8'):
-            return True
-        return False
-
-UTF8Filesystem = _UTF8Filesystem()
-
-
-class _BreakinFeature(Feature):
-    """Does this platform support the breakin feature?"""
-
-    def _probe(self):
-        from bzrlib import breakin
-        if breakin.determine_signal() is None:
-            return False
-        if sys.platform == 'win32':
-            # Windows doesn't have os.kill, and we catch the SIGBREAK signal.
-            # We trigger SIGBREAK via a Console api so we need ctypes to
-            # access the function
-            try:
-                import ctypes
-            except OSError:
-                return False
-        return True
-
-    def feature_name(self):
-        return "SIGQUIT or SIGBREAK w/ctypes on win32"
-
-
-BreakinFeature = _BreakinFeature()
-
-
-class _CaseInsCasePresFilenameFeature(Feature):
-    """Is the file-system case insensitive, but case-preserving?"""
-
-    def _probe(self):
-        fileno, name = tempfile.mkstemp(prefix='MixedCase')
-        try:
-            # first check truly case-preserving for created files, then check
-            # case insensitive when opening existing files.
-            name = osutils.normpath(name)
-            base, rel = osutils.split(name)
-            found_rel = osutils.canonical_relpath(base, name)
-            return (found_rel == rel
-                    and os.path.isfile(name.upper())
-                    and os.path.isfile(name.lower()))
-        finally:
-            os.close(fileno)
-            os.remove(name)
-
-    def feature_name(self):
-        return "case-insensitive case-preserving filesystem"
-
-CaseInsCasePresFilenameFeature = _CaseInsCasePresFilenameFeature()
-
-
-class _CaseInsensitiveFilesystemFeature(Feature):
-    """Check if underlying filesystem is case-insensitive but *not* case
-    preserving.
-    """
-    # Note that on Windows, Cygwin, MacOS etc, the file-systems are far
-    # more likely to be case preserving, so this case is rare.
-
-    def _probe(self):
-        if CaseInsCasePresFilenameFeature.available():
-            return False
-
-        if TestCaseWithMemoryTransport.TEST_ROOT is None:
-            root = osutils.mkdtemp(prefix='testbzr-', suffix='.tmp')
-            TestCaseWithMemoryTransport.TEST_ROOT = root
-        else:
-            root = TestCaseWithMemoryTransport.TEST_ROOT
-        tdir = osutils.mkdtemp(prefix='case-sensitive-probe-', suffix='',
-            dir=root)
-        name_a = osutils.pathjoin(tdir, 'a')
-        name_A = osutils.pathjoin(tdir, 'A')
-        os.mkdir(name_a)
-        result = osutils.isdir(name_A)
-        _rmtree_temp_dir(tdir)
-        return result
-
-    def feature_name(self):
-        return 'case-insensitive filesystem'
-
-CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()
-
-
-class _CaseSensitiveFilesystemFeature(Feature):
-
-    def _probe(self):
-        if CaseInsCasePresFilenameFeature.available():
-            return False
-        elif CaseInsensitiveFilesystemFeature.available():
-            return False
-        else:
-            return True
-
-    def feature_name(self):
-        return 'case-sensitive filesystem'
-
-# new coding style is for feature instances to be lowercase
-case_sensitive_filesystem_feature = _CaseSensitiveFilesystemFeature()
-
-
 # Only define SubUnitBzrRunner if subunit is available.
 try:
     from subunit import TestProtocolClient
     from subunit.test_results import AutoTimingTestResultDecorator
     class SubUnitBzrProtocolClient(TestProtocolClient):
+
+        def stopTest(self, test):
+            super(SubUnitBzrProtocolClient, self).stopTest(test)
+            _clear__type_equality_funcs(test)
 
         def addSuccess(self, test, details=None):
             # The subunit client always includes the details in the subunit
@@ -4704,26 +4492,29 @@ try:
 except ImportError:
     pass
 
-class _PosixPermissionsFeature(Feature):
 
-    def _probe(self):
-        def has_perms():
-            # create temporary file and check if specified perms are maintained.
-            import tempfile
+# API compatibility for old plugins; see bug 892622.
+for name in [
+    'Feature',
+    'HTTPServerFeature', 
+    'ModuleAvailableFeature',
+    'HTTPSServerFeature', 'SymlinkFeature', 'HardlinkFeature',
+    'OsFifoFeature', 'UnicodeFilenameFeature',
+    'ByteStringNamedFilesystem', 'UTF8Filesystem',
+    'BreakinFeature', 'CaseInsCasePresFilenameFeature',
+    'CaseInsensitiveFilesystemFeature', 'case_sensitive_filesystem_feature',
+    'posix_permissions_feature',
+    ]:
+    globals()[name] = _CompatabilityThunkFeature(
+        symbol_versioning.deprecated_in((2, 5, 0)),
+        'bzrlib.tests', name,
+        name, 'bzrlib.tests.features')
 
-            write_perms = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
-            f = tempfile.mkstemp(prefix='bzr_perms_chk_')
-            fd, name = f
-            os.close(fd)
-            os.chmod(name, write_perms)
 
-            read_perms = os.stat(name).st_mode & 0777
-            os.unlink(name)
-            return (write_perms == read_perms)
-
-        return (os.name == 'posix') and has_perms()
-
-    def feature_name(self):
-        return 'POSIX permissions support'
-
-posix_permissions_feature = _PosixPermissionsFeature()
+for (old_name, new_name) in [
+    ('UnicodeFilename', 'UnicodeFilenameFeature'),
+    ]:
+    globals()[name] = _CompatabilityThunkFeature(
+        symbol_versioning.deprecated_in((2, 5, 0)),
+        'bzrlib.tests', old_name,
+        new_name, 'bzrlib.tests.features')

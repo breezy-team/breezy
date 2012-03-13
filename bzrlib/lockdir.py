@@ -98,6 +98,8 @@ process id no longer exists.  The check on user name is not strictly necessary
 but helps protect against colliding host names.
 """
 
+from __future__ import absolute_import
+
 
 # TODO: We sometimes have the problem that our attempt to rename '1234' to
 # 'held' fails because the transport server moves into an existing directory,
@@ -107,7 +109,6 @@ but helps protect against colliding host names.
 # the existing locking code and needs a new format of the containing object.
 # -- robertc, mbp 20070628
 
-import errno
 import os
 import time
 
@@ -137,6 +138,7 @@ from bzrlib.errors import (
         )
 from bzrlib.trace import mutter, note
 from bzrlib.osutils import format_delta, rand_chars, get_host_name
+from bzrlib.i18n import gettext
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -295,9 +297,7 @@ class LockDir(lock.Lock):
         """
         if (other_holder is not None):
             if other_holder.is_lock_holder_known_dead():
-                if self.get_config().get_user_option_as_bool(
-                    'locks.steal_dead',
-                    default=False):
+                if self.get_config().get('locks.steal_dead'):
                     ui.ui_factory.show_user_warning(
                         'locks_steal_dead',
                         lock_url=urlutils.join(self.transport.base, self.path),
@@ -318,7 +318,7 @@ class LockDir(lock.Lock):
             self.transport.delete(tmpname + self.__INFO_NAME)
             self.transport.rmdir(tmpname)
         except PathError, e:
-            note("error removing pending lock: %s", e)
+            note(gettext("error removing pending lock: %s"), e)
 
     def _create_pending_dir(self):
         tmpname = '%s/%s.tmp' % (self.path, rand_chars(10))
@@ -613,19 +613,20 @@ class LockDir(lock.Lock):
             new_info = self.peek()
             if new_info is not None and new_info != last_info:
                 if last_info is None:
-                    start = 'Unable to obtain'
+                    start = gettext('Unable to obtain')
                 else:
-                    start = 'Lock owner changed for'
+                    start = gettext('Lock owner changed for')
                 last_info = new_info
-                msg = u'%s lock %s %s.' % (start, lock_url, new_info)
+                msg = gettext('{0} lock {1} {2}.').format(start, lock_url,
+                                                                    new_info)
                 if deadline_str is None:
                     deadline_str = time.strftime('%H:%M:%S',
                                                     time.localtime(deadline))
                 if timeout > 0:
-                    msg += ('\nWill continue to try until %s, unless '
-                        'you press Ctrl-C.'
-                        % deadline_str)
-                msg += '\nSee "bzr help break-lock" for more.'
+                    msg += '\n' + gettext(
+                             'Will continue to try until %s, unless '
+                             'you press Ctrl-C.') % deadline_str
+                msg += '\n' + gettext('See "bzr help break-lock" for more.')
                 self._report_function(msg)
             if (max_attempts is not None) and (attempt_count >= max_attempts):
                 self._trace("exceeded %d attempts")
@@ -709,7 +710,8 @@ class LockDir(lock.Lock):
         """Get the configuration that governs this lockdir."""
         # XXX: This really should also use the locationconfig at least, but
         # that seems a bit hard to hook up at the moment. -- mbp 20110329
-        return config.GlobalConfig()
+        # FIXME: The above is still true ;) -- vila 20110811
+        return config.GlobalStack()
 
 
 class LockHeldInfo(object):
@@ -733,9 +735,9 @@ class LockHeldInfo(object):
     def __unicode__(self):
         """Return a user-oriented description of this object."""
         d = self.to_readable_dict()
-        return (
+        return ( gettext(
             u'held by %(user)s on %(hostname)s (process #%(pid)s), '
-            u'acquired %(time_ago)s' % d)
+            u'acquired %(time_ago)s') % d)
 
     def to_readable_dict(self):
         """Turn the holder info into a dict of human-readable attributes.

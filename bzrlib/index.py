@@ -16,6 +16,8 @@
 
 """Indexing facilities."""
 
+from __future__ import absolute_import
+
 __all__ = [
     'CombinedGraphIndex',
     'GraphIndex',
@@ -245,6 +247,11 @@ class GraphIndexBuilder(object):
         """
         
     def finish(self):
+        """Finish the index.
+
+        :returns: cStringIO holding the full context of the index as it 
+        should be written to disk.
+        """
         lines = [_SIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
         lines.append(_OPTION_KEY_ELEMENTS + str(self._key_length) + '\n')

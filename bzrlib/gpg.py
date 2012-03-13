@@ -17,6 +17,8 @@
 
 """GPG signing and checking logic."""
 
+from __future__ import absolute_import
+
 import os
 import sys
 from StringIO import StringIO
@@ -27,31 +29,67 @@ import errno
 import subprocess
 
 from bzrlib import (
+    config,
     errors,
     trace,
     ui,
     )
+from bzrlib.i18n import (
+    gettext, 
+    ngettext,
+    )
 """)
 
-class i18n:
-    """this class is ready to use bzrlib.i18n but bzrlib.i18n is not ready to
-    use so here is a stub until it is"""
-    @staticmethod
-    def gettext(string):
-        return string
-        
-    @staticmethod
-    def ngettext(single, plural, number):
-        if number == 1:
-            return single
-        else:
-            return plural
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
 
 #verification results
 SIGNATURE_VALID = 0
 SIGNATURE_KEY_MISSING = 1
 SIGNATURE_NOT_VALID = 2
 SIGNATURE_NOT_SIGNED = 3
+SIGNATURE_EXPIRED = 4
+
+
+def bulk_verify_signatures(repository, revids, strategy,
+        process_events_callback=None):
+    """Do verifications on a set of revisions
+
+    :param repository: repository object
+    :param revids: list of revision ids to verify
+    :param strategy: GPG strategy to use
+    :param process_events_callback: method to call for GUI frontends that
+        want to keep their UI refreshed
+
+    :return: count dictionary of results of each type,
+             result list for each revision,
+             boolean True if all results are verified successfully
+    """
+    count = {SIGNATURE_VALID: 0,
+             SIGNATURE_KEY_MISSING: 0,
+             SIGNATURE_NOT_VALID: 0,
+             SIGNATURE_NOT_SIGNED: 0,
+             SIGNATURE_EXPIRED: 0}
+    result = []
+    all_verifiable = True
+    total = len(revids)
+    pb = ui.ui_factory.nested_progress_bar()
+    try:
+        for i, (rev_id, verification_result, uid) in enumerate(
+                repository.verify_revision_signatures(
+                    revids, strategy)):
+            pb.update("verifying signatures", i, total)
+            result.append([rev_id, verification_result, uid])
+            count[verification_result] += 1
+            if verification_result != SIGNATURE_VALID:
+                all_verifiable = False
+            if process_events_callback is not None:
+                process_events_callback()
+    finally:
+        pb.finished()
+    return (count, result, all_verifiable)
 
 
 class DisabledGPGStrategy(object):
@@ -104,43 +142,29 @@ class LoopbackGPGStrategy(object):
                 else:
                     self.acceptable_keys.append(pattern)
 
+    @deprecated_method(deprecated_in((2, 6, 0)))
     def do_verifications(self, revisions, repository):
-        count = {SIGNATURE_VALID: 0,
-                 SIGNATURE_KEY_MISSING: 0,
-                 SIGNATURE_NOT_VALID: 0,
-                 SIGNATURE_NOT_SIGNED: 0}
-        result = []
-        all_verifiable = True
-        for rev_id in revisions:
-            verification_result, uid =\
-                                repository.verify_revision(rev_id,self)
-            result.append([rev_id, verification_result, uid])
-            count[verification_result] += 1
-            if verification_result != SIGNATURE_VALID:
-                all_verifiable = False
-        return (count, result, all_verifiable)
+        return bulk_verify_signatures(repository, revisions, self)
 
+    @deprecated_method(deprecated_in((2, 6, 0)))
     def valid_commits_message(self, count):
-        return i18n.gettext(u"{0} commits with valid signatures").format(
-                                        count[SIGNATURE_VALID])            
+        return valid_commits_message(count)
 
+    @deprecated_method(deprecated_in((2, 6, 0)))
     def unknown_key_message(self, count):
-        return i18n.ngettext(u"{0} commit with unknown key",
-                             u"{0} commits with unknown keys",
-                             count[SIGNATURE_KEY_MISSING]).format(
-                                        count[SIGNATURE_KEY_MISSING])
+        return unknown_key_message(count)
 
+    @deprecated_method(deprecated_in((2, 6, 0)))
     def commit_not_valid_message(self, count):
-        return i18n.ngettext(u"{0} commit not valid",
-                             u"{0} commits not valid",
-                             count[SIGNATURE_NOT_VALID]).format(
-                                            count[SIGNATURE_NOT_VALID])
+        return commit_not_valid_message(count)
 
+    @deprecated_method(deprecated_in((2, 6, 0)))
     def commit_not_signed_message(self, count):
-        return i18n.ngettext(u"{0} commit not signed",
-                             u"{0} commits not signed",
-                             count[SIGNATURE_NOT_SIGNED]).format(
-                                        count[SIGNATURE_NOT_SIGNED])
+        return commit_not_signed_message(count)
+
+    @deprecated_method(deprecated_in((2, 6, 0)))
+    def expired_commit_message(self, count):
+        return expired_commit_message(count)
 
 
 def _set_gpg_tty():
@@ -161,6 +185,14 @@ class GPGStrategy(object):
 
     acceptable_keys = None
 
+    def __init__(self, config_stack):
+        self._config_stack = config_stack
+        try:
+            import gpgme
+            self.context = gpgme.Context()
+        except ImportError, error:
+            pass # can't use verify()
+
     @staticmethod
     def verify_signatures_available():
         """
@@ -175,17 +207,13 @@ class GPGStrategy(object):
             return False
 
     def _command_line(self):
-        
-        return [self._config.gpg_signing_command(), '--clearsign', '-u',
-                                                self._config.gpg_signing_key()]
-
-    def __init__(self, config):
-        self._config = config
-        try:
-            import gpgme
-            self.context = gpgme.Context()
-        except ImportError, error:
-            pass # can't use verify()
+        key = self._config_stack.get('gpg_signing_key')
+        if key is None or key == 'default':
+            # 'default' or not setting gpg_signing_key at all means we should
+            # use the user email address
+            key = config.extract_email_address(self._config_stack.get('email'))
+        return [self._config_stack.get('gpg_signing_command'), '--clearsign',
+                '-u', key, '--no-tty']
 
     def sign(self, content):
         if isinstance(content, unicode):
@@ -225,10 +253,10 @@ class GPGStrategy(object):
 
     def verify(self, content, testament):
         """Check content has a valid signature.
-        
+
         :param content: the commit signature
         :param testament: the valid testament string for the commit
-        
+
         :return: SIGNATURE_VALID or a failed SIGNATURE_ value, key uid if valid
         """
         try:
@@ -238,57 +266,89 @@ class GPGStrategy(object):
 
         signature = StringIO(content)
         plain_output = StringIO()
-        
         try:
             result = self.context.verify(signature, None, plain_output)
         except gpgme.GpgmeError,error:
             raise errors.SignatureVerificationFailed(error[2])
 
+        # No result if input is invalid.
+        # test_verify_invalid()
         if len(result) == 0:
             return SIGNATURE_NOT_VALID, None
+        # User has specified a list of acceptable keys, check our result is in
+        # it.  test_verify_unacceptable_key()
         fingerprint = result[0].fpr
         if self.acceptable_keys is not None:
             if not fingerprint in self.acceptable_keys:
                 return SIGNATURE_KEY_MISSING, fingerprint[-8:]
+        # Check the signature actually matches the testament.
+        # test_verify_bad_testament()
         if testament != plain_output.getvalue():
             return SIGNATURE_NOT_VALID, None
+        # Yay gpgme set the valid bit.
+        # Can't write a test for this one as you can't set a key to be
+        # trusted using gpgme.
         if result[0].summary & gpgme.SIGSUM_VALID:
             key = self.context.get_key(fingerprint)
             name = key.uids[0].name
             email = key.uids[0].email
             return SIGNATURE_VALID, name + " <" + email + ">"
+        # Sigsum_red indicates a problem, unfortunatly I have not been able
+        # to write any tests which actually set this.
         if result[0].summary & gpgme.SIGSUM_RED:
             return SIGNATURE_NOT_VALID, None
+        # GPG does not know this key.
+        # test_verify_unknown_key()
         if result[0].summary & gpgme.SIGSUM_KEY_MISSING:
             return SIGNATURE_KEY_MISSING, fingerprint[-8:]
-        #summary isn't set if sig is valid but key is untrusted
+        # Summary isn't set if sig is valid but key is untrusted but if user
+        # has explicity set the key as acceptable we can validate it.
         if result[0].summary == 0 and self.acceptable_keys is not None:
             if fingerprint in self.acceptable_keys:
+                # test_verify_untrusted_but_accepted()
                 return SIGNATURE_VALID, None
-        else:
-            return SIGNATURE_KEY_MISSING, None
+        # test_verify_valid_but_untrusted()
+        if result[0].summary == 0 and self.acceptable_keys is None:
+            return SIGNATURE_NOT_VALID, None
+        if result[0].summary & gpgme.SIGSUM_KEY_EXPIRED:
+            expires = self.context.get_key(result[0].fpr).subkeys[0].expires
+            if expires > result[0].timestamp:
+                # The expired key was not expired at time of signing.
+                # test_verify_expired_but_valid()
+                return SIGNATURE_EXPIRED, fingerprint[-8:]
+            else:
+                # I can't work out how to create a test where the signature
+                # was expired at the time of signing.
+                return SIGNATURE_NOT_VALID, None
+        # A signature from a revoked key gets this.
+        # test_verify_revoked_signature()
+        if result[0].summary & gpgme.SIGSUM_SYS_ERROR:
+            return SIGNATURE_NOT_VALID, None
+        # Other error types such as revoked keys should (I think) be caught by
+        # SIGSUM_RED so anything else means something is buggy.
         raise errors.SignatureVerificationFailed("Unknown GnuPG key "\
                                                  "verification result")
 
     def set_acceptable_keys(self, command_line_input):
-        """sets the acceptable keys for verifying with this GPGStrategy
-        
+        """Set the acceptable keys for verifying with this GPGStrategy.
+
         :param command_line_input: comma separated list of patterns from
                                 command line
         :return: nothing
         """
         key_patterns = None
-        acceptable_keys_config = self._config.acceptable_keys()
+        acceptable_keys_config = self._config_stack.get('acceptable_keys')
         try:
             if isinstance(acceptable_keys_config, unicode):
                 acceptable_keys_config = str(acceptable_keys_config)
         except UnicodeEncodeError:
-            #gpg Context.keylist(pattern) does not like unicode
-            raise errors.BzrCommandError('Only ASCII permitted in option names')
+            # gpg Context.keylist(pattern) does not like unicode
+            raise errors.BzrCommandError(
+                gettext('Only ASCII permitted in option names'))
 
         if acceptable_keys_config is not None:
             key_patterns = acceptable_keys_config
-        if command_line_input is not None: #command line overrides config
+        if command_line_input is not None: # command line overrides config
             key_patterns = command_line_input
         if key_patterns is not None:
             patterns = key_patterns.split(",")
@@ -302,123 +362,196 @@ class GPGStrategy(object):
                     self.acceptable_keys.append(key.subkeys[0].fpr)
                     trace.mutter("Added acceptable key: " + key.subkeys[0].fpr)
                 if not found_key:
-                    trace.note(i18n.gettext(
-                            "No GnuPG key results for pattern: {}"
+                    trace.note(gettext(
+                            "No GnuPG key results for pattern: {0}"
                                 ).format(pattern))
 
+    @deprecated_method(deprecated_in((2, 6, 0)))
     def do_verifications(self, revisions, repository,
                             process_events_callback=None):
         """do verifications on a set of revisions
-        
+
         :param revisions: list of revision ids to verify
         :param repository: repository object
         :param process_events_callback: method to call for GUI frontends that
-                                                want to keep their UI refreshed
-        
+            want to keep their UI refreshed
+
         :return: count dictionary of results of each type,
                  result list for each revision,
                  boolean True if all results are verified successfully
         """
-        count = {SIGNATURE_VALID: 0,
-                 SIGNATURE_KEY_MISSING: 0,
-                 SIGNATURE_NOT_VALID: 0,
-                 SIGNATURE_NOT_SIGNED: 0}
-        result = []
-        all_verifiable = True
-        for rev_id in revisions:
-            verification_result, uid =\
-                                repository.verify_revision(rev_id,self)
-            result.append([rev_id, verification_result, uid])
-            count[verification_result] += 1
-            if verification_result != SIGNATURE_VALID:
-                all_verifiable = False
-            if process_events_callback is not None:
-                process_events_callback()
-        return (count, result, all_verifiable)
+        return bulk_verify_signatures(repository, revisions, self,
+            process_events_callback)
 
+    @deprecated_method(deprecated_in((2, 6, 0)))
     def verbose_valid_message(self, result):
         """takes a verify result and returns list of signed commits strings"""
-        signers = {}
-        for rev_id, validity, uid in result:
-            if validity == SIGNATURE_VALID:
-                signers.setdefault(uid, 0)
-                signers[uid] += 1
-        result = []
-        for uid, number in signers.items():
-             result.append( i18n.ngettext(u"{0} signed {1} commit", 
-                             u"{0} signed {1} commits",
-                             number).format(uid, number) )
-        return result
+        return verbose_valid_message(result)
 
-
+    @deprecated_method(deprecated_in((2, 6, 0)))
     def verbose_not_valid_message(self, result, repo):
         """takes a verify result and returns list of not valid commit info"""
-        signers = {}
-        for rev_id, validity, empty in result:
-            if validity == SIGNATURE_NOT_VALID:
-                revision = repo.get_revision(rev_id)
-                authors = ', '.join(revision.get_apparent_authors())
-                signers.setdefault(authors, 0)
-                signers[authors] += 1
-        result = []
-        for authors, number in signers.items():
-            result.append( i18n.ngettext(u"{0} commit by author {1}", 
-                                 u"{0} commits by author {1}",
-                                 number).format(number, authors) )
-        return result
+        return verbose_not_valid_message(result, repo)
 
+    @deprecated_method(deprecated_in((2, 6, 0)))
     def verbose_not_signed_message(self, result, repo):
         """takes a verify result and returns list of not signed commit info"""
-        signers = {}
-        for rev_id, validity, empty in result:
-            if validity == SIGNATURE_NOT_SIGNED:
-                revision = repo.get_revision(rev_id)
-                authors = ', '.join(revision.get_apparent_authors())
-                signers.setdefault(authors, 0)
-                signers[authors] += 1
-        result = []
-        for authors, number in signers.items():
-            result.append( i18n.ngettext(u"{0} commit by author {1}", 
-                                 u"{0} commits by author {1}",
-                                 number).format(number, authors) )
-        return result
+        return verbose_not_valid_message(result, repo)
 
+    @deprecated_method(deprecated_in((2, 6, 0)))
     def verbose_missing_key_message(self, result):
         """takes a verify result and returns list of missing key info"""
-        signers = {}
-        for rev_id, validity, fingerprint in result:
-            if validity == SIGNATURE_KEY_MISSING:
-                signers.setdefault(fingerprint, 0)
-                signers[fingerprint] += 1
-        result = []
-        for fingerprint, number in signers.items():
-            result.append( i18n.ngettext(u"Unknown key {0} signed {1} commit", 
-                                 u"Unknown key {0} signed {1} commits",
-                                 number).format(fingerprint, number) )
-        return result
+        return verbose_missing_key_message(result)
 
+    @deprecated_method(deprecated_in((2, 6, 0)))
+    def verbose_expired_key_message(self, result, repo):
+        """takes a verify result and returns list of expired key info"""
+        return verbose_expired_key_message(result, repo)
+
+    @deprecated_method(deprecated_in((2, 6, 0)))
     def valid_commits_message(self, count):
         """returns message for number of commits"""
-        return i18n.gettext(u"{0} commits with valid signatures").format(
-                                        count[SIGNATURE_VALID])
+        return valid_commits_message(count)
 
+    @deprecated_method(deprecated_in((2, 6, 0)))
     def unknown_key_message(self, count):
         """returns message for number of commits"""
-        return i18n.ngettext(u"{0} commit with unknown key",
-                             u"{0} commits with unknown keys",
-                             count[SIGNATURE_KEY_MISSING]).format(
-                                        count[SIGNATURE_KEY_MISSING])
+        return unknown_key_message(count)
 
+    @deprecated_method(deprecated_in((2, 6, 0)))
     def commit_not_valid_message(self, count):
         """returns message for number of commits"""
-        return i18n.ngettext(u"{0} commit not valid",
-                             u"{0} commits not valid",
-                             count[SIGNATURE_NOT_VALID]).format(
-                                            count[SIGNATURE_NOT_VALID])
+        return commit_not_valid_message(count)
 
+    @deprecated_method(deprecated_in((2, 6, 0)))
     def commit_not_signed_message(self, count):
         """returns message for number of commits"""
-        return i18n.ngettext(u"{0} commit not signed",
-                             u"{0} commits not signed",
-                             count[SIGNATURE_NOT_SIGNED]).format(
-                                        count[SIGNATURE_NOT_SIGNED])
+        return commit_not_signed_message(count)
+
+    @deprecated_method(deprecated_in((2, 6, 0)))
+    def expired_commit_message(self, count):
+        """returns message for number of commits"""
+        return expired_commit_message(count)
+
+
+def valid_commits_message(count):
+    """returns message for number of commits"""
+    return gettext(u"{0} commits with valid signatures").format(
+                                    count[SIGNATURE_VALID])
+
+
+def unknown_key_message(count):
+    """returns message for number of commits"""
+    return ngettext(u"{0} commit with unknown key",
+                    u"{0} commits with unknown keys",
+                    count[SIGNATURE_KEY_MISSING]).format(
+                                    count[SIGNATURE_KEY_MISSING])
+
+
+def commit_not_valid_message(count):
+    """returns message for number of commits"""
+    return ngettext(u"{0} commit not valid",
+                    u"{0} commits not valid",
+                    count[SIGNATURE_NOT_VALID]).format(
+                                        count[SIGNATURE_NOT_VALID])
+
+
+def commit_not_signed_message(count):
+    """returns message for number of commits"""
+    return ngettext(u"{0} commit not signed",
+                    u"{0} commits not signed",
+                    count[SIGNATURE_NOT_SIGNED]).format(
+                                    count[SIGNATURE_NOT_SIGNED])
+
+
+def expired_commit_message(count):
+    """returns message for number of commits"""
+    return ngettext(u"{0} commit with key now expired",
+                    u"{0} commits with key now expired",
+                    count[SIGNATURE_EXPIRED]).format(
+                                count[SIGNATURE_EXPIRED])
+
+
+def verbose_expired_key_message(result, repo):
+    """takes a verify result and returns list of expired key info"""
+    signers = {}
+    fingerprint_to_authors = {}
+    for rev_id, validity, fingerprint in result:
+        if validity == SIGNATURE_EXPIRED:
+            revision = repo.get_revision(rev_id)
+            authors = ', '.join(revision.get_apparent_authors())
+            signers.setdefault(fingerprint, 0)
+            signers[fingerprint] += 1
+            fingerprint_to_authors[fingerprint] = authors
+    result = []
+    for fingerprint, number in signers.items():
+        result.append(
+            ngettext(u"{0} commit by author {1} with key {2} now expired",
+                     u"{0} commits by author {1} with key {2} now expired",
+                     number).format(
+                number, fingerprint_to_authors[fingerprint], fingerprint))
+    return result
+
+
+def verbose_valid_message(result):
+    """takes a verify result and returns list of signed commits strings"""
+    signers = {}
+    for rev_id, validity, uid in result:
+        if validity == SIGNATURE_VALID:
+            signers.setdefault(uid, 0)
+            signers[uid] += 1
+    result = []
+    for uid, number in signers.items():
+         result.append(ngettext(u"{0} signed {1} commit",
+                                u"{0} signed {1} commits",
+                                number).format(uid, number))
+    return result
+
+
+def verbose_not_valid_message(result, repo):
+    """takes a verify result and returns list of not valid commit info"""
+    signers = {}
+    for rev_id, validity, empty in result:
+        if validity == SIGNATURE_NOT_VALID:
+            revision = repo.get_revision(rev_id)
+            authors = ', '.join(revision.get_apparent_authors())
+            signers.setdefault(authors, 0)
+            signers[authors] += 1
+    result = []
+    for authors, number in signers.items():
+        result.append(ngettext(u"{0} commit by author {1}",
+                               u"{0} commits by author {1}",
+                               number).format(number, authors))
+    return result
+
+
+def verbose_not_signed_message(result, repo):
+    """takes a verify result and returns list of not signed commit info"""
+    signers = {}
+    for rev_id, validity, empty in result:
+        if validity == SIGNATURE_NOT_SIGNED:
+            revision = repo.get_revision(rev_id)
+            authors = ', '.join(revision.get_apparent_authors())
+            signers.setdefault(authors, 0)
+            signers[authors] += 1
+    result = []
+    for authors, number in signers.items():
+        result.append(ngettext(u"{0} commit by author {1}",
+                               u"{0} commits by author {1}",
+                               number).format(number, authors))
+    return result
+
+
+def verbose_missing_key_message(result):
+    """takes a verify result and returns list of missing key info"""
+    signers = {}
+    for rev_id, validity, fingerprint in result:
+        if validity == SIGNATURE_KEY_MISSING:
+            signers.setdefault(fingerprint, 0)
+            signers[fingerprint] += 1
+    result = []
+    for fingerprint, number in signers.items():
+        result.append(ngettext(u"Unknown key {0} signed {1} commit",
+                               u"Unknown key {0} signed {1} commits",
+                               number).format(fingerprint, number))
+    return result

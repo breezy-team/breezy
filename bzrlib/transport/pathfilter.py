@@ -16,6 +16,9 @@
 
 """A transport decorator that filters all paths that are passed to it."""
 
+from __future__ import absolute_import
+
+from bzrlib import urlutils
 
 from bzrlib.transport import (
     register_transport,
@@ -81,7 +84,7 @@ class PathFilteringTransport(Transport):
         self.scheme = self.server.scheme
 
     def _relpath_from_server_root(self, relpath):
-        unfiltered_path = self._combine_paths(self.base_path, relpath)
+        unfiltered_path = urlutils.URL._combine_paths(self.base_path, relpath)
         if not unfiltered_path.startswith('/'):
             raise ValueError(unfiltered_path)
         return unfiltered_path[1:]

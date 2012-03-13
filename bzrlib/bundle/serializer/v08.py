@@ -17,7 +17,7 @@
 """Serializer factory for reading and writing bundles.
 """
 
-import os
+from __future__ import absolute_import
 
 from bzrlib import (
     errors,
@@ -27,15 +27,13 @@ from bzrlib.bundle.serializer import (BundleSerializer,
                                       _get_bundle_header,
                                      )
 from bzrlib.bundle.serializer import binary_diff
-from bzrlib.bundle.bundle_data import (RevisionInfo, BundleInfo, BundleTree)
+from bzrlib.bundle.bundle_data import (RevisionInfo, BundleInfo)
 from bzrlib.diff import internal_diff
-from bzrlib.osutils import pathjoin
 from bzrlib.revision import NULL_REVISION
 from bzrlib.testament import StrictTestament
 from bzrlib.timestamp import (
     format_highres_date,
-    unpack_highres_date,
-)
+    )
 from bzrlib.textfile import text_file
 from bzrlib.trace import mutter
 
@@ -289,13 +287,15 @@ class BundleSerializerV08(BundleSerializer):
 
         def finish_action(action, file_id, kind, meta_modified, text_modified,
                           old_path, new_path):
-            entry = new_tree.inventory[file_id]
-            if entry.revision != default_revision_id:
-                action.add_utf8_property('last-changed', entry.revision)
+            revision = new_tree.get_file_revision(file_id)
+            if revision != default_revision_id:
+                action.add_utf8_property('last-changed', revision)
             if meta_modified:
-                action.add_bool_property('executable', entry.executable)
+                action.add_bool_property('executable',
+                    new_tree.is_executable(file_id))
             if text_modified and kind == "symlink":
-                action.add_property('target', entry.symlink_target)
+                action.add_property('target',
+                    new_tree.get_symlink_target(file_id))
             if text_modified and kind == "file":
                 do_diff(file_id, old_path, new_path, action, force_binary)
             else:
@@ -326,15 +326,14 @@ class BundleSerializerV08(BundleSerializer):
                           path, path)
 
         for path, file_id, kind in delta.unchanged:
-            ie = new_tree.inventory[file_id]
-            new_rev = getattr(ie, 'revision', None)
+            new_rev = new_tree.get_file_revision(file_id)
             if new_rev is None:
                 continue
-            old_rev = getattr(old_tree.inventory[ie.file_id], 'revision', None)
+            old_rev = old_tree.get_file_revision(file_id)
             if new_rev != old_rev:
-                action = Action('modified', [ie.kind,
-                                             new_tree.id2path(ie.file_id)])
-                action.add_utf8_property('last-changed', ie.revision)
+                action = Action('modified', [new_tree.kind(file_id),
+                                             new_tree.id2path(file_id)])
+                action.add_utf8_property('last-changed', new_rev)
                 action.write(self.to_file)
 
 

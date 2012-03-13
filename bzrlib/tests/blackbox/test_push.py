@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@ import re
 from bzrlib import (
     branch,
     bzrdir,
+    controldir,
     errors,
     osutils,
     tests,
@@ -32,12 +33,12 @@ from bzrlib import (
     )
 from bzrlib.repofmt import knitrepo
 from bzrlib.tests import (
-    blackbox,
     http_server,
     scenarios,
+    script,
     test_foreign,
-    test_server,
     )
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 from bzrlib.transport import memory
 
 
@@ -55,6 +56,26 @@ class TestPush(tests.TestCaseWithTransport):
         self.run_bzr_error(['http does not support mkdir'],
                            ['push', public_url],
                            working_dir='source')
+
+    def test_push_suggests_parent_alias(self):
+        """Push suggests using :parent if there is a known parent branch."""
+        tree_a = self.make_branch_and_tree('a')
+        tree_a.commit('this is a commit')
+        tree_b = self.make_branch_and_tree('b')
+
+        # If there is no parent location set, :parent isn't mentioned.
+        out = self.run_bzr('push', working_dir='a', retcode=3)
+        self.assertEquals(out,
+                ('','bzr: ERROR: No push location known or specified.\n'))
+
+        # If there is a parent location set, the error suggests :parent.
+        tree_a.branch.set_parent(tree_b.branch.base)
+        out = self.run_bzr('push', working_dir='a', retcode=3)
+        self.assertEquals(out,
+            ('','bzr: ERROR: No push location known or specified. '
+                'To push to the parent branch '
+                '(at %s), use \'bzr push :parent\'.\n' %
+                urlutils.unescape_for_display(tree_b.branch.base, 'utf-8')))
 
     def test_push_remember(self):
         """Push changes from one branch to another and test push location."""
@@ -96,6 +117,8 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertEquals(out,
                 ('','bzr: ERROR: These branches have diverged.  '
                  'See "bzr help diverged-branches" for more information.\n'))
+        # Refresh the branch as 'push' modified it
+        branch_a = branch_a.bzrdir.open_branch()
         self.assertEquals(osutils.abspath(branch_a.get_push_location()),
                           osutils.abspath(branch_b.bzrdir.root_transport.base))
 
@@ -103,17 +126,20 @@ class TestPush(tests.TestCaseWithTransport):
         uncommit.uncommit(branch=branch_b, tree=tree_b)
         transport.delete('branch_b/c')
         out, err = self.run_bzr('push', working_dir='branch_a')
+        # Refresh the branch as 'push' modified it
+        branch_a = branch_a.bzrdir.open_branch()
         path = branch_a.get_push_location()
-        self.assertEquals(out,
-                          'Using saved push location: %s\n'
-                          % urlutils.local_path_from_url(path))
         self.assertEqual(err,
+                         'Using saved push location: %s\n'
                          'All changes applied successfully.\n'
-                         'Pushed up to revision 2.\n')
+                         'Pushed up to revision 2.\n'
+                         % urlutils.local_path_from_url(path))
         self.assertEqual(path,
                          branch_b.bzrdir.root_transport.base)
         # test explicit --remember
         self.run_bzr('push ../branch_c --remember', working_dir='branch_a')
+        # Refresh the branch as 'push' modified it
+        branch_a = branch_a.bzrdir.open_branch()
         self.assertEquals(branch_a.get_push_location(),
                           branch_c.bzrdir.root_transport.base)
 
@@ -149,6 +175,23 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertEqual('', out)
         self.assertEqual('Created new branch.\n', err)
 
+    def test_push_quiet(self):
+        # test that using -q makes output quiet
+        t = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        t.add('file')
+        t.commit('commit 1')
+        self.run_bzr('push -d tree pushed-to')
+        # Refresh the branch as 'push' modified it and get the push location
+        push_loc = t.branch.bzrdir.open_branch().get_push_location()
+        out, err = self.run_bzr('push', working_dir="tree")
+        self.assertEqual('Using saved push location: %s\n'
+                         'No new revisions or tags to push.\n' %
+                         urlutils.local_path_from_url(push_loc), err)
+        out, err = self.run_bzr('push -q', working_dir="tree")
+        self.assertEqual('', out)
+        self.assertEqual('', err)
+
     def test_push_only_pushes_history(self):
         # Knit branches should only push the history for the current revision.
         format = bzrdir.BzrDirMetaFormat1()
@@ -158,7 +201,7 @@ class TestPush(tests.TestCaseWithTransport):
 
         def make_shared_tree(path):
             shared_repo.bzrdir.root_transport.mkdir(path)
-            shared_repo.bzrdir.create_branch_convenience('repo/' + path)
+            controldir.ControlDir.create_branch_convenience('repo/' + path)
             return workingtree.WorkingTree.open('repo/' + path)
         tree_a = make_shared_tree('a')
         self.build_tree(['repo/a/file'])
@@ -232,6 +275,8 @@ class TestPush(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(9, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
     def test_push_smart_stacked_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -247,7 +292,9 @@ class TestPush(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(13, self.hpss_calls)
+        self.assertLength(15, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
         remote = branch.Branch.open('public')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
 
@@ -264,6 +311,8 @@ class TestPush(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(11, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
     def test_push_smart_incremental_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -280,6 +329,8 @@ class TestPush(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(11, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
     def test_push_smart_with_default_stacking_url_path_segment(self):
         # If the default stacked-on location is a path element then branches
@@ -462,7 +513,8 @@ class TestPush(tests.TestCaseWithTransport):
         trunk_public = self.make_branch('public_trunk', format='1.9')
         trunk_public.pull(trunk_tree.branch)
         trunk_public_url = self.get_readonly_url('public_trunk')
-        trunk_tree.branch.set_public_branch(trunk_public_url)
+        br = trunk_tree.branch
+        br.set_public_branch(trunk_public_url)
         # now we do a stacked push, which should determine the public location
         # for us.
         out, err = self.run_bzr(['push', '--stacked',
@@ -659,10 +711,8 @@ class TestPushStrictMixin(object):
         self.tree.commit('modify file', rev_id='modified')
 
     def set_config_push_strict(self, value):
-        # set config var (any of bazaar.conf, locations.conf, branch.conf
-        # should do)
-        conf = self.tree.branch.get_config()
-        conf.set_user_option('push_strict', value)
+        br = branch.Branch.open('local')
+        br.get_config_stack().set('push_strict', value)
 
     _default_command = ['push', '../to']
     _default_wd = 'local'
@@ -827,3 +877,27 @@ class TestPushForeign(tests.TestCaseWithTransport):
         self.assertEquals("", output)
         self.assertEquals(error, "bzr: ERROR: It is not possible to losslessly"
             " push to dummy. You may want to use dpush instead.\n")
+
+
+class TestPushOutput(script.TestCaseWithTransportAndScript):
+
+    def test_push_log_format(self):
+        self.run_script("""
+            $ bzr init trunk
+            Created a standalone tree (format: 2a)
+            $ cd trunk
+            $ echo foo > file
+            $ bzr add
+            adding file
+            $ bzr commit -m 'we need some foo'
+            2>Committing to:...trunk/
+            2>added file
+            2>Committed revision 1.
+            $ bzr init ../feature
+            Created a standalone tree (format: 2a)
+            $ bzr push -v ../feature -Olog_format=line
+            Added Revisions:
+            1: jrandom@example.com ...we need some foo
+            2>All changes applied successfully.
+            2>Pushed up to revision 1.
+            """)

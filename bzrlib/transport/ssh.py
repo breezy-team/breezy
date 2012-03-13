@@ -17,6 +17,8 @@
 
 """Foundation SSH support for SFTP and smart server."""
 
+from __future__ import absolute_import
+
 import errno
 import getpass
 import logging
@@ -352,6 +354,11 @@ if paramiko is not None:
 class SubprocessVendor(SSHVendor):
     """Abstract base class for vendors that use pipes to a subprocess."""
 
+    # In general stderr should be inherited from the parent process so prompts
+    # are visible on the terminal. This can be overriden to another file for
+    # tests, but beware of using PIPE which may hang due to not being read.
+    _stderr_target = None
+
     def _connect(self, argv):
         # Attempt to make a socketpair to use as stdin/stdout for the SSH
         # subprocess.  We prefer sockets to pipes because they support
@@ -368,6 +375,7 @@ class SubprocessVendor(SSHVendor):
         else:
             stdin = stdout = subproc_sock
         proc = subprocess.Popen(argv, stdin=stdin, stdout=stdout,
+                                stderr=self._stderr_target,
                                 **os_specific_subprocess_params())
         if subproc_sock is not None:
             subproc_sock.close()

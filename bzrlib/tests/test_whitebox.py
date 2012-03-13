@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008, 2009, 2011 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,15 +16,16 @@
 
 import os
 
+import bzrlib
 from bzrlib import (
+    errors,
     osutils,
+    tests,
     )
-from bzrlib.tests import TestCaseWithTransport
-from bzrlib.errors import PathNotChild
 from bzrlib.osutils import relpath, pathjoin, abspath, realpath
 
 
-class MoreTests(TestCaseWithTransport):
+class MoreTests(tests.TestCaseWithTransport):
 
     def test_relpath(self):
         """test for branch path lookups
@@ -33,52 +34,32 @@ class MoreTests(TestCaseWithTransport):
         job: given a path (either relative to cwd or absolute), work out
         if it is inside a branch and return the path relative to the base.
         """
-        import tempfile
-
-        savedir = os.getcwdu()
         dtmp = osutils.mkdtemp()
+        self.addCleanup(osutils.rmtree, dtmp)
         # On Mac OSX, /tmp actually expands to /private/tmp
         dtmp = realpath(dtmp)
 
         def rp(p):
             return relpath(dtmp, p)
 
-        try:
-            # check paths inside dtmp while standing outside it
-            self.assertEqual(rp(pathjoin(dtmp, 'foo')), 'foo')
+        # check paths inside dtmp while standing outside it
+        self.assertEqual('foo', rp(pathjoin(dtmp, 'foo')))
 
-            # root = nothing
-            self.assertEqual(rp(dtmp), '')
+        # root = nothing
+        self.assertEqual('', rp(dtmp))
+        self.assertRaises(errors.PathNotChild, rp, '/etc')
 
-            self.assertRaises(PathNotChild,
-                              rp,
-                              '/etc')
+        # now some near-miss operations -- note that
+        # os.path.commonprefix gets these wrong!
+        self.assertRaises(errors.PathNotChild, rp, dtmp.rstrip('\\/') + '2')
+        self.assertRaises(errors.PathNotChild, rp, dtmp.rstrip('\\/') + '2/foo')
 
-            # now some near-miss operations -- note that
-            # os.path.commonprefix gets these wrong!
-            self.assertRaises(PathNotChild,
-                              rp,
-                              dtmp.rstrip('\\/') + '2')
+        # now operations based on relpath of files in current
+        # directory, or nearby
 
-            self.assertRaises(PathNotChild,
-                              rp,
-                              dtmp.rstrip('\\/') + '2/foo')
-
-            # now operations based on relpath of files in current
-            # directory, or nearby
-            os.chdir(dtmp)
-
-            self.assertEqual(rp('foo/bar/quux'), 'foo/bar/quux')
-
-            self.assertEqual(rp('foo'), 'foo')
-
-            self.assertEqual(rp('./foo'), 'foo')
-
-            self.assertEqual(rp(abspath('foo')), 'foo')
-
-            self.assertRaises(PathNotChild,
-                              rp, '../foo')
-
-        finally:
-            os.chdir(savedir)
-            osutils.rmtree(dtmp)
+        os.chdir(dtmp)
+        self.assertEqual('foo/bar/quux', rp('foo/bar/quux'))
+        self.assertEqual('foo', rp('foo'))
+        self.assertEqual('foo', rp('./foo'))
+        self.assertEqual('foo', rp(abspath('foo')))
+        self.assertRaises(errors.PathNotChild, rp, '../foo')

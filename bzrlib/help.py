@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,6 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+from __future__ import absolute_import
 
 # TODO: Some way to get a list of external commands (defined by shell
 # scripts) so that they can be included in the help listing as well.
@@ -29,6 +31,7 @@ from bzrlib import (
     help_topics,
     osutils,
     plugin,
+    ui,
     utextwrap,
     )
 
@@ -36,7 +39,7 @@ from bzrlib import (
 def help(topic=None, outfile=None):
     """Write the help for the specific topic to outfile"""
     if outfile is None:
-        outfile = sys.stdout
+        outfile = ui.ui_factory.make_output_stream()
 
     indices = HelpIndices()
 
@@ -61,7 +64,7 @@ def help(topic=None, outfile=None):
 def help_commands(outfile=None):
     """List all commands"""
     if outfile is None:
-        outfile = sys.stdout
+        outfile = ui.ui_factory.make_output_stream()
     outfile.write(_help_commands_to_text('commands'))
 
 
@@ -135,6 +138,7 @@ class HelpIndices(object):
             help_topics.HelpTopicIndex(),
             _mod_commands.HelpCommandIndex(),
             plugin.PluginsHelpIndex(),
+            help_topics.ConfigOptionHelpIndex(),
             ]
 
     def _check_prefix_uniqueness(self):

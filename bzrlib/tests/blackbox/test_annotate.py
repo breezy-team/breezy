@@ -29,6 +29,7 @@ from bzrlib import (
     tests,
     )
 
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 from bzrlib.urlutils import joinpath
 
 
@@ -177,7 +178,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
 
     def test_annotate_edited_file(self):
         tree = self._setup_edited_file()
-        tree.branch.get_config().set_user_option('email', 'current@host2')
+        self.overrideEnv('BZR_EMAIL', 'current@host2')
         out, err = self.run_bzr('annotate file')
         self.assertEqual(
             '1   test@ho | foo\n'
@@ -202,7 +203,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
 
     def test_annotate_edited_file_show_ids(self):
         tree = self._setup_edited_file()
-        tree.branch.get_config().set_user_option('email', 'current@host2')
+        self.overrideEnv('BZR_EMAIL', 'current@host2')
         out, err = self.run_bzr('annotate file --show-ids')
         self.assertEqual(
             '    rev1 | foo\n'
@@ -232,7 +233,8 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
     def test_annotated_edited_merged_file_revnos(self):
         wt = self._create_merged_file()
         out, err = self.run_bzr(['annotate', 'file'])
-        email = config.extract_email_address(wt.branch.get_config().username())
+        email = config.extract_email_address(
+            wt.branch.get_config_stack().get('email'))
         self.assertEqual(
             '3?    %-7s | local\n'
             '1     test@ho | foo\n'
@@ -307,3 +309,25 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         wt.commit('commit', committer='test@user')
         out, err = self.run_bzr(['annotate', '-d', 'a', 'hello.txt'])
         self.assertEqualDiff('1   test@us | my helicopter\n', out)
+
+
+class TestSmartServerAnnotate(tests.TestCaseWithTransport):
+
+    def test_simple_annotate(self):
+        self.setup_smart_server_with_call_log()
+        wt = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/hello.txt', 'my helicopter\n')])
+        wt.add(['hello.txt'])
+        wt.commit('commit', committer='test@user')
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['annotate', "-d", self.get_url('branch'),
+            "hello.txt"])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(16, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.expectFailure("annotate accesses inventories, which require VFS access",
+            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)

@@ -25,6 +25,8 @@ NAT and other firewalls, so it's best to use it unless you explicitly want
 active, in which case aftp:// will be your friend.
 """
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 import ftplib
 import getpass
@@ -96,7 +98,7 @@ class FtpTransport(ConnectedTransport):
         super(FtpTransport, self).__init__(base,
                                            _from_transport=_from_transport)
         self._unqualified_scheme = 'ftp'
-        if self._scheme == 'aftp':
+        if self._parsed_url.scheme == 'aftp':
             self.is_active = True
         else:
             self.is_active = False

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,6 +37,7 @@ from bzrlib.errors import UnrelatedBranches, NoCommits
 from bzrlib.merge import transform_tree, merge_inner, _PlanMerge
 from bzrlib.osutils import basename, pathjoin, file_kind
 from bzrlib.tests import (
+    features,
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
     test_merge_core,
@@ -82,17 +83,18 @@ class TestMerge(TestCaseWithTransport):
         tip = wt1.commit('empty commit')
         wt2 = self.make_branch_and_tree('branch2')
         wt2.pull(wt1.branch)
-        file('branch1/foo', 'wb').write('foo')
-        file('branch1/bar', 'wb').write('bar')
+        with file('branch1/foo', 'wb') as f:
+            f.write('foo')
+        with file('branch1/bar', 'wb') as f:
+            f.write('bar')
         wt1.add('foo')
         wt1.add('bar')
         wt1.commit('add foobar')
-        os.chdir('branch2')
-        self.run_bzr('merge ../branch1/baz', retcode=3)
-        self.run_bzr('merge ../branch1/foo')
-        self.assertPathExists('foo')
-        self.assertPathDoesNotExist('bar')
-        wt2 = WorkingTree.open('.') # opens branch2
+        self.run_bzr('merge ../branch1/baz', retcode=3, working_dir='branch2')
+        self.run_bzr('merge ../branch1/foo', working_dir='branch2')
+        self.assertPathExists('branch2/foo')
+        self.assertPathDoesNotExist('branch2/bar')
+        wt2 = WorkingTree.open('branch2')
         self.assertEqual([tip], wt2.get_parent_ids())
 
     def test_pending_with_null(self):
@@ -150,7 +152,7 @@ class TestMerge(TestCaseWithTransport):
     def test_create_rename(self):
         """Rename an inventory entry while creating the file"""
         tree =self.make_branch_and_tree('.')
-        file('name1', 'wb').write('Hello')
+        with file('name1', 'wb') as f: f.write('Hello')
         tree.add('name1')
         tree.commit(message="hello")
         tree.rename_one('name1', 'name2')
@@ -163,7 +165,7 @@ class TestMerge(TestCaseWithTransport):
         os.mkdir('dirname1')
         tree.add('dirname1')
         filename = pathjoin('dirname1', 'name1')
-        file(filename, 'wb').write('Hello')
+        with file(filename, 'wb') as f: f.write('Hello')
         tree.add(filename)
         tree.commit(message="hello")
         filename2 = pathjoin('dirname1', 'name2')
@@ -225,9 +227,9 @@ class TestMerge(TestCaseWithTransport):
 
     def test_nested_merge(self):
         tree = self.make_branch_and_tree('tree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         sub_tree = self.make_branch_and_tree('tree/sub-tree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         sub_tree.set_root_id('sub-tree-root')
         self.build_tree_contents([('tree/sub-tree/file', 'text1')])
         sub_tree.add('file')
@@ -419,8 +421,7 @@ class TestMerge(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         self.build_tree(['a'])
         tree.add('a')
-        tree.commit("added a")
-        first_rev = tree.branch.revision_history()[0]
+        first_rev = tree.commit("added a")
         merger = _mod_merge.Merger.from_revision_ids(None, tree,
                                           _mod_revision.NULL_REVISION,
                                           first_rev)
@@ -446,8 +447,11 @@ class TestMerge(TestCaseWithTransport):
         merger.merge_type = _mod_merge.Merge3Merger
         tree_merger = merger.make_merger()
         self.assertIs(_mod_merge.Merge3Merger, tree_merger.__class__)
-        self.assertEqual('rev2b', tree_merger.other_tree.get_revision_id())
-        self.assertEqual('rev1', tree_merger.base_tree.get_revision_id())
+        self.assertEqual('rev2b',
+            tree_merger.other_tree.get_revision_id())
+        self.assertEqual('rev1',
+            tree_merger.base_tree.get_revision_id())
+        self.assertEqual(other_tree.branch, tree_merger.other_branch)
 
     def test_make_preview_transform(self):
         this_tree = self.make_branch_and_tree('this')
@@ -508,9 +512,8 @@ class TestMerge(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         self.build_tree(['a'])
         tree.add('a')
-        tree.commit("added a")
+        first_rev = tree.commit("added a")
         old_root_id = tree.get_root_id()
-        first_rev = tree.branch.revision_history()[0]
         merger = _mod_merge.Merger.from_revision_ids(None, tree,
                                           _mod_revision.NULL_REVISION,
                                           first_rev)
@@ -2184,7 +2187,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertTrue(wt.is_executable('foo-id'))
 
     def test_create_symlink(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         #   A
         #  / \
         # B   C
@@ -2249,7 +2252,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                              wt.get_file_text('foo-id'))
 
     def test_modified_symlink(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         #   A       Create symlink foo => bar
         #  / \
         # B   C     B relinks foo => baz
@@ -2294,7 +2297,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertEqual('bing', wt.get_symlink_target('foo-id'))
 
     def test_renamed_symlink(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         #   A       Create symlink foo => bar
         #  / \
         # B   C     B renames foo => barry
@@ -2350,7 +2353,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertEqual('blah', wt.id2path('foo-id'))
 
     def test_symlink_no_content_change(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         #   A       Create symlink foo => bar
         #  / \
         # B   C     B relinks foo => baz
@@ -2401,7 +2404,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertEqual('bing', wt.get_symlink_target('foo-id'))
 
     def test_symlink_this_changed_kind(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         #   A       Nothing
         #  / \
         # B   C     B creates symlink foo => bar
@@ -2454,7 +2457,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
 
     def test_symlink_all_wt(self):
         """Check behavior if all trees are Working Trees."""
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         # The big issue is that entry.symlink_target is None for WorkingTrees.
         # So we need to make sure we handle that case correctly.
         #   A   foo => bar
@@ -2631,11 +2634,11 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # Tested with a real WT, because BranchBuilder/MemoryTree don't handle
         # 'tree-reference'
         wt = self.make_branch_and_tree('tree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         wt.lock_write()
         self.addCleanup(wt.unlock)
         sub_tree = self.make_branch_and_tree('tree/sub-tree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         wt.set_root_id('a-root-id')
         sub_tree.set_root_id('sub-tree-root')
         self.build_tree_contents([('tree/sub-tree/file', 'text1')])
@@ -2666,11 +2669,11 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # Tested with a real WT, because BranchBuilder/MemoryTree don't handle
         # 'tree-reference'
         wt = self.make_branch_and_tree('tree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         wt.lock_write()
         self.addCleanup(wt.unlock)
         sub_tree = self.make_branch_and_tree('tree/sub',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         wt.set_root_id('a-root-id')
         sub_tree.set_root_id('sub-tree-root')
         self.build_tree_contents([('tree/sub/file', 'text1')])
@@ -2705,11 +2708,11 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # Tested with a real WT, because BranchBuilder/MemoryTree don't handle
         # 'tree-reference'
         wt = self.make_branch_and_tree('tree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         wt.lock_write()
         self.addCleanup(wt.unlock)
         sub_tree = self.make_branch_and_tree('tree/sub',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         wt.set_root_id('a-root-id')
         sub_tree.set_root_id('sub-tree-root')
         self.build_tree_contents([('tree/sub/file', 'text1')])
@@ -2748,11 +2751,11 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # Tested with a real WT, because BranchBuilder/MemoryTree don't handle
         # 'tree-reference'
         wt = self.make_branch_and_tree('tree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         wt.lock_write()
         self.addCleanup(wt.unlock)
         sub_tree = self.make_branch_and_tree('tree/sub',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         wt.set_root_id('a-root-id')
         sub_tree.set_root_id('sub-tree-root')
         self.build_tree_contents([('tree/sub/file', 'text1')])
@@ -3243,3 +3246,46 @@ class TestMergeInto(TestMergeIntoBase):
         # The dest tree is unmodified.
         self.assertEqual(['r1-dest'], dest_wt.get_parent_ids())
         self.assertTreeEntriesEqual([('', 'dest-root-id')], dest_wt)
+
+
+class TestMergeHooks(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestMergeHooks, self).setUp()
+        self.tree_a = self.make_branch_and_tree('tree_a')
+        self.build_tree_contents([('tree_a/file', 'content_1')])
+        self.tree_a.add('file', 'file-id')
+        self.tree_a.commit('added file')
+
+        self.tree_b = self.tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        self.build_tree_contents([('tree_b/file', 'content_2')])
+        self.tree_b.commit('modify file')
+
+    def test_pre_merge_hook_inject_different_tree(self):
+        tree_c = self.tree_b.bzrdir.sprout('tree_c').open_workingtree()
+        self.build_tree_contents([('tree_c/file', 'content_3')])
+        tree_c.commit("more content")
+        calls = []
+        def factory(merger):
+            self.assertIsInstance(merger, _mod_merge.Merge3Merger)
+            merger.other_tree = tree_c
+            calls.append(merger)
+        _mod_merge.Merger.hooks.install_named_hook('pre_merge',
+                                                   factory, 'test factory')
+        self.tree_a.merge_from_branch(self.tree_b.branch)
+
+        self.assertFileEqual("content_3", 'tree_a/file')
+        self.assertLength(1, calls)
+
+    def test_post_merge_hook_called(self):
+        calls = []
+        def factory(merger):
+            self.assertIsInstance(merger, _mod_merge.Merge3Merger)
+            calls.append(merger)
+        _mod_merge.Merger.hooks.install_named_hook('post_merge',
+                                                   factory, 'test factory')
+
+        self.tree_a.merge_from_branch(self.tree_b.branch)
+
+        self.assertFileEqual("content_2", 'tree_a/file')
+        self.assertLength(1, calls)

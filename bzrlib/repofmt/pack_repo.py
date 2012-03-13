@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 import re
 import sys
 
@@ -25,6 +27,7 @@ import time
 from bzrlib import (
     chk_map,
     cleanup,
+    config,
     debug,
     graph,
     osutils,
@@ -54,7 +57,7 @@ from bzrlib.lock import LogicalLockResult
 from bzrlib.repository import (
     _LazyListJoin,
     MetaDirRepository,
-    RepositoryFormat,
+    RepositoryFormatMetaDir,
     RepositoryWriteLockResult,
     )
 from bzrlib.vf_repository import (
@@ -478,7 +481,8 @@ class NewPack(Pack):
         # visible is smaller.  On the other hand none will be seen until
         # they're in the names list.
         self.index_sizes = [None, None, None, None]
-        self._write_index('revision', self.revision_index, 'revision', suspend)
+        self._write_index('revision', self.revision_index, 'revision',
+            suspend)
         self._write_index('inventory', self.inventory_index, 'inventory',
             suspend)
         self._write_index('text', self.text_index, 'file texts', suspend)
@@ -488,7 +492,8 @@ class NewPack(Pack):
             self.index_sizes.append(None)
             self._write_index('chk', self.chk_index,
                 'content hash bytes', suspend)
-        self.write_stream.close()
+        self.write_stream.close(
+            want_fdatasync=self._pack_collection.config_stack.get('repository.fdatasync'))
         # Note that this will clobber an existing pack with the same name,
         # without checking for hash collisions. While this is undesirable this
         # is something that can be rectified in a subsequent release. One way
@@ -537,8 +542,14 @@ class NewPack(Pack):
             transport = self.upload_transport
         else:
             transport = self.index_transport
-        self.index_sizes[self.index_offset(index_type)] = transport.put_file(
-            index_name, index.finish(), mode=self._file_mode)
+        index_tempfile = index.finish()
+        index_bytes = index_tempfile.read()
+        write_stream = transport.open_write_stream(index_name,
+            mode=self._file_mode)
+        write_stream.write(index_bytes)
+        write_stream.close(
+            want_fdatasync=self._pack_collection.config_stack.get('repository.fdatasync'))
+        self.index_sizes[self.index_offset(index_type)] = len(index_bytes)
         if 'pack' in debug.debug_flags:
             # XXX: size might be interesting?
             mutter('%s: create_pack: wrote %s index: %s%s t+%6.3fs',
@@ -822,6 +833,7 @@ class RepositoryPackCollection(object):
                 set(all_combined).difference([combined_idx]))
         # resumed packs
         self._resumed_packs = []
+        self.config_stack = config.LocationStack(self.transport.base)
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self.repo)
@@ -1211,8 +1223,18 @@ class RepositoryPackCollection(object):
         """
         for pack in packs:
             try:
-                pack.pack_transport.move(pack.file_name(),
-                    '../obsolete_packs/' + pack.file_name())
+                try:
+                    pack.pack_transport.move(pack.file_name(),
+                        '../obsolete_packs/' + pack.file_name())
+                except errors.NoSuchFile:
+                    # perhaps obsolete_packs was removed? Let's create it and
+                    # try again
+                    try:
+                        pack.pack_transport.mkdir('../obsolete_packs/')
+                    except errors.FileExists:
+                        pass
+                    pack.pack_transport.move(pack.file_name(),
+                        '../obsolete_packs/' + pack.file_name())
             except (errors.PathError, errors.TransportError), e:
                 # TODO: Should these be warnings or mutters?
                 mutter("couldn't rename obsolete pack, skipping it:\n%s"
@@ -1484,7 +1506,11 @@ class RepositoryPackCollection(object):
         obsolete_pack_transport = self.transport.clone('obsolete_packs')
         if preserve is None:
             preserve = set()
-        for filename in obsolete_pack_transport.list_dir('.'):
+        try:
+            obsolete_pack_files = obsolete_pack_transport.list_dir('.')
+        except errors.NoSuchFile:
+            return found
+        for filename in obsolete_pack_files:
             name, ext = osutils.splitext(filename)
             if ext == '.pack':
                 found.append(name)
@@ -1896,7 +1922,7 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
                                     than normal. I.e. during 'upgrade'.
         """
         if not _found:
-            format = RepositoryFormat.find_format(a_bzrdir)
+            format = RepositoryFormatMetaDir.find_format(a_bzrdir)
         if _override_transport is not None:
             repo_transport = _override_transport
         else:

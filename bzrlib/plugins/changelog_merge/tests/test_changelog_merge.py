@@ -186,9 +186,9 @@ class TestChangeLogMerger(tests.TestCaseWithTransport):
             base_text, True)
         builder.change_contents('clog-id', other=other_text, this=this_text)
         merger = builder.make_merger(merge.Merge3Merger, ['clog-id'])
-        merger.this_branch.get_config().set_user_option(
+        merger.this_branch.get_config_stack().set(
             'changelog_merge_files', 'ChangeLog')
-        merge_hook_params = merge.MergeHookParams(merger, 'clog-id', None,
+        merge_hook_params = merge.MergeFileHookParams(merger, 'clog-id', None,
             'file', 'file', 'conflict')
         changelog_merger = changelog_merge.ChangeLogMerger(merger)
         return changelog_merger, merge_hook_params

@@ -6,7 +6,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os
+from __future__ import absolute_import
 
 # FIXME: better move the content of doc/en/conf.py here and cleanup the result
 # -- vila 20100428
@@ -21,8 +21,7 @@ import sys, os
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.ifconfig',
-              'bzrlib.doc_generate.builders.texinfo']
+extensions = ['sphinx.ext.ifconfig',]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

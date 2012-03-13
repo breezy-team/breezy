@@ -19,11 +19,11 @@
 There are separate implementation modules for each http client implementation.
 """
 
-from cStringIO import StringIO
-import mimetools
+from __future__ import absolute_import
+
+import os
 import re
 import urlparse
-import urllib
 import sys
 import weakref
 
@@ -35,14 +35,9 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.smart import medium
-from bzrlib.symbol_versioning import (
-        deprecated_method,
-        )
 from bzrlib.trace import mutter
 from bzrlib.transport import (
     ConnectedTransport,
-    _CoalescedOffset,
-    Transport,
     )
 
 # TODO: This is not used anymore by HttpTransport_urllib
@@ -69,9 +64,9 @@ def extract_auth(url, password_manager):
             host = netloc.split(':', 1)[0]
         else:
             host = netloc
-        username = urllib.unquote(username)
+        username = urlutils.unquote(username)
         if password is not None:
-            password = urllib.unquote(password)
+            password = urlutils.unquote(password)
         else:
             password = ui.ui_factory.get_password(
                 prompt=u'HTTP %(user)s@%(host)s password',
@@ -124,12 +119,7 @@ class HttpTransportBase(ConnectedTransport):
         :param relpath: The relative path to the file
         """
         code, response_file = self._get(relpath, None)
-        # FIXME: some callers want an iterable... One step forward, three steps
-        # backwards :-/ And not only an iterable, but an iterable that can be
-        # seeked backwards, so we will never be able to do that.  One such
-        # known client is bzrlib.bundle.serializer.v4.get_bundle_reader. At the
-        # time of this writing it's even the only known client -- vila20071203
-        return StringIO(response_file.read())
+        return response_file
 
     def _get(self, relpath, ranges, tail_amount=0):
         """Get a file, or part of a file.
@@ -148,17 +138,18 @@ class HttpTransportBase(ConnectedTransport):
 
         user and passwords are not embedded in the path provided to the server.
         """
-        relative = urlutils.unescape(relpath).encode('utf-8')
-        path = self._combine_paths(self._path, relative)
-        return self._unsplit_url(self._unqualified_scheme,
-                                 None, None, self._host, self._port, path)
+        url = self._parsed_url.clone(relpath)
+        url.user = url.quoted_user = None
+        url.password = url.quoted_password = None
+        url.scheme = self._unqualified_scheme
+        return str(url)
 
     def _create_auth(self):
         """Returns a dict containing the credentials provided at build time."""
-        auth = dict(host=self._host, port=self._port,
-                    user=self._user, password=self._password,
+        auth = dict(host=self._parsed_url.host, port=self._parsed_url.port,
+                    user=self._parsed_url.user, password=self._parsed_url.password,
                     protocol=self._unqualified_scheme,
-                    path=self._path)
+                    path=self._parsed_url.path)
         return auth
 
     def get_smart_medium(self):
@@ -246,7 +237,7 @@ class HttpTransportBase(ConnectedTransport):
                     # Split the received chunk
                     for offset, size in cur_coal.ranges:
                         start = cur_coal.start + offset
-                        rfile.seek(start, 0)
+                        rfile.seek(start, os.SEEK_SET)
                         data = rfile.read(size)
                         data_len = len(data)
                         if data_len != size:
@@ -271,7 +262,7 @@ class HttpTransportBase(ConnectedTransport):
                         cur_offset_and_size = iter_offsets.next()
 
             except (errors.ShortReadvError, errors.InvalidRange,
-                    errors.InvalidHttpRange), e:
+                    errors.InvalidHttpRange, errors.HttpBoundaryMissing), e:
                 mutter('Exception %r: %s during http._readv',e, e)
                 if (not isinstance(e, errors.ShortReadvError)
                     or retried_offset == cur_offset_and_size):
@@ -412,10 +403,9 @@ class HttpTransportBase(ConnectedTransport):
         """See bzrlib.transport.Transport.external_url."""
         # HTTP URL's are externally usable as long as they don't mention their
         # implementation qualifier
-        return self._unsplit_url(self._unqualified_scheme,
-                                 self._user, self._password,
-                                 self._host, self._port,
-                                 self._path)
+        url = self._parsed_url.clone()
+        url.scheme = self._unqualified_scheme
+        return str(url)
 
     def is_readonly(self):
         """See Transport.is_readonly."""
@@ -517,68 +507,57 @@ class HttpTransportBase(ConnectedTransport):
 
         :returns: A transport or None.
         """
-        def relpath(abspath):
-            """Returns the path relative to our base.
-
-            The constraints are weaker than the real relpath method because the
-            abspath is coming from the server and may slightly differ from our
-            base. We don't check the scheme, host, port, user, password parts,
-            relying on the caller to give us a proper url (i.e. one returned by
-            the server mirroring the one we sent).
-            """
-            (scheme,
-             user, password,
-             host, port,
-             path) = self._split_url(abspath)
-            pl = len(self._path)
-            return path[pl:].strip('/')
-
-        relpath = relpath(source)
-        if not target.endswith(relpath):
+        parsed_source = self._split_url(source)
+        parsed_target = self._split_url(target)
+        pl = len(self._parsed_url.path)
+        # determine the excess tail - the relative path that was in
+        # the original request but not part of this transports' URL.
+        excess_tail = parsed_source.path[pl:].strip("/")
+        if not target.endswith(excess_tail):
             # The final part of the url has been renamed, we can't handle the
             # redirection.
             return None
-        new_transport = None
-        (scheme,
-         user, password,
-         host, port,
-         path) = self._split_url(target)
-        # Recalculate base path. This is needed to ensure that when the
-        # redirected tranport will be used to re-try whatever request was
-        # redirected, we end up with the same url
-        base_path = path[:-len(relpath)]
-        if scheme in ('http', 'https'):
+
+        target_path = parsed_target.path
+        if excess_tail:
+            # Drop the tail that was in the redirect but not part of
+            # the path of this transport.
+            target_path = target_path[:-len(excess_tail)]
+
+        if parsed_target.scheme in ('http', 'https'):
             # Same protocol family (i.e. http[s]), we will preserve the same
             # http client implementation when a redirection occurs from one to
             # the other (otherwise users may be surprised that bzr switches
             # from one implementation to the other, and devs may suffer
             # debugging it).
-            if (scheme == self._unqualified_scheme
-                and host == self._host
-                and port == self._port
-                and (user is None or user == self._user)):
+            if (parsed_target.scheme == self._unqualified_scheme
+                and parsed_target.host == self._parsed_url.host
+                and parsed_target.port == self._parsed_url.port
+                and (parsed_target.user is None or
+                     parsed_target.user == self._parsed_url.user)):
                 # If a user is specified, it should match, we don't care about
                 # passwords, wrong passwords will be rejected anyway.
-                new_transport = self.clone(base_path)
+                return self.clone(target_path)
             else:
                 # Rebuild the url preserving the scheme qualification and the
                 # credentials (if they don't apply, the redirected to server
                 # will tell us, but if they do apply, we avoid prompting the
                 # user)
-                redir_scheme = scheme + '+' + self._impl_name
+                redir_scheme = parsed_target.scheme + '+' + self._impl_name
                 new_url = self._unsplit_url(redir_scheme,
-                                            self._user, self._password,
-                                            host, port,
-                                            base_path)
-                new_transport = transport.get_transport(new_url)
+                    self._parsed_url.user,
+                    self._parsed_url.password,
+                    parsed_target.host, parsed_target.port,
+                    target_path)
+                return transport.get_transport_from_url(new_url)
         else:
             # Redirected to a different protocol
-            new_url = self._unsplit_url(scheme,
-                                        user, password,
-                                        host, port,
-                                        base_path)
-            new_transport = transport.get_transport(new_url)
-        return new_transport
+            new_url = self._unsplit_url(parsed_target.scheme,
+                    parsed_target.user,
+                    parsed_target.password,
+                    parsed_target.host, parsed_target.port,
+                    target_path)
+            return transport.get_transport_from_url(new_url)
 
 
 # TODO: May be better located in smart/medium.py with the other
@@ -606,7 +585,7 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
         if transport_base.startswith('bzr+'):
             transport_base = transport_base[4:]
         rel_url = urlutils.relative_url(self.base, transport_base)
-        return urllib.unquote(rel_url)
+        return urlutils.unquote(rel_url)
 
     def send_http_smart_request(self, bytes):
         try:
@@ -614,7 +593,7 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
             t = self._http_transport_ref()
             code, body_filelike = t._post(bytes)
             if code != 200:
-                raise InvalidHttpResponse(
+                raise errors.InvalidHttpResponse(
                     t._remote_path('.bzr/smart'),
                     'Expected 200 response code, got %r' % (code,))
         except (errors.InvalidHttpResponse, errors.ConnectionReset), e:

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@ from bzrlib import (
     registry,
     revision,
     revisionspec,
-    symbol_versioning,
     tests,
     )
 
@@ -251,7 +250,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         wt.commit(message='add file1 and file2')
         self.run_bzr('branch parent child')
         os.unlink('child/file1')
-        file('child/file2', 'wb').write('hello\n')
+        with file('child/file2', 'wb') as f: f.write('hello\n')
         self.run_bzr(['commit', '-m', 'remove file1 and modify file2',
             'child'])
         os.chdir('parent')
@@ -323,7 +322,7 @@ class TestShortLogFormatter(TestCaseForLogFormatter):
     1 Joe Foo\t2005-11-22
       rev-1
 
-Use --include-merges or -n0 to see merged revisions.
+Use --include-merged or -n0 to see merged revisions.
 """,
             wt.branch, log.ShortLogFormatter,
             formatter_kwargs=dict(show_advice=True))
@@ -1335,7 +1334,7 @@ class TestLogWithBugs(TestCaseForLogFormatter, TestLogMixin):
         self.assertFormatterResult("""\
 ------------------------------------------------------------
 revno: 2
-fixes bug(s): test://bug/id test://bug/2
+fixes bugs: test://bug/id test://bug/2
 author: Joe Bar <joe@bar.com>
 committer: Joe Foo <joe@foo.com>
 branch nick: work
@@ -1346,7 +1345,7 @@ message:
   message
 ------------------------------------------------------------
 revno: 1
-fixes bug(s): test://bug/id
+fixes bug: test://bug/id
 committer: Joe Foo <joe@foo.com>
 branch nick: work
 timestamp: Tue 2005-11-22 00:00:00 +0000
@@ -1359,13 +1358,13 @@ message:
         tree = self.make_commits_with_bugs()
         self.assertFormatterResult("""\
     2 Joe Bar\t2005-11-22
-      fixes bug(s): test://bug/id test://bug/2
+      fixes bugs: test://bug/id test://bug/2
       multiline
       log
       message
 
     1 Joe Foo\t2005-11-22
-      fixes bug(s): test://bug/id
+      fixes bug: test://bug/id
       simple log message
 
 """,
@@ -1537,7 +1536,7 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
     def make_branch_with_alternate_ancestries(self, relpath='.'):
         # See test_merge_sorted_exclude_ancestry below for the difference with
         # bt.per_branch.test_iter_merge_sorted_revision.
-        # TestIterMergeSortedRevisionsBushyGraph. 
+        # TestIterMergeSortedRevisionsBushyGraph.
         # make_branch_with_alternate_ancestries
         # and test_merge_sorted_exclude_ancestry
         # See the FIXME in assertLogRevnos too.
@@ -1570,7 +1569,7 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
     def assertLogRevnos(self, expected_revnos, b, start, end,
                         exclude_common_ancestry, generate_merge_revisions=True):
         # FIXME: the layering in log makes it hard to test intermediate levels,
-        # I wish adding filters with their parameters were easier...
+        # I wish adding filters with their parameters was easier...
         # -- vila 20100413
         iter_revs = log._calc_view_revisions(
             b, start, end, direction='reverse',
@@ -1597,4 +1596,43 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
         self.assertLogRevnos(['3', '1.1.2', '1.2.1', '1.1.1', '2'],
                              b, '1', '3', exclude_common_ancestry=True,
                              generate_merge_revisions=True)
+
+
+class TestLogDefaults(TestCaseForLogFormatter):
+    def test_default_log_level(self):
+        """
+        Test to ensure that specifying 'levels=1' to make_log_request_dict
+        doesn't get overwritten when using a LogFormatter that supports more
+        detail.
+        Fixes bug #747958.
+        """
+        wt = self._prepare_tree_with_merges()
+        b = wt.branch
+
+        class CustomLogFormatter(log.LogFormatter):
+            def __init__(self, *args, **kwargs):
+                super(CustomLogFormatter, self).__init__(*args, **kwargs)
+                self.revisions = []
+            def get_levels(self):
+                # log formatter supports all levels:
+                return 0
+            def log_revision(self, revision):
+                self.revisions.append(revision)
+
+        log_formatter = LogCatcher()
+        # First request we don't specify number of levels, we should get a
+        # sensible default (whatever the LogFormatter handles - which in this
+        # case is 0/everything):
+        request = log.make_log_request_dict(limit=10)
+        log.Logger(b, request).show(log_formatter)
+        # should have all three revisions:
+        self.assertEquals(len(log_formatter.revisions), 3)
+
+        del log_formatter
+        log_formatter = LogCatcher()
+        # now explicitly request mainline revisions only:
+        request = log.make_log_request_dict(limit=10, levels=1)
+        log.Logger(b, request).show(log_formatter)
+        # should now only have 2 revisions:
+        self.assertEquals(len(log_formatter.revisions), 2)
 

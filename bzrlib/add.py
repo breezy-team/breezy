@@ -16,12 +16,16 @@
 
 """Helper functions for adding files to working trees."""
 
+from __future__ import absolute_import
+
 import sys
+import os
 
 from bzrlib import (
     osutils,
+    ui, 
     )
-
+from bzrlib.i18n import gettext
 
 class AddAction(object):
     """A class which defines what action to take when adding a file."""
@@ -52,6 +56,44 @@ class AddAction(object):
         if self.should_print:
             self._to_file.write('adding %s\n' % _quote(path))
         return None
+
+    def skip_file(self, tree, path, kind, stat_value = None):
+        """Test whether the given file should be skipped or not.
+        
+        The default action never skips. Note this is only called during
+        recursive adds
+        
+        :param tree: The tree we are working in
+        :param path: The path being added
+        :param kind: The kind of object being added.
+        :param stat: Stat result for this file, if available already
+        :return bool. True if the file should be skipped (not added)
+        """
+        return False
+
+
+class AddWithSkipLargeAction(AddAction):
+    """A class that can decide to skip a file if it's considered too large"""
+
+    _maxSize = None
+
+    def skip_file(self, tree, path, kind, stat_value = None):
+        if kind != 'file':
+            return False
+        opt_name = 'add.maximum_file_size'
+        if self._maxSize is None:
+            config = tree.get_config_stack()
+            self._maxSize = config.get(opt_name)
+        if stat_value is None:
+            file_size = os.path.getsize(path);
+        else:
+            file_size = stat_value.st_size;
+        if self._maxSize > 0 and file_size > self._maxSize:
+            ui.ui_factory.show_warning(gettext(
+                "skipping {0} (larger than {1} of {2} bytes)").format(
+                path, opt_name,  self._maxSize))
+            return True
+        return False
 
 
 class AddFromBaseAction(AddAction):
@@ -87,7 +129,8 @@ class AddFromBaseAction(AddAction):
         """
 
         if self.base_tree.has_id(parent_ie.file_id):
-            base_parent_ie = self.base_tree.inventory[parent_ie.file_id]
+            # FIXME: Handle nested trees
+            base_parent_ie = self.base_tree.root_inventory[parent_ie.file_id]
             base_child_ie = base_parent_ie.children.get(
                 osutils.basename(path))
             if base_child_ie is not None:

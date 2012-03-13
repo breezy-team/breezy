@@ -16,5 +16,5 @@
 
 # Other arguments
 # Add --allow-writes for RW access
-# Example config listens on localhost
-DAEMON_ARGS="--port=127.0.0.1:4155"
+# Example config listens on localhost and default port
+DAEMON_ARGS="--listen=127.0.0.1"

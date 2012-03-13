@@ -31,10 +31,10 @@ from bzrlib.errors import (
     )
 from bzrlib import (
     btree_index,
-    graph,
     symbol_versioning,
     tests,
     transport,
+    vf_search,
     )
 from bzrlib.btree_index import BTreeBuilder, BTreeGraphIndex
 from bzrlib.index import GraphIndex
@@ -45,6 +45,7 @@ from bzrlib.tests import (
     )
 from bzrlib import (
     bzrdir,
+    controldir,
     errors,
     inventory,
     osutils,
@@ -66,7 +67,7 @@ from bzrlib.repofmt import (
 class TestDefaultFormat(TestCase):
 
     def test_get_set_default_format(self):
-        old_default = bzrdir.format_registry.get('default')
+        old_default = controldir.format_registry.get('default')
         private_default = old_default().repository_format.__class__
         old_format = repository.format_registry.get_default()
         self.assertTrue(isinstance(old_format, private_default))
@@ -74,9 +75,9 @@ class TestDefaultFormat(TestCase):
             my_bzrdir = bzrdir.BzrDirMetaFormat1()
             my_bzrdir.repository_format = SampleRepositoryFormat()
             return my_bzrdir
-        bzrdir.format_registry.remove('default')
-        bzrdir.format_registry.register('sample', make_sample_bzrdir, '')
-        bzrdir.format_registry.set_default('sample')
+        controldir.format_registry.remove('default')
+        controldir.format_registry.register('sample', make_sample_bzrdir, '')
+        controldir.format_registry.set_default('sample')
         # creating a repository should now create an instrumented dir.
         try:
             # the default branch format is used by the meta dir format
@@ -85,21 +86,22 @@ class TestDefaultFormat(TestCase):
             result = dir.create_repository()
             self.assertEqual(result, 'A bzr repository dir')
         finally:
-            bzrdir.format_registry.remove('default')
-            bzrdir.format_registry.remove('sample')
-            bzrdir.format_registry.register('default', old_default, '')
+            controldir.format_registry.remove('default')
+            controldir.format_registry.remove('sample')
+            controldir.format_registry.register('default', old_default, '')
         self.assertIsInstance(repository.format_registry.get_default(),
                               old_format.__class__)
 
 
-class SampleRepositoryFormat(repository.RepositoryFormat):
+class SampleRepositoryFormat(repository.RepositoryFormatMetaDir):
     """A sample format
 
     this format is initializable, unsupported to aid in testing the
     open and open(unsupported=True) routines.
     """
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return "Sample .bzr repository format."
 
@@ -136,23 +138,45 @@ class TestRepositoryFormat(TestCaseWithTransport):
         def check_format(format, url):
             dir = format._matchingbzrdir.initialize(url)
             format.initialize(dir)
-            t = transport.get_transport(url)
-            found_format = repository.RepositoryFormat.find_format(dir)
+            t = transport.get_transport_from_path(url)
+            found_format = repository.RepositoryFormatMetaDir.find_format(dir)
             self.assertIsInstance(found_format, format.__class__)
         check_format(repository.format_registry.get_default(), "bar")
 
     def test_find_format_no_repository(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         self.assertRaises(errors.NoRepositoryPresent,
-                          repository.RepositoryFormat.find_format,
+                          repository.RepositoryFormatMetaDir.find_format,
                           dir)
+
+    def test_from_string(self):
+        self.assertIsInstance(
+            SampleRepositoryFormat.from_string(
+                "Sample .bzr repository format."),
+            SampleRepositoryFormat)
+        self.assertRaises(AssertionError,
+            SampleRepositoryFormat.from_string,
+                "Different .bzr repository format.")
 
     def test_find_format_unknown_format(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         SampleRepositoryFormat().initialize(dir)
         self.assertRaises(UnknownFormatError,
-                          repository.RepositoryFormat.find_format,
+                          repository.RepositoryFormatMetaDir.find_format,
                           dir)
+
+    def test_find_format_with_features(self):
+        tree = self.make_branch_and_tree('.', format='2a')
+        tree.branch.repository.update_feature_flags({"name": "necessity"})
+        found_format = repository.RepositoryFormatMetaDir.find_format(tree.bzrdir)
+        self.assertIsInstance(found_format, repository.RepositoryFormatMetaDir)
+        self.assertEquals(found_format.features.get("name"), "necessity")
+        self.assertRaises(errors.MissingFeature, found_format.check_support_status,
+            True)
+        self.addCleanup(repository.RepositoryFormatMetaDir.unregister_feature,
+            "name")
+        repository.RepositoryFormatMetaDir.register_feature("name")
+        found_format.check_support_status(True)
 
     def test_register_unregister_format(self):
         # Test deprecated format registration functions
@@ -213,13 +237,13 @@ class TestFormatKnit1(TestCaseWithTransport):
     def test_attribute__fetch_order(self):
         """Knits need topological data insertion."""
         repo = self.make_repository('.',
-                format=bzrdir.format_registry.get('knit')())
+                format=controldir.format_registry.get('knit')())
         self.assertEqual('topological', repo._format._fetch_order)
 
     def test_attribute__fetch_uses_deltas(self):
         """Knits reuse deltas."""
         repo = self.make_repository('.',
-                format=bzrdir.format_registry.get('knit')())
+                format=controldir.format_registry.get('knit')())
         self.assertEqual(True, repo._format._fetch_uses_deltas)
 
     def test_disk_layout(self):
@@ -311,7 +335,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         is valid when the api is not being abused.
         """
         repo = self.make_repository('.',
-                format=bzrdir.format_registry.get('knit')())
+                format=controldir.format_registry.get('knit')())
         inv_xml = '<inventory format="5">\n</inventory>\n'
         inv = repo._deserialise_inventory('test-rev-id', inv_xml)
         self.assertEqual('test-rev-id', inv.root.revision)
@@ -319,7 +343,7 @@ class TestFormatKnit1(TestCaseWithTransport):
     def test_deserialise_uses_global_revision_id(self):
         """If it is set, then we re-use the global revision id"""
         repo = self.make_repository('.',
-                format=bzrdir.format_registry.get('knit')())
+                format=controldir.format_registry.get('knit')())
         inv_xml = ('<inventory format="5" revision_id="other-rev-id">\n'
                    '</inventory>\n')
         # Arguably, the deserialise_inventory should detect a mismatch, and
@@ -332,7 +356,7 @@ class TestFormatKnit1(TestCaseWithTransport):
 
     def test_supports_external_lookups(self):
         repo = self.make_repository('.',
-                format=bzrdir.format_registry.get('knit')())
+                format=controldir.format_registry.get('knit')())
         self.assertFalse(repo._format.supports_external_lookups)
 
 
@@ -438,13 +462,15 @@ class TestInterRepository(TestCaseWithTransport):
 
 class TestRepositoryFormat1(knitrepo.RepositoryFormatKnit1):
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         return "Test Format 1"
 
 
 class TestRepositoryFormat2(knitrepo.RepositoryFormatKnit1):
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         return "Test Format 2"
 
 
@@ -499,7 +525,7 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         revision_tree.lock_read()
         try:
             self.assertRaises(errors.NoSuchFile, revision_tree.get_file_lines,
-                revision_tree.inventory.root.file_id)
+                revision_tree.get_root_id())
         finally:
             revision_tree.unlock()
         format = bzrdir.BzrDirMetaFormat1()
@@ -509,14 +535,15 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         revision_tree = tree.branch.repository.revision_tree('dull')
         revision_tree.lock_read()
         try:
-            revision_tree.get_file_lines(revision_tree.inventory.root.file_id)
+            revision_tree.get_file_lines(revision_tree.get_root_id())
         finally:
             revision_tree.unlock()
         tree.commit("Another dull commit", rev_id='dull2')
         revision_tree = tree.branch.repository.revision_tree('dull2')
         revision_tree.lock_read()
         self.addCleanup(revision_tree.unlock)
-        self.assertEqual('dull', revision_tree.inventory.root.revision)
+        self.assertEqual('dull',
+                revision_tree.get_file_revision(revision_tree.get_root_id()))
 
     def test_supports_external_lookups(self):
         format = bzrdir.BzrDirMetaFormat1()
@@ -706,7 +733,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
 
         # On a regular pass, getting the inventories and chk pages for rev-2
         # would only get the newly created chk pages
-        search = graph.SearchResult(set(['rev-2']), set(['rev-1']), 1,
+        search = vf_search.SearchResult(set(['rev-2']), set(['rev-1']), 1,
                                     set(['rev-2']))
         simple_chk_records = []
         for vf_name, substream in source.get_stream(search):
@@ -893,7 +920,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             revision = _mod_revision.Revision('rev1a',
                 committer='jrandom@example.com', timestamp=0,
                 inventory_sha1='', timezone=0, message='foo', parent_ids=[])
-            repo.add_revision('rev1a',revision, inv)
+            repo.add_revision('rev1a', revision, inv)
 
             # make rev1b, which has no Revision, but has an Inventory, and
             # file1
@@ -934,7 +961,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         revision = _mod_revision.Revision(revision_id,
             committer='jrandom@example.com', timestamp=0, inventory_sha1='',
             timezone=0, message='foo', parent_ids=parent_ids)
-        repo.add_revision(revision_id,revision, inv)
+        repo.add_revision(revision_id, revision, inv)
 
     def add_file(self, repo, inv, filename, revision, parents):
         file_id = filename + '-id'
@@ -968,7 +995,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
 class TestRepositoryPackCollection(TestCaseWithTransport):
 
     def get_format(self):
-        return bzrdir.format_registry.make_bzrdir('pack-0.92')
+        return controldir.format_registry.make_bzrdir('pack-0.92')
 
     def get_packs(self):
         format = self.get_format()
@@ -1060,6 +1087,23 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
                                'obsolete_packs/%s.pack' % (names[0],))
         packs.transport.rename('indices/%s.iix' % (names[0],),
                                'obsolete_packs/%s.iix' % (names[0],))
+        # Now trigger the obsoletion, and ensure that all the remaining files
+        # are still renamed
+        packs._obsolete_packs([pack])
+        self.assertEqual([n + '.pack' for n in names[1:]],
+                         sorted(packs._pack_transport.list_dir('.')))
+        # names[0] should not be present in the index anymore
+        self.assertEqual(names[1:],
+            sorted(set([osutils.splitext(n)[0] for n in
+                        packs._index_transport.list_dir('.')])))
+
+    def test__obsolete_packs_missing_directory(self):
+        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        r.control_transport.rmdir('obsolete_packs')
+        names = packs.names()
+        pack = packs.get_pack_by_name(names[0])
+        # Schedule this one for removal
+        packs._remove_pack_from_memory(pack)
         # Now trigger the obsoletion, and ensure that all the remaining files
         # are still renamed
         packs._obsolete_packs([pack])
@@ -1345,6 +1389,12 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         obsolete_names = set([osutils.splitext(n)[0] for n in obsolete_packs])
         self.assertEqual([pack.name], sorted(obsolete_names))
 
+    def test_pack_no_obsolete_packs_directory(self):
+        """Bug #314314, don't fail if obsolete_packs directory does
+        not exist."""
+        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        r.control_transport.rmdir('obsolete_packs')
+        packs._clear_obsolete_packs()
 
 
 class TestPack(TestCaseWithTransport):
@@ -1660,3 +1710,33 @@ class TestCrossFormatPacks(TestCaseWithTransport):
     def test_IDS_format_same_no(self):
         # When the formats are the same, pack is not called.
         self.run_fetch('2a', '2a', False)
+
+
+class Test_LazyListJoin(tests.TestCase):
+
+    def test__repr__(self):
+        lazy = repository._LazyListJoin(['a'], ['b'])
+        self.assertEqual("bzrlib.repository._LazyListJoin((['a'], ['b']))",
+                         repr(lazy))
+
+
+class TestFeatures(tests.TestCaseWithTransport):
+
+    def test_open_with_present_feature(self):
+        self.addCleanup(
+            repository.RepositoryFormatMetaDir.unregister_feature,
+            "makes-cheese-sandwich")
+        repository.RepositoryFormatMetaDir.register_feature(
+            "makes-cheese-sandwich")
+        repo = self.make_repository('.')
+        repo.lock_write()
+        repo._format.features["makes-cheese-sandwich"] = "required"
+        repo._format.check_support_status(False)
+        repo.unlock()
+
+    def test_open_with_missing_required_feature(self):
+        repo = self.make_repository('.')
+        repo.lock_write()
+        repo._format.features["makes-cheese-sandwich"] = "required"
+        self.assertRaises(errors.MissingFeature,
+            repo._format.check_support_status, False)

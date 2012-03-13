@@ -23,6 +23,8 @@
 # But those depend on its position within a particular inventory, and
 # it would be nice not to need to hold the backpointer here.
 
+from __future__ import absolute_import
+
 # This should really be an id randomly assigned when the tree is
 # created, but it's not for now.
 ROOT_ID = "TREE_ROOT"
@@ -848,22 +850,6 @@ class CommonInventory(object):
             descend(self.root, u'')
         return accum
 
-    def directories(self):
-        """Return (path, entry) pairs for all directories, including the root.
-        """
-        accum = []
-        def descend(parent_ie, parent_path):
-            accum.append((parent_path, parent_ie))
-
-            kids = [(ie.name, ie) for ie in parent_ie.children.itervalues() if ie.kind == 'directory']
-            kids.sort()
-
-            for name, child_ie in kids:
-                child_path = osutils.pathjoin(parent_path, name)
-                descend(child_ie, child_path)
-        descend(self.root, u'')
-        return accum
-
     def path2id(self, relpath):
         """Walk down through directories to return entry of last component.
 
@@ -1490,8 +1476,8 @@ class CHKInventory(CommonInventory):
             if entry.kind == 'directory':
                 directories_to_expand.add(entry.file_id)
             interesting.add(entry.parent_id)
-            children_of_parent_id.setdefault(entry.parent_id, []
-                                             ).append(entry.file_id)
+            children_of_parent_id.setdefault(entry.parent_id, set()
+                                             ).add(entry.file_id)
 
         # Now, interesting has all of the direct parents, but not the
         # parents of those parents. It also may have some duplicates with
@@ -1505,8 +1491,8 @@ class CHKInventory(CommonInventory):
             next_parents = set()
             for entry in self._getitems(remaining_parents):
                 next_parents.add(entry.parent_id)
-                children_of_parent_id.setdefault(entry.parent_id, []
-                                                 ).append(entry.file_id)
+                children_of_parent_id.setdefault(entry.parent_id, set()
+                                                 ).add(entry.file_id)
             # Remove any search tips we've already processed
             remaining_parents = next_parents.difference(interesting)
             interesting.update(remaining_parents)
@@ -1525,8 +1511,8 @@ class CHKInventory(CommonInventory):
             for entry in self._getitems(next_file_ids):
                 if entry.kind == 'directory':
                     directories_to_expand.add(entry.file_id)
-                children_of_parent_id.setdefault(entry.parent_id, []
-                                                 ).append(entry.file_id)
+                children_of_parent_id.setdefault(entry.parent_id, set()
+                                                 ).add(entry.file_id)
         return interesting, children_of_parent_id
 
     def filter(self, specific_fileids):
@@ -2125,13 +2111,16 @@ class CHKInventory(CommonInventory):
     def path2id(self, relpath):
         """See CommonInventory.path2id()."""
         # TODO: perhaps support negative hits?
-        result = self._path_to_fileid_cache.get(relpath, None)
-        if result is not None:
-            return result
         if isinstance(relpath, basestring):
             names = osutils.splitpath(relpath)
         else:
             names = relpath
+            if relpath == []:
+                relpath = [""]
+            relpath = osutils.pathjoin(*relpath)
+        result = self._path_to_fileid_cache.get(relpath, None)
+        if result is not None:
+            return result
         current_id = self.root_id
         if current_id is None:
             return None

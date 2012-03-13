@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2012 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -20,17 +20,21 @@
 
 import os
 
+from bzrlib.controldir import ControlDir
 from bzrlib import (
-        osutils,
-        urlutils,
-        branch,
-        )
+    osutils,
+    urlutils,
+    branch,
+    )
 from bzrlib.workingtree import WorkingTree
 from bzrlib.tests import (
-        TestCaseWithTransport,
-        script,
-        )
+    TestCaseWithTransport,
+    script,
+    )
+from bzrlib.tests.features import UnicodeFilenameFeature
 from bzrlib.directory_service import directories
+
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 
 
 class TestSwitch(TestCaseWithTransport):
@@ -149,8 +153,26 @@ class TestSwitch(TestCaseWithTransport):
         branchb_id = tree2.commit('bar')
         checkout = tree1.branch.create_checkout('heavyco/a', lightweight=False)
         self.run_bzr(['switch', 'branchb'], working_dir='heavyco/a')
+        # Refresh checkout as 'switch' modified it
+        checkout = checkout.bzrdir.open_workingtree()
         self.assertEqual(branchb_id, checkout.last_revision())
-        self.assertEqual(tree2.branch.base, checkout.branch.get_bound_location())
+        self.assertEqual(tree2.branch.base,
+                         checkout.branch.get_bound_location())
+
+    def test_switch_finds_relative_unicode_branch(self):
+        """Switch will find 'foo' relative to the branch the checkout is of."""
+        self.requireFeature(UnicodeFilenameFeature)
+        self.build_tree(['repo/'])
+        tree1 = self.make_branch_and_tree('repo/brancha')
+        tree1.commit('foo')
+        tree2 = self.make_branch_and_tree(u'repo/branch\xe9')
+        tree2.pull(tree1.branch)
+        branchb_id = tree2.commit('bar')
+        checkout =  tree1.branch.create_checkout('checkout', lightweight=True)
+        self.run_bzr(['switch', u'branch\xe9'], working_dir='checkout')
+        self.assertEqual(branchb_id, checkout.last_revision())
+        checkout = checkout.bzrdir.open_workingtree()
+        self.assertEqual(tree2.branch.base, checkout.branch.base)
 
     def test_switch_revision(self):
         tree = self._create_sample_tree()
@@ -158,6 +180,88 @@ class TestSwitch(TestCaseWithTransport):
         self.run_bzr(['switch', 'branch-1', '-r1'], working_dir='checkout')
         self.assertPathExists('checkout/file-1')
         self.assertPathDoesNotExist('checkout/file-2')
+
+    def test_switch_into_colocated(self):
+        # Create a new colocated branch from an existing non-colocated branch.
+        tree = self.make_branch_and_tree('.', format='development-colo')
+        self.build_tree(['file-1', 'file-2'])
+        tree.add('file-1')
+        revid1 = tree.commit('rev1')
+        tree.add('file-2')
+        revid2 = tree.commit('rev2')
+        self.run_bzr(['switch', '-b', 'anotherbranch'])
+        self.assertEquals(
+            set(['', 'anotherbranch']),
+            set(tree.branch.bzrdir.get_branches().keys()))
+
+    def test_switch_into_unrelated_colocated(self):
+        # Create a new colocated branch from an existing non-colocated branch.
+        tree = self.make_branch_and_tree('.', format='development-colo')
+        self.build_tree(['file-1', 'file-2'])
+        tree.add('file-1')
+        revid1 = tree.commit('rev1')
+        tree.add('file-2')
+        revid2 = tree.commit('rev2')
+        tree.bzrdir.create_branch(name='foo')
+        self.run_bzr_error(['Cannot switch a branch, only a checkout.'],
+            'switch foo')
+        self.run_bzr(['switch', '--force', 'foo'])
+
+    def test_switch_existing_colocated(self):
+        # Create a branch branch-1 that initially is a checkout of 'foo'
+        # Use switch to change it to 'anotherbranch'
+        repo = self.make_repository('branch-1', format='development-colo')
+        target_branch = repo.bzrdir.create_branch(name='foo')
+        repo.bzrdir.set_branch_reference(target_branch)
+        tree = repo.bzrdir.create_workingtree()
+        self.build_tree(['branch-1/file-1', 'branch-1/file-2'])
+        tree.add('file-1')
+        revid1 = tree.commit('rev1')
+        tree.add('file-2')
+        revid2 = tree.commit('rev2')
+        otherbranch = tree.bzrdir.create_branch(name='anotherbranch')
+        otherbranch.generate_revision_history(revid1)
+        self.run_bzr(['switch', 'anotherbranch'], working_dir='branch-1')
+        tree = WorkingTree.open("branch-1")
+        self.assertEquals(tree.last_revision(), revid1)
+        self.assertEquals(tree.branch.control_url, otherbranch.control_url)
+
+    def test_switch_new_colocated(self):
+        # Create a branch branch-1 that initially is a checkout of 'foo'
+        # Use switch to create 'anotherbranch' which derives from that
+        repo = self.make_repository('branch-1', format='development-colo')
+        target_branch = repo.bzrdir.create_branch(name='foo')
+        repo.bzrdir.set_branch_reference(target_branch)
+        tree = repo.bzrdir.create_workingtree()
+        self.build_tree(['branch-1/file-1', 'branch-1/file-2'])
+        tree.add('file-1')
+        revid1 = tree.commit('rev1')
+        self.run_bzr(['switch', '-b', 'anotherbranch'], working_dir='branch-1')
+        bzrdir = ControlDir.open("branch-1")
+        self.assertEquals(
+            set([b.name for b in bzrdir.list_branches()]),
+            set(["foo", "anotherbranch"]))
+        self.assertEquals(bzrdir.open_branch().name, "anotherbranch")
+        self.assertEquals(bzrdir.open_branch().last_revision(), revid1)
+
+    def test_switch_new_colocated_unicode(self):
+        # Create a branch branch-1 that initially is a checkout of 'foo'
+        # Use switch to create 'branch\xe9' which derives from that
+        self.requireFeature(UnicodeFilenameFeature)
+        repo = self.make_repository('branch-1', format='development-colo')
+        target_branch = repo.bzrdir.create_branch(name='foo')
+        repo.bzrdir.set_branch_reference(target_branch)
+        tree = repo.bzrdir.create_workingtree()
+        self.build_tree(['branch-1/file-1', 'branch-1/file-2'])
+        tree.add('file-1')
+        revid1 = tree.commit('rev1')
+        self.run_bzr(['switch', '-b', u'branch\xe9'], working_dir='branch-1')
+        bzrdir = ControlDir.open("branch-1")
+        self.assertEquals(
+            set([b.name for b in bzrdir.list_branches()]),
+            set(["foo", u"branch\xe9"]))
+        self.assertEquals(bzrdir.open_branch().name, u"branch\xe9")
+        self.assertEquals(bzrdir.open_branch().last_revision(), revid1)
 
     def test_switch_only_revision(self):
         tree = self._create_sample_tree()
@@ -278,6 +382,7 @@ class TestSwitch(TestCaseWithTransport):
         self.run_bzr('switch --directory checkout b')
         self.assertFileEqual('initial\nmore\n', 'checkout/a')
 
+
 class TestSwitchParentLocationBase(TestCaseWithTransport):
 
     def setUp(self):
@@ -328,3 +433,47 @@ class TestSwitchParentLocation(TestSwitchParentLocationBase):
         self.assertParent('repo/trunk', bb)
         self.assertParent('repo/trunk', mb)
 
+
+class TestSwitchDoesntOpenMasterBranch(TestCaseWithTransport):
+    # See https://bugs.launchpad.net/bzr/+bug/812285
+    # "bzr switch --create-branch" can point the new branch's parent to the
+    # master branch, but it doesn't have to open it to do so.
+
+    def test_switch_create_doesnt_open_master_branch(self):
+        master = self.make_branch_and_tree('master')
+        master.commit('one')
+        # Note: not a lightweight checkout
+        checkout = master.branch.create_checkout('checkout')
+        opened = []
+        def open_hook(branch):
+            # Just append the final directory of the branch
+            name = branch.base.rstrip('/').rsplit('/', 1)[1]
+            opened.append(name)
+        branch.Branch.hooks.install_named_hook('open', open_hook,
+                                               'open_hook_logger')
+        self.run_bzr('switch --create-branch -d checkout feature')
+        # We only open the master branch 1 time.
+        # This test should be cleaner to write, but see bug:
+        #  https://bugs.launchpad.net/bzr/+bug/812295
+        self.assertEqual(1, opened.count('master'))
+
+
+class TestSmartServerSwitch(TestCaseWithTransport):
+
+    def test_switch_lightweight(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        out, err = self.run_bzr(['checkout', '--lightweight', self.get_url('from'),
+            'target'])
+        self.reset_smart_call_log()
+        self.run_bzr(['switch', self.get_url('from')], working_dir='target')
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(24, self.hpss_calls)
+        self.assertLength(4, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

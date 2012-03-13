@@ -20,6 +20,8 @@ See doc/developers/testing.txt for more explanations.
 This module should be importable even if testtools aren't available.
 """
 
+from __future__ import absolute_import
+
 import os
 
 from bzrlib import (

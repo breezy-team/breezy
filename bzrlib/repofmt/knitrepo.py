@@ -14,12 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     errors,
     knit as _mod_knit,
     lockable_files,
@@ -38,7 +40,7 @@ from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
     InterRepository,
     IsInWriteGroupError,
-    RepositoryFormat,
+    RepositoryFormatMetaDir,
     )
 from bzrlib.vf_repository import (
     InterSameDataRepository,
@@ -321,7 +323,7 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
                                     than normal. I.e. during 'upgrade'.
         """
         if not _found:
-            format = RepositoryFormat.find_format(a_bzrdir)
+            format = RepositoryFormatMetaDir.find_format(a_bzrdir)
         if _override_transport is not None:
             repo_transport = _override_transport
         else:
@@ -367,7 +369,8 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
     def __ne__(self, other):
         return self.__class__ is not other.__class__
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar-NG Knit Repository Format 1"
 
@@ -402,14 +405,15 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
         return xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
+        return controldir.format_registry.make_bzrdir('dirstate-with-subtree')
 
     def _ignore_setting_bzrdir(self, format):
         pass
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar Knit Repository Format 3 (bzr 0.15)\n"
 
@@ -443,14 +447,15 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
         return xml6.serializer_v6
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('rich-root')
+        return controldir.format_registry.make_bzrdir('rich-root')
 
     def _ignore_setting_bzrdir(self, format):
         pass
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return 'Bazaar Knit Repository Format 4 (bzr 1.0)\n'
 

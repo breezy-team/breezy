@@ -14,8 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
 """Commit message editor support."""
+
+from __future__ import absolute_import
 
 import codecs
 import os
@@ -144,7 +145,7 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         if not msgfilename:
             return None
         basename = osutils.basename(msgfilename)
-        msg_transport = transport.get_transport(osutils.dirname(msgfilename))
+        msg_transport = transport.get_transport_from_path(osutils.dirname(msgfilename))
         reference_content = msg_transport.get_bytes(basename)
         if not _run_editor(msgfilename):
             return None

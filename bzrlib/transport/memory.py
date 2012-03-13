@@ -20,12 +20,12 @@ The contents of the transport will be lost when the object is discarded,
 so this is primarily useful for testing.
 """
 
+from __future__ import absolute_import
+
 import os
 import errno
-import re
 from stat import S_IFREG, S_IFDIR
 from cStringIO import StringIO
-import warnings
 
 from bzrlib import (
     transport,
@@ -36,9 +36,7 @@ from bzrlib.errors import (
     LockError,
     InProcessTransport,
     NoSuchFile,
-    TransportError,
     )
-from bzrlib.trace import mutter
 from bzrlib.transport import (
     AppendBasedFileStream,
     _file_streams,
@@ -81,7 +79,7 @@ class MemoryTransport(transport.Transport):
 
     def clone(self, offset=None):
         """See Transport.clone()."""
-        path = self._combine_paths(self._cwd, offset)
+        path = urlutils.URL._combine_paths(self._cwd, offset)
         if len(path) == 0 or path[-1] != '/':
             path += '/'
         url = self._scheme + path

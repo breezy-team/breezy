@@ -14,7 +14,7 @@ Override the email id used by Bazaar.  Typical format::
 
   "John Doe <jdoe@example.com>"
 
-See also the ``email`` configuration value.
+See also the ``email`` configuration option.
 
 BZR_PROGRESS_BAR
 ~~~~~~~~~~~~~~~~
@@ -54,7 +54,7 @@ BZR_REMOTE_PATH
 
 Path to the Bazaar executable to use when using the bzr+ssh protocol.
 
-See also the ``bzr_remote_path`` configuration value.
+See also the ``bzr_remote_path`` configuration option.
 
 BZR_EDITOR
 ~~~~~~~~~~
@@ -221,7 +221,7 @@ General format
 ~~~~~~~~~~~~~~
 
 An ini file has three types of contructs: section headers, section
-variables and comments.
+options and comments.
 
 Comments
 ^^^^^^^^
@@ -240,9 +240,9 @@ of a line.  A typical section header looks like this::
 
 The only valid section headers for bazaar.conf currently are [DEFAULT] and
 [ALIASES].  Section headers are case sensitive. The default section provides for
-setting variables which can be overridden with the branch config file.
+setting options which can be overridden with the branch config file.
 
-For ``locations.conf``, the variables from the section with the
+For ``locations.conf``, the options from the section with the
 longest matching section header are used to the exclusion of other
 potentially valid section headers. A section header uses the path for
 the branch as the section header. Some examples include::
@@ -251,29 +251,27 @@ the branch as the section header. Some examples include::
     [/home/jdoe/branches/]
 
 
-Section variables
-^^^^^^^^^^^^^^^^^
+Section options
+^^^^^^^^^^^^^^^
 
-A section variable resides within a section. A section variable contains a
-variable name, an equals sign and a value.  For example::
+A section option resides within a section. A section option contains an
+option name, an equals sign and a value.  For example::
 
     email            = John Doe <jdoe@isp.com>
     gpg_signing_key  = Amy Pond <amy@example.com>
 
-A variable can reference other variables **in the same configuration file** by
-enclosing them in curly brackets::
+A option can reference other options by enclosing them in curly brackets::
 
     my_branch_name = feature_x
     my_server      = bzr+ssh://example.com
     push_location   = {my_server}/project/{my_branch_name}
 
+Option policies
+^^^^^^^^^^^^^^^
 
-Variable policies
-^^^^^^^^^^^^^^^^^
-
-Variables defined in a section affect the named directory or URL plus
-any locations they contain.  Policies can be used to change how a
-variable value is interpreted for contained locations.  Currently
+Options defined in a section affect the named directory or URL plus
+any locations they contain.  Policies can be used to change how an
+option value is interpreted for contained locations.  Currently
 there are three policies available:
 
  none:
@@ -286,7 +284,7 @@ there are three policies available:
    for contained locations, any additional path components are
    appended to the value.
 
-Policies are specified by keys with names of the form "$var:policy".
+Policies are specified by keys with names of the form "<option_name>:policy".
 For example, to define the push location for a tree of branches, the
 following could be used::
 
@@ -296,6 +294,48 @@ following could be used::
 
 With this configuration, the push location for ``/top/location/branch1``
 would be ``sftp://example.com/location/branch1``.
+
+Section local options
+^^^^^^^^^^^^^^^^^^^^^
+
+Some options are defined automatically inside a given section and can be
+refered to in this section only. 
+
+For example, the ``appendpath`` policy can be used like this::
+
+  [/home/vila/src/bzr/bugs]
+  mypush = lp:~vila/bzr
+  mypush:policy=appendpath
+
+Using ``relpath`` to achieve the same result is done like this::
+
+  [/home/vila/src/bzr/bugs]
+  mypush = lp:~vila/bzr/{relpath}
+
+In both cases, when used in a directory like
+``/home/vila/src/bzr/bugs/832013-expand-in-stack`` we'll get::
+
+   $ bzr config mypush
+   lp:~vila/bzr/832013-expand-in-stack
+
+Another such option is ``basename`` which can be used like this::
+
+  [/home/vila/src/bzr]
+  mypush = lp:~vila/bzr/{basename}
+
+When used in a directory like
+``/home/vila/src/bzr/bugs/832013-expand-in-stack`` we'll get::
+
+   $ bzr config mypush
+   lp:~vila/bzr/832013-expand-in-stack
+
+Note that ``basename`` here refers to the base name of ``relpath`` which
+itself is defined as the relative path between the section name and the
+location it matches.
+
+When an option is local to a Section, it cannot be referred to from option
+values in any other section from the same ``Store`` nor from any other
+``Store``.
 
 
 The main configuration file, bazaar.conf
@@ -337,14 +377,14 @@ remote servers. This can be used for all the supported transports and any part
 of bzr that requires authentication (smtp for example).
 
 The syntax of the file obeys the same rules as the others except for the
-variable policies which don't apply.
+option policies which don't apply.
 
 For more information on the possible uses of the authentication configuration
 file see :doc:`authentication-help`.
 
 
-Common variable options
------------------------
+Common options
+--------------
 
 debug_flags
 ~~~~~~~~~~~
@@ -354,6 +394,10 @@ can be used as with the -D command-line option (see `help global-options`).
 For example::
 
     debug_flags = hpss
+
+or::
+
+    debug_flags = hpss,evil
 
 email
 ~~~~~
@@ -415,8 +459,15 @@ In future it is planned that ``when-required`` will sign newly
 committed revisions only when the branch requires them.  ``never`` will refuse
 to sign newly committed revisions, even if the branch requires signatures.
 
+dirstate.fdatasync
+~~~~~~~~~~~~~~~~~~
+
+If true (default), working tree metadata changes are flushed through the
+OS buffers to physical disk.  This is somewhat slower, but means data
+should not be lost if the machine crashes.  See also repository.fdatasync.
+
 gpg_signing_key
-~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
 The GnuPG user identity to use when signing commits.  Can be an e-mail
 address, key fingerprint or full key ID.  When unset or when set to
@@ -504,6 +555,13 @@ Supported generic values are:
     smtp_username and smtp_password.
 :mapi: Use your preferred e-mail client on Windows.
 :xdg-email: Use xdg-email to run your preferred mail program
+
+repository.fdatasync
+~~~~~~~~~~~~~~~~~~~~
+
+If true (default), repository changes are flushed through the OS buffers
+to physical disk.  This is somewhat slower, but means data should not be
+lost if the machine crashes.  See also dirstate.fdatasync.
 
 submit_branch
 ~~~~~~~~~~~~~
@@ -610,6 +668,14 @@ send_strict
 If present, defines the ``--strict`` option default value for checking
 uncommitted changes before sending a merge directive.
 
+add.maximum_file_size
+~~~~~~~~~~~~~~~~~~~~~
+
+Defines the maximum file size the command line "add" operation will allow
+in recursive mode, with files larger than this value being skipped. You may 
+specify this value as an integer (in which case it is interpreted as bytes), 
+or you may specify the value using SI units, i.e. 10KB, 20MB, 1G. A value of 0 
+will disable skipping.
 
 External Merge Tools
 --------------------

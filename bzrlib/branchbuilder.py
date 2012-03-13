@@ -16,8 +16,10 @@
 
 """Utility for create branches with particular contents."""
 
+from __future__ import absolute_import
+
 from bzrlib import (
-    bzrdir,
+    controldir,
     commit,
     errors,
     memorytree,
@@ -64,7 +66,7 @@ class BranchBuilder(object):
             If the path of the transport does not exist but its parent does
             it will be created.
         :param format: Either a BzrDirFormat, or the name of a format in the
-            bzrdir format registry for the branch to be built.
+            controldir format registry for the branch to be built.
         :param branch: An already constructed branch to use.  This param is
             mutually exclusive with the transport and format params.
         """
@@ -82,12 +84,13 @@ class BranchBuilder(object):
             if format is None:
                 format = 'default'
             if isinstance(format, str):
-                format = bzrdir.format_registry.make_bzrdir(format)
-            self._branch = bzrdir.BzrDir.create_branch_convenience(
+                format = controldir.format_registry.make_bzrdir(format)
+            self._branch = controldir.ControlDir.create_branch_convenience(
                 transport.base, format=format, force_new_tree=False)
         self._tree = None
 
-    def build_commit(self, **commit_kwargs):
+    def build_commit(self, parent_ids=None, allow_leftmost_as_ghost=False,
+                     **commit_kwargs):
         """Build a commit on the branch.
 
         This makes a commit with no real file content for when you only want
@@ -96,9 +99,20 @@ class BranchBuilder(object):
         :param commit_kwargs: Arguments to pass through to commit, such as
              timestamp.
         """
+        if parent_ids is not None:
+            if len(parent_ids) == 0:
+                base_id = revision.NULL_REVISION
+            else:
+                base_id = parent_ids[0]
+            if base_id != self._branch.last_revision():
+                self._move_branch_pointer(base_id,
+                    allow_leftmost_as_ghost=allow_leftmost_as_ghost)
         tree = memorytree.MemoryTree.create_on_branch(self._branch)
         tree.lock_write()
         try:
+            if parent_ids is not None:
+                tree.set_parent_ids(parent_ids,
+                    allow_leftmost_as_ghost=allow_leftmost_as_ghost)
             tree.add('')
             return self._do_commit(tree, **commit_kwargs)
         finally:

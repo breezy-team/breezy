@@ -16,9 +16,9 @@
 
 # Author: Martin Pool <mbp@canonical.com>
 
-
 """Weave - storage of related text file versions"""
 
+from __future__ import absolute_import
 
 # XXX: If we do weaves this way, will a merge still behave the same
 # way if it's done in a different order?  That's a pretty desirable
@@ -920,7 +920,8 @@ class WeaveFile(Weave):
         self._transport = transport
         self._filemode = filemode
         try:
-            _read_weave_v5(self._transport.get(name + WeaveFile.WEAVE_SUFFIX), self)
+            f = self._transport.get(name + WeaveFile.WEAVE_SUFFIX)
+            _read_weave_v5(StringIO(f.read()), self)
         except errors.NoSuchFile:
             if not create:
                 raise

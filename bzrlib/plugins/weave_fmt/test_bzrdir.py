@@ -19,12 +19,15 @@
 For interface contract tests, see tests/per_bzr_dir.
 """
 
+from __future__ import absolute_import
+
 import os
 import sys
 
 from bzrlib import (
     branch,
     bzrdir,
+    controldir,
     errors,
     repository,
     upgrade,
@@ -33,7 +36,6 @@ from bzrlib import (
     )
 from bzrlib.osutils import (
     getcwd,
-    lexists,
     )
 from bzrlib.tests.test_bundle import V4BundleTester
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
@@ -65,7 +67,7 @@ class TestFormat5(TestCaseWithTransport):
             self.assertTrue(ctrl_2 is ctrl_3)
         check_dir_components_use_same_lock(dir)
         # and if we open it normally.
-        dir = bzrdir.BzrDir.open(self.get_url())
+        dir = controldir.ControlDir.open(self.get_url())
         check_dir_components_use_same_lock(dir)
 
     def test_can_convert(self):
@@ -99,7 +101,7 @@ class TestFormat6(TestCaseWithTransport):
             self.assertTrue(ctrl_2 is ctrl_3)
         check_dir_components_use_same_lock(dir)
         # and if we open it normally.
-        dir = bzrdir.BzrDir.open(self.get_url())
+        dir = controldir.ControlDir.open(self.get_url())
         check_dir_components_use_same_lock(dir)
 
     def test_can_convert(self):
@@ -301,14 +303,15 @@ class TestUpgrade(TestCaseWithTransport):
         # At this point, we have a format6 branch without checkout files.
         upgrade.upgrade('.', bzrdir.BzrDirMetaFormat1())
         # The upgrade should not have set up a working tree.
-        control = bzrdir.BzrDir.open('.')
+        control = controldir.ControlDir.open('.')
         self.assertFalse(control.has_workingtree())
         # We have covered the scope of this test, we may as well check that
         # upgrade has not eaten our data, even if it's a bit redundant with
         # other tests.
         self.assertIsInstance(control._format, bzrdir.BzrDirMetaFormat1)
         b = control.open_branch()
-        self.assertEquals(b.revision_history(),
+        self.addCleanup(b.lock_read().unlock)
+        self.assertEquals(b._revision_history(),
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
             'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
 
@@ -317,13 +320,14 @@ class TestUpgrade(TestCaseWithTransport):
         eq = self.assertEquals
         self.build_tree_contents(_upgrade1_template)
         upgrade.upgrade(u'.')
-        control = bzrdir.BzrDir.open('.')
+        control = controldir.ControlDir.open('.')
         b = control.open_branch()
         # tsk, peeking under the covers.
         self.assertIsInstance(
             control._format,
             bzrdir.BzrDirFormat.get_default_format().__class__)
-        rh = b.revision_history()
+        self.addCleanup(b.lock_read().unlock)
+        rh = b._revision_history()
         eq(rh,
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
             'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
@@ -378,14 +382,15 @@ class TestUpgrade(TestCaseWithTransport):
         self.build_tree_contents(_ghost_template)
         upgrade.upgrade(u'.')
         b = branch.Branch.open(u'.')
-        revision_id = b.revision_history()[1]
+        self.addCleanup(b.lock_read().unlock)
+        revision_id = b._revision_history()[1]
         rev = b.repository.get_revision(revision_id)
         eq(len(rev.parent_ids), 2)
         eq(rev.parent_ids[1], 'wibble@wobble-2')
 
     def test_upgrade_makes_dir_weaves(self):
         self.build_tree_contents(_upgrade_dir_template)
-        old_repodir = bzrdir.BzrDir.open_unsupported('.')
+        old_repodir = controldir.ControlDir.open_unsupported('.')
         old_repo_format = old_repodir.open_repository()._format
         upgrade.upgrade('.')
         # this is the path to the literal file. As format changes
@@ -407,7 +412,8 @@ class TestUpgrade(TestCaseWithTransport):
         self.build_tree_contents(_upgrade_dir_template)
         upgrade.upgrade('.', bzrdir.BzrDirMetaFormat1())
         tree = workingtree.WorkingTree.open('.')
-        self.assertEqual([tree.branch.revision_history()[-1]],
+        self.addCleanup(tree.lock_read().unlock)
+        self.assertEqual([tree.branch._revision_history()[-1]],
             tree.get_parent_ids())
 
 
@@ -539,7 +545,7 @@ class TestBoundBranch(TestCaseWithTransport):
         self.build_tree(['master/', 'child/'])
         self.make_branch_and_tree('master')
         self.make_branch_and_tree('child',
-                        format=bzrdir.format_registry.make_bzrdir('weave'))
+                        format=controldir.format_registry.make_bzrdir('weave'))
         os.chdir('child')
 
     def test_bind_format_6_bzrdir(self):

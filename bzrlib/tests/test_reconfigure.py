@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009, 2011, 2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,11 +16,12 @@
 
 from bzrlib import (
     branch as _mod_branch,
-    bzrdir,
+    controldir,
     errors,
     reconfigure,
     repository,
     tests,
+    vf_repository,
     workingtree,
     )
 
@@ -71,7 +72,8 @@ class TestReconfigure(tests.TestCaseWithTransport):
         checkout = branch.create_checkout('checkout')
         reconfiguration = reconfigure.Reconfigure.to_branch(checkout.bzrdir)
         reconfiguration.apply()
-        self.assertIs(None, checkout.branch.get_bound_location())
+        reconfigured = controldir.ControlDir.open('checkout').open_branch()
+        self.assertIs(None, reconfigured.get_bound_location())
 
     def prepare_lightweight_checkout_to_branch(self):
         branch = self.make_branch('branch')
@@ -146,16 +148,24 @@ class TestReconfigure(tests.TestCaseWithTransport):
         self.assertRaises(errors.NoBindLocation,
                           reconfiguration._select_bind_location)
         branch.set_parent('http://parent')
+        reconfiguration = reconfigure.Reconfigure(branch.bzrdir)
         self.assertEqual('http://parent',
                          reconfiguration._select_bind_location())
         branch.set_push_location('sftp://push')
+        reconfiguration = reconfigure.Reconfigure(branch.bzrdir)
         self.assertEqual('sftp://push',
                          reconfiguration._select_bind_location())
-        branch.set_bound_location('bzr://foo/old-bound')
-        branch.set_bound_location(None)
+        branch.lock_write()
+        try:
+            branch.set_bound_location('bzr://foo/old-bound')
+            branch.set_bound_location(None)
+        finally:
+            branch.unlock()
+        reconfiguration = reconfigure.Reconfigure(branch.bzrdir)
         self.assertEqual('bzr://foo/old-bound',
                          reconfiguration._select_bind_location())
         branch.set_bound_location('bzr://foo/cur-bound')
+        reconfiguration = reconfigure.Reconfigure(branch.bzrdir)
         self.assertEqual('bzr://foo/cur-bound',
                          reconfiguration._select_bind_location())
         reconfiguration.new_bound_location = 'ftp://user-specified'
@@ -179,6 +189,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         self.assertRaises(errors.NoBindLocation, reconfiguration.apply)
         # setting a parent allows it to become a checkout
         tree.branch.set_parent(parent.base)
+        reconfiguration = reconfigure.Reconfigure.to_checkout(tree.bzrdir)
         reconfiguration.apply()
         # supplying a location allows it to become a checkout
         tree2 = self.make_branch_and_tree('tree2')
@@ -197,6 +208,8 @@ class TestReconfigure(tests.TestCaseWithTransport):
         self.assertRaises(errors.NoBindLocation, reconfiguration.apply)
         # setting a parent allows it to become a checkout
         tree.branch.set_parent(parent.base)
+        reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
+            tree.bzrdir)
         reconfiguration.apply()
         # supplying a location allows it to become a checkout
         tree2 = self.make_branch_and_tree('tree2')
@@ -258,12 +271,12 @@ class TestReconfigure(tests.TestCaseWithTransport):
     def test_branch_to_lightweight_checkout_failure(self):
         parent, child, reconfiguration = \
             self.prepare_branch_to_lightweight_checkout()
-        old_Repository_fetch = repository.Repository.fetch
-        repository.Repository.fetch = None
+        old_Repository_fetch = vf_repository.VersionedFileRepository.fetch
+        vf_repository.VersionedFileRepository.fetch = None
         try:
             self.assertRaises(TypeError, reconfiguration.apply)
         finally:
-            repository.Repository.fetch = old_Repository_fetch
+            vf_repository.VersionedFileRepository.fetch = old_Repository_fetch
         child = _mod_branch.Branch.open('child')
         self.assertContainsRe(child.base, 'child/$')
 
@@ -432,7 +445,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
             r"Requested reconfiguration of '.*' is not supported.")
 
     def test_lightweight_checkout_to_tree_preserves_reference_locations(self):
-        format = bzrdir.format_registry.make_bzrdir('1.9')
+        format = controldir.format_registry.make_bzrdir('1.9')
         format.set_branch_format(_mod_branch.BzrBranchFormat8())
         tree = self.make_branch_and_tree('tree', format=format)
         tree.branch.set_reference_info('file_id', 'path', '../location')

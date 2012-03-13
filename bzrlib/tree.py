@@ -17,6 +17,8 @@
 """Tree classes, representing directory at point in time.
 """
 
+from __future__ import absolute_import
+
 import os
 
 from bzrlib.lazy_import import lazy_import
@@ -35,6 +37,7 @@ from bzrlib import (
     rules,
     trace,
     )
+from bzrlib.i18n import gettext
 """)
 
 from bzrlib.decorators import needs_read_lock
@@ -57,6 +60,14 @@ class Tree(object):
     Trees can be compared, etc, regardless of whether they are working
     trees or versioned trees.
     """
+
+    def has_versioned_directories(self):
+        """Whether this tree can contain explicitly versioned directories.
+
+        This defaults to True, but some implementations may want to override
+        it.
+        """
+        return True
 
     def changes_from(self, other, want_unchanged=False, specific_files=None,
         extra_trees=None, require_versioned=False, include_root=False,
@@ -277,8 +288,11 @@ class Tree(object):
 
         :param file_id: The file_id of the file.
         :param path: The path of the file.
+
         If both file_id and path are supplied, an implementation may use
         either one.
+
+        :returns: A single byte string for the whole file.
         """
         my_file = self.get_file(file_id, path)
         try:
@@ -297,8 +311,26 @@ class Tree(object):
         """
         return osutils.split_lines(self.get_file_text(file_id, path))
 
+    def get_file_verifier(self, file_id, path=None, stat_value=None):
+        """Return a verifier for a file.
+
+        The default implementation returns a sha1.
+
+        :param file_id: The handle for this file.
+        :param path: The path that this file can be found at.
+            These must point to the same object.
+        :param stat_value: Optional stat value for the object
+        :return: Tuple with verifier name and verifier data
+        """
+        return ("SHA1", self.get_file_sha1(file_id, path=path,
+            stat_value=stat_value))
+
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         """Return the SHA1 file for a file.
+
+        :note: callers should use get_file_verifier instead
+            where possible, as the underlying repository implementation may
+            have quicker access to a non-sha1 verifier.
 
         :param file_id: The handle for this file.
         :param path: The path that this file can be found at.
@@ -324,9 +356,6 @@ class Tree(object):
         :param file_id: The file-id of the file
         """
         raise NotImplementedError(self.get_file_size)
-
-    def get_file_by_path(self, path):
-        raise NotImplementedError(self.get_file_by_path)
 
     def is_executable(self, file_id, path=None):
         """Check if a file is executable.
@@ -503,13 +532,16 @@ class Tree(object):
         return find_ids_across_trees(paths, [self] + list(trees), require_versioned)
 
     def iter_children(self, file_id):
-        entry = self.iter_entries_by_dir([file_id]).next()[1]
-        for child in getattr(entry, 'children', {}).itervalues():
-            yield child.file_id
+        """Iterate over the file ids of the children of an entry.
+
+        :param file_id: File id of the entry
+        :return: Iterator over child file ids.
+        """
+        raise NotImplementedError(self.iter_children)
 
     def lock_read(self):
         """Lock this tree for multiple read only operations.
-        
+
         :return: A bzrlib.lock.LogicalLockResult.
         """
         pass
@@ -602,7 +634,7 @@ class Tree(object):
         prefs = self.iter_search_rules([path], filter_pref_names).next()
         stk = filters._get_filter_stack_for(prefs)
         if 'filters' in debug.debug_flags:
-            trace.note("*** %s content-filter: %s => %r" % (path,prefs,stk))
+            trace.note(gettext("*** {0} content-filter: {1} => {2!r}").format(path,prefs,stk))
         return stk
 
     def _content_filter_stack_provider(self):
@@ -739,36 +771,68 @@ class InventoryTree(Tree):
             yield cur_path
         # all done.
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def _get_inventory(self):
         return self._inventory
 
     inventory = property(_get_inventory,
                          doc="Inventory of this Tree")
 
+    def _get_root_inventory(self):
+        return self._inventory
+
+    root_inventory = property(_get_root_inventory,
+        doc="Root inventory of this tree")
+
+    def _unpack_file_id(self, file_id):
+        """Find the inventory and inventory file id for a tree file id.
+
+        :param file_id: The tree file id, as bytestring or tuple
+        :return: Inventory and inventory file id
+        """
+        if isinstance(file_id, tuple):
+            if len(file_id) != 1:
+                raise ValueError("nested trees not yet supported: %r" % file_id)
+            file_id = file_id[0]
+        return self.root_inventory, file_id
+
     @needs_read_lock
     def path2id(self, path):
         """Return the id for path in this tree."""
-        return self._inventory.path2id(path)
+        return self._path2inv_file_id(path)[1]
+
+    def _path2inv_file_id(self, path):
+        """Lookup a inventory and inventory file id by path.
+
+        :param path: Path to look up
+        :return: tuple with inventory and inventory file id
+        """
+        # FIXME: Support nested trees
+        return self.root_inventory, self.root_inventory.path2id(path)
 
     def id2path(self, file_id):
         """Return the path for a file id.
 
         :raises NoSuchId:
         """
-        return self.inventory.id2path(file_id)
+        inventory, file_id = self._unpack_file_id(file_id)
+        return inventory.id2path(file_id)
 
     def has_id(self, file_id):
-        return self.inventory.has_id(file_id)
+        inventory, file_id = self._unpack_file_id(file_id)
+        return inventory.has_id(file_id)
 
     def has_or_had_id(self, file_id):
-        return self.inventory.has_id(file_id)
+        inventory, file_id = self._unpack_file_id(file_id)
+        return inventory.has_id(file_id)
 
     def all_file_ids(self):
-        return set(self.inventory)
+        return set(
+            [entry.file_id for path, entry in self.iter_entries_by_dir()])
 
     @deprecated_method(deprecated_in((2, 4, 0)))
     def __iter__(self):
-        return iter(self.inventory)
+        return iter(self.all_file_ids())
 
     def filter_unversioned_files(self, paths):
         """Filter out paths that are versioned.
@@ -778,8 +842,7 @@ class InventoryTree(Tree):
         # NB: we specifically *don't* call self.has_filename, because for
         # WorkingTrees that can indicate files that exist on disk but that
         # are not versioned.
-        pred = self.inventory.has_filename
-        return set((p for p in paths if not pred(p)))
+        return set((p for p in paths if self.path2id(p) is None))
 
     @needs_read_lock
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
@@ -794,11 +857,29 @@ class InventoryTree(Tree):
             down to specific_file_ids that have been requested. This has no
             impact if specific_file_ids is None.
         """
-        return self.inventory.iter_entries_by_dir(
-            specific_file_ids=specific_file_ids, yield_parents=yield_parents)
+        if specific_file_ids is None:
+            inventory_file_ids = None
+        else:
+            inventory_file_ids = []
+            for tree_file_id in specific_file_ids:
+                inventory, inv_file_id = self._unpack_file_id(tree_file_id)
+                if not inventory is self.root_inventory: # for now
+                    raise AssertionError("%r != %r" % (
+                        inventory, self.root_inventory))
+                inventory_file_ids.append(inv_file_id)
+        # FIXME: Handle nested trees
+        return self.root_inventory.iter_entries_by_dir(
+            specific_file_ids=inventory_file_ids, yield_parents=yield_parents)
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def get_file_by_path(self, path):
-        return self.get_file(self._inventory.path2id(path), path)
+        return self.get_file(self.path2id(path), path)
+
+    def iter_children(self, file_id, path=None):
+        """See Tree.iter_children."""
+        entry = self.iter_entries_by_dir([file_id]).next()[1]
+        for child in getattr(entry, 'children', {}).itervalues():
+            yield child.file_id
 
 
 def find_ids_across_trees(filenames, trees, require_versioned=True):
@@ -952,20 +1033,16 @@ class InterTree(InterObject):
         if source_kind != target_kind:
             changed_content = True
         elif source_kind == 'file':
-            if (self.source.get_file_sha1(file_id, source_path, source_stat) !=
-                self.target.get_file_sha1(file_id, target_path, target_stat)):
+            if not self.file_content_matches(file_id, file_id, source_path,
+                    target_path, source_stat, target_stat):
                 changed_content = True
         elif source_kind == 'symlink':
             if (self.source.get_symlink_target(file_id) !=
                 self.target.get_symlink_target(file_id)):
                 changed_content = True
-            # XXX: Yes, the indentation below is wrong. But fixing it broke
-            # test_merge.TestMergerEntriesLCAOnDisk.
-            # test_nested_tree_subtree_renamed_and_modified. We'll wait for
-            # the fix from bzr.dev -- vila 2009026
-            elif source_kind == 'tree-reference':
-                if (self.source.get_reference_revision(file_id, source_path)
-                    != self.target.get_reference_revision(file_id, target_path)):
+        elif source_kind == 'tree-reference':
+            if (self.source.get_reference_revision(file_id, source_path)
+                != self.target.get_reference_revision(file_id, target_path)):
                     changed_content = True
         parent = (source_parent, target_parent)
         name = (source_name, target_name)
@@ -1186,7 +1263,7 @@ class InterTree(InterObject):
         :param file_id: The file_id to lookup.
         """
         try:
-            inventory = tree.inventory
+            inventory = tree.root_inventory
         except NotImplementedError:
             # No inventory available.
             try:
@@ -1267,11 +1344,45 @@ class InterTree(InterObject):
                         if old_entry is None:
                             # Reusing a discarded change.
                             old_entry = self._get_entry(self.source, file_id)
-                        for child in old_entry.children.values():
-                            precise_file_ids.add(child.file_id)
+                        for child in self.source.iter_children(file_id):
+                            precise_file_ids.add(child)
                     changed_file_ids.add(result[0])
                     yield result
 
+    @needs_read_lock
+    def file_content_matches(self, source_file_id, target_file_id,
+            source_path=None, target_path=None, source_stat=None, target_stat=None):
+        """Check if two files are the same in the source and target trees.
+
+        This only checks that the contents of the files are the same,
+        it does not touch anything else.
+
+        :param source_file_id: File id of the file in the source tree
+        :param target_file_id: File id of the file in the target tree
+        :param source_path: Path of the file in the source tree
+        :param target_path: Path of the file in the target tree
+        :param source_stat: Optional stat value of the file in the source tree
+        :param target_stat: Optional stat value of the file in the target tree
+        :return: Boolean indicating whether the files have the same contents
+        """
+        source_verifier_kind, source_verifier_data = self.source.get_file_verifier(
+            source_file_id, source_path, source_stat)
+        target_verifier_kind, target_verifier_data = self.target.get_file_verifier(
+            target_file_id, target_path, target_stat)
+        if source_verifier_kind == target_verifier_kind:
+            return (source_verifier_data == target_verifier_data)
+        # Fall back to SHA1 for now
+        if source_verifier_kind != "SHA1":
+            source_sha1 = self.source.get_file_sha1(source_file_id,
+                    source_path, source_stat)
+        else:
+            source_sha1 = source_verifier_data
+        if target_verifier_kind != "SHA1":
+            target_sha1 = self.target.get_file_sha1(target_file_id,
+                    target_path, target_stat)
+        else:
+            target_sha1 = target_verifier_data
+        return (source_sha1 == target_sha1)
 
 InterTree.register_optimiser(InterTree)
 
@@ -1383,7 +1494,7 @@ class MultiWalker(object):
             return (None, None)
         else:
             self._out_of_order_processed.add(file_id)
-            cur_ie = other_tree.inventory[file_id]
+            cur_ie = other_tree.root_inventory[file_id]
             return (cur_path, cur_ie)
 
     def iter_all(self):

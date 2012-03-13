@@ -14,15 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 import errno
 import os
 import subprocess
 import sys
 import tempfile
-import urllib
 
 import bzrlib
 from bzrlib import (
+    config as _mod_config,
     email_message,
     errors,
     msgeditor,
@@ -110,7 +112,7 @@ class Editor(MailClient):
         if body == '':
             raise errors.NoMessageSupplied()
         email_message.EmailMessage.send(self.config,
-                                        self.config.username(),
+                                        self.config.get('email'),
                                         to,
                                         subject,
                                         body,
@@ -310,7 +312,7 @@ class Thunderbird(BodyExternalMailClient):
             message_options['attachment'] = urlutils.local_path_to_url(
                 attach_path)
         if body is not None:
-            options_list = ['body=%s' % urllib.quote(self._encode_safe(body))]
+            options_list = ['body=%s' % urlutils.quote(self._encode_safe(body))]
         else:
             options_list = []
         options_list.extend(["%s='%s'" % (k, v) for k, v in
@@ -352,15 +354,15 @@ class Claws(ExternalMailClient):
         """See ExternalMailClient._get_compose_commandline"""
         compose_url = []
         if from_ is not None:
-            compose_url.append('from=' + urllib.quote(from_))
+            compose_url.append('from=' + urlutils.quote(from_))
         if subject is not None:
-            # Don't use urllib.quote_plus because Claws doesn't seem
+            # Don't use urlutils.quote_plus because Claws doesn't seem
             # to recognise spaces encoded as "+".
             compose_url.append(
-                'subject=' + urllib.quote(self._encode_safe(subject)))
+                'subject=' + urlutils.quote(self._encode_safe(subject)))
         if body is not None:
             compose_url.append(
-                'body=' + urllib.quote(self._encode_safe(body)))
+                'body=' + urlutils.quote(self._encode_safe(body)))
         # to must be supplied for the claws-mail --compose syntax to work.
         if to is None:
             raise errors.NoMailAddressSpecified()
@@ -377,7 +379,7 @@ class Claws(ExternalMailClient):
                  extension, body=None, from_=None):
         """See ExternalMailClient._compose"""
         if from_ is None:
-            from_ = self.config.get_user_option('email')
+            from_ = self.config.get('email')
         super(Claws, self)._compose(prompt, to, subject, attach_path,
                                     mime_subtype, extension, body, from_)
 
@@ -616,11 +618,11 @@ class DefaultMail(MailClient):
         """See MailClient.compose"""
         try:
             return self._mail_client().compose(prompt, to, subject,
-                                               attachment, mimie_subtype,
+                                               attachment, mime_subtype,
                                                extension, basename, body)
         except errors.MailClientNotFound:
             return Editor(self.config).compose(prompt, to, subject,
-                          attachment, mimie_subtype, extension, body)
+                          attachment, mime_subtype, extension, body)
 
     def compose_merge_request(self, to, subject, directive, basename=None,
                               body=None):
@@ -635,4 +637,5 @@ mail_client_registry.register('default', DefaultMail,
                               help=DefaultMail.__doc__)
 mail_client_registry.default_key = 'default'
 
-
+opt_mail_client = _mod_config.RegistryOption('mail_client',
+        mail_client_registry, help='E-mail client to use.', invalid='error')

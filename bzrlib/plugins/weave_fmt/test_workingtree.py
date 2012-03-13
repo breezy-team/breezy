@@ -17,6 +17,8 @@
 
 """Tests for weave-era working tree formats."""
 
+from __future__ import absolute_import
+
 import os
 
 from bzrlib import (

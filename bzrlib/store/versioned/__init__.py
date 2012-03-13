@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 # XXX: Some consideration of the problems that might occur if there are
 # files whose id differs only in case.  That should probably be forbidden.
 

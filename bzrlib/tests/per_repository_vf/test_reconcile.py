@@ -17,7 +17,10 @@
 """Tests for reconciliation of repositories."""
 
 import bzrlib
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    )
+from bzrlib.bzrdir import BzrDir
 from bzrlib.inventory import Inventory
 from bzrlib.reconcile import reconcile, Reconciler
 from bzrlib.revision import Revision
@@ -135,14 +138,14 @@ class TestsNeedingReweave(TestReconcile):
         # a inventory with a ghost that can be corrected now.
         t.copy_tree('inventory_one_ghost', 'inventory_ghost_present')
         bzrdir_url = self.get_url('inventory_ghost_present')
-        bzrdir = bzrlib.bzrdir.BzrDir.open(bzrdir_url)
+        bzrdir = BzrDir.open(bzrdir_url)
         repo = bzrdir.open_repository()
         add_commit(repo, 'the_ghost', [])
 
     def checkEmptyReconcile(self, **kwargs):
         """Check a reconcile on an empty repository."""
         self.make_repository('empty')
-        d = bzrlib.bzrdir.BzrDir.open(self.get_url('empty'))
+        d = BzrDir.open(self.get_url('empty'))
         # calling on a empty repository should do nothing
         reconciler = d.find_repository().reconcile(**kwargs)
         # no inconsistent parents should have been found
@@ -167,7 +170,7 @@ class TestsNeedingReweave(TestReconcile):
     def test_convenience_reconcile_inventory_without_revision_reconcile(self):
         # smoke test for the all in one ui tool
         bzrdir_url = self.get_url('inventory_without_revision')
-        bzrdir = bzrlib.bzrdir.BzrDir.open(bzrdir_url)
+        bzrdir = BzrDir.open(bzrdir_url)
         repo = bzrdir.open_repository()
         if not repo._reconcile_does_inventory_gc:
             raise TestSkipped('Irrelevant test')
@@ -179,7 +182,7 @@ class TestsNeedingReweave(TestReconcile):
     def test_reweave_inventory_without_revision(self):
         # an excess inventory on its own is only reconciled by using thorough
         d_url = self.get_url('inventory_without_revision')
-        d = bzrlib.bzrdir.BzrDir.open(d_url)
+        d = BzrDir.open(d_url)
         repo = d.open_repository()
         if not repo._reconcile_does_inventory_gc:
             raise TestSkipped('Irrelevant test')
@@ -232,7 +235,7 @@ class TestsNeedingReweave(TestReconcile):
         # smoke test for the all in one Reconciler class,
         # other tests use the lower level repo.reconcile()
         d_url = self.get_url('inventory_without_revision_and_ghost')
-        d = bzrlib.bzrdir.BzrDir.open(d_url)
+        d = BzrDir.open(d_url)
         if not d.open_repository()._reconcile_does_inventory_gc:
             raise TestSkipped('Irrelevant test')
         def reconcile():
@@ -244,7 +247,7 @@ class TestsNeedingReweave(TestReconcile):
     def test_reweave_inventory_without_revision_and_ghost(self):
         # actual low level test.
         d_url = self.get_url('inventory_without_revision_and_ghost')
-        d = bzrlib.bzrdir.BzrDir.open(d_url)
+        d = BzrDir.open(d_url)
         repo = d.open_repository()
         if not repo._reconcile_does_inventory_gc:
             raise TestSkipped('Irrelevant test')
@@ -254,7 +257,7 @@ class TestsNeedingReweave(TestReconcile):
             thorough=True)
 
     def test_reweave_inventory_preserves_a_revision_with_ghosts(self):
-        d = bzrlib.bzrdir.BzrDir.open(self.get_url('inventory_one_ghost'))
+        d = BzrDir.open(self.get_url('inventory_one_ghost'))
         reconciler = d.open_repository().reconcile(thorough=True)
         # no inconsistent parents should have been found:
         # the lack of a parent for ghost is normal
@@ -267,7 +270,7 @@ class TestsNeedingReweave(TestReconcile):
         self.assertThat(['ghost', 'the_ghost'], MatchesAncestry(repo, 'ghost'))
 
     def test_reweave_inventory_fixes_ancestryfor_a_present_ghost(self):
-        d = bzrlib.bzrdir.BzrDir.open(self.get_url('inventory_ghost_present'))
+        d = BzrDir.open(self.get_url('inventory_ghost_present'))
         repo = d.open_repository()
         m = MatchesAncestry(repo, 'ghost')
         if m.match(['the_ghost', 'ghost']) is None:
@@ -349,9 +352,10 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         # we should add a lower level api to allow constructing such cases.
 
         # first off the common logic:
-        tree = self.make_branch_and_tree('wrong-first-parent')
-        second_tree = self.make_branch_and_tree('reversed-secondary-parents')
-        for t in [tree, second_tree]:
+        self.first_tree = self.make_branch_and_tree('wrong-first-parent')
+        self.second_tree = self.make_branch_and_tree(
+            'reversed-secondary-parents')
+        for t in [self.first_tree, self.second_tree]:
             t.commit('1', rev_id='1')
             uncommit(t.branch, tree=t)
             t.commit('2', rev_id='2')
@@ -360,10 +364,10 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
             uncommit(t.branch, tree=t)
         #second_tree = self.make_branch_and_tree('reversed-secondary-parents')
         #second_tree.pull(tree) # XXX won't copy the repo?
-        repo_secondary = second_tree.branch.repository
+        repo_secondary = self.second_tree.branch.repository
 
         # now setup the wrong-first parent case
-        repo = tree.branch.repository
+        repo = self.first_tree.branch.repository
         repo.lock_write()
         repo.start_write_group()
         inv = Inventory(revision_id='wrong-first-parent')
@@ -406,9 +410,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
 
     def test_reconcile_wrong_order(self):
         # a wrong order in primary parents is optionally correctable
-        t = self.get_transport().clone('wrong-first-parent')
-        d = bzrlib.bzrdir.BzrDir.open_from_transport(t)
-        repo = d.open_repository()
+        repo = self.first_tree.branch.repository
         repo.lock_read()
         try:
             g = repo.get_graph()
@@ -417,7 +419,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
                 raise TestSkipped('wrong-first-parent is not setup for testing')
         finally:
             repo.unlock()
-        self.checkUnreconciled(d, repo.reconcile())
+        self.checkUnreconciled(repo.bzrdir, repo.reconcile())
         # nothing should have been altered yet : inventories without
         # revisions are not data loss incurring for current format
         reconciler = repo.reconcile(thorough=True)
@@ -435,8 +437,6 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
 
     def test_reconcile_wrong_order_secondary_inventory(self):
         # a wrong order in the parents for inventories is ignored.
-        t = self.get_transport().clone('reversed-secondary-parents')
-        d = bzrlib.bzrdir.BzrDir.open_from_transport(t)
-        repo = d.open_repository()
-        self.checkUnreconciled(d, repo.reconcile())
-        self.checkUnreconciled(d, repo.reconcile(thorough=True))
+        repo = self.second_tree.branch.repository
+        self.checkUnreconciled(repo.bzrdir, repo.reconcile())
+        self.checkUnreconciled(repo.bzrdir, repo.reconcile(thorough=True))
