@@ -25,6 +25,7 @@ from __future__ import absolute_import
 import shutil
 import tempfile
 from bzrlib.mutabletree import MutableTree
+from bzrlib.revisiontree import RevisionTree
 from bzrlib import (
     errors,
     merge as _mod_merge,
@@ -73,9 +74,13 @@ def tree_unapply_patches(orig_tree, orig_branch=None, force=False):
             merger = _mod_merge.Merger.from_uncommitted(tree, orig_tree)
             merger.merge_type = NoUnapplyingMerger
             merger.do_merge()
-        else:
+        elif isinstance(orig_tree, RevisionTree):
             tree = orig_branch.create_checkout(target_dir, lightweight=True,
                 accelerator_tree=orig_tree, revision_id=orig_tree.get_revision_id())
+        else:
+            trace.mutter("Not sure how to create copy of %r", orig_tree)
+            shutil.rmtree(target_dir)
+            return orig_tree, None
         trace.mutter("Applying quilt patches for %r in %s", orig_tree, target_dir)
         quilt_pop_all(working_dir=tree.basedir, force=force)
         return tree, target_dir
