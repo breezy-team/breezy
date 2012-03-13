@@ -2872,6 +2872,20 @@ class TestMutableStore(TestStore):
         store.save()
         self.assertEquals(False, self.has_store(store))
 
+    def test_mutable_section_shared(self):
+        store = self.get_store(self)
+        store._load_from_string('foo=bar\n')
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
+        if self.store_id in ('branch', 'remote_branch'):
+            # branch stores requires write locked branches
+            self.addCleanup(store.branch.lock_write().unlock)
+        section1 = store.get_mutable_section(None)
+        section2 = store.get_mutable_section(None)
+        # If we get different sections, different callers won't share the
+        # modification
+        self.assertIs(section1, section2)
+
     def test_save_emptied_succeeds(self):
         store = self.get_store(self)
         store._load_from_string('foo=bar\n')

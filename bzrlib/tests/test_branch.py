@@ -702,10 +702,13 @@ class TestBranchOptions(tests.TestCaseWithTransport):
         finally:
             copy.unlock()
         self.assertFalse(self.branch.is_locked())
-        result = self.branch.get_config_stack().get('foo')
-        # Bug: https://bugs.launchpad.net/bzr/+bug/948339
-        self.expectFailure('Unlocked branches cache their configs',
-            self.assertEqual, 'bar', result)
+        # Since the branch is locked, the option value won't be saved on disk
+        # so trying to access the config of locked branch via another older
+        # non-locked branch object pointing to the same branch is not supported
+        self.assertEqual(None, self.branch.get_config_stack().get('foo'))
+        # Using a newly created branch object works as expected
+        fresh = _mod_branch.Branch.open(self.branch.base)
+        self.assertEqual('bar', fresh.get_config_stack().get('foo'))
 
     def test_set_from_config_get_from_config_stack(self):
         self.branch.lock_write()
@@ -720,18 +723,21 @@ class TestBranchOptions(tests.TestCaseWithTransport):
         self.branch.lock_write()
         self.addCleanup(self.branch.unlock)
         self.branch.get_config_stack().set('foo', 'bar')
-        self.assertEqual('bar',
+        # Since the branch is locked, the option value won't be saved on disk
+        # so mixing get() and get_user_option() is broken by design.
+        self.assertEqual(None,
                          self.branch.get_config().get_user_option('foo'))
 
-    def test_set_delays_write(self):
+    def test_set_delays_write_when_branch_is_locked(self):
         self.branch.lock_write()
         self.addCleanup(self.branch.unlock)
         self.branch.get_config_stack().set('foo', 'bar')
         copy = _mod_branch.Branch.open(self.branch.base)
         result = copy.get_config_stack().get('foo')
-        # Bug: https://bugs.launchpad.net/bzr/+bug/948339
-        self.expectFailure("Config writes are not cached.", self.assertIs,
-                           None, result)
+        # Accessing from a different branch object is like accessing from a
+        # different process: the option has not been saved yet and the new
+        # value cannot be seen.
+        self.assertIs(None, result)
 
 
 class TestPullResult(tests.TestCase):

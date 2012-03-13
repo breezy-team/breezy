@@ -2965,7 +2965,7 @@ class MutableSection(Section):
             # Report concurrent updates in an ad-hoc way. This should only
             # occurs when different processes try to update the same option
             # which is not supported (as in: the config framework is not meant
-            # to be used a sharing mechanism).
+            # to be used as a sharing mechanism).
             if expected != reloaded:
                 if actual is _DeletedOption:
                     actual = '<DELETED>'
@@ -2991,8 +2991,8 @@ class Store(object):
     mutable_section_class = MutableSection
 
     def __init__(self):
-        # Which sections need to be saved
-        self.dirty_sections = []
+        # Which sections need to be saved (by section id)
+        self.dirty_sections = {}
 
     def is_loaded(self):
         """Returns True if the Store has been loaded.
@@ -3041,7 +3041,7 @@ class Store(object):
         raise NotImplementedError(self.save)
 
     def _need_saving(self):
-        for s in self.dirty_sections:
+        for s in self.dirty_sections.values():
             if s.orig:
                 # At least one dirty section contains a modification
                 return True
@@ -3061,11 +3061,11 @@ class Store(object):
         # get_mutable_section() call below.
         self.unload()
         # Apply the changes from the preserved dirty sections
-        for dirty in dirty_sections:
-            clean = self.get_mutable_section(dirty.id)
+        for section_id, dirty in dirty_sections.iteritems():
+            clean = self.get_mutable_section(section_id)
             clean.apply_changes(dirty, self)
         # Everything is clean now
-        self.dirty_sections = []
+        self.dirty_sections = {}
 
     def save_changes(self):
         """Saves the Store to persistent storage if changes occurred.
@@ -3151,7 +3151,7 @@ class IniFileStore(Store):
 
     def unload(self):
         self._config_obj = None
-        self.dirty_sections = []
+        self.dirty_sections = {}
 
     def _load_content(self):
         """Load the config file bytes.
@@ -3205,8 +3205,7 @@ class IniFileStore(Store):
         if not self._need_saving():
             return
         # Preserve the current version
-        current = self._config_obj
-        dirty_sections = list(self.dirty_sections)
+        dirty_sections = dict(self.dirty_sections.items())
         self.apply_changes(dirty_sections)
         # Save to the persistent storage
         self.save()
@@ -3247,13 +3246,16 @@ class IniFileStore(Store):
         except errors.NoSuchFile:
             # The file doesn't exist, let's pretend it was empty
             self._load_from_string('')
+        if section_id in self.dirty_sections:
+            # We already created a mutable section for this id
+            return self.dirty_sections[section_id]
         if section_id is None:
             section = self._config_obj
         else:
             section = self._config_obj.setdefault(section_id, {})
         mutable_section = self.mutable_section_class(section_id, section)
         # All mutable sections can become dirty
-        self.dirty_sections.append(mutable_section)
+        self.dirty_sections[section_id] = mutable_section
         return mutable_section
 
     def quote(self, value):
