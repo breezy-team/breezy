@@ -97,8 +97,6 @@ API Changes
   ``branch.BranchFormat.set_default_format`` deprecated in 2.4.0,
   ``branch.BranchFormat.register_format`` deprecated in 2.4.0,
   ``branch.BranchFormat.unregister_format`` deprecated in 2.4.0,
-  ```` deprecated in 2.4.0,
-  ```` deprecated in 2.4.0,
   ``bzrdir.BzrDir.generate_backup_name`` deprecated in 2.3.0,
   ``bzrdir.BzrProber.register_bzrdir_format`` deprecated in 2.4.0,
   ``bzrdir.BzrProber.unregister_bzrdir_format`` deprecated in 2.4.0,
