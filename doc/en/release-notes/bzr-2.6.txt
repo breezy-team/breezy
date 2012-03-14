@@ -116,7 +116,7 @@ API Changes
   ``workingtree.WorkingTreeFormat.get_formats`` deprecated in 2.4.0,
   ``workingtree.WorkingTreeFormat.set_default_format`` deprecated in 2.4.0,
   ``workingtree.WorkingTreeFormat.unregister_format`` deprecated in 2.4.0,
-    (Vincent Ladeuil)
+  (Vincent Ladeuil)
 
 Internals
 *********
