@@ -575,7 +575,6 @@ class TestHooks(tests.TestCaseWithTransport):
     def test_constructor(self):
         """Check that creating a BranchHooks instance has the right defaults."""
         hooks = _mod_branch.BranchHooks()
-        self.assertTrue("set_rh" in hooks, "set_rh not in %s" % hooks)
         self.assertTrue("post_push" in hooks, "post_push not in %s" % hooks)
         self.assertTrue("post_commit" in hooks, "post_commit not in %s" % hooks)
         self.assertTrue("pre_commit" in hooks, "pre_commit not in %s" % hooks)

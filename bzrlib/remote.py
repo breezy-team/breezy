@@ -3929,8 +3929,18 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             except errors.UnknownSmartMethod:
                 medium._remember_remote_is_before((1, 6))
         self._clear_cached_state_of_remote_branch_only()
-        self._set_revision_history(self._lefthand_history(revision_id,
-            last_rev=last_rev,other_branch=other_branch))
+        graph = self.repository.get_graph()
+        (last_revno, last_revid) = self.last_revision_info()
+        known_revision_ids = [
+            (last_revid, last_revno),
+            (_mod_revision.NULL_REVISION, 0),
+            ]
+        if last_rev is not None:
+            if not graph.is_ancestor(last_rev, revision_id):
+                # our previous tip is not merged into stop_revision
+                raise errors.DivergedBranches(self, other_branch)
+        revno = graph.find_distance_to_null(revision_id, known_revision_ids)
+        self.set_last_revision_info(revno, revision_id)
 
     def set_push_location(self, location):
         self._set_config_location('push_location', location)
