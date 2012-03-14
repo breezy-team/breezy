@@ -465,10 +465,6 @@ class BzrDir(controldir.ControlDir):
                     stacked=stacked)
         return result
 
-    @deprecated_method(deprecated_in((2, 3, 0)))
-    def generate_backup_name(self, base):
-        return self._available_backup_name(base)
-
     def _available_backup_name(self, base):
         """Find a non-existing backup file name based on base.
 
@@ -1232,16 +1228,6 @@ class BzrProber(controldir.Prober):
 
     formats = registry.FormatRegistry(controldir.network_format_registry)
     """The known .bzr formats."""
-
-    @classmethod
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def register_bzrdir_format(klass, format):
-        klass.formats.register(format.get_format_string(), format)
-
-    @classmethod
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def unregister_bzrdir_format(klass, format):
-        klass.formats.remove(format.get_format_string())
 
     @classmethod
     def probe_transport(klass, transport):

@@ -1078,52 +1078,6 @@ class Merge3Merger(object):
                           ))
         return result
 
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def fix_root(self):
-        if self.tt.final_kind(self.tt.root) is None:
-            self.tt.cancel_deletion(self.tt.root)
-        if self.tt.final_file_id(self.tt.root) is None:
-            self.tt.version_file(self.tt.tree_file_id(self.tt.root),
-                                 self.tt.root)
-        other_root_file_id = self.other_tree.get_root_id()
-        if other_root_file_id is None:
-            return
-        other_root = self.tt.trans_id_file_id(other_root_file_id)
-        if other_root == self.tt.root:
-            return
-        if self.this_tree.has_id(
-            self.other_tree.get_root_id()):
-            # the other tree's root is a non-root in the current tree (as
-            # when a previously unrelated branch is merged into another)
-            return
-        if self.tt.final_kind(other_root) is not None:
-            other_root_is_present = True
-        else:
-            # other_root doesn't have a physical representation. We still need
-            # to move any references to the actual root of the tree.
-            other_root_is_present = False
-        # the other tree root is not present in this tree. We are
-        # calling adjust_path for children which *want* to be present with a
-        # correct place to go.
-        for child_id in self.other_tree.iter_children(
-                self.other_tree.get_root_id()):
-            trans_id = self.tt.trans_id_file_id(child_id)
-            if not other_root_is_present:
-                if self.tt.final_kind(trans_id) is not None:
-                    # The item exist in the final tree and has a defined place
-                    # to go already.
-                    continue
-            # Move the item into the root
-            try:
-                final_name = self.tt.final_name(trans_id)
-            except errors.NoFinalPath:
-                # This file is not present anymore, ignore it.
-                continue
-            self.tt.adjust_path(final_name, self.tt.root, trans_id)
-        if other_root_is_present:
-            self.tt.cancel_creation(other_root)
-            self.tt.cancel_versioning(other_root)
-
     def write_modified(self, results):
         modified_hashes = {}
         for path in results.modified_paths:

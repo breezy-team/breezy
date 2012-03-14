@@ -476,12 +476,6 @@ class TestConfig(tests.TestCase):
     def test_constructs(self):
         config.Config()
 
-    def test_no_default_editor(self):
-        self.assertRaises(
-            NotImplementedError,
-            self.applyDeprecated, deprecated_in((2, 4, 0)),
-            config.Config().get_editor)
-
     def test_user_email(self):
         my_config = InstrumentedConfig()
         self.assertEqual('robert.collins@example.org', my_config.user_email())
@@ -1188,12 +1182,6 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
     def test_absent_user_id(self):
         my_config = config.GlobalConfig()
         self.assertEqual(None, my_config._get_user_id())
-
-    def test_configured_editor(self):
-        my_config = config.GlobalConfig.from_string(sample_config_text)
-        editor = self.applyDeprecated(
-            deprecated_in((2, 4, 0)), my_config.get_editor)
-        self.assertEqual('vim', editor)
 
     def test_signatures_always(self):
         my_config = config.GlobalConfig.from_string(sample_always_signatures)

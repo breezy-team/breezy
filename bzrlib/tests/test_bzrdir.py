@@ -1404,11 +1404,6 @@ class TestGenerateBackupName(TestCaseWithMemoryTransport):
             possible_transports=[self._transport])
         self._bzrdir = bzrdir.BzrDir.open_from_transport(self._transport)
 
-    def test_deprecated_generate_backup_name(self):
-        res = self.applyDeprecated(
-                symbol_versioning.deprecated_in((2, 3, 0)),
-                self._bzrdir.generate_backup_name, 'whatever')
-
     def test_new(self):
         self.assertEqual("a.~1~", self._bzrdir._available_backup_name("a"))
 
