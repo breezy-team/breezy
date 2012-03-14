@@ -26,6 +26,7 @@ from bzrlib import (
     tests,
     )
 from bzrlib.tests import test_server
+from bzrlib.tests.matchers import RevisionHistoryMatches
 from bzrlib.transport import memory
 
 
@@ -56,8 +57,8 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
         self.sftp_base = branch.Branch.open(self.get_url('base'))
         wt_child.branch.bind(self.sftp_base)
         # check the branch histories are ready for using in tests.
-        self.assertEqual(['r@b-1'], b_base.revision_history())
-        self.assertEqual(['r@b-1'], wt_child.branch.revision_history())
+        self.assertThat(RevisionHistoryMatches(['r@b-1']), b_base)
+        self.assertThat(RevisionHistoryMatches(['r@b-1']), wt_child.branch)
         return b_base, wt_child
 
     def test_simple_binding(self):
@@ -86,11 +87,11 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
         b_child.bind(sftp_b_base)
         self.assertEqual(sftp_b_base.base, b_child.get_bound_location())
         # the bind must not have given b_child history:
-        self.assertEqual([], b_child.revision_history())
+        self.assertThat(RevisionHistoryMatches([]), b_child)
         # we should be able to update the branch at this point:
         self.assertEqual(None, b_child.update())
         # and now there must be history.
-        self.assertEqual(['r@b-1'], b_child.revision_history())
+        self.assertThat(RevisionHistoryMatches(['r@b-1']), b_child)
         # this line is more of a working tree test line, but - what the hey,
         # it has work to do.
         b_child.bzrdir.open_workingtree().update()
@@ -106,8 +107,8 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
         with open('child/a', 'wb') as f: f.write('new contents\n')
         wt_child.commit('modified a', rev_id='r@c-2')
 
-        self.assertEqual(['r@b-1', 'r@c-2'], wt_child.branch.revision_history())
-        self.assertEqual(['r@b-1', 'r@c-2'], b_base.revision_history())
+        self.assertThat(RevisionHistoryMatches(['r@b-1', 'r@c-2']), wt_child.branch)
+        self.assertThat(RevisionHistoryMatches(['r@b-1', 'r@c-2']), b_base)
 
     def test_bound_commit_fails_when_out_of_date(self):
         # Make sure commit fails if out of date.
@@ -127,12 +128,12 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
 
         wt_child.commit('child', rev_id='r@c-3')
 
-        self.assertEqual(['r@b-1', 'r@b-2', 'r@c-3'],
-                wt_child.branch.revision_history())
-        self.assertEqual(['r@b-1', 'r@b-2', 'r@c-3'],
-                b_base.revision_history())
-        self.assertEqual(['r@b-1', 'r@b-2', 'r@c-3'],
-                sftp_b_base.revision_history())
+        self.assertThat(RevisionHistoryMatches(['r@b-1', 'r@b-2', 'r@c-3']),
+                wt_child.branch)
+        self.assertThat(RevisionHistoryMatches(['r@b-1', 'r@b-2', 'r@c-3']),
+                b_base)
+        self.assertThat(RevisionHistoryMatches(['r@b-1', 'r@b-2', 'r@c-3']),
+                sftp_b_base)
 
     def test_double_binding(self):
         b_base, wt_child = self.create_branches()
@@ -158,11 +159,11 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
         with open('child/b', 'wb') as f: f.write('new b child contents\n')
         self.assertRaises(errors.BoundBranchOutOfDate,
                 wt_child.commit, 'child', rev_id='r@c-2')
-        self.assertEqual(['r@b-1'], wt_child.branch.revision_history())
+        self.assertThat(RevisionHistoryMatches(['r@b-1']), wt_child.branch)
         wt_child.branch.unbind()
         wt_child.commit('child', rev_id='r@c-2')
-        self.assertEqual(['r@b-1', 'r@c-2'], wt_child.branch.revision_history())
-        self.assertEqual(['r@b-1', 'r@b-2'], b_base.revision_history())
+        self.assertThat(RevisionHistoryMatches(['r@b-1', 'r@c-2']), wt_child.branch)
+        self.assertThat(RevisionHistoryMatches(['r@b-1', 'r@b-2']), b_base)
 
         sftp_b_base = branch.Branch.open(self.get_url('base'))
         self.assertRaises(errors.DivergedBranches,
@@ -184,9 +185,9 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
         self.assertRaises(errors.CommitToDoubleBoundBranch,
                 wt_child.commit, 'failure', rev_id='r@c-2')
 
-        self.assertEqual(['r@b-1'], b_base.revision_history())
-        self.assertEqual(['r@b-1'], wt_child.branch.revision_history())
-        self.assertEqual(['r@b-1'], sftp_b_newbase.revision_history())
+        self.assertThat(RevisionHistoryMatches(['r@b-1']), b_base)
+        self.assertThat(RevisionHistoryMatches(['r@b-1']), wt_child.branch)
+        self.assertThat(RevisionHistoryMatches(['r@b-1']), sftp_b_newbase)
 
     def test_bind_diverged(self):
         b_base, wt_child = self.create_branches()
@@ -195,12 +196,13 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
         with open('child/a', 'ab') as f: f.write('child contents\n')
         wt_child_rev = wt_child.commit('child', rev_id='r@c-2')
 
-        self.assertEqual(['r@b-1', 'r@c-2'], wt_child.branch.revision_history())
-        self.assertEqual(['r@b-1'], b_base.revision_history())
+        self.assertEqual(RevisionHistoryMatches(['r@b-1', 'r@c-2']),
+            wt_child.branch)
+        self.assertEqual(RevisionHistoryMatches(['r@b-1']), b_base)
 
         with open('base/b', 'ab') as f: f.write('base contents\n')
         b_base.bzrdir.open_workingtree().commit('base', rev_id='r@b-2')
-        self.assertEqual(['r@b-1', 'r@b-2'], b_base.revision_history())
+        self.assertThat(RevisionHistoryMatches(['r@b-1', 'r@b-2']), b_base)
 
         sftp_b_base = branch.Branch.open(self.get_url('base'))
 
@@ -215,9 +217,9 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
         # new change.
         wt_child.branch.bind(sftp_b_base)
 
-        self.assertEqual(['r@b-1', 'r@b-2'], b_base.revision_history())
-        self.assertEqual(['r@b-1', 'r@c-2', 'r@c-3'],
-            wt_child.branch.revision_history())
+        self.assertThat(RevisionHistoryMatches(['r@b-1', 'r@b-2']), b_base)
+        self.assertThat(RevisionHistoryMatches(['r@b-1', 'r@c-2', 'r@c-3']),
+            wt_child.branch)
 
     def test_bind_parent_ahead_preserves_parent(self):
         b_base, wt_child = self.create_branches()
@@ -227,13 +229,13 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
         with open('a', 'ab') as f: f.write('base changes\n')
         wt_base = b_base.bzrdir.open_workingtree()
         wt_base.commit('base', rev_id='r@b-2')
-        self.assertEqual(['r@b-1', 'r@b-2'], b_base.revision_history())
-        self.assertEqual(['r@b-1'], wt_child.branch.revision_history())
+        self.assertThat(RevisionHistoryMatches(['r@b-1', 'r@b-2']), b_base)
+        self.assertThat(RevisionHistoryMatches(['r@b-1']), wt_child.branch)
 
         sftp_b_base = branch.Branch.open(self.get_url('base'))
         wt_child.branch.bind(sftp_b_base)
 
-        self.assertEqual(['r@b-1'], wt_child.branch.revision_history())
+        self.assertThat(RevisionHistoryMatches(['r@b-1']), wt_child.branch)
 
         wt_child.branch.unbind()
 
@@ -242,13 +244,14 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
         wt_base.commit('base 4', rev_id='r@b-4', allow_pointless=True)
         wt_base.commit('base 5', rev_id='r@b-5', allow_pointless=True)
 
-        self.assertEqual(['r@b-1', 'r@b-2', 'r@b-3', 'r@b-4', 'r@b-5'],
-                b_base.revision_history())
+        self.assertThat(
+            RevisionHistoryMatches(['r@b-1', 'r@b-2', 'r@b-3', 'r@b-4', 'r@b-5']),
+            b_base)
 
-        self.assertEqual(['r@b-1'], wt_child.branch.revision_history())
+        self.assertThat(RevisionHistoryMatches(['r@b-1']), wt_child.branch)
 
         wt_child.branch.bind(sftp_b_base)
-        self.assertEqual(['r@b-1'], wt_child.branch.revision_history())
+        self.assertThat(RevisionHistoryMatches(['r@b-1']), wt_child.branch)
 
     def test_bind_child_ahead_preserves_child(self):
         b_base, wt_child = self.create_branches()
@@ -256,13 +259,13 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
         wt_child.branch.unbind()
 
         wt_child.commit('child', rev_id='r@c-2', allow_pointless=True)
-        self.assertEqual(['r@b-1', 'r@c-2'], wt_child.branch.revision_history())
-        self.assertEqual(['r@b-1'], b_base.revision_history())
+        self.assertThat(RevisionHistoryMatches(['r@b-1', 'r@c-2']), wt_child.branch)
+        self.assertThat(RevisionHistoryMatches(['r@b-1']), b_base)
 
         sftp_b_base = branch.Branch.open(self.get_url('base'))
         wt_child.branch.bind(sftp_b_base)
 
-        self.assertEqual(['r@b-1'], b_base.revision_history())
+        self.assertThat(RevisionHistoryMatches(['r@b-1']), b_base)
 
         # Check and make sure it also works if child is ahead multiple
         wt_child.branch.unbind()
@@ -270,12 +273,13 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
         wt_child.commit('child 4', rev_id='r@c-4', allow_pointless=True)
         wt_child.commit('child 5', rev_id='r@c-5', allow_pointless=True)
 
-        self.assertEqual(['r@b-1', 'r@c-2', 'r@c-3', 'r@c-4', 'r@c-5'],
-                wt_child.branch.revision_history())
-        self.assertEqual(['r@b-1'], b_base.revision_history())
+        self.assertThat(
+            RevisionHistoryMatches(['r@b-1', 'r@c-2', 'r@c-3', 'r@c-4', 'r@c-5']),
+            wt_child.branch)
+        self.assertThat(RevisionHistoryMatches(['r@b-1']), b_base)
 
         wt_child.branch.bind(sftp_b_base)
-        self.assertEqual(['r@b-1'], b_base.revision_history())
+        self.assertThat(RevisionHistoryMatches(['r@b-1']), b_base)
 
     def test_commit_after_merge(self):
         b_base, wt_child = self.create_branches()
@@ -304,8 +308,8 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
         # Commit should succeed, and cause merged revisions to
         # be pushed into base
         wt_child.commit('merge other', rev_id='r@c-2')
-        self.assertEqual(['r@b-1', 'r@c-2'], wt_child.branch.revision_history())
-        self.assertEqual(['r@b-1', 'r@c-2'], b_base.revision_history())
+        self.assertThat(RevisionHistoryMatches(['r@b-1', 'r@c-2']), wt_child.branch)
+        self.assertThat(RevisionHistoryMatches(['r@b-1', 'r@c-2']), b_base)
         self.assertTrue(b_base.repository.has_revision('r@d-2'))
 
     def test_commit_fails(self):
