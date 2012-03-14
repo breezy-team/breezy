@@ -64,6 +64,9 @@ Documentation
 
 .. Improved or updated documentation.
 
+* Generate ``ENVIRONMENT`` section in bzr(1) from known environment variable
+  list rather than hardcoding. (Jelmer Vernooij, #197618)
+
 * Properly format apostrophes in manual page. (Jelmer Vernooij, #234771)
 
 API Changes
