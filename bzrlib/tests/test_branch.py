@@ -340,23 +340,6 @@ class TestBranch67(object):
         self.assertPathDoesNotExist('a/.bzr/branch/bound')
         self.assertEqual('ftp://example.com', branch.get_bound_location())
 
-    def test_set_revision_history(self):
-        builder = self.make_branch_builder('.', format=self.get_format_name())
-        builder.build_snapshot('foo', None,
-            [('add', ('', None, 'directory', None))],
-            message='foo')
-        builder.build_snapshot('bar', None, [], message='bar')
-        branch = builder.get_branch()
-        branch.lock_write()
-        self.addCleanup(branch.unlock)
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            branch.set_revision_history, ['foo', 'bar'])
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-                branch.set_revision_history, ['foo'])
-        self.assertRaises(errors.NotLefthandHistory,
-            self.applyDeprecated, symbol_versioning.deprecated_in((2, 4, 0)),
-            branch.set_revision_history, ['bar'])
-
     def do_checkout_test(self, lightweight=False):
         tree = self.make_branch_and_tree('source',
             format=self.get_format_name_subtree())
@@ -569,7 +552,6 @@ class TestHooks(tests.TestCaseWithTransport):
     def test_constructor(self):
         """Check that creating a BranchHooks instance has the right defaults."""
         hooks = _mod_branch.BranchHooks()
-        self.assertTrue("set_rh" in hooks, "set_rh not in %s" % hooks)
         self.assertTrue("post_push" in hooks, "post_push not in %s" % hooks)
         self.assertTrue("post_commit" in hooks, "post_commit not in %s" % hooks)
         self.assertTrue("pre_commit" in hooks, "pre_commit not in %s" % hooks)
