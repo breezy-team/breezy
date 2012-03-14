@@ -3147,14 +3147,6 @@ class PullResult(_Result):
     :ivar tag_updates: A dict with new tags, see BasicTags.merge_to
     """
 
-    @deprecated_method(deprecated_in((2, 3, 0)))
-    def __int__(self):
-        """Return the relative change in revno.
-
-        :deprecated: Use `new_revno` and `old_revno` instead.
-        """
-        return self.new_revno - self.old_revno
-
     def report(self, to_file):
         tag_conflicts = getattr(self, "tag_conflicts", None)
         tag_updates = getattr(self, "tag_updates", None)
@@ -3189,14 +3181,6 @@ class BranchPushResult(_Result):
     :ivar local_branch: If the target is a bound branch this will be the
         target, otherwise it will be None.
     """
-
-    @deprecated_method(deprecated_in((2, 3, 0)))
-    def __int__(self):
-        """Return the relative change in revno.
-
-        :deprecated: Use `new_revno` and `old_revno` instead.
-        """
-        return self.new_revno - self.old_revno
 
     def report(self, to_file):
         # TODO: This function gets passed a to_file, but then

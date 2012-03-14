@@ -736,19 +736,6 @@ class TestBranchOptions(tests.TestCaseWithTransport):
 
 class TestPullResult(tests.TestCase):
 
-    def test_pull_result_to_int(self):
-        # to support old code, the pull result can be used as an int
-        r = _mod_branch.PullResult()
-        r.old_revno = 10
-        r.new_revno = 20
-        # this usage of results is not recommended for new code (because it
-        # doesn't describe very well what happened), but for api stability
-        # it's still supported
-        self.assertEqual(self.applyDeprecated(
-            symbol_versioning.deprecated_in((2, 3, 0)),
-            r.__int__),
-            10)
-
     def test_report_changed(self):
         r = _mod_branch.PullResult()
         r.old_revid = "old-revid"
