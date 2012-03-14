@@ -64,6 +64,10 @@ Documentation
 
 .. Improved or updated documentation.
 
+* Prevent lines of command descriptions starting with a dot to
+  accidentally be interpreted as a roff macro in bzr(1).
+  (Jelmer Vernooij, #711079)
+
 * Properly format apostrophes in manual page. (Jelmer Vernooij, #234771)
 
 API Changes
