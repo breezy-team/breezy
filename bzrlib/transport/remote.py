@@ -36,9 +36,6 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.smart import client, medium
-from bzrlib.symbol_versioning import (
-    deprecated_method,
-    )
 
 
 class _SmartStat(object):
