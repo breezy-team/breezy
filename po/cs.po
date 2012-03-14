@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-02-02 17:39+0100\n"
-"PO-Revision-Date: 2012-03-12 16:07+0000\n"
+"PO-Revision-Date: 2012-03-13 22:02+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-03-13 04:36+0000\n"
+"X-Launchpad-Export-Date: 2012-03-14 04:35+0000\n"
 "X-Generator: Launchpad (build 14933)\n"
 
 #: bzrlib/add.py:95
@@ -2790,33 +2790,40 @@ msgstr "Nelze zpracovat --commit-time: "
 
 #: bzrlib/builtins.py:3610
 msgid "please specify either --message or --file"
-msgstr ""
+msgstr "prosím zadejte buď --message nbo --file"
 
 #: bzrlib/builtins.py:3639
 msgid "please specify a commit message with either --message or --file"
-msgstr ""
+msgstr "zadejte prosím zprávu odevzdání pomocí --message nebo --file"
 
 #: bzrlib/builtins.py:3642
 msgid ""
 "Empty commit message specified. Please specify a commit message with either -"
 "-message or --file or leave a blank message with --message \"\"."
 msgstr ""
+"Zadána prázdná zpráva odevzdání. Zadejte prosím zprávu odevzdání pomocí --"
+"message nebo --file nebo nechejte prázdnou zadáním --message \"\"."
 
 #: bzrlib/builtins.py:3662
 msgid ""
 "No changes to commit. Please 'bzr add' the files you want to commit, or use -"
 "-unchanged to force an empty commit."
 msgstr ""
+"Žádné změny k odevzdání. Prosím soubory, které chcete odevzdat přidejte "
+"pomocí 'bzr add', nebo použijte --unchanged k vynucení prázdného odevzdání."
 
 #: bzrlib/builtins.py:3666
 msgid ""
 "Conflicts detected in working tree.  Use \"bzr conflicts\" to list, \"bzr "
 "resolve FILE\" to resolve."
 msgstr ""
+"Zjištěny konflikty v pracovním stromu. Použijte \"bzr conflicts\" pro "
+"vypsání, \"bzr resolve SOUBOR\"  pro vyřešení."
 
 #: bzrlib/builtins.py:3670
 msgid "Commit refused because there are unknown files in the working tree."
 msgstr ""
+"Odevzdání zamítnuto protože v pracovním stromu existují neznámé soubory."
 
 #: bzrlib/builtins.py:3673
 msgid ""
@@ -2824,23 +2831,34 @@ msgid ""
 "To commit to master branch, run update and then commit.\n"
 "You can also pass --local to commit to continue working disconnected."
 msgstr ""
+"\n"
+"Pro odevzdání do hlavní větve spusťte aktualizace a pak \n"
+"odevzdejte.\n"
+"Můžete také předat --local k odevzdání pro pokračování v práci, když\n"
+"nejste připojeni."
 
 #: bzrlib/builtins.py:3681
 msgid ""
 "Validate working tree structure, branch consistency and repository history."
 msgstr ""
+"Ověřit strukturu pracovního stromu, konzistenci větve a historii úložiště."
 
 #: bzrlib/builtins.py:3683
 msgid ""
 "This command checks various invariants about branch and repository storage\n"
 "to detect data corruption or bzr bugs."
 msgstr ""
+"Tento příkaz zkontroluje různé neměnné informace o větvi a skladování "
+"úložiště\n"
+"pro zjištění poškození dat nebo chyb v bzr."
 
 #: bzrlib/builtins.py:3686
 msgid ""
 "The working tree and branch checks will only give output if a problem is\n"
 "detected. The output fields of the repository check are:"
 msgstr ""
+"Kontroly pracovního stromu a větve budou vypisovat pouze, když\n"
+"s vyskytne problém. Pole výpisu kontrol úložiště jsou:"
 
 #: bzrlib/builtins.py:3689
 msgid ""
@@ -2848,6 +2866,9 @@ msgid ""
 "    This is just the number of revisions checked.  It doesn't\n"
 "    indicate a problem."
 msgstr ""
+"revisions\n"
+"    Toto je pouze počet zkontrolovaných revizí. \n"
+"    Nenaznačuje problém."
 
 #: bzrlib/builtins.py:3693
 msgid ""
@@ -2855,6 +2876,9 @@ msgid ""
 "    This is just the number of versionedfiles checked.  It\n"
 "    doesn't indicate a problem."
 msgstr ""
+"versionedfiles\n"
+"    Toto je pouze počet zkontrolovaných souborů s verzí\n"
+"    Nenaznačuje problém."
 
 #: bzrlib/builtins.py:3697
 msgid ""
@@ -2863,6 +2887,10 @@ msgid ""
 "    are not properly referenced by the revision ancestry.  This is a\n"
 "    subtle problem that Bazaar can work around."
 msgstr ""
+"unreferenced ancestors\n"
+"    Texty, které jsou předci jiných textů, ale\n"
+"    není na ně správně odkazováno rodovým původem revize. Toto je\n"
+"    mírný problém, který Bazaar umí obejít."
 
 #: bzrlib/builtins.py:3702
 msgid ""
@@ -2870,6 +2898,9 @@ msgid ""
 "    This is the total number of unique file contents\n"
 "    seen in the checked revisions.  It does not indicate a problem."
 msgstr ""
+"unique file texts\n"
+"    Toto je celkový počet jedinečných obsahů souboru\n"
+"    zobrazených v kontrolované revizi. Nenaznačuje problém."
 
 #: bzrlib/builtins.py:3706
 msgid ""
@@ -2879,6 +2910,11 @@ msgid ""
 "    entries are modified, but the file contents are not.  It does not\n"
 "    indicate a problem."
 msgstr ""
+"repeated file texts\n"
+"    Toto je celkový počet opakovaného textu\n"
+"    zobrazeného v kontrolované revizi. Texty mohou být opakovány\n"
+"    když je jejich soubor změněn, ale obsah není. Nenaznačuje\n"
+"    problém."
 
 #: bzrlib/builtins.py:3712
 msgid ""
@@ -2886,46 +2922,48 @@ msgid ""
 "given\n"
 "location will be checked."
 msgstr ""
+"Pokud nejsou zadána žádná omezení, všechna data Bazaar, která jsou nalezena\n"
+"v zadaném umístění, boudou zkontrolována."
 
 #: bzrlib/builtins.py:3717
 msgid "    Check the tree and branch at 'foo'::"
-msgstr ""
+msgstr "    Zkontrolovat strom a větev v 'foo'::"
 
 #: bzrlib/builtins.py:3719
 msgid "        bzr check --tree --branch foo"
-msgstr ""
+msgstr "        bzr check --tree --branch foo"
 
 #: bzrlib/builtins.py:3721
 msgid "    Check only the repository at 'bar'::"
-msgstr ""
+msgstr "    Zkontrolovat pouze úložiště v 'bar'::"
 
 #: bzrlib/builtins.py:3723
 msgid "        bzr check --repo bar"
-msgstr ""
+msgstr "        bzr check --repo bar"
 
 #: bzrlib/builtins.py:3725
 msgid "    Check everything at 'baz'::"
-msgstr ""
+msgstr "    Zkontrolovat vše v 'baz'::"
 
 #: bzrlib/builtins.py:3727
 msgid "        bzr check baz"
-msgstr ""
+msgstr "        bzr check baz"
 
 #: bzrlib/builtins.py:3733
 msgid "Check the branch related to the current directory."
-msgstr ""
+msgstr "Zkontrolovat větev vzhledem k současnému adresáři."
 
 #: bzrlib/builtins.py:3735
 msgid "Check the repository related to the current directory."
-msgstr ""
+msgstr "Zkontrolovat úložiště vzhledem k současnému adresáři."
 
 #: bzrlib/builtins.py:3737
 msgid "Check the working tree related to the current directory."
-msgstr ""
+msgstr "Zkontrolovat pracovní strom vzhledem k současnému adresáři."
 
 #: bzrlib/builtins.py:3751
 msgid "Upgrade a repository, branch or working tree to a newer format."
-msgstr ""
+msgstr "Vylepšit úložiště, větev nebo pracovní strom do nového formátu."
 
 #: bzrlib/builtins.py:3753
 msgid ""
@@ -2977,37 +3015,39 @@ msgstr ""
 
 #: bzrlib/builtins.py:3791
 msgid "Branch format"
-msgstr ""
+msgstr "Formát větve"
 
 #: bzrlib/builtins.py:3793
 msgid "Remove the backup.bzr directory if successful."
-msgstr ""
+msgstr "Odstranit záložní adresář backup.bzr při úspěchu."
 
 #: bzrlib/builtins.py:3795
 msgid "Show what would be done, but don't actually do anything."
-msgstr ""
+msgstr "Zobrazit, co bude provedeno, ale ve skutečnosti nc nedělat."
 
 #: bzrlib/builtins.py:3810
 msgid "Show or set bzr user id."
-msgstr ""
+msgstr "Zobrazit nebo nastavit id uživatele bzr."
 
 #: bzrlib/builtins.py:3812
 msgid ""
 ":Examples:\n"
 "    Show the email of the current user::"
 msgstr ""
+":Příklady:\n"
+"    Zobrazit email současného uživatele::"
 
 #: bzrlib/builtins.py:3815
 msgid "        bzr whoami --email"
-msgstr ""
+msgstr "        bzr whoami --email"
 
 #: bzrlib/builtins.py:3817
 msgid "    Set the current user::"
-msgstr ""
+msgstr "    Nastavit současného uživatele::"
 
 #: bzrlib/builtins.py:3819
 msgid "        bzr whoami \"Frank Chu <fchu@example.com>\""
-msgstr ""
+msgstr "        bzr whoami \"Frank Chu <fchu@example.com>\""
 
 #: bzrlib/builtins.py:3823
 msgid "Display email address only."
