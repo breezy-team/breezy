@@ -29,7 +29,6 @@ from bzrlib.hooks import (
     install_lazy_named_hook,
     known_hooks,
     known_hooks_key_to_object,
-    known_hooks_key_to_parent_and_attribute,
     )
 from bzrlib.symbol_versioning import (
     deprecated_in,
@@ -37,25 +36,6 @@ from bzrlib.symbol_versioning import (
 
 
 class TestHooks(tests.TestCase):
-
-    def test_create_hook_first(self):
-        hooks = Hooks("bzrlib.tests.test_hooks", "some_hooks")
-        doc = ("Invoked after changing the tip of a branch object. Called with"
-            "a bzrlib.branch.PostChangeBranchTipParams object")
-        hook = HookPoint("post_tip_change", doc, (0, 15), None)
-        self.applyDeprecated(deprecated_in((2, 4)), hooks.create_hook, hook)
-        self.assertEqual(hook, hooks['post_tip_change'])
-
-    def test_create_hook_name_collision_errors(self):
-        hooks = Hooks("bzrlib.tests.test_hooks", "some_hooks")
-        doc = ("Invoked after changing the tip of a branch object. Called with"
-            "a bzrlib.branch.PostChangeBranchTipParams object")
-        hook = HookPoint("post_tip_change", doc, (0, 15), None)
-        hook2 = HookPoint("post_tip_change", None, None, None)
-        self.applyDeprecated(deprecated_in((2, 4)), hooks.create_hook, hook)
-        self.assertRaises(errors.DuplicateKey, self.applyDeprecated,
-            deprecated_in((2, 4, 0)), hooks.create_hook, hook2)
-        self.assertEqual(hook, hooks['post_tip_change'])
 
     def test_docs(self):
         """docs() should return something reasonable about the Hooks."""
@@ -285,16 +265,6 @@ class TestHookRegistry(tests.TestCase):
     def test_known_hooks_key_to_object(self):
         self.assertIs(branch.Branch.hooks,
             known_hooks_key_to_object(('bzrlib.branch', 'Branch.hooks')))
-
-    def test_known_hooks_key_to_parent_and_attribute_deprecated(self):
-        self.assertEqual((branch.Branch, 'hooks'),
-            self.applyDeprecated(deprecated_in((2,3)),
-                known_hooks_key_to_parent_and_attribute,
-                ('bzrlib.branch', 'Branch.hooks')))
-        self.assertEqual((branch, 'Branch'),
-            self.applyDeprecated(deprecated_in((2,3)),
-                known_hooks_key_to_parent_and_attribute,
-                ('bzrlib.branch', 'Branch')))
 
     def test_known_hooks_key_to_parent_and_attribute(self):
         self.assertEqual((branch.Branch, 'hooks'),

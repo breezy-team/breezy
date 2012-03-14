@@ -89,6 +89,19 @@ API Changes
 * New convenience API method ``WorkingTree.get_config_stack``.
   (Jelmer Vernooij)
 
+* Remove ``Merge3Merger.scalar_three_way`` deprecated in 2.2.0,
+  ``hooks.known_hooks_key_to_parent_and_attribute`` deprecated in 2.3,
+  ``hooks.Hooks.create_hook`` deprecated in 2.4,
+  ``inventory.Inventory.__contains__`` deprecated in 2.4.0,
+  ``workingtree.WorkingTreeFormat.get_default_format`` deprecated in 2.4.0,
+  ``workingtree.WorkingTreeFormat.register_format`` deprecated in 2.4.0,
+  ``workingtree.WorkingTreeFormat.register_extra_format`` deprecated in 2.4.0,
+  ``workingtree.WorkingTreeFormat.unregister_extra_format`` deprecated in 2.4.0,
+  ``workingtree.WorkingTreeFormat.get_formats`` deprecated in 2.4.0,
+  ``workingtree.WorkingTreeFormat.set_default_format`` deprecated in 2.4.0,
+  ``workingtree.WorkingTreeFormat.unregister_format`` deprecated in 2.4.0,
+  (Vincent Ladeuil)
+
 Internals
 *********
 

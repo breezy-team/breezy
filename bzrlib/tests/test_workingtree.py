@@ -218,31 +218,6 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
                           workingtree.WorkingTreeFormatMetaDir.find_format,
                           dir)
 
-    def test_register_unregister_format(self):
-        format = SampleTreeFormat()
-        # make a control dir
-        dir = bzrdir.BzrDirMetaFormat1().initialize('.')
-        dir.create_repository()
-        dir.create_branch()
-        # make a branch
-        format.initialize(dir)
-        # register a format for it.
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            workingtree.WorkingTreeFormat.register_format, format)
-        self.assertTrue(format in 
-            self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-                workingtree.WorkingTreeFormat.get_formats))
-        # which branch.Open will refuse (not supported)
-        self.assertRaises(errors.UnsupportedFormatError, workingtree.WorkingTree.open, '.')
-        # but open_downlevel will work
-        self.assertEqual(format.open(dir), workingtree.WorkingTree.open_downlevel('.'))
-        # unregister the format
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            workingtree.WorkingTreeFormat.unregister_format, format)
-        self.assertFalse(format in
-            self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-                workingtree.WorkingTreeFormat.get_formats))
-
     def test_find_format_with_features(self):
         tree = self.make_branch_and_tree('.', format='2a')
         tree.update_feature_flags({"name": "necessity"})
