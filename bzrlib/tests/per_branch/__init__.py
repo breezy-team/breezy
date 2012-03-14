@@ -149,7 +149,6 @@ def branch_scenarios():
 
 def load_tests(standard_tests, module, loader):
     per_branch_mod_names = [
-        'bound_sftp',
         'branch',
         'break_lock',
         'check',
@@ -169,7 +168,6 @@ def load_tests(standard_tests, module, loader):
         'pull',
         'push',
         'reconcile',
-        'revision_history',
         'revision_id_to_dotted_revno',
         'revision_id_to_revno',
         'sprout',

@@ -138,10 +138,11 @@ def register_transport_proto(prefix, help=None, info=None,
 def register_lazy_transport(prefix, module, classname):
     if not prefix in transport_list_registry:
         register_transport_proto(prefix)
-    transport_list_registry.register_lazy_transport_provider(prefix, module, classname)
+    transport_list_registry.register_lazy_transport_provider(
+        prefix, module, classname)
 
 
-def register_transport(prefix, klass, override=DEPRECATED_PARAMETER):
+def register_transport(prefix, klass):
     if not prefix in transport_list_registry:
         register_transport_proto(prefix)
     transport_list_registry.register_transport_provider(prefix, klass)

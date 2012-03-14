@@ -228,29 +228,6 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
         branch = _mod_branch.Branch.open('.')
         self.assertEquals(branch._format.features, {})
 
-    def test_register_unregister_format(self):
-        # Test the deprecated format registration functions
-        format = SampleBranchFormat()
-        # make a control dir
-        dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        # make a branch
-        format.initialize(dir)
-        # register a format for it.
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            _mod_branch.BranchFormat.register_format, format)
-        # which branch.Open will refuse (not supported)
-        self.assertRaises(errors.UnsupportedFormatError,
-                          _mod_branch.Branch.open, self.get_url())
-        self.make_branch_and_tree('foo')
-        # but open_downlevel will work
-        self.assertEqual(
-            format.open(dir),
-            controldir.ControlDir.open(self.get_url()).open_branch(unsupported=True))
-        # unregister the format
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            _mod_branch.BranchFormat.unregister_format, format)
-        self.make_branch_and_tree('bar')
-
 
 class TestBranchFormatRegistry(tests.TestCase):
 
@@ -362,23 +339,6 @@ class TestBranch67(object):
         branch.set_bound_location('ftp://example.com')
         self.assertPathDoesNotExist('a/.bzr/branch/bound')
         self.assertEqual('ftp://example.com', branch.get_bound_location())
-
-    def test_set_revision_history(self):
-        builder = self.make_branch_builder('.', format=self.get_format_name())
-        builder.build_snapshot('foo', None,
-            [('add', ('', None, 'directory', None))],
-            message='foo')
-        builder.build_snapshot('bar', None, [], message='bar')
-        branch = builder.get_branch()
-        branch.lock_write()
-        self.addCleanup(branch.unlock)
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            branch.set_revision_history, ['foo', 'bar'])
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-                branch.set_revision_history, ['foo'])
-        self.assertRaises(errors.NotLefthandHistory,
-            self.applyDeprecated, symbol_versioning.deprecated_in((2, 4, 0)),
-            branch.set_revision_history, ['bar'])
 
     def do_checkout_test(self, lightweight=False):
         tree = self.make_branch_and_tree('source',
@@ -592,7 +552,6 @@ class TestHooks(tests.TestCaseWithTransport):
     def test_constructor(self):
         """Check that creating a BranchHooks instance has the right defaults."""
         hooks = _mod_branch.BranchHooks()
-        self.assertTrue("set_rh" in hooks, "set_rh not in %s" % hooks)
         self.assertTrue("post_push" in hooks, "post_push not in %s" % hooks)
         self.assertTrue("post_commit" in hooks, "post_commit not in %s" % hooks)
         self.assertTrue("pre_commit" in hooks, "pre_commit not in %s" % hooks)
@@ -735,19 +694,6 @@ class TestBranchOptions(tests.TestCaseWithTransport):
 
 
 class TestPullResult(tests.TestCase):
-
-    def test_pull_result_to_int(self):
-        # to support old code, the pull result can be used as an int
-        r = _mod_branch.PullResult()
-        r.old_revno = 10
-        r.new_revno = 20
-        # this usage of results is not recommended for new code (because it
-        # doesn't describe very well what happened), but for api stability
-        # it's still supported
-        self.assertEqual(self.applyDeprecated(
-            symbol_versioning.deprecated_in((2, 3, 0)),
-            r.__int__),
-            10)
 
     def test_report_changed(self):
         r = _mod_branch.PullResult()

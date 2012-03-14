@@ -3078,13 +3078,6 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
     def __ne__(self, other):
         return not (self == other)
 
-    @classmethod
-    @symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((2, 4, 0)))
-    def get_default_format(klass):
-        """Return the current default format."""
-        return format_registry.get_default()
-
     def get_format_description(self):
         """Return the short description for this format."""
         raise NotImplementedError(self.get_format_description)
@@ -3105,42 +3098,6 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
     def supports_views(self):
         """True if this format supports stored views."""
         return False
-
-    @classmethod
-    @symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((2, 4, 0)))
-    def register_format(klass, format):
-        format_registry.register(format)
-
-    @classmethod
-    @symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((2, 4, 0)))
-    def register_extra_format(klass, format):
-        format_registry.register_extra(format)
-
-    @classmethod
-    @symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((2, 4, 0)))
-    def unregister_extra_format(klass, format):
-        format_registry.unregister_extra(format)
-
-    @classmethod
-    @symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((2, 4, 0)))
-    def get_formats(klass):
-        return format_registry._get_all()
-
-    @classmethod
-    @symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((2, 4, 0)))
-    def set_default_format(klass, format):
-        format_registry.set_default(format)
-
-    @classmethod
-    @symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((2, 4, 0)))
-    def unregister_format(klass, format):
-        format_registry.remove(format)
 
     def get_controldir_for_branch(self):
         """Get the control directory format for creating branches.

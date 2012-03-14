@@ -134,6 +134,13 @@ to automate merging of changes to gettext template files. Refer to
 ``bzr help po_merge`` for documentation on how to
 enable it and what it can do.
 
+Documentation in texinfo format
+*******************************
+
+Sphinx (>= 1.1.2) provides a better texinfo builder than the alpha-quality
+one provided with bzr sources. Most of the bzr documentation can be
+processed and produce valid ``.info`` files.
+
 Further information
 *******************
 

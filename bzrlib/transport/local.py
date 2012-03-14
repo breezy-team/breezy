@@ -52,15 +52,7 @@ class LocalTransport(transport.Transport):
     def __init__(self, base):
         """Set the base path where files will be stored."""
         if not base.startswith('file://'):
-            symbol_versioning.warn(
-                "Instantiating LocalTransport with a filesystem path"
-                " is deprecated as of bzr 0.8."
-                " Please use bzrlib.transport.get_transport()"
-                " or pass in a file:// url.",
-                 DeprecationWarning,
-                 stacklevel=2
-                 )
-            base = urlutils.local_path_to_url(base)
+            raise AssertionError("not a file:// url: %r" % base)
         if base[-1] != '/':
             base = base + '/'
 
