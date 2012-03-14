@@ -64,6 +64,10 @@ Documentation
 
 .. Improved or updated documentation.
 
+* Document "bzr lp-propose", "bzr register-branch" and
+  the other Launchpad plugin commands in bzr(1).
+  (Jelmer Vernooij, #843801, #163995)
+
 API Changes
 ***********
 

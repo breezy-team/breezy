@@ -23,6 +23,8 @@ TODO:
 
 from __future__ import absolute_import
 
+PLUGINS_TO_DOCUMENT = ["launchpad"]
+
 import textwrap
 import time
 
@@ -30,6 +32,9 @@ import bzrlib
 import bzrlib.help
 import bzrlib.help_topics
 import bzrlib.commands
+
+from bzrlib.plugin import load_plugins
+load_plugins()
 
 
 def get_filename(options):
@@ -66,6 +71,13 @@ def man_escape(string):
 def command_name_list():
     """Builds a list of command names from bzrlib"""
     command_names = bzrlib.commands.builtin_command_names()
+    for cmdname in bzrlib.commands.plugin_command_names():
+        cmd_object = bzrlib.commands.get_cmd_object(cmdname)
+        if not cmd_object.__module__.startswith("bzrlib.plugins."):
+            continue
+        if (PLUGINS_TO_DOCUMENT is None or
+            cmd_object.__module__.split(".")[2] in PLUGINS_TO_DOCUMENT):
+            command_names.append(cmdname)
     command_names.sort()
     return command_names
 
