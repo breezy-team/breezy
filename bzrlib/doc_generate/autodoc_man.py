@@ -73,10 +73,8 @@ def command_name_list():
     command_names = bzrlib.commands.builtin_command_names()
     for cmdname in bzrlib.commands.plugin_command_names():
         cmd_object = bzrlib.commands.get_cmd_object(cmdname)
-        if not cmd_object.__module__.startswith("bzrlib.plugins."):
-            continue
         if (PLUGINS_TO_DOCUMENT is None or
-            cmd_object.__module__.split(".")[2] in PLUGINS_TO_DOCUMENT):
+            cmd_object.plugin_name() in PLUGINS_TO_DOCUMENT):
             command_names.append(cmdname)
     command_names.sort()
     return command_names
@@ -117,7 +115,7 @@ def getcommand_help(params):
     return output
 
 
-def format_command (params, cmd):
+def format_command(params, cmd):
     """Provides long help for each public command"""
     subsection_header = '.SS "%s"\n' % (cmd._usage())
     doc = "%s\n" % (cmd.__doc__)
@@ -141,7 +139,7 @@ def format_command (params, cmd):
                     subsequent_indent=30*' ',
                     break_long_words=False,
                     )
-                option_str = option_str + wrapped + '\n'       
+                option_str += wrapped + '\n'
 
     aliases_str = ""
     if cmd.aliases:
