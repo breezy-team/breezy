@@ -91,6 +91,10 @@ API Changes
 * New convenience API method ``WorkingTree.get_config_stack``.
   (Jelmer Vernooij)
 
+* Remove deprecated ``Branch.set_revision_history`` and
+  ``Branch.revision_history`` methods and the ``set_rh``
+  hook on ``Branch``. (Jelmer Vernooij)
+
 Internals
 *********
 
