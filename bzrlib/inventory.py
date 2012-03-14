@@ -633,24 +633,6 @@ class CommonInventory(object):
     inserted, other than through the Inventory API.
     """
 
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def __contains__(self, file_id):
-        """True if this entry contains a file with given id.
-
-        >>> inv = Inventory()
-        >>> inv.add(InventoryFile('123', 'foo.c', ROOT_ID))
-        InventoryFile('123', 'foo.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
-        >>> inv.has_id('123')
-        True
-        >>> inv.has_id('456')
-        False
-
-        Note that this method along with __iter__ are not encouraged for use as
-        they are less clear than specific query methods - they may be rmeoved
-        in the future.
-        """
-        return self.has_id(file_id)
-
     def has_filename(self, filename):
         return bool(self.path2id(filename))
 

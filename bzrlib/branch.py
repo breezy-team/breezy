@@ -1589,22 +1589,6 @@ class BranchFormat(controldir.ControlComponentFormat):
     def __ne__(self, other):
         return not (self == other)
 
-    @classmethod
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def get_default_format(klass):
-        """Return the current default format."""
-        return format_registry.get_default()
-
-    @classmethod
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def get_formats(klass):
-        """Get all the known formats.
-
-        Warning: This triggers a load of all lazy registered formats: do not
-        use except when that is desireed.
-        """
-        return format_registry._get_all()
-
     def get_reference(self, controldir, name=None):
         """Get the target reference of the branch in controldir.
 
@@ -1697,21 +1681,6 @@ class BranchFormat(controldir.ControlComponentFormat):
             (if there are any).  Default is to open fallbacks.
         """
         raise NotImplementedError(self.open)
-
-    @classmethod
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def register_format(klass, format):
-        """Register a metadir format.
-
-        See MetaDirBranchFormatFactory for the ability to register a format
-        without loading the code the format needs until it is actually used.
-        """
-        format_registry.register(format)
-
-    @classmethod
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def set_default_format(klass, format):
-        format_registry.set_default(format)
 
     def supports_set_append_revisions_only(self):
         """True if this format supports set_append_revisions_only."""
@@ -3105,14 +3074,6 @@ class PullResult(_Result):
     :ivar tag_updates: A dict with new tags, see BasicTags.merge_to
     """
 
-    @deprecated_method(deprecated_in((2, 3, 0)))
-    def __int__(self):
-        """Return the relative change in revno.
-
-        :deprecated: Use `new_revno` and `old_revno` instead.
-        """
-        return self.new_revno - self.old_revno
-
     def report(self, to_file):
         tag_conflicts = getattr(self, "tag_conflicts", None)
         tag_updates = getattr(self, "tag_updates", None)
@@ -3147,14 +3108,6 @@ class BranchPushResult(_Result):
     :ivar local_branch: If the target is a bound branch this will be the
         target, otherwise it will be None.
     """
-
-    @deprecated_method(deprecated_in((2, 3, 0)))
-    def __int__(self):
-        """Return the relative change in revno.
-
-        :deprecated: Use `new_revno` and `old_revno` instead.
-        """
-        return self.new_revno - self.old_revno
 
     def report(self, to_file):
         # TODO: This function gets passed a to_file, but then

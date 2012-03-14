@@ -205,11 +205,6 @@ class Config(object):
         """Returns a unique ID for the config."""
         raise NotImplementedError(self.config_id)
 
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def get_editor(self):
-        """Get the users pop up editor."""
-        raise NotImplementedError
-
     def get_change_editor(self, old_tree, new_tree):
         from bzrlib import diff
         cmd = self._get_change_editor()
@@ -1055,10 +1050,6 @@ class GlobalConfig(LockableConfig):
         conf = cls()
         conf._create_from_string(str_or_unicode, save)
         return conf
-
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def get_editor(self):
-        return self._get_user_option('editor')
 
     @needs_write_lock
     def set_user_option(self, option, value):

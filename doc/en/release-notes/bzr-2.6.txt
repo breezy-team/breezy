@@ -95,6 +95,35 @@ API Changes
   ``Branch.revision_history`` methods and the ``set_rh``
   hook on ``Branch``. (Jelmer Vernooij)
 
+* Remove 
+  ``branch.PullResult.__int__`` deprecated in 2.3.0,
+  ``branch.PushResult.__int__`` deprecated in 2.3.0,
+  ``branch.BranchFormat.get_default_format`` deprecated in 2.4.0,
+  ``branch.BranchFormat.get_formats`` deprecated in 2.4.0,
+  ``branch.BranchFormat.set_default_format`` deprecated in 2.4.0,
+  ``branch.BranchFormat.register_format`` deprecated in 2.4.0,
+  ``branch.BranchFormat.unregister_format`` deprecated in 2.4.0,
+  ``bzrdir.BzrDir.generate_backup_name`` deprecated in 2.3.0,
+  ``bzrdir.BzrProber.register_bzrdir_format`` deprecated in 2.4.0,
+  ``bzrdir.BzrProber.unregister_bzrdir_format`` deprecated in 2.4.0,
+  ``config.Config.get_editor`` deprecated in 2.4.0,
+  ``hooks.known_hooks_key_to_parent_and_attribute`` deprecated in 2.3,
+  ``hooks.Hooks.create_hook`` deprecated in 2.4,
+  ``inventory.Inventory.__contains__`` deprecated in 2.4.0,
+  ``merge.Merge3Merger.scalar_three_way`` deprecated in 2.2.0,
+  ``merge.Merge3Merger.fix_root`` deprecated in 2.4.0,
+  ``transform.TreeTransformBase.has_named_child`` deprecated in 2.3.0,
+  ``transform.get_backup_name`` deprecated in 2.3.0,
+  ``transform._get_backup_name`` deprecated in 2.3.0,
+  ``workingtree.WorkingTreeFormat.get_default_format`` deprecated in 2.4.0,
+  ``workingtree.WorkingTreeFormat.register_format`` deprecated in 2.4.0,
+  ``workingtree.WorkingTreeFormat.register_extra_format`` deprecated in 2.4.0,
+  ``workingtree.WorkingTreeFormat.unregister_extra_format`` deprecated in 2.4.0,
+  ``workingtree.WorkingTreeFormat.get_formats`` deprecated in 2.4.0,
+  ``workingtree.WorkingTreeFormat.set_default_format`` deprecated in 2.4.0,
+  ``workingtree.WorkingTreeFormat.unregister_format`` deprecated in 2.4.0,
+  (Vincent Ladeuil)
+
 Internals
 *********
 
