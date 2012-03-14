@@ -111,6 +111,11 @@ def format_command (params, cmd):
     doc = "%s\n" % (cmd.__doc__)
     doc = bzrlib.help_topics.help_as_plain_text(cmd.help())
 
+    # A dot at the beginning of a line is interpreted as a macro.
+    # Simply join lines that begin with a dot with the previous
+    # line to work around this.
+    doc = doc.replace("\n.", ".")
+
     option_str = ""
     options = cmd.options()
     if options:
