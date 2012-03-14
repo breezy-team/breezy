@@ -3906,7 +3906,6 @@ def _test_suite_testmod_names():
         'bzrlib.doc',
         'bzrlib.tests.blackbox',
         'bzrlib.tests.commands',
-        'bzrlib.tests.doc_generate',
         'bzrlib.tests.per_branch',
         'bzrlib.tests.per_bzrdir',
         'bzrlib.tests.per_controldir',

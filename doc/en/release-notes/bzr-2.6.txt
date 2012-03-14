@@ -64,6 +64,8 @@ Documentation
 
 .. Improved or updated documentation.
 
+* Properly format apostrophes in manual page. (Jelmer Vernooij, #234771)
+
 API Changes
 ***********
 
