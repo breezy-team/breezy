@@ -766,11 +766,6 @@ class Branch(controldir.ControlComponent):
         """Print `file` to stdout."""
         raise NotImplementedError(self.print_file)
 
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def set_revision_history(self, rev_history):
-        """See Branch.set_revision_history."""
-        self._set_revision_history(rev_history)
-
     @needs_write_lock
     def _set_revision_history(self, rev_history):
         if len(rev_history) == 0:
@@ -1012,16 +1007,6 @@ class Branch(controldir.ControlComponent):
         should consider it to be private.
         """
         raise NotImplementedError(self._gen_revision_history)
-
-    @deprecated_method(deprecated_in((2, 5, 0)))
-    @needs_read_lock
-    def revision_history(self):
-        """Return sequence of revision ids on this branch.
-
-        This method will cache the revision history for as long as it is safe to
-        do so.
-        """
-        return self._revision_history()
 
     def _revision_history(self):
         if 'evil' in debug.debug_flags:
@@ -2777,12 +2762,6 @@ class FullHistoryBzrBranch(BzrBranch):
             return (revno, rh[-1])
         else:
             return (0, _mod_revision.NULL_REVISION)
-
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    @needs_write_lock
-    def set_revision_history(self, rev_history):
-        """See Branch.set_revision_history."""
-        self._set_revision_history(rev_history)
 
     def _set_revision_history(self, rev_history):
         if 'evil' in debug.debug_flags:

@@ -169,7 +169,6 @@ def load_tests(standard_tests, module, loader):
         'pull',
         'push',
         'reconcile',
-        'revision_history',
         'revision_id_to_dotted_revno',
         'revision_id_to_revno',
         'sprout',
