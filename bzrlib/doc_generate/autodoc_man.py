@@ -57,7 +57,7 @@ def infogen(options, outfile):
 def man_escape(string):
     """Escapes strings for man page compatibility"""
     result = string.replace("\\","\\\\")
-    result = result.replace("`","\\`")
+    result = result.replace("`","\\'")
     result = result.replace("'","\\*(Aq")
     result = result.replace("-","\\-")
     return result
