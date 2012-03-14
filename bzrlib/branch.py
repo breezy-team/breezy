@@ -767,19 +767,6 @@ class Branch(controldir.ControlComponent):
         raise NotImplementedError(self.print_file)
 
     @needs_write_lock
-    def _set_revision_history(self, rev_history):
-        if len(rev_history) == 0:
-            revid = _mod_revision.NULL_REVISION
-        else:
-            revid = rev_history[-1]
-        if rev_history != self._lefthand_history(revid):
-            raise errors.NotLefthandHistory(rev_history)
-        self.set_last_revision_info(len(rev_history), revid)
-        self._cache_revision_history(rev_history)
-        for hook in Branch.hooks['set_rh']:
-            hook(self, rev_history)
-
-    @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
         """Set the last revision of this branch.
 
@@ -1790,8 +1777,8 @@ class MetaDirBranchFormatFactory(registry._LazyObjectGetter):
 class BranchHooks(Hooks):
     """A dictionary mapping hook name to a list of callables for branch hooks.
 
-    e.g. ['set_rh'] Is the list of items to be called when the
-    set_revision_history function is invoked.
+    e.g. ['post_push'] Is the list of items to be called when the
+    push function is invoked.
     """
 
     def __init__(self):
@@ -1801,12 +1788,6 @@ class BranchHooks(Hooks):
         notified.
         """
         Hooks.__init__(self, "bzrlib.branch", "Branch.hooks")
-        self.add_hook('set_rh',
-            "Invoked whenever the revision history has been set via "
-            "set_revision_history. The api signature is (branch, "
-            "revision_history), and the branch will be write-locked. "
-            "The set_rh hook can be expensive for bzr to trigger, a better "
-            "hook to use is Branch.post_change_branch_tip.", (0, 15))
         self.add_hook('open',
             "Called with the Branch object that has been opened after a "
             "branch is opened.", (1, 8))
@@ -2781,8 +2762,6 @@ class FullHistoryBzrBranch(BzrBranch):
         self._write_revision_history(rev_history)
         self._clear_cached_state()
         self._cache_revision_history(rev_history)
-        for hook in Branch.hooks['set_rh']:
-            hook(self, rev_history)
         if Branch.hooks['post_change_branch_tip']:
             self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 

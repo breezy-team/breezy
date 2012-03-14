@@ -3792,20 +3792,6 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             raise errors.UnexpectedSmartServerResponse(response)
         self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
-    @needs_write_lock
-    def _set_revision_history(self, rev_history):
-        # Send just the tip revision of the history; the server will generate
-        # the full history from that.  If the revision doesn't exist in this
-        # branch, NoSuchRevision will be raised.
-        if rev_history == []:
-            rev_id = 'null:'
-        else:
-            rev_id = rev_history[-1]
-        self._set_last_revision(rev_id)
-        for hook in branch.Branch.hooks['set_rh']:
-            hook(self, rev_history)
-        self._cache_revision_history(rev_history)
-
     def _get_parent_location(self):
         medium = self._client._medium
         if medium._is_remote_before((1, 13)):
