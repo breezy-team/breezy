@@ -228,29 +228,6 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
         branch = _mod_branch.Branch.open('.')
         self.assertEquals(branch._format.features, {})
 
-    def test_register_unregister_format(self):
-        # Test the deprecated format registration functions
-        format = SampleBranchFormat()
-        # make a control dir
-        dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        # make a branch
-        format.initialize(dir)
-        # register a format for it.
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            _mod_branch.BranchFormat.register_format, format)
-        # which branch.Open will refuse (not supported)
-        self.assertRaises(errors.UnsupportedFormatError,
-                          _mod_branch.Branch.open, self.get_url())
-        self.make_branch_and_tree('foo')
-        # but open_downlevel will work
-        self.assertEqual(
-            format.open(dir),
-            controldir.ControlDir.open(self.get_url()).open_branch(unsupported=True))
-        # unregister the format
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            _mod_branch.BranchFormat.unregister_format, format)
-        self.make_branch_and_tree('bar')
-
 
 class TestBranchFormatRegistry(tests.TestCase):
 
