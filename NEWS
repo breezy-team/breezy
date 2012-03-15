@@ -5,15 +5,10 @@ bzr-upload Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr-upload 1.0.1
+bzr-upload 1.1.0
 ################
 
-:1.0.1: NOT RELEASED YET
-
-External Compatibility Breaks
-*****************************
-
-.. These may require users to change the way they use Bazaar.
+:1.1.0: 2012-03-15
 
 New Features
 ************
@@ -32,35 +27,34 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
-* Fix a typo to avoid crashing when encountering symlinks during
-  a full upload. (Jonathan Paugh)
-
 Documentation
 *************
 
 .. Improved or updated documentation.
 
-API Changes
-***********
-
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
-
-Internals
-*********
-
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
-
 Testing
 *******
 
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
-
 * Now requires bzr >= 2.5 for testing. The plugin itself should still work
   with previous versions. (Vincent Ladeuil)
+
+* Avoid deprecation warning with bzr-2.5 by using tree.iter_entries_by_dir
+  avoiding direct inventory access, this should still be compatible with
+  older bzr versions. (Vincent Ladeuil)
+
+bzr-upload 1.0.1
+################
+
+:1.0.1: 2012-03-15
+
+Bug Fixes
+*********
+
+* Fix a typo to avoid crashing when encountering symlinks during
+  a full upload. (Jonathan Paugh)
+
+Testing
+*******
 
 * Use assertPathDoesNotExist and assertPathExist instead of failIfExists and
   failUnlessExists in the test suite. This requires bzr-2.4 to run the tests
