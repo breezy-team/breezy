@@ -74,6 +74,8 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Add support for pyftpdlib >= 0.7.0 and drop support for previous pyftpdlib
+  versions. (Vincent Ladeuil, #956027)
 
 bzr 2.5.0
 #########
