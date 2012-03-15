@@ -30,7 +30,7 @@ try:
     import xml.etree.cElementTree as elementtree
     ParseError = getattr(elementtree, "ParseError", SyntaxError)
 except ImportError:
-    # Fall back to pure python implementation if C extention is unavailable
+    # Fall back to pure python implementation if C extension is unavailable
     import xml.etree.ElementTree as elementtree
     try:
         from xml.etree.ElementTree import ParseError
