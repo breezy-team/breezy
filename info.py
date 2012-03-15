@@ -19,7 +19,7 @@ bzr_plugin_name = 'upload'
 
 # versions ending in 'dev' mean development version
 # versions ending in 'final' mean release (well tested, etc)
-bzr_plugin_version = (1, 0, 1, 'dev', 0)
+bzr_plugin_version = (1, 1, 0, 'dev', 0)
 
 bzr_commands = ['upload',]
 
