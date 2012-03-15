@@ -19,6 +19,7 @@
 from bzrlib import (
     branch,
     commands,
+    config,
     lazy_import,
     option,
     )
@@ -41,75 +42,52 @@ from bzrlib import (
     )
 """)
 
-def _get_branch_option(branch, option):
-    return branch.get_config().get_user_option(option)
+auto_option = config.Option(
+    'upload_auto', default=False, from_unicode=config.bool_from_store,
+    help="""\
+Whether upload should occur when the tip of the branch changes.
+""")
+auto_quiet_option = config.Option(
+    'upload_auto_quiet', default=False, from_unicode=config.bool_from_store,
+    help="""\
+Whether upload should occur quietly.
+""")
+location_option = config.Option(
+    'upload_location', default=None,
+    help="""\
+The url to upload the working tree to.
+""")
+revid_location_option = config.Option(
+    'upload_revid_location', default=u'.bzr-upload.revid',
+    help="""\
+The relative path to be used to store the uploaded revid.
 
-# FIXME: Get rid of that as soon as we depend on a bzr API that includes
-# get_user_option_as_bool
-def _get_branch_bool_option(branch, option):
-    conf = branch.get_config()
-    if hasattr(conf, 'get_user_option_as_bool'):
-        value = conf.get_user_option_as_bool(option)
-    else:
-        value = conf.get_user_option(option)
-        if value is not None:
-            if value.lower().strip() == 'true':
-                value = True
-            else:
-                value = False
-    return value
+The only bzr-related info uploaded with the working tree is the corresponding
+revision id. The uploaded working tree is not linked to any other bzr data.
 
-def _set_branch_option(branch, option, value):
-    branch.get_config().set_user_option(option, value)
+If the layout of your remote server is such that you can't write in the
+root directory but only in the directories inside that root, you will need
+to use the 'upload_revid_location' configuration variable to specify the
+relative path to be used. That configuration variable can be specified in
+locations.conf or branch.conf.
 
+For example, given the following layout:
 
-def get_upload_location(branch):
-    return _get_branch_option(branch, 'upload_location')
+  Project/
+    private/
+    public/
 
+you may have write access in 'private' and 'public' but in 'Project'
+itself. In that case, you can add the following in your locations.conf or
+branch.conf file:
 
-def set_upload_location(branch, location):
-    _set_branch_option(branch, 'upload_location', location)
-
-
-# FIXME: Add more tests around invalid paths used here or relative paths that
-# doesn't exist on remote (if only to get proper error messages)
-def get_upload_revid_location(branch):
-    loc =  _get_branch_option(branch, 'upload_revid_location')
-    if loc is None:
-        loc = '.bzr-upload.revid'
-    return loc
-
-
-def set_upload_revid_location(branch, location):
-    _set_branch_option(branch, 'upload_revid_location', location)
-
-
-def get_upload_auto(branch):
-    auto = _get_branch_bool_option(branch, 'upload_auto')
-    if auto is None:
-        auto = False # Default to False if not specified
-    return auto
+  upload_revid_location = private/.bzr-upload.revid
+""")
 
 
-def set_upload_auto(branch, auto):
-    # FIXME: What's the point in allowing a boolean here instead of requiring
-    # the callers to use strings instead ?
-    if auto:
-        auto_str = "True"
-    else:
-        auto_str = "False"
-    _set_branch_option(branch, 'upload_auto', auto_str)
-
-
-def get_upload_auto_quiet(branch):
-    quiet = _get_branch_bool_option(branch, 'upload_auto_quiet')
-    if quiet is None:
-        quiet = False # Default to False if not specified
-    return quiet
-
-
-def set_upload_auto_quiet(branch, quiet):
-    _set_branch_option(branch, 'upload_auto_quiet', quiet)
+# FIXME: Add more tests around invalid paths or relative paths that doesn't
+# exist on remote (if only to get proper error messages) for
+# 'upload_revid_location'
 
 
 class BzrUploader(object):
@@ -154,17 +132,18 @@ class BzrUploader(object):
 
     def set_uploaded_revid(self, rev_id):
         # XXX: Add tests for concurrent updates, etc.
-        revid_path = get_upload_revid_location(self.branch)
+        revid_path = self.branch.get_config_stack().get('upload_revid_location')
         self.to_transport.put_bytes(urlutils.escape(revid_path), rev_id)
         self._uploaded_revid = rev_id
 
     def get_uploaded_revid(self):
         if self._uploaded_revid is None:
-            revid_path = get_upload_revid_location(self.branch)
+            revid_path = self.branch.get_config_stack(
+                ).get('upload_revid_location')
             try:
                 self._uploaded_revid = self._up_get_bytes(revid_path)
             except errors.NoSuchFile:
-                # We have not upload to here.
+                # We have not uploaded to here.
                 self._uploaded_revid = revision.NULL_REVISION
         return self._uploaded_revid
 
@@ -512,8 +491,9 @@ class cmd_upload(commands.Command):
                 if revision is None and  changes.has_changed():
                     raise errors.UncommittedChanges(wt)
 
+            conf = branch.get_config_stack()
             if location is None:
-                stored_loc = get_upload_location(branch)
+                stored_loc = conf.get('upload_location')
                 if stored_loc is None:
                     raise errors.BzrCommandError(
                         'No upload location known or specified.')
@@ -565,7 +545,14 @@ class cmd_upload(commands.Command):
             locked.unlock()
 
         # We uploaded successfully, remember it
-        if get_upload_location(branch) is None or remember:
-            set_upload_location(branch, urlutils.unescape(to_transport.base))
-        if auto is not None:
-            set_upload_auto(branch, auto)
+        branch.lock_write()
+        try:
+            upload_location = conf.get('upload_location')
+            if upload_location is None or remember:
+                conf.set('upload_location',
+                         urlutils.unescape(to_transport.base))
+            if auto is not None:
+                conf.set('upload_auto', auto)
+        finally:
+            branch.unlock()
+

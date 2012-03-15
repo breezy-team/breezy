@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -152,11 +152,13 @@ Known Issues
 # scary for the user when we say 'Deleting <path>' and are referring to
 # remote files...
 
-import bzrlib
-import bzrlib.api
 
+import bzrlib
 from bzrlib import (
+    api,
     branch,
+    commands,
+    config,
     )
 
 from info import (
@@ -170,11 +172,23 @@ else:
     version_string = '%d.%d.%d%s%d' % version_info
 __version__ = version_string
 
-bzrlib.api.require_any_api(bzrlib, bzr_compatible_versions)
+api.require_any_api(bzrlib, bzr_compatible_versions)
 
-from bzrlib.commands import plugin_cmds
 
-plugin_cmds.register_lazy('cmd_upload', [], 'bzrlib.plugins.upload.cmds')
+def register_lazy_option(key, member):
+    config.option_registry.register_lazy(
+        key, 'bzrlib.plugins.upload.cmds', member)
+
+
+register_lazy_option('upload_auto', 'auto_option')
+register_lazy_option('upload_auto_quiet', 'auto_quiet_option')
+register_lazy_option('upload_location', 'location_option')
+register_lazy_option('upload_revid_location', 'revid_location_option')
+
+
+commands.plugin_cmds.register_lazy(
+    'cmd_upload', [], 'bzrlib.plugins.upload.cmds')
+
 
 def auto_upload_hook(params):
     from bzrlib import (
@@ -185,19 +199,17 @@ def auto_upload_hook(params):
         )
     from bzrlib.plugins.upload.cmds import (
         BzrUploader,
-        get_upload_location,
-        get_upload_auto,
-        get_upload_auto_quiet,
         )
     import sys
     source_branch = params.branch
-    destination = get_upload_location(source_branch)
+    conf = source_branch.get_config_stack()
+    destination = conf.get('upload_location')
     if destination is None:
         return
-    auto_upload = get_upload_auto(source_branch)
+    auto_upload = conf.get('upload_auto')
     if not auto_upload:
         return
-    quiet = get_upload_auto_quiet(source_branch)
+    quiet = conf.get('upload_auto_quiet')
     if not quiet:
         display_url = urlutils.unescape_for_display(
             destination, osutils.get_terminal_encoding())

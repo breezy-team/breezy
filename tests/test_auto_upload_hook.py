@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2011 Canonical Ltd
+# Copyright (C) 2008, 2009, 2011, 2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -46,9 +46,10 @@ class AutoPushWithLocation(AutoPushHookTests):
     def setUp(self):
         super(AutoPushWithLocation, self).setUp()
         self.make_start_branch()
-        cmds.set_upload_auto(self.wt.branch, True)
-        cmds.set_upload_location(self.wt.branch, self.get_url('target'))
-        cmds.set_upload_auto_quiet(self.wt.branch, 'True')
+        conf = self.wt.branch.get_config_stack()
+        conf.set('upload_auto', True)
+        conf.set('upload_location', self.get_url('target'))
+        conf.set('upload_auto_quiet', True)
 
     def test_auto_push_on_commit(self):
         self.assertPathDoesNotExist('target')
@@ -64,7 +65,7 @@ class AutoPushWithLocation(AutoPushHookTests):
         self.build_tree(['b'])
         self.wt.add(['b'])
         self.wt.commit("two")
-        cmds.set_upload_auto(self.wt.branch, False)
+        self.wt.branch.get_config_stack().set('upload_auto', False)
         self.build_tree(['c'])
         self.wt.add(['c'])
         self.wt.commit("three")
@@ -76,7 +77,7 @@ class AutoPushWithoutLocation(AutoPushHookTests):
     def setUp(self):
         super(AutoPushWithoutLocation, self).setUp()
         self.make_start_branch()
-        cmds.set_upload_auto(self.wt.branch, True)
+        self.wt.branch.get_config_stack().set('upload_auto', True)
 
     def test_dont_push_if_no_location(self):
         self.assertPathDoesNotExist('target')

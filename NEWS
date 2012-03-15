@@ -18,8 +18,7 @@ New Features
 Improvements
 ************
 
-.. Improvements to existing commands, especially improved performance 
-   or memory usage, or better results.
+* Use bzr config stacks, bzr >= 2.5 is now required. (Vincent Ladeuil)
 
 Bug Fixes
 *********

@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2011 Canonical Ltd
+# Copyright (C) 2008-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -451,7 +451,9 @@ class TestUploadMixin(UploadUtilsMixin):
         self.assertUpPathDoesNotExist(new_name)
 
     def get_upload_auto(self):
-        return cmds.get_upload_auto(self.tree.branch)
+        # We need a fresh branch to check what has been saved on disk
+        b = bzrdir.BzrDir.open(self.tree.basedir).open_branch()
+        return b.get_config_stack().get('upload_auto')
 
     def test_upload_auto(self):
         """Test that upload --auto sets the upload_auto option"""
@@ -502,7 +504,8 @@ class TestUploadMixin(UploadUtilsMixin):
         self.add_file('dir/goodbye', 'baz')
 
         revid_path = 'dir/revid-path'
-        cmds.set_upload_revid_location(self.tree.branch, revid_path)
+        self.tree.branch.get_config_stack(
+            ).set('upload_revid_location', revid_path)
         self.assertUpPathDoesNotExist(revid_path)
 
         self.do_full_upload()
@@ -617,7 +620,8 @@ class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
 
         self.do_full_upload()
 
-        revid_path = cmds.get_upload_revid_location(self.tree.branch)
+        revid_path = self.tree.branch.get_config_stack(
+            ).get('upload_revid_location')
         self.assertUpPathExists(revid_path)
 
     def test_invalid_revspec(self):
@@ -724,7 +728,8 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.make_branch_and_working_tree()
         self.add_file('hello', 'bar')
 
-        revid_path = cmds.get_upload_revid_location(self.tree.branch)
+        revid_path = self.tree.branch.get_config_stack(
+            ).get('upload_revid_location')
         self.assertUpPathDoesNotExist(revid_path)
 
         self.do_upload()
@@ -748,27 +753,24 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
 class TestBranchUploadLocations(per_branch.TestCaseWithBranch):
 
     def test_get_upload_location_unset(self):
-        config = self.get_branch().get_config()
-        self.assertEqual(None, config.get_user_option('upload_location'))
+        conf = self.get_branch().get_config_stack()
+        self.assertEqual(None, conf.get('upload_location'))
 
     def test_get_push_location_exact(self):
         config.ensure_config_dir_exists()
         fn = config.locations_config_filename()
         b = self.get_branch()
-        open(fn, 'wt').write(("[%s]\n"
-                                  "upload_location=foo\n" %
-                                  b.base.rstrip("/")))
-        conf = b.get_config()
-        self.assertEqual("foo", conf.get_user_option('upload_location'))
+        with open(fn, 'wt') as f:
+            f.write(("[%s]\n" "upload_location=foo\n" % b.base.rstrip("/")))
+        self.assertEqual("foo", b.get_config_stack().get('upload_location'))
 
     def test_set_push_location(self):
-        conf = self.get_branch().get_config()
-        conf.set_user_option('upload_location', 'foo')
-        self.assertEqual('foo', conf.get_user_option('upload_location'))
+        conf = self.get_branch().get_config_stack()
+        conf.set('upload_location', 'foo')
+        self.assertEqual('foo', conf.get('upload_location'))
 
 
-class TestUploadFromRemoteBranch(tests.TestCaseWithTransport,
-                                 UploadUtilsMixin):
+class TestUploadFromRemoteBranch(tests.TestCaseWithTransport, UploadUtilsMixin):
 
     remote_branch_dir = 'remote_branch'
 
