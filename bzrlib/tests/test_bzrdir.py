@@ -1457,3 +1457,25 @@ class TestGenerateBackupName(TestCaseWithMemoryTransport):
     def test_exiting(self):
         self._transport.put_bytes("a.~1~", "some content")
         self.assertEqual("a.~2~", self._bzrdir._available_backup_name("a"))
+
+
+class ExtractFormatStringTests(TestCase):
+
+    def test_normal(self):
+        self.assertEquals("Bazaar-NG branch, format 0.0.4\n",
+            bzrdir.extract_format_string("Bazaar-NG branch, format 0.0.4\n"))
+
+    def test_with_optional_feature(self):
+        self.assertEquals("Bazaar-NG branch, format 0.0.4\n",
+            bzrdir.extract_format_string("Bazaar-NG branch, format 0.0.4\n"
+                                         "optional feature foo\n"))
+
+    def test_with_required_feature(self):
+        self.assertRaises(errors.MissingFeature,
+            bzrdir.extract_format_string, "Bazaar-NG branch, format 0.0.4\n"
+                                          "required feature foo\n")
+
+    def test_with_invalid_line(self):
+        self.assertRaises(errors.ParseFormatError,
+            bzrdir.extract_format_string, "Bazaar-NG branch, format 0.0.4\n"
+                                          "requiredfoo\n")
