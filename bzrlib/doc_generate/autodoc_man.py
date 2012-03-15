@@ -161,8 +161,7 @@ def environment_variables():
     yield ".SH \"ENVIRONMENT\"\n"
 
     from bzrlib.help_topics import known_env_variables
-    for k in sorted(known_env_variables.keys()):
-        desc = known_env_variables[k]
+    for k, desc in known_env_variables:
         yield ".TP\n"
         yield ".I \"%s\"\n" % k
         yield man_escape(desc) + "\n"
