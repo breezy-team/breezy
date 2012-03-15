@@ -1452,6 +1452,7 @@ class RepositoryFormat(controldir.ControlComponentFormat):
         try:
             transport = a_bzrdir.get_repository_transport(None)
             format_string = transport.get_bytes("format")
+            format_string = bzrdir.extract_format_string(format_string)
             return format_registry.get(format_string)
         except errors.NoSuchFile:
             raise errors.NoRepositoryPresent(a_bzrdir)
