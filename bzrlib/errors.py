@@ -3163,26 +3163,6 @@ class FileTimestampUnavailable(BzrError):
         self.path = path
 
 
-class MissingFeature(BzrError):
-
-    _fmt = ("Missing feature %(feature)s not provided by this "
-            "version of Bazaar or any plugin.")
-
-    def __init__(self, feature):
-        self.feature = feature
-
-
-class ParseFormatError(BzrError):
-
-    _fmt = "Parse error on line %(lineno)d of format name: %(line)s"
-
-    def __init__(self, lineno, line, text):
-        BzrError.__init__(self)
-        self.lineno = lineno
-        self.line = line
-        self.text = text
-
-
 class NoColocatedBranchSupport(BzrError):
 
     _fmt = ("%(bzrdir)r does not support co-located branches.")
@@ -3213,3 +3193,23 @@ class RecursiveBind(BzrError):
 
     def __init__(self, branch_url):
         self.branch_url = branch_url
+
+
+class MissingFeature(BzrError):
+
+    _fmt = ("Missing feature %(feature)s not provided by this "
+            "version of Bazaar or any plugin.")
+
+    def __init__(self, feature):
+        self.feature = feature
+
+
+class ParseFormatError(BzrError):
+
+    _fmt = "Parse error on line %(lineno)d of format name: %(line)s"
+
+    def __init__(self, lineno, line, text):
+        BzrError.__init__(self)
+        self.lineno = lineno
+        self.line = line
+        self.text = text
