@@ -15,7 +15,7 @@ HTTP、FTP、SFTPとHTTP-WebDAVを"ダム(dumb)"サーバーとして記述し�
 Bazaarはリモートからの読み込みを許可します。
 実行しているBazaarコマンドの中でブランチへのURLを入力するだけです。::
 
-    bzr log http://bazaar-vcs.org/bzr/bzr.dev
+    bzr log http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev
 
 BazaarはFTP、SFTPと(プラグインを通した)HTTP-WebDAVを通した書き込みをサポートします。
 

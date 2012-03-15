@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -515,7 +515,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         from_tree.commit('foo', rev_id='foo-id')
         to_repo = self.make_to_repository('to')
         to_repo.fetch(from_tree.branch.repository)
-        recorded_inv_sha1 = to_repo.get_inventory_sha1('foo-id')
+        recorded_inv_sha1 = to_repo.get_revision('foo-id').inventory_sha1
         to_repo.lock_read()
         self.addCleanup(to_repo.unlock)
         stream = to_repo.inventories.get_record_stream([('foo-id',)],

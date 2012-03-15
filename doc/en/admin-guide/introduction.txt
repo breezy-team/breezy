@@ -27,7 +27,7 @@ system administrators about the requirements for making full use of Bazaar.
 What you need to run a Bazaar server
 ------------------------------------
 
-Where possible, we will discuss both Unix (including Linux) and Windows server
+Where possible, we will discuss both Unix (including GNU/Linux) and Windows server
 environments.  For the purposes of this document, we will consider Mac OS X as
 a type of Unix.
 
@@ -44,7 +44,7 @@ For maximum performance, Bazaar can make use of compiled versions of some
 critical components of the code.  Pure Python alternatives exist for all of
 these components, but they may be considerably slower.  To compile these
 extensions, you need a C compiler and the relevant header files from the
-Python package.  On Linux, these may be in a separate package.  Other
+Python package.  On GNU/Linux, these may be in a separate package.  Other
 operating systems should have the required headers installed by default.
 
 If you are installing a development version of Bazaar, rather than a released

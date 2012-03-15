@@ -19,15 +19,13 @@
 See RFC2228 for details.
 """
 
-import base64, ftplib, getpass, socket
+import base64, ftplib
 
 from bzrlib import (
-    config,
     errors,
     )
 from bzrlib.trace import mutter
 from bzrlib.transport.ftp import FtpTransport
-from bzrlib.transport import register_transport_proto, register_transport
 
 try:
     import kerberos

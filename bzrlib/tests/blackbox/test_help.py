@@ -20,11 +20,11 @@
 
 
 import bzrlib
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.config import (ensure_config_dir_exists, config_filename)
 
 
-class TestHelp(ExternalBase):
+class TestHelp(TestCaseWithTransport):
 
     def test_help_basic(self):
         for cmd in ['--help', 'help', '-h', '-?']:

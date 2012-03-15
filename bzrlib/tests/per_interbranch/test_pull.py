@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2007, 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -76,13 +76,13 @@ class TestPull(TestCaseWithInterBranch):
     def test_pull_raises_specific_error_on_master_connection_error(self):
         master_tree = self.make_from_branch_and_tree('master')
         checkout = master_tree.branch.create_checkout('checkout')
-        other = self.sprout_to(master_tree.branch.bzrdir, 'other').open_workingtree()
+        other = self.sprout_to(master_tree.branch.bzrdir, 'other').open_branch()
         # move the branch out of the way on disk to cause a connection
         # error.
         os.rename('master', 'master_gone')
         # try to pull, which should raise a BoundBranchConnectionFailure.
         self.assertRaises(errors.BoundBranchConnectionFailure,
-                checkout.branch.pull, other.branch)
+                checkout.branch.pull, other)
 
     def test_pull_returns_result(self):
         parent = self.make_from_branch_and_tree('parent')

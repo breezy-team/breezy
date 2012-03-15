@@ -22,10 +22,10 @@ to never have a smart medium.
 """
 
 from bzrlib import errors
-from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
+from bzrlib.transport import decorator
 
 
-class NoSmartTransportDecorator(TransportDecorator):
+class NoSmartTransportDecorator(decorator.TransportDecorator):
     """A decorator for transports that disables get_smart_medium."""
 
     @classmethod
@@ -36,14 +36,8 @@ class NoSmartTransportDecorator(TransportDecorator):
         raise errors.NoSmartMedium(self)
 
 
-class NoSmartTransportServer(DecoratorServer):
-    """Server for the NoSmartTransportDecorator for testing with."""
-
-    def get_decorator_class(self):
-        return NoSmartTransportDecorator
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(NoSmartTransportDecorator, NoSmartTransportServer)]
+    from bzrlib.tests import test_server
+    return [(NoSmartTransportDecorator, test_server.NoSmartTransportServer)]
 

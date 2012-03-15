@@ -1,0 +1,19 @@
+This directory used to contain a shell completion function for zsh.
+That script has been unmaintained since 2005, though.  Zsh itself does
+ship a _bzr completion function, and has done so for quite some time
+now.  So we suggest you use the version installed with your zsh
+instead of the version that used to be located in this directory.
+
+Note that the shell-complete builtin of bzr does provide completion
+information in a style suitable for zsh.  There are some completion
+scripts for zsh in the wild that make use of this feature, although
+none of these scripts is officially supported by the bzr developers.
+
+Also note that recent versions of bzr (starting with the 2.3 series)
+do include a bash_completion plugin. It should be possible to improve
+this in such a way that it generates code for zsh instead of bash.  So
+if you want better zsh completion, this might be the place to start.
+
+References:
+https://bugs.launchpad.net/bzr/+bug/560030
+http://zsh.git.sourceforge.net/git/gitweb.cgi?p=zsh/zsh;a=history;f=Completion/Unix/Command/_bzr

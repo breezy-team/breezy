@@ -31,16 +31,12 @@
 # from _curl_perform.  Not done because we may deprecate pycurl in the
 # future -- vila 20070212
 
-import os
 from cStringIO import StringIO
 import httplib
-import sys
 
 from bzrlib import (
     debug,
     errors,
-    trace,
-    __version__ as bzrlib_version,
     )
 import bzrlib
 from bzrlib.trace import mutter
@@ -266,7 +262,9 @@ class PyCurlTransport(HttpTransportBase):
         # We override the Expect: header so that pycurl will send the POST
         # body immediately.
         try:
-            self._curl_perform(curl, header, ['Expect: '])
+            self._curl_perform(curl, header,
+                               ['Expect: ',
+                                'Content-Type: application/octet-stream'])
         except pycurl.error, e:
             if e[0] == CURLE_SEND_ERROR:
                 # When talking to an HTTP/1.0 server, getting a 400+ error code

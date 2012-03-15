@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,10 @@
 """Server-side branch related request implmentations."""
 
 
-from bzrlib import errors
+from bzrlib import (
+    bencode,
+    errors,
+    )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
@@ -194,6 +197,23 @@ class SmartServerBranchRequestSetConfigOption(SmartServerLockedBranchRequest):
         return SuccessfulSmartServerResponse(())
 
 
+class SmartServerBranchRequestSetConfigOptionDict(SmartServerLockedBranchRequest):
+    """Set an option in the branch configuration.
+    
+    New in 2.2.
+    """
+
+    def do_with_locked_branch(self, branch, value_dict, name, section):
+        utf8_dict = bencode.bdecode(value_dict)
+        value_dict = {}
+        for key, value in utf8_dict.items():
+            value_dict[key.decode('utf8')] = value.decode('utf8')
+        if not section:
+            section = None
+        branch._get_config().set_option(value_dict, name, section)
+        return SuccessfulSmartServerResponse(())
+
+
 class SmartServerBranchRequestSetLastRevision(SmartServerSetTipRequest):
 
     def do_tip_change_with_locked_branch(self, branch, new_last_revision_id):
@@ -292,9 +312,11 @@ class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
         if repo_token == '':
             repo_token = None
         try:
-            repo_token = branch.repository.lock_write(token=repo_token)
+            repo_token = branch.repository.lock_write(
+                token=repo_token).repository_token
             try:
-                branch_token = branch.lock_write(token=branch_token)
+                branch_token = branch.lock_write(
+                    token=branch_token).branch_token
             finally:
                 # this leaves the repository with 1 lock
                 branch.repository.unlock()

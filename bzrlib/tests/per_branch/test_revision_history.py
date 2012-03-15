@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,10 +21,10 @@ from bzrlib import (
     errors,
     revision as _mod_revision,
     )
-from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
+from bzrlib.tests import per_branch
 
 
-class TestLastRevision(TestCaseWithBranch):
+class TestLastRevision(per_branch.TestCaseWithBranch):
     """Tests for the last_revision property of the branch.
     """
 
@@ -47,7 +47,7 @@ class TestLastRevision(TestCaseWithBranch):
         ##         br.set_last_revision_info, 4, 'current:')
 
 
-class TestRevisionHistoryCaching(TestCaseWithBranch):
+class TestRevisionHistoryCaching(per_branch.TestCaseWithBranch):
     """Tests for the caching of branches' revision_history.
 
     When locked, branches should avoid regenerating or rereading
@@ -201,7 +201,7 @@ class TestRevisionHistoryCaching(TestCaseWithBranch):
             branch.unlock()
 
 
-class TestRevisionHistory(TestCaseWithBranch):
+class TestRevisionHistory(per_branch.TestCaseWithBranch):
 
     def test_parent_ghost(self):
         tree = self.make_branch_and_tree('tree')

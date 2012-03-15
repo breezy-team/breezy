@@ -88,6 +88,20 @@ class LockResult(object):
                              self.lock_url, self.details)
 
 
+class LogicalLockResult(object):
+    """The result of a lock_read/lock_write/lock_tree_write call on lockables.
+
+    :ivar unlock: A callable which will unlock the lock.
+    """
+
+    def __init__(self, unlock):
+        self.unlock = unlock
+
+    def __repr__(self):
+        return "LogicalLockResult(%s)" % (self.unlock)
+
+
+
 def cant_unlock_not_held(locked_object):
     """An attempt to unlock failed because the object was not locked.
 
@@ -200,7 +214,7 @@ if have_fcntl:
 
             self._open(self.filename, 'rb+')
             # reserve a slot for this lock - even if the lockf call fails,
-            # at thisi point unlock() will be called, because self.f is set.
+            # at this point unlock() will be called, because self.f is set.
             # TODO: make this fully threadsafe, if we decide we care.
             _fcntl_WriteLock._open_locks.add(self.filename)
             try:

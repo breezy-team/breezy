@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,14 +16,16 @@
 
 """Tests for branch.create_clone behaviour."""
 
-from bzrlib.branch import Branch
-from bzrlib import errors
-from bzrlib import remote
-from bzrlib import tests
-from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
+from bzrlib import (
+    branch,
+    errors,
+    remote,
+    tests,
+    )
+from bzrlib.tests import per_branch
 
 
-class TestCreateClone(TestCaseWithBranch):
+class TestCreateClone(per_branch.TestCaseWithBranch):
 
     def test_create_clone_on_transport_missing_parent_dir(self):
         tree = self.make_branch_and_tree('source')
@@ -129,8 +131,8 @@ class TestCreateClone(TestCaseWithBranch):
         source = tree.branch
         target_transport = self.get_transport('target')
         self.hook_calls = []
-        Branch.hooks.install_named_hook("pre_change_branch_tip",
-            self.assertBranchHookBranchIsStacked, None)
+        branch.Branch.hooks.install_named_hook(
+            'pre_change_branch_tip', self.assertBranchHookBranchIsStacked, None)
         result = tree.branch.create_clone_on_transport(target_transport,
             stacked_on=trunk.base)
         self.assertEqual(revid, result.last_revision())

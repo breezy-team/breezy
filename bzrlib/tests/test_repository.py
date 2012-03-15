@@ -23,12 +23,10 @@ also see this file.
 """
 
 from stat import S_ISDIR
-from StringIO import StringIO
 import sys
 
 import bzrlib
-from bzrlib.errors import (NotBranchError,
-                           NoSuchFile,
+from bzrlib.errors import (NoSuchFile,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
@@ -36,32 +34,23 @@ from bzrlib import (
     graph,
     tests,
     )
-from bzrlib.branchbuilder import BranchBuilder
 from bzrlib.btree_index import BTreeBuilder, BTreeGraphIndex
-from bzrlib.index import GraphIndex, InMemoryGraphIndex
+from bzrlib.index import GraphIndex
 from bzrlib.repository import RepositoryFormat
-from bzrlib.smart import server
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
-    TestSkipped,
-    test_knit,
     )
 from bzrlib.transport import (
-    fakenfs,
     get_transport,
     )
-from bzrlib.transport.memory import MemoryServer
 from bzrlib import (
-    bencode,
     bzrdir,
     errors,
     inventory,
     osutils,
-    progress,
     repository,
     revision as _mod_revision,
-    symbol_versioning,
     upgrade,
     versionedfile,
     workingtree,
@@ -465,7 +454,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         repo = self.make_repository('.',
                 format=bzrdir.format_registry.get('knit')())
         inv_xml = '<inventory format="5">\n</inventory>\n'
-        inv = repo.deserialise_inventory('test-rev-id', inv_xml)
+        inv = repo._deserialise_inventory('test-rev-id', inv_xml)
         self.assertEqual('test-rev-id', inv.root.revision)
 
     def test_deserialise_uses_global_revision_id(self):
@@ -477,9 +466,9 @@ class TestFormatKnit1(TestCaseWithTransport):
         # Arguably, the deserialise_inventory should detect a mismatch, and
         # raise an error, rather than silently using one revision_id over the
         # other.
-        self.assertRaises(AssertionError, repo.deserialise_inventory,
+        self.assertRaises(AssertionError, repo._deserialise_inventory,
             'test-rev-id', inv_xml)
-        inv = repo.deserialise_inventory('other-rev-id', inv_xml)
+        inv = repo._deserialise_inventory('other-rev-id', inv_xml)
         self.assertEqual('other-rev-id', inv.root.revision)
 
     def test_supports_external_lookups(self):

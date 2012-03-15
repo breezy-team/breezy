@@ -121,7 +121,7 @@ This layout can be used for Bazaar, but it is not generally recommended.
     Letting you ``bzr checkout`` one project, and have it grab all the necessary
     sub-projects.
 
-.. _NestedTreeSupport: http://bazaar-vcs.org/NestedTrees
+.. _NestedTreeSupport: http://wiki.bazaar.canonical.com/NestedTrees
 
 
 Nested Style (``project/branch/sub-branch/``)

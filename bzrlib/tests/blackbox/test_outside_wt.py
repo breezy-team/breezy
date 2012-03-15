@@ -36,7 +36,7 @@ class TestOutsideWT(tests.ChrootedTestCase):
         tmp_dir = osutils.realpath(osutils.mkdtemp())
         # We expect a read-to-root attempt to occur.
         self.permit_url('file:///')
-        self.addCleanup(lambda: osutils.rmtree(tmp_dir))
+        self.addCleanup(osutils.rmtree, tmp_dir)
         out, err = self.run_bzr('log', retcode=3, working_dir=tmp_dir)
         self.assertEqual(u'bzr: ERROR: Not a branch: "%s/".\n'
                          % (tmp_dir,),
@@ -57,7 +57,7 @@ class TestOutsideWT(tests.ChrootedTestCase):
         # false and may cause test failures).
         # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
         tmp_dir = osutils.realpath(osutils.mkdtemp())
-        self.addCleanup(lambda: osutils.rmtree(tmp_dir))
+        self.addCleanup(osutils.rmtree, tmp_dir)
         # We expect a read-to-root attempt to occur.
         self.permit_url('file:///')
         expected_error = u'bzr: ERROR: Not a branch: "%s/branch2/".\n' % tmp_dir

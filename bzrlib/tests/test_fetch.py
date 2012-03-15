@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2005, 2007, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,7 +31,6 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.repofmt import knitrepo
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.tests.test_revision import make_branches
 from bzrlib.trace import mutter
 from bzrlib.upgrade import Convert
@@ -248,88 +247,6 @@ class TestMergeFileHistory(TestCaseWithTransport):
                     rev_id).get_file_text('this-file-id'), text)
 
 
-class TestHttpFetch(TestCaseWithWebserver):
-    # FIXME RBC 20060124 this really isn't web specific, perhaps an
-    # instrumented readonly transport? Can we do an instrumented
-    # adapter and use self.get_readonly_url ?
-
-    def test_fetch(self):
-        #highest indices a: 5, b: 7
-        br_a, br_b = make_branches(self)
-        br_rem_a = Branch.open(self.get_readonly_url('branch1'))
-        fetch_steps(self, br_rem_a, br_b, br_a)
-
-    def _count_log_matches(self, target, logs):
-        """Count the number of times the target file pattern was fetched in an http log"""
-        get_succeeds_re = re.compile(
-            '.*"GET .*%s HTTP/1.1" 20[06] - "-" "bzr/%s' %
-            (     target,                    bzrlib.__version__))
-        c = 0
-        for line in logs:
-            if get_succeeds_re.match(line):
-                c += 1
-        return c
-
-    def test_weaves_are_retrieved_once(self):
-        self.build_tree(("source/", "source/file", "target/"))
-        # This test depends on knit dasta storage.
-        wt = self.make_branch_and_tree('source', format='dirstate-tags')
-        branch = wt.branch
-        wt.add(["file"], ["id"])
-        wt.commit("added file")
-        open("source/file", 'w').write("blah\n")
-        wt.commit("changed file")
-        target = BzrDir.create_branch_and_repo("target/")
-        source = Branch.open(self.get_readonly_url("source/"))
-        target.fetch(source)
-        # this is the path to the literal file. As format changes
-        # occur it needs to be updated. FIXME: ask the store for the
-        # path.
-        self.log("web server logs are:")
-        http_logs = self.get_readonly_server().logs
-        self.log('\n'.join(http_logs))
-        # unfortunately this log entry is branch format specific. We could
-        # factor out the 'what files does this format use' to a method on the
-        # repository, which would let us to this generically. RBC 20060419
-        # RBC 20080408: Or perhaps we can assert that no files are fully read
-        # twice?
-        self.assertEqual(1, self._count_log_matches('/ce/id.kndx', http_logs))
-        self.assertEqual(1, self._count_log_matches('/ce/id.knit', http_logs))
-        self.assertEqual(1, self._count_log_matches('inventory.kndx', http_logs))
-        # this r-h check test will prevent regressions, but it currently already
-        # passes, before the patch to cache-rh is applied :[
-        self.assertTrue(1 >= self._count_log_matches('revision-history',
-                                                     http_logs))
-        self.assertTrue(1 >= self._count_log_matches('last-revision',
-                                                     http_logs))
-        # FIXME naughty poking in there.
-        self.get_readonly_server().logs = []
-        # check there is nothing more to fetch.  We take care to re-use the
-        # existing transport so that the request logs we're about to examine
-        # aren't cluttered with redundant probes for a smart server.
-        # XXX: Perhaps this further parameterisation: test http with smart
-        # server, and test http without smart server?
-        source = Branch.open(
-            self.get_readonly_url("source/"),
-            possible_transports=[source.bzrdir.root_transport])
-        target.fetch(source)
-        # should make just two requests
-        http_logs = self.get_readonly_server().logs
-        self.log("web server logs are:")
-        self.log('\n'.join(http_logs))
-        self.assertEqual(1, self._count_log_matches('branch-format', http_logs))
-        self.assertEqual(1, self._count_log_matches('branch/format', http_logs))
-        self.assertEqual(1, self._count_log_matches('repository/format',
-            http_logs))
-        self.assertEqual(1, self._count_log_matches('revisions.kndx',
-            http_logs))
-        self.assertTrue(1 >= self._count_log_matches('revision-history',
-                                                     http_logs))
-        self.assertTrue(1 >= self._count_log_matches('last-revision',
-                                                     http_logs))
-        self.assertLength(5, http_logs)
-
-
 class TestKnitToPackFetch(TestCaseWithTransport):
 
     def find_get_record_stream(self, calls, expected_count=1):
@@ -404,11 +321,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         source.inventories = versionedfile.RecordingVersionedFilesDecorator(
                         source.inventories)
         # XXX: This won't work in general, but for the dirstate format it does.
-        old_fetch_uses_deltas_setting = target._format._fetch_uses_deltas
-        def restore():
-            target._format._fetch_uses_deltas = old_fetch_uses_deltas_setting
-        self.addCleanup(restore)
-        target._format._fetch_uses_deltas = False
+        self.overrideAttr(target._format, '_fetch_uses_deltas', False)
         target.fetch(source, revision_id='rev-one')
         self.assertEqual(('get_record_stream', [('file-id', 'rev-one')],
                           target._format._fetch_order, True),

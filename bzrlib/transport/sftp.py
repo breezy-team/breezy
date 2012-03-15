@@ -82,7 +82,7 @@ except ImportError, e:
 else:
     from paramiko.sftp import (SFTP_FLAG_WRITE, SFTP_FLAG_CREATE,
                                SFTP_FLAG_EXCL, SFTP_FLAG_TRUNC,
-                               CMD_HANDLE, CMD_OPEN)
+                               SFTP_OK, CMD_HANDLE, CMD_OPEN)
     from paramiko.sftp_attr import SFTPAttributes
     from paramiko.sftp_file import SFTPFile
 
@@ -810,9 +810,31 @@ class SFTPTransport(ConnectedTransport):
         """Return the stat information for a file."""
         path = self._remote_path(relpath)
         try:
-            return self._get_sftp().stat(path)
+            return self._get_sftp().lstat(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': unable to stat')
+
+    def readlink(self, relpath):
+        """See Transport.readlink."""
+        path = self._remote_path(relpath)
+        try:
+            return self._get_sftp().readlink(path)
+        except (IOError, paramiko.SSHException), e:
+            self._translate_io_exception(e, path, ': unable to readlink')
+
+    def symlink(self, source, link_name):
+        """See Transport.symlink."""
+        try:
+            conn = self._get_sftp()
+            sftp_retval = conn.symlink(source, link_name)
+            if SFTP_OK != sftp_retval:
+                raise TransportError(
+                    '%r: unable to create symlink to %r' % (link_name, source),
+                    sftp_retval
+                )
+        except (IOError, paramiko.SSHException), e:
+            self._translate_io_exception(e, link_name,
+                                         ': unable to create symlink to %r' % (source))
 
     def lock_read(self, relpath):
         """

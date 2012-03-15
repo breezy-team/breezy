@@ -2,8 +2,35 @@
 Integrating with Bazaar
 =======================
 
-This page should hopefully become a quick guide to integrating other
-(Python-based) software with Bazaar.
+This document provides some general observations on integrating with
+Bazaar and some recipes for typical tasks.  It is intended to be useful to
+someone developing either a plugin or some other piece of software that
+integrates with bzr.  If you want to know about a topic that's not covered
+here, just ask us.
+
+
+
+
+Starting with bzrlib
+====================
+
+Before doing anything else with bzrlib, you should run `bzrlib.initialize`
+which sets up some global state.  
+
+
+Running bzr commands
+====================
+
+To run command-line commands in-process::
+
+  from bzrlib.commands import get_command
+  
+  cmd = get_command('version')
+  cmd.run([])
+  
+This will send output through the current UIFactory; you can redirect this
+elsewhere through the parameters to `bzrlib.initialize`.
+
 
 Manipulating the Working Tree
 =============================
@@ -21,7 +48,8 @@ look through these three files (workingtree.py, mutabletree.py and tree.py)
 to see which methods are available.
 
 Compare trees
-===============
+-------------
+
 There are two methods for comparing trees: ``changes_from`` and
 ``iter_changes``.  ``iter_changes`` is more regular and precise, but it is
 somewhat harder to work with.  See the API documentation for more details.
@@ -54,7 +82,7 @@ For example::
 
 
 Adding Files
-============
+------------
 
 If you want to add files the same way ``bzr add`` does, you can use
 MutableTree.smart_add.  By default, this is recursive. Paths can either be
@@ -70,7 +98,7 @@ For more precise control over which files to add, use MutableTree.add::
 
 
 Removing Files
-==============
+--------------
 
 You can remove multiple files at once.  The file paths need to be relative
 to the workingtree::
@@ -85,7 +113,7 @@ To delete them from the filesystem as well::
 
 
 Renaming a File
-===============
+---------------
 
 You can rename one file to a different name using WorkingTree.rename_one.
 You just provide the old and new names, eg::
@@ -94,7 +122,7 @@ You just provide the old and new names, eg::
 
 
 Moving Files
-============
+------------
 
 You can move multiple files from one directory into another using
 WorkingTree.move::
@@ -107,7 +135,7 @@ which is outside the scope of this document.
 
 
 Committing Changes
-==================
+------------------
 
 To commit _all_ the changes to our working tree we can just call the
 WorkingTree's commit method, giving it a commit message, eg::
@@ -187,7 +215,7 @@ To work with a branch you need a branch object, created from your branch::
 
 
 Branching from an existing branch
-=================================
+---------------------------------
 
 To branch you create a branch object representing the branch you are
 branching from, and supply a path/url to the new branch location.
@@ -205,7 +233,7 @@ This provides no feedback, since Bazaar automatically uses the 'silent' UI.
 
 
 Pushing and pulling branches
-============================
+----------------------------
 
 To push a branch you need to open the source and destination branches, then
 just call push with the other branch as a parameter::

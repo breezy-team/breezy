@@ -106,6 +106,9 @@ class UIFactory(object):
     This tells the library how to display things to the user.  Through this
     layer different applications can choose the style of UI.
 
+    UI Factories are also context managers, for some syntactic sugar some users
+    need.
+
     :ivar suppressed_warnings: Identifiers for user warnings that should 
         no be emitted.
     """
@@ -122,6 +125,23 @@ class UIFactory(object):
         self._task_stack = []
         self.suppressed_warnings = set()
         self._quiet = False
+
+    def __enter__(self):
+        """Context manager entry support.
+
+        Override in a concrete factory class if initialisation before use is
+        needed.
+        """
+        return self # This is bound to the 'as' clause in a with statement.
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit support.
+
+        Override in a concrete factory class if more cleanup than a simple
+        self.clear_term() is needed when the UIFactory is finished with.
+        """
+        self.clear_term()
+        return False # propogate exceptions.
 
     def be_quiet(self, state):
         """Tell the UI to be more quiet, or not.
@@ -158,8 +178,9 @@ class UIFactory(object):
         version of stdout, but in a GUI it might be appropriate to send it to a 
         window displaying the text.
      
-        :param encoding: Unicode encoding for output; default is the 
-            terminal encoding, which may be different from the user encoding.
+        :param encoding: Unicode encoding for output; if not specified 
+            uses the configured 'output_encoding' if any; otherwise the 
+            terminal encoding. 
             (See get_terminal_encoding.)
 
         :param encoding_type: How to handle encoding errors:
@@ -167,7 +188,11 @@ class UIFactory(object):
         """
         # XXX: is the caller supposed to close the resulting object?
         if encoding is None:
-            encoding = osutils.get_terminal_encoding()
+            from bzrlib import config
+            encoding = config.GlobalConfig().get_user_option(
+                'output_encoding')
+        if encoding is None:
+            encoding = osutils.get_terminal_encoding(trace=True)
         if encoding_type is None:
             encoding_type = 'replace'
         out_stream = self._make_output_stream_explicit(encoding, encoding_type)
@@ -195,11 +220,11 @@ class UIFactory(object):
         if not self._task_stack:
             warnings.warn("%r finished but nothing is active"
                 % (task,))
-        elif task != self._task_stack[-1]:
-            warnings.warn("%r is not the active task %r"
-                % (task, self._task_stack[-1]))
+        if task in self._task_stack:
+            self._task_stack.remove(task)
         else:
-            del self._task_stack[-1]
+            warnings.warn("%r is not in active stack %r"
+                % (task, self._task_stack))
         if not self._task_stack:
             self._progress_all_finished()
 
@@ -343,6 +368,13 @@ class UIFactory(object):
         """
         self.show_user_warning('cross_format_fetch', from_format=from_format,
             to_format=to_format)
+
+    def warn_experimental_format_fetch(self, inter):
+        """Warn about fetching into experimental repository formats."""
+        if inter.target._format.experimental:
+            trace.warning("Fetching into experimental format %s.\n"
+                "This format may be unreliable or change in the future "
+                "without an upgrade path.\n" % (inter.target._format,))
 
 
 class SilentUIFactory(UIFactory):

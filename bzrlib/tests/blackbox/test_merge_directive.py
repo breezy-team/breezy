@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -248,3 +248,15 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         tree1, tree2 = self.prepare_merge_directive()
         tree1.commit(u'messag\xe9')
         self.run_bzr('merge-directive ../tree2') # no exception raised
+
+    def test_merge_directive_directory(self):
+        """Test --directory option"""
+        import re
+        re_timestamp = re.compile(r'^# timestamp: .*', re.M)
+        self.prepare_merge_directive()
+        md1 = self.run_bzr('merge-directive ../tree2')[0]
+        md1 = re_timestamp.sub('# timestamp: XXX', md1)
+        os.chdir('..')
+        md2 = self.run_bzr('merge-directive --directory tree1 tree2')[0]
+        md2 = re_timestamp.sub('# timestamp: XXX', md2)
+        self.assertEqualDiff(md1.replace('../tree2', 'tree2'), md2)

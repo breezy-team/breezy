@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2009 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,10 +17,10 @@
 """Tests for the 'check' CLI command."""
 
 from bzrlib.tests import ChrootedTestCase
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestCheck(ExternalBase):
+class TestCheck(TestCaseWithTransport):
 
     def test_check_no_tree(self):
         self.make_branch('.')

@@ -16,13 +16,12 @@
 
 """Tests for break_lock on a repository with external references."""
 
-import bzrlib.ui
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    ui,
+    )
 from bzrlib.tests.per_repository_reference import (
     TestCaseWithExternalReferenceRepository,
-    )
-from bzrlib.ui import (
-    CannedInputUIFactory,
     )
 
 
@@ -42,8 +41,6 @@ class TestBreakLock(TestCaseWithExternalReferenceRepository):
             # 'lock_write' has not taken a physical mutex out.
             repo.unlock()
             return
-        self.old_factory = bzrlib.ui.ui_factory
-        self.addCleanup(self.restoreFactory)
-        bzrlib.ui.ui_factory = CannedInputUIFactory([True])
+        ui.ui_factory = ui.CannedInputUIFactory([True])
         unused_repo.break_lock()
         self.assertRaises(errors.LockBroken, repo.unlock)

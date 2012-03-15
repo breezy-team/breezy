@@ -106,9 +106,19 @@ class TestCaseWithWebserver(tests.TestCaseWithTransport):
     one. This will currently fail if the primary transport is not
     backed by regular disk files.
     """
+
+    # This can be overriden or parametrized by daughter clasess if needed, but
+    # it must exist so that the create_transport_readonly_server() method can
+    # propagate it.
+    _protocol_version = None
+
     def setUp(self):
         super(TestCaseWithWebserver, self).setUp()
         self.transport_readonly_server = http_server.HttpServer
+
+    def create_transport_readonly_server(self):
+        return self.transport_readonly_server(
+            protocol_version=self._protocol_version)
 
 
 class TestCaseWithTwoWebservers(TestCaseWithWebserver):
@@ -127,7 +137,8 @@ class TestCaseWithTwoWebservers(TestCaseWithWebserver):
 
         This is mostly a hook for daughter classes.
         """
-        return self.transport_secondary_server()
+        return self.transport_secondary_server(
+            protocol_version=self._protocol_version)
 
     def get_secondary_server(self):
         """Get the server instance for the secondary transport."""
@@ -218,7 +229,8 @@ class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):
    def create_transport_secondary_server(self):
        """Create the secondary server redirecting to the primary server"""
        new = self.get_readonly_server()
-       redirecting = HTTPServerRedirecting()
+       redirecting = HTTPServerRedirecting(
+           protocol_version=self._protocol_version)
        redirecting.redirect_to(new.host, new.port)
        return redirecting
 

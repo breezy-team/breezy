@@ -241,7 +241,8 @@ class Shelver(object):
             new_tree = self.work_tree
         old_path = old_tree.id2path(file_id)
         new_path = new_tree.id2path(file_id)
-        text_differ = diff.DiffText(old_tree, new_tree, diff_file)
+        text_differ = diff.DiffText(old_tree, new_tree, diff_file,
+            path_encoding=osutils.get_terminal_encoding())
         patch = text_differ.diff(file_id, old_path, new_path, 'file', 'file')
         diff_file.seek(0)
         return patches.parse_patch(diff_file)
@@ -471,18 +472,14 @@ class Unshelver(object):
                 if unshelver.message is not None:
                     trace.note('Message: %s' % unshelver.message)
                 change_reporter = delta._ChangeReporter()
-                task = ui.ui_factory.nested_progress_bar()
-                try:
-                    merger = unshelver.make_merger(task)
-                    merger.change_reporter = change_reporter
-                    if self.apply_changes:
-                        merger.do_merge()
-                    elif self.show_diff:
-                        self.write_diff(merger)
-                    else:
-                        self.show_changes(merger)
-                finally:
-                    task.finished()
+                merger = unshelver.make_merger(None)
+                merger.change_reporter = change_reporter
+                if self.apply_changes:
+                    merger.do_merge()
+                elif self.show_diff:
+                    self.write_diff(merger)
+                else:
+                    self.show_changes(merger)
             if self.delete_shelf:
                 self.manager.delete_shelf(self.shelf_id)
                 trace.note('Deleted changes with id "%d".' % self.shelf_id)
@@ -497,7 +494,9 @@ class Unshelver(object):
         new_tree = tt.get_preview_tree()
         if self.write_diff_to is None:
             self.write_diff_to = ui.ui_factory.make_output_stream()
-        diff.show_diff_trees(merger.this_tree, new_tree, self.write_diff_to)
+        path_encoding = osutils.get_diff_header_encoding()
+        diff.show_diff_trees(merger.this_tree, new_tree, self.write_diff_to,
+            path_encoding=path_encoding)
         tt.finalize()
 
     def show_changes(self, merger):

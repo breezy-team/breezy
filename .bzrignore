@@ -67,3 +67,4 @@ bzrlib/_*.dll
 bzrlib/_*.so
 bzrlib/_*.pyd
 ./.ccache
+.testrepository

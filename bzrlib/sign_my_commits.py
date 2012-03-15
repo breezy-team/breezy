@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ from bzrlib.option import Option
 
 
 class cmd_sign_my_commits(Command):
-    """Sign all commits by a given committer.
+    __doc__ = """Sign all commits by a given committer.
 
     If location is not specified the local tree is used.
     If committer is not specified the default committer is used.

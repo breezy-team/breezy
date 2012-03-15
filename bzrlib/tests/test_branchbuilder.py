@@ -171,6 +171,15 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         rev = branch.repository.get_revision(rev_id)
         self.assertEqual(u'Foo', rev.message)
 
+    def test_commit_message_callback(self):
+        builder = BranchBuilder(self.get_transport().clone('foo'))
+        rev_id = builder.build_snapshot(None, None,
+            [('add', (u'', None, 'directory', None))],
+            message_callback=lambda x:u'Foo')
+        branch = builder.get_branch()
+        rev = branch.repository.get_revision(rev_id)
+        self.assertEqual(u'Foo', rev.message)
+
     def test_modify_file(self):
         builder = self.build_a_rev()
         rev_id2 = builder.build_snapshot('B-id', None,

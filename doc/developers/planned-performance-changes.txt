@@ -120,13 +120,6 @@ Interoperable disk changes
    between two historical trees much more efficiently than the current
    repositories.
 
- * Delta storage optimisation. We plan to change the delta storage logic to use
-   a binary delta like xdelta rather than using line based deltas from python.
-   These binary deltas could be done along ancestry ordering, or other
-   arbitrary patterns chosen for their intended use. Line based deltas will
-   still be created for cached annotations. This is still under some discussion.
-   http://bazaar-vcs.org/PerformanceRoadmap/Xdelta
-
  * Greatest distance from origin cache. This is a possible change to introduce,
    but it may be unnecessary - listed here for completeness till it has been
    established as [un]needed.

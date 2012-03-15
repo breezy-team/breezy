@@ -21,7 +21,7 @@ codebase, with several people working on this codebase, keeping their work
 in sync.  This workflow is also applicable to a single developer working
 on several different machines.
 
-.. _Bazaar: http://bazaar-vcs.org
+.. _Bazaar: http://bazaar.canonical.com
 
 
 Initial Setup
@@ -100,7 +100,7 @@ without losing any history. However, this is outside the scope of this
 document. See `Tracking Upstream`_ for some possibilities (section
 "Converting and keeping history").
 
-.. _Tracking Upstream: http://bazaar-vcs.org/TrackingUpstream
+.. _Tracking Upstream: http://wiki.bazaar.canonical.com/TrackingUpstream
 
 ..
    XXX: We really need a different document for discussing conversion of a
@@ -231,7 +231,7 @@ like they would have collaborated on the ``dev`` branch. [#cbranch]_
 
    % bzr cbranch dev my-feature-branch
 
-.. _bzrtools: http://bazaar-vcs.org/BzrTools
+.. _bzrtools: http://wiki.bazaar.canonical.com/BzrTools
 
 
 Merging changes back

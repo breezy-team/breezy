@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,16 +16,15 @@
 
 from cStringIO import StringIO
 
-from bzrlib import osutils
-from bzrlib.add import (
-    AddAction,
-    AddFromBaseAction,
+from bzrlib import (
+    add,
+    inventory,
+    osutils,
+    tests,
     )
-from bzrlib.tests import TestCase, TestCaseWithTransport
-from bzrlib.inventory import Inventory
 
 
-class AddCustomIDAction(AddAction):
+class AddCustomIDAction(add.AddAction):
 
     def __call__(self, inv, parent_ie, path, kind):
         # The first part just logs if appropriate
@@ -39,7 +38,7 @@ class AddCustomIDAction(AddAction):
         return file_id
 
 
-class TestAddFrom(TestCaseWithTransport):
+class TestAddFrom(tests.TestCaseWithTransport):
     """Tests for AddFromBaseAction"""
 
     def make_base_tree(self):
@@ -60,9 +59,9 @@ class TestAddFrom(TestCaseWithTransport):
         try:
             new_tree.lock_write()
             try:
-                action = AddFromBaseAction(base_tree, base_path,
-                                           to_file=to_file,
-                                           should_print=should_print)
+                action = add.AddFromBaseAction(base_tree, base_path,
+                                               to_file=to_file,
+                                               should_print=should_print)
                 new_tree.smart_add(file_list, action=action)
             finally:
                 new_tree.unlock()
@@ -144,7 +143,7 @@ class TestAddFrom(TestCaseWithTransport):
         self.failIf(a_id in self.base_tree)
 
 
-class TestAddActions(TestCase):
+class TestAddActions(tests.TestCase):
 
     def test_quiet(self):
         self.run_action("")
@@ -153,11 +152,10 @@ class TestAddActions(TestCase):
         self.run_action("adding path\n")
 
     def run_action(self, output):
-        from bzrlib.add import AddAction
         from bzrlib.mutabletree import _FastPath
-        inv = Inventory()
+        inv = inventory.Inventory()
         stdout = StringIO()
-        action = AddAction(to_file=stdout, should_print=bool(output))
+        action = add.AddAction(to_file=stdout, should_print=bool(output))
 
         self.apply_redirected(None, stdout, None, action, inv, None,
             _FastPath('path'), 'file')

@@ -22,6 +22,7 @@ import xmlrpclib
 from bzrlib import (
     errors,
     tests,
+    transport,
     )
 from bzrlib.branch import Branch
 from bzrlib.directory_service import directories
@@ -29,7 +30,6 @@ from bzrlib.tests import (
     TestCaseInTempDir,
     TestCaseWithMemoryTransport
 )
-from bzrlib.transport import get_transport
 from bzrlib.plugins.launchpad import (
     _register_directory,
     lp_registration,
@@ -216,9 +216,9 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
         directories.remove('lp:')
         directories.register('lp:', FooService, 'Map lp URLs to local urls')
         self.addCleanup(_register_directory)
-        self.addCleanup(lambda: directories.remove('lp:'))
-        transport = get_transport('lp:///apt')
-        branch = Branch.open_from_transport(transport)
+        self.addCleanup(directories.remove, 'lp:')
+        t = transport.get_transport('lp:///apt')
+        branch = Branch.open_from_transport(t)
         self.assertEqual(target_branch.base, branch.base)
 
 

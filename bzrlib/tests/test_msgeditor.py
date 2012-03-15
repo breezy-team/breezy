@@ -360,9 +360,6 @@ if len(sys.argv) == 2:
             msgeditor.generate_commit_message_template(commit_obj))
 
     def test_generate_commit_message_template_hook(self):
-        def restoreDefaults():
-            msgeditor.hooks['commit_message_template'] = []
-        self.addCleanup(restoreDefaults)
         msgeditor.hooks.install_named_hook("commit_message_template",
                 lambda commit_obj, msg: "save me some typing\n", None)
         commit_obj = commit.Commit()

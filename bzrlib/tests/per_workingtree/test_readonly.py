@@ -60,12 +60,8 @@ class TestReadonly(TestCaseWithWorkingTree):
 
     def set_dirs_readonly(self, basedir):
         """Set all directories readonly, and have it cleanup on test exit."""
+        self.addCleanup(self._set_all_dirs, basedir, readonly=False)
         self._set_all_dirs(basedir, readonly=True)
-
-        def cleanup():
-            self._set_all_dirs(basedir, readonly=False)
-
-        self.addCleanup(cleanup)
 
     def create_basic_tree(self):
         tree = self.make_branch_and_tree('tree')

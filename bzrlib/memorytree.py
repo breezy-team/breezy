@@ -25,10 +25,9 @@ import os
 from bzrlib import (
     errors,
     mutabletree,
-    osutils,
     revision as _mod_revision,
     )
-from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.decorators import needs_read_lock
 from bzrlib.osutils import sha_file
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.transport.memory import MemoryTransport

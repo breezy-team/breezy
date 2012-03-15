@@ -29,10 +29,10 @@ Bazaarは分散型バージョン管理システムで、ソフトウェアプ�
 別のプラットフォームとソースコードからインストールする方法に関しては、 ダウンロード_
 と インストール方法_ のページを参照してください。
 
-.. _Windowsのためのインストールの手引き: http://bazaar-vcs.org/WindowsDownloads
-.. _Mac OS Xのためのインストールの手引き: http://bazaar-vcs.org/MacOSXBundle
-.. _ダウンロード: http://bazaar-vcs.org/Download
-.. _インストール方法: http://bazaar-vcs.org/InstallationFaq
+.. _Windowsのためのインストールの手引き: http://wiki.bazaar.canonical.com/WindowsDownloads
+.. _Mac OS Xのためのインストールの手引き: http://wiki.bazaar.canonical.com/MacOSXBundle
+.. _ダウンロード: http://wiki.bazaar.canonical.com/Download
+.. _インストール方法: http://wiki.bazaar.canonical.com/InstallationFaq
 
 
 まずは自己紹介
@@ -74,7 +74,7 @@ Bazaarにあなたのプロジェクトディレクトリを初期化させま�
 何も起きていないように見えても心配しないでください。
 Bazaarはファイルとリビジョンの履歴を保存する branch_ を作りました。
 
-.. _branch: http://bazaar-vcs.org/Branch
+.. _branch: http://wiki.bazaar.canonical.com/Branch
 
 次のステップはBazaarに管理して欲しいファイルを教えることです。
 ``bzr add`` を実行するとすべてのディレクトリとファイルがプロジェクトに\
@@ -166,7 +166,7 @@ Bazaarはリモートサーバー上で ``myproject`` ディレクトリを作�
  $ bzr branch http://www.example.com/myproject
 
 **注:** sftpを使うためには、 ``paramiko`` と ``pyCrypto`` をインストールする必要があります。
-詳細は http://bazaar-vcs.org/InstallationFaq を参照してください。
+詳細は http://wiki.bazaar.canonical.com/InstallationFaq を参照してください。
 
 
 Launchpadでブランチを公開する

@@ -15,13 +15,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-import errno
 import os
 import shutil
-import sys
 
 from bzrlib import bzrdir, errors
-from bzrlib.osutils import has_symlinks, isdir
+from bzrlib.osutils import isdir
 from bzrlib.trace import note
 from bzrlib.workingtree import WorkingTree
 

@@ -768,20 +768,20 @@ class TestMerger(TestCaseWithTransport):
     def test_from_revision_ids(self):
         this, other = self.set_up_trees()
         self.assertRaises(errors.NoSuchRevision, Merger.from_revision_ids,
-                          progress.DummyProgress(), this, 'rev2b')
+                          None, this, 'rev2b')
         this.lock_write()
         self.addCleanup(this.unlock)
-        merger = Merger.from_revision_ids(progress.DummyProgress(), this,
+        merger = Merger.from_revision_ids(None, this,
             'rev2b', other_branch=other.branch)
         self.assertEqual('rev2b', merger.other_rev_id)
         self.assertEqual('rev1', merger.base_rev_id)
-        merger = Merger.from_revision_ids(progress.DummyProgress(), this,
+        merger = Merger.from_revision_ids(None, this,
             'rev2b', 'rev2a', other_branch=other.branch)
         self.assertEqual('rev2a', merger.base_rev_id)
 
     def test_from_uncommitted(self):
         this, other = self.set_up_trees()
-        merger = Merger.from_uncommitted(this, other, progress.DummyProgress())
+        merger = Merger.from_uncommitted(this, other, None)
         self.assertIs(other, merger.other_tree)
         self.assertIs(None, merger.other_rev_id)
         self.assertEqual('rev2b', merger.base_rev_id)
@@ -800,16 +800,16 @@ class TestMerger(TestCaseWithTransport):
         other.lock_read()
         self.addCleanup(other.unlock)
         merger, verified = Merger.from_mergeable(this, md,
-            progress.DummyProgress())
+            None)
         md.patch = None
         merger, verified = Merger.from_mergeable(this, md,
-            progress.DummyProgress())
+            None)
         self.assertEqual('inapplicable', verified)
         self.assertEqual('rev3', merger.other_rev_id)
         self.assertEqual('rev1', merger.base_rev_id)
         md.base_revision_id = 'rev2b'
         merger, verified = Merger.from_mergeable(this, md,
-            progress.DummyProgress())
+            None)
         self.assertEqual('rev2b', merger.base_rev_id)
 
     def test_from_mergeable_old_merge_directive(self):
@@ -819,6 +819,6 @@ class TestMerger(TestCaseWithTransport):
         md = merge_directive.MergeDirective.from_objects(
             other.branch.repository, 'rev3', 0, 0, 'this')
         merger, verified = Merger.from_mergeable(this, md,
-            progress.DummyProgress())
+            None)
         self.assertEqual('rev3', merger.other_rev_id)
         self.assertEqual('rev1', merger.base_rev_id)

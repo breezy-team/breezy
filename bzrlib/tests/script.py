@@ -24,6 +24,7 @@ import errno
 import glob
 import os
 import shlex
+import textwrap
 from cStringIO import StringIO
 
 from bzrlib import (
@@ -73,6 +74,7 @@ def _script_to_commands(text, file_name=None):
     cmd_line = 1
     lineno = 0
     input, output, error = None, None, None
+    text = textwrap.dedent(text)
     for line in text.split('\n'):
         lineno += 1
         # Keep a copy for error reporting
@@ -475,3 +477,7 @@ class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
     def run_command(self, cmd, input, output, error):
         return self.script_runner.run_command(self, cmd, input, output, error)
 
+
+def run_script(test_case, script_string):
+    """Run the given script within a testcase"""
+    return ScriptRunner().run_script(test_case, script_string)

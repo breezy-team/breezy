@@ -452,17 +452,16 @@ class ImportReplacerHelper(TestCaseInTempDir):
         self.actions = []
         InstrumentedImportReplacer.use_actions(self.actions)
 
+        sys.path.append(base_path)
+        self.addCleanup(sys.path.remove, base_path)
+
         original_import = __import__
         def instrumented_import(mod, scope1, scope2, fromlist):
             self.actions.append(('import', mod, fromlist))
             return original_import(mod, scope1, scope2, fromlist)
-
         def cleanup():
-            if base_path in sys.path:
-                sys.path.remove(base_path)
             __builtins__['__import__'] = original_import
         self.addCleanup(cleanup)
-        sys.path.append(base_path)
         __builtins__['__import__'] = instrumented_import
 
     def create_modules(self):

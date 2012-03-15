@@ -229,6 +229,9 @@ class TextUIFactory(UIFactory):
 
     def show_warning(self, msg):
         self.clear_term()
+        if isinstance(msg, unicode):
+            te = osutils.get_terminal_encoding()
+            msg = msg.encode(te, 'replace')
         self.stderr.write("bzr: warning: %s\n" % msg)
 
     def _progress_updated(self, task):
@@ -238,8 +241,12 @@ class TextUIFactory(UIFactory):
             warnings.warn("%r updated but no tasks are active" %
                 (task,))
         elif task != self._task_stack[-1]:
-            warnings.warn("%r is not the top progress task %r" %
-                (task, self._task_stack[-1]))
+            # We used to check it was the top task, but it's hard to always
+            # get this right and it's not necessarily useful: any actual
+            # problems will be evident in use
+            #warnings.warn("%r is not the top progress task %r" %
+            #     (task, self._task_stack[-1]))
+            pass
         self._progress_view.show_progress(task)
 
     def _progress_all_finished(self):
@@ -293,12 +300,18 @@ class TextProgressView(object):
         # correspond reliably to overall command progress
         self.enable_bar = False
 
+    def _avail_width(self):
+        # we need one extra space for terminals that wrap on last char
+        w = osutils.terminal_width() 
+        if w is None:
+            return None
+        else:
+            return w - 1
+
     def _show_line(self, s):
         # sys.stderr.write("progress %r\n" % s)
-        width = osutils.terminal_width()
+        width = self._avail_width()
         if width is not None:
-            # we need one extra space for terminals that wrap on last char
-            width = width - 1
             s = '%-*.*s' % (width, width, s)
         self._term_file.write('\r' + s + '\r')
 
@@ -341,6 +354,10 @@ class TextProgressView(object):
             return ''
 
     def _format_task(self, task):
+        """Format task-specific parts of progress bar.
+
+        :returns: (text_part, counter_part) both unicode strings.
+        """
         if not task.show_count:
             s = ''
         elif task.current_cnt is not None and task.total_cnt is not None:
@@ -356,21 +373,39 @@ class TextProgressView(object):
             t = t._parent_task
             if t.msg:
                 m = t.msg + ':' + m
-        return m + s
+        return m, s
 
     def _render_line(self):
         bar_string = self._render_bar()
         if self._last_task:
-            task_msg = self._format_task(self._last_task)
+            task_part, counter_part = self._format_task(self._last_task)
         else:
-            task_msg = ''
+            task_part = counter_part = ''
         if self._last_task and not self._last_task.show_transport_activity:
             trans = ''
         else:
             trans = self._last_transport_msg
-            if trans:
-                trans += ' | '
-        return (bar_string + trans + task_msg)
+        # the bar separates the transport activity from the message, so even
+        # if there's no bar or spinner, we must show something if both those
+        # fields are present
+        if (task_part or trans) and not bar_string:
+            bar_string = '| '
+        # preferentially truncate the task message if we don't have enough
+        # space
+        avail_width = self._avail_width()
+        if avail_width is not None:
+            # if terminal avail_width is unknown, don't truncate
+            current_len = len(bar_string) + len(trans) + len(task_part) + len(counter_part)
+            gap = current_len - avail_width
+            if gap > 0:
+                task_part = task_part[:-gap-2] + '..'
+        s = trans + bar_string + task_part + counter_part
+        if avail_width is not None:
+            if len(s) < avail_width:
+                s = s.ljust(avail_width)
+            elif len(s) > avail_width:
+                s = s[:avail_width]
+        return s
 
     def _repaint(self):
         s = self._render_line()
@@ -429,9 +464,11 @@ class TextProgressView(object):
         elif now >= (self._transport_update_time + 0.5):
             # guard against clock stepping backwards, and don't update too
             # often
-            rate = self._bytes_since_update / (now - self._transport_update_time)
-            msg = ("%6dKB %5dKB/s" %
-                    (self._total_byte_count>>10, int(rate)>>10,))
+            rate = (self._bytes_since_update
+                    / (now - self._transport_update_time))
+            # using base-10 units (see HACKING.txt).
+            msg = ("%6dkB %5dkB/s " %
+                    (self._total_byte_count / 1000, int(rate) / 1000,))
             self._transport_update_time = now
             self._last_repaint = now
             self._bytes_since_update = 0
@@ -447,16 +484,17 @@ class TextProgressView(object):
                 transfer_time = 0.001
             bps = self._total_byte_count / transfer_time
 
-        msg = ('Transferred: %.0fKiB'
-               ' (%.1fK/s r:%.0fK w:%.0fK'
-               % (self._total_byte_count / 1024.,
-                  bps / 1024.,
-                  self._bytes_by_direction['read'] / 1024.,
-                  self._bytes_by_direction['write'] / 1024.,
+        # using base-10 units (see HACKING.txt).
+        msg = ('Transferred: %.0fkB'
+               ' (%.1fkB/s r:%.0fkB w:%.0fkB'
+               % (self._total_byte_count / 1000.,
+                  bps / 1000.,
+                  self._bytes_by_direction['read'] / 1000.,
+                  self._bytes_by_direction['write'] / 1000.,
                  ))
         if self._bytes_by_direction['unknown'] > 0:
-            msg += ' u:%.0fK)' % (
-                self._bytes_by_direction['unknown'] / 1024.
+            msg += ' u:%.0fkB)' % (
+                self._bytes_by_direction['unknown'] / 1000.
                 )
         else:
             msg += ')'

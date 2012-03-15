@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,29 +20,26 @@ The tags are actually in the Branch.tags namespace, but these are
 1:1 with Branch implementations so can be tested from here.
 """
 
-import os
-import re
-import sys
-
-import bzrlib
-from bzrlib import bzrdir, errors, repository
-from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
-from bzrlib.trace import mutter
-from bzrlib.workingtree import WorkingTree
-
-from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
+from bzrlib import (
+    branch,
+    bzrdir,
+    errors,
+    repository,
+    tests,
+    )
+from bzrlib.tests import per_branch
 
 
-class TestBranchTags(TestCaseWithBranch):
+class TestBranchTags(per_branch.TestCaseWithBranch):
 
     def setUp(self):
-        TestCaseWithBranch.setUp(self)
+        super(TestBranchTags, self).setUp()
         # formats that don't support tags can skip the rest of these
         # tests...
         branch = self.make_branch('probe')
         if not branch._format.supports_tags():
-            raise TestSkipped("format %s doesn't support tags" % branch._format)
+            raise tests.TestSkipped(
+                "format %s doesn't support tags" % branch._format)
 
     def test_tags_initially_empty(self):
         b = self.make_branch('b')
@@ -54,7 +51,7 @@ class TestBranchTags(TestCaseWithBranch):
         b.tags.set_tag('tag-name', 'target-revid-1')
         b.tags.set_tag('other-name', 'target-revid-2')
         # then reopen the branch and see they're still there
-        b = Branch.open('b')
+        b = branch.Branch.open('b')
         self.assertEqual(b.tags.get_tag_dict(),
             {'tag-name': 'target-revid-1',
              'other-name': 'target-revid-2',
@@ -71,7 +68,7 @@ class TestBranchTags(TestCaseWithBranch):
         b.tags.set_tag('tag-name', 'target-revid-1')
         b.tags.set_tag('other-name', 'target-revid-2')
         # then reopen the branch and check reverse map id->tags list
-        b = Branch.open('b')
+        b = branch.Branch.open('b')
         self.assertEqual(b.tags.get_reverse_tag_dict(),
             {'target-revid-1': ['tag-name'],
              'target-revid-2': ['other-name'],
@@ -147,15 +144,15 @@ class TestBranchTags(TestCaseWithBranch):
         b1.tags.merge_to(b2.tags)
 
 
-class TestUnsupportedTags(TestCaseWithBranch):
+class TestUnsupportedTags(per_branch.TestCaseWithBranch):
     """Formats that don't support tags should give reasonable errors."""
 
     def setUp(self):
-        TestCaseWithBranch.setUp(self)
+        super(TestUnsupportedTags, self).setUp()
         branch = self.make_branch('probe')
         if branch._format.supports_tags():
-            raise TestSkipped("Format %s declares that tags are supported"
-                              % branch._format)
+            raise tests.TestSkipped("Format %s declares that tags are supported"
+                                    % branch._format)
             # it's covered by TestBranchTags
 
     def test_tag_methods_raise(self):
@@ -174,3 +171,54 @@ class TestUnsupportedTags(TestCaseWithBranch):
         b1 = self.make_branch('b1')
         b2 = self.make_branch('b2')
         b1.tags.merge_to(b2.tags)
+
+
+class AutomaticTagNameTests(per_branch.TestCaseWithBranch):
+
+    def setUp(self):
+        super(AutomaticTagNameTests, self).setUp()
+        if isinstance(self.branch_format, branch.BranchReferenceFormat):
+            # This test could in principle apply to BranchReferenceFormat, but
+            # make_branch_builder doesn't support it.
+            raise tests.TestSkipped(
+                "BranchBuilder can't make reference branches.")
+        self.builder = self.make_branch_builder('.')
+        self.builder.build_snapshot('foo', None,
+            [('add', ('', None, 'directory', None))],
+            message='foo')
+        self.branch = self.builder.get_branch()
+        if not self.branch._format.supports_tags():
+            raise tests.TestSkipped(
+                "format %s doesn't support tags" % self.branch._format)
+
+    def test_no_functions(self):
+        rev = self.branch.last_revision()
+        self.assertEquals(None, self.branch.automatic_tag_name(rev))
+
+    def test_returns_tag_name(self):
+        def get_tag_name(br, revid):
+            return "foo"
+        branch.Branch.hooks.install_named_hook('automatic_tag_name',
+            get_tag_name, 'get tag name foo')
+        self.assertEquals("foo", self.branch.automatic_tag_name(
+            self.branch.last_revision()))
+    
+    def test_uses_first_return(self):
+        get_tag_name_1 = lambda br, revid: "foo1"
+        get_tag_name_2 = lambda br, revid: "foo2"
+        branch.Branch.hooks.install_named_hook('automatic_tag_name',
+            get_tag_name_1, 'tagname1')
+        branch.Branch.hooks.install_named_hook('automatic_tag_name',
+            get_tag_name_2, 'tagname2')
+        self.assertEquals("foo1", self.branch.automatic_tag_name(
+            self.branch.last_revision()))
+
+    def test_ignores_none(self):
+        get_tag_name_1 = lambda br, revid: None
+        get_tag_name_2 = lambda br, revid: "foo2"
+        branch.Branch.hooks.install_named_hook('automatic_tag_name',
+            get_tag_name_1, 'tagname1')
+        branch.Branch.hooks.install_named_hook('automatic_tag_name',
+            get_tag_name_2, 'tagname2')
+        self.assertEquals("foo2", self.branch.automatic_tag_name(
+            self.branch.last_revision()))

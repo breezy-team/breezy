@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -78,7 +78,7 @@ def determine_signal():
 def hook_debugger_to_signal():
     """Add a signal handler so we drop into the debugger.
 
-    On Linux and Mac, this is hooked into SIGQUIT (C-\\) on Windows, this is
+    On Unix, this is hooked into SIGQUIT (C-\\), and on Windows, this is
     hooked into SIGBREAK (C-Pause).
     """
 

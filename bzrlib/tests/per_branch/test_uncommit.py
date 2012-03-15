@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,17 +19,19 @@
 Note that uncommit currently is not a branch method; it should be.
 """
 
-from bzrlib.branch import Branch
-from bzrlib import errors
-from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
-from bzrlib.uncommit import uncommit
+from bzrlib import (
+    branch,
+    errors,
+    uncommit,
+    )
+from bzrlib.tests import per_branch
 
 
-class TestUncommitHook(TestCaseWithBranch):
+class TestUncommitHook(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         self.hook_calls = []
-        TestCaseWithBranch.setUp(self)
+        super(TestUncommitHook, self).setUp()
 
     def capture_post_uncommit_hook(self, local, master, old_revno,
         old_revid, new_revno, new_revid):
@@ -53,9 +55,9 @@ class TestUncommitHook(TestCaseWithBranch):
         tree.add('')
         revid = tree.commit('a revision')
         tree.unlock()
-        Branch.hooks.install_named_hook('post_uncommit',
+        branch.Branch.hooks.install_named_hook('post_uncommit',
             self.capture_post_uncommit_hook, None)
-        uncommit(tree.branch)
+        uncommit.uncommit(tree.branch)
         # with nothing left we should still get a notification, and
         # have the branch locked at notification time.
         self.assertEqual([
@@ -76,9 +78,9 @@ class TestUncommitHook(TestCaseWithBranch):
         tree.add('')
         revid = tree.commit('a revision')
         tree.unlock()
-        Branch.hooks.install_named_hook('post_uncommit',
-            self.capture_post_uncommit_hook, None)
-        uncommit(tree.branch)
+        branch.Branch.hooks.install_named_hook(
+            'post_uncommit', self.capture_post_uncommit_hook, None)
+        uncommit.uncommit(tree.branch)
         # with nothing left we should still get a notification, and
         # have the branch locked at notification time.
         self.assertEqual([
@@ -95,9 +97,9 @@ class TestUncommitHook(TestCaseWithBranch):
         revid2 = tree.commit('second revision')
         revid3 = tree.commit('third revision')
         tree.unlock()
-        Branch.hooks.install_named_hook('post_uncommit',
-            self.capture_post_uncommit_hook, None)
-        uncommit(tree.branch, revno=2)
+        branch.Branch.hooks.install_named_hook(
+            'post_uncommit', self.capture_post_uncommit_hook, None)
+        uncommit.uncommit(tree.branch, revno=2)
         # having uncommitted from up the branch, we should get the
         # before and after revnos and revids correctly.
         self.assertEqual([

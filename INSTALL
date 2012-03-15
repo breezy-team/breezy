@@ -15,10 +15,10 @@ pycrypto:
 
 bzr can optionally use compiled versions of some parts of the code
 for increased speed. When installing bzr you need the ability to
-build C extensions. Some Linux distributions package the necessary
+build C extensions. Some GNU/Linux distributions package the necessary
 headers separately from the main Python package. This package is
 probably named something like python-dev or python-devel. FreeBSD,
-Windows, source-based Linux distributions, and possibly other operating
+Windows, source-based GNU/Linux distributions, and possibly other operating
 systems, have the required files installed by default.
 
 If you are installing bzr from a bzr branch rather than a release tarball,
@@ -43,5 +43,6 @@ To install system-wide, run (as root)
   python setup.py install
 
 For more information on installation, see
-http://bazaar-vcs.org/InstallationFaq
-or write to bazaar@lists.canonical.com.
+<http://wiki.bazaar.canonical.com/InstallationFaq>
+or write to bazaar@lists.canonical.com, or ask a question at
+<https://answers.launchpad.net/bzr/>.

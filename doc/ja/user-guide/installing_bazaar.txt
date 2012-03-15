@@ -6,14 +6,14 @@ Linux
 
 BazaarのパッケージはUbuntu/Debian、Red HatとGentooを含む人気のある
 大抵のLinuxディストリビューションで利用できます。
-最新の手引きは http://bazaar-vcs.org/Download を参照してください。
+最新の手引きは http://wiki.bazaar.canonical.com/Download を参照してください。
 
 Windows
 -------
 
 Windowsユーザーは、Bazaarのコアパッケージと一緒に必要な前提要件と
 いくつかの便利なプラグインを含むインストーラが利用できます。
-最新の手引きは http://bazaar-vcs.org/Download を参照してください。
+最新の手引きは http://wiki.bazaar.canonical.com/Download を参照してください。
 
 注: Windows上でCygwinを動かしている場合、Cygwin用のBazaarパッケージを\
 Windows版の代わりに使わなければなりません。
@@ -23,7 +23,7 @@ Windows版の代わりに使わなければなりません。
 
 BazaarのパッケージはLinuxとWindowsだけでなく、Mac OS X, FreeBSD, Solaris\
 を含む広い範囲のオペレーティングシステムで利用可能です。
-最新の手引きに関しては http://bazaar-vcs.org/Download を参照してください。
+最新の手引きに関しては http://wiki.bazaar.canonical.com/Download を参照してください。
 
 
 ゼロからインストールする
@@ -34,7 +34,7 @@ BazaarのパッケージはLinuxとWindowsだけでなく、Mac OS X, FreeBSD, S
 
   1. まだインストールしていなければ、バージョン2.4以降のPythonをインストールします。
 
-  2. http://bazaar-vcs.org/Download もしくはLaunchpad (https://launchpad.net/~bzr/)から
+  2. http://wiki.bazaar.canonical.com/Download もしくはLaunchpad (https://launchpad.net/~bzr/)から
      ``bazaar-xxx.tar.gz`` ファイル(xxxはバージョン番号)をダウンロードします。
 
   3. tar、WinZipもしくは同等のコマンドを用いてアーカイブを解凍します。
@@ -80,7 +80,7 @@ Bazaarの最新の開発バージョンを常に利用したい場合があり�
 
   2. 次のように開発バージョンのコピーを入手します::
 
-       bzr branch http://bazaar-vcs.org/bzr/bzr.dev
+       bzr branch lp:bzr
 
   3. 作成されたディレクトリ(bzr.dev)をPATHに登録します
 

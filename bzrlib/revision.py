@@ -28,7 +28,6 @@ from bzrlib import (
     symbol_versioning,
     )
 from bzrlib.osutils import contains_whitespace
-from bzrlib.progress import DummyProgress
 
 NULL_REVISION="null:"
 CURRENT_REVISION="current:"

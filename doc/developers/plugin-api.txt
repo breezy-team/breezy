@@ -22,9 +22,9 @@ document, please ask us.
 See also
 --------
 
- * `Bazaar Developer Documentation Catalog <index.html>`_.
- * <http://bazaar-vcs.org/WritingPlugins> wiki page with many more
-   suggestions about particular APIs
+ * `Bazaar Developer Documentation Catalog <../index.html>`_.
+ * `Bazaar Plugins Guide <http://doc.bazaar.canonical.com/plugins/en/plugin-development.html>`_ for
+   more suggestions about particular APIs.
 
 
 Structure of a plugin
@@ -186,9 +186,8 @@ plugins``.  As with all Python docstrings, the first line should be a
 short complete sentence summarizing the plugin.  The full docstring is
 shown by ``bzr help PLUGIN_NAME``.
 
-Remember that to be effective, the module docstring must be the first
-statement in the file.  It may come after comments but it must be before
-any import statements.
+This is a user-visible docstring so should be prefixed with ``__doc__ =``
+to ensure help works under ``python -OO`` with docstrings stripped.
 
 API version
 -----------
@@ -242,7 +241,7 @@ startup.  Generally the plugin won't want to actually do anything at this
 time other than register or override functions to be called later.
 
 The plugin can import bzrlib and call any function.
-Some interesting APIs are described in <http://bazaar-vcs.org/WritingPlugins>
+Some interesting APIs are described in `Bazaar Plugins Guide <http://doc.bazaar.canonical.com/plugins/en/plugin-development.html>`_.
 
 
 Publishing your plugin
@@ -255,7 +254,7 @@ other people.  Here are some steps to consider:
    <https://launchpad.net/bzr-fastimport>
    and publish the branches or tarballs there
 
- * include the plugin in <http://bazaar-vcs.org/BzrPlugins>
+ * include the plugin in <http://wiki.bazaar.canonical.com/BzrPlugins>
 
  * post about it to the ``bazaar-announce`` list at ``lists.canonical.com``
 

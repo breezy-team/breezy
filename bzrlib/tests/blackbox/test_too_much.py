@@ -46,11 +46,11 @@ from bzrlib.branch import Branch
 from bzrlib.errors import BzrCommandError
 from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 
-class TestCommands(ExternalBase):
+class TestCommands(TestCaseWithTransport):
 
     def test_invalid_commands(self):
         self.run_bzr("pants", retcode=3)
@@ -354,7 +354,7 @@ def listdir_sorted(dir):
     return L
 
 
-class OldTests(ExternalBase):
+class OldTests(TestCaseWithTransport):
     """old tests moved from ./testbzr."""
 
     def test_bzr(self):

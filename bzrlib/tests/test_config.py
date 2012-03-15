@@ -35,6 +35,7 @@ from bzrlib import (
     trace,
     transport,
     )
+from bzrlib.tests import features
 from bzrlib.util.configobj import configobj
 
 
@@ -240,10 +241,36 @@ class TestConfigObj(tests.TestCase):
         """
         co = config.ConfigObj()
         co['test'] = 'foo#bar'
-        lines = co.write()
+        outfile = StringIO()
+        co.write(outfile=outfile)
+        lines = outfile.getvalue().splitlines()
         self.assertEqual(lines, ['test = "foo#bar"'])
         co2 = config.ConfigObj(lines)
         self.assertEqual(co2['test'], 'foo#bar')
+
+    def test_triple_quotes(self):
+        # Bug #710410: if the value string has triple quotes
+        # then ConfigObj versions up to 4.7.2 will quote them wrong
+        # and won't able to read them back
+        triple_quotes_value = '''spam
+""" that's my spam """
+eggs'''
+        co = config.ConfigObj()
+        co['test'] = triple_quotes_value
+        # While writing this test another bug in ConfigObj has been found:
+        # method co.write() without arguments produces list of lines
+        # one option per line, and multiline values are not split
+        # across multiple lines,
+        # and that breaks the parsing these lines back by ConfigObj.
+        # This issue only affects test, but it's better to avoid
+        # `co.write()` construct at all.
+        # [bialix 20110222] bug report sent to ConfigObj's author
+        outfile = StringIO()
+        co.write(outfile=outfile)
+        output = outfile.getvalue()
+        # now we're trying to read it back
+        co2 = config.ConfigObj(StringIO(output))
+        self.assertEquals(triple_quotes_value, co2['test'])
 
 
 erroneous_config = """[section] # line 1
@@ -367,7 +394,7 @@ class TestConfigPath(tests.TestCase):
             '/home/bogus/.cache')
 
 
-class TestIniConfig(tests.TestCase):
+class TestIniConfig(tests.TestCaseInTempDir):
 
     def make_config_parser(self, s):
         conf = config.IniBasedConfig(None)
@@ -393,6 +420,22 @@ class TestIniConfigBuilding(TestIniConfig):
         parser = my_config._get_parser(file=config_file)
         self.failUnless(my_config._get_parser() is parser)
 
+    def _dummy_chown(self, path, uid, gid):
+        self.path, self.uid, self.gid = path, uid, gid
+
+    def test_ini_config_ownership(self):
+        """Ensure that chown is happening during _write_config_file.
+        """
+        self.requireFeature(features.chown_feature)
+        self.overrideAttr(os, 'chown', self._dummy_chown)
+        self.path = self.uid = self.gid = None
+        def get_filename():
+            return 'foo.conf'
+        conf = config.IniBasedConfig(get_filename)
+        conf._write_config_file()
+        self.assertEquals(self.path, 'foo.conf')
+        self.assertTrue(isinstance(self.uid, int))
+        self.assertTrue(isinstance(self.gid, int))
 
 class TestGetUserOptionAs(TestIniConfig):
 
@@ -406,9 +449,16 @@ a_list = hmm, who knows ? # This is interpreted as a list !
         get_bool = conf.get_user_option_as_bool
         self.assertEqual(True, get_bool('a_true_bool'))
         self.assertEqual(False, get_bool('a_false_bool'))
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+        msg = 'Value "%s" is not a boolean for "%s"'
         self.assertIs(None, get_bool('an_invalid_bool'))
+        self.assertEquals(msg % ('maybe', 'an_invalid_bool'), warnings[0])
+        warnings = []
         self.assertIs(None, get_bool('not_defined_in_this_config'))
-
+        self.assertEquals([], warnings)
 
     def test_get_user_option_as_list(self):
         conf, parser = self.make_config_parser("""
@@ -1670,11 +1720,8 @@ user=jim
             'password ignored in section \[ssh with password\]')
 
     def test_uses_fallback_stores(self):
-        self._old_cs_registry = config.credential_store_registry
-        def restore():
-            config.credential_store_registry = self._old_cs_registry
-        self.addCleanup(restore)
-        config.credential_store_registry = config.CredentialStoreRegistry()
+        self.overrideAttr(config, 'credential_store_registry',
+                          config.CredentialStoreRegistry())
         store = StubCredentialStore()
         store.add_credentials("http", "example.com", "joe", "secret")
         config.credential_store_registry.register("stub", store, fallback=True)

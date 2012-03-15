@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,12 +16,14 @@
 
 """Tests for implementations of Repository.has_same_location."""
 
-from bzrlib import bzrdir
+from bzrlib import (
+    bzrdir,
+    transport,
+    )
 from bzrlib.tests import (
     TestNotApplicable,
     )
 from bzrlib.tests.per_repository import TestCaseWithRepository
-from bzrlib.transport import get_transport
 
 
 class TestHasSameLocation(TestCaseWithRepository):
@@ -112,7 +114,8 @@ class TestHasSameLocation(TestCaseWithRepository):
         if repo._format == other_repo._format:
             # We're testing the default format!  So we have to use a non-default
             # format for other_repo.
-            get_transport(self.get_vfs_only_url()).delete_tree('other')
+            transport.get_transport(self.get_vfs_only_url()
+                                    ).delete_tree('other')
             other_repo = self.make_repository('other', format='metaweave')
         # Make sure the other_repo is not a RemoteRepository.
         other_bzrdir = bzrdir.BzrDir.open(self.get_vfs_only_url('other'))

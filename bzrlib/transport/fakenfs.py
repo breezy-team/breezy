@@ -28,10 +28,10 @@ from bzrlib import (
     errors,
     urlutils,
     )
-from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
+from bzrlib.transport import decorator
 
 
-class FakeNFSTransportDecorator(TransportDecorator):
+class FakeNFSTransportDecorator(decorator.TransportDecorator):
     """A transport that behaves like NFS, for testing"""
 
     @classmethod
@@ -62,14 +62,7 @@ class FakeNFSTransportDecorator(TransportDecorator):
         return self._decorated.delete(relpath)
 
 
-class FakeNFSServer(DecoratorServer):
-    """Server for the FakeNFSTransportDecorator for testing with."""
-
-    def get_decorator_class(self):
-        return FakeNFSTransportDecorator
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(FakeNFSTransportDecorator, FakeNFSServer),
-            ]
+    from bzrlib.tests import test_server
+    return [(FakeNFSTransportDecorator, test_server.FakeNFSServer),]

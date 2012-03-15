@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,16 +29,29 @@ from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
 
+class TestMkdir(TestCaseWithTransport):
+
+    def test_mkdir_fails_cleanly(self):
+        """'mkdir' fails cleanly when no working tree is available.
+        https://bugs.launchpad.net/bzr/+bug/138600
+        """
+        # Since there is a safety working tree above us, we create a bare repo
+        # here locally.
+        shared_repo = self.make_repository('.')
+        self.run_bzr(['mkdir', 'abc'], retcode=3)
+        self.failIfExists('abc')
+
+
 class TestVersioning(TestCaseInTempDir):
 
     def test_mkdir(self):
         """Basic 'bzr mkdir' operation"""
 
         self.run_bzr('init')
-        self.run_bzr('mkdir foo')
+        self.run_bzr(['mkdir', 'foo'])
         self.assert_(os.path.isdir('foo'))
 
-        self.run_bzr('mkdir foo', retcode=3)
+        self.run_bzr(['mkdir', 'foo'], retcode=3)
 
         wt = WorkingTree.open('.')
 
@@ -54,12 +67,12 @@ class TestVersioning(TestCaseInTempDir):
         """'bzr mkdir' operation in subdirectory"""
 
         self.run_bzr('init')
-        self.run_bzr('mkdir dir')
+        self.run_bzr(['mkdir', 'dir'])
         self.assert_(os.path.isdir('dir'))
 
         os.chdir('dir')
         self.log('Run mkdir in subdir')
-        self.run_bzr('mkdir subdir')
+        self.run_bzr(['mkdir', 'subdir'])
         self.assert_(os.path.isdir('subdir'))
         os.chdir('..')
 
@@ -86,7 +99,7 @@ class TestVersioning(TestCaseInTempDir):
         self.run_bzr('init')
         os.chdir('../..')
 
-        self.run_bzr('mkdir dir a/dir a/b/dir')
+        self.run_bzr(['mkdir', 'dir', 'a/dir', 'a/b/dir'])
         self.failUnless(os.path.isdir('dir'))
         self.failUnless(os.path.isdir('a/dir'))
         self.failUnless(os.path.isdir('a/b/dir'))

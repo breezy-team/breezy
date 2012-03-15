@@ -71,7 +71,7 @@ Bazaarでは通常、履歴はバージョン管理されているコードと�
 
  * 会社において、分散されたチームや外部のチームと連携するのが簡単になります
 
-分散型VCSツールの集中型より優れた点の詳細な一覧に関しては、 http://bazaar-vcs.org/BzrWhy を参照してください。
+分散型VCSツールの集中型より優れた点の詳細な一覧に関しては、 http://wiki.bazaar.canonical.com/BzrWhy を参照してください。
 
 
 Bazaarの主要な機能
@@ -79,12 +79,12 @@ Bazaarの主要な機能
 
 Bazaarは現存する唯一のVCSツールではありませんが、多くのチームとコミュニティにとって\
 よい選択肢になる優れた機能をいくつか持ちます。
-別のVCSツールとの比較の要約はBazaarのWiki、 http://bazaar-vcs.org/ で見つかります。
+別のVCSツールとの比較の要約はBazaarのWiki、 http://wiki.bazaar.canonical.com/ で見つかります。
 
 多くの機能の中で、とりわけ強調するものがあります:
 BazaarはPythonで書かれた完全にフリーなソフトウェアです。
 結果として、改善に貢献することは簡単です。
-手を貸して頂けるのであれば、 http://bazaar-vcs.org/BzrSupport を参照して頂くようお願いします。
+手を貸して頂けるのであれば、 http://wiki.bazaar.canonical.com/BzrSupport を参照して頂くようお願いします。
 
 
 さらに学ぶ

@@ -13,7 +13,7 @@ not offer any assistance to Bazaar.  If you make a Bazaar repository available
 over any of these protocols, Bazaar will allow you to read it remotely.  Just
 enter the URL to the branch in the Bazaar command you are running.::
 
-    bzr log http://bazaar-vcs.org/bzr/bzr.dev
+    bzr log http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev
 
 Bazaar supports writing over FTP, SFTP and (via a plugin) over HTTP-WebDAV.
 

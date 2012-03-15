@@ -121,7 +121,7 @@ SVNで次のようなレイアウトを利用するプロジェクトもたま�
     メタプロジェクトはリポジトリのレイアウトにかかわらず複数のプロジェクトを集約します。
     1つのプロジェクトを ``bzr checkout`` すれば、必要なサブプロジェクトがすべて手に入ります。
 
-.. _NestedTreeSupport: http://bazaar-vcs.org/NestedTrees
+.. _NestedTreeSupport: http://wiki.bazaar.canonical.com/NestedTrees
 
 
 入れ子形式 (``project/branch/sub-branch/``)

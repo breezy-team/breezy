@@ -28,7 +28,11 @@ from bzrlib import (
     )
 """)
 
-from bzrlib.commands import Command, Option, register_command
+from bzrlib import bzrdir
+from bzrlib.commands import (
+        Command,
+        register_command,
+)
 from bzrlib import (
     branch as _mod_branch,
     lazy_regex,
@@ -44,10 +48,14 @@ from bzrlib.errors import (
     NotBranchError,
     )
 from bzrlib.help_topics import topic_registry
+from bzrlib.option import (
+        Option,
+        ListOption,
+)
 
 
 class cmd_register_branch(Command):
-    """Register a branch with launchpad.net.
+    __doc__ = """Register a branch with launchpad.net.
 
     This command lists a bzr branch in the directory of branches on
     launchpad.net.  Registration allows the branch to be associated with
@@ -155,7 +163,7 @@ register_command(cmd_register_branch)
 
 
 class cmd_launchpad_open(Command):
-    """Open a Launchpad branch page in your web browser."""
+    __doc__ = """Open a Launchpad branch page in your web browser."""
 
     aliases = ['lp-open']
     takes_options = [
@@ -205,7 +213,7 @@ register_command(cmd_launchpad_open)
 
 
 class cmd_launchpad_login(Command):
-    """Show or set the Launchpad user ID.
+    __doc__ = """Show or set the Launchpad user ID.
 
     When communicating with Launchpad, some commands need to know your
     Launchpad user ID.  This command can be used to set or show the
@@ -261,7 +269,7 @@ register_command(cmd_launchpad_login)
 
 # XXX: cmd_launchpad_mirror is untested
 class cmd_launchpad_mirror(Command):
-    """Ask Launchpad to mirror a branch now."""
+    __doc__ = """Ask Launchpad to mirror a branch now."""
 
     aliases = ['lp-mirror']
     takes_args = ['location?']
@@ -277,6 +285,69 @@ class cmd_launchpad_mirror(Command):
 
 
 register_command(cmd_launchpad_mirror)
+
+
+class cmd_lp_propose_merge(Command):
+    __doc__ = """Propose merging a branch on Launchpad.
+
+    This will open your usual editor to provide the initial comment.  When it
+    has created the proposal, it will open it in your default web browser.
+
+    The branch will be proposed to merge into SUBMIT_BRANCH.  If SUBMIT_BRANCH
+    is not supplied, the remembered submit branch will be used.  If no submit
+    branch is remembered, the development focus will be used.
+
+    By default, the SUBMIT_BRANCH's review team will be requested to review
+    the merge proposal.  This can be overriden by specifying --review (-R).
+    The parameter the launchpad account name of the desired reviewer.  This
+    may optionally be followed by '=' and the review type.  For example:
+
+      bzr lp-propose-merge --review jrandom --review review-team=qa
+
+    This will propose a merge,  request "jrandom" to perform a review of
+    unspecified type, and request "review-team" to perform a "qa" review.
+    """
+
+    takes_options = [Option('staging',
+                            help='Propose the merge on staging.'),
+                     Option('message', short_name='m', type=unicode,
+                            help='Commit message.'),
+                     Option('approve',
+                            help='Mark the proposal as approved immediately.'),
+                     ListOption('review', short_name='R', type=unicode,
+                            help='Requested reviewer and optional type.')]
+
+    takes_args = ['submit_branch?']
+
+    aliases = ['lp-submit', 'lp-propose']
+
+    def run(self, submit_branch=None, review=None, staging=False,
+            message=None, approve=False):
+        from bzrlib.plugins.launchpad import lp_propose
+        tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
+            '.')
+        if review is None:
+            reviews = None
+        else:
+            reviews = []
+            for review in review:
+                if '=' in review:
+                    reviews.append(review.split('=', 2))
+                else:
+                    reviews.append((review, ''))
+            if submit_branch is None:
+                submit_branch = branch.get_submit_branch()
+        if submit_branch is None:
+            target = None
+        else:
+            target = _mod_branch.Branch.open(submit_branch)
+        proposer = lp_propose.Proposer(tree, branch, target, message,
+                                       reviews, staging, approve=approve)
+        proposer.check_proposal()
+        proposer.create_proposal()
+
+
+register_command(cmd_lp_propose_merge)
 
 
 def _register_directory():

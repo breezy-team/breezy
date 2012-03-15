@@ -211,8 +211,8 @@ You'll usually refer to branches on your computer's filesystem just by
 giving the name of the directory containing the branch.  bzr also supports
 accessing branches over http and sftp, for example::
 
-    % bzr log http://bazaar-vcs.org/bzr/bzr.dev/
-    % bzr log sftp://bazaar-vcs.org/bzr/bzr.dev/
+    % bzr log http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev/
+    % bzr log sftp://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev/
 
 By installing bzr plugins you can also access branches using the rsync
 protocol.
@@ -535,7 +535,7 @@ change to an existing project.  To do this, you'll need to get a copy of
 the existing branch.  Because this new copy is potentially a new branch,
 the command is called **branch**::
 
-    % bzr branch http://bazaar-vcs.org/bzr/bzr.dev
+    % bzr branch lp:bzr bzr.dev
     % cd bzr.dev
 
 This copies down the complete history of this branch, so we can do all

@@ -22,6 +22,8 @@ This allows overriding re.compile() to return lazily compiled objects.
 
 import re
 
+from bzrlib import errors
+
 
 class LazyRegex(object):
     """A proxy around a real regex, which won't be compiled until accessed."""
@@ -58,7 +60,12 @@ class LazyRegex(object):
 
     def _real_re_compile(self, *args, **kwargs):
         """Thunk over to the original re.compile"""
-        return _real_re_compile(*args, **kwargs)
+        try:
+            return _real_re_compile(*args, **kwargs)
+        except re.error, e:
+            # raise InvalidPattern instead of re.error as this gives a
+            # cleaner message to the user.
+            raise errors.InvalidPattern('"' + args[0] + '" ' +str(e))
 
     def __getattr__(self, attr):
         """Return a member from the proxied regex object.

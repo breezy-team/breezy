@@ -30,7 +30,7 @@ from bzrlib.xml_serializer import (
     XMLSerializer,
     escape_invalid_chars,
     )
-from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
+from bzrlib.inventory import InventoryEntry
 from bzrlib.revision import Revision
 from bzrlib.errors import BzrError
 
