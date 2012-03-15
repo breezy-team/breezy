@@ -38,6 +38,10 @@ Testing
 * Now requires bzr >= 2.5 for testing. The plugin itself should still work
   with previous versions. (Vincent Ladeuil)
 
+* Avoid deprecation warning with bzr-2.5 by using tree.iter_entries_by_dir
+  avoiding direct inventory access, this should still be compatible with
+  older bzr versions. (Vincent Ladeuil)
+
 bzr-upload 1.0.1
 ################
 

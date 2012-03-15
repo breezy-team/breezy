@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Canonical Ltd
+# Copyright (C) 2011, 2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -312,7 +312,7 @@ class BzrUploader(object):
                                         # --create-prefix option ?)
         self.tree.lock_read()
         try:
-            for relpath, ie in self.tree.inventory.iter_entries():
+            for relpath, ie in self.tree.iter_entries_by_dir():
                 if relpath in ('', '.bzrignore', '.bzrignore-upload'):
                     # skip root ('')
                     # .bzrignore and .bzrignore-upload have no meaning outside
