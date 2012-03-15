@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-02-02 17:39+0100\n"
-"PO-Revision-Date: 2012-03-13 22:02+0000\n"
+"PO-Revision-Date: 2012-03-14 21:14+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-03-14 04:35+0000\n"
+"X-Launchpad-Export-Date: 2012-03-15 04:30+0000\n"
 "X-Generator: Launchpad (build 14933)\n"
 
 #: bzrlib/add.py:95
@@ -2973,6 +2973,11 @@ msgid ""
 "or make new features available. It may however limit interoperability\n"
 "with older repositories or with older versions of Bazaar."
 msgstr ""
+"Když je výchozí formát Bazaar změněn v nové hlavní verzi,\n"
+"můžete být během určitých operací informováni, že\n"
+"byste měli formát inovovat. Přechodem na novější formát může zlepšit\n"
+"výkon, nebo zpřístupnit nové funkce. Může ale omezit interoperabilitu\n"
+"se staršími úložišti nebo staršími verzemi Bazaar."
 
 #: bzrlib/builtins.py:3759
 msgid ""
@@ -2983,6 +2988,12 @@ msgid ""
 "a one way process (e.g. changing from the 1.x default to the\n"
 "2.x default) so downgrading is not always possible."
 msgstr ""
+"Pokud si přejete spíše přejít na určitý formát, než\n"
+"současný výchozí, může ho zadat pomocí volby --format.\n"
+"V důsledku toho můžete takto příkaz použít pro přechod na\n"
+"starší formát, i když pro některé převody není cesty zpět\n"
+"(např. změna z výchozího formátu v 1.x na výchozí v 2.x)\n"
+"takže"
 
 #: bzrlib/builtins.py:3766
 msgid ""
@@ -2994,6 +3005,12 @@ msgid ""
 "Alternatively, you can delete it by hand if everything looks good\n"
 "afterwards."
 msgstr ""
+"Při spuštění procesu převodu je vytvořen záložní adresář  backup.bzr.~#~\n"
+"(kde # je číslo). Standardně je adresář ponechán při dokončení operace.\n"
+"Pokud převod selže, smažte nový adresář .bzr a přejmenujte tento zpět\n"
+"místo toho. Použijte volbu --clean, abyste požádali o odstranění\n"
+"záložního adresáře při úspěšném převodu. Alternativně ho můžete\n"
+"smazat ručně, pokud vše vypadá po převodu v pořádku."
 
 #: bzrlib/builtins.py:3774
 msgid ""
@@ -3002,16 +3019,22 @@ msgid ""
 "If the conversion of a branch fails, remaining branches are still\n"
 "tried."
 msgstr ""
+"Pokud zadané umístění je sdílené úložiště, závislé větve\n"
+"jsou také převedeny za předpokladu, že úložiště je úspěšně převedeno.\n"
+"Pokud převod ve větvi selže, ve zbývajících větvích stále proběhne\n"
+"pokus o převod."
 
 #: bzrlib/builtins.py:3779
 msgid ""
 "For more information on upgrades, see the Bazaar Upgrade Guide,\n"
 "http://doc.bazaar.canonical.com/latest/en/upgrade-guide/."
 msgstr ""
+"Pro další informace o inovacích navštivte Průvodce aktualizací Bazaar,\n"
+"http://doc.bazaar.canonical.com/latest/en/upgrade-guide/."
 
 #: bzrlib/builtins.py:3787
 msgid "Upgrade to a specific format.  See \"bzr help formats\" for details."
-msgstr ""
+msgstr "Převést na určitý formát. Viz \"bzr help formats\" pro podrobnosti."
 
 #: bzrlib/builtins.py:3791
 msgid "Branch format"
@@ -3051,108 +3074,118 @@ msgstr "        bzr whoami \"Frank Chu <fchu@example.com>\""
 
 #: bzrlib/builtins.py:3823
 msgid "Display email address only."
-msgstr ""
+msgstr "Zobrazit pouze emailovou adresu."
 
 #: bzrlib/builtins.py:3825
 msgid "Set identity for the current branch instead of globally."
-msgstr ""
+msgstr "Nastavit identitu pro současnou větev místo globálně."
 
 #: bzrlib/builtins.py:3851
 msgid "--email can only be used to display existing identity"
-msgstr ""
+msgstr "--email může být použit pouze pro zobrazení existující identity."
 
 #: bzrlib/builtins.py:3873
 msgid "Print or set the branch nickname."
-msgstr ""
+msgstr "Vypsat nebo nastavit přezdívku větve."
 
 #: bzrlib/builtins.py:3875
 msgid ""
 "If unset, the tree root directory name is used as the nickname.\n"
 "To print the current nickname, execute with no argument."
 msgstr ""
+"Pokud je nastavení zrušeno, je název kořenového adresáře použit\n"
+"jako přezdívka. Pro výpis současné přezdívky, spusťte bez\n"
+"argumentu."
 
 #: bzrlib/builtins.py:3878
 msgid ""
 "Bound branches use the nickname of its master branch unless it is set\n"
 "locally."
 msgstr ""
+"Svázané větve používají přezdívku své hlavní větve, pokud není místně\n"
+"nastavena."
 
 #: bzrlib/builtins.py:3898
 msgid "Set/unset and display aliases."
-msgstr ""
+msgstr "Nastavit/zrušit nastavení a zobrazit zkratky."
 
 #: bzrlib/builtins.py:3900
 msgid ""
 ":Examples:\n"
 "    Show the current aliases::"
 msgstr ""
+":Příklady:\n"
+"    Zobrazit současné zkratky::"
 
 #: bzrlib/builtins.py:3903
 msgid "        bzr alias"
-msgstr ""
+msgstr "        bzr alias"
 
 #: bzrlib/builtins.py:3905
 msgid "    Show the alias specified for 'll'::"
-msgstr ""
+msgstr "    Zobrazit určenou zkratku pro 'll'::"
 
 #: bzrlib/builtins.py:3907
 msgid "        bzr alias ll"
-msgstr ""
+msgstr "        bzr alias ll"
 
 #: bzrlib/builtins.py:3909
 msgid "    Set an alias for 'll'::"
-msgstr ""
+msgstr "    Nastavit zkratku pro 'll'::"
 
 #: bzrlib/builtins.py:3911
 msgid "        bzr alias ll=\"log --line -r-10..-1\""
-msgstr ""
+msgstr "        bzr alias ll=\"log --line -r-10..-1\""
 
 #: bzrlib/builtins.py:3913
 msgid "    To remove an alias for 'll'::"
-msgstr ""
+msgstr "    Pro odstranění zkratky pro 'll'::"
 
 #: bzrlib/builtins.py:3915
 msgid "        bzr alias --remove ll"
-msgstr ""
+msgstr "        bzr alias --remove ll"
 
 #: bzrlib/builtins.py:3920
 msgid "Remove the alias."
-msgstr ""
+msgstr "Odstranit zkratku."
 
 #: bzrlib/builtins.py:3938
 msgid "bzr alias --remove expects an alias to remove."
-msgstr ""
+msgstr "bzr alias --remove očekává zkratku k odstranění."
 
 #: bzrlib/builtins.py:4119
 msgid ""
 "subunit not available. subunit needs to be installed to use --subunit."
 msgstr ""
+"podjednotka není dostupná. Pro použití --subunit je třeba podjednotku "
+"nainstalovat."
 
 #: bzrlib/builtins.py:4136
 msgid ""
 "--benchmark is no longer supported from bzr 2.2; use bzr-usertest instead"
 msgstr ""
+"--benchmark již není od bzr 2.2 podporován; použijte místo toho bzr-usertest"
 
 #: bzrlib/builtins.py:4183
 msgid "Show version of bzr."
-msgstr ""
+msgstr "Zobrazit verzi bzr."
 
 #: bzrlib/builtins.py:4187
 msgid "Print just the version number."
-msgstr ""
+msgstr "Vypsat pouze číslo verze."
 
 #: bzrlib/builtins.py:4206
 msgid "It sure does!\n"
-msgstr ""
+msgstr "To víš že jo!\n"
 
 #: bzrlib/builtins.py:4230
 #, python-format
 msgid "merge base is revision %s\n"
-msgstr ""
+msgstr "základ sloučení je %s\n"
 
 #: bzrlib/builtins.py:4234
 msgid "Perform a three-way merge."
-msgstr ""
+msgstr "Provést trojí porovnávání sloučení."
 
 #: bzrlib/builtins.py:4236
 msgid ""
@@ -3164,6 +3197,13 @@ msgid ""
 "branch:  in this case, only the modifications to that file are merged into\n"
 "the current working tree."
 msgstr ""
+"Zdroj sloučení může být zadán buď ve formě větve. nebo ve formě\n"
+"cesty k souboru obsahující příkaz sloučení vytvořený pomocí bzr send.\n"
+"Pokud ani jedno není zadáno, výchozí je nadřazená větev, nebo\n"
+"větev nedávnou sloučená použitím --remember. Zdroj sloučení\n"
+"může být také zadán ve formě cesty k souboru v jiné větvi:\n"
+"v tomto případě jsou do současného pracovního stromu sloučeny\n"
+"pouze změny tohoto souboru."
 
 #: bzrlib/builtins.py:4244
 msgid ""
@@ -3171,12 +3211,17 @@ msgid ""
 "work from the other branch, automatically determining an appropriate base\n"
 "revision.  If this fails, you may need to give an explicit base."
 msgstr ""
+"Při slučování z větve se bzr standardně pokusí o sloučení všech\n"
+"změn z druhé větve, čímž automaticky určí vhodnou základní revizi.\n"
+"Pokud toto selže, možná budete muset zadat výslovný základ."
 
 #: bzrlib/builtins.py:4248
 msgid ""
 "To pick a different ending revision, pass \"--revision OTHER\".  bzr will\n"
 "try to merge in all new work up to and including revision OTHER."
 msgstr ""
+"Pro výběr jiné konečné revize zadejte \"--revision JINÁ\". bzr se pokusí\n"
+"sloučit všechny změny až po a včetně revize JINÁ."
 
 #: bzrlib/builtins.py:4251
 msgid ""
