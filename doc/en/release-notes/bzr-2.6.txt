@@ -117,6 +117,12 @@ Bug Fixes
 Documentation
 *************
 
+.. Improved or updated documentation.
+
+* Document "bzr lp-propose", "bzr register-branch" and
+  the other Launchpad plugin commands in bzr(1).
+  (Jelmer Vernooij, #843801, #163995)
+
 * Prevent lines of command descriptions starting with a dot to
   accidentally be interpreted as a roff macro in bzr(1).
   (Jelmer Vernooij, #711079)

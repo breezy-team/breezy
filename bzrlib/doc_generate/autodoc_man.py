@@ -23,6 +23,8 @@ TODO:
 
 from __future__ import absolute_import
 
+PLUGINS_TO_DOCUMENT = ["launchpad"]
+
 import textwrap
 import time
 
@@ -30,6 +32,9 @@ import bzrlib
 import bzrlib.help
 import bzrlib.help_topics
 import bzrlib.commands
+
+from bzrlib.plugin import load_plugins
+load_plugins()
 
 
 def get_filename(options):
@@ -66,6 +71,11 @@ def man_escape(string):
 def command_name_list():
     """Builds a list of command names from bzrlib"""
     command_names = bzrlib.commands.builtin_command_names()
+    for cmdname in bzrlib.commands.plugin_command_names():
+        cmd_object = bzrlib.commands.get_cmd_object(cmdname)
+        if (PLUGINS_TO_DOCUMENT is None or
+            cmd_object.plugin_name() in PLUGINS_TO_DOCUMENT):
+            command_names.append(cmdname)
     command_names.sort()
     return command_names
 
@@ -105,7 +115,7 @@ def getcommand_help(params):
     return output
 
 
-def format_command (params, cmd):
+def format_command(params, cmd):
     """Provides long help for each public command"""
     subsection_header = '.SS "%s"\n' % (cmd._usage())
     doc = "%s\n" % (cmd.__doc__)
@@ -134,7 +144,7 @@ def format_command (params, cmd):
                     subsequent_indent=30*' ',
                     break_long_words=False,
                     )
-                option_str = option_str + wrapped + '\n'       
+                option_str += wrapped + '\n'
 
     aliases_str = ""
     if cmd.aliases:
