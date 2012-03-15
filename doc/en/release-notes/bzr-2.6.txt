@@ -5,10 +5,10 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.6b1
+bzr 2.6b2
 #########
 
-:2.6b1: NOT RELEASED YET
+:2.6b2: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -25,6 +25,64 @@ Improvements
 
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
+bzr 2.6b1
+#########
+
+:2.6b1: 2012-03-15
+
+This is the first beta for the 2.6 series, leading up to a 2.6.0 release in
+August 2012.
+
+This release includes ssl certificates verification from the urllib-based
+http implementation turned on by default, fixes some UI issues around
+colocated branches, documentation fixes and more.
+
+This release includes all bugs fixed in previous series known at the time of
+this release.
+
+Beta releases are suitable for everyday use but may cause some
+incompatibilities with plugins.  Some plugins may need small updates to work
+with 2.6b1.
+
+External Compatibility Breaks
+*****************************
+
+None.
+
+Improvements
+************
 
 * Access to HTTPS URLs now uses the urrllib implementation by default.
   For the old pycurl-based implementation, specify ``https+pycurl://`` as
@@ -53,9 +111,6 @@ Improvements
 Bug Fixes
 *********
 
-.. Fixes for situations where bzr would previously crash or give incorrect
-   or undesirable results.
-
 * Fix ``bzr config`` display for ``RegistryOption`` values.
   (Vincent Ladeuil, #930182)
 
@@ -76,9 +131,6 @@ Documentation
 
 API Changes
 ***********
-
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
 
 * ``GPGStrategy.do_verifications`` has been deprecated.
   (Jelmer Vernooij)
@@ -135,9 +187,6 @@ API Changes
 Internals
 *********
 
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
-
 * ``Tree.path2id`` now once again accepts a list of path elements
   in addition to a path. (Jelmer Vernooij)
 
@@ -145,13 +194,6 @@ Internals
   this should be disabled are templates which should already have used
   conf.get(option, expand=False) or conf.get_user_option(option,
   expand=False). (Vincent Ladeuil)
-
-Testing
-*******
-
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
 
 ..
    vim: tw=74 ft=rst ff=unix
