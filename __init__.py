@@ -29,10 +29,6 @@ import os
 
 import bzrlib
 from bzrlib.commands import plugin_cmds
-from bzrlib.directory_service import (
-    AliasDirectory,
-    directories,
-    )
 
 from bzrlib.plugins.builddeb.info import (
     bzr_plugin_version as version_info,
@@ -78,23 +74,60 @@ default_orig_dir = '..'
 default_result_dir = '..'
 
 
-directories.register_lazy("apt:", 'bzrlib.plugins.builddeb.directory',
-        'VcsDirectory',
-        "Directory that uses Debian Vcs-* control fields to look up branches")
+try:
+    from bzrlib.registry import register_lazy
+except ImportError:
+    from bzrlib.directory_service import (
+        AliasDirectory,
+        directories,
+        )
 
-branch_aliases = getattr(AliasDirectory, "branch_aliases", None)
-if branch_aliases is not None:
-    def upstream_branch_alias(b):
-        from bzrlib.plugins.builddeb.util import debuild_config
-        b.lock_read()
-        try:
-            tree = b.basis_tree()
-            config = debuild_config(tree, False)
-            return directories.dereference(config.upstream_branch)
-        finally:
-            b.unlock()
-    branch_aliases.register("upstream", upstream_branch_alias,
-        help="upstream branch (for packaging branches)")
+    directories.register_lazy("apt:", 'bzrlib.plugins.builddeb.directory',
+            'VcsDirectory',
+            "Directory that uses Debian Vcs-* control fields to look up branches")
+
+    branch_aliases = getattr(AliasDirectory, "branch_aliases", None)
+    if branch_aliases is not None:
+        branch_aliases.register_lazy("upstream",
+                "bzrlib.plugins.builddeb.directory", "upstream_branch_alias",
+                help="upstream branch (for packaging branches)")
+
+    try:
+        from bzrlib.tag import tag_sort_methods
+    except ImportError:
+        pass # bzr tags --sort= can not be extended
+    else:
+        tag_sort_methods.register_lazy("debversion",
+            "bzrlib.plugins.builddeb.tagging", "sort_debversion",
+            "Sort like Debian versions.")
+
+    try:
+        from bzrlib.revisionspec import revspec_registry
+        revspec_registry.register_lazy("package:",
+            "bzrlib.plugins.builddeb.revspec", "RevisionSpec_package")
+        revspec_registry.register_lazy("upstream:",
+            "bzrlib.plugins.builddeb.revspec", "RevisionSpec_upstream")
+    except ImportError:
+        from bzrlib.revisionspec import SPEC_TYPES
+        from bzrlib.plugins.builddeb.revspec import (
+            RevisionSpec_package,
+            RevisionSpec_upstream,
+            )
+        SPEC_TYPES.extend([RevisionSpec_package, RevisionSpec_upstream])
+else:
+    register_lazy("bzrlib.directory", "directories", "apt:",
+            'bzrlib.plugins.builddeb.directory', 'VcsDirectory',
+            help="Directory that uses Debian Vcs-* control fields to look up branches")
+    register_lazy("bzrlib.directory", "AliasDirectory.branch_aliases", "upstream",
+            "bzrlib.plugins.builddeb.directory", "upstream_branch_alias",
+            help="upstream branch (for packaging branches)")
+    register_lazy("bzrlib.tag", "tag_sort_methods", "debversion",
+        "bzrlib.plugins.builddeb.tagging", "sort_debversion",
+        "Sort like Debian versions.")
+    register_lazy("bzrlib.revisionspec", "revspec_registry", "package:",
+        "bzrlib.plugins.builddeb.revspec", "RevisionSpec_package")
+    register_lazy("bzrlib.revisionspec", "revspec_registry", "upstream:",
+        "bzrlib.plugins.builddeb.revspec", "RevisionSpec_upstream")
 
 
 def debian_changelog_commit_message(commit, start_message):
@@ -381,30 +414,6 @@ else:
         "bzrlib.mutabletree", "MutableTree.hooks",
         "start_commit", start_commit_check_quilt,
         "Check for (un)applied quilt patches")
-
-try:
-    from bzrlib.revisionspec import revspec_registry
-    revspec_registry.register_lazy("package:",
-        "bzrlib.plugins.builddeb.revspec", "RevisionSpec_package")
-    revspec_registry.register_lazy("upstream:",
-        "bzrlib.plugins.builddeb.revspec", "RevisionSpec_upstream")
-except ImportError:
-    from bzrlib.revisionspec import SPEC_TYPES
-    from bzrlib.plugins.builddeb.revspec import (
-        RevisionSpec_package,
-        RevisionSpec_upstream,
-        )
-    SPEC_TYPES.extend([RevisionSpec_package, RevisionSpec_upstream])
-
-try:
-    from bzrlib.tag import tag_sort_methods
-except ImportError:
-    pass # bzr tags --sort= can not be extended
-else:
-    tag_sort_methods.register_lazy("debversion",
-        "bzrlib.plugins.builddeb.tagging", "sort_debversion",
-        "Sort like Debian versions.")
-
 
 def load_tests(standard_tests, module, loader):
     return loader.loadTestsFromModuleNames(['bzrlib.plugins.builddeb.tests'])
