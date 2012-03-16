@@ -37,6 +37,9 @@ Documentation
 
 .. Improved or updated documentation.
 
+* Force format registration to avoid generate_docs.py traceback when the
+  registry is empty. (Vincent Ladeuil, #956860)
+
 API Changes
 ***********
 
