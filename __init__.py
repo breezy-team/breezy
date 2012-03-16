@@ -63,21 +63,13 @@ from bzrlib.controldir import (
     network_format_registry as controldir_network_format_registry,
     )
 
-from bzrlib.foreign import (
-    foreign_vcs_registry,
-    )
-from bzrlib.help_topics import (
-    topic_registry,
-    )
 from bzrlib.transport import (
     register_lazy_transport,
     register_transport_proto,
+    transport_server_registry,
     )
 from bzrlib.commands import (
     plugin_cmds,
-    )
-from bzrlib.send import (
-    format_registry as send_format_registry,
     )
 
 
@@ -119,11 +111,9 @@ format_registry.register_lazy('git-bare',
     experimental=False,
     )
 
-from bzrlib.revisionspec import revspec_registry
+from bzrlib.revisionspec import (RevisionSpec_dwim, revspec_registry)
 revspec_registry.register_lazy("git:", "bzrlib.plugins.git.revspec",
     "RevisionSpec_git")
-
-from bzrlib.revisionspec import RevisionSpec_dwim
 RevisionSpec_dwim.append_possible_lazy_revspec(
     "bzrlib.plugins.git.revspec", "RevisionSpec_git")
 
@@ -266,8 +256,6 @@ register_lazy_transport("git://", 'bzrlib.plugins.git.remote',
 register_lazy_transport("git+ssh://", 'bzrlib.plugins.git.remote',
                         'SSHGitSmartTransport')
 
-foreign_vcs_registry.register_lazy("git",
-    "bzrlib.plugins.git.mapping", "foreign_vcs_git", "Stupid content tracker")
 
 plugin_cmds.register_lazy("cmd_git_import", [], "bzrlib.plugins.git.commands")
 plugin_cmds.register_lazy("cmd_git_object", ["git-objects", "git-cat"],
@@ -306,7 +294,6 @@ install_lazy_named_hook("bzrlib.version_info_formats.format_rio",
     "git commits")
 
 
-from bzrlib.transport import transport_server_registry
 transport_server_registry.register_lazy('git',
     'bzrlib.plugins.git.server',
     'serve_git',
@@ -358,16 +345,57 @@ workingtree_format_registry.register_extra_lazy(
 controldir_network_format_registry.register_lazy('git',
     "bzrlib.plugins.git.dir", "GitControlDirFormat")
 
-send_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
-                                   'send_git', 'Git am-style diff format')
 
-topic_registry.register_lazy('git', 'bzrlib.plugins.git.help', 'help_git',
-    'Using Bazaar with Git')
+try:
+    from bzrlib.registry import register_lazy
+except ImportError:
+    from bzrlib.diff import format_registry as diff_format_registry
+    diff_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
+        'GitDiffTree', 'Git am-style diff format')
 
-from bzrlib.diff import format_registry as diff_format_registry
-diff_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
-    'GitDiffTree', 'Git am-style diff format')
+    from bzrlib.send import (
+        format_registry as send_format_registry,
+        )
+    send_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
+                                       'send_git', 'Git am-style diff format')
 
+    from bzrlib.directory_service import directories
+    directories.register_lazy('github:', 'bzrlib.plugins.git.directory',
+                              'GitHubDirectory',
+                              'GitHub directory.')
+    directories.register_lazy('git@github.com:', 'bzrlib.plugins.git.directory',
+                              'GitHubDirectory',
+                              'GitHub directory.')
+
+    from bzrlib.help_topics import (
+        topic_registry,
+        )
+    topic_registry.register_lazy('git', 'bzrlib.plugins.git.help', 'help_git',
+        'Using Bazaar with Git')
+
+    from bzrlib.foreign import (
+        foreign_vcs_registry,
+        )
+    foreign_vcs_registry.register_lazy("git",
+        "bzrlib.plugins.git.mapping", "foreign_vcs_git", "Stupid content tracker")
+else:
+    register_lazy("bzrlib.diff", "format_registry",
+        'git', 'bzrlib.plugins.git.send', 'GitDiffTree',
+        'Git am-style diff format')
+    register_lazy("bzrlib.send", "format_registry",
+        'git', 'bzrlib.plugins.git.send', 'send_git',
+        'Git am-style diff format')
+    register_lazy('bzrlib.directory_service', 'directories', 'github:',
+            'bzrlib.plugins.git.directory', 'GitHubDirectory',
+            'GitHub directory.')
+    register_lazy('bzrlib.directory_service', 'directories',
+            'git@github.com:', 'bzrlib.plugins.git.directory',
+            'GitHubDirectory', 'GitHub directory.')
+    register_lazy('bzrlib.help_topics', 'topic_registry',
+            'git', 'bzrlib.plugins.git.help', 'help_git',
+            'Using Bazaar with Git')
+    register_lazy('bzrlib.foreign', 'foreign_vcs_registry', "git",
+        "bzrlib.plugins.git.mapping", "foreign_vcs_git", "Stupid content tracker")
 
 def update_git_cache(repository, revid):
     """Update the git cache after a local commit."""
@@ -423,14 +451,6 @@ install_lazy_named_hook("bzrlib.plugins.loggerhead.apps.branch",
     "BranchWSGIApp.hooks", "controller",
     loggerhead_git_hook, "git support")
 
-from bzrlib.directory_service import directories
-
-directories.register_lazy('github:', 'bzrlib.plugins.git.directory',
-                          'GitHubDirectory',
-                          'GitHub directory.')
-directories.register_lazy('git@github.com:', 'bzrlib.plugins.git.directory',
-                          'GitHubDirectory',
-                          'GitHub directory.')
 
 from bzrlib.config import (
     option_registry,
