@@ -56,6 +56,7 @@ def infogen(options, outfile):
     outfile.write(man_escape(man_head % params))
     outfile.write(man_escape(getcommand_list(params)))
     outfile.write(man_escape(getcommand_help(params)))
+    outfile.write("".join(environment_variables()))
     outfile.write(man_escape(man_foot % params))
 
 
@@ -171,6 +172,16 @@ def format_alias(params, alias, cmd_name):
     return help
 
 
+def environment_variables():
+    yield ".SH \"ENVIRONMENT\"\n"
+
+    from bzrlib.help_topics import known_env_variables
+    for k, desc in known_env_variables:
+        yield ".TP\n"
+        yield ".I \"%s\"\n" % k
+        yield man_escape(desc) + "\n"
+
+
 man_preamble = """\
 .\\\"Man page for Bazaar (%(bzrcmd)s)
 .\\\"
@@ -215,30 +226,6 @@ helps people work together in a team.
 """
 
 man_foot = """\
-.SH "ENVIRONMENT"
-.TP
-.I "BZRPATH"
-Path where
-.B "%(bzrcmd)s"
-is to look for shell plugin external commands.
-.TP
-.I "BZR_EMAIL"
-E-Mail address of the user. Overrides default user config.
-.TP
-.I "EMAIL"
-E-Mail address of the user. Overrides default user config.
-.TP
-.I "BZR_EDITOR"
-Editor for editing commit messages
-.TP
-.I "EDITOR"
-Editor for editing commit messages
-.TP
-.I "BZR_PLUGIN_PATH"
-Paths where bzr should look for plugins
-.TP
-.I "BZR_HOME"
-Home directory for bzr
 .SH "FILES"
 .TP
 .I "~/.bazaar/bazaar.conf"
