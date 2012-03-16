@@ -1840,7 +1840,7 @@ class cmd_remove(Command):
 
     This makes Bazaar stop tracking changes to the specified files. Bazaar will
     delete them if they can easily be recovered using revert otherwise they
-    will be backed up (adding an extention of the form .~#~). If no options or
+    will be backed up (adding an extension of the form .~#~). If no options or
     parameters are given Bazaar will scan for files that are being tracked by
     Bazaar but missing in your tree and stop tracking them for you.
     """
