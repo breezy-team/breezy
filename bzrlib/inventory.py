@@ -633,24 +633,6 @@ class CommonInventory(object):
     inserted, other than through the Inventory API.
     """
 
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def __contains__(self, file_id):
-        """True if this entry contains a file with given id.
-
-        >>> inv = Inventory()
-        >>> inv.add(InventoryFile('123', 'foo.c', ROOT_ID))
-        InventoryFile('123', 'foo.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
-        >>> inv.has_id('123')
-        True
-        >>> inv.has_id('456')
-        False
-
-        Note that this method along with __iter__ are not encouraged for use as
-        they are less clear than specific query methods - they may be rmeoved
-        in the future.
-        """
-        return self.has_id(file_id)
-
     def has_filename(self, filename):
         return bool(self.path2id(filename))
 
@@ -848,22 +830,6 @@ class CommonInventory(object):
 
         if self.root is not None:
             descend(self.root, u'')
-        return accum
-
-    def directories(self):
-        """Return (path, entry) pairs for all directories, including the root.
-        """
-        accum = []
-        def descend(parent_ie, parent_path):
-            accum.append((parent_path, parent_ie))
-
-            kids = [(ie.name, ie) for ie in parent_ie.children.itervalues() if ie.kind == 'directory']
-            kids.sort()
-
-            for name, child_ie in kids:
-                child_path = osutils.pathjoin(parent_path, name)
-                descend(child_ie, child_path)
-        descend(self.root, u'')
         return accum
 
     def path2id(self, relpath):
@@ -2127,13 +2093,16 @@ class CHKInventory(CommonInventory):
     def path2id(self, relpath):
         """See CommonInventory.path2id()."""
         # TODO: perhaps support negative hits?
-        result = self._path_to_fileid_cache.get(relpath, None)
-        if result is not None:
-            return result
         if isinstance(relpath, basestring):
             names = osutils.splitpath(relpath)
         else:
             names = relpath
+            if relpath == []:
+                relpath = [""]
+            relpath = osutils.pathjoin(*relpath)
+        result = self._path_to_fileid_cache.get(relpath, None)
+        if result is not None:
+            return result
         current_id = self.root_id
         if current_id is None:
             return None

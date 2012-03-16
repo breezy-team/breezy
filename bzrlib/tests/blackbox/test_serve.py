@@ -34,7 +34,7 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
+from bzrlib.controldir import ControlDir
 from bzrlib.smart import client, medium
 from bzrlib.smart.server import (
     BzrServerFactory,
@@ -122,7 +122,7 @@ class TestBzrServe(TestBzrServeBase):
         SmartTCPServer.hooks.install_named_hook(
             'server_exception', hook,
             'test_server_except_hook hook')
-        args = ['--port', 'localhost:0', '--quiet']
+        args = ['--listen', 'localhost', '--port', '0', '--quiet']
         out, err = self.run_bzr_serve_then_func(args, retcode=0)
         self.assertEqual('catching KeyboardInterrupt\n', err)
 
@@ -190,7 +190,7 @@ class TestBzrServe(TestBzrServeBase):
             finish_bzr_subprocess, and the base url for the server.
         """
         # Serve from the current directory
-        args = ['serve', '--port', 'localhost:0']
+        args = ['serve', '--listen', 'localhost', '--port', '0']
         args.extend(extra_options)
         process = self.start_bzr_subprocess(args, skip_if_plan_to_signal=True)
         port_line = process.stderr.readline()
@@ -203,7 +203,7 @@ class TestBzrServe(TestBzrServeBase):
 
     def test_bzr_serve_quiet(self):
         self.make_branch('.')
-        args = ['--port', 'localhost:0', '--quiet']
+        args = ['--listen', 'localhost', '--port', '0', '--quiet']
         out, err = self.run_bzr_serve_then_func(args, retcode=3)
         self.assertEqual('', out)
         self.assertEqual('', err)
@@ -221,7 +221,7 @@ class TestBzrServe(TestBzrServeBase):
         process, transport = self.start_server_inet(['--allow-writes'])
 
         # We get a working branch, and can create a directory
-        branch = BzrDir.open_from_transport(transport).open_branch()
+        branch = ControlDir.open_from_transport(transport).open_branch()
         self.make_read_requests(branch)
         transport.mkdir('adir')
         self.assertInetServerShutsdownCleanly(process)
@@ -263,7 +263,7 @@ class TestBzrServe(TestBzrServeBase):
         log_fname = os.getcwd() + '/server.log'
         self.overrideEnv('BZR_LOG', log_fname)
         process, transport = self.start_server_inet(['-Dhpss'])
-        branch = BzrDir.open_from_transport(transport).open_branch()
+        branch = ControlDir.open_from_transport(transport).open_branch()
         self.make_read_requests(branch)
         self.assertInetServerShutsdownCleanly(process)
         f = open(log_fname, 'rb')
@@ -354,7 +354,7 @@ class TestCmdServeChrooting(TestBzrServeBase):
         t = self.get_transport()
         t.mkdir('server-root')
         self.run_bzr_serve_then_func(
-            ['--port', '127.0.0.1:0',
+            ['--listen', 'localhost', '--port', '0',
              '--directory', t.local_abspath('server-root'),
              '--allow-writes'],
             func=self.when_server_started)

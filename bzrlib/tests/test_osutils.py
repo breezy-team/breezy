@@ -181,6 +181,15 @@ class TestRename(tests.TestCaseInTempDir):
         shape = sorted(os.listdir('.'))
         self.assertEquals(['A', 'B'], shape)
 
+    def test_rename_exception(self):
+        try:
+            osutils.rename('nonexistent_path', 'different_nonexistent_path')
+        except OSError, e:
+            self.assertEqual(e.old_filename, 'nonexistent_path')
+            self.assertEqual(e.new_filename, 'different_nonexistent_path')
+            self.assertTrue('nonexistent_path' in e.strerror)
+            self.assertTrue('different_nonexistent_path' in e.strerror)
+
 
 class TestRandChars(tests.TestCase):
 
@@ -2095,6 +2104,63 @@ class TestCreationOps(tests.TestCaseInTempDir):
         self.assertEquals(self.gid, s.st_gid)
 
 
+class TestPathFromEnviron(tests.TestCase):
+
+    def test_is_unicode(self):
+        self.overrideEnv('BZR_TEST_PATH', './anywhere at all/')
+        path = osutils.path_from_environ('BZR_TEST_PATH')
+        self.assertIsInstance(path, unicode)
+        self.assertEqual(u'./anywhere at all/', path)
+
+    def test_posix_path_env_ascii(self):
+        self.overrideEnv('BZR_TEST_PATH', '/tmp')
+        home = osutils._posix_path_from_environ('BZR_TEST_PATH')
+        self.assertIsInstance(home, unicode)
+        self.assertEqual(u'/tmp', home)
+
+    def test_posix_path_env_unicode(self):
+        self.requireFeature(features.ByteStringNamedFilesystem)
+        self.overrideEnv('BZR_TEST_PATH', '/home/\xa7test')
+        self.overrideAttr(osutils, "_fs_enc", "iso8859-1")
+        self.assertEqual(u'/home/\xa7test',
+            osutils._posix_path_from_environ('BZR_TEST_PATH'))
+        osutils._fs_enc = "iso8859-5"
+        self.assertEqual(u'/home/\u0407test',
+            osutils._posix_path_from_environ('BZR_TEST_PATH'))
+        osutils._fs_enc = "utf-8"
+        self.assertRaises(errors.BadFilenameEncoding,
+            osutils._posix_path_from_environ, 'BZR_TEST_PATH')
+
+
+class TestGetHomeDir(tests.TestCase):
+
+    def test_is_unicode(self):
+        home = osutils._get_home_dir()
+        self.assertIsInstance(home, unicode)
+
+    def test_posix_homeless(self):
+        self.overrideEnv('HOME', None)
+        home = osutils._get_home_dir()
+        self.assertIsInstance(home, unicode)
+
+    def test_posix_home_ascii(self):
+        self.overrideEnv('HOME', '/home/test')
+        home = osutils._posix_get_home_dir()
+        self.assertIsInstance(home, unicode)
+        self.assertEqual(u'/home/test', home)
+
+    def test_posix_home_unicode(self):
+        self.requireFeature(features.ByteStringNamedFilesystem)
+        self.overrideEnv('HOME', '/home/\xa7test')
+        self.overrideAttr(osutils, "_fs_enc", "iso8859-1")
+        self.assertEqual(u'/home/\xa7test', osutils._posix_get_home_dir())
+        osutils._fs_enc = "iso8859-5"
+        self.assertEqual(u'/home/\u0407test', osutils._posix_get_home_dir())
+        osutils._fs_enc = "utf-8"
+        self.assertRaises(errors.BadFilenameEncoding,
+            osutils._posix_get_home_dir)
+
+
 class TestGetuserUnicode(tests.TestCase):
 
     def test_is_unicode(self):
@@ -2168,6 +2234,14 @@ class TestFindExecutableInPath(tests.TestCase):
         self.assertTrue(
             osutils.find_executable_on_path('THIS SHOULD NOT EXIST') is None)
         self.assertTrue(osutils.find_executable_on_path('file.txt') is None)
+        
+    def test_windows_app_path(self):
+        if sys.platform != 'win32':
+            raise tests.TestSkipped('test requires win32')
+        # Override PATH env var so that exe can only be found on App Path
+        self.overrideEnv('PATH', '')
+        # Internt Explorer is always registered in the App Path
+        self.assertTrue(osutils.find_executable_on_path('iexplore') is not None)
 
     def test_other(self):
         if sys.platform == 'win32':

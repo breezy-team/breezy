@@ -203,16 +203,16 @@ class Inter1and2Helper(object):
         revs = list(revs)
         while revs:
             for tree in self.source.revision_trees(revs[:100]):
-                if tree.inventory.revision_id is None:
-                    tree.inventory.revision_id = tree.get_revision_id()
+                if tree.root_inventory.revision_id is None:
+                    tree.root_inventory.revision_id = tree.get_revision_id()
                 yield tree
             revs = revs[100:]
 
     def _find_root_ids(self, revs, parent_map, graph):
         revision_root = {}
         for tree in self.iter_rev_trees(revs):
-            revision_id = tree.inventory.root.revision
             root_id = tree.get_root_id()
+            revision_id = tree.get_file_revision(root_id, u"")
             revision_root[revision_id] = root_id
         # Find out which parents we don't already know root ids for
         parents = set()

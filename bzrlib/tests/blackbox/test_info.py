@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -57,6 +57,19 @@ class TestInfo(tests.TestCaseWithTransport):
             '  control directory: ctrl\n')
         self.assertEquals(err, '')
 
+    def test_info_empty_controldir_verbose(self):
+        self.make_bzrdir('ctrl')
+        out, err = self.run_bzr('info -v ctrl')
+        self.assertEqualDiff(out,
+            'Empty control directory (format: 2a or pack-0.92)\n'
+            'Location:\n'
+            '  control directory: ctrl\n\n'
+            'Format:\n'
+            '       control: Meta directory format 1\n\n'
+            'Control directory:\n'
+            '         0 branches\n')
+        self.assertEquals(err, '')
+
     def test_info_dangling_branch_reference(self):
         br = self.make_branch('target')
         br.create_checkout('from', lightweight=True)
@@ -99,6 +112,9 @@ Format:
         branch: Branch format 5
     repository: Knit repository format 1
 
+Control directory:
+         1 branches
+
 In the working tree:
          0 unchanged
          0 modified
@@ -129,6 +145,9 @@ Format:
   working tree: Working tree format 3
         branch: Branch format 5
     repository: Knit repository format 1
+
+Control directory:
+         1 branches
 
 In the working tree:
          0 unchanged
@@ -184,6 +203,9 @@ Format:
         branch: Branch format 5
     repository: Knit repository format 1
 
+Control directory:
+         1 branches
+
 In the working tree:
          1 unchanged
          0 modified
@@ -209,7 +231,7 @@ Repository:
         # Branch and bind to standalone, needs upgrade to metadir
         # (creates backup as unknown)
         branch1.bzrdir.sprout('bound')
-        knit1_format = bzrdir.format_registry.make_bzrdir('knit')
+        knit1_format = controldir.format_registry.make_bzrdir('knit')
         upgrade.upgrade('bound', knit1_format)
         branch3 = controldir.ControlDir.open('bound').open_branch()
         branch3.bind(branch1)
@@ -229,6 +251,9 @@ Format:
   working tree: %s
         branch: %s
     repository: %s
+
+Control directory:
+         1 branches
 
 In the working tree:
          1 unchanged
@@ -273,6 +298,9 @@ Format:
         branch: Branch format 5
     repository: %s
 
+Control directory:
+         1 branches
+
 In the working tree:
          1 unchanged
          0 modified
@@ -300,7 +328,7 @@ Repository:
         tree5 = branch1.create_checkout('lightcheckout', lightweight=True)
         branch5 = tree5.branch
         out, err = self.run_bzr('info -v lightcheckout')
-        if "metaweave" in bzrdir.format_registry:
+        if "metaweave" in controldir.format_registry:
             format_description = "knit or metaweave"
         else:
             format_description = "knit"
@@ -315,6 +343,9 @@ Format:
   working tree: Working tree format 3
         branch: Branch format 5
     repository: Knit repository format 1
+
+Control directory:
+         1 branches
 
 In the working tree:
          1 unchanged
@@ -361,6 +392,9 @@ Format:
         branch: Branch format 5
     repository: Knit repository format 1
 
+Control directory:
+         1 branches
+
 In the working tree:
          1 unchanged
          0 modified
@@ -399,6 +433,9 @@ Format:
   working tree: Working tree format 3
         branch: Branch format 5
     repository: %s
+
+Control directory:
+         1 branches
 
 Branch is out of date: missing 1 revision.
 
@@ -439,6 +476,9 @@ Format:
         branch: Branch format 5
     repository: %s
 
+Control directory:
+         1 branches
+
 Branch is out of date: missing 1 revision.
 
 In the working tree:
@@ -478,6 +518,9 @@ Format:
         branch: Branch format 5
     repository: Knit repository format 1
 
+Control directory:
+         1 branches
+
 Working tree is out of date: missing 1 revision.
 
 In the working tree:
@@ -503,7 +546,7 @@ Repository:
 
     def test_info_standalone_no_tree(self):
         # create standalone branch without a working tree
-        format = bzrdir.format_registry.make_bzrdir('default')
+        format = controldir.format_registry.make_bzrdir('default')
         branch = self.make_branch('branch')
         repo = branch.repository
         out, err = self.run_bzr('info branch -v')
@@ -517,6 +560,9 @@ Format:
         branch: %s
     repository: %s
 
+Control directory:
+         1 branches
+
 Branch history:
          0 revisions
 
@@ -529,7 +575,7 @@ Repository:
         self.assertEqual('', err)
 
     def test_info_shared_repository(self):
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         transport = self.get_transport()
 
         # Create shared repository
@@ -544,6 +590,9 @@ Location:
 Format:
        control: Meta directory format 1
     repository: %s
+
+Control directory:
+         0 branches
 
 Repository:
          0 revisions
@@ -566,6 +615,9 @@ Format:
        control: Meta directory format 1
         branch: %s
     repository: %s
+
+Control directory:
+         1 branches
 
 Branch history:
          0 revisions
@@ -611,6 +663,9 @@ Format:
         branch: %s
     repository: %s
 
+Control directory:
+         1 branches
+
 In the working tree:
          1 unchanged
          0 modified
@@ -648,6 +703,9 @@ Format:
   working tree: Working tree format 6
         branch: %s
     repository: %s
+
+Control directory:
+         1 branches
 
 Branch is out of date: missing 1 revision.
 
@@ -687,6 +745,9 @@ Format:
   working tree: Working tree format 6
         branch: %s
     repository: %s
+
+Control directory:
+         1 branches
 
 In the working tree:
          1 unchanged
@@ -730,6 +791,9 @@ Format:
         branch: %s
     repository: %s
 
+Control directory:
+         1 branches
+
 Working tree is out of date: missing 1 revision.
 
 In the working tree:
@@ -769,6 +833,9 @@ Format:
         branch: %s
     repository: %s
 
+Control directory:
+         1 branches
+
 Branch history:
          2 revisions
          0 days old
@@ -794,6 +861,9 @@ Format:
        control: Meta directory format 1
     repository: %s
 
+Control directory:
+         0 branches
+
 Repository:
          2 revisions
 """ % (format.repository_format.get_format_description(),
@@ -801,7 +871,7 @@ Repository:
         self.assertEqual('', err)
 
     def test_info_shared_repository_with_trees(self):
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         transport = self.get_transport()
 
         # Create shared repository with working trees
@@ -816,6 +886,9 @@ Location:
 Format:
        control: Meta directory format 1
     repository: %s
+
+Control directory:
+         0 branches
 
 Create working tree for new branches inside the repository.
 
@@ -844,6 +917,9 @@ Format:
   working tree: Working tree format 3
         branch: %s
     repository: %s
+
+Control directory:
+         1 branches
 
 In the working tree:
          0 unchanged
@@ -884,6 +960,9 @@ Format:
   working tree: Working tree format 3
         branch: %s
     repository: %s
+
+Control directory:
+         1 branches
 
 In the working tree:
          1 unchanged
@@ -926,6 +1005,9 @@ Format:
         branch: %s
     repository: %s
 
+Control directory:
+         1 branches
+
 In the working tree:
          0 unchanged
          0 modified
@@ -965,6 +1047,9 @@ Format:
         branch: %s
     repository: %s
 
+Control directory:
+         1 branches
+
 In the working tree:
          1 unchanged
          0 modified
@@ -1000,6 +1085,9 @@ Format:
        control: Meta directory format 1
     repository: %s
 
+Control directory:
+         0 branches
+
 Create working tree for new branches inside the repository.
 
 Repository:
@@ -1010,7 +1098,7 @@ Repository:
         self.assertEqual('', err)
 
     def test_info_shared_repository_with_tree_in_root(self):
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         transport = self.get_transport()
 
         # Create shared repository with working trees
@@ -1025,6 +1113,9 @@ Location:
 Format:
        control: Meta directory format 1
     repository: %s
+
+Control directory:
+         0 branches
 
 Create working tree for new branches inside the repository.
 
@@ -1051,6 +1142,9 @@ Format:
         branch: %s
     repository: %s
 
+Control directory:
+         1 branches
+
 In the working tree:
          0 unchanged
          0 modified
@@ -1072,7 +1166,7 @@ Repository:
         self.assertEqual('', err)
 
     def test_info_repository_hook(self):
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         def repo_info(repo, stats, outf):
             outf.write("more info\n")
         info.hooks.install_named_hook('repository', repo_info, None)
@@ -1088,6 +1182,9 @@ Format:
        control: Meta directory format 1
     repository: %s
 
+Control directory:
+         0 branches
+
 Create working tree for new branches inside the repository.
 
 Repository:
@@ -1098,7 +1195,7 @@ more info
         self.assertEqual('', err)
 
     def test_info_unshared_repository_with_colocated_branches(self):
-        format = bzrdir.format_registry.make_bzrdir('development-colo')
+        format = controldir.format_registry.make_bzrdir('development-colo')
         transport = self.get_transport()
 
         # Create unshared repository
@@ -1227,6 +1324,9 @@ Format:
         branch: %s
     repository: %s
 %s
+Control directory:
+         1 branches
+
 In the working tree:
          0 unchanged
          0 modified
@@ -1403,6 +1503,9 @@ Format:
         branch: Branch format 7
     repository: Repository format 2a - rich roots, group compression and chk inventories
 
+Control directory:
+         1 branches
+
 In the working tree:
          0 unchanged
          0 modified
@@ -1458,7 +1561,7 @@ class TestSmartServerInfo(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(12, self.hpss_calls)
+        self.assertLength(10, self.hpss_calls)
         self.assertLength(1, self.hpss_connections)
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
@@ -1475,6 +1578,6 @@ class TestSmartServerInfo(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(16, self.hpss_calls)
+        self.assertLength(14, self.hpss_calls)
         self.assertLength(1, self.hpss_connections)
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

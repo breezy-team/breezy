@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -51,8 +51,7 @@ class TestLaunchpadOpen(TestCaseWithTransport):
 
     def test_launchpad_branch_with_public_location(self):
         branch = self.make_branch('lp')
-        branch.set_public_branch(
-            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
+        branch.set_public_branch('bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
         self.assertEqual(
             ['Opening https://code.launchpad.net/~foo/bar/baz in web '
              'browser'],
@@ -60,10 +59,14 @@ class TestLaunchpadOpen(TestCaseWithTransport):
 
     def test_launchpad_branch_with_public_and_push_location(self):
         branch = self.make_branch('lp')
-        branch.set_public_branch(
-            'bzr+ssh://bazaar.launchpad.net/~foo/bar/public')
-        branch.set_push_location(
-            'bzr+ssh://bazaar.launchpad.net/~foo/bar/push')
+        branch.lock_write()
+        try:
+            branch.set_public_branch(
+                'bzr+ssh://bazaar.launchpad.net/~foo/bar/public')
+            branch.set_push_location(
+                'bzr+ssh://bazaar.launchpad.net/~foo/bar/push')
+        finally:
+            branch.unlock()
         self.assertEqual(
             ['Opening https://code.launchpad.net/~foo/bar/public in web '
              'browser'],
@@ -73,8 +76,7 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         # lp-open falls back to the push location if it cannot find a public
         # location.
         branch = self.make_branch('lp')
-        branch.set_push_location(
-            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
+        branch.set_push_location('bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
         self.assertEqual(
             ['Opening https://code.launchpad.net/~foo/bar/baz in web '
              'browser'],

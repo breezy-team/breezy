@@ -65,6 +65,14 @@ class TestBranch(tests.TestCaseWithTransport):
         self.assertFalse(b._transport.has('branch-name'))
         b.bzrdir.open_workingtree().commit(message='foo', allow_pointless=True)
 
+    def test_branch_no_to_location(self):
+        """The to_location is derived from the source branch name."""
+        os.mkdir("something")
+        a = self.example_branch('something/a').branch
+        self.run_bzr('branch something/a')
+        b = branch.Branch.open('a')
+        self.assertEquals(b.last_revision_info(), a.last_revision_info())
+
     def test_into_colocated(self):
         """Branch from a branch into a colocated branch."""
         self.example_branch('a')
@@ -147,14 +155,15 @@ class TestBranch(tests.TestCaseWithTransport):
         #  => new branch will be created, but switch fails and the current
         #     branch is unmodified
         self.example_branch('a')
-        self.make_branch_and_tree('current')
+        tree = self.make_branch_and_tree('current')
+        c1 = tree.commit('some diverged change')
         self.run_bzr_error(['Cannot switch a branch, only a checkout'],
             'branch --switch ../a ../b', working_dir='current')
         a = branch.Branch.open('a')
         b = branch.Branch.open('b')
         self.assertEqual(a.last_revision(), b.last_revision())
         work = branch.Branch.open('current')
-        self.assertEqual(work.last_revision(), _mod_revision.NULL_REVISION)
+        self.assertEqual(work.last_revision(), c1)
 
     def test_branch_into_empty_dir(self):
         t = self.example_branch('source')
@@ -354,12 +363,12 @@ class TestBranchStacked(tests.TestCaseWithTransport):
 
     def assertRevisionInRepository(self, repo_path, revid):
         """Check that a revision is in a repo, disregarding stacking."""
-        repo = bzrdir.BzrDir.open(repo_path).open_repository()
+        repo = controldir.ControlDir.open(repo_path).open_repository()
         self.assertTrue(repo.has_revision(revid))
 
     def assertRevisionNotInRepository(self, repo_path, revid):
         """Check that a revision is not in a repo, disregarding stacking."""
-        repo = bzrdir.BzrDir.open(repo_path).open_repository()
+        repo = controldir.ControlDir.open(repo_path).open_repository()
         self.assertFalse(repo.has_revision(revid))
 
     def assertRevisionsInBranchRepository(self, revid_list, branch_path):
@@ -391,7 +400,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
         # capable of supporting stacking, but not actually have a stacked_on
         # branch configured
         self.assertRaises(errors.NotStacked,
-            bzrdir.BzrDir.open('newbranch').open_branch().get_stacked_on_url)
+            controldir.ControlDir.open('newbranch').open_branch().get_stacked_on_url)
 
     def test_branch_stacked_branch_stacked(self):
         """Asking to stack on a stacked branch does work"""

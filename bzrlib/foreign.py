@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2011 Canonical Ltd
+# Copyright (C) 2008-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -323,6 +323,7 @@ class cmd_dpush(Command):
                     source_branch, target_branch))
             # We successfully created the target, remember it
             if source_branch.get_push_location() is None or remember:
+                # FIXME: Should be done only if we succeed ? -- vila 2012-01-18
                 source_branch.set_push_location(target_branch.base)
             if not no_rebase:
                 old_last_revid = source_branch.last_revision()

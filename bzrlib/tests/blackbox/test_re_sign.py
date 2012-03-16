@@ -23,7 +23,7 @@ from bzrlib import (
     gpg,
     tests,
     )
-from bzrlib.bzrdir import BzrDir
+from bzrlib.controldir import ControlDir
 from bzrlib.testament import Testament
 
 
@@ -39,7 +39,7 @@ class ReSign(tests.TestCaseInTempDir):
         self.overrideAttr(gpg, 'GPGStrategy', gpg.LoopbackGPGStrategy)
 
     def setup_tree(self):
-        wt = BzrDir.create_standalone_workingtree('.')
+        wt = ControlDir.create_standalone_workingtree('.')
         wt.commit("base A", allow_pointless=True, rev_id='A')
         wt.commit("base B", allow_pointless=True, rev_id='B')
         wt.commit("base C", allow_pointless=True, rev_id='C')
@@ -89,7 +89,7 @@ class ReSign(tests.TestCaseInTempDir):
 
     def test_resign_directory(self):
         """Test --directory option"""
-        wt = BzrDir.create_standalone_workingtree('a')
+        wt = ControlDir.create_standalone_workingtree('a')
         wt.commit("base A", allow_pointless=True, rev_id='A')
         wt.commit("base B", allow_pointless=True, rev_id='B')
         wt.commit("base C", allow_pointless=True, rev_id='C')

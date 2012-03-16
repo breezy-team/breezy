@@ -21,7 +21,7 @@ lazy_import(globals(), """
 import itertools
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     errors,
     knit as _mod_knit,
     lockable_files,
@@ -405,7 +405,7 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
         return xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
+        return controldir.format_registry.make_bzrdir('dirstate-with-subtree')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -447,7 +447,7 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
         return xml6.serializer_v6
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('rich-root')
+        return controldir.format_registry.make_bzrdir('rich-root')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -488,21 +488,9 @@ class InterKnitRepo(InterSameDataRepository):
 
     @needs_read_lock
     def search_missing_revision_ids(self,
-            revision_id=symbol_versioning.DEPRECATED_PARAMETER,
             find_ghosts=True, revision_ids=None, if_present_ids=None,
             limit=None):
         """See InterRepository.search_missing_revision_ids()."""
-        if symbol_versioning.deprecated_passed(revision_id):
-            symbol_versioning.warn(
-                'search_missing_revision_ids(revision_id=...) was '
-                'deprecated in 2.4.  Use revision_ids=[...] instead.',
-                DeprecationWarning, stacklevel=2)
-            if revision_ids is not None:
-                raise AssertionError(
-                    'revision_ids is mutually exclusive with revision_id')
-            if revision_id is not None:
-                revision_ids = [revision_id]
-        del revision_id
         source_ids_set = self._present_source_revisions_for(
             revision_ids, if_present_ids)
         # source_ids is the worst possible case we may need to pull.

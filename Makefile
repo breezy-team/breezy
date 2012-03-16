@@ -192,6 +192,14 @@ chm-sphinx: $(SPHINX_DEPENDENCIES)
 	cd doc/developers && make htmlhelp
 
 
+# Build the texinfo files using Sphinx.
+texinfo-sphinx: $(SPHINX_DEPENDENCIES)
+	cd doc/en && make texinfo
+	cd doc/es && make texinfo
+	cd doc/ru && make texinfo
+	cd doc/ja && make texinfo
+	cd doc/developers && make texinfo
+
 ### Documentation Website ###
 
 # Where to build the website

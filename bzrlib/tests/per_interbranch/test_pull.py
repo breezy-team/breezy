@@ -17,7 +17,7 @@
 """Tests for InterBranch.pull behaviour."""
 
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
+from bzrlib.controldir import ControlDir
 from bzrlib import errors
 from bzrlib.memorytree import MemoryTree
 from bzrlib.revision import NULL_REVISION
@@ -175,7 +175,7 @@ class TestPullHook(TestCaseWithInterBranch):
             # remotebranches can't be bound.  Let's instead make a new local
             # branch of the default type, which does allow binding.
             # See https://bugs.launchpad.net/bzr/+bug/112020
-            local = BzrDir.create_branch_convenience('local2')
+            local = ControlDir.create_branch_convenience('local2')
             local.bind(target)
         source = self.make_from_branch('source')
         Branch.hooks.install_named_hook('post_pull',

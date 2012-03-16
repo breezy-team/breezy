@@ -30,7 +30,7 @@ try:
     import xml.etree.cElementTree as elementtree
     ParseError = getattr(elementtree, "ParseError", SyntaxError)
 except ImportError:
-    # Fall back to pure python implementation if C extention is unavailable
+    # Fall back to pure python implementation if C extension is unavailable
     import xml.etree.ElementTree as elementtree
     try:
         from xml.etree.ElementTree import ParseError
@@ -309,6 +309,14 @@ def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False):
                                      elt_get('name'),
                                      parent_id)
         ie.symlink_target = elt_get('symlink_target')
+    elif kind == 'tree-reference':
+        file_id = elt.attrib['file_id']
+        name = elt.attrib['name']
+        parent_id = elt.attrib['parent_id']
+        revision = elt.get('revision')
+        reference_revision = elt.get('reference_revision')
+        ie = inventory.TreeReference(file_id, name, parent_id, revision,
+                                       reference_revision)
     else:
         raise errors.UnsupportedInventoryKind(kind)
     ie.revision = revision

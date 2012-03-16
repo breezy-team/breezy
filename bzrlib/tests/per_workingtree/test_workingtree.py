@@ -24,6 +24,7 @@ from bzrlib import (
     branch,
     bzrdir,
     config,
+    controldir,
     errors,
     osutils,
     revision as _mod_revision,
@@ -121,6 +122,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(('filename', 'V', 'directory', 'file-id'),
                          result[0][:4])
 
+    def test_get_config_stack(self):
+        # Smoke test that all working trees succeed getting a config
+        wt = self.make_branch_and_tree('.')
+        conf = wt.get_config_stack()
+        self.assertIsInstance(conf, config.Stack)
+
     def test_open_containing(self):
         branch = self.make_branch_and_tree('.').branch
         local_base = urlutils.local_path_from_url(branch.base)
@@ -175,7 +182,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
 
         self.build_tree(['hello.txt'])
-        file('hello.txt', 'w').write('initial hello')
+        with file('hello.txt', 'w') as f: f.write('initial hello')
 
         self.assertRaises(PathsNotVersionedError,
                           tree.revert, ['hello.txt'])
@@ -183,7 +190,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.commit('create initial hello.txt')
 
         self.check_file_contents('hello.txt', 'initial hello')
-        file('hello.txt', 'w').write('new hello')
+        with file('hello.txt', 'w') as f: f.write('new hello')
         self.check_file_contents('hello.txt', 'new hello')
 
         # revert file modified since last revision
@@ -197,7 +204,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.check_file_contents('hello.txt.~1~', 'new hello')
 
         # backup files are numbered
-        file('hello.txt', 'w').write('new hello2')
+        with file('hello.txt', 'w') as f: f.write('new hello2')
         tree.revert(['hello.txt'])
         self.check_file_contents('hello.txt', 'initial hello')
         self.check_file_contents('hello.txt.~1~', 'new hello')
@@ -206,7 +213,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_revert_missing(self):
         # Revert a file that has been deleted since last commit
         tree = self.make_branch_and_tree('.')
-        file('hello.txt', 'w').write('initial hello')
+        with file('hello.txt', 'w') as f: f.write('initial hello')
         tree.add('hello.txt')
         tree.commit('added hello.txt')
         os.unlink('hello.txt')
@@ -336,19 +343,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt.set_last_revision('null:')
         wt.commit('A', allow_pointless=True, rev_id='A')
         self.assertEqual(['A'], wt.get_parent_ids())
-        # None is aways in the branch
+        # null: is aways in the branch
         wt.set_last_revision('null:')
         self.assertEqual([], wt.get_parent_ids())
         # and now we can set it to 'A'
         # because some formats mutate the branch to set it on the tree
         # we need to alter the branch to let this pass.
-        try:
-            self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-                wt.branch.set_revision_history, ['A', 'B'])
-        except errors.NoSuchRevision, e:
-            self.assertEqual('B', e.revision)
+        if getattr(wt.branch, "_set_revision_history", None) is None:
             raise TestSkipped("Branch format does not permit arbitrary"
                               " history")
+        wt.branch._set_revision_history(['A', 'B'])
         wt.set_last_revision('A')
         self.assertEqual(['A'], wt.get_parent_ids())
         self.assertRaises(errors.ReservedId, wt.set_last_revision, 'A:')
@@ -708,16 +712,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def make_merge_conflicts(self):
         from bzrlib.merge import merge_inner
         tree = self.make_branch_and_tree('mine')
-        file('mine/bloo', 'wb').write('one')
-        file('mine/blo', 'wb').write('on')
+        with file('mine/bloo', 'wb') as f: f.write('one')
+        with file('mine/blo', 'wb') as f: f.write('on')
         tree.add(['bloo', 'blo'])
         tree.commit("blah", allow_pointless=False)
         base = tree.branch.repository.revision_tree(tree.last_revision())
-        bzrdir.BzrDir.open("mine").sprout("other")
-        file('other/bloo', 'wb').write('two')
+        controldir.ControlDir.open("mine").sprout("other")
+        with file('other/bloo', 'wb') as f: f.write('two')
         othertree = WorkingTree.open('other')
         othertree.commit('blah', allow_pointless=False)
-        file('mine/bloo', 'wb').write('three')
+        with file('mine/bloo', 'wb') as f: f.write('three')
         tree.commit("blah", allow_pointless=False)
         merge_inner(tree.branch, othertree, base, this_tree=tree)
         return tree
@@ -1200,7 +1204,7 @@ class TestWorthSavingLimit(TestCaseWithWorkingTree):
 
     def test_set_in_branch(self):
         wt = self.make_wt_with_worth_saving_limit()
-        conf = config.BranchStack(wt.branch)
+        conf = wt.get_config_stack()
         conf.set('bzr.workingtree.worth_saving_limit', '20')
         self.assertEqual(20, wt._worth_saving_limit())
         ds = wt.current_dirstate()
@@ -1208,7 +1212,7 @@ class TestWorthSavingLimit(TestCaseWithWorkingTree):
 
     def test_invalid(self):
         wt = self.make_wt_with_worth_saving_limit()
-        conf = config.BranchStack(wt.branch)
+        conf = wt.get_config_stack()
         conf.set('bzr.workingtree.worth_saving_limit', 'a')
         # If the config entry is invalid, default to 10
         warnings = []

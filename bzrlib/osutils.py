@@ -342,6 +342,15 @@ def _posix_path_from_environ(key):
         raise errors.BadFilenameEncoding(val, _fs_enc)
 
 
+def _posix_get_home_dir():
+    """Get the home directory of the current user as a unicode path"""
+    path = posixpath.expanduser("~")
+    try:
+        return path.decode(_fs_enc)
+    except UnicodeDecodeError:
+        raise errors.BadFilenameEncoding(path, _fs_enc)
+
+
 def _posix_getuser_unicode():
     """Get username from environment or password database as unicode"""
     name = getpass.getuser()
@@ -441,6 +450,29 @@ def _mac_getcwd():
     return unicodedata.normalize('NFC', os.getcwdu())
 
 
+def _rename_wrap_exception(rename_func):
+    """Adds extra information to any exceptions that come from rename().
+
+    The exception has an updated message and 'old_filename' and 'new_filename'
+    attributes.
+    """
+
+    def _rename_wrapper(old, new):
+        try:
+            rename_func(old, new)
+        except OSError, e:
+            detailed_error = OSError(e.errno, e.strerror +
+                                " [occurred when renaming '%s' to '%s']" %
+                                (old, new))
+            detailed_error.old_filename = old
+            detailed_error.new_filename = new
+            raise detailed_error
+
+    return _rename_wrapper
+
+# Default rename wraps os.rename()
+rename = _rename_wrap_exception(os.rename)
+
 # Default is to just use the python builtins, but these can be rebound on
 # particular platforms.
 abspath = _posix_abspath
@@ -448,9 +480,9 @@ realpath = _posix_realpath
 pathjoin = os.path.join
 normpath = _posix_normpath
 path_from_environ = _posix_path_from_environ
+_get_home_dir = _posix_get_home_dir
 getuser_unicode = _posix_getuser_unicode
 getcwd = os.getcwdu
-rename = os.rename
 dirname = os.path.dirname
 basename = os.path.basename
 split = os.path.split
@@ -478,7 +510,7 @@ if sys.platform == 'win32':
     normpath = _win32_normpath
     getcwd = _win32_getcwd
     mkdtemp = _win32_mkdtemp
-    rename = _win32_rename
+    rename = _rename_wrap_exception(_win32_rename)
     try:
         from bzrlib import _walkdirs_win32
     except ImportError:
@@ -511,6 +543,7 @@ if sys.platform == 'win32':
     if f is not None:
         get_unicode_argv = f
     path_from_environ = win32utils.get_environ_unicode
+    _get_home_dir = win32utils.get_home_location
     getuser_unicode = win32utils.get_user_name
 
 elif sys.platform == 'darwin':
@@ -2462,10 +2495,6 @@ def find_executable_on_path(name):
     :param name: The base name of the executable.
     :return: The path to the executable found or None.
     """
-    path = os.environ.get('PATH')
-    if path is None:
-        return None
-    path = path.split(os.pathsep)
     if sys.platform == 'win32':
         exts = os.environ.get('PATHEXT', '').split(os.pathsep)
         exts = [ext.lower() for ext in exts]
@@ -2477,11 +2506,18 @@ def find_executable_on_path(name):
             exts = [ext]
     else:
         exts = ['']
-    for ext in exts:
-        for d in path:
-            f = os.path.join(d, name) + ext
-            if os.access(f, os.X_OK):
-                return f
+    path = os.environ.get('PATH')
+    if path is not None:
+        path = path.split(os.pathsep)
+        for ext in exts:
+            for d in path:
+                f = os.path.join(d, name) + ext
+                if os.access(f, os.X_OK):
+                    return f
+    if sys.platform == 'win32':
+        app_path = win32utils.get_app_path(name)
+        if app_path != name:
+            return app_path
     return None
 
 

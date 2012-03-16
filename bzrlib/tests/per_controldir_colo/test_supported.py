@@ -135,9 +135,24 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         self.assertEqual(target_branch.base,
                          repo.bzrdir.get_branches()['foo'].base)
 
+    def test_branch_name_with_slash(self):
+        repo = self.make_repository('branch-1')
+        try:
+            target_branch = repo.bzrdir.create_branch(name='foo/bar')
+        except errors.InvalidBranchName:
+            raise tests.TestNotApplicable(
+                "format does not support branches with / in their name")
+        self.assertEqual(['foo/bar'], repo.bzrdir.get_branches().keys())
+        self.assertEqual(
+            target_branch.base, repo.bzrdir.open_branch(name='foo/bar').base)
+
     def test_branch_reference(self):
         referenced = self.make_branch('referenced')
         repo = self.make_repository('repo')
-        repo.bzrdir.set_branch_reference(referenced, name='foo')
+        try:
+            repo.bzrdir.set_branch_reference(referenced, name='foo')
+        except errors.IncompatibleFormat:
+            raise tests.TestNotApplicable(
+                'Control dir does not support creating branch references.')
         self.assertEquals(referenced.base,
             repo.bzrdir.get_branch_reference('foo'))

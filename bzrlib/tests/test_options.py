@@ -160,14 +160,14 @@ class OptionTests(TestCase):
 
     def test_registry_converter(self):
         options = [option.RegistryOption('format', '',
-                   bzrdir.format_registry, bzrdir.format_registry.make_bzrdir)]
+                   controldir.format_registry, controldir.format_registry.make_bzrdir)]
         opts, args = self.parse(options, ['--format', 'knit'])
         self.assertIsInstance(opts.format.repository_format,
                               knitrepo.RepositoryFormatKnit1)
 
     def test_lazy_registry(self):
         options = [option.RegistryOption('format', '',
-                   lazy_registry=('bzrlib.bzrdir','format_registry'),
+                   lazy_registry=('bzrlib.controldir','format_registry'),
                    converter=str)]
         opts, args = self.parse(options, ['--format', 'knit'])
         self.assertEqual({'format': 'knit'}, opts)

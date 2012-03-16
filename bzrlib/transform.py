@@ -22,6 +22,7 @@ from stat import S_ISREG, S_IEXEC
 import time
 
 from bzrlib import (
+    config as _mod_config,
     errors,
     lazy_import,
     registry,
@@ -47,7 +48,7 @@ from bzrlib.i18n import gettext
 """)
 from bzrlib.errors import (DuplicateKey, MalformedTransform,
                            ReusingTransform, CantMoveRoot,
-                           ExistingLimbo, ImmortalLimbo, NoFinalPath,
+                           ImmortalLimbo, NoFinalPath,
                            UnableCreateSymlink)
 from bzrlib.filters import filtered_output_bytes, ContentFilterContext
 from bzrlib.mutabletree import MutableTree
@@ -573,11 +574,6 @@ class TreeTransformBase(object):
         for parent_id in parents:
             # ensure that all children are registered with the transaction
             list(self.iter_tree_children(parent_id))
-
-    @deprecated_method(deprecated_in((2, 3, 0)))
-    def has_named_child(self, by_parent, parent_id, name):
-        return self._has_named_child(
-            name, parent_id, known_children=by_parent.get(parent_id, []))
 
     def _has_named_child(self, name, parent_id, known_children):
         """Does a parent already have a name child.
@@ -1405,21 +1401,8 @@ class DiskTreeTransform(TreeTransformBase):
         delete_any(self._limbo_name(trans_id))
 
     def new_orphan(self, trans_id, parent_id):
-        # FIXME: There is no tree config, so we use the branch one (it's weird
-        # to define it this way as orphaning can only occur in a working tree,
-        # but that's all we have (for now). It will find the option in
-        # locations.conf or bazaar.conf though) -- vila 20100916
-        conf = self._tree.branch.get_config()
-        conf_var_name = 'bzr.transform.orphan_policy'
-        orphan_policy = conf.get_user_option(conf_var_name)
-        default_policy = orphaning_registry.default_key
-        if orphan_policy is None:
-            orphan_policy = default_policy
-        if orphan_policy not in orphaning_registry:
-            trace.warning('%s (from %s) is not a known policy, defaulting '
-                'to %s' % (orphan_policy, conf_var_name, default_policy))
-            orphan_policy = default_policy
-        handle_orphan = orphaning_registry.get(orphan_policy)
+        conf = self._tree.get_config_stack()
+        handle_orphan = conf.get('bzr.transform.orphan_policy')
         handle_orphan(self, trans_id, parent_id)
 
 
@@ -1486,6 +1469,12 @@ orphaning_registry.register(
     'move', move_orphan,
     'Move orphans into the bzr-orphans directory.')
 orphaning_registry._set_default_key('conflict')
+
+
+opt_transform_orphan = _mod_config.RegistryOption(
+    'bzr.transform.orphan_policy', orphaning_registry,
+    help='Policy for orphaned files during transform operations.',
+    invalid='warning')
 
 
 class TreeTransform(DiskTreeTransform):
@@ -2062,9 +2051,15 @@ class _PreviewTree(tree.InventoryTree):
         pass
 
     @property
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def inventory(self):
         """This Tree does not use inventory as its backing data."""
         raise NotImplementedError(_PreviewTree.inventory)
+
+    @property
+    def root_inventory(self):
+        """This Tree does not use inventory as its backing data."""
+        raise NotImplementedError(_PreviewTree.root_inventory)
 
     def get_root_id(self):
         return self._transform.final_file_id(self._transform.root)
@@ -2117,6 +2112,10 @@ class _PreviewTree(tree.InventoryTree):
         return cur_parent
 
     def path2id(self, path):
+        if isinstance(path, list):
+            if path == []:
+                path = [""]
+            path = osutils.pathjoin(*path)
         return self._transform.final_file_id(self._path2trans_id(path))
 
     def id2path(self, file_id):
@@ -2823,24 +2822,6 @@ def create_entry_executability(tt, entry, trans_id):
     """Set the executability of a trans_id according to an inventory entry"""
     if entry.kind == "file":
         tt.set_executability(entry.executable, trans_id)
-
-
-@deprecated_function(deprecated_in((2, 3, 0)))
-def get_backup_name(entry, by_parent, parent_trans_id, tt):
-    return _get_backup_name(entry.name, by_parent, parent_trans_id, tt)
-
-
-@deprecated_function(deprecated_in((2, 3, 0)))
-def _get_backup_name(name, by_parent, parent_trans_id, tt):
-    """Produce a backup-style name that appears to be available"""
-    def name_gen():
-        counter = 1
-        while True:
-            yield "%s.~%d~" % (name, counter)
-            counter += 1
-    for new_name in name_gen():
-        if not tt.has_named_child(by_parent, parent_trans_id, new_name):
-            return new_name
 
 
 def revert(working_tree, target_tree, filenames, backups=False,

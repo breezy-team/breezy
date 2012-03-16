@@ -21,7 +21,7 @@ from __future__ import absolute_import
 import time
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     chk_map,
     chk_serializer,
     debug,
@@ -954,7 +954,7 @@ class CHKInventoryRepository(PackRepository):
             else:
                 basis_tree = self.revision_tree(basis_revision_id)
                 basis_tree.lock_read()
-                basis_inv = basis_tree.inventory
+                basis_inv = basis_tree.root_inventory
         try:
             result = basis_inv.create_by_apply_delta(delta, new_revision_id,
                 propagate_caches=propagate_caches)
@@ -1383,7 +1383,7 @@ class RepositoryFormat2a(RepositoryFormatPack):
     pack_compresses = True
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('2a')
+        return controldir.format_registry.make_bzrdir('2a')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -1406,7 +1406,7 @@ class RepositoryFormat2aSubtree(RepositoryFormat2a):
     """
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('development-subtree')
+        return controldir.format_registry.make_bzrdir('development-subtree')
 
     def _ignore_setting_bzrdir(self, format):
         pass

@@ -51,7 +51,7 @@ class TestCommandLine(tests.TestCase):
         self.my_gpg = gpg.GPGStrategy(FakeConfig())
 
     def test_signing_command_line(self):
-        self.assertEqual(['false',  '--clearsign', '-u', 'amy@example.com'],
+        self.assertEqual(['false',  '--clearsign', '-u', 'amy@example.com', '--no-tty'],
                          self.my_gpg._command_line())
 
     def test_signing_command_line_from_default(self):
@@ -60,7 +60,7 @@ class TestCommandLine(tests.TestCase):
 email=Amy <amy@example.com>
 gpg_signing_key=default
 gpg_signing_command=false'''))
-        self.assertEqual(['false',  '--clearsign', '-u', 'amy@example.com'],
+        self.assertEqual(['false',  '--clearsign', '-u', 'amy@example.com', '--no-tty'],
                          my_gpg._command_line())
 
     def test_signing_command_line_from_email(self):
@@ -68,7 +68,7 @@ gpg_signing_command=false'''))
         my_gpg = gpg.GPGStrategy(FakeConfig('''
 email=Amy <amy@example.com>
 gpg_signing_command=false'''))
-        self.assertEqual(['false',  '--clearsign', '-u', 'amy@example.com'],
+        self.assertEqual(['false',  '--clearsign', '-u', 'amy@example.com', '--no-tty'],
                          my_gpg._command_line())
 
     def test_checks_return_code(self):

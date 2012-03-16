@@ -18,7 +18,7 @@
 
 from bzrlib import (
     branch,
-    bzrdir,
+    controldir,
     check,
     errors,
     )
@@ -107,12 +107,12 @@ class TestStacking(TestCaseWithBranch):
 
     def assertRevisionInRepository(self, repo_path, revid):
         """Check that a revision is in a repository, disregarding stacking."""
-        repo = bzrdir.BzrDir.open(repo_path).open_repository()
+        repo = controldir.ControlDir.open(repo_path).open_repository()
         self.assertTrue(repo.has_revision(revid))
 
     def assertRevisionNotInRepository(self, repo_path, revid):
         """Check that a revision is not in a repository, disregarding stacking."""
-        repo = bzrdir.BzrDir.open(repo_path).open_repository()
+        repo = controldir.ControlDir.open(repo_path).open_repository()
         self.assertFalse(repo.has_revision(revid))
 
     def test_get_graph_stacked(self):
@@ -165,7 +165,7 @@ class TestStacking(TestCaseWithBranch):
             raise TestNotApplicable(e)
         # Now serve the original mainline from a smart server
         remote_transport = self.make_smart_server('mainline')
-        remote_bzrdir = bzrdir.BzrDir.open_from_transport(remote_transport)
+        remote_bzrdir = controldir.ControlDir.open_from_transport(remote_transport)
         # and make branch from the smart server which is stacked
         new_dir = remote_bzrdir.sprout('newbranch', stacked=True)
         # stacked repository

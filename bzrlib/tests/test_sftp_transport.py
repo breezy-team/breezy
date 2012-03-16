@@ -21,8 +21,8 @@ import sys
 import time
 
 from bzrlib import (
-    bzrdir,
     config,
+    controldir,
     errors,
     tests,
     transport as _mod_transport,
@@ -81,7 +81,7 @@ class SFTPLockTests(TestCaseWithSFTPServer):
         l.unlock()
         self.assertFalse(lexists('bogus.write-lock'))
 
-        open('something.write-lock', 'wb').write('fake lock\n')
+        with open('something.write-lock', 'wb') as f: f.write('fake lock\n')
         self.assertRaises(LockError, t.lock_write, 'something')
         os.remove('something.write-lock')
 
@@ -191,17 +191,17 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
 
     def test_push_support(self):
         self.build_tree(['a/', 'a/foo'])
-        t = bzrdir.BzrDir.create_standalone_workingtree('a')
+        t = controldir.ControlDir.create_standalone_workingtree('a')
         b = t.branch
         t.add('foo')
         t.commit('foo', rev_id='a1')
 
-        b2 = bzrdir.BzrDir.create_branch_and_repo(self.get_url('/b'))
+        b2 = controldir.ControlDir.create_branch_and_repo(self.get_url('/b'))
         b2.pull(b)
 
         self.assertEquals(b2.last_revision(), 'a1')
 
-        open('a/foo', 'wt').write('something new in foo\n')
+        with open('a/foo', 'wt') as f: f.write('something new in foo\n')
         t.commit('new', rev_id='a2')
         b2.pull(b)
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ import zlib
 from bzrlib import (
     bencode,
     branch as _mod_branch,
-    bzrdir,
+    controldir,
     errors,
     gpg,
     inventory_delta,
@@ -121,7 +121,7 @@ class TestByteStreamToStream(tests.TestCase):
         stream = [('text', [versionedfile.FulltextContentFactory(('k1',), None,
             None, 'foo')]),('text', [
             versionedfile.FulltextContentFactory(('k2',), None, None, 'bar')])]
-        fmt = bzrdir.format_registry.get('pack-0.92')().repository_format
+        fmt = controldir.format_registry.get('pack-0.92')().repository_format
         bytes = smart_repo._stream_to_byte_stream(stream, fmt)
         streams = []
         # Iterate the resulting iterable; checking that we get only one stream
@@ -333,7 +333,7 @@ class TestSmartServerRequestCreateRepository(tests.TestCaseWithMemoryTransport):
         self.make_bzrdir('.')
         request_class = smart_dir.SmartServerRequestCreateRepository
         request = request_class(backing)
-        reference_bzrdir_format = bzrdir.format_registry.get('pack-0.92')()
+        reference_bzrdir_format = controldir.format_registry.get('pack-0.92')()
         reference_format = reference_bzrdir_format.repository_format
         network_name = reference_format.network_name()
         expected = smart_req.SuccessfulSmartServerResponse(
@@ -419,7 +419,7 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
         backing = self.get_transport()
         request = self._request_class(backing)
         result = self._make_repository_and_result(
-            format='dirstate-with-subtree')
+            format='development-subtree')
         # check the test will be valid
         self.assertEqual('yes', result.args[2])
         self.assertEqual('yes', result.args[3])
@@ -430,9 +430,9 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
         backing = self.get_transport()
         request = self._request_class(backing)
         result = self._make_repository_and_result(
-            format='dirstate-with-subtree')
+            format='development-subtree')
         # check the test will be valid
-        self.assertEqual('no', result.args[4])
+        self.assertEqual('yes', result.args[4])
         self.assertEqual(result, request.execute(''))
 
 
@@ -493,7 +493,7 @@ class TestSmartServerRequestInitializeBzrDir(tests.TestCaseWithMemoryTransport):
         request = smart_dir.SmartServerRequestInitializeBzrDir(backing)
         self.assertEqual(smart_req.SmartServerResponse(('ok', )),
             request.execute(''))
-        made_dir = bzrdir.BzrDir.open_from_transport(backing)
+        made_dir = controldir.ControlDir.open_from_transport(backing)
         # no branch, tree or repository is expected with the current
         # default formart.
         self.assertRaises(errors.NoWorkingTree, made_dir.open_workingtree)
@@ -533,7 +533,7 @@ class TestSmartServerRequestBzrDirInitializeEx(
                                            'False', '', '', '')),
             request.execute(name, '', 'True', 'False', 'False', '', '', '', '',
                             'False'))
-        made_dir = bzrdir.BzrDir.open_from_transport(backing)
+        made_dir = controldir.ControlDir.open_from_transport(backing)
         # no branch, tree or repository is expected with the current
         # default format.
         self.assertRaises(errors.NoWorkingTree, made_dir.open_workingtree)
@@ -1323,6 +1323,8 @@ class TestSmartServerBranchRequestSetParent(TestLockedBranch):
         finally:
             branch.unlock()
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(()), response)
+        # Refresh branch as SetParentLocation modified it
+        branch = branch.bzrdir.open_branch()
         self.assertEqual(None, branch.get_parent())
 
     def test_set_parent_something(self):
@@ -1332,11 +1334,12 @@ class TestSmartServerBranchRequestSetParent(TestLockedBranch):
         branch_token, repo_token = self.get_lock_tokens(branch)
         try:
             response = request.execute('base', branch_token, repo_token,
-            'http://bar/')
+                                       'http://bar/')
         finally:
             branch.unlock()
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(()), response)
-        self.assertEqual('http://bar/', branch.get_parent())
+        refreshed = _mod_branch.Branch.open(branch.base)
+        self.assertEqual('http://bar/', refreshed.get_parent())
 
 
 class TestSmartServerBranchRequestGetTagsBytes(
@@ -2666,8 +2669,8 @@ class TestSmartServerRepositoryPack(tests.TestCaseWithMemoryTransport):
 class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
 
     def _get_serialized_inventory_delta(self, repository, base_revid, revid):
-        base_inv = repository.revision_tree(base_revid).inventory
-        inv = repository.revision_tree(revid).inventory
+        base_inv = repository.revision_tree(base_revid).root_inventory
+        inv = repository.revision_tree(revid).root_inventory
         inv_delta = inv._make_delta(base_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(True, False)
         return "".join(serializer.delta_to_lines(base_revid, revid, inv_delta))
@@ -2688,7 +2691,7 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
             versionedfile.FulltextContentFactory('somerev', None, None,
                 self._get_serialized_inventory_delta(
                     t.branch.repository, 'null:', 'somerev'))])]
-        fmt = bzrdir.format_registry.get('2a')().repository_format
+        fmt = controldir.format_registry.get('2a')().repository_format
         self.assertEquals(
             "".join(response.body_stream),
             "".join(smart_repo._stream_to_byte_stream(stream, fmt)))

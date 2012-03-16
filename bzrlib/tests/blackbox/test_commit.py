@@ -30,7 +30,7 @@ from bzrlib import (
     ignores,
     msgeditor,
     )
-from bzrlib.bzrdir import BzrDir
+from bzrlib.controldir import ControlDir
 from bzrlib.tests import (
     test_foreign,
     features,
@@ -117,7 +117,7 @@ bzr: ERROR: No changes to commit.\
     def prepare_simple_history(self):
         """Prepare and return a working tree with one commit of one file"""
         # Commit with modified file should say so
-        wt = BzrDir.create_standalone_workingtree('.')
+        wt = ControlDir.create_standalone_workingtree('.')
         self.build_tree(['hello.txt', 'extra.txt'])
         wt.add(['hello.txt'])
         wt.commit(message='added')
@@ -139,7 +139,7 @@ bzr: ERROR: No changes to commit.\
         self.requireFeature(features.UnicodeFilenameFeature)
         file_name = u'\N{euro sign}'
         self.run_bzr(['init'])
-        open(file_name, 'w').write('hello world')
+        with open(file_name, 'w') as f: f.write('hello world')
         self.run_bzr(['add'])
         out, err = self.run_bzr(['commit', '-m', file_name])
         reflags = re.MULTILINE|re.DOTALL|re.UNICODE
@@ -157,7 +157,7 @@ bzr: ERROR: No changes to commit.\
         try:
             osutils.get_terminal_encoding = lambda trace=None: 'ascii'
             file_name = u'foo\u1234'
-            open(file_name, 'w').write('hello world')
+            with open(file_name, 'w') as f: f.write('hello world')
             self.run_bzr(['add'])
             out, err = self.run_bzr(['commit', '-m', file_name])
             reflags = re.MULTILINE|re.DOTALL|re.UNICODE
@@ -225,7 +225,7 @@ bzr: ERROR: No changes to commit.\
     def test_verbose_commit_with_unknown(self):
         """Unknown files should not be listed by default in verbose output"""
         # Is that really the best policy?
-        wt = BzrDir.create_standalone_workingtree('.')
+        wt = ControlDir.create_standalone_workingtree('.')
         self.build_tree(['hello.txt', 'extra.txt'])
         wt.add(['hello.txt'])
         out,err = self.run_bzr('commit -m added')
@@ -628,7 +628,7 @@ altered in u2
             "Commit refused."],
             'commit -m add-b --fixes=123',
             working_dir='tree')
-        tree.branch.get_config().set_user_option("bugtracker", "lp")
+        tree.branch.get_config_stack().set("bugtracker", "lp")
         self.run_bzr('commit -m hello --fixes=234 tree/hello.txt')
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         self.assertEqual('https://launchpad.net/bugs/234 fixed',
@@ -757,7 +757,7 @@ altered in u2
         # "UnlockableTransport error trying to commit in checkout of readonly
         # branch"
         self.make_branch('master')
-        master = BzrDir.open_from_transport(
+        master = ControlDir.open_from_transport(
             self.get_readonly_transport('master')).open_branch()
         master.create_checkout('checkout')
         out, err = self.run_bzr(['commit', '--unchanged', '-mfoo', 'checkout'],
@@ -887,7 +887,7 @@ class TestSmartServerCommit(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(214, self.hpss_calls)
+        self.assertLength(211, self.hpss_calls)
         self.assertLength(2, self.hpss_connections)
         self.expectFailure("commit still uses VFS calls",
             self.assertThat, self.hpss_calls, ContainsNoVfsCalls)

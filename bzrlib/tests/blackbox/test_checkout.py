@@ -21,6 +21,7 @@ import os
 from bzrlib import (
     branch as _mod_branch,
     bzrdir,
+    controldir,
     errors,
     workingtree,
     )
@@ -37,7 +38,7 @@ class TestCheckout(TestCaseWithTransport):
 
     def setUp(self):
         super(TestCheckout, self).setUp()
-        tree = bzrdir.BzrDir.create_standalone_workingtree('branch')
+        tree = controldir.ControlDir.create_standalone_workingtree('branch')
         tree.commit('1', rev_id='1', allow_pointless=True)
         self.build_tree(['branch/added_in_2'])
         tree.add('added_in_2')
@@ -46,16 +47,16 @@ class TestCheckout(TestCaseWithTransport):
     def test_checkout_makes_bound_branch(self):
         self.run_bzr('checkout branch checkout')
         # if we have a checkout, the branch base should be 'branch'
-        source = bzrdir.BzrDir.open('branch')
-        result = bzrdir.BzrDir.open('checkout')
+        source = controldir.ControlDir.open('branch')
+        result = controldir.ControlDir.open('checkout')
         self.assertEqual(source.open_branch().bzrdir.root_transport.base,
                          result.open_branch().get_bound_location())
 
     def test_checkout_light_makes_checkout(self):
         self.run_bzr('checkout --lightweight branch checkout')
         # if we have a checkout, the branch base should be 'branch'
-        source = bzrdir.BzrDir.open('branch')
-        result = bzrdir.BzrDir.open('checkout')
+        source = controldir.ControlDir.open('branch')
+        result = controldir.ControlDir.open('checkout')
         self.assertEqual(source.open_branch().bzrdir.root_transport.base,
                          result.open_branch().bzrdir.root_transport.base)
 
@@ -63,7 +64,7 @@ class TestCheckout(TestCaseWithTransport):
         out, err = self.run_bzr(['checkout', '-r', '-2', 'branch', 'checkout'])
         # the working tree should now be at revision '1' with the content
         # from 1.
-        result = bzrdir.BzrDir.open('checkout')
+        result = controldir.ControlDir.open('checkout')
         self.assertEqual(['1'], result.open_workingtree().get_parent_ids())
         self.assertPathDoesNotExist('checkout/added_in_2')
 
@@ -72,14 +73,14 @@ class TestCheckout(TestCaseWithTransport):
             'branch', 'checkout'])
         # the working tree should now be at revision '1' with the content
         # from 1.
-        result = bzrdir.BzrDir.open('checkout')
+        result = controldir.ControlDir.open('checkout')
         self.assertEqual(['1'], result.open_workingtree().get_parent_ids())
         self.assertPathDoesNotExist('checkout/added_in_2')
 
     def test_checkout_into_empty_dir(self):
         self.make_bzrdir('checkout')
         out, err = self.run_bzr(['checkout', 'branch', 'checkout'])
-        result = bzrdir.BzrDir.open('checkout')
+        result = controldir.ControlDir.open('checkout')
         tree = result.open_workingtree()
         branch = result.open_branch()
 
@@ -88,7 +89,7 @@ class TestCheckout(TestCaseWithTransport):
         # or a 'bzr checkout path' with path the name of a directory with
         # a branch with no tree will reconsistute the tree.
         os.mkdir('treeless-branch')
-        branch = bzrdir.BzrDir.create_branch_convenience(
+        branch = controldir.ControlDir.create_branch_convenience(
             'treeless-branch',
             force_new_tree=False,
             format=bzrdir.BzrDirMetaFormat1())
@@ -101,7 +102,7 @@ class TestCheckout(TestCaseWithTransport):
         out, err = self.run_bzr('diff treeless-branch')
 
         # now test with no parameters
-        branch = bzrdir.BzrDir.create_branch_convenience(
+        branch = controldir.ControlDir.create_branch_convenience(
             '.',
             force_new_tree=False,
             format=bzrdir.BzrDirMetaFormat1())
@@ -176,6 +177,21 @@ class TestCheckout(TestCaseWithTransport):
         target_stat = os.stat('target/file1')
         self.assertEqual(second_stat, target_stat)
 
+    def test_colo_checkout(self):
+        source = self.make_branch_and_tree('source', format='development-colo')
+        self.build_tree(['source/file1'])
+        source.add('file1')
+        source.commit('added file')
+        target = source.bzrdir.sprout('file:second,branch=somebranch',
+            create_tree_if_local=False)
+        out, err = self.run_bzr('checkout file:,branch=somebranch .',
+            working_dir='second')
+        # We should always be creating a lighweight checkout for colocated
+        # branches.
+        self.assertEquals(
+            target.open_branch(name='somebranch').base,
+            target.get_branch_reference(name=""))
+
 
 class TestSmartServerCheckout(TestCaseWithTransport):
 
@@ -208,5 +224,5 @@ class TestSmartServerCheckout(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(15, self.hpss_calls)
+        self.assertLength(13, self.hpss_calls)
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
