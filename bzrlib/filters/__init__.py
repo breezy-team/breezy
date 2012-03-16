@@ -50,6 +50,10 @@ from bzrlib import (
     registry,
     )
 """)
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
 
 
 class ContentFilter(object):
@@ -187,8 +191,7 @@ def internal_size_sha_file_byname(name, filters):
 
 
 # The registry of filter stacks indexed by name.
-# See register_filter_stack_map for details on the registered values.
-_filter_stacks_registry = registry.Registry()
+filter_stacks_registry = registry.Registry()
 
 
 # Cache of preferences -> stack
@@ -196,6 +199,7 @@ _filter_stacks_registry = registry.Registry()
 _stack_cache = {}
 
 
+@deprecated_function(deprecated_in((2, 6, 0)))
 def register_filter_stack_map(name, stack_map_lookup):
     """Register the filter stacks to use for various preference values.
 
@@ -205,12 +209,10 @@ def register_filter_stack_map(name, stack_map_lookup):
       the result is the matching stack of filters to use,
       or None if none.
     """
-    if name in _filter_stacks_registry:
-        raise errors.BzrError(
-            "filter stack for %s already installed" % name)
-    _filter_stacks_registry.register(name, stack_map_lookup)
+    filter_stacks_registry.register(name, stack_map_lookup)
 
 
+@deprecated_function(deprecated_in((2, 6, 0)))
 def lazy_register_filter_stack_map(name, module_name, member_name):
     """Lazily register the filter stacks to use for various preference values.
 
@@ -219,17 +221,14 @@ def lazy_register_filter_stack_map(name, module_name, member_name):
     :param member_name: The name of the stack_map_lookup callable
       in the module.
     """
-    if name in _filter_stacks_registry:
-        raise errors.BzrError(
-            "filter stack for %s already installed" % name)
-    _filter_stacks_registry.register_lazy(name, module_name, member_name)
+    filter_stacks_registry.register_lazy(name, module_name, member_name)
 
 
 def _get_registered_names():
     """Get the list of names with filters registered."""
     # Note: We may want to intelligently order these later.
     # If so, the register_ fn will need to support an optional priority.
-    return _filter_stacks_registry.keys()
+    return filter_stacks_registry.keys()
 
 
 def _get_filter_stack_for(preferences):
@@ -250,7 +249,7 @@ def _get_filter_stack_for(preferences):
         if v is None:
             continue
         try:
-            stack_map_lookup = _filter_stacks_registry.get(k)
+            stack_map_lookup = filter_stacks_registry.get(k)
         except KeyError:
             # Some preferences may not have associated filters
             continue
@@ -274,7 +273,7 @@ def _reset_registry(value=None):
     :return: the existing value before it reset.
     """
     global _filter_stacks_registry
-    original = _filter_stacks_registry
+    original = filter_stacks_registry
     if value is None:
         _filter_stacks_registry = registry.Registry()
     else:
@@ -283,4 +282,4 @@ def _reset_registry(value=None):
     return original
 
 
-lazy_register_filter_stack_map('eol', 'bzrlib.filters.eol', 'eol_lookup')
+filter_stacks_registry.register_lazy('eol', 'bzrlib.filters.eol', 'eol_lookup')

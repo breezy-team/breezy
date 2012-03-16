@@ -21,10 +21,10 @@ from bzrlib.filters import (
     ContentFilterContext,
     filtered_input_file,
     filtered_output_bytes,
+    filter_stacks_registry,
     _get_filter_stack_for,
     _get_registered_names,
     internal_size_sha_file_byname,
-    register_filter_stack_map,
     )
 from bzrlib.osutils import sha_string
 from bzrlib.tests import TestCase, TestCaseInTempDir
@@ -114,7 +114,7 @@ class TestFilterStackMaps(TestCase):
     def _register_map(self, pref, stk1, stk2):
         def stk_lookup(key):
             return {'v1': stk1, 'v2': stk2}.get(key)
-        register_filter_stack_map(pref, stk_lookup)
+        filter_stacks_registry.register(pref, stk_lookup)
 
     def test_filter_stack_maps(self):
         # Save the current registry

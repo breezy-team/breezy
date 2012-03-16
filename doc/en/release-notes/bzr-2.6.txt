@@ -89,6 +89,11 @@ API Changes
 * New convenience API method ``WorkingTree.get_config_stack``.
   (Jelmer Vernooij)
 
+* ``register_filter_stack_map`` and ``lazy_register_filter_stack_map``
+  are noew deprecated. Instead, use ``filter_stacks_registry.register``
+  and ``filter_stacks_registry.register_lazy``.
+  (Jelmer Vernooij)
+
 Internals
 *********
 
