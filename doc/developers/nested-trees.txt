@@ -2,7 +2,7 @@
 Nested Trees
 ************
 
-:status: 2012-12-24: Draft spec
+:status: 2012-03-17: Draft spec
 
 .. sectnum::
 
@@ -14,9 +14,7 @@ Principles
 - Never store a location in versioned data.
 
 - Implementation of nested trees shall not make operations observably slower
-  for those not using nested trees.  (Using nested trees will impact
-  performance in the initial implementation, but the design will allow a
-  performant implementation.)
+  for those not using nested trees.
 
 - A repository that holds a revision R should be able to reconstruct the
   whole contents of that revision, including any nested trees.  Corolary:
@@ -77,18 +75,6 @@ relatively easy to grasp.  Both for users and for developers, it provides a
 clear expectation for the behaviour of nested trees.  There are no obvious
 drawbacks in terms of code clarity or performance.  Therefore, it seems like a
 good model to start with.
-
-There are cases where users place multiple copies of a source tree inside
-another tree, and treating a set of nested trees like a single large tree is in
-conflict with that.  It is essentially the same as supporting file copies, and
-file copies themselves are a big and complicated feature to implement.  It
-seems likely that Bazaar will one day support file copies, and when it does,
-this conflict will disappear.  Implementing limited support for copies via
-nesting would have similar complexity to implementing general support for file
-copies, but would have fewer fruits.  It would lead to complication when true
-support for file copies is implemented.  It does not seem appropriate for
-initial nested-tree support.  On the other hand, it could be implemented later;
-none of the data model changes are in conflict with that.
 
 Using root file-ids for tree-references
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -160,41 +146,6 @@ trees for new sub-branches.
 Implementation strategies
 *************************
 
-Start from the top
-~~~~~~~~~~~~~~~~~~
-In the initial implementation, recursion into subtrees should be implemented at
-the highest level possible.  This will make experimentation easier, reduce the
-chance for regressions in core code, and reduce the number of public API
-changes.  This will entail some redundant post-operation determination of
-whether subtrees are present.  Speed of operations involving subtrees is not a
-major concern, but operations that do not use subtrees must not be observably
-slower.
-
-Aaron Bentley believes that recursion at the top level is also easier to
-understand and debug, but Robert Collins and Vincent Ladeuil disagree.
-
-As time goes on and the design is proven, operations can be rewritten as more
-intrusive changes, in order to provide better performance or better handling of
-edge cases.  It may make sense to implement them on NestedTrees, so that they
-can take advantage of its subtree caching.
-
-However, some low-level operations would be dubious to implement as recursive.
-For example, a recursive Tree.id2path might open several subtrees in order to
-determine a single path.  It would be better to support a batch operation in
-NestedTrees.
-
-Fast subtree detection
-~~~~~~~~~~~~~~~~~~~~~~
-The obvious way to prevent slowness when there are no subtrees is to provide a
-fast way of determining whether there are subtrees.  This could be provided by
-additional on-disk indices, or potentially by providing a flag indicating
-whether there are subtrees.  Such a flag could be updated by Tree.iter_entries,
-to avoid re-running Tree.iter_entries.  A parallel flag for iter_changes is
-also conceivable, but would be more complicated, since iter_changes is relative
-to another Tree. Further, during ``iter_changes`` it is possible to have
-subtrees that were not encountered because they were unchanged between the
-trees (as ``iter_changes`` does not always walk the entire tree).
-
 Data storage
 ************
 
@@ -207,9 +158,13 @@ has a revision-id associated with it.
 All modern working trees support tree references.  Indices may be provided to
 ensure fast access to the list of subtrees.
 
-Because of the need to use branches for recursion, it would be desirable to
-associate RevisionTrees with branches.  The alternative is for many operations
-to accept Tree + Branch as input, and return Tree, Branch pairs.
+The various methods on ``Tree`` need to be updated to handle nested trees.
+
+Tree file ids are tuples containing inventory file ids, describing a path
+to the file. This means that if a file is in a nested tree with the root 
+fileid ``file_id_a`` and the file itself has the inventory file id ``file_id_b``
+then the tree file id is (file_id_a, file_id_b). This makes it easy to look up file ids
+without having to load and scan all nested trees for ``file_id_b``.
 
 Branches
 ~~~~~~~~
@@ -222,8 +177,7 @@ Repositories
 ~~~~~~~~~~~~
 Some repository formats have 'subtree' variants, e.g. pack-0.92-subtree,
 development-subtree.  These are hidden, experimental formats that support
-storing tree-references in their inventory formats.  The most recent format
-which supports subtrees is RepositoryFormatKnitPack3.
+storing tree-references in their inventory formats.
 
 Repository indexing might be extended to provide fast access to
 tree-references.
@@ -238,6 +192,8 @@ tree's branch must be in the new "subbranches" format.  The inner tree's branch
 will be cloned into the "subbranches" branch, and the local branch will be
 replaced with a "subbranch-reference".  Finally, a tree-reference will be
 added to the containing tree.
+
+(this is already implemented)
 
 API Changes
 ***********
@@ -842,16 +798,6 @@ for nested branches you are likely to tweak. Alternatively, the
 commit some changes, leaving the nested branch commits until you are back
 online.
 
-A given top level tree cannot contain multiple copies of a nested tree.
-As a consequence, you cannot nest two projects if they both nest
-the same project somewhere within them. This limitation may be removed
-in the future. In the meantime, consider restructuring things so that each
-project is only nested once (and leverage symbolic links as appropriate).
-In most programming environments, having different parts of the project
-using different versions of a library is an integration no-no anyhow,
-so enforcing *one* common revision is the right way to prevent this from
-happening.
-
 At the moment, nested trees need to be incorporated as a whole.
 Filtered views can to used to restrict the set of files and directories
 logically seen. Currently though, filtered views are a lens onto a tree:
@@ -868,7 +814,9 @@ If you require this feature, please contact us with your needs.
 Design decisions
 ****************
 
-The branches of subtrees shall share a repository with the containing tree.
+The branches of subtrees shall either share a repository with the containing tree,
+or the containing tree's repository will be (implicitly) added as a fallback
+repository.
 
 The branches of subtrees shall be in a special format that shares a single
 last_revision file that is stored in the containing branch.
@@ -901,9 +849,8 @@ Pros:
 Cons:
 
  - Accidentally committing nuclear launch codes is easier to do
- - More risk of exposing users to bugs
- - Makes incompleteness more glaring
  - A commit message that makes sense for the top may not make sense lower down.
+
 
 Shall commands recurse upwards by default?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -914,17 +861,7 @@ No.
 Shall subtree branches be addressable?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Yes.  The problems to be solved include:
-
- - the "name" of subbranches can change from revision to revision.  In fact,
-   subbranches may have no name in a given revision.
- - a user may want to get revision X of a subbranch named "foo" in revision Y
-   of the top branch.
-
-The syntax will be ``BRANCH#SUBBRANCH``, e.g. ``lp:bigproject#subproject``.
-``BRANCH`` is a regular URL and ``SUBBRANCH`` is a path within BRANCH's tree
-identifying a subbranch.  Simultaneously addressing a specific revision in both
-BRANCH and SUBBRANCH is not currently defined.
+Ideally, yes. We might want to use the path segment parameters syntax here too.
 
 
 Shall we model nested trees as a composite tree?
@@ -947,18 +884,13 @@ support file copies in future it will be possible to change this in a future
 format, and perform deterministic upgrades to that format.
 
 
-Shall we recurse our low-level operations from the beginning?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+What about locking?
+~~~~~~~~~~~~~~~~~~~
 
-No.  It will be necessary eventually for good performance, but the initial
-implementation is conservative to minimise risk to the rest of bzr.
-
-Shall we lock recursively?
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Yes.  It matches existing behaviour by failing earlier, and the extra cost does
-not seem onerous.  (To be fully efficient this requires an index of the
-subtrees, otherwise we need to scan the fully inventory/dirstate.)
+We should lock recursively.  It matches existing behaviour by failing earlier,
+and the extra cost does not seem onerous.  (To be fully efficient this requires
+an index of the subtrees, otherwise we need to scan the fully
+inventory/dirstate.)
 
 (Also, this decision can be changed later with no compatibility concerns.)
 
@@ -1016,27 +948,13 @@ flagging some sub-trees as mirror-only something similar, but this seems like
 it could be a general feture not specific to nesting.  (and it may only require
 a working tree format bump to add).
 
-How do we handle files that are moved into subtrees (from another tree in the same top tree)?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Add a revision property:
-"Files-from-other-trees: (rev-id: [f-id, ...]), ..."
-
-(Once we can record cherry-pick merges, we might use those instead, but it
-depends on their history-fetching requirements.)
-
-
-
-
 Comparison with other systems
 *****************************
 
 Git submodules
 ~~~~~~~~~~~~~~
 
-This allows separate repositories to be used for submodules.  At the UI layer,
-they are quite different, because submodules does not attempt to integrate
-subtree support into the core commands.
+This allows separate repositories to be used for submodules.
 
 Mercurial Forests
 ~~~~~~~~~~~~~~~~~
@@ -1101,18 +1019,5 @@ once Bazaar itself supports partial checkouts.  Supporting a single file as a
 "subtree" would also depend on native bzr support.  On platforms that support
 symlinks, using symlinks to portions of a subtree can be an effective
 substitute.
-
-
-Future work
-***********
-It would be nice to support multiple copies of subtree in a master tree.
-Currently, this would lead to having multiple copies of a given file-id in the
-(composite) tree, which is forbidden.  Allowing this would involve one of:
-
-- permitting multiple copies of a file-id within a tree
-- not treating nested trees as composite trees
-- using fake file-ids within the composite tree
-- replacing the file-id concept with something else (e.g. path tokens)
-
 
 .. vim: ft=rst
