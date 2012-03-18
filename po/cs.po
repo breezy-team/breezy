@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-03-15 13:36+0000\n"
+"PO-Revision-Date: 2012-03-17 21:46+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-03-16 04:31+0000\n"
+"X-Launchpad-Export-Date: 2012-03-18 04:30+0000\n"
 "X-Generator: Launchpad (build 14951)\n"
 
 #: bzrlib/add.py:93
@@ -693,7 +693,8 @@ msgid ""
 "location to use the default.  To change the default, use --remember. The\n"
 "value will only be saved if the remote location can be accessed."
 msgstr ""
-"Pokud není nastaveno žádné výchozí umístění, první stáhnutí tak učiní\n"
+"Pokud není nastaveno žádné výchozí umístění odeslání, první stáhnutí tak "
+"učiní\n"
 "(použijte --no-remember abyste tomu předešli). Poté můžete umístění\n"
 "vynechat pro použití výchozího. Pro jeho změnu použijte --remember.\n"
 "Hodnota bude uložena pouze když je vzdálené prostředí dostupné."
@@ -3234,6 +3235,13 @@ msgid ""
 "cherrypicks. The changes look like a normal commit, and the history of the\n"
 "changes from the other branch is not stored in the commit."
 msgstr ""
+"Pokud zadáte dvě hodnoty \"--revision ZÁKLAD..JINÁ\", pouze revize ZÁKLAD\n"
+"po JINÁ, mimo ZÁKLAD ale včetně JINÁ, budou sloučeny, Pokud toto\n"
+"způsobí, že některé revize budou přeskočeny, tj. pokud cílová větev\n"
+"ještě neobsahuje revizi ZÁKLAD, takové sloučení se běžně označuje jako\n"
+"\"výběr nejlepšího\" (cherrypick). Narozdíl od normálního sloučení Bazzar\n"
+"v současnosti nesleduje nejlepší výběry. Změna vypadá jako normální\n"
+"odevzdání a historie změn z druhé větve není v odevzdání uložena."
 
 #: bzrlib/builtins.py:4272
 msgid "Revision numbers are always relative to the source branch."
@@ -3255,6 +3263,7 @@ msgstr ""
 msgid ""
 "Use bzr resolve when you have fixed a problem.  See also bzr conflicts."
 msgstr ""
+"Použijte bzr resolve když jste problémy opravili. Viz také bzr conflicts."
 
 #: bzrlib/builtins.py:4281
 msgid ""
@@ -3263,6 +3272,10 @@ msgid ""
 "to use the default.  To change the default, use --remember. The value will\n"
 "only be saved if the remote location can be accessed."
 msgstr ""
+"Pokud není nastavena žádná výchozí větev, první stáhnutí tak učiní\n"
+"(použijte --no-remember abyste tomu předešli). Poté můžete umístění\n"
+"vynechat pro použití výchozího. Pro jeho změnu použijte --remember.\n"
+"Hodnota bude uložena pouze když je vzdálené prostředí dostupné."
 
 #: bzrlib/builtins.py:4286
 msgid ""
@@ -3270,6 +3283,9 @@ msgid ""
 "directory, where they can be reviewed (with bzr diff), tested, and then\n"
 "committed to record the result of the merge."
 msgstr ""
+"Výsledky sloučení jsou umístěny do cílového pracovního adresáře,\n"
+"kde mohou být zkontrolovány (pomocí bzr diff), vyzkoušeny a pak\n"
+"odevzdány pro zaznamenání výsledku sloučení."
 
 #: bzrlib/builtins.py:4290
 msgid ""
@@ -3279,6 +3295,12 @@ msgid ""
 "changes in the tree.  The --force option can also be used to create a\n"
 "merge revision which has more than two parents."
 msgstr ""
+"sloučení nebude spuštěno, pokud existují jakékoliv neodevzdané\n"
+"změny, pokud není zadáno --force. Pokud je zadáno, pak změny \n"
+"ze zdroje budou sloučeny se současným pracovním stromem,\n"
+"včetně jakýchkoliv neodevzdaných změn ve stromu. Volba\n"
+"--force může být také použita pro vytvoření revize sloučení,\n"
+"která má více než dvě nadřazené."
 
 #: bzrlib/builtins.py:4296
 msgid ""
@@ -3286,52 +3308,62 @@ msgid ""
 "branch without merging any committed revisions, the --uncommitted option\n"
 "can be given."
 msgstr ""
+"Pokud byste chtěli sloučit změny z pracovního stromu z druhé větve\n"
+"bez sloučení jakýchkoli odevzdaných revizí, může být zadána volba\n"
+"--uncommited."
 
 #: bzrlib/builtins.py:4300
 msgid ""
 "To select only some changes to merge, use \"merge -i\", which will prompt\n"
 "you to apply each diff hunk and file change, similar to \"shelve\"."
 msgstr ""
+"Pro vybrání pouze některých změn ke sloučení, použijte \"merge -i\", což\n"
+"Vás vyzve k použití každého kusu rozdílu a změn souboru, podobné\n"
+"jako \"shelve\"."
 
 #: bzrlib/builtins.py:4303
 msgid ""
 ":Examples:\n"
 "    To merge all new revisions from bzr.dev::"
 msgstr ""
+":Příklady:\n"
+"    Pro sloučení všech novách revizí z bzr.dev::"
 
 #: bzrlib/builtins.py:4306
 msgid "        bzr merge ../bzr.dev"
-msgstr ""
+msgstr "        bzr merge ../bzr.dev"
 
 #: bzrlib/builtins.py:4308
 msgid "    To merge changes up to and including revision 82 from bzr.dev::"
-msgstr ""
+msgstr "    Pro sloučení změn až po a včetně revize 82 z bzr.dev::"
 
 #: bzrlib/builtins.py:4310
 msgid "        bzr merge -r 82 ../bzr.dev"
-msgstr ""
+msgstr "        bzr merge -r 82 ../bzr.dev"
 
 #: bzrlib/builtins.py:4312
 msgid "    To merge the changes introduced by 82, without previous changes::"
-msgstr ""
+msgstr "    Por sloučení změn v revizi 82, bez předchozích změn::"
 
 #: bzrlib/builtins.py:4314
 msgid "        bzr merge -r 81..82 ../bzr.dev"
-msgstr ""
+msgstr "        bzr merge -r 81..82 ../bzr.dev"
 
 #: bzrlib/builtins.py:4316
 msgid "    To apply a merge directive contained in /tmp/merge::"
-msgstr ""
+msgstr "    Pro použití příkazu sloučení umístěném v /tmp/merge::"
 
 #: bzrlib/builtins.py:4318
 msgid "        bzr merge /tmp/merge"
-msgstr ""
+msgstr "        bzr merge /tmp/merge"
 
 #: bzrlib/builtins.py:4320
 msgid ""
 "    To create a merge revision with three parents from two branches\n"
 "    feature1a and feature1b:"
 msgstr ""
+"    Pro vytvoření revize sloučení s třemi nadřazenými ze dvou větví\n"
+"    funkce1a a funkce1b:"
 
 #: bzrlib/builtins.py:4323
 msgid ""
@@ -3339,15 +3371,18 @@ msgid ""
 "        bzr merge ../feature1b --force\n"
 "        bzr commit -m 'revision with three parents'"
 msgstr ""
+"        bzr merge ../funkce1a\n"
+"        bzr merge ../funkce1b --force\n"
+"        bzr commit -m 'revize s třemi nadřazenými'"
 
 #: bzrlib/builtins.py:4335
 msgid "Merge even if the destination tree has uncommitted changes."
-msgstr ""
+msgstr "Sloučit i když cílový strom má neodevzdané změny."
 
 #: bzrlib/builtins.py:4341
 msgid ""
 "Apply uncommitted changes from a working copy, instead of branch changes."
-msgstr ""
+msgstr "Použit neodevzdané změny z pracovní kopie, místo změn větve."
 
 #: bzrlib/builtins.py:4343
 msgid ""
@@ -3355,75 +3390,80 @@ msgid ""
 "the source rather than merging.  When this happens, you do not need to "
 "commit the result."
 msgstr ""
+"Pokud je cíl již zcela sloučen do zdroje, raději ze zdroje stáhnout, než "
+"slučovat. Když se toto stane, výsledek odevzdávat nemusíte."
 
 #: bzrlib/builtins.py:4348
 msgid ""
 "Branch to merge into, rather than the one containing the working directory."
-msgstr ""
+msgstr "Větev, do které sloučit raději, než ta obsahující pracovní adresář."
 
 #: bzrlib/builtins.py:4350
 msgid "Instead of merging, show a diff of the merge."
-msgstr ""
+msgstr "Místo slučování zobrazit rozdíl sloučení."
 
 #: bzrlib/builtins.py:4352
 msgid "Select changes interactively."
-msgstr ""
+msgstr "Změny vybírat interaktivně."
 
 #: bzrlib/builtins.py:4374
 msgid ""
 "Merging into empty branches not currently supported, "
 "https://bugs.launchpad.net/bzr/+bug/308562"
 msgstr ""
+"Slučování do prázdných větví není v současnosti podporováno, viz "
+"https://bugs.launchpad.net/bzr/+bug/308562"
 
 #: bzrlib/builtins.py:4401
 msgid "Cannot use --uncommitted with bundles or merge directives."
-msgstr ""
+msgstr "Nelze použít --uncommitted se svazky nebo příkazy sloučení."
 
 #: bzrlib/builtins.py:4412
 msgid "Cannot use --uncommitted and --revision at the same time."
-msgstr ""
+msgstr "Nelze najednou použít --uncommitted a --revvision."
 
 #: bzrlib/builtins.py:4432
 msgid "merger: "
-msgstr ""
+msgstr "slučovatel: "
 
 #: bzrlib/builtins.py:4434 bzrlib/bundle/apply_bundle.py:71
 msgid "Nothing to do."
-msgstr ""
+msgstr "Není co dělat."
 
 #: bzrlib/builtins.py:4438
 msgid "Cannot pull individual files"
-msgstr ""
+msgstr "Nelze stáhnout jednotlivé soubory"
 
 #: bzrlib/builtins.py:4446
 msgid "This branch has no commits. (perhaps you would prefer 'bzr pull')"
 msgstr ""
+"Tato větev nemá žádná odevzdání. (třeba byste raději chtěli 'bzr pull')"
 
 #: bzrlib/builtins.py:4504
 #, python-format
 msgid "Show-base is not supported for this merge type. %s"
-msgstr ""
+msgstr "Show-base není podporován pro tento typ sloučení. %s"
 
 #: bzrlib/builtins.py:4513
 #, python-format
 msgid "Conflict reduction is not supported for merge type %s."
-msgstr ""
+msgstr "Snížení konfliktů není podporováno pro tento typ sloučení %s."
 
 #: bzrlib/builtins.py:4517
 msgid "Cannot do conflict reduction and show base."
-msgstr ""
+msgstr "Nelze provést snížení konfliktů a zobrazení základu."
 
 #: bzrlib/builtins.py:4628
 msgid "No location specified or remembered"
-msgstr ""
+msgstr "Žádné umístění nezadáno nebo nezapamatováno"
 
 #: bzrlib/builtins.py:4630
 msgid "{0} remembered {1} location {2}"
-msgstr ""
+msgstr "{0} si zapamatovala {1} umístění {2}"
 
 #: bzrlib/builtins.py:4636
 msgid "Redo a merge."
-msgstr ""
+msgstr "Znovu provést sloučení."
 
 #: bzrlib/builtins.py:4638
 msgid ""
@@ -3431,6 +3471,9 @@ msgid ""
 "conflicts.  Some merge techniques are better than others, and remerge\n"
 "lets you try different ones on different files."
 msgstr ""
+"Toto použijte, pokud chcete vyzkoušet jinou techniku sloučení při řešení\n"
+"konfliktů. Některé techniky sloučení jsou lepší než statní a znovu sloučení\n"
+"Vám umožňuje různé vyzkoušet na různých souborech."
 
 #: bzrlib/builtins.py:4642
 msgid ""
@@ -3438,6 +3481,9 @@ msgid ""
 "merge.  The difference is that remerge can (only) be run when there is a\n"
 "pending merge, and it lets you specify particular files."
 msgstr ""
+"Volby pro znovusloučení mají stejný význam a výchozí hodnoty jako ty ve\n"
+"sloučení. Rozdíl je, že znovusloučení může být (pouze spuštěno), když\n"
+"existuje nevyřízené sloučení a umožní Vám určovat soubory."
 
 #: bzrlib/builtins.py:4646
 msgid ""
@@ -3445,34 +3491,42 @@ msgid ""
 "    Re-do the merge of all conflicted files, and show the base text in\n"
 "    conflict regions, in addition to the usual THIS and OTHER texts::"
 msgstr ""
+":Příklady:\n"
+"    Znovu provést sloučení všech konfliktních souborů a zobrazit základní "
+"text v\n"
+"    konfliktních oblastech, vedle standardních textů TOTO a OSTATNÍ::"
 
 #: bzrlib/builtins.py:4650
 msgid "        bzr remerge --show-base"
-msgstr ""
+msgstr "        bzr remerge --show-base"
 
 #: bzrlib/builtins.py:4652
 msgid ""
 "    Re-do the merge of \"foobar\", using the weave merge algorithm, with\n"
 "    additional processing to reduce the size of conflict regions::"
 msgstr ""
+"    Znovu provést sloučení \"foobar\", použitím algoritmu sloučení vazby s\n"
+"    dalšími zpracováními pro zmenšení velikosti oblastí konfliktu::"
 
 #: bzrlib/builtins.py:4655
 msgid "        bzr remerge --merge-type weave --reprocess foobar"
-msgstr ""
+msgstr "        bzr remerge --merge-type weave --reprocess foobar"
 
 #: bzrlib/builtins.py:4662
 msgid "Show base revision text in conflicts."
-msgstr ""
+msgstr "Zobrazít základní text revize v konfliktech."
 
 #: bzrlib/builtins.py:4674
 msgid ""
 "Sorry, remerge only works after normal merges.  Not cherrypicking or multi-"
 "merges."
 msgstr ""
+"Je nám líto, ale znovusloučení funguje po normálních sloučení. Ne "
+"mnohonásobná sloučení nebo výběr nejlepšího."
 
 #: bzrlib/builtins.py:4731
 msgid "Revert files to a previous revision."
-msgstr ""
+msgstr "Vrátit soubory do předchozí revize."
 
 #: bzrlib/builtins.py:4733
 msgid ""
@@ -3480,6 +3534,9 @@ msgid ""
 "will be reverted.  If the revision is not specified with '--revision', the\n"
 "last committed revision is used."
 msgstr ""
+"Zadáním seznamu souborů vrátí pouze tyto soubory. Jinak budou\n"
+" vráceny všechny soubory. Pokud revize není zadána pomocí\n"
+" '--revision', je použita poslední odevzdaná revize."
 
 #: bzrlib/builtins.py:4737
 msgid ""
@@ -3489,6 +3546,12 @@ msgid ""
 "affecting the changes introduced by the last commit (-1).  To remove\n"
 "certain changes on a hunk-by-hunk basis, see the shelve command."
 msgstr ""
+"Pro odstranění pouze některých změn, bez vrácení na předchozí verzi,\n"
+"použijte místo toho sloučení. Například \"merge . -r -2..-3\" (na \".\"\n"
+"nezapomeňte) odstraní změny obsažené v předposledním odevzdání\n"
+"(-2), aniž by ovlivňovalo změny obsažené v posledním odevzdání (-1).\n"
+"Pro odstranění jistých změn na základě kus po kusu, podívejte se na\n"
+"příkaz shelve."
 
 #: bzrlib/builtins.py:4743
 msgid ""
