@@ -4,8 +4,9 @@ bzr-builddeb (2.8.4) UNRELEASED; urgency=low
   * Cope with missing tags when looking up upstream versions.
   * Skip quilt unapplying for trees that can not be copied (such as
     _PreviewTree). LP: #950419
+  * Document the argument for --export-upstream. LP: #959065
 
- -- Jelmer Vernooij <jelmer@debian.org>  Tue, 13 Mar 2012 16:22:40 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 19 Mar 2012 11:10:21 +0100
 
 bzr-builddeb (2.8.3) unstable; urgency=low
 

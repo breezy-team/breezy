@@ -60,9 +60,11 @@ from bzrlib.plugins.builddeb.util import (
 dont_purge_opt = Option('dont-purge',
     help="Don't purge the build directory after building.")
 result_opt = Option('result-dir',
-    help="Directory in which to place the resulting package files.", type=str)
+    help="Directory in which to place the resulting package files.", type=str,
+    argname="DIRECTORY")
 builder_opt = Option('builder',
-    help="Command to build the package.", type=str)
+    help="Command to build the package.", type=str,
+    argname="BUILDER")
 merge_opt = Option('merge',
     help='Merge the debian part of the source in to the upstream tarball.')
 split_opt = Option('split',
@@ -71,15 +73,16 @@ build_dir_opt = Option('build-dir',
     help="The dir to use for building.", type=str)
 orig_dir_opt = Option('orig-dir',
     help="Directory containing the .orig.tar.gz files. For use when only "
-       +"debian/ is versioned.", type=str)
+       +"debian/ is versioned.", type=str,
+       argname="DIRECTORY")
 native_opt = Option('native',
     help="Build a native package.")
 export_upstream_opt = Option('export-upstream',
-    help="Create the .orig.tar.gz from a bzr branch before building.",
-    type=unicode)
+    help="Create the .orig.tar.gz from specified bzr branch before building.",
+    type=unicode, argname="BRANCH")
 export_upstream_revision_opt = Option('export-upstream-revision',
     help="Select the upstream revision that will be exported.",
-    type=str)
+    type=str, argname="REVISION")
 
 
 def _get_changelog_info(tree, last_version=None, package=None, distribution=None):
