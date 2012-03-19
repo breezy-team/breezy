@@ -5,6 +5,71 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
+bzr 2.5.1
+#########
+
+:2.5.1: NOT RELEASED YET
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Bazaar.
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+* Connecting with HTTPS via HTTP now correctly uses the host name of the
+  destination rather than the proxy when checking certificates.
+  (Martin Packman, #944696)
+
+* Fixed merge tool availability checking and invocation to search the
+  Windows App Path registry in addition to the PATH. (Gordon Tyler, #939605)
+
+Documentation
+*************
+
+* The alpha-quality texinfo sphinx builder has been deprecated. Sphinx >=
+  1.1.2 now provides a better one. Most of the documentation can now be
+  generated to the texinfo format with ``make texinfo-sphinx``. This will
+  generate both the ``.texi`` files and the ``.info`` ones.
+  (Vincent Ladeuil, #940164)
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+* Add support for pyftpdlib >= 0.7.0 and drop support for previous pyftpdlib
+  versions. (Vincent Ladeuil, #956027)
+
 bzr 2.5.0
 #########
 
@@ -1019,6 +1084,9 @@ Bug Fixes
 * TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
   operations that use it, like merge, can now create trees without a root.
   (Aaron Bentley)
+
+* Fixed problem with getting errors about failing to open /dev/tty when using
+  Bazaar Explorer to sign commits. (Mark Grandi, #847388)
 
 Documentation
 *************
