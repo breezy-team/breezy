@@ -109,7 +109,7 @@ class SignMyCommits(tests.TestCaseWithTransport):
 
         outlines = out.splitlines()
         self.assertEquals(5, len(outlines))
-        self.assertEquals('Signed 4 revisions', outlines[-1])
+        self.assertEquals('Signed 4 revisions.', outlines[-1])
         self.assertUnsigned(repo, 'A')
         self.assertUnsigned(repo, 'B')
         self.assertUnsigned(repo, 'C')

@@ -710,6 +710,15 @@ class AlreadyBranchError(PathError):
     _fmt = 'Already a branch: "%(path)s".'
 
 
+class InvalidBranchName(PathError):
+
+    _fmt = "Invalid branch name: %(name)s"
+
+    def __init__(self, name):
+        BzrError.__init__(self)
+        self.name = name
+
+
 class ParentBranchExists(AlreadyBranchError):
 
     _fmt = 'Parent branch already exists: "%(path)s".'

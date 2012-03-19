@@ -894,6 +894,10 @@ class DirStateWorkingTree(InventoryWorkingTree):
     @needs_read_lock
     def path2id(self, path):
         """Return the id for path in this tree."""
+        if isinstance(path, list):
+            if path == []:
+                path = [""]
+            path = osutils.pathjoin(*path)
         path = path.strip('/')
         entry = self._get_entry(path=path)
         if entry == (None, None):
@@ -1777,7 +1781,8 @@ class DirStateRevisionTree(InventoryTree):
         if path is not None:
             path = path.encode('utf8')
         parent_index = self._get_parent_index()
-        return self._dirstate._get_entry(parent_index, fileid_utf8=file_id, path_utf8=path)
+        return self._dirstate._get_entry(parent_index, fileid_utf8=file_id,
+            path_utf8=path)
 
     def _generate_inventory(self):
         """Create and set self.inventory from the dirstate object.
@@ -2029,6 +2034,10 @@ class DirStateRevisionTree(InventoryTree):
     def path2id(self, path):
         """Return the id for path in this tree."""
         # lookup by path: faster than splitting and walking the ivnentory.
+        if isinstance(path, list):
+            if path == []:
+                path = [""]
+            path = osutils.pathjoin(*path)
         entry = self._get_entry(path=path)
         if entry == (None, None):
             return None

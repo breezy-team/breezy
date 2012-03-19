@@ -475,17 +475,6 @@ class TestBranch(per_branch.TestCaseWithBranch):
         checkout = source_branch.create_checkout('c')
         self.assertEqual(rev_id, checkout.last_revision())
 
-    def test_set_revision_history(self):
-        tree = self.make_branch_and_tree('a')
-        tree.commit('a commit', rev_id='rev1')
-        br = tree.branch
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            br.set_revision_history, ["rev1"])
-        self.assertEquals(br.last_revision(), "rev1")
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            br.set_revision_history, [])
-        self.assertEquals(br.last_revision(), 'null:')
-
     def test_heads_to_fetch(self):
         # heads_to_fetch is a method that returns a collection of revids that
         # need to be fetched to copy this branch into another repo.  At a

@@ -121,15 +121,6 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         self.local_wt.commit(message='test commit', rev_id=revid)
         self.assertTrue(repo.has_revision(revid))
 
-    def test_remote_branch_revision_history(self):
-        b = BzrDir.open_from_transport(self.transport).open_branch()
-        self.assertEqual([],
-            self.applyDeprecated(deprecated_in((2, 5, 0)), b.revision_history))
-        r1 = self.local_wt.commit('1st commit')
-        r2 = self.local_wt.commit('1st commit', rev_id=u'\xc8'.encode('utf8'))
-        self.assertEqual([r1, r2],
-            self.applyDeprecated(deprecated_in((2, 5, 0)), b.revision_history))
-
     def test_find_correct_format(self):
         """Should open a RemoteBzrDir over a RemoteTransport"""
         fmt = BzrDirFormat.find_format(self.transport)

@@ -1840,7 +1840,7 @@ class cmd_remove(Command):
 
     This makes Bazaar stop tracking changes to the specified files. Bazaar will
     delete them if they can easily be recovered using revert otherwise they
-    will be backed up (adding an extention of the form .~#~). If no options or
+    will be backed up (adding an extension of the form .~#~). If no options or
     parameters are given Bazaar will scan for files that are being tracked by
     Bazaar but missing in your tree and stop tracking them for you.
     """
@@ -6692,8 +6692,7 @@ def _register_lazy_builtins():
         ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
         ('cmd_conflicts', [], 'bzrlib.conflicts'),
         ('cmd_sign_my_commits', [], 'bzrlib.commit_signature_commands'),
-        ('cmd_verify_signatures', [],
-                                        'bzrlib.commit_signature_commands'),
+        ('cmd_verify_signatures', [], 'bzrlib.commit_signature_commands'),
         ('cmd_test_script', [], 'bzrlib.cmd_test_script'),
         ]:
         builtin_command_registry.register_lazy(name, aliases, module_name)

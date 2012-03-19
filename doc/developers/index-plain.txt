@@ -11,7 +11,7 @@ Overall developer documentation
 * `Architectural Overview <overview.html>`_ |--| describes some of the
   most important classes and concepts.
 
-* `bzrlib API reference <http://starship.python.net/crew/mwh/bzrlibapi/>`_
+* `bzrlib API reference <http://people.canonical.com/~mwh/bzrlibapi/>`_
   (external link)
   |--| automatically generated API reference information
 

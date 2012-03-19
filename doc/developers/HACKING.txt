@@ -294,7 +294,7 @@ doc/en/whats-new/
 
 
 Automatically-generated API reference information is available at
-<http://starship.python.net/crew/mwh/bzrlibapi/>.
+<http://people.canonical.com/~mwh/bzrlibapi/>.
 
 See also the `Bazaar Architectural Overview
 <http://doc.bazaar.canonical.com/developers/overview.html>`_.

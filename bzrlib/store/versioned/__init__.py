@@ -219,7 +219,7 @@ class VersionedFileStore(TransportStore):
                  "is deprecated. Please provide a to_transaction.",
                  DeprecationWarning,
                  stacklevel=2)
-            # we are copying single objects, and there may be open tranasactions
+            # we are copying single objects, and there may be open transactions
             # so again with the passthrough
             to_transaction = PassThroughTransaction()
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
