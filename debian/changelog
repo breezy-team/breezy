@@ -1,4 +1,4 @@
-bzr (2.5.0+bzr6492-1) UNRELEASED; urgency=low
+bzr (2.5.0+bzr6492-1) unstable; urgency=low
 
   * Recommend python-gpgme in the bzr package. Closes: #663272
   * New upstream snapshot.
