@@ -1,8 +1,9 @@
-bzr (2.5.0-3) UNRELEASED; urgency=low
+bzr (2.5.0+bzr6492-1) UNRELEASED; urgency=low
 
   * Recommend python-gpgme in the bzr package. Closes: #663272
+  * New upstream snapshot.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Sat, 10 Mar 2012 00:50:49 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 19 Mar 2012 02:38:36 +0100
 
 bzr (2.5.0-2) unstable; urgency=low
 
