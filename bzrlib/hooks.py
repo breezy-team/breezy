@@ -106,12 +106,6 @@ def known_hooks_key_to_object((module_name, member_name)):
     return pyutils.get_named_object(module_name, member_name)
 
 
-@symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 3)))
-def known_hooks_key_to_parent_and_attribute(key):
-    """See KnownHooksRegistry.key_to_parent_and_attribute."""
-    return known_hooks.key_to_parent_and_attribute(key)
-
-
 class Hooks(dict):
     """A dictionary mapping hook name to a list of callables.
 
@@ -152,18 +146,6 @@ class Hooks(dict):
         hookpoint = HookPoint(name=name, doc=doc, introduced=introduced,
                               deprecated=deprecated, callbacks=callbacks)
         self[name] = hookpoint
-
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4)))
-    def create_hook(self, hook):
-        """Create a hook which can have callbacks registered for it.
-
-        :param hook: The hook to create. An object meeting the protocol of
-            bzrlib.hooks.HookPoint. It's name is used as the key for future
-            lookups.
-        """
-        if hook.name in self:
-            raise errors.DuplicateKey(hook.name)
-        self[hook.name] = hook
 
     def docs(self):
         """Generate the documentation for this Hooks instance.

@@ -70,76 +70,6 @@ class ChangeBranchTipTestCase(tests.TestCaseWithMemoryTransport):
             self.assertEqual([expected_params], hook_calls)
 
 
-class TestSetRevisionHistoryHook(ChangeBranchTipTestCase):
-
-    def setUp(self):
-        self.hook_calls = []
-        super(TestSetRevisionHistoryHook, self).setUp()
-
-    def capture_set_rh_hook(self, branch, rev_history):
-        """Capture post set-rh hook calls to self.hook_calls.
-
-        The call is logged, as is some state of the branch.
-        """
-        self.hook_calls.append(
-            ('set_rh', branch, rev_history, branch.is_locked()))
-
-    def test_set_rh_empty_history(self):
-        branch = self.make_branch('source')
-        _mod_branch.Branch.hooks.install_named_hook(
-            'set_rh', self.capture_set_rh_hook, None)
-        self.applyDeprecated(deprecated_in((2, 4, 0)),
-            branch.set_revision_history, [])
-        expected_params = ('set_rh', branch, [], True)
-        self.assertHookCalls(expected_params, branch)
-
-    def test_set_rh_nonempty_history(self):
-        tree = self.make_branch_and_memory_tree('source')
-        tree.lock_write()
-        tree.add('')
-        tree.commit('another commit', rev_id='f\xc2\xb5')
-        tree.commit('empty commit', rev_id='foo')
-        tree.unlock()
-        branch = tree.branch
-        _mod_branch.Branch.hooks.install_named_hook(
-            'set_rh', self.capture_set_rh_hook, None)
-        # some branches require that their history be set to a revision in the
-        # repository
-        self.applyDeprecated(deprecated_in((2, 4, 0)),
-            branch.set_revision_history, ['f\xc2\xb5'])
-        expected_params =('set_rh', branch, ['f\xc2\xb5'], True)
-        self.assertHookCalls(expected_params, branch)
-
-    def test_set_rh_branch_is_locked(self):
-        branch = self.make_branch('source')
-        _mod_branch.Branch.hooks.install_named_hook(
-            'set_rh', self.capture_set_rh_hook, None)
-        self.applyDeprecated(deprecated_in((2, 4, 0)),
-            branch.set_revision_history, [])
-        expected_params = ('set_rh', branch, [], True)
-        self.assertHookCalls(expected_params, branch)
-
-    def test_set_rh_calls_all_hooks_no_errors(self):
-        branch = self.make_branch('source')
-        _mod_branch.Branch.hooks.install_named_hook(
-            'set_rh', self.capture_set_rh_hook, None)
-        _mod_branch.Branch.hooks.install_named_hook(
-            'set_rh', self.capture_set_rh_hook, None)
-        self.applyDeprecated(deprecated_in((2, 4, 0)),
-            branch.set_revision_history, [])
-        expected_calls = [('set_rh', branch, [], True),
-            ('set_rh', branch, [], True),
-            ]
-        if isinstance(branch, remote.RemoteBranch):
-            # For a remote branch, both the server and the client will raise
-            # set_rh, and the server will do so first because that is where
-            # the change takes place.
-            self.assertEqual(expected_calls, self.hook_calls[2:])
-            self.assertEqual(4, len(self.hook_calls))
-        else:
-            self.assertEqual(expected_calls, self.hook_calls)
-
-
 class TestOpen(tests.TestCaseWithMemoryTransport):
 
     def capture_hook(self, branch):
@@ -388,12 +318,6 @@ class TestAllMethodsThatChangeTipWillRunHooks(ChangeBranchTipTestCase):
             length = 1
         self.assertEqual(length, len(self.pre_hook_calls))
         self.assertEqual(length, len(self.post_hook_calls))
-
-    def test_set_revision_history(self):
-        branch = self.make_branch('')
-        self.applyDeprecated(deprecated_in((2, 4, 0)),
-            branch.set_revision_history, [])
-        self.assertPreAndPostHooksWereInvoked(branch, True)
 
     def test_set_last_revision_info(self):
         branch = self.make_branch('')

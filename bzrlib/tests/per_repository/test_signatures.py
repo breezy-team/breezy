@@ -126,6 +126,26 @@ class TestSignatures(per_repository.TestCaseWithRepository):
             (gpg.SIGNATURE_VALID, None, ),
             repo.verify_revision_signature('A', strategy))
 
+    def test_verify_revision_signatures(self):
+        wt = self.make_branch_and_tree('.')
+        wt.commit("base", allow_pointless=True, rev_id='A')
+        wt.commit("second", allow_pointless=True, rev_id='B')
+        strategy = gpg.LoopbackGPGStrategy(None)
+        repo = wt.branch.repository
+        self.addCleanup(repo.lock_write().unlock)
+        repo.start_write_group()
+        repo.sign_revision('A', strategy)
+        repo.commit_write_group()
+        self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
+                         Testament.from_revision(repo,
+                         'A').as_short_text() +
+                         '-----END PSEUDO-SIGNED CONTENT-----\n',
+                         repo.get_signature_text('A'))
+        self.assertEquals(
+            [('A', gpg.SIGNATURE_VALID, None),
+             ('B', gpg.SIGNATURE_NOT_SIGNED, None)],
+            list(repo.verify_revision_signatures(['A', 'B'], strategy)))
+
 
 class TestUnsupportedSignatures(per_repository.TestCaseWithRepository):
 
