@@ -1,0 +1,3 @@
+Tests: testsuite
+Depends: bzr, python-bzrlib.tests
+Features: no-build-needed

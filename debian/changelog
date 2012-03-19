@@ -1,12 +1,28 @@
 bzr (2.6.0~bzr6511-1) UNRELEASED; urgency=low
 
   * New upstream snapshot.
-   + Drop 04_new_zlib; a fix is now provided upstream.
    + Fixes acute accent marks in manual page. Closes: #458157
    + Documents launchpad plugin commands in manual page.
      Closes: #452503
 
  -- Jelmer Vernooij <jelmer@debian.org>  Mon, 19 Mar 2012 03:05:46 +0100
+
+bzr (2.5.0+bzr6492-1) unstable; urgency=low
+
+  * Recommend python-gpgme in the bzr package. Closes: #663272
+  * New upstream snapshot.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 19 Mar 2012 02:38:36 +0100
+
+bzr (2.5.0-2) unstable; urgency=low
+
+  * Use parseable format for copyright file.
+  * Bump standards version to 3.9.3.
+  * Add 05_allow_no_slash_controldirs: Allow control directories to not
+    support creating branches with forward slashes in their name.
+  * Add basic test for autopkgtest.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 06 Mar 2012 01:27:01 +0100
 
 bzr (2.5.0-1) unstable; urgency=low
 
@@ -123,6 +139,19 @@ bzr (2.5.0~beta1-1) experimental; urgency=medium
   * Add python-gpgme-dbg to build dependencies.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Tue, 06 Sep 2011 17:05:06 +0200
+
+bzr (2.4.2-2) unstable; urgency=low
+
+  * Fix bzrlib.osutils.local_concurrency() when used on GNU/kFreeBSD
+    with Python's multiprocessing module available. Closes: #647690
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 07 Nov 2011 17:15:56 +0100
+
+bzr (2.4.2-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 04 Nov 2011 23:16:04 +0100
 
 bzr (2.4.1-1) unstable; urgency=low
 
