@@ -1,4 +1,4 @@
-bzr-builddeb (2.8.4) UNRELEASED; urgency=low
+bzr-builddeb (2.8.4) unstable; urgency=low
 
   * Add dependency on quilt. LP: #951207
   * Cope with missing tags when looking up upstream versions.
