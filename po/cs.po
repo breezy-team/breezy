@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-03-17 21:46+0000\n"
+"PO-Revision-Date: 2012-03-19 21:59+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-03-18 04:30+0000\n"
-"X-Generator: Launchpad (build 14951)\n"
+"X-Launchpad-Export-Date: 2012-03-20 04:30+0000\n"
+"X-Generator: Launchpad (build 14969)\n"
 
 #: bzrlib/add.py:93
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -3559,6 +3559,9 @@ msgid ""
 "first.  (Files changed only by merge are not backed up.)  Backup files have\n"
 "'.~#~' appended to their name, where # is a number."
 msgstr ""
+"Standardně jsou jakékoliv ručně změněné soubory nejdříve zálohovány.\n"
+"(Soubory změněné pouze sloučením zálohovány nejsou). Zálohované\n"
+"soubory mají před svým názvem přidáno '.~#~', kde # je číslo."
 
 #: bzrlib/builtins.py:4747
 msgid ""
@@ -3567,6 +3570,11 @@ msgid ""
 "name.  If you name a directory, all the contents of that directory will be\n"
 "reverted."
 msgstr ""
+"Když zadáte soubory, můžete použít jejich současný název cesty nebo název\n"
+"cesty z cílové revize. To abyste mohli použit revert pro \"obnovení\" "
+"souboru\n"
+"podle názvu. Pokud pojmenujete adresář, všechen jeho obsah bude vrácen\n"
+"zpět."
 
 #: bzrlib/builtins.py:4752
 msgid ""
@@ -3575,6 +3583,9 @@ msgid ""
 "created as above.  Directories containing unknown files will not be\n"
 "deleted."
 msgstr ""
+"Pokud máte nově přidané soubory od cílové revize, budou odstraněny\n"
+"Pokud soubory k odstranění byly změněny, budou vytvořeny zálohy tak jako\n"
+"výše. Adresáře obsahující neznámé soubory smazány nebudou."
 
 #: bzrlib/builtins.py:4757
 msgid ""
@@ -3587,6 +3598,16 @@ msgid ""
 "and ``bzr revert --forget-merges`` to clear the pending merge list without\n"
 "reverting any files."
 msgstr ""
+"Pracovní strom obsahuje seznam revizí, které byly sloučeny, ale\n"
+"nebyly ještě odevzdány. Tyto revize budou zahrnuty jako dodatečné\n"
+"nadřazené dalšího odevzdání. Normálně, použitím zpětné vrácení,\n"
+"bude tento seznam vyčištěn spolu s vrácením souborů. Pokud jsou\n"
+"zadány jakékoliv soubory, zpětné vrácení nechá seznam na pokoji\n"
+"a pracuje pouze zadanými se soubory. Použijte ``bzr revert .`` v\n"
+"kořenu stromu pro vrácení všech souborů a zachování\n"
+"zaznamenaných sloučení a ``bzr revert --forget-merges`` pro\n"
+"vyčištění seznamu nevyřízených sloučení aniž, by byly soubory\n"
+"vráceny."
 
 #: bzrlib/builtins.py:4766
 msgid ""
@@ -3601,32 +3622,44 @@ msgid ""
 "cause additional conflicts on later merges involving the same source and\n"
 "target branches."
 msgstr ""
+"Pomocí \"bzr revert --forget-merges\" je možné použit všechny změny\n"
+"z větve v jedné revizi. Pro toto proveďte sloučení tak, jak chcete.\n"
+"Pak proveďte návrat s volbou \"--forget-merges\", což ponechá obsah\n"
+"stromu tak, jak byl, ale vyčistí seznam nevyřízených sloučení, Další\n"
+"odevzdání pak bude obsahovat všechny změny, které jsou přítomny\n"
+"v druhé větvi, ale bez jakýchkoliv nadřazených revizí. Protože tato\n"
+"technika zapomene kde tyto změny mají původ, může to způsobit\n"
+"další konflikty v pozdějších sloučení související se stejným zdrojem a\n"
+"cílovými větvemi."
 
 #: bzrlib/builtins.py:4780
 msgid "Do not save backups of reverted files."
-msgstr ""
+msgstr "Neukládat zálohy vrácených souborů."
 
 #: bzrlib/builtins.py:4782
 msgid "Remove pending merge marker, without changing any files."
 msgstr ""
+"Odstranit značku nevyřízeného sloučení, aniž by došlo v souborech ke změně."
 
 #: bzrlib/builtins.py:4813
 msgid ""
 "Show help on a command or other topic.\n"
 "    "
 msgstr ""
+"Zobrazit nápovědu pro příkaz nebo jiné téma.\n"
+"    "
 
 #: bzrlib/builtins.py:4818
 msgid "Show help on all commands."
-msgstr ""
+msgstr "Zobrazit nápovědu pro všechny příkazy."
 
 #: bzrlib/builtins.py:4847
 msgid "Show unmerged/unpulled revisions between two branches."
-msgstr ""
+msgstr "Zobrazit nesloučené/nestáhnuté revize mezi dvěma větvemi."
 
 #: bzrlib/builtins.py:4849
 msgid "OTHER_BRANCH may be local or remote."
-msgstr ""
+msgstr "JINÁ_VĚTEV může být místní nebo vzdálená."
 
 #: bzrlib/builtins.py:4851
 msgid ""
@@ -3638,118 +3671,137 @@ msgid ""
 "    1 - some missing revisions\n"
 "    0 - no missing revisions"
 msgstr ""
+"Pro filtrování rozsahu revizí můžete použít příkaz -r začátek..konec\n"
+"-r revize vyžaduje určitou revizi, -r ..konec nebo -r začítek.. jsou\n"
+"také platné.\n"
+"        \n"
+":Výstupní hodnoty:\n"
+"    1 - některé revize chybí\n"
+"    0 - žádné chybějící revize"
 
 #: bzrlib/builtins.py:4861
 msgid ""
 "    Determine the missing revisions between this and the branch at the\n"
 "    remembered pull location::"
 msgstr ""
+"    Zjistit chybějící revize mezi touto a větví v\n"
+"    zapamatovaném umístění stažení::"
 
 #: bzrlib/builtins.py:4864
 msgid "        bzr missing"
-msgstr ""
+msgstr "        bzr missing"
 
 #: bzrlib/builtins.py:4866
 msgid "    Determine the missing revisions between this and another branch::"
-msgstr ""
+msgstr "    Zjistit chybějící revize mezi touto a jinou větví::"
 
 #: bzrlib/builtins.py:4868
 msgid "        bzr missing http://server/branch"
-msgstr ""
+msgstr "        bzr missing http://server/větev"
 
 #: bzrlib/builtins.py:4870
 msgid ""
 "    Determine the missing revisions up to a specific revision on the other\n"
 "    branch::"
 msgstr ""
+"    Zjistit chybějící revize až po určitou revizi v jiné\n"
+"    větvi::"
 
 #: bzrlib/builtins.py:4873
 msgid "        bzr missing -r ..-10"
-msgstr ""
+msgstr "        bzr missing -r ..-10"
 
 #: bzrlib/builtins.py:4875
 msgid ""
 "    Determine the missing revisions up to a specific revision on this\n"
 "    branch::"
 msgstr ""
+"    Zjistit chybějící revize až po určitou revizi v této\n"
+"    větvi::"
 
 #: bzrlib/builtins.py:4878
 msgid "        bzr missing --my-revision ..-10"
-msgstr ""
+msgstr "        bzr missing --my-revision ..-10"
 
 #: bzrlib/builtins.py:4885
 msgid "Reverse the order of revisions."
-msgstr ""
+msgstr "Obrátit pořadí revizí."
 
 #: bzrlib/builtins.py:4887
 msgid "Display changes in the local branch only."
-msgstr ""
+msgstr "Zobrazit změny pouze v místní větvi."
 
 #: bzrlib/builtins.py:4888
 msgid "Same as --mine-only."
-msgstr ""
+msgstr "Stejné jako --mine-only."
 
 #: bzrlib/builtins.py:4890
 msgid "Display changes in the remote branch only."
-msgstr ""
+msgstr "Zobrazit změny pouze ve vzdálené větvi."
 
 #: bzrlib/builtins.py:4891
 msgid "Same as --theirs-only."
-msgstr ""
+msgstr "Stejné jako --theirs-only."
 
 #: bzrlib/builtins.py:4896
 msgid ""
 "Filter on other branch revisions (inclusive). See \"help revisionspec\" for "
 "details."
 msgstr ""
+"Filtrovat revize na jiné větvi (včetně). Viz \"help revisionspec\" pro "
+"podrobnosti."
 
 #: bzrlib/builtins.py:4900
 msgid ""
 "Filter on local branch revisions (inclusive). See \"help revisionspec\" for "
 "details."
 msgstr ""
+"Filtrovat revize v místní větvi (včetně). Viz \"help revisionspec\" pro "
+"podrobnosti."
 
 #: bzrlib/builtins.py:4903
 msgid "Show all revisions in addition to the mainline ones."
-msgstr ""
+msgstr "Zobrazit všechny revize spolu s hlavními."
 
 #: bzrlib/builtins.py:4957
 msgid "No peer location known or specified."
-msgstr ""
+msgstr "Není známo nebo zadáno umístění uživatelů."
 
 #: bzrlib/builtins.py:4961
 msgid "Using saved parent location: {0}\n"
-msgstr ""
+msgstr "Je použito uložené umístění nadřazené: {0}\n"
 
 #: bzrlib/builtins.py:4994
 #, python-format
 msgid "You have %d extra revision:\n"
 msgid_plural "You have %d extra revisions:\n"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Máte %d dodatečnou revizi:\n"
+msgstr[1] "Máte %d dodatečné revize:\n"
+msgstr[2] "Máte %d dodatečných revizí:\n"
 
 #: bzrlib/builtins.py:5010
 #, python-format
 msgid "You are missing %d revision:\n"
 msgid_plural "You are missing %d revisions:\n"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Chybí Vám %d revize:\n"
+msgstr[1] "Chybí Vám %d revize:\n"
+msgstr[2] "Chybí Vám %d revizí:\n"
 
 #: bzrlib/builtins.py:5022
 msgid "This branch has no new revisions.\n"
-msgstr ""
+msgstr "Tato větev nemá žádné nové revize.\n"
 
 #: bzrlib/builtins.py:5025
 msgid "Other branch has no new revisions.\n"
-msgstr ""
+msgstr "Jiná větev nemá žádné nové revize.\n"
 
 #: bzrlib/builtins.py:5030
 msgid "Branches are up to date.\n"
-msgstr ""
+msgstr "Větve jsou aktuální.\n"
 
 #: bzrlib/builtins.py:5041
 msgid "Compress the data within a repository."
-msgstr ""
+msgstr "Komprimovat data uvnitř úložiště."
 
 #: bzrlib/builtins.py:5043
 msgid ""
@@ -3757,6 +3809,9 @@ msgid ""
 "bazaar supports automatic packing of repository, this operation is\n"
 "normally not required to be done manually."
 msgstr ""
+"Tato operace zkomprimuje data uvnitř úložiště bazaar.\n"
+"Protože bazaar podporuje automatické sbalování úložiště tuto \n"
+"operaci není normálně třeba provádět ručně."
 
 #: bzrlib/builtins.py:5047
 msgid ""
@@ -3766,6 +3821,11 @@ msgid ""
 "the backed up pack files, the --clean-obsolete-packs option may be\n"
 "used."
 msgstr ""
+"Během operace balení bazaar vytvoří zálohu dat existujícího úložiště\n"
+"tj. soubory balíku. Tuto zálohu časem bazaar odstraní automaticky\n"
+"když je to bezpečné. Pro uvolnění místa na disku odstraněním\n"
+"zálohovaných souborů balíku můžete použít volbu\n"
+"--clean-obsolete-packs."
 
 #: bzrlib/builtins.py:5053
 msgid ""
@@ -3774,24 +3834,30 @@ msgid ""
 "where the deletion has been written to disk but the new packs have not\n"
 "been. In this case the repository may be unusable."
 msgstr ""
+"Varování: pokud použijete --clean-obsolete-packs a Váš přístroj se\n"
+"zasekne během nebo hned po znovu sbalení, může být úložiště ve\n"
+"stavu, kdy smazání bylo zapsáno na disk, ale nové balíčky nebyly.\n"
+"V tomto případě může být úložiště nestabilní."
 
 #: bzrlib/builtins.py:5062
 msgid "Delete obsolete packs to save disk space."
-msgstr ""
+msgstr "Smazat zastaralé balíčky pro uvolnění místa na disku."
 
 #: bzrlib/builtins.py:5076
 msgid "List the installed plugins."
-msgstr ""
+msgstr "Vypsat nainstalované zásuvné moduly."
 
 #: bzrlib/builtins.py:5078
 msgid ""
 "This command displays the list of installed plugins including\n"
 "version of plugin and a short description of each."
 msgstr ""
+"Tento příkaz vypíše seznam nainstalovaných zásuvných\n"
+"modulů včetně verze modulu a krátký popis u každého."
 
 #: bzrlib/builtins.py:5081
 msgid "--verbose shows the path where each plugin is located."
-msgstr ""
+msgstr "-- verbose zobrazí cestu, v které se každý modul nachází."
 
 #: bzrlib/builtins.py:5083
 msgid ""
@@ -3801,6 +3867,11 @@ msgid ""
 "adding new commands, providing additional network transports and\n"
 "customizing log output."
 msgstr ""
+"Zásuvný modul je vnější komponenta pro Bazaar který rozšiřuje\n"
+"systém zprávy revizí přidáním nebo nahrazením kódu v Bazaar.\n"
+"Moduly mohou provádět různé věci, včetně potlačování příkazů,\n"
+"přidání nových, poskytování dodatečných síťových přenosů a\n"
+"přizpůsobení výstupu záznamu."
 
 #: bzrlib/builtins.py:5089
 msgid ""
@@ -3809,62 +3880,76 @@ msgid ""
 "install them. Instructions are also provided there on how to write new\n"
 "plugins using the Python programming language."
 msgstr ""
+"Viz Průvodce zásuvnými moduly Bazaar\n"
+"<http://doc.bazaar.canonical.com/plugins/en/> pro další informace o\n"
+"modulech včetně kde je najít a jak je nainstalovat. Jsou také poskytnuty\n"
+"pokyny jak napsat své vlastní moduly pomocí programovacího jazyka Python."
 
 #: bzrlib/builtins.py:5105
 msgid "Show testament (signing-form) of a revision."
-msgstr ""
+msgstr "Zobrazit důkaz (formulář s podpisem) revize"
 
 #: bzrlib/builtins.py:5108
 msgid "Produce long-format testament."
-msgstr ""
+msgstr "Vytvořit důkaz dlouhého formátu."
 
 #: bzrlib/builtins.py:5110
 msgid "Produce a strict-format testament."
-msgstr ""
+msgstr "Vytvořit důkaz ve striktním formátu."
 
 #: bzrlib/builtins.py:5136
 msgid "Show the origin of each line in a file."
-msgstr ""
+msgstr "Zobrazit původ každého řádku v souboru."
 
 #: bzrlib/builtins.py:5138
 msgid ""
 "This prints out the given file with an annotation on the left side\n"
 "indicating which revision, author and date introduced the change."
 msgstr ""
+"Toto vypíše zadaný soubor s poznámkami na levé straně\n"
+"určující která revize, autor a datum tuto změnu vložil."
 
 #: bzrlib/builtins.py:5141
 msgid ""
 "If the origin is the same for a run of consecutive lines, it is\n"
 "shown only at the top, unless the --all option is given."
 msgstr ""
+"Pokud je původ stejný ve sledu po sobě jdoucích řádků, je\n"
+"zobrazen pouze na vrchu, pokdu není předána volba --all."
 
 #: bzrlib/builtins.py:5149
 msgid "Show annotations on all lines."
-msgstr ""
+msgstr "Zobrazit poznámky na všech řádcích."
 
 #: bzrlib/builtins.py:5150
 msgid "Show commit date in annotations."
-msgstr ""
+msgstr "Zobrazit v poznamkách datum odevzdání."
 
 #: bzrlib/builtins.py:5237
 msgid "Cannot sign a range of non-revision-history revisions"
-msgstr ""
+msgstr "Nelze podepsat rozsah revizí bez historie"
 
 #: bzrlib/builtins.py:5249
 msgid "Please supply either one revision, or a range."
-msgstr ""
+msgstr "Zadejte prosím buď jednu revizi, nebo rozsah."
 
 #: bzrlib/builtins.py:5253
 msgid ""
 "Convert the current branch into a checkout of the supplied branch.\n"
 "If no branch is supplied, rebind to the last bound location."
 msgstr ""
+"Převést současnou větev do získání zadané větve.\n"
+"Pokud větev není zadána, svázat ji s posledním umístěním\n"
+"svázání."
 
 #: bzrlib/builtins.py:5256
 msgid ""
 "Once converted into a checkout, commits must succeed on the master branch\n"
 "before they will be applied to the local branch."
 msgstr ""
+"Jakmile je převedena na získání, musí odevzdání nejdříve uspět na hlavní "
+"větvi\n"
+"než budou použita na místní větev"
 
 #: bzrlib/builtins.py:5259
 msgid ""
@@ -3872,32 +3957,37 @@ msgid ""
 "locally, in which case binding will update the local nickname to be\n"
 "that of the master."
 msgstr ""
+"Svázané větve používají přezdívku své hlavní větve, pokud není\n"
+"nastavena místně, v takovém případě svázaní aktualizuje\n"
+"místní přezdívku na tu z hlavní."
 
 #: bzrlib/builtins.py:5274
 msgid "No location supplied.  This format does not remember old locations."
-msgstr ""
+msgstr "Není zadáno umístění. Tento formát si nepamatuje stará umístění."
 
 #: bzrlib/builtins.py:5280
 msgid "Branch is already bound"
-msgstr ""
+msgstr "Větev již je svázána"
 
 #: bzrlib/builtins.py:5283
 msgid "No location supplied and no previous location known"
-msgstr ""
+msgstr "Není zadáno žádné umístění a předchozí není známo"
 
 #: bzrlib/builtins.py:5289
 msgid "These branches have diverged. Try merging, and then bind again."
-msgstr ""
+msgstr "Tyto větev se rozešly. Zkuste je sloučit a pak znovu svázat."
 
 #: bzrlib/builtins.py:5296
 msgid "Convert the current checkout into a regular branch."
-msgstr ""
+msgstr "Přvést současné získání do normální větve."
 
 #: bzrlib/builtins.py:5298
 msgid ""
 "After unbinding, the local branch is considered independent and subsequent\n"
 "commits will be local only."
 msgstr ""
+"Po rozvázání je místní větev považována za nezávislou a následující\n"
+"odevzdání budou pouze místní."
 
 #: bzrlib/builtins.py:5309
 msgid "Local branch is not bound"
