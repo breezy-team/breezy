@@ -4,6 +4,7 @@ bzr (2.6.0~bzr6511-1) UNRELEASED; urgency=low
    + Fixes acute accent marks in manual page. Closes: #458157
    + Documents launchpad plugin commands in manual page.
      Closes: #452503
+   + Fixes 'bzr help branches'. Closes: #664777
 
  -- Jelmer Vernooij <jelmer@debian.org>  Mon, 19 Mar 2012 03:05:46 +0100
 
