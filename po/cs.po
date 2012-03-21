@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-03-19 21:59+0000\n"
+"PO-Revision-Date: 2012-03-20 20:48+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-03-20 04:30+0000\n"
-"X-Generator: Launchpad (build 14969)\n"
+"X-Launchpad-Export-Date: 2012-03-21 04:45+0000\n"
+"X-Generator: Launchpad (build 14981)\n"
 
 #: bzrlib/add.py:93
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -35,9 +35,9 @@ msgstr "Odesláno až na revizi %d"
 #, python-format
 msgid "%d tag updated."
 msgid_plural "%d tags updated."
-msgstr[0] "%d značka aktualizována"
-msgstr[1] "%d značky aktualizovány"
-msgstr[2] "%d značek aktualizováno"
+msgstr[0] "aktualizována %d značka."
+msgstr[1] "aktualizovány %d značky."
+msgstr[2] "aktualizováno %d značek."
 
 #: bzrlib/branch.py:3126
 msgid "No new revisions or tags to push."
@@ -3991,11 +3991,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:5309
 msgid "Local branch is not bound"
-msgstr ""
+msgstr "Místní větev není svázaná"
 
 #: bzrlib/builtins.py:5313
 msgid "Remove the last committed revision."
-msgstr ""
+msgstr "Odstranit poslední odevzdanou revizi."
 
 #: bzrlib/builtins.py:5315
 msgid ""
@@ -4003,6 +4003,9 @@ msgid ""
 "--dry-run will go through all the motions, but not actually\n"
 "remove anything."
 msgstr ""
+"--verbose vypíše co je odstraňováno.\n"
+"--dry-run provede všechny operace, ale v skutečnosti\n"
+"nic neodstraní."
 
 #: bzrlib/builtins.py:5319
 msgid ""
@@ -4010,6 +4013,9 @@ msgid ""
 "specified revision.  For example, \"bzr uncommit -r 15\" will leave the\n"
 "branch at revision 15."
 msgstr ""
+"Pokud je zadáno ---revision, zrušení odevzdání revize zanechá větev\n"
+"v zadané revizi. Například, \"bzr uncommit -r 15\" větev zanechá v\n"
+"revizi 15."
 
 #: bzrlib/builtins.py:5323
 msgid ""
@@ -4017,42 +4023,45 @@ msgid ""
 "it may make is to restore any pending merges that were present before\n"
 "the commit."
 msgstr ""
+"Uncommit zanechá pracovní strom připraven pro nové odevzdání. Jedinou\n"
+"změnou, kterou může provést, je obnovení všech nevyřízených sloučení,\n"
+"které byly přítomny před odevzdáním."
 
 #: bzrlib/builtins.py:5334
 msgid "Don't actually make changes."
-msgstr ""
+msgstr "Změny ve skutečnosti neprovádět."
 
 #: bzrlib/builtins.py:5335
 msgid "Say yes to all questions."
-msgstr ""
+msgstr "Říct ano na všechny otázky."
 
 #: bzrlib/builtins.py:5337
 msgid "Keep tags that point to removed revisions."
-msgstr ""
+msgstr "Ponechat si značky které odkazují na odstraněné revize."
 
 #: bzrlib/builtins.py:5339
 msgid "Only remove the commits from the local branch when in a checkout."
-msgstr ""
+msgstr "Když v získání, odstranit pouze odevzdání z místní větve."
 
 #: bzrlib/builtins.py:5388
 msgid "No revisions to uncommit.\n"
-msgstr ""
+msgstr "Žádné revize ke zrušení odevzdání.\n"
 
 #: bzrlib/builtins.py:5403
 msgid "Dry-run, pretending to remove the above revisions.\n"
-msgstr ""
+msgstr "Zkušebně provést, předstírat odstranění revizí výše.\n"
 
 #: bzrlib/builtins.py:5406
 msgid "The above revision(s) will be removed.\n"
-msgstr ""
+msgstr "Revize výše budou odstraněny.\n"
 
 #: bzrlib/builtins.py:5410
 msgid "Uncommit these revisions"
-msgstr ""
+msgstr "Zrušit odevzdání těchto revizí"
 
 #: bzrlib/builtins.py:5413
 msgid "Canceled\n"
-msgstr ""
+msgstr "Zrušeno\n"
 
 #: bzrlib/builtins.py:5420
 #, python-format
@@ -4060,28 +4069,36 @@ msgid ""
 "You can restore the old tip by running:\n"
 "  bzr pull . -r revid:%s\n"
 msgstr ""
+"Můžete obnovit starý vrchol spuštěním:\n"
+"  bzr pull . -r revid:%s\n"
 
 #: bzrlib/builtins.py:5425
 msgid "Break a dead lock."
-msgstr ""
+msgstr "Rozbít starý zámek."
 
 #: bzrlib/builtins.py:5427
 msgid ""
 "This command breaks a lock on a repository, branch, working directory or\n"
 "config file."
 msgstr ""
+"Tento příkaz rozbije zámek na úložišti, větvi, pracovním adresáři nebo\n"
+"souboru s nastavením."
 
 #: bzrlib/builtins.py:5430
 msgid ""
 "CAUTION: Locks should only be broken when you are sure that the process\n"
 "holding the lock has been stopped."
 msgstr ""
+"POZOR: Zámky by měly být rozbity, když jste si jisti, že procesy\n"
+"držící tyto zámky byly zastaveny."
 
 #: bzrlib/builtins.py:5433
 msgid ""
 "You can get information on what locks are open via the 'bzr info\n"
 "[location]' command."
 msgstr ""
+"Informace o zámcích, které jsou otevřeny můžete získat pomocí\n"
+"příkazu 'bzr info [umístění]'."
 
 #: bzrlib/builtins.py:5436
 msgid ""
@@ -4090,38 +4107,42 @@ msgid ""
 "    bzr break-lock bzr+ssh://example.com/bzr/foo\n"
 "    bzr break-lock --conf ~/.bazaar"
 msgstr ""
+":Příklady:\n"
+"    bzr break-lock\n"
+"    bzr break-lock bzr+ssh://příklad.cz/bzr/foo\n"
+"    bzr break-lock --conf ~/.bazaar"
 
 #: bzrlib/builtins.py:5445
 msgid "LOCATION is the directory where the config lock is."
-msgstr ""
+msgstr "UMÍSTĚNÍ je adresář kde je zámek nastavení."
 
 #: bzrlib/builtins.py:5447
 msgid "Do not ask for confirmation before breaking the lock."
-msgstr ""
+msgstr "Nežádat o potvrzení před rozbitím zámku."
 
 #: bzrlib/builtins.py:5482
 msgid "The Bazaar smart server protocol over TCP. (default port: 4155)"
-msgstr ""
+msgstr "Chytrý protokol serveru Bazzar přes TCP. (výchozí port: 4155)"
 
 #: bzrlib/builtins.py:5483
 msgid "Run the bzr server."
-msgstr ""
+msgstr "Spustit server bzr."
 
 #: bzrlib/builtins.py:5489
 msgid "Serve on stdin/out for use from inetd or sshd."
-msgstr ""
+msgstr "Obsluhovat na stdin/out pro použití z inetd nebo sshd."
 
 #: bzrlib/builtins.py:5490
 msgid "protocol"
-msgstr ""
+msgstr "protokol"
 
 #: bzrlib/builtins.py:5491
 msgid "Protocol to serve."
-msgstr ""
+msgstr "Protokol k obsluhování."
 
 #: bzrlib/builtins.py:5495
 msgid "Listen for connections on nominated address."
-msgstr ""
+msgstr "Naslouchat pro připojení na jmenované adrese."
 
 #: bzrlib/builtins.py:5497
 msgid ""
@@ -4129,10 +4150,13 @@ msgid ""
 "result in a dynamically allocated port.  The default port depends on the "
 "protocol."
 msgstr ""
+"Naslouchat pro připojení na jmenovaném portu. Zadáním 0 jako číslo portu "
+"bude mít za následek dynamicky přidělovaný port. Výchozí port závisí a "
+"protokolu."
 
 #: bzrlib/builtins.py:5502
 msgid "Serve contents of this directory."
-msgstr ""
+msgstr "Nabízet obsah tohoto adresáře."
 
 #: bzrlib/builtins.py:5504
 msgid ""
@@ -4142,18 +4166,23 @@ msgid ""
 "of external authentication is arranged supplying this option leads to global "
 "uncontrolled write access to your file system."
 msgstr ""
+"Standardně je server pouze pro čtení. Zadáním --allow-writes umožní přístup "
+"pro čtení k obsahu nabízeného adresáře a níže. Nezapomeňte, že ``bzr serve`` "
+"neprovádí ověřování, takže pokud nemáte zařízenu určitou formu vnějšího "
+"ověřování, zadáním této možnosti vede k globálnímu nekontrolovanému přístupu "
+"pro zápis na Vašem souborovém systému."
 
 #: bzrlib/builtins.py:5513
 msgid "Override the default idle client timeout (5min)."
-msgstr ""
+msgstr "Potlačit výchozí čas pro vypršení z nečinnosti klienta (5min)."
 
 #: bzrlib/builtins.py:5531
 msgid "Combine a tree into its containing tree."
-msgstr ""
+msgstr "Zkombinovat strom do jeho obsahujícího stromu."
 
 #: bzrlib/builtins.py:5533
 msgid "This command requires the target tree to be in a rich-root format."
-msgstr ""
+msgstr "Tento příkaz vyžaduje aby cílový strom byl ve formátu rich-root."
 
 #: bzrlib/builtins.py:5535
 msgid ""
@@ -4161,6 +4190,10 @@ msgid ""
 "not part of it.  (Such trees can be produced by \"bzr split\", but also by\n"
 "running \"bzr branch\" with the target inside a tree.)"
 msgstr ""
+"Argument STROM by měl být nezávislý strom, uvnitř jiného, ale\n"
+"není jeho součástí. (Takové stromy mohou být vytvořeny pomocí\n"
+"\"bzr split\", ale také spuštěním \"bzr branch\" s cílovým stromem\n"
+" uvnitř stromu.)"
 
 #: bzrlib/builtins.py:5539
 msgid ""
@@ -4168,6 +4201,9 @@ msgid ""
 "part.  This is marked as a merge of the subtree into the containing tree,\n"
 "and all history is preserved."
 msgstr ""
+"Výsledek je zkombinovaný strom, kde podstrom již není nezávislá část.\n"
+"Toto je označeno jako sloučení podstromu do obsahujícího stromu\n"
+"a všechna jeho historie je zachována."
 
 #: bzrlib/builtins.py:5557
 #, python-format
@@ -4175,14 +4211,16 @@ msgid ""
 "Can't join trees because %s doesn't support rich root data.\n"
 "You can use bzr upgrade on the repository."
 msgstr ""
+"Nelze spojit stromy protože %s nepodporuje data rich root.\n"
+"Na úložiště můžete použít bzr upgrade."
 
 #: bzrlib/builtins.py:5567 bzrlib/builtins.py:5573
 msgid "Cannot join {0}.  {1}"
-msgstr ""
+msgstr "Nelze spojit {0}. {1}"
 
 #: bzrlib/builtins.py:5577
 msgid "Split a subdirectory of a tree into a separate tree."
-msgstr ""
+msgstr "Rozdělit podadresář do stromu v odděleném stromu."
 
 #: bzrlib/builtins.py:5579
 msgid ""
@@ -4190,6 +4228,9 @@ msgid ""
 "rich roots, like 'rich-root' or 'rich-root-pack'.  These formats cannot be\n"
 "converted into earlier formats like 'dirstate-tags'."
 msgstr ""
+"Tento příkaz vytvoří cílový strom ve formátu, který podporuje\n"
+"rich roots, jako 'rich-root' nebo 'rich-root-pack'.  Tyto formáty\n"
+"nemohou být převedeny do dřívějších jako 'dirstate-tags'."
 
 #: bzrlib/builtins.py:5583
 msgid ""
@@ -4197,38 +4238,43 @@ msgid ""
 "subdirectory will be converted into an independent tree, with its own\n"
 "branch.  Commits in the top-level tree will not apply to the new subtree."
 msgstr ""
+"Argument STROM by měl být podadresář pracovního stromu.\n"
+"Tento podadresář bude převeden do nezávislého stromu se svoji\n"
+"vlastní větví. Odevzdání ve stromu nejvyšší úrovně nebudou v\n"
+"novém podstromu použita."
 
 #: bzrlib/builtins.py:5663
 msgid "No submit branch specified or known"
-msgstr ""
+msgstr "Žádná větev předložení není zadána nebo známa"
 
 #: bzrlib/builtins.py:5672 bzrlib/send.py:109
 msgid "No public branch specified or known"
-msgstr ""
+msgstr "Žádná veřejná větev není zadána nebo známa"
 
 #: bzrlib/builtins.py:5677
 msgid "bzr merge-directive takes at most two one revision identifiers"
-msgstr ""
+msgstr "bzr merge-directive přebírá nejvíce dva identifikátory jedné revize"
 
 #: bzrlib/builtins.py:5686
 msgid "No revisions to bundle."
-msgstr ""
+msgstr "Žádné revize ke sbalení."
 
 #: bzrlib/builtins.py:5705
 msgid "Mail or create a merge-directive for submitting changes."
-msgstr ""
+msgstr "Pošta nebo vytvoření příkazu sloučení pro odeslání změn."
 
 #: bzrlib/builtins.py:5707
 msgid "A merge directive provides many things needed for requesting merges:"
 msgstr ""
+"Příkaz sloučení poskytuje mnoho věcí potřebných k zažádání o sloučení:"
 
 #: bzrlib/builtins.py:5709
 msgid "* A machine-readable description of the merge to perform"
-msgstr ""
+msgstr "* Popis sloučení k provedení čitelný strojem"
 
 #: bzrlib/builtins.py:5711
 msgid "* An optional patch that is a preview of the changes requested"
-msgstr ""
+msgstr "* Volitelná záplata, která je náhledem vyžádaných změn"
 
 #: bzrlib/builtins.py:5713
 msgid ""
@@ -4236,6 +4282,9 @@ msgid ""
 "  directly from the merge directive, without retrieving data from a\n"
 "  branch."
 msgstr ""
+"* Volitelný balík dat revize, aby změny mohly být použity\n"
+"  přímo z příkazu sloučení bez získávání dat z\n"
+"  větve."
 
 #: bzrlib/builtins.py:5717
 msgid ""
