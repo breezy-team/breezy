@@ -1,4 +1,4 @@
-bzr (2.6.0~bzr6511-2) UNRELEASED; urgency=low
+bzr (2.6.0~bzr6511-2) unstable; urgency=low
 
   * Add 04_serve_address to cope with localhost lookup issues during the
     testsuite on some buildds.
