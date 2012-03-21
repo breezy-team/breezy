@@ -1,4 +1,4 @@
-bzr (2.6.0~bzr6511-1) UNRELEASED; urgency=low
+bzr (2.6.0~bzr6511-1) unstable; urgency=low
 
   * New upstream snapshot.
    + Fixes acute accent marks in manual page. Closes: #458157
