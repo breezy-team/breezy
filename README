@@ -1,4 +1,4 @@
-This is a plugin which implements post commmit emails for bzr.
+This is a plugin which implements post commit emails for bzr.
 
 The plugin is activated by:
  - installing it
@@ -13,7 +13,7 @@ The simplest way to install it for a single user is to do
 If you need to install it system wide, or are packing the plugin for non-source
 distribution (e.g. as a .deb or .rpm) then there is a setup.py file that should
 do the right thing when called with the values you use elsewhere when
-installing python softare.
+installing python software.
 
 After installing it you can use 'bzr help email' for documentation (for bzr >=
 0.16), or read the docstring at the top of __init__.py (for bzr < 0.16)
