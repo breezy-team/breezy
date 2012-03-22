@@ -94,7 +94,7 @@ class cmd_fast_import(Command):
     option.
 
      .. note::
-     
+
         To maintain backwards compatibility, fast-import lets you
         create the target repository or standalone branch yourself.
         It is recommended though that you let fast-import create
@@ -103,7 +103,7 @@ class cmd_fast_import(Command):
     :Branch mapping rules:
 
      Git reference names are mapped to Bazaar branch names as follows:
-      
+
      * refs/heads/foo is mapped to foo
      * refs/remotes/origin/foo is mapped to foo.remote
      * refs/tags/foo is mapped to foo.tag
@@ -161,12 +161,12 @@ class cmd_fast_import(Command):
        bill = William Jones <bill@example.com>
 
      then user-ids are mapped as follows::
-     
+
       maria => maria <maria@example.com>
       bill => William Jones <bill@example.com>
 
      .. note::
-     
+
         User mapping is supported by both the fast-import and
         fast-import-filter commands.
 
@@ -178,9 +178,9 @@ class cmd_fast_import(Command):
      used when, along with some other statistics (e.g. total number of
      commits). In the second pass, it generates the repository and
      branches.
-     
+
      .. note::
-     
+
         The initial pass isn't done if the --info option is used
         to explicitly pass in information about the input stream.
         It also isn't done if the source is standard input. In the
@@ -382,12 +382,12 @@ class cmd_fast_import_filter(Command):
        bill = William Jones <bill@example.com>
 
      then user-ids are mapped as follows::
-     
+
       maria => maria <maria@example.com>
       bill => William Jones <bill@example.com>
 
      .. note::
-     
+
         User mapping is supported by both the fast-import and
         fast-import-filter commands.
 
@@ -641,7 +641,7 @@ class cmd_fast_export(Command):
      To import several unmerged but related branches into the same repository,
      use the --{export,import}-marks options, and specify a name for the git
      branch like this::
-    
+
        bzr fast-export --export-marks=marks.bzr project.dev |
               GIT_DIR=project/.git git-fast-import --export-marks=marks.git
 
