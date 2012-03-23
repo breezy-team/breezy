@@ -20,10 +20,8 @@ from unittest import TestLoader, TestSuite
 def test_suite():
     result = TestSuite()
     import testemail
-    import test_smtp_connection
 
     loader = TestLoader()
     result.addTests(loader.loadTestsFromModule(testemail))
-    result.addTests(loader.loadTestsFromModule(test_smtp_connection))
     return result
 

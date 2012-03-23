@@ -28,7 +28,7 @@ from bzrlib.config import (
     int_from_store,
     )
 
-from smtp_connection import SMTPConnection
+from bzrlib.smtp_connection import SMTPConnection
 
 
 class EmailSender(object):
