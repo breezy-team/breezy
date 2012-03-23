@@ -72,7 +72,6 @@ if __name__ != 'bzrlib.plugins.email':
 
 
 # These three are used during import: No point lazy_importing them.
-from bzrlib import errors
 from bzrlib.branch import Branch
 from bzrlib.lazy_import import lazy_import
 
