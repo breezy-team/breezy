@@ -21,6 +21,12 @@ from bzrlib import (
     errors,
     revision as _mod_revision,
     )
+from bzrlib.config import (
+    ListOption,
+    Option,
+    bool_from_store,
+    int_from_store,
+    )
 
 from smtp_connection import SMTPConnection
 
@@ -74,13 +80,13 @@ class EmailSender(object):
         from StringIO import StringIO
         outf = StringIO()
 
-        _body = self.config.get_user_option('post_commit_body')
+        _body = self.config.get('post_commit_body')
         if _body is None:
             _body = 'At %s\n\n' % self.url()
         outf.write(self._format(_body))
 
-        log_format = self.config.get_user_option('post_commit_log_format')
-        lf = log.log_formatter(log_format or 'long',
+        log_format = self.config.get('post_commit_log_format')
+        lf = log.log_formatter(log_format,
                                show_ids=True,
                                to_file=outf
                                )
@@ -129,7 +135,7 @@ class EmailSender(object):
         # 8-bit strings. It is an error to write a Unicode string here.
         from cStringIO import StringIO
         diff_content = StringIO()
-        diff_options = self.config.get_user_option('post_commit_diffoptions')
+        diff_options = self.config.get('post_commit_diffoptions')
         show_diff_trees(tree_old, tree_new, diff_content, None, diff_options)
         numlines = diff_content.getvalue().count('\n')+1
         if numlines <= difflimit:
@@ -141,56 +147,44 @@ class EmailSender(object):
 
     def difflimit(self):
         """Maximum number of lines of diff to show."""
-        result = self.config.get_user_option('post_commit_difflimit')
-        if result is None:
-            result = 1000
-        return int(result)
+        return self.config.get('post_commit_difflimit')
 
     def mailer(self):
         """What mail program to use."""
-        result = self.config.get_user_option('post_commit_mailer')
-        if result is None:
-            result = "mail"
-        return result
+        return self.config.get('post_commit_mailer')
 
     def _command_line(self):
         cmd = [self.mailer(), '-s', self.subject(), '-a',
                 "From: " + self.from_address()]
-        to = self.to()
-        if isinstance(to, basestring):
-            cmd.append(to)
-        else:
-            cmd.extend(to)
+        cmd.extend(self.to())
         return cmd
 
     def to(self):
         """What is the address the mail should go to."""
-        return self.config.get_user_option('post_commit_to')
+        return self.config.get('post_commit_to')
 
     def url(self):
         """What URL to display in the subject of the mail"""
-        url = self.config.get_user_option('post_commit_url')
+        url = self.config.get('post_commit_url')
         if url is None:
-            url = self.config.get_user_option('public_branch')
+            url = self.config.get('public_branch')
         if url is None:
             url = self.branch.base
         return url
 
     def from_address(self):
         """What address should I send from."""
-        result = self.config.get_user_option('post_commit_sender')
+        result = self.config.get('post_commit_sender')
         if result is None:
-            result = self.config.username()
+            result = self.config.get('email')
         return result
 
     def extra_headers(self):
         """Additional headers to include when sending."""
         result = {}
-        headers = self.config.get_user_option('revision_mail_headers')
+        headers = self.config.get('revision_mail_headers')
         if not headers:
             return
-        if type(headers) is not list:
-            headers = [headers]
         for line in headers:
             key, value = line.split(": ", 1)
             result[key] = value
@@ -259,8 +253,7 @@ class EmailSender(object):
                                  self.extra_headers())
 
     def should_send(self):
-        post_commit_push_pull = self.config.get_user_option(
-            'post_commit_push_pull') == 'True'
+        post_commit_push_pull = self.config.get('post_commit_push_pull')
         if post_commit_push_pull and self.op == 'commit':
             # We will be called again with a push op, send the mail then.
             return False
@@ -274,7 +267,7 @@ class EmailSender(object):
             self.send()
 
     def subject(self):
-        _subject = self.config.get_user_option('post_commit_subject')
+        _subject = self.config.get('post_commit_subject')
         if _subject is None:
             _subject = ("Rev %d: %s in %s" % 
                 (self.revno,
@@ -285,3 +278,28 @@ class EmailSender(object):
     def diff_filename(self):
         return "patch-%s.diff" % (self.revno,)
 
+
+opt_post_commit_body = Option("post_commit_body",
+    help="Body for post commit emails.")
+opt_post_commit_subject = Option("post_commit_subject",
+    help="Subject for post commit emails.")
+opt_post_commit_log_format = Option('post_commit_log_format',
+    default='long', help="Log format for option.")
+opt_post_commit_difflimit = Option('post_commit_difflimit',
+    default=1000, from_unicode=int_from_store,
+    help="Maximum number of lines in diffs.")
+opt_post_commit_push_pull = Option('post_commit_push_pull',
+    from_unicode=bool_from_store,
+    help="Whether to send emails on push and pull.")
+opt_post_commit_diffoptions = Option('post_commit_diffoptions',
+    help="Diff options to use.")
+opt_post_commit_sender = Option('post_commit_sender',
+    help='From address to use for emails.')
+opt_post_commit_to = ListOption('post_commit_to',
+    help='Address to send commit emails to.')
+opt_post_commit_mailer = Option('post_commit_mailer',
+    help='Mail client to use.', default='mail')
+opt_post_commit_url = Option('post_commit_url',
+    help='URL to mention for branch in post commit messages.')
+opt_revision_mail_headers = ListOption('revision_mail_headers',
+    help="Extra revision headers.")

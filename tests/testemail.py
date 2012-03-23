@@ -93,12 +93,12 @@ class TestGetTo(TestCaseInTempDir):
     def test_command_line(self):
         sender = self.get_sender()
         self.assertEqual(['mail', '-s', sender.subject(), '-a',
-                          'From: ' + sender.from_address(), sender.to()],
+                          'From: ' + sender.from_address()] + sender.to(),
                          sender._command_line())
 
     def test_to(self):
         sender = self.get_sender()
-        self.assertEqual('demo@example.com', sender.to())
+        self.assertEqual(['demo@example.com'], sender.to())
 
     def test_from(self):
         sender = self.get_sender()
@@ -173,7 +173,7 @@ class TestGetTo(TestCaseInTempDir):
         self.assertEqual({'X-Cheese': 'to the rescue!'}, sender.extra_headers())
 
     def get_sender(self, text=sample_config):
-        config.GlobalConfig.from_string(text, save=True)
+        my_config = config.MemoryStack(text)
         self.branch = BzrDir.create_branch_convenience('.')
         tree = self.branch.bzrdir.open_workingtree()
         tree.commit('foo bar baz\nfuzzy\nwuzzy', rev_id='A',
@@ -182,7 +182,6 @@ class TestGetTo(TestCaseInTempDir):
             timezone=0,
             committer="Sample <john@example.com>",
             )
-        my_config = self.branch.get_config()
         sender = EmailSender(self.branch, 'A', my_config)
         # This is usually only done after the EmailSender has locked the branch
         # and repository during send(), however, for testing, we need to do it
