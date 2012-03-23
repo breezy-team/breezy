@@ -167,6 +167,18 @@ class GitWorkingTree(workingtree.WorkingTree):
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         self.set_parent_ids([p for p, t in parents_list])
 
+    def iter_children(self, file_id):
+        dpath = self.id2path(file_id) + "/"
+        if dpath in self.index:
+            return
+        for path in self.index:
+            if not path.startswith(dpath):
+                continue
+            if "/" in path[len(dpath):]:
+                # Not a direct child but something further down
+                continue
+            yield self.path2id(path)
+
     def _index_add_entry(self, path, file_id, kind):
         assert self._lock_mode is not None
         assert isinstance(path, basestring)
