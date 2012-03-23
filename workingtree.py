@@ -427,6 +427,8 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     @needs_read_lock
     def path2id(self, path):
+        if type(path) is list:
+            path = u"/".join(path)
         encoded_path = path.encode("utf-8")
         if self._is_versioned(encoded_path):
             return self._fileid_map.lookup_file_id(encoded_path)
