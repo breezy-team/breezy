@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-03-22 11:04+0000\n"
+"PO-Revision-Date: 2012-03-23 21:52+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-03-23 04:33+0000\n"
-"X-Generator: Launchpad (build 14996)\n"
+"X-Launchpad-Export-Date: 2012-03-24 04:30+0000\n"
+"X-Generator: Launchpad (build 14981)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -4301,7 +4301,7 @@ msgid ""
 "the source branch."
 msgstr ""
 "Standardně je příkaz sloučení soběstačný a může být použit na všechny\n"
-"větve obsahující větev_odeslání ve svém původu aniž by vyžadoval přístup\n"
+"větve obsahující větev_předložení ve svém původu aniž by vyžadoval přístup\n"
 "ke zdrojové větvi."
 
 #: bzrlib/builtins.py:5738
@@ -4326,7 +4326,7 @@ msgid ""
 "source branch defaults to that containing the working directory, but can\n"
 "be changed using --from."
 msgstr ""
-"Větev odeslání je standardně nadřazená zdrojové větvi, ale může být\n"
+"Větev předložení je standardně nadřazená zdrojové větvi, ale může být\n"
 "potlačena. Jak větev odeslání tak veřejná budou zapamatovány v\n"
 "branch.conf, jdyž josu poprvé použity v určité větvi. Zdrojová větev\n"
 "je standardně ta obsahující pracovní adresář, ale může být použita\n"
@@ -4340,7 +4340,7 @@ msgid ""
 "omit the location to use the default.  To change the default, use\n"
 "--remember. The value will only be saved if the location can be accessed."
 msgstr ""
-"Větev odeslání i veřejná se chovají stejně pokud jde o --remember:\n"
+"Větev předložení i veřejná se chovají stejně pokud jde o --remember:\n"
 "Pokud není nastaveno žádné výchozí umístění, první stáhnutí tak učiní\n"
 "(použijte --no-remember abyste tomu předešli). Poté můžete umístění\n"
 "vynechat pro použití výchozího. Pro jeho změnu použijte --remember.\n"
@@ -4353,12 +4353,18 @@ msgid ""
 "If a public location is known for the submit_branch, that location is used\n"
 "in the merge directive."
 msgstr ""
+"Pro výpočet těchto změn musí bzr analyzovat větev předložení.\n"
+"Proto je nejúčinnější, když je větev předložení místním odrazem.\n"
+"Pokud je známo veřejné umístění pro větev_předložení, toto\n"
+"umístění je použito v příkazu sloučení."
 
 #: bzrlib/builtins.py:5761
 msgid ""
 "The default behaviour is to send the merge directive by mail, unless -o is\n"
 "given, in which case it is sent to a file."
 msgstr ""
+"Standardní chování jr odeslat příkaz sloučením emailem, pokud -o není\n"
+"zadáno, v takovém případě je odeslán do souboru."
 
 #: bzrlib/builtins.py:5764
 msgid ""
@@ -4366,6 +4372,10 @@ msgid ""
 "on Windows (it uses MAPI).  On Unix, it requires the xdg-email utility.\n"
 "If the preferred client can't be found (or used), your editor will be used."
 msgstr ""
+"Email je odeslán použitím Vašeho upřednostňovaného programu. Ve \n"
+"Windows by toto mělo fungovat (používá MAPI). V Unix potřebuje\n"
+"nástroj xdg-email. Pokud program nemůže být nalezen (nebo použit)\n"
+"bude nahrazen Vaším editorem."
 
 #: bzrlib/builtins.py:5768
 msgid ""
@@ -4378,6 +4388,12 @@ msgid ""
 "add\n"
 "supported clients."
 msgstr ""
+"Pro použití určitého programu, nastavte volbu konfigurace mail_client\n"
+"(Pro Thunderbird 1.5 toto obejde některé chyby.) Podporované hodnoty\n"
+"pro klienty jsou \"claws\", \"evolution\", \"kmail\", \"mail.app\" (MacOS X\n"
+"Mail.app), \"mutt\", a \"thunderbird\"; obecné možnosti jsou \"default\",\n"
+"\"editor\", \"emacsclient\", \"mapi\", a \"xdg-email\". Zásuvné moduly\n"
+"mohou také podporované klienty přidat."
 
 #: bzrlib/builtins.py:5775
 msgid ""
@@ -4386,6 +4402,9 @@ msgid ""
 "option in the branch itself or the child_submit_to configuration option\n"
 "in the submit branch."
 msgstr ""
+"Pokud je odesílán email, je potřeba adresa příjemce. Ta může být\n"
+"zadána buď na příkazovém řádu, nastavením volby submit_to\n"
+"v samotné větvi, nebo volbu child_submit_to ve větvi předložení."
 
 #: bzrlib/builtins.py:5780
 msgid ""
@@ -4396,12 +4415,22 @@ msgid ""
 "default.  \"0.9\" uses revision bundle format 0.9 and merge directive\n"
 "format 1.  It is compatible with Bazaar 0.12 - 0.18."
 msgstr ""
+"V současnosti jsou podporovány dva formáty: \"4\" používá formát balíku "
+"revizí 4\n"
+"a formát příkazů sloučení 2. Je výrazně rychlejší a menší, než starší "
+"formáty.\n"
+"Je kompatibilní s Bazaar 0.19 a novější. Je to výchozí formát. \"0.9\" "
+"používá\n"
+"formát balíku revizí 0.9 a formát příkazů sloučení 1. Je kompatibilní s\n"
+"Bazaar 0.12 - 0.18."
 
 #: bzrlib/builtins.py:5786
 msgid ""
 "The merge directives created by bzr send may be applied using bzr merge or\n"
 "bzr pull by specifying a file containing a merge directive as the location."
 msgstr ""
+"Příkazy sloučení vytvořené pomocí bzr send mohou být použity pomocí bzr\n"
+"merge nebo bzr pull zadáním souboru obsahující příkazy jako umístění."
 
 #: bzrlib/builtins.py:5789
 msgid ""
@@ -4410,54 +4439,63 @@ msgid ""
 "URLs that can be used by other people.  See `bzr help configuration` to\n"
 "set them, and use `bzr info` to display them."
 msgstr ""
+"bzr send hojně využívá veřejná umístění pro mapování místních umístění do\n"
+"URL, které mohou být použity ostatními lidmi. Viz `bzr help configuration`\n"
+"pro jejich nastavení a `bzr info` pro jejich zobrazení."
 
 #: bzrlib/builtins.py:5813
 msgid "Write merge directive to this file or directory; use - for stdout."
 msgstr ""
+"Zapsat příkaz sloučení do souboru nebo adresáře; použijte - pro standardní "
+"výstup."
 
 #: bzrlib/builtins.py:5817
 msgid ""
 "Refuse to send if there are uncommitted changes in the working tree, --no-"
 "strict disables the check."
 msgstr ""
+"Odmítnout odeslat, když se v pracovním stromu vyskytují neodevzdané změny, --"
+"no-strict tyto kontroly zakáže."
 
 #: bzrlib/builtins.py:5819
 msgid "Mail the request to this address."
-msgstr ""
+msgstr "Zaslat požadavek na tuto adresu."
 
 #: bzrlib/builtins.py:5823
 msgid "Body for the email."
-msgstr ""
+msgstr "Tělo emailu."
 
 #: bzrlib/builtins.py:5876
 msgid "Do not include a bundle in the merge directive."
-msgstr ""
+msgstr "Nezahrnovat balík v příkazu sloučení."
 
 #: bzrlib/builtins.py:5877
 msgid "Do not include a preview patch in the merge directive."
-msgstr ""
+msgstr "Nezahrnovat náhledovou záplatu v příkazu sloučení."
 
 #: bzrlib/builtins.py:5880
 msgid "Remember submit and public branch."
-msgstr ""
+msgstr "Zapamatovat si větev předložení a veřejnou větev."
 
 #: bzrlib/builtins.py:5882
 msgid ""
 "Branch to generate the submission from, rather than the one containing the "
 "working directory."
 msgstr ""
+"Větev pro vytvoření formulář odeslání raději, než ta obsahující pracovní "
+"adresář."
 
 #: bzrlib/builtins.py:5892 bzrlib/cmd_version_info.py:76
 msgid "format"
-msgstr ""
+msgstr "formát"
 
 #: bzrlib/builtins.py:5893
 msgid "Use the specified output format."
-msgstr ""
+msgstr "Použít zadaný výstupní formát."
 
 #: bzrlib/builtins.py:5915
 msgid "Create, remove or modify a tag naming a revision."
-msgstr ""
+msgstr "Vytvotot, odstranit, nebo změnit značku označující revizi."
 
 #: bzrlib/builtins.py:5917
 msgid ""
@@ -4465,18 +4503,26 @@ msgid ""
 "(--revision) option can be given -rtag:X, where X is any previously\n"
 "created tag."
 msgstr ""
+"Značky dávají revizím lidem srozumitelné názvy. U příkazů, které přijímají \n"
+"volbu -r (--revision), můžete zadat -rtag:X, kde X je jakákoliv předem\n"
+"vytvořená značka."
 
 #: bzrlib/builtins.py:5921
 msgid ""
 "Tags are stored in the branch.  Tags are copied from one branch to another\n"
 "along when you branch, push, pull or merge."
 msgstr ""
+"Značky jsou uloženy v větvi. Jsou zkopírovány z jedné větvi do druhé\n"
+"když větvíte, odesíláte, stahujete nebo slučujete."
 
 #: bzrlib/builtins.py:5924
 msgid ""
 "It is an error to give a tag name that already exists unless you pass\n"
 "--force, in which case the tag is moved to point to the new revision."
 msgstr ""
+"Je chyba, když značce dáte název, který již existuje, pokud nepředáte\n"
+"--force, v takovém případě je značka přesunuta, aby ukazovala na\n"
+"novou revizi."
 
 #: bzrlib/builtins.py:5927
 msgid ""
@@ -4484,6 +4530,9 @@ msgid ""
 "``bzr\n"
 "tag new-name -r tag:old-name`` and then ``bzr tag --delete oldname``."
 msgstr ""
+"Pro přejmenování značky (změnit název, ale ponechat ji na stejné revizi)\n"
+"spusťte ``bzr tag nový-název -r tag:starý-název`` a pak\n"
+"``bzr tag --delete starý-název``."
 
 #: bzrlib/builtins.py:5930
 msgid ""
@@ -4492,75 +4541,80 @@ msgid ""
 "upstream releases by reading configure.ac. See ``bzr help hooks`` for\n"
 "details."
 msgstr ""
+"Pokud není zadána žádná značka, je zjištěna pomocí háku \n"
+"'automatic_tag_name'. Toto může např. být použito pro\n"
+"automatické označení vydávaných verzí přečtením\n"
+"configure.ac. Viz ``bzr help hooks`` pro podrobnosti."
 
 #: bzrlib/builtins.py:5940
 msgid "Delete this tag rather than placing it."
-msgstr ""
+msgstr "Smazat tuto značku, než ji raději umisťovat."
 
 #: bzrlib/builtins.py:5943
 msgid "Branch in which to place the tag."
-msgstr ""
+msgstr "Větev v které značku umístit."
 
 #: bzrlib/builtins.py:5945
 msgid "Replace existing tags."
-msgstr ""
+msgstr "Nahradit existující značky."
 
 #: bzrlib/builtins.py:5960
 msgid "No tag specified to delete."
-msgstr ""
+msgstr "Žádná značka nezadána pro smazání."
 
 #: bzrlib/builtins.py:5962
 #, python-format
 msgid "Deleted tag %s."
-msgstr ""
+msgstr "Značka %s smazána."
 
 #: bzrlib/builtins.py:5976
 msgid "Please specify a tag name."
-msgstr ""
+msgstr "Zadejte prosím název značky."
 
 #: bzrlib/builtins.py:5984
 #, python-format
 msgid "Tag %s already exists for that revision."
-msgstr ""
+msgstr "Značka %s již pro tuto revizi existuje."
 
 #: bzrlib/builtins.py:5988
 #, python-format
 msgid "Created tag %s."
-msgstr ""
+msgstr "Značka %s vytvořena."
 
 #: bzrlib/builtins.py:5990
 #, python-format
 msgid "Updated tag %s."
-msgstr ""
+msgstr "Značka %s aktualizována."
 
 #: bzrlib/builtins.py:5994
 msgid "List tags."
-msgstr ""
+msgstr "Vypsat značky."
 
 #: bzrlib/builtins.py:5996
 msgid ""
 "This command shows a table of tag names and the revisions they reference."
 msgstr ""
+"Tento příkaz zobrazuje tabulku názvů značek a revize, na které odkazují."
 
 #: bzrlib/builtins.py:6002
 msgid "Branch whose tags should be displayed."
-msgstr ""
+msgstr "Větev, jejíž značky by měly být zobrazeny."
 
 #: bzrlib/builtins.py:6004
 msgid "Sort tags by different criteria."
-msgstr ""
+msgstr "Třídit značky podle různých kritérií."
 
 #: bzrlib/builtins.py:6004
 msgid "Sorting"
-msgstr ""
+msgstr "Třídění"
 
 #: bzrlib/builtins.py:6073
 msgid "Reconfigure the type of a bzr directory."
-msgstr ""
+msgstr "Znovu nastavit typ adresáře bzr."
 
 #: bzrlib/builtins.py:6075
 msgid "A target configuration must be specified."
-msgstr ""
+msgstr "Musí být zadáno cílové nastavení."
 
 #: bzrlib/builtins.py:6077
 msgid ""
@@ -4572,95 +4626,112 @@ msgid ""
 "4. The parent location.\n"
 "If none of these is available, --bind-to must be specified."
 msgstr ""
+"Pro získání je umístění pro svázání, pokud není zadáno, automaticky "
+"zjištěno.\n"
+"Pořadí upřednostnění je\n"
+"1. Pro odlehčená získání - současné svázané umístění.\n"
+"2. Pro větve, které bývaly získání - předchozí svázané umístění.\n"
+"3. Umístění odeslání.\n"
+"4. Nadřazené umístění.\n"
+"Pokud ani jedno z tohoto není dostupné, musí být zadáno --bind-to."
 
 #: bzrlib/builtins.py:6091
 msgid "Tree type"
-msgstr ""
+msgstr "Typ stromu"
 
 #: bzrlib/builtins.py:6092
 msgid "The relation between branch and tree."
-msgstr ""
+msgstr "Vztah mezi větví a stromem."
 
 #: bzrlib/builtins.py:6094
 msgid "Reconfigure to be an unbound branch with no working tree."
-msgstr ""
+msgstr "Znovu nastavit tak, aby byla nesvázaná větev bez pracovního stromu."
 
 #: bzrlib/builtins.py:6095
 msgid "Reconfigure to be an unbound branch with a working tree."
-msgstr ""
+msgstr "Znovu nastavit tak, aby byla nesvázaná větev s pracovním stromem."
 
 #: bzrlib/builtins.py:6096
 msgid "Reconfigure to be a bound branch with a working tree."
-msgstr ""
+msgstr "Znovu nastavit tak, aby byla svázaná větev s pracovním stromem."
 
 #: bzrlib/builtins.py:6097
 msgid "Reconfigure to be a lightweight checkout (with no local history)."
 msgstr ""
+"Znovu nastavit tak, aby bylo odlehčené získání (bez místní historie)."
 
 #: bzrlib/builtins.py:6102
 msgid "Repository type"
-msgstr ""
+msgstr "Typ úložiště"
 
 #: bzrlib/builtins.py:6103
 msgid "Location fo the repository."
-msgstr ""
+msgstr "Umístění úložiště."
 
 #: bzrlib/builtins.py:6105
 msgid ""
 "Reconfigure to be a standalone branch (i.e. stop using shared repository)."
 msgstr ""
+"Znovu nastavit tak, aby byla samostatná větev (tj. přestat používat sdílené "
+"úložiště)."
 
 #: bzrlib/builtins.py:6107
 msgid "Reconfigure to use a shared repository."
-msgstr ""
+msgstr "Znovu nastavit tak, aby bylo sdílené úložiště používáno."
 
 #: bzrlib/builtins.py:6111
 msgid "Trees in Repository"
-msgstr ""
+msgstr "Stromy v úložišti"
 
 #: bzrlib/builtins.py:6112
 msgid "Whether new branches in the repository have trees."
-msgstr ""
+msgstr "Zdali nové větve v úložišti mají stromy."
 
 #: bzrlib/builtins.py:6114
 msgid ""
 "Reconfigure repository to create working trees on branches by default."
 msgstr ""
+"Znovu nastavit úložiště tak, aby standardně vytvořit pracovní stromy ve "
+"větvích."
 
 #: bzrlib/builtins.py:6116
 msgid ""
 "Reconfigure repository to not create working trees on branches by default."
 msgstr ""
+"Znovu nastavit úložiště tak, aby standardně nevytvářel pracovní stromy ve "
+"větvích."
 
 #: bzrlib/builtins.py:6119
 msgid "Branch to bind checkout to."
-msgstr ""
+msgstr "Větev s kterou svázat získání."
 
 #: bzrlib/builtins.py:6121
 msgid "Perform reconfiguration even if local changes will be lost."
-msgstr ""
+msgstr "Provést znovu nastavení, i když místní změny budou ztraceny."
 
 #: bzrlib/builtins.py:6124
 msgid "Reconfigure a branch to be stacked on another branch."
-msgstr ""
+msgstr "Znovu nastavit větev tak, aby byla složena na jiné větvi."
 
 #: bzrlib/builtins.py:6128
 msgid ""
 "Reconfigure a branch to be unstacked.  This may require copying substantial "
 "data into it."
 msgstr ""
+"Znovu nastavit větev tak, aby byla nesložena. Toto může vyžadovat kopírování "
+"velkého množství dat do větve."
 
 #: bzrlib/builtins.py:6138
 msgid "Can't use both --stacked-on and --unstacked"
-msgstr ""
+msgstr "Nelze použít --stacked-on a --unstacked najednou"
 
 #: bzrlib/builtins.py:6152
 msgid "No target configuration specified"
-msgstr ""
+msgstr "Nezadáno žádné cílové nastavení"
 
 #: bzrlib/builtins.py:6187
 msgid "Set the branch of a checkout and update."
-msgstr ""
+msgstr "Nastavit větev pro získání a aktualizovat."
 
 #: bzrlib/builtins.py:6189
 msgid ""
@@ -4669,16 +4740,24 @@ msgid ""
 "versus the current bound branch, then it makes the local branch a mirror\n"
 "of the new location and binds to it."
 msgstr ""
+"Pro odlehčená získání toto změní větev, na kterou je odkazováno.\n"
+"Pro těžká získání toto zkontroluje, za neexistují místní odevzdání\n"
+"proti současné svázané větvi, pak z místní větve udělá odraz\n"
+"nového umístění a sváže ji k němu."
 
 #: bzrlib/builtins.py:6194
 msgid ""
 "In both cases, the working tree is updated and uncommitted changes\n"
 "are merged. The user can commit or revert these as they desire."
 msgstr ""
+"V obou případech je praocvní strom aktualizován a neodevzdané změny\n"
+"jsou sloučeny. Uživatel může toto odevzdat nebo vrátit  jak se mu zlíbí."
 
 #: bzrlib/builtins.py:6197
 msgid "Pending merges need to be committed or reverted before using switch."
 msgstr ""
+"Nevyřízená sloučení potřebují být odevzdána nebo vrácena před použitím "
+"přepnutí."
 
 #: bzrlib/builtins.py:6199
 msgid ""
