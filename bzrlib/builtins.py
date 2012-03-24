@@ -4728,11 +4728,13 @@ class cmd_remerge(Command):
 
 
 class cmd_revert(Command):
-    __doc__ = """Revert files to a previous revision.
+    __doc__ = """\
+    Revert files in the working tree to a the contents of a previous revision.
 
     Giving a list of files will revert only those files.  Otherwise, all files
     will be reverted.  If the revision is not specified with '--revision', the
-    last committed revision is used.
+    last committed revision is used. A revert operation affects only the
+    working tree, not any revision history like the branch and repository.
 
     To remove only some changes, without reverting to a prior version, use
     merge instead.  For example, "merge . -r -2..-3" (don't forget the ".")
