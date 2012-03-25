@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-03-23 21:52+0000\n"
+"PO-Revision-Date: 2012-03-24 21:44+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-03-24 04:30+0000\n"
+"X-Launchpad-Export-Date: 2012-03-25 04:41+0000\n"
 "X-Generator: Launchpad (build 14981)\n"
 
 #: bzrlib/add.py:95
@@ -3550,7 +3550,7 @@ msgstr ""
 "použijte místo toho sloučení. Například \"merge . -r -2..-3\" (na \".\"\n"
 "nezapomeňte) odstraní změny obsažené v předposledním odevzdání\n"
 "(-2), aniž by ovlivňovalo změny obsažené v posledním odevzdání (-1).\n"
-"Pro odstranění jistých změn na základě kus po kusu, podívejte se na\n"
+"Pro odstranění jistých změn na základě kus po kusu, se podívejte na\n"
 "příkaz shelve."
 
 #: bzrlib/builtins.py:4729
@@ -4766,6 +4766,9 @@ msgid ""
 "checkout of /path/to/branch, specifying 'newbranch' will find a branch at\n"
 "/path/to/newbranch."
 msgstr ""
+"Cesta k větvi pro přepnutí může být zadána v souvislosti s jejím nadřazeným\n"
+"adresářem současné větve. Například, pokud jste nyní v získání\n"
+"/cesta/k/větvi, zadáním 'novávětev' najde větev v /cesta/k/novévětvi."
 
 #: bzrlib/builtins.py:6204
 msgid ""
@@ -4773,26 +4776,29 @@ msgid ""
 "locally, in which case switching will update the local nickname to be\n"
 "that of the master."
 msgstr ""
+"Svázané větve používají přezdívku své hlavní větve, pokud není nastavena\n"
+"místně, v takovém případě přepnutí aktualizuje místní přezdívku na\n"
+"tu z hlavní větve."
 
 #: bzrlib/builtins.py:6212
 msgid "Switch even if local commits will be lost."
-msgstr ""
+msgstr "Přepnout i když budou ztracena místní odevzdání."
 
 #: bzrlib/builtins.py:6215
 msgid "Create the target branch from this one before switching to it."
-msgstr ""
+msgstr "Vytvořit cílovou větev z této před přepnutím na ni."
 
 #: bzrlib/builtins.py:6229
 msgid "You must supply either a revision or a location"
-msgstr ""
+msgstr "Musíte zadat buď revizi nebo umístění"
 
 #: bzrlib/builtins.py:6242
 msgid "cannot create branch without source branch"
-msgstr ""
+msgstr "nelze vytvořit větev bez zdrojové větve"
 
 #: bzrlib/builtins.py:6262
 msgid "Manage filtered views."
-msgstr ""
+msgstr "Spravovat filtrovaná zobrazení."
 
 #: bzrlib/builtins.py:6264
 msgid ""
@@ -4803,6 +4809,12 @@ msgid ""
 "An explicit list of files can still be given but those files\n"
 "must be within the current view."
 msgstr ""
+"Zobrazení poskytují masku pro strom, aby se uživatelé mohli\n"
+"soustředit na podmnožinu stromu, když pracují. Po vytvoření\n"
+"zobrazení příkazy podporující seznam souborů - status, diff,\n"
+"commit, atd. - tento seznam souborů pokaždé dostávají.\n"
+"Výslovný seznam souborů může být zadán, ale tyto soubory\n"
+"musí být uvnitř současného zobrazení."
 
 #: bzrlib/builtins.py:6271
 msgid ""
@@ -4811,6 +4823,10 @@ msgid ""
 "At other times, you may wish to create one or more named views\n"
 "and switch between them."
 msgstr ""
+"Ve většině případů má zobrazení krátkou životnost: je vytvořeno\n"
+"k provedení vybrané změny a je smazán jakmile je změna odevzdána.\n"
+"Jindy můžete chtít vytvořit jeden nebo více pojmenovaných\n"
+"zobrazení a mezi nimi přepínat."
 
 #: bzrlib/builtins.py:6276
 msgid ""
@@ -4819,204 +4835,213 @@ msgid ""
 "to see the whole tree for an operation or two (e.g. merge) but\n"
 "want to switch back to your view after that."
 msgstr ""
+"Pro zakázání současného zobrazení, aniž by byl smazán můžete\n"
+"přepnout do pseudo zobrazení  ``off``. To může být užitečné,\n"
+"když potřebujete vidět celý strom pro pár operací (např.\n"
+"sloučení), ale pak chcete přepnout zpět na Vaše zobrazení."
 
 #: bzrlib/builtins.py:6281
 msgid ""
 ":Examples:\n"
 "  To define the current view::"
 msgstr ""
+":Příklady:\n"
+"  Pro určení současného zobrazení::"
 
 #: bzrlib/builtins.py:6284
 msgid "    bzr view file1 dir1 ..."
-msgstr ""
+msgstr "    bzr view soubor1 adresář1 ..."
 
 #: bzrlib/builtins.py:6286
 msgid "  To list the current view::"
-msgstr ""
+msgstr "  Pro vypsání současného zobrazení::"
 
 #: bzrlib/builtins.py:6288
 msgid "    bzr view"
-msgstr ""
+msgstr "    bzr view"
 
 #: bzrlib/builtins.py:6290
 msgid "  To delete the current view::"
-msgstr ""
+msgstr "  Pro smazání současného zobrazení::"
 
 #: bzrlib/builtins.py:6292
 msgid "    bzr view --delete"
-msgstr ""
+msgstr "    bzr view --delete"
 
 #: bzrlib/builtins.py:6294
 msgid "  To disable the current view without deleting it::"
-msgstr ""
+msgstr "  Pro zakázání současného zobrazení bez smazání::"
 
 #: bzrlib/builtins.py:6296
 msgid "    bzr view --switch off"
-msgstr ""
+msgstr "    bzr view --switch off"
 
 #: bzrlib/builtins.py:6298
 msgid "  To define a named view and switch to it::"
-msgstr ""
+msgstr "  Pro určení pojmenovaného zobrazení a přepnutí na něj::"
 
 #: bzrlib/builtins.py:6300
 msgid "    bzr view --name view-name file1 dir1 ..."
-msgstr ""
+msgstr "    bzr view --name název-zobrazení soubor1 adresář1 ..."
 
 #: bzrlib/builtins.py:6302
 msgid "  To list a named view::"
-msgstr ""
+msgstr "  Pro vypsání pojmenovaného zobrazení::"
 
 #: bzrlib/builtins.py:6304
 msgid "    bzr view --name view-name"
-msgstr ""
+msgstr "    bzr view --name název-zobrazení"
 
 #: bzrlib/builtins.py:6306
 msgid "  To delete a named view::"
-msgstr ""
+msgstr "  Pro smazání pojmenovaného zobrazení::"
 
 #: bzrlib/builtins.py:6308
 msgid "    bzr view --name view-name --delete"
-msgstr ""
+msgstr "    bzr view --name název-zobrazení --delete"
 
 #: bzrlib/builtins.py:6310
 msgid "  To switch to a named view::"
-msgstr ""
+msgstr "  Pro přepnutí na pojmenované zobrazení::"
 
 #: bzrlib/builtins.py:6312
 msgid "    bzr view --switch view-name"
-msgstr ""
+msgstr "    bzr view --switch název-zobrazení"
 
 #: bzrlib/builtins.py:6314
 msgid "  To list all views defined::"
-msgstr ""
+msgstr "  Pro vypsání všech určených zobrazení::"
 
 #: bzrlib/builtins.py:6316
 msgid "    bzr view --all"
-msgstr ""
+msgstr "    bzr view --all"
 
 #: bzrlib/builtins.py:6318
 msgid "  To delete all views::"
-msgstr ""
+msgstr "  Pro smazání všech zobrazení::"
 
 #: bzrlib/builtins.py:6320
 msgid "    bzr view --delete --all"
-msgstr ""
+msgstr "    bzr view --delete --all"
 
 #: bzrlib/builtins.py:6327
 msgid "Apply list or delete action to all views."
-msgstr ""
+msgstr "Použít seznam nebo činnost smazání na všechna zobrazení."
 
 #: bzrlib/builtins.py:6330
 msgid "Delete the view."
-msgstr ""
+msgstr "Smazat toto zobrazení."
 
 #: bzrlib/builtins.py:6333
 msgid "Name of the view to define, list or delete."
-msgstr ""
+msgstr "Název zobrazení k určení, vypsání nebo smazání."
 
 #: bzrlib/builtins.py:6337
 msgid "Name of the view to switch to."
-msgstr ""
+msgstr "Název zobrazení na který přepnout."
 
 #: bzrlib/builtins.py:6356
 msgid "Both --delete and a file list specified"
-msgstr ""
+msgstr "Je zadáno --delete i seznam souborů"
 
 #: bzrlib/builtins.py:6359
 msgid "Both --delete and --switch specified"
-msgstr ""
+msgstr "Je zadáno jak --delete tak --switch"
 
 #: bzrlib/builtins.py:6362
 msgid "Deleted all views.\n"
-msgstr ""
+msgstr "Všechna zobrazení smazána.\n"
 
 #: bzrlib/builtins.py:6364
 msgid "No current view to delete"
-msgstr ""
+msgstr "Žádné současné zobrazení pro smazání"
 
 #: bzrlib/builtins.py:6367
 #, python-format
 msgid "Deleted '%s' view.\n"
-msgstr ""
+msgstr "Zobrazení '%s' smazáno.\n"
 
 #: bzrlib/builtins.py:6371
 msgid "Both --switch and a file list specified"
-msgstr ""
+msgstr "Je zadáno --switch i seznam souborů"
 
 #: bzrlib/builtins.py:6374
 msgid "Both --switch and --all specified"
-msgstr ""
+msgstr "Je zadáno jak --switch tak --all"
 
 #: bzrlib/builtins.py:6377
 msgid "No current view to disable"
-msgstr ""
+msgstr "Žádné současné zobrazení pro zakázání"
 
 #: bzrlib/builtins.py:6379
 #, python-format
 msgid "Disabled '%s' view.\n"
-msgstr ""
+msgstr "Zobrazení '%s' zakázáno.\n"
 
 #: bzrlib/builtins.py:6383 bzrlib/builtins.py:6405
 msgid "Using '{0}' view: {1}\n"
-msgstr ""
+msgstr "Je používáno zobrazení '{0}': {1}\n"
 
 #: bzrlib/builtins.py:6386
 msgid "Views defined:\n"
-msgstr ""
+msgstr "Určená zobrazení:\n"
 
 #: bzrlib/builtins.py:6395
 msgid "No views defined.\n"
-msgstr ""
+msgstr "Žádná zobrazení neurčena.\n"
 
 #: bzrlib/builtins.py:6402
 msgid "Cannot change the 'off' pseudo view"
-msgstr ""
+msgstr "Nelze změnit pseudo zobrazení 'off'"
 
 #: bzrlib/builtins.py:6410
 msgid "No current view.\n"
-msgstr ""
+msgstr "Žádné současné zobrazení.\n"
 
 #: bzrlib/builtins.py:6413
 msgid "'{0}' view is: {1}\n"
-msgstr ""
+msgstr "Zobrazení '{0}' je: {1}\n"
 
 #: bzrlib/builtins.py:6433
 msgid "    <no hooks installed>\n"
-msgstr ""
+msgstr "    <nenainstalovány žádné háky>\n"
 
 #: bzrlib/builtins.py:6437
 msgid "Remove a branch."
-msgstr ""
+msgstr "Odstranit větev."
 
 #: bzrlib/builtins.py:6439
 msgid ""
 "This will remove the branch from the specified location but \n"
 "will keep any working tree or repository in place."
 msgstr ""
+"Toto odstraní větev z určeného umístění, ale \n"
+"ponechá jakýkoli pracovní strom nebo úložiště\n"
+"na místě."
 
 #: bzrlib/builtins.py:6444
 msgid "  Remove the branch at repo/trunk::"
-msgstr ""
+msgstr "  Odstraní větev v úložišti/kmeni::"
 
 #: bzrlib/builtins.py:6446
 msgid "    bzr remove-branch repo/trunk"
-msgstr ""
+msgstr "    bzr remove-branch úložiště/kmen"
 
 #: bzrlib/builtins.py:6444
 msgid "Remove branch even if it is the active branch."
-msgstr ""
+msgstr "Odstranit větev, i když je aktivní."
 
 #: bzrlib/builtins.py:6458
 msgid "Branch is active. Use --force to remove it."
-msgstr ""
+msgstr "Větev je aktivní. Použijte --force pro její odstranění."
 
 #: bzrlib/builtins.py:6461
 msgid "Plaintext diff output."
-msgstr ""
+msgstr "Výstup rozdílů jako prostý text."
 
 #: bzrlib/builtins.py:6462
 msgid "Temporarily set aside some changes from the current tree."
-msgstr ""
+msgstr "Dočasně dát stranou některé změny ze současného stromu."
 
 #: bzrlib/builtins.py:6464
 msgid ""
@@ -5026,10 +5051,16 @@ msgid ""
 "your working tree, and so they aren't propagated along with your branch nor\n"
 "will they survive its deletion."
 msgstr ""
+"Shelve Vám umožňuje dočasně dát stranou změny, která jste provedli\n"
+"\"na regál\". tj. z očí, dokud je později nebude chtít zpátky ze skladu\n"
+"pomocí příkazu 'unshelve'. Změny jsou ukládány vedle Vašeho\n"
+"pracovního stromu a proto nejsou šířeny spolu s Vaší větví ani nepřežijí\n"
+"její smazání."
 
 #: bzrlib/builtins.py:6470
 msgid "If shelve --list is specified, previously-shelved changes are listed."
 msgstr ""
+"Pokud je zadáno shelve --list, budou vypsány předešlé uskladněné změny."
 
 #: bzrlib/builtins.py:6472
 msgid ""
@@ -5038,23 +5069,31 @@ msgid ""
 "and you don't need to restore them later, use revert.  If you want to\n"
 "shelve all text changes at once, use shelve --all."
 msgstr ""
+"Shelve je určen pro pomoc při oddělování několika sad změn, které byly\n"
+"nevhodně zamíchány. Pokud se chcete prostě zbavit všech změn a\n"
+"nepotřebujete je později obnovit, použijte zpětné vrácení. Pokud\n"
+"chcete uskladnit všechny textové změny najednou použijte shelve --all."
 
 #: bzrlib/builtins.py:6477
 msgid ""
 "If filenames are specified, only the changes to those files will be\n"
 "shelved. Other files will be left untouched."
 msgstr ""
+"Pokud jsou zadány názvy souborů, pouze jejich změny budou\n"
+"uskladněny. Jiné soubory zůstanou nedotčeny."
 
 #: bzrlib/builtins.py:6480
 msgid ""
 "If a revision is specified, changes since that revision will be shelved."
-msgstr ""
+msgstr "Pokud je zadána revize, budou uskladněny změny od této revize."
 
 #: bzrlib/builtins.py:6482
 msgid ""
 "You can put multiple items on the shelf, and by default, 'unshelve' will\n"
 "restore the most recently shelved changes."
 msgstr ""
+"Na regál můžete umístit mnoho položek a standardně 'unshelve'\n"
+"obnoví poslední uskladněné změny."
 
 #: bzrlib/builtins.py:6485
 msgid ""
@@ -5062,10 +5101,13 @@ msgid ""
 "editor program to decide what the file remaining in the working copy\n"
 "should look like.  To do this, add the configuration option"
 msgstr ""
+"Pro složité změny je možné je upravit v samostatném programu\n"
+"editoru pro rozhodnutí, jak by měl soubor zůstávající v pracovní kopii\n"
+"vypadat. Pro toto přidejte volbu nastavení"
 
 #: bzrlib/builtins.py:6489
 msgid "    change_editor = PROGRAM @new_path @old_path"
-msgstr ""
+msgstr "    change_editor = PROGRAM @nová_cesta @stará_cesta"
 
 #: bzrlib/builtins.py:6491
 msgid ""
@@ -5075,34 +5117,39 @@ msgid ""
 "contents of the file in the working tree.\n"
 "    "
 msgstr ""
+"kde @nová_cesta je nahrazena cestou nové verze souboru a \n"
+"@stará_cesta je nahrazena cestou staré verze souboru.\n"
+"PROGRAM by měl nový soubor uložit spolu s vyžádanými \n"
+"obsahy souboru v pracovním stromem.\n"
+"    "
 
 #: bzrlib/builtins.py:6503
 msgid "Shelve all changes."
-msgstr ""
+msgstr "Uskladnit všechny změny."
 
 #: bzrlib/builtins.py:6505
 msgid "Method to use for writing diffs."
-msgstr ""
+msgstr "Metoda použitá pro zápis rozdílů."
 
 #: bzrlib/builtins.py:6505
 msgid "writer"
-msgstr ""
+msgstr "zapisovatel"
 
 #: bzrlib/builtins.py:6509
 msgid "List shelved changes."
-msgstr ""
+msgstr "Vypsat uskladněné změny."
 
 #: bzrlib/builtins.py:6511
 msgid "Destroy removed changes instead of shelving them."
-msgstr ""
+msgstr "Zničit odstraněné změny místo jejich uskladnění."
 
 #: bzrlib/builtins.py:6540
 msgid "No shelved changes."
-msgstr ""
+msgstr "Žádné uskladněné změny."
 
 #: bzrlib/builtins.py:6551
 msgid "Restore shelved changes."
-msgstr ""
+msgstr "Obnovit uskladněné změny."
 
 #: bzrlib/builtins.py:6553
 msgid ""
@@ -5110,46 +5157,53 @@ msgid ""
 "specify a shelf by id those changes will be restored instead.  This works\n"
 "best when the changes don't depend on each other."
 msgstr ""
+"Standardně jsou obnoveny poslední uložené změny. Nicméně, pokud zadáte\n"
+"regál podle id budou místo toho obnoveny tyto změny. Toto nejlépe\n"
+"funguje, když změny na sobě nezávisejí."
 
 #: bzrlib/builtins.py:6562
 msgid "The action to perform."
-msgstr ""
+msgstr "Činnost k provedení."
 
 #: bzrlib/builtins.py:6562 bzrlib/conflicts.py:694
 msgid "action"
-msgstr ""
+msgstr "činnost"
 
 #: bzrlib/builtins.py:6564
 msgid "Apply changes and remove from the shelf."
-msgstr ""
+msgstr "Použít změny a odstranit je z regálu."
 
 #: bzrlib/builtins.py:6565
 msgid "Show changes, but do not apply or remove them."
-msgstr ""
+msgstr "Zobrazit změny, ale nepoužívat či neodstraňovat je."
 
 #: bzrlib/builtins.py:6566
 msgid ""
 "Instead of unshelving the changes, show the diff that would result from "
 "unshelving."
 msgstr ""
+"Místo vyjmutí změn z regálu, zobrazit rozdíl, který by byl výsledkem této "
+"operace."
 
 #: bzrlib/builtins.py:6568
 msgid "Delete changes without applying them."
-msgstr ""
+msgstr "Smazat změny aniž by byly použity."
 
 #: bzrlib/builtins.py:6569
 msgid "Apply changes but don't delete them."
-msgstr ""
+msgstr "Použít změny ale nemazat je."
 
 #: bzrlib/builtins.py:6584
 msgid "Remove unwanted files from working tree."
-msgstr ""
+msgstr "Odstranit nechtěné soubory z pracovního stromu."
 
 #: bzrlib/builtins.py:6586
 msgid ""
 "By default, only unknown files, not ignored files, are deleted.  Versioned\n"
 "files are never deleted."
 msgstr ""
+"Standardně jsou smazány pouze neznáme soubory, ignorované ne. Soubory\n"
+"s verzí nikdy nejsou smazány."
 
 #: bzrlib/builtins.py:6589
 msgid ""
@@ -5157,75 +5211,82 @@ msgid ""
 "normal operations and selftests.  (The value of these files decreases with\n"
 "time.)"
 msgstr ""
+"Další třídou je 'detritus', která zahrnuje soubory vydávané bzr během\n"
+"normálních operacích a vlastních testů. (Hodnota těchto souborů se\n"
+"s časem snižuje.)"
 
 #: bzrlib/builtins.py:6593
 msgid ""
 "If no options are specified, unknown files are deleted.  Otherwise, option\n"
 "flags are respected, and may be combined."
 msgstr ""
+"Pokud nejsou zadány žádné volby, jsou smazány neznáme soubory. Jinak \n"
+"jsou respektovány příznaky voleb a mohou být kombinovány."
 
 #: bzrlib/builtins.py:6596
 msgid "To check what clean-tree will do, use --dry-run."
-msgstr ""
+msgstr "Pro kontrolu toho, co clean-tree udělá, použijte --dry-run."
 
 #: bzrlib/builtins.py:6599
 msgid "Delete all ignored files."
-msgstr ""
+msgstr "Smazat všechny ignorované soubory."
 
 #: bzrlib/builtins.py:6600
 msgid ""
 "Delete conflict files, merge and revert backups, and failed selftest dirs."
 msgstr ""
+"Smazat konfliktní soubory, zálohy sloučení a zpětného vrácení a složky "
+"nepovedených vlastních testů."
 
 #: bzrlib/builtins.py:6603
 msgid "Delete files unknown to bzr (default)."
-msgstr ""
+msgstr "Smazat soubory, které bzr nezná (výchozí)."
 
 #: bzrlib/builtins.py:6604
 msgid "Show files to delete instead of deleting them."
-msgstr ""
+msgstr "Zobrazit soubory ke smazání místo jejich mazání."
 
 #: bzrlib/builtins.py:6606
 msgid "Do not prompt before deleting."
-msgstr ""
+msgstr "Před smazáním se neptat."
 
 #: bzrlib/bundle/__init__.py:59
 msgid "A directory cannot be a bundle"
-msgstr ""
+msgstr "Adresář nemůže být balík"
 
 #: bzrlib/bundle/apply_bundle.py:40
 msgid "Install revisions"
-msgstr ""
+msgstr "Nainstalovat revize"
 
 #: bzrlib/bundle/commands.py:64
 msgid "--verbose requires a merge directive"
-msgstr ""
+msgstr "--verbose vyžaduje příkaz sloučení"
 
 #: bzrlib/bundle/commands.py:67
 msgid "Bundle format not supported"
-msgstr ""
+msgstr "Formát balíku není podporován"
 
 #: bzrlib/bundle/commands.py:77
 msgid "Records\n"
-msgstr ""
+msgstr "Záznamy\n"
 
 #: bzrlib/bundle/commands.py:81
 msgid "{0}: {1} ({2} multiparent)\n"
-msgstr ""
+msgstr "{0}: {1} ({2} vícenadřazený)\n"
 
 #: bzrlib/bundle/commands.py:83
 #, python-format
 msgid "unique files: %d\n"
-msgstr ""
+msgstr "jedinečné soubory: %d\n"
 
 #: bzrlib/bundle/commands.py:92
 msgid "Revisions\n"
-msgstr ""
+msgstr "Revize\n"
 
 #: bzrlib/bundle/commands.py:93
 #, python-format
 msgid "nicks: %s\n"
-msgstr ""
+msgstr "přezdívky: %s\n"
 
 #: bzrlib/bundle/commands.py:95
 #, python-format
@@ -5233,27 +5294,32 @@ msgid ""
 "committers: \n"
 "%s\n"
 msgstr ""
+"odevzdávající: \n"
+"%s\n"
 
 #: bzrlib/bundle/commands.py:103
 msgid "Decoded contents\n"
-msgstr ""
+msgstr "Dešifrované obsahy\n"
 
 #: bzrlib/bundle/serializer/v4.py:327
 #, python-format
 msgid "Bundling %d revision."
 msgid_plural "Bundling %d revisions."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Sbalování %d revize."
+msgstr[1] "Sbalování %d revizí."
+msgstr[2] "Sbalování %d revizí."
 
 #: bzrlib/bzrdir.py:490
 msgid ""
 "making backup of {0}\n"
 "  to {1}"
 msgstr ""
+"vytváření zálohy {0}\n"
+"  do {1}"
 
 #: bzrlib/bzrdir.py:513
 msgid "renamed {0} to {1}"
-msgstr ""
+msgstr "{0} přejmenováno na {1}"
 
 #: bzrlib/bzrdir.py:1652
 #, python-format
@@ -5261,6 +5327,8 @@ msgid ""
 "Source repository format does not support stacking, using format:\n"
 "  %s"
 msgstr ""
+"Formát zdrojového úložiště nepodporuje skládání, je použit formát:\n"
+"  %s"
 
 #: bzrlib/bzrdir.py:1672
 #, python-format
@@ -5268,14 +5336,16 @@ msgid ""
 "Source branch format does not support stacking, using format:\n"
 "  %s"
 msgstr ""
+"Formát zdrojové větvě nepodporuje skládání, je použit formát:\n"
+"  %s"
 
 #: bzrlib/bzrdir.py:1818
 msgid "starting repository conversion"
-msgstr ""
+msgstr "převod úlořiště spuštěn"
 
 #: bzrlib/bzrdir.py:2039
 msgid "Using default stacking branch {0} at {1}"
-msgstr ""
+msgstr "Je použita výchozí větev skládání {0} ve {1}"
 
 #: bzrlib/check.py:108
 msgid "check"
