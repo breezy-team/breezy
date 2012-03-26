@@ -17,62 +17,13 @@
 """guess - when a bzr command is mispelt, prompt for the nearest match."""
 
 
-import traceback
 from bzrlib import (
-    commands,
-    lazy_import,
+    hooks,
     )
-lazy_import.lazy_import(globals(), """
-from bzrlib import (
-    patiencediff,
-    ui,
-    )
-""")
-
-# Overrides for common mispellings that heuristics get wrong
-_overrides = {
-    'ic': {'ci': 0}, # heuristic finds nick
-    }
-
 
 def guess_command(cmd_name):
-    if not cmd_name:
-        return
-    names = set()
-    for name in commands.all_command_names():
-        names.add(name)
-        cmd = commands.get_cmd_object(name)
-        names.update(cmd.aliases)
-    # candidate: modified levenshtein distance against cmd_name.
-    costs = {}
-    for name in sorted(names):
-        matcher = patiencediff.PatienceSequenceMatcher(None, cmd_name, name)
-        distance = 0.0
-        opcodes = matcher.get_opcodes()
-        for opcode, l1, l2, r1, r2 in opcodes:
-            if opcode == 'delete':
-                distance += l2-l1
-            elif opcode == 'replace':
-                distance += max(l2-l1, r2-l1)
-            elif opcode == 'insert':
-                distance += r2-r1
-            elif opcode == 'equal':
-                # Score equal ranges lower, making similar commands of equal
-                # length closer than arbitrary same length commands.
-                distance -= 0.1 *(l2-l1)
-        costs[name] = distance
-    costs = sorted((value, key) for key, value in costs.iteritems())
-    if not costs:
-        return
-    for tr in traceback.format_stack(limit=6):
-        if "in help" in str(tr):
-            return
-    candidate = costs[0][1]
-    prompt = "Command '%s' not found, perhaps you meant '%s'" % (
-        cmd_name, candidate)
-    if ui.ui_factory.get_boolean(prompt):
-        return commands.get_cmd_object(candidate)
+    from bzrlib.plugins.guess.guess import guess_command
+    return guess_command(cmd_name)
 
-
-commands.Command.hooks.install_named_hook("get_missing_command", guess_command,
-    "Guess at a command name")
+hooks.install_lazy_named_hook("bzrlib.commands", "Command.hooks",
+    "get_missing_command", guess_command, "Guess command name")
