@@ -2442,6 +2442,9 @@ class Option(object):
                 value = self.default
         return value
 
+    def get_help_topic(self):
+        return self.name
+
     def get_help_text(self, additional_see_also=None, plain=True):
         result = self.help
         from bzrlib import help_topics
