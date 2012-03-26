@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2009, 2011 Canonical Ltd
+# Copyright (C) 2006-2009, 2011, 2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -387,9 +387,10 @@ class DavConnectionHandler(_urllib2_wrappers.ConnectionHandler):
 class DavOpener(_urllib2_wrappers.Opener):
     """Dav specific needs regarding HTTP(S)"""
 
-    def __init__(self, report_activity=None):
+    def __init__(self, report_activity=None, ca_certs=None):
         super(DavOpener, self).__init__(connection=DavConnectionHandler,
-                                        report_activity=report_activity)
+                                        report_activity=report_activity,
+                                        ca_certs=ca_certs)
 
 
 class HttpDavTransport(_urllib.HttpTransport_urllib):

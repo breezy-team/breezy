@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2009, 2011 Canonical Ltd
+# Copyright (C) 2006-2009, 2011, 2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,6 +33,17 @@ if version_info[3] == 'final':
 else:
     version_string = '%d.%d.%d%s%d' % version_info
 __version__ = version_string
+
+if bzrlib.version_info < (2, 5):
+    # We need bzr >= 2.5
+    from bzrlib import (
+        errors,
+        trace,
+        )
+    raise errors.BzrError("not installing http[s]+webdav://."
+                          " It requires bzr >= 2.5, you're using %s"
+                          % (bzrlib.version_info,))
+
 
 bzrlib.api.require_any_api(bzrlib, bzr_compatible_versions)
 

@@ -15,13 +15,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-bzr_plugin_name = 'webadv'
+bzr_plugin_name = 'webdav'
 
 # versions ending in 'dev' mean development version
 # versions ending in 'final' mean release (well tested, etc)
-bzr_plugin_version = (1, 12, 3, 'dev', 0)
+bzr_plugin_version = (2, 5, 0, 'final', 0)
 
-bzr_compatible_versions = [(2, x, 0) for x in [2, 3, 4, 5,]]
+bzr_compatible_versions = [(2, x, 0) for x in [5, 6,]]
 
 bzr_minimum_version = bzr_compatible_versions[0]
 
