@@ -55,3 +55,12 @@ class NoPushSupport(bzr_errors.BzrError):
 
 class GitSmartRemoteNotSupported(bzr_errors.UnsupportedOperation):
     _fmt = "This operation is not supported by the Git smart server protocol."
+
+
+class UnknownCommitExtra(bzr_errors.BzrError):
+    _fmt = "Unknown extra fields in %(object)r: %(fields)r."
+
+    def __init__(self, object, fields):
+        bzr_errors.BzrError.__init__(self)
+        self.object = object
+        self.fields = fields

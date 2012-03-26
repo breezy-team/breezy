@@ -40,7 +40,10 @@ from bzrlib.foreign import (
 from bzrlib.revision import (
     NULL_REVISION,
     )
-from bzrlib.plugins.git.errors import NoPushSupport
+from bzrlib.plugins.git.errors import (
+    NoPushSupport,
+    UnknownCommitExtra,
+    )
 from bzrlib.plugins.git.hg import (
     format_hg_metadata,
     extract_hg_metadata,
@@ -327,6 +330,8 @@ class BzrGitMapping(foreign.VcsMapping):
         """
         if commit is None:
             raise AssertionError("Commit object can't be None")
+        if commit.extra:
+            raise UnknownCommitExtra(commit, [item[0] for item in commit.extra])
         rev = ForeignRevision(commit.id, self,
                 self.revision_id_foreign_to_bzr(commit.id))
         rev.git_metadata = None

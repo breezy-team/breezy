@@ -8,6 +8,9 @@
   * Don't suggest development-subtree when submodules are encountered.
     (Jelmer Vernooij, #951494)
 
+  * Print proper error when encountering data that can't be roundtripped.
+    (Jelmer Vernooij)
+
  TESTS
 
   * Add test to verify that certain invalid timezones ("--700") are
