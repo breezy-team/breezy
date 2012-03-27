@@ -5,7 +5,7 @@ bzr_plugin_name = 'rewrite'
 
 bzr_plugin_version = (0, 6, 4, 'dev', 0)
 
-bzr_compatible_versions = [(2, 5, 0)]
+bzr_compatible_versions = [(2, 5, 0), (2, 6, 0)]
 
 bzr_minimum_version = bzr_compatible_versions[0]
 

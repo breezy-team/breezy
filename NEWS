@@ -1,5 +1,9 @@
 0.6.4	UNRELEASED
 
+  BUG FIXES
+
+   * Mark as compatible with the 2.6 API. (Jelmer Vernooij)
+
 0.6.3	2012-02-27
 
   BUG FIXES
