@@ -21,12 +21,9 @@ import sys
 import subprocess
 
 import bzrlib
-from bzrlib.tests import TestCase, TestSkipped
+from bzrlib.tests import TestCase, TestSkipped, _rmtree_temp_dir
 import bzrlib.osutils as osutils
 
-# XXX: This clobbers the build directory in the real source tree; it'd be nice
-# to avoid that.
-#
 # TODO: Run bzr from the installed copy to see if it works.  Really we need to
 # run something that exercises every module, just starting it may not detect
 # some missing modules.
@@ -60,15 +57,17 @@ class TestSetup(TestCase):
                 'You must have distutils installed to run this test.'
                 ' Usually this can be found by installing "python-dev"')
         self.log('test_build running in %s' % os.getcwd())
-        root_dir = osutils.mkdtemp()
-        try:
-            self.run_setup(['clean'])
-            # build is implied by install
-            ## self.run_setup(['build'])
-            self.run_setup(['install', '--root', root_dir])
-            self.run_setup(['clean'])
-        finally:
-            osutils.rmtree(root_dir)
+        self.test_dir = osutils.mkdtemp(prefix="testbzr-testsetup-")
+        self.addCleanup(_rmtree_temp_dir, self.test_dir, self.id())
+        # Perhaps try creating a large file and skip if device lacks room
+        build_dir = os.path.join(self.test_dir, "build")
+        install_dir = os.path.join(self.test_dir, "install")
+        self.run_setup([
+            'build', '-b', build_dir,
+            'install', '--root', install_dir])
+        # Install layout is platform dependant
+        self.assertPathExists(install_dir)
+        self.run_setup(['clean', '-b', build_dir])
 
     def run_setup(self, args):
         args = [sys.executable, './setup.py', ] + args
