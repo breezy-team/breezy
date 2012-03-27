@@ -101,7 +101,10 @@ def extract_format_string(text):
     required feature is present.
     """
     lines = text.splitlines(True)
-    firstline = lines.pop(0)
+    try:
+        firstline = lines.pop(0)
+    except IndexError:
+        raise errors.UnknownFormatError(format=text, kind='')
     for lineno, line in enumerate(lines):
         try:
             (necessity, feature) = line.split(" ", 1)
