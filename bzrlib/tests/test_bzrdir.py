@@ -1333,3 +1333,25 @@ class TestBzrDirHooks(TestCaseWithMemoryTransport):
         url = transport.base
         err = self.assertRaises(errors.BzrError, bzrdir.BzrDir.open, url)
         self.assertEqual('fail', err._preformatted_string)
+
+
+class ExtractFormatStringTests(TestCase):
+
+    def test_normal(self):
+        self.assertEquals("Bazaar-NG branch, format 0.0.4\n",
+            bzrdir.extract_format_string("Bazaar-NG branch, format 0.0.4\n"))
+
+    def test_with_optional_feature(self):
+        self.assertEquals("Bazaar-NG branch, format 0.0.4\n",
+            bzrdir.extract_format_string("Bazaar-NG branch, format 0.0.4\n"
+                                         "optional feature foo\n"))
+
+    def test_with_required_feature(self):
+        self.assertRaises(errors.MissingFeature,
+            bzrdir.extract_format_string, "Bazaar-NG branch, format 0.0.4\n"
+                                          "required feature foo\n")
+
+    def test_with_invalid_line(self):
+        self.assertRaises(errors.ParseFormatError,
+            bzrdir.extract_format_string, "Bazaar-NG branch, format 0.0.4\n"
+                                          "requiredfoo\n")
