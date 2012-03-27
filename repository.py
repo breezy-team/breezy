@@ -27,6 +27,7 @@ from bzrlib import (
     repository,
     revision,
     transactions,
+    ui,
     version_info as bzrlib_version,
     )
 from bzrlib.decorators import only_raises
@@ -129,16 +130,9 @@ class GitRepository(ForeignRepository):
     chk_bytes = None
 
     def __init__(self, gitdir):
-        if bzrlib_version >= (2, 5):
-            control_files = None
-        else:
-            class DummyControlFiles(object):
-                def __init__(self):
-                    self._transport = gitdir.root_transport
-            control_files = DummyControlFiles()
         self._transport = gitdir.root_transport
         super(GitRepository, self).__init__(GitRepositoryFormat(),
-            gitdir, control_files)
+            gitdir, control_files=None)
         self.base = gitdir.root_transport.base
         lazy_load_optimisers()
         self._lock_mode = None
@@ -470,13 +464,18 @@ class LocalGitRepository(GitRepository):
             except KeyError:
                 # Update refs from Git commit objects
                 # FIXME: Hitting this a lot will be very inefficient...
-                for git_sha, revid, roundtrip_revid in self._iter_revision_ids():
-                    if not roundtrip_revid:
-                        continue
-                    refname = mapping.revid_as_refname(roundtrip_revid)
-                    self._git.refs[refname] = git_sha
-                    if roundtrip_revid == bzr_revid:
-                        return git_sha, mapping
+                pb = ui.ui_factory.nested_progress_bar()
+                try:
+                    for i, (git_sha, revid, roundtrip_revid) in enumerate(self._iter_revision_ids()):
+                        if not roundtrip_revid:
+                            continue
+                        pb.update("resolving revision id", i)
+                        refname = mapping.revid_as_refname(roundtrip_revid)
+                        self._git.refs[refname] = git_sha
+                        if roundtrip_revid == bzr_revid:
+                            return git_sha, mapping
+                finally:
+                    pb.finished()
                 raise errors.NoSuchRevision(self, bzr_revid)
         else:
             return (git_sha, mapping)

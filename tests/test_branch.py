@@ -34,7 +34,6 @@ from bzrlib import (
     errors,
     revision,
     urlutils,
-    version_info as bzrlib_version,
     )
 from bzrlib.branch import (
     Branch,
@@ -46,10 +45,6 @@ from bzrlib.bzrdir import (
 from bzrlib.repository import (
     Repository,
     )
-from bzrlib.symbol_versioning import (
-    deprecated_in,
-    )
-from bzrlib.tests import TestSkipped
 
 from bzrlib.plugins.git import (
     branch,
@@ -71,9 +66,6 @@ class TestGitBranch(tests.TestCaseInTempDir):
             urlutils.local_path_to_url(self.test_dir),
             urllib.quote("refs/remotes/origin/unstable", safe='')
             )
-        if bzrlib_version < (2, 5, 0):
-            self.assertRaises(errors.NotBranchError, BzrDir.open, url)
-            raise TestSkipped("opening by ref not supported with bzr < 2.5")
         d = BzrDir.open(url)
         b = d.create_branch()
         self.assertEquals(b.ref, "refs/remotes/origin/unstable")

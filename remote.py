@@ -142,10 +142,6 @@ class GitSmartTransport(Transport):
             trace.mutter('host: %r, user: %r, port: %r, path: %r',
                          self._host, self._username, self._port, self._path)
         self._client = _client
-        if "," in self._path and bzrlib_version < (2, 5, 0):
-            trace.warning(
-                "ignoring parameters %r, not supported in bzr < 2.5.",
-                self._path.rsplit(",", 1)[1])
         self._stripped_path = self._path.rsplit(",", 1)[0]
 
     def external_url(self):
@@ -494,9 +490,6 @@ class RemoteGitBranch(GitBranch):
     @property
     def control_url(self):
         return self.base
-
-    def revision_history(self):
-        raise GitSmartRemoteNotSupported(self.revision_history, self)
 
     def revision_id_to_revno(self, revision_id):
         raise GitSmartRemoteNotSupported(self.revision_id_to_revno, self)

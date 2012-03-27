@@ -214,8 +214,6 @@ class TestGitBlackBox(ExternalBase):
                 b.open_branch("abranch").tags.get_tag_dict().keys())
 
     def test_git_import_colo(self):
-        if bzrlib_version < (2, 5, 0):
-            raise TestSkipped("colocated branches not supported with bzr < 2.5")
         r = GitRepo.init("a", mkdir=True)
         self.build_tree(["a/file"])
         r.stage("file")
