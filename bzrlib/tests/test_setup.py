@@ -21,8 +21,7 @@ import sys
 import subprocess
 
 import bzrlib
-from bzrlib.tests import TestCase, TestSkipped, _rmtree_temp_dir
-import bzrlib.osutils as osutils
+from bzrlib import tests
 
 # TODO: Run bzr from the installed copy to see if it works.  Really we need to
 # run something that exercises every module, just starting it may not detect
@@ -30,7 +29,7 @@ import bzrlib.osutils as osutils
 #
 # TODO: Check that the version numbers are in sync.  (Or avoid this...)
 
-class TestSetup(TestCase):
+class TestSetup(tests.TestCaseInTempDir):
 
     def test_build_and_install(self):
         """ test cmd `python setup.py build`
@@ -42,24 +41,21 @@ class TestSetup(TestCase):
         # are not necessarily invoked from there
         self.source_dir = os.path.dirname(os.path.dirname(bzrlib.__file__))
         if not os.path.isfile(os.path.join(self.source_dir, 'setup.py')):
-            raise TestSkipped(
+            self.skip(
                 'There is no setup.py file adjacent to the bzrlib directory')
         try:
             import distutils.sysconfig
             makefile_path = distutils.sysconfig.get_makefile_filename()
             if not os.path.exists(makefile_path):
-                raise TestSkipped(
+                self.skip(
                     'You must have the python Makefile installed to run this'
                     ' test. Usually this can be found by installing'
                     ' "python-dev"')
         except ImportError:
-            raise TestSkipped(
+            self.skip(
                 'You must have distutils installed to run this test.'
                 ' Usually this can be found by installing "python-dev"')
-        self.log('test_build running in %s' % os.getcwd())
-        self.test_dir = osutils.mkdtemp(prefix="testbzr-testsetup-")
-        self.addCleanup(_rmtree_temp_dir, self.test_dir, self.id())
-        # Perhaps try creating a large file and skip if device lacks room
+        self.log('test_build running in %s' % self.source_dir)
         build_dir = os.path.join(self.test_dir, "build")
         install_dir = os.path.join(self.test_dir, "install")
         self.run_setup([
