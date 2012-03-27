@@ -108,7 +108,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
         self.assertEqual(default_mapping.revision_id_foreign_to_bzr(head),
                          thebranch.last_revision())
 
-    def test_revision_history(self):
+    def test_last_revision_info(self):
         reva = self.simple_commit_a()
         self.build_tree(['b'])
         r = GitRepo(".")
@@ -116,13 +116,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
         revb = r.do_commit("b", committer="Somebody <foo@example.com>")
 
         thebranch = Branch.open('.')
-        (warnings, history) = self.callCatchWarnings(thebranch.revision_history)
-        self.assertTrue(
-            warnings == [] or 
-            (len(warnings) == 1 and isinstance(warnings[0], DeprecationWarning)),
-            warnings)
-        self.assertEqual([default_mapping.revision_id_foreign_to_bzr(r) for r in (reva, revb)],
-                         history)
+        self.assertEquals((2, default_mapping.revision_id_foreign_to_bzr(revb)), thebranch.last_revision_info())
 
     def test_tag_annotated(self):
         reva = self.simple_commit_a()
