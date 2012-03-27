@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-03-24 21:44+0000\n"
+"PO-Revision-Date: 2012-03-26 21:03+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-03-25 04:41+0000\n"
-"X-Generator: Launchpad (build 14981)\n"
+"X-Launchpad-Export-Date: 2012-03-27 04:33+0000\n"
+"X-Generator: Launchpad (build 15011)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -5349,56 +5349,56 @@ msgstr "Je použita výchozí větev skládání {0} ve {1}"
 
 #: bzrlib/check.py:108
 msgid "check"
-msgstr ""
+msgstr "kontrola"
 
 #: bzrlib/check.py:110
 msgid "checking revisions"
-msgstr ""
+msgstr "kontrola revizí"
 
 #: bzrlib/check.py:112
 msgid "checking commit contents"
-msgstr ""
+msgstr "kontrola obsahu odevzdání"
 
 #: bzrlib/check.py:114
 msgid "checking file graphs"
-msgstr ""
+msgstr "kontrola grafů souborů"
 
 #: bzrlib/check.py:118
 msgid "checking branches and trees"
-msgstr ""
+msgstr "kontrola větví a stromů"
 
 #: bzrlib/check.py:205
 msgid "checked repository {0} format {1}"
-msgstr ""
+msgstr "zkontrolováno úložiště {0} formát {1}"
 
 #: bzrlib/check.py:208
 #, python-format
 msgid "%6d revisions"
-msgstr ""
+msgstr "%6d revizí"
 
 #: bzrlib/check.py:209
 #, python-format
 msgid "%6d file-ids"
-msgstr ""
+msgstr "%6d id souborů"
 
 #: bzrlib/check.py:211
 #, python-format
 msgid "%6d unreferenced text versions"
-msgstr ""
+msgstr "%6d neodkazovaných textových verzí"
 
 #: bzrlib/check.py:215
 msgid "unreferenced version: {{{0}}} in {1}"
-msgstr ""
+msgstr "neodkazovaná verze: {{{0}}} ve {1}"
 
 #: bzrlib/check.py:218
 #, python-format
 msgid "%6d revisions are missing inventory_sha1"
-msgstr ""
+msgstr "%6d revizím chybí inventory_sha1"
 
 #: bzrlib/check.py:221
 #, python-format
 msgid "%6d revisions are mentioned but not present"
-msgstr ""
+msgstr "%6d revizí je zmíněno ale nejsou přítomny"
 
 #: bzrlib/check.py:224
 #, python-format
@@ -5408,12 +5408,12 @@ msgstr ""
 #: bzrlib/check.py:229
 #, python-format
 msgid "%6d revisions missing parents in ancestry"
-msgstr ""
+msgstr "%6d revizím chybí nadřazené v původu"
 
 #: bzrlib/check.py:233
 #, python-format
 msgid "      %s should be in the ancestry for:"
-msgstr ""
+msgstr "      %s by mělo být v původu pro:"
 
 #: bzrlib/check.py:237
 #, python-format
@@ -5422,20 +5422,21 @@ msgstr ""
 
 #: bzrlib/check.py:241
 msgid "      * {0} version {1} has parents {2!r} but should have {3!r}"
-msgstr ""
+msgstr "      * {0} verze {1} má nadřazené {2!r} ale měla by mít {3!r}"
 
 #: bzrlib/check.py:247
 #, python-format
 msgid "%6d revisions have incorrect parents in the revision index"
-msgstr ""
+msgstr "%6d revizí má nesprávné nadřazené v rejstříku revizí"
 
 #: bzrlib/check.py:253
 msgid "       {0} has wrong parents in index: {1!r} should be {2!r}"
 msgstr ""
+"       {0} má nesprávné nadřazené v rejstříku: {1!r} mělo by být {2!r}"
 
 #: bzrlib/check.py:267
 msgid "Mismatched internal revid {{{0}}} and index revid {{{1}}}"
-msgstr ""
+msgstr "Neshoda id vnitřní revize {{{0}}} a id rejstříku revize {{{1}}}"
 
 #: bzrlib/check.py:296
 msgid ""
