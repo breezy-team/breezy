@@ -312,7 +312,9 @@ class LocalGitDir(GitDir):
         self._mode_check_done = None
 
     def is_control_filename(self, filename):
-        return (filename == '.git' or filename.startswith('.git/'))
+        return (filename == '.git' or
+                filename.startswith('.git/') or
+                filename.startswith('.git\\'))
 
     def _get_symref(self, ref):
         from dulwich.repo import SYMREF

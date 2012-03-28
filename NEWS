@@ -11,6 +11,9 @@
   * Print proper error when encountering data that can't be roundtripped.
     (Jelmer Vernooij)
 
+  * Ignore control directory filenames on Windows, too.
+    (Jelmer Vernooij, #967054)
+
  TESTS
 
   * Add test to verify that certain invalid timezones ("--700") are
