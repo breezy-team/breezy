@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-03-26 21:03+0000\n"
+"PO-Revision-Date: 2012-03-27 20:47+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-03-27 04:33+0000\n"
-"X-Generator: Launchpad (build 15011)\n"
+"X-Launchpad-Export-Date: 2012-03-28 04:30+0000\n"
+"X-Generator: Launchpad (build 15027)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -5403,7 +5403,7 @@ msgstr "%6d revizí je zmíněno ale nejsou přítomny"
 #: bzrlib/check.py:224
 #, python-format
 msgid "%6d ghost revisions"
-msgstr ""
+msgstr "%6d duchových revizí"
 
 #: bzrlib/check.py:229
 #, python-format
@@ -5418,7 +5418,7 @@ msgstr "      %s by mělo být v původu pro:"
 #: bzrlib/check.py:237
 #, python-format
 msgid "%6d inconsistent parents"
-msgstr ""
+msgstr "%6d rozporných nadřazených"
 
 #: bzrlib/check.py:241
 msgid "      * {0} version {1} has parents {2!r} but should have {3!r}"
@@ -5443,82 +5443,84 @@ msgid ""
 "Multiple expected sha1s for {0}. {{{1}}} expects {{{2}}}, {{{3}}} expects "
 "{{{4}}}"
 msgstr ""
+"Mnoho očekávaných sha1 pro  {0}. {{{1}}} očekává {{{2}}}, {{{3}}} očekává "
+"{{{4}}}"
 
 #: bzrlib/check.py:354
 #, python-format
 msgid "Checking branch at '%s'."
-msgstr ""
+msgstr "Kontrola větve v '%s'."
 
 #: bzrlib/check.py:374
 #, python-format
 msgid "Checking working tree at '%s'."
-msgstr ""
+msgstr "Kontrola pracovního stromu v '%s'."
 
 #: bzrlib/check.py:427 bzrlib/check.py:441
 msgid "No branch found at specified location."
-msgstr ""
+msgstr "V zadaném umístění nenalezena žádná větev."
 
 #: bzrlib/check.py:429 bzrlib/check.py:439
 msgid "No working tree found at specified location."
-msgstr ""
+msgstr "V zadaném umístění nenalezen žádný pracovní strom."
 
 #: bzrlib/check.py:432
 #, python-format
 msgid "Checking repository at '%s'."
-msgstr ""
+msgstr "Kontrola úložiště v '%s'"
 
 #: bzrlib/check.py:443
 msgid "No repository found at specified location."
-msgstr ""
+msgstr "V zadaném umístění nenalezeno žádné úložiště."
 
 #: bzrlib/clean_tree.py:63
 msgid "Nothing to delete."
-msgstr ""
+msgstr "Nic ke smazání."
 
 #: bzrlib/clean_tree.py:68
 msgid "Are you sure you wish to delete these"
-msgstr ""
+msgstr "Jste si jisti, že chcete tyto smazat"
 
 #: bzrlib/clean_tree.py:70
 msgid "Canceled"
-msgstr ""
+msgstr "Zrušeno"
 
 #: bzrlib/clean_tree.py:107
 #, python-format
 msgid "unable to remove %s"
-msgstr ""
+msgstr "nelze odstranit %s"
 
 #: bzrlib/clean_tree.py:111
 msgid "deleting paths:"
-msgstr ""
+msgstr "mazání cest:"
 
 #: bzrlib/clean_tree.py:125
 msgid "unable to remove \"{0}\": {1}."
-msgstr ""
+msgstr "nelze odstranit \"{0}\": {1}."
 
 #: bzrlib/clean_tree.py:130
 msgid "No files deleted."
-msgstr ""
+msgstr "Nesmazány žádné soubory."
 
 #: bzrlib/cmd_version_info.py:47
 msgid "No known version info format {0}. Supported types are: {1}"
-msgstr ""
+msgstr "{0} není známý formát informace o verzi. Podporované typ jsou: {1}"
 
 #: bzrlib/cmd_version_info.py:52
 msgid "Version info in Custom template-based format."
-msgstr ""
+msgstr "Informace o verzi ve formátu na základě vlastní šablony."
 
 #: bzrlib/cmd_version_info.py:52
 msgid "Version info in Python format."
-msgstr ""
+msgstr "Informace o verzi ve formátu Python."
 
 #: bzrlib/cmd_version_info.py:52
 msgid "Version info in RIO (simple text) format (default)."
-msgstr ""
+msgstr "Informace o verzi ve formátu RIO (prostý text, výchozí)."
 
 #: bzrlib/cmd_version_info.py:53
 msgid "Show version information about this tree."
-msgstr ""
+msgstr "Zobrazit informace o verzi pro tento strom."
 
 #: bzrlib/cmd_version_info.py:55
 msgid ""
@@ -5526,23 +5528,30 @@ msgid ""
 "source code of an application. The output can be in one of the\n"
 "supported formats or in a custom format based on a template."
 msgstr ""
+"Tento příkaz můžete použit pro přidání informací o verzi do\n"
+"zdrojového kódu aplikace. Výstup může být v jednom z\n"
+"podporovaných formátů nebo ve vlastním na základě šablony."
 
 #: bzrlib/cmd_version_info.py:59 en/help_topics/configuration.txt:700
 #: en/help_topics/configuration.txt:710
 msgid "For example::"
-msgstr ""
+msgstr "Například::"
 
 #: bzrlib/cmd_version_info.py:61
 msgid ""
 "  bzr version-info --custom \\\n"
 "    --template=\"#define VERSION_INFO \\\"Project 1.2.3 (r{revno})\\\"\\n\""
 msgstr ""
+"  bzr version-info --custom \\\n"
+"    --template=\"#define VERSION_INFO \\\"Projekt 1.2.3 (r{revno})\\\"\\n\""
 
 #: bzrlib/cmd_version_info.py:64
 msgid ""
 "will produce a C header file with formatted string containing the\n"
 "current revision number. Other supported variables in templates are:"
 msgstr ""
+"vytvoří hlavičkový soubor C s formátovaným řetězcem obsahující\n"
+"současné číslo revize. Jiné podporované proměnné v šabloně jsou:"
 
 #: bzrlib/cmd_version_info.py:67
 msgid ""
@@ -5554,48 +5563,55 @@ msgid ""
 "  * {clean} - 0 if the source tree contains uncommitted changes,\n"
 "              otherwise 1"
 msgstr ""
+"  * {date} - datum poslední revize\n"
+"  * {build_date} - dnešní datum\n"
+"  * {revno} - číslo revize\n"
+"  * {revision_id} - id revize\n"
+"  * {branch_nick} - přezdívka větve\n"
+"  * {clean} - 0 pokud zdrojový strom obsahuje neodevzdané změny,\n"
+"              jinak 1"
 
 #: bzrlib/cmd_version_info.py:77
 msgid "Select the output format."
-msgstr ""
+msgstr "Vybrat výstupní formát."
 
 #: bzrlib/cmd_version_info.py:81
 msgid "Include all possible information."
-msgstr ""
+msgstr "Zahrnout všechny dostupné informace."
 
 #: bzrlib/cmd_version_info.py:82
 msgid "Check if tree is clean."
-msgstr ""
+msgstr "Zkontrolovat zda je strom čistý."
 
 #: bzrlib/cmd_version_info.py:84
 msgid "Include the revision-history."
-msgstr ""
+msgstr "Zahrnout historii revize."
 
 #: bzrlib/cmd_version_info.py:86
 msgid "Include the last revision for each file."
-msgstr ""
+msgstr "Zahrnout poslední revizi pro každý soubor."
 
 #: bzrlib/cmd_version_info.py:87
 msgid "Template for the output."
-msgstr ""
+msgstr "Šablony pro výstup."
 
 #: bzrlib/cmd_version_info.py:101
 msgid "bzr version-info --revision takes exactly one revision specifier"
-msgstr ""
+msgstr "bzr version-info --revision přebírá právě jeden specifikátor revize"
 
 #: bzrlib/commands.py:229
 #, python-format
 msgid "unknown command \"%s\""
-msgstr ""
+msgstr "neznámý příkaz \"%s\""
 
 #: bzrlib/commands.py:476
 msgid "No help for this command."
-msgstr ""
+msgstr "Pro tento příkaz není nápověda."
 
 #: bzrlib/commands.py:489
 #, python-format
 msgid ":Purpose: %s\n"
-msgstr ""
+msgstr ":Účel: %s\n"
 
 #: bzrlib/commands.py:491
 #, python-format
@@ -5603,16 +5619,18 @@ msgid ""
 ":Usage:\n"
 "%s\n"
 msgstr ""
+":Použití:\n"
+"%s\n"
 
 #: bzrlib/commands.py:493
 #, python-format
 msgid ":Usage:   %s\n"
-msgstr ""
+msgstr ":Použití: %s\n"
 
 #: bzrlib/commands.py:512
 #, python-format
 msgid ":Options:%s"
-msgstr ""
+msgstr ":Volby:%s"
 
 #: bzrlib/commands.py:523
 #, python-format
@@ -5621,6 +5639,9 @@ msgid ""
 "  %s\n"
 "\n"
 msgstr ""
+":Popis:\n"
+"  %s\n"
+"\n"
 
 #: bzrlib/commands.py:533
 #, python-format
@@ -5628,172 +5649,185 @@ msgid ""
 "See bzr help %s for more details and examples.\n"
 "\n"
 msgstr ""
+"Viz bzr help %s pro další podrobnosti a příkazy.\n"
+"\n"
 
 #: bzrlib/commands.py:538
 msgid ":Aliases:  "
-msgstr ""
+msgstr ":Zkratky:  "
 
 #: bzrlib/commands.py:542
 #, python-format
 msgid ":From:     plugin \"%s\"\n"
-msgstr ""
+msgstr ":Ze: zásuvného modulu \"%s\"\n"
 
 #: bzrlib/commands.py:554
 msgid ":doc:`{0} <{1}-help>`"
-msgstr ""
+msgstr ":dok:`{0} <{1}-help>`"
 
 #: bzrlib/commands.py:558
 #, python-format
 msgid ":See also: %s"
-msgstr ""
+msgstr ":Viz také: %s"
 
 #: bzrlib/commands.py:816 bzrlib/gpg.py:324
 msgid "Only ASCII permitted in option names"
-msgstr ""
+msgstr "V názvech voleb povolen pouze ASCII"
 
 #: bzrlib/commands.py:841 bzrlib/commands.py:849
 msgid "command {0!r} needs one or more {1}"
-msgstr ""
+msgstr "příkaz {0!r} potřebuje jeden nebo více {1}"
 
 #: bzrlib/commands.py:858
 msgid "command {0!r} requires argument {1}"
-msgstr ""
+msgstr "příkaz {0!r} vyžaduje argument {1}"
 
 #: bzrlib/commands.py:865
 msgid "extra argument to command {0}: {1}"
-msgstr ""
+msgstr "dodatečný argument pro příkaz {0}: {1}"
 
 #: bzrlib/commands.py:962
 #, python-format
 msgid "Profile data written to \"%s\"."
-msgstr ""
+msgstr "Data profilu zapsána do \"%s\"."
 
 #: bzrlib/commit.py:117 bzrlib/commit.py:740
 msgid "added"
-msgstr ""
+msgstr "přidáno"
 
 #: bzrlib/commit.py:117 bzrlib/commit.py:748
 msgid "modified"
-msgstr ""
+msgstr "upraveno"
 
 #: bzrlib/commit.py:131
 #, python-format
 msgid "Committing%s"
-msgstr ""
+msgstr "Odevzdávání %s"
 
 #: bzrlib/commit.py:134
 #, python-format
 msgid "Committed revision %d."
-msgstr ""
+msgstr "Odevzdána revize %d."
 
 #: bzrlib/commit.py:143
 #, python-format
 msgid "deleted %s"
-msgstr ""
+msgstr "smazáno %s"
 
 #: bzrlib/commit.py:146
 #, python-format
 msgid "missing %s"
-msgstr ""
+msgstr "chybí %s"
 
 #: bzrlib/commit.py:511
 msgid ""
 "Conflicting tags in bound branch:\n"
 "{0}"
 msgstr ""
+"Konfliktní značky ve svázané větvi:\n"
+"{0}"
 
 #: bzrlib/commit.py:742
 msgid "renamed"
-msgstr ""
+msgstr "přejmenováno"
 
 #: bzrlib/commit.py:977
 msgid "unchanged"
-msgstr ""
+msgstr "nezměněno"
 
 #: bzrlib/commit.py:999
 msgid "{0} [{1}] - Stage"
-msgstr ""
+msgstr "{0} [{1}] - Fáze"
 
 #: bzrlib/commit.py:1002
 #, python-format
 msgid "%s - Stage"
-msgstr ""
+msgstr "%s - Fáze"
 
 #: bzrlib/commit_signature_commands.py:36
 msgid "Sign all commits by a given committer."
-msgstr ""
+msgstr "Podepsat všechny odevzdání zadaným odevzdávajícím."
 
 #: bzrlib/commit_signature_commands.py:38
 msgid ""
 "If location is not specified the local tree is used.\n"
 "If committer is not specified the default committer is used."
 msgstr ""
+"Pokud není zadáno umístění, je použit místní strom.\n"
+"Pokud není zadán odevzdávající, je použit výchozí."
 
 #: bzrlib/commit_signature_commands.py:41
 msgid "This does not sign commits that already have signatures."
-msgstr ""
+msgstr "Toto nepodepíše odevzdání, které již podpisy mají."
 
 #: bzrlib/commit_signature_commands.py:49
 msgid ""
 "Don't actually sign anything, just print the revisions that would be signed."
 msgstr ""
+"Ve skutečnosti nic nepodepisovat, jen vypsat revize, které by byly podepsány."
 
 #: bzrlib/commit_signature_commands.py:98
 #, python-format
 msgid "Signed %d revision.\n"
 msgid_plural "Signed %d revisions.\n"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Podepsána %d revize.\n"
+msgstr[1] "Podepsány %d revize.\n"
+msgstr[2] "Podepsáno %d revizí.\n"
 
 #: bzrlib/commit_signature_commands.py:103
 msgid "Verify all commit signatures."
-msgstr ""
+msgstr "Ověřit všechny podpisy odevzdání."
 
 #: bzrlib/commit_signature_commands.py:105
 msgid ""
 "Verifies that all commits in the branch are signed by known GnuPG keys."
 msgstr ""
+"Ověří, že všechny odevzdání ve větvi jsou podepsány známými klíči GnuPG."
 
 #: bzrlib/commit_signature_commands.py:110
 msgid ""
 "Comma separated list of GPG key patterns which are acceptable for "
 "verification."
 msgstr ""
+"Čárkou oddělený seznam vzorců klíčů GPG, které jsou přijímány pro ověření."
 
 #: bzrlib/commit_signature_commands.py:147
 msgid "Cannot verify a range of non-revision-history revisions"
-msgstr ""
+msgstr "Nelze ověřit rozsah revizí, mimo jejich historii"
 
 #: bzrlib/commit_signature_commands.py:168
 msgid "All commits signed with verifiable keys"
-msgstr ""
+msgstr "Všechna odevzdání podepsaná ověřitelnými klíči"
 
 #: bzrlib/config.py:475
 msgid "Invalid config value for \"{0}\"  value {1!r} is not an SI unit."
 msgstr ""
+"Neplatná hodnota nastavení pro  \"{0}\" hodnota {1!r} není jednotka SI."
 
 #: bzrlib/config.py:2485
 msgid "{0} is not an SI unit."
-msgstr ""
+msgstr "{0} není jednotka SI."
 
 #: bzrlib/config.py:2949
 msgid ""
 "Option {0} in section {1} of {2} was changed from {3} to {4}. The {5} value "
 "will be saved."
 msgstr ""
+"Volba {0} v části {1} z {2} byla změněna z {3} na {4}. Hodnota {5} bude "
+"uložena."
 
 #: bzrlib/config.py:3093
 #, python-format
 msgid "Invalid '%s', should be of the form 'name=value'"
-msgstr ""
+msgstr "Neplatné '%s', mělo by mít formu 'název=hodnota'"
 
 #: bzrlib/config.py:3962
 msgid "Display, set or remove a configuration option."
-msgstr ""
+msgstr "Zobrazit, nastavit nebo odstranit volbu nastavení."
 
 #: bzrlib/config.py:3964
 msgid "Display the active value for a given option."
-msgstr ""
+msgstr "Zobrazit aktivní hodnotu pro zadanou volbu."
 
 #: bzrlib/config.py:3966
 msgid ""
@@ -5801,10 +5835,13 @@ msgid ""
 "matching options are displayed mentioning their scope. The active value\n"
 "that bzr will take into account is the first one displayed for each option."
 msgstr ""
+"Pokud je zadáno -all, je NÁZEV vyhodnocen jako regulární výraz a všechny\n"
+"shodující se možnosti jsou zobrazeny uvádějící svůj rozsah. Aktivní\n"
+"hodnota, kterou bzr zohlední je první zobrazená pro každou volbu."
 
 #: bzrlib/config.py:3970
 msgid "If no NAME is given, --all .* is implied."
-msgstr ""
+msgstr "Pokud není zadán NÁZEV, předpokládá se -all .*."
 
 #: bzrlib/config.py:3972
 msgid ""
@@ -5812,22 +5849,25 @@ msgid ""
 "is set in the most relevant scope and can be checked by displaying the\n"
 "option again."
 msgstr ""
+"Nastavení hodnoty se provádí použitím název=hodnota bez mezer. Hodnota\n"
+"je nastavena v nejlépe odpovídajícím rozsahu a může být zkontrolována\n"
+"opětovným zobrazením volby."
 
 #: bzrlib/config.py:3984
 msgid "Reduce the scope to the specified configuration file."
-msgstr ""
+msgstr "Omezit rozsah na zadaný soubor s nastavením."
 
 #: bzrlib/config.py:3988
 msgid "Display all the defined values for the matching options."
-msgstr ""
+msgstr "Zobrazit všechny zadané hodnoty pro shodné volby."
 
 #: bzrlib/config.py:3990
 msgid "Remove the option from the configuration file."
-msgstr ""
+msgstr "Odstranit volbu ze souboru s nastavením."
 
 #: bzrlib/conflicts.py:50
 msgid "List files with conflicts."
-msgstr ""
+msgstr "Vypsat soubory s konflikty."
 
 #: bzrlib/conflicts.py:57
 msgid ""
@@ -5835,34 +5875,38 @@ msgid ""
 "is supplied, the pathnames of files with text conflicts are listed,\n"
 "instead.  (This is useful for editing all files with text conflicts.)"
 msgstr ""
+"Konflikty jsou standardně vypsány jako krátké, pro lidi čitelné zprávy.\n"
+"Pokud je zadán --text, jsou místo toho vypsány názvy cest souborů s\n"
+"textovými konflikty. (To je užitečné pr úpravu všech souborů s\n"
+"textovými konflikty)."
 
 #: bzrlib/conflicts.py:61
 msgid "Use bzr resolve when you have fixed a problem."
-msgstr ""
+msgstr "Až problém opravíte, použijte bzr resolve."
 
 #: bzrlib/conflicts.py:66
 msgid "List paths of files with text conflicts."
-msgstr ""
+msgstr "Vypsat cesty  souborů s textovými konflikty."
 
 #: bzrlib/conflicts.py:85
 msgid "Marks the conflict as resolved."
-msgstr ""
+msgstr "Označit konflikty jako vyřešené."
 
 #: bzrlib/conflicts.py:88
 msgid "Resolve the conflict preserving the version in the working tree."
-msgstr ""
+msgstr "Vyřešit konflikt při zachování verze v pracovním stromu."
 
 #: bzrlib/conflicts.py:91
 msgid "Resolve the conflict taking the merged version into account."
-msgstr ""
+msgstr "Vyřešit konflikt s přihlédnutím na sloučenou verzi."
 
 #: bzrlib/conflicts.py:98
 msgid "How to resolve the conflict."
-msgstr ""
+msgstr "Jak konflikt vyřešit."
 
 #: bzrlib/conflicts.py:104
 msgid "Mark a conflict as resolved."
-msgstr ""
+msgstr "Označit konflikt jako vyřešený."
 
 #: bzrlib/conflicts.py:111
 msgid ""
@@ -5871,48 +5915,54 @@ msgid ""
 "as\n"
 "resolved, or \"bzr resolve --all\" to mark all conflicts as resolved."
 msgstr ""
+"Jakmile jste problém opravili, použijte \"bzr resolve\" pro automatické\n"
+"označení textového konfliktu jako vyřešený, \"bzr resolve SOUBOR\"\n"
+"pro vyřešení určitého konfliktu, nebo \"bzr resolve --all\" pro vyřešení\n"
+"všech konfliktů."
 
 #: bzrlib/conflicts.py:119
 msgid "Resolve all conflicts in this tree."
-msgstr ""
+msgstr "Vyřešit všechny  konflikty v tomto stromě."
 
 #: bzrlib/conflicts.py:126
 msgid "If --all is specified, no FILE may be provided"
-msgstr ""
+msgstr "Pokud je zadáno -all, nemůže být zadán SOUBOR"
 
 #: bzrlib/conflicts.py:151
 #, python-format
 msgid "%d conflict auto-resolved."
 msgid_plural "%d conflicts auto-resolved."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d konflikt automaticky vyřešen"
+msgstr[1] "%d konflikty automaticky vyřešeny"
+msgstr[2] "%d konfliktů automaticky vyřešeno"
 
 #: bzrlib/conflicts.py:154
 msgid "Remaining conflicts:"
-msgstr ""
+msgstr "Zbývající konflikty:"
 
 #: bzrlib/conflicts.py:159
 msgid "All conflicts resolved."
-msgstr ""
+msgstr "Všechny konflikty vyřešeny."
 
 #: bzrlib/conflicts.py:168
 msgid "{0} conflict resolved, {1} remaining"
 msgid_plural "{0} conflicts resolved, {1} remaining"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{0} konflikt vyřešen, zbývá {1}"
+msgstr[1] "{0} konflikty vyřešeny, zbývá {1}"
+msgstr[2] "{0} konfliktů vyřešeno, zbývá {1}"
 
 #: bzrlib/controldir.py:710
 msgid "{0} is{1} redirected to {2}"
-msgstr ""
+msgstr "{0} je {1} přesměrováno na {2}"
 
 #: bzrlib/diff.py:399
 #, python-format
 msgid "*** Ignoring files outside view. View is %s"
-msgstr ""
+msgstr "*** ignorování souborů mimo zobrazení. Zobrazení je %s"
 
 #: bzrlib/errors.py:157
 msgid "The tree builder is already building a tree."
-msgstr ""
+msgstr "Stavitel stromu již sestavuje strom."
 
 #: bzrlib/errors.py:178
 msgid "The dirstate file (%(state)s) appears to be corrupt: %(msg)s"
