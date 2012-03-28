@@ -1568,7 +1568,8 @@ class BranchFormat(object):
         """Return the format for the branch object in a_bzrdir."""
         try:
             transport = a_bzrdir.get_branch_transport(None, name=name)
-            format_string = transport.get_bytes("format")
+            format_string = bzrdir.extract_format_string(
+                transport.get_bytes("format"))
             format = klass._formats[format_string]
             if isinstance(format, MetaDirBranchFormatFactory):
                 return format()
