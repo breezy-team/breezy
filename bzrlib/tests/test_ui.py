@@ -31,12 +31,25 @@ from bzrlib import (
     )
 from bzrlib.tests import (
     fixtures,
-    test_progress,
     )
 from bzrlib.ui import text as _mod_ui_text
 from bzrlib.tests.testui import (
     ProgressRecordingUIFactory,
     )
+
+
+class _TTYStringIO(StringIO):
+    """A helper class which makes a StringIO look like a terminal"""
+
+    def isatty(self):
+        return True
+
+
+class _NonTTYStringIO(StringIO):
+    """Helper that implements isatty() but returns False"""
+
+    def isatty(self):
+        return False
 
 
 class TestUIConfiguration(tests.TestCaseWithTransport):
@@ -221,7 +234,7 @@ class TestTextUIFactory(tests.TestCase):
 
     def test_text_factory_prompts_and_clears(self):
         # a get_boolean call should clear the pb before prompting
-        out = test_progress._TTYStringIO()
+        out = _TTYStringIO()
         self.overrideEnv('TERM', 'xterm')
         factory = _mod_ui_text.TextUIFactory(
             stdin=tests.StringIOWrapper("yada\ny\n"),
@@ -292,8 +305,8 @@ class TestTextUIFactory(tests.TestCase):
     def test_quietness(self):
         self.overrideEnv('BZR_PROGRESS_BAR', 'text')
         ui_factory = _mod_ui_text.TextUIFactory(None,
-            test_progress._TTYStringIO(),
-            test_progress._TTYStringIO())
+            _TTYStringIO(),
+            _TTYStringIO())
         self.assertIsInstance(ui_factory._progress_view,
             _mod_ui_text.TextProgressView)
         ui_factory.be_quiet(True)
@@ -358,7 +371,7 @@ class UITests(tests.TestCase):
     def test_progress_construction(self):
         """TextUIFactory constructs the right progress view.
         """
-        TTYStringIO = test_progress._TTYStringIO
+        TTYStringIO = _TTYStringIO
         FileStringIO = tests.StringIOWrapper
         for (file_class, term, pb, expected_pb_class) in (
             # on an xterm, either use them or not as the user requests,
@@ -391,9 +404,9 @@ class UITests(tests.TestCase):
 
     def test_text_ui_non_terminal(self):
         """Even on non-ttys, make_ui_for_terminal gives a text ui."""
-        stdin = test_progress._NonTTYStringIO('')
-        stderr = test_progress._NonTTYStringIO()
-        stdout = test_progress._NonTTYStringIO()
+        stdin = _NonTTYStringIO('')
+        stderr = _NonTTYStringIO()
+        stdout = _NonTTYStringIO()
         for term_type in ['dumb', None, 'xterm']:
             self.overrideEnv('TERM', term_type)
             uif = _mod_ui.make_ui_for_terminal(stdin, stdout, stderr)

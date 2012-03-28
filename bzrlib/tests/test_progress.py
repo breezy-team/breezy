@@ -26,20 +26,6 @@ from bzrlib.ui.text import (
     )
 
 
-class _TTYStringIO(StringIO):
-    """A helper class which makes a StringIO look like a terminal"""
-
-    def isatty(self):
-        return True
-
-
-class _NonTTYStringIO(StringIO):
-    """Helper that implements isatty() but returns False"""
-
-    def isatty(self):
-        return False
-
-
 class TestTextProgressView(TestCase):
     """Tests for text display of progress bars.
 
