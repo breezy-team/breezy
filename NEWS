@@ -14,6 +14,12 @@
   * Ignore control directory filenames on Windows, too.
     (Jelmer Vernooij, #967054)
 
+  * Fix 'Unable to obtain lock' error when dpushing from a bound branch.
+    (Jelmer Vernooij, #949557)
+
+  * Cope with commits with a completely empty tree.
+    (Jelmer Vernooij, #933132)
+
  TESTS
 
   * Add test to verify that certain invalid timezones ("--700") are
