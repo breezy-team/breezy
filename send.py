@@ -103,6 +103,10 @@ class GitDiffTree(_mod_diff.DiffTree):
         return has_changes
 
 
+def generate_patch_filename(num, summary):
+    return "%04d-%s.patch" % (num, summary.replace("/", "_").rstrip("."))
+
+
 class GitMergeDirective(BaseMergeDirective):
 
     multiple_output_files = True
@@ -145,7 +149,7 @@ class GitMergeDirective(BaseMergeDirective):
         differ.show_diff(None, None)
         write_commit_patch(s, commit, contents.getvalue(), (num, total),
                            version_tail)
-        summary = "%04d-%s.patch" % (num, get_summary(commit).rstrip("."))
+        summary = generate_patch_filename(num, get_summary(commit))
         return summary, s.getvalue()
 
     @classmethod
