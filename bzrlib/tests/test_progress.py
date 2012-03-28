@@ -38,7 +38,7 @@ class TestTextProgressView(TestCase):
     
     def make_view(self):
         out = StringIO()
-        view = TextProgressView(out)
+        view = TextProgressView(out, "utf-8")
         view._avail_width = lambda: 79
         return out, view
     
