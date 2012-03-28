@@ -86,8 +86,34 @@ from bzrlib import (
     registry,
     symbol_versioning,
     )
-    
-    
+
+
+def extract_format_string(text):
+    """Read a format string from a file.
+
+    The first line is returned. The other lines can contain
+    optional features. An exception is raised when a
+    required feature is present.
+    """
+    lines = text.splitlines(True)
+    try:
+        firstline = lines.pop(0)
+    except IndexError:
+        raise errors.UnknownFormatError(format=text, kind='')
+    for lineno, line in enumerate(lines):
+        try:
+            (necessity, feature) = line.split(" ", 1)
+        except ValueError:
+            raise errors.ParseFormatError(lineno=lineno+2,
+                line=line, text=text)
+        else:
+            if necessity == "optional":
+                mutter("Ignoring optional feature %s", feature)
+            else:
+                raise errors.MissingFeature(feature)
+    return firstline
+
+
 class ControlComponent(object):
     """Abstract base class for control directory components.
     
@@ -1959,6 +1985,8 @@ class BzrDirFormat(object):
             format_string = transport.get_bytes(".bzr/branch-format")
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
+        format_string = extract_format_string(format_string)
+
         try:
             return klass._formats[format_string]
         except KeyError:
