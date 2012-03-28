@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from StringIO import StringIO
+from cStringIO import StringIO
 
 from bzrlib.progress import (
     ProgressTask,
@@ -154,3 +154,11 @@ class TestTextProgressView(TestCase):
 '   123kB   100kB/s \\ start_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.. 2000/5000',
            line) 
         self.assertEqual(len(line), 79)
+
+    def test_render_progress_unicode(self):
+        out, view = self.make_view()
+        task = self.make_task(None, view, u"\xa7", 0, 1)
+        view.show_progress(task)
+        self.assertEqual(
+'\r/ \xc2\xa7 0/1                                                                       \r',
+            out.getvalue())
