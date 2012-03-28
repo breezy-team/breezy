@@ -2991,7 +2991,8 @@ class Store(object):
     mutable_section_class = MutableSection
 
     def __init__(self):
-        # Which sections need to be saved (by section id)
+        # Which sections need to be saved (by section id). We use a dict here
+        # so the dirty sections can be shared by multiple callers.
         self.dirty_sections = {}
 
     def is_loaded(self):
