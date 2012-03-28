@@ -117,6 +117,9 @@ Bug Fixes
 * Fix ``bzr config`` display for ``RegistryOption`` values.
   (Vincent Ladeuil, #930182)
 
+* Option values set on locked branches should be saved only when the branch
+  is finally unlocked. (Vincent Ladeuil, #948339)
+
 Documentation
 *************
 
