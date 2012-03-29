@@ -108,3 +108,16 @@ class VcsDirectory(object):
 
         raise errors.InvalidURL(path=url,
             extra='unsupported VCSes %r found' % urls[version].keys())
+
+
+def upstream_branch_alias(b):
+    from bzrlib.directory_service import directories
+    from bzrlib.plugins.builddeb.util import debuild_config
+    b.lock_read()
+    try:
+        tree = b.basis_tree()
+        config = debuild_config(tree, False)
+        return directories.dereference(config.upstream_branch)
+    finally:
+        b.unlock()
+
