@@ -73,6 +73,9 @@ Testing
 * Add support for pyftpdlib >= 0.7.0 and drop support for previous pyftpdlib
   versions. (Vincent Ladeuil, #956027)
 
+* Run smoketest for setup.py isolated in a tempdir. (Martin Packman, #140874)
+
+
 bzr 2.5.0
 #########
 
