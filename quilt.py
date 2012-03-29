@@ -46,7 +46,8 @@ class QuiltError(errors.BzrError):
         self.stdout = stdout
 
 
-def run_quilt(args, working_dir, series_file=None, patches_dir=None, quiet=None):
+def run_quilt(args, working_dir, series_file=None, patches_dir=None,
+        quiet=None):
     """Run quilt.
 
     :param args: Arguments to quilt
@@ -70,7 +71,7 @@ def run_quilt(args, working_dir, series_file=None, patches_dir=None, quiet=None)
     # Hide output if -q is in use.
     if quiet is None:
         quiet = trace.is_quiet()
-    if quiet:
+    if not quiet:
         stderr =  subprocess.STDOUT
     else:
         stderr = subprocess.PIPE
