@@ -274,12 +274,12 @@ def _reset_registry(value=None):
     :param value: the value to set the registry to or None for an empty one.
     :return: the existing value before it reset.
     """
-    global _filter_stacks_registry
+    global filter_stacks_registry
     original = filter_stacks_registry
     if value is None:
-        _filter_stacks_registry = registry.Registry()
+        filter_stacks_registry = registry.Registry()
     else:
-        _filter_stacks_registry = value
+        filter_stacks_registry = value
     _stack_cache.clear()
     return original
 

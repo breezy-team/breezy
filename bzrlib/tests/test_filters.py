@@ -21,7 +21,6 @@ from bzrlib.filters import (
     ContentFilterContext,
     filtered_input_file,
     filtered_output_bytes,
-    filter_stacks_registry,
     _get_filter_stack_for,
     _get_registered_names,
     internal_size_sha_file_byname,
@@ -114,51 +113,45 @@ class TestFilterStackMaps(TestCase):
     def _register_map(self, pref, stk1, stk2):
         def stk_lookup(key):
             return {'v1': stk1, 'v2': stk2}.get(key)
-        filter_stacks_registry.register(pref, stk_lookup)
+        filters.filter_stacks_registry.register(pref, stk_lookup)
 
     def test_filter_stack_maps(self):
         # Save the current registry
         original_registry = filters._reset_registry()
-        try:
-            # Test registration
-            a_stack = [ContentFilter('b', 'c')]
-            z_stack = [ContentFilter('y', 'x'), ContentFilter('w', 'v')]
-            self._register_map('foo', a_stack, z_stack)
-            self.assertEqual(['foo'], _get_registered_names())
-            self._register_map('bar', z_stack, a_stack)
-            self.assertEqual(['bar', 'foo'], _get_registered_names())
-            # Test re-registration raises an error
-            self.assertRaises(errors.BzrError, self._register_map,
-                'foo', [], [])
-        finally:
-            # Restore the real registry
-            filters._reset_registry(original_registry)
+        self.addCleanup(filters._reset_registry, original_registry)
+        # Test registration
+        a_stack = [ContentFilter('b', 'c')]
+        z_stack = [ContentFilter('y', 'x'), ContentFilter('w', 'v')]
+        self._register_map('foo', a_stack, z_stack)
+        self.assertEqual(['foo'], _get_registered_names())
+        self._register_map('bar', z_stack, a_stack)
+        self.assertEqual(['bar', 'foo'], _get_registered_names())
+        # Test re-registration raises an error
+        self.assertRaises(KeyError, self._register_map,
+            'foo', [], [])
 
     def test_get_filter_stack_for(self):
         # Save the current registry
         original_registry = filters._reset_registry()
-        try:
-            # Test filter stack lookup
-            a_stack = [ContentFilter('b', 'c')]
-            d_stack = [ContentFilter('d', 'D')]
-            z_stack = [ContentFilter('y', 'x'), ContentFilter('w', 'v')]
-            self._register_map('foo', a_stack, z_stack)
-            self._register_map('bar', d_stack, z_stack)
-            prefs = (('foo','v1'),)
-            self.assertEqual(a_stack, _get_filter_stack_for(prefs))
-            prefs = (('foo','v2'),)
-            self.assertEqual(z_stack, _get_filter_stack_for(prefs))
-            prefs = (('foo','v1'), ('bar','v1'))
-            self.assertEqual(a_stack + d_stack, _get_filter_stack_for(prefs))
-            # Test an unknown preference
-            prefs = (('baz','v1'),)
-            self.assertEqual([], _get_filter_stack_for(prefs))
-            # Test an unknown value
-            prefs = (('foo','v3'),)
-            self.assertEqual([], _get_filter_stack_for(prefs))
-            # Test a value of None is skipped
-            prefs = (('foo',None), ('bar', 'v1'))
-            self.assertEqual(d_stack, _get_filter_stack_for(prefs))
-        finally:
-            # Restore the real registry
-            filters._reset_registry(original_registry)
+        self.addCleanup(filters._reset_registry, original_registry)
+        # Test filter stack lookup
+        a_stack = [ContentFilter('b', 'c')]
+        d_stack = [ContentFilter('d', 'D')]
+        z_stack = [ContentFilter('y', 'x'), ContentFilter('w', 'v')]
+        self._register_map('foo', a_stack, z_stack)
+        self._register_map('bar', d_stack, z_stack)
+        prefs = (('foo','v1'),)
+        self.assertEqual(a_stack, _get_filter_stack_for(prefs))
+        prefs = (('foo','v2'),)
+        self.assertEqual(z_stack, _get_filter_stack_for(prefs))
+        prefs = (('foo','v1'), ('bar','v1'))
+        self.assertEqual(a_stack + d_stack, _get_filter_stack_for(prefs))
+        # Test an unknown preference
+        prefs = (('baz','v1'),)
+        self.assertEqual([], _get_filter_stack_for(prefs))
+        # Test an unknown value
+        prefs = (('foo','v3'),)
+        self.assertEqual([], _get_filter_stack_for(prefs))
+        # Test a value of None is skipped
+        prefs = (('foo',None), ('bar', 'v1'))
+        self.assertEqual(d_stack, _get_filter_stack_for(prefs))

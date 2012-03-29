@@ -2184,7 +2184,8 @@ class TestBuildTree(tests.TestCaseWithTransport):
         def rot13(chunks, context=None):
             return [''.join(chunks).encode('rot13')]
         rot13filter = filters.ContentFilter(rot13, rot13)
-        filters.register_filter_stack_map('rot13', {'yes': [rot13filter]}.get)
+        filters.filter_stacks_registry.register(
+            'rot13', {'yes': [rot13filter]}.get)
         os.mkdir(self.test_home_dir + '/.bazaar')
         rules_filename = self.test_home_dir + '/.bazaar/rules'
         f = open(rules_filename, 'wb')
