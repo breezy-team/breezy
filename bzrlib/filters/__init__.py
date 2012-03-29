@@ -199,6 +199,7 @@ filter_stacks_registry = registry.Registry()
 _stack_cache = {}
 
 
+# XXX: This function doesn't have any tests. JRV 2012-03-29
 @deprecated_function(deprecated_in((2, 6, 0)))
 def register_filter_stack_map(name, stack_map_lookup):
     """Register the filter stacks to use for various preference values.
@@ -212,6 +213,7 @@ def register_filter_stack_map(name, stack_map_lookup):
     filter_stacks_registry.register(name, stack_map_lookup)
 
 
+# XXX: This function doesn't have any tests. JRV 2012-03-29
 @deprecated_function(deprecated_in((2, 6, 0)))
 def lazy_register_filter_stack_map(name, module_name, member_name):
     """Lazily register the filter stacks to use for various preference values.
