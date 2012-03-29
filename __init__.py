@@ -64,15 +64,8 @@ mail by setting the 'revision_mail_headers' configuration option - something lik
   revision_mail_headers=X-Cheese: to the rescue!
 """
 
+from __future__ import absolute_import
 
-if __name__ != 'bzrlib.plugins.email':
-    raise ImportError('The email plugin must be installed as'
-                      ' bzrlib.plugins.email not %s'
-                      % __name__)
-
-
-# These three are used during import: No point lazy_importing them.
-from bzrlib.branch import Branch
 from bzrlib.config import option_registry
 from bzrlib.lazy_import import lazy_import
 
@@ -108,10 +101,6 @@ def test_suite():
     return result
 
 
-Branch.hooks.install_named_hook('post_commit', branch_commit_hook, 'bzr-email')
-Branch.hooks.install_named_hook('post_change_branch_tip', branch_post_change_hook,
-    'bzr-email')
-
 option_registry.register_lazy("post_commit_body",
     "bzrlib.plugins.email.emailer", "opt_post_commit_body")
 option_registry.register_lazy("post_commit_subject",
@@ -132,3 +121,15 @@ option_registry.register_lazy("post_commit_mailer",
     "bzrlib.plugins.email.emailer", "opt_post_commit_mailer")
 option_registry.register_lazy("revision_mail_headers",
     "bzrlib.plugins.email.emailer", "opt_revision_mail_headers")
+
+try:
+    from bzrlib.hooks import install_lazy_named_hook
+except ImportError:
+    from bzrlib.branch import Branch
+    Branch.hooks.install_named_hook('post_commit', branch_commit_hook, 'bzr-email')
+    Branch.hooks.install_named_hook('post_change_branch_tip', branch_post_change_hook, 'bzr-email')
+else:
+    install_lazy_named_hook("bzrlib.branch", "Branch.hooks", 'post_commit',
+        branch_commit_hook, 'bzr-email')
+    install_lazy_named_hook("bzrlib.branch", "Branch.hooks",
+        'post_change_branch_tip', branch_post_change_hook, 'bzr-email')
