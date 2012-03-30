@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-03-27 20:47+0000\n"
+"PO-Revision-Date: 2012-03-29 20:06+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-03-28 04:30+0000\n"
-"X-Generator: Launchpad (build 15027)\n"
+"X-Launchpad-Export-Date: 2012-03-30 04:30+0000\n"
+"X-Generator: Launchpad (build 15032)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -5966,252 +5966,271 @@ msgstr "Stavitel stromu již sestavuje strom."
 
 #: bzrlib/errors.py:178
 msgid "The dirstate file (%(state)s) appears to be corrupt: %(msg)s"
-msgstr ""
+msgstr "Soubor stavu adresáře (%(state)s) se zdá být poškozen: %(msg)s"
 
 #: bzrlib/errors.py:197
 msgid ""
 "The API for \"%(api)s\" is not compatible with \"%(wanted)s\". It supports "
 "versions \"%(minimum)s\" to \"%(current)s\"."
 msgstr ""
+"API pro \"%(api)s\" není kompatibilní s \"%(wanted)s\". Podporuje verze "
+"\"%(minimum)s\" až \"%(current)s\"."
 
 #: bzrlib/errors.py:209
 msgid "The transport '%(transport)s' is only accessible within this process."
-msgstr ""
+msgstr "Přenos '%(transport)s' je dostupný pouze uvnitř tohoto procesu."
 
 #: bzrlib/errors.py:227
 msgid "Invalid revision number %(revno)s"
-msgstr ""
+msgstr "Neplatné číslo revize %(revno)s"
 
 #: bzrlib/errors.py:236
 msgid "Invalid revision-id {%(revision_id)s} in %(branch)s"
-msgstr ""
+msgstr "Neplatné id revize {%(revision_id)s} ve %(branch)s"
 
 #: bzrlib/errors.py:247
 msgid "Reserved revision-id {%(revision_id)s}"
-msgstr ""
+msgstr "Vyhrazené id revize {%(revision_id)s}"
 
 #: bzrlib/errors.py:261
 msgid "There is no public branch set for \"%(branch_url)s\"."
-msgstr ""
+msgstr "Pro \"%(branch_url)s\" není nastavena žádná veřejná větev."
 
 #: bzrlib/errors.py:271
 msgid ""
 "No help could be found for '%(topic)s'. Please use 'bzr help topics' to "
 "obtain a list of topics."
 msgstr ""
+"Pro '%(topic)s' nenalezena žádná nápověda. Použijte prosím  'bzr help "
+"topics' pro získání seznamu témat."
 
 #: bzrlib/errors.py:280
 msgid "The file id \"%(file_id)s\" is not present in the tree %(tree)s."
-msgstr ""
+msgstr "Id souboru \"%(file_id)s\" se ve stromu %(tree)s nevyskytuje."
 
 #: bzrlib/errors.py:290
 msgid ""
 "The file id \"%(file_id)s\" is not present in the repository %(repository)r"
-msgstr ""
+msgstr "Id souboru \"%(file_id)s\" se v úložišti %(repository)r nevyskytuje"
 
 #: bzrlib/errors.py:299
 msgid "The branch '%(branch)s' is not stacked."
-msgstr ""
+msgstr "Větev '%(branch)s' není skládaná."
 
 #: bzrlib/errors.py:313
 msgid "No WorkingTree exists for \"%(base)s\"."
-msgstr ""
+msgstr "Pro \"%(base)s\" neexistuje žádný pracovní strom."
 
 #: bzrlib/errors.py:322
 msgid "Not currently building a tree."
-msgstr ""
+msgstr "V současnosti se strom nesestavuje."
 
 #: bzrlib/errors.py:327
 msgid "%(url)s is not a local path."
-msgstr ""
+msgstr "%(url)s není místní cesta."
 
 #: bzrlib/errors.py:355
 msgid "%(not_locked)r is not write locked but needs to be."
-msgstr ""
+msgstr "%(not_locked)r není uzamčen pro zápis, ale má být."
 
 #: bzrlib/errors.py:363
 msgid "Error in command line options"
-msgstr ""
+msgstr "Chyba ve volbách příkazového řádku"
 
 #: bzrlib/errors.py:368
 msgid "%(value)s is not an index of type %(_type)s."
-msgstr ""
+msgstr "%(value)s není rejstřík typu %(_type)s."
 
 #: bzrlib/errors.py:378
 msgid "Error in data for index %(value)s."
-msgstr ""
+msgstr "Chyba v datech pro rejstřík %(value)s."
 
 #: bzrlib/errors.py:387
 msgid "The key '%(key)s' is already in index '%(index)s'."
-msgstr ""
+msgstr "Klíč '%(key)s' již je v rejstříku '%(index)s'."
 
 #: bzrlib/errors.py:397
 msgid "The key '%(key)s' is not a valid key."
-msgstr ""
+msgstr "Klíč '%(key)s' není platným klíčem."
 
 #: bzrlib/errors.py:406
 msgid "Could not parse options for index %(value)s."
-msgstr ""
+msgstr "Nelze zpracovat volby pro rejstřík %(value)s."
 
 #: bzrlib/errors.py:415
 msgid "The value '%(value)s' is not a valid value."
-msgstr ""
+msgstr "Hodnota '%(value)s' není platnou hodnotou."
 
 #: bzrlib/errors.py:424
 msgid "Bad value \"%(value)s\" for option \"%(name)s\"."
-msgstr ""
+msgstr "Špatná hodnota \"%(value)s\" pro volbu \"%(name)s\"."
 
 #: bzrlib/errors.py:443
 msgid "Generic path error: %(path)r%(extra)s)"
-msgstr ""
+msgstr "Obecná chyba cesty: %(path)r%(extra)s)"
 
 #: bzrlib/errors.py:456
 msgid "No such file: %(path)r%(extra)s"
-msgstr ""
+msgstr "Žádný takový soubor: %(path)r%(extra)s)"
 
 #: bzrlib/errors.py:461
 msgid "File exists: %(path)r%(extra)s"
-msgstr ""
+msgstr "Soubor existuje: %(path)r%(extra)s)"
 
 #: bzrlib/errors.py:467
 msgid ""
 "Could not rename %(source)s => %(dest)s because both files exist. (Use --"
 "after to tell bzr about a rename that has already happened)%(extra)s"
 msgstr ""
+"Nelze přejmenovat %(source)s => %(dest)s protože oba soubory existují. "
+"(Použijte --after abyste bzr sdělili o přejmenování, které již "
+"proběhlo)%(extra)s"
 
 #: bzrlib/errors.py:483
 msgid "\"%(path)s\" is not a directory %(extra)s"
-msgstr ""
+msgstr "\"%(path)s\" cesta není adresář %(extra)s"
 
 #: bzrlib/errors.py:488
 msgid "\"%(path)s\" is not in the working directory %(extra)s"
-msgstr ""
+msgstr "\"%(path)s\" není v pracovním adresáři %(extra)s"
 
 #: bzrlib/errors.py:493
 msgid "Directory not empty: \"%(path)s\"%(extra)s"
-msgstr ""
+msgstr "Adresář není prázdný: \"%(path)s\"%(extra)s"
 
 #: bzrlib/errors.py:498
 msgid "Hard-linking \"%(path)s\" is not supported"
-msgstr ""
+msgstr "Pevný odkaz pro \"%(path)s\" není podporován"
 
 #: bzrlib/errors.py:513
 msgid "Device or resource busy: \"%(path)s\"%(extra)s"
-msgstr ""
+msgstr "Zařízení nebo zdroj jsou zaneprázdněné: \"%(path)s\"%(extra)s"
 
 #: bzrlib/errors.py:518
 msgid "Permission denied: \"%(path)s\"%(extra)s"
-msgstr ""
+msgstr "Přístup zamítnut: \"%(path)s\"%(extra)s"
 
 #: bzrlib/errors.py:523
 msgid "Invalid url supplied to transport: \"%(path)s\"%(extra)s"
-msgstr ""
+msgstr "Zadána neplatná url pro přenos: \"%(path)s\"%(extra)s"
 
 #: bzrlib/errors.py:528
 msgid "Invalid URL join request: %(reason)s: %(base)r + %(join_args)r"
 msgstr ""
+"Neplatný URL požadavek připojení: %(reason)s: %(base)r + %(join_args)r"
 
 #: bzrlib/errors.py:539
 msgid "URLs differ by more than path: %(from_)r and %(to)r"
-msgstr ""
+msgstr "URL se liší více než cestou: %(from_)r and %(to)r"
 
 #: bzrlib/errors.py:561
 msgid "The %(type)s hook '%(hook)s' is unknown in this version of bzrlib."
-msgstr ""
+msgstr "Hák '%(hook)s' typu %(type)s je v této verzi bzrlib neznámý."
 
 #: bzrlib/errors.py:571
 msgid "Unsupported protocol for url \"%(path)s\"%(extra)s"
-msgstr ""
+msgstr "Nepodporovaný protokol pro url \"%(path)s\"%(extra)s"
 
 #: bzrlib/errors.py:579
 msgid ""
 "The branch '%(url)s'(%(format)s) is not a stackable format. You will need to "
 "upgrade the branch to permit branch stacking."
 msgstr ""
+"Větev %(url)s'(%(format)s) není ve skladatelném formátu. Budete muset formát "
+"změnit pro povolení skládání větví."
 
 #: bzrlib/errors.py:590
 msgid "The branch '%(branch_url)s' cannot be stacked on '%(target_url)s'."
-msgstr ""
+msgstr "Větev '%(branch_url)s' nemůže být složena na '%(target_url)s'."
 
 #: bzrlib/errors.py:600
 msgid ""
 "The repository '%(url)s'(%(format)s) is not a stackable format. You will "
 "need to upgrade the repository to permit branch stacking."
 msgstr ""
+"Úložiště '%(url)s'(%(format)s) není ve skladatelném formátu. Budete muset "
+"formát změnit pro povolení skládání větví."
 
 #: bzrlib/errors.py:611
 msgid "Error reading from %(path)r."
-msgstr ""
+msgstr "Chyba při čtení z %(path)r."
 
 #: bzrlib/errors.py:630
 msgid "Path \"%(path)s\" is not a child of path \"%(base)s\"%(extra)s"
-msgstr ""
+msgstr "Cesta \"%(path)s\" není podřazená cestě \"%(base)s\"%(extra)s"
 
 #: bzrlib/errors.py:646
 msgid "Path \"%(path)s\" is not unicode normalized"
-msgstr ""
+msgstr "Cesta \"%(path)s\" není normalizována pro unicode"
 
 #: bzrlib/errors.py:654
 msgid "Not a branch: \"%(path)s\"%(detail)s."
-msgstr ""
+msgstr "Není větev: \"%(path)s\"%(detail)s."
 
 #: bzrlib/errors.py:696
 msgid "No submit branch available for branch \"%(path)s\""
-msgstr ""
+msgstr "Pro větev \"%(path)s\" není dostupná větev odesílání"
 
 #: bzrlib/errors.py:705
 msgid "A control directory already exists: \"%(path)s\"."
-msgstr ""
+msgstr "Kontrolní adresář již existuje: \"%(path)s\"."
 
 #: bzrlib/errors.py:710
 msgid "Already a branch: \"%(path)s\"."
-msgstr ""
+msgstr "Již větev: \"%(path)s\"."
 
 #: bzrlib/errors.py:715
 msgid "Invalid branch name: %(name)s"
-msgstr ""
+msgstr "Neplatný název větve: %(name)s"
 
 #: bzrlib/errors.py:715
 msgid "Parent branch already exists: \"%(path)s\"."
-msgstr ""
+msgstr "Nadřazená větev již existuje: \"%(path)s\"."
 
 #: bzrlib/errors.py:721
 msgid ""
 "Directory contains a branch, but no working tree (use bzr checkout if you "
 "wish to build a working tree): \"%(path)s\""
 msgstr ""
+"Adresář obsahuje větev ale ne pracovní strom (pro sestavení pracovního "
+"stromu použijte bzr checkout, pokud si tak přejete): \"%(path)s\""
 
 #: bzrlib/errors.py:726
 msgid ""
 "\"%(function)s\" called on an AtomicFile after it was closed: \"%(path)s\""
 msgstr ""
+"Zavolána \"%(function)s\" v AtomicFile poté, co byl uzavřen: \"%(path)s\""
 
 #: bzrlib/errors.py:736
 msgid ""
 "Parent not accessible given base \"%(base)s\" and relative path \"%(path)s\""
 msgstr ""
+"Nadřazený není přístupný při dané základní (\"%(base)s\") a relativní "
+"(\"%(path)s\") cestě"
 
 #: bzrlib/errors.py:746
 msgid "No repository present: \"%(path)s\""
-msgstr ""
+msgstr "Žádné úložiště není přítomno: \"%(path)s\""
 
 #: bzrlib/errors.py:753
 msgid ""
 "Unsupported branch format: %(format)s\n"
 "Please run 'bzr upgrade'"
 msgstr ""
+"Nepodporovaný formát větve: %(format)s\n"
+"Spusťte prosím 'bzr upgrade'"
 
 #: bzrlib/errors.py:759
 msgid "Unknown %(kind)s format: %(format)r"
-msgstr ""
+msgstr "Neznámý %(kind)s formátu: %(format)r"
 
 #: bzrlib/errors.py:768
 msgid "Format %(format)s is not compatible with .bzr version %(bzrdir)s."
-msgstr ""
+msgstr "Formát %(format)s není kompatibilní s verzí .bzr %(bzrdir)s."
 
 #: bzrlib/errors.py:778
 msgid "Parse error on line %(lineno)d of %(format)s format: %(line)s"
-msgstr ""
+msgstr "Chyba zpracování na řádku %(lineno)d formátu %(format)s: %(line)s"
 
 #: bzrlib/errors.py:793
 msgid ""
@@ -6220,10 +6239,14 @@ msgid ""
 "%(source)s\n"
 "%(details)s"
 msgstr ""
+"%(target)s\n"
+"není kompatibilní s\n"
+"%(source)s\n"
+"%(details)s"
 
 #: bzrlib/errors.py:809
 msgid "Revision is not compatible with %(repo_format)s"
-msgstr ""
+msgstr "Revize není kompatibilní s %(repo_format)s"
 
 #: bzrlib/errors.py:819
 msgid "%(context_info)s%(path)s is already versioned."
