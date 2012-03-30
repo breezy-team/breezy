@@ -26,6 +26,9 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* Colocated branches can now be addressed using the 'co:NAME' rather than
+  the more complex 'file://.,branch=NAME'. (Jelmer Vernooij, #833665)
+
 Bug Fixes
 *********
 
