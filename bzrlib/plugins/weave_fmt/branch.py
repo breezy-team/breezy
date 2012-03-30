@@ -27,6 +27,8 @@ from bzrlib.trace import mutter
 
 from bzrlib.branch import (
     BranchFormat,
+    )
+from bzrlib.branchfmt.fullhistory import (
     FullHistoryBzrBranch,
     )
 
