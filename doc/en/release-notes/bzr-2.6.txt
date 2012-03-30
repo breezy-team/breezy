@@ -163,9 +163,10 @@ API Changes
 * New convenience API method ``WorkingTree.get_config_stack``.
   (Jelmer Vernooij)
 
-* Remove deprecated ``Branch.set_revision_history`` and
-  ``Branch.revision_history`` methods and the ``set_rh``
-  hook on ``Branch``. (Jelmer Vernooij)
+* ``register_filter_stack_map`` and ``lazy_register_filter_stack_map``
+  are noew deprecated. Instead, use ``filter_stacks_registry.register``
+  and ``filter_stacks_registry.register_lazy``.
+  (Jelmer Vernooij)
 
 * Remove 
   ``branch.PullResult.__int__`` deprecated in 2.3.0,
@@ -195,6 +196,10 @@ API Changes
   ``workingtree.WorkingTreeFormat.set_default_format`` deprecated in 2.4.0,
   ``workingtree.WorkingTreeFormat.unregister_format`` deprecated in 2.4.0,
   (Vincent Ladeuil)
+
+* Remove deprecated ``Branch.set_revision_history`` and
+  ``Branch.revision_history`` methods and the ``set_rh``
+  hook on ``Branch``. (Jelmer Vernooij)
 
 Internals
 *********
