@@ -377,7 +377,7 @@ Example commands::
  $ bzr merge -d project http://library2
  $ bzr commit project -m "Updated library2"
  $ bzr push -d project
- $ bzr revert project
+ $ bzr revert -r-2 project
  $ bzr commit project -m "Reverted inappropriate changes."
  $ bzr push -d project
 
@@ -799,7 +799,7 @@ commit some changes, leaving the nested branch commits until you are back
 online.
 
 At the moment, nested trees need to be incorporated as a whole.
-Filtered views can to used to restrict the set of files and directories
+Filtered views can be used to restrict the set of files and directories
 logically seen. Currently though, filtered views are a lens onto a tree:
 they do not delete other files and the exposed files/directories must
 have the same paths as they do in the original branch. In the future,
@@ -936,7 +936,7 @@ them.  But on the other hand:
    $ bzr ci -m "Change file"
    $ bzr uncommit
 
-will first commit to the subtree, then to the top tree.  The uncommit will
+will first uncommit to the subtree, then to the top tree.  The uncommit will
 restore both trees to their previous state.
 
 
@@ -944,8 +944,8 @@ Some subtrees should have commits and some should not.  How?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 We will not provide special support for this initially.  We might later support
-flagging some sub-trees as mirror-only something similar, but this seems like
-it could be a general feture not specific to nesting.  (and it may only require
+flagging some sub-trees as mirror-only or something similar, but this seems like
+it could be a general feature not specific to nesting.  (and it may only require
 a working tree format bump to add).
 
 Comparison with other systems
