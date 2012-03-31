@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-03-29 20:06+0000\n"
+"PO-Revision-Date: 2012-03-30 20:54+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-03-30 04:30+0000\n"
+"X-Launchpad-Export-Date: 2012-03-31 04:46+0000\n"
 "X-Generator: Launchpad (build 15032)\n"
 
 #: bzrlib/add.py:95
@@ -3975,7 +3975,7 @@ msgstr "Není zadáno žádné umístění a předchozí není známo"
 
 #: bzrlib/builtins.py:5273
 msgid "These branches have diverged. Try merging, and then bind again."
-msgstr "Tyto větev se rozešly. Zkuste je sloučit a pak znovu svázat."
+msgstr "Tyto větve se liší. Zkuste je sloučit a pak znovu svázat."
 
 #: bzrlib/builtins.py:5280
 msgid "Convert the current checkout into a regular branch."
@@ -6250,373 +6250,412 @@ msgstr "Revize není kompatibilní s %(repo_format)s"
 
 #: bzrlib/errors.py:819
 msgid "%(context_info)s%(path)s is already versioned."
-msgstr ""
+msgstr "%(context_info)s%(path)s již má verzi."
 
 #: bzrlib/errors.py:840
 msgid "%(context_info)s%(path)s is not versioned."
-msgstr ""
+msgstr "%(context_info)s%(path)s nemá verzi."
 
 #: bzrlib/errors.py:861
 msgid "Path(s) are not versioned: %(paths_as_string)s"
-msgstr ""
+msgstr "Cesty nemají verzi: %(paths_as_string)s"
 
 #: bzrlib/errors.py:872
 msgid "Path(s) do not exist: %(paths_as_string)s%(extra)s"
-msgstr ""
+msgstr "Cesty neexistují: %(paths_as_string)s%(extra)s"
 
 #: bzrlib/errors.py:891
 msgid "Cannot operate on \"%(filename)s\" of unsupported kind \"%(kind)s\""
 msgstr ""
+"Nelze pracovat na \"%(filename)s\" nepodporovaného druhu \"%(kind)s\""
 
 #: bzrlib/errors.py:899
 msgid ""
 "Filename %(filename)r is not valid in your current filesystem encoding "
 "%(fs_encoding)s"
 msgstr ""
+"Název souboru %(filename)r není platný v kódování %(fs_encoding)s Vašeho "
+"současného souborového systému."
 
 #: bzrlib/errors.py:910
 msgid "Cannot operate on \"%(filename)s\" because it is a control file"
-msgstr ""
+msgstr "Nelze pracovat na \"%(filename)s\" protože je to kontrolní soubor"
 
 #: bzrlib/errors.py:928
 msgid "The lock for '%(lock_description)s' is in use and cannot be broken."
-msgstr ""
+msgstr "Zámek pro '%(lock_description)s' je používán a nemůže být rozbit."
 
 #: bzrlib/errors.py:967
 msgid "Cannot lock %(lock)s: %(why)s"
-msgstr ""
+msgstr "Nelze uzamknout %(lock)s: %(why)s"
 
 #: bzrlib/errors.py:977
 msgid ""
 "A transaction related operation was attempted after the transaction finished."
-msgstr ""
+msgstr "Pokus o operaci související s převodem po skončení převodu."
 
 #: bzrlib/errors.py:1004
 msgid "Cannot lock: transport is read only: %(transport)s"
-msgstr ""
+msgstr "Nelze uzamknout: přenos je pouze pro čtení: %(transport)s"
 
 #: bzrlib/errors.py:1012
 msgid "Could not acquire lock \"%(lock)s\": %(msg)s"
-msgstr ""
+msgstr "Nelze získat zámek \"%(lock)s\": %(msg)s"
 
 #: bzrlib/errors.py:1023
 msgid ""
 "Lock was broken while still open: %(lock)s - check storage consistency!"
 msgstr ""
+"Zámek byl rozbit i když byl otevřen: %(lock)s - zkontrolujte konzistenci "
+"uložení!"
 
 #: bzrlib/errors.py:1034
 msgid ""
 "Lock was released and re-acquired before being broken: %(lock)s: held by "
 "%(holder)r, wanted to break %(target)r"
 msgstr ""
+"Zámek byl odemknut a znovu získán před rozbitím: %(lock)s: držen %(holder)r, "
+"chtěl rozbít %(target)r"
 
 #: bzrlib/errors.py:1046
 msgid ""
 "Lock is apparently held, but corrupted: %(corruption_info)s\n"
 "Use 'bzr break-lock' to clear it"
 msgstr ""
+"Zámek je pravděpodobně držen, ale je poškozen: %(corruption_info)s\n"
+"Použijte 'bzr break-lock' pro jeho vyčištění"
 
 #: bzrlib/errors.py:1059
 msgid "Lock not held: %(lock)s"
-msgstr ""
+msgstr "Zámek není držen: %(lock)s"
 
 #: bzrlib/errors.py:1088
 msgid "No changes to commit"
-msgstr ""
+msgstr "Žádné změny k odevzdání"
 
 #: bzrlib/errors.py:1093
 msgid ""
 "Selected-file commit of merges is not supported yet: files %(files_str)s"
 msgstr ""
+"Vybrané odevzdání sloučení souborů není zatím podporováno: soubory "
+"%(files_str)s"
 
 #: bzrlib/errors.py:1103
 msgid ""
 "Excluding paths during commit is not supported by repository at "
 "%(repository)r."
 msgstr ""
+"Vynechání cest během odevzdání není podporováno úložištěm v %(repository)r."
 
 #: bzrlib/errors.py:1112
 msgid ""
 "The specified commit message contains characters unsupported by the current "
 "encoding."
 msgstr ""
+"Zadaná zpráva odevzdání obsahuje znaky nepodporované současným kódováním."
 
 #: bzrlib/errors.py:1118
 msgid "Upgrade URL cannot work with readonly URLs."
-msgstr ""
+msgstr "URL aktualizace nemůže pracovat s URL pouze pro čtení."
 
 #: bzrlib/errors.py:1123
 msgid "The branch format %(format)s is already at the most recent format."
-msgstr ""
+msgstr "Formát větve %(format)s již je nejnovějším formátem."
 
 #: bzrlib/errors.py:1146
 msgid "Option --change does not accept revision ranges"
-msgstr ""
+msgstr "Volba --change nepřijímá změny revize"
 
 #: bzrlib/errors.py:1151
 msgid "No namespace registered for string: %(spec)r"
-msgstr ""
+msgstr "Žádný jmenný prostor registrován pro řetězec: %(spec)r"
 
 #: bzrlib/errors.py:1170
 msgid ""
 "Requested revision: '%(spec)s' does not exist in branch: "
 "%(branch_url)s%(extra)s"
 msgstr ""
+"Požadovaná revize: '%(spec)s' neexistuje ve větvi: %(branch_url)s%(extra)s"
 
 #: bzrlib/errors.py:1184
 msgid ""
 "Operation denied because it would change the main history, which is not "
 "permitted by the append_revisions_only setting on branch \"%(location)s\"."
 msgstr ""
+"Operace zamítnuta, protože by mohla změnit hlavní historii, což není "
+"povoleno nastavením append_revisions_only ve větvi \"%(location)s\"."
 
 #: bzrlib/errors.py:1195
 msgid ""
 "These branches have diverged. Use the missing command to see how.\n"
 "Use the merge command to reconcile them."
 msgstr ""
+"Tyto větve se liší. Použijte příkaz missing, abyste věděli jak.\n"
+"Použijte příkaz merge pro jejich sladění."
 
 #: bzrlib/errors.py:1215
 msgid ""
 "Branches have no common ancestor, and no merge base revision was specified."
 msgstr ""
+"Větve nemají žádného společného předka a nebyla zadána žádná revize základu "
+"sloučení."
 
 #: bzrlib/errors.py:1221
 msgid ""
 "Selected merge cannot perform reverse cherrypicks.  Try merge3 or diff3."
 msgstr ""
+"Vybrané sloučení nemůže provést zpětný výběr nejlepšího. Zkuste merge3 nebo "
+"diff3."
 
 #: bzrlib/errors.py:1227
 msgid "Revisions have no common ancestor: %(revision_a)s %(revision_b)s"
 msgstr ""
+"Revize nemají žádného společného předka: %(revision_a)s %(revision_b)s"
 
 #: bzrlib/errors.py:1236
 msgid ""
 "Revisions are not derived from the same root: %(revision_a)s %(revision_b)s."
 msgstr ""
+"Revize nejsou odvozené ze stejného kořene: %(revision_a)s %(revision_b)s."
 
 #: bzrlib/errors.py:1245
 msgid "Revision %(rev_id)s is not an ancestor of %(not_ancestor_id)s"
-msgstr ""
+msgstr "Revize %(rev_id)s není předek %(not_ancestor_id)s"
 
 #: bzrlib/errors.py:1254
 msgid "Branch %(branch)s has no commits."
-msgstr ""
+msgstr "Větev %(branch)s nemá žádná odevzdání."
 
 #: bzrlib/errors.py:1272
 msgid ""
 "Bound branch %(branch)s is out of date with master branch "
 "%(master)s.%(extra_help)s"
 msgstr ""
+"Svázaná větev %(branch)s je zastaralá v porovnání s hlavní větví "
+"%(master)s.%(extra_help)s"
 
 #: bzrlib/errors.py:1284
 msgid ""
 "Cannot commit to branch %(branch)s. It is bound to %(master)s, which is "
 "bound to %(remote)s."
 msgstr ""
+"Nelze odevzdat do větve %(branch)s. Je svázána s %(master)s, která je "
+"svázána s %(remote)s."
 
 #: bzrlib/errors.py:1296
 msgid "Cannot pull --overwrite to a branch which is bound %(branch)s"
-msgstr ""
+msgstr "Nelze pull --overwrite do větve, která je svázaná %(branch)s"
 
 #: bzrlib/errors.py:1305
 msgid ""
 "Unable to connect to target of bound branch %(branch)s => %(target)s: "
 "%(error)s"
 msgstr ""
+"Nelze se připojit k cíli svázané větve %(branch)s => %(target)s: %(error)s"
 
 #: bzrlib/errors.py:1317
 msgid "Error in processing weave: %(msg)s"
-msgstr ""
+msgstr "Chyba při zpracování vazby: %(msg)s"
 
 #: bzrlib/errors.py:1326
 msgid "Revision {%(revision_id)s} already present in %(weave)s"
-msgstr ""
+msgstr "Revize {%(revision_id)s} již je přítomna v %(weave)s"
 
 #: bzrlib/errors.py:1337
 msgid "Revision {%(revision_id)s} not present in %(weave)s"
-msgstr ""
+msgstr "Revize {%(revision_id)s} není přítomna v %(weave)s"
 
 #: bzrlib/errors.py:1347
 msgid "Weave invariant violated: %(what)s"
-msgstr ""
+msgstr "Neměnnost vazby porušena: %(what)s"
 
 #: bzrlib/errors.py:1356
 msgid "Parents are mismatched between two revisions. %(msg)s"
-msgstr ""
+msgstr "Nadřazené se neshodují mezi dvěma revizemi. %(msg)s"
 
 #: bzrlib/errors.py:1378
 msgid ""
 "Weaves differ on text content. Revision: {%(revision_id)s}, %(weave_a)s, "
 "%(weave_b)s"
 msgstr ""
+"Vazby se liší v obsahu textu. Revize: {%(revision_id)s}, %(weave_a)s, "
+"%(weave_b)s"
 
 #: bzrlib/errors.py:1390
 msgid "Versioned file error"
-msgstr ""
+msgstr "Chyba souboru s verzí"
 
 #: bzrlib/errors.py:1395
 msgid "Revision {%(revision_id)s} not present in \"%(file_id)s\"."
-msgstr ""
+msgstr "Revize {%(revision_id)s} není přítomna v \"%(file_id)s\"."
 
 #: bzrlib/errors.py:1405
 msgid "Revision {%(revision_id)s} already present in \"%(file_id)s\"."
-msgstr ""
+msgstr "Revize {%(revision_id)s} již je přítomna v \"%(file_id)s\"."
 
 #: bzrlib/errors.py:1415
 msgid "Text did not match its checksum: %(msg)s"
-msgstr ""
+msgstr "Text se neshoduje se svým kontrolním součtem: %(msg)s"
 
 #: bzrlib/errors.py:1541
 msgid "Export format %(format)r not supported"
-msgstr ""
+msgstr "Formát exportu %(format)r není podporován"
 
 #: bzrlib/errors.py:1550
 msgid "Transport error: %(msg)s %(orig_error)s"
-msgstr ""
+msgstr "Chyba přenosu: %(msg)s %(orig_error)s"
 
 #: bzrlib/errors.py:1576
 msgid "Generic bzr smart protocol error: %(details)s"
-msgstr ""
+msgstr "Obecná chyba chytrého protokolu bzr: %(details)s"
 
 #: bzrlib/errors.py:1584
 msgid "Received bad protocol version marker: %(marker)r"
-msgstr ""
+msgstr "Obdržena špatná značka verze protokolu: %(marker)r"
 
 #: bzrlib/errors.py:1616
 msgid "Transport operation not possible: %(msg)s %(orig_error)s"
-msgstr ""
+msgstr "Operace přenosu není možná: %(msg)s %(orig_error)s"
 
 #: bzrlib/errors.py:1621
 msgid "Connection error: %(msg)s %(orig_error)s"
-msgstr ""
+msgstr "Chyba připojení: %(msg)s %(orig_error)s"
 
 #: bzrlib/errors.py:1626
 msgid "%(msg)s %(host)s%(port)s%(orig_error)s"
-msgstr ""
+msgstr "%(msg)s %(host)s%(port)s%(orig_error)s"
 
 #: bzrlib/errors.py:1647
 msgid "Connection closed: %(msg)s %(orig_error)s"
-msgstr ""
+msgstr "Připojení uzavřeno: %(msg)s %(orig_error)s"
 
 #: bzrlib/errors.py:1652
 msgid "Connection Timeout: %(msg)s%(orig_error)s"
-msgstr ""
+msgstr "Vypršel časový limit připojení: %(msg)s%(orig_error)s"
 
 #: bzrlib/errors.py:1657
 msgid "Invalid range access in %(path)s at %(offset)s: %(msg)s"
-msgstr ""
+msgstr "Neplatný rozsah přístupu v %(path)s v %(offset)s: %(msg)s"
 
 #: bzrlib/errors.py:1667
 msgid "Invalid http response for %(path)s: %(msg)s%(orig_error)s"
-msgstr ""
+msgstr "Neplatná odpověď http pro %(path)s: %(msg)s%(orig_error)s"
 
 #: bzrlib/errors.py:1682
 msgid "Certificate error: %(error)s"
-msgstr ""
+msgstr "Chyba certifikátu: %(error)s"
 
 #: bzrlib/errors.py:1690
 msgid "Invalid http range %(range)r for %(path)s: %(msg)s"
-msgstr ""
+msgstr "Neplatný rozsah http %(range)r pro %(path)s: %(msg)s"
 
 #: bzrlib/errors.py:1704
 msgid "HTTP MIME Boundary missing for %(path)s: %(msg)s"
-msgstr ""
+msgstr "Hranice HTTP MIME chybí pro %(path)s: %(msg)s"
 
 #: bzrlib/errors.py:1712
 msgid "Invalid http Content-type \"%(ctype)s\" for %(path)s: %(msg)s"
-msgstr ""
+msgstr "Neplatný http Content-type \"%(ctype)s\" pro %(path)s: %(msg)s"
 
 #: bzrlib/errors.py:1721
 msgid "%(source)s is%(permanently)s redirected to %(target)s"
-msgstr ""
+msgstr "%(source)s je %(permanently)s přesměrován do %(target)s"
 
 #: bzrlib/errors.py:1735
 msgid "Too many redirections"
-msgstr ""
+msgstr "Příliš mnoho přesměrování"
 
 #: bzrlib/errors.py:1740
 msgid "Working tree has conflicts."
-msgstr ""
+msgstr "Pracovní strom má konflikty."
 
 #: bzrlib/errors.py:1744
 msgid "Config file %(filename)s is not UTF-8 encoded\n"
-msgstr ""
+msgstr "Soubor s nastavením %(filename)s není kódován v UTF-8\n"
 
 #: bzrlib/errors.py:1753
 msgid ""
 "Error(s) parsing config file %(filename)s:\n"
 "%(errors)s"
 msgstr ""
+"Chyba při zpracování souboru s nastavením %(filename)s:\n"
+"%(errors)s"
 
 #: bzrlib/errors.py:1763
 msgid ""
 "Bad value \"%(value)s\" for option \"%(name)s\".\n"
 "See ``bzr help %(name)s``"
 msgstr ""
+"Špatná hodnota \"%(value)s\" pro volbu \"%(name)s\".\n"
+"Viz ``bzr help %(name)s``"
 
 #: bzrlib/errors.py:1773
 msgid "%(username)r does not seem to contain a reasonable email address"
-msgstr ""
+msgstr "nezdá se, že %(username)r obsahuje rozumnou emailovou adresu"
 
 #: bzrlib/errors.py:1782
 msgid "Failed to GPG sign data with command \"%(command_line)s\""
-msgstr ""
+msgstr "Nelze GPG podepsat data pomocí příkazu \"%(command_line)s\""
 
 #: bzrlib/errors.py:1790
 msgid "Failed to verify GPG signature data with error \"%(error)s\""
-msgstr ""
+msgstr "Nelze ověřit data podpisu GPG s chybou \"%(error)s\""
 
 #: bzrlib/errors.py:1798
 msgid "Unable to import library \"%(library)s\": %(error)s"
-msgstr ""
+msgstr "Nelze importovat knihovnu \"%(library)s\": %(error)s"
 
 #: bzrlib/errors.py:1806
 msgid "python-gpgme is not installed, it is needed to verify signatures"
-msgstr ""
+msgstr "python-gpgme není nainstalován, je potřebný k ověřování podpisů"
 
 #: bzrlib/errors.py:1814
 msgid ""
 "The working tree for %(basedir)s has changed since the last commit, but "
 "weave merge requires that it be unchanged"
 msgstr ""
+"Pracovní strom pro %(basedir)s byl od posledního odevzdání změněn, ale "
+"sloučení vazeb vyžaduje, aby byl nezměněn"
 
 #: bzrlib/errors.py:1824
 msgid ""
 "Can't reprocess and show base, because reprocessing obscures the "
 "relationship of conflicting lines to the base"
 msgstr ""
+"Nelze znovu zpracovat a zobrazit základ, protože znovu zpracování skryje "
+"vztah konfliktních řádků oproti základu."
 
 #: bzrlib/errors.py:1830
 msgid "Cycle in graph %(graph)r"
-msgstr ""
+msgstr "Cyklus v grafu %(graph)r"
 
 #: bzrlib/errors.py:1858
 msgid "File %(filename)s is not conflicted."
-msgstr ""
+msgstr "Soubor %(filename)s není v konfliktu."
 
 #: bzrlib/errors.py:1880
 msgid "No bundle was found in \"%(filename)s\"."
-msgstr ""
+msgstr "V \"%(filename)s\" nebyl nalezen žádný balík."
 
 #: bzrlib/errors.py:1889
 msgid "Unable to handle bundle version %(version)s: %(msg)s"
-msgstr ""
+msgstr "Nelze zpracovat balík verze %(version)s: %(msg)s"
 
 #: bzrlib/errors.py:1899
 msgid "Branch %(base)s is missing revision %(text_revision)s of %(file_id)s"
-msgstr ""
+msgstr "Větvi %(base)s chybí revize %(text_revision)s z %(file_id)s"
 
 #: bzrlib/errors.py:1912
 msgid "File id {%(file_id)s} already exists in inventory as %(entry)s"
-msgstr ""
+msgstr "Soubor s id {%(file_id)s} již existuje v inventáři jako %(entry)s"
 
 #: bzrlib/errors.py:1922
 msgid "Key %(key)s is already present in map"
-msgstr ""
+msgstr "Klíč %(key)s již je přítomen v mapě"
 
 #: bzrlib/errors.py:1927
 msgid "The prefix %(prefix)s is in the help search path twice."
-msgstr ""
+msgstr "Předpona %(prefix)s je ve hledání nápovědy dvakrát."
 
 #: bzrlib/errors.py:1937
 msgid ""
@@ -6624,66 +6663,73 @@ msgid ""
 "file-id: %(file_id)r\n"
 "root trans-id: %(root_trans_id)r\n"
 msgstr ""
+"Žádný konečný název pro trans_id %(trans_id)r\n"
+"file-id: %(file_id)r\n"
+"kořenové trans-id: %(root_trans_id)r\n"
 
 #: bzrlib/errors.py:1969
 msgid "Attempt to reuse a transform that has already been applied."
-msgstr ""
+msgstr "Pokus o znovu použití změny, která již byla použita."
 
 #: bzrlib/errors.py:1974
 msgid "Moving the root directory is not supported at this time"
-msgstr ""
+msgstr "Přesun kořenového adresáře není v současnosti podporován"
 
 #: bzrlib/errors.py:1979
 msgid "Failed to rename %(from_path)s to %(to_path)s: %(why)s"
-msgstr ""
+msgstr "Nelze přejmenovat %(from_path)s na %(to_path)s: %(why)s"
 
 #: bzrlib/errors.py:1990
 msgid ""
 "Could not move %(from_path)s%(operator)s %(to_path)s%(_has_extra)s%(extra)s"
 msgstr ""
+"Nelze přesunout %(from_path)s%(operator)s %(to_path)s%(_has_extra)s%(extra)s"
 
 #: bzrlib/errors.py:2026
 msgid ""
 "Could not rename %(from_path)s%(operator)s %(to_path)s%(_has_extra)s%(extra)s"
 msgstr ""
+"Nelze přejmenovat %(from_path)s%(operator)s "
+"%(to_path)s%(_has_extra)s%(extra)s"
 
 #: bzrlib/errors.py:2056
 msgid "Unable to import paramiko (required for sftp support): %(error)s"
-msgstr ""
+msgstr "Nelze importovat paramiko (potřebné pro podporu sftp): %(error)s"
 
 #: bzrlib/errors.py:2064
 msgid "Nothing to merge."
-msgstr ""
+msgstr "Nic ke sloučení."
 
 #: bzrlib/errors.py:2069
 msgid "Format %(format)s cannot be initialised by this version of bzr."
-msgstr ""
+msgstr "Formát %(format)s nemůže být touto verzí bzr zaveden."
 
 #: bzrlib/errors.py:2078
 msgid ""
 "Cannot convert from format %(from_format)s to format %(format)s.    "
 "%(problem)s"
 msgstr ""
+"Nelze převézt z formátu %(from_format)s na formát %(format)s. %(problem)s"
 
 #: bzrlib/errors.py:2090
 msgid "Could not find an appropriate Differ for file \"%(path)s\""
-msgstr ""
+msgstr "Nelze najít vhodný Diff pro \"%(path)s\""
 
 #: bzrlib/errors.py:2098
 msgid "%(exe_name)s could not be found on this machine"
-msgstr ""
+msgstr "%(exe_name)s nelze na tomto stroji nalézt"
 
 #: bzrlib/errors.py:2106
 msgid "Diff is not installed on this machine: %(msg)s"
-msgstr ""
+msgstr "Diff není na tomto stroji nainstalován: %(msg)s"
 
 #: bzrlib/errors.py:2114
 msgid "Diff3 is not installed on this machine."
-msgstr ""
+msgstr "Diff3 není na tomto stroji nainstalován."
 
 #: bzrlib/errors.py:2120
 msgid "The content being inserted is already present."
-msgstr ""
+msgstr "Vkládaný obsah je již přítomen."
 
 #: bzrlib/errors.py:2125
 msgid ""
@@ -6692,6 +6738,9 @@ msgid ""
 "to\n"
 "    keep, and delete it when you are done."
 msgstr ""
+"Tento strom obsahuje zbylé soubory ze selhané operace.\n"
+"    Prosím prozkoumejte %(limbo_dir)s zdali obsahuje nějaké soubory,\n"
+"    které chcete ponechat a smažte je, pokud jste hotovi."
 
 #: bzrlib/errors.py:2136
 msgid ""
@@ -6699,6 +6748,9 @@ msgid ""
 "    Please examine %(pending_deletion)s to see if it contains any files you\n"
 "    wish to keep, and delete it when you are done."
 msgstr ""
+"Tento strom obsahuje zbylé soubory ze selhané operace.\n"
+"    Prosím prozkoumejte %(pending_deletion)s zdali obsahuje nějaké\n"
+"    soubory, které chcete ponechat a smažte je, pokud jste hotovi."
 
 #: bzrlib/errors.py:2146
 msgid ""
