@@ -285,10 +285,10 @@ changes into his copy.
 
 Example commands::
 
- $ bzr merge -d project http://curtis.org/trunk#library2
+ $ bzr merge -d project http://curtis.org/trunk/library2
 
  Or alternatively:
- $ bzr merge -d project/library2 http://curtis.org/trunk#library2
+ $ bzr merge -d project/library2 http://curtis.org/trunk/library2
 
 Case 8
 ~~~~~~
