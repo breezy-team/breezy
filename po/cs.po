@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-03-30 20:54+0000\n"
+"PO-Revision-Date: 2012-03-31 20:07+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-03-31 04:46+0000\n"
+"X-Launchpad-Export-Date: 2012-04-01 04:30+0000\n"
 "X-Generator: Launchpad (build 15032)\n"
 
 #: bzrlib/add.py:95
@@ -6740,7 +6740,7 @@ msgid ""
 msgstr ""
 "Tento strom obsahuje zbylé soubory ze selhané operace.\n"
 "    Prosím prozkoumejte %(limbo_dir)s zdali obsahuje nějaké soubory,\n"
-"    které chcete ponechat a smažte je, pokud jste hotovi."
+"    které chcete ponechat a smažte ho, pokud jste hotovi."
 
 #: bzrlib/errors.py:2136
 msgid ""
@@ -6759,6 +6759,9 @@ msgid ""
 "to\n"
 "    keep, and delete it when you are done."
 msgstr ""
+"Nelze smazat dočasný adresář transformace %(limbo_dir)s.\n"
+"    Prosím prozkoumejte %(limbo_dir)s zdali obsahuje nějaké soubory,\n"
+"    které chcete ponechat a smažte ho, pokud jste hotovi."
 
 #: bzrlib/errors.py:2157
 msgid ""
@@ -6766,47 +6769,58 @@ msgid ""
 "examine %(pending_deletion)s to see if it contains any files you wish to "
 "keep, and delete it when you are done."
 msgstr ""
+"Nelze smazat dočasný adresář transformace %(pending_deletion)s. Prosím "
+"prozkoumejte %(pending_deletion)s zdali obsahuje nějaké soubory, které "
+"chcete ponechat a smažte ho, pokud jste hotovi."
 
 #: bzrlib/errors.py:2167
 msgid "Working tree is out of date, please run 'bzr update'.%(more)s"
-msgstr ""
+msgstr "Pracovní strom je zastaralý, prosím spusťte 'bzr update'.%(more)s"
 
 #: bzrlib/errors.py:2181
 msgid ""
 "Public branch \"%(public_location)s\" lacks revision \"%(revstring)s\"."
-msgstr ""
+msgstr "Veřejná větev \"%(public_location)s\" nemá revizi \"%(revstring)s\"."
 
 #: bzrlib/errors.py:2194
 msgid "Error in merge modified format"
-msgstr ""
+msgstr "Chyba ve formátu změněném sloučením"
 
 #: bzrlib/errors.py:2199
 msgid "Format error in conflict listings"
-msgstr ""
+msgstr "Chyba formátu ve výpisu konfliktů"
 
 #: bzrlib/errors.py:2203
 msgid ""
 "Inconsistency in dirstate file %(dirstate_path)s.\n"
 "Error: %(description)s"
 msgstr ""
+"Nesoulad v souboru stavu adresáře %(dirstate_path)s.\n"
+"Chyba: %(description)s"
 
 #: bzrlib/errors.py:2214
 msgid ""
 "An error has been detected in the repository %(repo_path)s.\n"
 "Please run bzr reconcile on this repository."
 msgstr ""
+"V úložišti %(repo_path)s byla zjištěna chyba.\n"
+"Spusťte prosím bzr reconcile v tomto úložišti."
 
 #: bzrlib/errors.py:2225
 msgid ""
 "An inconsistent delta was supplied involving %(path)r, %(file_id)r\n"
 "reason: %(reason)s"
 msgstr ""
+"Byla zadána rozporná delta zahrnující %(path)r, %(file_id)r\n"
+"důvod: %(reason)s"
 
 #: bzrlib/errors.py:2238
 msgid ""
 "An inconsistent delta was supplied: %(delta)r\n"
 "reason: %(reason)s"
 msgstr ""
+"Byla zadána rozporná delta: %(delta)r\n"
+"důvod: %(reason)s"
 
 #: bzrlib/errors.py:2250
 msgid "To use this feature you must upgrade your branch at %(path)s."
