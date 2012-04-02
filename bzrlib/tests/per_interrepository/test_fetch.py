@@ -298,8 +298,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         stacked_branch.lock_read()
         self.addCleanup(stacked_branch.unlock)
         stacked_second_tree = stacked_branch.repository.revision_tree('second')
-        self.assertEqual(second_tree.root_inventory,
-            stacked_second_tree.root_inventory)
+        self.assertEqual(second_tree, stacked_second_tree)
         # Finally, it's not enough to see that the basis inventories are
         # present.  The texts introduced in merge (and only those) should be
         # present, and also generating a stream should succeed without blowing
