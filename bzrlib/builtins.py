@@ -86,27 +86,27 @@ from bzrlib import (
 def _get_branch_location(control_dir, possible_transports=None):
     """Return location of branch for this control dir."""
     try:
-        this_branch = control_dir.open_branch(
-            possible_transports=possible_transports)
-        # This may be a heavy checkout, where we want the master branch
-        master_location = this_branch.get_bound_location()
-        if master_location is not None:
-            return master_location
-        # If not, use a local sibling
-        return this_branch.base
+        target = control_dir.get_branch_reference()
     except errors.NotBranchError:
-        format = control_dir.find_branch_format()
-        if getattr(format, 'get_reference', None) is not None:
-            return format.get_reference(control_dir)
-        else:
-            return control_dir.root_transport.base
+        return control_dir.root_transport.base
+    if target is not None:
+        return target
+    this_branch = control_dir.open_branch(
+        possible_transports=possible_transports)
+    # This may be a heavy checkout, where we want the master branch
+    master_location = this_branch.get_bound_location()
+    if master_location is not None:
+        return master_location
+    # If not, use a local sibling
+    return this_branch.base
 
 
 def _is_colocated(control_dir, possible_transports=None):
     """Check if the branch in control_dir is colocated.
 
     :param control_dir: Control directory
-    :return: Boolean indicating whether 
+    :return: Tuple with boolean indicating whether the branch is colocated
+        and the full URL to the actual branch
     """
     # This path is meant to be relative to the existing branch
     this_url = _get_branch_location(control_dir,
@@ -132,8 +132,7 @@ def _is_colocated(control_dir, possible_transports=None):
 def lookup_new_sibling_branch(control_dir, location, possible_transports=None):
     """Lookup the location for a new sibling branch.
 
-    :param control_dir: Control directory relative to which to look up
-        the name.
+    :param control_dir: Control directory to find sibling branches from
     :param location: Name of the new branch
     :return: Full location to the new branch
     """
@@ -149,9 +148,9 @@ def lookup_new_sibling_branch(control_dir, location, possible_transports=None):
     return location
 
 
-def lookup_sibling_branch(control_dir, location, possible_transports=None):
-    """Lookup sibling branch.
-    
+def open_sibling_branch(control_dir, location, possible_transports=None):
+    """Open a branch, possibly a sibling of another.
+
     :param control_dir: Control directory relative to which to lookup the
         location.
     :param location: Location to look up
@@ -162,20 +161,63 @@ def lookup_sibling_branch(control_dir, location, possible_transports=None):
         return control_dir.open_branch(location, 
             possible_transports=possible_transports)
     except (errors.NotBranchError, errors.NoColocatedBranchSupport):
+        this_url = _get_branch_location(control_dir)
+        return Branch.open(
+            urlutils.join(
+                this_url, '..', urlutils.escape(location)))
+
+
+def open_nearby_branch(near=None, location=None, possible_transports=None):
+    """Open a nearby branch.
+
+    :param near: Optional location of container from which to open branch
+    :param location: Location of the branch
+    :return: Branch instance
+    """
+    if near is None:
+        if location is None:
+            location = "."
         try:
-            return Branch.open(location)
+            return Branch.open(location,
+                possible_transports=possible_transports)
         except errors.NotBranchError:
-            this_url = _get_branch_location(control_dir)
-            return Branch.open(
-                urlutils.join(
-                    this_url, '..', urlutils.escape(location)))
+            near = "."
+    cdir = controldir.ControlDir.open(near,
+        possible_transports=possible_transports)
+    return open_sibling_branch(cdir, location,
+        possible_transports=possible_transports)
 
 
-@symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 3, 0)))
-def tree_files(file_list, default_branch=u'.', canonicalize=True,
-    apply_view=True):
-    return internal_tree_files(file_list, default_branch, canonicalize,
-        apply_view)
+def iter_sibling_branches(control_dir, possible_transports=None):
+    """Iterate over the siblings of a branch.
+
+    :param control_dir: Control directory for which to look up the siblings
+    :return: Iterator over tuples with branch name and branch object
+    """
+    seen_urls = set()
+    try:
+        reference = control_dir.get_branch_reference()
+    except errors.NotBranchError:
+        # There is no active branch, just return the colocated branches.
+        for name, branch in control_dir.get_branches().iteritems():
+            yield name, branch
+        return
+    if reference is not None:
+        ref_branch = Branch.open(reference,
+            possible_transports=possible_transports)
+    else:
+        ref_branch = None
+    if ref_branch is None or ref_branch.name:
+        if ref_branch is not None:
+            control_dir = ref_branch.bzrdir
+        for name, branch in control_dir.get_branches().iteritems():
+            yield name, branch
+    else:
+        repo = ref_branch.bzrdir.find_repository()
+        for branch in repo.find_branches(using=True):
+            name = urlutils.relative_url(repo.user_url,
+                branch.user_url).rstrip("/")
+            yield name, branch
 
 
 def tree_files_for_add(file_list):
@@ -241,36 +283,6 @@ def _get_one_revision_tree(command_name, revisions, branch=None, tree=None):
         revision = _get_one_revision(command_name, revisions)
         rev_tree = revision.as_tree(branch)
     return rev_tree
-
-
-# XXX: Bad function name; should possibly also be a class method of
-# WorkingTree rather than a function.
-@symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 3, 0)))
-def internal_tree_files(file_list, default_branch=u'.', canonicalize=True,
-    apply_view=True):
-    """Convert command-line paths to a WorkingTree and relative paths.
-
-    Deprecated: use WorkingTree.open_containing_paths instead.
-
-    This is typically used for command-line processors that take one or
-    more filenames, and infer the workingtree that contains them.
-
-    The filenames given are not required to exist.
-
-    :param file_list: Filenames to convert.
-
-    :param default_branch: Fallback tree path to use if file_list is empty or
-        None.
-
-    :param apply_view: if True and a view is set, apply it or check that
-        specified files are within it
-
-    :return: workingtree, [relative_paths]
-    """
-    return WorkingTree.open_containing_paths(
-        file_list, default_directory='.',
-        canonicalize=True,
-        apply_view=True)
 
 
 def _get_view_info_for_change_reporter(tree):
@@ -356,7 +368,7 @@ class cmd_status(Command):
     This will produce the same results as calling 'bzr diff --summarize'.
     """
 
-    # TODO: --no-recurse, --recurse options
+    # TODO: --no-recurse/-N, --recurse options
 
     takes_args = ['file*']
     takes_options = ['show-ids', 'revision', 'change', 'verbose',
@@ -791,7 +803,8 @@ class cmd_add(Command):
     takes_args = ['file*']
     takes_options = [
         Option('no-recurse',
-               help="Don't recursively add the contents of directories."),
+               help="Don't recursively add the contents of directories.",
+               short_name='N'),
         Option('dry-run',
                help="Show what would be done, but don't actually do anything."),
         'verbose',
@@ -1541,9 +1554,8 @@ class cmd_branches(Command):
                 active_branch = dir.open_branch(name="")
             except errors.NotBranchError:
                 active_branch = None
-            branches = dir.get_branches()
             names = {}
-            for name, branch in branches.iteritems():
+            for name, branch in iter_sibling_branches(dir):
                 if name == "":
                     continue
                 active = (active_branch is not None and
@@ -1828,7 +1840,7 @@ class cmd_remove(Command):
 
     This makes Bazaar stop tracking changes to the specified files. Bazaar will
     delete them if they can easily be recovered using revert otherwise they
-    will be backed up (adding an extention of the form .~#~). If no options or
+    will be backed up (adding an extension of the form .~#~). If no options or
     parameters are given Bazaar will scan for files that are being tracked by
     Bazaar but missing in your tree and stop tracking them for you.
     """
@@ -2042,7 +2054,7 @@ class cmd_init(Command):
          RegistryOption('format',
                 help='Specify a format for this branch. '
                 'See "help formats".',
-                lazy_registry=('bzrlib.bzrdir', 'format_registry'),
+                lazy_registry=('bzrlib.controldir', 'format_registry'),
                 converter=lambda name: controldir.format_registry.make_bzrdir(name),
                 value_switches=True,
                 title="Branch format",
@@ -4716,21 +4728,28 @@ class cmd_remerge(Command):
 
 
 class cmd_revert(Command):
-    __doc__ = """Revert files to a previous revision.
+    __doc__ = """\
+    Set files in the working tree back to the contents of a previous revision.
 
     Giving a list of files will revert only those files.  Otherwise, all files
     will be reverted.  If the revision is not specified with '--revision', the
-    last committed revision is used.
+    working tree basis revision is used. A revert operation affects only the
+    working tree, not any revision history like the branch and repository or
+    the working tree basis revision.
 
     To remove only some changes, without reverting to a prior version, use
     merge instead.  For example, "merge . -r -2..-3" (don't forget the ".")
     will remove the changes introduced by the second last commit (-2), without
     affecting the changes introduced by the last commit (-1).  To remove
     certain changes on a hunk-by-hunk basis, see the shelve command.
+    To update the branch to a specific revision or the latest revision and
+    update the working tree accordingly while preserving local changes, see the
+    update command.
 
-    By default, any files that have been manually changed will be backed up
-    first.  (Files changed only by merge are not backed up.)  Backup files have
-    '.~#~' appended to their name, where # is a number.
+    Uncommitted changes to files that are reverted will be discarded.
+    Howver, by default, any files that have been manually changed will be
+    backed up first.  (Files changed only by merge are not backed up.)  Backup
+    files have '.~#~' appended to their name, where # is a number.
 
     When you provide files, you can use their current pathname or the pathname
     from the target revision.  So you can use revert to "undelete" a file by
@@ -5479,12 +5498,13 @@ class cmd_serve(Command):
                help="Protocol to serve.",
                lazy_registry=('bzrlib.transport', 'transport_server_registry'),
                value_switches=True),
+        Option('listen',
+               help='Listen for connections on nominated address.', type=str),
         Option('port',
-               help='Listen for connections on nominated port of the form '
-                    '[hostname:]portnumber.  Passing 0 as the port number will '
-                    'result in a dynamically allocated port.  The default port '
-                    'depends on the protocol.',
-               type=str),
+               help='Listen for connections on nominated port.  Passing 0 as '
+                    'the port number will result in a dynamically allocated '
+                    'port.  The default port depends on the protocol.',
+               type=int),
         custom_help('directory',
                help='Serve contents of this directory.'),
         Option('allow-writes',
@@ -5500,50 +5520,18 @@ class cmd_serve(Command):
                help='Override the default idle client timeout (5min).'),
         ]
 
-    def get_host_and_port(self, port):
-        """Return the host and port to run the smart server on.
-
-        If 'port' is None, None will be returned for the host and port.
-
-        If 'port' has a colon in it, the string before the colon will be
-        interpreted as the host.
-
-        :param port: A string of the port to run the server on.
-        :return: A tuple of (host, port), where 'host' is a host name or IP,
-            and port is an integer TCP/IP port.
-        """
-        host = None
-        if port is not None:
-            if ':' in port:
-                host, port = port.split(':')
-            port = int(port)
-        return host, port
-
-    def run(self, port=None, inet=False, directory=None, allow_writes=False,
-            protocol=None, client_timeout=None):
+    def run(self, listen=None, port=None, inet=False, directory=None,
+            allow_writes=False, protocol=None, client_timeout=None):
         from bzrlib import transport
         if directory is None:
             directory = os.getcwd()
         if protocol is None:
             protocol = transport.transport_server_registry.get()
-        host, port = self.get_host_and_port(port)
         url = transport.location_to_url(directory)
         if not allow_writes:
             url = 'readonly+' + url
         t = transport.get_transport_from_url(url)
-        try:
-            protocol(t, host, port, inet, client_timeout)
-        except TypeError, e:
-            # We use symbol_versioning.deprecated_in just so that people
-            # grepping can find it here.
-            # symbol_versioning.deprecated_in((2, 5, 0))
-            symbol_versioning.warn(
-                'Got TypeError(%s)\ntrying to call protocol: %s.%s\n'
-                'Most likely it needs to be updated to support a'
-                ' "timeout" parameter (added in bzr 2.5.0)'
-                % (e, protocol.__module__, protocol),
-                DeprecationWarning)
-            protocol(t, host, port, inet)
+        protocol(t, listen, port, inet, client_timeout)
 
 
 class cmd_join(Command):
@@ -6251,7 +6239,12 @@ class cmd_switch(Command):
                  possible_transports=possible_transports,
                  source_branch=branch).open_branch()
         else:
-            to_branch = lookup_sibling_branch(control_dir, to_location)
+            try:
+                to_branch = Branch.open(to_location,
+                    possible_transports=possible_transports)
+            except errors.NotBranchError:
+                to_branch = open_sibling_branch(control_dir, to_location,
+                    possible_transports=possible_transports)
         if revision is not None:
             revision = revision.as_revision_id(to_branch)
         switch.switch(control_dir, to_branch, force, revision_id=revision)
@@ -6454,13 +6447,23 @@ class cmd_remove_branch(Command):
 
     takes_args = ["location?"]
 
+    takes_options = ['directory',
+        Option('force', help='Remove branch even if it is the active branch.')]
+
     aliases = ["rmbranch"]
 
-    def run(self, location=None):
-        if location is None:
-            location = "."
-        cdir = controldir.ControlDir.open_containing(location)[0]
-        cdir.destroy_branch()
+    def run(self, directory=None, location=None, force=False):
+        br = open_nearby_branch(near=directory, location=location)
+        if not force and br.bzrdir.has_workingtree():
+            try:
+                active_branch = br.bzrdir.open_branch(name="")
+            except errors.NotBranchError:
+                active_branch = None
+            if (active_branch is not None and
+                br.control_url == active_branch.control_url):
+                raise errors.BzrCommandError(
+                    gettext("Branch is active. Use --force to remove it."))
+        br.bzrdir.destroy_branch(br.name)
 
 
 class cmd_shelve(Command):
@@ -6696,8 +6699,7 @@ def _register_lazy_builtins():
         ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
         ('cmd_conflicts', [], 'bzrlib.conflicts'),
         ('cmd_sign_my_commits', [], 'bzrlib.commit_signature_commands'),
-        ('cmd_verify_signatures', [],
-                                        'bzrlib.commit_signature_commands'),
+        ('cmd_verify_signatures', [], 'bzrlib.commit_signature_commands'),
         ('cmd_test_script', [], 'bzrlib.cmd_test_script'),
         ]:
         builtin_command_registry.register_lazy(name, aliases, module_name)

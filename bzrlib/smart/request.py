@@ -36,7 +36,6 @@ from __future__ import absolute_import
 import threading
 
 from bzrlib import (
-    bzrdir,
     debug,
     errors,
     osutils,
@@ -47,6 +46,7 @@ from bzrlib import (
     )
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+from bzrlib import bzrdir
 from bzrlib.bundle import serializer
 
 import tempfile

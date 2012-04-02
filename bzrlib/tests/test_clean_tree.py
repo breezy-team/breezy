@@ -19,11 +19,10 @@ import errno
 import os
 import shutil
 import sys
-import types
 
 from bzrlib import tests, ui
-from bzrlib.bzrdir import (
-    BzrDir,
+from bzrlib.controldir import (
+    ControlDir,
     )
 from bzrlib.clean_tree import (
     clean_tree,
@@ -43,7 +42,7 @@ class TestCleanTree(TestCaseInTempDir):
         if has_symlinks() is False:
             return
         os.mkdir('branch')
-        BzrDir.create_standalone_workingtree('branch')
+        ControlDir.create_standalone_workingtree('branch')
         os.symlink(os.path.realpath('no-die-please'), 'branch/die-please')
         os.mkdir('no-die-please')
         self.assertPathExists('branch/die-please')
@@ -56,7 +55,7 @@ class TestCleanTree(TestCaseInTempDir):
     def test_iter_deletable(self):
         """Files are selected for deletion appropriately"""
         os.mkdir('branch')
-        tree = BzrDir.create_standalone_workingtree('branch')
+        tree = ControlDir.create_standalone_workingtree('branch')
         transport = tree.bzrdir.root_transport
         transport.put_bytes('.bzrignore', '*~\n*.pyc\n.bzrignore\n')
         transport.put_bytes('file.BASE', 'contents')
@@ -122,7 +121,7 @@ class TestCleanTree(TestCaseInTempDir):
         stderr = tests.StringIOWrapper()
         ui.ui_factory = tests.TestUIFactory(stdout=stdout, stderr=stderr)
 
-        BzrDir.create_standalone_workingtree('.')
+        ControlDir.create_standalone_workingtree('.')
         self.build_tree(['0foo', '1bar', '2baz', 'subdir0/'])
         clean_tree('.', unknown=True, no_prompt=True)
         self.assertContainsRe(stderr.getvalue(),

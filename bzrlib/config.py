@@ -195,27 +195,6 @@ class ConfigObj(configobj.ConfigObj):
         return self[section][name]
 
 
-# FIXME: Until we can guarantee that each config file is loaded once and
-# only once for a given bzrlib session, we don't want to re-read the file every
-# time we query for an option so we cache the value (bad ! watch out for tests
-# needing to restore the proper value). -- vila 20110219
-_expand_default_value = None
-def _get_expand_default_value():
-    global _expand_default_value
-    if _expand_default_value is not None:
-        return _expand_default_value
-    conf = GlobalConfig()
-    # Note that we must not use None for the expand value below or we'll run
-    # into infinite recursion. Using False really would be quite silly ;)
-    expand = conf.get_user_option_as_bool('bzr.config.expand', expand=True)
-    if expand is None:
-        # This is an opt-in feature, you *really* need to clearly say you want
-        # to activate it !
-        expand = False
-    _expand_default_value = expand
-    return expand
-
-
 class Config(object):
     """A configuration policy - what username, editor, gpg needs etc."""
 
@@ -225,11 +204,6 @@ class Config(object):
     def config_id(self):
         """Returns a unique ID for the config."""
         raise NotImplementedError(self.config_id)
-
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def get_editor(self):
-        """Get the users pop up editor."""
-        raise NotImplementedError
 
     def get_change_editor(self, old_tree, new_tree):
         from bzrlib import diff
@@ -373,7 +347,7 @@ class Config(object):
         """Template method to provide a user option."""
         return None
 
-    def get_user_option(self, option_name, expand=None):
+    def get_user_option(self, option_name, expand=True):
         """Get a generic option - no special process, no default.
 
         :param option_name: The queried option.
@@ -382,8 +356,6 @@ class Config(object):
 
         :returns: The value of the option.
         """
-        if expand is None:
-            expand = _get_expand_default_value()
         value = self._get_user_option(option_name)
         if expand:
             if isinstance(value, list):
@@ -637,7 +609,7 @@ class Config(object):
         for (oname, value, section, conf_id, parser) in self._get_options():
             if oname.startswith('bzr.mergetool.'):
                 tool_name = oname[len('bzr.mergetool.'):]
-                tools[tool_name] = self.get_user_option(oname)
+                tools[tool_name] = self.get_user_option(oname, False)
         trace.mutter('loaded merge tools: %r' % tools)
         return tools
 
@@ -1078,10 +1050,6 @@ class GlobalConfig(LockableConfig):
         conf = cls()
         conf._create_from_string(str_or_unicode, save)
         return conf
-
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def get_editor(self):
-        return self._get_user_option('editor')
 
     @needs_write_lock
     def set_user_option(self, option, value):
@@ -2174,8 +2142,8 @@ class BzrDirConfig(object):
 
         It may be set to a location, or None.
 
-        This policy affects all branches contained by this bzrdir, except for
-        those under repositories.
+        This policy affects all branches contained by this control dir, except
+        for those under repositories.
         """
         if self._config is None:
             raise errors.BzrError("Cannot set configuration in %s" % self._bzrdir)
@@ -2189,8 +2157,8 @@ class BzrDirConfig(object):
 
         This will either be a location, or None.
 
-        This policy affects all branches contained by this bzrdir, except for
-        those under repositories.
+        This policy affects all branches contained by this control dir, except
+        for those under repositories.
         """
         if self._config is None:
             return None
@@ -2434,6 +2402,9 @@ class Option(object):
             else:
                 value = self.default
         return value
+
+    def get_help_topic(self):
+        return self.name
 
     def get_help_text(self, additional_see_also=None, plain=True):
         result = self.help
@@ -2985,7 +2956,7 @@ class MutableSection(Section):
             # Report concurrent updates in an ad-hoc way. This should only
             # occurs when different processes try to update the same option
             # which is not supported (as in: the config framework is not meant
-            # to be used a sharing mechanism).
+            # to be used as a sharing mechanism).
             if expected != reloaded:
                 if actual is _DeletedOption:
                     actual = '<DELETED>'
@@ -3011,8 +2982,9 @@ class Store(object):
     mutable_section_class = MutableSection
 
     def __init__(self):
-        # Which sections need to be saved
-        self.dirty_sections = []
+        # Which sections need to be saved (by section id). We use a dict here
+        # so the dirty sections can be shared by multiple callers.
+        self.dirty_sections = {}
 
     def is_loaded(self):
         """Returns True if the Store has been loaded.
@@ -3061,7 +3033,7 @@ class Store(object):
         raise NotImplementedError(self.save)
 
     def _need_saving(self):
-        for s in self.dirty_sections:
+        for s in self.dirty_sections.values():
             if s.orig:
                 # At least one dirty section contains a modification
                 return True
@@ -3081,11 +3053,11 @@ class Store(object):
         # get_mutable_section() call below.
         self.unload()
         # Apply the changes from the preserved dirty sections
-        for dirty in dirty_sections:
-            clean = self.get_mutable_section(dirty.id)
+        for section_id, dirty in dirty_sections.iteritems():
+            clean = self.get_mutable_section(section_id)
             clean.apply_changes(dirty, self)
         # Everything is clean now
-        self.dirty_sections = []
+        self.dirty_sections = {}
 
     def save_changes(self):
         """Saves the Store to persistent storage if changes occurred.
@@ -3171,7 +3143,7 @@ class IniFileStore(Store):
 
     def unload(self):
         self._config_obj = None
-        self.dirty_sections = []
+        self.dirty_sections = {}
 
     def _load_content(self):
         """Load the config file bytes.
@@ -3225,8 +3197,7 @@ class IniFileStore(Store):
         if not self._need_saving():
             return
         # Preserve the current version
-        current = self._config_obj
-        dirty_sections = list(self.dirty_sections)
+        dirty_sections = dict(self.dirty_sections.items())
         self.apply_changes(dirty_sections)
         # Save to the persistent storage
         self.save()
@@ -3267,13 +3238,16 @@ class IniFileStore(Store):
         except errors.NoSuchFile:
             # The file doesn't exist, let's pretend it was empty
             self._load_from_string('')
+        if section_id in self.dirty_sections:
+            # We already created a mutable section for this id
+            return self.dirty_sections[section_id]
         if section_id is None:
             section = self._config_obj
         else:
             section = self._config_obj.setdefault(section_id, {})
         mutable_section = self.mutable_section_class(section_id, section)
         # All mutable sections can become dirty
-        self.dirty_sections.append(mutable_section)
+        self.dirty_sections[section_id] = mutable_section
         return mutable_section
 
     def quote(self, value):
@@ -3655,7 +3629,7 @@ class Stack(object):
             for store, section in sections():
                 yield store, section
 
-    def get(self, name, expand=None, convert=True):
+    def get(self, name, expand=True, convert=True):
         """Return the *first* option value found in the sections.
 
         This is where we guarantee that sections coming from Store are loaded
@@ -3674,8 +3648,6 @@ class Stack(object):
         :returns: The value of the option.
         """
         # FIXME: No caching of options nor sections yet -- vila 20110503
-        if expand is None:
-            expand = _get_expand_default_value()
         value = None
         found_store = None # Where the option value has been found
         # If the option is registered, it may provide additional info about

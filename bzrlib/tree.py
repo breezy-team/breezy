@@ -1359,8 +1359,8 @@ class InterTree(InterObject):
                         if old_entry is None:
                             # Reusing a discarded change.
                             old_entry = self._get_entry(self.source, file_id)
-                        for child in self.source.iter_children(file_id):
-                            precise_file_ids.add(child.file_id)
+                        precise_file_ids.update(
+                                self.source.iter_children(file_id))
                     changed_file_ids.add(result[0])
                     yield result
 

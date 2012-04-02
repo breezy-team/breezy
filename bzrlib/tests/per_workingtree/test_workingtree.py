@@ -24,6 +24,7 @@ from bzrlib import (
     branch,
     bzrdir,
     config,
+    controldir,
     errors,
     osutils,
     revision as _mod_revision,
@@ -342,19 +343,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt.set_last_revision('null:')
         wt.commit('A', allow_pointless=True, rev_id='A')
         self.assertEqual(['A'], wt.get_parent_ids())
-        # None is aways in the branch
+        # null: is aways in the branch
         wt.set_last_revision('null:')
         self.assertEqual([], wt.get_parent_ids())
         # and now we can set it to 'A'
         # because some formats mutate the branch to set it on the tree
         # we need to alter the branch to let this pass.
-        try:
-            self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-                wt.branch.set_revision_history, ['A', 'B'])
-        except errors.NoSuchRevision, e:
-            self.assertEqual('B', e.revision)
+        if getattr(wt.branch, "_set_revision_history", None) is None:
             raise TestSkipped("Branch format does not permit arbitrary"
                               " history")
+        wt.branch._set_revision_history(['A', 'B'])
         wt.set_last_revision('A')
         self.assertEqual(['A'], wt.get_parent_ids())
         self.assertRaises(errors.ReservedId, wt.set_last_revision, 'A:')
@@ -719,7 +717,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.add(['bloo', 'blo'])
         tree.commit("blah", allow_pointless=False)
         base = tree.branch.repository.revision_tree(tree.last_revision())
-        bzrdir.BzrDir.open("mine").sprout("other")
+        controldir.ControlDir.open("mine").sprout("other")
         with file('other/bloo', 'wb') as f: f.write('two')
         othertree = WorkingTree.open('other')
         othertree.commit('blah', allow_pointless=False)

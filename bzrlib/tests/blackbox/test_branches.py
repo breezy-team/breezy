@@ -17,6 +17,7 @@
 
 """Black-box tests for bzr branches."""
 
+from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseWithTransport
 
 
@@ -76,3 +77,17 @@ class TestBranches(TestCaseWithTransport):
         out, err = self.run_bzr('branches a')
         self.assertEquals(out, "  another\n"
                                "* colocated\n")
+
+    def test_shared_repos(self):
+        self.make_repository('a', shared=True)
+        BzrDir.create_branch_convenience('a/branch1')
+        b = BzrDir.create_branch_convenience('a/branch2')
+        b.create_checkout(lightweight=True, to_location='b')
+        out, err = self.run_bzr('branches b')
+        self.assertEquals(out, "  branch1\n"
+                               "* branch2\n")
+
+    def test_standalone_branch(self):
+        self.make_branch('a')
+        out, err = self.run_bzr('branches a')
+        self.assertEquals(out, "* (default)\n")

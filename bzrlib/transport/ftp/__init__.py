@@ -248,7 +248,7 @@ class FtpTransport(ConnectedTransport):
             mutter("FTP has not: %s: %s", abspath, e)
             return False
 
-    def get(self, relpath, decode=DEPRECATED_PARAMETER, retries=0):
+    def get(self, relpath, retries=0):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
@@ -258,10 +258,6 @@ class FtpTransport(ConnectedTransport):
         We're meant to return a file-like object which bzr will
         then read from. For now we do this via the magic of StringIO
         """
-        if deprecated_passed(decode):
-            warn(deprecated_in((2,3,0)) %
-                 '"decode" parameter to FtpTransport.get()',
-                 DeprecationWarning, stacklevel=2)
         try:
             mutter("FTP get: %s", self._remote_path(relpath))
             f = self._get_FTP()
@@ -279,7 +275,7 @@ class FtpTransport(ConnectedTransport):
             else:
                 warning("FTP temporary error: %s. Retrying.", str(e))
                 self._reconnect()
-                return self.get(relpath, decode, retries+1)
+                return self.get(relpath, retries+1)
         except EOFError, e:
             if retries > _number_of_retries:
                 raise errors.TransportError("FTP control connection closed during GET %s."
@@ -289,7 +285,7 @@ class FtpTransport(ConnectedTransport):
                 warning("FTP control connection closed. Trying to reopen.")
                 time.sleep(_sleep_between_retries)
                 self._reconnect()
-                return self.get(relpath, decode, retries+1)
+                return self.get(relpath, retries+1)
 
     def put_file(self, relpath, fp, mode=None, retries=0):
         """Copy the file-like or string object into the location.

@@ -30,6 +30,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     branch as _mod_branch,
+    controldir as _mod_controldir,
     urlutils,
     )
 """)
@@ -131,3 +132,21 @@ For example, to push to the parent location::
 
 directories.register(':', AliasDirectory,
                      'Easy access to remembered branch locations')
+
+
+class ColocatedDirectory(object):
+    """Directory lookup for colocated branches.
+
+    co:somename will resolve to the colocated branch with "somename" in
+    the current directory.
+    """
+
+    def look_up(self, name, url):
+        dir = _mod_controldir.ControlDir.open_containing('.')[0]
+        return urlutils.join_segment_parameters(dir.user_url,
+            {"branch": urlutils.escape(name)})
+
+
+directories.register('co:', ColocatedDirectory,
+                     'Easy access to colocated branches')
+

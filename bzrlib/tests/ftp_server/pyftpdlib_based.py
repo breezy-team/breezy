@@ -96,57 +96,18 @@ class BzrConformingFTPHandler(ftpserver.FTPHandler):
         else:
             ftpserver.FTPHandler.ftp_NLST(self, path)
 
-    def ftp_SITE_CHMOD(self, line):
-        try:
-            mode, path = line.split(None, 1)
-            mode = int(mode, 8)
-        except ValueError:
-            # We catch both malformed line and malformed mode with the same
-            # ValueError.
-            self.respond("500 'SITE CHMOD %s': command not understood."
-                         % line)
-            self.log('FAIL SITE CHMOD ' % line)
-            return
-        ftp_path = self.fs.fs2ftp(path)
-        try:
-            self.run_as_current_user(self.fs.chmod, self.fs.ftp2fs(path), mode)
-        except OSError, err:
-            why = ftpserver._strerror(err)
-            self.log('FAIL SITE CHMOD 0%03o "%s". %s.' % (mode, ftp_path, why))
-            self.respond('550 %s.' % why)
-        else:
-            self.log('OK SITE CHMOD 0%03o "%s".' % (mode, ftp_path))
-            self.respond('200 SITE CHMOD succesful.')
-
-    if pyftplib_version >= (0, 6, 0):
-        def log_cmd(self, cmd, arg, respcode, respstr):
-            # base class version choke on unicode, the alternative is to just
-            # provide an empty implementation and relies on the client to do
-            # the logging for debugging purposes. Not worth the trouble so far
-            # -- vila 20110607
-            if cmd in ("DELE", "RMD", "RNFR", "RNTO", "MKD"):
-                line = '"%s" %s' % (' '.join([cmd, unicode(arg)]).strip(),
-                                    respcode)
-                self.log(line)
+    def log_cmd(self, cmd, arg, respcode, respstr):
+        # base class version choke on unicode, the alternative is to just
+        # provide an empty implementation and relies on the client to do
+        # the logging for debugging purposes. Not worth the trouble so far
+        # -- vila 20110607
+        if cmd in ("DELE", "RMD", "RNFR", "RNTO", "MKD"):
+            line = '"%s" %s' % (' '.join([cmd, unicode(arg)]).strip(), respcode)
+            self.log(line)
 
 
-if pyftplib_version < (0, 6,0):
-    # pyftpdlib says to define SITE commands by declaring ftp_SITE_<CMD>
-    # methods, but fails to recognize them.
-    ftpserver.proto_cmds['SITE CHMOD'] = ftpserver._CommandProperty(
-        # Best fit choice even if not exactly right (can be d, f or m too)
-        perm='w',
-        auth_needed=True, arg_needed=True, check_path=False,
-        help='Syntax: SITE CHMOD <SP>  octal_mode_bits file-name (chmod file)',
-        )
-    # An empty password is valid, hence the arg is neither mandatory not
-    # forbidden
-    ftpserver.proto_cmds['PASS'].arg_needed = None
-else:
-    # Same rationale as above (the password should be optional), but the hole
-    # in pyftplib-0.6.0 is narrower
-    ftpserver.proto_cmds['PASS']['arg'] = None
-
+# An empty password is valid, hence the arg is neither mandatory nor forbidden
+ftpserver.proto_cmds['PASS']['arg'] = None
 
 class ftp_server(ftpserver.FTPServer):
 
@@ -191,7 +152,7 @@ class FTPTestServer(test_server.TestServer):
 
         address = ('localhost', 0) # bind to a random port
         authorizer = AnonymousWithWriteAccessAuthorizer()
-        authorizer.add_anonymous(self._root, perm='elradfmw')
+        authorizer.add_anonymous(self._root, perm='elradfmwM')
         self._ftp_server = ftp_server(address, BzrConformingFTPHandler,
                                       authorizer)
         # This is hacky as hell, will not work if we need two servers working
@@ -227,7 +188,9 @@ class FTPTestServer(test_server.TestServer):
                              % (self._ftpd_thread.ident,))
 
     def _run_server(self):
-        """Run the server until stop_server is called, shut it down properly then.
+        """Run the server until stop_server is called.
+
+        Shut it down properly then.
         """
         self._ftpd_running = True
         self._ftpd_starting.release()
@@ -242,4 +205,4 @@ class FTPTestServer(test_server.TestServer):
     def add_user(self, user, password):
         """Add a user with write access."""
         self._ftp_server.authorizer.add_user(user, password, self._root,
-                                             perm='elradfmw')
+                                             perm='elradfmwM')

@@ -465,10 +465,6 @@ class BzrDir(controldir.ControlDir):
                     stacked=stacked)
         return result
 
-    @deprecated_method(deprecated_in((2, 3, 0)))
-    def generate_backup_name(self, base):
-        return self._available_backup_name(base)
-
     def _available_backup_name(self, base):
         """Find a non-existing backup file name based on base.
 
@@ -1234,16 +1230,6 @@ class BzrProber(controldir.Prober):
     """The known .bzr formats."""
 
     @classmethod
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def register_bzrdir_format(klass, format):
-        klass.formats.register(format.get_format_string(), format)
-
-    @classmethod
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def unregister_bzrdir_format(klass, format):
-        klass.formats.remove(format.get_format_string())
-
-    @classmethod
     def probe_transport(klass, transport):
         """Return the .bzrdir style format present in a directory."""
         try:
@@ -1370,7 +1356,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         :param shared_repo: Control whether made repositories are shared or
             not.
         :param vfs_only: If True do not attempt to use a smart server
-        :return: repo, bzrdir, require_stacking, repository_policy. repo is
+        :return: repo, controldir, require_stacking, repository_policy. repo is
             None if none was created or found, bzrdir is always valid.
             require_stacking is the result of examining the stacked_on
             parameter and any stacking policy found for the target.

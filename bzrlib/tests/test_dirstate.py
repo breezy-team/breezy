@@ -20,7 +20,7 @@ import os
 import tempfile
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     dirstate,
     errors,
     inventory,
@@ -31,7 +31,6 @@ from bzrlib import (
     tests,
     workingtree_4,
     )
-from bzrlib.transport import memory
 from bzrlib.tests import (
     features,
     test_osutils,
@@ -2444,7 +2443,7 @@ class _Repo(object):
     """A minimal api to get InventoryRevisionTree to work."""
 
     def __init__(self):
-        default_format = bzrdir.format_registry.make_bzrdir('default')
+        default_format = controldir.format_registry.make_bzrdir('default')
         self._format = default_format.repository_format
 
     def lock_read(self):

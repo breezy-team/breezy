@@ -43,6 +43,7 @@ import bzrlib
 from bzrlib import (
     branchbuilder,
     bzrdir,
+    controldir,
     errors,
     hooks,
     lockdir,
@@ -609,7 +610,7 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         # Guard against regression into MemoryTransport leaking
         # files to disk instead of keeping them in memory.
         self.assertFalse(osutils.lexists('dir'))
-        dir_format = bzrdir.format_registry.make_bzrdir('knit')
+        dir_format = controldir.format_registry.make_bzrdir('knit')
         self.assertEqual(dir_format.repository_format.__class__,
                          the_branch.repository._format.__class__)
         self.assertEqual('Bazaar-NG Knit Repository Format 1',
@@ -678,7 +679,7 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
         builder = self.make_branch_builder('dir')
         rev_id = builder.build_commit()
         self.assertPathExists('dir')
-        a_dir = bzrdir.BzrDir.open('dir')
+        a_dir = controldir.ControlDir.open('dir')
         self.assertRaises(errors.NoWorkingTree, a_dir.open_workingtree)
         a_branch = a_dir.open_branch()
         builder_branch = builder.get_branch()
@@ -1477,13 +1478,13 @@ class TestTestCase(tests.TestCase):
         transport_server.start_server()
         self.addCleanup(transport_server.stop_server)
         t = transport.get_transport_from_url(transport_server.get_url())
-        bzrdir.BzrDir.create(t.base)
+        controldir.ControlDir.create(t.base)
         self.assertRaises(errors.BzrError,
-            bzrdir.BzrDir.open_from_transport, t)
+            controldir.ControlDir.open_from_transport, t)
         # But if we declare this as safe, we can open the bzrdir.
         self.permit_url(t.base)
         self._bzr_selftest_roots.append(t.base)
-        bzrdir.BzrDir.open_from_transport(t)
+        controldir.ControlDir.open_from_transport(t)
 
     def test_requireFeature_available(self):
         """self.requireFeature(available) is a no-op."""
@@ -1943,7 +1944,7 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
     def test_make_branch_and_tree_with_format(self):
         # we should be able to supply a format to make_branch_and_tree
         self.make_branch_and_tree('a', format=bzrlib.bzrdir.BzrDirMetaFormat1())
-        self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('a')._format,
+        self.assertIsInstance(bzrlib.controldir.ControlDir.open('a')._format,
                               bzrlib.bzrdir.BzrDirMetaFormat1)
 
     def test_make_branch_and_memory_tree(self):
