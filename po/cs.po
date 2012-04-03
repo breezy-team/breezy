@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-03-31 20:07+0000\n"
+"PO-Revision-Date: 2012-04-02 18:49+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-04-01 04:30+0000\n"
-"X-Generator: Launchpad (build 15032)\n"
+"X-Launchpad-Export-Date: 2012-04-03 04:36+0000\n"
+"X-Generator: Launchpad (build 15052)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -6825,36 +6825,40 @@ msgstr ""
 #: bzrlib/errors.py:2250
 msgid "To use this feature you must upgrade your branch at %(path)s."
 msgstr ""
+"Pro použití této funkce musíte vylepšit formát Vaší větve v %(path)s."
 
 #: bzrlib/errors.py:2259
 msgid "To use this feature you must upgrade your repository at %(path)s."
 msgstr ""
+"Pro použití této funkce musíte vylepšit formát Vašeho úložiště v %(path)s."
 
 #: bzrlib/errors.py:2264
 msgid ""
 "To use this feature you must upgrade your branch at %(path)s to a format "
 "which supports rich roots."
 msgstr ""
+"Pro použití této funkce musíte vylepšit Vaší větev v %(path)s na formát, "
+"který podporuje rich roots."
 
 #: bzrlib/errors.py:2270
 msgid "Cannot perform local-only commits on unbound branches."
-msgstr ""
+msgstr "Nelze provést místní odevzdání v odvázaných větvích."
 
 #: bzrlib/errors.py:2275
 msgid "The method %(mname)s is not supported on objects of type %(tname)s."
-msgstr ""
+msgstr "Metoda %(mname)s není podporována v objektech typu %(tname)s."
 
 #: bzrlib/errors.py:2296
 msgid "Ghost tags not supported by format %(format)r."
-msgstr ""
+msgstr "\\duchovské značky nejsou podporovány formátem %(format)r."
 
 #: bzrlib/errors.py:2304
 msgid "File is binary but should be text."
-msgstr ""
+msgstr "Soubor je binární ale měl by být textový."
 
 #: bzrlib/errors.py:2309
 msgid "The path %(path)s is not permitted on this platform"
-msgstr ""
+msgstr "Cesta %(path)s není na této platformě dovolena"
 
 #: bzrlib/errors.py:2318
 msgid ""
@@ -6862,52 +6866,57 @@ msgid ""
 "       For revision_id {%(revision_id)s}, expected {%(expected)s}, measured\n"
 "       {%(measured)s}"
 msgstr ""
+"Důkaz se neshodoval s očekávanou hodnotou.\n"
+"       Pro id_revize {%(revision_id)s}, očekáváno {%(expected)s}, změřeno\n"
+"       {%(measured)s}"
 
 #: bzrlib/errors.py:2330
 msgid "Not a bzr revision-bundle: %(text)r"
-msgstr ""
+msgstr "Není balík revizí bzr: %(text)r"
 
 #: bzrlib/errors.py:2339
 msgid "Bad bzr revision-bundle: %(text)r"
-msgstr ""
+msgstr "Špatný balík revizí bzr: %(text)r"
 
 #: bzrlib/errors.py:2348
 msgid "Malformed bzr revision-bundle header: %(text)r"
-msgstr ""
+msgstr "Poškozená hlavička balíku revizí bzr: %(text)r"
 
 #: bzrlib/errors.py:2353
 msgid "Malformed patches in bzr revision-bundle: %(text)r"
-msgstr ""
+msgstr "Poškozené záplaty v balíku revizí bzr: %(text)r"
 
 #: bzrlib/errors.py:2358
 msgid "Malformed footer in bzr revision-bundle: %(text)r"
-msgstr ""
+msgstr "Poškozené zápatí v balíku revizí bzr: %(text)r"
 
 #: bzrlib/errors.py:2363
 msgid "End of line marker was not \\n in bzr revision-bundle"
-msgstr ""
+msgstr "Značka konce řádku v balíku revizí bzr nebylo \\n"
 
 #: bzrlib/errors.py:2373
 msgid "Bundle format %(bundle_format)s is incompatible with %(other)s"
-msgstr ""
+msgstr "Formát balíku %(bundle_format)s je nekompatibilní s %(other)s"
 
 #: bzrlib/errors.py:2383
 msgid "Root class for inventory serialization errors"
-msgstr ""
+msgstr "Chyby serializace kořenové třídy pro inventář"
 
 #: bzrlib/errors.py:2387
 msgid ""
 "The inventory was not in the expected format:\n"
 " %(msg)s"
 msgstr ""
+"Inventář nebyl v očekávaném formátu:\n"
+" %(msg)s"
 
 #: bzrlib/errors.py:2396
 msgid "This operation requires rich root data storage"
-msgstr ""
+msgstr "Tato operace vyžaduje uložení dat ve formátu rich root"
 
 #: bzrlib/errors.py:2409
 msgid "Unrecognised value for BZR_SSH environment variable: %(vendor)s"
-msgstr ""
+msgstr "Nerozpoznaná hodnota pro proměnnou prostředí BZR_SSH: %(vendor)s"
 
 #: bzrlib/errors.py:2418
 msgid ""
