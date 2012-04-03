@@ -12,3 +12,6 @@ IMPROVEMENTS
   NEWS diff.
 
 * Merge messages in the changed-NEWS file case.
+
+* Generate --fixes revision properties from lp:xxx references in NEWS.
+  (Partial fix for lp:528968) (Jelmer Vernooij)
