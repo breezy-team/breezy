@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # Setup file for bzr-mtn
 
-# Copyright (C) 2011 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2011-2012 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 
 # This program is distributed in the hope that it will be useful,
@@ -29,7 +29,7 @@ if __name__ == '__main__':
           keywords='plugin bzr monotone mtn',
           version=version_string,
           url='http://launchpad.net/bzr-mtn',
-          license='GPL',
+          license='GPL version 3 or later',
           author='Jelmer Vernooij',
           author_email='jelmer@samba.org',
           long_description=readme,
