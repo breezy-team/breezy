@@ -66,6 +66,14 @@ class ResponseFile(object):
         self._pos += len(data)
         return data
 
+    def readline(self):
+        data = self._file.readline()
+        self._pos += len(data)
+        return data
+
+    def tell(self):
+        return self._pos
+
     def seek(self, offset, whence=os.SEEK_SET):
         if whence == os.SEEK_SET:
             if offset < self._pos:
