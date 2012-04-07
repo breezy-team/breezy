@@ -452,6 +452,8 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertTrue(repo_to.has_revision('from-1'))
         self.assertFalse(repo_to.has_revision('from-2'))
         self.assertEqual(tree_to.branch.last_revision_info()[1], 'from-1')
+        self.assertFalse(
+            tree_to.changes_from(tree_to.basis_tree()).has_changed())
 
         self.run_bzr_error(
             ['bzr: ERROR: bzr push --revision '
