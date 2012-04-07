@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-04-03 20:56+0000\n"
+"PO-Revision-Date: 2012-04-06 20:05+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-04-04 04:33+0000\n"
-"X-Generator: Launchpad (build 15055)\n"
+"X-Launchpad-Export-Date: 2012-04-07 04:30+0000\n"
+"X-Generator: Launchpad (build 15060)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -7379,11 +7379,12 @@ msgstr "Hledání revizí"
 
 #: bzrlib/fetch.py:103
 msgid "Fetching revisions"
-msgstr ""
+msgstr "Získávání revizí"
 
 #: bzrlib/foreign.py:262
 msgid "Push into a different VCS without any custom bzr metadata."
 msgstr ""
+"Odeslat do jiného systému pro kontrolu verzí bez vlastních metadat bzr."
 
 #: bzrlib/foreign.py:264
 msgid ""
@@ -7391,309 +7392,325 @@ msgid ""
 "branch unless the --no-rebase option is used, in which case \n"
 "the two branches will be out of sync after the push. "
 msgstr ""
+"Toto poté provede synchronizaci místní větve se vzdálenou,\n"
+"pokud není použita volba --no-rebase, v takovém případě \n"
+"nebudou větve po odeslání synchronizované. "
 
 #: bzrlib/foreign.py:277
 msgid "Do not rebase after push."
-msgstr ""
+msgstr "Nesynchronizovat po odeslání."
 
 #: bzrlib/foreign.py:311
 #, python-format
 msgid "Using saved location: %s\n"
-msgstr ""
+msgstr "Použití uloženého umístění: %s\n"
 
 #: bzrlib/foreign.py:321
 msgid ""
 "{0!r} and {1!r} are in the same VCS, lossy push not necessary. Please use "
 "regular push."
 msgstr ""
+"{0!r} a {1!r} jsou ve stejném systému kontroly verzí, odeslání se ztrátami "
+"není potřeba. Prosím použijte normální odeslání."
 
 #: bzrlib/gpg.py:343
 msgid "No GnuPG key results for pattern: {0}"
-msgstr ""
+msgstr "Žádné výsledky klíčů GnuPG pro vzor: {0}"
 
 #: bzrlib/gpg.py:119 bzrlib/gpg.py:460
 msgid "{0} commits with valid signatures"
-msgstr ""
+msgstr "{0} odevzdání s platnými podpisy"
 
 #: bzrlib/gpg.py:123 bzrlib/gpg.py:465
 msgid "{0} commit with unknown key"
 msgid_plural "{0} commits with unknown keys"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{0} odevzdání s neznámým klíčem"
+msgstr[1] "{0} odevzdání s neznámými klíči"
+msgstr[2] "{0} odevzdání s neznámými klíči"
 
 #: bzrlib/gpg.py:129 bzrlib/gpg.py:472
 msgid "{0} commit not valid"
 msgid_plural "{0} commits not valid"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{0} neplatné odevzdání"
+msgstr[1] "{0} neplatná odevzdání"
+msgstr[2] "{0} neplatných odevzdání"
 
 #: bzrlib/gpg.py:135 bzrlib/gpg.py:479
 msgid "{0} commit not signed"
 msgid_plural "{0} commits not signed"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{0} nepodepsané odevzdání"
+msgstr[1] "{0} nepodepsaná odevzdání"
+msgstr[2] "{0} nepodepsaných odevzdání"
 
 #: bzrlib/gpg.py:141 bzrlib/gpg.py:486
 msgid "{0} commit with key now expired"
 msgid_plural "{0} commits with key now expired"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{0} odevzdání s klíčem který vypršel"
+msgstr[1] "{0} odevzdání s klíčem který vypršel"
+msgstr[2] "{0} odevzdání s klíčem který vypršel"
 
 #: bzrlib/gpg.py:452
 msgid "{0} commit by author {1} with key {2} now expired"
 msgid_plural "{0} commits by author {1} with key {2} now expired"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{0} odevzdání od autora {1} s klíčem {2} který vypršel"
+msgstr[1] "{0} odevzdání od autora {1} s klíčem {2} který vypršel"
+msgstr[2] "{0} odevzdání od autora {1} s klíčem {2} který vypršel"
 
 #: bzrlib/gpg.py:386
 msgid "{0} signed {1} commit"
 msgid_plural "{0} signed {1} commits"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{0} podepsal {1} odevzdání"
+msgstr[1] "{0} podepsal {1} odevzdání"
+msgstr[2] "{0} podepsal {1} odevzdání"
 
 #: bzrlib/gpg.py:403 bzrlib/gpg.py:419
 msgid "{0} commit by author {1}"
 msgid_plural "{0} commits by author {1}"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{0} odevzdání od autora {1}"
+msgstr[1] "{0} odevzdání od autora {1}"
+msgstr[2] "{0} odevzdání od autora {1}"
 
 #: bzrlib/gpg.py:433
 msgid "Unknown key {0} signed {1} commit"
 msgid_plural "Unknown key {0} signed {1} commits"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Neznámý klíč {0} podepsal {1} odevzdání"
+msgstr[1] "Neznámý klíč {0} podepsal {1} odevzdání"
+msgstr[2] "Neznámý klíč {0} podepsal {1} odevzdání"
 
 #: bzrlib/groupcompress.py:1739
 #, python-format
 msgid "Insert claimed random_id=True, but then inserted %r two times"
-msgstr ""
+msgstr "Insert tvrdil, že random_id=True, ale pak dvakrát vložil %r"
 
 #: bzrlib/hooks.py:331
 #, python-format
 msgid "Introduced in: %s"
-msgstr ""
+msgstr "Zavedeno v: %s"
 
 #: bzrlib/hooks.py:334
 #, python-format
 msgid "Deprecated in: %s"
-msgstr ""
+msgstr "Zastaralé v: %s"
 
 #: bzrlib/knit.py:1766 bzrlib/knit.py:1802
 msgid "Walking content"
-msgstr ""
+msgstr "Procházení obsahu"
 
 #: bzrlib/knit.py:3330
 msgid "annotating"
-msgstr ""
+msgstr "okomentování"
 
 #: bzrlib/lock.py:548
 msgid "{0!r} was {1} locked again"
-msgstr ""
+msgstr "{0!r} byl {1} znovu uzamčen"
 
 #: bzrlib/lockdir.py:321
 #, python-format
 msgid "error removing pending lock: %s"
-msgstr ""
+msgstr "chyba při odstraňování trvajícího zámku: %s"
 
 #: bzrlib/lockdir.py:616
 msgid "Unable to obtain"
-msgstr ""
+msgstr "Nelze získat"
 
 #: bzrlib/lockdir.py:618
 msgid "Lock owner changed for"
-msgstr ""
+msgstr "Vlastník zámku změněn na"
 
 #: bzrlib/lockdir.py:620
 msgid "{0} lock {1} {2}."
-msgstr ""
+msgstr "{0} zámek {1} {2}."
 
 #: bzrlib/lockdir.py:627
 #, python-format
 msgid "Will continue to try until %s, unless you press Ctrl-C."
-msgstr ""
+msgstr "Bude se stále pokoušet do %s, pokud nestisknete Ctrl-C."
 
 #: bzrlib/lockdir.py:629
 msgid "See \"bzr help break-lock\" for more."
-msgstr ""
+msgstr "Viz \"bzr help break-lock\" pro další informace."
 
 #: bzrlib/lockdir.py:739
 #, python-format
 msgid ""
 "held by %(user)s on %(hostname)s (process #%(pid)s), acquired %(time_ago)s"
 msgstr ""
+"držen %(user)s na %(hostname)s (proces #%(pid)s), získal %(time_ago)s"
 
 #: bzrlib/log.py:572
 msgid "--exclude-common-ancestry requires two different revisions"
-msgstr ""
+msgstr "--exclude-common-ancestry vyžaduje dvě různé revize"
 
 #: bzrlib/log.py:574
 #, python-format
 msgid "invalid direction %r"
-msgstr ""
+msgstr "neplatný směr %r"
 
 #: bzrlib/log.py:662
 msgid "Start revision not found in history of end revision."
-msgstr ""
+msgstr "Počáteční revize nenalezena v historii konečné."
 
 #: bzrlib/log.py:1080 bzrlib/log.py:1138
 msgid "Logging revision 0 is invalid."
-msgstr ""
+msgstr "Zaznamenání revize 0 je neplatné."
 
 #: bzrlib/log.py:1082 bzrlib/log.py:1140
 msgid "Start revision must be older than the end revision."
-msgstr ""
+msgstr "Počáteční revize musí být starší než konečná."
 
 #: bzrlib/log.py:1827
 #, python-format
 msgid "unknown log formatter: %r"
-msgstr ""
+msgstr "neznámý formátovač záznamu: %r"
 
 #: bzrlib/log.py:2123
 msgid "fixes bug"
 msgid_plural "fixes bugs"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "opravuje chybu"
+msgstr[1] "opravuje chyby"
+msgstr[2] "opravuje chyby"
 
 #: bzrlib/merge.py:689
 msgid "All changes applied successfully."
-msgstr ""
+msgstr "Všechny změny úspěsně použity."
 
 #: bzrlib/merge.py:691
 #, python-format
 msgid "%d conflicts encountered."
-msgstr ""
+msgstr "zjištěno %d konfliktů."
 
 #: bzrlib/merge.py:845 bzrlib/merge.py:1933
 msgid "Preparing file merge"
-msgstr ""
+msgstr "Příprava sloučení souborů"
 
 #: bzrlib/multiparent.py:426
 msgid "Importing revisions"
-msgstr ""
+msgstr "Importování revizí"
 
 #: bzrlib/option.py:526
 msgid "Show help message."
-msgstr ""
+msgstr "Zobrazit zprávu nápovědy."
 
 #: bzrlib/option.py:528
 msgid "Only display errors and warnings."
-msgstr ""
+msgstr "Zobrazovat pouze chyby a varování."
 
 #: bzrlib/option.py:531
 msgid "Show usage message and options."
-msgstr ""
+msgstr "Zobrazit zprávy o použití a možnosti."
 
 #: bzrlib/option.py:533
 msgid "Display more information."
-msgstr ""
+msgstr "Zobrazit více informací."
 
 #: bzrlib/option.py:541
 msgid ""
 "Select changes introduced by the specified revision. See also \"help "
 "revisionspec\"."
 msgstr ""
+"Vybrat změny zavedené zadanou revizí. Viz také \"help revisionspec\"."
 
 #: bzrlib/option.py:543
 msgid "Branch to operate on, instead of working directory."
-msgstr ""
+msgstr "Větev, v které pracovat, místo pracovního adresáře."
 
 #: bzrlib/option.py:545
 msgid "Detailed log format."
-msgstr ""
+msgstr "Podrobný formát záznamu."
 
 #: bzrlib/option.py:545
 msgid "Format used by GNU ChangeLog files."
-msgstr ""
+msgstr "Formát používaný soubory GNU ChangeLog."
 
 #: bzrlib/option.py:545
 msgid "Log format with one line per revision."
-msgstr ""
+msgstr "Formát záznmu s jedním řádkem na revizi."
 
 #: bzrlib/option.py:545
 msgid "Moderately short log format."
-msgstr ""
+msgstr "Středně krátký formát záznamu."
 
 #: bzrlib/option.py:545
 msgid "Use specified log format."
-msgstr ""
+msgstr "Použít zadaný formát záznamu."
 
 #: bzrlib/option.py:547
 msgid "Log format"
-msgstr ""
+msgstr "Formát záznamu"
 
 #: bzrlib/option.py:549
 msgid "LCA-newness merge."
-msgstr ""
+msgstr "Sloučení novosti LCA."
 
 #: bzrlib/option.py:549
 msgid "Merge using external diff3."
-msgstr ""
+msgstr "Sloučit pomocí vnějšího diff3."
 
 #: bzrlib/option.py:549
 msgid "Native diff3-style merge."
-msgstr ""
+msgstr "Přirozené sloučení ve stylu diff3."
 
 #: bzrlib/option.py:549
 msgid "Select a particular merge algorithm."
-msgstr ""
+msgstr "Vyberte určitý algoritmus sloučení."
 
 #: bzrlib/option.py:549
 msgid "Weave-based merge."
-msgstr ""
+msgstr "Sloučení na základě vazby."
 
 #: bzrlib/option.py:551
 msgid "Merge algorithm"
-msgstr ""
+msgstr "Algoritmus sloučení."
 
 #: bzrlib/option.py:554
 msgid "Message string."
-msgstr ""
+msgstr "Řetězec zprávy."
 
 #: bzrlib/option.py:556
 msgid "Use an ASCII NUL (\\0) separator rather than a newline."
-msgstr ""
+msgstr "Použít oddělovač ASCII NUL (\\0) raději, než nový řádek."
 
 #: bzrlib/option.py:558
 msgid "Ignore differences between branches and overwrite unconditionally."
-msgstr ""
+msgstr "Ignorovat rozdíly mezi větvemi a bezpodmínečně přepisovat."
 
 #: bzrlib/option.py:560
 msgid "Remember the specified location as a default."
-msgstr ""
+msgstr "Zapamatovat si určenoé umístění jako výchozí."
 
 #: bzrlib/option.py:562
 msgid "Reprocess to reduce spurious conflicts."
-msgstr ""
+msgstr "Znovu zpracovat pro snížení rušivých konfliktů."
 
 #: bzrlib/option.py:566
 msgid "See \"help revisionspec\" for details."
-msgstr ""
+msgstr "Viz \"help revisionspec\" pro podrobnosti."
 
 #: bzrlib/option.py:568
 msgid "Show internal object ids."
-msgstr ""
+msgstr "Zobrazit vnitřní id objektů."
 
 #: bzrlib/option.py:571
 msgid "Display timezone as local, original, or utc."
-msgstr ""
+msgstr "Zobrazit časové pásmo jako místní, původní nebo utc."
 
 #: bzrlib/osutils.py:100
 msgid "Parameter {0!r} encoding is unsupported by {1} application locale."
-msgstr ""
+msgstr "Kódování parametru {0!r} není podporováno jazykem aplikace {1}."
 
 #: bzrlib/osutils.py:220
 msgid "lstat/stat of ({0!r}): {1!r}"
-msgstr ""
+msgstr "lstat/stat z ({0!r}): {1!r}"
 
 #: bzrlib/osutils.py:1008 bzrlib/osutils.py:1019
 #, python-format
 msgid "sorry, %r not allowed in path"
-msgstr ""
+msgstr "je nám líto, %r není v cestě povoleno"
 
 #: bzrlib/osutils.py:1237
 #, python-format
 msgid "%r is too short to calculate a relative path"
-msgstr ""
+msgstr "%r je příliš krátké pro výpočet relativní cesty"
 
 #: bzrlib/plugin.py:143
 #, python-format
