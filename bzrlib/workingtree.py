@@ -534,7 +534,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         else:
             # TODO now merge from tree.last_revision to revision (to preserve
             # user local changes)
-            merge.transform_tree(tree, self)
+            merge.transform_tree(tree, 
+                self.branch.repository.revision_tree(revision_id))
             if revision_id == _mod_revision.NULL_REVISION:
                 new_parents = []
             else:

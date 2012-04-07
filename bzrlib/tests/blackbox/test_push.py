@@ -901,3 +901,28 @@ class TestPushOutput(script.TestCaseWithTransportAndScript):
             2>All changes applied successfully.
             2>Pushed up to revision 1.
             """)
+
+    def test_push_with_revspec(self):
+        self.run_script("""
+            $ bzr init-repo .
+            Shared repository with trees (format: 2a)
+            Location:
+              shared repository: .
+            $ bzr init trunk
+            Created a repository tree (format: 2a)
+            Using shared repository...
+            $ cd trunk
+            $ bzr commit -m 'first rev' --unchanged
+            2>Committing to:...trunk/
+            2>Committed revision 1.
+            $ echo foo > file
+            $ bzr add
+            adding file
+            $ bzr commit -m 'we need some foo'
+            2>Committing to:...trunk/
+            2>added file
+            2>Committed revision 2.
+            $ bzr push -r 1 ../other
+            2>Created new branch.
+            $ bzr st ../other
+            """)

@@ -35,6 +35,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* When pushing a specific revision, create the new working tree at
+  that revision. (#484516, Neil Martinsen-Burrell)
+
 Documentation
 *************
 
