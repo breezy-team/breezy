@@ -127,15 +127,13 @@ class AddFromBaseAction(AddAction):
         we look for a file with the same name in that directory.
         Else, we look for an entry in the base tree with the same path.
         """
-
         if self.base_tree.has_id(parent_ie.file_id):
-            # FIXME: Handle nested trees
-            base_parent_ie = self.base_tree.root_inventory[parent_ie.file_id]
-            base_child_ie = base_parent_ie.children.get(
+            base_path = osutils.pathjoin(
+                self.base_tree.id2path(parent_ie.file_id),
                 osutils.basename(path))
-            if base_child_ie is not None:
-                return (base_child_ie.file_id,
-                        self.base_tree.id2path(base_child_ie.file_id))
+            base_id = self.base_tree.path2id(base_path)
+            if base_id is not None:
+                return (base_id, base_path)
         full_base_path = osutils.pathjoin(self.base_path, path)
         # This may return None, but it is our last attempt
         return self.base_tree.path2id(full_base_path), full_base_path

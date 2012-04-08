@@ -287,15 +287,13 @@ class BundleSerializerV08(BundleSerializer):
 
         def finish_action(action, file_id, kind, meta_modified, text_modified,
                           old_path, new_path):
-            revision = new_tree.get_file_revision(file_id)
-            if revision != default_revision_id:
-                action.add_utf8_property('last-changed', revision)
+            entry = new_tree.root_inventory[file_id]
+            if entry.revision != default_revision_id:
+                action.add_utf8_property('last-changed', entry.revision)
             if meta_modified:
-                action.add_bool_property('executable',
-                    new_tree.is_executable(file_id))
+                action.add_bool_property('executable', entry.executable)
             if text_modified and kind == "symlink":
-                action.add_property('target',
-                    new_tree.get_symlink_target(file_id))
+                action.add_property('target', entry.symlink_target)
             if text_modified and kind == "file":
                 do_diff(file_id, old_path, new_path, action, force_binary)
             else:

@@ -4728,21 +4728,28 @@ class cmd_remerge(Command):
 
 
 class cmd_revert(Command):
-    __doc__ = """Revert files to a previous revision.
+    __doc__ = """\
+    Set files in the working tree back to the contents of a previous revision.
 
     Giving a list of files will revert only those files.  Otherwise, all files
     will be reverted.  If the revision is not specified with '--revision', the
-    last committed revision is used.
+    working tree basis revision is used. A revert operation affects only the
+    working tree, not any revision history like the branch and repository or
+    the working tree basis revision.
 
     To remove only some changes, without reverting to a prior version, use
     merge instead.  For example, "merge . -r -2..-3" (don't forget the ".")
     will remove the changes introduced by the second last commit (-2), without
     affecting the changes introduced by the last commit (-1).  To remove
     certain changes on a hunk-by-hunk basis, see the shelve command.
+    To update the branch to a specific revision or the latest revision and
+    update the working tree accordingly while preserving local changes, see the
+    update command.
 
-    By default, any files that have been manually changed will be backed up
-    first.  (Files changed only by merge are not backed up.)  Backup files have
-    '.~#~' appended to their name, where # is a number.
+    Uncommitted changes to files that are reverted will be discarded.
+    Howver, by default, any files that have been manually changed will be
+    backed up first.  (Files changed only by merge are not backed up.)  Backup
+    files have '.~#~' appended to their name, where # is a number.
 
     When you provide files, you can use their current pathname or the pathname
     from the target revision.  So you can use revert to "undelete" a file by
