@@ -186,7 +186,10 @@ class TestChangeLogMerger(tests.TestCaseWithTransport):
             base_text, True)
         builder.change_contents('clog-id', other=other_text, this=this_text)
         merger = builder.make_merger(merge.Merge3Merger, ['clog-id'])
-        merger.this_branch.get_config_stack().set(
+        # The following can't use config stacks until the plugin itself does
+        # ('this_branch' is already write locked at this point and as such
+        # won't write the new value to disk where get_user_option can get it).
+        merger.this_branch.get_config().set_user_option(
             'changelog_merge_files', 'ChangeLog')
         merge_hook_params = merge.MergeFileHookParams(merger, 'clog-id', None,
             'file', 'file', 'conflict')

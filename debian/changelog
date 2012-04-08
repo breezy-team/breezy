@@ -1,3 +1,10 @@
+bzr (2.6.0~bzr6519-1) UNRELEASED; urgency=low
+
+  * New upstream snapshot.
+   + Drop 04_serve_address patch, now applied upstream.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sun, 08 Apr 2012 11:57:31 +0200
+
 bzr (2.6.0~bzr6511-2) unstable; urgency=low
 
   * Add 04_serve_address to cope with localhost lookup issues during the

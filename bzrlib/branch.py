@@ -968,8 +968,8 @@ class Branch(controldir.ControlComponent):
         This means the next call to revision_history will need to call
         _gen_revision_history.
 
-        This API is semi-public; it only for use by subclasses, all other code
-        should consider it to be private.
+        This API is semi-public; it is only for use by subclasses, all other
+        code should consider it to be private.
         """
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
@@ -2495,7 +2495,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
-        if self.conf_store is not None:
+        if self.control_files._lock_count == 1 and self.conf_store is not None:
             self.conf_store.save_changes()
         try:
             self.control_files.unlock()
