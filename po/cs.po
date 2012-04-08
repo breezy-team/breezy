@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-04-06 20:05+0000\n"
+"PO-Revision-Date: 2012-04-07 21:09+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-04-07 04:30+0000\n"
+"X-Launchpad-Export-Date: 2012-04-08 04:30+0000\n"
 "X-Generator: Launchpad (build 15060)\n"
 
 #: bzrlib/add.py:95
@@ -7715,15 +7715,16 @@ msgstr "%r je příliš krátké pro výpočet relativní cesty"
 #: bzrlib/plugin.py:143
 #, python-format
 msgid "\"%s\" is not a valid <plugin_name>@<plugin_path> description "
-msgstr ""
+msgstr "\"%s\" není platný popis <název_zásuvného_modulu>@<cesta_modulu> "
 
 #: bzrlib/plugins/bash_completion/bashcomp.py:411
 msgid "Enable completions for the selected plugin (default: all plugins)"
 msgstr ""
+"Povolit dokončování pro zvolený zásuvný modul (výchozí: všechny moduly)"
 
 #: bzrlib/plugins/bash_completion/bashcomp.py:412
 msgid "Generate a shell function for bash command line completion."
-msgstr ""
+msgstr "Vytvořit shellovou funkci pro dokončování v příkazovém řádku bash."
 
 #: bzrlib/plugins/bash_completion/bashcomp.py:414
 msgid ""
@@ -7731,28 +7732,33 @@ msgid ""
 "automatically complete the currently typed command when the user presses\n"
 "the completion key (usually tab)."
 msgstr ""
+"Tento příkaz vytvoří shellovou funkci, která může být použita bash pro\n"
+"automatické dokončování současně napsaného příkazu, když uživatel stiskne\n"
+"klávesu dokončení (většinou tabulátor)."
 
 #: bzrlib/plugins/bash_completion/bashcomp.py:418
 msgid ""
 "Commonly used like this:\n"
 "    eval \"`bzr bash-completion`\""
 msgstr ""
+"Běžně používáno takto:\n"
+"    eval \"`bzr bash-completion`\""
 
 #: bzrlib/plugins/bash_completion/bashcomp.py:424
 msgid "Name of the generated function (default: _bzr)"
-msgstr ""
+msgstr "Název vytvořené funkce (výchozí: bzr_)"
 
 #: bzrlib/plugins/bash_completion/bashcomp.py:426
 msgid "Generate only the shell function, don't enable it"
-msgstr ""
+msgstr "Funkci pouze vytvořit, nepovolovat ji"
 
 #: bzrlib/plugins/launchpad/account.py:66
 msgid "Setting ssh/sftp usernames for launchpad.net."
-msgstr ""
+msgstr "Nastavení uživatelských jmen ssh/sftp pro launchpad.net."
 
 #: bzrlib/plugins/launchpad/__init__.py:81
 msgid "Register a branch with launchpad.net."
-msgstr ""
+msgstr "Registrovat větev v launchpad.net."
 
 #: bzrlib/plugins/launchpad/__init__.py:83
 msgid ""
@@ -7760,12 +7766,17 @@ msgid ""
 "launchpad.net.  Registration allows the branch to be associated with\n"
 "bugs or specifications."
 msgstr ""
+"Tento příkaz vypíše větev bzr v adresáři větví na\n"
+"launchpad.net. Registrace umožňuje, aby větev mohla být spojena s\n"
+"chybami nebo specifikacemi."
 
 #: bzrlib/plugins/launchpad/__init__.py:87
 msgid ""
 "Before using this command you must register the project to which the\n"
 "branch belongs, and create an account for yourself on launchpad.net."
 msgstr ""
+"Před použitím tohoto příkazu musíte registrovat projekt,\n"
+"kterému větev patří a vytvořit s účet na launchpad.net."
 
 #: bzrlib/plugins/launchpad/__init__.py:90
 msgid ""
@@ -7778,6 +7789,15 @@ msgid ""
 "                public_url if there is one for the current branch, and\n"
 "                otherwise error."
 msgstr ""
+"argumenty:\n"
+"    public_url: Veřejně viditelná url větve pro registraci.\n"
+"                Toto musí být url http nebo https (z které Launchpad může "
+"číst\n"
+"                pro přístup k větvi). Url místních souborů, SFTP url, a\n"
+"                bzr+ssh url nebude fungovat.\n"
+"                Pokud není zadána public_url, bzr použije nastavenou\n"
+"                public_url, pokud existuje pro současnou větev a\n"
+"                jinak chybu."
 
 #: bzrlib/plugins/launchpad/__init__.py:99
 msgid ""
@@ -7785,62 +7805,66 @@ msgid ""
 "    bzr register-branch http://foo.com/bzr/fooproject.mine \\\n"
 "            --project fooproject"
 msgstr ""
+"příklad:\n"
+"    bzr register-branch http://foo.com/bzr/fooproject.mine \\\n"
+"            --project fooproject"
 
 #: bzrlib/plugins/launchpad/__init__.py:106
 msgid "Launchpad project short name to associate with the branch."
-msgstr ""
+msgstr "Krátký název projektu Launchpad pro přidružení k větvi."
 
 #: bzrlib/plugins/launchpad/__init__.py:113
 msgid ""
 "Short name for the branch; by default taken from the last component of the "
 "url."
-msgstr ""
+msgstr "Krátký název pro větev; standardně převzat z poslední části url."
 
 #: bzrlib/plugins/launchpad/__init__.py:117
 msgid "One-sentence description of the branch."
-msgstr ""
+msgstr "Krátky popis větve."
 
 #: bzrlib/plugins/launchpad/__init__.py:120
 msgid "Longer description of the purpose or contents of the branch."
-msgstr ""
+msgstr "Delší popis účelu nebo obsahu větve."
 
 #: bzrlib/plugins/launchpad/__init__.py:123
 msgid "Branch author's email address, if not yourself."
-msgstr ""
+msgstr "Emailová adresa autora větve, ne Vaše."
 
 #: bzrlib/plugins/launchpad/__init__.py:126
 msgid "The bug this branch fixes."
-msgstr ""
+msgstr "Chyba, kterou tato větev opravuje."
 
 #: bzrlib/plugins/launchpad/__init__.py:129
 msgid "Prepare the request but don't actually send it."
-msgstr ""
+msgstr "Připravit požadavek, ale ve skutečnosti ho neodeslat."
 
 #: bzrlib/plugins/launchpad/__init__.py:151
 msgid ""
 "register-branch requires a public branch url - see bzr help register-branch."
 msgstr ""
+"register-branch vyžaduje veřejnou url větve - viz bzr help register-branch."
 
 #: bzrlib/plugins/launchpad/__init__.py:159
 msgid "--product is deprecated; please use --project."
-msgstr ""
+msgstr "--product je zastaralé; prosím použijte --project."
 
 #: bzrlib/plugins/launchpad/__init__.py:191
 msgid "Open a Launchpad branch page in your web browser."
-msgstr ""
+msgstr "Otevřít Launchpad stránku větve ve Vašem internetovém prohlížeči."
 
 #: bzrlib/plugins/launchpad/__init__.py:196
 msgid "Do not actually open the browser. Just say the URL we would use."
-msgstr ""
+msgstr "Neotevírat prohlížeč. Jen vypsat URL, která bude použita."
 
 #: bzrlib/plugins/launchpad/__init__.py:231
 #, python-format
 msgid "Opening %s in web browser"
-msgstr ""
+msgstr "Otevírání %s v internetovém prohlížeči."
 
 #: bzrlib/plugins/launchpad/__init__.py:241
 msgid "Show or set the Launchpad user ID."
-msgstr ""
+msgstr "Zobrazit nebo nastavit ID uživatele Launchpad."
 
 #: bzrlib/plugins/launchpad/__init__.py:243
 msgid ""
@@ -7848,56 +7872,64 @@ msgid ""
 "Launchpad user ID.  This command can be used to set or show the\n"
 "user ID that Bazaar will use for such communication."
 msgstr ""
+"Při komunikaci s Launchpad, některé příkazy potřebují znát Vaše ID\n"
+"uživatele Launchpad. Tento příkaz může být použit k nastavení\n"
+"nebo zobrazení ID uživatele, který Bazaar použije\n"
+"pro takovéto komunikace."
 
 #: bzrlib/plugins/launchpad/__init__.py:247
 msgid ""
 ":Examples:\n"
 "  Show the Launchpad ID of the current user::"
 msgstr ""
+":Příklady:\n"
+"  Zobrazit ID Launchpad současného uživatele::"
 
 #: bzrlib/plugins/launchpad/__init__.py:250
 msgid "      bzr launchpad-login"
-msgstr ""
+msgstr "      bzr launchpad-login"
 
 #: bzrlib/plugins/launchpad/__init__.py:252
 msgid "  Set the Launchpad ID of the current user to 'bob'::"
-msgstr ""
+msgstr "  Nastavit ID Launchpad současného uživatele na 'bob'::"
 
 #: bzrlib/plugins/launchpad/__init__.py:254
 msgid "      bzr launchpad-login bob"
-msgstr ""
+msgstr "      bzr launchpad-login bob"
 
 #: bzrlib/plugins/launchpad/__init__.py:261
 msgid "Don't check that the user name is valid."
-msgstr ""
+msgstr "Nekontrolovat, že uživatelské jméno je platné."
 
 #: bzrlib/plugins/launchpad/__init__.py:276
 #: bzrlib/plugins/launchpad/__init__.py:287
 msgid "Launchpad user ID exists and has SSH keys.\n"
-msgstr ""
+msgstr "ID uživatele Launchpad existuje a má klíče SSH.\n"
 
 #: bzrlib/plugins/launchpad/__init__.py:279
 msgid "No Launchpad user ID configured.\n"
-msgstr ""
+msgstr "Není nastaveno žádné ID Launchpad.\n"
 
 #: bzrlib/plugins/launchpad/__init__.py:290
 #, python-format
 msgid "Launchpad user ID set to '%s'.\n"
-msgstr ""
+msgstr "ID uživatele Launchpad nastaveno '%s'.\n"
 
 #: bzrlib/plugins/launchpad/__init__.py:298
 msgid "Ask Launchpad to mirror a branch now."
-msgstr ""
+msgstr "Požádat Launchpad o odrážení této větve."
 
 #: bzrlib/plugins/launchpad/__init__.py:318
 msgid "Propose merging a branch on Launchpad."
-msgstr ""
+msgstr "Navrhnout sloučení větve na Launchpad."
 
 #: bzrlib/plugins/launchpad/__init__.py:320
 msgid ""
 "This will open your usual editor to provide the initial comment.  When it\n"
 "has created the proposal, it will open it in your default web browser."
 msgstr ""
+"Toto otevře Váš obyčejný editor pro zadání počátečního komentáře. Když\n"
+"je návrh vytvořen, bude otevřen ve Vašem výchozím internetovém prohlížeči."
 
 #: bzrlib/plugins/launchpad/__init__.py:323
 msgid ""
@@ -7905,6 +7937,9 @@ msgid ""
 "is not supplied, the remembered submit branch will be used.  If no submit\n"
 "branch is remembered, the development focus will be used."
 msgstr ""
+"Větev bude navrhnuta ke sloučení do VĚTVE_ODESLÁNÍ. Pokud VĚTEV_ODESLÁNÍ\n"
+"není zadána, bude použita zapamatovaná větev. Pokud není zapamatována,\n"
+"bude použita, bude použita vývojová."
 
 #: bzrlib/plugins/launchpad/__init__.py:327
 msgid ""
@@ -7913,40 +7948,46 @@ msgid ""
 "The parameter the launchpad account name of the desired reviewer.  This\n"
 "may optionally be followed by '=' and the review type.  For example:"
 msgstr ""
+"Standardně bude muset tým pro kontrolu VĚTVE_ODESLÁNÍ projít\n"
+"návrhu ke sloučení. Toto může být potlačeno zadáním --review (-R).\n"
+"Parametr je název účtu požadovaného kontrolora. Toto může být\n"
+"volitelně následováno '=' a typem kontroly. Například:"
 
 #: bzrlib/plugins/launchpad/__init__.py:332
 msgid "  bzr lp-propose-merge --review jrandom --review review-team=qa"
-msgstr ""
+msgstr "  bzr lp-propose-merge --review jnovak --review tym-kontroly=qa"
 
 #: bzrlib/plugins/launchpad/__init__.py:334
 msgid ""
 "This will propose a merge,  request \"jrandom\" to perform a review of\n"
 "unspecified type, and request \"review-team\" to perform a \"qa\" review."
 msgstr ""
+"Toto navrhne sloučení, požádá \"jnovak\"  o provedení kontroly\n"
+"neuvedeného typu a požádá \"tym-kontroly\" k provedení kontroly \"qa\"."
 
 #: bzrlib/plugins/launchpad/__init__.py:339
 msgid "Propose the merge on staging."
-msgstr ""
+msgstr "Navrhnout sloučení při bynášení."
 
 #: bzrlib/plugins/launchpad/__init__.py:341
 msgid "Commit message."
-msgstr ""
+msgstr "Zpráva odevzdání."
 
 #: bzrlib/plugins/launchpad/__init__.py:343
 msgid "Mark the proposal as approved immediately."
-msgstr ""
+msgstr "Označit návrh jako okamžitě schválený."
 
 #: bzrlib/plugins/launchpad/cmds.py:298
 msgid "The bug this proposal fixes."
-msgstr ""
+msgstr "Chyba, kterou tento návrh opravuje."
 
 #: bzrlib/plugins/launchpad/__init__.py:345
 msgid "Requested reviewer and optional type."
-msgstr ""
+msgstr "Požadovaný kontrolor a nepovinně typ."
 
 #: bzrlib/plugins/launchpad/__init__.py:382
 msgid "Find the proposal to merge this revision."
-msgstr ""
+msgstr "Nalézt návrh ke sloučení této revize."
 
 #: bzrlib/plugins/launchpad/__init__.py:384
 msgid ""
@@ -7955,12 +7996,18 @@ msgid ""
 "if the merged_revno is recorded for the merge proposal.  The proposal(s)\n"
 "are opened in a web browser."
 msgstr ""
+"Nalézt návrh sloučení, které navrhují sloučit v určité revizi.\n"
+"Toto funguje pouze, když zvolená větev byla cíl návrhu sloučení \n"
+"pokud číslo sloučené revize je zaznamenáno v návrhu. Návrh(y)\n"
+"jsou otevřeny v internetovém prohlížeči."
 
 #: bzrlib/plugins/launchpad/__init__.py:389
 msgid ""
 "Any revision involved in the merge may be specified-- the revision in\n"
 "which the merge was performed, or one of the revisions that was merged."
 msgstr ""
+"Všechny revize zapojené do sloučení mohou být zadány -- revize,\n"
+"v které bylo sloučení provedeno, nebo jedna z revizí, která byla sloučena."
 
 #: bzrlib/plugins/launchpad/__init__.py:392
 msgid "So, to find the merge proposal that reviewed line 1 of README::"
