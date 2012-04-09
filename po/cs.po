@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-04-07 21:09+0000\n"
+"PO-Revision-Date: 2012-04-08 20:59+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-04-08 04:30+0000\n"
+"X-Launchpad-Export-Date: 2012-04-09 04:30+0000\n"
 "X-Generator: Launchpad (build 15060)\n"
 
 #: bzrlib/add.py:95
@@ -5341,7 +5341,7 @@ msgstr ""
 
 #: bzrlib/bzrdir.py:1818
 msgid "starting repository conversion"
-msgstr "převod úlořiště spuštěn"
+msgstr "převod úložiště spuštěn"
 
 #: bzrlib/bzrdir.py:2039
 msgid "Using default stacking branch {0} at {1}"
@@ -8012,75 +8012,76 @@ msgstr ""
 #: bzrlib/plugins/launchpad/__init__.py:392
 msgid "So, to find the merge proposal that reviewed line 1 of README::"
 msgstr ""
+"Takže pro nalezení návrhu sloučení, který zkontroloval řádek 1 v README::"
 
 #: bzrlib/plugins/launchpad/__init__.py:394
 msgid "  bzr lp-find-proposal -r annotate:README:1"
-msgstr ""
+msgstr "  bzr lp-find-proposal -r annotate:README:1"
 
 #: bzrlib/plugins/launchpad/__init__.py:409
 msgid "No review found."
-msgstr ""
+msgstr "Žádná kontrola nenalezena."
 
 #: bzrlib/plugins/launchpad/__init__.py:410
 #, python-format
 msgid "%d proposals(s) found."
-msgstr ""
+msgstr "%d návrhů nalezeno"
 
 #: bzrlib/plugins/launchpad/__init__.py:420
 msgid "Finding revision-id"
-msgstr ""
+msgstr "Hledání id revize"
 
 #: bzrlib/plugins/launchpad/__init__.py:427
 msgid "Finding merge"
-msgstr ""
+msgstr "Hledání sloučení"
 
 #: bzrlib/plugins/launchpad/__init__.py:432
 msgid "Finding revno"
-msgstr ""
+msgstr "Hledání čísla revize"
 
 #: bzrlib/plugins/launchpad/__init__.py:437
 msgid "Finding Launchpad branch"
-msgstr ""
+msgstr "Hledání větve Launchpad"
 
 #: bzrlib/plugins/launchpad/__init__.py:440
 msgid "Finding proposals"
-msgstr ""
+msgstr "Hledání návrhů"
 
 #: bzrlib/plugins/launchpad/lp_api.py:241
 #: bzrlib/plugins/launchpad/lp_api.py:246
 #, python-format
 msgid "%s is not registered on Launchpad"
-msgstr ""
+msgstr "%s není na Launchpad registrováno"
 
 #: bzrlib/plugins/launchpad/lp_api.py:256
 #, python-format
 msgid "%s has no development focus."
-msgstr ""
+msgstr "%s není zaměřeno na vývoj."
 
 #: bzrlib/plugins/launchpad/lp_api.py:261
 #, python-format
 msgid "development focus %s has no branch."
-msgstr ""
+msgstr "zaměření na vývoj %s nemá žádnou větev"
 
 #: bzrlib/plugins/launchpad/lp_api.py:266
 #, python-format
 msgid "source package %s has no branch."
-msgstr ""
+msgstr "zdrojový balíček %s nemá žádnou větev."
 
 #: bzrlib/plugins/launchpad/lp_api.py:270
 #, python-format
 msgid "%s has no associated product or source package."
-msgstr ""
+msgstr "%s nemá žádný přidružený produkt nebo zdrojový balíček."
 
 #: bzrlib/plugins/launchpad/lp_api.py:282
 #, python-format
 msgid "%s is already up-to-date."
-msgstr ""
+msgstr "%s již je aktuální."
 
 #: bzrlib/plugins/launchpad/lp_api.py:289
 #, python-format
 msgid "Pushing to %s"
-msgstr ""
+msgstr "Odesílání do %s"
 
 #: bzrlib/plugins/launchpad/lp_directory.py:170
 msgid ""
@@ -8088,125 +8089,130 @@ msgid ""
 "  local: {1}\n"
 " remote: {2}"
 msgstr ""
+"rozklad {0}\n"
+"  místní: {1}\n"
+" vzdálená: {2}"
 
 #: bzrlib/plugins/launchpad/lp_propose.py:149
 #, python-format
 msgid "There is already a branch merge proposal: %s"
-msgstr ""
+msgstr "Již existuje návrh ke sloučení: %s"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:236
 msgid "pb parameter to convert() is deprecated"
-msgstr ""
+msgstr "parametr pb pro convert() je zastaralý"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:239
 msgid "starting upgrade from format 4 to 5"
-msgstr ""
+msgstr "spuštění vylepšení z formátu 4 na formát 5"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:249
 msgid "note: upgrade may be faster if all store files are ungzipped first"
 msgstr ""
+"poznámka: operace může být rychlejší, pokud jsou všechny soubory uložení "
+"nejdříve rozbaleny"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:278
 msgid "converting revision"
-msgstr ""
+msgstr "převádění revize"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:283
 msgid "upgraded to weaves:"
-msgstr ""
+msgstr "aktualizováno na vazby:"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:284
 #, python-format
 msgid "%6d revisions and inventories"
-msgstr ""
+msgstr "%6d revizí a inventářů"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:286
 #, python-format
 msgid "%6d revisions not present"
-msgstr ""
+msgstr "%6d revizí není přítomno"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:288
 #, python-format
 msgid "%6d texts"
-msgstr ""
+msgstr "%6d textů"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:324
 msgid "writing weave"
-msgstr ""
+msgstr "zapisování vazby"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:328
 #: bzrlib/plugins/weave_fmt/bzrdir.py:330
 msgid "inventory"
-msgstr ""
+msgstr "inventář"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:347
 msgid "write revision"
-msgstr ""
+msgstr "zapsat revizi"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:361
 msgid "loading revision"
-msgstr ""
+msgstr "načítání revize"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:366
 #, python-format
 msgid "revision {%s} not present in branch; will be converted as a ghost"
-msgstr ""
+msgstr "revize {%s} není přítomna ve větvi; bude převedena na ducha"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:506
 msgid "starting upgrade from format 5 to 6"
-msgstr ""
+msgstr "spuštění převodu z formátu 5 na 6"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:516
 #, python-format
 msgid "adding prefixes to %s"
-msgstr ""
+msgstr "přidávání předpon do %s"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:556
 msgid "starting upgrade from format 6 to metadir"
-msgstr ""
+msgstr "spuštění převodu z formátu 6 na metadir"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:564
 msgid "Removing ancestry.weave"
-msgstr ""
+msgstr "Odstraňování ancestry.weave"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:569
 msgid "Finding branch files"
-msgstr ""
+msgstr "Hledání souborů větve"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:579
 msgid "Upgrading repository"
-msgstr ""
+msgstr "Vylepšování úložiště"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:589
 msgid "Upgrading branch"
-msgstr ""
+msgstr "Vylepšování větve"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:612
 msgid "No working tree."
-msgstr ""
+msgstr "Žádný pracovní strom."
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:619
 msgid "Upgrading working tree"
-msgstr ""
+msgstr "Vylepšování pracovního stromu."
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:640
 #, python-format
 msgid "Make %s lock"
-msgstr ""
+msgstr "Vytvořit zámek %s"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:651
 #, python-format
 msgid "Moving %s"
-msgstr ""
+msgstr "Přesunování %s"
 
 #: bzrlib/push.py:56
 msgid "Created new branch."
-msgstr ""
+msgstr "Vytvořena nová větev."
 
 #: bzrlib/push.py:97
 #, python-format
 msgid ""
 "Target directory %s already contains a .bzr directory, but it is not valid."
-msgstr ""
+msgstr "Cílový adresář %s již obsahuje adresář .bzr, ale není platný."
 
 #: bzrlib/push.py:101
 #, python-format
@@ -8214,17 +8220,20 @@ msgid ""
 "Target directory %s already exists, but does not have a .bzr directory. "
 "Supply --use-existing-dir to push there anyway."
 msgstr ""
+"Cílový adresář %s již existuje, ale nemá adresář .bzr. Zadejte --use-"
+"existing-dir, abyste tam přesto odeslali."
 
 #: bzrlib/push.py:122
 #, python-format
 msgid "Too many redirections trying to make %s."
-msgstr ""
+msgstr "Příliš mnoho přesměrování při pokusu o vytvoření %s."
 
 #: bzrlib/push.py:147
 msgid ""
 "These branches have diverged.  See \"bzr help diverged-branches\" for more "
 "information."
 msgstr ""
+"Tyto větve se liší. Viz \"bzr help diverged-branches\" pro více informací."
 
 #: bzrlib/push.py:151
 #, python-format
@@ -8232,6 +8241,7 @@ msgid ""
 "It is not possible to losslessly push to %s. You may want to use dpush "
 "instead."
 msgstr ""
+"Není možné bezztrátově odeslat do %s. Možná byste raději chtěli použít dpush."
 
 #: bzrlib/push.py:157
 #, python-format
@@ -8240,53 +8250,56 @@ msgid ""
 "repository. This is an unsupported configuration. Please move the target "
 "directory out of the way and try again."
 msgstr ""
+"V %s máte platný kontrolní adresář .bzr, ale žádnou větev nebo úložiště. "
+"Toto je nepodporovaná konfigurace. Prosím přesuňte cílový adresář mimo a "
+"zkuste to znovu."
 
 #: bzrlib/reconcile.py:97
 #, python-format
 msgid "Reconciling branch %s"
-msgstr ""
+msgstr "Slaďování větve %s"
 
 #: bzrlib/reconcile.py:103
 #, python-format
 msgid "Reconciling repository %s"
-msgstr ""
+msgstr "Slaďování úložiště %s"
 
 #: bzrlib/reconcile.py:105
 msgid "Reconciling repository"
-msgstr ""
+msgstr "Slaďování úložiště"
 
 #: bzrlib/reconcile.py:111
 #, python-format
 msgid "%s cannot canonicalize CHKs."
-msgstr ""
+msgstr "%s nelze kanonizovat CHK"
 
 #: bzrlib/reconcile.py:119
 msgid "Reconcile aborted: revision index has inconsistent parents."
-msgstr ""
+msgstr "Slaďování ukončeno: rejstřík revize má rozporné nadřazené."
 
 #: bzrlib/reconcile.py:121
 msgid "Run \"bzr check\" for more details."
-msgstr ""
+msgstr "Spusťte \"bzr check\" pro více informací."
 
 #: bzrlib/reconcile.py:123
 msgid "Reconciliation complete."
-msgstr ""
+msgstr "Sladění dokončeno."
 
 #: bzrlib/reconcile.py:166
 msgid "Fixing last revision info {0}  => {1}"
-msgstr ""
+msgstr "Oprava poslední revize {0} => {1}"
 
 #: bzrlib/reconcile.py:173
 msgid "revision_history ok."
-msgstr ""
+msgstr "historie revizí ok."
 
 #: bzrlib/reconcile.py:234
 msgid "Reading inventory data"
-msgstr ""
+msgstr "Čtení dat inventáře"
 
 #: bzrlib/reconcile.py:254 bzrlib/reconcile.py:384
 msgid "Inventory ok."
-msgstr ""
+msgstr "Inventář ok."
 
 #: bzrlib/reconcile.py:256 bzrlib/reconcile.py:386
 msgid "Backing up inventory"
