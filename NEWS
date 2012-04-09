@@ -1,5 +1,10 @@
 0.6.9	UNRELEASED
 
+ BUG FIXES
+
+  * ``bzr git-import`` only creates colocated branches now if
+    the --colocated option is specified. (Jelmer Vernooij)
+
 0.6.8	2012-03-28
 
  BUG FIXES

@@ -38,6 +38,10 @@ class cmd_git_import(Command):
 
     takes_args = ["src_location", "dest_location?"]
 
+    takes_options = [
+                     Option('colocated', help='Create colocated branches.'),
+                     ]
+
     def _get_colocated_branch(self, target_bzrdir, name):
         from bzrlib.errors import NotBranchError
         try:
@@ -59,7 +63,7 @@ class cmd_git_import(Command):
         except NotBranchError:
             return head_bzrdir.create_branch()
 
-    def run(self, src_location, dest_location=None):
+    def run(self, src_location, dest_location=None, colocated=False):
         import os
         import urllib
         from bzrlib import (
@@ -126,7 +130,7 @@ class cmd_git_import(Command):
                     # Not a branch, ignore
                     continue
                 pb.update(gettext("creating branches"), i, len(refs_dict))
-                if getattr(target_bzrdir._format, "colocated_branches", False):
+                if getattr(target_bzrdir._format, "colocated_branches", False) and colocated:
                     if name == "HEAD":
                         branch_name = None
                     head_branch = self._get_colocated_branch(target_bzrdir, branch_name)

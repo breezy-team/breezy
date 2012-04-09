@@ -28,7 +28,6 @@ from bzrlib import (
 from bzrlib.bzrdir import (
     BzrDir,
     )
-from bzrlib.tests import TestSkipped
 
 from bzrlib.tests.blackbox import ExternalBase
 
@@ -178,13 +177,22 @@ class TestGitBlackBox(ExternalBase):
             '@@ -1,0 +1,1 @@\n'
             '+contents of a\n')
 
-    def test_git_import(self):
+    def test_git_import_uncolocated(self):
         r = GitRepo.init("a", mkdir=True)
         self.build_tree(["a/file"])
         r.stage("file")
         r.do_commit(ref="refs/heads/abranch", committer="Joe <joe@example.com>", message="Dummy")
         r.do_commit(ref="refs/heads/bbranch", committer="Joe <joe@example.com>", message="Dummy")
         self.run_bzr(["git-import", "a", "b"])
+        self.assertEquals(set([".bzr", "abranch", "bbranch"]), set(os.listdir("b")))
+
+    def test_git_import(self):
+        r = GitRepo.init("a", mkdir=True)
+        self.build_tree(["a/file"])
+        r.stage("file")
+        r.do_commit(ref="refs/heads/abranch", committer="Joe <joe@example.com>", message="Dummy")
+        r.do_commit(ref="refs/heads/bbranch", committer="Joe <joe@example.com>", message="Dummy")
+        self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEquals(set([".bzr"]), set(os.listdir("b")))
         self.assertEquals(set(["abranch", "bbranch"]),
                 set(BzrDir.open("b").get_branches().keys()))
@@ -194,8 +202,8 @@ class TestGitBlackBox(ExternalBase):
         self.build_tree(["a/file"])
         r.stage("file")
         r.do_commit(ref="refs/heads/abranch", committer="Joe <joe@example.com>", message="Dummy")
-        self.run_bzr(["git-import", "a", "b"])
-        self.run_bzr(["git-import", "a", "b"])
+        self.run_bzr(["git-import", "--colocated", "a", "b"])
+        self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEquals(set([".bzr"]), set(os.listdir("b")))
         b = BzrDir.open("b")
         self.assertEquals(["abranch"], b.get_branches().keys())
@@ -206,7 +214,7 @@ class TestGitBlackBox(ExternalBase):
         r.stage("file")
         cid = r.do_commit(ref="refs/heads/abranch", committer="Joe <joe@example.com>", message="Dummy")
         r["refs/tags/atag"] = cid
-        self.run_bzr(["git-import", "a", "b"])
+        self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEquals(set([".bzr"]), set(os.listdir("b")))
         b = BzrDir.open("b")
         self.assertEquals(["abranch"], b.get_branches().keys())
@@ -220,7 +228,7 @@ class TestGitBlackBox(ExternalBase):
         r.do_commit(ref="refs/heads/abranch", committer="Joe <joe@example.com>", message="Dummy")
         r.do_commit(ref="refs/heads/bbranch", committer="Joe <joe@example.com>", message="Dummy")
         self.make_bzrdir("b", format="development-colo")
-        self.run_bzr(["git-import", "a", "b"])
+        self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEquals(
             set([b.name for b in BzrDir.open("b").list_branches()]),
             set(["abranch", "bbranch"]))
