@@ -5004,7 +5004,8 @@ class cmd_missing(Command):
                 len(local_extra))
             for revision in iter_log_revisions(local_extra,
                                 local_branch.repository,
-                                verbose):
+                                verbose,
+                                local_branch):
                 lf.log_revision(revision)
             printed_local = True
             status_code = 1
