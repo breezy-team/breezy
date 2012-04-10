@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-04-08 20:59+0000\n"
+"PO-Revision-Date: 2012-04-09 21:15+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-04-09 04:30+0000\n"
-"X-Generator: Launchpad (build 15060)\n"
+"X-Launchpad-Export-Date: 2012-04-10 04:41+0000\n"
+"X-Generator: Launchpad (build 15070)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -8303,221 +8303,223 @@ msgstr "Inventář ok."
 
 #: bzrlib/reconcile.py:256 bzrlib/reconcile.py:386
 msgid "Backing up inventory"
-msgstr ""
+msgstr "Zálohování inventáře"
 
 #: bzrlib/reconcile.py:258
 msgid "Backup inventory created."
-msgstr ""
+msgstr "Záložní inventář vytvořen."
 
 #: bzrlib/reconcile.py:274 bzrlib/reconcile.py:405
 msgid "Writing weave"
-msgstr ""
+msgstr "Zaoisování vazby"
 
 #: bzrlib/reconcile.py:277 bzrlib/reconcile.py:408
 msgid "Inventory regenerated."
-msgstr ""
+msgstr "Inventář obnoven"
 
 #: bzrlib/reconcile.py:371 bzrlib/reconcile.py:373 bzrlib/reconcile.py:376
 msgid "Reading indexes"
-msgstr ""
+msgstr "Čtení rejstříků"
 
 #: bzrlib/reconcile.py:380 bzrlib/reconcile.py:382
 msgid "Checking unused inventories"
-msgstr ""
+msgstr "Kontrola nepoužitých inventářů"
 
 #: bzrlib/reconcile.py:388
 msgid "Backup Inventory created"
-msgstr ""
+msgstr "Záložní inventář vytvořen"
 
 #: bzrlib/reconcile.py:446
 msgid "Fixing text parents"
-msgstr ""
+msgstr "Oprava textových nadřazených"
 
 #: bzrlib/reconfigure.py:54
 msgid "{0} is now stacked on {1}\n"
-msgstr ""
+msgstr "{0} je nyní složeno na {1}\n"
 
 #: bzrlib/reconfigure.py:69
 #, python-format
 msgid "%s is now not stacked\n"
-msgstr ""
+msgstr "%s není nyní složeno\n"
 
 #: bzrlib/remote.py:1228 bzrlib/repository.py:289
 #, python-format
 msgid "bzr: ERROR (ignored): %s"
-msgstr ""
+msgstr "bzr: CHYBA (ignorováno): %s"
 
 #: bzrlib/remote.py:2541
 msgid "Copying repository content as tarball..."
-msgstr ""
+msgstr "Kopírování obsahu úložiště jako archiv..."
 
 #: bzrlib/rename_map.py:69
 msgid "Calculating hashes"
-msgstr ""
+msgstr "Vypočítávání hash"
 
 #: bzrlib/rename_map.py:107
 msgid "Determining hash hits"
-msgstr ""
+msgstr "Zjišťování průzumů hashe"
 
 #: bzrlib/rename_map.py:242
 msgid "{0} => {1}"
-msgstr ""
+msgstr "{0} => {1}"
 
 #: bzrlib/repository.py:1787
 msgid "Moving repository to repository.backup"
-msgstr ""
+msgstr "Přesunování úložiště do zálohy.úložiště"
 
 #: bzrlib/repository.py:1794
 msgid "Creating new repository"
-msgstr ""
+msgstr "Vytváření nového úložiště"
 
 #: bzrlib/repository.py:1799
 msgid "Copying content"
-msgstr ""
+msgstr "Kopírování obsahu"
 
 #: bzrlib/repository.py:1803
 msgid "Deleting old repository content"
-msgstr ""
+msgstr "Mazání obsahu starého úložiště"
 
 #: bzrlib/repository.py:1805
 msgid "repository converted"
-msgstr ""
+msgstr "úložiště převedeno"
 
 #: bzrlib/revisionspec.py:903
 msgid "Using {0} {1}"
-msgstr ""
+msgstr "Použito {0} {1}"
 
 #: bzrlib/send.py:58
 #, python-format
 msgid "Mail client \"%s\" does not support specifying body"
-msgstr ""
+msgstr "Poštovní klient \"%s\" nepodporuje zadávání těla"
 
 #: bzrlib/send.py:62
 msgid "--remember requires a branch to be specified."
-msgstr ""
+msgstr "--remember vyžaduje zadání větve."
 
 #: bzrlib/send.py:77
 msgid "No submit branch known or specified"
-msgstr ""
+msgstr "Žádná větev odesílání není známa nebo zadána"
 
 #: bzrlib/send.py:80
 msgid "Using saved {0} location \"{1}\" to determine what changes to submit."
-msgstr ""
+msgstr "Použití uloženého umístění {0} \"{1} pro určení změn k odeslání."
 
 #: bzrlib/send.py:98
 #, python-format
 msgid "No such send format '%s'."
-msgstr ""
+msgstr "Žádný takový formát odeslání '%s'."
 
 #: bzrlib/send.py:114
 msgid "bzr send takes at most two one revision identifiers"
-msgstr ""
+msgstr "bzr send přijímá nejvíce dva identifikátory jedné reviz"
 
 #: bzrlib/send.py:127
 msgid "No revisions to submit."
-msgstr ""
+msgstr "Žádné revize k odeslání."
 
 #: bzrlib/send.py:139
 msgid ""
 "- not supported for merge directives that use more than one output file."
 msgstr ""
+"- není podporováno pro příkazy sloučení, které používají více než jeden "
+"výstupní soubor."
 
 #: bzrlib/send.py:185
 msgid "Format 0.9 does not permit bundle with no patch"
-msgstr ""
+msgstr "Formát 0.9 nepovoluje balík bez záplaty"
 
 #: bzrlib/shelf_ui.py:46
 #, python-format
 msgid "Shelve adding file \"%(path)s\"?"
-msgstr ""
+msgstr "Přidat soubor \"%(path)s\" na regál?"
 
 #: bzrlib/shelf_ui.py:47
 msgid "Shelve binary changes?"
-msgstr ""
+msgstr "Uskladnit binární změny?"
 
 #: bzrlib/shelf_ui.py:48
 msgid "Shelve changing \"%s\" from %(other)s to %(this)s?"
-msgstr ""
+msgstr "Změnit \"%s\" v regále z %(other)s na %(this)s?"
 
 #: bzrlib/shelf_ui.py:50
 #, python-format
 msgid "Shelve removing file \"%(path)s\"?"
-msgstr ""
+msgstr "Odstranit soubor \"%(path)s\" z regálu?"
 
 #: bzrlib/shelf_ui.py:51
 #, python-format
 msgid "Shelve %d change(s)?"
-msgstr ""
+msgstr "Uskladnit %d změn?"
 
 #: bzrlib/shelf_ui.py:52
 msgid "Shelve?"
-msgstr ""
+msgstr "Uskladnit?"
 
 #: bzrlib/shelf_ui.py:53
 #, python-format
 msgid ""
 "Shelve changing target of \"%(path)s\" from \"%(other)s\" to \"%(this)s\"?"
-msgstr ""
+msgstr "Změnit cíl \"%(path)s\" z \"%(other)s\" na \"%(this)s\" v regále?"
 
 #: bzrlib/shelf_ui.py:55
 #, python-format
 msgid "Shelve renaming \"%(other)s\" => \"%(this)s\"?"
-msgstr ""
+msgstr "Přejmenovat \"%(other)s\" => \"%(this)s\" v regále?"
 
 #: bzrlib/shelf_ui.py:70
 #, python-format
 msgid "Changes shelved with id \"%d\"."
-msgstr ""
+msgstr "Změny uskladněny s id \"%d\"."
 
 #: bzrlib/shelf_ui.py:74
 msgid "Selected changes destroyed."
-msgstr ""
+msgstr "Vybrané změny zničeny."
 
 #: bzrlib/shelf_ui.py:78
 msgid "Selected changes:"
-msgstr ""
+msgstr "Vybrané změny:"
 
 #: bzrlib/shelf_ui.py:98
 #, python-format
 msgid "Delete file \"%(path)s\"?"
-msgstr ""
+msgstr "Smazat soubor \"%(path)s\"?"
 
 #: bzrlib/shelf_ui.py:99
 msgid "Apply binary changes?"
-msgstr ""
+msgstr "Použít binární změnu?"
 
 #: bzrlib/shelf_ui.py:100
 #, python-format
 msgid "Change \"%(path)s\" from %(this)s to %(other)s?"
-msgstr ""
+msgstr "Změnit \"%(path)s\" z %(this)s na %(other)s?"
 
 #: bzrlib/shelf_ui.py:102
 #, python-format
 msgid "Add file \"%(path)s\"?"
-msgstr ""
+msgstr "Přidat soubor \"%(path)s\"?"
 
 #: bzrlib/shelf_ui.py:103
 #, python-format
 msgid "Apply %d change(s)?"
-msgstr ""
+msgstr "Použít %d změn?"
 
 #: bzrlib/shelf_ui.py:104
 msgid "Apply change?"
-msgstr ""
+msgstr "Použít změnu?"
 
 #: bzrlib/shelf_ui.py:105
 #, python-format
 msgid "Change target of \"%(path)s\" from \"%(this)s\" to \"%(other)s\"?"
-msgstr ""
+msgstr "Změnit cíl \"%(path)s\" z \"%(this)s\" na \"%(other)s\"?"
 
 #: bzrlib/shelf_ui.py:107
 #, python-format
 msgid "Rename \"%(this)s\" => \"%(other)s\"?"
-msgstr ""
+msgstr "Přejmenovat \"%(this)s\" => \"%(other)s\"?"
 
 #: bzrlib/shelf_ui.py:402
 msgid "No changes are shelved."
-msgstr ""
+msgstr "Žádné změny nejsou v regále."
 
 #: bzrlib/shelf_ui.py:460
 #, python-format
