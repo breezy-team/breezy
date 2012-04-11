@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-04-09 21:15+0000\n"
+"PO-Revision-Date: 2012-04-10 20:37+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-04-10 04:41+0000\n"
+"X-Launchpad-Export-Date: 2012-04-11 04:30+0000\n"
 "X-Generator: Launchpad (build 15070)\n"
 
 #: bzrlib/add.py:95
@@ -812,7 +812,7 @@ msgstr "Vytvořit větev bez pracovního stromu."
 
 #: bzrlib/builtins.py:1389
 msgid "Switch the checkout in the current directory to the new branch."
-msgstr "Překlopit získání  v současném adresáři do nové větve."
+msgstr "Přepnout získání  v současném adresáři do nové větve."
 
 #: bzrlib/builtins.py:1392
 msgid ""
@@ -873,7 +873,7 @@ msgstr "Nová větev svázána s %s"
 #: bzrlib/builtins.py:1510 bzrlib/builtins.py:6256
 #, python-format
 msgid "Switched to branch: %s"
-msgstr "Překlopeno na větev: %s"
+msgstr "Přepnuto na větev: %s"
 
 #: bzrlib/builtins.py:1515
 msgid "List the branches available at the current location."
@@ -4824,7 +4824,7 @@ msgid ""
 "and switch between them."
 msgstr ""
 "Ve většině případů má zobrazení krátkou životnost: je vytvořeno\n"
-"k provedení vybrané změny a je smazán jakmile je změna odevzdána.\n"
+"k provedení vybrané změny a je smazáno jakmile je změna odevzdána.\n"
 "Jindy můžete chtít vytvořit jeden nebo více pojmenovaných\n"
 "zobrazení a mezi nimi přepínat."
 
@@ -4835,7 +4835,7 @@ msgid ""
 "to see the whole tree for an operation or two (e.g. merge) but\n"
 "want to switch back to your view after that."
 msgstr ""
-"Pro zakázání současného zobrazení, aniž by byl smazán můžete\n"
+"Pro zakázání současného zobrazení, aniž by byl smazáno můžete\n"
 "přepnout do pseudo zobrazení  ``off``. To může být užitečné,\n"
 "když potřebujete vidět celý strom pro pár operací (např.\n"
 "sloučení), ale pak chcete přepnout zpět na Vaše zobrazení."
@@ -8524,55 +8524,57 @@ msgstr "Žádné změny nejsou v regále."
 #: bzrlib/shelf_ui.py:460
 #, python-format
 msgid "Using changes with id \"%d\"."
-msgstr ""
+msgstr "Používání změn s id \"%d\"."
 
 #: bzrlib/shelf_ui.py:464
 #, python-format
 msgid "Message: %s"
-msgstr ""
+msgstr "Zpráva: %s"
 
 #: bzrlib/shelf_ui.py:476
 #, python-format
 msgid "Deleted changes with id \"%d\"."
-msgstr ""
+msgstr "Smazány s id \"%d\"."
 
 #: bzrlib/smart/medium.py:714
 msgid "HPSS calls: {0} ({1} vfs) {2}"
-msgstr ""
+msgstr "Volání HPSS: {0} ({1} vfs) {2}"
 
 #: bzrlib/smart/server.py:169
 msgid "Requested to stop gracefully"
-msgstr ""
+msgstr "Žádost o řádné zastavení"
 
 #: bzrlib/smart/server.py:179
 #, python-format
 msgid "Waiting for %d client(s) to finish"
-msgstr ""
+msgstr "Čekání na dokončení %d klientů"
 
 #: bzrlib/smart/server.py:185
 #, python-format
 msgid "Still waiting for %d client(s) to finish"
-msgstr ""
+msgstr "Stále se čeká na dokončení %d klientů"
 
 #: bzrlib/smart/server.py:219
 #, python-format
 msgid "listening socket error: %s"
-msgstr ""
+msgstr "chyba poslouchání soketu: %s"
 
 #: bzrlib/smart/server.py:452
 #, python-format
 msgid "listening on port: %s"
-msgstr ""
+msgstr "poslouchání na portu: %s"
 
 #: bzrlib/switch.py:73
 msgid "Pending merges must be committed or reverted before using switch."
-msgstr ""
+msgstr "Nevyřízená sloučení musí být před přepnutím odevzdána nebo vrácena."
 
 #: bzrlib/switch.py:100
 msgid ""
 "Cannot switch as local commits found in the checkout. Commit these to the "
 "bound branch or use --force to throw them away."
 msgstr ""
+"Nelze přepnout protože byla v získání nalezena místní odevzdání. Odevzdejte "
+"je na svázanou větev, nebo použijte --force k zahození."
 
 #: bzrlib/switch.py:105
 #, python-format
@@ -8580,174 +8582,178 @@ msgid ""
 "Unable to connect to current master branch %(target)s: %(error)s To switch "
 "anyway, use --force."
 msgstr ""
+"Nelze se připojit k současné hlavní větvi %(target)s: %(error)s Abyste "
+"přesto přepnuli, použijte --force."
 
 #: bzrlib/switch.py:125
 msgid "Cannot switch a branch, only a checkout."
-msgstr ""
+msgstr "Nelze přepnout větev, pouze získání."
 
 #: bzrlib/switch.py:163
 #, python-format
 msgid "Tree is up to date at revision %d."
-msgstr ""
+msgstr "Strom je aktuální při revizi %d."
 
 #: bzrlib/switch.py:169
 #, python-format
 msgid "Updated to revision %d."
-msgstr ""
+msgstr "Aktualizováno na revizi %d."
 
 #: bzrlib/transform.py:1734 bzrlib/transform.py:1745 bzrlib/transform.py:1747
 msgid "Apply phase"
-msgstr ""
+msgstr "Použít fázi"
 
 #: bzrlib/transform.py:1773 bzrlib/transform.py:1841
 msgid "removing file"
-msgstr ""
+msgstr "odstraňování souboru"
 
 #: bzrlib/transform.py:1791 bzrlib/transform.py:1876
 msgid "adding file"
-msgstr ""
+msgstr "přidávání souboru"
 
 #: bzrlib/transform.py:2591
 msgid "Building tree"
-msgstr ""
+msgstr "Sestavování stromu"
 
 #: bzrlib/transform.py:2681 bzrlib/transform.py:2708
 msgid "Adding file contents"
-msgstr ""
+msgstr "Přidávání obsahu souboru"
 
 #: bzrlib/transform.py:3028
 msgid "Resolution pass"
-msgstr ""
+msgstr "Průchod usnesení"
 
 #: bzrlib/transport/ftp/_gssapi.py:88
 #, python-format
 msgid "Authenticated as %s"
-msgstr ""
+msgstr "Ověřen jako %s"
 
 #: bzrlib/tree.py:634
 msgid "*** {0} content-filter: {1} => {2!r}"
-msgstr ""
+msgstr "*** {0} filtr obssahu: {1} => {2!r}"
 
 #: bzrlib/upgrade.py:77
 #, python-format
 msgid "This is a checkout. The branch (%s) needs to be upgraded separately."
-msgstr ""
+msgstr "Toto je získání. Větev (%s) musí být vylepšena odděleně."
 
 #: bzrlib/upgrade.py:100
 #, python-format
 msgid "cannot upgrade from bzrdir format %s"
-msgstr ""
+msgstr "nelze vylepšit z formátu bzrdir %s"
 
 #: bzrlib/upgrade.py:103
 #, python-format
 msgid "starting upgrade of %s"
-msgstr ""
+msgstr "spouštění vylepšení %s"
 
 #: bzrlib/upgrade.py:110
 msgid "finished"
-msgstr ""
+msgstr "hotovo"
 
 #: bzrlib/upgrade.py:120
 msgid "Deleting backup.bzr"
-msgstr ""
+msgstr "Mazání backub.bzr"
 
 #: bzrlib/upgrade.py:151
 msgid ""
 "\n"
 "SUMMARY: {0} upgrades attempted, {1} succeeded, {2} failed"
 msgstr ""
+"\n"
+"SOUHRN: pokus o {0} vylepšení, {1} úspěšně, {2} selhalo"
 
 #: bzrlib/upgrade.py:208
 #, python-format
 msgid "Found %d dependent branches - upgrading ..."
-msgstr ""
+msgstr "Nalezeno %d závislých větví - probíhá vylepšení ..."
 
 #: bzrlib/upgrade.py:276
 msgid "Upgrading bzrdirs"
-msgstr ""
+msgstr "Vylepšování bzrdir"
 
 #: bzrlib/upgrade.py:282
 #, python-format
 msgid "Upgrading %s"
-msgstr ""
+msgstr "Vylepšování %s"
 
 #: bzrlib/upgrade.py:283
 msgid "Upgrading {0} {1} ..."
-msgstr ""
+msgstr "Vylepšování {0} {1} ..."
 
 #: bzrlib/upgrade.py:301
 msgid "Removing backup ..."
-msgstr ""
+msgstr "Odstraňování zálohy ..."
 
 #: bzrlib/upgrade.py:305
 msgid "failed to clean-up {0}: {1}"
-msgstr ""
+msgstr "nelze vyčistit {0}: {1}"
 
 #: bzrlib/vf_repository.py:1090
 msgid "inventories"
-msgstr ""
+msgstr "Inventáře"
 
 #: bzrlib/vf_repository.py:1116
 msgid "texts"
-msgstr ""
+msgstr "texty"
 
 #: bzrlib/vf_repository.py:1621 bzrlib/vf_repository.py:1630
 msgid "Calculating text parents"
-msgstr ""
+msgstr "Vypočítávání nadřazených textů"
 
 #: bzrlib/vf_repository.py:1706
 msgid "Fetch texts"
-msgstr ""
+msgstr "Získávání textů"
 
 #: bzrlib/vf_repository.py:2535
 msgid "loading text store"
-msgstr ""
+msgstr "načítání skladu textů"
 
 #: bzrlib/vf_repository.py:2541
 msgid "checking text graph"
-msgstr ""
+msgstr "ontrola textového grafu"
 
 #: bzrlib/vf_repository.py:2995 bzrlib/vf_repository.py:3009
 #: bzrlib/vf_repository.py:3124
 msgid "Transferring revisions"
-msgstr ""
+msgstr "Přenos revizí"
 
 #: bzrlib/win32utils.py:146
 msgid "Failed to GetProcessMemoryInfo()"
-msgstr ""
+msgstr "nelze provést GetProcessMemoryInfo()"
 
 #: bzrlib/win32utils.py:167
 msgid "Cannot debug memory on win32 without ctypes or win32process"
-msgstr ""
+msgstr "Nelze ladit paměť ve win32 bez ctypes nebo win32process"
 
 #: bzrlib/win32utils.py:172
 msgid "WorkingSize {0:>7}KiB\tPeakWorking {1:>7}KiB\t{2}"
-msgstr ""
+msgstr "PracovníVelikost {0:>7}KiB\tPracovníŠpička {1:>7}KiB\t{2}"
 
 #: bzrlib/win32utils.py:180
 #, python-format
 msgid "WorkingSize       %8d KiB"
-msgstr ""
+msgstr "PracovníVelikost %8d KiB"
 
 #: bzrlib/win32utils.py:181
 #, python-format
 msgid "PeakWorking       %8d KiB"
-msgstr ""
+msgstr "PracovníŠpička %8d KiB"
 
 #: bzrlib/win32utils.py:182
 #, python-format
 msgid "PagefileUsage     %8d KiB"
-msgstr ""
+msgstr "VyužitíStránkovacíhoSouboru %8d KiB"
 
 #: bzrlib/win32utils.py:183
 #, python-format
 msgid "PeakPagefileUsage %8d KiB"
-msgstr ""
+msgstr "NejvyššíVyužitíStránkovacíhoSouboru %8d KiB"
 
 #: bzrlib/win32utils.py:185
 #, python-format
 msgid "PrivateUsage      %8d KiB"
-msgstr ""
+msgstr "SoukroméVyužití %8d KiB"
 
 #: bzrlib/win32utils.py:186
 #, python-format
