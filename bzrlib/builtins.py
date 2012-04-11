@@ -5002,10 +5002,13 @@ class cmd_missing(Command):
                              "You have %d extra revisions:\n", 
                              len(local_extra)) %
                 len(local_extra))
+            rev_tag_dict = {}
+            if local_branch.supports_tags():
+                rev_tag_dict = local_branch.tags.get_reverse_tag_dict()
             for revision in iter_log_revisions(local_extra,
                                 local_branch.repository,
                                 verbose,
-                                local_branch):
+                                rev_tag_dict):
                 lf.log_revision(revision)
             printed_local = True
             status_code = 1
@@ -5019,9 +5022,12 @@ class cmd_missing(Command):
                              "You are missing %d revisions:\n",
                              len(remote_extra)) %
                 len(remote_extra))
+            if remote_branch.supports_tags():
+                rev_tag_dict = remote_branch.tags.get_reverse_tag_dict()
             for revision in iter_log_revisions(remote_extra,
                                 remote_branch.repository,
-                                verbose):
+                                verbose,
+                                rev_tag_dict):
                 lf.log_revision(revision)
             status_code = 1
 

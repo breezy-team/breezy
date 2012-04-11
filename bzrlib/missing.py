@@ -25,13 +25,11 @@ from bzrlib import (
 import bzrlib.revision as _mod_revision
 
 
-def iter_log_revisions(revisions, revision_source, verbose, branch=None):
+def iter_log_revisions(revisions, revision_source, verbose, rev_tag_dict=None):
     last_tree = revision_source.revision_tree(_mod_revision.NULL_REVISION)
     last_rev_id = None
 
-    if branch is not None and branch.supports_tags():
-        rev_tag_dict = branch.tags.get_reverse_tag_dict()
-    else:
+    if rev_tag_dict is None:
         rev_tag_dict = {}
     for rev in revisions:
         # We need the following for backward compatibilty (hopefully

@@ -255,3 +255,8 @@ class TestMissing(tests.TestCaseWithTransport):
                 'missing --log-format={0} ../a'.format(log_format),
                 working_dir='b', retcode=1)
             self.assertContainsString(out, 'a-tag')
+
+            out, err = self.run_bzr(
+                'missing --log-format={0} ../b'.format(log_format),
+                working_dir='a', retcode=1)
+            self.assertContainsString(out, 'a-tag')
