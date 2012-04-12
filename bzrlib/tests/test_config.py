@@ -2935,6 +2935,7 @@ class TestPlainTextCredentialStore(tests.TestCase):
         decoded = plain_text.decode_password(dict(password='secret'))
         self.assertEquals('secret', decoded)
 
+
 # FIXME: Once we have a way to declare authentication to all test servers, we
 # can implement generic tests.
 # test_user_password_in_url

@@ -1980,6 +1980,7 @@ credential_store_registry.register('plain', PlainTextCredentialStore,
                                    help=PlainTextCredentialStore.__doc__)
 credential_store_registry.default_key = 'plain'
 
+
 class BzrDirConfig(object):
 
     def __init__(self, bzrdir):
