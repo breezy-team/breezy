@@ -2935,15 +2935,6 @@ class TestPlainTextCredentialStore(tests.TestCase):
         decoded = plain_text.decode_password(dict(password='secret'))
         self.assertEquals('secret', decoded)
 
-class TestBase64CredentialStore(tests.TestCase):
-
-    def test_decode_password(self):
-        import base64
-        r = config.credential_store_registry
-        plain_text = r.get_credential_store('base64')
-        decoded = plain_text.decode_password(dict(password=base64.encodestring('secret-pass')))
-        self.assertEquals('secret-pass', decoded)
-
 # FIXME: Once we have a way to declare authentication to all test servers, we
 # can implement generic tests.
 # test_user_password_in_url
