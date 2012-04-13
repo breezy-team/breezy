@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-04-10 20:37+0000\n"
+"PO-Revision-Date: 2012-04-12 15:03+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-04-11 04:30+0000\n"
+"X-Launchpad-Export-Date: 2012-04-13 04:38+0000\n"
 "X-Generator: Launchpad (build 15070)\n"
 
 #: bzrlib/add.py:95
@@ -159,9 +159,8 @@ msgid ""
 "use bzr status -SV."
 msgstr ""
 "Nezapomeňte, že --short nebo -S vypisuje příznaky stavu pro každou položku,\n"
-"podobně jako příkaz status v Subversion. Abyste dostali výstup podobný svn -"
-"q\n"
-"použijte bzr status -SV."
+"podobně jako příkaz status v Subversion. Abyste dostali výstupq\n"
+"podobný svn -q, použijte bzr status -SV."
 
 #: bzrlib/builtins.py:341
 msgid ""
@@ -8758,21 +8757,23 @@ msgstr "SoukroméVyužití %8d KiB"
 #: bzrlib/win32utils.py:186
 #, python-format
 msgid "PageFaultCount    %8d"
-msgstr ""
+msgstr "Počet chyb stránky %8d"
 
 #: bzrlib/workingtree.py:1478
 msgid "Rerun update after fixing the conflicts."
-msgstr ""
+msgstr "Znovu spustit aktualizaci po opravě všech konfliktů."
 
 #: dummy/help_topics/authentication/summary.txt:1
 msgid "Information on configuring authentication"
-msgstr ""
+msgstr "Informace o nastavení ověření"
 
 #: dummy/help_topics/basic/detail.txt:1
 msgid ""
 "Bazaar 2.6.0dev1 -- a free distributed version-control tool\n"
 "http://bazaar.canonical.com/"
 msgstr ""
+"Bazaar 2.6.0dev1 -- bezplatný nástroj pro distribuovanou správu verzí\n"
+"http://bazaar.canonical.com/"
 
 #: dummy/help_topics/basic/detail.txt:4
 msgid ""
@@ -8780,6 +8781,9 @@ msgid ""
 "  bzr init           makes this directory a versioned branch\n"
 "  bzr branch         make a copy of another branch"
 msgstr ""
+"Základní příkazy:\n"
+"  bzr init udělá z tohoto adresáře větev s verzí\n"
+"  bzr branch vytvoří kopii jiné větve"
 
 #: dummy/help_topics/basic/detail.txt:8
 msgid ""
@@ -8787,12 +8791,17 @@ msgid ""
 "  bzr ignore         ignore a file or pattern\n"
 "  bzr mv             move or rename a versioned file"
 msgstr ""
+"  bzr add přidá soubory či adresáře do správy verzí\n"
+"  bzr ignore ingoruje soubor nebo vzor\n"
+"  bzr mv přesune neb přejmenuje soubor s verzí"
 
 #: dummy/help_topics/basic/detail.txt:12
 msgid ""
 "  bzr status         summarize changes in working copy\n"
 "  bzr diff           show detailed diffs"
 msgstr ""
+"  bzr status shrne změny v pracovní kopii\n"
+"  bzr diff zobrazí podrobné rozdíly"
 
 #: dummy/help_topics/basic/detail.txt:15
 msgid ""
@@ -8800,12 +8809,17 @@ msgid ""
 "  bzr commit         save some or all changes\n"
 "  bzr send           send changes via email"
 msgstr ""
+"  bzr merge stáhne změny z jiné větve\n"
+"  bzr commit uloží některé nebo všechny změny\n"
+"  bzr send odešle změny přes email"
 
 #: dummy/help_topics/basic/detail.txt:19
 msgid ""
 "  bzr log            show history of changes\n"
 "  bzr check          validate storage"
 msgstr ""
+"  bzr log zobrazí historii změn\n"
+"  bzr check ověří úložiště"
 
 #: dummy/help_topics/basic/detail.txt:22
 msgid ""
@@ -8813,6 +8827,9 @@ msgid ""
 "  bzr help commands  list all commands\n"
 "  bzr help topics    list all help topics\n"
 msgstr ""
+"  bzr help init další nápověda o např. příkazu init\n"
+"  bzr help command vypíše všechny příkazy\n"
+"  bzr help topics vypíše všechna témata nápovědy\n"
 
 #: dummy/help_topics/basic/summary.txt:1
 msgid "Basic commands"
