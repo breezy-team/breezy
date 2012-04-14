@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-04-12 15:03+0000\n"
+"PO-Revision-Date: 2012-04-13 20:16+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-04-13 04:38+0000\n"
+"X-Launchpad-Export-Date: 2012-04-14 04:30+0000\n"
 "X-Generator: Launchpad (build 15070)\n"
 
 #: bzrlib/add.py:95
@@ -8833,11 +8833,11 @@ msgstr ""
 
 #: dummy/help_topics/basic/summary.txt:1
 msgid "Basic commands"
-msgstr ""
+msgstr "Základní příkazy"
 
 #: dummy/help_topics/branches/detail.txt:1
 msgid "Branches"
-msgstr ""
+msgstr "Větve"
 
 #: dummy/help_topics/branches/detail.txt:3
 msgid ""
@@ -8846,6 +8846,10 @@ msgid ""
 "branch history is stored), but multiple branches may share the same\n"
 "repository (a shared repository). Branches can be copied and merged."
 msgstr ""
+"Větev obsahuje stav projektu, včetně celé její historie.\n"
+"Všechny větve mají přidružené úložiště (v kterém je uložena\n"
+"historie větve), ale mnoho z nich můžs dílet stejné úložiště\n"
+"(sdílené úložiště). Větve mohou být zkopírovány nebo sloučeny."
 
 #: dummy/help_topics/branches/detail.txt:8
 msgid ""
@@ -8856,12 +8860,18 @@ msgid ""
 "to succeed, it may be necessary to update the current branch using \n"
 "``bzr update``."
 msgstr ""
+"Dále může být jedna větev svázána s druhou. Svázání způsobí, že odevzdání,\n"
+"které bude provedeno v této větvi se také odehraje v druhé větvi. Bazaar \n"
+"zajišťuje konzistenci tím, že nedovolí odevzdání, když josu větve zastaralé. "
+"\n"
+"Aby odevzdání uspělo, může být nutná aktualizace současné větve pomocí \n"
+"``bzr update``."
 
 #: dummy/help_topics/branches/detail.txt:15
 #: dummy/help_topics/checkouts/detail.txt:66
 #: dummy/help_topics/repositories/detail.txt:36
 msgid "Related commands::"
-msgstr ""
+msgstr "Související příkazy::"
 
 #: dummy/help_topics/branches/detail.txt:17
 msgid ""
@@ -8870,18 +8880,22 @@ msgid ""
 "  merge   Perform a three-way merge.\n"
 "  bind    Bind a branch to another one.\n"
 msgstr ""
+"  init Změnit adresář na větev s verzí.\n"
+"  branch Vytvořit novou větev, která je kopíí existující.\n"
+"  merge Provést trojité porovnávání.\n"
+"  bind Svázat větev s jinou.\n"
 
 #: dummy/help_topics/branches/summary.txt:1
 msgid "Information on what a branch is"
-msgstr ""
+msgstr "Informace o tom, co větev je"
 
 #: dummy/help_topics/bugs/summary.txt:1
 msgid "Bug tracker settings"
-msgstr ""
+msgstr "Nastavení systému sledování chyb"
 
 #: dummy/help_topics/checkouts/detail.txt:1
 msgid "Checkouts"
-msgstr ""
+msgstr "Získání"
 
 #: dummy/help_topics/checkouts/detail.txt:3
 msgid ""
@@ -8893,6 +8907,14 @@ msgid ""
 "doesn't have the same restrictions.  And using checkouts still allows\n"
 "others working on the project to use whatever workflow they like."
 msgstr ""
+"Získání jsou zdrojové stromy, které jsou připojeny k větvi tak, aby když\n"
+"odevzdáváte do zdrojového stromu, odevzdání půjde do této větve.\n"
+"Umožňují Vám používat jednodužší, centralizovanější postup práce,\n"
+"nevšímat si decentralizovaných funkcí Bazaar, dokud je opravdu\n"
+"nepotřebujete. Použitím získání ze sdílených úložišť je velmi\n"
+"podobné jako práce se SVN nebo CVS, ale nemá stejná omezení.\n"
+"Použitím získání stále umožňuje jiným pracujícím na projektu\n"
+"používat jakýkoliv postup práce, kterým se jim líbí."
 
 #: dummy/help_topics/checkouts/detail.txt:11
 msgid ""
