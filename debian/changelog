@@ -1,8 +1,9 @@
 bzr (2.6.0~bzr6520-2) UNRELEASED; urgency=low
 
   * Remove Jeff Bailey and Reinhard Tartler from uploaders.
+  * Update 03_spurious_test_failure: Disable two more flaky tests.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Wed, 11 Apr 2012 01:45:36 +0200
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 16 Apr 2012 17:30:16 +0200
 
 bzr (2.6.0~bzr6520-1) unstable; urgency=low
 
