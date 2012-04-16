@@ -1153,7 +1153,9 @@ class cmd_pull(Command):
                  "the master branch."
             ),
         Option('show-base',
-            help="Show base revision text in conflicts.")
+            help="Show base revision text in conflicts."),
+        Option('overwrite-tags',
+            help="Overwrite tags only."),
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
@@ -1161,7 +1163,14 @@ class cmd_pull(Command):
     def run(self, location=None, remember=None, overwrite=False,
             revision=None, verbose=False,
             directory=None, local=False,
-            show_base=False):
+            show_base=False, overwrite_tags=False):
+
+        if overwrite:
+            overwrite = ["history", "tags"]
+        elif overwrite_tags:
+            overwrite = ["tags"]
+        else:
+            overwrite = []
         # FIXME: too much stuff is in the command class
         revision_id = None
         mergeable = None
@@ -1305,6 +1314,8 @@ class cmd_push(Command):
         Option('no-tree',
                help="Don't populate the working tree, even for protocols"
                " that support it."),
+        Option('overwrite-tags',
+              help="Overwrite tags only."),
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
@@ -1312,8 +1323,16 @@ class cmd_push(Command):
     def run(self, location=None, remember=None, overwrite=False,
         create_prefix=False, verbose=False, revision=None,
         use_existing_dir=False, directory=None, stacked_on=None,
-        stacked=False, strict=None, no_tree=False):
+        stacked=False, strict=None, no_tree=False,
+        overwrite_tags=False):
         from bzrlib.push import _show_push_branch
+
+        if overwrite:
+            overwrite = ["history", "tags"]
+        elif overwrite_tags:
+            overwrite = ["tags"]
+        else:
+            overwrite = []
 
         if directory is None:
             directory = '.'
