@@ -35,6 +35,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* "bzr missing" now shows tag names when displaying revision information.
+  (#559072, Neil Martinsen-Burrell)
+
 * Implement ``ResponseFile.readline`` and ``ReponseFile.tell``,
   fixing some clones over HTTP. (Jelmer Vernooij, #963769)
 
