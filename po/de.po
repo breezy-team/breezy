@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-02-02 17:39+0100\n"
-"PO-Revision-Date: 2012-04-09 12:54+0000\n"
-"Last-Translator: Martin von Gagern <martin.vgagern@gmx.net>\n"
+"PO-Revision-Date: 2012-04-15 19:06+0000\n"
+"Last-Translator: Andreas Fernandez <Unknown>\n"
 "Language-Team: German <de@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Launchpad-Export-Date: 2012-04-10 05:37+0000\n"
-"X-Generator: Launchpad (build 15070)\n"
+"X-Launchpad-Export-Date: 2012-04-16 05:06+0000\n"
+"X-Generator: Launchpad (build 15099)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -256,11 +256,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:574
 msgid "No working tree to remove"
-msgstr ""
+msgstr "Keinen Arbeitsbaum zum Entfernen"
 
 #: bzrlib/builtins.py:576
 msgid "You cannot remove the working tree of a remote path"
-msgstr ""
+msgstr "Sie können einen entfernten Arbeitsbaum nicht löschen"
 
 #: bzrlib/builtins.py:585
 msgid "You cannot remove the working tree from a lightweight checkout"
@@ -271,12 +271,17 @@ msgid ""
 "The tree does not appear to be corrupt. You probably want \"bzr revert\" "
 "instead. Use \"--force\" if you are sure you want to reset the working tree."
 msgstr ""
+"Der Baum scheint nicht beschädigt zu sein. Wahrscheinlich möchten Sie "
+"stattdessen \"bzr revert\" ausführen. Benutzen Sie \"--force\", wenn Sie den "
+"Arbeitsbaum wirklich zurücksetzen möchten."
 
 #: bzrlib/builtins.py:636
 msgid ""
 ", the header appears corrupt, try passing -r -1 to set the state to the last "
 "commit"
 msgstr ""
+", die Kopfzeilen scheinen beschädigt zu sein. Versuchen Sie -r -1 um den "
+"Status der letzten Einreichung zu übernehmen."
 
 #: bzrlib/builtins.py:640
 msgid "failed to reset the tree state{0}"
@@ -388,7 +393,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:836
 msgid "ignored {0} matching \"{1}\"\n"
-msgstr ""
+msgstr "ignoriert {0} übereinstimmend \"{1}\"\n"
 
 #: bzrlib/builtins.py:841
 msgid "Create a new versioned directory."
@@ -396,7 +401,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:843
 msgid "This is equivalent to creating the directory and then adding it."
-msgstr ""
+msgstr "Dies entspricht dem Anlegen und Hinzufügen des Ordners."
 
 #: bzrlib/builtins.py:850
 msgid "No error if existing, make parent directories as needed."
@@ -405,7 +410,7 @@ msgstr ""
 #: bzrlib/builtins.py:884
 #, python-format
 msgid "added %s\n"
-msgstr ""
+msgstr "%s hinzugefügt\n"
 
 #: bzrlib/builtins.py:926
 #, python-format
@@ -418,7 +423,7 @@ msgstr "Eine Datei verschieben oder umbenennen."
 
 #: bzrlib/builtins.py:965
 msgid "    bzr mv SOURCE... DESTINATION"
-msgstr ""
+msgstr "    bzr mv QUELLE... ZIEL"
 
 #: bzrlib/builtins.py:967
 msgid ""
