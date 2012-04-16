@@ -195,6 +195,16 @@ class Tree(object):
         """
         raise NotImplementedError(self.iter_entries_by_dir)
 
+    def iter_child_entries(self, file_id, path=None):
+        """Iterate over the children of a directory or tree reference.
+
+        :param file_id: File id of the directory/tree-reference
+        :param path: Optional path of the directory
+        :raise NoSuchId: When the file_id does not exist
+        :return: Iterator over entries in the directory
+        """
+        raise NotImplementedError(self.iter_child_entries)
+
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         """List all files in this tree.
 
@@ -532,13 +542,16 @@ class Tree(object):
         return find_ids_across_trees(paths, [self] + list(trees), require_versioned)
 
     def iter_children(self, file_id):
-        entry = self.iter_entries_by_dir([file_id]).next()[1]
-        for child in getattr(entry, 'children', {}).itervalues():
-            yield child.file_id
+        """Iterate over the file ids of the children of an entry.
+
+        :param file_id: File id of the entry
+        :return: Iterator over child file ids.
+        """
+        raise NotImplementedError(self.iter_children)
 
     def lock_read(self):
         """Lock this tree for multiple read only operations.
-        
+
         :return: A bzrlib.lock.LogicalLockResult.
         """
         pass
@@ -768,36 +781,68 @@ class InventoryTree(Tree):
             yield cur_path
         # all done.
 
+    @deprecated_method(deprecated_in((2, 5, 0)))
     def _get_inventory(self):
         return self._inventory
 
     inventory = property(_get_inventory,
                          doc="Inventory of this Tree")
 
+    def _get_root_inventory(self):
+        return self._inventory
+
+    root_inventory = property(_get_root_inventory,
+        doc="Root inventory of this tree")
+
+    def _unpack_file_id(self, file_id):
+        """Find the inventory and inventory file id for a tree file id.
+
+        :param file_id: The tree file id, as bytestring or tuple
+        :return: Inventory and inventory file id
+        """
+        if isinstance(file_id, tuple):
+            if len(file_id) != 1:
+                raise ValueError("nested trees not yet supported: %r" % file_id)
+            file_id = file_id[0]
+        return self.root_inventory, file_id
+
     @needs_read_lock
     def path2id(self, path):
         """Return the id for path in this tree."""
-        return self._inventory.path2id(path)
+        return self._path2inv_file_id(path)[1]
+
+    def _path2inv_file_id(self, path):
+        """Lookup a inventory and inventory file id by path.
+
+        :param path: Path to look up
+        :return: tuple with inventory and inventory file id
+        """
+        # FIXME: Support nested trees
+        return self.root_inventory, self.root_inventory.path2id(path)
 
     def id2path(self, file_id):
         """Return the path for a file id.
 
         :raises NoSuchId:
         """
-        return self.inventory.id2path(file_id)
+        inventory, file_id = self._unpack_file_id(file_id)
+        return inventory.id2path(file_id)
 
     def has_id(self, file_id):
-        return self.inventory.has_id(file_id)
+        inventory, file_id = self._unpack_file_id(file_id)
+        return inventory.has_id(file_id)
 
     def has_or_had_id(self, file_id):
-        return self.inventory.has_id(file_id)
+        inventory, file_id = self._unpack_file_id(file_id)
+        return inventory.has_id(file_id)
 
     def all_file_ids(self):
-        return set(self.inventory)
+        return set(
+            [entry.file_id for path, entry in self.iter_entries_by_dir()])
 
     @deprecated_method(deprecated_in((2, 4, 0)))
     def __iter__(self):
-        return iter(self.inventory)
+        return iter(self.all_file_ids())
 
     def filter_unversioned_files(self, paths):
         """Filter out paths that are versioned.
@@ -807,8 +852,7 @@ class InventoryTree(Tree):
         # NB: we specifically *don't* call self.has_filename, because for
         # WorkingTrees that can indicate files that exist on disk but that
         # are not versioned.
-        pred = self.inventory.has_filename
-        return set((p for p in paths if not pred(p)))
+        return set((p for p in paths if self.path2id(p) is None))
 
     @needs_read_lock
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
@@ -823,12 +867,34 @@ class InventoryTree(Tree):
             down to specific_file_ids that have been requested. This has no
             impact if specific_file_ids is None.
         """
-        return self.inventory.iter_entries_by_dir(
-            specific_file_ids=specific_file_ids, yield_parents=yield_parents)
+        if specific_file_ids is None:
+            inventory_file_ids = None
+        else:
+            inventory_file_ids = []
+            for tree_file_id in specific_file_ids:
+                inventory, inv_file_id = self._unpack_file_id(tree_file_id)
+                if not inventory is self.root_inventory: # for now
+                    raise AssertionError("%r != %r" % (
+                        inventory, self.root_inventory))
+                inventory_file_ids.append(inv_file_id)
+        # FIXME: Handle nested trees
+        return self.root_inventory.iter_entries_by_dir(
+            specific_file_ids=inventory_file_ids, yield_parents=yield_parents)
+
+    @needs_read_lock
+    def iter_child_entries(self, file_id, path=None):
+        inv, inv_file_id = self._unpack_file_id(file_id)
+        return inv[inv_file_id].children.itervalues()
 
     @deprecated_method(deprecated_in((2, 5, 0)))
     def get_file_by_path(self, path):
         return self.get_file(self.path2id(path), path)
+
+    def iter_children(self, file_id, path=None):
+        """See Tree.iter_children."""
+        entry = self.iter_entries_by_dir([file_id]).next()[1]
+        for child in getattr(entry, 'children', {}).itervalues():
+            yield child.file_id
 
 
 def find_ids_across_trees(filenames, trees, require_versioned=True):
@@ -989,13 +1055,9 @@ class InterTree(InterObject):
             if (self.source.get_symlink_target(file_id) !=
                 self.target.get_symlink_target(file_id)):
                 changed_content = True
-            # XXX: Yes, the indentation below is wrong. But fixing it broke
-            # test_merge.TestMergerEntriesLCAOnDisk.
-            # test_nested_tree_subtree_renamed_and_modified. We'll wait for
-            # the fix from bzr.dev -- vila 2009026
-            elif source_kind == 'tree-reference':
-                if (self.source.get_reference_revision(file_id, source_path)
-                    != self.target.get_reference_revision(file_id, target_path)):
+        elif source_kind == 'tree-reference':
+            if (self.source.get_reference_revision(file_id, source_path)
+                != self.target.get_reference_revision(file_id, target_path)):
                     changed_content = True
         parent = (source_parent, target_parent)
         name = (source_name, target_name)
@@ -1216,7 +1278,7 @@ class InterTree(InterObject):
         :param file_id: The file_id to lookup.
         """
         try:
-            inventory = tree.inventory
+            inventory = tree.root_inventory
         except NotImplementedError:
             # No inventory available.
             try:
@@ -1297,8 +1359,8 @@ class InterTree(InterObject):
                         if old_entry is None:
                             # Reusing a discarded change.
                             old_entry = self._get_entry(self.source, file_id)
-                        for child in old_entry.children.values():
-                            precise_file_ids.add(child.file_id)
+                        precise_file_ids.update(
+                                self.source.iter_children(file_id))
                     changed_file_ids.add(result[0])
                     yield result
 
@@ -1447,7 +1509,7 @@ class MultiWalker(object):
             return (None, None)
         else:
             self._out_of_order_processed.add(file_id)
-            cur_ie = other_tree.inventory[file_id]
+            cur_ie = other_tree.root_inventory[file_id]
             return (cur_path, cur_ie)
 
     def iter_all(self):

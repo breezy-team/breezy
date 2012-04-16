@@ -138,10 +138,11 @@ def register_transport_proto(prefix, help=None, info=None,
 def register_lazy_transport(prefix, module, classname):
     if not prefix in transport_list_registry:
         register_transport_proto(prefix)
-    transport_list_registry.register_lazy_transport_provider(prefix, module, classname)
+    transport_list_registry.register_lazy_transport_provider(
+        prefix, module, classname)
 
 
-def register_transport(prefix, klass, override=DEPRECATED_PARAMETER):
+def register_transport(prefix, klass):
     if not prefix in transport_list_registry:
         register_transport_proto(prefix)
     transport_list_registry.register_transport_provider(prefix, klass)
@@ -1782,15 +1783,15 @@ register_transport_proto('http://',
                  help="Read-only access of branches exported on the web.")
 register_transport_proto('https://',
             help="Read-only access of branches exported on the web using SSL.")
-# The default http implementation is urllib, but https uses pycurl if available
+# The default http implementation is urllib
 register_lazy_transport('http://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 register_lazy_transport('http://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
-register_lazy_transport('https://', 'bzrlib.transport.http._urllib',
-                        'HttpTransport_urllib')
 register_lazy_transport('https://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
+register_lazy_transport('https://', 'bzrlib.transport.http._urllib',
+                        'HttpTransport_urllib')
 
 register_transport_proto('ftp://', help="Access using passive FTP.")
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')

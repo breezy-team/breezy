@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,14 +27,15 @@ from testtools import matchers
 #import bzrlib specific imports here
 from bzrlib import (
     branch,
-    bzrdir,
     config,
+    controldir,
     diff,
     errors,
     osutils,
     mail_client,
     ui,
     urlutils,
+    registry as _mod_registry,
     remote,
     tests,
     trace,
@@ -114,7 +115,7 @@ config.test_store_builder_registry.register('branch', build_branch_store)
 
 def build_control_store(test):
     build_backing_branch(test, 'branch')
-    b = bzrdir.BzrDir.open('branch')
+    b = controldir.ControlDir.open('branch')
     return config.ControlStore(b)
 config.test_store_builder_registry.register('control', build_control_store)
 
@@ -475,12 +476,6 @@ class TestConfig(tests.TestCase):
     def test_constructs(self):
         config.Config()
 
-    def test_no_default_editor(self):
-        self.assertRaises(
-            NotImplementedError,
-            self.applyDeprecated, deprecated_in((2, 4, 0)),
-            config.Config().get_editor)
-
     def test_user_email(self):
         my_config = InstrumentedConfig()
         self.assertEqual('robert.collins@example.org', my_config.user_email())
@@ -575,6 +570,9 @@ class TestConfigPath(tests.TestCase):
 
     def test_config_dir(self):
         self.assertEqual(config.config_dir(), self.bzr_home)
+
+    def test_config_dir_is_unicode(self):
+        self.assertIsInstance(config.config_dir(), unicode)
 
     def test_config_filename(self):
         self.assertEqual(config.config_filename(),
@@ -683,63 +681,6 @@ class TestIniConfigSaving(tests.TestCaseInTempDir):
         conf = config.IniBasedConfig.from_string(
             content, file_name='./test.conf', save=True)
         self.assertFileEqual(content, 'test.conf')
-
-
-class TestIniConfigOptionExpansionDefaultValue(tests.TestCaseInTempDir):
-    """What is the default value of expand for config options.
-
-    This is an opt-in beta feature used to evaluate whether or not option
-    references can appear in dangerous place raising exceptions, disapearing
-    (and as such corrupting data) or if it's safe to activate the option by
-    default.
-
-    Note that these tests relies on config._expand_default_value being already
-    overwritten in the parent class setUp.
-    """
-
-    def setUp(self):
-        super(TestIniConfigOptionExpansionDefaultValue, self).setUp()
-        self.config = None
-        self.warnings = []
-        def warning(*args):
-            self.warnings.append(args[0] % args[1:])
-        self.overrideAttr(trace, 'warning', warning)
-
-    def get_config(self, expand):
-        c = config.GlobalConfig.from_string('bzr.config.expand=%s' % (expand,),
-                                            save=True)
-        return c
-
-    def assertExpandIs(self, expected):
-        actual = config._get_expand_default_value()
-        #self.config.get_user_option_as_bool('bzr.config.expand')
-        self.assertEquals(expected, actual)
-
-    def test_default_is_None(self):
-        self.assertEquals(None, config._expand_default_value)
-
-    def test_default_is_False_even_if_None(self):
-        self.config = self.get_config(None)
-        self.assertExpandIs(False)
-
-    def test_default_is_False_even_if_invalid(self):
-        self.config = self.get_config('<your choice>')
-        self.assertExpandIs(False)
-        # ...
-        # Huh ? My choice is False ? Thanks, always happy to hear that :D
-        # Wait, you've been warned !
-        self.assertLength(1, self.warnings)
-        self.assertEquals(
-            'Value "<your choice>" is not a boolean for "bzr.config.expand"',
-            self.warnings[0])
-
-    def test_default_is_True(self):
-        self.config = self.get_config(True)
-        self.assertExpandIs(True)
-
-    def test_default_is_False(self):
-        self.config = self.get_config(False)
-        self.assertExpandIs(False)
 
 
 class TestIniConfigOptionExpansion(tests.TestCase):
@@ -1138,7 +1079,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
 
     def test_get_config(self):
         """The Branch.get_config method works properly"""
-        b = bzrdir.BzrDir.create_standalone_workingtree('.').branch
+        b = controldir.ControlDir.create_standalone_workingtree('.').branch
         my_config = b.get_config()
         self.assertIs(my_config.get_user_option('wacky'), None)
         my_config.set_user_option('wacky', 'unlikely')
@@ -1193,6 +1134,10 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         b = self.make_branch('!repo')
         self.assertEqual('!repo', b.get_config().get_nickname())
 
+    def test_autonick_uses_branch_name(self):
+        b = self.make_branch('foo', name='bar')
+        self.assertEqual('bar', b.get_config().get_nickname())
+
     def test_warn_if_masked(self):
         warnings = []
         def warning(*args):
@@ -1237,12 +1182,6 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
     def test_absent_user_id(self):
         my_config = config.GlobalConfig()
         self.assertEqual(None, my_config._get_user_id())
-
-    def test_configured_editor(self):
-        my_config = config.GlobalConfig.from_string(sample_config_text)
-        editor = self.applyDeprecated(
-            deprecated_in((2, 4, 0)), my_config.get_editor)
-        self.assertEqual('vim', editor)
 
     def test_signatures_always(self):
         my_config = config.GlobalConfig.from_string(sample_always_signatures)
@@ -1903,48 +1842,6 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
             location='http://example.com/specific')
         self.assertEqual(my_config.get_user_option('option'), 'exact')
 
-    def test_get_mail_client(self):
-        config = self.get_branch_config()
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.DefaultMail)
-
-        # Specific clients
-        config.set_user_option('mail_client', 'evolution')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.Evolution)
-
-        config.set_user_option('mail_client', 'kmail')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.KMail)
-
-        config.set_user_option('mail_client', 'mutt')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.Mutt)
-
-        config.set_user_option('mail_client', 'thunderbird')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.Thunderbird)
-
-        # Generic options
-        config.set_user_option('mail_client', 'default')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.DefaultMail)
-
-        config.set_user_option('mail_client', 'editor')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.Editor)
-
-        config.set_user_option('mail_client', 'mapi')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.MAPIClient)
-
-        config.set_user_option('mail_client', 'xdg-email')
-        client = config.get_mail_client()
-        self.assertIsInstance(client, mail_client.XDGEmail)
-
-        config.set_user_option('mail_client', 'firebird')
-        self.assertRaises(errors.UnknownMailClient, config.get_mail_client)
-
 
 class TestMailAddressExtraction(tests.TestCase):
 
@@ -2237,7 +2134,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
         self.assertGetHook(remote_branch._get_config(), 'file', 'branch')
 
     def test_get_hook_remote_bzrdir(self):
-        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        remote_bzrdir = controldir.ControlDir.open(self.get_url('tree'))
         conf = remote_bzrdir._get_config()
         conf.set_option('remotedir', 'file')
         self.assertGetHook(conf, 'file', 'remotedir')
@@ -2265,7 +2162,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
     def test_set_hook_remote_bzrdir(self):
         remote_branch = branch.Branch.open(self.get_url('tree'))
         self.addCleanup(remote_branch.lock_write().unlock)
-        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        remote_bzrdir = controldir.ControlDir.open(self.get_url('tree'))
         self.assertSetHook(remote_bzrdir._get_config(), 'file', 'remotedir')
 
     def assertLoadHook(self, expected_nb_calls, name, conf_class, *conf_args):
@@ -2288,7 +2185,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
         self.assertLoadHook(1, 'file', remote.RemoteBranchConfig, remote_branch)
 
     def test_load_hook_remote_bzrdir(self):
-        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        remote_bzrdir = controldir.ControlDir.open(self.get_url('tree'))
         # The config file doesn't exist, set an option to force its creation
         conf = remote_bzrdir._get_config()
         conf.set_option('remotedir', 'file')
@@ -2319,7 +2216,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
     def test_save_hook_remote_bzrdir(self):
         remote_branch = branch.Branch.open(self.get_url('tree'))
         self.addCleanup(remote_branch.lock_write().unlock)
-        remote_bzrdir = bzrdir.BzrDir.open(self.get_url('tree'))
+        remote_bzrdir = controldir.ControlDir.open(self.get_url('tree'))
         self.assertSaveHook(remote_bzrdir._get_config())
 
 
@@ -2361,6 +2258,10 @@ class TestOption(tests.TestCase):
             return 'bar'
         opt = config.Option('foo', default=bar_not_unicode)
         self.assertRaises(AssertionError, opt.get_default)
+
+    def test_get_help_topic(self):
+        opt = config.Option('foo')
+        self.assertEquals('foo', opt.get_help_topic())
 
 
 class TestOptionConverterMixin(object):
@@ -2478,6 +2379,54 @@ class TestListOption(tests.TestCase, TestOptionConverterMixin):
         self.assertConverted([u'42'], opt, u'42')
         # A single string
         self.assertConverted([u'bar'], opt, u'bar')
+
+
+class TestRegistryOption(tests.TestCase, TestOptionConverterMixin):
+
+    def get_option(self, registry):
+        return config.RegistryOption('foo', registry,
+                help='A registry option.')
+
+    def test_convert_invalid(self):
+        registry = _mod_registry.Registry()
+        opt = self.get_option(registry)
+        self.assertConvertInvalid(opt, [1])
+        self.assertConvertInvalid(opt, u"notregistered")
+
+    def test_convert_valid(self):
+        registry = _mod_registry.Registry()
+        registry.register("someval", 1234)
+        opt = self.get_option(registry)
+        # Using a bare str() just in case
+        self.assertConverted(1234, opt, "someval")
+        self.assertConverted(1234, opt, u'someval')
+        self.assertConverted(None, opt, None)
+
+    def test_help(self):
+        registry = _mod_registry.Registry()
+        registry.register("someval", 1234, help="some option")
+        registry.register("dunno", 1234, help="some other option")
+        opt = self.get_option(registry)
+        self.assertEquals(
+            'A registry option.\n'
+            '\n'
+            'The following values are supported:\n'
+            ' dunno - some other option\n'
+            ' someval - some option\n',
+            opt.help)
+
+    def test_get_help_text(self):
+        registry = _mod_registry.Registry()
+        registry.register("someval", 1234, help="some option")
+        registry.register("dunno", 1234, help="some other option")
+        opt = self.get_option(registry)
+        self.assertEquals(
+            'A registry option.\n'
+            '\n'
+            'The following values are supported:\n'
+            ' dunno - some other option\n'
+            ' someval - some option\n',
+            opt.get_help_text())
 
 
 class TestOptionRegistry(tests.TestCase):
@@ -2911,9 +2860,28 @@ class TestMutableStore(TestStore):
         store.save()
         self.assertEquals(False, self.has_store(store))
 
+    def test_mutable_section_shared(self):
+        store = self.get_store(self)
+        store._load_from_string('foo=bar\n')
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
+        if self.store_id in ('branch', 'remote_branch'):
+            # branch stores requires write locked branches
+            self.addCleanup(store.branch.lock_write().unlock)
+        section1 = store.get_mutable_section(None)
+        section2 = store.get_mutable_section(None)
+        # If we get different sections, different callers won't share the
+        # modification
+        self.assertIs(section1, section2)
+
     def test_save_emptied_succeeds(self):
         store = self.get_store(self)
         store._load_from_string('foo=bar\n')
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
+        if self.store_id in ('branch', 'remote_branch'):
+            # branch stores requires write locked branches
+            self.addCleanup(store.branch.lock_write().unlock)
         section = store.get_mutable_section(None)
         section.remove('foo')
         store.save()
@@ -2940,6 +2908,11 @@ class TestMutableStore(TestStore):
 
     def test_set_option_in_empty_store(self):
         store = self.get_store(self)
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
+        if self.store_id in ('branch', 'remote_branch'):
+            # branch stores requires write locked branches
+            self.addCleanup(store.branch.lock_write().unlock)
         section = store.get_mutable_section(None)
         section.set('foo', 'bar')
         store.save()
@@ -2951,6 +2924,11 @@ class TestMutableStore(TestStore):
     def test_set_option_in_default_section(self):
         store = self.get_store(self)
         store._load_from_string('')
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
+        if self.store_id in ('branch', 'remote_branch'):
+            # branch stores requires write locked branches
+            self.addCleanup(store.branch.lock_write().unlock)
         section = store.get_mutable_section(None)
         section.set('foo', 'bar')
         store.save()
@@ -2962,6 +2940,11 @@ class TestMutableStore(TestStore):
     def test_set_option_in_named_section(self):
         store = self.get_store(self)
         store._load_from_string('')
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
+        if self.store_id in ('branch', 'remote_branch'):
+            # branch stores requires write locked branches
+            self.addCleanup(store.branch.lock_write().unlock)
         section = store.get_mutable_section('baz')
         section.set('foo', 'bar')
         store.save()
@@ -2971,8 +2954,13 @@ class TestMutableStore(TestStore):
         self.assertSectionContent(('baz', {'foo': 'bar'}), sections[0])
 
     def test_load_hook(self):
-        # We first needs to ensure that the store exists
+        # First, we need to ensure that the store exists
         store = self.get_store(self)
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
+        if self.store_id in ('branch', 'remote_branch'):
+            # branch stores requires write locked branches
+            self.addCleanup(store.branch.lock_write().unlock)
         section = store.get_mutable_section('baz')
         section.set('foo', 'bar')
         store.save()
@@ -2994,6 +2982,11 @@ class TestMutableStore(TestStore):
         config.ConfigHooks.install_named_hook('save', hook, None)
         self.assertLength(0, calls)
         store = self.get_store(self)
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
+        if self.store_id in ('branch', 'remote_branch'):
+            # branch stores requires write locked branches
+            self.addCleanup(store.branch.lock_write().unlock)
         section = store.get_mutable_section('baz')
         section.set('foo', 'bar')
         store.save()
@@ -3630,6 +3623,41 @@ class TestMemoryStack(tests.TestCase):
         self.assertEquals('bar', conf.get('foo'))
 
 
+class TestStackIterSections(tests.TestCase):
+
+    def test_empty_stack(self):
+        conf = config.Stack([])
+        sections = list(conf.iter_sections())
+        self.assertLength(0, sections)
+
+    def test_empty_store(self):
+        store = config.IniFileStore()
+        store._load_from_string('')
+        conf = config.Stack([store.get_sections])
+        sections = list(conf.iter_sections())
+        self.assertLength(0, sections)
+
+    def test_simple_store(self):
+        store = config.IniFileStore()
+        store._load_from_string('foo=bar')
+        conf = config.Stack([store.get_sections])
+        tuples = list(conf.iter_sections())
+        self.assertLength(1, tuples)
+        (found_store, found_section) = tuples[0]
+        self.assertIs(store, found_store)
+
+    def test_two_stores(self):
+        store1 = config.IniFileStore()
+        store1._load_from_string('foo=bar')
+        store2 = config.IniFileStore()
+        store2._load_from_string('bar=qux')
+        conf = config.Stack([store1.get_sections, store2.get_sections])
+        tuples = list(conf.iter_sections())
+        self.assertLength(2, tuples)
+        self.assertIs(store1, tuples[0][0])
+        self.assertIs(store2, tuples[1][0])
+
+
 class TestStackWithTransport(tests.TestCaseWithTransport):
 
     scenarios = [(key, {'get_stack': builder}) for key, builder
@@ -3825,7 +3853,8 @@ class TestStackExpandOptions(tests.TestCaseWithTransport):
         super(TestStackExpandOptions, self).setUp()
         self.overrideAttr(config, 'option_registry', config.OptionRegistry())
         self.registry = config.option_registry
-        self.conf = build_branch_stack(self)
+        store = config.TransportIniFileStore(self.get_transport(), 'foo.conf')
+        self.conf = config.Stack([store.get_sections], store)
 
     def assertExpansion(self, expected, string, env=None):
         self.assertEquals(expected, self.conf.expand_options(string, env))
@@ -3914,8 +3943,11 @@ bar=middle,{baz}
 baz=end
 list={foo}
 ''')
-        self.registry.register(
-            config.ListOption('list'))
+        self.registry.register(config.ListOption('list'))
+        # Register an intermediate option as a list to ensure no conversion
+        # happen while expanding. Conversion should only occur for the original
+        # option ('list' here).
+        self.registry.register(config.ListOption('baz'))
         self.assertEquals(['start', 'middle', 'end'],
                            self.conf.get('list', expand=True))
 
@@ -4840,3 +4872,56 @@ class EmailOptionTests(tests.TestCase):
         self.overrideEnv('BZR_EMAIL', None)
         self.overrideEnv('EMAIL', 'jelmer@samba.org')
         self.assertEquals('jelmer@debian.org', conf.get('email'))
+
+
+class MailClientOptionTests(tests.TestCase):
+
+    def test_default(self):
+        conf = config.MemoryStack('')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.DefaultMail)
+
+    def test_evolution(self):
+        conf = config.MemoryStack('mail_client=evolution')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.Evolution)
+
+    def test_kmail(self):
+        conf = config.MemoryStack('mail_client=kmail')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.KMail)
+
+    def test_mutt(self):
+        conf = config.MemoryStack('mail_client=mutt')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.Mutt)
+
+    def test_thunderbird(self):
+        conf = config.MemoryStack('mail_client=thunderbird')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.Thunderbird)
+
+    def test_explicit_default(self):
+        conf = config.MemoryStack('mail_client=default')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.DefaultMail)
+
+    def test_editor(self):
+        conf = config.MemoryStack('mail_client=editor')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.Editor)
+
+    def test_mapi(self):
+        conf = config.MemoryStack('mail_client=mapi')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.MAPIClient)
+
+    def test_xdg_email(self):
+        conf = config.MemoryStack('mail_client=xdg-email')
+        client = conf.get('mail_client')
+        self.assertIs(client, mail_client.XDGEmail)
+
+    def test_unknown(self):
+        conf = config.MemoryStack('mail_client=firebird')
+        self.assertRaises(errors.ConfigOptionValueError, conf.get,
+                'mail_client')

@@ -26,8 +26,8 @@ from testtools import matchers
 
 from bzrlib import (
     branch,
-    bzrdir,
     conflicts,
+    controldir,
     merge_directive,
     osutils,
     tests,
@@ -75,7 +75,7 @@ class TestMerge(tests.TestCaseWithTransport):
         return tree, other
 
     def test_merge_reprocess(self):
-        d = bzrdir.BzrDir.create_standalone_workingtree('.')
+        d = controldir.ControlDir.create_standalone_workingtree('.')
         d.commit('h')
         self.run_bzr('merge . --reprocess --merge-type weave')
 
@@ -278,6 +278,8 @@ class TestMerge(tests.TestCaseWithTransport):
 
         base = urlutils.local_path_from_url(branch_a.base)
         self.assertEndsWith(err, '+N  b\nAll changes applied successfully.\n')
+        # re-open branch as external run_bzr modified it
+        branch_b = branch_b.bzrdir.open_branch()
         self.assertEquals(osutils.abspath(branch_b.get_submit_branch()),
                           osutils.abspath(parent))
         # test implicit --remember when committing new file
@@ -295,6 +297,8 @@ class TestMerge(tests.TestCaseWithTransport):
                                 working_dir='branch_b')
         self.assertEquals(out, '')
         self.assertEquals(err, '+N  c\nAll changes applied successfully.\n')
+        # re-open branch as external run_bzr modified it
+        branch_b = branch_b.bzrdir.open_branch()
         self.assertEquals(osutils.abspath(branch_b.get_submit_branch()),
                           osutils.abspath(branch_c.bzrdir.root_transport.base))
         # re-open tree as external run_bzr modified it
@@ -553,10 +557,16 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
         tree_c = tree_a.bzrdir.sprout('c').open_workingtree()
         out, err = self.run_bzr(['merge', '-d', 'c'])
-        self.assertContainsRe(err, 'Merging from remembered parent location .*a\/')
-        tree_c.branch.set_submit_branch(tree_b.bzrdir.root_transport.base)
+        self.assertContainsRe(err,
+                              'Merging from remembered parent location .*a\/')
+        tree_c.branch.lock_write()
+        try:
+            tree_c.branch.set_submit_branch(tree_b.bzrdir.root_transport.base)
+        finally:
+            tree_c.branch.unlock()
         out, err = self.run_bzr(['merge', '-d', 'c'])
-        self.assertContainsRe(err, 'Merging from remembered submit location .*b\/')
+        self.assertContainsRe(err,
+                              'Merging from remembered submit location .*b\/')
 
     def test_remember_sets_submit(self):
         tree_a = self.make_branch_and_tree('a')
@@ -566,11 +576,13 @@ class TestMerge(tests.TestCaseWithTransport):
 
         # Remember should not happen if using default from parent
         out, err = self.run_bzr(['merge', '-d', 'b'])
-        self.assertIs(tree_b.branch.get_submit_branch(), None)
+        refreshed = workingtree.WorkingTree.open('b')
+        self.assertIs(refreshed.branch.get_submit_branch(), None)
 
         # Remember should happen if user supplies location
         out, err = self.run_bzr(['merge', '-d', 'b', 'a'])
-        self.assertEqual(tree_b.branch.get_submit_branch(),
+        refreshed = workingtree.WorkingTree.open('b')
+        self.assertEqual(refreshed.branch.get_submit_branch(),
                          tree_a.bzrdir.root_transport.base)
 
     def test_no_remember_dont_set_submit(self):

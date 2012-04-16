@@ -710,6 +710,15 @@ class AlreadyBranchError(PathError):
     _fmt = 'Already a branch: "%(path)s".'
 
 
+class InvalidBranchName(PathError):
+
+    _fmt = "Invalid branch name: %(name)s"
+
+    def __init__(self, name):
+        BzrError.__init__(self)
+        self.name = name
+
+
 class ParentBranchExists(AlreadyBranchError):
 
     _fmt = 'Parent branch already exists: "%(path)s".'
@@ -2766,14 +2775,6 @@ class NoMessageSupplied(BzrError):
 class NoMailAddressSpecified(BzrError):
 
     _fmt = "No mail-to address (--mail-to) or output (-o) specified."
-
-
-class UnknownMailClient(BzrError):
-
-    _fmt = "Unknown mail client: %(mail_client)s"
-
-    def __init__(self, mail_client):
-        BzrError.__init__(self, mail_client=mail_client)
 
 
 class MailClientNotFound(BzrError):

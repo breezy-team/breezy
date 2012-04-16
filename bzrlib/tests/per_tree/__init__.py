@@ -382,6 +382,7 @@ def load_tests(standard_tests, module, loader):
         'get_file_with_stat',
         'get_root_id',
         'get_symlink_target',
+        'ids',
         'inv',
         'iter_search_rules',
         'is_executable',

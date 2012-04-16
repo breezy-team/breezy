@@ -94,6 +94,13 @@ class TestAdd(tests.TestCaseWithTransport):
         self.run_bzr('add inertiatic/../cicatriz/esp')
         self.assertEquals(self.run_bzr('unknowns')[0], '')
 
+    def test_add_no_recurse(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['inertiatic/', 'inertiatic/esp'])
+        self.assertEquals(self.run_bzr('unknowns')[0], 'inertiatic\n')
+        self.run_bzr('add -N inertiatic')
+        self.assertEquals(self.run_bzr('unknowns')[0], 'inertiatic/esp\n')
+
     def test_add_in_versioned(self):
         """Try to add a file in a versioned directory.
 
@@ -109,8 +116,6 @@ class TestAdd(tests.TestCaseWithTransport):
 
     def test_subdir_add(self):
         """Add in subdirectory should add only things from there down"""
-        from bzrlib.workingtree import WorkingTree
-
         eq = self.assertEqual
         ass = self.assertTrue
 
@@ -247,7 +252,7 @@ class TestAdd(tests.TestCaseWithTransport):
         self.build_tree_contents([('small.txt', '0\n')])
         self.build_tree_contents([('big.txt', '01234567890123456789\n')])
         self.build_tree_contents([('big2.txt', '01234567890123456789\n')])
-        tree.branch.get_config().set_user_option('add.maximum_file_size', 5)
+        tree.branch.get_config_stack().set('add.maximum_file_size', 5)
         out = self.run_bzr('add')[0]
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals(['adding small.txt'], results)

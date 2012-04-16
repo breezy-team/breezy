@@ -1174,10 +1174,10 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
     @needs_read_lock
     def verify_revision_signature(self, revision_id, gpg_strategy):
         """Verify the signature on a revision.
-        
+
         :param revision_id: the revision to verify
         :gpg_strategy: the GPGStrategy object to used
-        
+
         :return: gpg.SIGNATURE_VALID or a failed SIGNATURE_ value
         """
         if not self.has_signature_for_revision_id(revision_id):
@@ -1188,6 +1188,18 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         plaintext = testament.as_short_text()
 
         return gpg_strategy.verify(signature, plaintext)
+
+    @needs_read_lock
+    def verify_revision_signatures(self, revision_ids, gpg_strategy):
+        """Verify revision signatures for a number of revisions.
+
+        :param revision_id: the revision to verify
+        :gpg_strategy: the GPGStrategy object to used
+        :return: Iterator over tuples with revision id, result and keys
+        """
+        for revid in revision_ids:
+            (result, key) = self.verify_revision_signature(revid, gpg_strategy)
+            yield revid, result, key
 
     def has_signature_for_revision_id(self, revision_id):
         """Query for a revision signature for revision_id in the repository."""
@@ -1224,10 +1236,10 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
             return
         try:
             if branch is None:
-                conf = config.GlobalConfig()
+                conf = config.GlobalStack()
             else:
-                conf = branch.get_config()
-            if conf.suppress_warning('format_deprecation'):
+                conf = branch.get_config_stack()
+            if 'format_deprecation' in conf.get('suppress_warnings'):
                 return
             warning("Format %s for %s is deprecated -"
                     " please use 'bzr upgrade' to get better performance"

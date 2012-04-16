@@ -352,7 +352,6 @@ meliae = ModuleAvailableFeature('meliae.scanner')
 paramiko = ModuleAvailableFeature('paramiko')
 pycurl = ModuleAvailableFeature('pycurl')
 pywintypes = ModuleAvailableFeature('pywintypes')
-sphinx = ModuleAvailableFeature('sphinx')
 subunit = ModuleAvailableFeature('subunit')
 testtools = ModuleAvailableFeature('testtools')
 

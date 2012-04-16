@@ -25,8 +25,8 @@ from testtools.matchers import (
 
 from bzrlib import (
     branch,
-    bzrdir,
     check,
+    controldir,
     errors,
     push,
     symbol_versioning,
@@ -34,7 +34,7 @@ from bzrlib import (
     vf_repository,
     )
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
+from bzrlib.controldir import ControlDir
 from bzrlib.memorytree import MemoryTree
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart.repository import SmartServerRepositoryGetParentMap
@@ -64,11 +64,6 @@ class TestPush(TestCaseWithInterBranch):
         # result object contains some structured data
         self.assertEqual(result.old_revid, 'M1')
         self.assertEqual(result.new_revid, 'P2')
-        # and it can be treated as an integer for compatibility
-        self.assertEqual(self.applyDeprecated(
-            symbol_versioning.deprecated_in((2, 3, 0)),
-            result.__int__),
-            0)
 
     def test_push_merged_indirect(self):
         # it should be possible to do a push from one branch into another
@@ -165,7 +160,7 @@ class TestPush(TestCaseWithInterBranch):
             if self.vfs_transport_factory is test_server.LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.
-                local_controldir = bzrdir.BzrDir.open(self.get_vfs_only_url('repo/tree'))
+                local_controldir = controldir.ControlDir.open(self.get_vfs_only_url('repo/tree'))
                 tree = local_controldir.create_workingtree()
             else:
                 tree = a_branch.create_checkout('repo/tree', lightweight=True)
@@ -349,7 +344,7 @@ class TestPushHook(TestCaseWithInterBranch):
             # remotebranches can't be bound.  Let's instead make a new local
             # branch of the default type, which does allow binding.
             # See https://bugs.launchpad.net/bzr/+bug/112020
-            local = BzrDir.create_branch_convenience('local2')
+            local = ControlDir.create_branch_convenience('local2')
             local.bind(target)
         source = self.make_from_branch('source')
         Branch.hooks.install_named_hook('post_push',

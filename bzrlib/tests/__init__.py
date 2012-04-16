@@ -60,7 +60,7 @@ from testtools import content
 import bzrlib
 from bzrlib import (
     branchbuilder,
-    bzrdir,
+    controldir,
     chk_map,
     commands as _mod_commands,
     config,
@@ -247,7 +247,7 @@ class ExtendedTestResult(testtools.TextTestResult):
     different types of display.
 
     When a test finishes, in whatever way, it calls one of the addSuccess,
-    addFailure or addError classes.  These in turn may redirect to a more
+    addFailure or addError methods.  These in turn may redirect to a more
     specific case for the special test results supported by our extended
     tests.
 
@@ -1026,10 +1026,6 @@ class TestCase(testtools.TestCase):
         # between tests.  We should get rid of this altogether: bug 656694. --
         # mbp 20101008
         self.overrideAttr(bzrlib.trace, '_verbosity_level', 0)
-        # Isolate config option expansion until its default value for bzrlib is
-        # settled on or a the FIXME associated with _get_expand_default_value
-        # is addressed -- vila 20110219
-        self.overrideAttr(config, '_expand_default_value', None)
         self._log_files = set()
         # Each key in the ``_counters`` dict holds a value for a different
         # counter. When the test ends, addDetail() should be used to output the
@@ -1328,7 +1324,7 @@ class TestCase(testtools.TestCase):
         # hook into bzr dir opening. This leaves a small window of error for
         # transport tests, but they are well known, and we can improve on this
         # step.
-        bzrdir.BzrDir.hooks.install_named_hook("pre_open",
+        controldir.ControlDir.hooks.install_named_hook("pre_open",
             self._preopen_isolate_transport, "Check bzr directories are safe.")
 
     def _ndiff_strings(self, a, b):
@@ -2603,7 +2599,7 @@ class TestCaseWithMemoryTransport(TestCase):
         # http://pad.lv/825027).
         self.assertIs(None, os.environ.get('BZR_HOME', None))
         os.environ['BZR_HOME'] = root
-        wt = bzrdir.BzrDir.create_standalone_workingtree(root)
+        wt = controldir.ControlDir.create_standalone_workingtree(root)
         del os.environ['BZR_HOME']
         # Hack for speed: remember the raw bytes of the dirstate file so that
         # we don't need to re-open the wt to check it hasn't changed.
@@ -2658,10 +2654,11 @@ class TestCaseWithMemoryTransport(TestCase):
         self.test_home_dir = self.test_dir + "/MemoryTransportMissingHomeDir"
         self.permit_dir(self.test_dir)
 
-    def make_branch(self, relpath, format=None):
+    def make_branch(self, relpath, format=None, name=None):
         """Create a branch on the transport at relpath."""
         repo = self.make_repository(relpath, format=format)
-        return repo.bzrdir.create_branch(append_revisions_only=False)
+        return repo.bzrdir.create_branch(append_revisions_only=False,
+                                         name=name)
 
     def get_default_format(self):
         return 'default'
@@ -2679,7 +2676,7 @@ class TestCaseWithMemoryTransport(TestCase):
         if format is None:
             format = self.get_default_format()
         if isinstance(format, basestring):
-            format = bzrdir.format_registry.make_bzrdir(format)
+            format = controldir.format_registry.make_bzrdir(format)
         return format
 
     def make_bzrdir(self, relpath, format=None):
@@ -2853,7 +2850,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         # stacking policy to honour; create a bzr dir with an unshared
         # repository (but not a branch - our code would be trying to escape
         # then!) to stop them, and permit it to be read.
-        # control = bzrdir.BzrDir.create(self.test_base_dir)
+        # control = controldir.ControlDir.create(self.test_base_dir)
         # control.create_repository()
         self.test_home_dir = self.test_base_dir + '/home'
         os.mkdir(self.test_home_dir)
@@ -2999,7 +2996,8 @@ class TestCaseWithTransport(TestCaseInTempDir):
             if self.vfs_transport_factory is test_server.LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.
-                local_controldir= bzrdir.BzrDir.open(self.get_vfs_only_url(relpath))
+                local_controldir = controldir.ControlDir.open(
+                    self.get_vfs_only_url(relpath))
                 wt = local_controldir.create_workingtree()
                 if wt.branch._format != b._format:
                     wt._branch = b
@@ -3908,7 +3906,6 @@ def _test_suite_testmod_names():
         'bzrlib.doc',
         'bzrlib.tests.blackbox',
         'bzrlib.tests.commands',
-        'bzrlib.tests.doc_generate',
         'bzrlib.tests.per_branch',
         'bzrlib.tests.per_bzrdir',
         'bzrlib.tests.per_controldir',

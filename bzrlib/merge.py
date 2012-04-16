@@ -940,8 +940,8 @@ class Merge3Merger(object):
         result = []
         walker = _mod_tree.MultiWalker(self.other_tree, self._lca_trees)
 
-        base_inventory = self.base_tree.inventory
-        this_inventory = self.this_tree.inventory
+        base_inventory = self.base_tree.root_inventory
+        this_inventory = self.this_tree.root_inventory
         for path, file_id, other_ie, lca_values in walker.iter_all():
             # Is this modified at all from any of the other trees?
             if other_ie is None:
@@ -1078,51 +1078,6 @@ class Merge3Merger(object):
                           ))
         return result
 
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def fix_root(self):
-        if self.tt.final_kind(self.tt.root) is None:
-            self.tt.cancel_deletion(self.tt.root)
-        if self.tt.final_file_id(self.tt.root) is None:
-            self.tt.version_file(self.tt.tree_file_id(self.tt.root),
-                                 self.tt.root)
-        other_root_file_id = self.other_tree.get_root_id()
-        if other_root_file_id is None:
-            return
-        other_root = self.tt.trans_id_file_id(other_root_file_id)
-        if other_root == self.tt.root:
-            return
-        if self.this_tree.inventory.has_id(
-            self.other_tree.inventory.root.file_id):
-            # the other tree's root is a non-root in the current tree (as
-            # when a previously unrelated branch is merged into another)
-            return
-        if self.tt.final_kind(other_root) is not None:
-            other_root_is_present = True
-        else:
-            # other_root doesn't have a physical representation. We still need
-            # to move any references to the actual root of the tree.
-            other_root_is_present = False
-        # 'other_tree.inventory.root' is not present in this tree. We are
-        # calling adjust_path for children which *want* to be present with a
-        # correct place to go.
-        for _, child in self.other_tree.inventory.root.children.iteritems():
-            trans_id = self.tt.trans_id_file_id(child.file_id)
-            if not other_root_is_present:
-                if self.tt.final_kind(trans_id) is not None:
-                    # The item exist in the final tree and has a defined place
-                    # to go already.
-                    continue
-            # Move the item into the root
-            try:
-                final_name = self.tt.final_name(trans_id)
-            except errors.NoFinalPath:
-                # This file is not present anymore, ignore it.
-                continue
-            self.tt.adjust_path(final_name, self.tt.root, trans_id)
-        if other_root_is_present:
-            self.tt.cancel_creation(other_root)
-            self.tt.cancel_versioning(other_root)
-
     def write_modified(self, results):
         modified_hashes = {}
         for path in results.modified_paths:
@@ -1238,31 +1193,11 @@ class Merge3Merger(object):
         # At this point, the lcas disagree, and the tip disagree
         return 'conflict'
 
-    @staticmethod
-    @deprecated_method(deprecated_in((2, 2, 0)))
-    def scalar_three_way(this_tree, base_tree, other_tree, file_id, key):
-        """Do a three-way test on a scalar.
-        Return "this", "other" or "conflict", depending whether a value wins.
-        """
-        key_base = key(base_tree, file_id)
-        key_other = key(other_tree, file_id)
-        #if base == other, either they all agree, or only THIS has changed.
-        if key_base == key_other:
-            return "this"
-        key_this = key(this_tree, file_id)
-        # "Ambiguous clean merge"
-        if key_this == key_other:
-            return "this"
-        elif key_this == key_base:
-            return "other"
-        else:
-            return "conflict"
-
     def merge_names(self, file_id):
         def get_entry(tree):
-            if tree.has_id(file_id):
-                return tree.inventory[file_id]
-            else:
+            try:
+                return tree.root_inventory[file_id]
+            except errors.NoSuchId:
                 return None
         this_entry = get_entry(self.this_tree)
         other_entry = get_entry(self.other_tree)
@@ -1940,7 +1875,7 @@ class MergeIntoMergeType(Merge3Merger):
 
     def _entries_to_incorporate(self):
         """Yields pairs of (inventory_entry, new_parent)."""
-        other_inv = self.other_tree.inventory
+        other_inv = self.other_tree.root_inventory
         subdir_id = other_inv.path2id(self._source_subpath)
         if subdir_id is None:
             # XXX: The error would be clearer if it gave the URL of the source
@@ -1948,13 +1883,13 @@ class MergeIntoMergeType(Merge3Merger):
             raise PathNotInTree(self._source_subpath, "Source tree")
         subdir = other_inv[subdir_id]
         parent_in_target = osutils.dirname(self._target_subdir)
-        target_id = self.this_tree.inventory.path2id(parent_in_target)
+        target_id = self.this_tree.path2id(parent_in_target)
         if target_id is None:
             raise PathNotInTree(self._target_subdir, "Target tree")
         name_in_target = osutils.basename(self._target_subdir)
         merge_into_root = subdir.copy()
         merge_into_root.name = name_in_target
-        if self.this_tree.inventory.has_id(merge_into_root.file_id):
+        if self.this_tree.has_id(merge_into_root.file_id):
             # Give the root a new file-id.
             # This can happen fairly easily if the directory we are
             # incorporating is the root, and both trees have 'TREE_ROOT' as

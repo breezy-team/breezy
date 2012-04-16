@@ -35,7 +35,7 @@ import sys
 
 from bzrlib import urlutils
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
+from bzrlib.controldir import ControlDir
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.workingtree import WorkingTree
@@ -199,7 +199,7 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
 
         os.mkdir('sftp')
         sftp_url = self.get_url('sftp')
-        b_sftp = BzrDir.create_branch_and_repo(sftp_url)
+        b_sftp = ControlDir.create_branch_and_repo(sftp_url)
 
         b_sftp.pull(b_local)
         del b_sftp

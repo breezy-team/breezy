@@ -81,24 +81,6 @@ class TestCaching(TestCaseWithBranch):
         finally:
             branch.unlock()
 
-    def test_set_revision_history_when_locked(self):
-        """Calling set_revision_history should reset the cache."""
-        branch, calls = self.get_instrumented_branch()
-        branch.lock_write()
-        try:
-            self.assertEqual({'rev-1':(1,), 'rev-2':(2,), 'rev-3':(3,),
-                              'rev-1.1.1':(1,1,1)
-                             }, branch.get_revision_id_to_revno_map())
-            self.applyDeprecated(deprecated_in((2, 4, 0)),
-                branch.set_revision_history, ['rev-1', 'rev-2'])
-            self.assertEqual({'rev-1':(1,), 'rev-2':(2,)},
-                             branch.get_revision_id_to_revno_map())
-            self.assertEqual({'rev-1':(1,), 'rev-2':(2,)},
-                             branch.get_revision_id_to_revno_map())
-            self.assertEqual(['_gen_revno_map']*2, calls)
-        finally:
-            branch.unlock()
-
     def test_set_last_revision_info_when_locked(self):
         """Calling set_last_revision_info should reset the cache."""
         branch, calls = self.get_instrumented_branch()

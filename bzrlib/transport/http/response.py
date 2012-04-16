@@ -23,6 +23,7 @@ responses.
 
 from __future__ import absolute_import
 
+import os
 import httplib
 from cStringIO import StringIO
 import rfc822
@@ -33,20 +34,72 @@ from bzrlib import (
     )
 
 
+class ResponseFile(object):
+    """A wrapper around the http socket containing the result of a GET request.
+
+    Only read() and seek() (forward) are supported.
+    """
+    def __init__(self, path, infile):
+        """Constructor.
+
+        :param path: File url, for error reports.
+
+        :param infile: File-like socket set at body start.
+        """
+        self._path = path
+        self._file = infile
+        self._pos = 0
+
+    def close(self):
+        """Close this file.
+
+        Dummy implementation for consistency with the 'file' API.
+        """
+
+    def read(self, size=-1):
+        """Read size bytes from the current position in the file.
+
+        :param size:  The number of bytes to read.  Leave unspecified or pass
+            -1 to read to EOF.
+        """
+        data =  self._file.read(size)
+        self._pos += len(data)
+        return data
+
+    def readline(self):
+        data = self._file.readline()
+        self._pos += len(data)
+        return data
+
+    def tell(self):
+        return self._pos
+
+    def seek(self, offset, whence=os.SEEK_SET):
+        if whence == os.SEEK_SET:
+            if offset < self._pos:
+                raise AssertionError(
+                    "Can't seek backwards, pos: %s, offset: %s"
+                    % (self._pos, offset))
+            to_discard = offset - self._pos
+        elif whence == os.SEEK_CUR:
+            to_discard = offset
+        else:
+            raise AssertionError("Can't seek backwards")
+        if to_discard:
+            # Just discard the unwanted bytes
+            self.read(to_discard)
+
 # A RangeFile expects the following grammar (simplified to outline the
 # assumptions we rely upon).
 
-# file: whole_file
-#     | single_range
+# file: single_range
 #     | multiple_range
-
-# whole_file: [content_length_header] data
 
 # single_range: content_range_header data
 
 # multiple_range: boundary_header boundary (content_range_header data boundary)+
 
-class RangeFile(object):
+class RangeFile(ResponseFile):
     """File-like object that allow access to partial available data.
 
     All accesses should happen sequentially since the acquisition occurs during
@@ -71,10 +124,10 @@ class RangeFile(object):
         """Constructor.
 
         :param path: File url, for error reports.
+
         :param infile: File-like socket set at body start.
         """
-        self._path = path
-        self._file = infile
+        super(RangeFile, self).__init__(path, infile)
         self._boundary = None
         # When using multi parts response, this will be set with the headers
         # associated with the range currently read.
@@ -298,16 +351,11 @@ def handle_response(url, code, msg, data):
     :return: A file-like object that can seek()+read() the
              ranges indicated by the headers.
     """
-    rfile = RangeFile(url, data)
     if code == 200:
         # A whole file
-        size = msg.getheader('content-length', None)
-        if size is None:
-            size = -1
-        else:
-            size = int(size)
-        rfile.set_range(0, size)
+        rfile = ResponseFile(url, data)
     elif code == 206:
+        rfile = RangeFile(url, data)
         content_type = msg.getheader('content-type', None)
         if content_type is None:
             # When there is no content-type header we treat the response as

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,11 +18,10 @@
 
 from bzrlib import (
     branch as _mod_branch,
-    bzrdir,
+    controldir,
     config,
     delta as _mod_delta,
     errors,
-    gpg,
     merge,
     osutils,
     urlutils,
@@ -476,17 +475,6 @@ class TestBranch(per_branch.TestCaseWithBranch):
         checkout = source_branch.create_checkout('c')
         self.assertEqual(rev_id, checkout.last_revision())
 
-    def test_set_revision_history(self):
-        tree = self.make_branch_and_tree('a')
-        tree.commit('a commit', rev_id='rev1')
-        br = tree.branch
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            br.set_revision_history, ["rev1"])
-        self.assertEquals(br.last_revision(), "rev1")
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            br.set_revision_history, [])
-        self.assertEquals(br.last_revision(), 'null:')
-
     def test_heads_to_fetch(self):
         # heads_to_fetch is a method that returns a collection of revids that
         # need to be fetched to copy this branch into another repo.  At a
@@ -529,7 +517,7 @@ class TestBranchFormat(per_branch.TestCaseWithBranch):
             looked_up_format = registry.get(network_name)
             self.assertEqual(format.__class__, looked_up_format.__class__)
 
-    def get_get_config_calls(self):
+    def test_get_config_calls(self):
         # Smoke test that all branch succeed getting a config
         br = self.make_branch('.')
         br.get_config()
@@ -709,7 +697,7 @@ class TestFormat(per_branch.TestCaseWithBranch):
         self.assertIsInstance(made_branch, _mod_branch.Branch)
 
         # find it via bzrdir opening:
-        opened_control = bzrdir.BzrDir.open(readonly_t.base)
+        opened_control = controldir.ControlDir.open(readonly_t.base)
         direct_opened_branch = opened_control.open_branch()
         self.assertEqual(direct_opened_branch.__class__, made_branch.__class__)
         self.assertEqual(opened_control, direct_opened_branch.bzrdir)
@@ -779,22 +767,6 @@ class TestBound(per_branch.TestCaseWithBranch):
         self.assertNotEqual(None, branch.get_master_branch())
         branch.unbind()
         self.assertEqual(None, branch.get_master_branch())
-
-    def test_unlocked_does_not_cache_master_branch(self):
-        """Unlocked branches do not cache the result of get_master_branch."""
-        master = self.make_branch('master')
-        branch1 = self.make_branch('branch')
-        try:
-            branch1.bind(master)
-        except errors.UpgradeRequired:
-            raise tests.TestNotApplicable('Format does not support binding')
-        # Open branch1 again
-        branch2 = branch1.bzrdir.open_branch()
-        self.assertNotEqual(None, branch1.get_master_branch())
-        # Unbind the branch via branch2.  branch1 isn't locked so will
-        # immediately return the new value for get_master_branch.
-        branch2.unbind()
-        self.assertEqual(None, branch1.get_master_branch())
 
     def test_bind_clears_cached_master_branch(self):
         """b.bind clears any cached value of b.get_master_branch."""
@@ -866,13 +838,13 @@ class TestIgnoreFallbacksParameter(per_branch.TestCaseWithBranch):
     def test_fallbacks_not_opened(self):
         stacked = self.make_branch_with_fallback()
         self.get_transport('').rename('fallback', 'moved')
-        reopened_dir = bzrdir.BzrDir.open(stacked.base)
+        reopened_dir = controldir.ControlDir.open(stacked.base)
         reopened = reopened_dir.open_branch(ignore_fallbacks=True)
         self.assertEqual([], reopened.repository._fallback_repositories)
 
     def test_fallbacks_are_opened(self):
         stacked = self.make_branch_with_fallback()
-        reopened_dir = bzrdir.BzrDir.open(stacked.base)
+        reopened_dir = controldir.ControlDir.open(stacked.base)
         reopened = reopened_dir.open_branch(ignore_fallbacks=False)
         self.assertLength(1, reopened.repository._fallback_repositories)
 

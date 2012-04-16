@@ -105,7 +105,7 @@ class TestReference(TestCaseWithTree):
         tree = self.create_nested()
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        entry = tree.inventory['sub-root']
+        entry = tree.root_inventory['sub-root']
         self.assertEqual([(u'subtree', 'sub-root')],
             list(tree.iter_references()))
 
@@ -247,6 +247,29 @@ class TestIterEntriesByDir(TestCaseWithTree):
         output_order = [p for p, e in tree.iter_entries_by_dir()]
         self.assertEqual(['', 'a', 'f', 'a/b', 'a/d', 'a/b/c', 'a/d/e', 'f/g'],
                          output_order)
+
+
+class TestIterChildEntries(TestCaseWithTree):
+
+    def test_iteration_order(self):
+        work_tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'a/b/', 'a/b/c', 'a/d/', 'a/d/e', 'f/', 'f/g'])
+        work_tree.add(['a', 'a/b', 'a/b/c', 'a/d', 'a/d/e', 'f', 'f/g'])
+        tree = self._convert_tree(work_tree)
+        output = [e.name for e in
+            tree.iter_child_entries(tree.get_root_id())]
+        self.assertEqual(set(['a', 'f']), set(output))
+        output = [e.name for e in
+            tree.iter_child_entries(tree.path2id('a'))]
+        self.assertEqual(set(['b', 'd']), set(output))
+
+    def test_does_not_exist(self):
+        work_tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/'])
+        work_tree.add(['a'])
+        tree = self._convert_tree(work_tree)
+        self.assertRaises(errors.NoSuchId, lambda:
+            list(tree.iter_child_entries('unknown')))
 
 
 class TestHasId(TestCaseWithTree):

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -86,7 +86,8 @@ class TestBreakLock(per_branch.TestCaseWithBranch):
         master.lock_write()
         ui.ui_factory = ui.CannedInputUIFactory([True, True])
         try:
-            self.unused_branch.break_lock()
+            fresh = _mod_branch.Branch.open(self.unused_branch.base)
+            fresh.break_lock()
         except NotImplementedError:
             # branch does not support break_lock
             master.unlock()

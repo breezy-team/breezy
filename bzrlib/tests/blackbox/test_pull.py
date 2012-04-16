@@ -236,6 +236,7 @@ class TestPull(tests.TestCaseWithTransport):
         tree_a.commit('commit b')
         # reset parent
         parent = branch_b.get_parent()
+        branch_b = branch.Branch.open('branch_b')
         branch_b.set_parent(None)
         self.assertEqual(None, branch_b.get_parent())
         # test pull for failure without parent set
@@ -252,16 +253,22 @@ class TestPull(tests.TestCaseWithTransport):
                 ('','bzr: ERROR: These branches have diverged.'
                     ' Use the missing command to see how.\n'
                     'Use the merge command to reconcile them.\n'))
-        self.assertEqual(branch_b.get_parent(), parent)
+        tree_b = tree_b.bzrdir.open_workingtree()
+        branch_b = tree_b.branch
+        self.assertEqual(parent, branch_b.get_parent())
         # test implicit --remember after resolving previous failure
         uncommit.uncommit(branch=branch_b, tree=tree_b)
         t.delete('branch_b/d')
         self.run_bzr('pull', working_dir='branch_b')
+        # Refresh the branch object as 'pull' modified it
+        branch_b = branch_b.bzrdir.open_branch()
         self.assertEqual(branch_b.get_parent(), parent)
         # test explicit --remember
         self.run_bzr('pull ../branch_c --remember', working_dir='branch_b')
-        self.assertEqual(branch_b.get_parent(),
-                          branch_c.bzrdir.root_transport.base)
+        # Refresh the branch object as 'pull' modified it
+        branch_b = branch_b.bzrdir.open_branch()
+        self.assertEqual(branch_c.bzrdir.root_transport.base,
+                         branch_b.get_parent())
 
     def test_pull_bundle(self):
         from bzrlib.testament import Testament
@@ -360,8 +367,7 @@ class TestPull(tests.TestCaseWithTransport):
     def test_pull_verbose_uses_default_log(self):
         tree = self.example_branch('source')
         target = self.make_branch_and_tree('target')
-        target_config = target.branch.get_config_stack()
-        target_config.set('log_format', 'short')
+        target.branch.get_config_stack().set('log_format', 'short')
         out = self.run_bzr('pull -v source -d target')[0]
         self.assertContainsRe(out, r'\n {4}1 .*\n {6}setup\n')
         self.assertNotContainsRe(

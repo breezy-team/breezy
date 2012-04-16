@@ -98,6 +98,13 @@ that can allow further simplifications like:
 * convert the unicode string provided by the user into a suitable
   representation (integer, list, etc).
 
+If you start migrating a given option to the config stacks, don't stop
+mid-way, all its uses should be covered (tests included). There are some
+edge cases where updates via one API will be not be seen by the other API
+(see http://pad.lv/948339 and http://pad.lv/948344 for details). Roughly,
+the old API always trigger an IO while the new one cache values to avoid
+them. This works fine as long as a given option is handled via a single API.
+
 Adding a new stack
 ------------------
 
@@ -213,6 +220,10 @@ appropriate representation.
 
 If you need a list value, you should use ``ListOption`` instead.
 
+For options that take their values from a ``Registry`` object,
+``RegistryOption`` can be used. This will automatically take care of
+looking up the specified values in the dictionary and documenting the
+possible values in help.
 
 Sections
 --------

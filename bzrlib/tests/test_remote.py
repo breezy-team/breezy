@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -120,15 +120,6 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         self.assertFalse(repo.has_revision(revid))
         self.local_wt.commit(message='test commit', rev_id=revid)
         self.assertTrue(repo.has_revision(revid))
-
-    def test_remote_branch_revision_history(self):
-        b = BzrDir.open_from_transport(self.transport).open_branch()
-        self.assertEqual([],
-            self.applyDeprecated(deprecated_in((2, 5, 0)), b.revision_history))
-        r1 = self.local_wt.commit('1st commit')
-        r2 = self.local_wt.commit('1st commit', rev_id=u'\xc8'.encode('utf8'))
-        self.assertEqual([r1, r2],
-            self.applyDeprecated(deprecated_in((2, 5, 0)), b.revision_history))
 
     def test_find_correct_format(self):
         """Should open a RemoteBzrDir over a RemoteTransport"""
@@ -349,11 +340,11 @@ class TestVfsHas(tests.TestCase):
 class TestRemote(tests.TestCaseWithMemoryTransport):
 
     def get_branch_format(self):
-        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_bzrdir_format = controldir.format_registry.get('default')()
         return reference_bzrdir_format.get_branch_format()
 
     def get_repo_format(self):
-        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_bzrdir_format = controldir.format_registry.get('default')()
         return reference_bzrdir_format.repository_format
 
     def assertFinished(self, fake_client):
@@ -475,7 +466,7 @@ class TestBzrDirCloningMetaDir(TestRemote):
         transport = transport.clone('quack')
         self.make_bzrdir('quack')
         client = FakeClient(transport.base)
-        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_bzrdir_format = controldir.format_registry.get('default')()
         control_name = reference_bzrdir_format.network_name()
         client.add_expected_call(
             'BzrDir.cloning_metadir', ('quack/', 'False'),
@@ -509,7 +500,7 @@ class TestBzrDirCheckoutMetaDir(TestRemote):
     def test__get_checkout_format(self):
         transport = MemoryTransport()
         client = FakeClient(transport.base)
-        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_bzrdir_format = controldir.format_registry.get('default')()
         control_name = reference_bzrdir_format.network_name()
         client.add_expected_call(
             'BzrDir.checkout_metadir', ('quack/', ),
@@ -546,7 +537,7 @@ class TestBzrDirGetBranches(TestRemote):
     def test_get_branches(self):
         transport = MemoryTransport()
         client = FakeClient(transport.base)
-        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_bzrdir_format = controldir.format_registry.get('default')()
         branch_name = reference_bzrdir_format.get_branch_format().network_name()
         client.add_success_response_with_body(
             bencode.bencode({
@@ -565,7 +556,7 @@ class TestBzrDirGetBranches(TestRemote):
         a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         result = a_bzrdir.get_branches()
-        self.assertEquals(["", "foo"], result.keys())
+        self.assertEquals(set(["", "foo"]), set(result.keys()))
         self.assertEqual(
             [('call_expecting_body', 'BzrDir.get_branches', ('quack/',)),
              ('call', 'BzrDir.find_repositoryV3', ('quack/', )),
@@ -854,7 +845,7 @@ class TestBzrDirCreateBranch(TestRemote):
         transport = transport.clone('quack')
         self.make_repository('quack')
         client = FakeClient(transport.base)
-        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_bzrdir_format = controldir.format_registry.get('default')()
         reference_format = reference_bzrdir_format.get_branch_format()
         network_name = reference_format.network_name()
         reference_repo_fmt = reference_bzrdir_format.repository_format
@@ -882,7 +873,7 @@ class TestBzrDirCreateBranch(TestRemote):
         # Client's medium rooted a transport root (not at the bzrdir)
         client = FakeClient(transport.base)
         transport = transport.clone('quack')
-        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_bzrdir_format = controldir.format_registry.get('default')()
         reference_format = reference_bzrdir_format.get_branch_format()
         network_name = reference_format.network_name()
         reference_repo_fmt = reference_bzrdir_format.repository_format
@@ -918,7 +909,7 @@ class TestBzrDirCreateRepository(TestRemote):
         transport = transport.clone('quack')
         self.make_bzrdir('quack')
         client = FakeClient(transport.base)
-        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_bzrdir_format = controldir.format_registry.get('default')()
         reference_format = reference_bzrdir_format.repository_format
         network_name = reference_format.network_name()
         client.add_expected_call(
@@ -1296,7 +1287,7 @@ class TestBranchSetParentLocation(RemoteBranchTestCase):
         verb = 'Branch.set_parent_location'
         self.disable_verb(verb)
         branch.set_parent('http://foo/')
-        self.assertLength(13, self.hpss_calls)
+        self.assertLength(14, self.hpss_calls)
 
 
 class TestBranchGetTagsBytes(RemoteBranchTestCase):
@@ -1455,34 +1446,31 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         return branch
 
     def test_backwards_compatible(self):
-        branch = self.make_branch_with_tags()
-        c = branch.get_config_stack()
-        c.set('branch.fetch_tags', True)
-        self.addCleanup(branch.lock_read().unlock)
+        br = self.make_branch_with_tags()
+        br.get_config_stack().set('branch.fetch_tags', True)
+        self.addCleanup(br.lock_read().unlock)
         # Disable the heads_to_fetch verb
         verb = 'Branch.heads_to_fetch'
         self.disable_verb(verb)
         self.reset_smart_call_log()
-        result = branch.heads_to_fetch()
+        result = br.heads_to_fetch()
         self.assertEqual((set(['tip']), set(['rev-1', 'rev-2'])), result)
         self.assertEqual(
-            ['Branch.last_revision_info', 'Branch.get_config_file',
-             'Branch.get_tags_bytes'],
+            ['Branch.last_revision_info', 'Branch.get_tags_bytes'],
             [call.call.method for call in self.hpss_calls])
 
     def test_backwards_compatible_no_tags(self):
-        branch = self.make_branch_with_tags()
-        c = branch.get_config_stack()
-        c.set('branch.fetch_tags', False)
-        self.addCleanup(branch.lock_read().unlock)
+        br = self.make_branch_with_tags()
+        br.get_config_stack().set('branch.fetch_tags', False)
+        self.addCleanup(br.lock_read().unlock)
         # Disable the heads_to_fetch verb
         verb = 'Branch.heads_to_fetch'
         self.disable_verb(verb)
         self.reset_smart_call_log()
-        result = branch.heads_to_fetch()
+        result = br.heads_to_fetch()
         self.assertEqual((set(['tip']), set()), result)
         self.assertEqual(
-            ['Branch.last_revision_info', 'Branch.get_config_file'],
+            ['Branch.last_revision_info'],
             [call.call.method for call in self.hpss_calls])
 
 
@@ -2073,6 +2061,9 @@ class TestBranchGetPutConfigStore(RemoteBranchTestCase):
             'Branch.get_config_file', ('memory:///', ),
             'success', ('ok', ), "# line 1\n")
         client.add_expected_call(
+            'Branch.get_config_file', ('memory:///', ),
+            'success', ('ok', ), "# line 1\n")
+        client.add_expected_call(
             'Branch.put_config_file', ('memory:///', 'branch token',
             'repo token'),
             'success', ('ok',))
@@ -2089,6 +2080,7 @@ class TestBranchGetPutConfigStore(RemoteBranchTestCase):
         self.assertEqual(
             [('call', 'Branch.get_stacked_on_url', ('memory:///',)),
              ('call', 'Branch.lock_write', ('memory:///', '', '')),
+             ('call_expecting_body', 'Branch.get_config_file', ('memory:///',)),
              ('call_expecting_body', 'Branch.get_config_file', ('memory:///',)),
              ('call_with_body_bytes_expecting_body', 'Branch.put_config_file',
                  ('memory:///', 'branch token', 'repo token'),
@@ -3963,7 +3955,7 @@ class TestStacking(tests.TestCaseWithTransport):
         :result: The revision ids in the stream, in the order seen,
             the topological order of revisions in the source.
         """
-        unordered_format = bzrdir.format_registry.get(format)()
+        unordered_format = controldir.format_registry.get(format)()
         target_repository_format = unordered_format.repository_format
         # Cross check
         self.assertEqual(order, target_repository_format._fetch_order)
@@ -4272,7 +4264,7 @@ class TestRepositoryIterInventories(TestRemoteRepository):
     def test_single_empty(self):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
-        fmt = bzrdir.format_registry.get('2a')().repository_format
+        fmt = controldir.format_registry.get('2a')().repository_format
         repo._format = fmt
         stream = [('inventory-deltas', [
             versionedfile.FulltextContentFactory('somerevid', None, None,

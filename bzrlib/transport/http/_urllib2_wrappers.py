@@ -86,10 +86,9 @@ _ssl_ca_certs_known_locations = [
     # XXX: Needs checking, can't trust the interweb ;) -- vila 2012-01-25
     u'/etc/openssl/certs/ca-certificates.crt', # Solaris
     ]
-
 def default_ca_certs():
     if sys.platform == 'win32':
-        return os.path.join(os.path.dirname(sys.executable), u"ca_bundle.crt")
+        return os.path.join(os.path.dirname(sys.executable), u"cacert.pem")
     elif sys.platform == 'darwin':
         # FIXME: Needs some default value for osx, waiting for osx installers
         # guys feedback -- vila 2012-01-25
@@ -122,6 +121,13 @@ def cert_reqs_from_store(unicode_str):
     except KeyError:
         raise ValueError("invalid value %s" % unicode_str)
 
+def default_ca_reqs():
+    if sys.platform in ('win32', 'darwin'):
+        # FIXME: Once we get a native access to root certificates there, this
+        # won't needed anymore. See http://pad.lv/920455 -- vila 2012-02-15
+        return u'none'
+    else:
+        return u'required'
 
 opt_ssl_ca_certs = config.Option('ssl.ca_certs',
         from_unicode=ca_certs_from_store,
@@ -137,7 +143,7 @@ Use ssl.cert_reqs=none to disable certificate verification.
 """)
 
 opt_ssl_cert_reqs = config.Option('ssl.cert_reqs',
-        default=u"required",
+        default=default_ca_reqs,
         from_unicode=cert_reqs_from_store,
         invalid='error',
         help="""\
@@ -470,9 +476,12 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
         # FIXME JRV 2011-12-18: Use location config here?
         config_stack = config.GlobalStack()
         cert_reqs = config_stack.get('ssl.cert_reqs')
+        if self.proxied_host is not None:
+            host = self.proxied_host.split(":", 1)[0]
+        else:
+            host = self.host
         if cert_reqs == ssl.CERT_NONE:
-            trace.warning("Not checking SSL certificate for %s: %d",
-                self.host, self.port)
+            trace.warning("Not checking SSL certificate for %s", host)
             ca_certs = None
         else:
             if self.ca_certs is None:
@@ -497,7 +506,7 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
             raise
         if cert_reqs == ssl.CERT_REQUIRED:
             peer_cert = ssl_sock.getpeercert()
-            match_hostname(peer_cert, self.host)
+            match_hostname(peer_cert, host)
 
         # Wrap the ssl socket before anybody use it
         self._wrap_socket_for_reporting(ssl_sock)

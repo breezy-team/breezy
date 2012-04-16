@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -135,6 +135,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         # Remembers if asked explicitly or no previous location is set
         if (remember
             or (remember is None and br_from.get_push_location() is None)):
+            # FIXME: Should be done only if we succeed ? -- vila 2012-01-18
             br_from.set_push_location(br_to.base)
     else:
         if stacked_on is not None:
