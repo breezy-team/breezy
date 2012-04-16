@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-04-13 20:16+0000\n"
+"PO-Revision-Date: 2012-04-15 18:36+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-04-14 04:30+0000\n"
-"X-Generator: Launchpad (build 15070)\n"
+"X-Launchpad-Export-Date: 2012-04-16 04:32+0000\n"
+"X-Generator: Launchpad (build 15099)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -6823,20 +6823,19 @@ msgstr ""
 
 #: bzrlib/errors.py:2250
 msgid "To use this feature you must upgrade your branch at %(path)s."
-msgstr ""
-"Pro použití této funkce musíte vylepšit formát Vaší větve v %(path)s."
+msgstr "Pro použití této funkce musíte vylepšit formát své větve v %(path)s."
 
 #: bzrlib/errors.py:2259
 msgid "To use this feature you must upgrade your repository at %(path)s."
 msgstr ""
-"Pro použití této funkce musíte vylepšit formát Vašeho úložiště v %(path)s."
+"Pro použití této funkce musíte vylepšit formát svého úložiště v %(path)s."
 
 #: bzrlib/errors.py:2264
 msgid ""
 "To use this feature you must upgrade your branch at %(path)s to a format "
 "which supports rich roots."
 msgstr ""
-"Pro použití této funkce musíte vylepšit Vaší větev v %(path)s na formát, "
+"Pro použití této funkce musíte vylepšit svoji větev v %(path)s na formát, "
 "který podporuje rich roots."
 
 #: bzrlib/errors.py:2270
@@ -7246,7 +7245,7 @@ msgid ""
 "to a later format."
 msgstr ""
 "Zobrazení nejsou podporována %(tree)s; použijte 'bzr upgrade' pro změnu "
-"formátu stromu na novější."
+"formátu Vašeho stromu na novější."
 
 #: bzrlib/errors.py:3127
 msgid ""
@@ -7775,7 +7774,7 @@ msgid ""
 "branch belongs, and create an account for yourself on launchpad.net."
 msgstr ""
 "Před použitím tohoto příkazu musíte registrovat projekt,\n"
-"kterému větev patří a vytvořit s účet na launchpad.net."
+"kterému větev patří a vytvořit si účet na launchpad.net."
 
 #: bzrlib/plugins/launchpad/__init__.py:90
 msgid ""
@@ -8929,6 +8928,14 @@ msgid ""
 "facilitates lockstep development, where each developer is working together,\n"
 "continuously integrating the changes of others."
 msgstr ""
+"Získání je vytvořeno pomocí příkazu bzr checkout (viz \"help checkout\").\n"
+"Předáte mu odkaz na jinou větev a on pro Vás vytvoří místní kopii, která\n"
+"stále obsahuje odkaz na větev, z které jste získání vytvořili (hlavní "
+"větev).\n"
+"Pak, když vytvoříte jakákoli odevzdání, budou nejdříve provedena na druhé\n"
+"větvi. To vytvoří okamžité zrcadlo Vaší práce, nebo usnadňuje\n"
+"synchronizaci prostředí, kde všichni vývojáři pracují dohromady, neustále\n"
+"začleňují změny ostatních."
 
 #: dummy/help_topics/checkouts/detail.txt:19
 msgid ""
@@ -8943,6 +8950,12 @@ msgid ""
 "local\n"
 "commit."
 msgstr ""
+"Nicméně získání je z hlediska Bazaaru stále prvotřídní větev, abyste\n"
+"měli celou její historii místně. Protože máte prvotřídní větev, můžete\n"
+"také svoji práci odevzdat místně, pokud chcete, například kvůli dočasné\n"
+"ztrátě síťového přípojení. Použijte volbu --local, abyste toto provedli.\n"
+"Všechna místní odevzdání pak budou provedeny na hlavní větvi v chvíli,\n"
+"kdy provede odevzdání, které není místní."
 
 #: dummy/help_topics/checkouts/detail.txt:26
 msgid ""
@@ -8953,6 +8966,11 @@ msgid ""
 "Bazaar will tell you if there are any changes and suggest that you use this\n"
 "command when needed."
 msgstr ""
+"Pokud používáte získání ze sdílené větve, budete pravidelně chtít, aby\n"
+"stáhlo všechny změny provedené ostatními. Toto se provádí pomocí\n"
+"příkazu \"update\". Změny je třeba použít před jakýmkoliv odevzdáním,\n"
+"které není místní, ale Bazaar Vám případně řekne, pokud existují nějaké\n"
+"změny a navrhne Vám použít tento příkaz."
 
 #: dummy/help_topics/checkouts/detail.txt:32
 msgid ""
@@ -8965,6 +8983,12 @@ msgid ""
 "you\n"
 "don't have a local branch, then you cannot commit locally."
 msgstr ""
+"Je také možné vytvořit \"odlehčené\" odevzdání předáním příznaku\n"
+"--lightweight pro získání. Toto získání je více podobné získání SVN v\n"
+"tom, že není prvotřídní větví, pouze se skládá z pracovního stromu.\n"
+"To znamená, že všechny operace s historií se musejí dotazovat hlavní\n"
+"větev, což může být pomalé, pokud je třeba síťového připojení. Také,\n"
+"protože nemáte místní větev, nemůžete provádět místní odevzdání."
 
 #: dummy/help_topics/checkouts/detail.txt:39
 msgid ""
@@ -8979,6 +9003,15 @@ msgid ""
 "on\n"
 "the same disk then there won't be a noticeable difference."
 msgstr ""
+"Odlehčená odevzdání pracují nejlépe, když máte rychlý spolehlivý přístup do\n"
+"hlavní větve. To znamená, že pokud je hlavní větev na stejném disku, nebo "
+"LAN,\n"
+"odlehčené získání bude rychlejší než plnohodnotné ve všech příkazech, které\n"
+"mění historii revizí (protože pouze jednu z větví je třeba aktualizovat).\n"
+"Plnohodnotná získání budou obecně rychlejší ve všech příkazech, které\n"
+"používají historii, ale nemění ji, ale pokud je hlavní větev na stejném "
+"disku,\n"
+"pak rozdíl nepoznáte."
 
 #: dummy/help_topics/checkouts/detail.txt:47
 msgid ""
@@ -8987,6 +9020,10 @@ msgid ""
 "switching the master branch that the checkout points to when you want to\n"
 "work on a different branch."
 msgstr ""
+"Další možným využitím odevzdání je ho použít jako úložiště bez stromu\n"
+"obsahující Vaše větve, kde udržujete pouze jeden pracovní strom\n"
+"přepnutím na hlavní větev, na kterou odevzdání ukazuje, když chcete\n"
+"pracovat na jiné větvi."
 
 #: dummy/help_topics/checkouts/detail.txt:52
 msgid ""
@@ -9000,6 +9037,13 @@ msgid ""
 "is\n"
 "file permissions."
 msgstr ""
+"Samozřejmě pro odevzdání na získání potřebujete mít možnost zapisovat do\n"
+"hlavní větve. To znamená, že hlavní větev musí být přístupná přes "
+"zapisovatelný\n"
+"protokol, jako sftp:// a musíte mít tomu patřičná oprávnění na druhém "
+"konci.\n"
+"Získání také fungují na místním souborovém systému, takže vše záleží na\n"
+"oprávněních souborů."
 
 #: dummy/help_topics/checkouts/detail.txt:58
 msgid ""
@@ -9015,6 +9059,18 @@ msgid ""
 "the\n"
 "branch is bound it will tell you the location of the bound branch."
 msgstr ""
+"Můžete změnit hlavní větev získání použitím příkazu \"switch\" (viz \"help "
+"switch\").\n"
+"Toto změní umístění, do kterého jsou odevzdání odesílána. Příkaz \"bind\" "
+"může\n"
+"být také použit ke změně normální větve do plnohodnotného získání. Pokud\n"
+"byste chtěli převést své plnohodnotné získání do normální větve, takže "
+"každé\n"
+"odevzdání je místní, můžete použít příkaz \"unbind\". Abyste zjistili, zda "
+"je větev\n"
+"vázaná či nikoli, můžete použít příkaz \"info\". Pokud je, zobrazí Vám "
+"umístění\n"
+"svázané větve."
 
 #: dummy/help_topics/checkouts/detail.txt:68
 msgid ""
@@ -9036,36 +9092,53 @@ msgid ""
 "              bound, then it will also display the location of the bound "
 "branch\n"
 msgstr ""
+"  checkout    Vytvoří získání. Předejte --lightweight pro odlehčené\n"
+"              získání\n"
+"  update      Stáhnout všechny změny v hlavní větvi do Vašeho získání\n"
+"  commit      Vytvořit odevzdání, které je odesláno do hlavní větve. Pokud "
+"máte\n"
+"              plnohodnotné získání, pak volba --local odevzdá do\n"
+"              získání bez odeslání do hlavní větve\n"
+"  switch      Změnit hlavní větev, do které budou odevzdání v získání\n"
+"              odeslány\n"
+"  bind        Přeměnit samostatnou větev do plnohodnotného získání, takže\n"
+"              všechna odevzdání budou odeslána do hlavní větve\n"
+"  unbind      Přeměnit plnohodnotné získání do samostatné větve, takže\n"
+"              odevzdání jsou prováděna pouze místně\n"
+"  info        Zobrazí zdali je větev svázaná či nikoliv. Pokud je\n"
+"              pak také zobrazí umístění svázané větve\n"
 
 #: dummy/help_topics/checkouts/summary.txt:1
 msgid "Information on what a checkout is"
-msgstr ""
+msgstr "Informace o tom co je získání"
 
 #: dummy/help_topics/commands/summary.txt:1
 msgid "Basic help for all commands"
-msgstr ""
+msgstr "Základní nápověda pro všechny příkazy"
 
 #: dummy/help_topics/configuration/summary.txt:1
 msgid "Details on the configuration settings available"
-msgstr ""
+msgstr "Podorbnosti o dostupných volbách nastavení"
 
 #: dummy/help_topics/conflict-types/summary.txt:1
 msgid "Types of conflicts and what to do about them"
-msgstr ""
+msgstr "Typy konfliktů a jak je řešit"
 
 #: dummy/help_topics/content-filters/summary.txt:1
 msgid "Conversion of content into/from working trees"
-msgstr ""
+msgstr "Převod obsahu do/z pracovních stromů"
 
 #: dummy/help_topics/criss-cross/detail.txt:1
 msgid "Criss-Cross"
-msgstr ""
+msgstr "Křižování"
 
 #: dummy/help_topics/criss-cross/detail.txt:3
 msgid ""
 "A criss-cross in the branch history can cause the default merge technique\n"
 "to emit more conflicts than would normally be expected."
 msgstr ""
+"Křižování v historii větve může způsobit, že výchozí technika sloučení\n"
+"bude mít mnohem více konfliktů, než by se normálně očekávalo."
 
 #: dummy/help_topics/criss-cross/detail.txt:6
 msgid ""
@@ -9074,6 +9147,12 @@ msgid ""
 "better results.  You may wish to ``bzr revert`` the working tree and merge\n"
 "again.  Alternatively, use ``bzr remerge`` on particular conflicted files."
 msgstr ""
+"Ve složitých případech sloučení ``bzr merge --lca`` nebo ``bzr merge --"
+"weave``\n"
+"mohou vytvářet lepší výsledky. Můžete chtít použít ``bzr revert`` pro "
+"vrácení\n"
+"pracovního stromu a sloučit znovu. Jinak použijte ``bzr remerge`` na\n"
+"jednotlivé konfliktní soubory."
 
 #: dummy/help_topics/criss-cross/detail.txt:10
 msgid ""
@@ -9084,6 +9163,10 @@ msgid ""
 "time.  They can be avoided by having each branch only merge from or into a\n"
 "designated central branch (a \"star topology\")."
 msgstr ""
+"Křižování se v historii větve stane, když dvě větve sloučí stejnou větví\n"
+"pak se sloučí navzájem, nebo pokud dvě větve se sloučí navzájem ve\n"
+"stejnou dobu. Tomuto se lze vyhnout tak, že každá větev je sloučena\n"
+"pouze do určené centrální větve (\"topologie hvězdy\")."
 
 #: dummy/help_topics/criss-cross/detail.txt:15
 msgid ""
@@ -9094,6 +9177,11 @@ msgid ""
 "differences between THIS and OTHER are due to one side adding lines, or\n"
 "from another side removing lines."
 msgstr ""
+"Křižování způsobuje problémy, kvůli způsobu jak slučování funguje. Výchozí\n"
+"slučování v Bazaar je trojí porovnávání; aby se mohlo OSTATNÍ sloučit do\n"
+"TOHOTO, musí najít základ pro porovnání. Pomocí ZÁKLADU, může zjistit\n"
+"zda rozdíly mezi TÍMTO a OSTATNÍM jsou kvůli jedné straně přidávající\n"
+"řádky, nebo odstraněním řádků z druhé."
 
 #: dummy/help_topics/criss-cross/detail.txt:21
 msgid ""
@@ -9103,6 +9191,10 @@ msgid ""
 "Selecting older merge points (which Bazaar does) mean that extra conflicts\n"
 "are emitted."
 msgstr ""
+"Křižování znamená, že neexistuje dobrý výběr pro základ. Vybráním novějších\n"
+"bodů sloučení by mohlo způsobit, že změny jedné strany budou potichu\n"
+"zahozeny. Vybráním starších bodů sloučení (což Bazaar provede), znamená\n"
+"dodatečné konflikty, které jsou nahlášeny."
 
 #: dummy/help_topics/criss-cross/detail.txt:26
 msgid ""
@@ -9110,26 +9202,29 @@ msgid ""
 "line-origin detection instead of a basis revision to determine the cause of\n"
 "differences.\n"
 msgstr ""
+"Typ sloučení ``weave`` není tímto problémem zasažen, protože používá\n"
+"zjištění původu řádku, místo revizních základů, pro zjištění příčiny "
+"rozdílů.\n"
 
 #: dummy/help_topics/criss-cross/summary.txt:1
 msgid "Information on criss-cross merging"
-msgstr ""
+msgstr "Informace o křížovém sloučení"
 
 #: dummy/help_topics/current-formats/summary.txt:1
 msgid "Current storage formats"
-msgstr ""
+msgstr "Současné formáty uložení"
 
 #: dummy/help_topics/debug-flags/summary.txt:1
 msgid "Options to show or record debug information"
-msgstr ""
+msgstr "Volby k zobrazení nebo zaznamenání ladících informací"
 
 #: dummy/help_topics/diverged-branches/summary.txt:1
 msgid "How to fix diverged branches"
-msgstr ""
+msgstr "Jak spravit rozdělené větve"
 
 #: dummy/help_topics/env-variables/detail.txt:1
 msgid "Environment Variables"
-msgstr ""
+msgstr "Proměnné prostředí"
 
 #: dummy/help_topics/env-variables/detail.txt:3
 msgid ""
@@ -9170,18 +9265,51 @@ msgid ""
 "=================== "
 "===========================================================\n"
 msgstr ""
+"=================== "
+"===========================================================\n"
+"BZRPATH Cesta v které bzr hledá externí příkazy\n"
+"                    zásuvného modulu shellu.\n"
+"BZR_EMAIL Emailová adresa uživatele. Potlačuje EMAIL.\n"
+"EMAIL Emailová adresa uživatele\n"
+"BZR_EDITOR Editor pro úpravu zpráv odevzdání. Potlačuje EDITOR.\n"
+"EDITOR Editor pro úpravu zpráv odevzdání.\n"
+"BZR_PLUGIN_PATH Cesty, kde by bzr měl hledat zásuvné moduly.\n"
+"BZR_DISABLE_PLUGINS Zásuvném moduly, které by bzr neměl načítat.\n"
+"BZR_PLUGINS_AT Zásuvné moduly, které nahrát z adresáře chybějící v "
+"BZR_PLUGIN_PATH.\n"
+"BZR_HOME Adresář obsahující adresář nastavení .bazaar. Potlačuje HOME.\n"
+"BZR_HOME (Win32) Adresář obsahující adresář nastavení. Potlačuje APPDATA a\n"
+"                       HOME.\n"
+"BZR_REMOTE_PATH     Úplný název vzdáleného příkazu 'bzr' (pro URL "
+"bzr+ssh://).\n"
+"BZR_SSH Cesta k SSH klientovi, nebo k paramiko, openssh, sshcorp,\n"
+"                  plink či lsh.\n"
+"BZR_LOG Umístění .bzr.log (použijte '/dev/null' k potlačení záznamu).\n"
+"BZR_LOG (Win32) Umístění .bzr.log (použijte 'NUL' k potlačení záznamu).\n"
+"BZR_COLUMNS Potlačí výchozí šířku terminálu.\n"
+"BZR_CONCURRENCY Počet procesů, které mohou běžet současně (selftest)\n"
+"BZR_PROGRESS_BAR Potlačí zobrazení postupu. Hodnoty jsou 'none' nebo "
+"'text'.\n"
+"BZR_PDB Kontroluje, zdali spustit ladění při chybě.\n"
+"BZR_SIGQUIT_PDB Kontroluje, zdali SIGQUIT se chová normálně, nebo zavolá\n"
+"                                    zastavujícího ladiče.\n"
+"BZR_TEXTUI_INPUT Vynutit vstupní režim konzole pro dotazy na režim na "
+"základě řádků  \n"
+"                                     (místo na základě znaků).\n"
+"=================== "
+"===========================================================\n"
 
 #: dummy/help_topics/env-variables/summary.txt:1
 msgid "Environment variable names and values"
-msgstr ""
+msgstr "Názvy a hodnoty proměnných prostředí"
 
 #: dummy/help_topics/eol/summary.txt:1
 msgid "Information on end-of-line handling"
-msgstr ""
+msgstr "Informace o zpracování konců řádku"
 
 #: dummy/help_topics/files/detail.txt:1
 msgid "Files"
-msgstr ""
+msgstr "Soubory"
 
 #: dummy/help_topics/files/detail.txt:3
 msgid ""
@@ -9189,6 +9317,9 @@ msgid ""
 ":On Windows: C:\\\\Documents and Settings\\\\username\\\\Application Data\\\\"
 "bazaar\\\\2.0\\\\bazaar.conf"
 msgstr ""
+":V Unix:   ~/.bazaar/bazaar.conf\n"
+":Ve Windows: C:\\\\Documents and Settings\\\\už. jméno\\\\Application Data\\"
+"\\bazaar\\\\2.0\\\\bazaar.conf"
 
 #: dummy/help_topics/files/detail.txt:6
 msgid ""
@@ -9197,16 +9328,22 @@ msgid ""
 "The section ``[ALIASES]`` can be used to create command aliases for\n"
 "commonly used options."
 msgstr ""
+"Obsahuje výchozí nastavení uživatele. Část ``[DEFAULT]`` je\n"
+"použita k určení obecných nastavení, která budou použita všude.\n"
+"Část ``[ALIASES]`` může být použita k vytvoření zkratek příkazů\n"
+"pro jejich běžně používané volby."
 
 #: dummy/help_topics/files/detail.txt:11
 msgid "A typical config file might look something like::"
-msgstr ""
+msgstr "Typyciký soubor s nastavením by mohl vypydat takto::"
 
 #: dummy/help_topics/files/detail.txt:13
 msgid ""
 "  [DEFAULT]\n"
 "  email=John Doe <jdoe@isp.com>"
 msgstr ""
+"  [DEFAULT]\n"
+"  email=Josef Novák <jnovak@isp.cz>"
 
 #: dummy/help_topics/files/detail.txt:16
 msgid ""
@@ -9214,14 +9351,17 @@ msgid ""
 "  commit = commit --strict\n"
 "  log10 = log --short -r -10..-1\n"
 msgstr ""
+"  [ALIASES]\n"
+"  commit = commit --strict\n"
+"  log10 = log --short -r -10..-1\n"
 
 #: dummy/help_topics/files/summary.txt:1
 msgid "Information on configuration and log files"
-msgstr ""
+msgstr "Informace o nastavení a souborech se záznamem"
 
 #: dummy/help_topics/formats/detail.txt:1
 msgid "Storage Formats"
-msgstr ""
+msgstr "Formáty uložení"
 
 #: dummy/help_topics/formats/detail.txt:3
 msgid ""
@@ -9231,6 +9371,10 @@ msgid ""
 "formats may also be introduced to improve performance and\n"
 "scalability."
 msgstr ""
+"Aby bylo zajištěno, že starší klienti nebudou k datům přistupovat\n"
+"nesprávně, je zásadou Bazaar zavádět nový formát uložení,\n"
+"kdykoliv nové funkce vyžadují přidání nových metadat. Mohou být\n"
+"také zavedeny pro zlepšení výkonu a rozšířitelnosti."
 
 #: dummy/help_topics/formats/detail.txt:9
 msgid ""
@@ -9238,12 +9382,17 @@ msgid ""
 "project is not using 2a, then you should suggest to the\n"
 "project owner to upgrade."
 msgstr ""
+"Nejnovější formát, 2a, je vysoce doporučen. Pokud Váš\n"
+"projekt 2a nepoužívá, pak byste měli navrhnout\n"
+"vlastníkovi projektu formát vylepšit."
 
 #: dummy/help_topics/formats/detail.txt:13
 msgid ""
 "\n"
 ".. note::"
 msgstr ""
+"\n"
+".. poznámka::"
 
 #: dummy/help_topics/formats/detail.txt:16
 msgid ""
@@ -9257,6 +9406,15 @@ msgid ""
 "   around the same time. 2a and all future formats will be\n"
 "   implicitly rich-root."
 msgstr ""
+"   Některé z starších formátů mají dvě varianty:\n"
+"   prostou a s rich-root. Druhá zahrnuje dodatečné\n"
+"   pole o kořeni stromu. Použití takového formátu\n"
+"   nemá dopad na výkon, ale nemůžete snadno sloučit\n"
+"   změny z formátu rich-root do prostého. Následkem\n"
+"   je přesunutí projektu do formátu rich-root otázkou\n"
+"   koordinace, protože všichni přispěvatelé musí své\n"
+"   úložiště vylepšit ve stejnou dobu. 2a a všechny budoucí\n"
+"   formáty budou standardně rich-root."
 
 #: dummy/help_topics/formats/detail.txt:26
 msgid ""
@@ -9264,20 +9422,26 @@ msgid ""
 "currently supported formats. See :doc:`other-formats-help` for\n"
 "descriptions of any available experimental and deprecated formats.\n"
 msgstr ""
+"Viz :doc:`current-formats-help` pro úplný seznam\n"
+"současnosti podporovaných formátů. Viz :doc:`other-formats-help' \n"
+"pro popisy všech dostupných experimentálních a zastaralých\n"
+"formátů.\n"
 
 #: dummy/help_topics/formats/summary.txt:1
 msgid "Information on choosing a storage format"
-msgstr ""
+msgstr "Informace o volbě formátu uložení"
 
 #: dummy/help_topics/global-options/detail.txt:1
 msgid "Global Options"
-msgstr ""
+msgstr "Globální nastavení"
 
 #: dummy/help_topics/global-options/detail.txt:3
 msgid ""
 "These options may be used with any command, and may appear in front of any\n"
 "command.  (e.g. ``bzr --profile help``)."
 msgstr ""
+"Tyto možnosti mohou být použity se všemi příkazy a mohou se objevit před\n"
+"všemi příkazy. (např. ``bzr --profile help``)."
 
 #: dummy/help_topics/global-options/detail.txt:6
 msgid ""
@@ -9291,6 +9455,13 @@ msgid ""
 "--no-l10n      Do not translate messages.\n"
 "--concurrency  Number of processes that can be run concurrently (selftest)."
 msgstr ""
+"--version Vypsat číslo verze. Musí být použito před příkazem.\n"
+"--no-aliases Nezpracovávat zkratky příkazů při spouštění tohoto příkazu.\n"
+"--builtin Použít zabudovanou verzi příkazu, ne ze zásuvného modulu.\n"
+"                Toto nepotlačí ostatní funkce modulu.\n"
+"--no-plugins Nezpracovávat žádné zásuvné moduly.\n"
+"--no-l10n Nepřekládat zprávy.\n"
+"--concurrency Počet procesů, které mohou běžet současně (selftest)."
 
 #: dummy/help_topics/global-options/detail.txt:14
 msgid ""
@@ -9307,6 +9478,16 @@ msgid ""
 "               will be a pickle.\n"
 "--coverage     Generate line coverage report in the specified directory."
 msgstr ""
+"--profile Spuštění profilování pomocí profilátoru hotshot.\n"
+"--lsprof  Spuštění profilování pomocí profilátoru lsprof.\n"
+"--lsprof-file Spuštění profilování pomocí profilátoru lsprof, a zapsat\n"
+"               výsledky do určeného souboru.  Pokud název souboru končí "
+"\".txt\",\n"
+"               bude  použit textový formát.  Pokud buď začíná\n"
+"               \"callgrind.out\" nebo končí s \".callgrind\", výstup bude\n"
+"               formátován pro použití s KCacheGrind. Jinak bude výstup\n"
+"               nálev.\n"
+"--coverage Vytvořit záznam pokrytí řádku v určeném adresáři."
 
 #: dummy/help_topics/global-options/detail.txt:24
 msgid ""
@@ -9316,46 +9497,58 @@ msgid ""
 "if\n"
 "               several options need to be overridden."
 msgstr ""
+"-Onázev=hodnota   Potlačit volbu nastavení ``název`` změnou na ``hodnota`` "
+"po\n"
+"               trvání příkazu.  Toto může být použito vícekrát, pokud\n"
+"               je třeba potlačit několik možností."
 
 #: dummy/help_topics/global-options/detail.txt:28
 msgid ""
 "See http://doc.bazaar.canonical.com/developers/profiling.html for more\n"
 "information on profiling."
 msgstr ""
+"Viz http://doc.bazaar.canonical.com/developers/profiling.html pro více\n"
+"informací o profilování."
 
 #: dummy/help_topics/global-options/detail.txt:31
 msgid ""
 "A number of debug flags are also available to assist troubleshooting and\n"
 "development.  See :doc:`debug-flags-help`.\n"
 msgstr ""
+"Množství příznaků pro ladění je také dostupných pro pomoc s laděním a\n"
+"vývojem. Viz :doc:`debug-flags-help`.\n"
 
 #: dummy/help_topics/global-options/summary.txt:1
 msgid "Options that control how Bazaar runs"
-msgstr ""
+msgstr "Volby, které ovlivňují jak je Bazaar spouštěn"
 
 #: dummy/help_topics/hidden-commands/summary.txt:1
 msgid "All hidden commands"
-msgstr ""
+msgstr "Všechny skryté příkazy"
 
 #: dummy/help_topics/hooks/summary.txt:1
 msgid "Points at which custom processing can be added"
-msgstr ""
+msgstr "Body, v kterých může být přidáno vlastní zpracování"
 
 #: dummy/help_topics/launchpad/detail.txt:1
 msgid "Integration with Launchpad.net"
-msgstr ""
+msgstr "Integrace s Launchpad.net"
 
 #: dummy/help_topics/launchpad/detail.txt:3
 msgid ""
 "Launchpad.net provides free Bazaar branch hosting with integrated bug and\n"
 "specification tracking."
 msgstr ""
+"Launchpad.net poskytuje hostování větví Bazaar zdarma se zabudovaný\n"
+"systémem pro sledování chyb a specifikacemi."
 
 #: dummy/help_topics/launchpad/detail.txt:6
 msgid ""
 "The bzr client (through the plugin called 'launchpad') has special\n"
 "features to communicate with Launchpad:"
 msgstr ""
+"Klient bzr (pomocí zásuvného modulu nazvaný 'launchpad') má\n"
+"zvláštní funkce pro komunikaci s Launchpad:"
 
 #: dummy/help_topics/launchpad/detail.txt:9
 msgid ""
@@ -9364,6 +9557,10 @@ msgid ""
 "      is then used by the 'lp:' transport to download your branches using\n"
 "      bzr+ssh://."
 msgstr ""
+"    * Příkaz launchpad-login říká Bazaar Vaše uživatelské jméno Launchpad. "
+"Toto\n"
+"      je pak použito 'lp:' přenos ke stažení Vašich větví pomocí\n"
+"      bzr+ssh://."
 
 #: dummy/help_topics/launchpad/detail.txt:13
 msgid ""
@@ -9373,6 +9570,10 @@ msgid ""
 "      projects and may be branched, logged, etc. You can also use the 'lp:'\n"
 "      transport to refer to specific branches, e.g. lp:~bzr/bzr/trunk."
 msgstr ""
+"    * 'lp:' přenos používá Launchpad jako adresářovou službu: například\n"
+"      'lp:bzr' a 'lp:python' odkazují na hlavní větve souvisejících\n"
+"      projektů a můžou být větveny, zaznamenány, atd. Můžete použít 'lp:'\n"
+"      přenos k odkazování na určité větve, např. lp:~bzr/bzr/trunk."
 
 #: dummy/help_topics/launchpad/detail.txt:18
 msgid ""
@@ -9383,6 +9584,14 @@ msgid ""
 "      Launchpad bug 12345. When you push that branch to Launchpad it will\n"
 "      automatically be linked to the bug report."
 msgstr ""
+"    * Zkratka 'lp:' systém sledování chyb může rozšířit čísla chyb launchpad "
+"na jejich\n"
+"      URL pro použití s 'bzr commit --fixes', např. 'bzr commit --fixes "
+"lp:12345'\n"
+"      zaznamená vlastnost revize, která označuje tuto revizi jako "
+"opravující\n"
+"      chybu Launchpad 12345. Když tuto větev odešlete na Launchpad, bude\n"
+"      automaticky spojena s oznámením chyby."
 
 #: dummy/help_topics/launchpad/detail.txt:24
 msgid ""
@@ -9391,6 +9600,10 @@ msgid ""
 "      its contents and allow it to be attached to bugs and other\n"
 "      objects."
 msgstr ""
+"    * Příkaz register-branch říká Launchpad o url veřejné\n"
+"      větve.  Launchpad pak bude tuto větev odrážet, zobrazí\n"
+"      její obsah a umožní ji být připojena k chybám a dalším\n"
+"      objektům."
 
 #: dummy/help_topics/launchpad/detail.txt:29
 msgid "For more information see http://help.launchpad.net/\n"
