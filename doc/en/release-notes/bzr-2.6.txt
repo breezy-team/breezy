@@ -67,10 +67,9 @@ Internals
 Testing
 *******
 
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
-
+* Fix test failures by removing a remaining reference to ``features.sphinx``
+  which isn't needed anymore since we don't test the texinfo sphinx builder
+  anymore either. (Vincent Ladeuil)
 
 bzr 2.6b1
 #########
