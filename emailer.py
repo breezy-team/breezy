@@ -250,8 +250,9 @@ class EmailSender(object):
             msg.add_inline_attachment(diff, self.diff_filename())
 
         # Add revision_mail_headers to the headers
-        for k, v in header.items():
-            msg[k] = v
+        if header != None:
+            for k, v in header.items():
+                msg[k] = v
         
         smtp = self._smtplib_implementation(self.config)
         smtp.send_email(msg)
