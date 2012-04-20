@@ -118,6 +118,7 @@ class RemoteHelper(object):
         try:
             refs = get_refs_container(self.remote_dir, object_store)
             for ref, git_sha1 in refs.as_dict().iteritems():
+                ref = ref.replace("~", "_")
                 outf.write("%s %s\n" % (git_sha1, ref))
             outf.write("\n")
         finally:
