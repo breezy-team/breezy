@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-04-15 18:36+0000\n"
+"PO-Revision-Date: 2012-04-19 20:14+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-04-16 04:32+0000\n"
-"X-Generator: Launchpad (build 15099)\n"
+"X-Launchpad-Export-Date: 2012-04-20 04:30+0000\n"
+"X-Generator: Launchpad (build 15120)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -9455,13 +9455,13 @@ msgid ""
 "--no-l10n      Do not translate messages.\n"
 "--concurrency  Number of processes that can be run concurrently (selftest)."
 msgstr ""
-"--version Vypsat číslo verze. Musí být použito před příkazem.\n"
-"--no-aliases Nezpracovávat zkratky příkazů při spouštění tohoto příkazu.\n"
-"--builtin Použít zabudovanou verzi příkazu, ne ze zásuvného modulu.\n"
-"                Toto nepotlačí ostatní funkce modulu.\n"
-"--no-plugins Nezpracovávat žádné zásuvné moduly.\n"
-"--no-l10n Nepřekládat zprávy.\n"
-"--concurrency Počet procesů, které mohou běžet současně (selftest)."
+"--version      Vypsat číslo verze. Musí být použito před příkazem.\n"
+"--no-aliases   Nezpracovávat zkratky příkazů při spouštění tohoto příkazu.\n"
+"--builtin      Použít zabudovanou verzi příkazu, ne ze zásuvného modulu.\n"
+"               Toto nepotlačí ostatní funkce modulu.\n"
+"--no-plugins   Nezpracovávat žádné zásuvné moduly.\n"
+"--no-l10n      Nepřekládat zprávy.\n"
+"--concurrency  Počet procesů, které mohou běžet současně (selftest)."
 
 #: dummy/help_topics/global-options/detail.txt:14
 msgid ""
@@ -9478,7 +9478,7 @@ msgid ""
 "               will be a pickle.\n"
 "--coverage     Generate line coverage report in the specified directory."
 msgstr ""
-"--profile Spuštění profilování pomocí profilátoru hotshot.\n"
+"--profile      Spuštění profilování pomocí profilátoru hotshot.\n"
 "--lsprof  Spuštění profilování pomocí profilátoru lsprof.\n"
 "--lsprof-file Spuštění profilování pomocí profilátoru lsprof, a zapsat\n"
 "               výsledky do určeného souboru.  Pokud název souboru končí "
@@ -9607,37 +9607,39 @@ msgstr ""
 
 #: dummy/help_topics/launchpad/detail.txt:29
 msgid "For more information see http://help.launchpad.net/\n"
-msgstr ""
+msgstr "Pro více informací navštivte http://help.launchpad.net/\n"
 
 #: dummy/help_topics/launchpad/summary.txt:1
 msgid "Using Bazaar with Launchpad.net"
-msgstr ""
+msgstr "Použití Bazaar s Launchpad.net"
 
 #: dummy/help_topics/location-alias/summary.txt:1
 msgid "Aliases for remembered locations"
-msgstr ""
+msgstr "Zkratky pro zapamatovaná umístění"
 
 #: dummy/help_topics/log-formats/summary.txt:1
 msgid "Details on the logging formats available"
-msgstr ""
+msgstr "Podrobnosti o dostupných formátech záznamu"
 
 #: dummy/help_topics/other-formats/summary.txt:1
 msgid "Experimental and deprecated storage formats"
-msgstr ""
+msgstr "Experimentální a zastaralé formáty uložení"
 
 #: dummy/help_topics/patterns/summary.txt:1
 msgid "Information on the pattern syntax"
-msgstr ""
+msgstr "Informace o symtaxi vzoru"
 
 #: dummy/help_topics/repositories/detail.txt:1
 msgid "Repositories"
-msgstr ""
+msgstr "Úložiště"
 
 #: dummy/help_topics/repositories/detail.txt:3
 msgid ""
 "Repositories in Bazaar are where committed information is stored. There is\n"
 "a repository associated with every branch."
 msgstr ""
+"Úložiště v Bazaar jsou místa, kde jsou uloženy odevzdané informace. Každá\n"
+"větev má přiděleno jedno úložiště."
 
 #: dummy/help_topics/repositories/detail.txt:6
 msgid ""
@@ -9646,6 +9648,10 @@ msgid ""
 "very many commits in a short time period) you may want to ask bzr to\n"
 "optimise the database indices. This can be done by the 'bzr pack' command."
 msgstr ""
+"Úložiště jsou formou databáze. Bzr ji standardně udržuje automaticky,\n"
+"aby měla dobrý výkon, ale v některých situacích (např. při provádění\n"
+"velmi mnoho odevzdání za krátkou dobu) můžete bzr požádat, aby\n"
+"optimalizoval indexy databáze. To může být provšdeno příkazem 'bzr pack'."
 
 #: dummy/help_topics/repositories/detail.txt:11
 msgid ""
@@ -9658,6 +9664,12 @@ msgid ""
 "it\n"
 "can use."
 msgstr ""
+"Standardně prostým spuštěním 'bzr init' bude vytvořeno úložiště uvnitř\n"
+"nové větve, ale je možné vytvořit sdílené úložiště, které umožňuje mnoho\n"
+"větví, které sdílí své informace, ve stejném umístění. Když je nová větev\n"
+"vytvořena, nejdříve se podívá, jestli existuje sdílené úložiště obsahující "
+"to,\n"
+"co může použít."
 
 #: dummy/help_topics/repositories/detail.txt:17
 msgid ""
@@ -9665,6 +9677,9 @@ msgid ""
 "generally a large space saving. For some operations (e.g. branching\n"
 "within the repository) this translates in to a large time saving."
 msgstr ""
+"Když dvě větve ve stejném projektu sdílejí úložiště, obyčejně\n"
+"se ušetří mnoho místa. Pro některé operace (např. větvení uvnitř\n"
+"úložiště) to znamená velkou úsporu času."
 
 #: dummy/help_topics/repositories/detail.txt:21
 msgid ""
@@ -9676,6 +9691,14 @@ msgid ""
 "this\n"
 "directory will then use it for storage."
 msgstr ""
+"Pro vytvoření sdíleného úložiště použijte příkaz init-repository (nebo "
+"zkratku\n"
+"init-repo). Tento příkaz převezme umístění úložiště pro vytvoření. To "
+"znamená,\n"
+"že 'bzr init-repository ulož' vytvoří adresář s názvem 'ulož', které "
+"obsahuje\n"
+"sdílené úložiště. Všechny nové větve, které jsou vytvořeny v tomto adresáři\n"
+"pat toto úložiště použijí."
 
 #: dummy/help_topics/repositories/detail.txt:27
 msgid ""
@@ -9690,6 +9713,14 @@ msgid ""
 "the branches will not have working trees pass the '--no-trees' option to\n"
 "'init-repository'."
 msgstr ""
+"Je dobrý nápad vytvořit úložiště kdykoliv je možnost, že vytvoříte více než\n"
+"jednu větev projektu. To se týká jak pracovních oblastí, kde provádíte "
+"vývoj,\n"
+"a všech serverů, které používáte pro hostování projektů. V druhém případě\n"
+"je bežností chtít větve bez pracovních stromů. Protože soubory ve větvi\n"
+"nebudou upravovány přímo, není třeba plýtvat místem na pracovní strom.\n"
+"Pro vytvoření úložiště, v kterém větve nebudou mít pracovní strom,\n"
+"předejte volbu '--no-trees' pro příkaz 'init-repository'."
 
 #: dummy/help_topics/repositories/detail.txt:38
 msgid ""
@@ -9697,22 +9728,26 @@ msgid ""
 "one\n"
 "                    in which new branches won't get a working tree.\n"
 msgstr ""
+"  init-repository   Vytvoří sdílené úložiště. Použijte --no-trees pro "
+"vytvoření\n"
+"                    úložiště, v kterém nové větve nedostanou pracovní "
+"strom.\n"
 
 #: dummy/help_topics/repositories/summary.txt:1
 msgid "Basic information on shared repositories."
-msgstr ""
+msgstr "Základní informace o sdílenách úložištích."
 
 #: dummy/help_topics/revisionspec/summary.txt:1
 msgid "Explain how to use --revision"
-msgstr ""
+msgstr "Vysvětlit jak použít --revision"
 
 #: dummy/help_topics/rules/summary.txt:1
 msgid "Information on defining rule-based preferences"
-msgstr ""
+msgstr "Informace o určení voleb na základě pravidel"
 
 #: dummy/help_topics/standalone-trees/detail.txt:1
 msgid "Standalone Trees"
-msgstr ""
+msgstr "Samostatné stromy"
 
 #: dummy/help_topics/standalone-trees/detail.txt:3
 msgid ""
@@ -9721,26 +9756,30 @@ msgid ""
 "Creating a standalone tree (via bzr init) is the quickest way to put\n"
 "an existing project under version control."
 msgstr ""
+"Samostatný strom je pracovní strom s přiděleným úložištěm. Je to\n"
+"nezávisle použitelná větev, bez závislostí na jiných. Vytvoření\n"
+"samostatného stromu (pomocí bzr init), je nejrychlejší způsob, jak\n"
+"umístit existující projekt pod správu verzí."
 
 #: dummy/help_topics/standalone-trees/detail.txt:8
 msgid "Related Commands::"
-msgstr ""
+msgstr "Související příkazy::"
 
 #: dummy/help_topics/standalone-trees/detail.txt:10
 msgid "  init    Make a directory into a versioned branch.\n"
-msgstr ""
+msgstr "  init    Převést adresář do větve s verzí.\n"
 
 #: dummy/help_topics/standalone-trees/summary.txt:1
 msgid "Information on what a standalone tree is"
-msgstr ""
+msgstr "Informace o tom, co je to samostatný strom."
 
 #: dummy/help_topics/standard-options/detail.txt:1
 msgid "Standard Options"
-msgstr ""
+msgstr "Standardní volby"
 
 #: dummy/help_topics/standard-options/detail.txt:3
 msgid "Standard options are legal for all commands."
-msgstr ""
+msgstr "Standardní volby jsou platné pro všechny příkazy."
 
 #: dummy/help_topics/standard-options/detail.txt:5
 msgid ""
@@ -9748,36 +9787,42 @@ msgid ""
 "--verbose, -v  Display more information.\n"
 "--quiet, -q    Only display errors and warnings."
 msgstr ""
+"--help, -h     Zobrazit nápovědu\n"
+"--verbose, -v   Zobrazit více informací\n"
+"--quiet, -q    Zobrazit pouze chyby a varování."
 
 #: dummy/help_topics/standard-options/detail.txt:9
 msgid "Unlike global options, standard options can be used in aliases.\n"
 msgstr ""
+"Narozdíl od globálních voleb mohou být standardní použity ve zkratkách.\n"
 
 #: dummy/help_topics/standard-options/summary.txt:1
 msgid "Options that can be used with any command"
-msgstr ""
+msgstr "Volby které mohou být použity se všemi příkazy"
 
 #: dummy/help_topics/status-flags/detail.txt:1
 msgid "Status Flags"
-msgstr ""
+msgstr "Příznaky stavu"
 
 #: dummy/help_topics/status-flags/detail.txt:3
 msgid ""
 "Status flags are used to summarise changes to the working tree in a concise\n"
 "manner.  They are in the form::"
 msgstr ""
+"Příznaky stavu jsou použity k výstižnému shrnutí změn pracovního stromu\n"
+"Vyskytují se ve formě::"
 
 #: dummy/help_topics/status-flags/detail.txt:6
 msgid "   xxx   <filename>"
-msgstr ""
+msgstr "   xxx   <název souboru>"
 
 #: dummy/help_topics/status-flags/detail.txt:8
 msgid "where the columns' meanings are as follows."
-msgstr ""
+msgstr "přičemž významy sloupců jsou následující"
 
 #: dummy/help_topics/status-flags/detail.txt:10
 msgid "Column 1 - versioning/renames::"
-msgstr ""
+msgstr "Sloupec 1 - verzování/přejmenování::"
 
 #: dummy/help_topics/status-flags/detail.txt:12
 msgid ""
@@ -9789,10 +9834,17 @@ msgid ""
 "  C File has conflicts\n"
 "  P Entry for a pending merge (not a file)"
 msgstr ""
+"  + Soubor opatřen verzí\n"
+"  - Souboru odebrána verze\n"
+"  R Soubor přejmenován\n"
+"  ? Soubor je neznámý\n"
+"  X Soubor neexistuje (a neznámý pro bzr)\n"
+"  C Soubor má konflikty\n"
+"  P Položka má nevyřízené sloučení (není soubor)"
 
 #: dummy/help_topics/status-flags/detail.txt:20
 msgid "Column 2 - contents::"
-msgstr ""
+msgstr "Sloupec 2 - obsahy::"
 
 #: dummy/help_topics/status-flags/detail.txt:22
 msgid ""
@@ -9801,22 +9853,26 @@ msgid ""
 "  K File kind changed\n"
 "  M File modified"
 msgstr ""
+"  N Soubor vytvořen\n"
+"  D Soubor smazán\n"
+"  K Druh souboru změněn\n"
+"  M Soubor změněn"
 
 #: dummy/help_topics/status-flags/detail.txt:27
 msgid "Column 3 - execute::"
-msgstr ""
+msgstr "Sloupec 3 - spuštění::"
 
 #: dummy/help_topics/status-flags/detail.txt:29
 msgid "  * The execute bit was changed\n"
-msgstr ""
+msgstr "  * Bit spuštění byl změněn\n"
 
 #: dummy/help_topics/status-flags/summary.txt:1
 msgid "Help on status flags"
-msgstr ""
+msgstr "Nápověda pro příznaky stavu"
 
 #: dummy/help_topics/sync-for-reconfigure/detail.txt:1
 msgid "Branches Out of Sync"
-msgstr ""
+msgstr "Větve nejsou synchronizovány"
 
 #: dummy/help_topics/sync-for-reconfigure/detail.txt:3
 msgid ""
@@ -9826,10 +9882,17 @@ msgid ""
 "have the same last revision as the new reference branch for the lightweight\n"
 "checkout, data could be lost, so Bazaar refuses."
 msgstr ""
+"Při znovu nastavování získání, stromu nebo větve do odlehčeného odevzdání,\n"
+"musí být zničena místní větev. (Pro získání je toto místní větev, která "
+"hlavně\n"
+"slouží jako mezipaměť.) Pokud větev, která bude zničena, nemá stejnou\n"
+"poslední revizi jako nová odkazovaná větev pro odlehčené odevzdání. data\n"
+"by mohla být ztracena a proto toto Bazaar odmítne."
 
 #: dummy/help_topics/sync-for-reconfigure/detail.txt:9
 msgid "How you deal with this depends on *why* the branches are out of sync."
 msgstr ""
+"Jak se s tímto vypořádáte závisí na tom *proč* nejsou větve synchronizované."
 
 #: dummy/help_topics/sync-for-reconfigure/detail.txt:11
 msgid ""
@@ -9837,6 +9900,9 @@ msgid ""
 "sync\n"
 "by running \"bzr update\" (and possibly \"bzr commit\")."
 msgstr ""
+"Pokud máte získání a provedli jste místní odevzdání, můžete je "
+"synchronizovat\n"
+"pomocí \"bzr update\" (a možná \"bzr commit\")."
 
 #: dummy/help_topics/sync-for-reconfigure/detail.txt:14
 msgid ""
@@ -9848,26 +9914,31 @@ msgid ""
 "and then push your changes.  If you decide that some of the changes aren't\n"
 "useful, you can \"push --overwrite\" or \"pull --overwrite\" instead.\n"
 msgstr ""
+"Pokud máte větev a vzdálená větev je zastaralá, můžete odeslat místní\n"
+"změny pomocí \"bzr push\". Pokud je místní větev zastaralá, můžete\n"
+"použít \"bzr pull\". Pokud obě větve mají změny, můžete je sloučit,\n"
+"odevzdat a pak odeslat. Pokud se rozhodnete, že některé změny nejsou\n"
+"užitečné, můžete použít \"push --overwrite\" nebo \"pull --overwrite\".\n"
 
 #: dummy/help_topics/sync-for-reconfigure/summary.txt:1
 msgid "Steps to resolve \"out-of-sync\" when reconfiguring"
-msgstr ""
+msgstr "Kroky k vyřešení \"nesychronizované\" při znovu nastavování"
 
 #: dummy/help_topics/topics/summary.txt:1
 msgid "Topics list"
-msgstr ""
+msgstr "Seznam témat"
 
 #: dummy/help_topics/url-special-chars/summary.txt:1
 msgid "Special character handling in URLs"
-msgstr ""
+msgstr "Zpracování zvláštních znaků v URL"
 
 #: dummy/help_topics/urlspec/summary.txt:1
 msgid "Supported transport protocols"
-msgstr ""
+msgstr "Podporované protokoly přenosu"
 
 #: dummy/help_topics/working-trees/detail.txt:1
 msgid "Working Trees"
-msgstr ""
+msgstr "Pracovní stromy"
 
 #: dummy/help_topics/working-trees/detail.txt:3
 msgid ""
@@ -9877,6 +9948,10 @@ msgid ""
 "branch, and when you commit the current state of the working tree is the\n"
 "snapshot that is recorded in the commit."
 msgstr ""
+"Pracovní strom je obsahem větve umístěný na disku, abyste mohli\n"
+"vidět soubory a upravovat je. Pracovní strom je místo, kde provádíte\n"
+"změny ve větvi a když odevzdáváte současný stav pracovního stromu\n"
+"jedná se o snímek, který je zaznamenán v odevzdání."
 
 #: dummy/help_topics/working-trees/detail.txt:8
 msgid ""
@@ -9888,6 +9963,12 @@ msgid ""
 "are\n"
 "difficult to deal with remotely."
 msgstr ""
+"Když odešlete větev do vzdáleného systému, pracovní strom nebude\n"
+"vytvořen. Pokud je jeden již přítomen, soubory nebudou aktualizovány.\n"
+"Informace o větvi budou aktualizovány a pracovní strom označen jako\n"
+"zastaralý. Vzdálená aktualizace pracovního stromu je obtížná , protože\n"
+"mohou existovat neodevzdané změny nebo aktualizace může způsobit\n"
+"konflikty obsahu, které je těžké řešit vzdáleně."
 
 #: dummy/help_topics/working-trees/detail.txt:15
 msgid ""
@@ -9899,6 +9980,10 @@ msgid ""
 "the\n"
 "working tree by running 'bzr update' in that directory."
 msgstr ""
+"Pokud máte větev bez pracovního stromu, můžete použít příkaz 'checkout'\n"
+"pro jeho vytvoření. Pokud spustíte 'bzr checkout .' z větve, bude vytvořen\n"
+"pracovní strom. Pokud je větev aktualizována vzdáleně, můžete aktualizovat\n"
+"pracovní strom spuštěním 'bzr update'  v tomto adresáři."
 
 #: dummy/help_topics/working-trees/detail.txt:20
 msgid ""
@@ -9909,6 +9994,11 @@ msgid ""
 "branch. It can also be useful when working with a '--no-trees' repository\n"
 "(see 'bzr help repositories')."
 msgstr ""
+"Pokud máte větev s pracovním stromem, kterou nechcete, může být odstraněna\n"
+"příkazem 'remove-tree', pokud je to bezpečné. To může být provedeno, aby se\n"
+"předešlo varování o neaktualizovaném vzdáleném pracovním stromu při\n"
+"odesílání do větve. Může být tak= užitečné při práci s úložišťmi bez stromu\n"
+"(viz 'bzr help repositories')."
 
 #: dummy/help_topics/working-trees/detail.txt:26
 msgid ""
@@ -9923,10 +10013,17 @@ msgid ""
 "SSH\n"
 "after each push."
 msgstr ""
+"Pokud chcete mít pracovní strom ve vzdáleném stroji, do kterého odesíláte,\n"
+"můžete buď spustit 'bzr update' ve vzdálené větvi po každém odeslání, nebo\n"
+"použijte určitou jinou metodu pro aktualizaci stromu během odesílání.\n"
+"Existuje zásuvný modul 'rspush', který pracovní strom aktualizuje pomocí "
+"rsync\n"
+"a také provede odesílání. Je tu také modul 'push-and-update', který\n"
+"automatizuje spouštění 'bzr update' pomocí SSH po každém odeslání."
 
 #: dummy/help_topics/working-trees/detail.txt:33
 msgid "Useful commands::"
-msgstr ""
+msgstr "Užitečné příkazy::"
 
 #: dummy/help_topics/working-trees/detail.txt:35
 msgid ""
@@ -9937,16 +10034,22 @@ msgid ""
 "branch\n"
 "               this will update the tree to match the branch.\n"
 msgstr ""
+"  checkout     Vytvoří pracovní strom když větev žádný nemá.\n"
+"  remove-tree  Odstraní pracovní strom z větve, když je to bezpečné.\n"
+"  update       Když je pracovní strom nesynchronizován s přidělenou\n"
+"               větví. toto strom aktualizuje, aby větvi odpovídal.\n"
 
 #: dummy/help_topics/working-trees/summary.txt:1
 msgid "Information on working trees"
-msgstr ""
+msgstr "Informace o pracovních stromech"
 
 #: en/help_topics/authentication.txt:1
 msgid ""
 "Authentication Settings\n"
 "======================="
 msgstr ""
+"Nastavení ověření\n"
+"======================="
 
 #: en/help_topics/authentication.txt:4
 msgid ""
@@ -9954,6 +10057,9 @@ msgid ""
 "Intent\n"
 "------"
 msgstr ""
+"\n"
+"Záměr\n"
+"------"
 
 #: en/help_topics/authentication.txt:8
 msgid ""
@@ -9963,6 +10069,10 @@ msgid ""
 "password\n"
 "for every branch he uses."
 msgstr ""
+"V souboru ``authentication.conf`` může být popsáno mnoho\n"
+"zásad ověření, ale konkrétní uživatel by měl potřebovat pouze pár\n"
+"definic pro pokrytí svých potřeb, aniž by potřeboval zadávat uživatele\n"
+"a heslo pro každou větev, kterou používá."
 
 #: en/help_topics/authentication.txt:13
 msgid ""
@@ -9975,11 +10085,16 @@ msgid ""
 "different\n"
 "servers."
 msgstr ""
+"Definice nalezené v tomto souboru se používají k nalezení ověřovacích\n"
+"údajů pro danou url. Stejné údaje mohou být obecně použity pro tolik\n"
+"větví, kolik je možné, seskupením jejich určení na vzdálených serverech,\n"
+"které je potřebují. Je možné také určit údaje, které budou použity\n"
+"různými servery."
 
 #: en/help_topics/authentication.txt:19
 msgid ""
 "The intent is to make this file as small as possible to minimize maintenance."
-msgstr ""
+msgstr "Záměrem je, aby tento soubor byl co nejmenší k usnadnění údržby."
 
 #: en/help_topics/authentication.txt:21
 msgid ""
@@ -9989,27 +10104,32 @@ msgid ""
 "sharing\n"
 "of your urls with others)."
 msgstr ""
+"Jakmile jsou důležité údaje v tomto souboru zadány, můžete používat\n"
+"url větví bez vnořování hesel (bezpečnostní riziko) či uživatelů (povolení\n"
+"sílení url s ostatními)."
 
 #: en/help_topics/authentication.txt:25
 msgid "Instead of using::"
-msgstr ""
+msgstr "Místo použití::"
 
 #: en/help_topics/authentication.txt:27
 msgid "  bzr branch ftp://joe:secret@host.com/path/to/my/branch"
-msgstr ""
+msgstr "  bzr branch ftp://josef:tajne@host.cz/cesta/k/me/vetvi"
 
 #: en/help_topics/authentication.txt:29
 msgid "you simply use::"
-msgstr ""
+msgstr "jednoduše použijete::"
 
 #: en/help_topics/authentication.txt:31
 msgid "  bzr branch ftp://host.com/path/to/my/branch"
-msgstr ""
+msgstr "  bzr branch ftp://host.cz/cesta/k/me/vetvi"
 
 #: en/help_topics/authentication.txt:33
 msgid ""
 "provided you have created the following ``authentication.conf`` file::"
 msgstr ""
+"za předpokladu, že jste vytvořili následující soubor "
+"``authentication.conf``::"
 
 #: en/help_topics/authentication.txt:35
 msgid ""
@@ -10020,12 +10140,20 @@ msgid ""
 "  password=secret\n"
 "  "
 msgstr ""
+"  [myprojects]\n"
+"  scheme=ftp\n"
+"  host=host.cz\n"
+"  user=josef\n"
+"  password=tajne\n"
+"  "
 
 #: en/help_topics/authentication.txt:42
 msgid ""
 "Authentication definitions\n"
 "--------------------------"
 msgstr ""
+"Definice ověření\n"
+"--------------------------"
 
 #: en/help_topics/authentication.txt:45
 msgid ""
@@ -10033,10 +10161,11 @@ msgid ""
 "by\n"
 "bzr:"
 msgstr ""
+"Existují dva druhy ověření používané různými schématy podporovanými  bzr:"
 
 #: en/help_topics/authentication.txt:48
 msgid "1. user and password"
-msgstr ""
+msgstr "1. uživatel a heslo"
 
 #: en/help_topics/authentication.txt:50
 msgid ""
@@ -10046,10 +10175,14 @@ msgid ""
 "provide\n"
 "our own less secure method."
 msgstr ""
+"``FTP`` vyžaduje (``user``, ``password``) pro ověření v ``host``\n"
+"``SFTP`` může k ověření buď použít heslo, nebo klíč hostitele. Nicméně,\n"
+"ssh agenti jsou lepším, bezpečnějším řešením. Takže jsme se rozhodli\n"
+"neposkytovat naši vlastní méně bezpečnou metodu."
 
 #: en/help_topics/authentication.txt:55
 msgid "2. user, realm and password"
-msgstr ""
+msgstr "2. uživatel, sféra a heslo"
 
 #: en/help_topics/authentication.txt:57
 msgid ""
@@ -10064,12 +10197,20 @@ msgid ""
 "prompts\n"
 "you for a password."
 msgstr ""
+"``HTTP`` a ``HTTPS`` potřebují (``user, realm, password``) k ověření\n"
+"s hostitelem. Ale pomocí souborů ``.htaccess``, například, je možné určit\n"
+"několik (``user, realm, password``) pro zadaného ``host``. Takže co je\n"
+"opravdu potřeba je (``user``, ``password``, ``host``, ``path``). ``realm`` "
+"není\n"
+"zahrnuto v definicích, ale bude zobrazeno, pokud Vás bzr požádá o heslo."
 
 #: en/help_topics/authentication.txt:64
 msgid ""
 "``HTTP proxy`` can be handled as ``HTTP`` (or ``HTTPS``) by explicitly\n"
 "specifying the appropriate port."
 msgstr ""
+"``HTTP proxy`` může být obslouženo jako ``HTTP`` (nebo ``HTTPS``) výslovným\n"
+"zadáním odpovídajícího portu."
 
 #: en/help_topics/authentication.txt:67
 msgid ""
@@ -10079,6 +10220,9 @@ msgid ""
 "``user``,\n"
 "``password``)."
 msgstr ""
+"Abyste zahrnuli všechny schémata, heslo bude odvozeno ze sady\n"
+"definic ověření ``scheme``, ``host``, ``port``, ``path``, ``user``,\n"
+"``password``)."
 
 #: en/help_topics/authentication.txt:71
 msgid ""
@@ -10089,10 +10233,19 @@ msgid ""
 "    should be used instead since this is the real scheme regarding\n"
 "    authentication,"
 msgstr ""
+"  * ``scheme``: může být prázdné (znamená, že zbytek definice může být "
+"použit\n"
+"    pro všechna schémata), ``SFTP`` a ``bzr+ssh`` by zde neměla být "
+"použita,\n"
+"    místo toho by mělo být použito ``ssh``, protože se jedná o opravdové "
+"schéma\n"
+"    v ohledu na ověření,"
 
 #: en/help_topics/authentication.txt:76
 msgid "  * ``host``: can be empty (to act as a default for any host),"
 msgstr ""
+"  * ``host``: může být prázdné (aby došlok vhýzímu chování u všech "
+"hostitelů),"
 
 #: en/help_topics/authentication.txt:78
 msgid ""
@@ -10102,10 +10255,15 @@ msgid ""
 "only\n"
 "    when the server uses a port different than the scheme standard port,"
 msgstr ""
+"  * ``port`` ,může být prázdné (užitečné, když hostitel poskytuje několik "
+"serverů\n"
+"    pro stejné schéma), jsou povoleny pouze číselné hodnoty, toto by mělo "
+"být použito\n"
+"    pouze, když server používá jiný port, než standardní port schématu,"
 
 #: en/help_topics/authentication.txt:82
 msgid "  * ``path``: can be empty (FTP or SFTP will never user it),"
-msgstr ""
+msgstr "  * ``path``: může být prázdné (FTP nebo SFTP ho nikdy nepoužijí),"
 
 #: en/help_topics/authentication.txt:84
 msgid ""
