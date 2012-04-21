@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-04-17 09:50+0000\n"
-"Last-Translator: Winícius Santos de A. Marques <wsamarques@gmail.com>\n"
+"PO-Revision-Date: 2012-04-20 23:09+0000\n"
+"Last-Translator: Thiago de Melo <tmelo.mat@gmail.com>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2012-04-18 04:30+0000\n"
-"X-Generator: Launchpad (build 15108)\n"
+"X-Launchpad-Export-Date: 2012-04-21 04:30+0000\n"
+"X-Generator: Launchpad (build 15120)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -1545,6 +1545,7 @@ msgstr "        bzr diff --old xxx --new yyy NEWS"
 #: bzrlib/builtins.py:2272
 msgid "    Same as 'bzr diff' but prefix paths with old/ and new/::"
 msgstr ""
+"    O mesmo que 'bzr diff' exceto caminhos iniciados com velho/ e novo/::"
 
 #: bzrlib/builtins.py:2274
 msgid ""
@@ -1660,7 +1661,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:2484
 msgid ":Output control:"
-msgstr ""
+msgstr ":Controle de saída:"
 
 #: bzrlib/builtins.py:2486
 msgid ""
@@ -1691,6 +1692,9 @@ msgid ""
 "  log format. If the -n option is not used, the standard log formats show\n"
 "  just the top level (mainline)."
 msgstr ""
+"  Note que o número padrão de níveis a serem exibidos é uma função do\n"
+"  formato log. Se a opção -n não é usada, os formatos log padrão mostram\n"
+"  simplesmente o nível máximo (linha principal)."
 
 #: bzrlib/builtins.py:2504
 msgid ""
@@ -13742,6 +13746,11 @@ msgid ""
 "``remote`` has a  home directory of ``/home/remote`` on the server\n"
 "shell.example.com, then::"
 msgstr ""
+"Para URLs bzr+ssh:// e sftp://, Bazaar também suporta caminhos que começam\n"
+"com '~' significando que o resto do caminho deve ser interpretado\n"
+"relativamente ao diretório home do usuário. Por exemplo, se o usuário\n"
+"``remoto`` tem como diretório home  ``/home/remoto`` no servidor\n"
+"shell.example.com, então::"
 
 #: en/help_topics/urlspec.txt:32
 msgid "  bzr+ssh://remote@shell.example.com/~/myproject/trunk"
@@ -13756,3 +13765,6 @@ msgid ""
 "Many commands that accept URLs also accept location aliases too.\n"
 "See :doc:`location-alias-help` and :doc:`url-special-chars-help`.\n"
 msgstr ""
+"Diversos comandos que aceitam URLs também aceitam pseudônimos de "
+"localização.\n"
+"Veja :doc:`location-alias-help` e :doc:`url-special-chars-help`.\n"
