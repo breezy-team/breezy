@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-04-20 01:56+0000\n"
-"Last-Translator: Dennis Baudys <Unknown>\n"
+"PO-Revision-Date: 2012-04-21 12:21+0000\n"
+"Last-Translator: Tim Kopplow <Unknown>\n"
 "Language-Team: German <de@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Launchpad-Export-Date: 2012-04-21 04:30+0000\n"
+"X-Launchpad-Export-Date: 2012-04-22 04:30+0000\n"
 "X-Generator: Launchpad (build 15120)\n"
 
 #: bzrlib/add.py:95
@@ -234,7 +234,7 @@ msgstr "Quelle %r unterstützt keinen Zugriff auf reine Revisionstexte"
 
 #: bzrlib/builtins.py:450
 msgid "The repository {0} contains no revision {1}."
-msgstr ""
+msgstr "Die Quelle {0} enthält keine neue Überarbeitung {1}."
 
 #: bzrlib/builtins.py:457
 msgid "You cannot specify a NULL revision."
@@ -290,7 +290,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:640
 msgid "failed to reset the tree state{0}"
-msgstr ""
+msgstr "Baumstatus{0} konnte nicht zurückgesetzt werden"
 
 #: bzrlib/builtins.py:644
 msgid "Show current revision number."
