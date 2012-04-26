@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-04-24 17:06+0000\n"
-"Last-Translator: Wellington Oliveira <wellington.oj@gmail.com>\n"
+"PO-Revision-Date: 2012-04-25 14:55+0000\n"
+"Last-Translator: Rafael Neri <Unknown>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2012-04-25 04:30+0000\n"
-"X-Generator: Launchpad (build 15139)\n"
+"X-Launchpad-Export-Date: 2012-04-26 04:30+0000\n"
+"X-Generator: Launchpad (build 15149)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -1065,6 +1065,9 @@ msgid ""
 "working tree to update.  By default, the working tree that contains the \n"
 "current working directory is used."
 msgstr ""
+"O argumento 'dir', se fornecido, deve ser a localização da raiz da\n"
+"árvore de trabalho a ser atualizada. Por padrão, a árvore de trabalho que \n"
+"contém o diretório atual é usada."
 
 #: bzrlib/builtins.py:1710
 msgid "bzr update --revision takes exactly one revision"
@@ -2275,20 +2278,28 @@ msgid ""
 "These files will continue to be version controlled unless you 'bzr remove' "
 "them.\n"
 msgstr ""
+"Alerta: os seguintes arquivos são controlados por versão e coincidem com o "
+"seu padrão de ignorar:\n"
+"%s\n"
+"Esses arquivos continuarão a ser controlados por versão a menos que você os "
+"remova 'brz remove'.\n"
 
 #: bzrlib/builtins.py:3209
 msgid "List ignored files and the patterns that matched them."
-msgstr ""
+msgstr "Listar os arquivos ignorados e os padrões que coincidem com eles."
 
 #: bzrlib/builtins.py:3211
 msgid ""
 "List all the ignored files and the ignore pattern that caused the file to\n"
 "be ignored."
 msgstr ""
+"Listar todos os arquivos ignorados e os padrões de ignorar que fizeram com "
+"que o arquivo\n"
+"fosse ignorado."
 
 #: bzrlib/builtins.py:3214
 msgid "Alternatively, to list just the files::"
-msgstr ""
+msgstr "Alternativamente, listar apenas os arquivos::"
 
 #: bzrlib/builtins.py:3216
 msgid "    bzr ls --ignored"
@@ -2297,12 +2308,12 @@ msgstr "    bzr ls --ignored"
 #: bzrlib/builtins.py:3250
 #, python-format
 msgid "not a valid revision-number: %r"
-msgstr ""
+msgstr "não é um número de revisão válido: %r"
 
 #: bzrlib/builtins.py:3257
 msgid ""
 "Export current or past revision to a destination directory or archive."
-msgstr ""
+msgstr "Exporta a revisão atual ou antiga para um diretório ou arquivo."
 
 #: bzrlib/builtins.py:3259
 msgid "If no revision is specified this exports the last committed revision."
@@ -2329,11 +2340,15 @@ msgid ""
 "If branch is omitted then the branch containing the current working\n"
 "directory will be used."
 msgstr ""
+"Se o ramo for omitido então o ramo contando o diretório atual de \n"
+"trabalho será utilizado."
 
 #: bzrlib/builtins.py:3272
 msgid ""
 "Note: Export of tree with non-ASCII filenames to zip is not supported."
 msgstr ""
+"Nota: Exportar da árvore com arquivos nomeados em formato não-ASCII, não é "
+"suportado."
 
 #: bzrlib/builtins.py:3274
 msgid ""
@@ -2347,38 +2362,49 @@ msgid ""
 "     zip                          .zip\n"
 "  =================       ========================="
 msgstr ""
+"  =================       =========================\n"
+"  Formatos suportados       detectados pela extensão\n"
+"  =================       =========================\n"
+"     dir                         (nenhum)\n"
+"     tar                          .tar\n"
+"     tbz2                    .tar.bz2, .tbz2\n"
+"     tgz                      .tar.gz, .tgz\n"
+"     zip                          .zip\n"
+"  =================       ========================="
 
 #: bzrlib/builtins.py:3288
 msgid "Type of file to export to."
-msgstr ""
+msgstr "Tipo do arquivo para exportar para."
 
 #: bzrlib/builtins.py:3291
 msgid "Apply content filters to export the convenient form."
-msgstr ""
+msgstr "Aplicar filtros de conteúdo para exportar de forma conveniente."
 
 #: bzrlib/builtins.py:3295
 msgid "Name of the root directory inside the exported file."
-msgstr ""
+msgstr "Nome do diretório raiz dentro do arquivo exportado."
 
 #: bzrlib/builtins.py:3297
 msgid ""
 "Set modification time of files to that of the last revision in which it was "
 "changed."
 msgstr ""
+"Ajuste o tempo de modificação dos arquivos para a última revisão em que eles "
+"foram modificados."
 
 #: bzrlib/builtins.py:3300
 msgid ""
 "Export the working tree contents rather than that of the last revision."
-msgstr ""
+msgstr "Exportar o conteúdo da árvore de trabalho antes da última revisão."
 
 #: bzrlib/builtins.py:3319
 msgid "--uncommitted requires a working tree"
-msgstr ""
+msgstr "--uncommitted requer uma árvore de trabalho"
 
 #: bzrlib/builtins.py:3328
 #, python-format
 msgid "Unsupported export format: %s"
-msgstr ""
+msgstr "Formato de exportação não suportado: %s"
 
 #: bzrlib/builtins.py:3332
 msgid ""
@@ -2401,11 +2427,11 @@ msgstr "O caminho do arquivo na antiga árvore."
 
 #: bzrlib/builtins.py:3343
 msgid "Apply content filters to display the convenience form."
-msgstr ""
+msgstr "Aplicar filtros de conteúdo para exibir de forma conveniente."
 
 #: bzrlib/builtins.py:3354
 msgid "bzr cat --revision takes exactly one revision specifier"
-msgstr ""
+msgstr "bzr cat --revision pega exatamente especificador de versão."
 
 #: bzrlib/builtins.py:3379 bzrlib/builtins.py:3391
 msgid "{0!r} is not present in revision {1}"
@@ -2413,7 +2439,7 @@ msgstr "{0!r} não está presente na versão {1}"
 
 #: bzrlib/builtins.py:3414
 msgid "Commit changes into a new revision."
-msgstr ""
+msgstr "Submeter alterações para uma nova versão."
 
 #: bzrlib/builtins.py:3416
 msgid ""
@@ -2434,7 +2460,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3427
 msgid ":Selective commits:"
-msgstr ""
+msgstr ":Submissões seletivas:"
 
 #: bzrlib/builtins.py:3429
 msgid ""
@@ -2530,6 +2556,8 @@ msgid ""
 "Manually set a commit time using commit date format, e.g. '2009-10-10 "
 "08:00:00 +0100'."
 msgstr ""
+"Defina uma data de submissão manualmente usando formato de data de "
+"submissão, ex. '2009-10-10 08:00:00 +0100'."
 
 #: bzrlib/builtins.py:3492
 msgid "Mark a bug as being fixed by this revision (see \"bzr help bugs\")."
@@ -2702,6 +2730,9 @@ msgid ""
 "given\n"
 "location will be checked."
 msgstr ""
+"Se restrições não forem especificadas, todos os dados do Bazaar que forem "
+"encontrados\n"
+"no local dado serão checados."
 
 #: bzrlib/builtins.py:3717
 msgid "    Check the tree and branch at 'foo'::"
@@ -2742,6 +2773,8 @@ msgstr "Cheque a árvore de trabalho relacionada ao diretório atual."
 #: bzrlib/builtins.py:3751
 msgid "Upgrade a repository, branch or working tree to a newer format."
 msgstr ""
+"Atualize um repositório, ramo ou árvore de trabalho para um formato mais "
+"recente."
 
 #: bzrlib/builtins.py:3753
 msgid ""
@@ -2800,7 +2833,7 @@ msgstr "Formato de ramo"
 
 #: bzrlib/builtins.py:3793
 msgid "Remove the backup.bzr directory if successful."
-msgstr ""
+msgstr "Remover o diretório backup.bzr se for bem sucedido."
 
 #: bzrlib/builtins.py:3795
 msgid "Show what would be done, but don't actually do anything."
@@ -2808,7 +2841,7 @@ msgstr "Mostra o que seria feito, mas na realidade não faz nada."
 
 #: bzrlib/builtins.py:3810
 msgid "Show or set bzr user id."
-msgstr ""
+msgstr "Mostrar ou definir o id do usuário do bzr."
 
 #: bzrlib/builtins.py:3812
 msgid ""
@@ -2822,7 +2855,7 @@ msgstr "        bzr whoami --email"
 
 #: bzrlib/builtins.py:3817
 msgid "    Set the current user::"
-msgstr ""
+msgstr "    Definir o usuário atual::"
 
 #: bzrlib/builtins.py:3819
 msgid "        bzr whoami \"Frank Chu <fchu@example.com>\""
@@ -2834,7 +2867,7 @@ msgstr "Mostra apenas o endereço de email."
 
 #: bzrlib/builtins.py:3825
 msgid "Set identity for the current branch instead of globally."
-msgstr ""
+msgstr "Definir uma identidade para o ramo atual ao invés de globalmente."
 
 #: bzrlib/builtins.py:3851
 msgid "--email can only be used to display existing identity"
@@ -2875,7 +2908,7 @@ msgstr "        bzr alias"
 
 #: bzrlib/builtins.py:3905
 msgid "    Show the alias specified for 'll'::"
-msgstr ""
+msgstr "    Mostrar os atalhos especificados para 'll'::"
 
 #: bzrlib/builtins.py:3907
 msgid "        bzr alias ll"
@@ -2883,7 +2916,7 @@ msgstr "        bzr alias ll"
 
 #: bzrlib/builtins.py:3909
 msgid "    Set an alias for 'll'::"
-msgstr ""
+msgstr "    Definir um atalho para 'll'::"
 
 #: bzrlib/builtins.py:3911
 msgid "        bzr alias ll=\"log --line -r-10..-1\""
@@ -2891,7 +2924,7 @@ msgstr "        bzr alias ll=\"log --line -r-10..-1\""
 
 #: bzrlib/builtins.py:3913
 msgid "    To remove an alias for 'll'::"
-msgstr ""
+msgstr "    Para remover um atalho para 'll'::"
 
 #: bzrlib/builtins.py:3915
 msgid "        bzr alias --remove ll"

@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-04-19 20:14+0000\n"
+"PO-Revision-Date: 2012-04-25 20:08+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-04-20 04:30+0000\n"
-"X-Generator: Launchpad (build 15120)\n"
+"X-Launchpad-Export-Date: 2012-04-26 04:30+0000\n"
+"X-Generator: Launchpad (build 15149)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -10270,12 +10270,16 @@ msgid ""
 "  * ``user``: can be empty (``bzr`` will defaults to python's\n"
 "    ``getpass.get_user()``),"
 msgstr ""
+"  * ``user``: může být prázdný (``bzr`` standardně použije\n"
+"    ``getpass.get_user()`` od python),"
 
 #: en/help_topics/authentication.txt:87
 msgid ""
 "  * ``password``: can be empty if you prefer to always be prompted for your\n"
 "    password."
 msgstr ""
+"  * ``password``: může být prázdné, pokud chcete, aby jste vždycky byli\n"
+"    tázání na heslo."
 
 #: en/help_topics/authentication.txt:90
 msgid ""
@@ -10283,19 +10287,22 @@ msgid ""
 "a\n"
 "(``user`` [, ``password``]) based on the following rules :"
 msgstr ""
+"Může být zadáno mnoho určení a bzr, pro zadanou URL, vybere\n"
+"(``user`` [, ``password``]) na základě následujících pravidel :"
 
 #: en/help_topics/authentication.txt:93
 msgid " 1. the first match wins,"
-msgstr ""
+msgstr " 1. první shoda vyhrává,"
 
 #: en/help_topics/authentication.txt:95
 msgid " 2. empty fields match everything,"
-msgstr ""
+msgstr " 2. prázdná pole se shodují se vším,"
 
 #: en/help_topics/authentication.txt:97
 msgid ""
 " 3. ``scheme`` matches even if decorators are used in the requested URL,"
 msgstr ""
+" 3. ``scheme`` se shoduje, i když v požadované URL jsou použity dekorátory."
 
 #: en/help_topics/authentication.txt:99
 msgid ""
@@ -10304,11 +10311,17 @@ msgid ""
 "``projectbzr.sf.net``\n"
 "    will not match ``bzr.sf.net``)."
 msgstr ""
+" 4. ``host`` odpovídá přesně nbo se chová jako doména, pokud začíná s '.'\n"
+"    (``project.bzr.sf.net`` odpovídá ``.bzr.sf.net`` ale "
+"``projectbzr.sf.net``\n"
+"    neodpovídá ``bzr.sf.net``)."
 
 #: en/help_topics/authentication.txt:103
 msgid ""
 " 5. ``port`` matches if included in the requested URL (exact matches only)"
 msgstr ""
+" 5. ``port`` odpovídá, pokud je zahrnut do požadované URL (pouze přesné "
+"shody)"
 
 #: en/help_topics/authentication.txt:105
 msgid ""
@@ -10316,22 +10329,29 @@ msgid ""
 "above,\n"
 "    empty paths will match any provided path)."
 msgstr ""
+" 5. ``port`` odpovídá, pokud je zahrnuta do požadované URL (a podle pravidla "
+"č. 2 výše,\n"
+"    prázdné cesty budou odpovídat všem zadaným cestám)."
 
 #: en/help_topics/authentication.txt:110
 msgid ""
 "File format\n"
 "-----------"
 msgstr ""
+"Formát souboru\n"
+"-----------"
 
 #: en/help_topics/authentication.txt:113
 msgid ""
 "The general rules for :doc:`configuration files <configuration-help>`\n"
 "apply except for the variable policies."
 msgstr ""
+"Obecná pravidla pro :doc:`configuration files <configuration-help>`\n"
+"platí, kromě zásad proměnných."
 
 #: en/help_topics/authentication.txt:116
 msgid "Each section describes an authentication definition."
-msgstr ""
+msgstr "Každá část popisuje definici ověření."
 
 #: en/help_topics/authentication.txt:118
 msgid ""
@@ -10339,34 +10359,36 @@ msgid ""
 "reserved\n"
 "and should appear as the *last* section."
 msgstr ""
+"Název části je libovolný řetězec, pouze hodnota ``DEFAULT`` je vyhrazena\n"
+"a měla by se objevit v *poslední* části."
 
 #: en/help_topics/authentication.txt:121
 msgid "Each section should define:"
-msgstr ""
+msgstr "Každá část by měla definovat:"
 
 #: en/help_topics/authentication.txt:123
 msgid "* ``user``: the login to be used,"
-msgstr ""
+msgstr "* ``user``: přihlášení, které by mělo být použito,"
 
 #: en/help_topics/authentication.txt:125
 msgid "Each section could define:"
-msgstr ""
+msgstr "Každá část by mohla definovat:"
 
 #: en/help_topics/authentication.txt:127
 msgid "* ``host``: the remote server,"
-msgstr ""
+msgstr "* ``host``: vzdálený server,"
 
 #: en/help_topics/authentication.txt:129
 msgid "* ``port``: the port the server is listening,"
-msgstr ""
+msgstr "* ``port``: port na kterém server poslouchá,"
 
 #: en/help_topics/authentication.txt:131
 msgid "* ``path``: the branch location,"
-msgstr ""
+msgstr "* ``path``: umístění větve,"
 
 #: en/help_topics/authentication.txt:133
 msgid "* ``password``: the password."
-msgstr ""
+msgstr "* ``password``: heslo."
 
 #: en/help_topics/authentication.txt:135
 msgid ""
@@ -10374,6 +10396,9 @@ msgid ""
 "Examples\n"
 "--------"
 msgstr ""
+"\n"
+"Příklady\n"
+"--------"
 
 #: en/help_topics/authentication.txt:139
 msgid ""
@@ -10381,6 +10406,9 @@ msgid ""
 "Personal projects hosted outside\n"
 "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"\n"
+"Osobní projekty umístěné mimo\n"
+"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/authentication.txt:143
 msgid ""
@@ -10390,6 +10418,10 @@ msgid ""
 "with\n"
 "some exceptions::"
 msgstr ""
+"Všechna připojení jsou prováděna pomocí stejného ``user`` (vzdálený, pro "
+"kterého\n"
+"výchozí z bzr není vhodný) a heslo, na které j vždy tázáno kromě jistých "
+"výjimek::"
 
 #: en/help_topics/authentication.txt:147
 msgid ""
@@ -10411,6 +10443,23 @@ msgid ""
 "foobar\n"
 "        user=foobar"
 msgstr ""
+"        # Domácí projekt na hobby.net\n"
+"        [hobby]\n"
+"        host=r.hobby.net\n"
+"        user=pepa\n"
+"        password=jasne1234\n"
+"        \n"
+"        # Domovský server\n"
+"        [home]\n"
+"        scheme=https\n"
+"        host=home.net\n"
+"        user=jarda\n"
+"        password=1e4evl1j9s4ne\n"
+"        \n"
+"        [DEFAULT]\n"
+"        # Náš místní uživatel je barbaz, na všech vzdálených sítích jsme "
+"známi jako foobar\n"
+"        user=foobar"
 
 #: en/help_topics/authentication.txt:164
 msgid ""
@@ -10418,10 +10467,13 @@ msgid ""
 "Source hosting provider\n"
 "~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"\n"
+"Poskytovatel hostování zdroje\n"
+"~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/authentication.txt:168
 msgid "In the shp.net (fictitious) domain, each project has its own site::"
-msgstr ""
+msgstr "Na (fiktivní) doméně phz.eu má každý projekt svoji vlastní stránku::"
 
 #: en/help_topics/authentication.txt:170
 msgid ""
@@ -10435,12 +10487,23 @@ msgid ""
 "        # consider using an ssh agent if you don't want to supply\n"
 "        # a password interactively. (pageant, ssh-agent, etc)"
 msgstr ""
+"        [doména phzeu]\n"
+"        # používáme sftp, ale ssh je schéma, které je použité pro ověřování\n"
+"        scheme=ssh\n"
+"        # První '.' zajistí, že samo 'phz.eu' nebude odpovídat\n"
+"        host=.phz.eu\n"
+"        user=josef\n"
+"        # bzr nepodporuje předávání hesel pro sftp,\n"
+"        # zvažte použít agenta ssh, pokud nechcete zadávat heslo\n"
+"        # na požádání. (pageant, ssh-agent, atd)"
 
 #: en/help_topics/authentication.txt:180
 msgid ""
 "HTTPS, SFTP servers and their proxy\n"
 "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"HTTPS, SFTP servery a jejich proxy\n"
+"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/authentication.txt:183
 msgid ""
@@ -10448,6 +10511,9 @@ msgid ""
 "behind a\n"
 "proxy, and the two branches use different authentication policies::"
 msgstr ""
+"Na společnost.cz je server, hostující větve pro vydávání a začleňování, za "
+"proxy\n"
+"a tyto dvě větve používají různé zásady ověření::"
 
 #: en/help_topics/authentication.txt:186
 msgid ""
@@ -10458,6 +10524,12 @@ msgid ""
 "        user=user1\n"
 "        password=pass1"
 msgstr ""
+"        [reference code]\n"
+"        scheme=https\n"
+"        host=dev.společnost.cz\n"
+"        path=/dev\n"
+"        user=uživ1\n"
+"        password=heslo1"
 
 #: en/help_topics/authentication.txt:193
 msgid ""
@@ -10476,6 +10548,20 @@ msgid ""
 "        user=proxyuser1\n"
 "        password=proxypass1"
 msgstr ""
+"        # vývojové větve na serveru vývoje\n"
+"        [dev]\n"
+"        scheme=ssh # bzr+ssh a sftp jsou zde dostupné\n"
+"        host=dev.společnost.cz\n"
+"        path=/dev/začlenění\n"
+"        user=uživ2\n"
+"        \n"
+"        # proxy\n"
+"        [proxy]\n"
+"        scheme=http\n"
+"        host=proxy.společnost.cz\n"
+"        port=3128\n"
+"        user=proxyuživ1\n"
+"        password=proxyheslo1"
 
 #: en/help_topics/authentication.txt:208
 msgid ""
@@ -10483,34 +10569,41 @@ msgid ""
 "Planned enhancements\n"
 "--------------------"
 msgstr ""
+"\n"
+"Plánovaná vylepšení\n"
+"--------------------"
 
 #: en/help_topics/authentication.txt:212
 msgid ""
 "The following are not yet implemented but planned as parts of a work in\n"
 "progress:"
 msgstr ""
+"Následující nejsou ještě zavedeny, ale jsou naplánovány jako části\n"
+"ve vývoji:"
 
 #: en/help_topics/authentication.txt:215
 msgid "* add a  ``password_encoding`` field allowing:"
-msgstr ""
+msgstr "* přidání pole  ``password_encoding`` umožňující:"
 
 #: en/help_topics/authentication.txt:217
 msgid ""
 "  - storing the passwords in various obfuscating encodings (base64 for one),"
 msgstr ""
+"  - ukládat hesla v různých zamlžujících kódováních (například base64),"
 
 #: en/help_topics/authentication.txt:219
 msgid "  - delegate password storage to plugins (.netrc for example)."
-msgstr ""
+msgstr "  - vyhradit úložiště hesel pro zásuvné moduly (například .netrc)."
 
 #: en/help_topics/authentication.txt:221
 msgid ""
 "* update the credentials when the user is prompted for user or password,"
 msgstr ""
+"* aktualizovat ověřovací údaje, když je uživatel tázán na jméno a heslo,"
 
 #: en/help_topics/authentication.txt:223
 msgid "* add a ``verify_certificates`` field for ``HTTPS``."
-msgstr ""
+msgstr "* přidat pole ``verify_certificates`` pro ``HTTPS``."
 
 #: en/help_topics/authentication.txt:225
 msgid ""
@@ -10518,10 +10611,12 @@ msgid ""
 "but\n"
 "ignored in the actual implementation.\n"
 msgstr ""
+"Pole ``password_encoding`` a ``verify_certificates`` jsou rozpoznána, ale\n"
+"ve skutečné realizaci ignorovány.\n"
 
 #: en/help_topics/bugs.txt:1
 msgid "Bug Tracker Settings"
-msgstr ""
+msgstr "Nastavení systému pro sledování problémů"
 
 #: en/help_topics/bugs.txt:3
 msgid ""
@@ -10530,6 +10625,11 @@ msgid ""
 "entry is included in the 'bugs' revision property stating '<url> <status>'.\n"
 "(The only ``status`` value currently supported is ``fixed.``)"
 msgstr ""
+"Při provádění odevzdání mohou být zaznamenána metadata o chybách,\n"
+"které tato změna opravuje, pomocí volby ``--fixes``. Za každou chybu\n"
+"označenou jako opravená, je zahrnut záznam ve vlastnosti revize\n"
+"'bugs' sdělující '<url> <status>'. (Jediná v současnosti podporovaná\n"
+"hodnota``status`` je ``fixed.``)"
 
 #: en/help_topics/bugs.txt:8
 msgid ""
@@ -10537,18 +10637,20 @@ msgid ""
 "identifier\n"
 "rather than a full URL. This looks like::"
 msgstr ""
+"Volba ``--fixes`` Vám umožňuje zadat systém pro sledování chyb a její\n"
+"identifikátor místo celé URL. Pak toto vypadá::"
 
 #: en/help_topics/bugs.txt:11
 msgid "    bzr commit --fixes <tracker>:<id>"
-msgstr ""
+msgstr "    bzr commit --fixes <systém>:<id>"
 
 #: en/help_topics/bugs.txt:13 en/help_topics/configuration.txt:398
 msgid "or::"
-msgstr ""
+msgstr "nebo::"
 
 #: en/help_topics/bugs.txt:15
 msgid "    bzr commit --fixes <id>"
-msgstr ""
+msgstr "    bzr commit --fixes <id>"
 
 #: en/help_topics/bugs.txt:17
 msgid ""
@@ -10558,6 +10660,11 @@ msgid ""
 "If \"<tracker>\" is not specified the ``bugtracker`` set in the branch\n"
 "or global configuration is used."
 msgstr ""
+"kde \"<systém>\" je identifikátor pro systém pro sledování chyb, a \"<id>\" "
+"je\n"
+"identifikátor pro chybu, která je v systému, většinou číslo chyby.\n"
+"Pokud \"<systém>\" není zadán, je použit ``bugtracker`` nastavený ve větvi\n"
+"nebo globální nastavení."
 
 #: en/help_topics/bugs.txt:22
 msgid ""
@@ -10566,6 +10673,10 @@ msgid ""
 "use this feature, you just need to know the tracker identifier to use.\n"
 "These are the bugtrackers that are built in:"
 msgstr ""
+"Bazaar zná pár systémů, které mají mnoho uživatelů. Pokud\n"
+"používáte jeden z těchto systémů, pak není třeba pro tuto funkci\n"
+"nastavovat, stačí jen vědět, který identifikátor systému použít.\n"
+"Toto jsou systémy, které jsou zabudovány:"
 
 #: en/help_topics/bugs.txt:27
 msgid ""
@@ -10577,6 +10688,14 @@ msgid ""
 "  http://bugzilla.gnome.org/   gnome        gnome:12345\n"
 "  ============================ ============ ============"
 msgstr ""
+"  ============================ ============ ============\n"
+"  URL                                                           Příklady "
+"Zkrácení\n"
+"  ============================ ============ ============\n"
+"  https://bugs.launchpad.net/  lp           lp:12345\n"
+"  http://bugs.debian.org/      deb          deb:12345\n"
+"  http://bugzilla.gnome.org/   gnome        gnome:12345\n"
+"  ============================ ============ ============"
 
 #: en/help_topics/bugs.txt:35
 msgid ""
@@ -10587,6 +10706,12 @@ msgid ""
 "of the schemes described below then you can write a plugin to support\n"
 "it."
 msgstr ""
+"Systémy, které nejsou vypsány výše musejí být nastaveny.\n"
+"Podpora pro vytváření URL jakéhokoliv projektu pomocí Bugzilla nebo\n"
+"Trac je zabudována, spolu s mechanismy šablon pro ostatní systémy\n"
+"s jednoduchými schématy URL. Pokud Váš systém nemůže být popsán\n"
+"žádnými ze schémat popsaných níže, můžete vytvořit zásuvný modul\n"
+"pro jeho podporu."
 
 #: en/help_topics/bugs.txt:42
 msgid ""
@@ -10596,6 +10721,11 @@ msgid ""
 "configuration section in ``locations.conf``.  You can set up these values\n"
 "for each of the projects you work on."
 msgstr ""
+"Pokud používáte Bugzilla nebo Trac, pak stačí nastavit proměnnou,\n"
+"která obsahuje základní URL systému. Tyto volby mohou být v\n"
+"``bazaar.conf``, ``branch.conf` nebo do nastavení závislé na větvích v\n"
+"``locations.conf``. Tyto volby lze nastavit pro každý projekt, v\n"
+"kterém pracujete."
 
 #: en/help_topics/bugs.txt:48
 msgid ""
