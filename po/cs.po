@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-04-25 20:08+0000\n"
+"PO-Revision-Date: 2012-04-27 19:44+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-04-26 04:30+0000\n"
+"X-Launchpad-Export-Date: 2012-04-28 04:30+0000\n"
 "X-Generator: Launchpad (build 15149)\n"
 
 #: bzrlib/add.py:95
@@ -10732,23 +10732,32 @@ msgid ""
 "Note: As you provide a short name for each tracker, you can specify one or\n"
 "more bugs in one or more trackers at commit time if you wish."
 msgstr ""
+"Poznámka: Při zadávání krátkého názvu každého systému můžete zadat\n"
+"jednu nebo více chyb v jednom nebo více systémech při odevzdávání,\n"
+"pokud si přejete."
 
 #: en/help_topics/bugs.txt:51
 msgid ""
 "Launchpad\n"
 "---------"
 msgstr ""
+"Launchpad\n"
+"---------"
 
 #: en/help_topics/bugs.txt:54
 msgid ""
 "Use ``bzr commit --fixes lp:2`` to record that this commit fixes bug 2."
 msgstr ""
+"Použijte ``bzr commit --fixes lp:2`` pro zaznamenání, že toto odevzdání\r\n"
+"opravuje chybu 2."
 
 #: en/help_topics/bugs.txt:56
 msgid ""
 "bugzilla_<tracker>_url\n"
 "----------------------"
 msgstr ""
+"bugzilla_<systém>_url\n"
+"----------------------"
 
 #: en/help_topics/bugs.txt:59
 msgid ""
@@ -10757,22 +10766,30 @@ msgid ""
 "--fixes`` to mark bugs in that tracker as being fixed by that commit. For\n"
 "example::"
 msgstr ""
+"Pokud přítomno, umístění systému sledování chyb Bugzilla, na který\n"
+"odkazuje <systém>. Tato volba může být použita s ``bzr commit\n"
+"--fixes`` pro označení chyb, v tomto systému, jako spravené tímto\n"
+"odevzdáním. Například::"
 
 #: en/help_topics/bugs.txt:64
 msgid "    bugzilla_squid_url = http://bugs.squid-cache.org"
-msgstr ""
+msgstr "    bugzilla_squid_url = http://bugs.squid-cache.org"
 
 #: en/help_topics/bugs.txt:66
 msgid ""
 "would allow ``bzr commit --fixes squid:1234`` to mark Squid's bug 1234 as\n"
 "fixed."
 msgstr ""
+"umožňuje ``bzr commit --fixes squid:1234`` pro označení chyby\n"
+"Squid 1234 jako spravenou."
 
 #: en/help_topics/bugs.txt:69
 msgid ""
 "trac_<tracker>_url\n"
 "------------------"
 msgstr ""
+"trac_<systém>_url\n"
+"------------------"
 
 #: en/help_topics/bugs.txt:72
 msgid ""
@@ -10781,10 +10798,14 @@ msgid ""
 "--fixes`` to mark bugs in that tracker as being fixed by that commit. For\n"
 "example::"
 msgstr ""
+"Pokud přítomno, umístění systému sledování chyb Trac, na který\n"
+"odkazuje <systém>. Tato volba může být použita s ``bzr commit\n"
+"--fixes`` pro označení chyb, v tomto systému, jako spravené tímto\n"
+"odevzdáním. Například::"
 
 #: en/help_topics/bugs.txt:77
 msgid "    trac_twisted_url = http://www.twistedmatrix.com/trac"
-msgstr ""
+msgstr "    trac_twisted_url = http://www.twistedmatrix.com/trac"
 
 #: en/help_topics/bugs.txt:79
 msgid ""
@@ -10792,12 +10813,17 @@ msgid ""
 "as\n"
 "fixed."
 msgstr ""
+"by umožnilo ``bzr commit --fixes twisted:1234`` což označí chybu Twisted "
+"1234\n"
+"jako opravenou."
 
 #: en/help_topics/bugs.txt:82
 msgid ""
 "bugtracker_<tracker>_url\n"
 "------------------------"
 msgstr ""
+"bugtracker_<systém>_url\n"
+"------------------------"
 
 #: en/help_topics/bugs.txt:85
 msgid ""
@@ -10807,31 +10833,41 @@ msgid ""
 "together with ``bzr commit --fixes`` to mark bugs in that tracker as being\n"
 "fixed by that commit. For example::"
 msgstr ""
+"Pokud je přítomno, umístění obecného systému sledování chyb, na\n"
+"který odkazuje <systém>. Umístění musí obsahovat zástupný symbol\n"
+"``{id}``, který bude nahrazen zadaným ID chyby. Tato volba může být\n"
+"použita spolu a ``bzr commit --fixes`` k označení chyb v tomto\n"
+"systému jako opravené tímto odevzdáním. Například::"
 
 #: en/help_topics/bugs.txt:91
 msgid "    bugtracker_python_url = http://bugs.python.org/issue{id}"
-msgstr ""
+msgstr "    bugtracker_python_url = http://bugs.python.org/issue{id}"
 
 #: en/help_topics/bugs.txt:93
 msgid ""
 "would allow ``bzr commit --fixes python:1234`` to mark bug 1234 in Python's\n"
 "Roundup bug tracker as fixed, or::"
 msgstr ""
+"by umožnilo ``bzr commit --fixes python:1234`` pro označení chyby 1234\n"
+"v systému Python Roundup jako opravenou, nebo::"
 
 #: en/help_topics/bugs.txt:96
 msgid ""
 "    bugtracker_cpan_url = http://rt.cpan.org/Public/Bug/Display.html?id={id}"
 msgstr ""
+"    bugtracker_cpan_url = http://rt.cpan.org/Public/Bug/Display.html?id={id}"
 
 #: en/help_topics/bugs.txt:98
 msgid ""
 "would allow ``bzr commit --fixes cpan:1234`` to mark bug 1234 in CPAN's\n"
 "RT bug tracker as fixed, or::"
 msgstr ""
+"by umožnilo ``bzr commit --fixes cpan:1234`` pro označení chyby 1234\n"
+"v systému CPAN RT jako opravenou, nebo::"
 
 #: en/help_topics/bugs.txt:101
 msgid "    bugtracker_hudson_url = http://issues.hudson-ci.org/browse/{id}"
-msgstr ""
+msgstr "    bugtracker_hudson_url = http://issues.hudson-ci.org/browse/{id}"
 
 #: en/help_topics/bugs.txt:103
 msgid ""
@@ -10839,6 +10875,9 @@ msgid ""
 "1234\n"
 "in Hudson's JIRA bug tracker as fixed.\n"
 msgstr ""
+"by umožnilo ``bzr commit --fixes hudson:1234`` pro označení chyby HUDSON-"
+"1234\n"
+"v systému Hudson JIRA jako opravenou.\n"
 
 #: en/help_topics/commands.txt:1
 msgid ""
