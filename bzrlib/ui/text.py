@@ -407,7 +407,7 @@ class TextProgressView(object):
     def __init__(self, term_file, encoding=None, errors="replace"):
         self._term_file = term_file
         if encoding is None:
-            self._encoding = getattr(term_file, "encoding", "ascii")
+            self._encoding = getattr(term_file, "encoding", None) or "ascii"
         else:
             self._encoding = encoding
         self._encoding_errors = errors
