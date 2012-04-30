@@ -611,7 +611,6 @@ class TestXDGConfigDir(tests.TestCaseInTempDir):
 
     def test_xdg_config_dir_exists(self):
         """When ~/.config/bazaar exists, use it as the config dir."""
-        self.overrideEnv('XDG_CONFIG_HOME', None)
         newdir = osutils.pathjoin(self.test_home_dir, '.config', 'bazaar')
         os.makedirs(newdir)
         self.assertEqual(config.config_dir(), newdir)
