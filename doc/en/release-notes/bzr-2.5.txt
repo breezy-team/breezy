@@ -36,6 +36,9 @@ Bug Fixes
   destination rather than the proxy when checking certificates.
   (Martin Packman, #944696)
 
+* Fix UnicodeEncodeError when translated progress task messages contain
+  non-ascii text. (Martin Packman, #966934)
+
 * Fixed merge tool availability checking and invocation to search the
   Windows App Path registry in addition to the PATH. (Gordon Tyler, #939605)
 
