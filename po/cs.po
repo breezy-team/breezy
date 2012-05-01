@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-04-27 19:44+0000\n"
+"PO-Revision-Date: 2012-04-30 21:09+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-04-28 04:30+0000\n"
-"X-Generator: Launchpad (build 15149)\n"
+"X-Launchpad-Export-Date: 2012-05-01 04:30+0000\n"
+"X-Generator: Launchpad (build 15171)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -10977,42 +10977,52 @@ msgid ""
 "Configuration Settings\n"
 "======================="
 msgstr ""
+"Volby nastavení\n"
+"======================="
 
 #: en/help_topics/configuration.txt:4
 msgid ""
 "Environment settings\n"
 "---------------------"
 msgstr ""
+"Nastavení prostředí\n"
+"---------------------"
 
 #: en/help_topics/configuration.txt:7
 msgid ""
 "While most configuration is handled by configuration files, some options\n"
 "which may be semi-permanent can also be controlled through the environment."
 msgstr ""
+"Zatímco mnoho z nastavení je řízeno soubory, některé volby,\n"
+"které mohou být napůl trvalé , můžou být kontrolovány skrz prostředí."
 
 #: en/help_topics/configuration.txt:10
 msgid ""
 "BZR_EMAIL\n"
 "~~~~~~~~~"
 msgstr ""
+"BZR_EMAIL\n"
+"~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:13
 msgid "Override the email id used by Bazaar.  Typical format::"
-msgstr ""
+msgstr "Potlačit id emailu používaný Bazaar. Typyciký formát::"
 
 #: en/help_topics/configuration.txt:15
 msgid "  \"John Doe <jdoe@example.com>\""
-msgstr ""
+msgstr "  \"Josef Novák <jnov@priklad.cz>\""
 
 #: en/help_topics/configuration.txt:17
 msgid "See also the ``email`` configuration option."
-msgstr ""
+msgstr "Viz také volba nastavení ``email``"
 
 #: en/help_topics/configuration.txt:19
 msgid ""
 "BZR_PROGRESS_BAR\n"
 "~~~~~~~~~~~~~~~~"
 msgstr ""
+"BZR_PROGRESS_BAR\n"
+"~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:22
 msgid ""
@@ -11022,107 +11032,138 @@ msgid ""
 "draws\n"
 "the ordinary command line progress bar."
 msgstr ""
+"Potlačí zobrazení postupu. Možné hodnoty jsou \"none\" nebo \"text\". Pokud\n"
+"je hodnota \"none\", pak není zobrazena žádná lišta postupu. Hodnota "
+"\"text\"\n"
+"vykresluje běžnou lištu v příkazovém řádku."
 
 #: en/help_topics/configuration.txt:26
 msgid ""
 "BZR_SIGQUIT_PDB\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"BZR_SIGQUIT_PDB\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:29
 msgid ""
 "Control whether SIGQUIT behaves normally or invokes a breakin debugger."
 msgstr ""
+"Kontrola chování SIGQUIT, zda se zachová normálně, nebo vyvolá ladící\r\n"
+"program s přerušením."
 
 #: en/help_topics/configuration.txt:31
 msgid ""
 "* 0 = Standard SIGQUIT behavior (normally, exit with a core dump)\n"
 "* 1 = Invoke breakin debugger (default)"
 msgstr ""
+"* 0 = Standardní chování SIGQUIT (normální, ukončit s výpisem jádra)\n"
+"* 1 = vyvolat ladící program s přerušením (výchozí)"
 
 #: en/help_topics/configuration.txt:34
 msgid ""
 "BZR_HOME\n"
 "~~~~~~~~"
 msgstr ""
+"BZR_HOME\n"
+"~~~~~~~~"
 
 #: en/help_topics/configuration.txt:37
 msgid "Override the home directory used by Bazaar."
-msgstr ""
+msgstr "POtlačit domovský adresář používaný Bazaar."
 
 #: en/help_topics/configuration.txt:39
 msgid ""
 "BZR_SSH\n"
 "~~~~~~~"
 msgstr ""
+"BZR_SSH\n"
+"~~~~~~~"
 
 #: en/help_topics/configuration.txt:42
 msgid "Select a different SSH implementation."
-msgstr ""
+msgstr "Vybrat jinou implementaci SSH."
 
 #: en/help_topics/configuration.txt:44
 msgid ""
 "BZR_PDB\n"
 "~~~~~~~"
 msgstr ""
+"BZR_PDB\n"
+"~~~~~~~"
 
 #: en/help_topics/configuration.txt:47
 msgid "Control whether to launch a debugger on error."
-msgstr ""
+msgstr "Zdali spustit ldící program při chybě."
 
 #: en/help_topics/configuration.txt:49
 msgid ""
 "* 0 = Standard behavior\n"
 "* 1 = Launch debugger"
 msgstr ""
+"* 0 = Standardní chování\n"
+"* 1 = Spustit ladící program"
 
 #: en/help_topics/configuration.txt:52
 msgid ""
 "BZR_REMOTE_PATH\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"BZR_REMOTE_PATH\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:55
 msgid "Path to the Bazaar executable to use when using the bzr+ssh protocol."
 msgstr ""
+"Cesta ke spustitelnému souboru Bazaar, který bude použit v protokolu bzr+ssh."
 
 #: en/help_topics/configuration.txt:57
 msgid "See also the ``bzr_remote_path`` configuration option."
-msgstr ""
+msgstr "Viz také volba nastavení ``bzr_remote_path``."
 
 #: en/help_topics/configuration.txt:59
 msgid ""
 "BZR_EDITOR\n"
 "~~~~~~~~~~"
 msgstr ""
+"BZR_EDITOR\n"
+"~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:62
 msgid "Path to the editor Bazaar should use for commit messages, etc."
-msgstr ""
+msgstr "Cesta k editoru Bazaar, který bude použit pro zprávy odevzdání, atd."
 
 #: en/help_topics/configuration.txt:64
 msgid ""
 "BZR_LOG\n"
 "~~~~~~~"
 msgstr ""
+"BZR_LOG\n"
+"~~~~~~~"
 
 #: en/help_topics/configuration.txt:67
 msgid ""
 "Location of the Bazaar log file. You can check the current location by\n"
 "running ``bzr version``."
 msgstr ""
+"Umístění souboru záznamu Bazaar. Současné umístění můžete zkontrolovat\n"
+"spuštěním ``bzr version``."
 
 #: en/help_topics/configuration.txt:70
 msgid ""
 "The log file contains debug information that is useful for diagnosing or\n"
 "reporting problems with Bazaar."
 msgstr ""
+"Soubor záznamu obsahuje ladící informace, které jsou užitečné k určení\n"
+"nebo hlášení problémů s Bazaar."
 
 #: en/help_topics/configuration.txt:73
 msgid ""
 "Setting this to ``NUL`` on Windows or ``/dev/null`` on other platforms\n"
 "will disable logging."
 msgstr ""
+"Když je toto nastaveno na ``NUL`` ve Windows nebo ``/dev/null`` v ostatních\n"
+"platformách, je záznam zakázán."
 
 #: en/help_topics/configuration.txt:76
 msgid ""
@@ -11130,6 +11171,9 @@ msgid ""
 "BZR_PLUGIN_PATH\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"\n"
+"BZR_PLUGIN_PATH\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:80
 msgid ""
