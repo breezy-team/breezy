@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-04-30 21:09+0000\n"
+"PO-Revision-Date: 2012-05-09 20:08+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-05-01 04:30+0000\n"
-"X-Generator: Launchpad (build 15171)\n"
+"X-Launchpad-Export-Date: 2012-05-10 04:30+0000\n"
+"X-Generator: Launchpad (build 15213)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -11180,27 +11180,34 @@ msgid ""
 "The path to the plugins directory that Bazaar should use.\n"
 "If not set, Bazaar will search for plugins in:"
 msgstr ""
+"Cesta do adresáře zásuvných modulů, které by Bazaar měl\n"
+"použít. Pokud není nastaveno, budou hledány v:"
 
 #: en/help_topics/configuration.txt:83
 msgid ""
 "* the user specific plugin directory (containing the ``user`` plugins),"
 msgstr ""
+"* v adresáři zásuvných modulů uživatele (obsahující moduly ``user``),"
 
 #: en/help_topics/configuration.txt:85
 msgid "* the bzrlib directory (containing the ``core`` plugins),"
-msgstr ""
+msgstr "* adresář bzrlib (obsahující moduly ``core``),"
 
 #: en/help_topics/configuration.txt:87
 msgid ""
 "* the site specific plugin directory if applicable (containing\n"
 "  the ``site`` plugins)."
 msgstr ""
+"* adresář modulů závisející na umístění, pokud existuje\n"
+"'obsahující  moduly ``site``)."
 
 #: en/help_topics/configuration.txt:90
 msgid ""
 "If ``BZR_PLUGIN_PATH`` is set in any fashion, it will change the\n"
 "the way the plugin are searched. "
 msgstr ""
+"Pokud je jakýmkoliv způsobem nastaveno ``BZR_PLUGIN_PATH``,\n"
+"změní se tak způsob, jak jsou moduly hledány. "
 
 #: en/help_topics/configuration.txt:93
 msgid ""
@@ -11209,6 +11216,9 @@ msgid ""
 "platform specific appropriate character (':' on Unix,\n"
 "';' on windows)"
 msgstr ""
+"Co se týče proměnných ``PATH``, pokud je v\n"
+"``BZR_PLUGIN_PATH`` zadáno mnoho adresářů, měly by být odděleny\n"
+"vhodným znakem podle platformy (':' v Unix, ';' ve Windows)"
 
 #: en/help_topics/configuration.txt:98
 msgid ""
@@ -11216,18 +11226,25 @@ msgid ""
 "in ``user``.  However it will continue to search in ``core`` and\n"
 "``site`` unless they are explicitly removed."
 msgstr ""
+"Standardně, pokud je nastaveno ``BZR_PLUGIN_PATH``, nahradí\n"
+"hledání v ``user``. Stále ale bude hledat v ``core`` a ``site``,\n"
+"pokud nejsou výslovně odstraněny."
 
 #: en/help_topics/configuration.txt:102
 msgid ""
 "If you need to change the order or remove one of these\n"
 "directories, you should use special values:"
 msgstr ""
+"Pokud potřebujete změnit pořadí nebo odstranit jeden\n"
+"z adresářů, měli byste použít speciální hodnoty:"
 
 #: en/help_topics/configuration.txt:105
 msgid ""
 "* ``-user``, ``-core``, ``-site`` will remove the corresponding\n"
 "  path from the default values,"
 msgstr ""
+"* ``-user``, ``-core``, ``-site`` odstraní odpovídající\n"
+"  cestu z výchozích hodnot,"
 
 #: en/help_topics/configuration.txt:108
 msgid ""
@@ -11235,6 +11252,9 @@ msgid ""
 "  before the remaining default values (and also remove it from\n"
 "  the default values)."
 msgstr ""
+"* ``+user``, ``+core``, ``+site`` přidá odpovídající cestu\n"
+"  před zbývajícími výchozími hodnotami (a také je z nich\n"
+"  odstraní)."
 
 #: en/help_topics/configuration.txt:112
 msgid ""
@@ -11242,40 +11262,45 @@ msgid ""
 "used literally, they will be substituted by the corresponding,\n"
 "platform specific, values."
 msgstr ""
+"Nezapomeňte, že speciální hodnoty 'user', 'core' a 'site' by\n"
+"měly být použity doslovně, budou nahrazeny odpovídajícími\n"
+"hodnotami v závislosti na platformě."
 
 #: en/help_topics/configuration.txt:116
 msgid ""
 "The examples below use ':' as the separator, windows users\n"
 "should use ';'."
 msgstr ""
+"Příklady níže používají ':' jako oddělovač, uživatelé\n"
+"WIndows by měli použít ';'."
 
 #: en/help_topics/configuration.txt:119
 msgid "Overriding the default user plugin directory::"
-msgstr ""
+msgstr "Potlačování výchozího uživatelského adresáře zásuvných modulů::"
 
 #: en/help_topics/configuration.txt:121
 msgid "  BZR_PLUGIN_PATH='/path/to/my/other/plugins'"
-msgstr ""
+msgstr "  BZR_PLUGIN_PATH='/cesta/k/mým/ostatním/modulům'"
 
 #: en/help_topics/configuration.txt:123
 msgid "Disabling the site directory while retaining the user directory::"
-msgstr ""
+msgstr "Zakázání oblastního adresáře při zachování uživatelského::"
 
 #: en/help_topics/configuration.txt:125
 msgid "  BZR_PLUGIN_PATH='-site:+user'"
-msgstr ""
+msgstr "  BZR_PLUGIN_PATH='-site:+user'"
 
 #: en/help_topics/configuration.txt:127
 msgid "Disabling all plugins (better achieved with --no-plugins)::"
-msgstr ""
+msgstr "Zakázání všech modulů (lepší je použít --no-plugins)::"
 
 #: en/help_topics/configuration.txt:129
 msgid "  BZR_PLUGIN_PATH='-user:-core:-site'"
-msgstr ""
+msgstr "  BZR_PLUGIN_PATH='-user:-core:-site'"
 
 #: en/help_topics/configuration.txt:131
 msgid "Overriding the default site plugin directory::"
-msgstr ""
+msgstr "Potlačení výchozího oblastního adresáře modulů::"
 
 #: en/help_topics/configuration.txt:133
 msgid "  BZR_PLUGIN_PATH='/path/to/my/site/plugins:-site':+user"
