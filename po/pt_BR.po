@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-04-25 14:55+0000\n"
-"Last-Translator: Rafael Neri <Unknown>\n"
+"PO-Revision-Date: 2012-05-19 23:18+0000\n"
+"Last-Translator: João Lucas <joao-lucas@live.com>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2012-04-26 04:30+0000\n"
-"X-Generator: Launchpad (build 15149)\n"
+"X-Launchpad-Export-Date: 2012-05-20 04:32+0000\n"
+"X-Generator: Launchpad (build 15259)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -258,6 +258,8 @@ msgid ""
 "Since a lightweight checkout is little more than a working tree\n"
 "this will refuse to run against one."
 msgstr ""
+"Desde um checkout leve é ​​pouco mais do que uma árvore de trabalho\n"
+"isso vai se recusar a executar contra um."
 
 #: bzrlib/builtins.py:554
 msgid "To re-create the working tree, use \"bzr checkout\"."
@@ -980,6 +982,9 @@ msgid ""
 "operations like diff and status without such access, and also support local "
 "commits."
 msgstr ""
+"Realize um checkout leve. Checkouts leves dependem do acesso ao ramo para "
+"cada operações. Checkouts normais podem realizar operações comuns como diff "
+"e status sem esse acesso, e também tem suporte a submissões locais."
 
 #: bzrlib/builtins.py:1597
 msgid "Get file contents from this tree."
@@ -1154,6 +1159,9 @@ msgid ""
 "  basic statistics (like the number of files in the working tree and\n"
 "  number of revisions in the branch and repository):"
 msgstr ""
+"  Exibir acima as informações juntas sobre o formato estendido e "
+"estatísticas básicas (como o número de arquivos na árvore de trabalho e "
+"número de revisões no ramo e repositório):"
 
 #: bzrlib/builtins.py:1805
 msgid "    bzr info -v"
@@ -1161,7 +1169,7 @@ msgstr "    bzr info -v"
 
 #: bzrlib/builtins.py:1807
 msgid "  Display the above together with number of committers to the branch:"
-msgstr ""
+msgstr "  Mostrar acima junto com o número de committers para o ramo:"
 
 #: bzrlib/builtins.py:1809
 msgid "    bzr info -vv"
@@ -1263,16 +1271,22 @@ msgid ""
 "Uses group-compress storage.\n"
 "Provides rich roots which are a one-way transition.\n"
 msgstr ""
+"Formato para série 2.0 bzr.\n"
+"Usa compressa de grupo de armazenamento.\n"
+"Fornece raízes ricas com transição de sentido único.\n"
 
 #: bzrlib/builtins.py:2014 bzrlib/builtins.py:2132 bzrlib/builtins.py:3750
 msgid ""
 "Pack-based format used in 1.x series. Introduced in 0.92. Interoperates with "
 "bzr repositories before 0.92 but cannot be read by bzr < 0.92. "
 msgstr ""
+"Pacote baseado em formato utilizado na série 1.x. Introduzido em 0,92. "
+"Interopera com repositórios bzr antes de 0,92, mas não pode ser lido por bzr "
+"<0,92. "
 
 #: bzrlib/builtins.py:2014 bzrlib/builtins.py:2132 bzrlib/builtins.py:3750
 msgid "The 2a format with experimental support for colocated branches.\n"
-msgstr ""
+msgstr "O formato 2a possui suporte experimental para ramos co-locados.\n"
 
 #: bzrlib/builtins.py:2015
 msgid "Make a directory into a versioned branch."
@@ -1379,6 +1393,11 @@ msgid ""
 "with shared history, this reduces the amount of storage needed and \n"
 "speeds up the creation of new branches."
 msgstr ""
+"Novos ramos criados sob o diretório do repositório irão armazenar suas\n"
+"revisões no repositório, não no diretório do ramo. Para ramos\n"
+"com histórico compartilhado, isto reduz a quantidade de armazenamento "
+"necessário e\n"
+"acelera a criação de novos ramos."
 
 #: bzrlib/builtins.py:2140
 msgid ""
@@ -2267,7 +2286,7 @@ msgstr[1] ""
 
 #: bzrlib/builtins.py:3189
 msgid "NAME_PATTERN should not be an absolute path"
-msgstr ""
+msgstr "NOME_DO_PADRAO não deve ser um caminho absoluto"
 
 #: bzrlib/builtins.py:3202
 #, python-format
@@ -2936,17 +2955,18 @@ msgstr "Remove o atalho."
 
 #: bzrlib/builtins.py:3938
 msgid "bzr alias --remove expects an alias to remove."
-msgstr ""
+msgstr "bzr alias --remove espera por um apelido(alias) para remover."
 
 #: bzrlib/builtins.py:4119
 msgid ""
 "subunit not available. subunit needs to be installed to use --subunit."
 msgstr ""
+"subunit não disponivel. É preciso instalar subunit para usar --subunit."
 
 #: bzrlib/builtins.py:4136
 msgid ""
 "--benchmark is no longer supported from bzr 2.2; use bzr-usertest instead"
-msgstr ""
+msgstr "--benchmark não é suportado por bzr 2.2; utilize bzr-usertest"
 
 #: bzrlib/builtins.py:4183
 msgid "Show version of bzr."
@@ -2958,16 +2978,16 @@ msgstr "Mostra apenas o número da versão."
 
 #: bzrlib/builtins.py:4206
 msgid "It sure does!\n"
-msgstr ""
+msgstr "Com certeza faz!\n"
 
 #: bzrlib/builtins.py:4230
 #, python-format
 msgid "merge base is revision %s\n"
-msgstr ""
+msgstr "a base da mesclagem é a revisão %s\n"
 
 #: bzrlib/builtins.py:4234
 msgid "Perform a three-way merge."
-msgstr ""
+msgstr "Realizar uma mesclagem de três-vias."
 
 #: bzrlib/builtins.py:4236
 msgid ""
@@ -3020,6 +3040,8 @@ msgstr ""
 msgid ""
 "Use bzr resolve when you have fixed a problem.  See also bzr conflicts."
 msgstr ""
+"Use brz resolve quando você tiver um problema solucionado. Veja também bzr "
+"conflicts."
 
 #: bzrlib/builtins.py:4268
 msgid ""
@@ -3063,6 +3085,8 @@ msgid ""
 ":Examples:\n"
 "    To merge all new revisions from bzr.dev::"
 msgstr ""
+":Exemplos:\n"
+"    Para mesclar todas as verões de bzr.dev::"
 
 #: bzrlib/builtins.py:4293
 msgid "        bzr merge ../bzr.dev"
@@ -3070,7 +3094,7 @@ msgstr "        bzr merge ../bzr.dev"
 
 #: bzrlib/builtins.py:4295
 msgid "    To merge changes up to and including revision 82 from bzr.dev::"
-msgstr ""
+msgstr "    Para mesclar mudanças e incluir a versão 82 de bzr.dev::"
 
 #: bzrlib/builtins.py:4297
 msgid "        bzr merge -r 82 ../bzr.dev"
@@ -3079,6 +3103,8 @@ msgstr "        bzr merge -r 82 ../bzr.dev"
 #: bzrlib/builtins.py:4299
 msgid "    To merge the changes introduced by 82, without previous changes::"
 msgstr ""
+"    Para mesclar as mudanças introduzidas por 82, sem as mudanças "
+"anteriores::"
 
 #: bzrlib/builtins.py:4301
 msgid "        bzr merge -r 81..82 ../bzr.dev"
@@ -3086,7 +3112,7 @@ msgstr "        bzr merge -r 81..82 ../bzr.dev"
 
 #: bzrlib/builtins.py:4303
 msgid "    To apply a merge directive contained in /tmp/merge::"
-msgstr ""
+msgstr "    Para aplicar uma mesclagem diretiva contida em  /tmp/merge::"
 
 #: bzrlib/builtins.py:4305
 msgid "        bzr merge /tmp/merge"
@@ -3156,7 +3182,7 @@ msgstr "Não é possível usar --uncommitted e --revision ao mesmo tempo."
 
 #: bzrlib/builtins.py:4419
 msgid "merger: "
-msgstr ""
+msgstr "mesclar: "
 
 #: bzrlib/builtins.py:4421 bzrlib/bundle/apply_bundle.py:71
 msgid "Nothing to do."
@@ -3350,7 +3376,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4835
 msgid "OTHER_BRANCH may be local or remote."
-msgstr ""
+msgstr "OUTRO_RAMO pode ser local ou remoto."
 
 #: bzrlib/builtins.py:4837
 msgid ""
