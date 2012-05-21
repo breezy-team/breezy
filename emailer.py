@@ -29,6 +29,7 @@ from bzrlib.config import (
     )
 
 from bzrlib.smtp_connection import SMTPConnection
+from bzrlib.email_message import EmailMessage
 
 
 class EmailSender(object):
@@ -241,16 +242,20 @@ class EmailSender(object):
         to_addrs = self.to()
         if isinstance(to_addrs, basestring):
             to_addrs = [to_addrs]
-
-        smtp = self._smtplib_implementation(self.config)
+        header = self.extra_headers()            
+        
+        msg = EmailMessage(from_addr, to_addrs, subject, body)
+        
         if diff:
-            smtp.send_text_and_attachment_email(from_addr, to_addrs,
-                                                subject, body, diff,
-                                                self.diff_filename(),
-                                                self.extra_headers())
-        else:
-            smtp.send_text_email(from_addr, to_addrs, subject, body,
-                                 self.extra_headers())
+            msg.add_inline_attachment(diff, self.diff_filename())
+
+        # Add revision_mail_headers to the headers
+        if header != None:
+            for k, v in header.items():
+                msg[k] = v
+        
+        smtp = self._smtplib_implementation(self.config)
+        smtp.send_email(msg)
 
     def should_send(self):
         post_commit_push_pull = self.config.get('post_commit_push_pull')
