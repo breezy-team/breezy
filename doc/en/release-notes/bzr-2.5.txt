@@ -8,23 +8,24 @@ Bazaar Release Notes
 bzr 2.5.1
 #########
 
-:2.5.1: NOT RELEASED YET
+:2.5.1: 2012-05-22
+
+This is a bugfix release. Most of the bugs dealt https and colocated
+branches glitches. Upgrading is recommended for all users of earlier 2.5
+releases.
 
 External Compatibility Breaks
 *****************************
 
-.. These may require users to change the way they use Bazaar.
+None.
 
 New Features
 ************
 
-.. New commands, options, etc that users may wish to try out.
+None.
 
 Improvements
 ************
-
-.. Improvements to existing commands, especially improved performance 
-   or memory usage, or better results.
 
 * ``bzr rmbranch`` now supports removing colocated branches.
   (Jelmer Vernooij, #920653)
@@ -35,18 +36,18 @@ Improvements
 Bug Fixes
 *********
 
-.. Fixes for situations where bzr would previously crash or give incorrect
-   or undesirable results.
-
 * Connecting with HTTPS via HTTP now correctly uses the host name of the
   destination rather than the proxy when checking certificates.
   (Martin Packman, #944696)
 
-* Fix UnicodeEncodeError when translated progress task messages contain
-  non-ascii text. (Martin Packman, #966934)
-
 * Fixed merge tool availability checking and invocation to search the
   Windows App Path registry in addition to the PATH. (Gordon Tyler, #939605)
+
+* Fixed problem with getting errors about failing to open /dev/tty when using
+  Bazaar Explorer to sign commits. (Mark Grandi, #847388)
+
+* Fix UnicodeEncodeError when translated progress task messages contain
+  non-ascii text. (Martin Packman, #966934)
 
 * Make sure configuration options can provide their own help topic.
   (Jelmer Vernooij, #941672)
@@ -63,21 +64,10 @@ Documentation
 API Changes
 ***********
 
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
-
-Internals
-*********
-
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
+None.
 
 Testing
 *******
-
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
 
 * Add support for pyftpdlib >= 0.7.0 and drop support for previous pyftpdlib
   versions. (Vincent Ladeuil, #956027)
@@ -1099,9 +1089,6 @@ Bug Fixes
 * TreeTransformBase.fixup_new_roots no longer forces trees to have a root, so
   operations that use it, like merge, can now create trees without a root.
   (Aaron Bentley)
-
-* Fixed problem with getting errors about failing to open /dev/tty when using
-  Bazaar Explorer to sign commits. (Mark Grandi, #847388)
 
 Documentation
 *************
