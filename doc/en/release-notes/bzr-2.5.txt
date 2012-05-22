@@ -26,6 +26,9 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* ``bzr rmbranch`` now supports removing colocated branches.
+  (Jelmer Vernooij, #920653)
+
 Bug Fixes
 *********
 
