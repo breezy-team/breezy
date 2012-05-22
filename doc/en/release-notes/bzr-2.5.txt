@@ -29,6 +29,9 @@ Improvements
 * ``bzr rmbranch`` now supports removing colocated branches.
   (Jelmer Vernooij, #920653)
 
+* ``bzr rmbranch`` no longer removes active branches unless ``--force``
+  is specified. (Jelmer Vernooij, #922953)
+
 Bug Fixes
 *********
 

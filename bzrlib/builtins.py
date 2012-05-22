@@ -6473,12 +6473,22 @@ class cmd_remove_branch(Command):
 
     takes_args = ["location?"]
 
-    takes_options = ['directory']
+    takes_options = ['directory',
+        Option('force', help='Remove branch even if it is the active branch.')]
 
     aliases = ["rmbranch"]
 
-    def run(self, directory=None, location=None):
+    def run(self, directory=None, location=None, force=False):
         br = open_nearby_branch(near=directory, location=location)
+        if not force and br.bzrdir.has_workingtree():
+            try:
+                active_branch = br.bzrdir.open_branch(name="")
+            except errors.NotBranchError:
+                active_branch = None
+            if (active_branch is not None and
+                br.control_url == active_branch.control_url):
+                raise errors.BzrCommandError(
+                    gettext("Branch is active. Use --force to remove it."))
         br.bzrdir.destroy_branch(br.name)
 
 
