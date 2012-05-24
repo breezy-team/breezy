@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-05-19 23:18+0000\n"
-"Last-Translator: João Lucas <joao-lucas@live.com>\n"
+"PO-Revision-Date: 2012-05-23 23:28+0000\n"
+"Last-Translator: Winícius Santos de A. Marques <wsamarques@gmail.com>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2012-05-20 04:32+0000\n"
-"X-Generator: Launchpad (build 15259)\n"
+"X-Launchpad-Export-Date: 2012-05-24 10:24+0000\n"
+"X-Generator: Launchpad (build 15288)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -3778,7 +3778,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:5431
 msgid "Do not ask for confirmation before breaking the lock."
-msgstr ""
+msgstr "Não peça confirmação antes de quebrar uma trava."
 
 #: bzrlib/builtins.py:5466
 msgid "The Bazaar smart server protocol over TCP. (default port: 4155)"
@@ -4170,7 +4170,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:6073
 msgid "Reconfigure the type of a bzr directory."
-msgstr ""
+msgstr "Reconfigurar o tipo de um diretório bzr."
 
 #: bzrlib/builtins.py:6075
 msgid "A target configuration must be specified."
@@ -4189,7 +4189,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:6091
 msgid "Tree type"
-msgstr ""
+msgstr "Tipo de árvore"
 
 #: bzrlib/builtins.py:6092
 msgid "The relation between branch and tree."
@@ -12435,6 +12435,8 @@ msgid ""
 "pre_change_branch_tip\n"
 "~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"pre_change_branch_tip\n"
+"~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:121
 msgid "Introduced in: 1.6"
@@ -12477,6 +12479,8 @@ msgid ""
 "transform_fallback_location\n"
 "~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"transform_fallback_location\n"
+"~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:156
 msgid "Introduced in: 1.9"
@@ -12501,12 +12505,16 @@ msgid ""
 "CommandHooks\n"
 "------------"
 msgstr ""
+"CommandHooks\n"
+"------------"
 
 #: en/help_topics/hooks.txt:172
 msgid ""
 "extend_command\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"extend_command\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:175
 msgid "Introduced in: 1.13"
@@ -12524,6 +12532,8 @@ msgid ""
 "get_command\n"
 "~~~~~~~~~~~"
 msgstr ""
+"get_command\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:184 en/help_topics/hooks.txt:196
 #: en/help_topics/hooks.txt:205 en/help_topics/hooks.txt:464
@@ -12545,6 +12555,8 @@ msgid ""
 "get_missing_command\n"
 "~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"get_missing_command\n"
+"~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:198
 msgid ""
@@ -12558,6 +12570,8 @@ msgid ""
 "list_commands\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"list_commands\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:207
 msgid ""
@@ -12572,36 +12586,46 @@ msgid ""
 "post_command\n"
 "~~~~~~~~~~~~"
 msgstr ""
+"post_command\n"
+"~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:204 en/help_topics/hooks.txt:211
 msgid "Introduced in: 2.6"
-msgstr ""
+msgstr "Introduzido no: 2.6"
 
 #: en/help_topics/hooks.txt:206
 msgid "Called after executing a command. Called with the command object."
 msgstr ""
+"Chamado depois de executar um comando. Chamado com o objeto do comando."
 
 #: en/help_topics/hooks.txt:208
 msgid ""
 "pre_command\n"
 "~~~~~~~~~~~"
 msgstr ""
+"pre_command\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:213
 msgid "Called prior to executing a command. Called with the command object."
 msgstr ""
+"Chamado antes de executar um comando. Chamado com o objeto de comando."
 
 #: en/help_topics/hooks.txt:212
 msgid ""
 "_ConfigHooks\n"
 "------------"
 msgstr ""
+"_ConfigHooks\n"
+"------------"
 
 #: en/help_topics/hooks.txt:215
 msgid ""
 "get\n"
 "~~~"
 msgstr ""
+"get\n"
+"~~~"
 
 #: en/help_topics/hooks.txt:218 en/help_topics/hooks.txt:226
 #: en/help_topics/hooks.txt:233 en/help_topics/hooks.txt:241
@@ -12615,62 +12639,86 @@ msgid ""
 "Invoked when a config option is read. The signature is (stack, name,\n"
 "value)."
 msgstr ""
+"Chamado quando uma opção de configuração é lida. A assinatura é (pilha, "
+"nome,\n"
+"valor)."
 
 #: en/help_topics/hooks.txt:223
 msgid ""
 "load\n"
 "~~~~"
 msgstr ""
+"load\n"
+"~~~~"
 
 #: en/help_topics/hooks.txt:228
 msgid "Invoked when a config store is loaded. The signature is (store)."
 msgstr ""
+"Chamado quando uma configuração de armazenamento é carregada. A assinatura é "
+"(armazenamento)."
 
 #: en/help_topics/hooks.txt:230
 msgid ""
 "remove\n"
 "~~~~~~"
 msgstr ""
+"remove\n"
+"~~~~~~"
 
 #: en/help_topics/hooks.txt:235
 msgid ""
 "Invoked when a config option is removed. The signature is (stack,\n"
 "name)."
 msgstr ""
+"Chamado quando uma opção de configuração é removida. A assinatura é (pilha,\n"
+"nome)."
 
 #: en/help_topics/hooks.txt:238
 msgid ""
 "save\n"
 "~~~~"
 msgstr ""
+"save\n"
+"~~~~"
 
 #: en/help_topics/hooks.txt:243
 msgid "Invoked when a config store is saved. The signature is (store)."
 msgstr ""
+"Chamado quando uma configuração de armazenamento é salva. A assinatura é "
+"(armazenamento)."
 
 #: en/help_topics/hooks.txt:245
 msgid ""
 "set\n"
 "~~~"
 msgstr ""
+"set\n"
+"~~~"
 
 #: en/help_topics/hooks.txt:250
 msgid ""
 "Invoked when a config option is set. The signature is (stack, name,\n"
 "value)."
 msgstr ""
+"Chamado quando uma opção de configuração é definida. A assinatura é (pilha, "
+"nome,\n"
+"valor)."
 
 #: en/help_topics/hooks.txt:253
 msgid ""
 "ControlDirHooks\n"
 "---------------"
 msgstr ""
+"ControlDirHooks\n"
+"---------------"
 
 #: en/help_topics/hooks.txt:256
 msgid ""
 "post_repo_init\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"post_repo_init\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:261
 msgid ""
@@ -12683,6 +12731,8 @@ msgid ""
 "pre_open\n"
 "~~~~~~~~"
 msgstr ""
+"pre_open\n"
+"~~~~~~~~"
 
 #: en/help_topics/hooks.txt:267
 msgid "Introduced in: 1.14"
@@ -12699,12 +12749,16 @@ msgid ""
 "InfoHooks\n"
 "---------"
 msgstr ""
+"InfoHooks\n"
+"---------"
 
 #: en/help_topics/hooks.txt:275
 msgid ""
 "repository\n"
 "~~~~~~~~~~"
 msgstr ""
+"repository\n"
+"~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:278 en/help_topics/hooks.txt:297
 #: en/help_topics/hooks.txt:521
@@ -12723,12 +12777,16 @@ msgid ""
 "LockHooks\n"
 "---------"
 msgstr ""
+"LockHooks\n"
+"---------"
 
 #: en/help_topics/hooks.txt:287
 msgid ""
 "lock_acquired\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"lock_acquired\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:292
 msgid ""
@@ -12740,6 +12798,8 @@ msgid ""
 "lock_broken\n"
 "~~~~~~~~~~~"
 msgstr ""
+"lock_broken\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:299
 msgid "Called with a bzrlib.lock.LockResult when a physical lock is broken."
@@ -12750,6 +12810,8 @@ msgid ""
 "lock_released\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"lock_released\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:306
 msgid ""
@@ -12761,12 +12823,16 @@ msgid ""
 "MergeHooks\n"
 "----------"
 msgstr ""
+"MergeHooks\n"
+"----------"
 
 #: en/help_topics/hooks.txt:311
 msgid ""
 "merge_file_content\n"
 "~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"merge_file_content\n"
+"~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:314
 msgid "Introduced in: 2.1"
@@ -12787,6 +12853,8 @@ msgid ""
 "post_merge\n"
 "~~~~~~~~~~"
 msgstr ""
+"post_merge\n"
+"~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:326 en/help_topics/hooks.txt:334
 #: en/help_topics/hooks.txt:384 en/help_topics/hooks.txt:402
@@ -12799,30 +12867,41 @@ msgid ""
 "Called after a merge. Receives a Merger object as the single argument.\n"
 "The return value is ignored."
 msgstr ""
+"Chamado depois de uma mesclagem. Recebe um objeto mesclado como único "
+"argumento.\n"
+"O valor de retorno é ignorado."
 
 #: en/help_topics/hooks.txt:331
 msgid ""
 "pre_merge\n"
 "~~~~~~~~~"
 msgstr ""
+"pre_merge\n"
+"~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:336
 msgid ""
 "Called before a merge. Receives a Merger object as the single\n"
 "argument."
 msgstr ""
+"Chamado antes de uma mesclagem. Recebe um objeto mesclado como único\n"
+"argumento."
 
 #: en/help_topics/hooks.txt:339
 msgid ""
 "MergeDirectiveHooks\n"
 "-------------------"
 msgstr ""
+"MergeDirectiveHooks\n"
+"-------------------"
 
 #: en/help_topics/hooks.txt:342
 msgid ""
 "merge_request_body\n"
 "~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"merge_request_body\n"
+"~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:345
 msgid "Introduced in: 1.15.0"
@@ -12840,12 +12919,16 @@ msgid ""
 "MessageEditorHooks\n"
 "------------------"
 msgstr ""
+"MessageEditorHooks\n"
+"------------------"
 
 #: en/help_topics/hooks.txt:354
 msgid ""
 "commit_message_template\n"
 "~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"commit_message_template\n"
+"~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:357
 msgid "Introduced in: 1.10"
@@ -12867,6 +12950,8 @@ msgid ""
 "set_commit_message\n"
 "~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"set_commit_message\n"
+"~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:372
 msgid ""
@@ -12882,12 +12967,16 @@ msgid ""
 "MutableTreeHooks\n"
 "----------------"
 msgstr ""
+"MutableTreeHooks\n"
+"----------------"
 
 #: en/help_topics/hooks.txt:381
 msgid ""
 "post_build_tree\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"post_build_tree\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:386
 msgid ""
@@ -12912,6 +13001,8 @@ msgid ""
 "post_transform\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"post_transform\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:404
 msgid ""
@@ -12924,6 +13015,8 @@ msgid ""
 "pre_transform\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"pre_transform\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:412
 msgid ""
@@ -12936,6 +13029,8 @@ msgid ""
 "start_commit\n"
 "~~~~~~~~~~~~"
 msgstr ""
+"start_commit\n"
+"~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:420
 msgid ""
@@ -12950,12 +13045,16 @@ msgid ""
 "SmartClientHooks\n"
 "----------------"
 msgstr ""
+"SmartClientHooks\n"
+"----------------"
 
 #: en/help_topics/hooks.txt:428
 msgid ""
 "call\n"
 "~~~~"
 msgstr ""
+"call\n"
+"~~~~"
 
 #: en/help_topics/hooks.txt:431
 msgid "Introduced in: unknown"
@@ -12973,12 +13072,16 @@ msgid ""
 "SmartServerHooks\n"
 "----------------"
 msgstr ""
+"SmartServerHooks\n"
+"----------------"
 
 #: en/help_topics/hooks.txt:440
 msgid ""
 "server_exception\n"
 "~~~~~~~~~~~~~~~~"
 msgstr ""
+"server_exception\n"
+"~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:445
 msgid ""
@@ -12993,6 +13096,8 @@ msgid ""
 "server_started\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"server_started\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:453 en/help_topics/hooks.txt:472
 msgid "Introduced in: 0.16"
@@ -13012,6 +13117,8 @@ msgid ""
 "server_started_ex\n"
 "~~~~~~~~~~~~~~~~~"
 msgstr ""
+"server_started_ex\n"
+"~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:466
 msgid ""
@@ -13024,6 +13131,8 @@ msgid ""
 "server_stopped\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"server_stopped\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:474
 msgid ""
@@ -13037,12 +13146,16 @@ msgid ""
 "StatusHooks\n"
 "-----------"
 msgstr ""
+"StatusHooks\n"
+"-----------"
 
 #: en/help_topics/hooks.txt:481
 msgid ""
 "post_status\n"
 "~~~~~~~~~~~"
 msgstr ""
+"post_status\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:484 en/help_topics/hooks.txt:495
 msgid "Introduced in: 2.3"
@@ -13062,6 +13175,8 @@ msgid ""
 "pre_status\n"
 "~~~~~~~~~~"
 msgstr ""
+"pre_status\n"
+"~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:497
 msgid ""
@@ -13077,12 +13192,16 @@ msgid ""
 "TransportHooks\n"
 "--------------"
 msgstr ""
+"TransportHooks\n"
+"--------------"
 
 #: en/help_topics/hooks.txt:506
 msgid ""
 "post_connect\n"
 "~~~~~~~~~~~~"
 msgstr ""
+"post_connect\n"
+"~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:511
 msgid ""
@@ -13096,12 +13215,16 @@ msgid ""
 "RioVersionInfoBuilderHooks\n"
 "--------------------------"
 msgstr ""
+"RioVersionInfoBuilderHooks\n"
+"--------------------------"
 
 #: en/help_topics/hooks.txt:518
 msgid ""
 "revision\n"
 "~~~~~~~~"
 msgstr ""
+"revision\n"
+"~~~~~~~~"
 
 #: en/help_topics/hooks.txt:523
 msgid ""
@@ -13122,6 +13245,9 @@ msgid ""
 "These\n"
 "can be used with most commands that expect a location, such as `bzr push`."
 msgstr ""
+"Bazaar define alguns apelidos para locais associados a um ramo. Estes\n"
+"podem ser usados com a maioria dos comandos que esperam um local, tal como "
+"`bzr push`."
 
 #: en/help_topics/location-alias.txt:7
 msgid "The aliases are::"
@@ -13143,19 +13269,23 @@ msgstr ""
 
 #: en/help_topics/location-alias.txt:18
 msgid "    bzr push :parent\n"
-msgstr ""
+msgstr "    bzr push :parent\n"
 
 #: en/help_topics/log-formats.txt:1
 msgid ""
 "Log Formats\n"
 "==========="
 msgstr ""
+"Formatos de logs\n"
+"=============="
 
 #: en/help_topics/log-formats.txt:4
 msgid ""
 "A log format controls how information about each revision is displayed.\n"
 "The standard log formats are compared below::"
 msgstr ""
+"Um formato de log controla como a informação sobre cada revisão é exibida.\n"
+"Os formatos de log padrão são comparados abaixo::"
 
 #: en/help_topics/log-formats.txt:7
 msgid ""
@@ -13188,12 +13318,17 @@ msgid ""
 "  [DEFAULT]\n"
 "  log_format = short"
 msgstr ""
+"  [DEFAULT]\n"
+"  log_format = short"
 
 #: en/help_topics/log-formats.txt:30
 msgid ""
 "Alternatively, to change the log format used for a given query, use the\n"
 "--long, --short or --line options."
 msgstr ""
+"Como alternativa, para alterar o formato de log usado para uma determinada "
+"consulta, utilize\n"
+"as opções --long, --short ou --line."
 
 #: en/help_topics/log-formats.txt:33
 msgid ""
@@ -13237,6 +13372,8 @@ msgid ""
 "Patterns\n"
 "========"
 msgstr ""
+"Padrões\n"
+"========"
 
 #: en/help_topics/patterns.txt:4
 msgid ""
@@ -13285,10 +13422,12 @@ msgstr ""
 msgid ""
 "For example, a case insensitive match for ``foo`` may be specified as::"
 msgstr ""
+"Por exemplo, uma combinação case insensitive para ``foo`` pode ser "
+"especificada como::"
 
 #: en/help_topics/patterns.txt:32
 msgid "  RE:(?i)foo"
-msgstr ""
+msgstr "  RE:(?i)foo"
 
 #: en/help_topics/patterns.txt:34
 msgid ""
@@ -13303,7 +13442,7 @@ msgstr ""
 
 #: en/help_topics/revisionspec.txt:1
 msgid "Revision Identifiers"
-msgstr ""
+msgstr "Identificadores da revisão"
 
 #: en/help_topics/revisionspec.txt:3
 msgid ""
@@ -13383,15 +13522,15 @@ msgstr ""
 
 #: en/help_topics/revisionspec.txt:53
 msgid "In addition, plugins can provide other keywords."
-msgstr ""
+msgstr "Além disso, plugins podem fornecer outras palavras-chave."
 
 #: en/help_topics/revisionspec.txt:55
 msgid "A detailed description of each keyword is given below."
-msgstr ""
+msgstr "Uma descrição detalhada de cada palavra-chave é dada abaixo."
 
 #: en/help_topics/revisionspec.txt:57
 msgid ":revid:"
-msgstr ""
+msgstr ":revid:"
 
 #: en/help_topics/revisionspec.txt:59
 msgid ""
@@ -13408,7 +13547,7 @@ msgstr ""
 
 #: en/help_topics/revisionspec.txt:66
 msgid ":submit:"
-msgstr ""
+msgstr ":submit:"
 
 #: en/help_topics/revisionspec.txt:68
 msgid ""
@@ -13438,7 +13577,7 @@ msgstr "      $ bzr diff -r submit:"
 
 #: en/help_topics/revisionspec.txt:81
 msgid ":ancestor:"
-msgstr ""
+msgstr ":ancestor:"
 
 #: en/help_topics/revisionspec.txt:83
 msgid "    Supply the path to a branch to select the common ancestor."
@@ -13456,10 +13595,12 @@ msgid ""
 "      ancestor:/path/to/branch\n"
 "      $ bzr diff -r ancestor:../../mainline/branch"
 msgstr ""
+"      ancestor:/caminho/para/ramo\n"
+"      $ bzr diff -r ancestor:../../mainline/ramo"
 
 #: en/help_topics/revisionspec.txt:98
 msgid ":date:"
-msgstr ""
+msgstr ":date:"
 
 #: en/help_topics/revisionspec.txt:100
 msgid ""
@@ -13468,14 +13609,21 @@ msgid ""
 "    Matches the first entry after a given date (either at midnight or\n"
 "    at a specified time)."
 msgstr ""
+"    Fornecer uma data para selecionar a primeira revisão que corresponde à "
+"data.\n"
+"    A data pode ser 'yesterday', 'today', 'tomorrow' ou uma string AAAA-MM-"
+"DD.\n"
+"    Coincide com a primeira entrada depois da data fornecida (ou à meia-"
+"noite\n"
+"    ou em uma hora específica)."
 
 #: en/help_topics/revisionspec.txt:105
 msgid "    One way to display all the changes since yesterday would be::"
-msgstr ""
+msgstr "    Uma maneira de mostrar todas as mudanças desde ontem seria::"
 
 #: en/help_topics/revisionspec.txt:107
 msgid "        bzr log -r date:yesterday.."
-msgstr ""
+msgstr "        bzr log -r date:yesterday.."
 
 #: en/help_topics/revisionspec.txt:111
 msgid ""
@@ -13484,10 +13632,13 @@ msgid ""
 "      date:2006-08-14,17:10:14  -> select the first revision after\n"
 "                                   August 14th, 2006 at 5:10pm."
 msgstr ""
+"      date:yesterday            -> Seleciona a primeira versão desde ontem.\n"
+"      date:2006-08-14,17:10:14  -> Seleciona a primeira versão depois de \n"
+"                                   14 de Agosto de 2006, 5:10pm."
 
 #: en/help_topics/revisionspec.txt:115
 msgid ":branch:"
-msgstr ":ramo:"
+msgstr ":branch:"
 
 #: en/help_topics/revisionspec.txt:117
 msgid "    Supply the path to a branch to select its last revision."
@@ -13534,7 +13685,7 @@ msgstr ""
 
 #: en/help_topics/revisionspec.txt:145
 msgid ":before:"
-msgstr ""
+msgstr ":before:"
 
 #: en/help_topics/revisionspec.txt:147
 msgid ""
@@ -13564,7 +13715,7 @@ msgstr ""
 
 #: en/help_topics/revisionspec.txt:163
 msgid ":annotate:"
-msgstr ""
+msgstr ":annotate:"
 
 #: en/help_topics/revisionspec.txt:165
 msgid ""
@@ -13577,7 +13728,7 @@ msgstr ""
 
 #: en/help_topics/revisionspec.txt:170
 msgid ":mainline:"
-msgstr ""
+msgstr ":mainline:"
 
 #: en/help_topics/revisionspec.txt:172
 msgid ""
@@ -13586,7 +13737,7 @@ msgstr ""
 
 #: en/help_topics/revisionspec.txt:174
 msgid ":last:"
-msgstr ""
+msgstr ":last:"
 
 #: en/help_topics/revisionspec.txt:176
 msgid ""
@@ -13600,6 +13751,8 @@ msgid ""
 "      last:1        -> return the last revision\n"
 "      last:3        -> return the revision 2 before the end.\n"
 msgstr ""
+"      last:1        -> retorna a última versão\n"
+"      last:3        -> retorna a antepenúltima versão.\n"
 
 #: en/help_topics/rules.txt:1
 msgid ""
@@ -13621,12 +13774,16 @@ msgid ""
 "    [name *.bat]\n"
 "    eol = native"
 msgstr ""
+"    [nome *.bat]\n"
+"    eol = native"
 
 #: en/help_topics/rules.txt:14
 msgid ""
 "    [name *.html *.xml]\n"
 "    keywords = xml_escape"
 msgstr ""
+"    [nome *.html *.xml]\n"
+"    keywords = xml_escape"
 
 #: en/help_topics/rules.txt:17
 msgid ""
@@ -13720,6 +13877,8 @@ msgid ""
 "Special character handling in URLs\n"
 "=================================="
 msgstr ""
+"Tratamento de caracteres especiais em URLs\n"
+"=================================="
 
 #: en/help_topics/url-special-chars.txt:4
 msgid "Bazaar allows locations to be specified in multiple ways, either:"
@@ -13739,6 +13898,10 @@ msgid ""
 "that are specified it will automatically determine the appropriate URL\n"
 "representation, and escape special characters where necessary."
 msgstr ""
+"Internamente bzr trata todas as localizações como URLs. Para quaisquer\n"
+"caminhos do sistema de arquivos que sejam especificados ele irá determinar\n"
+"automaticamente a representação em URL apropriada, escapando\n"
+"caracteres especiais quando necessário."
 
 #: en/help_topics/url-special-chars.txt:14
 msgid ""
@@ -13759,6 +13922,11 @@ msgid ""
 "generous in what it accepts as a URL and to print them in a way that\n"
 "will be readable."
 msgstr ""
+"URLs representam caracteres não-ASCII em uma codificação definida pelo "
+"servidor,\n"
+"usualmente UTF-8. Os escapes % devem ser de bytes UTF-8. Bazaar tenta ser\n"
+"generoso no que ele aceita como URL e imprimí-las de uma maneira que seja\n"
+"legível."
 
 #: en/help_topics/url-special-chars.txt:24
 msgid ""
@@ -13767,6 +13935,9 @@ msgid ""
 "ways of accessing the content (0x2F, or 47, is the ASCII code for forward "
 "slash)::"
 msgstr ""
+"Por exemplo, se você possui um diretório chamado '/tmp/%2False' estas são\n"
+"maneiras válidas de acessar o conteúdo (0x2F, ou 47, é o código ASCII para a "
+"barra)::"
 
 #: en/help_topics/url-special-chars.txt:27
 msgid ""
@@ -13804,6 +13975,7 @@ msgstr ""
 msgid ""
 "_`segment parameters`: http://www.ietf.org/rfc/rfc3986.txt (section 3.3)"
 msgstr ""
+"_`segment parameters`: http://www.ietf.org/rfc/rfc3986.txt (seção 3.3)"
 
 #: en/help_topics/url-special-chars.txt:43
 msgid ""
@@ -13811,6 +13983,9 @@ msgid ""
 "literal\n"
 "comma in a file system path, specify a URL and URL encode the comma::"
 msgstr ""
+"Vírgula também é especial em todos os caminhos de arquivos do sistema que "
+"sejam especificados. Para usar uma vírgula literal em um caminho de arquivo "
+"do sistema, especifique a URL e codifique na URL a vírgula::"
 
 #: en/help_topics/url-special-chars.txt:46
 msgid ""
@@ -13858,10 +14033,11 @@ msgstr "Modificadores suportados::"
 #: en/help_topics/urlspec.txt:16
 msgid "  gio+                Access using any GIO supported protocols."
 msgstr ""
+"  gio+                Acessar usando qualquer protocolo GIO suportado."
 
 #: en/help_topics/urlspec.txt:18
 msgid "Bazaar supports all of the standard parts within the URL::"
-msgstr ""
+msgstr "Bazar oferece suporte a todas peças normalizadas dentro da URL::"
 
 #: en/help_topics/urlspec.txt:20
 msgid "  <protocol>://[user[:password]@]host[:port]/[path]"
