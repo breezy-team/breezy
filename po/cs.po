@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-05-20 20:24+0000\n"
+"PO-Revision-Date: 2012-05-25 21:02+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-05-24 10:24+0000\n"
+"X-Launchpad-Export-Date: 2012-05-26 04:30+0000\n"
 "X-Generator: Launchpad (build 15288)\n"
 
 #: bzrlib/add.py:95
@@ -11427,17 +11427,19 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:147
 msgid "Disabling ``myplugin`` and ``yourplugin`` is achieved by::"
-msgstr ""
+msgstr "Zakázání ``můjmodul`` a ``tvůjmodul``lze provést::"
 
 #: en/help_topics/configuration.txt:149
 msgid "  BZR_DISABLE_PLUGINS='myplugin:yourplugin'"
-msgstr ""
+msgstr "  BZR_DISABLE_PLUGINS='můjmodul:tvůjmodul'"
 
 #: en/help_topics/configuration.txt:151
 msgid ""
 "BZR_PLUGINS_AT\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"BZR_PLUGINS_AT\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:154
 msgid ""
@@ -11471,6 +11473,8 @@ msgid ""
 "Example:\n"
 "~~~~~~~~"
 msgstr ""
+"Příklad:\n"
+"~~~~~~~~"
 
 #: en/help_topics/configuration.txt:175
 msgid ""
@@ -11483,10 +11487,13 @@ msgid ""
 "BZRPATH\n"
 "~~~~~~~"
 msgstr ""
+"BZRPATH\n"
+"~~~~~~~"
 
 #: en/help_topics/configuration.txt:181
 msgid "The path where Bazaar should look for shell plugin external commands."
 msgstr ""
+"Cesta kde Bazaar by měl hledat externí příkazy zásuvného modulu shellu."
 
 #: en/help_topics/configuration.txt:183
 msgid ""
@@ -11494,6 +11501,9 @@ msgid ""
 "http_proxy, https_proxy\n"
 "~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"\n"
+"http_proxy, https_proxy\n"
+"~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:187
 msgid "Specifies the network proxy for outgoing connections, for example::"
@@ -11511,12 +11521,17 @@ msgid ""
 "Configuration files\n"
 "-------------------"
 msgstr ""
+"\n"
+"Soubory s nastavením\n"
+"-------------------"
 
 #: en/help_topics/configuration.txt:196
 msgid ""
 "Location\n"
 "~~~~~~~~"
 msgstr ""
+"Umístění\n"
+"~~~~~~~~"
 
 #: en/help_topics/configuration.txt:199
 msgid ""
