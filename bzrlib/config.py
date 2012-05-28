@@ -2398,7 +2398,8 @@ class Option(object):
                 value = self.default()
                 if not isinstance(value, unicode):
                     raise AssertionError(
-                    'Callable default values should be unicode')
+                        "Callable default value for '%s' should be unicode"
+                        % (self.name))
             else:
                 value = self.default
         return value

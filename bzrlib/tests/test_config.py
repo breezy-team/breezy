@@ -2477,7 +2477,6 @@ class TestRegisteredOptions(tests.TestCase):
 
     def test_help_is_set(self):
         option_help = self.registry.get_help(self.option_name)
-        self.assertNotEquals(None, option_help)
         # Come on, think about the user, he really wants to know what the
         # option is about
         self.assertIsNot(None, option_help)
@@ -3584,6 +3583,7 @@ class TestStackWithSimpleStore(tests.TestCase):
         return config.MemoryStack(content)
 
     def test_override_value_from_env(self):
+        self.overrideEnv('FOO', None)
         self.registry.register(
             config.Option('foo', default='bar', override_from_env=['FOO']))
         self.overrideEnv('FOO', 'quux')
@@ -3592,6 +3592,9 @@ class TestStackWithSimpleStore(tests.TestCase):
         self.assertEquals('quux', conf.get('foo'))
 
     def test_first_override_value_from_env_wins(self):
+        self.overrideEnv('NO_VALUE', None)
+        self.overrideEnv('FOO', None)
+        self.overrideEnv('BAZ', None)
         self.registry.register(
             config.Option('foo', default='bar',
                           override_from_env=['NO_VALUE', 'FOO', 'BAZ']))

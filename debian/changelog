@@ -1,3 +1,9 @@
+bzr (2.6.0~bzr6524-1) UNRELEASED; urgency=low
+
+  * New upstream snapshot.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 28 May 2012 22:28:52 +0200
+
 bzr (2.6.0~bzr6520-2) unstable; urgency=low
 
   * Remove Jeff Bailey and Reinhard Tartler from uploaders.

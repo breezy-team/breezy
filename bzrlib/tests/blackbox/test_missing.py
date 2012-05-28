@@ -234,3 +234,29 @@ class TestMissing(tests.TestCaseWithTransport):
         out1, err1 = self.run_bzr('missing ../b', retcode=1, working_dir='a')
         self.assertEqualDiff(out1, out2)
         self.assertEqualDiff(err1, err2)
+
+    def test_missing_tags(self):
+        """Test showing tags"""
+
+        # create a source branch
+        a_tree = self.make_branch_and_tree('a')
+        self.build_tree_contents([('a/a', 'initial\n')])
+        a_tree.add('a')
+        a_tree.commit(message='initial')
+
+        # clone and add a differing revision
+        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+        self.build_tree_contents([('b/a', 'initial\nmore\n')])
+        b_tree.commit(message='more')
+        b_tree.branch.tags.set_tag('a-tag', b_tree.last_revision())
+
+        for log_format in ['long', 'short', 'line']:
+            out, err = self.run_bzr(
+                'missing --log-format={0} ../a'.format(log_format),
+                working_dir='b', retcode=1)
+            self.assertContainsString(out, 'a-tag')
+
+            out, err = self.run_bzr(
+                'missing --log-format={0} ../b'.format(log_format),
+                working_dir='a', retcode=1)
+            self.assertContainsString(out, 'a-tag')
