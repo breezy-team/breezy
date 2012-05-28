@@ -1153,7 +1153,9 @@ class cmd_pull(Command):
                  "the master branch."
             ),
         Option('show-base',
-            help="Show base revision text in conflicts.")
+            help="Show base revision text in conflicts."),
+        Option('overwrite-tags',
+            help="Overwrite tags only."),
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
@@ -1161,7 +1163,14 @@ class cmd_pull(Command):
     def run(self, location=None, remember=None, overwrite=False,
             revision=None, verbose=False,
             directory=None, local=False,
-            show_base=False):
+            show_base=False, overwrite_tags=False):
+
+        if overwrite:
+            overwrite = ["history", "tags"]
+        elif overwrite_tags:
+            overwrite = ["tags"]
+        else:
+            overwrite = []
         # FIXME: too much stuff is in the command class
         revision_id = None
         mergeable = None
@@ -1305,6 +1314,8 @@ class cmd_push(Command):
         Option('no-tree',
                help="Don't populate the working tree, even for protocols"
                " that support it."),
+        Option('overwrite-tags',
+              help="Overwrite tags only."),
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
@@ -1312,8 +1323,16 @@ class cmd_push(Command):
     def run(self, location=None, remember=None, overwrite=False,
         create_prefix=False, verbose=False, revision=None,
         use_existing_dir=False, directory=None, stacked_on=None,
-        stacked=False, strict=None, no_tree=False):
+        stacked=False, strict=None, no_tree=False,
+        overwrite_tags=False):
         from bzrlib.push import _show_push_branch
+
+        if overwrite:
+            overwrite = ["history", "tags"]
+        elif overwrite_tags:
+            overwrite = ["tags"]
+        else:
+            overwrite = []
 
         if directory is None:
             directory = '.'
@@ -5002,9 +5021,13 @@ class cmd_missing(Command):
                              "You have %d extra revisions:\n", 
                              len(local_extra)) %
                 len(local_extra))
+            rev_tag_dict = {}
+            if local_branch.supports_tags():
+                rev_tag_dict = local_branch.tags.get_reverse_tag_dict()
             for revision in iter_log_revisions(local_extra,
                                 local_branch.repository,
-                                verbose):
+                                verbose,
+                                rev_tag_dict):
                 lf.log_revision(revision)
             printed_local = True
             status_code = 1
@@ -5018,9 +5041,12 @@ class cmd_missing(Command):
                              "You are missing %d revisions:\n",
                              len(remote_extra)) %
                 len(remote_extra))
+            if remote_branch.supports_tags():
+                rev_tag_dict = remote_branch.tags.get_reverse_tag_dict()
             for revision in iter_log_revisions(remote_extra,
                                 remote_branch.repository,
-                                verbose):
+                                verbose,
+                                rev_tag_dict):
                 lf.log_revision(revision)
             status_code = 1
 
