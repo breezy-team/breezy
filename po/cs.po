@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-05-25 21:02+0000\n"
+"PO-Revision-Date: 2012-05-28 20:22+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-05-26 04:30+0000\n"
-"X-Generator: Launchpad (build 15288)\n"
+"X-Launchpad-Export-Date: 2012-05-29 04:30+0000\n"
+"X-Generator: Launchpad (build 15316)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -11451,12 +11451,22 @@ msgid ""
 "is inconvenient). ``BZR_PLUGINS_AT`` allows such directories even\n"
 "if they don't appear in ``BZR_PLUGIN_PATH`` ."
 msgstr ""
+"Při přidávání nové funkce nebo práce na chybě v modulu,\n"
+"vývojáři často potřebují použít jeho konkrétní verzi.\n"
+"Protože python požaduje, aby adresář obsahující\n"
+"kód byl pojmenován stejně jako samotný modul, čímž\n"
+"znemožňuje použití libovolných názvů adresářů\n"
+"(použít dvouúrovňové rozvržení adresářů není praktické).\n"
+"``BZR_PLUGINS_AT`` takovéto adresáře umožňuje\n"
+"i když se neobjevují v ``BZR_PLUGIN_PATH`` ."
 
 #: en/help_topics/configuration.txt:162
 msgid ""
 "Plugins specified in this environment variable takes precedence\n"
 "over the ones in ``BZR_PLUGIN_PATH``."
 msgstr ""
+"Zásuvné moduly zadané v této proměnné prostředí mají přednost\n"
+"před těmi v ``BZR_PLUGIN_PATH``."
 
 #: en/help_topics/configuration.txt:165
 msgid ""
@@ -11467,6 +11477,11 @@ msgid ""
 "(i.e. ``plugins/myplugin`` not ``plugins``).  Use ':' as the list\n"
 "separator, use ';' on windows."
 msgstr ""
+"Proměnná určuje seznam obsahující ``název_modulu@cesta``\n"
+"``název_modulu`` je název modulu tak, jak je zobrazen v\n"
+"cestách modulu python,``cesta`` je cesta k adresáři\n"
+"obsahující vlastní kód modulu (např. ``moduly/můjmodul`` ne\n"
+"``moduly``). Použijte ':' jako oddělovač položek, ve windows ';'."
 
 #: en/help_topics/configuration.txt:172
 msgid ""
@@ -11481,6 +11496,8 @@ msgid ""
 "Using a specific version of ``myplugin``:\n"
 "``BZR_PLUGINS_AT='myplugin@/home/me/bugfixes/123456-myplugin``"
 msgstr ""
+"Použití konkrétní revize ``mého modulu``:\n"
+"``BZR_PLUGINS_AT='můjmodul@/domů/já/opravychyb/123456-můjmodul``"
 
 #: en/help_topics/configuration.txt:178
 msgid ""
@@ -11507,13 +11524,15 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:187
 msgid "Specifies the network proxy for outgoing connections, for example::"
-msgstr ""
+msgstr "Určí síťové proxy pro odchozí připojení, například::"
 
 #: en/help_topics/configuration.txt:189
 msgid ""
 "  http_proxy=http://proxy.example.com:3128/ \n"
 "  https_proxy=http://proxy.example.com:3128/"
 msgstr ""
+"  http_proxy=http://proxy.priklad.cz:3128/ \n"
+"  https_proxy=http://proxy.priklad.cz:3128/"
 
 #: en/help_topics/configuration.txt:192
 msgid ""
@@ -11541,26 +11560,34 @@ msgid ""
 "Windows. (You can check the location for your system by using\n"
 "``bzr version``.)"
 msgstr ""
+"Soubory s nastavením jsou umístěny v ``$HOME/.bazaar`` v Unix a\n"
+"``C:\\Documents and Settings\\<už.jméno>\\Application Data\\Bazaar\\2.0`` "
+"ve\n"
+"Windows. (Umístění pro Váš systém můžete zjistit pomocí ``bzr version``.)"
 
 #: en/help_topics/configuration.txt:204
 msgid "There are three primary configuration files in this location:"
-msgstr ""
+msgstr "V tomto umístění existují tři hlavní soubory s nastavením:"
 
 #: en/help_topics/configuration.txt:206
 msgid "* ``bazaar.conf`` describes default configuration options,"
-msgstr ""
+msgstr "* ``bazaar.conf`` popisuje standardní volby nastavení"
 
 #: en/help_topics/configuration.txt:208
 msgid ""
 "* ``locations.conf`` describes configuration information for\n"
 "  specific branch locations,"
 msgstr ""
+"* ``locations.conf`` obsahuje informace o nastavení pro\n"
+"  konkrétní umístění větví,"
 
 #: en/help_topics/configuration.txt:211
 msgid ""
 "* ``authentication.conf`` describes credential information for\n"
 "  remote servers."
 msgstr ""
+"* ``authentication.conf`` obsahuje informace o pověření pro\n"
+"  vzdálené servery."
 
 #: en/help_topics/configuration.txt:214
 msgid ""
@@ -11573,24 +11600,35 @@ msgid ""
 "you\n"
 "can do so in ``locations.conf``."
 msgstr ""
+"Každá větev může také obsahovat soubor s nastavením, který upraví hodnoty\n"
+"pouze pro tuto větev. Tento soubor je umístěn v ``.bzr/branch/branch.conf``\n"
+"uvnitř větve. Tento soubor je viditelný pro všechny uživatele větve, pokud\n"
+"chcete potlačit jednu z hodnot větve nastavením, které platí pouze pro Vás,\n"
+"můžete tak provést v ``locations.conf``."
 
 #: en/help_topics/configuration.txt:220
 msgid ""
 "General format\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"Obecný formát\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:223
 msgid ""
 "An ini file has three types of contructs: section headers, section\n"
 "options and comments."
 msgstr ""
+"Soubor ini má tři typy konstruktů: hlavičky částí, možnosti částí\n"
+"a komentáře."
 
 #: en/help_topics/configuration.txt:226
 msgid ""
 "Comments\n"
 "^^^^^^^^"
 msgstr ""
+"Komentáře\n"
+"^^^^^^^^"
 
 #: en/help_topics/configuration.txt:229
 msgid ""
@@ -11598,22 +11636,29 @@ msgid ""
 "mark\", \"pound sign\" or \"number sign\"). Comment lines are ignored by\n"
 "Bazaar when parsing ini files."
 msgstr ""
+"Komentář v jakémkoliv řádku začíná \"#\" (někdy nazýván \"mřížítko\",\n"
+"\"křížek\", nebo \"znak čísla\"). Řádky komentáři jsou během zpracování\n"
+"souborů ini Bazaarem ignorovány."
 
 #: en/help_topics/configuration.txt:233
 msgid ""
 "Section headers\n"
 "^^^^^^^^^^^^^^^"
 msgstr ""
+"Hlavičky částí\n"
+"^^^^^^^^^^^^^^^"
 
 #: en/help_topics/configuration.txt:236
 msgid ""
 "A section header is a word enclosed in brackets that starts at the begining\n"
 "of a line.  A typical section header looks like this::"
 msgstr ""
+"Hlavička části je slovo uzavřené do závorek, které začínají na začátku\n"
+"řádku. Typická hlavička části vypadá takto::"
 
 #: en/help_topics/configuration.txt:239
 msgid "    [DEFAULT]"
-msgstr ""
+msgstr "    [DEFAULT]"
 
 #: en/help_topics/configuration.txt:241
 msgid ""
@@ -11622,6 +11667,9 @@ msgid ""
 "for\n"
 "setting options which can be overridden with the branch config file."
 msgstr ""
+"Jediné platné hlavičky části v bazaar.conf jsou [DEFAULT] a [ALIASES].\n"
+"Hlavičky jsou citlivé na velikost písmen. Výchozí část poskytuje volby\n"
+"nastavení, které mohou být potlačeny soubor nastavení větve."
 
 #: en/help_topics/configuration.txt:245
 msgid ""
@@ -11630,12 +11678,18 @@ msgid ""
 "potentially valid section headers. A section header uses the path for\n"
 "the branch as the section header. Some examples include::"
 msgstr ""
+"V ``locations.conf`` jsou použity volby z části, které mají nejdelší shodu\n"
+"s hlavičkou části s výjimkou jiných potenciálně platných hlaviček částí.\n"
+"Hlavička částí používá cestu pro větev jako hlavičku části.\n"
+"Některé příklady::"
 
 #: en/help_topics/configuration.txt:250
 msgid ""
 "    [http://mybranches.isp.com/~jdoe/branchdir]\n"
 "    [/home/jdoe/branches/]"
 msgstr ""
+"    [http://mevetve.isp.cz/~jnov/adrvetvi]\n"
+"    [/home/jnov/vetve/]"
 
 #: en/help_topics/configuration.txt:253
 msgid ""
@@ -11643,23 +11697,30 @@ msgid ""
 "Section options\n"
 "^^^^^^^^^^^^^^^"
 msgstr ""
+"\n"
+"Volby části\n"
+"^^^^^^^^^^^^^^^"
 
 #: en/help_topics/configuration.txt:257
 msgid ""
 "A section option resides within a section. A section option contains an\n"
 "option name, an equals sign and a value.  For example::"
 msgstr ""
+"Volba části je v ní také umístěna. Obsahuje název volby,\n"
+"znaménko rovnosti a hodnotu. Například::"
 
 #: en/help_topics/configuration.txt:260
 msgid ""
 "    email            = John Doe <jdoe@isp.com>\n"
 "    gpg_signing_key  = Amy Pond <amy@example.com>"
 msgstr ""
+"    email            = Josef Novák <jnov@isp.cz>\n"
+"    gpg_signing_key  = Emily Pond <emily@priklad.cz>"
 
 #: en/help_topics/configuration.txt:263
 msgid ""
 "A option can reference other options by enclosing them in curly brackets::"
-msgstr ""
+msgstr "Volba může odkazovat na ostatní při uzavření do složených závorek::"
 
 #: en/help_topics/configuration.txt:265
 msgid ""
@@ -11667,12 +11728,17 @@ msgid ""
 "    my_server      = bzr+ssh://example.com\n"
 "    push_location   = {my_server}/project/{my_branch_name}"
 msgstr ""
+"    nazev_moji_vetve = funkce_x\n"
+"    muj_server      = bzr+ssh://priklad.cz\n"
+"    push_location   = {muj_server}/projekt/{nazev_moji_vetve}"
 
 #: en/help_topics/configuration.txt:269
 msgid ""
 "Option policies\n"
 "^^^^^^^^^^^^^^^"
 msgstr ""
+"Zásady voleb\n"
+"^^^^^^^^^^^^^^^"
 
 #: en/help_topics/configuration.txt:272
 msgid ""
@@ -11681,6 +11747,10 @@ msgid ""
 "option value is interpreted for contained locations.  Currently\n"
 "there are three policies available:"
 msgstr ""
+"Volby určené v částech ovlivňují pojmenované adresáře nebo URL a\n"
+"všechna umístění, která obsahují. Zásady mohou být použity pro\n"
+"změnu jak je hodnota vykládána pro uvedená umístění.\n"
+"V současnosti jsou dostupné tři zásady:"
 
 #: en/help_topics/configuration.txt:277
 msgid ""
@@ -11694,6 +11764,15 @@ msgid ""
 "   for contained locations, any additional path components are\n"
 "   appended to the value."
 msgstr ""
+" none:\n"
+"   hodnota je vyhodnocena stejně pro uvedená umístění.  Toto je\n"
+"   výchozí chování.\n"
+" norecurse:\n"
+"   hodnota je použita pouze pro konkrétní umístění zadané v\n"
+"   názvu části.\n"
+" appendpath:\n"
+"   pro zadaná umístění, všechny další části cesty jsou k\n"
+"   hodnotě připojeny."
 
 #: en/help_topics/configuration.txt:287
 msgid ""
@@ -11702,6 +11781,9 @@ msgid ""
 "For example, to define the push location for a tree of branches, the\n"
 "following could be used::"
 msgstr ""
+"Zásady jsou zadány klíči s názvy mající formu \"<název_volby>:policy\".\n"
+"Například pro určení umístění odeslání ve stromu větví\n"
+"by mohlo být použito následující::"
 
 #: en/help_topics/configuration.txt:291
 msgid ""
@@ -11709,28 +11791,37 @@ msgid ""
 "  push_location = sftp://example.com/location\n"
 "  push_location:policy = appendpath"
 msgstr ""
+"  [/nejvyssi/umisteni]\n"
+"  push_location = sftp://priklad.cz/umisteni\n"
+"  push_location:policy = appendpath"
 
 #: en/help_topics/configuration.txt:295
 msgid ""
 "With this configuration, the push location for ``/top/location/branch1``\n"
 "would be ``sftp://example.com/location/branch1``."
 msgstr ""
+"S tímto nastavením bude umístění odesláni pro ``/nejvyssi/umisteni/vetev1``\n"
+"by bylo sftp://priklad.cz/umisteni/vetev1``."
 
 #: en/help_topics/configuration.txt:298
 msgid ""
 "Section local options\n"
 "^^^^^^^^^^^^^^^^^^^^^"
 msgstr ""
+"Místní volby části\n"
+"^^^^^^^^^^^^^^^^^^^^^"
 
 #: en/help_topics/configuration.txt:301
 msgid ""
 "Some options are defined automatically inside a given section and can be\n"
 "refered to in this section only. "
 msgstr ""
+"Některé volby jsou určovány automaticky uvnitř dané části a může\n"
+"na ně být odkazováno pouze v této části. "
 
 #: en/help_topics/configuration.txt:304
 msgid "For example, the ``appendpath`` policy can be used like this::"
-msgstr ""
+msgstr "Například zásada ``appendpath`` může být použita takto::"
 
 #: en/help_topics/configuration.txt:306
 msgid ""
@@ -11738,44 +11829,57 @@ msgid ""
 "  mypush = lp:~vila/bzr\n"
 "  mypush:policy=appendpath"
 msgstr ""
+"  [/home/vila/src/bzr/bugs]\n"
+"  mypush = lp:~vila/bzr\n"
+"  mypush:policy=appendpath"
 
 #: en/help_topics/configuration.txt:310
 msgid "Using ``relpath`` to achieve the same result is done like this::"
-msgstr ""
+msgstr "Aby se dosáhlo stejného účinku pomocí ``relpath``::"
 
 #: en/help_topics/configuration.txt:312
 msgid ""
 "  [/home/vila/src/bzr/bugs]\n"
 "  mypush = lp:~vila/bzr/{relpath}"
 msgstr ""
+"  [/home/vila/src/bzr/bugs]\n"
+"  mypush = lp:~vila/bzr/{relpath}"
 
 #: en/help_topics/configuration.txt:315
 msgid ""
 "In both cases, when used in a directory like\n"
 "``/home/vila/src/bzr/bugs/832013-expand-in-stack`` we'll get::"
 msgstr ""
+"V obou případech při použití adresáře\n"
+"``/home/vila/src/bzr/bugs/832013-expand-in-stack`` dostaneme::"
 
 #: en/help_topics/configuration.txt:318 en/help_topics/configuration.txt:329
 msgid ""
 "   $ bzr config mypush\n"
 "   lp:~vila/bzr/832013-expand-in-stack"
 msgstr ""
+"   $ bzr config mypush\n"
+"   lp:~vila/bzr/832013-expand-in-stack"
 
 #: en/help_topics/configuration.txt:321
 msgid "Another such option is ``basename`` which can be used like this::"
-msgstr ""
+msgstr "Jiná takováto volba je ``basename``, která se používá takto::"
 
 #: en/help_topics/configuration.txt:323
 msgid ""
 "  [/home/vila/src/bzr]\n"
 "  mypush = lp:~vila/bzr/{basename}"
 msgstr ""
+"  [/home/vila/src/bzr]\n"
+"  mypush = lp:~vila/bzr/{basename}"
 
 #: en/help_topics/configuration.txt:326
 msgid ""
 "When used in a directory like\n"
 "``/home/vila/src/bzr/bugs/832013-expand-in-stack`` we'll get::"
 msgstr ""
+"Když je použita pro adresář\n"
+"``/home/vila/src/bzr/bugs/832013-expand-in-stack`` dostaneme::"
 
 #: en/help_topics/configuration.txt:332
 msgid ""
@@ -11783,6 +11887,9 @@ msgid ""
 "itself is defined as the relative path between the section name and the\n"
 "location it matches."
 msgstr ""
+"Nezapomeňte, že ``basename`` zde odkazuje na základní název ``relpath``,\n"
+"který je sám určený jako relativní cesta mezi názvem části a umístěním,\n"
+"s kterým má ."
 
 #: en/help_topics/configuration.txt:336
 msgid ""
@@ -11790,6 +11897,8 @@ msgid ""
 "values in any other section from the same ``Store`` nor from any other\n"
 "``Store``."
 msgstr ""
+"Když je volba v části místní, nemůže být na ni odkazováno z\n"
+"jiných hodnot v ostatních části ze stejného nebo jiného ``Store``."
 
 #: en/help_topics/configuration.txt:340
 msgid ""
@@ -11797,6 +11906,9 @@ msgid ""
 "The main configuration file, bazaar.conf\n"
 "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"\n"
+"Hlavní soubor s nastavením, bazaar.conf\n"
+"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:344
 msgid ""
@@ -11805,10 +11917,14 @@ msgid ""
 "configuration options for all branches. The default section can be\n"
 "overriden by providing a branch-specific section in ``locations.conf``."
 msgstr ""
+"``bazaar.conf`` povoluje dvě části: ``[DEFAULT]`` a ``[ALIASES]``.\n"
+"Část default obsahuje výchozí volby nastavení\n"
+"pro všechny větve. Část může být potlačena zadáním\n"
+"části závislé na větvi v ``locations.conf``."
 
 #: en/help_topics/configuration.txt:349
 msgid "A typical ``bazaar.conf`` section often looks like the following::"
-msgstr ""
+msgstr "Typická část ``bazaar.conf`` často vypadá takto::"
 
 #: en/help_topics/configuration.txt:351
 msgid ""
@@ -11817,6 +11933,10 @@ msgid ""
 "    editor            = /usr/bin/vim\n"
 "    create_signatures = when-required"
 msgstr ""
+"    [DEFAULT]\n"
+"    email             = Josef Novák <jnov@isp.cz>\n"
+"    editor            = /usr/bin/vim\n"
+"    create_signatures = when-required"
 
 #: en/help_topics/configuration.txt:356
 msgid ""
