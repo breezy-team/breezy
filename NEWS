@@ -8,6 +8,9 @@
   * Convert `~` to `_` when pushing into git, as `~` is not allowed in
     refs. (Jelmer Vernooij)
 
+  * Support optional timeout argument to ``bzr serve --git``.
+    (Jelmer Vernooij)
+
 0.6.8	2012-03-28
 
  BUG FIXES

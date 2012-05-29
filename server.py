@@ -108,7 +108,7 @@ class BzrTCPGitServer(TCPGitServer):
                       'from %s', client_address)
 
 
-def serve_git(transport, host=None, port=None, inet=False):
+def serve_git(transport, host=None, port=None, inet=False, timeout=None):
     backend = BzrBackend(transport)
 
     if host is None:
