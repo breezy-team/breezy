@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-05-28 07:35+0000\n"
-"Last-Translator: Miguel Mendes Ruiz <Unknown>\n"
+"PO-Revision-Date: 2012-05-31 00:37+0000\n"
+"Last-Translator: Neliton Pereira Jr. <nelitonpjr@gmail.com>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2012-05-29 04:30+0000\n"
-"X-Generator: Launchpad (build 15316)\n"
+"X-Launchpad-Export-Date: 2012-05-31 04:30+0000\n"
+"X-Generator: Launchpad (build 15322)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -699,11 +699,11 @@ msgid ""
 "do a merge (see bzr help merge) from the other branch, and commit that.\n"
 "After that you will be able to do a push without '--overwrite'."
 msgstr ""
-"Se você deseja certificar-se que possui mudanças diferentes em outra "
+"Se você deseja se certificar de que possui as mudanças diferentes em outra "
 "ramificação,\n"
-"faça um merge (veja bzr help merge) a partir da outra ramificação, e envie-"
-"o. Após isto\n"
-"você será capaz de fazer um push sem '--overwrite'."
+"faça uma mesclagem (veja bzr help merge) a partir da outra ramificação, e "
+"submeta-a. Após isto\n"
+"você será capaz de fazer um envio sem '--overwrite' (sobrescrever)."
 
 #: bzrlib/builtins.py:1257
 msgid ""
@@ -1717,11 +1717,10 @@ msgid ""
 "are given, the branch containing the working directory is logged.\n"
 "Here are some simple examples::"
 msgstr ""
-"log é a ferramenta padrão do bzr para explorar a história de uma branch.\n"
-"A branch a ser utilizada é retirada do primeiro parâmetro. Se nenhum "
-"parâmetro for dado, a branch que contém o diretório de trabalho terá seu "
-"histórico apresentado.\n"
-"Aqui estão alguns exemplos simples::"
+"log é a ferramenta padrão do bzr para explorar a história de uma\n"
+"ramificação. O ramo a ser utilizado é retirado do primeiro parâmetro. Se\n"
+"nenhum parâmetro for dado, será o ramo que contém o diretório de trabalho\n"
+"que terá seu histórico apresentado. Aqui estão alguns exemplos simples::"
 
 #: bzrlib/builtins.py:2473
 msgid ""
@@ -1729,9 +1728,9 @@ msgid ""
 "  bzr log foo.py                log a file in its branch\n"
 "  bzr log http://server/branch  log a branch on a server"
 msgstr ""
-"  bzr log                       registra o ramo atual\n"
-"  bzr log foo.py                registra um arquivo neste ramo\n"
-"  bzr log http://server/branch  registra um ramo no servidor"
+"  bzr log apresenta o histórico do ramo atual\n"
+"  bzr log foo.py apresenta o histórico de um arquivo neste ramo\n"
+"  bzr log http://server/branch apresenta o histórico de um ramo no servidor"
 
 #: bzrlib/builtins.py:2477
 msgid ""
@@ -12091,6 +12090,8 @@ msgid ""
 "  [name *.sh]\n"
 "  eol = lf"
 msgstr ""
+"  [nome *.sh]\n"
+"  eol = lf"
 
 #: en/help_topics/eol.txt:70
 msgid ""
@@ -12112,6 +12113,8 @@ msgid ""
 "  [name test_data/]\n"
 "  eol = exact"
 msgstr ""
+"  [nome test_data/]\n"
+"  eol = exact"
 
 #: en/help_topics/eol.txt:85
 msgid ""
@@ -12163,6 +12166,8 @@ msgid ""
 "  [name *]\n"
 "  eol = native-with-crlf-in-repo"
 msgstr ""
+"  [nome *]\n"
+"  eol = native-with-crlf-in-repo"
 
 #: en/help_topics/eol.txt:115
 msgid ""
@@ -12230,6 +12235,8 @@ msgid ""
 "Introduction\n"
 "------------"
 msgstr ""
+"Introduction\n"
+"------------"
 
 #: en/help_topics/hooks.txt:8
 msgid "A hook of type *xxx* of class *yyy* needs to be registered using::"
@@ -12237,7 +12244,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:10
 msgid "  yyy.hooks.install_named_hook(\"xxx\", ...)"
-msgstr ""
+msgstr "  yyy.hooks.install_named_hook(\"xxx\", ...)"
 
 #: en/help_topics/hooks.txt:12
 msgid ""
@@ -12285,12 +12292,17 @@ msgid ""
 "BranchHooks\n"
 "-----------"
 msgstr ""
+"\n"
+"BranchHooks\n"
+"-----------"
 
 #: en/help_topics/hooks.txt:35
 msgid ""
 "automatic_tag_name\n"
 "~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"automatic_tag_name\n"
+"~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:38 en/help_topics/hooks.txt:56
 #: en/help_topics/hooks.txt:102 en/help_topics/hooks.txt:259
@@ -12310,6 +12322,8 @@ msgid ""
 "open\n"
 "~~~~"
 msgstr ""
+"open\n"
+"~~~~"
 
 #: en/help_topics/hooks.txt:48 en/help_topics/hooks.txt:290
 #: en/help_topics/hooks.txt:304
@@ -12327,6 +12341,8 @@ msgid ""
 "post_branch_init\n"
 "~~~~~~~~~~~~~~~~"
 msgstr ""
+"post_branch_init\n"
+"~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:58
 msgid ""
@@ -12341,6 +12357,8 @@ msgid ""
 "post_change_branch_tip\n"
 "~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"post_change_branch_tip\n"
+"~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:66 en/help_topics/hooks.txt:418
 msgid "Introduced in: 1.4"
