@@ -481,7 +481,8 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
         else:
             host = self.host
         if cert_reqs == ssl.CERT_NONE:
-            trace.warning("Not checking SSL certificate for %s", host)
+            if self.proxied_host is not None:
+                trace.warning("Not checking SSL certificate for %s", host)
             ca_certs = None
         else:
             if self.ca_certs is None:
