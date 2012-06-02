@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-05-28 20:22+0000\n"
+"PO-Revision-Date: 2012-06-01 20:51+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-05-29 04:30+0000\n"
-"X-Generator: Launchpad (build 15316)\n"
+"X-Launchpad-Export-Date: 2012-06-02 04:30+0000\n"
+"X-Generator: Launchpad (build 15342)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -11944,6 +11944,9 @@ msgid ""
 "The branch location configuration file, locations.conf\n"
 "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"\n"
+"Soubor nastavení v umístění větve, locations.conf\n"
+"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:360
 msgid ""
@@ -11954,24 +11957,34 @@ msgid ""
 "default, will be the path to a branch that you wish to override a value\n"
 "for. The '?' and '*' wildcards are supported::"
 msgstr ""
+"``locations.conf`` umožňuje zadat nastavení potlačující nastavení\n"
+"v bazaar.conf. Formát je téměř podobný výchozí části v bazaar.conf s jedním\n"
+"rozdílem: Hlavička části obsahuje místo default cestu k větvi na kterou\n"
+"se má nastavení vztahovat. Jsou podporovány zástupné znaky '?' a '*'::"
 
 #: en/help_topics/configuration.txt:366
 msgid ""
 "    [/home/jdoe/branches/nethack]\n"
 "    email = Nethack Admin <nethack@nethack.com>"
 msgstr ""
+"    [/home/jdoe/branches/nethack]\n"
+"    email = Nethack Admin <nethack@nethack.com>"
 
 #: en/help_topics/configuration.txt:369
 msgid ""
 "    [http://hypothetical.site.com/branches/devel-branch]\n"
 "    create_signatures = always"
 msgstr ""
+"    [http://hypotetická.stránka.cz/větve/větev-vývoj]\n"
+"    create_signatures = always"
 
 #: en/help_topics/configuration.txt:372
 msgid ""
 "The authentication configuration file, authentication.conf\n"
 "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"Soubor s nastavením ověření, authentication.conf\n"
+"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:375
 msgid ""
@@ -11980,12 +11993,17 @@ msgid ""
 "part\n"
 "of bzr that requires authentication (smtp for example)."
 msgstr ""
+"``authentication.conf`` Vám umožňuje zadat ověřovací údaje\n"
+"pro vzdálené servery. To může být použito pro všechny podporované přenosy\n"
+"a všechny části bzr, které vyžadují ověření (například smtp)."
 
 #: en/help_topics/configuration.txt:379
 msgid ""
 "The syntax of the file obeys the same rules as the others except for the\n"
 "option policies which don't apply."
 msgstr ""
+"Syntaxe souboru se řídí stejnými pravidlym jako ostatní, kromě\n"
+"voleb zásad, které se na toto nevztahují."
 
 #: en/help_topics/configuration.txt:382
 msgid ""
@@ -11993,6 +12011,8 @@ msgid ""
 "configuration\n"
 "file see :doc:`authentication-help`."
 msgstr ""
+"Pro další informace o možných použitích souboru s nastavením ověření\n"
+"se podívejte na :doc:`authentication-help`."
 
 #: en/help_topics/configuration.txt:385
 msgid ""
@@ -12000,12 +12020,17 @@ msgid ""
 "Common options\n"
 "--------------"
 msgstr ""
+"\n"
+"Společné volby\n"
+"--------------"
 
 #: en/help_topics/configuration.txt:389
 msgid ""
 "debug_flags\n"
 "~~~~~~~~~~~"
 msgstr ""
+"příznaky_ladění\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:392
 msgid ""
@@ -12013,36 +12038,46 @@ msgid ""
 "can be used as with the -D command-line option (see `help global-options`).\n"
 "For example::"
 msgstr ""
+"Čárkou oddělený seznam možností ladění, které povolit. Stejné hodnoty\n"
+"mohou být použity s volbou příkazového řádku -D (viz `help global-"
+"options`).\n"
+"Například::"
 
 #: en/help_topics/configuration.txt:396
 msgid "    debug_flags = hpss"
-msgstr ""
+msgstr "    debug_flags = hpss"
 
 #: en/help_topics/configuration.txt:400
 msgid "    debug_flags = hpss,evil"
-msgstr ""
+msgstr "    debug_flags = hpss,evil"
 
 #: en/help_topics/configuration.txt:402
 msgid ""
 "email\n"
 "~~~~~"
 msgstr ""
+"email\n"
+"~~~~~"
 
 #: en/help_topics/configuration.txt:405
 msgid ""
 "The email address to use when committing a branch. Typically takes the form\n"
 "of::"
 msgstr ""
+"Emailová adresa, která bude použita při odevzdávání větve. Většinou má\n"
+"takovýto formát::"
 
 #: en/help_topics/configuration.txt:408
 msgid "    email = Full Name <account@hostname.tld>"
-msgstr ""
+msgstr "    email = Celé jméno <účet@názevhostitele.doména>"
 
 #: en/help_topics/configuration.txt:410
 msgid ""
 "editor\n"
 "~~~~~~"
 msgstr ""
+"editor\n"
+"~~~~~~"
 
 #: en/help_topics/configuration.txt:413
 msgid ""
@@ -12051,12 +12086,17 @@ msgid ""
 "``BZR_EDITOR``, and overrides the ``VISUAL`` and ``EDITOR`` environment\n"
 "variables."
 msgstr ""
+"Cesta k editoru, který chcete použít, pokud je *bzr commit* spuštěn bez\n"
+"zprávy odevzdání. Toto nastavení  je potlačeno proměnnou prostředí\n"
+"``BZR_EDITOR`` a potlačuje proměnné ``VISUAL`` a ``EDITOR``."
 
 #: en/help_topics/configuration.txt:418
 msgid ""
 "log_format\n"
 "~~~~~~~~~~"
 msgstr ""
+"log_format\n"
+"~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:421
 msgid ""
@@ -12064,30 +12104,41 @@ msgid ""
 "and ``line``. Additional formats may be provided by plugins. The default\n"
 "value is ``long``."
 msgstr ""
+"Jaký výchozí formát záznamu použít. Standardní formáty jsou ``long``,\n"
+"``short`` a ``line``. Další formáty mohou být poskytnuty zás. moduly.\n"
+"Výchozí hodnota je ``long``."
 
 #: en/help_topics/configuration.txt:425
 msgid ""
 "check_signatures\n"
 "~~~~~~~~~~~~~~~~"
 msgstr ""
+"check_signatures\n"
+"~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:428
 msgid ""
 "Reserved for future use.  These options will allow a policy for branches to\n"
 "require signatures."
 msgstr ""
+"Vyhrazeno pro budoucí použití. Tyto možnosti umožní větvím\n"
+"mít zásady pro vyžadování podpisů."
 
 #: en/help_topics/configuration.txt:431
 msgid ""
 "require\n"
 "    The gnupg signature for revisions must be present and must be valid."
 msgstr ""
+"require\n"
+"    Podpis gnupg pro revize musí být přítomen a být platný."
 
 #: en/help_topics/configuration.txt:434
 msgid ""
 "ignore\n"
 "    Do not check gnupg signatures of revisions."
 msgstr ""
+"ignore\n"
+"    Nekontrolovat gnupg podpisy revizí."
 
 #: en/help_topics/configuration.txt:437
 msgid ""
@@ -12096,12 +12147,18 @@ msgid ""
 "    Bazaar will fail if it finds a bad signature, but will not fail if\n"
 "    no signature is present."
 msgstr ""
+"check-available\n"
+"    (výchozí) Pokud jsou podpisy gnupg revizí přítomny, zkontrolovat je.\n"
+"    Pokud Bazaar nalezne špatné podpisy, pak selže, ale pokud\n"
+"    nejsou přítomny žádné, nic se nestane."
 
 #: en/help_topics/configuration.txt:442
 msgid ""
 "create_signatures\n"
 "~~~~~~~~~~~~~~~~~"
 msgstr ""
+"create_signatures\n"
+"~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:445
 msgid ""
@@ -12109,6 +12166,8 @@ msgid ""
 "not\n"
 "sign new commits."
 msgstr ""
+"Určí chování podpisu revizí při odevzdání. Standardně bzr\n"
+"nové odevzdání nepodepisuje"
 
 #: en/help_topics/configuration.txt:448
 msgid ""
@@ -12117,18 +12176,25 @@ msgid ""
 "the\n"
 "    commit will not be made."
 msgstr ""
+"always\n"
+"    Podepsat každou novou revizi, která je odevzdána.  Pokud podpis selže\n"
+"    pak odevzdání nebude provedeno."
 
 #: en/help_topics/configuration.txt:452
 msgid ""
 "when-required\n"
 "    Reserved for future use."
 msgstr ""
+"when-required\n"
+"    Vyhrazeno pro budoucí použití."
 
 #: en/help_topics/configuration.txt:455
 msgid ""
 "never\n"
 "    Reserved for future use."
 msgstr ""
+"never\n"
+"    Vyhrazeno pro budoucí použití."
 
 #: en/help_topics/configuration.txt:458
 msgid ""
