@@ -8,16 +8,16 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-05-20 09:47+0000\n"
-"Last-Translator: Almin Islamović <almin.islamovic@edu.fit.ba>\n"
+"PO-Revision-Date: 2012-06-04 07:49+0000\n"
+"Last-Translator: Ashraf Gheth <ashraf.gheith@edu.fit.ba>\n"
 "Language-Team: Bosnian <bs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-05-24 10:23+0000\n"
-"X-Generator: Launchpad (build 15288)\n"
+"X-Launchpad-Export-Date: 2012-06-05 04:37+0000\n"
+"X-Generator: Launchpad (build 15353)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -25,41 +25,42 @@ msgstr "preskakanje {0} (veće od {1} od {2} bajta)"
 
 #: bzrlib/branch.py:872
 msgid "Unstacking"
-msgstr ""
+msgstr "Rastavljanje"
 
 #: bzrlib/branch.py:3205
 #, python-format
 msgid "Pushed up to revision %d."
-msgstr ""
+msgstr "Podignut za reviziju %d."
 
 #: bzrlib/branch.py:3207
 #, python-format
 msgid "%d tag updated."
 msgid_plural "%d tags updated."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d tag ažuriran."
+msgstr[1] "%d tagova ažurirano."
+msgstr[2] "%d tagova ažurirano."
 
 #: bzrlib/branch.py:3210
 msgid "No new revisions or tags to push."
-msgstr ""
+msgstr "Nema novih revizija ili tagova za podignuti."
 
 #: bzrlib/branch.py:3212
 msgid "No new revisions to push."
-msgstr ""
+msgstr "Nema novih revizija za podignuti."
 
 #: bzrlib/branch.py:3232
 msgid "checked branch {0} format {1}"
-msgstr ""
+msgstr "provjerena branša {0} format {1}"
 
 #: bzrlib/branch.py:3235
 #, python-format
 msgid "found error:%s"
-msgstr ""
+msgstr "pronađena greška:%s"
 
 #: bzrlib/builtins.py:209 bzrlib/builtins.py:3016 bzrlib/workingtree.py:315
 #, python-format
 msgid "Ignoring files outside view. View is %s"
-msgstr ""
+msgstr "Ignorisanje datoteka izvan pregleda. Pregled je %s"
 
 #: bzrlib/builtins.py:218
 #, python-format
@@ -68,7 +69,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:303
 msgid "Display status summary."
-msgstr ""
+msgstr "Prikaz stanje sažetaka."
 
 #: bzrlib/builtins.py:305
 msgid ""
@@ -167,15 +168,15 @@ msgstr ""
 
 #: bzrlib/builtins.py:363
 msgid "Use short status indicators."
-msgstr ""
+msgstr "Koristiti kratki indikator stanja."
 
 #: bzrlib/builtins.py:365
 msgid "Only show versioned files."
-msgstr ""
+msgstr "Prikaži samo verzirane datoteke."
 
 #: bzrlib/builtins.py:367
 msgid "Don't show pending merges."
-msgstr ""
+msgstr "Ne prikazuj spajanja u toku."
 
 #: bzrlib/builtins.py:370
 msgid "Do not mark object type using indicator."
@@ -187,11 +188,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:429 bzrlib/builtins.py:5183
 msgid "You can only supply one of revision_id or --revision"
-msgstr ""
+msgstr "Možete predati samo jednog revision_id ili --revision"
 
 #: bzrlib/builtins.py:432 bzrlib/builtins.py:5185
 msgid "You must supply either --revision or a revision_id"
-msgstr ""
+msgstr "Morate predati --revision ili revision_id"
 
 #: bzrlib/builtins.py:439
 #, python-format
@@ -204,7 +205,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:457
 msgid "You cannot specify a NULL revision."
-msgstr ""
+msgstr "Ne možete specifirati praznu reviziju."
 
 #: bzrlib/builtins.py:549
 msgid "Remove the working tree from a given branch/checkout."
@@ -227,7 +228,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:574
 msgid "No working tree to remove"
-msgstr ""
+msgstr "Nema radno drvo za uklonjanje"
 
 #: bzrlib/builtins.py:576
 msgid "You cannot remove the working tree of a remote path"
@@ -255,7 +256,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:644
 msgid "Show current revision number."
-msgstr ""
+msgstr "Prikaži broj vaše trenutne revizije."
 
 #: bzrlib/builtins.py:646
 msgid "This is equal to the number of revisions on this branch."
@@ -275,7 +276,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:748
 msgid "Add specified files or directories."
-msgstr ""
+msgstr "Dodaj specifirane datoteke ili mape."
 
 #: bzrlib/builtins.py:750
 msgid ""
@@ -347,7 +348,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:794
 msgid "Don't recursively add the contents of directories."
-msgstr ""
+msgstr "Nemoj rekurzivno dodavate sadržaj mapa."
 
 #: bzrlib/builtins.py:800
 msgid "Lookup file ids from this tree."
@@ -359,7 +360,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:841
 msgid "Create a new versioned directory."
-msgstr ""
+msgstr "Kreiraj novu reviziranu mapu."
 
 #: bzrlib/builtins.py:843
 msgid "This is equivalent to creating the directory and then adding it."
@@ -372,7 +373,7 @@ msgstr ""
 #: bzrlib/builtins.py:884
 #, python-format
 msgid "added %s\n"
-msgstr ""
+msgstr "dodato %s\n"
 
 #: bzrlib/builtins.py:926
 #, python-format
@@ -381,7 +382,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:963
 msgid "Move or rename a file."
-msgstr ""
+msgstr "Premjesti ili reimenuj datoteku."
 
 #: bzrlib/builtins.py:965
 msgid "    bzr mv SOURCE... DESTINATION"
@@ -405,7 +406,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:977
 msgid "Files cannot be moved between branches."
-msgstr ""
+msgstr "Datoteke se ne mogu premještati između branši."
 
 #: bzrlib/builtins.py:984
 msgid ""
@@ -415,7 +416,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:986
 msgid "Automatically guess renames."
-msgstr ""
+msgstr "Automatizirano pogodi nova imena."
 
 #: bzrlib/builtins.py:987
 msgid "Avoid making changes when guessing renames."
@@ -427,7 +428,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1000
 msgid "missing file argument"
-msgstr ""
+msgstr "fali argument datoteke"
 
 #: bzrlib/builtins.py:1004
 msgid "can not move root of branch"
@@ -435,11 +436,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:1010
 msgid "Only one path may be specified to --auto."
-msgstr ""
+msgstr "Samo putanja može biti postavljena kao --auto."
 
 #: bzrlib/builtins.py:1013
 msgid "--after cannot be specified with --auto."
-msgstr ""
+msgstr "--after ne može biti postavljena sa --auto."
 
 #: bzrlib/builtins.py:1050
 msgid "to mv multiple files the destination must be a versioned directory"
