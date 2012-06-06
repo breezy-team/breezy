@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-06-01 20:51+0000\n"
+"PO-Revision-Date: 2012-06-05 20:32+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-06-02 04:30+0000\n"
-"X-Generator: Launchpad (build 15342)\n"
+"X-Launchpad-Export-Date: 2012-06-06 04:30+0000\n"
+"X-Generator: Launchpad (build 15353)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -12203,12 +12203,17 @@ msgid ""
 "refuse\n"
 "to sign newly committed revisions, even if the branch requires signatures."
 msgstr ""
+"V budoucnu se počítá, že ``when-required`` podepíše nově\n"
+"odevzdané revize, pouze pokud to tak větev vyžaduje. ``never`` je odmítne\n"
+"podepsat, i když větev podpisy vyžaduje."
 
 #: en/help_topics/configuration.txt:462
 msgid ""
 "dirstate.fdatasync\n"
 "~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"dirstate.fdatasync\n"
+"~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:465
 msgid ""
@@ -12216,12 +12221,17 @@ msgid ""
 "OS buffers to physical disk.  This is somewhat slower, but means data\n"
 "should not be lost if the machine crashes.  See also repository.fdatasync."
 msgstr ""
+"Pokud true (výchozí), změny metadat pracovního stromu jsou zapisovány\n"
+"z vyrovnávacích pamětí OS na pevný disk. To je poněkud pomalejší, ale data\n"
+"nebudou ztracena při nehodách se strojem, Viz také repository.fdatasync."
 
 #: en/help_topics/configuration.txt:469
 msgid ""
 "gpg_signing_key\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"gpg_signing_key\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:472
 msgid ""
@@ -12229,24 +12239,34 @@ msgid ""
 "address, key fingerprint or full key ID.  When unset or when set to\n"
 "\"default\" Bazaar will use the user e-mail set with ``whoami``."
 msgstr ""
+"Identita uživatele GnuPG, která je použita k podpisu odevzdání Může být\n"
+"emailová adresa, otisk klíče nebo celé jeho ID. Když není nastaveno,\n"
+"nebo je nastaveno na \"default\", Bazaar použije email uživatele\n"
+"nastavený pomocí ``whoami``."
 
 #: en/help_topics/configuration.txt:476
 msgid ""
 "recurse\n"
 "~~~~~~~"
 msgstr ""
+"recurse\n"
+"~~~~~~~"
 
 #: en/help_topics/configuration.txt:479
 msgid ""
 "Only useful in ``locations.conf``. Defines whether or not the\n"
 "configuration for this section applies to subdirectories:"
 msgstr ""
+"Užitečné pouze v ``locations.conf``. Určuje, zda nastavení v\n"
+"této části bude také platit v podadresářích:"
 
 #: en/help_topics/configuration.txt:482
 msgid ""
 "true\n"
 "    (default) This section applies to subdirectories as well."
 msgstr ""
+"true\n"
+"    (výchozí) Tato část také platí na podadresáře."
 
 #: en/help_topics/configuration.txt:485
 msgid ""
@@ -12254,12 +12274,17 @@ msgid ""
 "    This section only applies to the branch at this directory and not\n"
 "    branches below it."
 msgstr ""
+"false\n"
+"    Tato část je ve větvi použita pouze v tomto adresáři a není\n"
+"    použita ve větvích pod ním."
 
 #: en/help_topics/configuration.txt:489
 msgid ""
 "gpg_signing_command\n"
 "~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"gpg_signing_command\n"
+"~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:492
 msgid ""
@@ -12267,22 +12292,26 @@ msgid ""
 "revisions.\n"
 "For example::"
 msgstr ""
+"(Výchozí: \"gpg\"). Který program má být použit pro podepisování a kontrolu\n"
+"revizí. Například::"
 
 #: en/help_topics/configuration.txt:495
 msgid "    gpg_signing_command = /usr/bin/gnpg"
-msgstr ""
+msgstr "    gpg_signing_command = /usr/bin/gnpg"
 
 #: en/help_topics/configuration.txt:497
 msgid ""
 "The specified command must accept the options \"--clearsign\" and \"-u "
 "<email>\"."
-msgstr ""
+msgstr "Zadaný příkaz musí přijímat volby  \"--clearsign\" a \"-u <email>\"."
 
 #: en/help_topics/configuration.txt:499
 msgid ""
 "bzr_remote_path\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"bzr_remote_path\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:502
 msgid ""
@@ -12290,6 +12319,10 @@ msgid ""
 "smart\n"
 "server for bzr.  This value may only be specified in locations.conf, because:"
 msgstr ""
+"(Výchozí: \"bzr\"). Cesta k příkazu, který má být použit ke spuštění "
+"chytrého\n"
+"serveru pro bzr. Tato hodnota může být zadána pouze v locations.conf,\n"
+"protože:"
 
 #: en/help_topics/configuration.txt:505
 msgid ""
@@ -12297,28 +12330,38 @@ msgid ""
 "- allowing remote branch.conf files to specify commands would be a security\n"
 "  risk"
 msgstr ""
+"- je nutná předtím, než je branch.conf k dispozici\n"
+"- umožnit vzdáleným souborům branch,conf zadávat příkazy by bylo\n"
+"  bezpečnostní riziko"
 
 #: en/help_topics/configuration.txt:509
 msgid "It is overridden by the BZR_REMOTE_PATH environment variable."
-msgstr ""
+msgstr "Je potlačena proměnnou prostředí BZR_REMOTE_PATH."
 
 #: en/help_topics/configuration.txt:511
 msgid ""
 "smtp_server\n"
 "~~~~~~~~~~~"
 msgstr ""
+"smtp_server\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:514
 msgid ""
 "(Default: \"localhost\"). SMTP server to use when Bazaar needs to send\n"
 "email, eg. with ``merge-directive --mail-to``, or the bzr-email plugin."
 msgstr ""
+"(Výchozí: \"localhost\"). Který SMTP server má být použit, když Bazaar\n"
+"potřebuje odeslat email, např. s  ``merge-directive --mail-to``,\n"
+"nebo zásuvný modul bzr-email."
 
 #: en/help_topics/configuration.txt:517
 msgid ""
 "smtp_username, smtp_password\n"
 "~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"smtp_username, smtp_password\n"
+"~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:520
 msgid ""
@@ -12327,12 +12370,18 @@ msgid ""
 "These settings are only needed if the SMTP server requires authentication\n"
 "to send mail."
 msgstr ""
+"Heslo a uživatel pro ověření na serveru SMTP. Pokud je nastaveno\n"
+"smtp_username a smtp_password není, pak se Bazaar na heslo\n"
+"dotáže. Tyto nastavení jsou třeba pouze, pokud SMTP vyžaduje\n"
+"ověření k odeslání pošty."
 
 #: en/help_topics/configuration.txt:525
 msgid ""
 "locks.steal_dead\n"
 "~~~~~~~~~~~~~~~~"
 msgstr ""
+"locks.steal_dead\n"
+"~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:528
 msgid ""
@@ -12341,12 +12390,18 @@ msgid ""
 "print a message and you can break the lock manually, if you are satisfied\n"
 "the object is no longer in use."
 msgstr ""
+"Pokud nastaveno na true, bzr bude automaticky rozbíjet zámky, které\n"
+"drží procesy ze stejného stroje a uživatele, pokud již nejsou aktivní.\n"
+"Jinak vypíše zprávu a zámek můžete odstranit ručně, pokud si jste\n"
+"jisti, že objekt již není používán."
 
 #: en/help_topics/configuration.txt:533
 msgid ""
 "mail_client\n"
 "~~~~~~~~~~~"
 msgstr ""
+"mail_client\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:536
 msgid ""
@@ -12356,10 +12411,14 @@ msgid ""
 "will try ``xdg-email``. If either of these fails, it will fall back to\n"
 "``editor``."
 msgstr ""
+"Poštovní klient, který je použit k odesílání\n"
+"požadavků na sloučení. Standardně bzr ve Windows použije ``mapi``, Na\n"
+"jiných platformách vyzkouší ``xdg-email``. Pokud jedno z těchto selže\n"
+"požije místo toho ``editor``."
 
 #: en/help_topics/configuration.txt:541
 msgid "Supported values for specific clients:"
-msgstr ""
+msgstr "Podporované hodnoty pro určité klienty::"
 
 #: en/help_topics/configuration.txt:543
 msgid ""
@@ -12371,10 +12430,17 @@ msgid ""
 "1.5,\n"
 "    this works around some bugs that xdg-email doesn't handle."
 msgstr ""
+":claws: Použít Claws.  Toto přeskočí dialogové okno připojení souboru.\n"
+":evolution: Použít Evolution.\n"
+":kmail: Použít KMail.\n"
+":mutt: Použít Mutt.\n"
+":thunderbird: Použít Mozilla Thunderbird nebo Icedove.  U "
+"Thunderbird/Icedove 1.5,\n"
+"    toto obchází některé chyby, které xdg-email nezvládá."
 
 #: en/help_topics/configuration.txt:550
 msgid "Supported generic values are:"
-msgstr ""
+msgstr "Podporované obecné hodnoty jsou:"
 
 #: en/help_topics/configuration.txt:552
 msgid ""
@@ -12385,12 +12451,22 @@ msgid ""
 ":mapi: Use your preferred e-mail client on Windows.\n"
 ":xdg-email: Use xdg-email to run your preferred mail program"
 msgstr ""
+":default: Viz výše.\n"
+":editor: Použít váš editor k sestavení požadavku sloučení.  Toto také "
+"použije\n"
+"    vaše id odevzdání, (viz ``bzr whoami``), smtp_server a (pokud je nutné)\n"
+"    smtp_username a smtp_password.\n"
+":mapi: Použít vašeho přednostního poštovního e-mail klienta ve Windows.\n"
+":xdg-email: Použít xdg-email ke spuštění vašeho přednostního\n"
+"    poštovního klienta"
 
 #: en/help_topics/configuration.txt:559
 msgid ""
 "repository.fdatasync\n"
 "~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"repository.fdatasync\n"
+"~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:562
 msgid ""
@@ -12398,12 +12474,17 @@ msgid ""
 "to physical disk.  This is somewhat slower, but means data should not be\n"
 "lost if the machine crashes.  See also dirstate.fdatasync."
 msgstr ""
+"Pokud true (výchozí), změny úložiště jsou zapisovány z vyrovnávacích\n"
+"pamětí OS na pevný disk. To je poněkud pomalejší, ale data nebudou\n"
+"ztracena při nehodách se strojem, Viz také repository.fdatasync."
 
 #: en/help_topics/configuration.txt:566
 msgid ""
 "submit_branch\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"submit_branch\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:569
 msgid ""
@@ -12413,12 +12494,17 @@ msgid ""
 "This\n"
 "should usually be set on a per-branch or per-location basis."
 msgstr ""
+"Větev, do které chcete odeslat  vaši současnou práci. To je automaticky\n"
+"nastaveno ``bzr send`` a také používáno zadáním revize ``submit:``.\n"
+"Toto by mělo být standardně nastavováno na základě větve a umístění."
 
 #: en/help_topics/configuration.txt:573
 msgid ""
 "public_branch\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"public_branch\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:576
 msgid ""
@@ -12426,22 +12512,28 @@ msgid ""
 "is\n"
 "not publically-accessible).  Used (and set) by ``bzr send``."
 msgstr ""
+"Veřejně přístupná verze této větve (naznačující, že tato verze není tak\n"
+"přístupná). Používáno (a nastavováno) ``bzr send``."
 
 #: en/help_topics/configuration.txt:579
 msgid ""
 "suppress_warnings\n"
 "~~~~~~~~~~~~~~~~~"
 msgstr ""
+"suppress_warnings\n"
+"~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:582
 msgid ""
 "A list of strings, each string represent a warning that can be emitted by\n"
 "bzr. Mentioning a warning in this list tells bzr to not emit it."
 msgstr ""
+"Seznam řetězců, každý řetězec představuje varování, které může bzr\n"
+"vysílat. Když v tomto seznamu zmíníte varování, bzr ho nebude vysílat."
 
 #: en/help_topics/configuration.txt:585
 msgid "Valid values:"
-msgstr ""
+msgstr "Platné hodnoty:"
 
 #: en/help_topics/configuration.txt:587
 msgid ""
@@ -12450,12 +12542,18 @@ msgid ""
 "are\n"
 "    using deprecated formats."
 msgstr ""
+"* ``format_deprecation``:\n"
+"    zdali je zobrazeno varování o zastaralých formátech v úložištích, které "
+"tyto\n"
+"    formáty používají."
 
 #: en/help_topics/configuration.txt:591
 msgid ""
 "default_format\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"default_format\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:594
 msgid ""
