@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-06-05 20:32+0000\n"
+"PO-Revision-Date: 2012-06-11 08:20+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-06-06 04:30+0000\n"
-"X-Generator: Launchpad (build 15353)\n"
+"X-Launchpad-Export-Date: 2012-06-12 04:30+0000\n"
+"X-Generator: Launchpad (build 15389)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -12561,6 +12561,9 @@ msgid ""
 "``bzr\n"
 "help formats`` for possible values."
 msgstr ""
+"Název formátu pro standardní formát, který je použit přo vytváření větví. "
+"Viz\n"
+"``bzr help formats`` pro možné hodnoty."
 
 #: en/help_topics/configuration.txt:597
 msgid ""
@@ -12568,12 +12571,17 @@ msgid ""
 "Unicode options\n"
 "---------------"
 msgstr ""
+"\n"
+"Volby Unicode\n"
+"---------------"
 
 #: en/help_topics/configuration.txt:601
 msgid ""
 "output_encoding\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"output_encoding\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:604
 msgid ""
@@ -12581,6 +12589,9 @@ msgid ""
 "information.  Values include: utf8, cp850, ascii, iso-8859-1.  The default\n"
 "is the terminal encoding prefered by the operating system."
 msgstr ""
+"Název unicode kódování Python pro textový výstup z bzr, jako například\n"
+"informace o záznamu. Hodnoty jsou: utf8, cp850, ascii, iso-8859-1.\n"
+"Výchozí je kódování terminálu upřednostňované operačním systémem."
 
 #: en/help_topics/configuration.txt:608
 msgid ""
@@ -12588,6 +12599,9 @@ msgid ""
 "Branch type specific options\n"
 "----------------------------"
 msgstr ""
+"\n"
+"Volby větve podle jejího typu\n"
+"----------------------------"
 
 #: en/help_topics/configuration.txt:612
 msgid ""
@@ -12596,12 +12610,19 @@ msgid ""
 "are usually set in ``.bzr/branch/branch.conf`` automatically, but may be\n"
 "manually set in ``locations.conf`` or ``bazaar.conf``."
 msgstr ""
+"Tyto volby se týkají pouze těch větví, které používají ``dirstate-tags``\n"
+"nebo pozdější formát.\n"
+"Většinou jsou automaticky nastaveny v ``.bzr/branch/branch.conf``, ale\n"
+"mohou být také ručně nastaveny v ``locations.conf`` nebo\n"
+"``bazaar.conf``."
 
 #: en/help_topics/configuration.txt:617
 msgid ""
 "append_revisions_only\n"
 "~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"append_revisions_only\n"
+"~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:620
 msgid ""
@@ -12612,12 +12633,21 @@ msgid ""
 "manually, use either 'True' or 'False' (case-sensitive) to maintain\n"
 "compatibility with previous bzr versions (older than 2.2)."
 msgstr ""
+"Pokud nastaveno na \"True\", pak revize mohou být k záznamu pouze\n"
+"připojen, ne odstraněny. Větev. která má toto nastavení povolené,\n"
+"může stahovat z jiné, pouze pokud záznam druhé větve je delší\n"
+"verzí záznamu prvotní. Toto se standardně nastavuje ``bzr init\n"
+"--append-revisions-only``. Pokud toto nastavujete ručně, použijte\n"
+"buď 'True' nebo 'False' (pozor na velká písmena), abyste udrželi\n"
+"kompatibilitu s předchozími verzemi bzr (staršími než 2.2)."
 
 #: en/help_topics/configuration.txt:627
 msgid ""
 "parent_location\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"parent_location\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:630
 msgid ""
@@ -12626,36 +12656,52 @@ msgid ""
 "is normally set when creating a branch, the first ``pull`` or by ``pull\n"
 "--remember``."
 msgstr ""
+"Pokud je přítomno, umístění výchozí větve pro stažení nebo sloučení. Tato\n"
+"volba je normálně nastavena při vytváření větve, prvním ``pull`` nebo "
+"``pull\n"
+"--remember``."
 
 #: en/help_topics/configuration.txt:634
 msgid ""
 "push_location\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"push_location\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:637
 msgid ""
 "If present, the location of the default branch for push.  This option\n"
 "is normally set by the first ``push`` or ``push --remember``."
 msgstr ""
+"Pokud přítomno, je umístění výchozí větve pro odesílání. Tato\n"
+"volba je normálně nastavena při vytváření větve, prvním ``push`` nebo "
+"``push\n"
+"--remember``."
 
 #: en/help_topics/configuration.txt:640
 msgid ""
 "push_strict\n"
 "~~~~~~~~~~~"
 msgstr ""
+"push_strict\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:643
 msgid ""
 "If present, defines the ``--strict`` option default value for checking\n"
 "uncommitted changes before pushing."
 msgstr ""
+"Pokud přítomno, zadává výchozí hodnotu volby ``--strict`` pro\n"
+"kontrolu neodevzdaných změn před odesláním."
 
 #: en/help_topics/configuration.txt:646
 msgid ""
 "dpush_strict\n"
 "~~~~~~~~~~~~"
 msgstr ""
+"dpush_strict\n"
+"~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:649
 msgid ""
@@ -12663,24 +12709,33 @@ msgid ""
 "uncommitted changes before pushing into a different VCS without any\n"
 "custom bzr metadata."
 msgstr ""
+"Pokud přítomno, zadává výchozí hodnotu volby ``--strict`` pro\n"
+"kontrolu neodevzdaných změn před odesláním do jiného systému pro\n"
+"správu verzí bez jakýchkoliv vlastních metadat bzr."
 
 #: en/help_topics/configuration.txt:653
 msgid ""
 "bound_location\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"bound_location\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:656
 msgid ""
 "The location that commits should go to when acting as a checkout.\n"
 "This option is normally set by ``bind``."
 msgstr ""
+"Umístění, do kterého by měla odevzdání putovat, když se chovají jako\n"
+"získání. Tato volba je normálně nastavována pomocí ``bind``."
 
 #: en/help_topics/configuration.txt:659
 msgid ""
 "bound\n"
 "~~~~~"
 msgstr ""
+"bound\n"
+"~~~~~"
 
 #: en/help_topics/configuration.txt:662
 msgid ""
@@ -12688,24 +12743,33 @@ msgid ""
 "commit to\n"
 "the bound_location.  This option is normally set by ``bind``/``unbind``."
 msgstr ""
+"Pokud nastaveno na \"True\", větev by se měla chovat jako získání a každé\n"
+"odevzdání odesílat do bound_location. Tato volba je normálně\n"
+"nastavována pomocí ``bind``/``unbind``."
 
 #: en/help_topics/configuration.txt:665
 msgid ""
 "send_strict\n"
 "~~~~~~~~~~~"
 msgstr ""
+"send_strict\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:668
 msgid ""
 "If present, defines the ``--strict`` option default value for checking\n"
 "uncommitted changes before sending a merge directive."
 msgstr ""
+"Pokud přítomno, zadává výchozí hodnotu volby ``--strict`` pro\n"
+"kontrolu neodevzdaných změn před odesláním příkazu sloučení."
 
 #: en/help_topics/configuration.txt:671
 msgid ""
 "add.maximum_file_size\n"
 "~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"add.maximum_file_size\n"
+"~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:674
 msgid ""
@@ -12718,18 +12782,28 @@ msgid ""
 "0 \n"
 "will disable skipping."
 msgstr ""
+"Určuje maximální velikost souboru, kterou povolí příkaz \"add\" v "
+"rekurzivním\n"
+"režimu, soubory větší než tato hodnota budou přeskočeny. Tuto hodnotu \n"
+"můžete zadat jako celé číslo (v takovém případě jsou považována za bajty), \n"
+"nebo ji můžete zadat pomocí jednotek SI, např. 10KB, 20MB, 1G. Hodnota \n"
+"0 přeskakování zakáže."
 
 #: en/help_topics/configuration.txt:680
 msgid ""
 "External Merge Tools\n"
 "--------------------"
 msgstr ""
+"Externí nástroje sloučení\n"
+"--------------------"
 
 #: en/help_topics/configuration.txt:683
 msgid ""
 "bzr.mergetool.<name>\n"
 "~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"bzr.mergetool.<název>\n"
+"~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:686
 msgid ""
@@ -12738,6 +12812,10 @@ msgid ""
 "The\n"
 "executable may omit its path if it can be found on the PATH."
 msgstr ""
+"Určuje externí nástroj sloučení, nazvaný <název> se zadaným příkazovým\n"
+"řádkem. Argumenty obsahující mezery by měly být umístěny do\n"
+"jednoduchých či dvojitých uvozovek. Cestu ke spustitelnému souboru\n"
+"může být vynechána, pokud ho lze nalézt v PATH."
 
 #: en/help_topics/configuration.txt:690
 msgid ""
@@ -12745,6 +12823,9 @@ msgid ""
 "filenames\n"
 "involved in the merge conflict::"
 msgstr ""
+"Následující značky lze použít na příkazovém řádku jako zástupce názvu "
+"souborů,\n"
+"které se podílí na konfliktu sloučení::"
 
 #: en/help_topics/configuration.txt:693
 msgid ""
@@ -12756,10 +12837,16 @@ msgid ""
 "merge\n"
 "              succeeds."
 msgstr ""
+"  {base}      soubor.ZÁKLAD\n"
+"  {this}      soubor.TENTO\n"
+"  {other}     soubor.DRUHÝ\n"
+"  {result}    výstupní soubor\n"
+"  {this_temp} dočasná kopie souboru.TENTO je použit k přepisu výstupního\n"
+"              souboru, pokud je sloučení úspěšné."
 
 #: en/help_topics/configuration.txt:702
 msgid "  bzr.mergetool.kdiff3 = kdiff3 {base} {this} {other} -o {result}"
-msgstr ""
+msgstr "  bzr.mergetool.kdiff3 = kdiff3 {base} {this} {other} -o {result}"
 
 #: en/help_topics/configuration.txt:704
 msgid ""
