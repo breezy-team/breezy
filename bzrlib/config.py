@@ -3447,6 +3447,8 @@ class LocationSection(Section):
     def __init__(self, section, extra_path, branch_name=None):
         super(LocationSection, self).__init__(section.id, section.options)
         self.extra_path = extra_path
+        if branch_name is None:
+            branch_name = ''
         self.locals = {'relpath': extra_path,
                        'basename': urlutils.basename(extra_path),
                        'branchname': branch_name}
