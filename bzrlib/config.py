@@ -3444,11 +3444,12 @@ class NameMatcher(SectionMatcher):
 
 class LocationSection(Section):
 
-    def __init__(self, section, extra_path):
+    def __init__(self, section, extra_path, branch_name=None):
         super(LocationSection, self).__init__(section.id, section.options)
         self.extra_path = extra_path
         self.locals = {'relpath': extra_path,
-                       'basename': urlutils.basename(extra_path)}
+                       'basename': urlutils.basename(extra_path),
+                       'branchname': branch_name}
 
     def get(self, name, default=None, expand=True):
         value = super(LocationSection, self).get(name, default)
@@ -3524,6 +3525,9 @@ class LocationMatcher(SectionMatcher):
 
     def __init__(self, store, location):
         super(LocationMatcher, self).__init__(store)
+        url, params = urlutils.split_segment_parameters(location)
+        self.branch_name = params.get('branch')
+        self.orig_location = location
         if location.startswith('file://'):
             location = urlutils.local_path_from_url(location)
         self.location = location
@@ -3558,8 +3562,9 @@ class LocationMatcher(SectionMatcher):
             while True:
                 section = iter_all_sections.next()
                 if section_id == section.id:
-                    matching_sections.append(
-                        (length, LocationSection(section, extra_path)))
+                    section = LocationSection(section, extra_path,
+                                              self.branch_name)
+                    matching_sections.append((length, section))
                     break
         return matching_sections
 
