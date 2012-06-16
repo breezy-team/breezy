@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-06-07 22:06+0000\n"
-"Last-Translator: Wellington Oliveira <wellington.oj@gmail.com>\n"
+"PO-Revision-Date: 2012-06-15 21:48+0000\n"
+"Last-Translator: Leonardo Lemos <Unknown>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2012-06-08 04:30+0000\n"
-"X-Generator: Launchpad (build 15376)\n"
+"X-Launchpad-Export-Date: 2012-06-16 04:30+0000\n"
+"X-Generator: Launchpad (build 15419)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -1408,6 +1408,12 @@ msgid ""
 "store branches which are interacted with through checkouts or remote\n"
 "branches, such as on a server."
 msgstr ""
+"Se a opção --no-trees for fornecida então os ramos do repositório\n"
+"não terão árvores de trabalho por padrão. Eles vão existir como\n"
+"diretórios no disco, mas não terão cópias separadas dos arquivos\n"
+"em uma determinada revisão. Isto pode ser útil para repositórios que\n"
+"guardam ramos com os quais se interage através de checkouts ou\n"
+"ramos remotos, como em um servidor."
 
 #: bzrlib/builtins.py:2147
 msgid ""
@@ -1469,6 +1475,12 @@ msgid ""
 "the first argument, if any, or the current tree if no arguments are\n"
 "given."
 msgstr ""
+"Se nenhum argumento for fornecido, todas as alterações para a árvore\n"
+"atual são listadas. Se arquivos são fornecidos, apenas as alterações destes\n"
+"arquivos serão listadas. Ramos remotos e múltiplos podem ser comparados\n"
+"usando as opções --old e --new. Se não forem fornecidas, o padrão para\n"
+"ambas é derivado do primeiro argumento, se existir, ou da árvore atual se\n"
+"nenhum argumento foi fornecido."
 
 #: bzrlib/builtins.py:2204
 msgid ""
@@ -1922,6 +1934,11 @@ msgid ""
 "  explicitly ask for this (and no way to stop logging a file back\n"
 "  until it was last renamed)."
 msgstr ""
+"  Renomeamentos são sempre seguidas por um registro. Por design, não há "
+"necessidade de\n"
+"  explicitamente pedir por isso (e não tem uma maneira de parar voltar o "
+"registro para\n"
+"  a última vez que houve renomeamento)."
 
 #: bzrlib/builtins.py:2575
 msgid ":Other filtering:"
@@ -2040,7 +2057,7 @@ msgstr "Mostrar alterações feitas em cada revisão como um caminho."
 
 #: bzrlib/builtins.py:2660
 msgid "Show merged revisions like --levels 0 does."
-msgstr ""
+msgstr "Mostrar versões mescladas como --levels 0 faz."
 
 #: bzrlib/builtins.py:2664
 msgid "Do not report commits with more than one parent."
@@ -2187,6 +2204,8 @@ msgid ""
 "Patterns prefixed with '!!' act as regular ignore patterns, but have\n"
 "precedence over the '!' exception patterns."
 msgstr ""
+"Padrões prefixados com '!!' atuam como padrões ignorantes normais, mas têm\n"
+"precedência sobre os '!' padrões de exceção."
 
 #: bzrlib/builtins.py:3108
 msgid ""
@@ -2201,6 +2220,9 @@ msgid ""
 "* Ignore patterns starting with \"#\" act as comments in the ignore file.\n"
 "  To ignore patterns that begin with that character, use the \"RE:\" prefix."
 msgstr ""
+"* Padrões ignorantes começados com \"#\" atuam como comentários no arquivo "
+"ignorado.\n"
+"Para padrões de ignorar que comecem com esse carácter, use o prefixo \"RE:"
 
 #: bzrlib/builtins.py:3116
 msgid ""
@@ -2275,18 +2297,18 @@ msgstr ""
 
 #: bzrlib/builtins.py:3157
 msgid "Display the default ignore rules that bzr uses."
-msgstr ""
+msgstr "Mostrar as regrãos de ignorar padrão que o brz usa."
 
 #: bzrlib/builtins.py:3169
 msgid "ignore requires at least one NAME_PATTERN or --default-rules."
-msgstr ""
+msgstr "ignore requer pelo menos um NAME_PATTERN ou --default-rules."
 
 #: bzrlib/builtins.py:3180
 #, python-format
 msgid "Invalid ignore pattern found. %s"
 msgid_plural "Invalid ignore patterns found. %s"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Padrão de regras de ignorar inválido encontrado. %s"
+msgstr[1] "Padrões ignorantes inválidos encontrados. %s"
 
 #: bzrlib/builtins.py:3189
 msgid "NAME_PATTERN should not be an absolute path"
@@ -3142,7 +3164,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4322
 msgid "Merge even if the destination tree has uncommitted changes."
-msgstr ""
+msgstr "Mesclar mesmo se a árvore destino tiver mudanças não submetidas."
 
 #: bzrlib/builtins.py:4328
 msgid ""
