@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-06-11 08:20+0000\n"
+"PO-Revision-Date: 2012-06-16 07:58+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-06-12 04:30+0000\n"
-"X-Generator: Launchpad (build 15389)\n"
+"X-Launchpad-Export-Date: 2012-06-17 04:30+0000\n"
+"X-Generator: Launchpad (build 15419)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -12853,6 +12853,8 @@ msgid ""
 "bzr.default_mergetool\n"
 "~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"bzr.default_mergetool\n"
+"~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:707
 msgid ""
@@ -12860,16 +12862,20 @@ msgid ""
 "by\n"
 "default in tools such as ``bzr qconflicts``."
 msgstr ""
+"Určuje, který externí nástroj sloučení (uveden výše) by měl být standardně\n"
+"vybrán v nástrojích jako například ``bzr qconflicts``."
 
 #: en/help_topics/configuration.txt:712
 msgid "  bzr.default_mergetool = kdiff3\n"
-msgstr ""
+msgstr "  bzr.default_mergetool = kdiff3\n"
 
 #: en/help_topics/conflict-types.txt:1
 msgid ""
 "Conflict Types\n"
 "=============="
 msgstr ""
+"Typy konfliktů\n"
+"=============="
 
 #: en/help_topics/conflict-types.txt:4
 msgid ""
@@ -12878,6 +12884,9 @@ msgid ""
 "they\n"
 "may conflict with the current state of your working tree. "
 msgstr ""
+"Některé operace, jako sloučení, vrácení a odeslání mění obsah vašeho\n"
+"pracovního stromu. Tyto změny jsou vytvářeny programově a proto mohou být\n"
+"v konfliktu se současným stavem vašeho pracovního stromu. "
 
 #: en/help_topics/conflict-types.txt:8
 msgid ""
@@ -12886,6 +12895,10 @@ msgid ""
 "conflicts\n"
 "have been resolved."
 msgstr ""
+"Pokud se konflikty vyskytnou ve vašem pracovním stromu tak jak je\n"
+"zobrazí ``bzr conflicts``), měli byste je vyřešit a pak sdělit bzr, že "
+"konflikty\n"
+"jsou vyřešeny."
 
 #: en/help_topics/conflict-types.txt:12
 msgid ""
@@ -12896,6 +12909,12 @@ msgid ""
 "presented\n"
 "in a way that is not easy to understand."
 msgstr ""
+"Řešení konfliktů není vždy jednoznačné. Buď protože uživatel, který by je "
+"měl\n"
+"vyřešit, není zodpovědný za jejich výskyt, jako je tomu v případě slučování "
+"práce\n"
+"od ostatních uživatelů nebo protože některé konflikty jsou předkládány\n"
+"způsobem, který není snadné pochopit."
 
 #: en/help_topics/conflict-types.txt:17
 msgid ""
@@ -12911,6 +12930,12 @@ msgid ""
 "to\n"
 "do."
 msgstr ""
+"Bazar se konfliktů snaží vyhnout ; jeho cílem je se Vás zeptat na řešení,\n"
+"pouze když se vyskytne opravdový konflikt v obsahu ve zdrojovém stromě.\n"
+"Bazaar nerozumí skutečnému významu souborů mající verzi, proto může,\n"
+"když narazí na nejasnosti, selhat v obou směrech, když se sám bude snažit\n"
+"konflikt vyřešit. Mnoho změn může být spojeno programově, ale někdy\n"
+"může pouze člověk rozhodnout o správném řešení konfliktu."
 
 #: en/help_topics/conflict-types.txt:25
 msgid ""
@@ -12919,10 +12944,14 @@ msgid ""
 "present the conflicting versions, and it's up to you to find the correct\n"
 "resolution."
 msgstr ""
+"Při vytvoření konfliktu přidá Bazaar informace do pracovního stromu, aby "
+"došlo k\n"
+"představení konfliktních verzí a je na Vás, abyste našli správné řešení."
 
 #: en/help_topics/conflict-types.txt:29
 msgid "Whatever the conflict is, resolving it is roughly done in two steps:"
 msgstr ""
+"Ať se jedná o jakýkoli konflikt, jeho řešení zhruba zahrnuje dva kroky:"
 
 #: en/help_topics/conflict-types.txt:31
 msgid ""
@@ -12930,12 +12959,17 @@ msgid ""
 "the\n"
 "   state you want to keep, then"
 msgstr ""
+"1. Změnit obsah pracovního stromu tak, aby konfliktní položka byla ve stavu "
+"v\n"
+"   jakém ji chcete mít, pak"
 
 #: en/help_topics/conflict-types.txt:34
 msgid ""
 "2. Inform Bazaar that the conflict is now solved and ask to cleanup any\n"
 "   remaining generated information (``bzr resolve <item>``)."
 msgstr ""
+"2. Sdělte Bazaar, že je konflikt vyřešen a požádejte ho o vyčištění všech\n"
+"   zbývajících vytvořených informací (``bzr resolve <položka>``)."
 
 #: en/help_topics/conflict-types.txt:37
 msgid ""
@@ -12943,12 +12977,18 @@ msgid ""
 "tree and put it into the desired state. For some types of conflicts, Bazaar\n"
 "itself already made a choice, when possible."
 msgstr ""
+"Pro většinu typů konfliktu existuje nějaký spolehlivý způsob, jak pracovní\n"
+"strom změnit a uvést ho do požadovaného stavu. U některých typů\n"
+"Bazaar, pokud možno, již volbu provedl."
 
 #: en/help_topics/conflict-types.txt:41
 msgid ""
 "Yet, whether Bazaar makes a choice or not, there are some other simple but\n"
 "different ways to resolve the conflict."
 msgstr ""
+"Přesto, ať už Bazaar rozhodl, či nikoliv, existují jisté jednoduché a "
+"odlišné\n"
+"způsoby, jako konflikt vyřešit."
 
 #: en/help_topics/conflict-types.txt:44
 msgid ""
@@ -12956,6 +12996,9 @@ msgid ""
 "to\n"
 "resolve the conflict is outlined."
 msgstr ""
+"Všechny typy konfliktu jsou popsány níže spolu s návrhem, co je třeba "
+"provést k\n"
+"jejich vyřešení."
 
 #: en/help_topics/conflict-types.txt:47
 msgid ""
@@ -12964,10 +13007,13 @@ msgid ""
 "these actions, Bazaar can provide some help. In the end you should at least\n"
 "inform Bazaar that you're done with the conflict with::"
 msgstr ""
+"V závislosti na druhu konfliktu jsou dostupné různé úkony, u některých Vám\n"
+"Bazaar může nabídnout nápovědu. Nakonec byste alespoň měli Bazaar\n"
+"informovat, že jste s konfliktem hotovi pomocí::"
 
 #: en/help_topics/conflict-types.txt:51
 msgid "  ``bzr resolve FILE --action=done'"
-msgstr ""
+msgstr "  ``bzr resolve SOUBOR --action=done'"
 
 #: en/help_topics/conflict-types.txt:53
 msgid ""
@@ -12975,14 +13021,16 @@ msgid ""
 "can\n"
 "simply use::"
 msgstr ""
+"Toto je také výchozí činnost, pokud se jedná o jeden soubor, takže můžete\n"
+"použít::"
 
 #: en/help_topics/conflict-types.txt:56
 msgid "   ``bzr resolve FILE``"
-msgstr ""
+msgstr "   ``bzr resolve SOUBOR``"
 
 #: en/help_topics/conflict-types.txt:58
 msgid "See ``bzr help resolve`` for more details."
-msgstr ""
+msgstr "Viz ``bzr help resolve`` pro další informace."
 
 #: en/help_topics/conflict-types.txt:60
 msgid ""
