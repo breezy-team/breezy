@@ -18,6 +18,7 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+
 from base64 import (
     standard_b64decode,
     standard_b64encode,
@@ -409,7 +410,23 @@ class PristineTarSource(UpstreamSource):
                 export(tree, dest, format='dir', subdir=subdir)
             finally:
                 tree.unlock()
-            return make_pristine_tar_delta(dest, tarball_path)
+            try:
+                return make_pristine_tar_delta(dest, tarball_path)
+            except PristineTarDeltaTooLarge:
+                raise
+            except PristineTarError: # I.e. not PristineTarDeltaTooLarge
+                revno, revid = tree.branch.last_revision_info()
+                mutter('pristine-tar failed for delta between %s rev: %s'
+                       ' and tarball %s'
+                       % (tree.basedir, (revno, revid), tarball_path))
+                osutils.copy_tree(
+                    dest,
+                    osutils.pathjoin(osutils.dirname(tarball_path),
+                                     'orig-%s' % (revno,)))
+                # Note: The failure can be reproduced with:
+                # cd .../updates/<pkgname>/orig-<revno>
+                # pristine-tar -vdk gendelta <tarball_path> -
+                raise
         finally:
             shutil.rmtree(tmpdir)
 
