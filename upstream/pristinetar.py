@@ -35,6 +35,7 @@ from bzrlib.plugins.builddeb.errors import (
     )
 from bzrlib.plugins.builddeb.upstream import UpstreamSource
 from bzrlib.plugins.builddeb.util import (
+    debuild_config,
     export,
     subprocess_setup,
     )
@@ -415,17 +416,20 @@ class PristineTarSource(UpstreamSource):
             except PristineTarDeltaTooLarge:
                 raise
             except PristineTarError: # I.e. not PristineTarDeltaTooLarge
-                revno, revid = tree.branch.last_revision_info()
-                mutter('pristine-tar failed for delta between %s rev: %s'
-                       ' and tarball %s'
-                       % (tree.basedir, (revno, revid), tarball_path))
-                osutils.copy_tree(
-                    dest,
-                    osutils.pathjoin(osutils.dirname(tarball_path),
-                                     'orig-%s' % (revno,)))
-                # Note: The failure can be reproduced with:
-                # cd .../updates/<pkgname>/orig-<revno>
-                # pristine-tar -vdk gendelta <tarball_path> -
+                conf = debuild_config(tree, True)
+                if conf.debug_pristine_tar:
+                    revno, revid = tree.branch.last_revision_info()
+                    preserved = osutils.pathjoin(osutils.dirname(tarball_path),
+                                                 'orig-%s' % (revno,)))
+                    mutter('pristine-tar failed for delta between %s rev: %s'
+                           ' and tarball %s'
+                           % (tree.basedir, (revno, revid), tarball_path))
+                    osutils.copy_tree(
+                        dest, preserved)
+                    mutter('The failure can be reproduced with:\n'
+                           'cd %s\n'
+                           'pristine-tar -vdk gendelta %s -'
+                           % (preserved, tarball_path))
                 raise
         finally:
             shutil.rmtree(tmpdir)
