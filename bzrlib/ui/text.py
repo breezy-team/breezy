@@ -404,8 +404,13 @@ class TextProgressView(object):
     this only prints the stack from the nominated current task up to the root.
     """
 
-    def __init__(self, term_file):
+    def __init__(self, term_file, encoding=None, errors="replace"):
         self._term_file = term_file
+        if encoding is None:
+            self._encoding = getattr(term_file, "encoding", None) or "ascii"
+        else:
+            self._encoding = encoding
+        self._encoding_errors = errors
         # true when there's output on the screen we may need to clear
         self._have_output = False
         self._last_transport_msg = ''
@@ -432,10 +437,12 @@ class TextProgressView(object):
         else:
             return w - 1
 
-    def _show_line(self, s):
-        # sys.stderr.write("progress %r\n" % s)
+    def _show_line(self, u):
+        s = u.encode(self._encoding, self._encoding_errors)
         width = self._avail_width()
         if width is not None:
+            # GZ 2012-03-28: Counting bytes is wrong for calculating width of
+            #                text but better than counting codepoints.
             s = '%-*.*s' % (width, width, s)
         self._term_file.write('\r' + s + '\r')
 
