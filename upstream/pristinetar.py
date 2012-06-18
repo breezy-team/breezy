@@ -427,8 +427,8 @@ class PristineTarSource(UpstreamSource):
                     osutils.copy_tree(
                         dest, preserved)
                     mutter('The failure can be reproduced with:\n'
-                           'cd %s\n'
-                           'pristine-tar -vdk gendelta %s -'
+                           '  cd %s\n'
+                           '  pristine-tar -vdk gendelta %s -'
                            % (preserved, tarball_path))
                 raise
         finally:
