@@ -3419,27 +3419,28 @@ foo:policy = appendpath
         matcher = config.LocationMatcher(store, expected_url)
         self.assertEquals(expected_location, matcher.location)
 
-    def test_branch_name(self):
+    def test_branch_name_colo(self):
         store = self.get_store(self)
         store._load_from_string(dedent("""\
             [/]
             push_location=my{branchname}
         """))
-        matcher = config.LocationMatcher(store, 'file:///,branch=example')
-        self.assertEqual('example', matcher.branch_name)
+        matcher = config.LocationMatcher(store, 'file:///,branch=example%3c')
+        self.assertEqual('example<', matcher.branch_name)
         ((_, section),) = matcher.get_sections()
-        self.assertEqual('example', section.locals['branchname'])
+        self.assertEqual('example<', section.locals['branchname'])
 
-    def test_no_branch_name(self):
+    def test_branch_name_basename(self):
         store = self.get_store(self)
         store._load_from_string(dedent("""\
             [/]
             push_location=my{branchname}
         """))
-        matcher = config.LocationMatcher(store, 'file:///')
-        self.assertIs(None, matcher.branch_name)
+        matcher = config.LocationMatcher(store, 'file:///parent/example%3c')
+        self.assertEqual('example<', matcher.branch_name)
         ((_, section),) = matcher.get_sections()
-        self.assertEqual('', section.locals['branchname'])
+        self.assertEqual('example<', section.locals['branchname'])
+
 
 class TestStartingPathMatcher(TestStore):
 
