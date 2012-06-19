@@ -265,6 +265,10 @@ class DebBuildConfig(object):
 
   merge = _bool_property('merge', "Run in merge mode")
 
+  debug_pristine_tar  = _bool_property(
+    'debug-pristine-tar',
+    "Save some context when pristine-tar fails")
+
   @property
   def build_type(self):
     if self.merge:
