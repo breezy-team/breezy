@@ -420,7 +420,7 @@ class PristineTarSource(UpstreamSource):
                 if conf.debug_pristine_tar:
                     revno, revid = tree.branch.last_revision_info()
                     preserved = osutils.pathjoin(osutils.dirname(tarball_path),
-                                                 'orig-%s' % (revno,)))
+                                                 'orig-%s' % (revno,))
                     mutter('pristine-tar failed for delta between %s rev: %s'
                            ' and tarball %s'
                            % (tree.basedir, (revno, revid), tarball_path))
