@@ -334,7 +334,8 @@ itself is defined as the relative path between the section name and the
 location it matches.
 
 Another such option is ``branchname``, which refers to the name of a colocated
-branch.  It can be used like this::
+branch.  For non-colocated branches, it behaves like basename.  It can be used
+like this::
 
   [/home/vila/src/bzr/bugs]
   mypush = lp:~vila/bzr/{branchname}
