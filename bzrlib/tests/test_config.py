@@ -17,6 +17,7 @@
 """Tests for finding and reading the bzr config file[s]."""
 # import system imports here
 from cStringIO import StringIO
+from textwrap import dedent
 import os
 import sys
 import threading
@@ -3417,6 +3418,28 @@ foo:policy = appendpath
             expected_location = '/dir/subdir'
         matcher = config.LocationMatcher(store, expected_url)
         self.assertEquals(expected_location, matcher.location)
+
+    def test_branch_name_colo(self):
+        store = self.get_store(self)
+        store._load_from_string(dedent("""\
+            [/]
+            push_location=my{branchname}
+        """))
+        matcher = config.LocationMatcher(store, 'file:///,branch=example%3c')
+        self.assertEqual('example<', matcher.branch_name)
+        ((_, section),) = matcher.get_sections()
+        self.assertEqual('example<', section.locals['branchname'])
+
+    def test_branch_name_basename(self):
+        store = self.get_store(self)
+        store._load_from_string(dedent("""\
+            [/]
+            push_location=my{branchname}
+        """))
+        matcher = config.LocationMatcher(store, 'file:///parent/example%3c')
+        self.assertEqual('example<', matcher.branch_name)
+        ((_, section),) = matcher.get_sections()
+        self.assertEqual('example<', section.locals['branchname'])
 
 
 class TestStartingPathMatcher(TestStore):
