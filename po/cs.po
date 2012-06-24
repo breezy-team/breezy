@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-06-16 07:58+0000\n"
+"PO-Revision-Date: 2012-06-23 21:13+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-06-17 04:30+0000\n"
-"X-Generator: Launchpad (build 15419)\n"
+"X-Launchpad-Export-Date: 2012-06-24 04:30+0000\n"
+"X-Generator: Launchpad (build 15461)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -13037,6 +13037,8 @@ msgid ""
 "Text conflicts\n"
 "--------------"
 msgstr ""
+"Textové konflikty\n"
+"--------------"
 
 #: en/help_topics/conflict-types.txt:63 en/help_topics/conflict-types.txt:120
 #: en/help_topics/conflict-types.txt:151 en/help_topics/conflict-types.txt:175
@@ -13044,11 +13046,11 @@ msgstr ""
 #: en/help_topics/conflict-types.txt:239 en/help_topics/conflict-types.txt:281
 #: en/help_topics/conflict-types.txt:303 en/help_topics/conflict-types.txt:339
 msgid "Typical message::"
-msgstr ""
+msgstr "Typická zpráva::"
 
 #: en/help_topics/conflict-types.txt:65
 msgid "  Text conflict in FILE"
-msgstr ""
+msgstr "  Textový konflikt v SOUBOR"
 
 #: en/help_topics/conflict-types.txt:67
 msgid ""
@@ -13063,6 +13065,12 @@ msgid ""
 "basis\n"
 "for comparison."
 msgstr ""
+"Tyto se vyskytují, pokud sloučení textu nelze zcela sladit dvě sady změn "
+"textu.\n"
+"Bazaar vypíše změny pro každou verzi s příponami THIS, OTHER, a BASE.\n"
+"THIS je verze souboru z cílového stromu, tj. strom, do kterého slučujete\n"
+"změny. OTHER je verze, kterou slučujete do cíle. BASE je starší verze\n"
+"sloužící jako základ pro porovnání."
 
 #: en/help_topics/conflict-types.txt:74
 msgid ""
@@ -13070,6 +13078,9 @@ msgid ""
 "could reconcile, and any un-reconciled conflicts are surrounded by\n"
 "\"herringbone\" markers like ``<<<<<<<``."
 msgstr ""
+"V hlavní kopii souboru Bazaar zahrne všechny změny, které by měly být\n"
+"sladěny a všechny nesladěné změny budou označeny \"ozdobnými\"\n"
+"závorkami takto ``<<<<<<<``."
 
 #: en/help_topics/conflict-types.txt:78
 msgid ""
@@ -13079,6 +13090,9 @@ msgid ""
 "leader\n"
 "released Bazaar.\"  A conflict would look like this::"
 msgstr ""
+"Řekněme, že původní text byl \"Vedoucí projektu ho vydal\" a THIS toto mění\n"
+"na \"Martin Pool ho vydal\", zatímco OTHER má změnu na \"Vedoucí projektu\n"
+"vydal Bazaar.\" Konflikt by pak vypadal takto::"
 
 #: en/help_topics/conflict-types.txt:82
 msgid ""
@@ -13088,10 +13102,15 @@ msgid ""
 "  The project leader released Bazaar.\n"
 "  >>>>>>> MERGE-SOURCE"
 msgstr ""
+"  <<<<<<< TREE\n"
+"  Martin Pool ho vydal.\n"
+"  =======\n"
+"  Vedoucí projektu vydal Bazaar.\n"
+"  >>>>>>> MERGE-SOURCE"
 
 #: en/help_topics/conflict-types.txt:88
 msgid "The correct resolution would be \"Martin Pool released Bazaar.\""
-msgstr ""
+msgstr "Správné řešení by bylo \"Martin Pool vydal Bazaar.\""
 
 #: en/help_topics/conflict-types.txt:90
 msgid ""
@@ -13101,6 +13120,11 @@ msgid ""
 "set of changes over the other (but see below when you encounter these\n"
 "cases).  More often, the two sets of changes must be intelligently combined."
 msgstr ""
+"Textové konflikty  můžete řešit buď úpravou hlavní kopie souboru, nebo\n"
+"spuštěním externího nástroje, ve verzích THIS, OTHER a BASE. Za\n"
+"zmínku stojí říci, že řešení konfliktů málokdy vyžaduje výběr jedné sady\n"
+"změn (ale viz níže, když na tyto případy narazíte). Většinou je třeba\n"
+"dvě sady změn rozumně spojit."
 
 #: en/help_topics/conflict-types.txt:96
 msgid ""
@@ -13109,12 +13133,19 @@ msgid ""
 "be\n"
 "ready to commit."
 msgstr ""
+"Pokud upravíte hlavní kopii, ujistěte se, že odstraníte ozdobné závorky. "
+"Když\n"
+"jste s úpravami hotovi, soubor by měl vypadat, jako kdyby k žádnému\n"
+"konfliktu nedošlo a být připraven k odevzdání."
 
 #: en/help_topics/conflict-types.txt:100
 msgid ""
 "When you have resolved text conflicts, just run ``bzr resolve --auto``, and\n"
 "Bazaar will auto-detect which conflicts you have resolved."
 msgstr ""
+"Když jste textové konflikty vyřešili, spusťte ``bzr resolve --auto`` a "
+"Bazaar\n"
+"automaticky zjistí, které konflikty byly vyřešeny."
 
 #: en/help_topics/conflict-types.txt:103
 msgid ""
@@ -13122,6 +13153,9 @@ msgid ""
 "``.BASE``, ``.THIS`` and ``.OTHER`` files if they are still present in the\n"
 "working tree."
 msgstr ""
+"Když jsou konflikty vyřešeny, Bazaar smaže předešlé vytvořené soubory\n"
+"``.BASE``, ``.THIS`` and ``.OTHER``, pokud jsou přítomny v pracovním\n"
+"stromu."
 
 #: en/help_topics/conflict-types.txt:107
 msgid ""
@@ -13129,28 +13163,37 @@ msgid ""
 "When you want to pick one set of changes over the other, you can use ``bzr\n"
 "resolve`` with one of the following actions:"
 msgstr ""
+"\n"
+"Když chcete dát přednost jedné sadě změn před druhou, můžete použít \n"
+"``bzr resolve`` s jednou z následujících činností:"
 
 #: en/help_topics/conflict-types.txt:111
 msgid ""
 "* ``--action=take-this`` will issue ``mv FILE.THIS FILE``,\n"
 "* ``--action=take-other`` will issue ``mv FILE.OTHER FILE``."
 msgstr ""
+"* ``--action=take-this`` zadá ``mv SOUBOR.THIS SOUBOR``,\n"
+"* ``--action=take-other`` zadá ``mv SOUBOR.OTHER SOUBOR``."
 
 #: en/help_topics/conflict-types.txt:114
 msgid ""
 "Note that if you have modified ``FILE.THIS`` or ``FILE.OTHER``, these\n"
 "modifications will be taken into account."
 msgstr ""
+"Nezapomeňte, že pokud jste změnili ``SOUBOR.THIS`` nebo\n"
+"``SOUBOR.OTHER``, tyto změny budou začleněny."
 
 #: en/help_topics/conflict-types.txt:117
 msgid ""
 "Content conflicts\n"
 "-----------------"
 msgstr ""
+"Konflikty obsahu\n"
+"-----------------"
 
 #: en/help_topics/conflict-types.txt:122
 msgid "  Contents conflict in FILE"
-msgstr ""
+msgstr "  Konlikty obsahu v SOUBOR"
 
 #: en/help_topics/conflict-types.txt:124
 msgid ""
@@ -13162,6 +13205,10 @@ msgid ""
 "files\n"
 "that are deleted on one side, and modified on the other."
 msgstr ""
+"Tento konflikt nastane, pokud v pracovním stromě a zdroji sloučení existují\n"
+"konfliktní změny, ale konfliktní položky nejsou text. Může se jednat o\n"
+"binární soubory, symbolické odkazy, či adresáře. Může se také jednat o\n"
+"soubory, které jsou smazané na jedné straně, ale upraveny na druhé."
 
 #: en/help_topics/conflict-types.txt:129
 msgid ""
@@ -13173,6 +13220,12 @@ msgid ""
 "\"main\n"
 "copy\" has been renamed to THIS or OTHER."
 msgstr ""
+"Jako textové konflikty, Bazaar vypíše soubory THIS, OTHER a BASE. (Může se\n"
+"jednat o soubory, symbolické odkazy, či adresáře. Ale nevytvoří \"hlavní "
+"kopii\"\n"
+"souboru s ozdobným označením konfliktů. Bude to vypadat, že \"hlavní "
+"kopie\"\n"
+"byla přejmenována z THIS nebo OTHER."
 
 #: en/help_topics/conflict-types.txt:134 en/help_topics/conflict-types.txt:182
 msgid ""
@@ -13180,6 +13233,8 @@ msgid ""
 "version\n"
 "or a combination of both."
 msgstr ""
+"Pro vyřešení tohoto druhu konfliktu, byste měli znovu sestavit SOUBOR z\n"
+"jedné z verzí nebo z kombinací obou."
 
 #: en/help_topics/conflict-types.txt:137 en/help_topics/conflict-types.txt:185
 #: en/help_topics/conflict-types.txt:226 en/help_topics/conflict-types.txt:252
