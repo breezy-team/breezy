@@ -1034,18 +1034,6 @@ class Branch(controldir.ControlComponent):
     def _read_last_revision_info(self):
         raise NotImplementedError(self._read_last_revision_info)
 
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def import_last_revision_info(self, source_repo, revno, revid):
-        """Set the last revision info, importing from another repo if necessary.
-
-        :param source_repo: Source repository to optionally fetch from
-        :param revno: Revision number of the new tip
-        :param revid: Revision id of the new tip
-        """
-        if not self.repository.has_same_location(source_repo):
-            self.repository.fetch(source_repo, revision_id=revid)
-        self.set_last_revision_info(revno, revid)
-
     def import_last_revision_info_and_tags(self, source, revno, revid,
                                            lossy=False):
         """Set the last revision info, importing from another repo if necessary.
