@@ -1682,11 +1682,6 @@ class BranchFormat(controldir.ControlComponentFormat):
         """True if this format supports leaving locks in place."""
         return False # by default
 
-    @classmethod
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def unregister_format(klass, format):
-        format_registry.remove(format)
-
     def __str__(self):
         return self.get_format_description().rstrip()
 
