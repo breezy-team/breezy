@@ -58,6 +58,9 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* Remove deprecated Repository.iter_reverse_revision_history().
+  (Jelmer Vernooij)
+
 * Remove deprecated ``RepositoryFormat.register_format``.
   (Jelmer Vernooij)
 
