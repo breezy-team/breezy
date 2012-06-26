@@ -61,6 +61,9 @@ API Changes
 * Remove deprecated Repository.iter_reverse_revision_history().
   (Jelmer Vernooij)
 
+* The previously deprecated ``bzrlib.annotate.annotate_file`` function
+  has been removed. (Jelmer Vernooij)
+
 Internals
 *********
 
