@@ -981,17 +981,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
             raise AssertionError('_iter_for_revno returned too much history')
         return (True, partial_history[-1])
 
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
-    def iter_reverse_revision_history(self, revision_id):
-        """Iterate backwards through revision ids in the lefthand history
-
-        :param revision_id: The revision id to start with.  All its lefthand
-            ancestors will be traversed.
-        """
-        graph = self.get_graph()
-        stop_revisions = (None, _mod_revision.NULL_REVISION)
-        return graph.iter_lefthand_ancestry(revision_id, stop_revisions)
-
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
         raise NotImplementedError(self.is_shared)
