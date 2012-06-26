@@ -68,7 +68,6 @@ API Changes
 
 * The previously deprecated ``bzrlib.annotate.annotate_file`` function
   has been removed. (Jelmer Vernooij)
->>>>>>> MERGE-SOURCE
 
 Internals
 *********
