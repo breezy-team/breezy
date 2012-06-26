@@ -1432,22 +1432,6 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     def __ne__(self, other):
         return not self == other
 
-    @classmethod
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
-    def register_format(klass, format):
-        format_registry.register(format)
-
-    @classmethod
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
-    def unregister_format(klass, format):
-        format_registry.remove(format)
-
-    @classmethod
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
-    def get_default_format(klass):
-        """Return the current default format."""
-        return format_registry.get_default()
-
     def get_format_description(self):
         """Return the short description for this format."""
         raise NotImplementedError(self.get_format_description)
