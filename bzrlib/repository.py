@@ -1034,40 +1034,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         """
         raise NotImplementedError(self.revision_trees)
 
-    @needs_read_lock
-    @symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((2, 4, 0)))
-    def get_ancestry(self, revision_id, topo_sorted=True):
-        """Return a list of revision-ids integrated by a revision.
-
-        The first element of the list is always None, indicating the origin
-        revision.  This might change when we have history horizons, or
-        perhaps we should have a new API.
-
-        This is topologically sorted.
-        """
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(2, "get_ancestry is linear with history.")
-        if _mod_revision.is_null(revision_id):
-            return [None]
-        if not self.has_revision(revision_id):
-            raise errors.NoSuchRevision(self, revision_id)
-        graph = self.get_graph()
-        keys = set()
-        search = graph._make_breadth_first_searcher([revision_id])
-        while True:
-            try:
-                found, ghosts = search.next_with_ghosts()
-            except StopIteration:
-                break
-            keys.update(found)
-        if _mod_revision.NULL_REVISION in keys:
-            keys.remove(_mod_revision.NULL_REVISION)
-        if topo_sorted:
-            parent_map = graph.get_parent_map(keys)
-            keys = tsort.topo_sort(parent_map)
-        return [None] + list(keys)
-
     def pack(self, hint=None, clean_obsolete_packs=False):
         """Compress the data within the repository.
 
