@@ -1,4 +1,4 @@
-bzr (2.6.0~bzr6531-1) UNRELEASED; urgency=low
+bzr (2.6.0~bzr6531-1) unstable; urgency=low
 
   * New upstream snapshot.
    + Reverts use of --no-tty when gpg signing commits.
