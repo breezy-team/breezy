@@ -1,3 +1,11 @@
+bzr (2.6.0~bzr6531-1) UNRELEASED; urgency=low
+
+  * New upstream snapshot.
+   + Reverts use of --no-tty when gpg signing commits.
+     Closes: #673484
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 27 Jun 2012 18:01:47 +0200
+
 bzr (2.6.0~bzr6525-1) unstable; urgency=low
 
   * New upstream snapshot.

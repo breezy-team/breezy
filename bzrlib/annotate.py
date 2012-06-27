@@ -47,32 +47,6 @@ from bzrlib.revision import (
     CURRENT_REVISION,
     Revision,
     )
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
-    )
-
-
-@deprecated_function(deprecated_in((2, 4, 0)))
-def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
-                  to_file=None, show_ids=False):
-    """Annotate file_id at revision rev_id in branch.
-
-    The branch should already be read_locked() when annotate_file is called.
-
-    :param branch: The branch to look for revision numbers and history from.
-    :param rev_id: The revision id to annotate.
-    :param file_id: The file_id to annotate.
-    :param verbose: Show all details rather than truncating to ensure
-        reasonable text width.
-    :param full: XXXX Not sure what this does.
-    :param to_file: The file to output the annotation to; if None stdout is
-        used.
-    :param show_ids: Show revision ids in the annotation output.
-    """
-    tree = branch.repository.revision_tree(rev_id)
-    annotate_file_tree(tree, file_id, to_file, verbose=verbose,
-        full=full, show_ids=show_ids, branch=branch)
 
 
 def annotate_file_tree(tree, file_id, to_file, verbose=False, full=False,
