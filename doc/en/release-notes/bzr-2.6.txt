@@ -60,6 +60,17 @@ API Changes
 
 * Remove deprecated Repository.get_ancestry(). (Jelmer Vernooij)
 
+* Remove deprecated Branch.import_last_revision(). (Jelmer Vernooij)
+
+* Remove deprecated Repository.iter_reverse_revision_history().
+  (Jelmer Vernooij)
+
+* Remove deprecated ``RepositoryFormat.register_format``.
+  (Jelmer Vernooij)
+
+* The previously deprecated ``bzrlib.annotate.annotate_file`` function
+  has been removed. (Jelmer Vernooij)
+
 Internals
 *********
 

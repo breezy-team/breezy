@@ -178,25 +178,6 @@ class TestRepositoryFormat(TestCaseWithTransport):
         repository.RepositoryFormatMetaDir.register_feature("name")
         found_format.check_support_status(True)
 
-    def test_register_unregister_format(self):
-        # Test deprecated format registration functions
-        format = SampleRepositoryFormat()
-        # make a control dir
-        dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        # make a repo
-        format.initialize(dir)
-        # register a format for it.
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            repository.RepositoryFormat.register_format, format)
-        # which repository.Open will refuse (not supported)
-        self.assertRaises(UnsupportedFormatError, repository.Repository.open,
-            self.get_url())
-        # but open(unsupported) will work
-        self.assertEqual(format.open(dir), "opened repository.")
-        # unregister the format
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            repository.RepositoryFormat.unregister_format, format)
-
 
 class TestRepositoryFormatRegistry(TestCase):
 
