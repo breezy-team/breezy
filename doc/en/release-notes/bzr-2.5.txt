@@ -32,6 +32,8 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Revert use of --no-tty when gpg signing commits. (Jelmer Vernooij, #1014570)
+
 Documentation
 *************
 
