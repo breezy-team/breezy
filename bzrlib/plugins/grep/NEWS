@@ -1,3 +1,6 @@
+This is the NEWS file from bzr-grep from before it was merged into bzr core.
+For changes before then, please refer to the main bzr log file.
+
 bzr-grep 0.5.0-final - Unreleased
 ==================================
 * ``bzr grep`` now supports ``--diff|-p`` option to search through
