@@ -141,6 +141,8 @@ Known Issues
 
 """
 
+from __future__ import absolute_import
+
 # TODO: the chmod bits *can* be supported via the upload protocols
 # (i.e. poorly), but since the web developers use these protocols to upload
 # manually, it is expected that the associated web server is coherent with
@@ -156,12 +158,13 @@ Known Issues
 import bzrlib
 from bzrlib import (
     api,
-    branch,
     commands,
     config,
     )
 
-from info import (
+from bzrlib.hooks import install_lazy_named_hook
+
+from bzrlib.plugins.upload.info import (
     bzr_plugin_version as version_info,
     bzr_compatible_versions,
     )
@@ -223,9 +226,9 @@ def auto_upload_hook(params):
 
 
 def install_auto_upload_hook():
-    branch.Branch.hooks.install_named_hook('post_change_branch_tip',
-            auto_upload_hook,
-            'Auto upload code from a branch when it is changed.')
+    install_lazy_named_hook("bzrlib.branch", "Branch.hooks",
+        'post_change_branch_tip', auto_upload_hook,
+        'Auto upload code from a branch when it is changed.')
 
 
 install_auto_upload_hook()
