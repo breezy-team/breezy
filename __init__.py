@@ -160,6 +160,7 @@ from bzrlib import (
     api,
     commands,
     config,
+    hooks,
     )
 
 from bzrlib.hooks import install_lazy_named_hook
@@ -178,15 +179,16 @@ __version__ = version_string
 api.require_any_api(bzrlib, bzr_compatible_versions)
 
 
-def register_lazy_option(key, member):
+def register_option(key, member):
+    """Lazily register an option."""
     config.option_registry.register_lazy(
         key, 'bzrlib.plugins.upload.cmds', member)
 
 
-register_lazy_option('upload_auto', 'auto_option')
-register_lazy_option('upload_auto_quiet', 'auto_quiet_option')
-register_lazy_option('upload_location', 'location_option')
-register_lazy_option('upload_revid_location', 'revid_location_option')
+register_option('upload_auto', 'auto_option')
+register_option('upload_auto_quiet', 'auto_quiet_option')
+register_option('upload_location', 'location_option')
+register_option('upload_revid_location', 'revid_location_option')
 
 
 commands.plugin_cmds.register_lazy(
@@ -226,7 +228,8 @@ def auto_upload_hook(params):
 
 
 def install_auto_upload_hook():
-    install_lazy_named_hook("bzrlib.branch", "Branch.hooks",
+    hooks.install_lazy_named_hook(
+        'bzrlib.branch', 'Branch.hooks',
         'post_change_branch_tip', auto_upload_hook,
         'Auto upload code from a branch when it is changed.')
 
