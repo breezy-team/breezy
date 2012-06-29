@@ -17,10 +17,7 @@
 
 from __future__ import absolute_import
 
-try:
-    from bzrlib.tests.features import Feature
-except ImportError: # bzr < 2.5
-    from bzrlib.tests import Feature
+from bzrlib.tests.features import Feature
 from bzrlib.plugins.grep.termcolor import allow_color
 
 class _ColorFeature(Feature):

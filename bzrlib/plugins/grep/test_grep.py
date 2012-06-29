@@ -25,10 +25,7 @@ from bzrlib.plugins.grep.termcolor import color_string, FG
 
 from bzrlib import tests, osutils
 
-try:
-    from bzrlib.tests.features import UnicodeFilenameFeature
-except ImportError: # bzr < 2.4
-    from bzrlib.tests import UnicodeFilenameFeature
+from bzrlib.tests.features import UnicodeFilenameFeature
 
 # NOTE: As bzr-grep optimizes PATTERN search to -F/--fixed-string
 # for patterns that are not alphanumeric+whitespace, we test grep

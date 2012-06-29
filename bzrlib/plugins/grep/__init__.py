@@ -18,11 +18,8 @@
 
 from __future__ import absolute_import
 
+from bzrlib import version_info
 from bzrlib.commands import plugin_cmds
-
-from bzrlib.plugins.grep import version
-
-version_info = version.version_info
 
 plugin_cmds.register_lazy("cmd_grep", [], "bzrlib.plugins.grep.cmds")
 
