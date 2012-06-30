@@ -23,16 +23,87 @@ from bzrlib import (
     lockable_files,
     )
 
+from bzrlib.decorators import (
+    needs_read_lock,
+    needs_write_lock,
+    only_raises,
+    )
+from bzrlib.lock import LogicalLockResult
 from bzrlib.trace import mutter
 
 from bzrlib.branch import (
     BranchFormat,
+    BranchWriteLockResult,
     FullHistoryBzrBranch,
     )
 
 
 class BzrBranch4(FullHistoryBzrBranch):
     """Branch format 4."""
+
+    def lock_write(self, token=None):
+        """Lock the branch for write operations.
+
+        :param token: A token to permit reacquiring a previously held and
+            preserved lock.
+        :return: A BranchWriteLockResult.
+        """
+        if not self.is_locked():
+            self._note_lock('w')
+        # All-in-one needs to always unlock/lock.
+        repo_control = getattr(self.repository, 'control_files', None)
+        if self.control_files == repo_control or not self.is_locked():
+            self.repository._warn_if_deprecated(self)
+            self.repository.lock_write()
+            took_lock = True
+        else:
+            took_lock = False
+        try:
+            return BranchWriteLockResult(self.unlock,
+                self.control_files.lock_write(token=token))
+        except:
+            if took_lock:
+                self.repository.unlock()
+            raise
+
+    def lock_read(self):
+        """Lock the branch for read operations.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
+        if not self.is_locked():
+            self._note_lock('r')
+        # All-in-one needs to always unlock/lock.
+        repo_control = getattr(self.repository, 'control_files', None)
+        if self.control_files == repo_control or not self.is_locked():
+            self.repository._warn_if_deprecated(self)
+            self.repository.lock_read()
+            took_lock = True
+        else:
+            took_lock = False
+        try:
+            self.control_files.lock_read()
+            return LogicalLockResult(self.unlock)
+        except:
+            if took_lock:
+                self.repository.unlock()
+            raise
+
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
+    def unlock(self):
+        if self.control_files._lock_count == 2 and self.conf_store is not None:
+            self.conf_store.save_changes()
+        try:
+            self.control_files.unlock()
+        finally:
+            # All-in-one needs to always unlock/lock.
+            repo_control = getattr(self.repository, 'control_files', None)
+            if (self.control_files == repo_control or
+                not self.control_files.is_locked()):
+                self.repository.unlock()
+            if not self.control_files.is_locked():
+                # we just released the lock
+                self._clear_cached_state()
 
     def _get_checkout_format(self, lightweight=False):
         """Return the most suitable metadir for a checkout of this branch.
