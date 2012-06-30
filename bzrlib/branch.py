@@ -2437,9 +2437,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """
         if not self.is_locked():
             self._note_lock('w')
-        # All-in-one needs to always unlock/lock.
-        repo_control = getattr(self.repository, 'control_files', None)
-        if self.control_files == repo_control or not self.is_locked():
             self.repository._warn_if_deprecated(self)
             self.repository.lock_write()
             took_lock = True
@@ -2460,9 +2457,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """
         if not self.is_locked():
             self._note_lock('r')
-        # All-in-one needs to always unlock/lock.
-        repo_control = getattr(self.repository, 'control_files', None)
-        if self.control_files == repo_control or not self.is_locked():
             self.repository._warn_if_deprecated(self)
             self.repository.lock_read()
             took_lock = True
@@ -2483,12 +2477,8 @@ class BzrBranch(Branch, _RelockDebugMixin):
         try:
             self.control_files.unlock()
         finally:
-            # All-in-one needs to always unlock/lock.
-            repo_control = getattr(self.repository, 'control_files', None)
-            if (self.control_files == repo_control or
-                not self.control_files.is_locked()):
-                self.repository.unlock()
             if not self.control_files.is_locked():
+                self.repository.unlock()
                 # we just released the lock
                 self._clear_cached_state()
 
