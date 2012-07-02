@@ -11,6 +11,9 @@
   * Support optional timeout argument to ``bzr serve --git``.
     (Jelmer Vernooij)
 
+  * Handle encoding better in working tree iter changes.
+    (Jelmer Vernooij, #1019978)
+
 0.6.8	2012-03-28
 
  BUG FIXES

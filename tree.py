@@ -274,23 +274,23 @@ def tree_delta_from_git_changes(changes, mapping,
         if oldpath is None and newpath is None:
             continue
         if oldpath is None:
-            file_id = new_fileid_map.lookup_file_id(newpath.encode("utf-8"))
-            ret.added.append((newpath, file_id, mode_kind(newmode)))
+            file_id = new_fileid_map.lookup_file_id(newpath)
+            ret.added.append((newpath.decode('utf-8'), file_id, mode_kind(newmode)))
         elif newpath is None:
-            file_id = old_fileid_map.lookup_file_id(oldpath.encode("utf-8"))
-            ret.removed.append((oldpath, file_id, mode_kind(oldmode)))
+            file_id = old_fileid_map.lookup_file_id(oldpath)
+            ret.removed.append((oldpath.decode('utf-8'), file_id, mode_kind(oldmode)))
         elif oldpath != newpath:
-            file_id = old_fileid_map.lookup_file_id(oldpath.encode("utf-8"))
-            ret.renamed.append((oldpath, newpath, file_id, mode_kind(newmode), (oldsha != newsha), (oldmode != newmode)))
+            file_id = old_fileid_map.lookup_file_id(oldpath)
+            ret.renamed.append((oldpath.decode('utf-8'), newpath.decode('utf-8'), file_id, mode_kind(newmode), (oldsha != newsha), (oldmode != newmode)))
         elif mode_kind(oldmode) != mode_kind(newmode):
-            file_id = new_fileid_map.lookup_file_id(newpath.encode("utf-8"))
-            ret.kind_changed.append((newpath, file_id, mode_kind(oldmode), mode_kind(newmode)))
+            file_id = new_fileid_map.lookup_file_id(newpath)
+            ret.kind_changed.append((newpath.decode('utf-8'), file_id, mode_kind(oldmode), mode_kind(newmode)))
         elif oldsha != newsha or oldmode != newmode:
-            file_id = new_fileid_map.lookup_file_id(newpath.encode("utf-8"))
-            ret.modified.append((newpath, file_id, mode_kind(newmode), (oldsha != newsha), (oldmode != newmode)))
+            file_id = new_fileid_map.lookup_file_id(newpath)
+            ret.modified.append((newpath.decode('utf-8'), file_id, mode_kind(newmode), (oldsha != newsha), (oldmode != newmode)))
         else:
-            file_id = new_fileid_map.lookup_file_id(newpath.encode("utf-8"))
-            ret.unchanged.append((newpath, file_id, mode_kind(newmode)))
+            file_id = new_fileid_map.lookup_file_id(newpath)
+            ret.unchanged.append((newpath.decode('utf-8'), file_id, mode_kind(newmode)))
     return ret
 
 

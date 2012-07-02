@@ -81,7 +81,7 @@ class GitWorkingTree(workingtree.WorkingTree):
     """A Git working tree."""
 
     def __init__(self, bzrdir, repo, branch, index):
-        self.basedir = bzrdir.root_transport.local_abspath('.')
+        self.basedir = bzrdir.root_transport.local_abspath('.').encode(osutils._fs_enc)
         self.bzrdir = bzrdir
         self.repository = repo
         self.store = self.repository._git.object_store
