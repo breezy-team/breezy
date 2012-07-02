@@ -50,18 +50,14 @@ class BzrBranch4(FullHistoryBzrBranch):
         """
         if not self.is_locked():
             self._note_lock('w')
-            # All-in-one needs to always unlock/lock.
-            self.repository._warn_if_deprecated(self)
-            self.repository.lock_write()
-            took_lock = True
-        else:
-            took_lock = False
+        # All-in-one needs to always unlock/lock.
+        self.repository._warn_if_deprecated(self)
+        self.repository.lock_write()
         try:
             return BranchWriteLockResult(self.unlock,
                 self.control_files.lock_write(token=token))
         except:
-            if took_lock:
-                self.repository.unlock()
+            self.repository.unlock()
             raise
 
     def lock_read(self):
@@ -71,18 +67,14 @@ class BzrBranch4(FullHistoryBzrBranch):
         """
         if not self.is_locked():
             self._note_lock('r')
-            # All-in-one needs to always unlock/lock.
-            self.repository._warn_if_deprecated(self)
-            self.repository.lock_read()
-            took_lock = True
-        else:
-            took_lock = False
+        # All-in-one needs to always unlock/lock.
+        self.repository._warn_if_deprecated(self)
+        self.repository.lock_read()
         try:
             self.control_files.lock_read()
             return LogicalLockResult(self.unlock)
         except:
-            if took_lock:
-                self.repository.unlock()
+            self.repository.unlock()
             raise
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
