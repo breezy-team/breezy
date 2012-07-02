@@ -25,9 +25,12 @@ from bzrlib import (
 import bzrlib.revision as _mod_revision
 
 
-def iter_log_revisions(revisions, revision_source, verbose):
+def iter_log_revisions(revisions, revision_source, verbose, rev_tag_dict=None):
     last_tree = revision_source.revision_tree(_mod_revision.NULL_REVISION)
     last_rev_id = None
+
+    if rev_tag_dict is None:
+        rev_tag_dict = {}
     for rev in revisions:
         # We need the following for backward compatibilty (hopefully
         # this will be deprecated soon :-/) -- vila 080911
@@ -41,7 +44,8 @@ def iter_log_revisions(revisions, revision_source, verbose):
             delta = revision_source.get_revision_delta(rev_id)
         else:
             delta = None
-        yield log.LogRevision(rev, revno, merge_depth, delta=delta)
+        yield log.LogRevision(rev, revno, merge_depth, delta=delta,
+                              tags=rev_tag_dict.get(rev_id))
 
 
 def find_unmerged(local_branch, remote_branch, restrict='all',

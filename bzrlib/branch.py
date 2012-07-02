@@ -1034,18 +1034,6 @@ class Branch(controldir.ControlComponent):
     def _read_last_revision_info(self):
         raise NotImplementedError(self._read_last_revision_info)
 
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def import_last_revision_info(self, source_repo, revno, revid):
-        """Set the last revision info, importing from another repo if necessary.
-
-        :param source_repo: Source repository to optionally fetch from
-        :param revno: Revision number of the new tip
-        :param revid: Revision id of the new tip
-        """
-        if not self.repository.has_same_location(source_repo):
-            self.repository.fetch(source_repo, revision_id=revid)
-        self.set_last_revision_info(revno, revid)
-
     def import_last_revision_info_and_tags(self, source, revno, revid,
                                            lossy=False):
         """Set the last revision info, importing from another repo if necessary.
@@ -1693,11 +1681,6 @@ class BranchFormat(controldir.ControlComponentFormat):
     def supports_leaving_lock(self):
         """True if this format supports leaving locks in place."""
         return False # by default
-
-    @classmethod
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def unregister_format(klass, format):
-        format_registry.remove(format)
 
     def __str__(self):
         return self.get_format_description().rstrip()
@@ -3131,6 +3114,15 @@ class InterBranch(InterObject):
         raise NotImplementedError(self.fetch)
 
 
+def _fix_overwrite_type(overwrite):
+    if isinstance(overwrite, bool):
+        if overwrite:
+            return ["history", "tags"]
+        else:
+            return []
+    return overwrite
+
+
 class GenericInterBranch(InterBranch):
     """InterBranch implementation that uses public Branch functions."""
 
@@ -3301,15 +3293,18 @@ class GenericInterBranch(InterBranch):
         result.target_branch = self.target
         result.old_revno, result.old_revid = self.target.last_revision_info()
         self.source.update_references(self.target)
+        overwrite = _fix_overwrite_type(overwrite)
         if result.old_revid != stop_revision:
             # We assume that during 'push' this repository is closer than
             # the target.
             graph = self.source.repository.get_graph(self.target.repository)
-            self._update_revisions(stop_revision, overwrite=overwrite,
-                    graph=graph)
+            self._update_revisions(stop_revision,
+                overwrite=("history" in overwrite),
+                graph=graph)
         if self.source._push_should_merge_tags():
             result.tag_updates, result.tag_conflicts = (
-                self.source.tags.merge_to(self.target.tags, overwrite))
+                self.source.tags.merge_to(
+                self.target.tags, "tags" in overwrite))
         result.new_revno, result.new_revid = self.target.last_revision_info()
         return result
 
@@ -3393,13 +3388,16 @@ class GenericInterBranch(InterBranch):
             # -- JRV20090506
             result.old_revno, result.old_revid = \
                 self.target.last_revision_info()
-            self._update_revisions(stop_revision, overwrite=overwrite,
+            overwrite = _fix_overwrite_type(overwrite)
+            self._update_revisions(stop_revision,
+                overwrite=("history" in overwrite),
                 graph=graph)
             # TODO: The old revid should be specified when merging tags, 
             # so a tags implementation that versions tags can only 
             # pull in the most recent changes. -- JRV20090506
             result.tag_updates, result.tag_conflicts = (
-                self.source.tags.merge_to(self.target.tags, overwrite,
+                self.source.tags.merge_to(self.target.tags,
+                    "tags" in overwrite,
                     ignore_master=not merge_tags_to_master))
             result.new_revno, result.new_revid = self.target.last_revision_info()
             if _hook_master:

@@ -20,6 +20,9 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* New option ``--overwrite-tags`` for ``bzr pull`` and ``bzr push``.
+  (Jelmer Vernooij, #681792)
+
 Improvements
 ************
 
@@ -35,6 +38,12 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* "bzr missing" now shows tag names when displaying revision information.
+  (#559072, Neil Martinsen-Burrell)
+
+* Implement ``ResponseFile.readline`` and ``ReponseFile.tell``,
+  fixing some clones over HTTP. (Jelmer Vernooij, #963769)
+
 Documentation
 *************
 
@@ -49,6 +58,17 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* Remove deprecated Branch.import_last_revision(). (Jelmer Vernooij)
+
+* Remove deprecated Repository.iter_reverse_revision_history().
+  (Jelmer Vernooij)
+
+* Remove deprecated ``RepositoryFormat.register_format``.
+  (Jelmer Vernooij)
+
+* The previously deprecated ``bzrlib.annotate.annotate_file`` function
+  has been removed. (Jelmer Vernooij)
+
 Internals
 *********
 
@@ -58,10 +78,9 @@ Internals
 Testing
 *******
 
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
-
+* Fix test failures by removing a remaining reference to ``features.sphinx``
+  which isn't needed anymore since we don't test the texinfo sphinx builder
+  anymore either. (Vincent Ladeuil)
 
 bzr 2.6b1
 #########

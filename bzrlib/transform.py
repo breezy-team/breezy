@@ -2182,6 +2182,14 @@ class _PreviewTree(tree.InventoryTree):
                 ordered_ids.append((trans_id, parent_file_id))
         return ordered_ids
 
+    def iter_child_entries(self, file_id, path=None):
+        self.id2path(file_id)
+        trans_id = self._transform.trans_id_file_id(file_id)
+        todo = [(child_trans_id, trans_id) for child_trans_id in
+                self._all_children(trans_id)]
+        for entry, trans_id in self._make_inv_entries(todo):
+            yield entry
+
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
         # This may not be a maximally efficient implementation, but it is
         # reasonably straightforward.  An implementation that grafts the

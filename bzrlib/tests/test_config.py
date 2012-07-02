@@ -17,6 +17,7 @@
 """Tests for finding and reading the bzr config file[s]."""
 # import system imports here
 from cStringIO import StringIO
+from textwrap import dedent
 import os
 import sys
 import threading
@@ -2477,7 +2478,6 @@ class TestRegisteredOptions(tests.TestCase):
 
     def test_help_is_set(self):
         option_help = self.registry.get_help(self.option_name)
-        self.assertNotEquals(None, option_help)
         # Come on, think about the user, he really wants to know what the
         # option is about
         self.assertIsNot(None, option_help)
@@ -3419,6 +3419,28 @@ foo:policy = appendpath
         matcher = config.LocationMatcher(store, expected_url)
         self.assertEquals(expected_location, matcher.location)
 
+    def test_branch_name_colo(self):
+        store = self.get_store(self)
+        store._load_from_string(dedent("""\
+            [/]
+            push_location=my{branchname}
+        """))
+        matcher = config.LocationMatcher(store, 'file:///,branch=example%3c')
+        self.assertEqual('example<', matcher.branch_name)
+        ((_, section),) = matcher.get_sections()
+        self.assertEqual('example<', section.locals['branchname'])
+
+    def test_branch_name_basename(self):
+        store = self.get_store(self)
+        store._load_from_string(dedent("""\
+            [/]
+            push_location=my{branchname}
+        """))
+        matcher = config.LocationMatcher(store, 'file:///parent/example%3c')
+        self.assertEqual('example<', matcher.branch_name)
+        ((_, section),) = matcher.get_sections()
+        self.assertEqual('example<', section.locals['branchname'])
+
 
 class TestStartingPathMatcher(TestStore):
 
@@ -3584,6 +3606,7 @@ class TestStackWithSimpleStore(tests.TestCase):
         return config.MemoryStack(content)
 
     def test_override_value_from_env(self):
+        self.overrideEnv('FOO', None)
         self.registry.register(
             config.Option('foo', default='bar', override_from_env=['FOO']))
         self.overrideEnv('FOO', 'quux')
@@ -3592,6 +3615,9 @@ class TestStackWithSimpleStore(tests.TestCase):
         self.assertEquals('quux', conf.get('foo'))
 
     def test_first_override_value_from_env_wins(self):
+        self.overrideEnv('NO_VALUE', None)
+        self.overrideEnv('FOO', None)
+        self.overrideEnv('BAZ', None)
         self.registry.register(
             config.Option('foo', default='bar',
                           override_from_env=['NO_VALUE', 'FOO', 'BAZ']))

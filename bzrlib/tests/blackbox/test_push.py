@@ -613,6 +613,22 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertEqual('', out)
         self.assertEqual('Created new branch.\n', err)
 
+    def test_overwrite_tags(self):
+        """--overwrite-tags only overwrites tags, not revisions."""
+        from_tree = self.make_branch_and_tree('from')
+        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        to_tree = self.make_branch_and_tree('to')
+        to_tree.branch.tags.set_tag("mytag", "anotherrevid")
+        revid1 = to_tree.commit('my commit')
+        out = self.run_bzr(['push', '-d', 'from', 'to'])
+        self.assertEquals(out,
+            ('Conflicting tags:\n    mytag\n', 'No new revisions to push.\n'))
+        out = self.run_bzr(['push', '-d', 'from', '--overwrite-tags', 'to'])
+        self.assertEquals(out, ('', '1 tag updated.\n'))
+        self.assertEquals(to_tree.branch.tags.lookup_tag('mytag'),
+                          'somerevid')
+        self.assertEquals(to_tree.branch.last_revision(), revid1)
+
 
 class RedirectingMemoryTransport(memory.MemoryTransport):
 

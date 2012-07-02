@@ -302,19 +302,6 @@ class TestAnnotate(tests.TestCaseWithTransport):
                                   '1.1.1 barry@f | third\n',
                                   builder.get_branch(), 'a-id', 'rev-3')
 
-    def test_annotate_file(self):
-        builder = self.create_merged_trees()
-
-        to_file = StringIO()
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            annotate.annotate_file, builder.get_branch(),
-                'rev-3', 'a-id', to_file=to_file)
-
-        self.assertAnnotateEqualDiff('1     joe@foo | first\n'
-                                     '2     joe@foo | second\n'
-                                     '1.1.1 barry@f | third\n',
-                                     to_file.getvalue())
-
     def test_annotate_limits_dotted_revnos(self):
         """Annotate should limit dotted revnos to a depth of 12"""
         builder = self.create_deeply_merged_trees()
