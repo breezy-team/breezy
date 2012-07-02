@@ -926,5 +926,5 @@ class TestPushOutput(script.TestCaseWithTransportAndScript):
             2>Committed revision 2.
             $ bzr push -r 1 ../other
             2>Created new branch.
-            $ bzr st ../other
+            $ bzr st ../other # checking that file is not created (#484516)
             """)
