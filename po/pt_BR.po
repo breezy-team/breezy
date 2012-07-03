@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-06-15 21:48+0000\n"
-"Last-Translator: Leonardo Lemos <Unknown>\n"
+"PO-Revision-Date: 2012-07-03 02:22+0000\n"
+"Last-Translator: Winícius Santos de A. Marques <wsamarques@gmail.com>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2012-06-16 04:30+0000\n"
-"X-Generator: Launchpad (build 15419)\n"
+"X-Launchpad-Export-Date: 2012-07-03 04:30+0000\n"
+"X-Generator: Launchpad (build 15531)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -3450,6 +3450,8 @@ msgid ""
 "    Determine the missing revisions up to a specific revision on this\n"
 "    branch::"
 msgstr ""
+"    Determina as revisões faltantes até uma versão específica nesse\n"
+"    ramo::"
 
 #: bzrlib/builtins.py:4864
 msgid "        bzr missing --my-revision ..-10"
@@ -3497,7 +3499,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4943
 msgid "No peer location known or specified."
-msgstr ""
+msgstr "Localização desconhecida ou não especificada do par."
 
 #: bzrlib/builtins.py:4947
 msgid "Using saved parent location: {0}\n"
@@ -4280,7 +4282,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:6121
 msgid "Perform reconfiguration even if local changes will be lost."
-msgstr ""
+msgstr "Realizar reconfiguração mesmo que alterações locais sejam perdidas."
 
 #: bzrlib/builtins.py:6124
 msgid "Reconfigure a branch to be stacked on another branch."
@@ -4487,7 +4489,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:6359
 msgid "Both --delete and --switch specified"
-msgstr ""
+msgstr "Ambos --delete e --switch especificados."
 
 #: bzrlib/builtins.py:6362
 msgid "Deleted all views.\n"
@@ -4500,7 +4502,7 @@ msgstr "Nenhuma visão vigente para apagar"
 #: bzrlib/builtins.py:6367
 #, python-format
 msgid "Deleted '%s' view.\n"
-msgstr ""
+msgstr "Visão '%s' deletada.\n"
 
 #: bzrlib/builtins.py:6371
 msgid "Both --switch and a file list specified"
@@ -4512,7 +4514,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:6377
 msgid "No current view to disable"
-msgstr ""
+msgstr "Sem visão atual para desabilitar."
 
 #: bzrlib/builtins.py:6379
 #, python-format
@@ -4680,7 +4682,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:6562
 msgid "The action to perform."
-msgstr ""
+msgstr "A ação a ser executada."
 
 #: bzrlib/builtins.py:6562 bzrlib/conflicts.py:694
 msgid "action"
@@ -4733,7 +4735,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:6596
 msgid "To check what clean-tree will do, use --dry-run."
-msgstr ""
+msgstr "Para verificar o que clean-tree ira fazer, use --dry-run."
 
 #: bzrlib/builtins.py:6599
 msgid "Delete all ignored files."
@@ -4820,7 +4822,7 @@ msgstr ""
 
 #: bzrlib/bzrdir.py:513
 msgid "renamed {0} to {1}"
-msgstr ""
+msgstr "renomeado {0} para {1}"
 
 #: bzrlib/bzrdir.py:1652
 #, python-format
@@ -4838,7 +4840,7 @@ msgstr ""
 
 #: bzrlib/bzrdir.py:1818
 msgid "starting repository conversion"
-msgstr ""
+msgstr "iniciando conversão de repositório"
 
 #: bzrlib/bzrdir.py:2039
 msgid "Using default stacking branch {0} at {1}"
