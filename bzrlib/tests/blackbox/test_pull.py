@@ -533,6 +533,23 @@ class TestPull(tests.TestCaseWithTransport):
         self.assertEqual(out,
             ('1 tag(s) updated.\n', ''))
 
+    def test_overwrite_tags(self):
+        """--overwrite-tags only overwrites tags, not revisions."""
+        from_tree = self.make_branch_and_tree('from')
+        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        to_tree = self.make_branch_and_tree('to')
+        to_tree.branch.tags.set_tag("mytag", "anotherrevid")
+        revid1 = to_tree.commit('my commit')
+        out = self.run_bzr(['pull', '-d', 'to', 'from'], retcode=1)
+        self.assertEquals(out,
+            ('No revisions to pull.\nConflicting tags:\n    mytag\n', ''))
+        out = self.run_bzr(['pull', '-d', 'to', '--overwrite-tags', 'from'])
+        self.assertEquals(out, ('1 tag(s) updated.\n', ''))
+
+        self.assertEquals(to_tree.branch.tags.lookup_tag('mytag'),
+                          'somerevid')
+        self.assertEquals(to_tree.branch.last_revision(), revid1)
+
     def test_pull_tag_overwrite(self):
         """pulling tags with --overwrite only reports changed tags."""
         # create a branch, see that --show-base fails

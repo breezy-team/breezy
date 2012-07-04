@@ -15,32 +15,20 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from StringIO import StringIO
+from cStringIO import StringIO
 
+from bzrlib import (
+    tests,
+    )
 from bzrlib.progress import (
     ProgressTask,
     )
-from bzrlib.tests import TestCase
 from bzrlib.ui.text import (
     TextProgressView,
     )
 
 
-class _TTYStringIO(StringIO):
-    """A helper class which makes a StringIO look like a terminal"""
-
-    def isatty(self):
-        return True
-
-
-class _NonTTYStringIO(StringIO):
-    """Helper that implements isatty() but returns False"""
-
-    def isatty(self):
-        return False
-
-
-class TestTextProgressView(TestCase):
+class TestTextProgressView(tests.TestCase):
     """Tests for text display of progress bars.
 
     These try to exercise the progressview independently of its construction,
@@ -49,13 +37,16 @@ class TestTextProgressView(TestCase):
     # The ProgressTask now connects directly to the ProgressView, so we can
     # check them independently of the factory or of the determination of what
     # view to use.
-    
+
+    def make_view_only(self, out, width=79):
+        view = TextProgressView(out)
+        view._avail_width = lambda: width
+        return view
+
     def make_view(self):
         out = StringIO()
-        view = TextProgressView(out)
-        view._avail_width = lambda: 79
-        return out, view
-    
+        return out, self.make_view_only(out)
+
     def make_task(self, parent_task, view, msg, curr, total):
         # would normally be done by UIFactory; is done here so that we don't
         # have to have one.
@@ -168,3 +159,30 @@ class TestTextProgressView(TestCase):
 '   123kB   100kB/s \\ start_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.. 2000/5000',
            line) 
         self.assertEqual(len(line), 79)
+
+    def test_render_progress_unicode_enc_utf8(self):
+        out = tests.StringIOWrapper()
+        out.encoding = "utf-8"
+        view = self.make_view_only(out, 20)
+        task = self.make_task(None, view, u"\xa7", 0, 1)
+        view.show_progress(task)
+        self.assertEqual('\r/ \xc2\xa7 0/1            \r',
+            out.getvalue())
+
+    def test_render_progress_unicode_enc_missing(self):
+        out = StringIO()
+        self.assertRaises(AttributeError, getattr, out, "encoding")
+        view = self.make_view_only(out, 20)
+        task = self.make_task(None, view, u"\xa7", 0, 1)
+        view.show_progress(task)
+        self.assertEqual('\r/ ? 0/1             \r',
+            out.getvalue())
+
+    def test_render_progress_unicode_enc_none(self):
+        out = tests.StringIOWrapper()
+        out.encoding = None
+        view = self.make_view_only(out, 20)
+        task = self.make_task(None, view, u"\xa7", 0, 1)
+        view.show_progress(task)
+        self.assertEqual('\r/ ? 0/1             \r',
+            out.getvalue())

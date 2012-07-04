@@ -3144,6 +3144,46 @@ class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
         bzrdir.BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
             recommend_upgrade=recommend_upgrade, basedir=basedir)
 
+    def get_controldir_for_branch(self):
+        """Get the control directory format for creating branches.
+
+        This is to support testing of working tree formats that can not exist
+        in the same control directory as a branch.
+        """
+        return self._matchingbzrdir
+
+
+class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
+    """Base class for working trees that live in bzr meta directories."""
+
+    def __init__(self):
+        WorkingTreeFormat.__init__(self)
+        bzrdir.BzrFormat.__init__(self)
+
+    @classmethod
+    def find_format_string(klass, controldir):
+        """Return format name for the working tree object in controldir."""
+        try:
+            transport = controldir.get_workingtree_transport(None)
+            return transport.get_bytes("format")
+        except errors.NoSuchFile:
+            raise errors.NoWorkingTree(base=transport.base)
+
+    @classmethod
+    def find_format(klass, controldir):
+        """Return the format for the working tree object in controldir."""
+        format_string = klass.find_format_string(controldir)
+        return klass._find_format(format_registry, 'working tree',
+                format_string)
+
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+            basedir=None):
+        WorkingTreeFormat.check_support_status(self,
+            allow_unsupported=allow_unsupported, recommend_upgrade=recommend_upgrade,
+            basedir=basedir)
+        bzrdir.BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
+            recommend_upgrade=recommend_upgrade, basedir=basedir)
+
 
 format_registry.register_lazy("Bazaar Working Tree Format 4 (bzr 0.15)\n",
     "bzrlib.workingtree_4", "WorkingTreeFormat4")

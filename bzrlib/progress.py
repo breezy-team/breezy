@@ -58,7 +58,9 @@ class ProgressTask(object):
     Code updating the task may also set fields as hints about how to display
     it: show_pct, show_spinner, show_eta, show_count, show_bar.  UIs
     will not necessarily respect all these fields.
-    
+
+    The message given when updating a task must be unicode, not bytes.
+
     :ivar update_latency: The interval (in seconds) at which the PB should be
         updated.  Setting this to zero suggests every update should be shown
         synchronously.
@@ -106,6 +108,10 @@ class ProgressTask(object):
             self.msg)
 
     def update(self, msg, current_cnt=None, total_cnt=None):
+        """Report updated task message and if relevent progress counters
+
+        The message given must be unicode, not a byte string.
+        """
         self.msg = msg
         self.current_cnt = current_cnt
         if total_cnt:

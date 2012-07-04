@@ -2709,11 +2709,6 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
     def supports_rich_root(self):
         return self._format.rich_root_data
 
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
-    def iter_reverse_revision_history(self, revision_id):
-        self._ensure_real()
-        return self._real_repository.iter_reverse_revision_history(revision_id)
-
     @property
     def _serializer(self):
         return self._format._serializer
