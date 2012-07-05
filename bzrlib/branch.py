@@ -1034,18 +1034,6 @@ class Branch(controldir.ControlComponent):
     def _read_last_revision_info(self):
         raise NotImplementedError(self._read_last_revision_info)
 
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def import_last_revision_info(self, source_repo, revno, revid):
-        """Set the last revision info, importing from another repo if necessary.
-
-        :param source_repo: Source repository to optionally fetch from
-        :param revno: Revision number of the new tip
-        :param revid: Revision id of the new tip
-        """
-        if not self.repository.has_same_location(source_repo):
-            self.repository.fetch(source_repo, revision_id=revid)
-        self.set_last_revision_info(revno, revid)
-
     def import_last_revision_info_and_tags(self, source, revno, revid,
                                            lossy=False):
         """Set the last revision info, importing from another repo if necessary.
@@ -1693,11 +1681,6 @@ class BranchFormat(controldir.ControlComponentFormat):
     def supports_leaving_lock(self):
         """True if this format supports leaving locks in place."""
         return False # by default
-
-    @classmethod
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def unregister_format(klass, format):
-        format_registry.remove(format)
 
     def __str__(self):
         return self.get_format_description().rstrip()
@@ -2454,9 +2437,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """
         if not self.is_locked():
             self._note_lock('w')
-        # All-in-one needs to always unlock/lock.
-        repo_control = getattr(self.repository, 'control_files', None)
-        if self.control_files == repo_control or not self.is_locked():
             self.repository._warn_if_deprecated(self)
             self.repository.lock_write()
             took_lock = True
@@ -2477,9 +2457,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """
         if not self.is_locked():
             self._note_lock('r')
-        # All-in-one needs to always unlock/lock.
-        repo_control = getattr(self.repository, 'control_files', None)
-        if self.control_files == repo_control or not self.is_locked():
             self.repository._warn_if_deprecated(self)
             self.repository.lock_read()
             took_lock = True
@@ -2500,12 +2477,8 @@ class BzrBranch(Branch, _RelockDebugMixin):
         try:
             self.control_files.unlock()
         finally:
-            # All-in-one needs to always unlock/lock.
-            repo_control = getattr(self.repository, 'control_files', None)
-            if (self.control_files == repo_control or
-                not self.control_files.is_locked()):
-                self.repository.unlock()
             if not self.control_files.is_locked():
+                self.repository.unlock()
                 # we just released the lock
                 self._clear_cached_state()
 

@@ -21,19 +21,15 @@ import sys
 import subprocess
 
 import bzrlib
-from bzrlib.tests import TestCase, TestSkipped
-import bzrlib.osutils as osutils
+from bzrlib import tests
 
-# XXX: This clobbers the build directory in the real source tree; it'd be nice
-# to avoid that.
-#
 # TODO: Run bzr from the installed copy to see if it works.  Really we need to
 # run something that exercises every module, just starting it may not detect
 # some missing modules.
 #
 # TODO: Check that the version numbers are in sync.  (Or avoid this...)
 
-class TestSetup(TestCase):
+class TestSetup(tests.TestCaseInTempDir):
 
     def test_build_and_install(self):
         """ test cmd `python setup.py build`
@@ -45,30 +41,29 @@ class TestSetup(TestCase):
         # are not necessarily invoked from there
         self.source_dir = os.path.dirname(os.path.dirname(bzrlib.__file__))
         if not os.path.isfile(os.path.join(self.source_dir, 'setup.py')):
-            raise TestSkipped(
+            self.skip(
                 'There is no setup.py file adjacent to the bzrlib directory')
         try:
             import distutils.sysconfig
             makefile_path = distutils.sysconfig.get_makefile_filename()
             if not os.path.exists(makefile_path):
-                raise TestSkipped(
+                self.skip(
                     'You must have the python Makefile installed to run this'
                     ' test. Usually this can be found by installing'
                     ' "python-dev"')
         except ImportError:
-            raise TestSkipped(
+            self.skip(
                 'You must have distutils installed to run this test.'
                 ' Usually this can be found by installing "python-dev"')
-        self.log('test_build running in %s' % os.getcwd())
-        root_dir = osutils.mkdtemp()
-        try:
-            self.run_setup(['clean'])
-            # build is implied by install
-            ## self.run_setup(['build'])
-            self.run_setup(['install', '--root', root_dir])
-            self.run_setup(['clean'])
-        finally:
-            osutils.rmtree(root_dir)
+        self.log('test_build running from %s' % self.source_dir)
+        build_dir = os.path.join(self.test_dir, "build")
+        install_dir = os.path.join(self.test_dir, "install")
+        self.run_setup([
+            'build', '-b', build_dir,
+            'install', '--root', install_dir])
+        # Install layout is platform dependant
+        self.assertPathExists(install_dir)
+        self.run_setup(['clean', '-b', build_dir])
 
     def run_setup(self, args):
         args = [sys.executable, './setup.py', ] + args

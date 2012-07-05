@@ -2160,13 +2160,6 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         self._ensure_real()
         self._real_repository.create_bundle(target, base, fileobj, format)
 
-    @needs_read_lock
-    @symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((2, 4, 0)))
-    def get_ancestry(self, revision_id, topo_sorted=True):
-        self._ensure_real()
-        return self._real_repository.get_ancestry(revision_id, topo_sorted)
-
     def fileids_altered_by_revision_ids(self, revision_ids):
         self._ensure_real()
         return self._real_repository.fileids_altered_by_revision_ids(revision_ids)
@@ -2708,11 +2701,6 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
     def supports_rich_root(self):
         return self._format.rich_root_data
-
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
-    def iter_reverse_revision_history(self, revision_id):
-        self._ensure_real()
-        return self._real_repository.iter_reverse_revision_history(revision_id)
 
     @property
     def _serializer(self):

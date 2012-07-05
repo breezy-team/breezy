@@ -179,7 +179,10 @@ class TestInterRepository(TestCaseWithInterRepository):
     def test_fetch_parent_inventories_at_stacking_boundary_smart_old(self):
         self.setup_smart_server_with_call_log()
         self.disable_verb('Repository.insert_stream_1.19')
-        self.test_fetch_parent_inventories_at_stacking_boundary()
+        try:
+            self.test_fetch_parent_inventories_at_stacking_boundary()
+        except errors.ConnectionReset:
+            self.knownFailure("Random spurious failure, see bug 874153")
 
     def test_fetch_parent_inventories_at_stacking_boundary(self):
         """Fetch to a stacked branch copies inventories for parents of
