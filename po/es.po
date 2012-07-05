@@ -9,15 +9,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-05-18 06:30+0000\n"
-"Last-Translator: Paco Molinero <paco@byasl.com>\n"
+"PO-Revision-Date: 2012-07-04 10:54+0000\n"
+"Last-Translator: Monkey <monkey.libre@gmail.com>\n"
 "Language-Team: Spanish <es@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Launchpad-Export-Date: 2012-05-19 04:33+0000\n"
-"X-Generator: Launchpad (build 15259)\n"
+"X-Launchpad-Export-Date: 2012-07-05 04:30+0000\n"
+"X-Generator: Launchpad (build 15544)\n"
 
 #: bzrlib/add.py:95
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -2095,6 +2095,8 @@ msgid ""
 "Display only the revisions that are not part of both ancestries (require -"
 "rX..Y)."
 msgstr ""
+"Muestra solo las revisiones que no sean parte de ambas ascendencias "
+"(requiere -rX..Y)."
 
 #: bzrlib/builtins.py:2670
 msgid "Show digital signature validity."
@@ -2320,7 +2322,7 @@ msgstr "Muestra las reglas de ignorado predeterminada que usa bzr."
 
 #: bzrlib/builtins.py:3169
 msgid "ignore requires at least one NAME_PATTERN or --default-rules."
-msgstr ""
+msgstr "ignore requiere al menos un NAME_PATTERN o --default-rules."
 
 #: bzrlib/builtins.py:3180
 #, python-format
@@ -2455,7 +2457,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3319
 msgid "--uncommitted requires a working tree"
-msgstr ""
+msgstr "--uncommitted requiere un árbol de trabajo"
 
 #: bzrlib/builtins.py:3328
 #, python-format
@@ -2478,6 +2480,9 @@ msgid ""
 "Note: Take care to redirect standard output when using this command on a\n"
 "binary file."
 msgstr ""
+"Nota: asegúrese de redirigir la salida estándar al utilizar esta orden en "
+"un\n"
+"archivo binario."
 
 #: bzrlib/builtins.py:3342
 msgid "The path name in the old tree."
@@ -2485,7 +2490,7 @@ msgstr "La ruta en el árbol antiguo."
 
 #: bzrlib/builtins.py:3343
 msgid "Apply content filters to display the convenience form."
-msgstr ""
+msgstr "Aplicar los filtros de contenido para mostrar la forma conveniente."
 
 #: bzrlib/builtins.py:3354
 msgid "bzr cat --revision takes exactly one revision specifier"
@@ -2894,7 +2899,7 @@ msgstr "Elimina el directorio backup.bzr si tiene éxito."
 
 #: bzrlib/builtins.py:3795
 msgid "Show what would be done, but don't actually do anything."
-msgstr ""
+msgstr "Muestra lo que se haría, pero no hace nada en realidad."
 
 #: bzrlib/builtins.py:3810
 msgid "Show or set bzr user id."
@@ -4246,7 +4251,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:6107
 msgid "Reconfigure to use a shared repository."
-msgstr ""
+msgstr "Reconfigure para usar un repositorio compartido."
 
 #: bzrlib/builtins.py:6111
 msgid "Trees in Repository"
@@ -4695,7 +4700,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:6568
 msgid "Delete changes without applying them."
-msgstr ""
+msgstr "Eliminar cambios sin aplicarlos."
 
 #: bzrlib/builtins.py:6569
 msgid "Apply changes but don't delete them."
@@ -14066,7 +14071,7 @@ msgstr ""
 
 #: en/help_topics/url-special-chars.txt:6
 msgid " * Fully qualified URLs"
-msgstr ""
+msgstr " * URL altamente calificados"
 
 #: en/help_topics/url-special-chars.txt:8
 msgid " * File system paths, relative or absolute"
@@ -14106,6 +14111,10 @@ msgid ""
 "ways of accessing the content (0x2F, or 47, is the ASCII code for forward "
 "slash)::"
 msgstr ""
+"Por ejemplo, si tiene un directorio llamado «/tmp/%2False» todas estas "
+"maneras son\n"
+"válidas para acceder al contenido (0x2F, o 47, es el código ASCII de la "
+"barra diagonal)::"
 
 #: en/help_topics/url-special-chars.txt:27
 msgid ""
@@ -14155,6 +14164,10 @@ msgid ""
 "literal\n"
 "comma in a file system path, specify a URL and URL encode the comma::"
 msgstr ""
+"La coma también es especial en todas las rutas de archivos de sistema que se "
+"especifican. Para utilizar una coma\n"
+"literal en una ruta de archivos de sistema, especifique un URL y codifique "
+"la coma en el URL::"
 
 #: en/help_topics/url-special-chars.txt:46
 msgid ""
