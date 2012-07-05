@@ -2335,13 +2335,18 @@ class cmd_diff(Command):
             help='Diff format to use.',
             lazy_registry=('bzrlib.diff', 'format_registry'),
             title='Diff format'),
+        Option('context',
+            help='How many lines of context to show.',
+            type=int,
+            ),
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
-            prefix=None, old=None, new=None, using=None, format=None):
+            prefix=None, old=None, new=None, using=None, format=None, 
+            context=None):
         from bzrlib.diff import (get_trees_and_branches_to_diff_locked,
             show_diff_trees)
 
@@ -2380,7 +2385,7 @@ class cmd_diff(Command):
                                old_label=old_label, new_label=new_label,
                                extra_trees=extra_trees,
                                path_encoding=path_encoding,
-                               using=using,
+                               using=using, context=context,
                                format_cls=format)
 
 

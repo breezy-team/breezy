@@ -72,7 +72,7 @@ class _PrematchedMatcher(difflib.SequenceMatcher):
 
 def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
                   allow_binary=False, sequence_matcher=None,
-                  path_encoding='utf8', context_lines=6):
+                  path_encoding='utf8', context_lines=3):
     # FIXME: difflib is wrong if there is no trailing newline.
     # The syntax used by patch seems to be "\ No newline at
     # end of file" following the last diff line from that
@@ -427,7 +427,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                     path_encoding='utf8',
                     using=None,
                     format_cls=None,
-                    context=5):
+                    context=3):
     """Show in text form the changes from one tree to another.
 
     :param to_file: The output stream.
