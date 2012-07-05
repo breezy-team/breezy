@@ -72,7 +72,7 @@ class _PrematchedMatcher(difflib.SequenceMatcher):
 
 def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
                   allow_binary=False, sequence_matcher=None,
-                  path_encoding='utf8'):
+                  path_encoding='utf8', context_lines=6):
     # FIXME: difflib is wrong if there is no trailing newline.
     # The syntax used by patch seems to be "\ No newline at
     # end of file" following the last diff line from that
@@ -98,7 +98,7 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
     ud = patiencediff.unified_diff(oldlines, newlines,
                       fromfile=old_filename.encode(path_encoding, 'replace'),
                       tofile=new_filename.encode(path_encoding, 'replace'),
-                      sequencematcher=sequence_matcher)
+                      n=context_lines, sequencematcher=sequence_matcher)
 
     ud = list(ud)
     if len(ud) == 0: # Identical contents, nothing to do
@@ -426,7 +426,8 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                     extra_trees=None,
                     path_encoding='utf8',
                     using=None,
-                    format_cls=None):
+                    format_cls=None,
+                    context=5):
     """Show in text form the changes from one tree to another.
 
     :param to_file: The output stream.
@@ -451,7 +452,8 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
             differ = format_cls.from_trees_options(old_tree, new_tree, to_file,
                                                    path_encoding,
                                                    external_diff_options,
-                                                   old_label, new_label, using)
+                                                   old_label, new_label, using,
+                                                   context_lines=context)
             return differ.show_diff(specific_files, extra_trees)
         finally:
             new_tree.unlock()
@@ -616,12 +618,14 @@ class DiffText(DiffPath):
     EPOCH_DATE = '1970-01-01 00:00:00 +0000'
 
     def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8',
-                 old_label='', new_label='', text_differ=internal_diff):
+                 old_label='', new_label='', text_differ=internal_diff,
+                 context_lines=5):
         DiffPath.__init__(self, old_tree, new_tree, to_file, path_encoding)
         self.text_differ = text_differ
         self.old_label = old_label
         self.new_label = new_label
         self.path_encoding = path_encoding
+        self.context_lines = context_lines
 
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
         """Compare two files in unified diff format
@@ -675,7 +679,8 @@ class DiffText(DiffPath):
             from_text = _get_text(self.old_tree, from_file_id, from_path)
             to_text = _get_text(self.new_tree, to_file_id, to_path)
             self.text_differ(from_label, from_text, to_label, to_text,
-                             self.to_file, path_encoding=self.path_encoding)
+                             self.to_file, path_encoding=self.path_encoding,
+                             context_lines=self.context_lines)
         except errors.BinaryFile:
             self.to_file.write(
                   ("Binary files %s and %s differ\n" %
@@ -905,7 +910,7 @@ class DiffTree(object):
     @classmethod
     def from_trees_options(klass, old_tree, new_tree, to_file,
                            path_encoding, external_diff_options, old_label,
-                           new_label, using):
+                           new_label, using, context_lines=5):
         """Factory for producing a DiffTree.
 
         Designed to accept options used by show_diff_trees.
@@ -934,7 +939,7 @@ class DiffTree(object):
         else:
             diff_file = internal_diff
         diff_text = DiffText(old_tree, new_tree, to_file, path_encoding,
-                             old_label, new_label, diff_file)
+                             old_label, new_label, diff_file, context_lines=context_lines)
         return klass(old_tree, new_tree, to_file, path_encoding, diff_text,
                      extra_factories)
 
