@@ -16,6 +16,8 @@
 
 """Full history branch formats."""
 
+from __future__ import absolute_import
+
 from bzrlib import (
     debug,
     errors,
