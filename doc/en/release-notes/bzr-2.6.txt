@@ -41,8 +41,12 @@ Bug Fixes
 * "bzr missing" now shows tag names when displaying revision information.
   (#559072, Neil Martinsen-Burrell)
 
+* Fix ``branch.conf`` saving when unlocking the branch for BranchFormat4.
+  (Vincent Ladeuil, #1020007)
+
 * Implement ``ResponseFile.readline`` and ``ReponseFile.tell``,
   fixing some clones over HTTP. (Jelmer Vernooij, #963769)
+
 
 Documentation
 *************
@@ -57,6 +61,8 @@ API Changes
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* Remove deprecated Repository.get_ancestry(). (Jelmer Vernooij)
 
 * Remove deprecated Branch.import_last_revision(). (Jelmer Vernooij)
 
