@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-03-15 10:20+0100\n"
-"PO-Revision-Date: 2012-07-05 20:15+0000\n"
+"PO-Revision-Date: 2012-07-06 21:36+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-07-06 04:30+0000\n"
+"X-Launchpad-Export-Date: 2012-07-07 04:30+0000\n"
 "X-Generator: Launchpad (build 15558)\n"
 
 #: bzrlib/add.py:95
@@ -14400,12 +14400,17 @@ msgid ""
 "If you have sample test data that deliberately has text files with mixed\n"
 "newline conventions, you can ask for those to be left alone like this::"
 msgstr ""
+"Pokud máte vzorová zkušební data obsahující textové soubory, jenž\n"
+"mají schválně zamíchány různé typy nových řádků, můžete požádat,\n"
+"aby byly ignorovány zadáním::"
 
 #: en/help_topics/eol.txt:79
 msgid ""
 "  [name test_data/]\n"
 "  eol = exact"
 msgstr ""
+"  [name zkuš_data/]\n"
+"  eol = exact"
 
 #: en/help_topics/eol.txt:85
 msgid ""
@@ -14415,6 +14420,11 @@ msgid ""
 "In the future, a ``binary = true`` rule may be added but it is not\n"
 "supported yet.)"
 msgstr ""
+"Zde ``exact`` nenaznačuje, že soubor je binární, ale znamená to, že\n"
+"nebude proveden žádný převod konců řádku. (Bazaar v současnosti\n"
+"spoléhá na analýzu obsahu, aby rozlišil binární soubory pro příkazy\n"
+"jako ``diff``. V budoucnu může být přidáno pravidlo ``binary = true``\n"
+"ale to zatím není podporováno.)"
 
 #: en/help_topics/eol.txt:91
 msgid ""
@@ -14425,6 +14435,11 @@ msgid ""
 "may also help users who do not have rules configured. To do this, set\n"
 "``eol`` to one of the values below."
 msgstr ""
+"Pokud máte existující úložiště s textovými soubory, které jsou uloženy\n"
+"pomocí stylu řádkování ve Windows (``crlf``), pak možná budete chtít\n"
+"tento styl používat také v úložišti. Když toto bude dodržováno,\n"
+"může to pomoci i ostatním uživatelům, kteří nemají tato pravidla\n"
+"nastavena. Stačí jen nastavit ``eol`` pomocí jedné z hodnot níže."
 
 #: en/help_topics/eol.txt:97
 msgid ""
@@ -14444,6 +14459,21 @@ msgid ""
 " ``crlf-with-crlf-in-repo``   ``crlf``                 ``crlf``\n"
 " ============================ ======================== ======================"
 msgstr ""
+" ============================ ======================== "
+"======================\n"
+" Hodnota                        Konce řádku při získání Konce řádků při "
+"odevzdání\n"
+" ============================ ======================== "
+"======================\n"
+" ``native-with-crlf-in-repo`` ``crlf`` ve Windows,     ``crlf``\n"
+"                              jinak ``lf``\n"
+" ---------------------------- ------------------------ ----------------------"
+"\n"
+" ``lf-with-crlf-in-repo``     ``lf``                   ``crlf``\n"
+" ---------------------------- ------------------------ ----------------------"
+"\n"
+" ``crlf-with-crlf-in-repo``   ``crlf``                 ``crlf``\n"
+" ============================ ======================== ======================"
 
 #: en/help_topics/eol.txt:108
 msgid ""
@@ -14451,12 +14481,17 @@ msgid ""
 "conventions in their Bazaar repository, this rule is suggested as a\n"
 "starting point::"
 msgstr ""
+"Pro uživatele pracující na existujícím projektu, který používá styl\n"
+"nových řádku ve Windows v jejich úložišti Bazaar je toto\n"
+"pravidlo doporučeno jako výchozí bod::"
 
 #: en/help_topics/eol.txt:112
 msgid ""
 "  [name *]\n"
 "  eol = native-with-crlf-in-repo"
 msgstr ""
+"  [name *]\n"
+"  eol = native-with-crlf-in-repo"
 
 #: en/help_topics/eol.txt:115
 msgid ""
@@ -14464,6 +14499,9 @@ msgid ""
 "and that users stick to the basic settings, i.e. ``native``, ``lf``,\n"
 "``crlf`` and ``exact``."
 msgstr ""
+"Pro nové projekty je doporučeno, aby konce řádků byly ukládány jako\n"
+"``lf`` a pak aby uživatelé zůstali u svých základních nastavení,\n"
+"tj. ``native``, ``lf``, ``crlf`` a ``exact``."
 
 #: en/help_topics/eol.txt:119
 msgid ""
@@ -14472,6 +14510,10 @@ msgid ""
 "are found. A precommit hook should be used if you wish to validate\n"
 "(and not just convert) content before committing.\n"
 msgstr ""
+"Poznámka: Převod konce řádku v Bazaar sice obsah převede, ale\n"
+"nikdy neodmítne soubory kvůli odlišným nebo pomíchaným\n"
+"stylům konců řádků. Pokud chcete ověřit (a nejenom převést)\n"
+"obsah před odevzdáním, měli byste použít hák před odevzdáním.\n"
 
 #: en/help_topics/hidden-commands.txt:1
 msgid ""
@@ -14511,6 +14553,42 @@ msgid ""
 "wait-until-signalled Test helper for\n"
 "                     test_start_and_stop_bzr_subprocess_send_signal.\n"
 msgstr ""
+"added                Vypsat všechny soubory přidané v pracovním stromě.\n"
+"ancestry             Vypsat všechny revize sloučené do této větve.\n"
+"assert-fail          Vyzkoušet hlášení chyby aserce.\n"
+"bundle-info          Vypsat zajímavé údaje o svazku.\n"
+"bundle-revisions     Vytvořit příkaz sloučení pro posílání změn.\n"
+"cat-revision         Vypsat metadata pro revizi.\n"
+"dump-btree           Vypsat obsah souboru indexu bstromu na standardní "
+"výstup.\n"
+"export-pot           Exportovat nápovědy příkazů a chybové zprávy do formátu "
+"po.\n"
+"file-id              Vypsat id souboru konkrétního souboru nebo adresáře.\n"
+"file-path            Vypsat cestu id souborů pro soubor či adresář.\n"
+"find-merge-base      Nají a vypsat základní revizi pro sloučení dvou větví.\n"
+"hooks                Zobrazit háky.\n"
+"inventory            Zobrazit inventář současné pracovní kopie nebo revize.\n"
+"local-time-offset    Zobrazit odchylku ve vteřinách od GMT k místnímu "
+"času..\n"
+"lookup-revision      Vyhledat id revize z jejího čísla.\n"
+"merge-directive      Vytvořit příkaz sloučení pro nástroje automatického "
+"sloučení.\n"
+"modified             Vypsat změněné soubory v pracovním stromě.\n"
+"re-sign              Vytvořit digitální podpis pro existující revizi.\n"
+"reference            vypsat, zobrazit a nastavit a umístění větve pro "
+"vnořené stromy.\n"
+"relpath             Zobrazit relativní cestu souboru ke kořeni\n"
+"repair-workingtree   Resetovat soubor stavu pracovního stromu.\n"
+"revision-history     Zobrazit seznam id revizí ve větvi.\n"
+"revision-info        Zobrazit id a číslo revize pro zadaný identifikátor.\n"
+"rocks                Optimistické prohlášení.\n"
+"selftest             Spustit vnitřní sadu testů.\n"
+"shell-complete       Zobrazit vhodná dokončení pro obsah.\n"
+"test-script          Spustit test podobný shellu ze souboru.\n"
+"touching-revisions   Vrátit id revizí, které se týkají určitého souboru.\n"
+"unknowns             Vypsat neznámé soubory.\n"
+"wait-until-signalled Vyzkoušet pomocníka pro\n"
+"                     test_start_and_stop_bzr_subprocess_send_signal.\n"
 
 #: en/help_topics/hooks.txt:1
 msgid ""
@@ -14518,25 +14596,32 @@ msgid ""
 "Hooks\n"
 "====="
 msgstr ""
+"\n"
+"Háky\n"
+"====="
 
 #: en/help_topics/hooks.txt:5 en/help_topics/rules.txt:4
 msgid ""
 "Introduction\n"
 "------------"
 msgstr ""
+"Úvod\n"
+"------------"
 
 #: en/help_topics/hooks.txt:8
 msgid "A hook of type *xxx* of class *yyy* needs to be registered using::"
-msgstr ""
+msgstr "Hák typu *xxx* z třídy *yyy* musí být zaregistrován ppomocí::"
 
 #: en/help_topics/hooks.txt:10
 msgid "  yyy.hooks.install_named_hook(\"xxx\", ...)"
-msgstr ""
+msgstr "  yyy.hooks.install_named_hook(\"xxx\", ...)"
 
 #: en/help_topics/hooks.txt:12
 msgid ""
 "See :doc:`Using hooks<../user-guide/hooks>` in the User Guide for examples."
 msgstr ""
+"Viz :doc:`Using hooks<../user-guide/hooks>`  v Uživatelské příručce pro "
+"podrobnosti."
 
 #: en/help_topics/hooks.txt:14
 msgid ""
@@ -14545,6 +14630,9 @@ msgid ""
 "instance, BranchHooks as the class is the hooks class for\n"
 "`bzrlib.branch.Branch.hooks`."
 msgstr ""
+"Třída, která každý hák obsahuje je zadána před hákem, který poskytuje.\n"
+"Například, BranchHooks jako třída je tříds pro\n"
+"`bzrlib.branch.Branch.hooks`."
 
 #: en/help_topics/hooks.txt:18
 msgid ""
@@ -14552,11 +14640,16 @@ msgid ""
 "machine where bzr was invoked) or the server (the machine addressed by\n"
 "the branch URL).  These may be, but are not necessarily, the same machine."
 msgstr ""
+"Každý popis také naznačuje, zdali je hák spouštěn u klienta (stroj, kde\n"
+"je bzr spuštěn), nebo na serveru (stroj, kterému je určena URL větve).\n"
+"To můžou, ale i nemusí být, stejné stroje."
 
 #: en/help_topics/hooks.txt:22
 msgid ""
 "Plugins (including hooks) are run on the server if all of these is true:"
 msgstr ""
+"Zásuvné moduly (včetně háků) jsou spouštěny na serveru, pokud\r\n"
+"všechno následující je pravda:"
 
 #: en/help_topics/hooks.txt:24
 msgid ""
@@ -14565,6 +14658,9 @@ msgid ""
 "\"http://\"\n"
 "    URL when a smart server is available via HTTP)."
 msgstr ""
+"  * Připojení je pomocí chytrého serveru (přistupováno s URL začínající\n"
+"    \"bzr://\", \"bzr+ssh://\" nebo \"bzr+http://\", či \"http://\"\n"
+"    URL pokud je chytrý server dostupný přes HTTP)."
 
 #: en/help_topics/hooks.txt:28
 msgid ""
@@ -14572,6 +14668,8 @@ msgid ""
 "rather\n"
 "    than client specific code (such as commit)."
 msgstr ""
+"  * Hák je buď určen pro server, nebo je částí obecné infrastruktury\n"
+"    spíše než konkrétní kód klienta (jako například odevzdání)."
 
 #: en/help_topics/hooks.txt:31
 msgid ""
@@ -14579,17 +14677,22 @@ msgid ""
 "BranchHooks\n"
 "-----------"
 msgstr ""
+"\n"
+"BranchHooks\n"
+"-----------"
 
 #: en/help_topics/hooks.txt:35
 msgid ""
 "automatic_tag_name\n"
 "~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"automatic_tag_name\n"
+"~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:38 en/help_topics/hooks.txt:56
 #: en/help_topics/hooks.txt:102 en/help_topics/hooks.txt:259
 msgid "Introduced in: 2.2"
-msgstr ""
+msgstr "Zaveden v: 2.2"
 
 #: en/help_topics/hooks.txt:40
 msgid ""
@@ -14598,29 +14701,39 @@ msgid ""
 "return a tag name or None if no tag name could be determined. The\n"
 "first non-None tag name returned will be used."
 msgstr ""
+"Zavolán pro zjištění automatického názvu značky pro revizi.\n"
+"automatic_tag_name je volán s (větví, id revize) a měl by vrátit\n"
+"název značky, nebo None, pokud název nelze zjistit. Bude\n"
+"použit první název mimo None."
 
 #: en/help_topics/hooks.txt:45
 msgid ""
 "open\n"
 "~~~~"
 msgstr ""
+"open\n"
+"~~~~"
 
 #: en/help_topics/hooks.txt:48 en/help_topics/hooks.txt:290
 #: en/help_topics/hooks.txt:304
 msgid "Introduced in: 1.8"
-msgstr ""
+msgstr "Zaveden v: 1.8"
 
 #: en/help_topics/hooks.txt:50
 msgid ""
 "Called with the Branch object that has been opened after a branch is\n"
 "opened."
 msgstr ""
+"Zavolán s objektem větve, který byl otevřen poté, co byla otevřena\n"
+"větev."
 
 #: en/help_topics/hooks.txt:53
 msgid ""
 "post_branch_init\n"
 "~~~~~~~~~~~~~~~~"
 msgstr ""
+"post_branch_init\n"
+"~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:58
 msgid ""
@@ -14629,16 +14742,22 @@ msgid ""
 "branch and checkout (both heavyweight and lightweight) will all\n"
 "trigger this hook."
 msgstr ""
+"Zavolán po dokončení zavedení nové větve. post_branch_init je\n"
+"zavolán s bzrlib.branch.BranchInitHookParams. Nezapomeňte,\n"
+"že init, branch a checkout (jak plnohodnotná tak odlehčená)\n"
+"tento hák spouští."
 
 #: en/help_topics/hooks.txt:63
 msgid ""
 "post_change_branch_tip\n"
 "~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"post_change_branch_tip\n"
+"~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:66 en/help_topics/hooks.txt:418
 msgid "Introduced in: 1.4"
-msgstr ""
+msgstr "Zaveden v: 1.4"
 
 #: en/help_topics/hooks.txt:68
 msgid ""
@@ -14647,18 +14766,24 @@ msgid ""
 "bzrlib.branch.ChangeBranchTipParams. Note that push, pull, commit,\n"
 "uncommit will all trigger this hook."
 msgstr ""
+"Volán u klienta i na serveru bzr po změně vrcholu větve.\n"
+"post_change_branch_tip je volán s\n"
+"bzrlib.branch.ChangeBranchTipParams. Nezapomeňte, že\n"
+"push, pull, commit, uncommit tento hák spouští."
 
 #: en/help_topics/hooks.txt:73 en/help_topics/hooks.txt:389
 msgid ""
 "post_commit\n"
 "~~~~~~~~~~~"
 msgstr ""
+"post_commit\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:76 en/help_topics/hooks.txt:86
 #: en/help_topics/hooks.txt:94 en/help_topics/hooks.txt:110
 #: en/help_topics/hooks.txt:145
 msgid "Introduced in: 0.15"
-msgstr ""
+msgstr "Zaveden v: 0.15"
 
 #: en/help_topics/hooks.txt:78
 msgid ""
@@ -14667,48 +14792,68 @@ msgid ""
 "new_revid). old_revid is NULL_REVISION for the first commit to a\n"
 "branch."
 msgstr ""
+"Volán v klientovi bzr po dokončení odevzdání. post_commit je volán\n"
+"s (local, master, old_revno, old_revid, new_revno,\n"
+"new_revid). old_revid je pro první odevzdání do větve prázdná\n"
+"revize."
 
 #: en/help_topics/hooks.txt:83
 msgid ""
 "post_pull\n"
 "~~~~~~~~~"
 msgstr ""
+"post_pull\n"
+"~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:88
 msgid ""
 "Called after a pull operation completes. post_pull is called with a\n"
 "bzrlib.branch.PullResult object and only runs in the bzr client."
 msgstr ""
+"Zavolán po dokončení operace stažení. post_pull je volán\n"
+"pomocí objektu bzrlib.branch.PullResult a je spouštěn pouze\n"
+"v klientovi."
 
 #: en/help_topics/hooks.txt:91
 msgid ""
 "post_push\n"
 "~~~~~~~~~"
 msgstr ""
+"post_push\n"
+"~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:96
 msgid ""
 "Called after a push operation completes. post_push is called with a\n"
 "bzrlib.branch.BranchPushResult object and only runs in the bzr client."
 msgstr ""
+"Zavolán po dokončení operace odeslání post_push je volán\n"
+"pomocí objektu bzrlib.branch.BranchPushResult a je spouštěn pouze\n"
+"v klientovi."
 
 #: en/help_topics/hooks.txt:99
 msgid ""
 "post_switch\n"
 "~~~~~~~~~~~"
 msgstr ""
+"post_switch\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:104
 msgid ""
 "Called after a checkout switches branch. post_switch is called with a\n"
 "bzrlib.branch.SwitchHookParams."
 msgstr ""
+"Zavolán po přepnutí větve v získání. post_switch je volán pomocí\n"
+"bzrlib.branch.SwitchHookParams."
 
 #: en/help_topics/hooks.txt:107
 msgid ""
 "post_uncommit\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"post_uncommit\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:112
 msgid ""
@@ -14718,16 +14863,22 @@ msgid ""
 "target branch, and an empty branch receives new_revno of 0, new_revid\n"
 "of None."
 msgstr ""
+"Volán v klientovi bzr po dokončení zrušení odevzdání. post_uncommit je\n"
+"volán pomocí (local, master, old_revno, old_revid, new_revno,\n"
+"new_revid), kde local je místní větev nebo žádná, master je cílová větev\n"
+"a prázdná větev obdrží new_revno s 0, new_revid s None."
 
 #: en/help_topics/hooks.txt:118
 msgid ""
 "pre_change_branch_tip\n"
 "~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"pre_change_branch_tip\n"
+"~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:121
 msgid "Introduced in: 1.6"
-msgstr ""
+msgstr "Zaveden v: 1.6"
 
 #: en/help_topics/hooks.txt:123
 msgid ""
@@ -14736,16 +14887,22 @@ msgid ""
 "bzrlib.branch.ChangeBranchTipParams. Note that push, pull, commit,\n"
 "uncommit will all trigger this hook."
 msgstr ""
+"Volán na serveru i klientovi bzr před změnou vrcholku větve.\n"
+"pre_change_branch_tip je volán pomocí\n"
+"bzrlib.branch.ChangeBranchTipParams.  Nezapomeňte, že\n"
+"push, pull, commit, uncommit tento hák spustí."
 
 #: en/help_topics/hooks.txt:128
 msgid ""
 "pre_commit\n"
 "~~~~~~~~~~"
 msgstr ""
+"pre_commit\n"
+"~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:131
 msgid "Introduced in: 0.91"
-msgstr ""
+msgstr "Zaveden v: 0.91"
 
 #: en/help_topics/hooks.txt:133
 msgid ""
@@ -14758,12 +14915,21 @@ msgid ""
 "from CommitBuilder.revision_tree() and hooks MUST NOT modify this\n"
 "tree."
 msgstr ""
+"Volán po výpočtu odevzdání, ale předtím než je dokončeno.\n"
+"pre_commit je volán pomocí (local, master, old_revno, old_revid,\n"
+"future_revno, future_revid, tree_delta, future_tree). old_revid je\n"
+"prázdná revize pro první odevzdání ve větvi, tree_delta je objekt\n"
+"TreeDelta popisující změny od základní revize. Háky NESMÍ\n"
+"měnit tuto deltu. future_tree je strom v paměti získaný z\n"
+"CommitBuilder.revision_tree() a háky tento strom NESMÍ měnit."
 
 #: en/help_topics/hooks.txt:153
 msgid ""
 "transform_fallback_location\n"
 "~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"transform_fallback_location\n"
+"~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:156
 msgid "Introduced in: 1.9"
@@ -14839,12 +15005,17 @@ msgid ""
 "Called with (command_name). get_missing_command should either return\n"
 "None, or a Command object to be used for the command."
 msgstr ""
+"Volán při vytvoření jednoho příkazu, nebo pokud příkaz nebyl nalezen.\n"
+"Volán pomocí (název_příkazu). get_missing_command by buď měl\n"
+"vrátit None, nebo objekt Cmmand, který bude por příkaz použit."
 
 #: en/help_topics/hooks.txt:202
 msgid ""
 "list_commands\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"list_commands\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:207
 msgid ""
@@ -14853,150 +15024,190 @@ msgid ""
 "- e.g. to remove a command. list_commands should return the updated\n"
 "set of command names."
 msgstr ""
+"Volán při výčtu příkazů. Volán pomocí sady řetězců cmd_name pro\n"
+"všechny příkazy, které dosud byly nalezeny. Tato sada se mlž měnit\n"
+"- např. kvůli odstranění příkazu. list_commands by měl vrátit\n"
+"aktualizovanou sadu názvů příkazů"
 
 #: en/help_topics/hooks.txt:201
 msgid ""
 "post_command\n"
 "~~~~~~~~~~~~"
 msgstr ""
+"post_command\n"
+"~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:204 en/help_topics/hooks.txt:211
 msgid "Introduced in: 2.6"
-msgstr ""
+msgstr "Zaveden v: 2.6"
 
 #: en/help_topics/hooks.txt:206
 msgid "Called after executing a command. Called with the command object."
-msgstr ""
+msgstr "Volán po spuštění příkazu. Volán pomocí objektu příkazu."
 
 #: en/help_topics/hooks.txt:208
 msgid ""
 "pre_command\n"
 "~~~~~~~~~~~"
 msgstr ""
+"pre_command\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:213
 msgid "Called prior to executing a command. Called with the command object."
-msgstr ""
+msgstr "Volán před spuštěním příkazu. Volán pomocí objektu příkazu."
 
 #: en/help_topics/hooks.txt:212
 msgid ""
 "_ConfigHooks\n"
 "------------"
 msgstr ""
+"_ConfigHooks\n"
+"------------"
 
 #: en/help_topics/hooks.txt:215
 msgid ""
 "get\n"
 "~~~"
 msgstr ""
+"get\n"
+"~~~"
 
 #: en/help_topics/hooks.txt:218 en/help_topics/hooks.txt:226
 #: en/help_topics/hooks.txt:233 en/help_topics/hooks.txt:241
 #: en/help_topics/hooks.txt:248 en/help_topics/hooks.txt:370
 #: en/help_topics/hooks.txt:443
 msgid "Introduced in: 2.4"
-msgstr ""
+msgstr "Zaveden v: 2.4"
 
 #: en/help_topics/hooks.txt:220
 msgid ""
 "Invoked when a config option is read. The signature is (stack, name,\n"
 "value)."
 msgstr ""
+"Volán při čtení možnosti nastavení. Podpis je (stack, name,\n"
+"value)."
 
 #: en/help_topics/hooks.txt:223
 msgid ""
 "load\n"
 "~~~~"
 msgstr ""
+"load\n"
+"~~~~"
 
 #: en/help_topics/hooks.txt:228
 msgid "Invoked when a config store is loaded. The signature is (store)."
-msgstr ""
+msgstr "Volán při načtení možnosti nastavení. Podpis je (store)."
 
 #: en/help_topics/hooks.txt:230
 msgid ""
 "remove\n"
 "~~~~~~"
 msgstr ""
+"remove\n"
+"~~~~~~"
 
 #: en/help_topics/hooks.txt:235
 msgid ""
 "Invoked when a config option is removed. The signature is (stack,\n"
 "name)."
 msgstr ""
+"Volán při odstranění možnosti nastavení. Podpis je (stack,\n"
+"name)."
 
 #: en/help_topics/hooks.txt:238
 msgid ""
 "save\n"
 "~~~~"
 msgstr ""
+"save\n"
+"~~~~"
 
 #: en/help_topics/hooks.txt:243
 msgid "Invoked when a config store is saved. The signature is (store)."
-msgstr ""
+msgstr "Volán při uložení možnosti nastavení. Podpis je (store)."
 
 #: en/help_topics/hooks.txt:245
 msgid ""
 "set\n"
 "~~~"
 msgstr ""
+"set\n"
+"~~~"
 
 #: en/help_topics/hooks.txt:250
 msgid ""
 "Invoked when a config option is set. The signature is (stack, name,\n"
 "value)."
 msgstr ""
+"Volán při nastavení možnosti nastavení. Podpis je (stack,\n"
+"name, value)."
 
 #: en/help_topics/hooks.txt:253
 msgid ""
 "ControlDirHooks\n"
 "---------------"
 msgstr ""
+"ControlDirHooks\n"
+"---------------"
 
 #: en/help_topics/hooks.txt:256
 msgid ""
 "post_repo_init\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"post_repo_init\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:261
 msgid ""
 "Invoked after a repository has been initialized. post_repo_init is\n"
 "called with a bzrlib.controldir.RepoInitHookParams."
 msgstr ""
+"Volán po zavedení úložiště. post_repo_init je volán pomocí\n"
+"bzrlib.controldir.RepoInitHookParams."
 
 #: en/help_topics/hooks.txt:264
 msgid ""
 "pre_open\n"
 "~~~~~~~~"
 msgstr ""
+"pre_open\n"
+"~~~~~~~~"
 
 #: en/help_topics/hooks.txt:267
 msgid "Introduced in: 1.14"
-msgstr ""
+msgstr "Zaveden v: 1.14"
 
 #: en/help_topics/hooks.txt:269
 msgid ""
 "Invoked before attempting to open a ControlDir with the transport that\n"
 "the open will use."
 msgstr ""
+"Volán před pokusem o otevření kontrolního adresáře přenosem, který\n"
+"otevření bude používat."
 
 #: en/help_topics/hooks.txt:272
 msgid ""
 "InfoHooks\n"
 "---------"
 msgstr ""
+"InfoHooks\n"
+"---------"
 
 #: en/help_topics/hooks.txt:275
 msgid ""
 "repository\n"
 "~~~~~~~~~~"
 msgstr ""
+"repository\n"
+"~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:278 en/help_topics/hooks.txt:297
 #: en/help_topics/hooks.txt:521
 msgid "Introduced in: 1.15"
-msgstr ""
+msgstr "Zaveden v: 1.15"
 
 #: en/help_topics/hooks.txt:280
 msgid ""
@@ -15004,60 +15215,75 @@ msgid ""
 "called with a statistics dictionary as returned by the repository and\n"
 "a file-like object to write to."
 msgstr ""
+"Volán při zobrazení statistik úložiště. repository je volán pomocí\n"
+"statistického slovníku tak jak ho úložiště vrací  a objekt podobný\n"
+"souboru, do kterého zapisovat."
 
 #: en/help_topics/hooks.txt:284
 msgid ""
 "LockHooks\n"
 "---------"
 msgstr ""
+"LockHooks\n"
+"---------"
 
 #: en/help_topics/hooks.txt:287
 msgid ""
 "lock_acquired\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"lock_acquired\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:292
 msgid ""
 "Called with a bzrlib.lock.LockResult when a physical lock is acquired."
-msgstr ""
+msgstr "Volán pomocí bzrlib.lock.LockResult když je získán fyzický zámek."
 
 #: en/help_topics/hooks.txt:294
 msgid ""
 "lock_broken\n"
 "~~~~~~~~~~~"
 msgstr ""
+"lock_broken\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:299
 msgid "Called with a bzrlib.lock.LockResult when a physical lock is broken."
-msgstr ""
+msgstr "Volán pomocí bzrlib.lock.LockResult když je fyzický zámek rozbit."
 
 #: en/help_topics/hooks.txt:301
 msgid ""
 "lock_released\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"lock_released\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:306
 msgid ""
 "Called with a bzrlib.lock.LockResult when a physical lock is released."
-msgstr ""
+msgstr "Volán pomocí bzrlib.lock.LockResult když je fyzický zámek odemčen."
 
 #: en/help_topics/hooks.txt:308
 msgid ""
 "MergeHooks\n"
 "----------"
 msgstr ""
+"MergeHooks\n"
+"----------"
 
 #: en/help_topics/hooks.txt:311
 msgid ""
 "merge_file_content\n"
 "~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"merge_file_content\n"
+"~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:314
 msgid "Introduced in: 2.1"
-msgstr ""
+msgstr "Zaveden v: 2.1"
 
 #: en/help_topics/hooks.txt:316
 msgid ""
