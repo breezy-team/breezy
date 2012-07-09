@@ -427,7 +427,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                     path_encoding='utf8',
                     using=None,
                     format_cls=None,
-                    context=3):
+                    context):
     """Show in text form the changes from one tree to another.
 
     :param to_file: The output stream.
@@ -440,6 +440,8 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
         otherwise is supposed to be utf8
     :param format_cls: Formatter class (DiffTree subclass)
     """
+    if context is None:
+        context = 3
     if format_cls is None:
         format_cls = DiffTree
     old_tree.lock_read()
@@ -619,7 +621,7 @@ class DiffText(DiffPath):
 
     def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8',
                  old_label='', new_label='', text_differ=internal_diff,
-                 context_lines=5):
+                 context_lines):
         DiffPath.__init__(self, old_tree, new_tree, to_file, path_encoding)
         self.text_differ = text_differ
         self.old_label = old_label
@@ -910,7 +912,7 @@ class DiffTree(object):
     @classmethod
     def from_trees_options(klass, old_tree, new_tree, to_file,
                            path_encoding, external_diff_options, old_label,
-                           new_label, using, context_lines=5):
+                           new_label, using, context_lines):
         """Factory for producing a DiffTree.
 
         Designed to accept options used by show_diff_trees.
