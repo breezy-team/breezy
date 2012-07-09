@@ -35,7 +35,6 @@ from bzrlib import (
     revision as _mod_revision,
     osutils,
     remote,
-    symbol_versioning,
     transport as _mod_transport,
     urlutils,
     win32utils,
@@ -43,6 +42,7 @@ from bzrlib import (
     workingtree_4,
     )
 import bzrlib.branch
+from bzrlib.branchfmt.fullhistory import BzrBranchFormat5
 from bzrlib.errors import (
     NotBranchError,
     NoColocatedBranchSupport,
@@ -992,7 +992,7 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         branch_base = t.clone('branch').base
         self.assertEqual(branch_base, dir.get_branch_transport(None).base)
         self.assertEqual(branch_base,
-                         dir.get_branch_transport(bzrlib.branch.BzrBranchFormat5()).base)
+                         dir.get_branch_transport(BzrBranchFormat5()).base)
         repository_base = t.clone('repository').base
         self.assertEqual(repository_base, dir.get_repository_transport(None).base)
         repository_format = repository.format_registry.get_default()
