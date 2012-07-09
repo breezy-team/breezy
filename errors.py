@@ -244,6 +244,6 @@ class QuiltUnapplyError(BzrError):
     def __init__(self, kind, msg):
         BzrError.__init__(self)
         self.kind = kind
-        if msg.count("\n") == 1:
+        if msg is not None and msg.count("\n") == 1:
             msg = msg.strip()
         self.msg = msg
