@@ -558,7 +558,7 @@ available to the world.
      cd /srv/doc.bazaar.canonical.com/
      bzr branch http://bazaar.launchpad.net/~bzr-pqm/bzr/2.5 bzr.2.5
 
-   And the ``update-bzr-docs`` needs to refer to it.
+   And the ``bzr/bin/update-bzr-docs`` script needs to refer to it.
 
    The ``lp:bzr-alldocs`` branch also needs to be updated when a new series
    is introduced, see the ``README`` file there for more instructions
