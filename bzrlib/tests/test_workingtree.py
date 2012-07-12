@@ -495,3 +495,24 @@ class TestFindTrees(TestCaseWithTransport):
         self.make_branch('qux')
         trees = workingtree.WorkingTree.find_trees('.')
         self.assertEqual(2, len(list(trees)))
+
+
+class TestStoredUncommitted(TestCaseWithTransport):
+
+    def store_uncommitted(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('get root in there')
+        self.build_tree_contents([('tree/file', 'content')])
+        tree.add('file', 'file-id')
+        tree.store_uncommitted()
+        return tree
+
+    def test_store_uncommitted(self):
+        self.store_uncommitted()
+        self.assertPathDoesNotExist('tree/file')
+
+    def test_store_uncommitted_no_change(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('get root in there')
+        tree.store_uncommitted()
+        self.assertFalse(tree.branch.has_stored_uncommitted())
