@@ -34,6 +34,8 @@ from bzrlib.trace import mutter
 from bzrlib.branch import (
     BranchFormat,
     BranchWriteLockResult,
+    )
+from bzrlib.branchfmt.fullhistory import (
     FullHistoryBzrBranch,
     )
 

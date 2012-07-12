@@ -53,6 +53,7 @@ from bzrlib import (
     workingtree_3,
     workingtree_4,
     )
+from bzrlib.branchfmt import fullhistory as fullhistorybranch
 from bzrlib.repofmt import knitpack_repo
 from bzrlib.transport import (
     do_catching_redirections,
@@ -1811,7 +1812,7 @@ class ConvertMetaToMeta(controldir.Converter):
             old = branch._format.__class__
             new = self.target_format.get_branch_format().__class__
             while old != new:
-                if (old == _mod_branch.BzrBranchFormat5 and
+                if (old == fullhistorybranch.BzrBranchFormat5 and
                     new in (_mod_branch.BzrBranchFormat6,
                         _mod_branch.BzrBranchFormat7,
                         _mod_branch.BzrBranchFormat8)):
@@ -2113,7 +2114,7 @@ def register_metadir(registry, key,
 register_metadir(controldir.format_registry, 'knit',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
     'Format using knits.  Recommended for interoperation with bzr <= 0.14.',
-    branch_format='bzrlib.branch.BzrBranchFormat5',
+    branch_format='bzrlib.branchfmt.fullhistory.BzrBranchFormat5',
     tree_format='bzrlib.workingtree_3.WorkingTreeFormat3',
     hidden=True,
     deprecated=True)
@@ -2122,7 +2123,7 @@ register_metadir(controldir.format_registry, 'dirstate',
     help='Format using dirstate for working trees. '
         'Compatible with bzr 0.8 and '
         'above when accessed over the network. Introduced in bzr 0.15.',
-    branch_format='bzrlib.branch.BzrBranchFormat5',
+    branch_format='bzrlib.branchfmt.fullhistory.BzrBranchFormat5',
     tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     deprecated=True)

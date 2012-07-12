@@ -545,7 +545,7 @@ class ConvertBzrDir6ToMeta(Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
-        from bzrlib.branch import BzrBranchFormat5
+        from bzrlib.branchfmt.fullhistory import BzrBranchFormat5
         self.bzrdir = to_convert
         self.pb = ui.ui_factory.nested_progress_bar()
         self.count = 0
