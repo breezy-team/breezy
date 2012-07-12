@@ -270,6 +270,20 @@ class Branch(controldir.ControlComponent):
         """If true, the branch has stored, uncommitted changes in it."""
         return self._get_uncommitted() is not None
 
+    def store_uncommitted(self, creator, message=None):
+        if self.has_stored_uncommitted():
+            raise errors.ChangesAlreadyStored
+        transform = StringIO()
+        creator.write_shelf(transform, message)
+        try:
+            transform.seek(0)
+            self._put_uncommitted(transform)
+            creator.transform()
+        finally:
+            creator.finalize()
+        return 0
+
+
     def _get_fallback_repository(self, url, possible_transports):
         """Get the repository we fallback to at url."""
         url = urlutils.join(self.base, url)

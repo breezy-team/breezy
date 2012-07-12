@@ -3340,3 +3340,9 @@ class FeatureAlreadyRegistered(BzrError):
 
     def __init__(self, feature):
         self.feature = feature
+
+
+class ChangesAlreadyStored(BzrCommandError):
+
+    _fmt = ('Cannot store uncommitted changes because this branch already'
+            ' stores uncommitted changes.')
