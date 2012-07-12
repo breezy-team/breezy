@@ -1358,10 +1358,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             target_tree = self.basis_tree()
             shelf_creator = shelf.ShelfCreator(self, target_tree)
             try:
-                change = None
-                for change in shelf_creator.iter_shelvable():
-                    shelf_creator.shelve_change(change)
-                if change is None:
+                if not shelf_creator.shelve_all():
                     return
                 self.branch.store_uncommitted(shelf_creator)
                 shelf_creator.transform()
@@ -1369,7 +1366,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                 shelf_creator.finalize()
         finally:
             self.unlock()
-        note('Uncommitted changes stored in pipe "%s".', self.branch.nick)
+        note('Uncommitted changes stored in branch "%s".', self.branch.nick)
 
     def revision_tree(self, revision_id):
         """See Tree.revision_tree.

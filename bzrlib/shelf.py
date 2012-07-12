@@ -125,9 +125,14 @@ class ShelfCreator(object):
             raise ValueError('Unknown change kind: "%s"' % change[0])
 
     def shelve_all(self):
-        """Shelve all changes."""
+        """Shelve all changes.
+
+        :return: True if changes were shelved, False if there were no changes.
+        """
+        change = None
         for change in self.iter_shelvable():
             self.shelve_change(change)
+        return change is not None
 
     def shelve_rename(self, file_id):
         """Shelve a file rename.
