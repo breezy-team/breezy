@@ -724,3 +724,12 @@ class TestPullResult(tests.TestCase):
         self.assertEqual("No revisions or tags to pull.\n", f.getvalue())
 
 
+class TestStoredUncommitted(tests.TestCaseWithTransport):
+
+    def test_has_stored_uncommitted(self):
+        branch = self.make_branch('b')
+        self.assertFalse(branch.has_stored_uncommitted())
+        branch._put_uncommitted(StringIO('hello'))
+        self.assertTrue(branch.has_stored_uncommitted())
+        branch._put_uncommitted(None)
+        self.assertFalse(branch.has_stored_uncommitted())

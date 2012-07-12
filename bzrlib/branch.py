@@ -266,6 +266,10 @@ class Branch(controldir.ControlComponent):
         """
         raise NotImplementedError(self._put_uncommitted)
 
+    def has_stored_uncommitted(self):
+        """If true, the branch has stored, uncommitted changes in it."""
+        return self._get_uncommitted() is not None
+
     def _get_fallback_repository(self, url, possible_transports):
         """Get the repository we fallback to at url."""
         url = urlutils.join(self.base, url)
