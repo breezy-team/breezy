@@ -251,6 +251,21 @@ class Branch(controldir.ControlComponent):
         """
         raise NotImplementedError(self._get_config)
 
+    def _get_uncommitted(self):
+        """Return a serialized TreeTransform for uncommitted changes.
+
+        :return: a file-like object containing a serialized TreeTransform or
+            None if no uncommitted changes are stored.
+        """
+        raise NotImplementedError(self._get_uncommitted)
+
+    def _put_uncommitted(self, transform):
+        """Store a serialized TreeTransform for uncommitted changes.
+
+        :param input: a file-like object.
+        """
+        raise NotImplementedError(self._put_uncommitted)
+
     def _get_fallback_repository(self, url, possible_transports):
         """Get the repository we fallback to at url."""
         url = urlutils.join(self.base, url)
@@ -2385,6 +2400,30 @@ class BzrBranch(Branch, _RelockDebugMixin):
         if self.conf_store is None:
             self.conf_store =  _mod_config.BranchStore(self)
         return self.conf_store
+
+    def _get_uncommitted(self):
+        """Return a serialized TreeTransform for uncommitted changes.
+
+        :return: a file-like object containing a serialized TreeTransform or
+            None if no uncommitted changes are stored.
+        """
+        try:
+            return self._transport.get('stored-transform')
+        except errors.NoSuchFile:
+            return None
+
+    def _put_uncommitted(self, transform):
+        """Store a serialized TreeTransform for uncommitted changes.
+
+        :param input: a file-like object.
+        """
+        if transform is None:
+            try:
+                self._transport.delete('stored-transform')
+            except errors.NoSuchFile:
+                pass
+        else:
+            self._transport.put_file('stored-transform', transform)
 
     def is_locked(self):
         return self.control_files.is_locked()
