@@ -745,19 +745,11 @@ class TestStoredUncommitted(tests.TestCaseWithTransport):
             def write_shelf(self, shelf_file, message=None):
                 shelf_file.write('hello')
 
-            def finalize(self):
-                self.finalize_count += 1
-
-            def transform(self):
-                self.transform_count += 1
-
         branch = self.make_branch('b')
         creator = FakeShelfCreator()
         self.assertFalse(branch.has_stored_uncommitted())
         branch.store_uncommitted(creator)
         self.assertEqual('hello', branch._get_uncommitted().read())
-        self.assertEqual(1, creator.transform_count)
-        self.assertEqual(1, creator.finalize_count)
 
     def test_store_uncommitted_already_stored(self):
         branch = self.make_branch('b')

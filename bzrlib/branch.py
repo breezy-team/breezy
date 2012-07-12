@@ -275,14 +275,8 @@ class Branch(controldir.ControlComponent):
             raise errors.ChangesAlreadyStored
         transform = StringIO()
         creator.write_shelf(transform, message)
-        try:
-            transform.seek(0)
-            self._put_uncommitted(transform)
-            creator.transform()
-        finally:
-            creator.finalize()
-        return 0
-
+        transform.seek(0)
+        self._put_uncommitted(transform)
 
     def _get_fallback_repository(self, url, possible_transports):
         """Get the repository we fallback to at url."""

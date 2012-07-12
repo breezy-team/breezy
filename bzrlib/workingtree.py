@@ -1364,6 +1364,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                 if change is None:
                     return
                 self.branch.store_uncommitted(shelf_creator)
+                shelf_creator.transform()
             finally:
                 shelf_creator.finalize()
         finally:
