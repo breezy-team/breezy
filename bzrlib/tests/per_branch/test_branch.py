@@ -16,6 +16,8 @@
 
 """Tests for branch implementations - tests a branch format."""
 
+from cStringIO import StringIO
+
 from bzrlib import (
     branch as _mod_branch,
     controldir,
@@ -1057,3 +1059,20 @@ class TestBranchControlComponent(per_branch.TestCaseWithBranch):
         # above the control dir but we might need to relax that?
         self.assertEqual(br.control_url.find(br.user_url), 0)
         self.assertEqual(br.control_url, br.control_transport.base)
+
+
+class TestUncommittedChanges(per_branch.TestCaseWithBranch):
+
+    def test_get_put_uncommitted(self):
+        branch = self.make_branch('branch')
+        self.assertIs(None, branch._get_uncommitted())
+        branch._put_uncommitted(StringIO('Hello'))
+        self.assertEqual('Hello', branch._get_uncommitted().read())
+
+    def test_uncommitted_none(self):
+        branch = self.make_branch('branch')
+        branch._put_uncommitted(StringIO('Hello'))
+        branch._put_uncommitted(None)
+        self.assertIs(None, branch._get_uncommitted())
+        # Setting uncommitted to None when it is already None is not an error.
+        branch._put_uncommitted(None)

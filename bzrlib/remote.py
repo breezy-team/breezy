@@ -3393,6 +3393,14 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             self.conf_store =  RemoteBranchStore(self)
         return self.conf_store
 
+    def _get_uncommitted(self):
+        self._ensure_real()
+        return self._real_branch._get_uncommitted()
+
+    def _put_uncommitted(self, transform):
+        self._ensure_real()
+        return self._real_branch._put_uncommitted(transform)
+
     def _get_real_transport(self):
         # if we try vfs access, return the real branch's vfs transport
         self._ensure_real()
