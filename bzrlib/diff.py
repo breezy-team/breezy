@@ -427,7 +427,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                     path_encoding='utf8',
                     using=None,
                     format_cls=None,
-                    context):
+                    context=3):
     """Show in text form the changes from one tree to another.
 
     :param to_file: The output stream.
@@ -619,9 +619,9 @@ class DiffText(DiffPath):
     # or removed in a diff.
     EPOCH_DATE = '1970-01-01 00:00:00 +0000'
 
-    def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8',
-                 old_label='', new_label='', text_differ=internal_diff,
-                 context_lines):
+    def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8', 
+                 old_label='', new_label='', text_differ=internal_diff, 
+                 context_lines=3):
         DiffPath.__init__(self, old_tree, new_tree, to_file, path_encoding)
         self.text_differ = text_differ
         self.old_label = old_label
@@ -933,7 +933,7 @@ class DiffTree(object):
             extra_factories = []
         if external_diff_options:
             opts = external_diff_options.split()
-            def diff_file(olab, olines, nlab, nlines, to_file, path_encoding=None):
+            def diff_file(olab, olines, nlab, nlines, to_file, path_encoding=None, context_lines=None):
                 """:param path_encoding: not used but required
                         to match the signature of internal_diff.
                 """
