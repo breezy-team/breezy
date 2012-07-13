@@ -276,12 +276,17 @@ class ShelfCreator(object):
         :return: the filename of the written file.
         """
         transform.resolve_conflicts(self.shelf_transform)
+        revision_id = self.target_tree.get_revision_id()
+        return self._write_shelf(shelf_file, self.shelf_transform, revision_id,
+                                 message)
+
+    @classmethod
+    def _write_shelf(cls, shelf_file, transform, revision_id, message=None):
         serializer = pack.ContainerSerialiser()
         shelf_file.write(serializer.begin())
-        revision_id = self.target_tree.get_revision_id()
-        metadata = self.metadata_record(serializer, revision_id, message)
+        metadata = cls.metadata_record(serializer, revision_id, message)
         shelf_file.write(metadata)
-        for bytes in self.shelf_transform.serialize(serializer):
+        for bytes in transform.serialize(serializer):
             shelf_file.write(bytes)
         shelf_file.write(serializer.end())
 
