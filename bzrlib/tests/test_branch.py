@@ -740,10 +740,6 @@ class TestStoredUncommitted(tests.TestCaseWithTransport):
 
         class FakeShelfCreator(object):
 
-            def __init__(self):
-                self.transform_count = 0
-                self.finalize_count = 0
-
             def write_shelf(self, shelf_file, message=None):
                 shelf_file.write('hello')
 
