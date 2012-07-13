@@ -1368,18 +1368,17 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             self.unlock()
         note('Uncommitted changes stored in branch "%s".', self.branch.nick)
 
-    def get_uncommitted_data(self):
-        base_revision_id, records = self.branch.get_uncommitted_data()
-        if base_revision_id is None:
-            return None, None
+    def restore_uncommitted(self, delete=True):
+        transform = self.branch._get_uncommitted()
+        if transform is None:
+            return
+        unshelver = shelf.Unshelver.from_tree_and_shelf(self, transform)
         try:
-            base_tree = self.revision_tree(base_revision_id)
-        except errors.NoSuchRevisionInTree:
-            repo = self.branch.repository
-            base_tree = repo.revision_tree(base_revision_id)
-        tt = transform.TransformPreview(base_tree)
-        tt.deserialize(records)
-        return base_tree, tt
+            merger = unshelver.make_merger()
+            merger.ignore_zero = True
+            merger.do_merge()
+        finally:
+            unshelver.finalize()
 
     def revision_tree(self, revision_id):
         """See Tree.revision_tree.

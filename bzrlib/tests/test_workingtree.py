@@ -27,6 +27,7 @@ from bzrlib import (
     workingtree_3,
     workingtree_4,
     )
+from bzrlib.lock import write_locked
 from bzrlib.lockdir import LockDir
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
@@ -520,21 +521,17 @@ class TestStoredUncommitted(TestCaseWithTransport):
         tree.store_uncommitted()
         self.assertFalse(tree.branch.has_stored_uncommitted())
 
-    def test_get_uncommitted_data_none(self):
-        tree = self.make_branch_and_tree('tree')
-        base_tree, tt = tree.get_uncommitted_data()
-        self.assertIs(None, base_tree)
-        self.assertIs(None, tt)
+    def test_restore_uncommitted(self):
+        with write_locked(self.store_uncommitted()) as tree:
+            tree.restore_uncommitted()
+            self.assertPathExists('tree/file')
+            self.assertFalse(None, tree.branch.has_stored_uncommitted())
 
-    def test_get_uncommitted_data(self):
+    def test_restore_uncommitted_none(self):
         tree = self.make_branch_and_tree('tree')
-        tree.commit('add root')
-        with TransformPreview(tree.basis_tree()) as tt:
-            tt.new_directory('not_root', tt.root, 'not-root')
-            s = StringIO()
-            shelf.ShelfCreator._write_shelf(s, tt, tree.last_revision())
-        s.seek(0)
-        tree.branch._put_uncommitted(s)
-        base_tree, tt = tree.get_uncommitted_data()
-        self.addCleanup(tt.finalize)
-        self.assertEqual('not-root', tt.get_preview_tree().path2id('not_root'))
+        tree.restore_uncommitted()
+
+    def test_restore_uncommitted_no_delete(self):
+        with write_locked(self.store_uncommitted()) as tree:
+            tree.restore_uncommitted(delete=False)
+            self.assertTrue(tree.branch.has_stored_uncommitted())
