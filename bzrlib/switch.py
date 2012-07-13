@@ -32,7 +32,8 @@ def _run_post_switch_hooks(control_dir, to_branch, force, revision_id):
     for hook in hooks:
         hook(params)
 
-def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None):
+def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None,
+           store_uncommitted=False):
     """Switch the branch associated with a checkout.
 
     :param control_dir: ControlDir of the checkout to change
@@ -45,13 +46,15 @@ def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None):
         source_repository = control_dir.open_branch().repository
     except errors.NotBranchError:
         source_repository = to_branch.repository
+    if store_uncommitted:
+        control_dir.open_workingtree().store_uncommitted()
     to_branch.lock_read()
     try:
         _set_branch_location(control_dir, to_branch, force)
     finally:
         to_branch.unlock()
     tree = control_dir.open_workingtree()
-    _update(tree, source_repository, quiet, revision_id)
+    _update(tree, source_repository, quiet, revision_id, store_uncommitted)
     _run_post_switch_hooks(control_dir, to_branch, force, revision_id)
 
 def _check_pending_merges(control, force=False):
@@ -151,7 +154,8 @@ def _any_local_commits(this_branch, possible_transports):
     return False
 
 
-def _update(tree, source_repository, quiet=False, revision_id=None):
+def _update(tree, source_repository, quiet=False, revision_id=None,
+            restore_uncommitted=False):
     """Update a working tree to the latest revision of its branch.
 
     :param tree: the working tree
@@ -171,5 +175,7 @@ def _update(tree, source_repository, quiet=False, revision_id=None):
         tree.set_last_revision(to_branch.last_revision())
         if not quiet:
             note(gettext('Updated to revision %d.') % to_branch.revno())
+        if restore_uncommitted:
+            tree.restore_uncommitted()
     finally:
         tree.unlock()
