@@ -1369,10 +1369,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         note('Uncommitted changes stored in branch "%s".', self.branch.nick)
 
     def restore_uncommitted(self, delete=True):
-        transform = self.branch._get_uncommitted()
-        if transform is None:
+        unshelver = self.branch.get_unshelver(self)
+        if unshelver is None:
             return
-        unshelver = shelf.Unshelver.from_tree_and_shelf(self, transform)
         try:
             merger = unshelver.make_merger()
             merger.ignore_zero = True

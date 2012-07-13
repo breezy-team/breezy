@@ -759,19 +759,10 @@ class TestStoredUncommitted(tests.TestCaseWithTransport):
         self.assertRaises(errors.ChangesAlreadyStored,
                           branch.store_uncommitted, None)
 
-    def test_get_uncommitted_data(self):
-        serializer = pack.ContainerSerialiser()
-        metadata = shelf.ShelfCreator.metadata_record(serializer, 'rev-1')
-        data = [serializer.begin(), metadata, serializer.bytes_record('q', [])]
-        data.append(serializer.end())
-        branch = self.make_branch('b')
-        branch._put_uncommitted(StringIO(''.join(data)))
-        revision_id, records = branch.get_uncommitted_data()
-        self.assertEqual('rev-1', revision_id)
-        self.assertEqual([([], 'q')], list(records))
-
-    def test_get_uncommitted_data_none(self):
-        branch = self.make_branch('b')
-        revision_id, records = branch.get_uncommitted_data()
-        self.assertIs(None, revision_id)
-        self.assertIs(None, records)
+    def test_get_unshelver(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('')
+        self.build_tree_contents([('tree/file', 'contents1')])
+        tree.add('file')
+        tree.store_uncommitted()
+        unshelver = tree.branch.get_unshelver(tree)

@@ -279,14 +279,11 @@ class Branch(controldir.ControlComponent):
         transform.seek(0)
         self._put_uncommitted(transform)
 
-    def get_uncommitted_data(self):
+    def get_unshelver(self, tree):
         transform = self._get_uncommitted()
         if transform is None:
-            return None, None
-        records = shelf.Unshelver.iter_records(transform)
-        metadata = shelf.Unshelver.parse_metadata(records)
-        base_revision_id = metadata['revision_id']
-        return base_revision_id, records
+            return
+        return shelf.Unshelver.from_tree_and_shelf(tree, transform)
 
     def _get_fallback_repository(self, url, possible_transports):
         """Get the repository we fallback to at url."""
