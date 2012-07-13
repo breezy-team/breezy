@@ -267,20 +267,28 @@ class Branch(controldir.ControlComponent):
         """
         raise NotImplementedError(self._put_uncommitted)
 
+    def _uncommitted_branch(self):
+        master = self.get_master_branch()
+        if master is not None:
+            return master
+        else:
+            return self
+
     def has_stored_uncommitted(self):
         """If true, the branch has stored, uncommitted changes in it."""
-        return self._get_uncommitted() is not None
+        return self._uncommitted_branch()._get_uncommitted() is not None
 
     def store_uncommitted(self, creator, message=None):
-        if self.has_stored_uncommitted():
+        branch = self._uncommitted_branch()
+        if branch.has_stored_uncommitted():
             raise errors.ChangesAlreadyStored
         transform = StringIO()
         creator.write_shelf(transform, message)
         transform.seek(0)
-        self._put_uncommitted(transform)
+        branch._put_uncommitted(transform)
 
     def get_unshelver(self, tree):
-        transform = self._get_uncommitted()
+        transform = self._uncommitted_branch()._get_uncommitted()
         if transform is None:
             return
         return shelf.Unshelver.from_tree_and_shelf(tree, transform)
