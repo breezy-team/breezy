@@ -39,6 +39,7 @@ from bzrlib import (
     repository,
     revision as _mod_revision,
     rio,
+    shelf,
     tag as _mod_tag,
     transport,
     ui,
@@ -277,6 +278,15 @@ class Branch(controldir.ControlComponent):
         creator.write_shelf(transform, message)
         transform.seek(0)
         self._put_uncommitted(transform)
+
+    def get_uncommitted_data(self):
+        transform = self._get_uncommitted()
+        if transform is None:
+            return None, None, None
+        records = shelf.Unshelver.iter_records(transform)
+        metadata = shelf.Unshelver.parse_metadata(records)
+        base_revision_id = metadata['revision_id']
+        return base_revision_id, records
 
     def _get_fallback_repository(self, url, possible_transports):
         """Get the repository we fallback to at url."""

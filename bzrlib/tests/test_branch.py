@@ -30,6 +30,8 @@ from bzrlib import (
     config,
     controldir,
     errors,
+    pack,
+    shelf,
     tests,
     trace,
     urlutils,
@@ -756,3 +758,14 @@ class TestStoredUncommitted(tests.TestCaseWithTransport):
         branch._put_uncommitted(StringIO('hello'))
         self.assertRaises(errors.ChangesAlreadyStored,
                           branch.store_uncommitted, None)
+
+    def test_get_uncommitted_data(self):
+        serializer = pack.ContainerSerialiser()
+        metadata = shelf.ShelfCreator.metadata_record(serializer, 'rev-1')
+        data = [serializer.begin(), metadata, serializer.bytes_record('q', [])]
+        data.append(serializer.end())
+        branch = self.make_branch('b')
+        branch._put_uncommitted(StringIO(''.join(data)))
+        revision_id, records = branch.get_uncommitted_data()
+        self.assertEqual('rev-1', revision_id)
+        self.assertEqual([([], 'q')], list(records))

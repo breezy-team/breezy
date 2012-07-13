@@ -260,6 +260,14 @@ class ShelfCreator(object):
         """Shelve changes from working tree."""
         self.work_transform.apply()
 
+    @staticmethod
+    def metadata_record(serializer, revision_id, message=None):
+        metadata = {'revision_id': revision_id}
+        if message is not None:
+            metadata['message'] = message.encode('utf-8')
+        return serializer.bytes_record(
+            bencode.bencode(metadata), (('metadata',),))
+
     def write_shelf(self, shelf_file, message=None):
         """Serialize the shelved changes to a file.
 
@@ -270,13 +278,9 @@ class ShelfCreator(object):
         transform.resolve_conflicts(self.shelf_transform)
         serializer = pack.ContainerSerialiser()
         shelf_file.write(serializer.begin())
-        metadata = {
-            'revision_id': self.target_tree.get_revision_id(),
-        }
-        if message is not None:
-            metadata['message'] = message.encode('utf-8')
-        shelf_file.write(serializer.bytes_record(
-            bencode.bencode(metadata), (('metadata',),)))
+        revision_id = self.target_tree.get_revision_id()
+        metadata = self.metadata_record(serializer, revision_id, message)
+        shelf_file.write(metadata)
         for bytes in self.shelf_transform.serialize(serializer):
             shelf_file.write(bytes)
         shelf_file.write(serializer.end())
