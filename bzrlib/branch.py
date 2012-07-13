@@ -282,7 +282,7 @@ class Branch(controldir.ControlComponent):
     def get_uncommitted_data(self):
         transform = self._get_uncommitted()
         if transform is None:
-            return None, None, None
+            return None, None
         records = shelf.Unshelver.iter_records(transform)
         metadata = shelf.Unshelver.parse_metadata(records)
         base_revision_id = metadata['revision_id']

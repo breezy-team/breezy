@@ -769,3 +769,9 @@ class TestStoredUncommitted(tests.TestCaseWithTransport):
         revision_id, records = branch.get_uncommitted_data()
         self.assertEqual('rev-1', revision_id)
         self.assertEqual([([], 'q')], list(records))
+
+    def test_get_uncommitted_data_none(self):
+        branch = self.make_branch('b')
+        revision_id, records = branch.get_uncommitted_data()
+        self.assertIs(None, revision_id)
+        self.assertIs(None, records)
