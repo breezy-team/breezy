@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2012-07-12 21:04+0000\n"
+"PO-Revision-Date: 2012-07-14 20:42+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-07-13 04:36+0000\n"
+"X-Launchpad-Export-Date: 2012-07-15 04:30+0000\n"
 "X-Generator: Launchpad (build 15614)\n"
 
 #: bzrlib/add.py:93
@@ -15433,7 +15433,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:348
 msgid "Introduced in: 1.15.0"
-msgstr ""
+msgstr "Zaveden v: 1.15.0"
 
 #: en/help_topics/hooks.txt:350
 msgid ""
@@ -15441,22 +15441,29 @@ msgid ""
 "request.  Callbacks must return a body.  If more than one callback is\n"
 "registered, the output of one callback is provided to the next."
 msgstr ""
+"Volán pomocí MergeRequestBodyParams když žádost o sloučení vyžaduje\n"
+"tělo. Zpětná volání musejí vracet tělo. Pokud je registrováno více než\n"
+"jedno volání, výstup jednoho volání je poskytnut druhému."
 
 #: en/help_topics/hooks.txt:354
 msgid ""
 "MessageEditorHooks\n"
 "------------------"
 msgstr ""
+"MessageEditorHooks\n"
+"------------------"
 
 #: en/help_topics/hooks.txt:357
 msgid ""
 "commit_message_template\n"
 "~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"commit_message_template\n"
+"~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:360
 msgid "Introduced in: 1.10"
-msgstr ""
+msgstr "Zaveden v: 1.10"
 
 #: en/help_topics/hooks.txt:362
 msgid ""
@@ -15468,12 +15475,21 @@ msgid ""
 "they are chained with the result from the first passed into the\n"
 "second, and so on."
 msgstr ""
+"Volán, při vytváření zprávy odevzdání.\n"
+"commit_message_template je volán pomocí objektu\n"
+"bzrlib.commit.Commit a zprávy, která je doposud známa\n"
+"commit_message_template musí vracet novou zprávu k použití (která\n"
+"může být totožná se zadanou). Při zavedení více háků pro\n"
+"commit_message_template, jsou seřazeny do řetězu, přičemž\n"
+"výsledky z prvního jsou předány druhému atd."
 
 #: en/help_topics/hooks.txt:370
 msgid ""
 "set_commit_message\n"
 "~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"set_commit_message\n"
+"~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:375
 msgid ""
@@ -15483,28 +15499,39 @@ msgid ""
 "far. set_commit_message must return the message to use or None if it\n"
 "should use the message editor as normal."
 msgstr ""
+"Nastaví pevnou zprávu odevzdání. set_commit_message je volán\n"
+"pomocí objektu bzrlib.commit.Commit (můžete tak změnit např.\n"
+"vlastnosti revize úpravou commit.builder._revprops) a dosud\n"
+"napsané zprávy. set_commit_message musí vracet zprávu nebo\n"
+"None, pokud by měl být použít editor zpráv tak jako normálně."
 
 #: en/help_topics/hooks.txt:381
 msgid ""
 "MutableTreeHooks\n"
 "----------------"
 msgstr ""
+"MutableTreeHooks\n"
+"----------------"
 
 #: en/help_topics/hooks.txt:384
 msgid ""
 "post_build_tree\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"post_build_tree\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:389
 msgid ""
 "Called after a completely new tree is built. The hook is called with\n"
 "the tree as its only argument."
 msgstr ""
+"Volán po celkovém vytvoření nového stromu. Hák je volán pomocí\n"
+"stromu jako jeho jediného argumentu."
 
 #: en/help_topics/hooks.txt:395
 msgid "Introduced in: 2.0"
-msgstr ""
+msgstr "Zaveden v: 2.0"
 
 #: en/help_topics/hooks.txt:397
 msgid ""
@@ -15513,12 +15540,18 @@ msgid ""
 "commit was performed on is available via the mutable_tree attribute of\n"
 "that object."
 msgstr ""
+"Volán po provedení odevzdaní ve stromu. Hák je volán pomocí objektu\n"
+"bzrlib.mutabletree.PostCommitHookParams. Měnitelný strom, v\n"
+"kterém bylo provedeno odevzdání, je dostupné pomocí vlastnosti\n"
+"mutable_tree takového objektu."
 
 #: en/help_topics/hooks.txt:402
 msgid ""
 "post_transform\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"post_transform\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:407
 msgid ""
@@ -15531,6 +15564,8 @@ msgid ""
 "pre_transform\n"
 "~~~~~~~~~~~~~"
 msgstr ""
+"pre_transform\n"
+"~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:415
 msgid ""
@@ -15543,6 +15578,8 @@ msgid ""
 "start_commit\n"
 "~~~~~~~~~~~~"
 msgstr ""
+"start_commit\n"
+"~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:423
 msgid ""
@@ -15557,12 +15594,16 @@ msgid ""
 "SmartClientHooks\n"
 "----------------"
 msgstr ""
+"SmartClientHooks\n"
+"----------------"
 
 #: en/help_topics/hooks.txt:431
 msgid ""
 "call\n"
 "~~~~"
 msgstr ""
+"call\n"
+"~~~~"
 
 #: en/help_topics/hooks.txt:434
 msgid "Introduced in: unknown"
@@ -15580,12 +15621,16 @@ msgid ""
 "SmartServerHooks\n"
 "----------------"
 msgstr ""
+"SmartServerHooks\n"
+"----------------"
 
 #: en/help_topics/hooks.txt:443
 msgid ""
 "server_exception\n"
 "~~~~~~~~~~~~~~~~"
 msgstr ""
+"server_exception\n"
+"~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:448
 msgid ""
@@ -15600,6 +15645,8 @@ msgid ""
 "server_started\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"server_started\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:456 en/help_topics/hooks.txt:475
 msgid "Introduced in: 0.16"
@@ -15619,6 +15666,8 @@ msgid ""
 "server_started_ex\n"
 "~~~~~~~~~~~~~~~~~"
 msgstr ""
+"server_started_ex\n"
+"~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:469
 msgid ""
@@ -15631,6 +15680,8 @@ msgid ""
 "server_stopped\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"server_stopped\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:477
 msgid ""
@@ -15644,12 +15695,16 @@ msgid ""
 "StatusHooks\n"
 "-----------"
 msgstr ""
+"StatusHooks\n"
+"-----------"
 
 #: en/help_topics/hooks.txt:484
 msgid ""
 "post_status\n"
 "~~~~~~~~~~~"
 msgstr ""
+"post_status\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:487 en/help_topics/hooks.txt:498
 msgid "Introduced in: 2.3"
@@ -15669,6 +15724,8 @@ msgid ""
 "pre_status\n"
 "~~~~~~~~~~"
 msgstr ""
+"pre_status\n"
+"~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:500
 msgid ""
@@ -15684,12 +15741,16 @@ msgid ""
 "TransportHooks\n"
 "--------------"
 msgstr ""
+"TransportHooks\n"
+"--------------"
 
 #: en/help_topics/hooks.txt:509
 msgid ""
 "post_connect\n"
 "~~~~~~~~~~~~"
 msgstr ""
+"post_connect\n"
+"~~~~~~~~~~~~"
 
 #: en/help_topics/hooks.txt:514
 msgid ""
@@ -15703,12 +15764,16 @@ msgid ""
 "RioVersionInfoBuilderHooks\n"
 "--------------------------"
 msgstr ""
+"RioVersionInfoBuilderHooks\n"
+"--------------------------"
 
 #: en/help_topics/hooks.txt:521
 msgid ""
 "revision\n"
 "~~~~~~~~"
 msgstr ""
+"revision\n"
+"~~~~~~~~"
 
 #: en/help_topics/hooks.txt:526
 msgid ""
