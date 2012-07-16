@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2012-07-14 20:42+0000\n"
+"PO-Revision-Date: 2012-07-15 20:52+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-07-15 04:30+0000\n"
+"X-Launchpad-Export-Date: 2012-07-16 04:30+0000\n"
 "X-Generator: Launchpad (build 15614)\n"
 
 #: bzrlib/add.py:93
@@ -15558,6 +15558,8 @@ msgid ""
 "Called after a tree transform has been performed on a tree. The hook\n"
 "is called with the tree that is being transformed and the transform."
 msgstr ""
+"Volán po provedení transformace stromu. Hák je volán pomocí stromu\n"
+",který je transformován, a transformací."
 
 #: en/help_topics/hooks.txt:410
 msgid ""
@@ -15572,6 +15574,8 @@ msgid ""
 "Called before a tree transform on this tree. The hook is called with\n"
 "the tree that is being transformed and the transform."
 msgstr ""
+"Volán před provedení transformace stromu. Hák je volán pomocí\n"
+"stromu, který je transformován, a transformací."
 
 #: en/help_topics/hooks.txt:418
 msgid ""
@@ -15588,6 +15592,10 @@ msgid ""
 "is called with the bzrlib.mutabletree.MutableTree that the commit is\n"
 "being performed on."
 msgstr ""
+"Volán před provedením odevzdání ve stromě. Hák zahájení odevzdání\n"
+"může změnit strom před provedením odevzdání. start_commit je\n"
+"volán pomocí bzrlib.mutabletree.MutableTree ve stromu, v kterém\n"
+"je odevzdávání prováděno."
 
 #: en/help_topics/hooks.txt:428
 msgid ""
@@ -15607,7 +15615,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:434
 msgid "Introduced in: unknown"
-msgstr ""
+msgstr "Zaveden v: neznámo"
 
 #: en/help_topics/hooks.txt:436
 msgid ""
@@ -15615,6 +15623,9 @@ msgid ""
 "server. Called with a bzrlib.smart.client.CallHookParams object.\n"
 "Streaming request bodies, and responses, are not accessible."
 msgstr ""
+"Volán, když chytrý klient odesílá požadavek chytrému serveru. Volán\n"
+"pomocí objektu  bzrlib.smart.client.CallHookParams. Vysílání těl\n"
+"požadavků, a jejich odpovědí, není dostupné."
 
 #: en/help_topics/hooks.txt:440
 msgid ""
@@ -15639,6 +15650,10 @@ msgid ""
 "exception has been handled, in which case the server will exit\n"
 "normally."
 msgstr ""
+"Volán serverem bzr, když se objeví výjimka. server_exception je volán\n"
+"pomocí řazené kolekce sys.exc_info(), která háku vrací true, pokud\n"
+"výjimka byla zvládnuta, v takovém případě bude server ukončen\n"
+"normálně."
 
 #: en/help_topics/hooks.txt:453
 msgid ""
@@ -15650,7 +15665,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:456 en/help_topics/hooks.txt:475
 msgid "Introduced in: 0.16"
-msgstr ""
+msgstr "Zaveden v: 0.16"
 
 #: en/help_topics/hooks.txt:458
 msgid ""
@@ -15660,6 +15675,10 @@ msgid ""
 "locations, and public_url is the public URL for the directory being\n"
 "served."
 msgstr ""
+"Volán serverem bzr, když začne obsluhovat adresář.\n"
+"server_started je volán pomocí (záložních a veřejných url), kde\n"
+"backing_url je seznam URL udávající umístění adresářů na\n"
+"serveru a public_url je veřejná URL obsluhovaného adresáře."
 
 #: en/help_topics/hooks.txt:464
 msgid ""
@@ -15674,6 +15693,8 @@ msgid ""
 "Called by the bzr server when it starts serving a directory.\n"
 "server_started is called with (backing_urls, server_obj)."
 msgstr ""
+"Volán serverem bzr,\n"
+"server_started je volán pomocí (backing_urls, server_obj)."
 
 #: en/help_topics/hooks.txt:472
 msgid ""
@@ -15689,6 +15710,9 @@ msgid ""
 "server_stopped is called with the same parameters as the\n"
 "server_started hook: (backing_urls, public_url)."
 msgstr ""
+"Volán serverem bzr,  když přestane obsluhovat adresář.\n"
+"server_stopped je volán pomocí stejných parametrů jako\n"
+"hák server_started: (backing_urls, public_url)."
 
 #: en/help_topics/hooks.txt:481
 msgid ""
@@ -15708,7 +15732,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:487 en/help_topics/hooks.txt:498
 msgid "Introduced in: 2.3"
-msgstr ""
+msgstr "Zaveden v: 2.3"
 
 #: en/help_topics/hooks.txt:489
 msgid ""
@@ -15718,6 +15742,11 @@ msgid ""
 "correspond to the command line options specified by the user for the\n"
 "status command. to_file is the output stream for writing."
 msgstr ""
+"Volán pomocí argumentu StatusHookParam poté, co Bazaar zobrazil\n"
+"stav. StatusHookParams má vlastnosti (old_tree, new_tree, to_file,\n"
+" versioned, show_ids, short, verbose). Poslední čtyři odpovídají\n"
+"volbám příkazového řádku zadané uživatelem pro příkaz status.\n"
+"to_file je výstupní proud pro zápis."
 
 #: en/help_topics/hooks.txt:495
 msgid ""
@@ -15735,6 +15764,11 @@ msgid ""
 "correspond to the command line options specified by the user for the\n"
 "status command. to_file is the output stream for writing."
 msgstr ""
+"Volán pomocí argumentu StatusHookParam předtím než Bazaar zobrazí\n"
+"stav. StatusHookParams má vlastnosti (old_tree, new_tree, to_file,\n"
+" versioned, show_ids, short, verbose). Poslední čtyři odpovídají\n"
+"volbám příkazového řádku zadané uživatelem pro příkaz status.\n"
+"to_file je výstupní proud pro zápis."
 
 #: en/help_topics/hooks.txt:506
 msgid ""
@@ -15758,6 +15792,9 @@ msgid ""
 "The sole argument passed is either the connected transport or smart\n"
 "medium instance."
 msgstr ""
+"Volán po vytvoření nového připojení, nebo dojde ke znovupřipojení.\n"
+"Jediný argument, který je předáván, je buď připojený přenos, nebo\n"
+"instance chytrého média."
 
 #: en/help_topics/hooks.txt:518
 msgid ""
@@ -15781,12 +15818,16 @@ msgid ""
 "that is printed. revision is called with a revision object and a RIO\n"
 "stanza.\n"
 msgstr ""
+"Volán při přidávání informace o revizi do strofy RIO, která je\n"
+"vypsána. revision je volán s objektem revize a strofou RIO.\n"
 
 #: en/help_topics/location-alias.txt:1
 msgid ""
 "Location aliases\n"
 "================"
 msgstr ""
+"Zkratky umístění\n"
+"================"
 
 #: en/help_topics/location-alias.txt:4
 msgid ""
@@ -15794,10 +15835,12 @@ msgid ""
 "These\n"
 "can be used with most commands that expect a location, such as `bzr push`."
 msgstr ""
+"Bazaar zavádí několik zkratek pro umístění spojená s větví. Mohou být\n"
+"použity s většinou příkazů, které očekávají umístění, jako  `bzr push`."
 
 #: en/help_topics/location-alias.txt:7
 msgid "The aliases are::"
-msgstr ""
+msgstr "Tyto zkratky jsou::"
 
 #: en/help_topics/location-alias.txt:9
 msgid ""
@@ -15808,26 +15851,36 @@ msgid ""
 "  :submit    The submit branch for this branch.\n"
 "  :this      This branch."
 msgstr ""
+"  :bound     Větev, s kterou ej tato svázána, pro svázané větve.\n"
+"  :parent    Nadřazená této větvi.\n"
+"  :public    Veřejné umístění této větve.\n"
+"  :push      Uložené umístění používané pro `bzr push` bez argumentů.\n"
+"  :submit    Větev pro odesílání z této větve.\n"
+"  :this      Tato větev."
 
 #: en/help_topics/location-alias.txt:16
 msgid "For example, to push to the parent location::"
-msgstr ""
+msgstr "Například pro odeslání do nadřazeného umístění::"
 
 #: en/help_topics/location-alias.txt:18
 msgid "    bzr push :parent\n"
-msgstr ""
+msgstr "    bzr push :parent\n"
 
 #: en/help_topics/log-formats.txt:1
 msgid ""
 "Log Formats\n"
 "==========="
 msgstr ""
+"Formáty záznamu\n"
+"==========="
 
 #: en/help_topics/log-formats.txt:4
 msgid ""
 "A log format controls how information about each revision is displayed.\n"
 "The standard log formats are compared below::"
 msgstr ""
+"Formát záznamu ovlivňuje jak jsou informace o revizi zobrazovány.\n"
+"Standardní formáty záznamu jsou porovnány níže::"
 
 #: en/help_topics/log-formats.txt:7
 msgid ""
@@ -15848,38 +15901,62 @@ msgid ""
 "  preferred levels        all            1             1\n"
 "  digital signature       optional       -             -"
 msgstr ""
+"  Funkce                 long           short         line\n"
+"  ----------------------  -------------  ------------  -------------------\n"
+"  cíl návrhu             podrobné zob.  stručné zob.  1 revize na řádek\n"
+"  odevzdávající               jméno+email     pouze jm.     pouze jm.\n"
+"  autor                  jméno+email     -             -\n"
+"  formát data-času        celý           pouze datum     pouze datum\n"
+"  zpráva odevzdání         celá           celá          horní řádek\n"
+"  značky                    ano            ano           ano\n"
+"  označení sloučení        -              ano           -\n"
+"  stav/delta            nepovinné       nepovinné      -\n"
+"  diff/patch              optional       optional      -\n"
+"  revision-id             optional       optional      -\n"
+"  branch nick             yes            -             -\n"
+"  foreign vcs properties  yes            yes           -\n"
+"  preferred levels        all            1             1\n"
+"  digital signature       optional       -             -"
 
 #: en/help_topics/log-formats.txt:24
 msgid ""
 "The default format is ``long``. To change this, define the ``log_format``\n"
 "setting in the ``[DEFAULT]`` section of ``bazaar.conf`` like this (say)::"
 msgstr ""
+"Výchozí formát je ``long``. Pro změnu určete nastavení ``log_format``\n"
+"v části ``[DEFAULT]`` v ``bazaar.conf`` třeba například takto::"
 
 #: en/help_topics/log-formats.txt:27
 msgid ""
 "  [DEFAULT]\n"
 "  log_format = short"
 msgstr ""
+"  [DEFAULT]\n"
+"  log_format = short"
 
 #: en/help_topics/log-formats.txt:30
 msgid ""
 "Alternatively, to change the log format used for a given query, use the\n"
 "--long, --short or --line options."
 msgstr ""
+"Jinak můžete formát změnit pro konkrétní dotaz, pomocí\n"
+"voleb --long, --short či --line."
 
 #: en/help_topics/log-formats.txt:33
 msgid ""
 "If one of the standard log formats does not meet your needs, additional\n"
 "formats can be provided by plugins.\n"
 msgstr ""
+"Pokud standardní formáty nevyhovují vaším požadavkům, dodatečné\n"
+"formáty můžete zavést pomocí zásuvných modulů.\n"
 
 #: en/help_topics/other-formats.txt:1
 msgid "Other Storage Formats"
-msgstr ""
+msgstr "Jiné úložné formáty"
 
 #: en/help_topics/other-formats.txt:3
 msgid "Experimental formats are shown below."
-msgstr ""
+msgstr "Experimentální formáty jsou zobrazeny níže."
 
 #: en/help_topics/other-formats.txt:5
 msgid ""
@@ -15887,12 +15964,17 @@ msgid ""
 "    (native) The 2a format with experimental support for colocated\n"
 "    branches."
 msgstr ""
+":development-colo:\n"
+"    (nativní) Formát 2a s experimentální podporou souběžných\n"
+"    větví."
 
 #: en/help_topics/other-formats.txt:9
 msgid ""
 "\n"
 "Deprecated formats are shown below."
 msgstr ""
+"\n"
+"Zastaralé formáty jsou zobrazeny níže."
 
 #: en/help_topics/other-formats.txt:12
 msgid ""
@@ -15901,12 +15983,18 @@ msgid ""
 "    Interoperates with bzr repositories before 0.92 but cannot be read\n"
 "    by bzr < 0.92."
 msgstr ""
+":pack-0.92:\n"
+"    (nativní) Formát založený na balíčcích. Používaný v řadě 1.x.\n"
+"    Zaveden v 0.92. Kompatibilní s úložišti bzr před 0.92,\n"
+"    ale v bzr < 0.92 ho nelze přečíst."
 
 #: en/help_topics/patterns.txt:1
 msgid ""
 "Patterns\n"
 "========"
 msgstr ""
+"Vzory\n"
+"========"
 
 #: en/help_topics/patterns.txt:4
 msgid ""
@@ -15915,6 +16003,11 @@ msgid ""
 "and preferences can be associated with files using rule patterns.\n"
 "The pattern syntax is described below."
 msgstr ""
+"Bazaar používá vzory pro shodu souborů v různých dobách.\n"
+"Například příkaz ``add`` v souborech, které odpovídají\n"
+"vzorům pro ignorování a  nastavení mohou být přidružena\n"
+"k souborům používající vzory pravidel. Syntaxe vzoru je popsána\n"
+"níže."
 
 #: en/help_topics/patterns.txt:9
 msgid ""
@@ -15924,10 +16017,16 @@ msgid ""
 "component of the path. To match a file only in the root directory,\n"
 "prepend ``./``. Patterns specifying absolute paths are not allowed."
 msgstr ""
+"Koncová lomítka ve vzorech jsou ignorována. Pokud ji vzor\n"
+"obsahuje, nebo je to regulární výraz, je porovnáván s celou\n"
+"cestou od kořene větve. Jinak je porovnáván pouze s její\n"
+"poslední částí. Pro porovnání pouze s kořenovým\n"
+"adresářem, připojte ``./``. Vzory zadávající absolutní\n"
+"cesty nejsou povoleny."
 
 #: en/help_topics/patterns.txt:15
 msgid "Patterns may include globbing wildcards such as::"
-msgstr ""
+msgstr "Vzory mohou obsahovat zástupné znaky jako například::"
 
 #: en/help_topics/patterns.txt:17
 msgid ""
@@ -15936,6 +16035,10 @@ msgid ""
 "  /**/ - Matches 0 or more directories in a path\n"
 "  [a-z] - Matches a single character from within a group of characters"
 msgstr ""
+"  ? - Porovná jakýkoli znak kromě '/'\n"
+"  * - Porovná 0 nebo více znaků kromě '/'\n"
+"  /**/ - Porovná 0 nebo více adresářů v cestě\n"
+"  [a-z] - Porovná jeden znak ze skupiny znaků"
 
 #: en/help_topics/patterns.txt:22
 msgid ""
@@ -15944,12 +16047,19 @@ msgid ""
 "expression.  Regular expression patterns may not include named or\n"
 "numbered groups."
 msgstr ""
+"Vzory mohou být také `Regulární výrazy Python`_. Vzory regulárních\n"
+"výrazů jsou určeny předponou ``RE:`` následovaná regulárním\n"
+"výrazem. Vzory výrazů nemusejí zahrnovat pojmenované nebo\n"
+"očíslované skupiny."
 
 #: en/help_topics/patterns.txt:27
 msgid ""
 "Case insensitive ignore patterns can be specified with regular expressions\n"
 "by using the ``i`` (for ignore case) flag in the pattern."
 msgstr ""
+"Vzory ignorování nehledící na velikost písmen mohou být zadány\n"
+"regulárním výrazem pomocí příznaku ``i``(ignorovat velikost)\n"
+"ve výrazu."
 
 #: en/help_topics/patterns.txt:30
 msgid ""
