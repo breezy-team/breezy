@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2012-07-03 02:22+0000\n"
-"Last-Translator: Winícius Santos de A. Marques <wsamarques@gmail.com>\n"
+"PO-Revision-Date: 2012-07-16 18:54+0000\n"
+"Last-Translator: Wellington Oliveira <wellington.oj@gmail.com>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2012-07-11 04:34+0000\n"
-"X-Generator: Launchpad (build 15593)\n"
+"X-Launchpad-Export-Date: 2012-07-17 04:30+0000\n"
+"X-Generator: Launchpad (build 15627)\n"
 
 #: bzrlib/add.py:93
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -3435,7 +3435,7 @@ msgstr "        bzr missing"
 
 #: bzrlib/builtins.py:4892
 msgid "    Determine the missing revisions between this and another branch::"
-msgstr ""
+msgstr "    Determina as revisões faltantes entre este e outro ramo::"
 
 #: bzrlib/builtins.py:4894
 msgid "        bzr missing http://server/branch"
@@ -3446,6 +3446,8 @@ msgid ""
 "    Determine the missing revisions up to a specific revision on the other\n"
 "    branch::"
 msgstr ""
+"    Determina as revisões faltantes até uma versão específica no outro\n"
+"    ramo::"
 
 #: bzrlib/builtins.py:4899
 msgid "        bzr missing -r ..-10"
@@ -3614,15 +3616,15 @@ msgstr ""
 
 #: bzrlib/builtins.py:5138
 msgid "Show testament (signing-form) of a revision."
-msgstr ""
+msgstr "Mostrar o testamento (formulário de assinaturas) de uma versão."
 
 #: bzrlib/builtins.py:5141
 msgid "Produce long-format testament."
-msgstr ""
+msgstr "Produzir um testamento de formato longo."
 
 #: bzrlib/builtins.py:5143
 msgid "Produce a strict-format testament."
-msgstr ""
+msgstr "Produzir um testamento de formato restrito."
 
 #: bzrlib/builtins.py:5169
 msgid "Show the origin of each line in a file."
@@ -3654,7 +3656,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:5282
 msgid "Please supply either one revision, or a range."
-msgstr ""
+msgstr "Favor fornecer ou uma versão ou um intervalo."
 
 #: bzrlib/builtins.py:5286
 msgid ""
@@ -3691,10 +3693,11 @@ msgstr "Nenhum local fornecido e nenhuma localização prévia conhecida"
 #: bzrlib/builtins.py:5322
 msgid "These branches have diverged. Try merging, and then bind again."
 msgstr ""
+"Esses ramos tem divergências. Tente mesclá-los e então ligá-los novamente."
 
 #: bzrlib/builtins.py:5329
 msgid "Convert the current checkout into a regular branch."
-msgstr ""
+msgstr "Converter o checkout atual em um ramo comum."
 
 #: bzrlib/builtins.py:5331
 msgid ""
@@ -3716,6 +3719,9 @@ msgid ""
 "--dry-run will go through all the motions, but not actually\n"
 "remove anything."
 msgstr ""
+"--verbose irá mostrar o que está sendo removido.\n"
+"--dry-run irá passar por todos os movimentos mas não irá\n"
+"remover nada."
 
 #: bzrlib/builtins.py:5352
 msgid ""
@@ -3741,11 +3747,12 @@ msgstr "Diga sim para todas as questões."
 
 #: bzrlib/builtins.py:5370
 msgid "Keep tags that point to removed revisions."
-msgstr ""
+msgstr "Manter indicadores que apontam para versões removidas."
 
 #: bzrlib/builtins.py:5372
 msgid "Only remove the commits from the local branch when in a checkout."
 msgstr ""
+"Remover somente as submissões de um ramo local quando realizar um checkout."
 
 #: bzrlib/builtins.py:5421
 msgid "No revisions to uncommit.\n"
@@ -3753,7 +3760,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:5436
 msgid "Dry-run, pretending to remove the above revisions.\n"
-msgstr ""
+msgstr "Dry-run, fingindo remover as versões acima.\n"
 
 #: bzrlib/builtins.py:5439
 msgid "The above revision(s) will be removed.\n"
@@ -3776,19 +3783,25 @@ msgstr ""
 
 #: bzrlib/builtins.py:5458
 msgid "Break a dead lock."
-msgstr ""
+msgstr "Quebrar um dead lock."
 
 #: bzrlib/builtins.py:5460
 msgid ""
 "This command breaks a lock on a repository, branch, working directory or\n"
 "config file."
 msgstr ""
+"Esse comando quebra uma trava no repositório, ramo, diretório de trabalho "
+"ou\n"
+"arquivo de configuração."
 
 #: bzrlib/builtins.py:5463
 msgid ""
 "CAUTION: Locks should only be broken when you are sure that the process\n"
 "holding the lock has been stopped."
 msgstr ""
+"AVISO: Travas só devem ser quebradas quando você tiver certeza que o "
+"processo\n"
+"que está mantendo a trava foi parado."
 
 #: bzrlib/builtins.py:5466
 msgid ""
@@ -4087,7 +4100,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:5899
 msgid "Remember submit and public branch."
-msgstr ""
+msgstr "Lembrar submissão e ramo público."
 
 #: bzrlib/builtins.py:5901
 msgid ""
@@ -4143,11 +4156,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:5959
 msgid "Delete this tag rather than placing it."
-msgstr ""
+msgstr "Apagar este rótulo ao invés de colocá-lo."
 
 #: bzrlib/builtins.py:5962
 msgid "Branch in which to place the tag."
-msgstr ""
+msgstr "Ramo no qual será colocado o rótulo."
 
 #: bzrlib/builtins.py:5964
 msgid "Replace existing tags."
@@ -4233,19 +4246,20 @@ msgstr "A relação entre ramo e árvore."
 
 #: bzrlib/builtins.py:6113
 msgid "Reconfigure to be an unbound branch with no working tree."
-msgstr ""
+msgstr "Reconfigurar para ser um ramo desconectado e sem árvore de trabalho"
 
 #: bzrlib/builtins.py:6114
 msgid "Reconfigure to be an unbound branch with a working tree."
 msgstr ""
+"Reconfigurar para ser um ramo desconectado e com uma árvore de trabalho"
 
 #: bzrlib/builtins.py:6115
 msgid "Reconfigure to be a bound branch with a working tree."
-msgstr ""
+msgstr "Reconfigurar para ser um ramo conectado e com uma árvore de trabalho"
 
 #: bzrlib/builtins.py:6116
 msgid "Reconfigure to be a lightweight checkout (with no local history)."
-msgstr ""
+msgstr "Reconfigurar para ser um checkout leve (sem histórico local)."
 
 #: bzrlib/builtins.py:6121
 msgid "Repository type"
@@ -4259,6 +4273,8 @@ msgstr "Local para o repositório."
 msgid ""
 "Reconfigure to be a standalone branch (i.e. stop using shared repository)."
 msgstr ""
+"Reconfigurar para ser um ramo independente (ex.: parar de usar repositório "
+"compartilhado)."
 
 #: bzrlib/builtins.py:6126
 msgid "Reconfigure to use a shared repository."
@@ -4270,21 +4286,24 @@ msgstr "Árvores no Repositório"
 
 #: bzrlib/builtins.py:6131
 msgid "Whether new branches in the repository have trees."
-msgstr ""
+msgstr "Se novos ramos no repositório têm árvores."
 
 #: bzrlib/builtins.py:6133
 msgid ""
 "Reconfigure repository to create working trees on branches by default."
 msgstr ""
+"Reconfigurar repositório para criar árvores de trabalho em ramos por padrão."
 
 #: bzrlib/builtins.py:6135
 msgid ""
 "Reconfigure repository to not create working trees on branches by default."
 msgstr ""
+"Reconfigurar repositório para não criar árvores de trabalho em ramos por "
+"padrão."
 
 #: bzrlib/builtins.py:6138
 msgid "Branch to bind checkout to."
-msgstr ""
+msgstr "Ramo para ligar ao checkout."
 
 #: bzrlib/builtins.py:6140
 msgid "Perform reconfiguration even if local changes will be lost."
@@ -4292,13 +4311,15 @@ msgstr "Realizar reconfiguração mesmo que alterações locais sejam perdidas."
 
 #: bzrlib/builtins.py:6143
 msgid "Reconfigure a branch to be stacked on another branch."
-msgstr ""
+msgstr "Reconfigurar um ramo para ser empilhado em outro ramo."
 
 #: bzrlib/builtins.py:6147
 msgid ""
 "Reconfigure a branch to be unstacked.  This may require copying substantial "
 "data into it."
 msgstr ""
+"Reconfigurar um ramo para ser desempilhado. Isso pode necessitar de uma "
+"cópia substancial de dados."
 
 #: bzrlib/builtins.py:6157
 msgid "Can't use both --stacked-on and --unstacked"
@@ -4310,7 +4331,7 @@ msgstr "Configuração do alvo não especificada"
 
 #: bzrlib/builtins.py:6206
 msgid "Set the branch of a checkout and update."
-msgstr ""
+msgstr "Definir o ramo de um checkout e atualizar."
 
 #: bzrlib/builtins.py:6208
 msgid ""
@@ -4396,6 +4417,8 @@ msgid ""
 ":Examples:\n"
 "  To define the current view::"
 msgstr ""
+":Exemplos:\n"
+"  Para definir a visualização atual::"
 
 #: bzrlib/builtins.py:6308
 msgid "    bzr view file1 dir1 ..."

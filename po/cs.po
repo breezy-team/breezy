@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2012-07-15 20:52+0000\n"
+"PO-Revision-Date: 2012-07-16 20:18+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-07-16 04:30+0000\n"
-"X-Generator: Launchpad (build 15614)\n"
+"X-Launchpad-Export-Date: 2012-07-17 04:30+0000\n"
+"X-Generator: Launchpad (build 15627)\n"
 
 #: bzrlib/add.py:93
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -7408,13 +7408,13 @@ msgid ""
 "branch unless the --no-rebase option is used, in which case \n"
 "the two branches will be out of sync after the push. "
 msgstr ""
-"Toto poté provede synchronizaci místní větve se vzdálenou,\n"
+"Toto poté provede přeskládání místní větve se vzdálenou,\n"
 "pokud není použita volba --no-rebase, v takovém případě \n"
 "nebudou větve po odeslání synchronizované. "
 
 #: bzrlib/foreign.py:277
 msgid "Do not rebase after push."
-msgstr "Nesynchronizovat po odeslání."
+msgstr "Nepřekládat po odeslání."
 
 #: bzrlib/foreign.py:311
 #, python-format
@@ -16065,25 +16065,29 @@ msgstr ""
 msgid ""
 "For example, a case insensitive match for ``foo`` may be specified as::"
 msgstr ""
+"Například pro shodu s ``foo`` bez citlivosti na velikost písmen, může\r\n"
+"být zadáno takto::"
 
 #: en/help_topics/patterns.txt:32
 msgid "  RE:(?i)foo"
-msgstr ""
+msgstr "  RE:(?i)foo"
 
 #: en/help_topics/patterns.txt:34
 msgid ""
 "Ignore patterns may be prefixed with ``!``, which means that a filename\n"
 "matched by that pattern will not be ignored."
 msgstr ""
+"Vzory pro ignorování mohou mít předponu ``!``, což znamená, že název\n"
+"souboru, který se shoduje s tímto vzorem nebude ignorován."
 
 #: en/help_topics/patterns.txt:37
 msgid ""
 ".. _Python regular expressions: http://docs.python.org/library/re.html"
-msgstr ""
+msgstr ".. Regulární výrazy _Python: http://docs.python.org/library/re.html"
 
 #: en/help_topics/revisionspec.txt:1
 msgid "Revision Identifiers"
-msgstr ""
+msgstr "Identifikátory revizí"
 
 #: en/help_topics/revisionspec.txt:3
 msgid ""
@@ -16092,6 +16096,10 @@ msgid ""
 "unambiguously specify a given lookup type; some examples are 'last:1',\n"
 "'before:yesterday' and 'submit:'."
 msgstr ""
+"Identifikátor revize odkazuje na určitý stav historie větve. Může být\n"
+"vyjádřen různými způsoby. Může začínat klíčovým slovem pro\n"
+"jednoznačné určení zadaného typu vyhledání; některé příklady jsou\n"
+"'last:1', 'before:yesterday' a 'submit:'."
 
 #: en/help_topics/revisionspec.txt:8
 msgid ""
@@ -16103,6 +16111,11 @@ msgid ""
 "will\n"
 "be found first."
 msgstr ""
+"Také může být zadán bez klíčového slova, v takovém případě bude\n"
+"sloužit jako číslo revize, značka, id revize, zadání data nebo větve,\n"
+"v tomto pořadí. Například 'date:today' by mohlo být jednoduše\n"
+"zadáno jako today', pokud ale máte značku 'today' ta bude použita\n"
+"jako první."
 
 #: en/help_topics/revisionspec.txt:14
 msgid ""
@@ -16112,6 +16125,11 @@ msgid ""
 "or\n"
 "spaces around the '..')."
 msgstr ""
+"Pokud jsou 'REV1' a 'REV2' identifikátory revize, pak 'REV1..REV2' označuje\n"
+"rozsah revizí. Příklady: '3647..3649', 'date:yesterday..-1' a\n"
+"'branch:/cesta/k/větvi1/..branch:/větev2' (všimněte si, že okolo '..' "
+"nejsou\n"
+"žádné mezery či uvozovky)."
 
 #: en/help_topics/revisionspec.txt:19
 msgid ""
@@ -16130,10 +16148,21 @@ msgid ""
 "and\n"
 "3649, but not 3647."
 msgstr ""
+"Rozsahy jsou různými příkazy vykládány různě. Pro příkaz \"log\" je rozsah "
+"řadou\n"
+"zpráv záznamu, ale pro \"diff\" označuje změnu mezi revizemi (a ne řadu "
+"změn).\n"
+"Navíc, \"log\" považuje rozsah za uzavřený, zatímco \"diff\" a \"merge\" za "
+"otevřený,\n"
+"tj. přebírají pouze jeden konec, ale druhý ne. Například: \"bzr log -r "
+"3647..3649\"\n"
+"zobrazuje zprávy revizí 3647, 3648 a 3649, zatímco \"bzr diff -r "
+"3647..3649\"\n"
+"zahrnuje rozdíly provedené v revizích 3648 a 3649, ale ne 3647."
 
 #: en/help_topics/revisionspec.txt:28
 msgid "The keywords used as revision selection methods are the following:"
-msgstr ""
+msgstr "Následující jsou klíčová slova používaná jako metody výběru revize:"
 
 #: en/help_topics/revisionspec.txt:30
 msgid ""
@@ -16160,18 +16189,40 @@ msgid ""
 ":last:\n"
 "\tSelects the nth revision from the end."
 msgstr ""
+":revid:\n"
+"\tVybere revizi pomocí id revize.\n"
+":submit:\n"
+"\tVybere předka společného s větví odeslání.\n"
+":ancestor:\n"
+"\tVybere předka společného s druhou větví.\n"
+":date:\n"
+"\tVybere revizi na základě časového razítka.\n"
+":branch:\n"
+"\tVybere poslední revizi zadané větve.\n"
+":tag:\n"
+"\tVybere revizi, kterou označuje název značky.\n"
+":revno:\n"
+"\tVybere revizi pomocí jejího čísla.\n"
+":before:\n"
+"\tVybere revizi nadřazenou zadané.\n"
+":annotate:\n"
+"\tVybere revizi, která naposledy změnila zadaný řádek.\n"
+":mainline:\n"
+"\tVybere revizi z hlavní větve, která sloučila zadanou revizi.\n"
+":last:\n"
+"\tVybere ntou revizi od konce."
 
 #: en/help_topics/revisionspec.txt:53
 msgid "In addition, plugins can provide other keywords."
-msgstr ""
+msgstr "Zásuvné moduly mohou dále poskytovat další klíčová slova."
 
 #: en/help_topics/revisionspec.txt:55
 msgid "A detailed description of each keyword is given below."
-msgstr ""
+msgstr "Níže je podrobný popis každého klíčového slova."
 
 #: en/help_topics/revisionspec.txt:57
 msgid ":revid:"
-msgstr ""
+msgstr ":revid:"
 
 #: en/help_topics/revisionspec.txt:59
 msgid ""
@@ -16180,15 +16231,20 @@ msgid ""
 "    Including merges, and pending merges.\n"
 "    Examples::"
 msgstr ""
+"    Pro zadání určité id revize, která může být použita pro\n"
+"    zadání jakékoliv id revize v historii větve.\n"
+"    Včetně sloučení, vyřízených i nevyřízených.\n"
+"    Příklady::"
 
 #: en/help_topics/revisionspec.txt:64
 msgid ""
 "      revid:aaaa@bbbb-123456789 -> Select revision 'aaaa@bbbb-123456789'"
 msgstr ""
+"      revid:aaaa@bbbb-123456789 -> Vybere revizi 'aaaa@bbbb-123456789'"
 
 #: en/help_topics/revisionspec.txt:66
 msgid ":submit:"
-msgstr ""
+msgstr ":submit:"
 
 #: en/help_topics/revisionspec.txt:68
 msgid ""
@@ -16198,6 +16254,10 @@ msgid ""
 "    used by the bundle and merge directive commands.  If no submit branch\n"
 "    is specified, the parent branch is used instead."
 msgstr ""
+"    Při porovnání s tímto zobrazí všechny změny, které byly provedeny v\n"
+"    této větvi, a slouží k dobrému odhadu změn při sloučení. Větev\n"
+"    odeslání je použita příkazy sloučení bundle a merge. Pokud není zadána\n"
+"    je místo toho použita nadřazená větev."
 
 #: en/help_topics/revisionspec.txt:73 en/help_topics/revisionspec.txt:85
 msgid ""
@@ -16205,24 +16265,27 @@ msgid ""
 "    branches. Usually this is the branch point, but it could also be\n"
 "    a revision that was merged."
 msgstr ""
+"    Společný předek je poslední revize, která existovala v obou\n"
+"    větvích. Většinou je toto bod větve, ale může to být také\n"
+"    revize, která byla sloučena."
 
 #: en/help_topics/revisionspec.txt:77 en/help_topics/revisionspec.txt:93
 #: en/help_topics/revisionspec.txt:109 en/help_topics/revisionspec.txt:119
 #: en/help_topics/revisionspec.txt:153
 msgid "    Examples::"
-msgstr ""
+msgstr "    Příklady::"
 
 #: en/help_topics/revisionspec.txt:79
 msgid "      $ bzr diff -r submit:"
-msgstr ""
+msgstr "      $ bzr diff -r submit:"
 
 #: en/help_topics/revisionspec.txt:81
 msgid ":ancestor:"
-msgstr ""
+msgstr ":ancestor:"
 
 #: en/help_topics/revisionspec.txt:83
 msgid "    Supply the path to a branch to select the common ancestor."
-msgstr ""
+msgstr "    Zadejte cestu k větvi pro výběr společného předka."
 
 #: en/help_topics/revisionspec.txt:89
 msgid ""
@@ -16230,16 +16293,21 @@ msgid ""
 "    that your branch introduces, while excluding the changes that you\n"
 "    have not merged from the remote branch."
 msgstr ""
+"    Toto se často používá s 'diff' pro vrácení všech změn, které vaše\n"
+"    větev zavádí a vyjmutí změn, které jste nesloučili ze vzdálené\n"
+"    větve."
 
 #: en/help_topics/revisionspec.txt:95
 msgid ""
 "      ancestor:/path/to/branch\n"
 "      $ bzr diff -r ancestor:../../mainline/branch"
 msgstr ""
+"      ancestor:/cesta/k/větvi\n"
+"      $ bzr diff -r ancestor:../../hlavní/větev"
 
 #: en/help_topics/revisionspec.txt:98
 msgid ":date:"
-msgstr ""
+msgstr ":date:"
 
 #: en/help_topics/revisionspec.txt:100
 msgid ""
@@ -16248,14 +16316,18 @@ msgid ""
 "    Matches the first entry after a given date (either at midnight or\n"
 "    at a specified time)."
 msgstr ""
+"    Zadejte časové razítko pro výběr první revize, která datu odpovídá.\n"
+"    Datum může být 'yesterday', 'today', 'tomorrow' nebo řetězec\n"
+"    RRRR-MM-DD. Odpovídá první položce po daném datu buď o\n"
+"    půlnoci nebo v určitém čase)."
 
 #: en/help_topics/revisionspec.txt:105
 msgid "    One way to display all the changes since yesterday would be::"
-msgstr ""
+msgstr "    Jeden způsob, jak zobrazit všechny změny ze včerejška, je::"
 
 #: en/help_topics/revisionspec.txt:107
 msgid "        bzr log -r date:yesterday.."
-msgstr ""
+msgstr "        bzr log -r date:yesterday.."
 
 #: en/help_topics/revisionspec.txt:111
 msgid ""
@@ -16264,30 +16336,33 @@ msgid ""
 "      date:2006-08-14,17:10:14  -> select the first revision after\n"
 "                                   August 14th, 2006 at 5:10pm."
 msgstr ""
+"      date:yesterday            -> vybrat první revizi od včerejška\n"
+"      date:2006-08-14,17:10:14  -> vybrat první revizi po\n"
+"                                   14. srpnu, 2006 v 5:10 odp."
 
 #: en/help_topics/revisionspec.txt:115
 msgid ":branch:"
-msgstr ""
+msgstr ":branch:"
 
 #: en/help_topics/revisionspec.txt:117
 msgid "    Supply the path to a branch to select its last revision."
-msgstr ""
+msgstr "    Zadejte cestu k větvi pro výběr její poslední revize."
 
 #: en/help_topics/revisionspec.txt:121
 msgid "      branch:/path/to/branch"
-msgstr ""
+msgstr "      branch:/cesta/k/větvi"
 
 #: en/help_topics/revisionspec.txt:123
 msgid ":tag:"
-msgstr ""
+msgstr ":tag:"
 
 #: en/help_topics/revisionspec.txt:125
 msgid "    Tags are stored in the branch and created by the 'tag' command."
-msgstr ""
+msgstr "    Značky jsou ukládány ve větvi a vytvářeny příkazem 'tag'."
 
 #: en/help_topics/revisionspec.txt:127
 msgid ":revno:"
-msgstr ""
+msgstr ":revno:"
 
 #: en/help_topics/revisionspec.txt:129
 msgid ""
@@ -16298,6 +16373,11 @@ msgid ""
 "    first revision is returned.\n"
 "    Examples::"
 msgstr ""
+"    Použijte celé číslo k zadání revize v historii větve. Případně můžete\n"
+"    zadat větev. Záporné číslo bude odpočítávat od konce větve (-1 je\n"
+"    poslední revize, -2 předchozí). Pokud je záporné číslo větší než\n"
+"    historie větve, je vrácena první revize.\n"
+"    Příklady::"
 
 #: en/help_topics/revisionspec.txt:136
 msgid ""
@@ -16310,10 +16390,18 @@ msgid ""
 "      -1000000                  -> Most likely the first revision, unless\n"
 "                                   your history is very long."
 msgstr ""
+"      revno:1                   -> vrací první revizi této větve\n"
+"      revno:3:/cesta/k/větvi   -> vrací 3. revizi\n"
+"                                   větve '/cesta/k/větvi'\n"
+"      revno:-1                  -> Poslední revize ve větvi.\n"
+"      -2:http://jiná/větev    -> Předposlední revize ve\n"
+"                                   vzdálené větvi.\n"
+"      -1000000                  -> Pravděpodobně první revize, pokud\n"
+"                                   nemáte velmi dlouhou historii."
 
 #: en/help_topics/revisionspec.txt:145
 msgid ":before:"
-msgstr ""
+msgstr ":before:"
 
 #: en/help_topics/revisionspec.txt:147
 msgid ""
@@ -16323,11 +16411,15 @@ msgid ""
 "history\n"
 "    of a branch."
 msgstr ""
+"    Zadejte jakýkoliv specifikátor revize pro vrácení nadřazené této revize\n"
+"    Toto je nejčastěji používáno při prohlížení revizí, které nejsou "
+"součástí\n"
+"    historie větve."
 
 #: en/help_topics/revisionspec.txt:151
 msgid ""
 "    It is an error to request the parent of the null revision (before:0)."
-msgstr ""
+msgstr "    Je chybou žádat o nadřazenou nulté revize (before:0)."
 
 #: en/help_topics/revisionspec.txt:155
 msgid ""
@@ -16340,10 +16432,17 @@ msgid ""
 "               (What changes did revision 1913 introduce).\n"
 "               This is equivalent to:  bzr diff -c 1913"
 msgstr ""
+"      before:1913    -> Vrátit nadřazenou revize č. 1913 (č. rev 1912)\n"
+"      before:revid:aaaa@bbbb-1234567890  -> vrátit nadřazenou revize\n"
+"                                            aaaa@bbbb-1234567890\n"
+"      bzr diff -r before:1913..1913\n"
+"            -> Najít změny mezi revizemi 1913 a její nadřazenou (1912).\n"
+"               (Které změny obsahovala revize 1913).\n"
+"               Toto je stejné jako:  bzr diff -c 1913"
 
 #: en/help_topics/revisionspec.txt:163
 msgid ":annotate:"
-msgstr ""
+msgstr ":annotate:"
 
 #: en/help_topics/revisionspec.txt:165
 msgid ""
@@ -16353,19 +16452,24 @@ msgid ""
 "    start at 1, and are relative to the current version, not the last-\n"
 "    committed version of the file."
 msgstr ""
+"    Vybrat revizi, která naposledy změnila zadaný řádek. Řádek je zadán\n"
+"    jako cesta:číslo. Cesta je relativní cestou k souboru. Čísla začínají na "
+"1\n"
+"    a jsou relativní k současné verzi, ne k poslední odevzdané verzi\n"
+"    souboru."
 
 #: en/help_topics/revisionspec.txt:170
 msgid ":mainline:"
-msgstr ""
+msgstr ":mainline:"
 
 #: en/help_topics/revisionspec.txt:172
 msgid ""
 "    Select the revision that merged the specified revision into mainline."
-msgstr ""
+msgstr "    Vybere revizi, která sloučila danou revizi do hlavní větve."
 
 #: en/help_topics/revisionspec.txt:174
 msgid ":last:"
-msgstr ""
+msgstr ":last:"
 
 #: en/help_topics/revisionspec.txt:176
 msgid ""
@@ -16373,18 +16477,25 @@ msgid ""
 "    This is the same as supplying negative numbers to the 'revno:' spec.\n"
 "    Examples::"
 msgstr ""
+"    Zadejte kladné číslo pro získání nté revize od konce. To je stejné\n"
+"    jako zadání záporného čísla do specifikace 'revno:'.\n"
+"    Příklady::"
 
 #: en/help_topics/revisionspec.txt:180
 msgid ""
 "      last:1        -> return the last revision\n"
 "      last:3        -> return the revision 2 before the end.\n"
 msgstr ""
+"      last:1        -> vrací poslední revizi\n"
+"      last:3        -> vrací 2. revizi před koncem.\n"
 
 #: en/help_topics/rules.txt:1
 msgid ""
 "Rules\n"
 "====="
 msgstr ""
+"Pravidla\n"
+"====="
 
 #: en/help_topics/rules.txt:7
 msgid ""
@@ -16392,18 +16503,25 @@ msgid ""
 "patterns and the contents of each section are the preferences for files\n"
 "matching that pattern(s). For example::"
 msgstr ""
+"Pravidla jsou zadána v souboru ve formátu ini, kde jsou části ve\n"
+"vzorech glob a obsahy každé části jsou nastaveními pro soubory\n"
+"odpovídající těmto vzorům. Například::"
 
 #: en/help_topics/rules.txt:11
 msgid ""
 "    [name *.bat]\n"
 "    eol = native"
 msgstr ""
+"    [name *.bat]\n"
+"    eol = native"
 
 #: en/help_topics/rules.txt:14
 msgid ""
 "    [name *.html *.xml]\n"
 "    keywords = xml_escape"
 msgstr ""
+"    [name *.html *.xml]\n"
+"    keywords = xml_escape"
 
 #: en/help_topics/rules.txt:17
 msgid ""
@@ -16413,24 +16531,35 @@ msgid ""
 "Keyword support is provided by the `keywords plugin\n"
 "<http://doc.bazaar.canonical.com/plugins/en/keywords-plugin.html>`_."
 msgstr ""
+"Takováto nastavení jsou užitečná pro příkazy a moduly, které chtějí\n"
+"poskytnout vlastní chování pro vybrané soubory. Pro více informací o \n"
+"převodech konců řádků si prohlédněte :doc:`eol-help`.\n"
+"Podpora klíčových slov je poskytována `keywords plugin\n"
+"<http://doc.bazaar.canonical.com/plugins/en/keywords-plugin.html>`_."
 
 #: en/help_topics/rules.txt:23
 msgid ""
 "Files\n"
 "-----"
 msgstr ""
+"Soubory\n"
+"-----"
 
 #: en/help_topics/rules.txt:26
 msgid ""
 "Default rules for all branches are defined in the optional file\n"
 "``BZR_HOME/rules``. "
 msgstr ""
+"Výchozí pravidla pro všechny větve jsou zadána ve volitelném\n"
+"souboru ``BZR_HOME/rules``. "
 
 #: en/help_topics/rules.txt:29
 msgid ""
 "Rule Patterns\n"
 "-------------"
 msgstr ""
+"Vzory pravidel\n"
+"-------------"
 
 #: en/help_topics/rules.txt:32
 msgid ""
@@ -16439,16 +16568,23 @@ msgid ""
 "the top of the file. Rule patterns use exactly the same conventions\n"
 "as ignore patterns. See :doc:`patterns-help` for details."
 msgstr ""
+"Vzory jsou seřazovány a hledání je zastaveno jakmile je nalezena\n"
+"shoda. Následkem toho by měly být výslovnější vzory umístěny\n"
+"v horní části souboru. Vzory pravidel používají stejné konvence\n"
+"jako vzory ignorování. Viz :doc:`patterns-help`."
 
 #: en/help_topics/rules.txt:37
 msgid ".. note::"
-msgstr ""
+msgstr ".. poznámka::"
 
 #: en/help_topics/rules.txt:39
 msgid ""
 "   Patterns containing square brackets or spaces should be\n"
 "   surrounded in quotes to ensure they are correctly parsed.\n"
 msgstr ""
+"   Vzory obsahující hranaté závorky nebo mezery by měly být\n"
+"   ohraničeny uvozovkami, aby bylo zajištěno jejich správné\n"
+"   zpracování.\n"
 
 #: en/help_topics/topics.txt:1
 msgid ""
@@ -16489,24 +16625,64 @@ msgid ""
 "urlspec              Supported transport protocols\n"
 "working-trees        Information on working trees\n"
 msgstr ""
+"authentication       Informace o nastavení ověření\n"
+"basic                Základní příkazy\n"
+"branches             Informace o tom co je větev\n"
+"bugs                 Nastavení systému pro sledování chyb\n"
+"checkouts            Informace o tom co je získání\n"
+"commands             Základní nápověda pro všechny příkazy\n"
+"configuration        Podrobnosti o dostupných nastaveních\n"
+"conflict-types       Typy konfliktů a jak s nimi nakládat\n"
+"content-filters      Převod obsahu z/do pracovních stromů\n"
+"criss-cross          Informace o slučování křížem\n"
+"current-formats      Současné úložné formáty \n"
+"debug-flags          Volby pro zobrazení či záznam ladících informací\n"
+"diverged-branches    Jak spravit lišící se větve\n"
+"env-variables        Názvy a hodnoty proměnných prostředí\n"
+"eol                  Informace o zacházení s konci řádků\n"
+"files                Informace o nastavení a souborů záznamu\n"
+"formats              Informace o volbě )ložného formátu\n"
+"global-options       Možnosti, které kontrolují provoz Bazaar\n"
+"hidden-commands      Všechny skryté příkazy\n"
+"hooks                Odkazuje na vlastní zpracování, které mohou být "
+"přidány\n"
+"launchpad            Používání Bazaar s Launchpad.net\n"
+"location-alias       Zkratky pro zapamatování umístění\n"
+"log-formats          Podrobnosti o dostupných formátech záznamu\n"
+"other-formats        Experimentální a zastaralé úložné formáty\n"
+"patterns             Informace o syntaxi vzorů\n"
+"repositories         Základní informace o sdílených úložištích.\n"
+"revisionspec         Vysvětlení jak používat --revision\n"
+"rules                Informace o zadávání nastavení na základě pravidel\n"
+"standalone-trees     Informace o tom co je samostatný strom\n"
+"standard-options     Volby, které lze použít se všemi příkazy\n"
+"status-flags         Nápověda pro příznaky stavu\n"
+"sync-for-reconfigure Kroky pro vyřešení \"nesynchronizováno\" při znovu "
+"nastavování\n"
+"topics               Seznam témat\n"
+"url-special-chars    Zpracování zvláštních znaků v URL\n"
+"urlspec              Podporované přenosové protokoly\n"
+"working-trees        Informace o pracovních stromech\n"
 
 #: en/help_topics/url-special-chars.txt:1
 msgid ""
 "Special character handling in URLs\n"
 "=================================="
 msgstr ""
+"Zpracování zvláštních znaků v URL\n"
+"=================================="
 
 #: en/help_topics/url-special-chars.txt:4
 msgid "Bazaar allows locations to be specified in multiple ways, either:"
-msgstr ""
+msgstr "Bazaar umožňuje aby umístění byla zadána mnoha způsoby, buď:"
 
 #: en/help_topics/url-special-chars.txt:6
 msgid " * Fully qualified URLs"
-msgstr ""
+msgstr " * Plně kvalifikované URL"
 
 #: en/help_topics/url-special-chars.txt:8
 msgid " * File system paths, relative or absolute"
-msgstr ""
+msgstr " * Cesty souborového systému, relativní či absolutní"
 
 #: en/help_topics/url-special-chars.txt:10
 msgid ""
@@ -16514,6 +16690,9 @@ msgid ""
 "that are specified it will automatically determine the appropriate URL\n"
 "representation, and escape special characters where necessary."
 msgstr ""
+"Bzr se vnitřně chová ke všem umístěním jako k URL. Pro každou cestu\n"
+"souborového systému, která je zadána, automaticky zjistí vhodné\n"
+"znázornění a, pokud je třeba, zamaskuje zvláštní znaky."
 
 #: en/help_topics/url-special-chars.txt:14
 msgid ""
@@ -16524,6 +16703,11 @@ msgid ""
 "be\n"
 "urlencoded when the path is converted to a URL."
 msgstr ""
+"Existuje pár znaků, které mají v URL zvláštní význam a vyžadují opatrné "
+"zacházení\n"
+"aby se předešlo nesrovnalostem. Znaky mohou být maskovány pomocí % a\n"
+"šestnáctkové hodnoty v URL. Všechny znaky mimo ASCII v cestě budou\n"
+"automaticky zakódovány, když je cesta převedena do URL."
 
 #: en/help_topics/url-special-chars.txt:19
 msgid ""
@@ -16534,6 +16718,10 @@ msgid ""
 "generous in what it accepts as a URL and to print them in a way that\n"
 "will be readable."
 msgstr ""
+"URL představují znaky mimo ASCII v kódování určeném serverem, ale většinou\n"
+"UTF-8. Maskování % by měly být bajty UTF-8. Bazaar se snaží být velkorysý v\n"
+"tom co přijímá jako URL a snaží se, aby je vypisoval způsobem, který lze "
+"číst."
 
 #: en/help_topics/url-special-chars.txt:24
 msgid ""
@@ -16542,6 +16730,10 @@ msgid ""
 "ways of accessing the content (0x2F, or 47, is the ASCII code for forward "
 "slash)::"
 msgstr ""
+"Například, pokud máte adresář pojmenovaný '/tmp/%2False', toto jsou všechny\n"
+"platné způsoby, jako přistupovat k obsahu ((0x2F, neboli 47, je kód ASCII "
+"pro\n"
+"přední lomítko)::"
 
 #: en/help_topics/url-special-chars.txt:27
 msgid ""
@@ -16552,27 +16744,37 @@ msgid ""
 "  bzr log file://localhost/tmp/%252False\n"
 "  bzr log file:%252False"
 msgstr ""
+"  cd /tmp\n"
+"  bzr log /tmp/%2False\n"
+"  bzr log %2False\n"
+"  bzr log file:///tmp/%252False\n"
+"  bzr log file://localhost/tmp/%252False\n"
+"  bzr log file:%252False"
 
 #: en/help_topics/url-special-chars.txt:34
 msgid "These are valid but do not refer to the same file::"
-msgstr ""
+msgstr "Všechny jsou platné, ale neodkazují na stejný soubor::"
 
 #: en/help_topics/url-special-chars.txt:36
 msgid ""
 "  bzr log file:///tmp/%2False (refers to a file called /tmp/\\/alse)\n"
 "  bzr log %252False (refers to a file called /tmp/%252False)"
 msgstr ""
+"  bzr log file:///tmp/%2False (odkazuje na soubor nazvaný /tmp/\\/alse)\n"
+"  bzr log %252False (odkazuje na soubor nazvaný /tmp/%252False)"
 
 #: en/help_topics/url-special-chars.txt:39
 msgid ""
 "Comma also has special meaning in URLs, because it denotes `segment "
 "parameters`_"
 msgstr ""
+"Čárka má také zvláštní význam v URL, protože označuje `parametry segmentu`_"
 
 #: en/help_topics/url-special-chars.txt:41
 msgid ""
 "_`segment parameters`: http://www.ietf.org/rfc/rfc3986.txt (section 3.3)"
 msgstr ""
+"_`parametry segmentu`: http://www.ietf.org/rfc/rfc3986.txt (část 3.3)"
 
 #: en/help_topics/url-special-chars.txt:43
 msgid ""
@@ -16580,6 +16782,9 @@ msgid ""
 "literal\n"
 "comma in a file system path, specify a URL and URL encode the comma::"
 msgstr ""
+"Čárka je také výjimečná v cestách souborového systému, které jsou zadány. "
+"Pro\n"
+"použití čárky v cestě, zadejte URL a zakódujte ji do URL::"
 
 #: en/help_topics/url-special-chars.txt:46
 msgid ""
@@ -16589,14 +16794,19 @@ msgid ""
 "  bzr log file:foo,branch=bla # path \"foo\" with segment parameter "
 "\"branch\" set to \"bla\"\n"
 msgstr ""
+"  bzr log foo,branch=bla # cesta \"foo\" s parametrem segmentu \"branch\" "
+"nastaveným na \"bla\"\n"
+"  bzr log file:foo%2Cbranch=bla # cesta \"foo,branch=bla\"\n"
+"  bzr log file:foo,branch=bla # cesta \"foo\" s parametrem segmentu "
+"\"branch\" nastaveným na \"bla\"\n"
 
 #: en/help_topics/urlspec.txt:1
 msgid "URL Identifiers"
-msgstr ""
+msgstr "Identifikátory URL"
 
 #: en/help_topics/urlspec.txt:3
 msgid "Supported URL prefixes::"
-msgstr ""
+msgstr "Podporované přeppony URL::"
 
 #: en/help_topics/urlspec.txt:5
 msgid ""
@@ -16610,30 +16820,44 @@ msgid ""
 "SSL.\n"
 "  sftp://             Access using SFTP (most SSH servers provide SFTP)."
 msgstr ""
+"  aftp://             Přístup pomocí aktivního FTP.\n"
+"  bzr://              Rychlý přístup pomocí chytrého serveru Bazaar.\n"
+"  bzr+ssh://          Rychlý přístup pomocí chytrého serveru Bazaar přes "
+"SSH.\n"
+"  file://             Přístup pomocí standardního souborového systému "
+"(výchozí)\n"
+"  ftp://              Přístup pomocí pasivního FTP.\n"
+"  http://             Přístup pouze pro čtení k větvím exportovaných na "
+"internet.\n"
+"  https://            Přístup pouze pro čtení k větvím exportovaných na "
+"internet pomocí SSL.\n"
+"  sftp://             Přístup pomocí SFTP (většina SSH serverů podporuje "
+"SFTP)."
 
 #: en/help_topics/urlspec.txt:14
 msgid "Supported modifiers::"
-msgstr ""
+msgstr "Podporované modifikátory::"
 
 #: en/help_topics/urlspec.txt:16
 msgid "  gio+                Access using any GIO supported protocols."
 msgstr ""
+"  gio+                Přístup pomocí všech protokolů podporujících GIO."
 
 #: en/help_topics/urlspec.txt:18
 msgid "Bazaar supports all of the standard parts within the URL::"
-msgstr ""
+msgstr "Bazaar podporuje všechny standardní části uvnitř URL::"
 
 #: en/help_topics/urlspec.txt:20
 msgid "  <protocol>://[user[:password]@]host[:port]/[path]"
-msgstr ""
+msgstr "  <protokol>://[uživatel[:heslo]@]hostitel[:port]/[cesta]"
 
 #: en/help_topics/urlspec.txt:22
 msgid "allowing URLs such as::"
-msgstr ""
+msgstr "čímž umožňuje URL jako např::"
 
 #: en/help_topics/urlspec.txt:24
 msgid "  http://bzruser:BadPass@bzr.example.com:8080/bzr/trunk"
-msgstr ""
+msgstr "  http://bzruživ:ŠptHeslo@bzr.příklad.cz:8080/bzr/trunk"
 
 #: en/help_topics/urlspec.txt:26
 msgid ""
@@ -16643,20 +16867,27 @@ msgid ""
 "``remote`` has a  home directory of ``/home/remote`` on the server\n"
 "shell.example.com, then::"
 msgstr ""
+"Pro URL  bzr+ssh:// a sftp:// Bazzar také podporuje cesty začínající  '~'\n"
+"jako označení, že zbytek cesty by měl být zpracovávána relativně ke\n"
+"vzdálenému domovskému adresáři uživatele. Například, pokud uživatel\n"
+"``remote`` má domovský adresář v ``/home/remote`` na serveru\n"
+"shell.example.com, pak::"
 
 #: en/help_topics/urlspec.txt:32
 msgid "  bzr+ssh://remote@shell.example.com/~/myproject/trunk"
-msgstr ""
+msgstr "  bzr+ssh://remote@shell.example.com/~/myproject/trunk"
 
 #: en/help_topics/urlspec.txt:34
 msgid "would refer to ``/home/remote/myproject/trunk``."
-msgstr ""
+msgstr "by odkazovalo na ``/home/remote/myproject/trunk``."
 
 #: en/help_topics/urlspec.txt:36
 msgid ""
 "Many commands that accept URLs also accept location aliases too.\n"
 "See :doc:`location-alias-help` and :doc:`url-special-chars-help`.\n"
 msgstr ""
+"Mnoho příkazů, které přijímají URL také přijímá zkratky umístění.\n"
+"Viz :doc:`location-alias-help` a :doc:`url-special-chars-help`.\n"
 
 #~ msgid ""
 #~ "This makes Bazaar stop tracking changes to the specified files. Bazaar will\n"
