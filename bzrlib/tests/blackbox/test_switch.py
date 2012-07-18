@@ -298,13 +298,15 @@ class TestSwitch(TestCaseWithTransport):
 
     def test_switch_lightweight_after_branch_moved(self):
         self.prepare_lightweight_switch()
-        self.run_bzr('switch --force ../branch1', working_dir='tree')
+        self.run_bzr('switch --force --with-changes ../branch1',
+                     working_dir='tree')
         branch_location = WorkingTree.open('tree').branch.base
         self.assertEndsWith(branch_location, 'branch1/')
 
     def test_switch_lightweight_after_branch_moved_relative(self):
         self.prepare_lightweight_switch()
-        self.run_bzr('switch --force branch1', working_dir='tree')
+        self.run_bzr('switch --force branch1 --with-changes',
+                     working_dir='tree')
         branch_location = WorkingTree.open('tree').branch.base
         self.assertEndsWith(branch_location, 'branch1/')
 
@@ -483,7 +485,8 @@ class TestSmartServerSwitch(TestCaseWithTransport):
         out, err = self.run_bzr(['checkout', '--lightweight', self.get_url('from'),
             'target'])
         self.reset_smart_call_log()
-        self.run_bzr(['switch', self.get_url('from')], working_dir='target')
+        self.run_bzr(['switch', '--with-changes',
+                      self.get_url('from')], working_dir='target')
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have
@@ -496,7 +499,7 @@ class TestSmartServerSwitch(TestCaseWithTransport):
 
 class TestSwitchUncommitted(TestCaseWithTransport):
 
-    def test_switch_stores_local(self):
+    def prepare(self):
         tree = self.make_branch_and_tree('orig')
         tree.commit('')
         tree.branch.bzrdir.sprout('new')
@@ -504,7 +507,22 @@ class TestSwitchUncommitted(TestCaseWithTransport):
         self.build_tree(['checkout/a'])
         self.assertPathExists('checkout/a')
         checkout.add('a')
+
+    def test_switch_stores_local(self):
+        self.prepare()
         self.run_bzr(['switch', '-d', 'checkout', 'new'])
         self.assertPathDoesNotExist('checkout/a')
         self.run_bzr(['switch', '-d', 'checkout', 'orig'])
         self.assertPathExists('checkout/a')
+
+    def test_with_changes_does_not_store(self):
+        self.prepare()
+        self.run_bzr(['switch', '-d', 'checkout', '--with-changes', 'new'])
+        self.assertPathExists('checkout/a')
+
+    def test_with_changes_does_not_restore(self):
+        self.prepare()
+        self.run_bzr(['switch', '-d', 'checkout', 'new'])
+        self.assertPathDoesNotExist('checkout/a')
+        self.run_bzr(['switch', '-d', 'checkout', '--with-changes', 'orig'])
+        self.assertPathDoesNotExist('checkout/a')
