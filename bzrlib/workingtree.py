@@ -1352,23 +1352,23 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                 basis_tree.unlock()
         return conflicts
 
+    @needs_write_lock
     def store_uncommitted(self):
-        self.lock_write()
+        """Store uncommitted changes from the tree in the branch."""
+        target_tree = self.basis_tree()
+        shelf_creator = shelf.ShelfCreator(self, target_tree)
         try:
-            target_tree = self.basis_tree()
-            shelf_creator = shelf.ShelfCreator(self, target_tree)
-            try:
-                if not shelf_creator.shelve_all():
-                    return
-                self.branch.store_uncommitted(shelf_creator)
-                shelf_creator.transform()
-            finally:
-                shelf_creator.finalize()
+            if not shelf_creator.shelve_all():
+                return
+            self.branch.store_uncommitted(shelf_creator)
+            shelf_creator.transform()
         finally:
-            self.unlock()
+            shelf_creator.finalize()
         note('Uncommitted changes stored in branch "%s".', self.branch.nick)
 
-    def restore_uncommitted(self, delete=True):
+    @needs_write_lock
+    def restore_uncommitted(self):
+        """Restore uncommitted changes from the branch into the tree."""
         unshelver = self.branch.get_unshelver(self)
         if unshelver is None:
             return

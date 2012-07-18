@@ -268,6 +268,7 @@ class Branch(controldir.ControlComponent):
         raise NotImplementedError(self._put_uncommitted)
 
     def _uncommitted_branch(self):
+        """Return the branch that may contain uncommitted changes."""
         master = self.get_master_branch()
         if master is not None:
             return master
@@ -279,6 +280,12 @@ class Branch(controldir.ControlComponent):
         return self._uncommitted_branch()._get_uncommitted() is not None
 
     def store_uncommitted(self, creator, message=None):
+        """Store uncommitted changes from a ShelfCreator.
+
+        :param creator: The ShelfCreator containing uncommitted changes.
+        :param message: The message to associate with the changes.
+        :raises: ChangesAlreadyStored if the branch already has changes.
+        """
         branch = self._uncommitted_branch()
         if branch.has_stored_uncommitted():
             raise errors.ChangesAlreadyStored
@@ -288,6 +295,11 @@ class Branch(controldir.ControlComponent):
         branch._put_uncommitted(transform)
 
     def get_unshelver(self, tree):
+        """Return a shelf.Unshelver for this branch and tree.
+
+        :param tree: The tree to use to construct the Unshelver.
+        :return: an Unshelver or None if no changes are stored.
+        """
         transform = self._uncommitted_branch()._get_uncommitted()
         if transform is None:
             return
@@ -2428,6 +2440,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
             self.conf_store =  _mod_config.BranchStore(self)
         return self.conf_store
 
+    @needs_read_lock
     def _get_uncommitted(self):
         """Return a serialized TreeTransform for uncommitted changes.
 
@@ -2439,6 +2452,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         except errors.NoSuchFile:
             return None
 
+    @needs_write_lock
     def _put_uncommitted(self, transform):
         """Store a serialized TreeTransform for uncommitted changes.
 

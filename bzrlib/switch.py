@@ -18,7 +18,12 @@ from __future__ import absolute_import
 
 # Original author: David Allouche
 
-from bzrlib import errors, merge, revision
+from bzrlib import (
+    errors,
+    lock,
+    merge,
+    revision
+    )
 from bzrlib.branch import Branch
 from bzrlib.i18n import gettext
 from bzrlib.trace import note
@@ -40,6 +45,8 @@ def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None,
     :param to_branch: branch that the checkout is to reference
     :param force: skip the check for local commits in a heavy checkout
     :param revision_id: revision ID to switch to.
+    :param store_uncommitted: If True, store uncommitted changes in the
+        branch.
     """
     _check_pending_merges(control_dir, force)
     try:
@@ -47,14 +54,15 @@ def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None,
     except errors.NotBranchError:
         source_repository = to_branch.repository
     if store_uncommitted:
-        control_dir.open_workingtree().store_uncommitted()
+        with lock.write_locked(control_dir.open_workingtree()) as tree:
+            tree.store_uncommitted()
     to_branch.lock_read()
     try:
         _set_branch_location(control_dir, to_branch, force)
     finally:
         to_branch.unlock()
-    tree = control_dir.open_workingtree()
-    _update(tree, source_repository, quiet, revision_id, store_uncommitted)
+    with lock.write_locked(control_dir.open_workingtree()) as tree:
+        _update(tree, source_repository, quiet, revision_id, store_uncommitted)
     _run_post_switch_hooks(control_dir, to_branch, force, revision_id)
 
 def _check_pending_merges(control, force=False):
@@ -160,6 +168,7 @@ def _update(tree, source_repository, quiet=False, revision_id=None,
 
     :param tree: the working tree
     :param source_repository: repository holding the revisions
+    :param restore_uncommitted: restore any uncommitted changes in the branch.
     """
     tree.lock_tree_write()
     try:

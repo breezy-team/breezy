@@ -22,6 +22,7 @@ import os
 from bzrlib import (
     branch,
     errors,
+    lock,
     merge as _mod_merge,
     switch,
     tests,
