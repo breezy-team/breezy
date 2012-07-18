@@ -169,12 +169,13 @@ def _update(tree, source_repository, quiet=False, revision_id=None,
         if tree.last_revision() == revision_id:
             if not quiet:
                 note(gettext("Tree is up to date at revision %d."), to_branch.revno())
-            return
-        base_tree = source_repository.revision_tree(tree.last_revision())
-        merge.Merge3Merger(tree, tree, base_tree, to_branch.repository.revision_tree(revision_id))
-        tree.set_last_revision(to_branch.last_revision())
-        if not quiet:
-            note(gettext('Updated to revision %d.') % to_branch.revno())
+        else:
+            base_tree = source_repository.revision_tree(tree.last_revision())
+            merge.Merge3Merger(tree, tree, base_tree,
+                               to_branch.repository.revision_tree(revision_id))
+            tree.set_last_revision(to_branch.last_revision())
+            if not quiet:
+                note(gettext('Updated to revision %d.') % to_branch.revno())
         if restore_uncommitted:
             tree.restore_uncommitted()
     finally:
