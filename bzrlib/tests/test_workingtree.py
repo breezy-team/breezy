@@ -521,13 +521,8 @@ class TestStoredUncommitted(TestCaseWithTransport):
         with write_locked(self.store_uncommitted()) as tree:
             tree.restore_uncommitted()
             self.assertPathExists('tree/file')
-            self.assertFalse(None, tree.branch.has_stored_uncommitted())
+            self.assertFalse(tree.branch.has_stored_uncommitted())
 
     def test_restore_uncommitted_none(self):
         tree = self.make_branch_and_tree('tree')
         tree.restore_uncommitted()
-
-    def test_restore_uncommitted_no_delete(self):
-        with write_locked(self.store_uncommitted()) as tree:
-            tree.restore_uncommitted(delete=False)
-            self.assertTrue(tree.branch.has_stored_uncommitted())

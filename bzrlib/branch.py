@@ -282,11 +282,15 @@ class Branch(controldir.ControlComponent):
     def store_uncommitted(self, creator, message=None):
         """Store uncommitted changes from a ShelfCreator.
 
-        :param creator: The ShelfCreator containing uncommitted changes.
+        :param creator: The ShelfCreator containing uncommitted changes, or
+            None to delete any stored changes.
         :param message: The message to associate with the changes.
         :raises: ChangesAlreadyStored if the branch already has changes.
         """
         branch = self._uncommitted_branch()
+        if creator is None:
+            branch._put_uncommitted(None)
+            return
         if branch.has_stored_uncommitted():
             raise errors.ChangesAlreadyStored
         transform = StringIO()
@@ -2456,7 +2460,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
     def _put_uncommitted(self, transform):
         """Store a serialized TreeTransform for uncommitted changes.
 
-        :param input: a file-like object.
+        :param transform: a file-like object.
         """
         if transform is None:
             try:

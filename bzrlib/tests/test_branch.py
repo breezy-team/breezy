@@ -771,7 +771,13 @@ class TestStoredUncommitted(tests.TestCaseWithTransport):
         branch = self.make_branch('b')
         branch._put_uncommitted(StringIO('hello'))
         self.assertRaises(errors.ChangesAlreadyStored,
-                          branch.store_uncommitted, None)
+                          branch.store_uncommitted, FakeShelfCreator())
+
+    def test_store_uncommitted_none(self):
+        branch = self.make_branch('b')
+        branch._put_uncommitted(StringIO('hello'))
+        branch.store_uncommitted(None)
+        self.assertFalse(branch.has_stored_uncommitted())
 
     def test_get_unshelver(self):
         tree = self.make_branch_and_tree('tree')

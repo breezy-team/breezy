@@ -1376,6 +1376,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             merger = unshelver.make_merger()
             merger.ignore_zero = True
             merger.do_merge()
+            self.branch.store_uncommitted(None)
         finally:
             unshelver.finalize()
 
