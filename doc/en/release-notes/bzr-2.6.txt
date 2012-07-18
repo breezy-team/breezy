@@ -13,7 +13,9 @@ bzr 2.6b3
 External Compatibility Breaks
 *****************************
 
-.. These may require users to change the way they use Bazaar.
+* ``bzr switch`` now automatically stores uncommitted changes in the branch.
+  The ``--with-changes`` option provides the original behaviour.
+  (Aaron Bentley)
 
 New Features
 ************
