@@ -30,8 +30,6 @@ from bzrlib import (
     config,
     controldir,
     errors,
-    pack,
-    shelf,
     tests,
     trace,
     urlutils,

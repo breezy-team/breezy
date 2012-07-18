@@ -14,14 +14,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
-from cStringIO import StringIO
 
 from bzrlib import (
     bzrdir,
     conflicts,
     errors,
-    shelf,
-    symbol_versioning,
     transport,
     workingtree,
     workingtree_3,
@@ -31,7 +28,6 @@ from bzrlib.lock import write_locked
 from bzrlib.lockdir import LockDir
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
-from bzrlib.transform import TransformPreview
 from bzrlib.workingtree import (
     TreeEntry,
     TreeDirectory,
