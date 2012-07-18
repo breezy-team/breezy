@@ -492,3 +492,19 @@ class TestSmartServerSwitch(TestCaseWithTransport):
         self.assertLength(24, self.hpss_calls)
         self.assertLength(4, self.hpss_connections)
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
+
+
+class TestSwitchUncommitted(TestCaseWithTransport):
+
+    def test_switch_stores_local(self):
+        tree = self.make_branch_and_tree('orig')
+        tree.commit('')
+        tree.branch.bzrdir.sprout('new')
+        checkout = tree.branch.create_checkout('checkout', lightweight=True)
+        self.build_tree(['checkout/a'])
+        self.assertPathExists('checkout/a')
+        checkout.add('a')
+        self.run_bzr(['switch', '-d', 'checkout', 'new'])
+        self.assertPathDoesNotExist('checkout/a')
+        self.run_bzr(['switch', '-d', 'checkout', 'orig'])
+        self.assertPathExists('checkout/a')
