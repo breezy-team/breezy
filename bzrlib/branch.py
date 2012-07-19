@@ -252,12 +252,11 @@ class Branch(controldir.ControlComponent):
         """
         raise NotImplementedError(self._get_config)
 
-    def store_uncommitted(self, creator, message=None):
+    def store_uncommitted(self, creator):
         """Store uncommitted changes from a ShelfCreator.
 
         :param creator: The ShelfCreator containing uncommitted changes, or
             None to delete any stored changes.
-        :param message: The message to associate with the changes.
         :raises: ChangesAlreadyStored if the branch already has changes.
         """
         raise NotImplementedError(self.store_uncommitted)
@@ -2413,12 +2412,11 @@ class BzrBranch(Branch, _RelockDebugMixin):
         else:
             return self
 
-    def store_uncommitted(self, creator, message=None):
+    def store_uncommitted(self, creator):
         """Store uncommitted changes from a ShelfCreator.
 
         :param creator: The ShelfCreator containing uncommitted changes, or
             None to delete any stored changes.
-        :param message: The message to associate with the changes.
         :raises: ChangesAlreadyStored if the branch already has changes.
         """
         branch = self._uncommitted_branch()
@@ -2428,7 +2426,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         if branch._transport.has('stored-transform'):
             raise errors.ChangesAlreadyStored
         transform = StringIO()
-        creator.write_shelf(transform, message)
+        creator.write_shelf(transform)
         transform.seek(0)
         branch._transport.put_file('stored-transform', transform)
 

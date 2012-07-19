@@ -3393,9 +3393,9 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             self.conf_store =  RemoteBranchStore(self)
         return self.conf_store
 
-    def store_uncommitted(self, creator, message=None):
+    def store_uncommitted(self, creator):
         self._ensure_real()
-        return self._real_branch.store_uncommitted(creator, message)
+        return self._real_branch.store_uncommitted(creator)
 
     def get_unshelver(self, tree):
         self._ensure_real()
