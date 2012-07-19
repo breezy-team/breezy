@@ -1069,20 +1069,6 @@ class FakeShelfCreator(object):
 
 class TestUncommittedChanges(per_branch.TestCaseWithBranch):
 
-    def test_get_put_uncommitted(self):
-        branch = self.make_branch('branch')
-        self.assertIs(None, branch._get_uncommitted())
-        branch._put_uncommitted(StringIO('Hello'))
-        self.assertEqual('Hello', branch._get_uncommitted().read())
-
-    def test_uncommitted_none(self):
-        branch = self.make_branch('branch')
-        branch._put_uncommitted(StringIO('Hello'))
-        branch._put_uncommitted(None)
-        self.assertIs(None, branch._get_uncommitted())
-        # Setting uncommitted to None when it is already None is not an error.
-        branch._put_uncommitted(None)
-
     def bind(self, branch, master):
         try:
             branch.bind(master)
@@ -1112,13 +1098,13 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
 
     def test_store_uncommitted_already_stored(self):
         branch = self.make_branch('b')
-        branch._put_uncommitted(StringIO('hello'))
+        branch.store_uncommitted(FakeShelfCreator())
         self.assertRaises(errors.ChangesAlreadyStored,
                           branch.store_uncommitted, FakeShelfCreator())
 
     def test_store_uncommitted_none(self):
         branch = self.make_branch('b')
-        branch._put_uncommitted(StringIO('hello'))
+        branch.store_uncommitted(FakeShelfCreator())
         branch.store_uncommitted(None)
         self.assertIs(None, branch.get_unshelver(None))
 

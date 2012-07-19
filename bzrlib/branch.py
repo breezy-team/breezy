@@ -2417,20 +2417,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
         except errors.NoSuchFile:
             return None
 
-    @needs_write_lock
-    def _put_uncommitted(self, transform):
-        """Store a serialized TreeTransform for uncommitted changes.
-
-        :param transform: a file-like object.
-        """
-        if transform is None:
-            try:
-                self._transport.delete('stored-transform')
-            except errors.NoSuchFile:
-                pass
-        else:
-            self._transport.put_file('stored-transform', transform)
-
     def _uncommitted_branch(self):
         """Return the branch that may contain uncommitted changes."""
         master = self.get_master_branch()
@@ -2449,14 +2435,14 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """
         branch = self._uncommitted_branch()
         if creator is None:
-            branch._put_uncommitted(None)
+            branch._transport.delete('stored-transform')
             return
         if branch._get_uncommitted() is not None:
             raise errors.ChangesAlreadyStored
         transform = StringIO()
         creator.write_shelf(transform, message)
         transform.seek(0)
-        branch._put_uncommitted(transform)
+        branch._transport.put_file('stored-transform', transform)
 
     def get_unshelver(self, tree):
         """Return a shelf.Unshelver for this branch and tree.
