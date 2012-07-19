@@ -1061,6 +1061,12 @@ class TestBranchControlComponent(per_branch.TestCaseWithBranch):
         self.assertEqual(br.control_url, br.control_transport.base)
 
 
+class FakeShelfCreator(object):
+
+    def write_shelf(self, shelf_file, message=None):
+        shelf_file.write('hello')
+
+
 class TestUncommittedChanges(per_branch.TestCaseWithBranch):
 
     def test_get_put_uncommitted(self):
@@ -1076,3 +1082,78 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
         self.assertIs(None, branch._get_uncommitted())
         # Setting uncommitted to None when it is already None is not an error.
         branch._put_uncommitted(None)
+
+    def test_has_stored_uncommitted(self):
+        branch = self.make_branch('b')
+        self.assertFalse(branch.has_stored_uncommitted())
+        branch._put_uncommitted(StringIO('hello'))
+        self.assertTrue(branch.has_stored_uncommitted())
+        branch._put_uncommitted(None)
+        self.assertFalse(branch.has_stored_uncommitted())
+
+    def bind(self, branch, master):
+        try:
+            branch.bind(master)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Branch cannot be bound.')
+
+    def make_bound(self):
+        branch = self.make_branch('b')
+        master = self.make_branch('master')
+        self.bind(branch, master)
+        return branch, master
+
+    def test_has_stored_uncommitted_bound(self):
+        branch, master = self.make_bound()
+        self.assertFalse(branch.has_stored_uncommitted())
+        master._put_uncommitted(StringIO('hello'))
+        self.assertTrue(branch.has_stored_uncommitted())
+        master._put_uncommitted(None)
+        self.assertFalse(branch.has_stored_uncommitted())
+
+    def test_store_uncommitted(self):
+        branch = self.make_branch('b')
+        creator = FakeShelfCreator()
+        self.assertFalse(branch.has_stored_uncommitted())
+        branch.store_uncommitted(creator)
+        self.assertEqual('hello', branch._get_uncommitted().read())
+
+    def test_store_uncommitted_bound(self):
+        branch, master = self.make_bound()
+        creator = FakeShelfCreator()
+        self.assertFalse(branch.has_stored_uncommitted())
+        self.assertFalse(master.has_stored_uncommitted())
+        branch.store_uncommitted(creator)
+        self.assertEqual('hello', master._get_uncommitted().read())
+
+    def test_store_uncommitted_already_stored(self):
+        branch = self.make_branch('b')
+        branch._put_uncommitted(StringIO('hello'))
+        self.assertRaises(errors.ChangesAlreadyStored,
+                          branch.store_uncommitted, FakeShelfCreator())
+
+    def test_store_uncommitted_none(self):
+        branch = self.make_branch('b')
+        branch._put_uncommitted(StringIO('hello'))
+        branch.store_uncommitted(None)
+        self.assertFalse(branch.has_stored_uncommitted())
+
+    def test_get_unshelver(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('')
+        self.build_tree_contents([('tree/file', 'contents1')])
+        tree.add('file')
+        tree.store_uncommitted()
+        unshelver = tree.branch.get_unshelver(tree)
+        self.assertIsNot(None, unshelver)
+
+    def test_get_unshelver_bound(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('')
+        self.build_tree_contents([('tree/file', 'contents1')])
+        tree.add('file')
+        tree.store_uncommitted()
+        branch = self.make_branch('branch')
+        self.bind(branch, tree.branch)
+        unshelver = branch.get_unshelver(tree)
+        self.assertIsNot(None, unshelver)

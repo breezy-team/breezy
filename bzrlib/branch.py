@@ -252,32 +252,9 @@ class Branch(controldir.ControlComponent):
         """
         raise NotImplementedError(self._get_config)
 
-    def _get_uncommitted(self):
-        """Return a serialized TreeTransform for uncommitted changes.
-
-        :return: a file-like object containing a serialized TreeTransform or
-            None if no uncommitted changes are stored.
-        """
-        raise NotImplementedError(self._get_uncommitted)
-
-    def _put_uncommitted(self, transform):
-        """Store a serialized TreeTransform for uncommitted changes.
-
-        :param input: a file-like object.
-        """
-        raise NotImplementedError(self._put_uncommitted)
-
-    def _uncommitted_branch(self):
-        """Return the branch that may contain uncommitted changes."""
-        master = self.get_master_branch()
-        if master is not None:
-            return master
-        else:
-            return self
-
     def has_stored_uncommitted(self):
         """If true, the branch has stored, uncommitted changes in it."""
-        return self._uncommitted_branch()._get_uncommitted() is not None
+        raise NotImplementedError(self.has_stored_uncommitted)
 
     def store_uncommitted(self, creator, message=None):
         """Store uncommitted changes from a ShelfCreator.
@@ -287,16 +264,7 @@ class Branch(controldir.ControlComponent):
         :param message: The message to associate with the changes.
         :raises: ChangesAlreadyStored if the branch already has changes.
         """
-        branch = self._uncommitted_branch()
-        if creator is None:
-            branch._put_uncommitted(None)
-            return
-        if branch.has_stored_uncommitted():
-            raise errors.ChangesAlreadyStored
-        transform = StringIO()
-        creator.write_shelf(transform, message)
-        transform.seek(0)
-        branch._put_uncommitted(transform)
+        raise NotImplementedError(self.store_uncommitted)
 
     def get_unshelver(self, tree):
         """Return a shelf.Unshelver for this branch and tree.
@@ -304,10 +272,7 @@ class Branch(controldir.ControlComponent):
         :param tree: The tree to use to construct the Unshelver.
         :return: an Unshelver or None if no changes are stored.
         """
-        transform = self._uncommitted_branch()._get_uncommitted()
-        if transform is None:
-            return
-        return shelf.Unshelver.from_tree_and_shelf(tree, transform)
+        raise NotImplementedError(self.get_unshelver)
 
     def _get_fallback_repository(self, url, possible_transports):
         """Get the repository we fallback to at url."""
@@ -2469,6 +2434,48 @@ class BzrBranch(Branch, _RelockDebugMixin):
                 pass
         else:
             self._transport.put_file('stored-transform', transform)
+
+    def _uncommitted_branch(self):
+        """Return the branch that may contain uncommitted changes."""
+        master = self.get_master_branch()
+        if master is not None:
+            return master
+        else:
+            return self
+
+    def has_stored_uncommitted(self):
+        """If true, the branch has stored, uncommitted changes in it."""
+        return self._uncommitted_branch()._get_uncommitted() is not None
+
+    def store_uncommitted(self, creator, message=None):
+        """Store uncommitted changes from a ShelfCreator.
+
+        :param creator: The ShelfCreator containing uncommitted changes, or
+            None to delete any stored changes.
+        :param message: The message to associate with the changes.
+        :raises: ChangesAlreadyStored if the branch already has changes.
+        """
+        branch = self._uncommitted_branch()
+        if creator is None:
+            branch._put_uncommitted(None)
+            return
+        if branch.has_stored_uncommitted():
+            raise errors.ChangesAlreadyStored
+        transform = StringIO()
+        creator.write_shelf(transform, message)
+        transform.seek(0)
+        branch._put_uncommitted(transform)
+
+    def get_unshelver(self, tree):
+        """Return a shelf.Unshelver for this branch and tree.
+
+        :param tree: The tree to use to construct the Unshelver.
+        :return: an Unshelver or None if no changes are stored.
+        """
+        transform = self._uncommitted_branch()._get_uncommitted()
+        if transform is None:
+            return
+        return shelf.Unshelver.from_tree_and_shelf(tree, transform)
 
     def is_locked(self):
         return self.control_files.is_locked()
