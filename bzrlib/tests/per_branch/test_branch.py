@@ -1083,14 +1083,6 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
         # Setting uncommitted to None when it is already None is not an error.
         branch._put_uncommitted(None)
 
-    def test_has_stored_uncommitted(self):
-        branch = self.make_branch('b')
-        self.assertFalse(branch.has_stored_uncommitted())
-        branch._put_uncommitted(StringIO('hello'))
-        self.assertTrue(branch.has_stored_uncommitted())
-        branch._put_uncommitted(None)
-        self.assertFalse(branch.has_stored_uncommitted())
-
     def bind(self, branch, master):
         try:
             branch.bind(master)
@@ -1103,26 +1095,18 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
         self.bind(branch, master)
         return branch, master
 
-    def test_has_stored_uncommitted_bound(self):
-        branch, master = self.make_bound()
-        self.assertFalse(branch.has_stored_uncommitted())
-        master._put_uncommitted(StringIO('hello'))
-        self.assertTrue(branch.has_stored_uncommitted())
-        master._put_uncommitted(None)
-        self.assertFalse(branch.has_stored_uncommitted())
-
     def test_store_uncommitted(self):
         branch = self.make_branch('b')
         creator = FakeShelfCreator()
-        self.assertFalse(branch.has_stored_uncommitted())
+        self.assertIs(None, branch.get_unshelver(None))
         branch.store_uncommitted(creator)
         self.assertEqual('hello', branch._get_uncommitted().read())
 
     def test_store_uncommitted_bound(self):
         branch, master = self.make_bound()
         creator = FakeShelfCreator()
-        self.assertFalse(branch.has_stored_uncommitted())
-        self.assertFalse(master.has_stored_uncommitted())
+        self.assertIs(None, branch.get_unshelver(None))
+        self.assertIs(None, master.get_unshelver(None))
         branch.store_uncommitted(creator)
         self.assertEqual('hello', master._get_uncommitted().read())
 
@@ -1136,7 +1120,7 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
         branch = self.make_branch('b')
         branch._put_uncommitted(StringIO('hello'))
         branch.store_uncommitted(None)
-        self.assertFalse(branch.has_stored_uncommitted())
+        self.assertIs(None, branch.get_unshelver(None))
 
     def test_get_unshelver(self):
         tree = self.make_branch_and_tree('tree')

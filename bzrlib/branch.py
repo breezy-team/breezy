@@ -252,10 +252,6 @@ class Branch(controldir.ControlComponent):
         """
         raise NotImplementedError(self._get_config)
 
-    def has_stored_uncommitted(self):
-        """If true, the branch has stored, uncommitted changes in it."""
-        raise NotImplementedError(self.has_stored_uncommitted)
-
     def store_uncommitted(self, creator, message=None):
         """Store uncommitted changes from a ShelfCreator.
 
@@ -2443,10 +2439,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
         else:
             return self
 
-    def has_stored_uncommitted(self):
-        """If true, the branch has stored, uncommitted changes in it."""
-        return self._uncommitted_branch()._get_uncommitted() is not None
-
     def store_uncommitted(self, creator, message=None):
         """Store uncommitted changes from a ShelfCreator.
 
@@ -2459,7 +2451,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         if creator is None:
             branch._put_uncommitted(None)
             return
-        if branch.has_stored_uncommitted():
+        if branch._get_uncommitted() is not None:
             raise errors.ChangesAlreadyStored
         transform = StringIO()
         creator.write_shelf(transform, message)

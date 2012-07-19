@@ -515,13 +515,13 @@ class TestStoredUncommitted(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         tree.commit('get root in there')
         tree.store_uncommitted()
-        self.assertFalse(tree.branch.has_stored_uncommitted())
+        self.assertIs(None, tree.branch.get_unshelver(tree))
 
     def test_restore_uncommitted(self):
         with write_locked(self.store_uncommitted()) as tree:
             tree.restore_uncommitted()
             self.assertPathExists('tree/file')
-            self.assertFalse(tree.branch.has_stored_uncommitted())
+            self.assertIs(None, tree.branch.get_unshelver(tree))
 
     def test_restore_uncommitted_none(self):
         tree = self.make_branch_and_tree('tree')
