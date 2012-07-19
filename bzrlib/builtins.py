@@ -6210,9 +6210,8 @@ class cmd_switch(Command):
     versus the current bound branch, then it makes the local branch a mirror
     of the new location and binds to it.
 
-    In both cases, the working tree is updated.  Any uncommitted changes in
-    the tree are stored in the old branch, and any uncommitted changes stored
-    in to_location are restored to the tree.
+    In both cases, the working tree is updated and uncommitted changes
+    are merged. The user can commit or revert these as they desire.
 
     Pending merges need to be committed or reverted before using switch.
 
@@ -6234,13 +6233,13 @@ class cmd_switch(Command):
                      Option('create-branch', short_name='b',
                         help='Create the target branch from this one before'
                              ' switching to it.'),
-                     Option('with-changes',
-                        help='Keep uncommitted changes in the tree and do not'
-                             'restore uncommitted changes to the tree.')
+                     Option('store',
+                        help='Store and restore uncommitted changes in the'
+                             ' branch.'),
                     ]
 
     def run(self, to_location=None, force=False, create_branch=False,
-            revision=None, directory=u'.', with_changes=False):
+            revision=None, directory=u'.', store=False):
         from bzrlib import switch
         tree_location = directory
         revision = _get_one_revision('switch', revision)
@@ -6278,7 +6277,7 @@ class cmd_switch(Command):
         if revision is not None:
             revision = revision.as_revision_id(to_branch)
         switch.switch(control_dir, to_branch, force, revision_id=revision,
-                      store_uncommitted=not with_changes)
+                      store_uncommitted=store)
         if had_explicit_nick:
             branch = control_dir.open_branch() #get the new branch!
             branch.nick = to_branch.nick
