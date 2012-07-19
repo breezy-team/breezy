@@ -61,8 +61,8 @@ def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None,
         _set_branch_location(control_dir, to_branch, force)
     finally:
         to_branch.unlock()
-    with lock.write_locked(control_dir.open_workingtree()) as tree:
-        _update(tree, source_repository, quiet, revision_id, store_uncommitted)
+    tree = control_dir.open_workingtree()
+    _update(tree, source_repository, quiet, revision_id, store_uncommitted)
     _run_post_switch_hooks(control_dir, to_branch, force, revision_id)
 
 def _check_pending_merges(control, force=False):
@@ -170,7 +170,10 @@ def _update(tree, source_repository, quiet=False, revision_id=None,
     :param source_repository: repository holding the revisions
     :param restore_uncommitted: restore any uncommitted changes in the branch.
     """
-    tree.lock_tree_write()
+    if restore_uncommitted:
+        tree.lock_write()
+    else:
+        tree.lock_tree_write()
     try:
         to_branch = tree.branch
         if revision_id is None:
