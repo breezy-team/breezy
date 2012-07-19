@@ -2405,18 +2405,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
             self.conf_store =  _mod_config.BranchStore(self)
         return self.conf_store
 
-    @needs_read_lock
-    def _get_uncommitted(self):
-        """Return a serialized TreeTransform for uncommitted changes.
-
-        :return: a file-like object containing a serialized TreeTransform or
-            None if no uncommitted changes are stored.
-        """
-        try:
-            return self._transport.get('stored-transform')
-        except errors.NoSuchFile:
-            return None
-
     def _uncommitted_branch(self):
         """Return the branch that may contain uncommitted changes."""
         master = self.get_master_branch()
@@ -2437,7 +2425,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         if creator is None:
             branch._transport.delete('stored-transform')
             return
-        if branch._get_uncommitted() is not None:
+        if branch._transport.has('stored-transform'):
             raise errors.ChangesAlreadyStored
         transform = StringIO()
         creator.write_shelf(transform, message)
@@ -2450,9 +2438,11 @@ class BzrBranch(Branch, _RelockDebugMixin):
         :param tree: The tree to use to construct the Unshelver.
         :return: an Unshelver or None if no changes are stored.
         """
-        transform = self._uncommitted_branch()._get_uncommitted()
-        if transform is None:
-            return
+        branch = self._uncommitted_branch()
+        try:
+            transform = branch._transport.get('stored-transform')
+        except errors.NoSuchFile:
+            return None
         return shelf.Unshelver.from_tree_and_shelf(tree, transform)
 
     def is_locked(self):

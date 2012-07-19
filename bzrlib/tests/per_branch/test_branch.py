@@ -27,10 +27,12 @@ from bzrlib import (
     merge,
     osutils,
     urlutils,
+    transform,
     transport,
     remote,
     repository,
     revision,
+    shelf,
     symbol_versioning,
     tests,
     )
@@ -1063,8 +1065,14 @@ class TestBranchControlComponent(per_branch.TestCaseWithBranch):
 
 class FakeShelfCreator(object):
 
+    def __init__(self, branch):
+        self.branch = branch
+
     def write_shelf(self, shelf_file, message=None):
-        shelf_file.write('hello')
+        tree = self.branch.repository.revision_tree(revision.NULL_REVISION)
+        with transform.TransformPreview(tree) as tt:
+            shelf.ShelfCreator._write_shelf(
+                shelf_file, tt, revision.NULL_REVISION)
 
 
 class TestUncommittedChanges(per_branch.TestCaseWithBranch):
@@ -1076,35 +1084,37 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
             raise tests.TestNotApplicable('Branch cannot be bound.')
 
     def make_bound(self):
-        branch = self.make_branch('b')
+        tree = self.make_branch_and_tree('b')
+        branch = tree.branch
         master = self.make_branch('master')
         self.bind(branch, master)
-        return branch, master
+        return tree, master
 
     def test_store_uncommitted(self):
-        branch = self.make_branch('b')
-        creator = FakeShelfCreator()
-        self.assertIs(None, branch.get_unshelver(None))
+        tree = self.make_branch_and_tree('b')
+        branch = tree.branch
+        creator = FakeShelfCreator(branch)
+        self.assertIs(None, branch.get_unshelver(tree))
         branch.store_uncommitted(creator)
-        self.assertEqual('hello', branch._get_uncommitted().read())
+        self.assertIsNot(None, branch.get_unshelver(tree))
 
     def test_store_uncommitted_bound(self):
-        branch, master = self.make_bound()
-        creator = FakeShelfCreator()
-        self.assertIs(None, branch.get_unshelver(None))
-        self.assertIs(None, master.get_unshelver(None))
-        branch.store_uncommitted(creator)
-        self.assertEqual('hello', master._get_uncommitted().read())
+        tree, master = self.make_bound()
+        creator = FakeShelfCreator(tree.branch)
+        self.assertIs(None, tree.branch.get_unshelver(tree))
+        self.assertIs(None, master.get_unshelver(tree))
+        tree.branch.store_uncommitted(creator)
+        self.assertIsNot(None, master.get_unshelver(tree))
 
     def test_store_uncommitted_already_stored(self):
         branch = self.make_branch('b')
-        branch.store_uncommitted(FakeShelfCreator())
+        branch.store_uncommitted(FakeShelfCreator(branch))
         self.assertRaises(errors.ChangesAlreadyStored,
-                          branch.store_uncommitted, FakeShelfCreator())
+                          branch.store_uncommitted, FakeShelfCreator(branch))
 
     def test_store_uncommitted_none(self):
         branch = self.make_branch('b')
-        branch.store_uncommitted(FakeShelfCreator())
+        branch.store_uncommitted(FakeShelfCreator(branch))
         branch.store_uncommitted(None)
         self.assertIs(None, branch.get_unshelver(None))
 
