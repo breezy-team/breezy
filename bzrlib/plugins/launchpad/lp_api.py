@@ -112,7 +112,7 @@ class NoLaunchpadBranch(errors.BzrError):
         errors.BzrError.__init__(self, branch=branch, url=branch.base)
 
 
-def login(service, timeout=None, proxy_info=None):
+def login(service, timeout=None, proxy_info=None, version=None):
     """Log in to the Launchpad API.
 
     :return: The root `Launchpad` object from launchpadlib.
@@ -120,7 +120,7 @@ def login(service, timeout=None, proxy_info=None):
     cache_directory = get_cache_directory()
     launchpad = Launchpad.login_with(
         'bzr', _get_api_url(service), cache_directory, timeout=timeout,
-        proxy_info=proxy_info)
+        proxy_info=proxy_info, version=version)
     # XXX: Work-around a minor security bug in launchpadlib < 1.6.3, which
     # would create this directory with default umask.
     osutils.chmod_if_possible(cache_directory, 0700)
