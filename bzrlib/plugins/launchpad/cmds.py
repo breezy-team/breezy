@@ -372,8 +372,8 @@ class cmd_lp_find_proposal(Command):
 
     def _find_proposals(self, revision_id, pb):
         from bzrlib.plugins.launchpad import (lp_api, lp_registration)
-        launchpad = lp_api.login(
-            lp_registration.LaunchpadService(), version='devel')
+        launchpad = lp_api.login(lp_registration.LaunchpadService(),
+                                 version='devel')
         pb.update(gettext('Finding proposals'))
         return list(launchpad.branches.getMergeProposals(
-            merged_revision=revision_id))
+                    merged_revision=revision_id))
