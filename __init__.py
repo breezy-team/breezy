@@ -148,8 +148,12 @@ def _keywords_filter_stack_lookup(k):
         }
     return filter_stack_map.get(k)
 
+try:
+    register_filter = filters.filter_stacks_registry.register
+except AttributeError:
+    register_filter = filters.register_filter_stack_map
 
-filters.filter_stacks_registry.register('keywords', _keywords_filter_stack_lookup)
+register_filter('keywords', _keywords_filter_stack_lookup)
 
 
 class cmd_cat(builtins.cmd_cat):
