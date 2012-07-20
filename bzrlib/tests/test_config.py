@@ -4883,22 +4883,22 @@ class TestDefaultMailDomain(tests.TestCaseInTempDir):
         f = file('simple', 'w')
         f.write("domainname.com\n")
         f.close()
-        conf = config._get_default_mail_domain('simple')
-        self.assertEquals('domainname.com', conf)
+        r = config._get_default_mail_domain('simple')
+        self.assertEquals('domainname.com', r)
 
     def test_default_mail_domain_no_eol(self):
         f = file('simple', 'w')
         f.write("domainname.com")
         f.close()
-        conf = config._get_default_mail_domain('simple')
-        self.assertEquals('domainname.com', conf)
+        r = config._get_default_mail_domain('simple')
+        self.assertEquals('domainname.com', r)
 
     def test_default_mail_domain_multiple_lines(self):
         f = file('multiple_lines', 'w')
         f.write("domainname.com\nsome other text\n")
         f.close()
-        conf = config._get_default_mail_domain('multiple_lines')
-        self.assertEquals('domainname.com', conf)
+        r = config._get_default_mail_domain('multiple_lines')
+        self.assertEquals('domainname.com', r)
 
 
 class EmailOptionTests(tests.TestCase):
