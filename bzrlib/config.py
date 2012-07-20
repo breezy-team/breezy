@@ -1575,7 +1575,7 @@ def _get_default_mail_domain():
     except (IOError, OSError), e:
         return None
     try:
-        domain = f.read().strip()
+        domain = f.readline().strip()
         return domain
     finally:
         f.close()
