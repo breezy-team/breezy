@@ -1615,7 +1615,7 @@ class cmd_checkout(Command):
     code.)
     """
 
-    _see_also = ['checkouts', 'branch']
+    _see_also = ['checkouts', 'branch', 'working-trees', 'remove-tree']
     takes_args = ['branch_location?', 'to_location?']
     takes_options = ['revision',
                      Option('lightweight',
