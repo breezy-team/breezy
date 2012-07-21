@@ -4881,22 +4881,28 @@ class TestDefaultMailDomain(tests.TestCaseInTempDir):
 
     def test_default_mail_domain_simple(self):
         f = file('simple', 'w')
-        f.write("domainname.com\n")
-        f.close()
+        try:
+            f.write("domainname.com\n")
+        finally:
+            f.close()
         r = config._get_default_mail_domain('simple')
         self.assertEquals('domainname.com', r)
 
     def test_default_mail_domain_no_eol(self):
-        f = file('simple', 'w')
-        f.write("domainname.com")
-        f.close()
-        r = config._get_default_mail_domain('simple')
+        f = file('no_eol', 'w')
+        try:
+            f.write("domainname.com")
+        finally:
+            f.close()
+        r = config._get_default_mail_domain('no_eol')
         self.assertEquals('domainname.com', r)
 
     def test_default_mail_domain_multiple_lines(self):
         f = file('multiple_lines', 'w')
-        f.write("domainname.com\nsome other text\n")
-        f.close()
+        try:
+            f.write("domainname.com\nsome other text\n")
+        finally:
+            f.close()
         r = config._get_default_mail_domain('multiple_lines')
         self.assertEquals('domainname.com', r)
 
