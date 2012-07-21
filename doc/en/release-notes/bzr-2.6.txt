@@ -23,7 +23,7 @@ New Features
 Improvements
 ************
 
-.. Improvements to existing commands, especially improved performance 
+.. Improvements to existing commands, especially improved performance
    or memory usage, or better results.
 
 Bug Fixes
@@ -31,6 +31,11 @@ Bug Fixes
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* Fixed a bug where the entire contents of ``/etc/mailname`` is read in.
+  We only want to read in the first line so that comments could be added
+  and would be ignored.
+  (Haw Loeung, #932515)
 
 Documentation
 *************
