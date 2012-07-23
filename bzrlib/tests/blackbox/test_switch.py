@@ -505,13 +505,18 @@ class TestSwitchUncommitted(TestCaseWithTransport):
         self.build_tree(['checkout/a'])
         self.assertPathExists('checkout/a')
         checkout.add('a')
+        return checkout
 
     def test_store_and_restore_uncommitted(self):
-        self.prepare()
+        checkout = self.prepare()
         self.run_bzr(['switch', '--store', '-d', 'checkout', 'new'])
+        self.build_tree(['checkout/b'])
+        checkout.add('b')
         self.assertPathDoesNotExist('checkout/a')
+        self.assertPathExists('checkout/b')
         self.run_bzr(['switch', '--store', '-d', 'checkout', 'orig'])
         self.assertPathExists('checkout/a')
+        self.assertPathDoesNotExist('checkout/b')
 
     def test_does_not_store(self):
         self.prepare()
