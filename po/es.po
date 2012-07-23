@@ -9,15 +9,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2012-07-04 10:54+0000\n"
-"Last-Translator: Monkey <monkey.libre@gmail.com>\n"
+"PO-Revision-Date: 2012-07-22 15:37+0000\n"
+"Last-Translator: Adolfo Jayme Barrientos <fitoschido@gmail.com>\n"
 "Language-Team: Spanish <es@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Launchpad-Export-Date: 2012-07-11 04:33+0000\n"
-"X-Generator: Launchpad (build 15593)\n"
+"X-Launchpad-Export-Date: 2012-07-23 04:30+0000\n"
+"X-Generator: Launchpad (build 15654)\n"
 
 #: bzrlib/add.py:93
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -775,7 +775,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1318
 msgid "Overwrite tags only."
-msgstr ""
+msgstr "Solo sobreescribir las etiquetas."
 
 #: bzrlib/builtins.py:1369
 msgid "Could not determine branch to refer to."
@@ -1114,8 +1114,8 @@ msgid ""
 "Your local commits will now show as pending merges with 'bzr status', and "
 "can be committed with 'bzr commit'."
 msgstr ""
-"Sus confirmaciones locales serán ahora mostradas como fusiones pendientes "
-"con «bzr status», y pueden ser confirmadas con «bzr commit»."
+"Sus envíos locales se mostrarán ahora como fusiones pendientes con «bzr "
+"status», y pueden enviarse con «bzr commit»."
 
 #: bzrlib/builtins.py:1814
 msgid "Show information about a working tree, branch or repository."
@@ -1196,7 +1196,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1868
 msgid "Only remove files that have never been committed."
-msgstr "Eliminar solo los archivos que nunca se han aplicado."
+msgstr "Eliminar solo los archivos que nunca se han enviado."
 
 #: bzrlib/builtins.py:1870
 msgid "The file deletion mode to be used."
@@ -1426,6 +1426,12 @@ msgid ""
 "store branches which are interacted with through checkouts or remote\n"
 "branches, such as on a server."
 msgstr ""
+"Si se da la opción --no-trees entonces las ramas en el repositorio\n"
+"no tendrá árboles de trabajo por defecto. Seguirán existiendo como\n"
+"directorios en el disco, pero no van a tener copias separadas de los\n"
+"archivos en una cierta revisión. Esto puede ser útil para repositorios que\n"
+"almacenan ramas para interactuar a través de comprobaciones o ramas\n"
+"remotas, como en un servidor."
 
 #: bzrlib/builtins.py:2177
 msgid ""
@@ -1531,8 +1537,7 @@ msgid ""
 "    Shows the difference in the working tree versus the last commit::"
 msgstr ""
 ":Ejemplos:\n"
-"    Muestra las diferencias en el árbol de trabajo contra la última "
-"aplicación::"
+"    Muestra las diferencias en el árbol de trabajo contra el último envío::"
 
 #: bzrlib/builtins.py:2253
 msgid "        bzr diff"
@@ -2083,7 +2088,7 @@ msgstr "Muestra las revisiones combinadas como lo hace --levels 0."
 
 #: bzrlib/builtins.py:2693
 msgid "Do not report commits with more than one parent."
-msgstr "No informar de ejecuciones con más de un padre."
+msgstr "No informar de envíos con más de un padre."
 
 #: bzrlib/builtins.py:2695
 msgid ""
@@ -2372,7 +2377,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3288
 msgid "If no revision is specified this exports the last committed revision."
-msgstr "Si no se especifica revisión, exporta la última revisión ejecutada."
+msgstr "Si no se especifica la revisión, exporta la última revisión enviada."
 
 #: bzrlib/builtins.py:3290
 msgid ""
@@ -2555,6 +2560,11 @@ msgid ""
 "  the change you can specify the option multiple times, once for each\n"
 "  author."
 msgstr ""
+"  Si el autor del cambio no es la misma persona que la que hace el envío,\n"
+"  puede especificar el nombre del autor con la opción --author. El\n"
+"  nombre debería estar en el mismo formato que un committer-id, p.ej.\n"
+"  «Juan Pérez <jperez@ejemplo.com>». Si el cambio tiene más de un autor\n"
+"  puede especificar la opción varias veces, una por cada autor."
 
 #: bzrlib/builtins.py:3479
 msgid ":Checks:"
@@ -2598,24 +2608,24 @@ msgstr "Descripción de la revisión nueva."
 
 #: bzrlib/builtins.py:3509
 msgid "Commit even if nothing has changed."
-msgstr "Ejecutar incluso si no ha cambiado nada."
+msgstr "Enviar incluso si no ha cambiado nada."
 
 #: bzrlib/builtins.py:3513
 msgid "Take commit message from this file."
-msgstr "Tomar el mensaje de ejecución desde este archivo."
+msgstr "Tomar el mensaje de envío desde este archivo."
 
 #: bzrlib/builtins.py:3515
 msgid "Refuse to commit if there are unknown files in the working tree."
 msgstr ""
-"Rechazar la ejecución si hay archivos desconocidos en el árbol de trabajo."
+"Rechazar el envío si hay archivos desconocidos en el árbol de trabajo."
 
 #: bzrlib/builtins.py:3518
 msgid ""
 "Manually set a commit time using commit date format, e.g. '2009-10-10 "
 "08:00:00 +0100'."
 msgstr ""
-"Establecer manualmente la hora de ejecución usando un formato de  fecha de "
-"ejecución, por ejemplo «2009-10-10 08:00:00 +0100»."
+"Establecer manualmente la hora de envío usando un formato de fecha de envío, "
+"p.ej. «2009-10-10 08:00:00 +0100»."
 
 #: bzrlib/builtins.py:3521
 msgid "Mark a bug as being fixed by this revision (see \"bzr help bugs\")."
@@ -2660,11 +2670,14 @@ msgid ""
 "for more information on this feature.\n"
 "Commit refused."
 msgstr ""
+"Informe de error no válido %s. Debe estar en el formato «rastreador:id». "
+"Consulte «bzr help bugs» para más información sobre esta función.\n"
+"Envío rechazado."
 
 #: bzrlib/builtins.py:3572
 #, python-format
 msgid "Unrecognized bug %s. Commit refused."
-msgstr "Error no reconocido %s. Ejecución rechazada."
+msgstr "Informe de error no reconocido %s. Envío rechazado."
 
 #: bzrlib/builtins.py:3575
 #, python-format
@@ -2673,7 +2686,7 @@ msgid ""
 "Commit refused."
 msgstr ""
 "%s\n"
-"Ejecución rechazada."
+"Envío rechazado."
 
 #: bzrlib/builtins.py:3599
 msgid "Could not parse --commit-time: "
@@ -2692,14 +2705,16 @@ msgid ""
 "Empty commit message specified. Please specify a commit message with either -"
 "-message or --file or leave a blank message with --message \"\"."
 msgstr ""
+"El mensaje de envío está vacío. Especifique un mensaje de envío con --"
+"message o --file o déjelo en blanco con --message \"\"."
 
 #: bzrlib/builtins.py:3691
 msgid ""
 "No changes to commit. Please 'bzr add' the files you want to commit, or use -"
 "-unchanged to force an empty commit."
 msgstr ""
-"No hay cambios que ejecutar.  «bzr add» los archivos que quiera ejecutar o "
-"use --unchanged para forzar una ejecución vacía."
+"No hay cambios que enviar. Use «bzr add» con los archivos que quiera enviar "
+"o use --unchanged para forzar un envío vacío."
 
 #: bzrlib/builtins.py:3695
 msgid ""
@@ -2712,7 +2727,7 @@ msgstr ""
 #: bzrlib/builtins.py:3699
 msgid "Commit refused because there are unknown files in the working tree."
 msgstr ""
-"Ejecución rechazada porque hay archivos desconocidos en el árbol de trabajo."
+"Se rechazó el envío porque hay archivos desconocidos en el árbol de trabajo."
 
 #: bzrlib/builtins.py:3702
 msgid ""
@@ -3173,7 +3188,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4354
 msgid "Merge even if the destination tree has uncommitted changes."
-msgstr "Fusionar incluso si el árbol de destino tiene cambios sin ejecutar."
+msgstr "Fusionar incluso si el árbol de destino tiene cambios sin enviar."
 
 #: bzrlib/builtins.py:4360
 msgid ""
