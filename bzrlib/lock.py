@@ -35,6 +35,7 @@ unlock() method.
 
 from __future__ import absolute_import
 
+import contextlib
 import errno
 import os
 import sys
@@ -548,3 +549,10 @@ class _RelockDebugMixin(object):
             trace.note(gettext('{0!r} was {1} locked again'), self, type_name)
         self._prev_lock = lock_type
 
+@contextlib.contextmanager
+def write_locked(lockable):
+    lockable.lock_write()
+    try:
+        yield lockable
+    finally:
+        lockable.unlock()

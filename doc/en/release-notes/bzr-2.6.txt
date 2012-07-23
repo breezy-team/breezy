@@ -18,7 +18,8 @@ External Compatibility Breaks
 New Features
 ************
 
-.. New commands, options, etc that users may wish to try out.
+* ``bzr switch --store`` now stores uncommitted changes in the branch, and
+  restores them when switching back to the branch. (Aaron Bentley)
 
 Improvements
 ************
