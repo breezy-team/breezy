@@ -49,6 +49,7 @@ from bzrlib.registry import (
     )
 from bzrlib.trace import mutter, note, warning
 
+default_context_amount = 3
 
 class AtTemplate(string.Template):
     """Templating class that uses @ instead of $."""
@@ -72,7 +73,7 @@ class _PrematchedMatcher(difflib.SequenceMatcher):
 
 def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
                   allow_binary=False, sequence_matcher=None,
-                  path_encoding='utf8', context_lines=3):
+                  path_encoding='utf8', context_lines=default_context_amount):
     # FIXME: difflib is wrong if there is no trailing newline.
     # The syntax used by patch seems to be "\ No newline at
     # end of file" following the last diff line from that
@@ -427,7 +428,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                     path_encoding='utf8',
                     using=None,
                     format_cls=None,
-                    context=3):
+                    context=default_context_amount):
     """Show in text form the changes from one tree to another.
 
     :param to_file: The output stream.
@@ -441,7 +442,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
     :param format_cls: Formatter class (DiffTree subclass)
     """
     if context is None:
-        context = 3
+        context = default_context_amount
     if format_cls is None:
         format_cls = DiffTree
     old_tree.lock_read()
@@ -621,7 +622,7 @@ class DiffText(DiffPath):
 
     def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8', 
                  old_label='', new_label='', text_differ=internal_diff, 
-                 context_lines=3):
+                 context_lines=default_context_amount):
         DiffPath.__init__(self, old_tree, new_tree, to_file, path_encoding)
         self.text_differ = text_differ
         self.old_label = old_label
