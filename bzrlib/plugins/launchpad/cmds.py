@@ -28,7 +28,6 @@ from bzrlib.commands import (
     )
 from bzrlib.errors import (
     BzrCommandError,
-    InvalidRevisionSpec,
     InvalidURL,
     NoPublicBranch,
     NotBranchError,
@@ -372,6 +371,7 @@ class cmd_lp_find_proposal(Command):
 
     def _find_proposals(self, revision_id, pb):
         from bzrlib.plugins.launchpad import (lp_api, lp_registration)
+        # "devel" because branches.getMergeProposals is not part of 1.0 API.
         launchpad = lp_api.login(lp_registration.LaunchpadService(),
                                  version='devel')
         pb.update(gettext('Finding proposals'))
