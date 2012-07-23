@@ -46,8 +46,8 @@ API Changes
 Internals
 *********
 
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
+* The launchpad plugin now requires API 1.6.0 or later.  This version shipped
+  with Ubuntu 9.10.  (Aaron Bentley)
 
 Testing
 *******
