@@ -31,8 +31,10 @@ Launchpad's web service.  (Aaron Bentley)
 Bug Fixes
 *********
 
-.. Fixes for situations where bzr would previously crash or give incorrect
-   or undesirable results.
+* Fixed a bug where the entire contents of ``/etc/mailname`` is read in.
+  We only want to read in the first line so that comments could be added
+  and would be ignored.
+  (Haw Loeung, #932515)
 
 Documentation
 *************
