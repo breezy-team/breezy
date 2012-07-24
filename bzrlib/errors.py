@@ -2893,6 +2893,21 @@ class UncommittedChanges(BzrError):
         BzrError.__init__(self, tree=tree, display_url=display_url, more=more)
 
 
+class StoringUncommittedNotSupported(BzrError):
+
+    _fmt = ('Branch "%(display_url)s" does not support storing uncommitted'
+            ' changes.')
+
+    def __init__(self, branch):
+        import bzrlib.urlutils as urlutils
+        user_url = getattr(branch, "user_url", None)
+        if user_url is None:
+            display_url = str(branch)
+        else:
+            display_url = urlutils.unescape_for_display(user_url, 'ascii')
+        BzrError.__init__(self, branch=branch, display_url=display_url)
+
+
 class ShelvedChanges(UncommittedChanges):
 
     _fmt = ('Working tree "%(display_url)s" has shelved changes'
@@ -3340,3 +3355,9 @@ class FeatureAlreadyRegistered(BzrError):
 
     def __init__(self, feature):
         self.feature = feature
+
+
+class ChangesAlreadyStored(BzrCommandError):
+
+    _fmt = ('Cannot store uncommitted changes because this branch already'
+            ' stores uncommitted changes.')

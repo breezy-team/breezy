@@ -39,6 +39,7 @@ from bzrlib import (
     repository,
     revision as _mod_revision,
     rio,
+    shelf,
     tag as _mod_tag,
     transport,
     ui,
@@ -250,6 +251,23 @@ class Branch(controldir.ControlComponent):
         :return: An object supporting get_option and set_option.
         """
         raise NotImplementedError(self._get_config)
+
+    def store_uncommitted(self, creator):
+        """Store uncommitted changes from a ShelfCreator.
+
+        :param creator: The ShelfCreator containing uncommitted changes, or
+            None to delete any stored changes.
+        :raises: ChangesAlreadyStored if the branch already has changes.
+        """
+        raise NotImplementedError(self.store_uncommitted)
+
+    def get_unshelver(self, tree):
+        """Return a shelf.Unshelver for this branch and tree.
+
+        :param tree: The tree to use to construct the Unshelver.
+        :return: an Unshelver or None if no changes are stored.
+        """
+        raise NotImplementedError(self.get_unshelver)
 
     def _get_fallback_repository(self, url, possible_transports):
         """Get the repository we fallback to at url."""
@@ -2385,6 +2403,45 @@ class BzrBranch(Branch, _RelockDebugMixin):
         if self.conf_store is None:
             self.conf_store =  _mod_config.BranchStore(self)
         return self.conf_store
+
+    def _uncommitted_branch(self):
+        """Return the branch that may contain uncommitted changes."""
+        master = self.get_master_branch()
+        if master is not None:
+            return master
+        else:
+            return self
+
+    def store_uncommitted(self, creator):
+        """Store uncommitted changes from a ShelfCreator.
+
+        :param creator: The ShelfCreator containing uncommitted changes, or
+            None to delete any stored changes.
+        :raises: ChangesAlreadyStored if the branch already has changes.
+        """
+        branch = self._uncommitted_branch()
+        if creator is None:
+            branch._transport.delete('stored-transform')
+            return
+        if branch._transport.has('stored-transform'):
+            raise errors.ChangesAlreadyStored
+        transform = StringIO()
+        creator.write_shelf(transform)
+        transform.seek(0)
+        branch._transport.put_file('stored-transform', transform)
+
+    def get_unshelver(self, tree):
+        """Return a shelf.Unshelver for this branch and tree.
+
+        :param tree: The tree to use to construct the Unshelver.
+        :return: an Unshelver or None if no changes are stored.
+        """
+        branch = self._uncommitted_branch()
+        try:
+            transform = branch._transport.get('stored-transform')
+        except errors.NoSuchFile:
+            return None
+        return shelf.Unshelver.from_tree_and_shelf(tree, transform)
 
     def is_locked(self):
         return self.control_files.is_locked()

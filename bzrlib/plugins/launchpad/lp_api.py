@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -49,12 +49,12 @@ from launchpadlib.launchpad import (
     STAGING_SERVICE_ROOT,
     Launchpad,
     )
-
+from launchpadlib import uris
 
 # Declare the minimum version of launchpadlib that we need in order to work.
-# 1.5.1 is the version of launchpadlib packaged in Ubuntu 9.10, the most
-# recent Ubuntu release at the time of writing.
-MINIMUM_LAUNCHPADLIB_VERSION = (1, 5, 1)
+# 1.6.0 is the version of launchpadlib packaged in Ubuntu 10.04, the most
+# recent Ubuntu LTS release supported on the desktop at the time of writing.
+MINIMUM_LAUNCHPADLIB_VERSION = (1, 6, 0)
 
 
 def get_cache_directory():
@@ -76,28 +76,14 @@ def check_launchpadlib_compatibility():
             installed_version, installed_version)
 
 
-# The older versions of launchpadlib only provided service root constants for
-# edge and staging, whilst newer versions drop edge. Therefore service root
-# URIs for which we do not always have constants are derived from the staging
-# one, which does always exist.
-#
-# It is necessary to derive, rather than use hardcoded URIs because
-# launchpadlib <= 1.5.4 requires service root URIs that end in a path of
-# /beta/, whilst launchpadlib >= 1.5.5 requires service root URIs with no path
-# info.
-#
-# Once we have a hard dependency on launchpadlib >= 1.5.4 we can replace all of
-# bzr's local knowledge of individual Launchpad instances with use of the
-# launchpadlib.uris module.
-LAUNCHPAD_API_URLS = {
-    'production': STAGING_SERVICE_ROOT.replace('api.staging.launchpad.net',
-        'api.launchpad.net'),
-    'qastaging': STAGING_SERVICE_ROOT.replace('api.staging.launchpad.net',
-        'api.qastaging.launchpad.net'),
-    'staging': STAGING_SERVICE_ROOT,
-    'dev': STAGING_SERVICE_ROOT.replace('api.staging.launchpad.net',
-        'api.launchpad.dev'),
-    }
+def lookup_service_root(service_root):
+    try:
+        return uris.lookup_service_root(service_root)
+    except ValueError:
+        if service_root != 'qastaging':
+            raise
+        staging_root = uris.lookup_service_root('staging')
+        return staging_root.replace('staging', 'qastaging')
 
 
 def _get_api_url(service):
@@ -114,8 +100,8 @@ def _get_api_url(service):
     else:
         lp_instance = service._lp_instance
     try:
-        return LAUNCHPAD_API_URLS[lp_instance]
-    except KeyError:
+        return lookup_service_root(lp_instance)
+    except ValueError:
         raise InvalidLaunchpadInstance(lp_instance)
 
 
@@ -126,7 +112,8 @@ class NoLaunchpadBranch(errors.BzrError):
         errors.BzrError.__init__(self, branch=branch, url=branch.base)
 
 
-def login(service, timeout=None, proxy_info=None):
+def login(service, timeout=None, proxy_info=None,
+          version=Launchpad.DEFAULT_VERSION):
     """Log in to the Launchpad API.
 
     :return: The root `Launchpad` object from launchpadlib.
@@ -134,9 +121,9 @@ def login(service, timeout=None, proxy_info=None):
     cache_directory = get_cache_directory()
     launchpad = Launchpad.login_with(
         'bzr', _get_api_url(service), cache_directory, timeout=timeout,
-        proxy_info=proxy_info)
-    # XXX: Work-around a minor security bug in launchpadlib 1.5.1, which would
-    # create this directory with default umask.
+        proxy_info=proxy_info, version=version)
+    # XXX: Work-around a minor security bug in launchpadlib < 1.6.3, which
+    # would create this directory with default umask.
     osutils.chmod_if_possible(cache_directory, 0700)
     return launchpad
 
@@ -210,7 +197,7 @@ class LaunchpadBranch(object):
         if str(launchpad._root_uri) == STAGING_SERVICE_ROOT:
             return url.replace('bazaar.launchpad.net',
                                'bazaar.staging.launchpad.net')
-        elif str(launchpad._root_uri) == LAUNCHPAD_API_URLS['qastaging']:
+        elif str(launchpad._root_uri) == lookup_service_root('qastaging'):
             return url.replace('bazaar.launchpad.net',
                                'bazaar.qastaging.launchpad.net')
         return url

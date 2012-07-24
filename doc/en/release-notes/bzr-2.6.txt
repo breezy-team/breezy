@@ -18,19 +18,18 @@ External Compatibility Breaks
 New Features
 ************
 
-.. New commands, options, etc that users may wish to try out.
+* ``bzr switch --store`` now stores uncommitted changes in the branch, and
+  restores them when switching back to the branch. (Aaron Bentley)
 
 Improvements
 ************
 
-.. Improvements to existing commands, especially improved performance
-   or memory usage, or better results.
+``bzr lp-find-proposal`` now only cares about the revision-id that is
+specified, not the branch you use.  This was enabled by a new API call in
+Launchpad's web service.  (Aaron Bentley)
 
 Bug Fixes
 *********
-
-.. Fixes for situations where bzr would previously crash or give incorrect
-   or undesirable results.
 
 * Fixed a bug where the entire contents of ``/etc/mailname`` is read in.
   We only want to read in the first line so that comments could be added
@@ -51,8 +50,8 @@ API Changes
 Internals
 *********
 
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
+* The launchpad plugin now requires API 1.6.0 or later.  This version shipped
+  with Ubuntu 9.10.  (Aaron Bentley)
 
 Testing
 *******
