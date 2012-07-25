@@ -2,9 +2,8 @@ Description: Fix some spurious test failures
 Author: Jelmer Vernooij <jelmer@debian.org>
 Status: Not forwarded upstream (workaround)
 
-=== modified file 'bzrlib/tests/test_test_server.py'
---- old/bzrlib/tests/test_test_server.py	2011-11-24 15:48:29 +0000
-+++ new/bzrlib/tests/test_test_server.py	2012-01-25 13:54:00 +0000
+--- a/bzrlib/tests/test_test_server.py
++++ b/bzrlib/tests/test_test_server.py
 @@ -74,7 +74,12 @@
          return self.sock.sendall(s)
  
@@ -19,24 +18,7 @@ Status: Not forwarded upstream (workaround)
  
  
  class TCPConnectionHandler(SocketServer.BaseRequestHandler):
-
-=== modified file 'bzrlib/tests/blackbox/test_serve.py'
---- old/bzrlib/tests/blackbox/test_serve.py	2012-04-08 21:03:31 +0000
-+++ new/bzrlib/tests/blackbox/test_serve.py	2012-04-16 14:16:48 +0000
-@@ -330,8 +330,6 @@
-         # request to finish
-         self.assertEqual('Requested to stop gracefully\n',
-                          process.stderr.readline())
--        self.assertEqual('Waiting for 1 client(s) to finish\n',
--                         process.stderr.readline())
-         body = response_handler.read_body_bytes()
-         if body != big_contents:
-             self.fail('Failed to properly read the contents of "bigfile"')
-
-=== modified file 'bzrlib/tests/test_test_server.py'
---- old/bzrlib/tests/test_test_server.py	2011-11-24 15:48:29 +0000
-+++ new/bzrlib/tests/test_test_server.py	2012-04-16 14:18:37 +0000
-@@ -167,37 +167,6 @@
+@@ -167,37 +172,6 @@
          self.assertRaises(CantStart,
                            self.get_server, server_class=CantStartServer)
  
@@ -74,18 +56,14 @@ Status: Not forwarded upstream (workaround)
      def test_server_crash_while_responding(self):
          # We want to ensure the exception has been caught
          caught = threading.Event()
-
-+=== modified file 'bzrlib/tests/blackbox/test_serve.py'
-+--- old/bzrlib/tests/blackbox/test_serve.py	2012-04-08 21:03:31 +0000
-++++ new/bzrlib/tests/blackbox/test_serve.py	2012-04-16 14:16:48 +0000
-+@@ -330,8 +330,6 @@
-+         # request to finish
-+         self.assertEqual('Requested to stop gracefully\n',
-+                          process.stderr.readline())
-+-        self.assertEqual('Waiting for 1 client(s) to finish\n',
-+-                         process.stderr.readline())
-+         body = response_handler.read_body_bytes()
-+         if body != big_contents:
-+             self.fail('Failed to properly read the contents of "bigfile"')
-+
-
+--- a/bzrlib/tests/blackbox/test_serve.py
++++ b/bzrlib/tests/blackbox/test_serve.py
+@@ -330,8 +330,6 @@
+         # request to finish
+         self.assertEqual('Requested to stop gracefully\n',
+                          process.stderr.readline())
+-        self.assertEqual('Waiting for 1 client(s) to finish\n',
+-                         process.stderr.readline())
+         body = response_handler.read_body_bytes()
+         if body != big_contents:
+             self.fail('Failed to properly read the contents of "bigfile"')
