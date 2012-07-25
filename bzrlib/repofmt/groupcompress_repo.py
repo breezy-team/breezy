@@ -758,7 +758,10 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             expected_chk_roots)
         missing_chk_roots = expected_chk_roots.difference(present_chk_roots)
         if missing_chk_roots:
-            problems.append("missing referenced chk root keys: %s"
+            problems.append(
+                "missing referenced chk root keys: %s."
+                "Run 'bzr reconcile --canonicalize-chks' on the affected "
+                "repository."
                 % (sorted(missing_chk_roots),))
             # Don't bother checking any further.
             return problems
