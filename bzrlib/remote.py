@@ -2160,13 +2160,6 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         self._ensure_real()
         self._real_repository.create_bundle(target, base, fileobj, format)
 
-    @needs_read_lock
-    @symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((2, 4, 0)))
-    def get_ancestry(self, revision_id, topo_sorted=True):
-        self._ensure_real()
-        return self._real_repository.get_ancestry(revision_id, topo_sorted)
-
     def fileids_altered_by_revision_ids(self, revision_ids):
         self._ensure_real()
         return self._real_repository.fileids_altered_by_revision_ids(revision_ids)
@@ -3399,6 +3392,14 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         if self.conf_store is None:
             self.conf_store =  RemoteBranchStore(self)
         return self.conf_store
+
+    def store_uncommitted(self, creator):
+        self._ensure_real()
+        return self._real_branch.store_uncommitted(creator)
+
+    def get_unshelver(self, tree):
+        self._ensure_real()
+        return self._real_branch.get_unshelver(tree)
 
     def _get_real_transport(self):
         # if we try vfs access, return the real branch's vfs transport

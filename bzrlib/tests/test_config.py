@@ -4568,8 +4568,8 @@ class TestAuthenticationStorage(tests.TestCaseInTempDir):
                                            port=99, path='/foo',
                                            realm='realm')
         CREDENTIALS = {'name': 'name', 'user': 'user', 'password': 'password',
-                       'verify_certificates': False, 'scheme': 'scheme', 
-                       'host': 'host', 'port': 99, 'path': '/foo', 
+                       'verify_certificates': False, 'scheme': 'scheme',
+                       'host': 'host', 'port': 99, 'path': '/foo',
                        'realm': 'realm'}
         self.assertEqual(CREDENTIALS, credentials)
         credentials_from_disk = config.AuthenticationConfig().get_credentials(
@@ -4583,8 +4583,8 @@ class TestAuthenticationStorage(tests.TestCaseInTempDir):
         self.assertIs(None, conf._get_config().get('name'))
         credentials = conf.get_credentials(host='host', scheme='scheme')
         CREDENTIALS = {'name': 'name2', 'user': 'user2', 'password':
-                       'password', 'verify_certificates': True, 
-                       'scheme': 'scheme', 'host': 'host', 'port': None, 
+                       'password', 'verify_certificates': True,
+                       'scheme': 'scheme', 'host': 'host', 'port': None,
                        'path': None, 'realm': None}
         self.assertEqual(CREDENTIALS, credentials)
 
@@ -4874,6 +4874,37 @@ class TestAutoUserId(tests.TestCase):
             self.assertIsNot(None, address)
         else:
             self.assertEquals((None, None), (realname, address))
+
+
+class TestDefaultMailDomain(tests.TestCaseInTempDir):
+    """Test retrieving default domain from mailname file"""
+
+    def test_default_mail_domain_simple(self):
+        f = file('simple', 'w')
+        try:
+            f.write("domainname.com\n")
+        finally:
+            f.close()
+        r = config._get_default_mail_domain('simple')
+        self.assertEquals('domainname.com', r)
+
+    def test_default_mail_domain_no_eol(self):
+        f = file('no_eol', 'w')
+        try:
+            f.write("domainname.com")
+        finally:
+            f.close()
+        r = config._get_default_mail_domain('no_eol')
+        self.assertEquals('domainname.com', r)
+
+    def test_default_mail_domain_multiple_lines(self):
+        f = file('multiple_lines', 'w')
+        try:
+            f.write("domainname.com\nsome other text\n")
+        finally:
+            f.close()
+        r = config._get_default_mail_domain('multiple_lines')
+        self.assertEquals('domainname.com', r)
 
 
 class EmailOptionTests(tests.TestCase):

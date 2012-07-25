@@ -239,10 +239,10 @@ Update the source code
 #. Update the ``./doc/en/release-notes/`` section for this release.
 
    Check that all news entries related to this release have been added in
-   the right section. For example, if you're releasing 2.6b1, the following
-   command should display a a single chuk diff for the 2.6b1 release::
+   the right section. For example, if you're releasing 2.6b2, the following
+   command should display a a single chuk diff for the 2.6b2 release::
 
-     bzr diff -rbzr-2.6b1.. doc/en/release-notes/bzr-2.6.txt
+     bzr diff -rbzr-2.6b2.. doc/en/release-notes/bzr-2.6.txt
 
    Fill out the date and a description of the release under the existing
    header (the diff above will help you summarizing). If there isn't one,
@@ -558,7 +558,7 @@ available to the world.
      cd /srv/doc.bazaar.canonical.com/
      bzr branch http://bazaar.launchpad.net/~bzr-pqm/bzr/2.5 bzr.2.5
 
-   And the ``update-bzr-docs`` needs to refer to it.
+   And the ``bzr/bin/update-bzr-docs`` script needs to refer to it.
 
    The ``lp:bzr-alldocs`` branch also needs to be updated when a new series
    is introduced, see the ``README`` file there for more instructions
@@ -725,6 +725,8 @@ evolves from one release to the other):
    button and select the right Ubuntu release. As of September 2010, this
    means:
 
+  * ``quantal`` for the 2.6 series,
+  * ``precise`` for the 2.5 series,
   * ``oneiric`` for the 2.4 series,
   * ``natty`` for the 2.3 series,
   * ``maverick`` for the 2.2 series,

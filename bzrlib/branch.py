@@ -39,6 +39,7 @@ from bzrlib import (
     repository,
     revision as _mod_revision,
     rio,
+    shelf,
     tag as _mod_tag,
     transport,
     ui,
@@ -250,6 +251,23 @@ class Branch(controldir.ControlComponent):
         :return: An object supporting get_option and set_option.
         """
         raise NotImplementedError(self._get_config)
+
+    def store_uncommitted(self, creator):
+        """Store uncommitted changes from a ShelfCreator.
+
+        :param creator: The ShelfCreator containing uncommitted changes, or
+            None to delete any stored changes.
+        :raises: ChangesAlreadyStored if the branch already has changes.
+        """
+        raise NotImplementedError(self.store_uncommitted)
+
+    def get_unshelver(self, tree):
+        """Return a shelf.Unshelver for this branch and tree.
+
+        :param tree: The tree to use to construct the Unshelver.
+        :return: an Unshelver or None if no changes are stored.
+        """
+        raise NotImplementedError(self.get_unshelver)
 
     def _get_fallback_repository(self, url, possible_transports):
         """Get the repository we fallback to at url."""
@@ -2039,45 +2057,6 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
             recommend_upgrade=recommend_upgrade, basedir=basedir)
 
 
-class BzrBranchFormat5(BranchFormatMetadir):
-    """Bzr branch format 5.
-
-    This format has:
-     - a revision-history file.
-     - a format string
-     - a lock dir guarding the branch itself
-     - all of this stored in a branch/ subdirectory
-     - works with shared repositories.
-
-    This format is new in bzr 0.8.
-    """
-
-    def _branch_class(self):
-        return BzrBranch5
-
-    @classmethod
-    def get_format_string(cls):
-        """See BranchFormat.get_format_string()."""
-        return "Bazaar-NG branch format 5\n"
-
-    def get_format_description(self):
-        """See BranchFormat.get_format_description()."""
-        return "Branch format 5"
-
-    def initialize(self, a_bzrdir, name=None, repository=None,
-                   append_revisions_only=None):
-        """Create a branch of this format in a_bzrdir."""
-        if append_revisions_only:
-            raise errors.UpgradeRequired(a_bzrdir.user_url)
-        utf8_files = [('revision-history', ''),
-                      ('branch-name', ''),
-                      ]
-        return self._initialize_helper(a_bzrdir, utf8_files, name, repository)
-
-    def supports_tags(self):
-        return False
-
-
 class BzrBranchFormat6(BranchFormatMetadir):
     """Branch format with last-revision and tags.
 
@@ -2332,11 +2311,11 @@ format_registry = BranchFormatRegistry(network_format_registry)
 
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
-__format5 = BzrBranchFormat5()
 __format6 = BzrBranchFormat6()
 __format7 = BzrBranchFormat7()
 __format8 = BzrBranchFormat8()
-format_registry.register(__format5)
+format_registry.register_lazy(
+    "Bazaar-NG branch format 5\n", "bzrlib.branchfmt.fullhistory", "BzrBranchFormat5")
 format_registry.register(BranchReferenceFormat())
 format_registry.register(__format6)
 format_registry.register(__format7)
@@ -2425,6 +2404,45 @@ class BzrBranch(Branch, _RelockDebugMixin):
             self.conf_store =  _mod_config.BranchStore(self)
         return self.conf_store
 
+    def _uncommitted_branch(self):
+        """Return the branch that may contain uncommitted changes."""
+        master = self.get_master_branch()
+        if master is not None:
+            return master
+        else:
+            return self
+
+    def store_uncommitted(self, creator):
+        """Store uncommitted changes from a ShelfCreator.
+
+        :param creator: The ShelfCreator containing uncommitted changes, or
+            None to delete any stored changes.
+        :raises: ChangesAlreadyStored if the branch already has changes.
+        """
+        branch = self._uncommitted_branch()
+        if creator is None:
+            branch._transport.delete('stored-transform')
+            return
+        if branch._transport.has('stored-transform'):
+            raise errors.ChangesAlreadyStored
+        transform = StringIO()
+        creator.write_shelf(transform)
+        transform.seek(0)
+        branch._transport.put_file('stored-transform', transform)
+
+    def get_unshelver(self, tree):
+        """Return a shelf.Unshelver for this branch and tree.
+
+        :param tree: The tree to use to construct the Unshelver.
+        :return: an Unshelver or None if no changes are stored.
+        """
+        branch = self._uncommitted_branch()
+        try:
+            transform = branch._transport.get('stored-transform')
+        except errors.NoSuchFile:
+            return None
+        return shelf.Unshelver.from_tree_and_shelf(tree, transform)
+
     def is_locked(self):
         return self.control_files.is_locked()
 
@@ -2437,9 +2455,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """
         if not self.is_locked():
             self._note_lock('w')
-        # All-in-one needs to always unlock/lock.
-        repo_control = getattr(self.repository, 'control_files', None)
-        if self.control_files == repo_control or not self.is_locked():
             self.repository._warn_if_deprecated(self)
             self.repository.lock_write()
             took_lock = True
@@ -2460,9 +2475,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """
         if not self.is_locked():
             self._note_lock('r')
-        # All-in-one needs to always unlock/lock.
-        repo_control = getattr(self.repository, 'control_files', None)
-        if self.control_files == repo_control or not self.is_locked():
             self.repository._warn_if_deprecated(self)
             self.repository.lock_read()
             took_lock = True
@@ -2483,12 +2495,8 @@ class BzrBranch(Branch, _RelockDebugMixin):
         try:
             self.control_files.unlock()
         finally:
-            # All-in-one needs to always unlock/lock.
-            repo_control = getattr(self.repository, 'control_files', None)
-            if (self.control_files == repo_control or
-                not self.control_files.is_locked()):
-                self.repository.unlock()
             if not self.control_files.is_locked():
+                self.repository.unlock()
                 # we just released the lock
                 self._clear_cached_state()
 
@@ -2670,106 +2678,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """
         self._format._update_feature_flags(updated_flags)
         self.control_transport.put_bytes('format', self._format.as_string())
-
-
-class FullHistoryBzrBranch(BzrBranch):
-    """Bzr branch which contains the full revision history."""
-
-    @needs_write_lock
-    def set_last_revision_info(self, revno, revision_id):
-        if not revision_id or not isinstance(revision_id, basestring):
-            raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
-        revision_id = _mod_revision.ensure_null(revision_id)
-        # this old format stores the full history, but this api doesn't
-        # provide it, so we must generate, and might as well check it's
-        # correct
-        history = self._lefthand_history(revision_id)
-        if len(history) != revno:
-            raise AssertionError('%d != %d' % (len(history), revno))
-        self._set_revision_history(history)
-
-    def _read_last_revision_info(self):
-        rh = self._revision_history()
-        revno = len(rh)
-        if revno:
-            return (revno, rh[-1])
-        else:
-            return (0, _mod_revision.NULL_REVISION)
-
-    def _set_revision_history(self, rev_history):
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(3, "set_revision_history scales with history.")
-        check_not_reserved_id = _mod_revision.check_not_reserved_id
-        for rev_id in rev_history:
-            check_not_reserved_id(rev_id)
-        if Branch.hooks['post_change_branch_tip']:
-            # Don't calculate the last_revision_info() if there are no hooks
-            # that will use it.
-            old_revno, old_revid = self.last_revision_info()
-        if len(rev_history) == 0:
-            revid = _mod_revision.NULL_REVISION
-        else:
-            revid = rev_history[-1]
-        self._run_pre_change_branch_tip_hooks(len(rev_history), revid)
-        self._write_revision_history(rev_history)
-        self._clear_cached_state()
-        self._cache_revision_history(rev_history)
-        if Branch.hooks['post_change_branch_tip']:
-            self._run_post_change_branch_tip_hooks(old_revno, old_revid)
-
-    def _write_revision_history(self, history):
-        """Factored out of set_revision_history.
-
-        This performs the actual writing to disk.
-        It is intended to be called by set_revision_history."""
-        self._transport.put_bytes(
-            'revision-history', '\n'.join(history),
-            mode=self.bzrdir._get_file_mode())
-
-    def _gen_revision_history(self):
-        history = self._transport.get_bytes('revision-history').split('\n')
-        if history[-1:] == ['']:
-            # There shouldn't be a trailing newline, but just in case.
-            history.pop()
-        return history
-
-    def _synchronize_history(self, destination, revision_id):
-        if not isinstance(destination, FullHistoryBzrBranch):
-            super(BzrBranch, self)._synchronize_history(
-                destination, revision_id)
-            return
-        if revision_id == _mod_revision.NULL_REVISION:
-            new_history = []
-        else:
-            new_history = self._revision_history()
-        if revision_id is not None and new_history != []:
-            try:
-                new_history = new_history[:new_history.index(revision_id) + 1]
-            except ValueError:
-                rev = self.repository.get_revision(revision_id)
-                new_history = rev.get_history(self.repository)[1:]
-        destination._set_revision_history(new_history)
-
-    @needs_write_lock
-    def generate_revision_history(self, revision_id, last_rev=None,
-        other_branch=None):
-        """Create a new revision history that will finish with revision_id.
-
-        :param revision_id: the new tip to use.
-        :param last_rev: The previous last_revision. If not None, then this
-            must be a ancestory of revision_id, or DivergedBranches is raised.
-        :param other_branch: The other branch that DivergedBranches should
-            raise with respect to.
-        """
-        self._set_revision_history(self._lefthand_history(revision_id,
-            last_rev, other_branch))
-
-
-class BzrBranch5(FullHistoryBzrBranch):
-    """A format 5 branch. This supports new features over plain branches.
-
-    It has support for a master_branch which is the data for bound branches.
-    """
 
 
 class BzrBranch8(BzrBranch):

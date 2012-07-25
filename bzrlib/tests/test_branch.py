@@ -30,10 +30,13 @@ from bzrlib import (
     config,
     controldir,
     errors,
-    symbol_versioning,
     tests,
     trace,
     urlutils,
+    )
+from bzrlib.branchfmt.fullhistory import (
+    BzrBranch5,
+    BzrBranchFormat5,
     )
 
 
@@ -75,10 +78,10 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
         url = self.get_url()
         bdir = bzrdir.BzrDirMetaFormat1().initialize(url)
         bdir.create_repository()
-        branch = _mod_branch.BzrBranchFormat5().initialize(bdir)
+        branch = BzrBranchFormat5().initialize(bdir)
         t = self.get_transport()
         self.log("branch instance is %r" % branch)
-        self.assert_(isinstance(branch, _mod_branch.BzrBranch5))
+        self.assert_(isinstance(branch, BzrBranch5))
         self.assertIsDirectory('.', t)
         self.assertIsDirectory('.bzr/branch', t)
         self.assertIsDirectory('.bzr/branch/lock', t)
@@ -185,7 +188,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
             format.initialize(dir)
             found_format = _mod_branch.BranchFormatMetadir.find_format(dir)
             self.assertIsInstance(found_format, format.__class__)
-        check_format(_mod_branch.BzrBranchFormat5(), "bar")
+        check_format(BzrBranchFormat5(), "bar")
 
     def test_find_format_factory(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())

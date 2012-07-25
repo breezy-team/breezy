@@ -213,7 +213,7 @@ class GPGStrategy(object):
             # use the user email address
             key = config.extract_email_address(self._config_stack.get('email'))
         return [self._config_stack.get('gpg_signing_command'), '--clearsign',
-                '-u', key, '--no-tty']
+                '-u', key]
 
     def sign(self, content):
         if isinstance(content, unicode):
