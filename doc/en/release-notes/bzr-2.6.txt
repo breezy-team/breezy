@@ -36,6 +36,9 @@ Bug Fixes
   and would be ignored.
   (Haw Loeung, #932515)
 
+* When a missing referenced chk root error is encountered, bzr now suggests
+  running ``bzr reconcile --canonicalize-chks``. (Jelmer Vernooij, #1021537)
+
 Documentation
 *************
 
