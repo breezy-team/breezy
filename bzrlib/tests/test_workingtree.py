@@ -19,12 +19,12 @@ from bzrlib import (
     bzrdir,
     conflicts,
     errors,
-    symbol_versioning,
     transport,
     workingtree,
     workingtree_3,
     workingtree_4,
     )
+from bzrlib.lock import write_locked
 from bzrlib.lockdir import LockDir
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
@@ -495,3 +495,34 @@ class TestFindTrees(TestCaseWithTransport):
         self.make_branch('qux')
         trees = workingtree.WorkingTree.find_trees('.')
         self.assertEqual(2, len(list(trees)))
+
+
+class TestStoredUncommitted(TestCaseWithTransport):
+
+    def store_uncommitted(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('get root in there')
+        self.build_tree_contents([('tree/file', 'content')])
+        tree.add('file', 'file-id')
+        tree.store_uncommitted()
+        return tree
+
+    def test_store_uncommitted(self):
+        self.store_uncommitted()
+        self.assertPathDoesNotExist('tree/file')
+
+    def test_store_uncommitted_no_change(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('get root in there')
+        tree.store_uncommitted()
+        self.assertIs(None, tree.branch.get_unshelver(tree))
+
+    def test_restore_uncommitted(self):
+        with write_locked(self.store_uncommitted()) as tree:
+            tree.restore_uncommitted()
+            self.assertPathExists('tree/file')
+            self.assertIs(None, tree.branch.get_unshelver(tree))
+
+    def test_restore_uncommitted_none(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.restore_uncommitted()

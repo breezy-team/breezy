@@ -18,7 +18,12 @@ from __future__ import absolute_import
 
 # Original author: David Allouche
 
-from bzrlib import errors, merge, revision
+from bzrlib import (
+    errors,
+    lock,
+    merge,
+    revision
+    )
 from bzrlib.branch import Branch
 from bzrlib.i18n import gettext
 from bzrlib.trace import note
@@ -32,26 +37,32 @@ def _run_post_switch_hooks(control_dir, to_branch, force, revision_id):
     for hook in hooks:
         hook(params)
 
-def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None):
+def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None,
+           store_uncommitted=False):
     """Switch the branch associated with a checkout.
 
     :param control_dir: ControlDir of the checkout to change
     :param to_branch: branch that the checkout is to reference
     :param force: skip the check for local commits in a heavy checkout
     :param revision_id: revision ID to switch to.
+    :param store_uncommitted: If True, store uncommitted changes in the
+        branch.
     """
     _check_pending_merges(control_dir, force)
     try:
         source_repository = control_dir.open_branch().repository
     except errors.NotBranchError:
         source_repository = to_branch.repository
+    if store_uncommitted:
+        with lock.write_locked(control_dir.open_workingtree()) as tree:
+            tree.store_uncommitted()
     to_branch.lock_read()
     try:
         _set_branch_location(control_dir, to_branch, force)
     finally:
         to_branch.unlock()
     tree = control_dir.open_workingtree()
-    _update(tree, source_repository, quiet, revision_id)
+    _update(tree, source_repository, quiet, revision_id, store_uncommitted)
     _run_post_switch_hooks(control_dir, to_branch, force, revision_id)
 
 def _check_pending_merges(control, force=False):
@@ -151,13 +162,18 @@ def _any_local_commits(this_branch, possible_transports):
     return False
 
 
-def _update(tree, source_repository, quiet=False, revision_id=None):
+def _update(tree, source_repository, quiet=False, revision_id=None,
+            restore_uncommitted=False):
     """Update a working tree to the latest revision of its branch.
 
     :param tree: the working tree
     :param source_repository: repository holding the revisions
+    :param restore_uncommitted: restore any uncommitted changes in the branch.
     """
-    tree.lock_tree_write()
+    if restore_uncommitted:
+        tree.lock_write()
+    else:
+        tree.lock_tree_write()
     try:
         to_branch = tree.branch
         if revision_id is None:
@@ -165,11 +181,14 @@ def _update(tree, source_repository, quiet=False, revision_id=None):
         if tree.last_revision() == revision_id:
             if not quiet:
                 note(gettext("Tree is up to date at revision %d."), to_branch.revno())
-            return
-        base_tree = source_repository.revision_tree(tree.last_revision())
-        merge.Merge3Merger(tree, tree, base_tree, to_branch.repository.revision_tree(revision_id))
-        tree.set_last_revision(to_branch.last_revision())
-        if not quiet:
-            note(gettext('Updated to revision %d.') % to_branch.revno())
+        else:
+            base_tree = source_repository.revision_tree(tree.last_revision())
+            merge.Merge3Merger(tree, tree, base_tree,
+                               to_branch.repository.revision_tree(revision_id))
+            tree.set_last_revision(to_branch.last_revision())
+            if not quiet:
+                note(gettext('Updated to revision %d.') % to_branch.revno())
+        if restore_uncommitted:
+            tree.restore_uncommitted()
     finally:
         tree.unlock()
