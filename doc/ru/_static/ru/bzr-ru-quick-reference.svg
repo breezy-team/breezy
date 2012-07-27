@@ -621,7 +621,7 @@
            id="tspan3634"
            y="266.08142"
            x="331.81714"
-           sodipodi:role="line">bzr remove --force foo.py</tspan></text>
+           sodipodi:role="line">bzr remove --no-backup foo.py</tspan></text>
       <text
          sodipodi:linespacing="100%"
          id="text3636"
