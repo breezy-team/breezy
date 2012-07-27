@@ -216,19 +216,6 @@ class TestRemove(TestCaseWithTransport):
         ''')
         self.assertFilesDeleted(files)
 
-    def test_remove_force_unversioned_files(self):
-        self.build_tree(files)
-        tree = self.make_branch_and_tree('.')
-        script.ScriptRunner().run_script(self, '''
-        $ bzr remove --force a b/ b/c d/
-        2>(The --force option is deprecated, rather use --no-backup in future.)
-        2>deleted d
-        2>removed b/c (but kept a copy: b/c.~1~)
-        2>deleted b
-        2>deleted a
-        ''')
-        self.assertFilesDeleted(files)
-
     def test_remove_deleted_files(self):
         tree = self._make_tree_and_add(files)
         self.run_bzr("commit -m 'added files'")
