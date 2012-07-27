@@ -670,7 +670,7 @@ class TextConflict(Conflict):
         if tree.kind(self.file_id) != 'file':
             raise NotImplementedError("Conflict is not a file")
         conflict_markers_in_line = self._conflict_re.search
-        with open(tree.id2abspath(self.file_id), 'rb') as f:
+        with tree.get_file(self.file_id) as f:
             for line in f:
                 if conflict_markers_in_line(line):
                     raise NotImplementedError("Conflict markers present")
