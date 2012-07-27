@@ -43,7 +43,6 @@ import errno
 import itertools
 import operator
 import stat
-import re
 
 from bzrlib import (
     branch,
@@ -1711,23 +1710,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         """
         un_resolved = _mod_conflicts.ConflictList()
         resolved = _mod_conflicts.ConflictList()
-        conflict_re = re.compile('^(<{7}|={7}|>{7})')
         for conflict in self.conflicts():
-            if (conflict.typestring != 'text conflict' or
-                self.kind(conflict.file_id) != 'file'):
-                un_resolved.append(conflict)
-                continue
-            my_file = open(self.id2abspath(conflict.file_id), 'rb')
             try:
-                for line in my_file:
-                    if conflict_re.search(line):
-                        un_resolved.append(conflict)
-                        break
-                else:
-                    resolved.append(conflict)
-            finally:
-                my_file.close()
-        resolved.remove_files(self)
+                conflict.action_auto(self)
+            except NotImplementedError:
+                un_resolved.append(conflict)
+            else:
+                conflict.cleanup(self)
+                resolved.append(conflict)
         self.set_conflicts(un_resolved)
         return un_resolved, resolved
 
