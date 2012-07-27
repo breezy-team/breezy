@@ -19,6 +19,7 @@ from bzrlib import (
     bzrdir,
     conflicts,
     errors,
+    symbol_versioning,
     transport,
     workingtree,
     workingtree_3,
@@ -438,6 +439,12 @@ class TestRevert(TestCaseWithTransport):
 
 class TestAutoResolve(TestCaseWithTransport):
 
+    def _auto_resolve(self, tree):
+        """Call auto_resolve on tree expecting deprecation"""
+        return self.applyDeprecated(
+            symbol_versioning.deprecated_in((2, 6, 0)),
+            tree.auto_resolve,)
+
     def test_auto_resolve(self):
         base = self.make_branch_and_tree('base')
         self.build_tree_contents([('base/hello', 'Hello')])
@@ -453,24 +460,24 @@ class TestAutoResolve(TestCaseWithTransport):
         this.merge_from_branch(other.branch)
         self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          this.conflicts())
-        this.auto_resolve()
+        self._auto_resolve(this)
         self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          this.conflicts())
         self.build_tree_contents([('this/hello', '<<<<<<<')])
-        this.auto_resolve()
+        self._auto_resolve(this)
         self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          this.conflicts())
         self.build_tree_contents([('this/hello', '=======')])
-        this.auto_resolve()
+        self._auto_resolve(this)
         self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          this.conflicts())
         self.build_tree_contents([('this/hello', '\n>>>>>>>')])
-        remaining, resolved = this.auto_resolve()
+        remaining, resolved = self._auto_resolve(this)
         self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          this.conflicts())
         self.assertEqual([], resolved)
         self.build_tree_contents([('this/hello', 'hELLO wORLD')])
-        remaining, resolved = this.auto_resolve()
+        remaining, resolved = self._auto_resolve(this)
         self.assertEqual([], this.conflicts())
         self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          resolved)
@@ -482,7 +489,7 @@ class TestAutoResolve(TestCaseWithTransport):
         tree.add('hello', 'hello-id')
         file_conflict = conflicts.TextConflict('file', 'hello-id')
         tree.set_conflicts(conflicts.ConflictList([file_conflict]))
-        tree.auto_resolve()
+        self._auto_resolve(tree)
 
 
 class TestFindTrees(TestCaseWithTransport):

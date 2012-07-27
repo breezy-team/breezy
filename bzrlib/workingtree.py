@@ -73,7 +73,6 @@ from bzrlib import (
 # is guaranteed to be registered.
 from bzrlib import (
     bzrdir,
-    symbol_versioning,
     )
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -94,6 +93,8 @@ from bzrlib.osutils import (
 from bzrlib.trace import mutter, note
 from bzrlib.revision import CURRENT_REVISION
 from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
     deprecated_passed,
     DEPRECATED_PARAMETER,
     )
@@ -1697,6 +1698,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         """
         raise NotImplementedError(self._walkdirs)
 
+    @deprecated_method(deprecated_in((2, 6, 0)))
     @needs_tree_write_lock
     def auto_resolve(self):
         """Automatically resolve text conflicts according to contents.
