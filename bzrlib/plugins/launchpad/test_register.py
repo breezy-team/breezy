@@ -329,8 +329,8 @@ class TestGatherUserCredentials(tests.TestCaseInTempDir):
     def test_gather_user_credentials_from_auth_conf(self):
         auth_path = config.authentication_config_filename()
         service = LaunchpadService()
-        g_conf = config.GlobalConfig()
-        g_conf.set_user_option('email', 'Test User <test@user.com>')
+        g_conf = config.GlobalStack()
+        g_conf.set('email', 'Test User <test@user.com>')
         f = open(auth_path, 'wb')
         try:
             scheme, hostinfo = urlparse.urlsplit(service.service_url)[:2]
@@ -350,8 +350,8 @@ class TestGatherUserCredentials(tests.TestCaseInTempDir):
     def test_gather_user_credentials_prompts(self):
         service = LaunchpadService()
         self.assertIs(None, service.registrant_password)
-        g_conf = config.GlobalConfig()
-        g_conf.set_user_option('email', 'Test User <test@user.com>')
+        g_conf = config.GlobalStack()
+        g_conf.set('email', 'Test User <test@user.com>')
         stdout = tests.StringIOWrapper()
         stderr = tests.StringIOWrapper()
         ui.ui_factory = tests.TestUIFactory(stdin='userpass\n',

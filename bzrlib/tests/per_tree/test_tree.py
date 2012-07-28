@@ -24,6 +24,10 @@ from bzrlib import (
     )
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.per_tree import TestCaseWithTree
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    )
+
 
 class TestAnnotate(TestCaseWithTree):
 
@@ -94,13 +98,14 @@ class TestReference(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         path = tree.id2path('sub-root')
-        self.assertEqual('sub-1', tree.get_reference_revision('sub-root', path))
+        self.assertEqual('sub-1',
+            tree.get_reference_revision('sub-root', path))
 
     def test_iter_references(self):
         tree = self.create_nested()
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        entry = tree.inventory['sub-root']
+        entry = tree.root_inventory['sub-root']
         self.assertEqual([(u'subtree', 'sub-root')],
             list(tree.iter_references()))
 
@@ -153,15 +158,21 @@ class TestFileContent(TestCaseWithTree):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content_2(work_tree)
         tree.lock_read()
+        self.addCleanup(tree.unlock)
+        # Test lookup without path works
+        file_without_path = tree.get_file('a-id')
         try:
-            # Test lookup without path works
-            lines = tree.get_file('a-id').readlines()
-            self.assertEqual(['foobar\n'], lines)
-            # Test lookup with path works
-            lines = tree.get_file('a-id', path='a').readlines()
+            lines = file_without_path.readlines()
             self.assertEqual(['foobar\n'], lines)
         finally:
-            tree.unlock()
+            file_without_path.close()
+        # Test lookup with path works
+        file_with_path = tree.get_file('a-id', path='a')
+        try:
+            lines = file_with_path.readlines()
+            self.assertEqual(['foobar\n'], lines)
+        finally:
+            file_with_path.close()
 
     def test_get_file_text(self):
         work_tree = self.make_branch_and_tree('wt')
@@ -238,6 +249,29 @@ class TestIterEntriesByDir(TestCaseWithTree):
                          output_order)
 
 
+class TestIterChildEntries(TestCaseWithTree):
+
+    def test_iteration_order(self):
+        work_tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'a/b/', 'a/b/c', 'a/d/', 'a/d/e', 'f/', 'f/g'])
+        work_tree.add(['a', 'a/b', 'a/b/c', 'a/d', 'a/d/e', 'f', 'f/g'])
+        tree = self._convert_tree(work_tree)
+        output = [e.name for e in
+            tree.iter_child_entries(tree.get_root_id())]
+        self.assertEqual(set(['a', 'f']), set(output))
+        output = [e.name for e in
+            tree.iter_child_entries(tree.path2id('a'))]
+        self.assertEqual(set(['b', 'd']), set(output))
+
+    def test_does_not_exist(self):
+        work_tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/'])
+        work_tree.add(['a'])
+        tree = self._convert_tree(work_tree)
+        self.assertRaises(errors.NoSuchId, lambda:
+            list(tree.iter_child_entries('unknown')))
+
+
 class TestHasId(TestCaseWithTree):
 
     def test_has_id(self):
@@ -257,8 +291,14 @@ class TestHasId(TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertTrue('file-id' in tree)
-        self.assertFalse('dir-id' in tree)
+        self.assertTrue(
+            self.applyDeprecated(
+                deprecated_in((2, 4, 0)),
+                tree.__contains__, 'file-id'))
+        self.assertFalse(
+            self.applyDeprecated(
+                deprecated_in((2, 4, 0)),
+                tree.__contains__, 'dir-id'))
 
 
 class TestExtras(TestCaseWithTree):
@@ -292,3 +332,31 @@ class TestGetFileSha1(TestCaseWithTree):
         self.addCleanup(tree.unlock)
         expected = osutils.sha_strings('file content')
         self.assertEqual(expected, tree.get_file_sha1('file-id'))
+
+
+class TestGetFileVerifier(TestCaseWithTree):
+
+    def test_get_file_verifier(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([
+            ('tree/file1', 'file content'),
+            ('tree/file2', 'file content')])
+        work_tree.add(['file1', 'file2'], ['file-id-1', 'file-id-2'])
+        tree = self._convert_tree(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        (kind, data) = tree.get_file_verifier('file-id-1')
+        self.assertEquals(
+            tree.get_file_verifier('file-id-1'),
+            tree.get_file_verifier('file-id-2'))
+        if kind == "SHA1":
+            expected = osutils.sha_strings('file content')
+            self.assertEqual(expected, data)
+
+
+class TestHasVersionedDirectories(TestCaseWithTree):
+
+    def test_has_versioned_directories(self):
+        work_tree = self.make_branch_and_tree('tree')
+        tree = self._convert_tree(work_tree)
+        self.assertSubset([tree.has_versioned_directories()], (True, False))

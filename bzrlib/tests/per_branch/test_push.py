@@ -22,7 +22,7 @@ import os
 from bzrlib import (
     branch,
     builtins,
-    bzrdir,
+    controldir,
     check,
     errors,
     memorytree,
@@ -53,15 +53,10 @@ class TestPush(per_branch.TestCaseWithBranch):
         mine.merge_from_branch(other.branch)
         mine.commit('merge my change', rev_id='P2')
         result = mine.branch.push(other.branch)
-        self.assertEqual(['P1', 'P2'], other.branch.revision_history())
+        self.assertEqual('P2', other.branch.last_revision())
         # result object contains some structured data
         self.assertEqual(result.old_revid, 'M1')
         self.assertEqual(result.new_revid, 'P2')
-        # and it can be treated as an integer for compatibility
-        self.assertEqual(self.applyDeprecated(
-            symbol_versioning.deprecated_in((2, 3, 0)),
-            result.__int__),
-            0)
 
     def test_push_merged_indirect(self):
         # it should be possible to do a push from one branch into another
@@ -78,7 +73,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         mine.merge_from_branch(other.branch)
         mine.commit('merge other', rev_id='P2')
         mine.branch.push(target.branch)
-        self.assertEqual(['P1', 'P2'], target.branch.revision_history())
+        self.assertEqual('P2', target.branch.last_revision())
 
     def test_push_to_checkout_updates_master(self):
         """Pushing into a checkout updates the checkout and the master branch"""
@@ -95,8 +90,8 @@ class TestPush(per_branch.TestCaseWithBranch):
         rev2 = other.commit('other commit')
         # now push, which should update both checkout and master.
         other.branch.push(checkout.branch)
-        self.assertEqual([rev1, rev2], checkout.branch.revision_history())
-        self.assertEqual([rev1, rev2], master_tree.branch.revision_history())
+        self.assertEqual(rev2, checkout.branch.last_revision())
+        self.assertEqual(rev2, master_tree.branch.last_revision())
 
     def test_push_raises_specific_error_on_master_connection_error(self):
         master_tree = self.make_branch_and_tree('master')
@@ -157,6 +152,8 @@ class TestPush(per_branch.TestCaseWithBranch):
         except (errors.IncompatibleFormat, errors.UninitializableFormat):
             # This Branch format cannot create shared repositories
             return
+        if not repo._format.supports_nesting_repositories:
+            return
         # This is a little bit trickier because make_branch_and_tree will not
         # re-use a shared repository.
         a_bzrdir = self.make_bzrdir('repo/tree')
@@ -171,7 +168,7 @@ class TestPush(per_branch.TestCaseWithBranch):
             if self.vfs_transport_factory is test_server.LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.
-                local_controldir= bzrdir.BzrDir.open(
+                local_controldir = controldir.ControlDir.open(
                     self.get_vfs_only_url('repo/tree'))
                 tree = local_controldir.create_workingtree()
             else:
@@ -251,7 +248,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         self.addCleanup(repo.lock_read().unlock)
         # We should have pushed 'C', but not 'B', since it isn't in the
         # ancestry
-        self.assertEqual([('A',), ('C',)], sorted(repo.revisions.keys()))
+        self.assertEqual(['A', 'C'], sorted(repo.all_revision_ids()))
 
     def test_push_with_default_stacking_does_not_create_broken_branch(self):
         """Pushing a new standalone branch works even when there's a default
@@ -353,7 +350,7 @@ class TestPushHook(per_branch.TestCaseWithBranch):
             # remotebranches can't be bound.  Let's instead make a new local
             # branch of the default type, which does allow binding.
             # See https://bugs.launchpad.net/bzr/+bug/112020
-            local = bzrdir.BzrDir.create_branch_convenience('local2')
+            local = controldir.ControlDir.create_branch_convenience('local2')
             local.bind(target)
         source = self.make_branch('source')
         branch.Branch.hooks.install_named_hook(
@@ -424,7 +421,7 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
     def test_empty_branch_api(self):
         """The branch_obj.push API should make a limited number of HPSS calls.
         """
-        t = transport.get_transport(self.smart_server.get_url()).clone('target')
+        t = transport.get_transport_from_url(self.smart_server.get_url()).clone('target')
         target = branch.Branch.open_from_transport(t)
         self.empty_branch.push(target)
         self.assertEqual(

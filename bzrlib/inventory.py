@@ -23,6 +23,8 @@
 # But those depend on its position within a particular inventory, and
 # it would be nice not to need to hold the backpointer here.
 
+from __future__ import absolute_import
+
 # This should really be an id randomly assigned when the tree is
 # created, but it's not for now.
 ROOT_ID = "TREE_ROOT"
@@ -48,6 +50,10 @@ from bzrlib import (
     )
 
 from bzrlib.static_tuple import StaticTuple
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
 
 
 class InventoryEntry(object):
@@ -100,8 +106,6 @@ class InventoryEntry(object):
     InventoryDirectory('2325', 'wibble', parent_id='123', revision=None)
     >>> i.path2id('src/wibble')
     '2325'
-    >>> '2325' in i
-    True
     >>> i.add(InventoryFile('2326', 'wibble.c', '2325'))
     InventoryFile('2326', 'wibble.c', parent_id='2325', sha1=None, len=None, revision=None)
     >>> i['2326']
@@ -170,7 +174,7 @@ class InventoryEntry(object):
         candidates = {}
         # identify candidate head revision ids.
         for inv in previous_inventories:
-            if self.file_id in inv:
+            if inv.has_id(self.file_id):
                 ie = inv[self.file_id]
                 if ie.revision in candidates:
                     # same revision value in two different inventories:
@@ -629,23 +633,6 @@ class CommonInventory(object):
     inserted, other than through the Inventory API.
     """
 
-    def __contains__(self, file_id):
-        """True if this entry contains a file with given id.
-
-        >>> inv = Inventory()
-        >>> inv.add(InventoryFile('123', 'foo.c', ROOT_ID))
-        InventoryFile('123', 'foo.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
-        >>> '123' in inv
-        True
-        >>> '456' in inv
-        False
-
-        Note that this method along with __iter__ are not encouraged for use as
-        they are less clear than specific query methods - they may be rmeoved
-        in the future.
-        """
-        return self.has_id(file_id)
-
     def has_filename(self, filename):
         return bool(self.path2id(filename))
 
@@ -756,7 +743,7 @@ class CommonInventory(object):
             if (not yield_parents and specific_file_ids is not None and
                 len(specific_file_ids) == 1):
                 file_id = list(specific_file_ids)[0]
-                if file_id in self:
+                if self.has_id(file_id):
                     yield self.id2path(file_id), self[file_id]
                 return
             from_dir = self.root
@@ -772,7 +759,7 @@ class CommonInventory(object):
             parents = set()
             byid = self
             def add_ancestors(file_id):
-                if file_id not in byid:
+                if not byid.has_id(file_id):
                     return
                 parent_id = byid[file_id].parent_id
                 if parent_id is None:
@@ -843,22 +830,6 @@ class CommonInventory(object):
 
         if self.root is not None:
             descend(self.root, u'')
-        return accum
-
-    def directories(self):
-        """Return (path, entry) pairs for all directories, including the root.
-        """
-        accum = []
-        def descend(parent_ie, parent_path):
-            accum.append((parent_path, parent_ie))
-
-            kids = [(ie.name, ie) for ie in parent_ie.children.itervalues() if ie.kind == 'directory']
-            kids.sort()
-
-            for name, child_ie in kids:
-                child_path = osutils.pathjoin(parent_path, name)
-                descend(child_ie, child_path)
-        descend(self.root, u'')
         return accum
 
     def path2id(self, relpath):
@@ -962,7 +933,7 @@ class Inventory(CommonInventory):
 
     >>> inv.path2id('hello.c')
     '123-123'
-    >>> '123-123' in inv
+    >>> inv.has_id('123-123')
     True
 
     There are iterators over the contents:
@@ -1231,10 +1202,10 @@ class Inventory(CommonInventory):
         >>> inv = Inventory()
         >>> inv.add(InventoryFile('123', 'foo.c', ROOT_ID))
         InventoryFile('123', 'foo.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
-        >>> '123' in inv
+        >>> inv.has_id('123')
         True
         >>> del inv['123']
-        >>> '123' in inv
+        >>> inv.has_id('123')
         False
         """
         ie = self[file_id]
@@ -1487,8 +1458,8 @@ class CHKInventory(CommonInventory):
             if entry.kind == 'directory':
                 directories_to_expand.add(entry.file_id)
             interesting.add(entry.parent_id)
-            children_of_parent_id.setdefault(entry.parent_id, []
-                                             ).append(entry.file_id)
+            children_of_parent_id.setdefault(entry.parent_id, set()
+                                             ).add(entry.file_id)
 
         # Now, interesting has all of the direct parents, but not the
         # parents of those parents. It also may have some duplicates with
@@ -1502,8 +1473,8 @@ class CHKInventory(CommonInventory):
             next_parents = set()
             for entry in self._getitems(remaining_parents):
                 next_parents.add(entry.parent_id)
-                children_of_parent_id.setdefault(entry.parent_id, []
-                                                 ).append(entry.file_id)
+                children_of_parent_id.setdefault(entry.parent_id, set()
+                                                 ).add(entry.file_id)
             # Remove any search tips we've already processed
             remaining_parents = next_parents.difference(interesting)
             interesting.update(remaining_parents)
@@ -1522,8 +1493,8 @@ class CHKInventory(CommonInventory):
             for entry in self._getitems(next_file_ids):
                 if entry.kind == 'directory':
                     directories_to_expand.add(entry.file_id)
-                children_of_parent_id.setdefault(entry.parent_id, []
-                                                 ).append(entry.file_id)
+                children_of_parent_id.setdefault(entry.parent_id, set()
+                                                 ).add(entry.file_id)
         return interesting, children_of_parent_id
 
     def filter(self, specific_fileids):
@@ -2122,13 +2093,16 @@ class CHKInventory(CommonInventory):
     def path2id(self, relpath):
         """See CommonInventory.path2id()."""
         # TODO: perhaps support negative hits?
-        result = self._path_to_fileid_cache.get(relpath, None)
-        if result is not None:
-            return result
         if isinstance(relpath, basestring):
             names = osutils.splitpath(relpath)
         else:
             names = relpath
+            if relpath == []:
+                relpath = [""]
+            relpath = osutils.pathjoin(*relpath)
+        result = self._path_to_fileid_cache.get(relpath, None)
+        if result is not None:
+            return result
         current_id = self.root_id
         if current_id is None:
             return None

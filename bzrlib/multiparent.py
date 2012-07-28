@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 from bzrlib.lazy_import import lazy_import
 
 lazy_import(globals(), """
@@ -421,7 +423,7 @@ class BaseVersionedFile(object):
                             if not (lines == self.get_line_list([revision])[0]):
                                 raise AssertionError()
                             self.clear_cache()
-                    pb.update('Importing revisions',
+                    pb.update(gettext('Importing revisions'),
                               (total - len(revisions)) + len(added), total)
                 revisions = [r for r in revisions if r not in added]
         finally:

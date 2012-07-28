@@ -16,6 +16,8 @@
 
 """Utility functions for managing external merge tools such as kdiff3."""
 
+from __future__ import absolute_import
+
 import os
 import shutil
 import subprocess
@@ -46,13 +48,13 @@ def check_availability(command_line):
     cmd_list = cmdline.split(command_line)
     exe = cmd_list[0]
     if sys.platform == 'win32':
-        if os.path.isabs(exe):
-            base, ext = os.path.splitext(exe)
-            path_ext = [unicode(s.lower())
-                        for s in os.getenv('PATHEXT', '').split(os.pathsep)]
-            return os.path.exists(exe) and ext in path_ext
-        else:
-            return osutils.find_executable_on_path(exe) is not None
+        exe = _get_executable_path(exe)
+        if exe is None:
+            return False
+        base, ext = os.path.splitext(exe)
+        path_ext = [unicode(s.lower())
+                    for s in os.getenv('PATHEXT', '').split(os.pathsep)]
+        return os.path.exists(exe) and ext in path_ext
     else:
         return (os.access(exe, os.X_OK)
                 or osutils.find_executable_on_path(exe) is not None)
@@ -67,6 +69,9 @@ def invoke(command_line, filename, invoker=None):
     if invoker is None:
         invoker = subprocess_invoker
     cmd_list = cmdline.split(command_line)
+    exe = _get_executable_path(cmd_list[0])
+    if exe is not None:
+        cmd_list[0] = exe
     args, tmp_file = _subst_filename(cmd_list, filename)
     def cleanup(retcode):
         if tmp_file is not None:
@@ -75,6 +80,12 @@ def invoke(command_line, filename, invoker=None):
             else: # otherwise, delete temp file
                 os.remove(tmp_file)
     return invoker(args[0], args[1:], cleanup)
+
+
+def _get_executable_path(exe):
+    if os.path.isabs(exe):
+        return exe
+    return osutils.find_executable_on_path(exe)
 
 
 def _subst_filename(args, filename):

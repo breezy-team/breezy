@@ -26,7 +26,6 @@ from bzrlib import (
     errors,
     msgeditor,
     osutils,
-    tests,
     trace,
     )
 from bzrlib.msgeditor import (
@@ -34,6 +33,7 @@ from bzrlib.msgeditor import (
     edit_commit_message_encoded
 )
 from bzrlib.tests import (
+    features,
     TestCaseInTempDir,
     TestCaseWithTransport,
     TestNotApplicable,
@@ -80,9 +80,7 @@ added:
 """)
 
     def make_multiple_pending_tree(self):
-        from bzrlib import config
-        config.GlobalConfig().set_user_option('email',
-                                              'Bilbo Baggins <bb@hobbit.net>')
+        config.GlobalStack().set('email', 'Bilbo Baggins <bb@hobbit.net>')
         tree = self.make_branch_and_tree('a')
         tree.commit('Initial checkin.', timestamp=1230912900, timezone=0)
         tree2 = tree.bzrdir.clone('b').open_workingtree()
@@ -251,9 +249,9 @@ if len(sys.argv) == 2:
         self.overrideEnv('VISUAL', 'visual')
         self.overrideEnv('EDITOR', 'editor')
 
-        conf = config.GlobalConfig.from_string('editor = config_editor\n',
-                                               save=True)
-
+        conf = config.GlobalStack()
+        conf.store._load_from_string('[DEFAULT]\neditor = config_editor\n')
+        conf.store.save()
         editors = list(msgeditor._get_editor())
         editors = [editor for (editor, cfg_src) in editors]
 
@@ -309,7 +307,7 @@ if len(sys.argv) == 2:
         self.assertFileEqual(expected, msgfilename)
 
     def test__create_temp_file_with_commit_template_in_unicode_dir(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         if hasattr(self, 'info'):
             tmpdir = self.info['directory']
             os.mkdir(tmpdir)
@@ -343,6 +341,18 @@ if len(sys.argv) == 2:
         working_tree = self.make_uncommitted_tree()
         self.assertRaises(errors.BadCommitMessageEncoding,
                           msgeditor.edit_commit_message, '')
+
+    def test_set_commit_message_no_hooks(self):
+        commit_obj = commit.Commit()
+        self.assertIs(None,
+            msgeditor.set_commit_message(commit_obj))
+
+    def test_set_commit_message_hook(self):
+        msgeditor.hooks.install_named_hook("set_commit_message",
+                lambda commit_obj, existing_message: "save me some typing\n", None)
+        commit_obj = commit.Commit()
+        self.assertEquals("save me some typing\n",
+            msgeditor.set_commit_message(commit_obj))
 
     def test_generate_commit_message_template_no_hooks(self):
         commit_obj = commit.Commit()

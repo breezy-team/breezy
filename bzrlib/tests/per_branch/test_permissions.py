@@ -29,16 +29,12 @@ So if the directory is group writable, the files and subdirs should be as well.
 import os
 import sys
 import stat
-from StringIO import StringIO
 
 from bzrlib import tests
-from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
-from bzrlib.lockable_files import LockableFiles
+from bzrlib.branch import BzrBranch
+from bzrlib.controldir import ControlDir
 from bzrlib.remote import RemoteBranchFormat
-from bzrlib.tests.test_permissions import chmod_r, check_mode_r
-from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
-from bzrlib.workingtree import WorkingTree
+from bzrlib.tests.test_permissions import check_mode_r
 
 
 class _NullPermsStat(object):
@@ -63,10 +59,13 @@ class TestPermissions(tests.TestCaseWithTransport):
                                           ' permission logic')
         if sys.platform == 'win32':
             raise tests.TestNotApplicable('chmod has no effect on win32')
-        # also, these are BzrBranch format specific things..
         os.mkdir('a')
         mode = stat.S_IMODE(os.stat('a').st_mode)
         t = self.make_branch_and_tree('.')
+        # also, these are BzrBranch format specific things..
+        if not isinstance(t.branch, BzrBranch):
+            raise tests.TestNotApplicable(
+                "Only applicable to bzr branches")
         b = t.branch
         self.assertEqualMode(mode, b.bzrdir._get_dir_mode())
         self.assertEqualMode(mode & ~07111, b.bzrdir._get_file_mode())
@@ -95,9 +94,12 @@ class TestPermissions(tests.TestCaseWithTransport):
             # which users are not likely to be in, and this prevents us
             # from setting the sgid bit
             os.chown(self.test_dir, os.getuid(), os.getgid())
-        # also, these are BzrBranch format specific things..
         t = self.make_branch_and_tree('.')
         b = t.branch
+        # also, these are BzrBranch format specific things..
+        if not isinstance(b, BzrBranch):
+            raise tests.TestNotApplicable(
+                "Only applicable to bzr branches")
         os.mkdir('b')
         os.chmod('b', 02777)
         b = self.make_branch('b')
@@ -124,7 +126,7 @@ class TestPermissions(tests.TestCaseWithTransport):
             raise tests.TestNotApplicable('Remote branches have no'
                                           ' permission logic')
         self.make_branch_and_tree('.')
-        bzrdir = BzrDir.open('.')
+        bzrdir = ControlDir.open('.')
         # Monkey patch the transport
         _orig_stat = bzrdir.transport.stat
         def null_perms_stat(*args, **kwargs):

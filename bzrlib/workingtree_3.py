@@ -18,11 +18,17 @@
 
 """
 
+from __future__ import absolute_import
+
+import errno
+
 from bzrlib import (
     bzrdir,
     errors,
+    hashcache,
     inventory,
     revision as _mod_revision,
+    trace,
     transform,
     )
 from bzrlib.decorators import (
@@ -30,13 +36,60 @@ from bzrlib.decorators import (
     )
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.lockdir import LockDir
+from bzrlib.mutabletree import MutableTree
 from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import (
     InventoryWorkingTree,
-    WorkingTreeFormat,
+    WorkingTreeFormatMetaDir,
     )
 
-class WorkingTree3(InventoryWorkingTree):
+
+class PreDirStateWorkingTree(InventoryWorkingTree):
+
+    def __init__(self, basedir='.', *args, **kwargs):
+        super(PreDirStateWorkingTree, self).__init__(basedir, *args, **kwargs)
+        # update the whole cache up front and write to disk if anything changed;
+        # in the future we might want to do this more selectively
+        # two possible ways offer themselves : in self._unlock, write the cache
+        # if needed, or, when the cache sees a change, append it to the hash
+        # cache file, and have the parser take the most recent entry for a
+        # given path only.
+        wt_trans = self.bzrdir.get_workingtree_transport(None)
+        cache_filename = wt_trans.local_abspath('stat-cache')
+        self._hashcache = hashcache.HashCache(basedir, cache_filename,
+            self.bzrdir._get_file_mode(),
+            self._content_filter_stack_provider())
+        hc = self._hashcache
+        hc.read()
+        # is this scan needed ? it makes things kinda slow.
+        #hc.scan()
+
+        if hc.needs_write:
+            trace.mutter("write hc")
+            hc.write()
+
+    def _write_hashcache_if_dirty(self):
+        """Write out the hashcache if it is dirty."""
+        if self._hashcache.needs_write:
+            try:
+                self._hashcache.write()
+            except OSError, e:
+                if e.errno not in (errno.EPERM, errno.EACCES):
+                    raise
+                # TODO: jam 20061219 Should this be a warning? A single line
+                #       warning might be sufficient to let the user know what
+                #       is going on.
+                trace.mutter('Could not write hashcache for %s\nError: %s',
+                              self._hashcache.cache_file_name(), e)
+
+    @needs_read_lock
+    def get_file_sha1(self, file_id, path=None, stat_value=None):
+        if not path:
+            path = self._inventory.id2path(file_id)
+        return self._hashcache.get_sha1(path, stat_value)
+
+
+class WorkingTree3(PreDirStateWorkingTree):
     """This is the Format 3 working tree.
 
     This differs from the base WorkingTree by:
@@ -86,13 +139,13 @@ class WorkingTree3(InventoryWorkingTree):
             self.branch.unlock()
 
 
-class WorkingTreeFormat3(WorkingTreeFormat):
+class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
     """The second working tree format updated to record a format marker.
 
     This format:
         - exists within a metadir controlling .bzr
         - includes an explicit version marker for the workingtree control
-          files, separate from the BzrDir format
+          files, separate from the ControlDir format
         - modifies the hash cache format
         - is new in bzr 0.8
         - uses a LockDir to guard access for writes.
@@ -102,7 +155,10 @@ class WorkingTreeFormat3(WorkingTreeFormat):
 
     missing_parent_conflicts = True
 
-    def get_format_string(self):
+    supports_versioned_directories = True
+
+    @classmethod
+    def get_format_string(cls):
         """See WorkingTreeFormat.get_format_string()."""
         return "Bazaar-NG Working Tree format 3"
 
@@ -140,7 +196,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         control_files = self._open_control_files(a_bzrdir)
         control_files.create_lock()
         control_files.lock_write()
-        transport.put_bytes('format', self.get_format_string(),
+        transport.put_bytes('format', self.as_string(),
             mode=a_bzrdir._get_file_mode())
         if from_branch is not None:
             branch = from_branch
@@ -165,13 +221,15 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         try:
             basis_tree = branch.repository.revision_tree(revision_id)
             # only set an explicit root id if there is one to set.
-            if basis_tree.inventory.root is not None:
+            if basis_tree.get_root_id() is not None:
                 wt.set_root_id(basis_tree.get_root_id())
             if revision_id == _mod_revision.NULL_REVISION:
                 wt.set_parent_trees([])
             else:
                 wt.set_parent_trees([(revision_id, basis_tree)])
             transform.build_tree(basis_tree, wt)
+            for hook in MutableTree.hooks['post_build_tree']:
+                hook(wt)
         finally:
             # Unlock in this order so that the unlock-triggers-flush in
             # WorkingTree is given a chance to fire.
@@ -207,6 +265,3 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                                 _format=self,
                                 _bzrdir=a_bzrdir,
                                 _control_files=control_files)
-
-    def __str__(self):
-        return self.get_format_string()

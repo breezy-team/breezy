@@ -17,12 +17,11 @@
 """Tests for fetch between repositories of the same type."""
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     errors,
     gpg,
     remote,
     repository,
-    tests,
     )
 from bzrlib.inventory import ROOT_ID
 from bzrlib.tests import (
@@ -68,7 +67,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         tree_a.add('foo', 'file1')
         tree_a.commit('rev1', rev_id='rev1')
         # create a knit-3 based format to fetch into
-        f = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
+        f = controldir.format_registry.make_bzrdir('development-subtree')
         try:
             format = tree_a.branch.repository._format
             format.check_conversion_target(f.repository_format)
@@ -102,7 +101,9 @@ class TestFetchSameRepository(TestCaseWithRepository):
                               % b_bzrdir.transport)
         tree_b.commit('no change', rev_id='rev2')
         rev2_tree = knit3_repo.revision_tree('rev2')
-        self.assertEqual('rev1', rev2_tree.inventory.root.revision)
+        self.assertEqual(
+            'rev1',
+            rev2_tree.get_file_revision(rev2_tree.get_root_id()))
 
     def do_test_fetch_to_rich_root_sets_parents_correctly(self, result,
         snapshots, root_id=ROOT_ID, allow_lefthand_ghost=False):
@@ -157,6 +158,9 @@ class TestFetchSameRepository(TestCaseWithRepository):
 
     def test_fetch_to_rich_root_set_parent_1_ghost_parent(self):
         # 1 ghost parent -> No parents
+        if not self.repository_format.supports_ghosts:
+            raise TestNotApplicable("repository format does not support "
+                 "ghosts")
         self.do_test_fetch_to_rich_root_sets_parents_correctly((),
             [('tip', ['ghost'], [('add', ('', ROOT_ID, 'directory', ''))]),
             ], allow_lefthand_ghost=True)
@@ -200,6 +204,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
              ('base', None, []),
              ('tip', None, [('unversion', 'my-root'),
                             ('unversion', ROOT_ID),
+                            ('flush', None),
                             ('add', ('', 'my-root', 'directory', '')),
                             ]),
             ], root_id='my-root')
@@ -228,9 +233,11 @@ class TestFetchSameRepository(TestCaseWithRepository):
             # 'my-root' at root
              ('right', None, [('unversion', 'my-root'),
                               ('unversion', ROOT_ID),
+                              ('flush', None),
                               ('add', ('', 'my-root', 'directory', ''))]),
              ('tip', ['base', 'right'], [('unversion', 'my-root'),
                             ('unversion', ROOT_ID),
+                            ('flush', None),
                             ('add', ('', 'my-root', 'directory', '')),
                             ]),
             ], root_id='my-root')
@@ -330,6 +337,8 @@ class TestFetchSameRepository(TestCaseWithRepository):
     def test_fetch_into_smart_with_ghost(self):
         trans = self.make_smart_server('target')
         source_b = self.make_simple_branch_with_ghost()
+        if not source_b.bzrdir._format.supports_transport(trans):
+            raise TestNotApplicable("format does not support transport")
         target = self.make_repository('target')
         # Re-open the repository over the smart protocol
         target = repository.Repository.open(trans.base)
@@ -341,12 +350,14 @@ class TestFetchSameRepository(TestCaseWithRepository):
             # The code inside fetch() that tries to lock and then fails, also
             # causes weird problems with 'lock_not_held' later on...
             target.lock_read()
-            raise tests.KnownFailure('some repositories fail to fetch'
+            self.knownFailure('some repositories fail to fetch'
                 ' via the smart server because of locking issues.')
 
     def test_fetch_from_smart_with_ghost(self):
         trans = self.make_smart_server('source')
         source_b = self.make_simple_branch_with_ghost()
+        if not source_b.bzrdir._format.supports_transport(trans):
+            raise TestNotApplicable("format does not support transport")
         target = self.make_repository('target')
         target.lock_write()
         self.addCleanup(target.unlock)

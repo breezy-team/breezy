@@ -16,10 +16,7 @@
 
 """Tests that an enabled view is reported and impacts expected commands."""
 
-import os
-
 from bzrlib import (
-    bzrdir,
     osutils,
     tests,
     )

@@ -25,10 +25,12 @@ from bzrlib import (
     ignores,
     osutils,
     tests,
+    trace,
     )
 from bzrlib.tests import (
-    test_smart_add,
+    features,
     per_workingtree,
+    test_smart_add,
     )
 
 
@@ -90,6 +92,19 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         for path in paths:
             self.assertNotEqual(wt.path2id(path), None)
 
+    def test_skip_nested_trees(self):
+        """Test smart-adding a nested tree ignors it and warns."""
+        wt = self.make_branch_and_tree('.')
+        nested_wt = self.make_branch_and_tree('nested')
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+        wt.smart_add((u".",))
+        self.assertIs(wt.path2id("nested"), None)
+        self.assertEquals(
+            ['skipping nested tree %r' % nested_wt.basedir], warnings)
+
     def test_add_dot_from_subdir(self):
         """Test adding . from a subdir of the tree."""
         paths = ("original/", "original/file1", "original/file2")
@@ -149,7 +164,8 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         self.build_tree(tree_shape)
         wt.smart_add(add_paths)
         for path in expected_paths:
-            self.assertNotEqual(wt.path2id(path), None, "No id added for %s" % path)
+            self.assertNotEqual(wt.path2id(path), None,
+                "No id added for %s" % path)
 
     def test_add_non_existant(self):
         """Test smart-adding a file that does not exist."""
@@ -288,7 +304,7 @@ class TestSmartAddConflictRelatedFiles(per_workingtree.TestCaseWithWorkingTree):
 
 class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
 
-    _test_needs_features = [tests.UnicodeFilenameFeature]
+    _test_needs_features = [features.UnicodeFilenameFeature]
 
     def setUp(self):
         super(TestSmartAddTreeUnicode, self).setUp()
@@ -299,10 +315,11 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
     def test_requires_normalized_unicode_filenames_fails_on_unnormalized(self):
         """Adding unnormalized unicode filenames fail if and only if the
         workingtree format has the requires_normalized_unicode_filenames flag
-        set.
+        set and the underlying filesystem doesn't normalize.
         """
         osutils.normalized_filename = osutils._accessible_normalized_filename
-        if self.workingtree_format.requires_normalized_unicode_filenames:
+        if (self.workingtree_format.requires_normalized_unicode_filenames
+            and sys.platform != 'darwin'):
             self.assertRaises(
                 errors.NoSuchFile, self.wt.smart_add, [u'a\u030a'])
         else:

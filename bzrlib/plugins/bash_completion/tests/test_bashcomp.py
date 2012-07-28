@@ -21,7 +21,6 @@ from bzrlib import commands, tests
 from bzrlib.tests import features
 from bzrlib.plugins.bash_completion.bashcomp import *
 
-import os
 import subprocess
 
 
@@ -325,3 +324,9 @@ class TestDataCollector(tests.TestCase):
                 self.assertSubset(['2a'], opt.registry_keys)
                 return
         raise AssertionError('Option --format not found')
+
+
+class BlackboxTests(tests.TestCase):
+
+    def test_bash_completion(self):
+        self.run_bzr("bash-completion")

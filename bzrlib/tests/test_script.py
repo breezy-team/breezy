@@ -558,7 +558,7 @@ class cmd_test_confirm(commands.Command):
 
     def run(self):
         if ui.ui_factory.get_boolean(
-            'Really do it',
+            u'Really do it',
             # 'bzrlib.tests.test_script.confirm',
             # {}
             ):
@@ -572,20 +572,68 @@ class TestUserInteraction(script.TestCaseWithMemoryTransportAndScript):
     def test_confirm_action(self):
         """You can write tests that demonstrate user confirmation.
         
-        Specifically, ScriptRunner does't care if the output line for the prompt
-        isn't terminated by a newline from the program; it's implicitly terminated 
-        by the input.
+        Specifically, ScriptRunner does't care if the output line for the
+        prompt isn't terminated by a newline from the program; it's implicitly
+        terminated by the input.
         """
         commands.builtin_command_registry.register(cmd_test_confirm)
         self.addCleanup(commands.builtin_command_registry.remove, 'test-confirm')
         self.run_script("""
             $ bzr test-confirm
-            2>Really do it? [y/n]: 
-            <yes
+            2>Really do it? ([y]es, [n]o): yes
+            <y
             Do it!
             $ bzr test-confirm
-            2>Really do it? [y/n]: 
-            <no
+            2>Really do it? ([y]es, [n]o): no
+            <n
             ok, no
             """)
 
+class TestShelve(script.TestCaseWithTransportAndScript):
+
+    def setUp(self):
+        super(TestShelve, self).setUp()
+        self.run_script("""
+            $ bzr init test
+            Created a standalone tree (format: 2a)
+            $ cd test
+            $ echo foo > file
+            $ bzr add
+            adding file
+            $ bzr commit -m 'file added'
+            2>Committing to:...test/
+            2>added file
+            2>Committed revision 1.
+            $ echo bar > file
+            """)
+
+    def test_shelve(self):
+        self.run_script("""
+            $ bzr shelve -m 'shelve bar'
+            2>Shelve? ([y]es, [N]o, [f]inish, [q]uit): yes
+            <y
+            2>Selected changes:
+            2> M  file
+            2>Shelve 1 change(s)? ([y]es, [N]o, [f]inish, [q]uit): yes
+            <y
+            2>Changes shelved with id "1".
+            """,
+                        null_output_matches_anything=True)
+        self.run_script("""
+            $ bzr shelve --list
+              1: shelve bar
+            """)
+
+    def test_dont_shelve(self):
+        # We intentionally provide no input here to test EOF
+        self.run_script("""
+            $ bzr shelve -m 'shelve bar'
+            2>Shelve? ([y]es, [N]o, [f]inish, [q]uit): 
+            2>No changes to shelve.
+            """,
+                        null_output_matches_anything=True)
+        self.run_script("""
+            $ bzr st
+            modified:
+              file
+            """)

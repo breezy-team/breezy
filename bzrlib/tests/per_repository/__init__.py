@@ -92,18 +92,20 @@ def all_repository_format_scenarios():
 
 class TestCaseWithRepository(TestCaseWithControlDir):
 
-    def make_repository(self, relpath, shared=False, format=None):
-        if format is None:
+    def get_default_format(self):
+        format = self.repository_format._matchingbzrdir
+        self.assertEquals(format.repository_format, self.repository_format)
+        return format
+
+    def make_repository(self, relpath, shared=None, format=None):
+        format = self.resolve_format(format)
+        repo = super(TestCaseWithRepository, self).make_repository(
+            relpath, shared=shared, format=format)
+        if format is None or format.repository_format is self.repository_format:
             # Create a repository of the type we are trying to test.
-            made_control = self.make_bzrdir(relpath)
-            repo = self.repository_format.initialize(made_control,
-                    shared=shared)
             if getattr(self, "repository_to_test_repository", None):
                 repo = self.repository_to_test_repository(repo)
-            return repo
-        else:
-            return super(TestCaseWithRepository, self).make_repository(
-                relpath, shared=shared, format=format)
+        return repo
 
 
 def load_tests(standard_tests, module, loader):
@@ -114,19 +116,17 @@ def load_tests(standard_tests, module, loader):
         'test_check',
         'test_commit_builder',
         'test_fetch',
-        'test_fileid_involved',
         'test_file_graph',
         'test_get_parent_map',
         'test_has_same_location',
         'test_has_revisions',
-        'test_iter_reverse_revision_history',
         'test_locking',
-        'test_merge_directive',
         'test_pack',
         'test_reconcile',
         'test_refresh_data',
         'test_repository',
         'test_revision',
+        'test_signatures',
         'test_statistics',
         'test_write_group',
         ]

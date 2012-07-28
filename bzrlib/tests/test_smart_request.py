@@ -118,6 +118,16 @@ class TestSmartRequest(TestCase):
         self.assertEqual(
             [[transport]] * 3, handler._command.jail_transports_log)
 
+    def test_all_registered_requests_are_safety_qualified(self):
+        unclassified_requests = []
+        allowed_info = ('read', 'idem', 'mutate', 'semivfs', 'semi', 'stream')
+        for key in request.request_handlers.keys():
+            info = request.request_handlers.get_info(key)
+            if info is None or info not in allowed_info:
+                unclassified_requests.append(key)
+        if unclassified_requests:
+            self.fail('These requests were not categorized as safe/unsafe'
+                      ' to retry: %s'  % (unclassified_requests,))
 
 
 class TestSmartRequestHandlerErrorTranslation(TestCase):
@@ -240,7 +250,7 @@ class TestJailHook(TestCaseWithMemoryTransport):
         self.assertRaises(errors.JailBreak, _pre_open_hook, t.clone('..'))
         # A completely unrelated transport is not allowed
         self.assertRaises(errors.JailBreak, _pre_open_hook,
-                          transport.get_transport('http://host/'))
+                          transport.get_transport_from_url('http://host/'))
 
     def test_open_bzrdir_in_non_main_thread(self):
         """Opening a bzrdir in a non-main thread should work ok.

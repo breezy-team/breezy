@@ -16,15 +16,26 @@
 
 """Weave-era branch implementations."""
 
+from __future__ import absolute_import
+
 from bzrlib import (
     errors,
     lockable_files,
     )
 
+from bzrlib.decorators import (
+    needs_read_lock,
+    needs_write_lock,
+    only_raises,
+    )
+from bzrlib.lock import LogicalLockResult
 from bzrlib.trace import mutter
 
 from bzrlib.branch import (
     BranchFormat,
+    BranchWriteLockResult,
+    )
+from bzrlib.branchfmt.fullhistory import (
     FullHistoryBzrBranch,
     )
 
@@ -32,13 +43,66 @@ from bzrlib.branch import (
 class BzrBranch4(FullHistoryBzrBranch):
     """Branch format 4."""
 
-    def _get_checkout_format(self):
+    def lock_write(self, token=None):
+        """Lock the branch for write operations.
+
+        :param token: A token to permit reacquiring a previously held and
+            preserved lock.
+        :return: A BranchWriteLockResult.
+        """
+        if not self.is_locked():
+            self._note_lock('w')
+        # All-in-one needs to always unlock/lock.
+        self.repository._warn_if_deprecated(self)
+        self.repository.lock_write()
+        try:
+            return BranchWriteLockResult(self.unlock,
+                self.control_files.lock_write(token=token))
+        except:
+            self.repository.unlock()
+            raise
+
+    def lock_read(self):
+        """Lock the branch for read operations.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
+        if not self.is_locked():
+            self._note_lock('r')
+        # All-in-one needs to always unlock/lock.
+        self.repository._warn_if_deprecated(self)
+        self.repository.lock_read()
+        try:
+            self.control_files.lock_read()
+            return LogicalLockResult(self.unlock)
+        except:
+            self.repository.unlock()
+            raise
+
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
+    def unlock(self):
+        if self.control_files._lock_count == 2 and self.conf_store is not None:
+            self.conf_store.save_changes()
+        try:
+            self.control_files.unlock()
+        finally:
+            # All-in-one needs to always unlock/lock.
+            self.repository.unlock()
+            if not self.control_files.is_locked():
+                # we just released the lock
+                self._clear_cached_state()
+
+    def _get_checkout_format(self, lightweight=False):
         """Return the most suitable metadir for a checkout of this branch.
         """
         from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
         from bzrlib.bzrdir import BzrDirMetaFormat1
         format = BzrDirMetaFormat1()
-        format.repository_format = RepositoryFormat7()
+        if lightweight:
+            format.set_branch_format(self._format)
+            format.repository_format = self.bzrdir._format.repository_format
+        else:
+            format.repository_format = RepositoryFormat7()
         return format
 
     def unbind(self):
@@ -70,13 +134,16 @@ class BzrBranchFormat4(BranchFormat):
     It does not support binding.
     """
 
-    def initialize(self, a_bzrdir, name=None, repository=None):
+    def initialize(self, a_bzrdir, name=None, repository=None,
+                   append_revisions_only=None):
         """Create a branch of this format in a_bzrdir.
 
         :param a_bzrdir: The bzrdir to initialize the branch in
         :param name: Name of colocated branch to create, if any
         :param repository: Repository for this branch (unused)
         """
+        if append_revisions_only:
+            raise errors.UpgradeRequired(a_bzrdir.user_url)
         if repository is not None:
             raise NotImplementedError(
                 "initialize(repository=<not None>) on %r" % (self,))
@@ -127,9 +194,11 @@ class BzrBranchFormat4(BranchFormat):
         return "Branch format 4"
 
     def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
-            found_repository=None):
+            found_repository=None, possible_transports=None):
         """See BranchFormat.open()."""
-        if name is not None:
+        if name is None:
+            name = a_bzrdir._get_selected_branch()
+        if name != "":
             raise errors.NoColocatedBranchSupport(self)
         if not _found:
             # we are being called directly and must probe.
@@ -140,7 +209,8 @@ class BzrBranchFormat4(BranchFormat):
                          _control_files=a_bzrdir._control_files,
                          a_bzrdir=a_bzrdir,
                          name=name,
-                         _repository=found_repository)
+                         _repository=found_repository,
+                         possible_transports=possible_transports)
 
     def __str__(self):
         return "Bazaar-NG branch format 4"

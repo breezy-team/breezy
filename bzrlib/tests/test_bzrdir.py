@@ -26,6 +26,7 @@ import sys
 from bzrlib import (
     branch,
     bzrdir,
+    config,
     controldir,
     errors,
     help_topics,
@@ -34,7 +35,6 @@ from bzrlib import (
     revision as _mod_revision,
     osutils,
     remote,
-    symbol_versioning,
     transport as _mod_transport,
     urlutils,
     win32utils,
@@ -42,6 +42,7 @@ from bzrlib import (
     workingtree_4,
     )
 import bzrlib.branch
+from bzrlib.branchfmt.fullhistory import BzrBranchFormat5
 from bzrlib.errors import (
     NotBranchError,
     NoColocatedBranchSupport,
@@ -169,18 +170,18 @@ class TestFormatRegistry(TestCase):
         self.assertNotContainsRe(new, 'hidden')
 
     def test_set_default_repository(self):
-        default_factory = bzrdir.format_registry.get('default')
-        old_default = [k for k, v in bzrdir.format_registry.iteritems()
+        default_factory = controldir.format_registry.get('default')
+        old_default = [k for k, v in controldir.format_registry.iteritems()
                        if v == default_factory and k != 'default'][0]
-        bzrdir.format_registry.set_default_repository('dirstate-with-subtree')
+        controldir.format_registry.set_default_repository('dirstate-with-subtree')
         try:
-            self.assertIs(bzrdir.format_registry.get('dirstate-with-subtree'),
-                          bzrdir.format_registry.get('default'))
+            self.assertIs(controldir.format_registry.get('dirstate-with-subtree'),
+                          controldir.format_registry.get('default'))
             self.assertIs(
                 repository.format_registry.get_default().__class__,
                 knitrepo.RepositoryFormatKnit3)
         finally:
-            bzrdir.format_registry.set_default_repository(old_default)
+            controldir.format_registry.set_default_repository(old_default)
 
     def test_aliases(self):
         a_registry = controldir.ControlDirFormatRegistry()
@@ -211,21 +212,21 @@ class SampleBzrDir(bzrdir.BzrDir):
     """A sample BzrDir implementation to allow testing static methods."""
 
     def create_repository(self, shared=False):
-        """See BzrDir.create_repository."""
+        """See ControlDir.create_repository."""
         return "A repository"
 
     def open_repository(self):
-        """See BzrDir.open_repository."""
+        """See ControlDir.open_repository."""
         return SampleRepository(self)
 
     def create_branch(self, name=None):
-        """See BzrDir.create_branch."""
+        """See ControlDir.create_branch."""
         if name is not None:
             raise NoColocatedBranchSupport(self)
         return SampleBranch(self)
 
     def create_workingtree(self):
-        """See BzrDir.create_workingtree."""
+        """See ControlDir.create_workingtree."""
         return "A tree"
 
 
@@ -251,6 +252,10 @@ class SampleBzrDirFormat(bzrdir.BzrDirFormat):
 
     def open(self, transport, _found=None):
         return "opened branch."
+
+    @classmethod
+    def from_string(cls, format_string):
+        return cls()
 
 
 class BzrDirFormatTest1(bzrdir.BzrDirMetaFormat1):
@@ -285,7 +290,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         self.build_tree(["foo/", "bar/"], transport=t)
         def check_format(format, url):
             format.initialize(url)
-            t = _mod_transport.get_transport(url)
+            t = _mod_transport.get_transport_from_path(url)
             found_format = bzrdir.BzrDirFormat.find_format(t)
             self.assertIsInstance(found_format, format.__class__)
         check_format(BzrDirFormatTest1(), "foo")
@@ -294,7 +299,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_find_format_nothing_there(self):
         self.assertRaises(NotBranchError,
                           bzrdir.BzrDirFormat.find_format,
-                          _mod_transport.get_transport('.'))
+                          _mod_transport.get_transport_from_path('.'))
 
     def test_find_format_unknown_format(self):
         t = self.get_transport()
@@ -302,7 +307,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         t.put_bytes('.bzr/branch-format', '')
         self.assertRaises(UnknownFormatError,
                           bzrdir.BzrDirFormat.find_format,
-                          _mod_transport.get_transport('.'))
+                          _mod_transport.get_transport_from_path('.'))
 
     def test_register_unregister_format(self):
         format = SampleBzrDirFormat()
@@ -316,7 +321,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         # which bzrdir.open_containing will refuse (not supported)
         self.assertRaises(UnsupportedFormatError, bzrdir.BzrDir.open_containing, url)
         # but open_downlevel will work
-        t = _mod_transport.get_transport(url)
+        t = _mod_transport.get_transport_from_url(url)
         self.assertEqual(format.open(t), bzrdir.BzrDir.open_unsupported(url))
         # unregister the format
         bzrdir.BzrProber.formats.remove(format.get_format_string())
@@ -332,7 +337,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_create_branch_and_repo_under_shared(self):
         # creating a branch and repo in a shared repo uses the
         # shared repository
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         self.make_repository('.', shared=True, format=format)
         branch = bzrdir.BzrDir.create_branch_and_repo(
             self.get_url('child'), format=format)
@@ -342,7 +347,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_create_branch_and_repo_under_shared_force_new(self):
         # creating a branch and repo in a shared repo can be forced to
         # make a new repo
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         self.make_repository('.', shared=True, format=format)
         branch = bzrdir.BzrDir.create_branch_and_repo(self.get_url('child'),
                                                       force_new_repo=True,
@@ -362,7 +367,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
 
     def test_create_standalone_working_tree_under_shared_repo(self):
         # create standalone working tree always makes a repo.
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         self.make_repository('.', shared=True, format=format)
         # note this is deliberately readonly, as this failure should
         # occur before any writes.
@@ -375,14 +380,14 @@ class TestBzrDirFormat(TestCaseWithTransport):
 
     def test_create_branch_convenience(self):
         # outside a repo the default convenience output is a repo+branch_tree
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         branch = bzrdir.BzrDir.create_branch_convenience('.', format=format)
         branch.bzrdir.open_workingtree()
         branch.bzrdir.open_repository()
 
     def test_create_branch_convenience_possible_transports(self):
         """Check that the optional 'possible_transports' is recognized"""
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         t = self.get_transport()
         branch = bzrdir.BzrDir.create_branch_convenience(
             '.', format=format, possible_transports=[t])
@@ -393,7 +398,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         """Creating a branch at the root of a fs should work."""
         self.vfs_transport_factory = memory.MemoryServer
         # outside a repo the default convenience output is a repo+branch_tree
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         branch = bzrdir.BzrDir.create_branch_convenience(self.get_url(),
                                                          format=format)
         self.assertRaises(errors.NoWorkingTree,
@@ -403,7 +408,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_create_branch_convenience_under_shared_repo(self):
         # inside a repo the default convenience output is a branch+ follow the
         # repo tree policy
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         self.make_repository('.', shared=True, format=format)
         branch = bzrdir.BzrDir.create_branch_convenience('child',
             format=format)
@@ -414,7 +419,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_create_branch_convenience_under_shared_repo_force_no_tree(self):
         # inside a repo the default convenience output is a branch+ follow the
         # repo tree policy but we can override that
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         self.make_repository('.', shared=True, format=format)
         branch = bzrdir.BzrDir.create_branch_convenience('child',
             force_new_tree=False, format=format)
@@ -426,7 +431,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_create_branch_convenience_under_shared_repo_no_tree_policy(self):
         # inside a repo the default convenience output is a branch+ follow the
         # repo tree policy
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         repo = self.make_repository('.', shared=True, format=format)
         repo.set_make_working_trees(False)
         branch = bzrdir.BzrDir.create_branch_convenience('child',
@@ -439,7 +444,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_create_branch_convenience_under_shared_repo_no_tree_policy_force_tree(self):
         # inside a repo the default convenience output is a branch+ follow the
         # repo tree policy but we can override that
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         repo = self.make_repository('.', shared=True, format=format)
         repo.set_make_working_trees(False)
         branch = bzrdir.BzrDir.create_branch_convenience('child',
@@ -451,7 +456,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_create_branch_convenience_under_shared_repo_force_new_repo(self):
         # inside a repo the default convenience output is overridable to give
         # repo+branch+tree
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         self.make_repository('.', shared=True, format=format)
         branch = bzrdir.BzrDir.create_branch_convenience('child',
             force_new_repo=True, format=format)
@@ -511,6 +516,35 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         parent_bzrdir.get_config().set_default_stack_on(stacked_on.base)
         # Clone source into directory
         target = source_bzrdir.clone(self.get_url('parent/target'))
+
+    def test_format_initialize_on_transport_ex_stacked_on(self):
+        # trunk is a stackable format.  Note that its in the same server area
+        # which is what launchpad does, but not sufficient to exercise the
+        # general case.
+        trunk = self.make_branch('trunk', format='1.9')
+        t = self.get_transport('stacked')
+        old_fmt = controldir.format_registry.make_bzrdir('pack-0.92')
+        repo_name = old_fmt.repository_format.network_name()
+        # Should end up with a 1.9 format (stackable)
+        repo, control, require_stacking, repo_policy = \
+            old_fmt.initialize_on_transport_ex(t,
+                    repo_format_name=repo_name, stacked_on='../trunk',
+                    stack_on_pwd=t.base)
+        if repo is not None:
+            # Repositories are open write-locked
+            self.assertTrue(repo.is_write_locked())
+            self.addCleanup(repo.unlock)
+        else:
+            repo = control.open_repository()
+        self.assertIsInstance(control, bzrdir.BzrDir)
+        opened = bzrdir.BzrDir.open(t.base)
+        if not isinstance(old_fmt, remote.RemoteBzrDirFormat):
+            self.assertEqual(control._format.network_name(),
+                old_fmt.network_name())
+            self.assertEqual(control._format.network_name(),
+                opened._format.network_name())
+        self.assertEqual(control.__class__, opened.__class__)
+        self.assertLength(1, repo._fallback_repositories)
 
     def test_sprout_obeys_stacking_policy(self):
         child_branch, new_child_transport = self.prepare_default_stacking()
@@ -710,16 +744,19 @@ class ChrootedTests(TestCaseWithTransport):
     def test_open_containing_from_transport(self):
         self.assertRaises(NotBranchError,
             bzrdir.BzrDir.open_containing_from_transport,
-            _mod_transport.get_transport(self.get_readonly_url('')))
+            _mod_transport.get_transport_from_url(self.get_readonly_url('')))
         self.assertRaises(NotBranchError,
             bzrdir.BzrDir.open_containing_from_transport,
-            _mod_transport.get_transport(self.get_readonly_url('g/p/q')))
+            _mod_transport.get_transport_from_url(
+                self.get_readonly_url('g/p/q')))
         control = bzrdir.BzrDir.create(self.get_url())
         branch, relpath = bzrdir.BzrDir.open_containing_from_transport(
-            _mod_transport.get_transport(self.get_readonly_url('')))
+            _mod_transport.get_transport_from_url(
+                self.get_readonly_url('')))
         self.assertEqual('', relpath)
         branch, relpath = bzrdir.BzrDir.open_containing_from_transport(
-            _mod_transport.get_transport(self.get_readonly_url('g/p/q')))
+            _mod_transport.get_transport_from_url(
+                self.get_readonly_url('g/p/q')))
         self.assertEqual('g/p/q', relpath)
 
     def test_open_containing_tree_or_branch(self):
@@ -787,9 +824,9 @@ class ChrootedTests(TestCaseWithTransport):
 
     def test_sprout_recursive(self):
         tree = self.make_branch_and_tree('tree1',
-                                         format='dirstate-with-subtree')
+                                         format='development-subtree')
         sub_tree = self.make_branch_and_tree('tree1/subtree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         sub_tree.set_root_id('subtree-root')
         tree.add_reference(sub_tree)
         self.build_tree(['tree1/subtree/file'])
@@ -812,21 +849,21 @@ class ChrootedTests(TestCaseWithTransport):
 
     def test_sprout_recursive_treeless(self):
         tree = self.make_branch_and_tree('tree1',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         sub_tree = self.make_branch_and_tree('tree1/subtree',
-            format='dirstate-with-subtree')
+            format='development-subtree')
         tree.add_reference(sub_tree)
         self.build_tree(['tree1/subtree/file'])
         sub_tree.add('file')
         tree.commit('Initial commit')
         # The following line force the orhaning to reveal bug #634470
-        tree.branch.get_config().set_user_option(
+        tree.branch.get_config_stack().set(
             'bzr.transform.orphan_policy', 'move')
         tree.bzrdir.destroy_workingtree()
         # FIXME: subtree/.bzr is left here which allows the test to pass (or
         # fail :-( ) -- vila 20100909
         repo = self.make_repository('repo', shared=True,
-            format='dirstate-with-subtree')
+            format='development-subtree')
         repo.set_make_working_trees(False)
         # FIXME: we just deleted the workingtree and now we want to use it ????
         # At a minimum, we should use tree.branch below (but this fails too
@@ -898,7 +935,7 @@ class ChrootedTests(TestCaseWithTransport):
         def evaluate(bzrdir):
             try:
                 repo = bzrdir.open_repository()
-            except NoRepositoryPresent:
+            except errors.NoRepositoryPresent:
                 return True, bzrdir.root_transport.base
             else:
                 return False, bzrdir.root_transport.base
@@ -955,7 +992,7 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         branch_base = t.clone('branch').base
         self.assertEqual(branch_base, dir.get_branch_transport(None).base)
         self.assertEqual(branch_base,
-                         dir.get_branch_transport(bzrlib.branch.BzrBranchFormat5()).base)
+                         dir.get_branch_transport(BzrBranchFormat5()).base)
         repository_base = t.clone('repository').base
         self.assertEqual(repository_base, dir.get_repository_transport(None).base)
         repository_format = repository.format_registry.get_default()
@@ -978,26 +1015,38 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         Metadirs should compare equal iff they have the same repo, branch and
         tree formats.
         """
-        mydir = bzrdir.format_registry.make_bzrdir('knit')
+        mydir = controldir.format_registry.make_bzrdir('knit')
         self.assertEqual(mydir, mydir)
         self.assertFalse(mydir != mydir)
-        otherdir = bzrdir.format_registry.make_bzrdir('knit')
+        otherdir = controldir.format_registry.make_bzrdir('knit')
         self.assertEqual(otherdir, mydir)
         self.assertFalse(otherdir != mydir)
-        otherdir2 = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
+        otherdir2 = controldir.format_registry.make_bzrdir('development-subtree')
         self.assertNotEqual(otherdir2, mydir)
         self.assertFalse(otherdir2 == mydir)
 
+    def test_with_features(self):
+        tree = self.make_branch_and_tree('tree', format='2a')
+        tree.bzrdir.update_feature_flags({"bar": "required"})
+        self.assertRaises(errors.MissingFeature, bzrdir.BzrDir.open, 'tree')
+        bzrdir.BzrDirMetaFormat1.register_feature('bar')
+        self.addCleanup(bzrdir.BzrDirMetaFormat1.unregister_feature, 'bar')
+        dir = bzrdir.BzrDir.open('tree')
+        self.assertEquals("required", dir._format.features.get("bar"))
+        tree.bzrdir.update_feature_flags({"bar": None, "nonexistant": None})
+        dir = bzrdir.BzrDir.open('tree')
+        self.assertEquals({}, dir._format.features)
+
     def test_needs_conversion_different_working_tree(self):
         # meta1dirs need an conversion if any element is not the default.
-        new_format = bzrdir.format_registry.make_bzrdir('dirstate')
+        new_format = controldir.format_registry.make_bzrdir('dirstate')
         tree = self.make_branch_and_tree('tree', format='knit')
         self.assertTrue(tree.bzrdir.needs_format_conversion(
             new_format))
 
     def test_initialize_on_format_uses_smart_transport(self):
         self.setup_smart_server_with_call_log()
-        new_format = bzrdir.format_registry.make_bzrdir('dirstate')
+        new_format = controldir.format_registry.make_bzrdir('dirstate')
         transport = self.get_transport('target')
         transport.ensure_base()
         self.reset_smart_call_log()
@@ -1021,7 +1070,7 @@ class NonLocalTests(TestCaseWithTransport):
 
     def test_create_branch_convenience(self):
         # outside a repo the default convenience output is a repo+branch_tree
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         branch = bzrdir.BzrDir.create_branch_convenience(
             self.get_url('foo'), format=format)
         self.assertRaises(errors.NoWorkingTree,
@@ -1030,7 +1079,7 @@ class NonLocalTests(TestCaseWithTransport):
 
     def test_create_branch_convenience_force_tree_not_local_fails(self):
         # outside a repo the default convenience output is a repo+branch_tree
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         self.assertRaises(errors.NotLocalUrl,
             bzrdir.BzrDir.create_branch_convenience,
             self.get_url('foo'),
@@ -1041,7 +1090,7 @@ class NonLocalTests(TestCaseWithTransport):
 
     def test_clone(self):
         # clone into a nonlocal path works
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         branch = bzrdir.BzrDir.create_branch_convenience('local',
                                                          format=format)
         branch.bzrdir.open_workingtree()
@@ -1208,10 +1257,10 @@ class _TestBzrDir(bzrdir.BzrDirMeta1):
 
     def __init__(self, *args, **kwargs):
         super(_TestBzrDir, self).__init__(*args, **kwargs)
-        self.test_branch = _TestBranch()
+        self.test_branch = _TestBranch(self.transport)
         self.test_branch.repository = self.create_repository()
 
-    def open_branch(self, unsupported=False):
+    def open_branch(self, unsupported=False, possible_transports=None):
         return self.test_branch
 
     def cloning_metadir(self, require_stacking=False):
@@ -1225,15 +1274,17 @@ class _TestBranchFormat(bzrlib.branch.BranchFormat):
 class _TestBranch(bzrlib.branch.Branch):
     """Test Branch implementation for TestBzrDirSprout."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, transport, *args, **kwargs):
         self._format = _TestBranchFormat()
+        self._transport = transport
+        self.base = transport.base
         super(_TestBranch, self).__init__(*args, **kwargs)
         self.calls = []
         self._parent = None
 
     def sprout(self, *args, **kwargs):
         self.calls.append('sprout')
-        return _TestBranch()
+        return _TestBranch(self._transport)
 
     def copy_content_into(self, destination, revision_id=None):
         self.calls.append('copy_content_into')
@@ -1243,6 +1294,12 @@ class _TestBranch(bzrlib.branch.Branch):
 
     def get_parent(self):
         return self._parent
+
+    def _get_config(self):
+        return config.TransportConfig(self._transport, 'branch.conf')
+
+    def _get_config_store(self):
+        return config.BranchStore(self)
 
     def set_parent(self, parent):
         self._parent = parent
@@ -1314,7 +1371,7 @@ class TestBzrDirHooks(TestCaseWithMemoryTransport):
         self.assertEqual('fail', err._preformatted_string)
 
     def test_post_repo_init(self):
-        from bzrlib.bzrdir import RepoInitHookParams
+        from bzrlib.controldir import RepoInitHookParams
         calls = []
         bzrdir.BzrDir.hooks.install_named_hook('post_repo_init',
             calls.append, None)
@@ -1347,11 +1404,6 @@ class TestGenerateBackupName(TestCaseWithMemoryTransport):
             possible_transports=[self._transport])
         self._bzrdir = bzrdir.BzrDir.open_from_transport(self._transport)
 
-    def test_deprecated_generate_backup_name(self):
-        res = self.applyDeprecated(
-                symbol_versioning.deprecated_in((2, 3, 0)),
-                self._bzrdir.generate_backup_name, 'whatever')
-
     def test_new(self):
         self.assertEqual("a.~1~", self._bzrdir._available_backup_name("a"))
 
@@ -1359,3 +1411,162 @@ class TestGenerateBackupName(TestCaseWithMemoryTransport):
         self._transport.put_bytes("a.~1~", "some content")
         self.assertEqual("a.~2~", self._bzrdir._available_backup_name("a"))
 
+
+class TestMeta1DirColoFormat(TestCaseWithTransport):
+    """Tests specific to the meta1 dir with colocated branches format."""
+
+    def test_supports_colo(self):
+        format = bzrdir.BzrDirMetaFormat1Colo()
+        self.assertTrue(format.colocated_branches)
+
+    def test_upgrade_from_2a(self):
+        tree = self.make_branch_and_tree('.', format='2a')
+        format = bzrdir.BzrDirMetaFormat1Colo()
+        self.assertTrue(tree.bzrdir.needs_format_conversion(format))
+        converter = tree.bzrdir._format.get_converter(format)
+        result = converter.convert(tree.bzrdir, None)
+        self.assertIsInstance(result._format, bzrdir.BzrDirMetaFormat1Colo)
+        self.assertFalse(result.needs_format_conversion(format))
+
+    def test_downgrade_to_2a(self):
+        tree = self.make_branch_and_tree('.', format='development-colo')
+        format = bzrdir.BzrDirMetaFormat1()
+        self.assertTrue(tree.bzrdir.needs_format_conversion(format))
+        converter = tree.bzrdir._format.get_converter(format)
+        result = converter.convert(tree.bzrdir, None)
+        self.assertIsInstance(result._format, bzrdir.BzrDirMetaFormat1)
+        self.assertFalse(result.needs_format_conversion(format))
+
+    def test_downgrade_to_2a_too_many_branches(self):
+        tree = self.make_branch_and_tree('.', format='development-colo')
+        tree.bzrdir.create_branch(name="another-colocated-branch")
+        converter = tree.bzrdir._format.get_converter(
+            bzrdir.BzrDirMetaFormat1())
+        result = converter.convert(tree.bzrdir, bzrdir.BzrDirMetaFormat1())
+        self.assertIsInstance(result._format, bzrdir.BzrDirMetaFormat1)
+
+    def test_nested(self):
+        tree = self.make_branch_and_tree('.', format='development-colo')
+        tree.bzrdir.create_branch(name='foo')
+        tree.bzrdir.create_branch(name='fool/bla')
+        self.assertRaises(
+            errors.ParentBranchExists, tree.bzrdir.create_branch,
+            name='foo/bar')
+
+    def test_parent(self):
+        tree = self.make_branch_and_tree('.', format='development-colo')
+        tree.bzrdir.create_branch(name='fool/bla')
+        tree.bzrdir.create_branch(name='foo/bar')
+        self.assertRaises(
+            errors.AlreadyBranchError, tree.bzrdir.create_branch,
+            name='foo')
+
+
+class SampleBzrFormat(bzrdir.BzrFormat):
+
+    @classmethod
+    def get_format_string(cls):
+        return "First line\n"
+
+
+class TestBzrFormat(TestCase):
+    """Tests for BzrFormat."""
+
+    def test_as_string(self):
+        format = SampleBzrFormat()
+        format.features = {"foo": "required"}
+        self.assertEquals(format.as_string(),
+            "First line\n"
+            "required foo\n")
+        format.features["another"] = "optional"
+        self.assertEquals(format.as_string(),
+            "First line\n"
+            "required foo\n"
+            "optional another\n")
+
+    def test_network_name(self):
+        # The network string should include the feature info
+        format = SampleBzrFormat()
+        format.features = {"foo": "required"}
+        self.assertEquals(
+            "First line\nrequired foo\n",
+            format.network_name())
+
+    def test_from_string_no_features(self):
+        # No features
+        format = SampleBzrFormat.from_string(
+            "First line\n")
+        self.assertEquals({}, format.features)
+
+    def test_from_string_with_feature(self):
+        # Proper feature
+        format = SampleBzrFormat.from_string(
+            "First line\nrequired foo\n")
+        self.assertEquals("required", format.features.get("foo"))
+
+    def test_from_string_format_string_mismatch(self):
+        # The first line has to match the format string
+        self.assertRaises(AssertionError, SampleBzrFormat.from_string,
+            "Second line\nrequired foo\n")
+
+    def test_from_string_missing_space(self):
+        # At least one space is required in the feature lines
+        self.assertRaises(errors.ParseFormatError, SampleBzrFormat.from_string,
+            "First line\nfoo\n")
+
+    def test_from_string_with_spaces(self):
+        # Feature with spaces (in case we add stuff like this in the future)
+        format = SampleBzrFormat.from_string(
+            "First line\nrequired foo with spaces\n")
+        self.assertEquals("required", format.features.get("foo with spaces"))
+
+    def test_eq(self):
+        format1 = SampleBzrFormat()
+        format1.features = {"nested-trees": "optional"}
+        format2 = SampleBzrFormat()
+        format2.features = {"nested-trees": "optional"}
+        self.assertEquals(format1, format1)
+        self.assertEquals(format1, format2)
+        format3 = SampleBzrFormat()
+        self.assertNotEquals(format1, format3)
+
+    def test_check_support_status_optional(self):
+        # Optional, so silently ignore
+        format = SampleBzrFormat()
+        format.features = {"nested-trees": "optional"}
+        format.check_support_status(True)
+        self.addCleanup(SampleBzrFormat.unregister_feature, "nested-trees")
+        SampleBzrFormat.register_feature("nested-trees")
+        format.check_support_status(True)
+
+    def test_check_support_status_required(self):
+        # Optional, so trigger an exception
+        format = SampleBzrFormat()
+        format.features = {"nested-trees": "required"}
+        self.assertRaises(errors.MissingFeature, format.check_support_status,
+            True)
+        self.addCleanup(SampleBzrFormat.unregister_feature, "nested-trees")
+        SampleBzrFormat.register_feature("nested-trees")
+        format.check_support_status(True)
+
+    def test_check_support_status_unknown(self):
+        # treat unknown necessity as required
+        format = SampleBzrFormat()
+        format.features = {"nested-trees": "unknown"}
+        self.assertRaises(errors.MissingFeature, format.check_support_status,
+            True)
+        self.addCleanup(SampleBzrFormat.unregister_feature, "nested-trees")
+        SampleBzrFormat.register_feature("nested-trees")
+        format.check_support_status(True)
+
+    def test_feature_already_registered(self):
+        # a feature can only be registered once
+        self.addCleanup(SampleBzrFormat.unregister_feature, "nested-trees")
+        SampleBzrFormat.register_feature("nested-trees")
+        self.assertRaises(errors.FeatureAlreadyRegistered,
+            SampleBzrFormat.register_feature, "nested-trees")
+
+    def test_feature_with_space(self):
+        # spaces are not allowed in feature names
+        self.assertRaises(ValueError, SampleBzrFormat.register_feature,
+            "nested trees")

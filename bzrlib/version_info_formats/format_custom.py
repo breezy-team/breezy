@@ -17,6 +17,8 @@
 """A generator which creates a template-based output from the current
    tree info."""
 
+from __future__ import absolute_import
+
 from bzrlib import errors
 from bzrlib.revision import (
    NULL_REVISION,
@@ -93,7 +95,7 @@ class CustomVersionInfoBuilder(VersionInfoBuilder):
         if revision_id == NULL_REVISION:
             info.add('revno', 0)
         else:
-            info.add('revno', self._branch.revision_id_to_revno(revision_id))
+            info.add('revno', self._get_revno_str(revision_id))
             info.add('revision_id', revision_id)
             rev = self._branch.repository.get_revision(revision_id)
             info.add('date', create_date_str(rev.timestamp, rev.timezone))

@@ -14,14 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
-import urllib
-import urlparse
+from __future__ import absolute_import
 
 from bzrlib import (
     errors,
     trace,
-    urlutils,
     )
 from bzrlib.transport import http
 # TODO: handle_response should be integrated into the http/__init__.py
@@ -41,14 +38,14 @@ class HttpTransport_urllib(http.HttpTransportBase):
 
     _opener_class = Opener
 
-    def __init__(self, base, _from_transport=None):
+    def __init__(self, base, _from_transport=None, ca_certs=None):
         super(HttpTransport_urllib, self).__init__(
             base, 'urllib', _from_transport=_from_transport)
         if _from_transport is not None:
             self._opener = _from_transport._opener
         else:
             self._opener = self._opener_class(
-                report_activity=self._report_activity)
+                report_activity=self._report_activity, ca_certs=ca_certs)
 
     def _perform(self, request):
         """Send the request to the server and handles common errors.
@@ -172,11 +169,24 @@ class HttpTransport_urllib(http.HttpTransportBase):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from bzrlib import tests
-    from bzrlib.tests import http_server
+    from bzrlib.tests import (
+        features,
+        http_server,
+        )
     permutations = [(HttpTransport_urllib, http_server.HttpServer_urllib),]
-    if tests.HTTPSServerFeature.available():
-        from bzrlib.tests import https_server
-        permutations.append((HttpTransport_urllib,
+    if features.HTTPSServerFeature.available():
+        from bzrlib.tests import (
+            https_server,
+            ssl_certs,
+            )
+
+        class HTTPS_urllib_transport(HttpTransport_urllib):
+
+            def __init__(self, base, _from_transport=None):
+                super(HTTPS_urllib_transport, self).__init__(
+                    base, _from_transport=_from_transport,
+                    ca_certs=ssl_certs.build_path('ca.crt'))
+
+        permutations.append((HTTPS_urllib_transport,
                              https_server.HTTPSServer_urllib))
     return permutations

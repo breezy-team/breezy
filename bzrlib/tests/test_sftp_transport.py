@@ -21,8 +21,8 @@ import sys
 import time
 
 from bzrlib import (
-    bzrdir,
     config,
+    controldir,
     errors,
     tests,
     transport as _mod_transport,
@@ -81,7 +81,7 @@ class SFTPLockTests(TestCaseWithSFTPServer):
         l.unlock()
         self.assertFalse(lexists('bogus.write-lock'))
 
-        open('something.write-lock', 'wb').write('fake lock\n')
+        with open('something.write-lock', 'wb') as f: f.write('fake lock\n')
         self.assertRaises(LockError, t.lock_write, 'something')
         os.remove('something.write-lock')
 
@@ -140,7 +140,7 @@ class SFTPTransportTestRelativeRoot(TestCaseWithSFTPServer):
     def test__remote_path_relative_root(self):
         # relative paths are preserved
         t = self.get_transport('')
-        self.assertEqual('/~/', t._path)
+        self.assertEqual('/~/', t._parsed_url.path)
         # the remote path should be relative to home dir
         # (i.e. not begining with a '/')
         self.assertEqual('a', t._remote_path('a'))
@@ -154,11 +154,11 @@ class SFTPNonServerTest(TestCase):
     def test_parse_url_with_home_dir(self):
         s = _mod_sftp.SFTPTransport(
             'sftp://ro%62ey:h%40t@example.com:2222/~/relative')
-        self.assertEquals(s._host, 'example.com')
-        self.assertEquals(s._port, 2222)
-        self.assertEquals(s._user, 'robey')
-        self.assertEquals(s._password, 'h@t')
-        self.assertEquals(s._path, '/~/relative/')
+        self.assertEquals(s._parsed_url.host, 'example.com')
+        self.assertEquals(s._parsed_url.port, 2222)
+        self.assertEquals(s._parsed_url.user, 'robey')
+        self.assertEquals(s._parsed_url.password, 'h@t')
+        self.assertEquals(s._parsed_url.path, '/~/relative/')
 
     def test_relpath(self):
         s = _mod_sftp.SFTPTransport('sftp://user@host.com/abs/path')
@@ -180,7 +180,7 @@ class SFTPNonServerTest(TestCase):
         server.start_server()
         self.addCleanup(server.stop_server)
 
-        transport = _mod_transport.get_transport(server.get_url())
+        transport = _mod_transport.get_transport_from_url(server.get_url())
         self.assertFalse(transport.abspath('/').endswith('/~/'))
         self.assertTrue(transport.abspath('/').endswith('/'))
         del transport
@@ -191,21 +191,21 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
 
     def test_push_support(self):
         self.build_tree(['a/', 'a/foo'])
-        t = bzrdir.BzrDir.create_standalone_workingtree('a')
+        t = controldir.ControlDir.create_standalone_workingtree('a')
         b = t.branch
         t.add('foo')
         t.commit('foo', rev_id='a1')
 
-        b2 = bzrdir.BzrDir.create_branch_and_repo(self.get_url('/b'))
+        b2 = controldir.ControlDir.create_branch_and_repo(self.get_url('/b'))
         b2.pull(b)
 
-        self.assertEquals(b2.revision_history(), ['a1'])
+        self.assertEquals(b2.last_revision(), 'a1')
 
-        open('a/foo', 'wt').write('something new in foo\n')
+        with open('a/foo', 'wt') as f: f.write('something new in foo\n')
         t.commit('new', rev_id='a2')
         b2.pull(b)
 
-        self.assertEquals(b2.revision_history(), ['a1', 'a2'])
+        self.assertEquals(b2.last_revision(), 'a2')
 
 
 class SSHVendorConnection(TestCaseWithSFTPServer):
@@ -279,45 +279,32 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         self.addCleanup(s.close)
         self.bogus_url = 'sftp://%s:%s/' % s.getsockname()
 
-    def set_vendor(self, vendor):
+    def set_vendor(self, vendor, subprocess_stderr=None):
         from bzrlib.transport import ssh
         self.overrideAttr(ssh._ssh_vendor_manager, '_cached_ssh_vendor', vendor)
+        if subprocess_stderr is not None:
+            self.overrideAttr(ssh.SubprocessVendor, "_stderr_target",
+                subprocess_stderr)
 
     def test_bad_connection_paramiko(self):
         """Test that a real connection attempt raises the right error"""
         from bzrlib.transport import ssh
         self.set_vendor(ssh.ParamikoVendor())
-        t = _mod_transport.get_transport(self.bogus_url)
+        t = _mod_transport.get_transport_from_url(self.bogus_url)
         self.assertRaises(errors.ConnectionError, t.get, 'foobar')
 
     def test_bad_connection_ssh(self):
         """None => auto-detect vendor"""
-        self.set_vendor(None)
-        # This is how I would normally test the connection code
-        # it makes it very clear what we are testing.
-        # However, 'ssh' will create stipple on the output, so instead
-        # I'm using run_bzr_subprocess, and parsing the output
-        # try:
-        #     t = _mod_transport.get_transport(self.bogus_url)
-        # except errors.ConnectionError:
-        #     # Correct error
-        #     pass
-        # except errors.NameError, e:
-        #     if 'SSHException' in str(e):
-        #         raise TestSkipped('Known NameError bug in paramiko 1.6.1')
-        #     raise
-        # else:
-        #     self.fail('Excepted ConnectionError to be raised')
-
-        out, err = self.run_bzr_subprocess(['log', self.bogus_url], retcode=3)
-        self.assertEqual('', out)
-        if "NameError: global name 'SSHException'" in err:
-            # We aren't fixing this bug, because it is a bug in
-            # paramiko, but we know about it, so we don't have to
-            # fail the test
-            raise TestSkipped('Known NameError bug with paramiko-1.6.1')
-        self.assertContainsRe(err, r'bzr: ERROR: Unable to connect to SSH host'
-                                   r' 127\.0\.0\.1:\d+; ')
+        f = file(os.devnull, "wb")
+        self.addCleanup(f.close)
+        self.set_vendor(None, f)
+        t = _mod_transport.get_transport_from_url(self.bogus_url)
+        try:
+            self.assertRaises(errors.ConnectionError, t.get, 'foobar')
+        except NameError, e:
+            if "global name 'SSHException'" in str(e):
+                self.knownFailure('Known NameError bug in paramiko 1.6.1')
+            raise
 
 
 class SFTPLatencyKnob(TestCaseWithSFTPServer):
@@ -488,7 +475,8 @@ class TestUsesAuthConfig(TestCaseWithSFTPServer):
             conf._get_config().update(
                 {'sftptest': {'scheme': 'ssh', 'port': port, 'user': 'bar'}})
             conf._save()
-        t = _mod_transport.get_transport('sftp://localhost:%d' % port)
+        t = _mod_transport.get_transport_from_url(
+            'sftp://localhost:%d' % port)
         # force a connection to be performed.
         t.has('foo')
         return t

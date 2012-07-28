@@ -162,6 +162,8 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
         outer.commit('added foo')
         inner = self.make_inner_branch()
         outer.merge_from_branch(inner, to_revision='1', from_revision='null:')
+        #retain original root id.
+        outer.set_root_id(outer.basis_tree().get_root_id())
         outer.commit('merge inner branch')
         outer.mkdir('dir-outer', 'dir-outer-id')
         outer.move(['dir', 'file3'], to_dir='dir-outer')

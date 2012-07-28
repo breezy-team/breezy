@@ -27,6 +27,7 @@ from bzrlib.tests import (
     TestNotApplicable,
     TestSkipped,
     )
+from bzrlib.tests.matchers import MatchesAncestry
 from bzrlib.tests.per_interrepository import (
     TestCaseWithInterRepository,
     )
@@ -200,5 +201,5 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         rev = missing_ghost.get_revision('ghost')
         inv = missing_ghost.get_inventory('ghost')
         # rev must not be corrupt now
-        self.assertEqual([None, 'ghost', 'references', 'tip'],
-            missing_ghost.get_ancestry('tip'))
+        self.assertThat(['ghost', 'references', 'tip'],
+            MatchesAncestry(missing_ghost, 'tip'))

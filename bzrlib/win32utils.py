@@ -19,12 +19,19 @@
 Only one dependency: ctypes should be installed.
 """
 
+from __future__ import absolute_import
+
 import glob
+import operator
 import os
 import struct
 import sys
 
-from bzrlib import cmdline
+from bzrlib import (
+    cmdline,
+    symbol_versioning,
+    )
+from bzrlib.i18n import gettext
 
 # Windows version
 if sys.platform == 'win32':
@@ -62,21 +69,29 @@ except ImportError:
 else:
     if winver == 'Windows 98':
         create_buffer = ctypes.create_string_buffer
+        def extract_buffer(buf):
+            return buf.value.decode("mbcs")
         suffix = 'A'
     else:
         create_buffer = ctypes.create_unicode_buffer
+        extract_buffer = operator.attrgetter("value")
         suffix = 'W'
 try:
-    import win32file
     import pywintypes
-    has_win32file = True
+    has_pywintypes = True
 except ImportError:
-    has_win32file = False
-try:
-    import win32api
-    has_win32api = True
-except ImportError:
-    has_win32api = False
+    has_pywintypes = has_win32file = has_win32api = False
+else:
+    try:
+        import win32file
+        has_win32file = True
+    except ImportError:
+        has_win32file = False
+    try:
+        import win32api
+        has_win32api = True
+    except ImportError:
+        has_win32api = False
 
 # pulling in win32com.shell is a bit of overhead, and normally we don't need
 # it as ctypes is preferred and common.  lazy_imports and "optional"
@@ -128,7 +143,7 @@ def debug_memory_win32api(message='', short=True):
             ctypes.byref(mem_struct),
             ctypes.sizeof(mem_struct))
         if not ret:
-            trace.note('Failed to GetProcessMemoryInfo()')
+            trace.note(gettext('Failed to GetProcessMemoryInfo()'))
             return
         info = {'PageFaultCount': mem_struct.PageFaultCount,
                 'PeakWorkingSetSize': mem_struct.PeakWorkingSetSize,
@@ -149,26 +164,26 @@ def debug_memory_win32api(message='', short=True):
         proc = win32process.GetCurrentProcess()
         info = win32process.GetProcessMemoryInfo(proc)
     else:
-        trace.note('Cannot debug memory on win32 without ctypes'
-                   ' or win32process')
+        trace.note(gettext('Cannot debug memory on win32 without ctypes'
+                   ' or win32process'))
         return
     if short:
         # using base-2 units (see HACKING.txt).
-        trace.note('WorkingSize %7dKiB'
-                   '\tPeakWorking %7dKiB\t%s',
+        trace.note(gettext('WorkingSize {0:>7}KiB'
+                   '\tPeakWorking {1:>7}KiB\t{2}').format(
                    info['WorkingSetSize'] / 1024,
                    info['PeakWorkingSetSize'] / 1024,
-                   message)
+                   message))
         return
     if message:
         trace.note('%s', message)
-    trace.note('WorkingSize       %8d KiB', info['WorkingSetSize'] / 1024)
-    trace.note('PeakWorking       %8d KiB', info['PeakWorkingSetSize'] / 1024)
-    trace.note('PagefileUsage     %8d KiB', info.get('PagefileUsage', 0) / 1024)
-    trace.note('PeakPagefileUsage %8d KiB',
+    trace.note(gettext('WorkingSize       %8d KiB'), info['WorkingSetSize'] / 1024)
+    trace.note(gettext('PeakWorking       %8d KiB'), info['PeakWorkingSetSize'] / 1024)
+    trace.note(gettext('PagefileUsage     %8d KiB'), info.get('PagefileUsage', 0) / 1024)
+    trace.note(gettext('PeakPagefileUsage %8d KiB'),
                info.get('PeakPagefileUsage', 0) / 1024)
-    trace.note('PrivateUsage      %8d KiB', info.get('PrivateUsage', 0) / 1024)
-    trace.note('PageFaultCount    %8d', info.get('PageFaultCount', 0))
+    trace.note(gettext('PrivateUsage      %8d KiB'), info.get('PrivateUsage', 0) / 1024)
+    trace.note(gettext('PageFaultCount    %8d'), info.get('PageFaultCount', 0))
 
 
 def get_console_size(defaultx=80, defaulty=25):
@@ -242,28 +257,12 @@ def get_appdata_location():
     one that moves with the user as they logon to different machines, and
     a 'local' one that stays local to the machine.  This returns the 'roaming'
     directory, and thus is suitable for storing user-preferences, etc.
-
-    Returned value can be unicode or plain string.
-    To convert plain string to unicode use
-    s.decode(osutils.get_user_encoding())
-    (XXX - but see bug 262874, which asserts the correct encoding is 'mbcs')
     """
     appdata = _get_sh_special_folder_path(CSIDL_APPDATA)
     if appdata:
         return appdata
-    # from env variable
-    appdata = os.environ.get('APPDATA')
-    if appdata:
-        return appdata
-    # if we fall to this point we on win98
-    # at least try C:/WINDOWS/Application Data
-    windir = os.environ.get('windir')
-    if windir:
-        appdata = os.path.join(windir, 'Application Data')
-        if os.path.isdir(appdata):
-            return appdata
-    # did not find anything
-    return None
+    # Use APPDATA if defined, will return None if not
+    return get_environ_unicode('APPDATA')
 
 
 def get_local_appdata_location():
@@ -275,17 +274,12 @@ def get_local_appdata_location():
     a 'local' one that stays local to the machine.  This returns the 'local'
     directory, and thus is suitable for caches, temp files and other things
     which don't need to move with the user.
-
-    Returned value can be unicode or plain string.
-    To convert plain string to unicode use
-    s.decode(osutils.get_user_encoding())
-    (XXX - but see bug 262874, which asserts the correct encoding is 'mbcs')
     """
     local = _get_sh_special_folder_path(CSIDL_LOCAL_APPDATA)
     if local:
         return local
     # Vista supplies LOCALAPPDATA, but XP and earlier do not.
-    local = os.environ.get('LOCALAPPDATA')
+    local = get_environ_unicode('LOCALAPPDATA')
     if local:
         return local
     return get_appdata_location()
@@ -296,33 +290,27 @@ def get_home_location():
     Assume on win32 it's the <My Documents> folder.
     If location cannot be obtained return system drive root,
     i.e. C:\
-
-    Returned value can be unicode or plain string.
-    To convert plain string to unicode use
-    s.decode(osutils.get_user_encoding())
     """
     home = _get_sh_special_folder_path(CSIDL_PERSONAL)
     if home:
         return home
-    # try for HOME env variable
-    home = os.path.expanduser('~')
-    if home != '~':
+    home = get_environ_unicode('HOME')
+    if home is not None:
         return home
+    homepath = get_environ_unicode('HOMEPATH')
+    if homepath is not None:
+        return os.path.join(get_environ_unicode('HOMEDIR', ''), home)
     # at least return windows root directory
-    windir = os.environ.get('windir')
+    windir = get_environ_unicode('WINDIR')
     if windir:
         return os.path.splitdrive(windir)[0] + '/'
     # otherwise C:\ is good enough for 98% users
-    return 'C:/'
+    return unicode('C:/')
 
 
 def get_user_name():
     """Return user name as login name.
     If name cannot be obtained return None.
-
-    Returned value can be unicode or plain string.
-    To convert plain string to unicode use
-    s.decode(osutils.get_user_encoding())
     """
     if has_ctypes:
         try:
@@ -334,9 +322,9 @@ def get_user_name():
             buf = create_buffer(UNLEN+1)
             n = ctypes.c_int(UNLEN+1)
             if GetUserName(buf, ctypes.byref(n)):
-                return buf.value
+                return extract_buffer(buf)
     # otherwise try env variables
-    return os.environ.get('USERNAME', None)
+    return get_environ_unicode('USERNAME')
 
 
 # 1 == ComputerNameDnsHostname, which returns "The DNS host name of the local
@@ -347,8 +335,7 @@ def get_host_name():
     """Return host machine name.
     If name cannot be obtained return None.
 
-    :return: A unicode string representing the host name. On win98, this may be
-        a plain string as win32 api doesn't support unicode.
+    :return: A unicode string representing the host name.
     """
     if has_win32api:
         try:
@@ -371,7 +358,7 @@ def get_host_name():
             if (GetComputerNameEx is not None
                 and GetComputerNameEx(_WIN32_ComputerNameDnsHostname,
                                       buf, ctypes.byref(n))):
-                return buf.value
+                return extract_buffer(buf)
 
             # Try GetComputerName in case GetComputerNameEx wasn't found
             # It returns the NETBIOS name, which isn't as good, but still ok.
@@ -381,18 +368,12 @@ def get_host_name():
                                       None)
             if (GetComputerName is not None
                 and GetComputerName(buf, ctypes.byref(n))):
-                return buf.value
-    # otherwise try env variables, which will be 'mbcs' encoded
-    # on Windows (Python doesn't expose the native win32 unicode environment)
-    # According to this:
-    # http://msdn.microsoft.com/en-us/library/aa246807.aspx
-    # environment variables should always be encoded in 'mbcs'.
-    try:
-        return os.environ['COMPUTERNAME'].decode("mbcs")
-    except KeyError:
-        return None
+                return extract_buffer(buf)
+    return get_environ_unicode('COMPUTERNAME')
 
 
+@symbol_versioning.deprecated_function(
+    symbol_versioning.deprecated_in((2, 5, 0)))
 def _ensure_unicode(s):
     if s and type(s) != unicode:
         from bzrlib import osutils
@@ -400,17 +381,17 @@ def _ensure_unicode(s):
     return s
 
 
-def get_appdata_location_unicode():
-    return _ensure_unicode(get_appdata_location())
+get_appdata_location_unicode = symbol_versioning.deprecated_function(
+    symbol_versioning.deprecated_in((2, 5, 0)))(get_appdata_location)
 
-def get_home_location_unicode():
-    return _ensure_unicode(get_home_location())
+get_home_location_unicode = symbol_versioning.deprecated_function(
+    symbol_versioning.deprecated_in((2, 5, 0)))(get_home_location)
 
-def get_user_name_unicode():
-    return _ensure_unicode(get_user_name())
+get_user_name_unicode = symbol_versioning.deprecated_function(
+    symbol_versioning.deprecated_in((2, 5, 0)))(get_user_name)
 
-def get_host_name_unicode():
-    return _ensure_unicode(get_host_name())
+get_host_name_unicode = symbol_versioning.deprecated_function(
+    symbol_versioning.deprecated_in((2, 5, 0)))(get_host_name)
 
 
 def _ensure_with_dir(path):
@@ -425,7 +406,6 @@ def _undo_ensure_with_dir(path, corrected):
         return path[2:]
     else:
         return path
-
 
 
 def glob_one(possible_glob):
@@ -563,7 +543,7 @@ def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
     return args
 
 
-if has_ctypes and winver != 'Windows 98':
+if has_ctypes and winver == 'Windows NT':
     def get_unicode_argv():
         prototype = ctypes.WINFUNCTYPE(ctypes.c_wchar_p)
         GetCommandLineW = prototype(("GetCommandLineW",
@@ -574,5 +554,93 @@ if has_ctypes and winver != 'Windows 98':
         # Skip the first argument, since we only care about parameters
         argv = _command_line_to_argv(command_line, sys.argv)[1:]
         return argv
+    
+
+    def get_environ_unicode(key, default=None):
+        """Get `key` from environment as unicode or `default` if unset
+
+        The environment is natively unicode on modern windows versions but
+        Python 2 only accesses it through the legacy bytestring api.
+
+        Environmental variable names are case insenstive on Windows.
+
+        A large enough buffer will be allocated to retrieve the value, though
+        it may take two calls to the underlying library function.
+
+        This needs ctypes because pywin32 does not expose the wide version.
+        """
+        cfunc = getattr(get_environ_unicode, "_c_function", None)
+        if cfunc is None:
+            from ctypes.wintypes import DWORD, LPCWSTR, LPWSTR
+            cfunc = ctypes.WINFUNCTYPE(DWORD, LPCWSTR, LPWSTR, DWORD)(
+                ("GetEnvironmentVariableW", ctypes.windll.kernel32))
+            get_environ_unicode._c_function = cfunc
+        buffer_size = 256 # heuristic, 256 characters often enough
+        while True:
+            buffer = ctypes.create_unicode_buffer(buffer_size)
+            length = cfunc(key, buffer, buffer_size)
+            if not length:
+                code = ctypes.GetLastError()
+                if code == 203: # ERROR_ENVVAR_NOT_FOUND
+                    return default
+                raise ctypes.WinError(code)
+            if buffer_size > length:
+                return buffer[:length]
+            buffer_size = length
 else:
     get_unicode_argv = None
+    def get_environ_unicode(key, default=None):
+        """Get `key` from environment as unicode or `default` if unset
+
+        Fallback version that should basically never be needed.
+        """
+        from bzrlib import osutils
+        try:
+            return os.environ[key].decode(osutils.get_user_encoding())
+        except KeyError:
+            return default
+
+
+if has_win32api:
+    def _pywin32_is_local_pid_dead(pid):
+        """True if pid doesn't correspond to live process on this machine"""
+        try:
+            handle = win32api.OpenProcess(1, False, pid) # PROCESS_TERMINATE
+        except pywintypes.error, e:
+            if e[0] == 5: # ERROR_ACCESS_DENIED
+                # Probably something alive we're not allowed to kill
+                return False
+            elif e[0] == 87: # ERROR_INVALID_PARAMETER
+                return True
+            raise
+        handle.close()
+        return False
+    is_local_pid_dead = _pywin32_is_local_pid_dead
+elif has_ctypes and sys.platform == 'win32':
+    from ctypes.wintypes import BOOL, DWORD, HANDLE
+    _kernel32 = ctypes.windll.kernel32
+    _CloseHandle = ctypes.WINFUNCTYPE(BOOL, HANDLE)(
+        ("CloseHandle", _kernel32))
+    _OpenProcess = ctypes.WINFUNCTYPE(HANDLE, DWORD, BOOL, DWORD)(
+        ("OpenProcess", _kernel32))
+    def _ctypes_is_local_pid_dead(pid):
+        """True if pid doesn't correspond to live process on this machine"""
+        handle = _OpenProcess(1, False, pid) # PROCESS_TERMINATE
+        if not handle:
+            errorcode = ctypes.GetLastError()
+            if errorcode == 5: # ERROR_ACCESS_DENIED
+                # Probably something alive we're not allowed to kill
+                return False
+            elif errorcode == 87: # ERROR_INVALID_PARAMETER
+                return True
+            raise ctypes.WinError(errorcode)
+        _CloseHandle(handle)
+        return False
+    is_local_pid_dead = _ctypes_is_local_pid_dead
+
+
+def _is_pywintypes_error(evalue):
+    """True if exception instance is an error from pywin32"""
+    if has_pywintypes and isinstance(evalue, pywintypes.error):
+        return True
+    return False

@@ -14,12 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     errors,
     knit as _mod_knit,
     lockable_files,
@@ -38,7 +40,7 @@ from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
     InterRepository,
     IsInWriteGroupError,
-    RepositoryFormat,
+    RepositoryFormatMetaDir,
     )
 from bzrlib.vf_repository import (
     InterSameDataRepository,
@@ -181,31 +183,6 @@ class KnitRepository(MetaDirVersionedFileRepository):
         result.get_parent_map([('A',)])
         return result
 
-    def fileid_involved_between_revs(self, from_revid, to_revid):
-        """Find file_id(s) which are involved in the changes between revisions.
-
-        This determines the set of revisions which are involved, and then
-        finds all file ids affected by those revisions.
-        """
-        vf = self._get_revision_vf()
-        from_set = set(vf.get_ancestry(from_revid))
-        to_set = set(vf.get_ancestry(to_revid))
-        changed = to_set.difference(from_set)
-        return self._fileid_involved_by_set(changed)
-
-    def fileid_involved(self, last_revid=None):
-        """Find all file_ids modified in the ancestry of last_revid.
-
-        :param last_revid: If None, last_revision() will be used.
-        """
-        if not last_revid:
-            changed = set(self.all_revision_ids())
-        else:
-            changed = set(self.get_ancestry(last_revid))
-        if None in changed:
-            changed.remove(None)
-        return self._fileid_involved_by_set(changed)
-
     @needs_read_lock
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
@@ -346,7 +323,7 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
                                     than normal. I.e. during 'upgrade'.
         """
         if not _found:
-            format = RepositoryFormat.find_format(a_bzrdir)
+            format = RepositoryFormatMetaDir.find_format(a_bzrdir)
         if _override_transport is not None:
             repo_transport = _override_transport
         else:
@@ -392,7 +369,8 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
     def __ne__(self, other):
         return self.__class__ is not other.__class__
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar-NG Knit Repository Format 1"
 
@@ -427,14 +405,15 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
         return xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
+        return controldir.format_registry.make_bzrdir('dirstate-with-subtree')
 
     def _ignore_setting_bzrdir(self, format):
         pass
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar Knit Repository Format 3 (bzr 0.15)\n"
 
@@ -468,14 +447,15 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
         return xml6.serializer_v6
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('rich-root')
+        return controldir.format_registry.make_bzrdir('rich-root')
 
     def _ignore_setting_bzrdir(self, format):
         pass
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
         return 'Bazaar Knit Repository Format 4 (bzr 1.0)\n'
 
@@ -508,21 +488,9 @@ class InterKnitRepo(InterSameDataRepository):
 
     @needs_read_lock
     def search_missing_revision_ids(self,
-            revision_id=symbol_versioning.DEPRECATED_PARAMETER,
             find_ghosts=True, revision_ids=None, if_present_ids=None,
             limit=None):
         """See InterRepository.search_missing_revision_ids()."""
-        if symbol_versioning.deprecated_passed(revision_id):
-            symbol_versioning.warn(
-                'search_missing_revision_ids(revision_id=...) was '
-                'deprecated in 2.4.  Use revision_ids=[...] instead.',
-                DeprecationWarning, stacklevel=2)
-            if revision_ids is not None:
-                raise AssertionError(
-                    'revision_ids is mutually exclusive with revision_id')
-            if revision_id is not None:
-                revision_ids = [revision_id]
-        del revision_id
         source_ids_set = self._present_source_revisions_for(
             revision_ids, if_present_ids)
         # source_ids is the worst possible case we may need to pull.

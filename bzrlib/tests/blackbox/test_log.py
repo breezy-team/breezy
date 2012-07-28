@@ -29,7 +29,9 @@ from bzrlib import (
     )
 from bzrlib.tests import (
     test_log,
+    features,
     )
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 
 
 class TestLog(tests.TestCaseWithTransport, test_log.TestLogMixin):
@@ -88,8 +90,12 @@ class TestLogWithLogCatcher(TestLog):
     def get_captured_revisions(self):
         return self.log_catcher.revisions
 
-    def assertLogRevnos(self, args, expected_revnos, working_dir='.'):
-        self.run_bzr(['log'] + args, working_dir=working_dir)
+    def assertLogRevnos(self, args, expected_revnos, working_dir='.',
+                        out='', err=''):
+        actual_out, actual_err = self.run_bzr(['log'] + args,
+                                              working_dir=working_dir)
+        self.assertEqual(out, actual_out)
+        self.assertEqual(err, actual_err)
         self.assertEqual(expected_revnos,
                          [r.revno for r in self.get_captured_revisions()])
 
@@ -199,6 +205,10 @@ class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
         # 4  1.1.4
         # | /
         # 5
+        # | \
+        # | 5.1.1
+        # | /
+        # 6
 
         # mainline
         builder.build_snapshot('1', None, [
@@ -217,6 +227,8 @@ class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
         builder.build_snapshot('1.1.4', ['1.1.3', '4'], [])
         # merge branch into mainline
         builder.build_snapshot('5', ['4', '1.1.4'], [])
+        builder.build_snapshot('5.1.1', ['5'], [])
+        builder.build_snapshot('6', ['5', '5.1.1'], [])
         builder.finish_series()
 
     def test_n0(self):
@@ -235,6 +247,11 @@ class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
         self.assertLogRevnos(['-n1', '-r1.1.1..1.1.4', '--forward'],
                              ['1.1.1', '1.1.2', '1.1.3', '1.1.4'])
 
+    def test_fallback_when_end_rev_is_not_on_mainline(self):
+        self.assertLogRevnos(['-n1', '-r1.1.1..5.1.1'],
+                             # We don't get 1.1.1 because we say -n1
+                             ['5.1.1', '5', '4', '3'])
+
 
 class Test_GenerateAllRevisions(TestLogWithLogCatcher):
 
@@ -252,6 +269,19 @@ class Test_GenerateAllRevisions(TestLogWithLogCatcher):
         # The graph below may look a bit complicated (and it may be but I've
         # banged my head enough on it) but the bug requires at least dotted
         # revnos *and* merged revisions below that.
+        # 1
+        # | \
+        # 2  1.1.1
+        # | X
+        # 3  2.1.1
+        # |   |    \
+        # |  2.1.2  2.2.1
+        # |   |    X
+        # |  2.1.3  \
+        # | /       /
+        # 4        /
+        # |       /
+        # 5 -----/
         builder.build_snapshot('1', None, [
             ('add', ('', 'root-id', 'directory', ''))])
         builder.build_snapshot('2', ['1'], [])
@@ -376,7 +406,7 @@ class TestLogErrors(TestLog):
     def test_log_reversed_dotted_revspecs(self):
         self.make_merged_branch()
         self.run_bzr_error(('bzr: ERROR: Start revision not found in '
-                            'left-hand history of end revision.\n',),
+                            'history of end revision.\n',),
                            "log -r 1.1.1..1")
 
     def test_log_bad_message_re(self):
@@ -442,6 +472,25 @@ class TestLogTags(TestLog):
         self.assertContainsRe(log, r'tags: tag1')
 
 
+class TestLogSignatures(TestLog):
+
+    def test_log_with_signatures(self):
+        self.requireFeature(features.gpgme)
+
+        tree = self.make_linear_branch(format='dirstate-tags')
+
+        log = self.run_bzr("log --signatures")[0]
+        self.assertTrue('signature: no signature' in log)
+
+    def test_log_without_signatures(self):
+        self.requireFeature(features.gpgme)
+
+        tree = self.make_linear_branch(format='dirstate-tags')
+
+        log = self.run_bzr("log")[0]
+        self.assertFalse('signature: no signature' in log)
+
+
 class TestLogVerbose(TestLog):
 
     def setUp(self):
@@ -462,6 +511,9 @@ class TestLogVerbose(TestLog):
 
     def test_log_short_verbose(self):
         self.assertUseShortDeltaFormat(['log', '--short', '-v'])
+
+    def test_log_s_verbose(self):
+        self.assertUseShortDeltaFormat(['log', '-S', '-v'])
 
     def test_log_short_verbose_verbose(self):
         self.assertUseLongDeltaFormat(['log', '--short', '-vv'])
@@ -513,18 +565,29 @@ class TestLogMerges(TestLogWithLogCatcher):
 
     def test_include_merges(self):
         # Confirm --include-merges gives the same output as -n0
+        msg = ("The option '--include-merges' to 'bzr log' "
+               "has been deprecated in bzr 2.5. "
+               "Please use '--include-merged' instead.\n")
         self.assertLogRevnos(['--include-merges'],
                              ['2', '1.1.2', '1.2.1', '1.1.1', '1'],
-                             working_dir='level0')
+                             working_dir='level0', err=msg)
         self.assertLogRevnos(['--include-merges'],
                              ['2', '1.1.2', '1.2.1', '1.1.1', '1'],
-                             working_dir='level0')
+                             working_dir='level0', err=msg)
         out_im, err_im = self.run_bzr('log --include-merges',
                                       working_dir='level0')
         out_n0, err_n0 = self.run_bzr('log -n0', working_dir='level0')
-        self.assertEqual('', err_im)
+        self.assertEqual(msg, err_im)
         self.assertEqual('', err_n0)
         self.assertEqual(out_im, out_n0)
+
+    def test_include_merged(self):
+        # Confirm --include-merged gives the same output as -n0
+        expected = ['2', '1.1.2', '1.2.1', '1.1.1', '1']
+        self.assertLogRevnos(['--include-merged'],
+                             expected, working_dir='level0')
+        self.assertLogRevnos(['--include-merged'],
+                             expected, working_dir='level0')
 
     def test_force_merge_revisions_N(self):
         self.assertLogRevnos(['-n2'],
@@ -548,6 +611,14 @@ class TestLogMerges(TestLogWithLogCatcher):
                 ['-n0', '-r1.1.2..2'],
                 [('2', 0), ('1.1.2', 1), ('1.2.1', 2)],
                 working_dir='level0')
+
+    def test_omit_merges_with_sidelines(self):
+        self.assertLogRevnos(['--omit-merges', '-n0'], ['1.2.1', '1.1.1', '1'],
+                             working_dir='level0')
+
+    def test_omit_merges_without_sidelines(self):
+        self.assertLogRevnos(['--omit-merges', '-n1'], ['1'],
+                             working_dir='level0')
 
 
 class TestLogDiff(TestLogWithLogCatcher):
@@ -943,7 +1014,7 @@ class MainlineGhostTests(TestLogWithLogCatcher):
         self.assertLogRevnos([], ["2", "1"])
 
     def test_log_range_open_begin(self):
-        raise tests.KnownFailure("log with ghosts fails. bug #726466")
+        self.knownFailure("log with ghosts fails. bug #726466")
         (stdout, stderr) = self.run_bzr(['log', '-r..2'], retcode=3)
         self.assertEqual(["2", "1"],
                          [r.revno for r in self.get_captured_revisions()])
@@ -951,3 +1022,112 @@ class MainlineGhostTests(TestLogWithLogCatcher):
 
     def test_log_range_open_end(self):
         self.assertLogRevnos(["-r1.."], ["2", "1"])
+
+class TestLogMatch(TestLogWithLogCatcher):
+    def prepare_tree(self):
+        tree = self.make_branch_and_tree('')
+        self.build_tree(
+            ['/hello.txt', '/goodbye.txt'])
+        tree.add('hello.txt')
+        tree.commit(message='message1', committer='committer1', authors=['author1'])
+        tree.add('goodbye.txt')
+        tree.commit(message='message2', committer='committer2', authors=['author2'])
+    
+    def test_message(self):
+        self.prepare_tree()
+        self.assertLogRevnos(["-m", "message1"], ["1"])
+        self.assertLogRevnos(["-m", "message2"], ["2"])
+        self.assertLogRevnos(["-m", "message"], ["2", "1"])
+        self.assertLogRevnos(["-m", "message1", "-m", "message2"], ["2", "1"])
+        self.assertLogRevnos(["--match-message", "message1"], ["1"])
+        self.assertLogRevnos(["--match-message", "message2"], ["2"])
+        self.assertLogRevnos(["--match-message", "message"], ["2", "1"])
+        self.assertLogRevnos(["--match-message", "message1", 
+                              "--match-message", "message2"], ["2", "1"])
+        self.assertLogRevnos(["--message", "message1"], ["1"])
+        self.assertLogRevnos(["--message", "message2"], ["2"])
+        self.assertLogRevnos(["--message", "message"], ["2", "1"])
+        self.assertLogRevnos(["--match-message", "message1", 
+                              "--message", "message2"], ["2", "1"])
+        self.assertLogRevnos(["--message", "message1", 
+                              "--match-message", "message2"], ["2", "1"])
+
+    def test_committer(self):
+        self.prepare_tree()
+        self.assertLogRevnos(["-m", "committer1"], ["1"])
+        self.assertLogRevnos(["-m", "committer2"], ["2"])
+        self.assertLogRevnos(["-m", "committer"], ["2", "1"])
+        self.assertLogRevnos(["-m", "committer1", "-m", "committer2"], 
+                             ["2", "1"])
+        self.assertLogRevnos(["--match-committer", "committer1"], ["1"])
+        self.assertLogRevnos(["--match-committer", "committer2"], ["2"])
+        self.assertLogRevnos(["--match-committer", "committer"], ["2", "1"])
+        self.assertLogRevnos(["--match-committer", "committer1", 
+                              "--match-committer", "committer2"], ["2", "1"])
+
+    def test_author(self):
+        self.prepare_tree()
+        self.assertLogRevnos(["-m", "author1"], ["1"])
+        self.assertLogRevnos(["-m", "author2"], ["2"])
+        self.assertLogRevnos(["-m", "author"], ["2", "1"])
+        self.assertLogRevnos(["-m", "author1", "-m", "author2"], 
+                             ["2", "1"])
+        self.assertLogRevnos(["--match-author", "author1"], ["1"])
+        self.assertLogRevnos(["--match-author", "author2"], ["2"])
+        self.assertLogRevnos(["--match-author", "author"], ["2", "1"])
+        self.assertLogRevnos(["--match-author", "author1", 
+                              "--match-author", "author2"], ["2", "1"])
+
+
+class TestSmartServerLog(tests.TestCaseWithTransport):
+
+    def test_standard_log(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        t.commit("message")
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['log', self.get_url('branch')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertLength(9, self.hpss_calls)
+
+    def test_verbose_log(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        t.commit("message")
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['log', '-v', self.get_url('branch')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(10, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
+
+    def test_per_file(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        t.commit("message")
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['log', '-v', self.get_url('branch') + "/foo"])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(14, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

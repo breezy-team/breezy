@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,11 +28,15 @@ from bzrlib import (
     branch as _mod_branch,
     bzrdir,
     config,
+    controldir,
     errors,
-    symbol_versioning,
     tests,
     trace,
     urlutils,
+    )
+from bzrlib.branchfmt.fullhistory import (
+    BzrBranch5,
+    BzrBranchFormat5,
     )
 
 
@@ -74,10 +78,10 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
         url = self.get_url()
         bdir = bzrdir.BzrDirMetaFormat1().initialize(url)
         bdir.create_repository()
-        branch = _mod_branch.BzrBranchFormat5().initialize(bdir)
+        branch = BzrBranchFormat5().initialize(bdir)
         t = self.get_transport()
         self.log("branch instance is %r" % branch)
-        self.assert_(isinstance(branch, _mod_branch.BzrBranch5))
+        self.assert_(isinstance(branch, BzrBranch5))
         self.assertIsDirectory('.', t)
         self.assertIsDirectory('.bzr/branch', t)
         self.assertIsDirectory('.bzr/branch/lock', t)
@@ -101,18 +105,20 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
     # recursive section - that is, it appends the branch name.
 
 
-class SampleBranchFormat(_mod_branch.BranchFormat):
+class SampleBranchFormat(_mod_branch.BranchFormatMetadir):
     """A sample format
 
     this format is initializable, unsupported to aid in testing the
     open and open_downlevel routines.
     """
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BzrBranchFormat.get_format_string()."""
         return "Sample branch format."
 
-    def initialize(self, a_bzrdir, name=None, repository=None):
+    def initialize(self, a_bzrdir, name=None, repository=None,
+                   append_revisions_only=None):
         """Format 4 branches cannot be created."""
         t = a_bzrdir.get_branch_transport(self, name=name)
         t.put_bytes('format', self.get_format_string())
@@ -121,7 +127,8 @@ class SampleBranchFormat(_mod_branch.BranchFormat):
     def is_supported(self):
         return False
 
-    def open(self, transport, name=None, _found=False, ignore_fallbacks=False):
+    def open(self, transport, name=None, _found=False, ignore_fallbacks=False,
+             possible_transports=None):
         return "opened branch."
 
 
@@ -130,19 +137,21 @@ class SampleBranchFormat(_mod_branch.BranchFormat):
 SampleSupportedBranchFormatString = "Sample supported branch format."
 
 # And the format class can then reference the constant to avoid skew.
-class SampleSupportedBranchFormat(_mod_branch.BranchFormat):
+class SampleSupportedBranchFormat(_mod_branch.BranchFormatMetadir):
     """A sample supported format."""
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BzrBranchFormat.get_format_string()."""
         return SampleSupportedBranchFormatString
 
-    def initialize(self, a_bzrdir, name=None):
+    def initialize(self, a_bzrdir, name=None, append_revisions_only=None):
         t = a_bzrdir.get_branch_transport(self, name=name)
         t.put_bytes('format', self.get_format_string())
         return 'A branch'
 
-    def open(self, transport, name=None, _found=False, ignore_fallbacks=False):
+    def open(self, transport, name=None, _found=False, ignore_fallbacks=False,
+             possible_transports=None):
         return "opened supported branch."
 
 
@@ -160,7 +169,8 @@ class SampleExtraBranchFormat(_mod_branch.BranchFormat):
     def initialize(self, a_bzrdir, name=None):
         raise NotImplementedError(self.initialize)
 
-    def open(self, transport, name=None, _found=False, ignore_fallbacks=False):
+    def open(self, transport, name=None, _found=False, ignore_fallbacks=False,
+             possible_transports=None):
         raise NotImplementedError(self.open)
 
 
@@ -176,9 +186,9 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
             dir = format._matchingbzrdir.initialize(url)
             dir.create_repository()
             format.initialize(dir)
-            found_format = _mod_branch.BranchFormat.find_format(dir)
+            found_format = _mod_branch.BranchFormatMetadir.find_format(dir)
             self.assertIsInstance(found_format, format.__class__)
-        check_format(_mod_branch.BzrBranchFormat5(), "bar")
+        check_format(BzrBranchFormat5(), "bar")
 
     def test_find_format_factory(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -191,41 +201,35 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
         b = _mod_branch.Branch.open(self.get_url())
         self.assertEqual(b, "opened supported branch.")
 
+    def test_from_string(self):
+        self.assertIsInstance(
+            SampleBranchFormat.from_string("Sample branch format."),
+            SampleBranchFormat)
+        self.assertRaises(AssertionError,
+            SampleBranchFormat.from_string, "Different branch format.")
+
     def test_find_format_not_branch(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         self.assertRaises(errors.NotBranchError,
-                          _mod_branch.BranchFormat.find_format,
+                          _mod_branch.BranchFormatMetadir.find_format,
                           dir)
 
     def test_find_format_unknown_format(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         SampleBranchFormat().initialize(dir)
         self.assertRaises(errors.UnknownFormatError,
-                          _mod_branch.BranchFormat.find_format,
+                          _mod_branch.BranchFormatMetadir.find_format,
                           dir)
 
-    def test_register_unregister_format(self):
-        # Test the deprecated format registration functions
-        format = SampleBranchFormat()
-        # make a control dir
-        dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        # make a branch
-        format.initialize(dir)
-        # register a format for it.
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            _mod_branch.BranchFormat.register_format, format)
-        # which branch.Open will refuse (not supported)
-        self.assertRaises(errors.UnsupportedFormatError,
-                          _mod_branch.Branch.open, self.get_url())
-        self.make_branch_and_tree('foo')
-        # but open_downlevel will work
-        self.assertEqual(
-            format.open(dir),
-            bzrdir.BzrDir.open(self.get_url()).open_branch(unsupported=True))
-        # unregister the format
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            _mod_branch.BranchFormat.unregister_format, format)
-        self.make_branch_and_tree('bar')
+    def test_find_format_with_features(self):
+        tree = self.make_branch_and_tree('.', format='2a')
+        tree.branch.update_feature_flags({"name": "optional"})
+        found_format = _mod_branch.BranchFormatMetadir.find_format(tree.bzrdir)
+        self.assertIsInstance(found_format, _mod_branch.BranchFormatMetadir)
+        self.assertEquals(found_format.features.get("name"), "optional")
+        tree.branch.update_feature_flags({"name": None})
+        branch = _mod_branch.Branch.open('.')
+        self.assertEquals(branch._format.features, {})
 
 
 class TestBranchFormatRegistry(tests.TestCase):
@@ -333,29 +337,11 @@ class TestBranch67(object):
         self.assertPathDoesNotExist('a/.bzr/branch/parent')
         self.assertEqual('http://example.com', branch.get_parent())
         branch.set_push_location('sftp://example.com')
-        config = branch.get_config()._get_branch_data_config()
-        self.assertEqual('sftp://example.com',
-                         config.get_user_option('push_location'))
+        conf = branch.get_config_stack()
+        self.assertEqual('sftp://example.com', conf.get('push_location'))
         branch.set_bound_location('ftp://example.com')
         self.assertPathDoesNotExist('a/.bzr/branch/bound')
         self.assertEqual('ftp://example.com', branch.get_bound_location())
-
-    def test_set_revision_history(self):
-        builder = self.make_branch_builder('.', format=self.get_format_name())
-        builder.build_snapshot('foo', None,
-            [('add', ('', None, 'directory', None))],
-            message='foo')
-        builder.build_snapshot('bar', None, [], message='bar')
-        branch = builder.get_branch()
-        branch.lock_write()
-        self.addCleanup(branch.unlock)
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            branch.set_revision_history, ['foo', 'bar'])
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-                branch.set_revision_history, ['foo'])
-        self.assertRaises(errors.NotLefthandHistory,
-            self.applyDeprecated, symbol_versioning.deprecated_in((2, 4, 0)),
-            branch.set_revision_history, ['bar'])
 
     def do_checkout_test(self, lightweight=False):
         tree = self.make_branch_and_tree('source',
@@ -389,22 +375,6 @@ class TestBranch67(object):
 
     def test_light_checkout_with_references(self):
         self.do_checkout_test(lightweight=True)
-
-    def test_set_push(self):
-        branch = self.make_branch('source', format=self.get_format_name())
-        branch.get_config().set_user_option('push_location', 'old',
-            store=config.STORE_LOCATION)
-        warnings = []
-        def warning(*args):
-            warnings.append(args[0] % args[1:])
-        _warning = trace.warning
-        trace.warning = warning
-        try:
-            branch.set_push_location('new')
-        finally:
-            trace.warning = _warning
-        self.assertEqual(warnings[0], 'Value "new" is masked by "old" from '
-                         'locations.conf')
 
 
 class TestBranch6(TestBranch67, tests.TestCaseWithTransport):
@@ -482,7 +452,7 @@ class BzrBranch8(tests.TestCaseWithTransport):
 
     def make_branch(self, location, format=None):
         if format is None:
-            format = bzrdir.format_registry.make_bzrdir('1.9')
+            format = controldir.format_registry.make_bzrdir('1.9')
             format.set_branch_format(_mod_branch.BzrBranchFormat8())
         return tests.TestCaseWithTransport.make_branch(
             self, location, format=format)
@@ -540,6 +510,16 @@ class BzrBranch8(tests.TestCaseWithTransport):
         self.assertEqual(('path3', 'location3'),
                          branch.get_reference_info('file-id'))
 
+    def _recordParentMapCalls(self, repo):
+        self._parent_map_calls = []
+        orig_get_parent_map = repo.revisions.get_parent_map
+        def get_parent_map(q):
+            q = list(q)
+            self._parent_map_calls.extend([e[0] for e in q])
+            return orig_get_parent_map(q)
+        repo.revisions.get_parent_map = get_parent_map
+
+
 class TestBranchReference(tests.TestCaseWithTransport):
     """Tests for the branch reference facility."""
 
@@ -559,7 +539,7 @@ class TestBranchReference(tests.TestCaseWithTransport):
         self.assertEqual(opened_branch.base, target_branch.base)
 
     def test_get_reference(self):
-        """For a BranchReference, get_reference should reutrn the location."""
+        """For a BranchReference, get_reference should return the location."""
         branch = self.make_branch('target')
         checkout = branch.create_checkout('checkout', lightweight=True)
         reference_url = branch.bzrdir.root_transport.abspath('') + '/'
@@ -575,7 +555,6 @@ class TestHooks(tests.TestCaseWithTransport):
     def test_constructor(self):
         """Check that creating a BranchHooks instance has the right defaults."""
         hooks = _mod_branch.BranchHooks()
-        self.assertTrue("set_rh" in hooks, "set_rh not in %s" % hooks)
         self.assertTrue("post_push" in hooks, "post_push not in %s" % hooks)
         self.assertTrue("post_commit" in hooks, "post_commit not in %s" % hooks)
         self.assertTrue("pre_commit" in hooks, "pre_commit not in %s" % hooks)
@@ -645,18 +624,18 @@ class TestBranchOptions(tests.TestCaseWithTransport):
     def setUp(self):
         super(TestBranchOptions, self).setUp()
         self.branch = self.make_branch('.')
-        self.config = self.branch.get_config()
+        self.config_stack = self.branch.get_config_stack()
 
     def check_append_revisions_only(self, expected_value, value=None):
         """Set append_revisions_only in config and check its interpretation."""
         if value is not None:
-            self.config.set_user_option('append_revisions_only', value)
+            self.config_stack.set('append_revisions_only', value)
         self.assertEqual(expected_value,
-                         self.branch._get_append_revisions_only())
+                         self.branch.get_append_revisions_only())
 
     def test_valid_append_revisions_only(self):
         self.assertEquals(None,
-                          self.config.get_user_option('append_revisions_only'))
+                          self.config_stack.get('append_revisions_only'))
         self.check_append_revisions_only(None)
         self.check_append_revisions_only(False, 'False')
         self.check_append_revisions_only(True, 'True')
@@ -674,24 +653,56 @@ class TestBranchOptions(tests.TestCaseWithTransport):
         self.check_append_revisions_only(None, 'not-a-bool')
         self.assertLength(1, self.warnings)
         self.assertEqual(
-            'Value "not-a-bool" is not a boolean for "append_revisions_only"',
+            'Value "not-a-bool" is not valid for "append_revisions_only"',
             self.warnings[0])
+
+    def test_use_fresh_values(self):
+        copy = _mod_branch.Branch.open(self.branch.base)
+        copy.lock_write()
+        try:
+            copy.get_config_stack().set('foo', 'bar')
+        finally:
+            copy.unlock()
+        self.assertFalse(self.branch.is_locked())
+        # Since the branch is locked, the option value won't be saved on disk
+        # so trying to access the config of locked branch via another older
+        # non-locked branch object pointing to the same branch is not supported
+        self.assertEqual(None, self.branch.get_config_stack().get('foo'))
+        # Using a newly created branch object works as expected
+        fresh = _mod_branch.Branch.open(self.branch.base)
+        self.assertEqual('bar', fresh.get_config_stack().get('foo'))
+
+    def test_set_from_config_get_from_config_stack(self):
+        self.branch.lock_write()
+        self.addCleanup(self.branch.unlock)
+        self.branch.get_config().set_user_option('foo', 'bar')
+        result = self.branch.get_config_stack().get('foo')
+        # https://bugs.launchpad.net/bzr/+bug/948344
+        self.expectFailure('BranchStack uses cache after set_user_option',
+                           self.assertEqual, 'bar', result)
+
+    def test_set_from_config_stack_get_from_config(self):
+        self.branch.lock_write()
+        self.addCleanup(self.branch.unlock)
+        self.branch.get_config_stack().set('foo', 'bar')
+        # Since the branch is locked, the option value won't be saved on disk
+        # so mixing get() and get_user_option() is broken by design.
+        self.assertEqual(None,
+                         self.branch.get_config().get_user_option('foo'))
+
+    def test_set_delays_write_when_branch_is_locked(self):
+        self.branch.lock_write()
+        self.addCleanup(self.branch.unlock)
+        self.branch.get_config_stack().set('foo', 'bar')
+        copy = _mod_branch.Branch.open(self.branch.base)
+        result = copy.get_config_stack().get('foo')
+        # Accessing from a different branch object is like accessing from a
+        # different process: the option has not been saved yet and the new
+        # value cannot be seen.
+        self.assertIs(None, result)
 
 
 class TestPullResult(tests.TestCase):
-
-    def test_pull_result_to_int(self):
-        # to support old code, the pull result can be used as an int
-        r = _mod_branch.PullResult()
-        r.old_revno = 10
-        r.new_revno = 20
-        # this usage of results is not recommended for new code (because it
-        # doesn't describe very well what happened), but for api stability
-        # it's still supported
-        self.assertEqual(self.applyDeprecated(
-            symbol_versioning.deprecated_in((2, 3, 0)),
-            r.__int__),
-            10)
 
     def test_report_changed(self):
         r = _mod_branch.PullResult()
@@ -702,6 +713,7 @@ class TestPullResult(tests.TestCase):
         f = StringIO()
         r.report(f)
         self.assertEqual("Now on revision 20.\n", f.getvalue())
+        self.assertEqual("Now on revision 20.\n", f.getvalue())
 
     def test_report_unchanged(self):
         r = _mod_branch.PullResult()
@@ -709,72 +721,4 @@ class TestPullResult(tests.TestCase):
         r.new_revid = "same-revid"
         f = StringIO()
         r.report(f)
-        self.assertEqual("No revisions to pull.\n", f.getvalue())
-
-
-class _StubLockable(object):
-    """Helper for TestRunWithWriteLockedTarget."""
-
-    def __init__(self, calls, unlock_exc=None):
-        self.calls = calls
-        self.unlock_exc = unlock_exc
-
-    def lock_write(self):
-        self.calls.append('lock_write')
-
-    def unlock(self):
-        self.calls.append('unlock')
-        if self.unlock_exc is not None:
-            raise self.unlock_exc
-
-
-class _ErrorFromCallable(Exception):
-    """Helper for TestRunWithWriteLockedTarget."""
-
-
-class _ErrorFromUnlock(Exception):
-    """Helper for TestRunWithWriteLockedTarget."""
-
-
-class TestRunWithWriteLockedTarget(tests.TestCase):
-    """Tests for _run_with_write_locked_target."""
-
-    def setUp(self):
-        tests.TestCase.setUp(self)
-        self._calls = []
-
-    def func_that_returns_ok(self):
-        self._calls.append('func called')
-        return 'ok'
-
-    def func_that_raises(self):
-        self._calls.append('func called')
-        raise _ErrorFromCallable()
-
-    def test_success_unlocks(self):
-        lockable = _StubLockable(self._calls)
-        result = _mod_branch._run_with_write_locked_target(
-            lockable, self.func_that_returns_ok)
-        self.assertEqual('ok', result)
-        self.assertEqual(['lock_write', 'func called', 'unlock'], self._calls)
-
-    def test_exception_unlocks_and_propagates(self):
-        lockable = _StubLockable(self._calls)
-        self.assertRaises(_ErrorFromCallable,
-                          _mod_branch._run_with_write_locked_target,
-                          lockable, self.func_that_raises)
-        self.assertEqual(['lock_write', 'func called', 'unlock'], self._calls)
-
-    def test_callable_succeeds_but_error_during_unlock(self):
-        lockable = _StubLockable(self._calls, unlock_exc=_ErrorFromUnlock())
-        self.assertRaises(_ErrorFromUnlock,
-                          _mod_branch._run_with_write_locked_target,
-                          lockable, self.func_that_returns_ok)
-        self.assertEqual(['lock_write', 'func called', 'unlock'], self._calls)
-
-    def test_error_during_unlock_does_not_mask_original_error(self):
-        lockable = _StubLockable(self._calls, unlock_exc=_ErrorFromUnlock())
-        self.assertRaises(_ErrorFromCallable,
-                          _mod_branch._run_with_write_locked_target,
-                          lockable, self.func_that_raises)
-        self.assertEqual(['lock_write', 'func called', 'unlock'], self._calls)
+        self.assertEqual("No revisions or tags to pull.\n", f.getvalue())

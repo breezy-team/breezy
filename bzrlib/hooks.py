@@ -14,8 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
 """Support for plugin hooking logic."""
+
+from __future__ import absolute_import
 
 from bzrlib import (
     registry,
@@ -30,6 +31,7 @@ from bzrlib import (
     errors,
     pyutils,
     )
+from bzrlib.i18n import gettext
 """)
 
 
@@ -70,8 +72,9 @@ class KnownHooksRegistry(registry.Registry):
 
 _builtin_known_hooks = (
     ('bzrlib.branch', 'Branch.hooks', 'BranchHooks'),
-    ('bzrlib.bzrdir', 'BzrDir.hooks', 'BzrDirHooks'),
+    ('bzrlib.controldir', 'ControlDir.hooks', 'ControlDirHooks'),
     ('bzrlib.commands', 'Command.hooks', 'CommandHooks'),
+    ('bzrlib.config', 'ConfigHooks', '_ConfigHooks'),
     ('bzrlib.info', 'hooks', 'InfoHooks'),
     ('bzrlib.lock', 'Lock.hooks', 'LockHooks'),
     ('bzrlib.merge', 'Merger.hooks', 'MergeHooks'),
@@ -80,6 +83,7 @@ _builtin_known_hooks = (
     ('bzrlib.smart.client', '_SmartClient.hooks', 'SmartClientHooks'),
     ('bzrlib.smart.server', 'SmartTCPServer.hooks', 'SmartServerHooks'),
     ('bzrlib.status', 'hooks', 'StatusHooks'),
+    ('bzrlib.transport', 'Transport.hooks', 'TransportHooks'),
     ('bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilder.hooks',
         'RioVersionInfoBuilderHooks'),
     ('bzrlib.merge_directive', 'BaseMergeDirective.hooks',
@@ -102,12 +106,6 @@ def known_hooks_key_to_object((module_name, member_name)):
     return pyutils.get_named_object(module_name, member_name)
 
 
-@symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 3)))
-def known_hooks_key_to_parent_and_attribute(key):
-    """See KnownHooksRegistry.key_to_parent_and_attribute."""
-    return known_hooks.key_to_parent_and_attribute(key)
-
-
 class Hooks(dict):
     """A dictionary mapping hook name to a list of callables.
 
@@ -125,6 +123,7 @@ class Hooks(dict):
         """
         dict.__init__(self)
         self._callable_names = {}
+        self._lazy_callable_names = {}
         self._module = module
         self._member_name = member_name
 
@@ -147,18 +146,6 @@ class Hooks(dict):
         hookpoint = HookPoint(name=name, doc=doc, introduced=introduced,
                               deprecated=deprecated, callbacks=callbacks)
         self[name] = hookpoint
-
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4)))
-    def create_hook(self, hook):
-        """Create a hook which can have callbacks registered for it.
-
-        :param hook: The hook to create. An object meeting the protocol of
-            bzrlib.hooks.HookPoint. It's name is used as the key for future
-            lookups.
-        """
-        if hook.name in self:
-            raise errors.DuplicateKey(hook.name)
-        self[hook.name] = hook
 
     def docs(self):
         """Generate the documentation for this Hooks instance.
@@ -194,7 +181,15 @@ class Hooks(dict):
         the code names are rarely meaningful for end users and this is not
         intended for debugging.
         """
-        return self._callable_names.get(a_callable, "No hook name")
+        name = self._callable_names.get(a_callable, None)
+        if name is None and a_callable is not None:
+            name = self._lazy_callable_names.get((a_callable.__module__,
+                                                  a_callable.__name__),
+                                                 None)
+        if name is None:
+            return 'No hook name'
+        return name
+
 
     def install_named_hook_lazy(self, hook_name, callable_module,
         callable_member, name):
@@ -219,6 +214,8 @@ class Hooks(dict):
                 self)
         else:
             hook_lazy(callable_module, callable_member, name)
+        if name is not None:
+            self.name_hook_lazy(callable_module, callable_member, name)
 
     def install_named_hook(self, hook_name, a_callable, name):
         """Install a_callable in to the hook hook_name, and label it name.
@@ -256,14 +253,17 @@ class Hooks(dict):
         try:
             uninstall = getattr(hook, "uninstall")
         except AttributeError:
-            raise errors.UnsupportedOperation(self.install_named_hook_lazy,
-                self)
+            raise errors.UnsupportedOperation(self.uninstall_named_hook, self)
         else:
             uninstall(label)
 
     def name_hook(self, a_callable, name):
         """Associate name with a_callable to show users what is running."""
         self._callable_names[a_callable] = name
+
+    def name_hook_lazy(self, callable_module, callable_member, callable_name):
+        self._lazy_callable_names[(callable_module, callable_member)]= \
+            callable_name
 
 
 class HookPoint(object):
@@ -310,10 +310,10 @@ class HookPoint(object):
             introduced_string = _format_version_tuple(self.introduced)
         else:
             introduced_string = 'unknown'
-        strings.append('Introduced in: %s' % introduced_string)
+        strings.append(gettext('Introduced in: %s') % introduced_string)
         if self.deprecated:
             deprecated_string = _format_version_tuple(self.deprecated)
-            strings.append('Deprecated in: %s' % deprecated_string)
+            strings.append(gettext('Deprecated in: %s') % deprecated_string)
         strings.append('')
         strings.extend(textwrap.wrap(self.__doc__,
             break_long_words=False))

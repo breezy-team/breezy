@@ -14,23 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
 """Progress indicators.
 
 The usual way to use this is via bzrlib.ui.ui_factory.nested_progress_bar which
 will manage a conceptual stack of nested activities.
 """
 
+from __future__ import absolute_import
 
-import sys
 import time
 import os
-
-
-from bzrlib.symbol_versioning import (
-    deprecated_in,
-    deprecated_method,
-    )
 
 
 def _supports_progress(f):
@@ -65,7 +58,9 @@ class ProgressTask(object):
     Code updating the task may also set fields as hints about how to display
     it: show_pct, show_spinner, show_eta, show_count, show_bar.  UIs
     will not necessarily respect all these fields.
-    
+
+    The message given when updating a task must be unicode, not bytes.
+
     :ivar update_latency: The interval (in seconds) at which the PB should be
         updated.  Setting this to zero suggests every update should be shown
         synchronously.
@@ -113,6 +108,10 @@ class ProgressTask(object):
             self.msg)
 
     def update(self, msg, current_cnt=None, total_cnt=None):
+        """Report updated task message and if relevent progress counters
+
+        The message given must be unicode, not a byte string.
+        """
         self.msg = msg
         self.current_cnt = current_cnt
         if total_cnt:

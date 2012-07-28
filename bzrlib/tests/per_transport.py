@@ -53,9 +53,11 @@ from bzrlib.tests import test_server
 from bzrlib.tests.test_transport import TestTransportImplementation
 from bzrlib.transport import (
     ConnectedTransport,
+    Transport,
     _get_transport_modules,
     )
 from bzrlib.transport.memory import MemoryTransport
+from bzrlib.transport.remote import RemoteTransport
 
 
 def get_transport_test_permutations(module):
@@ -1050,7 +1052,7 @@ class TransportTests(TestTransportImplementation):
         except NotImplementedError:
             raise TestSkipped("Transport %s has no bogus URL support." %
                               self._server.__class__)
-        t = _mod_transport.get_transport(url)
+        t = _mod_transport.get_transport_from_url(url)
         self.assertRaises((ConnectionError, NoSuchFile), t.get, '.bzr/branch')
 
     def test_stat(self):
@@ -1136,7 +1138,7 @@ class TransportTests(TestTransportImplementation):
             raise TestSkipped("Transport %s does not support symlinks." %
                               self._server.__class__)
         except IOError:
-            raise tests.KnownFailure("Paramiko fails to create symlinks during tests")
+            self.knownFailure("Paramiko fails to create symlinks during tests")
 
     def test_list_dir(self):
         # TODO: Test list_dir, just try once, and if it throws, stop testing
@@ -1206,11 +1208,11 @@ class TransportTests(TestTransportImplementation):
             raise TestSkipped("not a connected transport")
 
         t2 = t1.clone('subdir')
-        self.assertEquals(t1._scheme, t2._scheme)
-        self.assertEquals(t1._user, t2._user)
-        self.assertEquals(t1._password, t2._password)
-        self.assertEquals(t1._host, t2._host)
-        self.assertEquals(t1._port, t2._port)
+        self.assertEquals(t1._parsed_url.scheme, t2._parsed_url.scheme)
+        self.assertEquals(t1._parsed_url.user, t2._parsed_url.user)
+        self.assertEquals(t1._parsed_url.password, t2._parsed_url.password)
+        self.assertEquals(t1._parsed_url.host, t2._parsed_url.host)
+        self.assertEquals(t1._parsed_url.port, t2._parsed_url.port)
 
     def test__reuse_for(self):
         t = self.get_transport()
@@ -1223,21 +1225,21 @@ class TransportTests(TestTransportImplementation):
 
             Only the parameters different from None will be changed.
             """
-            if scheme   is None: scheme   = t._scheme
-            if user     is None: user     = t._user
-            if password is None: password = t._password
-            if user     is None: user     = t._user
-            if host     is None: host     = t._host
-            if port     is None: port     = t._port
-            if path     is None: path     = t._path
-            return t._unsplit_url(scheme, user, password, host, port, path)
+            if scheme   is None: scheme   = t._parsed_url.scheme
+            if user     is None: user     = t._parsed_url.user
+            if password is None: password = t._parsed_url.password
+            if user     is None: user     = t._parsed_url.user
+            if host     is None: host     = t._parsed_url.host
+            if port     is None: port     = t._parsed_url.port
+            if path     is None: path     = t._parsed_url.path
+            return str(urlutils.URL(scheme, user, password, host, port, path))
 
-        if t._scheme == 'ftp':
+        if t._parsed_url.scheme == 'ftp':
             scheme = 'sftp'
         else:
             scheme = 'ftp'
         self.assertIsNot(t, t._reuse_for(new_url(scheme=scheme)))
-        if t._user == 'me':
+        if t._parsed_url.user == 'me':
             user = 'you'
         else:
             user = 'me'
@@ -1254,8 +1256,8 @@ class TransportTests(TestTransportImplementation):
         #   (they may be typed by the user when prompted for example)
         self.assertIs(t, t._reuse_for(new_url(password='from space')))
         # We will not connect, we can use a invalid host
-        self.assertIsNot(t, t._reuse_for(new_url(host=t._host + 'bar')))
-        if t._port == 1234:
+        self.assertIsNot(t, t._reuse_for(new_url(host=t._parsed_url.host + 'bar')))
+        if t._parsed_url.port == 1234:
             port = 4321
         else:
             port = 1234
@@ -1418,11 +1420,11 @@ class TransportTests(TestTransportImplementation):
 
         # smoke test for abspath on win32.
         # a transport based on 'file:///' never fully qualifies the drive.
-        transport = _mod_transport.get_transport("file:///")
+        transport = _mod_transport.get_transport_from_url("file:///")
         self.assertEqual(transport.abspath("/"), "file:///")
 
         # but a transport that starts with a drive spec must keep it.
-        transport = _mod_transport.get_transport("file:///C:/")
+        transport = _mod_transport.get_transport_from_url("file:///C:/")
         self.assertEqual(transport.abspath("/"), "file:///C:/")
 
     def test_local_abspath(self):
@@ -1555,7 +1557,7 @@ class TransportTests(TestTransportImplementation):
 
         no_unicode_support = getattr(self._server, 'no_unicode_support', False)
         if no_unicode_support:
-            raise tests.KnownFailure("test server cannot handle unicode paths")
+            self.knownFailure("test server cannot handle unicode paths")
 
         try:
             self.build_tree(files, transport=t, line_endings='binary')
@@ -1776,6 +1778,33 @@ class TransportTests(TestTransportImplementation):
         self.assertListRaises((errors.ShortReadvError, errors.InvalidRange),
                               transport.readv, 'a', [(12,2)])
 
+    def test_no_segment_parameters(self):
+        """Segment parameters should be stripped and stored in
+        transport.segment_parameters."""
+        transport = self.get_transport("foo")
+        self.assertEquals({}, transport.get_segment_parameters())
+
+    def test_segment_parameters(self):
+        """Segment parameters should be stripped and stored in
+        transport.get_segment_parameters()."""
+        base_url = self._server.get_url()
+        parameters = {"key1": "val1", "key2": "val2"}
+        url = urlutils.join_segment_parameters(base_url, parameters)
+        transport = _mod_transport.get_transport_from_url(url)
+        self.assertEquals(parameters, transport.get_segment_parameters())
+
+    def test_set_segment_parameters(self):
+        """Segment parameters can be set and show up in base."""
+        transport = self.get_transport("foo")
+        orig_base = transport.base
+        transport.set_segment_parameter("arm", "board")
+        self.assertEquals("%s,arm=board" % orig_base, transport.base)
+        self.assertEquals({"arm": "board"}, transport.get_segment_parameters())
+        transport.set_segment_parameter("arm", None)
+        transport.set_segment_parameter("nonexistant", None)
+        self.assertEquals({}, transport.get_segment_parameters())
+        self.assertEquals(orig_base, transport.base)
+
     def test_stat_symlink(self):
         # if a transport points directly to a symlink (and supports symlinks
         # at all) you can tell this.  helps with bug 32669.
@@ -1787,3 +1816,57 @@ class TransportTests(TestTransportImplementation):
         t2 = t.clone('link')
         st = t2.stat('')
         self.assertTrue(stat.S_ISLNK(st.st_mode))
+
+    def test_abspath_url_unquote_unreserved(self):
+        """URLs from abspath should have unreserved characters unquoted
+        
+        Need consistent quoting notably for tildes, see lp:842223 for more.
+        """
+        t = self.get_transport()
+        needlessly_escaped_dir = "%2D%2E%30%39%41%5A%5F%61%7A%7E/"
+        self.assertEqual(t.base + "-.09AZ_az~",
+            t.abspath(needlessly_escaped_dir))
+
+    def test_clone_url_unquote_unreserved(self):
+        """Base URL of a cloned branch needs unreserved characters unquoted
+        
+        Cloned transports should be prefix comparable for things like the
+        isolation checking of tests, see lp:842223 for more.
+        """
+        t1 = self.get_transport()
+        needlessly_escaped_dir = "%2D%2E%30%39%41%5A%5F%61%7A%7E/"
+        self.build_tree([needlessly_escaped_dir], transport=t1)
+        t2 = t1.clone(needlessly_escaped_dir)
+        self.assertEqual(t1.base + "-.09AZ_az~/", t2.base)
+
+    def test_hook_post_connection_one(self):
+        """Fire post_connect hook after a ConnectedTransport is first used"""
+        log = []
+        Transport.hooks.install_named_hook("post_connect", log.append, None)
+        t = self.get_transport()
+        self.assertEqual([], log)
+        t.has("non-existant")
+        if isinstance(t, RemoteTransport):
+            self.assertEqual([t.get_smart_medium()], log)
+        elif isinstance(t, ConnectedTransport):
+            self.assertEqual([t], log)
+        else:
+            self.assertEqual([], log)
+
+    def test_hook_post_connection_multi(self):
+        """Fire post_connect hook once per unshared underlying connection"""
+        log = []
+        Transport.hooks.install_named_hook("post_connect", log.append, None)
+        t1 = self.get_transport()
+        t2 = t1.clone(".")
+        t3 = self.get_transport()
+        self.assertEqual([], log)
+        t1.has("x")
+        t2.has("x")
+        t3.has("x")
+        if isinstance(t1, RemoteTransport):
+            self.assertEqual([t.get_smart_medium() for t in [t1, t3]], log)
+        elif isinstance(t1, ConnectedTransport):
+            self.assertEqual([t1, t3], log)
+        else:
+            self.assertEqual([], log)

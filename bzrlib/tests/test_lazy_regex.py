@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 
 """Test that lazy regexes are not compiled right away"""
 
+import pickle
 import re
 
 from bzrlib import errors
@@ -41,7 +42,8 @@ class InstrumentedLazyRegex(lazy_regex.LazyRegex):
     def _real_re_compile(self, *args, **kwargs):
         self._actions.append(('_real_re_compile',
                                                args, kwargs))
-        return super(InstrumentedLazyRegex, self)._real_re_compile(*args, **kwargs)
+        return super(InstrumentedLazyRegex, self)._real_re_compile(
+            *args, **kwargs)
 
 
 class TestLazyRegex(tests.TestCase):
@@ -114,25 +116,38 @@ class TestLazyCompile(tests.TestCase):
         pattern = lazy_regex.lazy_compile('[,;]*')
         self.assertEqual(['x', 'y', 'z'], pattern.split('x,y;z'))
 
+    def test_pickle(self):
+        # When pickling, just compile the regex.
+        # Sphinx, which we use for documentation, pickles
+        # some compiled regexes.
+        lazy_pattern = lazy_regex.lazy_compile('[,;]*')
+        pickled = pickle.dumps(lazy_pattern)
+        unpickled_lazy_pattern = pickle.loads(pickled)
+        self.assertEqual(['x', 'y', 'z'],
+            unpickled_lazy_pattern.split('x,y;z'))
+
 
 class TestInstallLazyCompile(tests.TestCase):
+    """Tests for lazy compiled regexps.
 
-    def setUp(self):
-        super(TestInstallLazyCompile, self).setUp()
-        self.addCleanup(lazy_regex.reset_compile)
+    Other tests, and bzrlib in general, count on the lazy regexp compiler
+    being installed, and this is done by loading bzrlib.  So these tests
+    assume it is installed, and leave it installed when they're done.
+    """
 
     def test_install(self):
+        # Don't count on it being present
         lazy_regex.install_lazy_compile()
         pattern = re.compile('foo')
         self.assertIsInstance(pattern, lazy_regex.LazyRegex)
 
     def test_reset(self):
-        lazy_regex.install_lazy_compile()
         lazy_regex.reset_compile()
+        self.addCleanup(lazy_regex.install_lazy_compile)
         pattern = re.compile('foo')
         self.assertFalse(isinstance(pattern, lazy_regex.LazyRegex),
-                    'lazy_regex.reset_compile() did not restore the original'
-                    ' compile() function %s' % (type(pattern),))
+            'lazy_regex.reset_compile() did not restore the original'
+            ' compile() function %s' % (type(pattern),))
         # but the returned object should still support regex operations
         m = pattern.match('foo')
         self.assertEqual('foo', m.group())

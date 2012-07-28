@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
 
 from cStringIO import StringIO
 
@@ -23,7 +24,7 @@ from bzrlib import (
     trace,
 )
 from bzrlib.ui import ui_factory
-
+from bzrlib.i18n import gettext
 
 class RenameMap(object):
     """Determine a mapping of renames."""
@@ -65,7 +66,7 @@ class RenameMap(object):
         try:
             for num, (file_id, contents) in enumerate(
                 tree.iter_files_bytes(desired_files)):
-                task.update('Calculating hashes', num, len(file_ids))
+                task.update(gettext('Calculating hashes'), num, len(file_ids))
                 s = StringIO()
                 s.writelines(contents)
                 s.seek(0)
@@ -103,7 +104,7 @@ class RenameMap(object):
         task = ui_factory.nested_progress_bar()
         try:
             for num, path in enumerate(paths):
-                task.update('Determining hash hits', num, len(paths))
+                task.update(gettext('Determining hash hits'), num, len(paths))
                 hits = self.hitcounts(self.tree.get_file_lines(None,
                                                                path=path))
                 all_hits.extend((v, path, k) for k, v in hits.items())
@@ -238,7 +239,7 @@ class RenameMap(object):
             pp.next_phase()
             delta = rn._make_inventory_delta(matches)
             for old, new, file_id, entry in delta:
-                trace.note("%s => %s", old, new)
+                trace.note( gettext("{0} => {1}").format(old, new) )
             if not dry_run:
                 tree.add(required_parents)
                 tree.apply_inventory_delta(delta)

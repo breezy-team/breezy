@@ -18,10 +18,12 @@
 
 import os
 
-from bzrlib import osutils
-from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
+from bzrlib.bzrdir import BzrDirMetaFormat1
+from bzrlib.controldir import ControlDir
 import bzrlib.errors as errors
 from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests.matchers import ContainsNoVfsCalls
+
 
 class TestSharedRepo(TestCaseInTempDir):
 
@@ -33,7 +35,7 @@ Location:
   shared repository: a
 """)
         self.assertEqual(err, "")
-        dir = BzrDir.open('a')
+        dir = ControlDir.open('a')
         self.assertIs(dir.open_repository().is_shared(), True)
         self.assertRaises(errors.NotBranchError, dir.open_branch)
         self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)
@@ -42,7 +44,7 @@ Location:
         out, err = self.run_bzr("init-repository a -q")
         self.assertEqual(out, "")
         self.assertEqual(err, "")
-        dir = BzrDir.open('a')
+        dir = ControlDir.open('a')
         self.assertIs(dir.open_repository().is_shared(), True)
         self.assertRaises(errors.NotBranchError, dir.open_branch)
         self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)
@@ -53,17 +55,17 @@ Location:
         (Malone #38331)
         """
         out, err = self.run_bzr("init-repository .")
-        dir = BzrDir.open('.')
+        dir = ControlDir.open('.')
         self.assertTrue(dir.open_repository())
 
     def test_init(self):
         self.run_bzr("init-repo a")
         self.run_bzr("init --format=default a/b")
-        dir = BzrDir.open('a')
+        dir = ControlDir.open('a')
         self.assertIs(dir.open_repository().is_shared(), True)
         self.assertRaises(errors.NotBranchError, dir.open_branch)
         self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)
-        bdir = BzrDir.open('a/b')
+        bdir = ControlDir.open('a/b')
         bdir.open_branch()
         self.assertRaises(errors.NoRepositoryPresent, bdir.open_repository)
         wt = bdir.open_workingtree()
@@ -72,7 +74,7 @@ Location:
         self.run_bzr("init-repo a")
         self.run_bzr("init --format=default a/b")
         self.run_bzr('branch a/b a/c')
-        cdir = BzrDir.open('a/c')
+        cdir = ControlDir.open('a/c')
         cdir.open_branch()
         self.assertRaises(errors.NoRepositoryPresent, cdir.open_repository)
         cdir.open_workingtree()
@@ -80,12 +82,12 @@ Location:
     def test_branch_tree(self):
         self.run_bzr("init-repo --trees a")
         self.run_bzr("init --format=default b")
-        file('b/hello', 'wt').write('bar')
+        with file('b/hello', 'wt') as f: f.write('bar')
         self.run_bzr("add b/hello")
         self.run_bzr("commit -m bar b/hello")
 
         self.run_bzr('branch b a/c')
-        cdir = BzrDir.open('a/c')
+        cdir = ControlDir.open('a/c')
         cdir.open_branch()
         self.assertRaises(errors.NoRepositoryPresent, cdir.open_repository)
         self.assertPathExists('a/c/hello')
@@ -94,20 +96,20 @@ Location:
     def test_trees_default(self):
         # 0.15 switched to trees by default
         self.run_bzr("init-repo repo")
-        repo = BzrDir.open("repo").open_repository()
+        repo = ControlDir.open("repo").open_repository()
         self.assertEqual(True, repo.make_working_trees())
 
     def test_trees_argument(self):
         # Supplying the --trees argument should be harmless,
         # as it was previously non-default we need to get it right.
         self.run_bzr("init-repo --trees trees")
-        repo = BzrDir.open("trees").open_repository()
+        repo = ControlDir.open("trees").open_repository()
         self.assertEqual(True, repo.make_working_trees())
 
     def test_no_trees_argument(self):
         # --no-trees should make it so that there is no working tree
         self.run_bzr("init-repo --no-trees notrees")
-        repo = BzrDir.open("notrees").open_repository()
+        repo = ControlDir.open("notrees").open_repository()
         self.assertEqual(False, repo.make_working_trees())
 
     def test_init_repo_smart_acceptance(self):
@@ -120,13 +122,15 @@ Location:
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(15, self.hpss_calls)
+        self.assertLength(11, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
     def test_notification_on_branch_from_repository(self):
         out, err = self.run_bzr("init-repository -q a")
         self.assertEqual(out, "")
         self.assertEqual(err, "")
-        dir = BzrDir.open('a')
+        dir = ControlDir.open('a')
         dir.open_repository() # there is a repository there
         e = self.assertRaises(errors.NotBranchError, dir.open_branch)
         self.assertContainsRe(str(e), "location is a repository")
@@ -142,7 +146,7 @@ Location:
 
     def test_init_repo_with_post_repo_init_hook(self):
         calls = []
-        BzrDir.hooks.install_named_hook('post_repo_init', calls.append, None)
+        ControlDir.hooks.install_named_hook('post_repo_init', calls.append, None)
         self.assertLength(0, calls)
         self.run_bzr("init-repository a")
         self.assertLength(1, calls)

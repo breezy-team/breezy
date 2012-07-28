@@ -16,8 +16,6 @@
 
 """Tests for Launchpad user ID management functions."""
 
-from cStringIO import StringIO
-
 from bzrlib import config
 from bzrlib.tests import TestCaseInTempDir, TestCaseWithMemoryTransport
 from bzrlib.plugins.launchpad import account
@@ -25,29 +23,25 @@ from bzrlib.plugins.launchpad import account
 
 class LaunchpadAccountTests(TestCaseInTempDir):
 
-    def setup_config(self, text):
-        my_config = config.GlobalConfig.from_string(text)
-        return my_config
-
     def test_get_lp_login_unconfigured(self):
         # Test that get_lp_login() returns None if no username has
         # been configured.
-        my_config = self.setup_config('')
+        my_config = config.MemoryStack('')
         self.assertEqual(None, account.get_lp_login(my_config))
 
     def test_get_lp_login(self):
         # Test that get_lp_login() returns the configured username
-        my_config = self.setup_config(
+        my_config = config.MemoryStack(
             '[DEFAULT]\nlaunchpad_username=test-user\n')
         self.assertEqual('test-user', account.get_lp_login(my_config))
 
     def test_set_lp_login(self):
         # Test that set_lp_login() updates the config file.
-        my_config = self.setup_config('')
-        self.assertEqual(None, my_config.get_user_option('launchpad_username'))
+        my_config = config.MemoryStack('')
+        self.assertEqual(None, my_config.get('launchpad_username'))
         account.set_lp_login('test-user', my_config)
         self.assertEqual(
-            'test-user', my_config.get_user_option('launchpad_username'))
+            'test-user', my_config.get('launchpad_username'))
 
     def test_unknown_launchpad_username(self):
         # Test formatting of UnknownLaunchpadUsername exception

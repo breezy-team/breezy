@@ -21,20 +21,23 @@
 import os
 
 from bzrlib import osutils
-from bzrlib.tests import SymlinkFeature, TestCaseWithTransport
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.testament import (
     Testament,
     StrictTestament,
     StrictTestament3,
     )
 from bzrlib.transform import TreeTransform
+from bzrlib.tests.features import (
+    SymlinkFeature,
+    )
 
 
 class TestamentSetup(TestCaseWithTransport):
 
     def setUp(self):
         super(TestamentSetup, self).setUp()
-        self.wt = self.make_branch_and_tree('.', format='dirstate-with-subtree')
+        self.wt = self.make_branch_and_tree('.', format='development-subtree')
         self.wt.set_root_id('TREE_ROT')
         b = self.b = self.wt.branch
         b.nick = "test branch"

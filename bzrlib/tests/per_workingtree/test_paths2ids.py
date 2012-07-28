@@ -24,6 +24,7 @@ find_ids_across_trees.
 from operator import attrgetter
 
 from bzrlib import errors
+from bzrlib.tests import features
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 
@@ -188,3 +189,13 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
             ['unversioned'], [tree])
         basis.unlock()
         tree.unlock()
+
+    def test_unversioned_non_ascii_one_tree(self):
+        self.requireFeature(features.UnicodeFilenameFeature)
+        tree = self.make_branch_and_tree('.')
+        self.build_tree([u"\xa7"])
+        self.assertExpectedIds([], tree, [u"\xa7"], require_versioned=False)
+        self.addCleanup(tree.lock_read().unlock)
+        e = self.assertRaises(errors.PathsNotVersionedError,
+            tree.paths2ids, [u"\xa7"])
+        self.assertEqual([u"\xa7"], e.paths)

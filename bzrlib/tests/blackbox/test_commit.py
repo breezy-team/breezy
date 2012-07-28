@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,16 +29,14 @@ from bzrlib import (
     osutils,
     ignores,
     msgeditor,
-    tests,
     )
-from bzrlib.bzrdir import BzrDir
+from bzrlib.controldir import ControlDir
 from bzrlib.tests import (
-    probe_bad_non_ascii,
     test_foreign,
-    TestSkipped,
-    UnicodeFilenameFeature,
+    features,
     )
 from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 
 
 class TestCommit(TestCaseWithTransport):
@@ -119,7 +117,7 @@ bzr: ERROR: No changes to commit.\
     def prepare_simple_history(self):
         """Prepare and return a working tree with one commit of one file"""
         # Commit with modified file should say so
-        wt = BzrDir.create_standalone_workingtree('.')
+        wt = ControlDir.create_standalone_workingtree('.')
         self.build_tree(['hello.txt', 'extra.txt'])
         wt.add(['hello.txt'])
         wt.commit(message='added')
@@ -138,10 +136,10 @@ bzr: ERROR: No changes to commit.\
     def test_unicode_commit_message_is_filename(self):
         """Unicode commit message same as a filename (Bug #563646).
         """
-        self.requireFeature(UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         file_name = u'\N{euro sign}'
         self.run_bzr(['init'])
-        open(file_name, 'w').write('hello world')
+        with open(file_name, 'w') as f: f.write('hello world')
         self.run_bzr(['add'])
         out, err = self.run_bzr(['commit', '-m', file_name])
         reflags = re.MULTILINE|re.DOTALL|re.UNICODE
@@ -159,7 +157,7 @@ bzr: ERROR: No changes to commit.\
         try:
             osutils.get_terminal_encoding = lambda trace=None: 'ascii'
             file_name = u'foo\u1234'
-            open(file_name, 'w').write('hello world')
+            with open(file_name, 'w') as f: f.write('hello world')
             self.run_bzr(['add'])
             out, err = self.run_bzr(['commit', '-m', file_name])
             reflags = re.MULTILINE|re.DOTALL|re.UNICODE
@@ -169,6 +167,26 @@ bzr: ERROR: No changes to commit.\
                 flags=reflags)
         finally:
             osutils.get_terminal_encoding = default_get_terminal_enc
+
+    def test_non_ascii_file_unversioned_utf8(self):
+        self.requireFeature(features.UnicodeFilenameFeature)
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["f"])
+        tree.add(["f"])
+        out, err = self.run_bzr(["commit", "-m", "Wrong filename", u"\xa7"],
+            encoding="utf-8", retcode=3)
+        self.assertContainsRe(err, "(?m)not versioned: \"\xc2\xa7\"$")
+
+    def test_non_ascii_file_unversioned_iso_8859_5(self):
+        self.requireFeature(features.UnicodeFilenameFeature)
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["f"])
+        tree.add(["f"])
+        out, err = self.run_bzr(["commit", "-m", "Wrong filename", u"\xa7"],
+            encoding="iso-8859-5", retcode=3)
+        self.expectFailure("Error messages are always written as UTF-8",
+            self.assertNotContainsString, err, "\xc2\xa7")
+        self.assertContainsRe(err, "(?m)not versioned: \"\xfd\"$")
 
     def test_warn_about_forgotten_commit_message(self):
         """Test that the lack of -m parameter is caught"""
@@ -207,7 +225,7 @@ bzr: ERROR: No changes to commit.\
     def test_verbose_commit_with_unknown(self):
         """Unknown files should not be listed by default in verbose output"""
         # Is that really the best policy?
-        wt = BzrDir.create_standalone_workingtree('.')
+        wt = ControlDir.create_standalone_workingtree('.')
         self.build_tree(['hello.txt', 'extra.txt'])
         wt.add(['hello.txt'])
         out,err = self.run_bzr('commit -m added')
@@ -310,11 +328,10 @@ bzr: ERROR: No changes to commit.\
         finally:
             other_tree.unlock()
         this_tree.merge_from_branch(other_tree.branch)
-        os.chdir('this')
-        out,err = self.run_bzr('commit -m added')
+        out, err = self.run_bzr('commit -m added', working_dir='this')
         self.assertEqual('', out)
         self.assertEqual(set([
-            'Committing to: %s/' % osutils.getcwd(),
+            'Committing to: %s/' % osutils.pathjoin(osutils.getcwd(), 'this'),
             'modified filetomodify',
             'added newdir',
             'added newfile',
@@ -332,7 +349,7 @@ bzr: ERROR: No changes to commit.\
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('foo.c', 'int main() {}')])
         tree.add('foo.c')
-        self.run_bzr('commit -m ""', retcode=3)
+        self.run_bzr('commit -m ""')
 
     def test_other_branch_commit(self):
         # this branch is to ensure consistent behaviour, whether we're run
@@ -454,10 +471,10 @@ altered in u2
         t.add(['file-a', 'dir-a', 'dir-a/file-b'])
         t.commit('Create')
         t.remove(['file-a', 'dir-a/file-b'])
-        os.chdir('dir-a')
-        result = self.run_bzr('commit . -m removed-file-b')[1]
+        result = self.run_bzr('commit . -m removed-file-b',
+                              working_dir='dir-a')[1]
         self.assertNotContainsRe(result, 'file-a')
-        result = self.run_bzr('status')[0]
+        result = self.run_bzr('status', working_dir='dir-a')[0]
         self.assertContainsRe(result, 'removed:\n  file-a')
 
     def test_strict_commit(self):
@@ -467,8 +484,7 @@ altered in u2
         self.build_tree(['tree/a'])
         tree.add('a')
         # A simple change should just work
-        self.run_bzr('commit --strict -m adding-a',
-                     working_dir='tree')
+        self.run_bzr('commit --strict -m adding-a', working_dir='tree')
 
     def test_strict_commit_no_changes(self):
         """commit --strict gives "no changes" if there is nothing to commit"""
@@ -599,6 +615,25 @@ altered in u2
             'commit -m add-b --fixes=xxx:123',
             working_dir='tree')
 
+    def test_fixes_bug_with_default_tracker(self):
+        """commit --fixes=234 uses the default bug tracker."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        self.run_bzr_error(
+            ["bzr: ERROR: No tracker specified for bug 123. Use the form "
+            "'tracker:id' or specify a default bug tracker using the "
+            "`bugtracker` option.\n"
+            "See \"bzr help bugs\" for more information on this feature. "
+            "Commit refused."],
+            'commit -m add-b --fixes=123',
+            working_dir='tree')
+        tree.branch.get_config_stack().set("bugtracker", "lp")
+        self.run_bzr('commit -m hello --fixes=234 tree/hello.txt')
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual('https://launchpad.net/bugs/234 fixed',
+                         last_rev.properties['bugs'])
+
     def test_fixes_invalid_bug_number(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello.txt'])
@@ -616,10 +651,10 @@ altered in u2
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
         self.run_bzr_error(
-            [r"Invalid bug orange. Must be in the form of 'tracker:id'\. "
-             r"See \"bzr help bugs\" for more information on this feature.\n"
-             r"Commit refused\."],
-            'commit -m add-b --fixes=orange',
+            [r"Invalid bug orange:apples:bananas. Must be in the form of "
+             r"'tracker:id'\. See \"bzr help bugs\" for more information on "
+             r"this feature.\nCommit refused\."],
+            'commit -m add-b --fixes=orange:apples:bananas',
             working_dir='tree')
 
     def test_no_author(self):
@@ -688,6 +723,18 @@ altered in u2
         self.assertStartsWith(
             err, "bzr: ERROR: Could not parse --commit-time:")
 
+    def test_commit_time_missing_tz(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit -m hello "
+            "--commit-time='2009-10-10 08:00:00' tree/hello.txt", retcode=3)
+        self.assertStartsWith(
+            err, "bzr: ERROR: Could not parse --commit-time:")
+        # Test that it is actually checking and does not simply crash with
+        # some other exception
+        self.assertContainsString(err, "missing a timezone offset")
+
     def test_partial_commit_with_renames_in_tree(self):
         # this test illustrates bug #140419
         t = self.make_branch_and_tree('.')
@@ -710,7 +757,7 @@ altered in u2
         # "UnlockableTransport error trying to commit in checkout of readonly
         # branch"
         self.make_branch('master')
-        master = BzrDir.open_from_transport(
+        master = ControlDir.open_from_transport(
             self.get_readonly_transport('master')).open_branch()
         master.create_checkout('checkout')
         out, err = self.run_bzr(['commit', '--unchanged', '-mfoo', 'checkout'],
@@ -741,6 +788,16 @@ altered in u2
         tree.add('hello.txt')
         return tree
 
+    def test_edit_empty_message(self):
+        tree = self.make_branch_and_tree('tree')
+        self.setup_editor()
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit tree/hello.txt", retcode=3,
+            stdin="y\n")
+        self.assertContainsRe(err,
+            "bzr: ERROR: Empty commit message specified")
+
     def test_commit_hook_template_accepted(self):
         tree = self.setup_commit_with_template()
         out, err = self.run_bzr("commit tree/hello.txt", stdin="y\n")
@@ -750,36 +807,87 @@ altered in u2
     def test_commit_hook_template_rejected(self):
         tree = self.setup_commit_with_template()
         expected = tree.last_revision()
-        out, err = self.run_bzr_error(["empty commit message"],
+        out, err = self.run_bzr_error(["Empty commit message specified."
+                  " Please specify a commit message with either"
+                  " --message or --file or leave a blank message"
+                  " with --message \"\"."],
             "commit tree/hello.txt", stdin="n\n")
         self.assertEqual(expected, tree.last_revision())
+
+    def test_set_commit_message(self):
+        msgeditor.hooks.install_named_hook("set_commit_message",
+                lambda commit_obj, msg: "save me some typing\n", None)
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit tree/hello.txt")
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual('save me some typing\n', last_rev.message)
 
     def test_commit_without_username(self):
         """Ensure commit error if username is not set.
         """
         self.run_bzr(['init', 'foo'])
-        os.chdir('foo')
-        open('foo.txt', 'w').write('hello')
-        self.run_bzr(['add'])
+        with open('foo/foo.txt', 'w') as f:
+            f.write('hello')
+        self.run_bzr(['add'], working_dir='foo')
         self.overrideEnv('EMAIL', None)
         self.overrideEnv('BZR_EMAIL', None)
         # Also, make sure that it's not inferred from mailname.
         self.overrideAttr(config, '_auto_user_id',
             lambda: (None, None))
-        out, err = self.run_bzr(['commit', '-m', 'initial'], 3)
-        self.assertContainsRe(err, 'Unable to determine your name')
+        self.run_bzr_error(
+            ['Unable to determine your name'],
+            ['commit', '-m', 'initial'], working_dir='foo')
 
     def test_commit_recursive_checkout(self):
         """Ensure that a commit to a recursive checkout fails cleanly.
         """
         self.run_bzr(['init', 'test_branch'])
         self.run_bzr(['checkout', 'test_branch', 'test_checkout'])
-        os.chdir('test_checkout')
-        self.run_bzr(['bind', '.']) # bind to self
-        open('foo.txt', 'w').write('hello')
-        self.run_bzr(['add'])
-        out, err = self.run_bzr(['commit', '-m', 'addedfoo'], 3)
-        self.assertEqual(out, '')
-        self.assertContainsRe(err,
-            'Branch.*test_checkout.*appears to be bound to itself')
+        self.run_bzr(['bind', '.'], working_dir='test_checkout') # bind to self
+        with open('test_checkout/foo.txt', 'w') as f:
+            f.write('hello')
+        self.run_bzr(['add'], working_dir='test_checkout')
+        out, err = self.run_bzr_error(
+            ['Branch.*test_checkout.*appears to be bound to itself'],
+            ['commit', '-m', 'addedfoo'], working_dir='test_checkout')
 
+    def test_mv_dirs_non_ascii(self):
+        """Move directory with non-ascii name and containing files.
+
+        Regression test for bug 185211.
+        """
+        tree = self.make_branch_and_tree('.')
+        self.build_tree([u'abc\xa7/', u'abc\xa7/foo'])
+
+        tree.add([u'abc\xa7/', u'abc\xa7/foo'])
+        tree.commit('checkin')
+
+        tree.rename_one(u'abc\xa7','abc')
+
+        self.run_bzr('ci -m "non-ascii mv"')
+
+
+class TestSmartServerCommit(TestCaseWithTransport):
+
+    def test_commit_to_lightweight(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        out, err = self.run_bzr(['checkout', '--lightweight', self.get_url('from'),
+            'target'])
+        self.reset_smart_call_log()
+        self.build_tree(['target/afile'])
+        self.run_bzr(['add', 'target/afile'])
+        out, err = self.run_bzr(['commit', '-m', 'do something', 'target'])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(211, self.hpss_calls)
+        self.assertLength(2, self.hpss_connections)
+        self.expectFailure("commit still uses VFS calls",
+            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)

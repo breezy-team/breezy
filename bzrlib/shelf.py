@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
 
 import errno
 import re
@@ -82,6 +83,9 @@ class ShelfCreator(object):
             # when a tree root was deleted / renamed.
             if kind[0] is None and names[1] == '':
                 continue
+            # Also don't shelve deletion of tree root.
+            if kind[1] is None and names[0] == '':
+                continue
             if kind[0] is None or versioned[0] == False:
                 self.creation[file_id] = (kind[1], names[1], parents[1],
                                           versioned)
@@ -121,9 +125,14 @@ class ShelfCreator(object):
             raise ValueError('Unknown change kind: "%s"' % change[0])
 
     def shelve_all(self):
-        """Shelve all changes."""
+        """Shelve all changes.
+
+        :return: True if changes were shelved, False if there were no changes.
+        """
+        change = None
         for change in self.iter_shelvable():
             self.shelve_change(change)
+        return change is not None
 
     def shelve_rename(self, file_id):
         """Shelve a file rename.
@@ -251,6 +260,14 @@ class ShelfCreator(object):
         """Shelve changes from working tree."""
         self.work_transform.apply()
 
+    @staticmethod
+    def metadata_record(serializer, revision_id, message=None):
+        metadata = {'revision_id': revision_id}
+        if message is not None:
+            metadata['message'] = message.encode('utf-8')
+        return serializer.bytes_record(
+            bencode.bencode(metadata), (('metadata',),))
+
     def write_shelf(self, shelf_file, message=None):
         """Serialize the shelved changes to a file.
 
@@ -259,16 +276,17 @@ class ShelfCreator(object):
         :return: the filename of the written file.
         """
         transform.resolve_conflicts(self.shelf_transform)
+        revision_id = self.target_tree.get_revision_id()
+        return self._write_shelf(shelf_file, self.shelf_transform, revision_id,
+                                 message)
+
+    @classmethod
+    def _write_shelf(cls, shelf_file, transform, revision_id, message=None):
         serializer = pack.ContainerSerialiser()
         shelf_file.write(serializer.begin())
-        metadata = {
-            'revision_id': self.target_tree.get_revision_id(),
-        }
-        if message is not None:
-            metadata['message'] = message.encode('utf-8')
-        shelf_file.write(serializer.bytes_record(
-            bencode.bencode(metadata), (('metadata',),)))
-        for bytes in self.shelf_transform.serialize(serializer):
+        metadata = cls.metadata_record(serializer, revision_id, message)
+        shelf_file.write(metadata)
+        for bytes in transform.serialize(serializer):
             shelf_file.write(bytes)
         shelf_file.write(serializer.end())
 

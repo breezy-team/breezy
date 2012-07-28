@@ -16,6 +16,8 @@
 
 """Read in a bundle stream, and process it into a BundleReader object."""
 
+from __future__ import absolute_import
+
 import base64
 from cStringIO import StringIO
 import os
@@ -574,6 +576,9 @@ class BundleTree(Tree):
             return None
         return new_path
 
+    def get_root_id(self):
+        return self.path2id('')
+
     def path2id(self, path):
         """Return the id of the file present at path in the target tree."""
         file_id = self._new_id.get(path)
@@ -584,10 +589,7 @@ class BundleTree(Tree):
             return None
         if old_path in self.deleted:
             return None
-        if getattr(self.base_tree, 'path2id', None) is not None:
-            return self.base_tree.path2id(old_path)
-        else:
-            return self.base_tree.inventory.path2id(old_path)
+        return self.base_tree.path2id(old_path)
 
     def id2path(self, file_id):
         """Return the new path in the target tree of the file with id file_id"""
@@ -623,14 +625,14 @@ class BundleTree(Tree):
         """
         base_id = self.old_contents_id(file_id)
         if (base_id is not None and
-            base_id != self.base_tree.inventory.root.file_id):
+            base_id != self.base_tree.get_root_id()):
             patch_original = self.base_tree.get_file(base_id)
         else:
             patch_original = None
         file_patch = self.patches.get(self.id2path(file_id))
         if file_patch is None:
             if (patch_original is None and
-                self.get_kind(file_id) == 'directory'):
+                self.kind(file_id) == 'directory'):
                 return StringIO()
             if patch_original is None:
                 raise AssertionError("None: %s" % file_id)
@@ -649,17 +651,24 @@ class BundleTree(Tree):
         except KeyError:
             return self.base_tree.get_symlink_target(file_id)
 
-    def get_kind(self, file_id):
+    def kind(self, file_id):
         if file_id in self._kinds:
             return self._kinds[file_id]
-        return self.base_tree.inventory[file_id].kind
+        return self.base_tree.kind(file_id)
+
+    def get_file_revision(self, file_id):
+        path = self.id2path(file_id)
+        if path in self._last_changed:
+            return self._last_changed[path]
+        else:
+            return self.base_tree.get_file_revision(file_id)
 
     def is_executable(self, file_id):
         path = self.id2path(file_id)
         if path in self._executable:
             return self._executable[path]
         else:
-            return self.base_tree.inventory[file_id].executable
+            return self.base_tree.is_executable(file_id)
 
     def get_last_changed(self, file_id):
         path = self.id2path(file_id)
@@ -678,10 +687,9 @@ class BundleTree(Tree):
         if new_path not in self.patches:
             # If the entry does not have a patch, then the
             # contents must be the same as in the base_tree
-            ie = self.base_tree.inventory[file_id]
-            if ie.text_size is None:
-                return ie.text_size, ie.text_sha1
-            return int(ie.text_size), ie.text_sha1
+            text_size = self.base_tree.get_file_size(file_id)
+            text_sha1 = self.base_tree.get_file_sha1(file_id)
+            return text_size, text_sha1
         fileobj = self.get_file(file_id)
         content = fileobj.read()
         return len(content), sha_string(content)
@@ -692,7 +700,6 @@ class BundleTree(Tree):
         This need to be called before ever accessing self.inventory
         """
         from os.path import dirname, basename
-        base_inv = self.base_tree.inventory
         inv = Inventory(None, self.revision_id)
 
         def add_entry(file_id):
@@ -705,7 +712,7 @@ class BundleTree(Tree):
                 parent_path = dirname(path)
                 parent_id = self.path2id(parent_path)
 
-            kind = self.get_kind(file_id)
+            kind = self.kind(file_id)
             revision_id = self.get_last_changed(file_id)
 
             name = basename(path)
@@ -739,9 +746,11 @@ class BundleTree(Tree):
     # at that instant
     inventory = property(_get_inventory)
 
-    def __iter__(self):
-        for path, entry in self.inventory.iter_entries():
-            yield entry.file_id
+    root_inventory = property(_get_inventory)
+
+    def all_file_ids(self):
+        return set(
+            [entry.file_id for path, entry in self.inventory.iter_entries()])
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         # The only files returned by this are those from the version

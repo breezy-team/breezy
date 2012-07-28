@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
 """Handling and reporting crashes.
 
 A crash is an exception propagated up almost to the top level of Bazaar.
@@ -36,6 +35,8 @@ to be some portability bugs.
 To force this off in bzr turn set APPORT_DISABLE in the environment or 
 -Dno_apport.
 """
+
+from __future__ import absolute_import
 
 # for interactive testing, try the 'bzr assert-fail' command 
 # or see http://code.launchpad.net/~mbp/bzr/bzr-fail
@@ -70,13 +71,11 @@ def report_bug(exc_info, stderr):
             return
     except ImportError, e:
         trace.mutter("couldn't find apport bug-reporting library: %s" % e)
-        pass
     except Exception, e:
         # this should only happen if apport is installed but it didn't
         # work, eg because of an io error writing the crash file
-        stderr.write("bzr: failed to report crash using apport:\n "
-            "    %r\n" % e)
-        pass
+        trace.mutter("bzr: failed to report crash using apport: %r" % e)
+        trace.log_exception_quietly()
     return report_bug_legacy(exc_info, stderr)
 
 
@@ -120,8 +119,9 @@ def report_bug_to_apport(exc_info, stderr):
     # this function is based on apport_package_hook.py, but omitting some of the
     # Ubuntu-specific policy about what to report and when
 
-    # if the import fails, the exception will be caught at a higher level and
-    # we'll report the error by other means
+    # This import is apparently not used, but we're doing it so that if the
+    # import fails, the exception will be caught at a higher level and we'll
+    # report the error by other means.
     import apport
 
     crash_filename = _write_apport_report_to_file(exc_info)

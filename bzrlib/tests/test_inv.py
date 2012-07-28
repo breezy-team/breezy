@@ -127,7 +127,7 @@ def apply_inventory_WT(self, basis, delta, invalid_delta=True):
     self.addCleanup(tree.unlock)
     if not invalid_delta:
         tree._validate()
-    return tree.inventory
+    return tree.root_inventory
 
 
 def _create_repo_revisions(repo, basis, delta, invalid_delta):
@@ -224,7 +224,7 @@ def apply_inventory_WT_basis(test, basis, delta, invalid_delta=True):
     basis_tree = tree.basis_tree()
     basis_tree.lock_read()
     test.addCleanup(basis_tree.unlock)
-    basis_inv = basis_tree.inventory
+    basis_inv = basis_tree.root_inventory
     if target_entries:
         basis_entries = list(basis_inv.iter_entries_by_dir())
         test.assertEqual(target_entries, basis_entries)
@@ -1393,6 +1393,26 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertEqual([u'ch\xefld'],
                          sorted(ie_dir._children.keys()))
 
+    def test_filter_change_in_renamed_subfolder(self):
+        inv = Inventory('tree-root')
+        src_ie = inv.add_path('src', 'directory', 'src-id')
+        inv.add_path('src/sub/', 'directory', 'sub-id')
+        a_ie = inv.add_path('src/sub/a', 'file', 'a-id')
+        a_ie.text_sha1 = osutils.sha_string('content\n')
+        a_ie.text_size = len('content\n')
+        chk_bytes = self.get_chk_bytes()
+        inv = CHKInventory.from_inventory(chk_bytes, inv)
+        inv = inv.create_by_apply_delta([
+            ("src/sub/a", "src/sub/a", "a-id", a_ie),
+            ("src", "src2", "src-id", src_ie),
+            ], 'new-rev-2')
+        new_inv = inv.filter(['a-id', 'src-id'])
+        self.assertEqual([
+            ('', 'tree-root'),
+            ('src', 'src-id'),
+            ('src/sub', 'sub-id'),
+            ('src/sub/a', 'a-id'),
+            ], [(path, ie.file_id) for path, ie in new_inv.iter_entries()])
 
 class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
 
@@ -1547,6 +1567,6 @@ class TestMutableInventoryFromTree(TestCaseWithTransport):
         self.assertEquals("a", inv['thefileid'].name)
         # The inventory should be mutable and independent of
         # the original tree
-        self.assertFalse(tree.inventory['thefileid'].executable)
+        self.assertFalse(tree.root_inventory['thefileid'].executable)
         inv['thefileid'].executable = True
-        self.assertFalse(tree.inventory['thefileid'].executable)
+        self.assertFalse(tree.root_inventory['thefileid'].executable)

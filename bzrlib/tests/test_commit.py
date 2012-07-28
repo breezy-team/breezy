@@ -19,37 +19,38 @@ import os
 
 import bzrlib
 from bzrlib import (
-    bzrdir,
+    config,
+    controldir,
     errors,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.commit import Commit, NullCommitReporter
-from bzrlib.config import BranchConfig
-from bzrlib.errors import (PointlessCommit, BzrError, SigningFailed,
-                           LockContention)
+from bzrlib.errors import (
+    PointlessCommit,
+    BzrError,
+    SigningFailed,
+    LockContention,
+    )
 from bzrlib.tests import (
-    SymlinkFeature,
     TestCaseWithTransport,
     test_foreign,
     )
+from bzrlib.tests.features import (
+    SymlinkFeature,
+    )
+from bzrlib.tests.matchers import MatchesAncestry
 
 
 # TODO: Test commit with some added, and added-but-missing files
 
-class MustSignConfig(BranchConfig):
+class MustSignConfig(config.MemoryStack):
 
-    def signature_needed(self):
-        return True
-
-    def gpg_signing_command(self):
-        return ['cat', '-']
-
-
-class BranchWithHooks(BranchConfig):
-
-    def post_commit(self):
-        return "bzrlib.ahook bzrlib.ahook"
+    def __init__(self):
+        super(MustSignConfig, self).__init__('''
+gpg_signing_command=cat -
+create_signatures=always
+''')
 
 
 class CapturingReporter(NullCommitReporter):
@@ -81,27 +82,26 @@ class TestCommit(TestCaseWithTransport):
         """Commit and check two versions of a single file."""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-        file('hello', 'w').write('hello world')
+        with file('hello', 'w') as f: f.write('hello world')
         wt.add('hello')
-        wt.commit(message='add hello')
+        rev1 = wt.commit(message='add hello')
         file_id = wt.path2id('hello')
 
-        file('hello', 'w').write('version 2')
-        wt.commit(message='commit 2')
+        with file('hello', 'w') as f: f.write('version 2')
+        rev2 = wt.commit(message='commit 2')
 
         eq = self.assertEquals
         eq(b.revno(), 2)
-        rh = b.revision_history()
-        rev = b.repository.get_revision(rh[0])
+        rev = b.repository.get_revision(rev1)
         eq(rev.message, 'add hello')
 
-        tree1 = b.repository.revision_tree(rh[0])
+        tree1 = b.repository.revision_tree(rev1)
         tree1.lock_read()
         text = tree1.get_file_text(file_id)
         tree1.unlock()
         self.assertEqual('hello world', text)
 
-        tree2 = b.repository.revision_tree(rh[1])
+        tree2 = b.repository.revision_tree(rev2)
         tree2.lock_read()
         text = tree2.get_file_text(file_id)
         tree2.unlock()
@@ -111,7 +111,7 @@ class TestCommit(TestCaseWithTransport):
         """Attempt a lossy commit to a native branch."""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-        file('hello', 'w').write('hello world')
+        with file('hello', 'w') as f: f.write('hello world')
         wt.add('hello')
         revid = wt.commit(message='add hello', rev_id='revid', lossy=True)
         self.assertEquals('revid', revid)
@@ -122,7 +122,7 @@ class TestCommit(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.',
             format=test_foreign.DummyForeignVcsDirFormat())
         b = wt.branch
-        file('hello', 'w').write('hello world')
+        with file('hello', 'w') as f: f.write('hello world')
         wt.add('hello')
         revid = wt.commit(message='add hello', lossy=True,
             timestamp=1302659388, timezone=0)
@@ -135,7 +135,7 @@ class TestCommit(TestCaseWithTransport):
             format=test_foreign.DummyForeignVcsDirFormat())
         wt = foreign_branch.create_checkout("local")
         b = wt.branch
-        file('local/hello', 'w').write('hello world')
+        with file('local/hello', 'w') as f: f.write('hello world')
         wt.add('hello')
         revid = wt.commit(message='add hello', lossy=True,
             timestamp=1302659388, timezone=0)
@@ -149,12 +149,16 @@ class TestCommit(TestCaseWithTransport):
         """Test a commit with a missing file"""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-        file('hello', 'w').write('hello world')
+        with file('hello', 'w') as f: f.write('hello world')
         wt.add(['hello'], ['hello-id'])
         wt.commit(message='add hello')
 
         os.remove('hello')
-        wt.commit('removed hello', rev_id='rev2')
+        reporter = CapturingReporter()
+        wt.commit('removed hello', rev_id='rev2', reporter=reporter)
+        self.assertEquals(
+            [('missing', u'hello'), ('deleted', u'hello')],
+            reporter.calls)
 
         tree = b.repository.revision_tree('rev2')
         self.assertFalse(tree.has_id('hello-id'))
@@ -183,7 +187,7 @@ class TestCommit(TestCaseWithTransport):
         """Commit refuses unless there are changes or it's forced."""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-        file('hello', 'w').write('hello')
+        with file('hello', 'w') as f: f.write('hello')
         wt.add(['hello'])
         wt.commit(message='add hello')
         self.assertEquals(b.revno(), 1)
@@ -209,15 +213,15 @@ class TestCommit(TestCaseWithTransport):
         """Selective commit in tree with deletions"""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-        file('hello', 'w').write('hello')
-        file('buongia', 'w').write('buongia')
+        with file('hello', 'w') as f: f.write('hello')
+        with file('buongia', 'w') as f: f.write('buongia')
         wt.add(['hello', 'buongia'],
               ['hello-id', 'buongia-id'])
         wt.commit(message='add files',
                  rev_id='test@rev-1')
 
         os.remove('hello')
-        file('buongia', 'w').write('new text')
+        with file('buongia', 'w') as f: f.write('new text')
         wt.commit(message='update text',
                  specific_files=['buongia'],
                  allow_pointless=False,
@@ -332,7 +336,7 @@ class TestCommit(TestCaseWithTransport):
         """Commit with a removed file"""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-        file('hello', 'w').write('hello world')
+        with file('hello', 'w') as f: f.write('hello world')
         wt.add(['hello'], ['hello-id'])
         wt.commit(message='add hello')
         wt.remove('hello')
@@ -347,18 +351,16 @@ class TestCommit(TestCaseWithTransport):
         b = wt.branch
         rev_ids = []
         for i in range(4):
-            file('hello', 'w').write((str(i) * 4) + '\n')
+            with file('hello', 'w') as f: f.write((str(i) * 4) + '\n')
             if i == 0:
                 wt.add(['hello'], ['hello-id'])
             rev_id = 'test@rev-%d' % (i+1)
             rev_ids.append(rev_id)
             wt.commit(message='rev %d' % (i+1),
                      rev_id=rev_id)
-        eq = self.assertEquals
-        eq(b.revision_history(), rev_ids)
         for i in range(4):
-            anc = b.repository.get_ancestry(rev_ids[i])
-            eq(anc, [None] + rev_ids[:i+1])
+            self.assertThat(rev_ids[:i+1],
+                MatchesAncestry(b.repository, rev_ids[i]))
 
     def test_commit_new_subdir_child_selective(self):
         wt = self.make_branch_and_tree('.')
@@ -378,9 +380,9 @@ class TestCommit(TestCaseWithTransport):
         from bzrlib.errors import StrictCommitFailed
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-        file('hello', 'w').write('hello world')
+        with file('hello', 'w') as f: f.write('hello world')
         wt.add('hello')
-        file('goodbye', 'w').write('goodbye cruel world!')
+        with file('goodbye', 'w') as f: f.write('goodbye cruel world!')
         self.assertRaises(StrictCommitFailed, wt.commit,
             message='add hello but not goodbye', strict=True)
 
@@ -389,7 +391,7 @@ class TestCommit(TestCaseWithTransport):
         should work."""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-        file('hello', 'w').write('hello world')
+        with file('hello', 'w') as f: f.write('hello world')
         wt.add('hello')
         wt.commit(message='add hello', strict=True)
 
@@ -397,9 +399,9 @@ class TestCommit(TestCaseWithTransport):
         """Try and commit with unknown files and strict = False, should work."""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-        file('hello', 'w').write('hello world')
+        with file('hello', 'w') as f: f.write('hello world')
         wt.add('hello')
-        file('goodbye', 'w').write('goodbye cruel world!')
+        with file('goodbye', 'w') as f: f.write('goodbye cruel world!')
         wt.commit(message='add hello but not goodbye', strict=False)
 
     def test_nonstrict_commit_without_unknowns(self):
@@ -407,7 +409,7 @@ class TestCommit(TestCaseWithTransport):
         should work."""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-        file('hello', 'w').write('hello world')
+        with file('hello', 'w') as f: f.write('hello world')
         wt.add('hello')
         wt.commit(message='add hello', strict=False)
 
@@ -423,14 +425,17 @@ class TestCommit(TestCaseWithTransport):
             from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
-            commit.Commit(config=MustSignConfig(branch)).commit(message="base",
-                                                      allow_pointless=True,
-                                                      rev_id='B',
-                                                      working_tree=wt)
+            conf = config.MemoryStack('''
+gpg_signing_command=cat -
+create_signatures=always
+''')
+            commit.Commit(config_stack=conf).commit(
+                message="base", allow_pointless=True, rev_id='B',
+                working_tree=wt)
             def sign(text):
                 return bzrlib.gpg.LoopbackGPGStrategy(None).sign(text)
             self.assertEqual(sign(Testament.from_revision(branch.repository,
-                             'B').as_short_text()),
+                                                          'B').as_short_text()),
                              branch.repository.get_signature_text('B'))
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
@@ -446,15 +451,18 @@ class TestCommit(TestCaseWithTransport):
         try:
             # monkey patch gpg signing mechanism
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.DisabledGPGStrategy
-            config = MustSignConfig(branch)
+            conf = config.MemoryStack('''
+gpg_signing_command=cat -
+create_signatures=always
+''')
             self.assertRaises(SigningFailed,
-                              commit.Commit(config=config).commit,
+                              commit.Commit(config_stack=conf).commit,
                               message="base",
                               allow_pointless=True,
                               rev_id='B',
                               working_tree=wt)
             branch = Branch.open(self.get_url('.'))
-            self.assertEqual(branch.revision_history(), ['A'])
+            self.assertEqual(branch.last_revision(), 'A')
             self.assertFalse(branch.repository.has_revision('B'))
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
@@ -468,11 +476,10 @@ class TestCommit(TestCaseWithTransport):
             calls.append('called')
         bzrlib.ahook = called
         try:
-            config = BranchWithHooks(branch)
-            commit.Commit(config=config).commit(
-                            message = "base",
-                            allow_pointless=True,
-                            rev_id='A', working_tree = wt)
+            conf = config.MemoryStack('post_commit=bzrlib.ahook bzrlib.ahook')
+            commit.Commit(config_stack=conf).commit(
+                message = "base", allow_pointless=True, rev_id='A',
+                working_tree = wt)
             self.assertEqual(['called', 'called'], calls)
         finally:
             del bzrlib.ahook
@@ -828,7 +835,7 @@ class TestCommit(TestCaseWithTransport):
     def test_commit_with_checkout_and_branch_sharing_repo(self):
         repo = self.make_repository('repo', shared=True)
         # make_branch_and_tree ignores shared repos
-        branch = bzrdir.BzrDir.create_branch_convenience('repo/branch')
+        branch = controldir.ControlDir.create_branch_convenience('repo/branch')
         tree2 = branch.create_checkout('repo/tree2')
         tree2.commit('message', rev_id='rev1')
         self.assertTrue(tree2.branch.repository.has_revision('rev1'))

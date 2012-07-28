@@ -22,9 +22,11 @@ import os
 from bzrlib import (
     branch,
     errors,
+    lock,
     merge as _mod_merge,
     switch,
     tests,
+    workingtree,
     )
 
 
@@ -34,6 +36,14 @@ class TestSwitch(tests.TestCaseWithTransport):
         super(TestSwitch, self).setUp()
         self.lightweight = True
 
+    @staticmethod
+    def _master_if_present(branch):
+        master = branch.get_master_branch()
+        if master:
+            return master
+        else:
+            return branch
+
     def _setup_tree(self):
         tree = self.make_branch_and_tree('branch-1')
         self.build_tree(['branch-1/file-1'])
@@ -41,18 +51,56 @@ class TestSwitch(tests.TestCaseWithTransport):
         tree.commit('rev1')
         return tree
 
-    def test_switch_updates(self):
-        """Test switch updates tree and keeps uncommitted changes."""
+    def _setup_uncommitted(self, same_revision=False):
         tree = self._setup_tree()
         to_branch = tree.bzrdir.sprout('branch-2').open_branch()
         self.build_tree(['branch-1/file-2'])
-        tree.add('file-2')
-        tree.remove('file-1')
-        tree.commit('rev2')
+        if not same_revision:
+            tree.add('file-2')
+            tree.remove('file-1')
+            tree.commit('rev2')
         checkout = tree.branch.create_checkout('checkout',
             lightweight=self.lightweight)
         self.build_tree(['checkout/file-3'])
         checkout.add('file-3')
+        return checkout, to_branch
+
+    def test_switch_store_uncommitted(self):
+        """Test switch updates tree and stores uncommitted changes."""
+        checkout, to_branch = self._setup_uncommitted()
+        self.assertPathDoesNotExist('checkout/file-1')
+        self.assertPathExists('checkout/file-2')
+        switch.switch(checkout.bzrdir, to_branch, store_uncommitted=True)
+        self.assertPathExists('checkout/file-1')
+        self.assertPathDoesNotExist('checkout/file-2')
+        self.assertPathDoesNotExist('checkout/file-3')
+
+    def test_switch_restore_uncommitted(self):
+        """Test switch updates tree and restores uncommitted changes."""
+        checkout, to_branch = self._setup_uncommitted()
+        old_branch = self._master_if_present(checkout.branch)
+        self.assertPathDoesNotExist('checkout/file-1')
+        self.assertPathExists('checkout/file-2')
+        self.assertPathExists('checkout/file-3')
+        switch.switch(checkout.bzrdir, to_branch, store_uncommitted=True)
+        checkout = workingtree.WorkingTree.open('checkout')
+        switch.switch(checkout.bzrdir, old_branch, store_uncommitted=True)
+        self.assertPathDoesNotExist('checkout/file-1')
+        self.assertPathExists('checkout/file-2')
+        self.assertPathExists('checkout/file-3')
+
+    def test_switch_restore_uncommitted_same_revision(self):
+        """Test switch updates tree and restores uncommitted changes."""
+        checkout, to_branch = self._setup_uncommitted(same_revision=True)
+        old_branch = self._master_if_present(checkout.branch)
+        switch.switch(checkout.bzrdir, to_branch, store_uncommitted=True)
+        checkout = workingtree.WorkingTree.open('checkout')
+        switch.switch(checkout.bzrdir, old_branch, store_uncommitted=True)
+        self.assertPathExists('checkout/file-3')
+
+    def test_switch_updates(self):
+        """Test switch updates tree and keeps uncommitted changes."""
+        checkout, to_branch = self._setup_uncommitted()
         self.assertPathDoesNotExist('checkout/file-1')
         self.assertPathExists('checkout/file-2')
         switch.switch(checkout.bzrdir, to_branch)

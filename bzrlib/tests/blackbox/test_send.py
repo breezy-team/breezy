@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 # Authors: Aaron Bentley
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,21 +16,20 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-import sys
 from cStringIO import StringIO
 
 from bzrlib import (
     branch,
-    bzrdir,
     merge_directive,
     tests,
     )
+from bzrlib.controldir import ControlDir
 from bzrlib.bundle import serializer
 from bzrlib.transport import memory
 from bzrlib.tests import (
     scenarios,
-    script,
     )
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 
 
 load_tests = scenarios.load_tests_apply_scenarios
@@ -63,7 +62,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
 
     def setUp(self):
         super(TestSend, self).setUp()
-        grandparent_tree = bzrdir.BzrDir.create_standalone_workingtree(
+        grandparent_tree = ControlDir.create_standalone_workingtree(
             'grandparent')
         self.build_tree_contents([('grandparent/file1', 'grandparent')])
         grandparent_tree.add('file1')
@@ -189,31 +188,30 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
 
     def test_note_revisions(self):
         stderr = self.run_send([])[1]
-        self.assertEndsWith(stderr, '\nBundling 1 revision(s).\n')
+        self.assertEndsWith(stderr, '\nBundling 1 revision.\n')
 
     def test_mailto_option(self):
         b = branch.Branch.open('branch')
-        b.get_config().set_user_option('mail_client', 'editor')
+        b.get_config_stack().set('mail_client', 'editor')
         self.run_bzr_error(
             ('No mail-to address \\(--mail-to\\) or output \\(-o\\) specified',
             ), 'send -f branch')
-        b.get_config().set_user_option('mail_client', 'bogus')
+        b.get_config_stack().set('mail_client', 'bogus')
         self.run_send([])
-        self.run_bzr_error(('Unknown mail client: bogus',),
+        self.run_bzr_error(('Bad value "bogus" for option "mail_client"',),
                            'send -f branch --mail-to jrandom@example.org')
-        b.get_config().set_user_option('submit_to', 'jrandom@example.org')
-        self.run_bzr_error(('Unknown mail client: bogus',),
+        b.get_config_stack().set('submit_to', 'jrandom@example.org')
+        self.run_bzr_error(('Bad value "bogus" for option "mail_client"',),
                            'send -f branch')
 
     def test_mailto_child_option(self):
         """Make sure that child_submit_to is used."""
         b = branch.Branch.open('branch')
-        b.get_config().set_user_option('mail_client', 'bogus')
+        b.get_config_stack().set('mail_client', 'bogus')
         parent = branch.Branch.open('parent')
-        parent.get_config().set_user_option('child_submit_to',
-                           'somebody@example.org')
-        self.run_bzr_error(('Unknown mail client: bogus',),
-                           'send -f branch')
+        parent.get_config_stack().set('child_submit_to', 'somebody@example.org')
+        self.run_bzr_error(('Bad value "bogus" for option "mail_client"',),
+                'send -f branch')
 
     def test_format(self):
         md = self.get_MD(['--format=4'])
@@ -231,12 +229,13 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
                             'send -f branch -o- --format=0.999')[0]
 
     def test_format_child_option(self):
-        parent_config = branch.Branch.open('parent').get_config()
-        parent_config.set_user_option('child_submit_format', '4')
+        br = branch.Branch.open('parent')
+        conf = br.get_config_stack()
+        conf.set('child_submit_format', '4')
         md = self.get_MD([])
         self.assertIs(merge_directive.MergeDirective2, md.__class__)
 
-        parent_config.set_user_option('child_submit_format', '0.9')
+        conf.set('child_submit_format', '0.9')
         md = self.get_MD([])
         self.assertFormatIs('# Bazaar revision bundle v0.9', md)
 
@@ -244,7 +243,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         self.assertFormatIs('# Bazaar revision bundle v0.9', md)
         self.assertIs(merge_directive.MergeDirective, md.__class__)
 
-        parent_config.set_user_option('child_submit_format', '0.999')
+        conf.set('child_submit_format', '0.999')
         self.run_bzr_error(["No such send format '0.999'"],
                             'send -f branch -o-')[0]
 
@@ -275,7 +274,7 @@ class TestSendStrictMixin(TestSendMixin):
 
     def make_parent_and_local_branches(self):
         # Create a 'parent' branch as the base
-        self.parent_tree = bzrdir.BzrDir.create_standalone_workingtree('parent')
+        self.parent_tree = ControlDir.create_standalone_workingtree('parent')
         self.build_tree_contents([('parent/file', 'parent')])
         self.parent_tree.add('file')
         self.parent_tree.commit('first commit', rev_id='parent')
@@ -294,10 +293,8 @@ class TestSendStrictMixin(TestSendMixin):
     _default_additional_warning = 'Uncommitted changes will not be sent.'
 
     def set_config_send_strict(self, value):
-        # set config var (any of bazaar.conf, locations.conf, branch.conf
-        # should do)
-        conf = self.local_tree.branch.get_config()
-        conf.set_user_option('send_strict', value)
+        br = branch.Branch.open('local')
+        br.get_config_stack().set('send_strict', value)
 
     def assertSendFails(self, args):
         out, err = self.run_send(args, rc=3, err_re=self._default_errors)
@@ -311,7 +308,10 @@ class TestSendStrictMixin(TestSendMixin):
         if revs is None:
             revs = self._default_sent_revs
         out, err = self.run_send(args, err_re=err_re)
-        bundling_revs = 'Bundling %d revision(s).\n' % len(revs)
+        if len(revs) == 1:
+            bundling_revs = 'Bundling %d revision.\n'% len(revs)
+        else:
+            bundling_revs = 'Bundling %d revisions.\n' % len(revs)
         if with_warning:
             self.assertContainsRe(err, self._default_additional_warning)
             self.assertEndsWith(err, bundling_revs)
@@ -329,6 +329,10 @@ class TestSendStrictWithoutChanges(tests.TestCaseWithTransport,
     def setUp(self):
         super(TestSendStrictWithoutChanges, self).setUp()
         self.make_parent_and_local_branches()
+
+    def test_send_without_workingtree(self):
+        ControlDir.open("local").destroy_workingtree()
+        self.assertSendSucceeds([])
 
     def test_send_default(self):
         self.assertSendSucceeds([])
@@ -436,3 +440,27 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
 class TestBundleStrictWithoutChanges(TestSendStrictWithoutChanges):
 
     _default_command = ['bundle-revisions', '../parent']
+
+
+class TestSmartServerSend(tests.TestCaseWithTransport):
+
+    def test_send(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        t.commit("message")
+        local = t.bzrdir.sprout('local-branch').open_workingtree()
+        self.build_tree_contents([('branch/foo', 'thenewcontents')])
+        local.commit("anothermessage")
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(
+            ['send', '-o', 'x.diff', self.get_url('branch')], working_dir='local-branch')
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(7, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

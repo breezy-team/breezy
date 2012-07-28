@@ -20,6 +20,7 @@ from cStringIO import StringIO
 import errno
 import os
 import re
+import select
 import socket
 import sys
 import time
@@ -41,7 +42,7 @@ from bzrlib.tests import (
 from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
-class _UTF8DirReaderFeature(tests.Feature):
+class _UTF8DirReaderFeature(features.Feature):
 
     def _probe(self):
         try:
@@ -54,9 +55,9 @@ class _UTF8DirReaderFeature(tests.Feature):
     def feature_name(self):
         return 'bzrlib._readdir_pyx'
 
-UTF8DirReaderFeature = _UTF8DirReaderFeature()
+UTF8DirReaderFeature = features.ModuleAvailableFeature('bzrlib._readdir_pyx')
 
-term_ios_feature = tests.ModuleAvailableFeature('termios')
+term_ios_feature = features.ModuleAvailableFeature('termios')
 
 
 def _already_unicode(s):
@@ -179,6 +180,15 @@ class TestRename(tests.TestCaseInTempDir):
         # so try to check shape of the tree
         shape = sorted(os.listdir('.'))
         self.assertEquals(['A', 'B'], shape)
+
+    def test_rename_exception(self):
+        try:
+            osutils.rename('nonexistent_path', 'different_nonexistent_path')
+        except OSError, e:
+            self.assertEqual(e.old_filename, 'nonexistent_path')
+            self.assertEqual(e.new_filename, 'different_nonexistent_path')
+            self.assertTrue('nonexistent_path' in e.strerror)
+            self.assertTrue('different_nonexistent_path' in e.strerror)
 
 
 class TestRandChars(tests.TestCase):
@@ -429,7 +439,7 @@ class TestDateTime(tests.TestCase):
 class TestLinks(tests.TestCaseInTempDir):
 
     def test_dereference_path(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         cwd = osutils.realpath('.')
         os.mkdir('bar')
         bar_path = osutils.pathjoin(cwd, 'bar')
@@ -482,7 +492,7 @@ class TestLinks(tests.TestCaseInTempDir):
 
 class TestCanonicalRelPath(tests.TestCaseInTempDir):
 
-    _test_needs_features = [tests.CaseInsCasePresFilenameFeature]
+    _test_needs_features = [features.CaseInsCasePresFilenameFeature]
 
     def test_canonical_relpath_simple(self):
         f = file('MixedCaseName', 'w')
@@ -818,6 +828,16 @@ class TestSafeFileId(tests.TestCase):
         self.assertEqual(None, osutils.safe_file_id(None))
 
 
+class TestPosixFuncs(tests.TestCase):
+    """Test that the posix version of normpath returns an appropriate path
+       when used with 2 leading slashes."""
+
+    def test_normpath(self):
+        self.assertEqual('/etc/shadow', osutils._posix_normpath('/etc/shadow'))
+        self.assertEqual('/etc/shadow', osutils._posix_normpath('//etc/shadow'))
+        self.assertEqual('/etc/shadow', osutils._posix_normpath('///etc/shadow'))
+
+
 class TestWin32Funcs(tests.TestCase):
     """Test that _win32 versions of os utilities return appropriate paths."""
 
@@ -888,7 +908,7 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
     """Test win32 functions that create files."""
 
     def test_getcwd(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         os.mkdir(u'mu-\xb5')
         os.chdir(u'mu-\xb5')
         # TODO: jam 20060427 This will probably fail on Mac OSX because
@@ -984,13 +1004,13 @@ class TestMacFuncsDirs(tests.TestCaseInTempDir):
     """Test mac special functions that require directories."""
 
     def test_getcwd(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         os.mkdir(u'B\xe5gfors')
         os.chdir(u'B\xe5gfors')
         self.assertEndsWith(osutils._mac_getcwd(), u'B\xe5gfors')
 
     def test_getcwd_nonnorm(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         # Test that _mac_getcwd() will normalize this path
         os.mkdir(u'Ba\u030agfors')
         os.chdir(u'Ba\u030agfors')
@@ -1106,7 +1126,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # are not using the filesystem's encoding
 
         # require a bytestring based filesystem
-        self.requireFeature(tests.ByteStringNamedFilesystem)
+        self.requireFeature(features.ByteStringNamedFilesystem)
 
         tree = [
             '.bzr',
@@ -1206,27 +1226,22 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
-        osutils._fs_enc = 'UTF-8'
-        self.assertDirReaderIs(UTF8DirReaderFeature.reader)
+        osutils._fs_enc = 'utf-8'
+        self.assertDirReaderIs(
+            UTF8DirReaderFeature.module.UTF8DirReader)
 
     def test_force_walkdirs_utf8_fs_ascii(self):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
-        osutils._fs_enc = 'US-ASCII'
-        self.assertDirReaderIs(UTF8DirReaderFeature.reader)
-
-    def test_force_walkdirs_utf8_fs_ANSI(self):
-        self.requireFeature(UTF8DirReaderFeature)
-        self._save_platform_info()
-        win32utils.winver = None # Avoid the win32 detection code
-        osutils._fs_enc = 'ANSI_X3.4-1968'
-        self.assertDirReaderIs(UTF8DirReaderFeature.reader)
+        osutils._fs_enc = 'ascii'
+        self.assertDirReaderIs(
+            UTF8DirReaderFeature.module.UTF8DirReader)
 
     def test_force_walkdirs_utf8_fs_latin1(self):
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
-        osutils._fs_enc = 'latin1'
+        osutils._fs_enc = 'iso-8859-1'
         self.assertDirReaderIs(osutils.UnicodeDirReader)
 
     def test_force_walkdirs_utf8_nt(self):
@@ -1245,7 +1260,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
     def test_unicode_walkdirs(self):
         """Walkdirs should always return unicode paths."""
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         name0 = u'0file-\xb6'
         name1 = u'1dir-\u062c\u0648'
         name2 = u'2file-\u0633'
@@ -1288,7 +1303,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
         The abspath portion might be in unicode or utf-8
         """
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         name0 = u'0file-\xb6'
         name1 = u'1dir-\u062c\u0648'
         name2 = u'2file-\u0633'
@@ -1349,7 +1364,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
         The abspath portion should be in unicode
         """
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         # Use the unicode reader. TODO: split into driver-and-driven unit
         # tests.
         self._save_platform_info()
@@ -1396,7 +1411,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
     def test__walkdirs_utf8_win32readdir(self):
         self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         self._save_platform_info()
         osutils._selected_dir_reader = Win32ReadDir()
@@ -1453,7 +1468,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
     def test__walkdirs_utf_win32_find_file_stat_file(self):
         """make sure our Stat values are valid"""
         self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         name0u = u'0file-\xb6'
         name0 = name0u.encode('utf8')
@@ -1477,7 +1492,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
     def test__walkdirs_utf_win32_find_file_stat_directory(self):
         """make sure our Stat values are valid"""
         self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         name0u = u'0dir-\u062c\u0648'
         name0 = name0u.encode('utf8')
@@ -1583,7 +1598,7 @@ class TestCopyTree(tests.TestCaseInTempDir):
         self.assertEqual(['c'], os.listdir('target/b'))
 
     def test_copy_tree_symlinks(self):
-        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature)
         self.build_tree(['source/'])
         os.symlink('a/generic/path', 'source/lnk')
         osutils.copy_tree('source', 'target')
@@ -1856,15 +1871,15 @@ class TestDirReader(tests.TestCaseInTempDir):
         return filtered_dirblocks
 
     def test_walk_unicode_tree(self):
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         tree, expected_dirblocks = self._get_unicode_tree()
         self.build_tree(tree)
         result = list(osutils._walkdirs_utf8('.'))
         self.assertEqual(expected_dirblocks, self._filter_out(result))
 
     def test_symlink(self):
-        self.requireFeature(tests.SymlinkFeature)
-        self.requireFeature(tests.UnicodeFilenameFeature)
+        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.UnicodeFilenameFeature)
         target = u'target\N{Euro Sign}'
         link_name = u'l\N{Euro Sign}nk'
         os.symlink(target, link_name)
@@ -1888,7 +1903,7 @@ class TestReadLink(tests.TestCaseInTempDir):
     But prior python versions failed to properly encode the passed unicode
     string.
     """
-    _test_needs_features = [tests.SymlinkFeature, tests.UnicodeFilenameFeature]
+    _test_needs_features = [features.SymlinkFeature, features.UnicodeFilenameFeature]
 
     def setUp(self):
         super(tests.TestCaseInTempDir, self).setUp()
@@ -2052,6 +2067,7 @@ class TestTerminalWidth(tests.TestCase):
         # Whatever the result is, if we don't raise an exception, it's ok.
         osutils.terminal_width()
 
+
 class TestCreationOps(tests.TestCaseInTempDir):
     _test_needs_features = [features.chown_feature]
 
@@ -2087,10 +2103,79 @@ class TestCreationOps(tests.TestCaseInTempDir):
         self.assertEquals(self.uid, s.st_uid)
         self.assertEquals(self.gid, s.st_gid)
 
+
+class TestPathFromEnviron(tests.TestCase):
+
+    def test_is_unicode(self):
+        self.overrideEnv('BZR_TEST_PATH', './anywhere at all/')
+        path = osutils.path_from_environ('BZR_TEST_PATH')
+        self.assertIsInstance(path, unicode)
+        self.assertEqual(u'./anywhere at all/', path)
+
+    def test_posix_path_env_ascii(self):
+        self.overrideEnv('BZR_TEST_PATH', '/tmp')
+        home = osutils._posix_path_from_environ('BZR_TEST_PATH')
+        self.assertIsInstance(home, unicode)
+        self.assertEqual(u'/tmp', home)
+
+    def test_posix_path_env_unicode(self):
+        self.requireFeature(features.ByteStringNamedFilesystem)
+        self.overrideEnv('BZR_TEST_PATH', '/home/\xa7test')
+        self.overrideAttr(osutils, "_fs_enc", "iso8859-1")
+        self.assertEqual(u'/home/\xa7test',
+            osutils._posix_path_from_environ('BZR_TEST_PATH'))
+        osutils._fs_enc = "iso8859-5"
+        self.assertEqual(u'/home/\u0407test',
+            osutils._posix_path_from_environ('BZR_TEST_PATH'))
+        osutils._fs_enc = "utf-8"
+        self.assertRaises(errors.BadFilenameEncoding,
+            osutils._posix_path_from_environ, 'BZR_TEST_PATH')
+
+
+class TestGetHomeDir(tests.TestCase):
+
+    def test_is_unicode(self):
+        home = osutils._get_home_dir()
+        self.assertIsInstance(home, unicode)
+
+    def test_posix_homeless(self):
+        self.overrideEnv('HOME', None)
+        home = osutils._get_home_dir()
+        self.assertIsInstance(home, unicode)
+
+    def test_posix_home_ascii(self):
+        self.overrideEnv('HOME', '/home/test')
+        home = osutils._posix_get_home_dir()
+        self.assertIsInstance(home, unicode)
+        self.assertEqual(u'/home/test', home)
+
+    def test_posix_home_unicode(self):
+        self.requireFeature(features.ByteStringNamedFilesystem)
+        self.overrideEnv('HOME', '/home/\xa7test')
+        self.overrideAttr(osutils, "_fs_enc", "iso8859-1")
+        self.assertEqual(u'/home/\xa7test', osutils._posix_get_home_dir())
+        osutils._fs_enc = "iso8859-5"
+        self.assertEqual(u'/home/\u0407test', osutils._posix_get_home_dir())
+        osutils._fs_enc = "utf-8"
+        self.assertRaises(errors.BadFilenameEncoding,
+            osutils._posix_get_home_dir)
+
+
 class TestGetuserUnicode(tests.TestCase):
 
+    def test_is_unicode(self):
+        user = osutils.getuser_unicode()
+        self.assertIsInstance(user, unicode)
+
+    def envvar_to_override(self):
+        if sys.platform == "win32":
+            # Disable use of platform calls on windows so envvar is used
+            self.overrideAttr(win32utils, 'has_ctypes', False)
+            return 'USERNAME' # only variable used on windows
+        return 'LOGNAME' # first variable checked by getpass.getuser()
+
     def test_ascii_user(self):
-        self.overrideEnv('LOGNAME', 'jrandom')
+        self.overrideEnv(self.envvar_to_override(), 'jrandom')
         self.assertEqual(u'jrandom', osutils.getuser_unicode())
 
     def test_unicode_user(self):
@@ -2102,10 +2187,9 @@ class TestGetuserUnicode(tests.TestCase):
                 % (osutils.get_user_encoding(),))
         uni_username = u'jrandom' + uni_val
         encoded_username = uni_username.encode(ue)
-        self.overrideEnv('LOGNAME', encoded_username)
+        self.overrideEnv(self.envvar_to_override(), encoded_username)
         self.assertEqual(uni_username, osutils.getuser_unicode())
-        self.overrideEnv('LOGNAME', u'jrandom\xb6'.encode(ue))
-        self.assertEqual(u'jrandom\xb6', osutils.getuser_unicode())
+
 
 class TestBackupNames(tests.TestCase):
 
@@ -2150,6 +2234,14 @@ class TestFindExecutableInPath(tests.TestCase):
         self.assertTrue(
             osutils.find_executable_on_path('THIS SHOULD NOT EXIST') is None)
         self.assertTrue(osutils.find_executable_on_path('file.txt') is None)
+        
+    def test_windows_app_path(self):
+        if sys.platform != 'win32':
+            raise tests.TestSkipped('test requires win32')
+        # Override PATH env var so that exe can only be found on App Path
+        self.overrideEnv('PATH', '')
+        # Internt Explorer is always registered in the App Path
+        self.assertTrue(osutils.find_executable_on_path('iexplore') is not None)
 
     def test_other(self):
         if sys.platform == 'win32':
@@ -2157,3 +2249,29 @@ class TestFindExecutableInPath(tests.TestCase):
         self.assertTrue(osutils.find_executable_on_path('sh') is not None)
         self.assertTrue(
             osutils.find_executable_on_path('THIS SHOULD NOT EXIST') is None)
+
+
+class TestEnvironmentErrors(tests.TestCase):
+    """Test handling of environmental errors"""
+
+    def test_is_oserror(self):
+        self.assertTrue(osutils.is_environment_error(
+            OSError(errno.EINVAL, "Invalid parameter")))
+
+    def test_is_ioerror(self):
+        self.assertTrue(osutils.is_environment_error(
+            IOError(errno.EINVAL, "Invalid parameter")))
+
+    def test_is_socket_error(self):
+        self.assertTrue(osutils.is_environment_error(
+            socket.error(errno.EINVAL, "Invalid parameter")))
+
+    def test_is_select_error(self):
+        self.assertTrue(osutils.is_environment_error(
+            select.error(errno.EINVAL, "Invalid parameter")))
+
+    def test_is_pywintypes_error(self):
+        self.requireFeature(features.pywintypes)
+        import pywintypes
+        self.assertTrue(osutils.is_environment_error(
+            pywintypes.error(errno.EINVAL, "Invalid parameter", "Caller")))

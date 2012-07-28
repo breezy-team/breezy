@@ -16,15 +16,21 @@
 
 """Display what revisions are missing in 'other' from 'this' and vice versa."""
 
+from __future__ import absolute_import
+
 from bzrlib import (
     log,
+    symbol_versioning,
     )
 import bzrlib.revision as _mod_revision
 
 
-def iter_log_revisions(revisions, revision_source, verbose):
+def iter_log_revisions(revisions, revision_source, verbose, rev_tag_dict=None):
     last_tree = revision_source.revision_tree(_mod_revision.NULL_REVISION)
     last_rev_id = None
+
+    if rev_tag_dict is None:
+        rev_tag_dict = {}
     for rev in revisions:
         # We need the following for backward compatibilty (hopefully
         # this will be deprecated soon :-/) -- vila 080911
@@ -38,12 +44,14 @@ def iter_log_revisions(revisions, revision_source, verbose):
             delta = revision_source.get_revision_delta(rev_id)
         else:
             delta = None
-        yield log.LogRevision(rev, revno, merge_depth, delta=delta)
+        yield log.LogRevision(rev, revno, merge_depth, delta=delta,
+                              tags=rev_tag_dict.get(rev_id))
 
 
 def find_unmerged(local_branch, remote_branch, restrict='all',
-                  include_merges=False, backward=False,
-                  local_revid_range=None, remote_revid_range=None):
+                  include_merged=None, backward=False,
+                  local_revid_range=None, remote_revid_range=None,
+                  include_merges=symbol_versioning.DEPRECATED_PARAMETER):
     """Find revisions from each side that have not been merged.
 
     :param local_branch: Compare the history of local_branch
@@ -53,7 +61,7 @@ def find_unmerged(local_branch, remote_branch, restrict='all',
         unique revisions from both sides. If 'local', we will return None
         for the remote revisions, similarly if 'remote' we will return None for
         the local revisions.
-    :param include_merges: Show mainline revisions only if False,
+    :param include_merged: Show mainline revisions only if False,
         all revisions otherwise.
     :param backward: Show oldest versions first when True, newest versions
         first when False.
@@ -61,17 +69,27 @@ def find_unmerged(local_branch, remote_branch, restrict='all',
         revisions (lower bound, upper bound)
     :param remote_revid_range: Revision-id range for filtering remote_branch
         revisions (lower bound, upper bound)
+    :param include_merges: Deprecated historical alias for include_merged
 
     :return: A list of [(revno, revision_id)] for the mainline revisions on
         each side.
     """
+    if symbol_versioning.deprecated_passed(include_merges):
+        symbol_versioning.warn(
+            'include_merges was deprecated in 2.5.'
+            ' Use include_merged instead.',
+            DeprecationWarning, stacklevel=2)
+        if include_merged is None:
+            include_merged = include_merges
+    if include_merged is None:
+        include_merged = False
     local_branch.lock_read()
     try:
         remote_branch.lock_read()
         try:
             return _find_unmerged(
                 local_branch, remote_branch, restrict=restrict,
-                include_merges=include_merges, backward=backward,
+                include_merged=include_merged, backward=backward,
                 local_revid_range=local_revid_range,
                 remote_revid_range=remote_revid_range)
         finally:
@@ -160,7 +178,7 @@ def _filter_revs(graph, revs, revid_range):
 
 
 def _find_unmerged(local_branch, remote_branch, restrict,
-                   include_merges, backward,
+                   include_merged, backward,
                    local_revid_range=None, remote_revid_range=None):
     """See find_unmerged.
 
@@ -186,7 +204,7 @@ def _find_unmerged(local_branch, remote_branch, restrict,
                              ' "remote": %r' % (restrict,))
         local_extra, remote_extra = graph.find_difference(local_revision_id,
                                                           remote_revision_id)
-    if include_merges:
+    if include_merged:
         locals = _enumerate_with_merges(local_branch, local_extra,
                                         graph, local_revno,
                                         local_revision_id, backward)

@@ -168,56 +168,35 @@ class TestUserEncoding(TestCase):
 
     def setUp(self):
         TestCase.setUp(self)
-        self.overrideAttr(locale, 'getpreferredencoding')
+        self.overrideAttr(osutils, '_cached_user_encoding', None)
+        self.overrideAttr(locale, 'getpreferredencoding', self.get_encoding)
+        self.overrideAttr(locale, 'CODESET', None)
         self.overrideAttr(sys, 'stderr', StringIOWrapper())
 
-    def test_get_user_encoding(self):
-        def f():
-            return 'user_encoding'
+    def get_encoding(self, do_setlocale=True):
+        return self._encoding
 
-        locale.getpreferredencoding = f
+    def test_get_user_encoding(self):
+        self._encoding = 'user_encoding'
         fake_codec.add('user_encoding')
-        self.assertEquals('user_encoding',
-                          osutils.get_user_encoding(use_cache=False))
+        self.assertEquals('iso8859-1', # fake_codec maps to latin-1
+                          osutils.get_user_encoding())
         self.assertEquals('', sys.stderr.getvalue())
 
     def test_user_cp0(self):
-        def f():
-            return 'cp0'
-
-        locale.getpreferredencoding = f
-        self.assertEquals('ascii', osutils.get_user_encoding(use_cache=False))
+        self._encoding = 'cp0'
+        self.assertEquals('ascii', osutils.get_user_encoding())
         self.assertEquals('', sys.stderr.getvalue())
 
     def test_user_cp_unknown(self):
-        def f():
-            return 'cp-unknown'
-
-        locale.getpreferredencoding = f
-        self.assertEquals('ascii', osutils.get_user_encoding(use_cache=False))
+        self._encoding = 'cp-unknown'
+        self.assertEquals('ascii', osutils.get_user_encoding())
         self.assertEquals('bzr: warning: unknown encoding cp-unknown.'
                           ' Continuing with ascii encoding.\n',
                           sys.stderr.getvalue())
 
     def test_user_empty(self):
         """Running bzr from a vim script gives '' for a preferred locale"""
-        def f():
-            return ''
-
-        locale.getpreferredencoding = f
-        self.assertEquals('ascii', osutils.get_user_encoding(use_cache=False))
+        self._encoding = ''
+        self.assertEquals('ascii', osutils.get_user_encoding())
         self.assertEquals('', sys.stderr.getvalue())
-
-    def test_user_locale_error(self):
-        def f():
-            raise locale.Error, 'unsupported locale'
-
-        locale.getpreferredencoding = f
-        self.overrideEnv('LANG', 'BOGUS')
-        self.assertEquals('ascii', osutils.get_user_encoding(use_cache=False))
-        self.assertEquals('bzr: warning: unsupported locale\n'
-                          '  Could not determine what text encoding to use.\n'
-                          '  This error usually means your Python interpreter\n'
-                          '  doesn\'t support the locale set by $LANG (BOGUS)\n'
-                          '  Continuing with ascii encoding.\n',
-                          sys.stderr.getvalue())

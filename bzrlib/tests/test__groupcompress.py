@@ -23,6 +23,9 @@ from bzrlib import (
 from bzrlib.tests.scenarios import (
     load_tests_apply_scenarios,
     )
+from bzrlib.tests import (
+    features,
+    )
 
 
 def module_scenarios():
@@ -57,8 +60,8 @@ def two_way_scenarios():
 load_tests = load_tests_apply_scenarios
 
 
-compiled_groupcompress_feature = tests.ModuleAvailableFeature(
-                                    'bzrlib._groupcompress_pyx')
+compiled_groupcompress_feature = features.ModuleAvailableFeature(
+    'bzrlib._groupcompress_pyx')
 
 _text1 = """\
 This is a bit

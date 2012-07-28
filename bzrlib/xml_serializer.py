@@ -16,6 +16,8 @@
 
 """XML externalization support."""
 
+from __future__ import absolute_import
+
 # "XML is like violence: if it doesn't solve your problem, you aren't
 # using enough of it." -- various
 
@@ -24,36 +26,32 @@
 
 import re
 
-from bzrlib.serializer import Serializer
-from bzrlib.trace import mutter
-
 try:
-    try:
-        # it's in this package in python2.5
-        from xml.etree.cElementTree import (ElementTree, SubElement, Element,
-            XMLTreeBuilder, fromstring, tostring)
-        import xml.etree as elementtree
-        # Also import ElementTree module so monkey-patching below always works
-        import xml.etree.ElementTree
-    except ImportError:
-        from cElementTree import (ElementTree, SubElement, Element,
-                                  XMLTreeBuilder, fromstring, tostring)
-        import elementtree.ElementTree
-    ParseError = SyntaxError
+    import xml.etree.cElementTree as elementtree
+    ParseError = getattr(elementtree, "ParseError", SyntaxError)
 except ImportError:
-    mutter('WARNING: using slower ElementTree; consider installing cElementTree'
-           " and make sure it's on your PYTHONPATH")
-    # this copy is shipped with bzr
-    from util.elementtree.ElementTree import (ElementTree, SubElement,
-                                              Element, XMLTreeBuilder,
-                                              fromstring, tostring)
-    import util.elementtree as elementtree
-    from xml.parsers.expat import ExpatError as ParseError
+    # Fall back to pure python implementation if C extension is unavailable
+    import xml.etree.ElementTree as elementtree
+    try:
+        from xml.etree.ElementTree import ParseError
+    except ImportError:
+        from xml.parsers.expat import ExpatError as ParseError
 
-from bzrlib import errors
+(ElementTree, SubElement, Element, XMLTreeBuilder, fromstring, tostring) = (
+    elementtree.ElementTree, elementtree.SubElement, elementtree.Element,
+    elementtree.XMLTreeBuilder, elementtree.fromstring, elementtree.tostring)
 
 
-class XMLSerializer(Serializer):
+from bzrlib import (
+    cache_utf8,
+    errors,
+    inventory,
+    lazy_regex,
+    serializer,
+    )
+
+
+class XMLSerializer(serializer.Serializer):
     """Abstract XML object serialize/deserialize"""
 
     squashes_xml_invalid_characters = True
@@ -130,3 +128,312 @@ def escape_invalid_chars(message):
     return re.subn(u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
             lambda match: match.group(0).encode('unicode_escape'),
             message)
+
+
+def get_utf8_or_ascii(a_str, _encode_utf8=cache_utf8.encode):
+    """Return a cached version of the string.
+
+    cElementTree will return a plain string if the XML is plain ascii. It only
+    returns Unicode when it needs to. We want to work in utf-8 strings. So if
+    cElementTree returns a plain string, we can just return the cached version.
+    If it is Unicode, then we need to encode it.
+
+    :param a_str: An 8-bit string or Unicode as returned by
+                  cElementTree.Element.get()
+    :return: A utf-8 encoded 8-bit string.
+    """
+    # This is fairly optimized because we know what cElementTree does, this is
+    # not meant as a generic function for all cases. Because it is possible for
+    # an 8-bit string to not be ascii or valid utf8.
+    if a_str.__class__ is unicode:
+        return _encode_utf8(a_str)
+    else:
+        return intern(a_str)
+
+
+_utf8_re = lazy_regex.lazy_compile('[&<>\'\"]|[\x80-\xff]+')
+_unicode_re = lazy_regex.lazy_compile(u'[&<>\'\"\u0080-\uffff]')
+
+
+_xml_escape_map = {
+    "&":'&amp;',
+    "'":"&apos;", # FIXME: overkill
+    "\"":"&quot;",
+    "<":"&lt;",
+    ">":"&gt;",
+    }
+
+
+def _unicode_escape_replace(match, _map=_xml_escape_map):
+    """Replace a string of non-ascii, non XML safe characters with their escape
+
+    This will escape both Standard XML escapes, like <>"', etc.
+    As well as escaping non ascii characters, because ElementTree did.
+    This helps us remain compatible to older versions of bzr. We may change
+    our policy in the future, though.
+    """
+    # jam 20060816 Benchmarks show that try/KeyError is faster if you
+    # expect the entity to rarely miss. There is about a 10% difference
+    # in overall time. But if you miss frequently, then if None is much
+    # faster. For our use case, we *rarely* have a revision id, file id
+    # or path name that is unicode. So use try/KeyError.
+    try:
+        return _map[match.group()]
+    except KeyError:
+        return "&#%d;" % ord(match.group())
+
+
+def _utf8_escape_replace(match, _map=_xml_escape_map):
+    """Escape utf8 characters into XML safe ones.
+
+    This uses 2 tricks. It is either escaping "standard" characters, like "&<>,
+    or it is handling characters with the high-bit set. For ascii characters,
+    we just lookup the replacement in the dictionary. For everything else, we
+    decode back into Unicode, and then use the XML escape code.
+    """
+    try:
+        return _map[match.group()]
+    except KeyError:
+        return ''.join('&#%d;' % ord(uni_chr)
+                       for uni_chr in match.group().decode('utf8'))
+
+
+_to_escaped_map = {}
+
+def encode_and_escape(unicode_or_utf8_str, _map=_to_escaped_map):
+    """Encode the string into utf8, and escape invalid XML characters"""
+    # We frequently get entities we have not seen before, so it is better
+    # to check if None, rather than try/KeyError
+    text = _map.get(unicode_or_utf8_str)
+    if text is None:
+        if unicode_or_utf8_str.__class__ is unicode:
+            # The alternative policy is to do a regular UTF8 encoding
+            # and then escape only XML meta characters.
+            # Performance is equivalent once you use cache_utf8. *However*
+            # this makes the serialized texts incompatible with old versions
+            # of bzr. So no net gain. (Perhaps the read code would handle utf8
+            # better than entity escapes, but cElementTree seems to do just fine
+            # either way)
+            text = str(_unicode_re.sub(_unicode_escape_replace,
+                                       unicode_or_utf8_str)) + '"'
+        else:
+            # Plain strings are considered to already be in utf-8 so we do a
+            # slightly different method for escaping.
+            text = _utf8_re.sub(_utf8_escape_replace,
+                                unicode_or_utf8_str) + '"'
+        _map[unicode_or_utf8_str] = text
+    return text
+
+
+def _clear_cache():
+    """Clean out the unicode => escaped map"""
+    _to_escaped_map.clear()
+
+
+def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False):
+    elt_get = elt.get
+    file_id = elt_get('file_id')
+    revision = elt_get('revision')
+    # Check and see if we have already unpacked this exact entry
+    # Some timings for "repo.revision_trees(last_100_revs)"
+    #               bzr     mysql
+    #   unmodified  4.1s    40.8s
+    #   using lru   3.5s
+    #   using fifo  2.83s   29.1s
+    #   lru._cache  2.8s
+    #   dict        2.75s   26.8s
+    #   inv.add     2.5s    26.0s
+    #   no_copy     2.00s   20.5s
+    #   no_c,dict   1.95s   18.0s
+    # Note that a cache of 10k nodes is more than sufficient to hold all of
+    # the inventory for the last 100 revs for bzr, but not for mysql (20k
+    # is enough for mysql, which saves the same 2s as using a dict)
+
+    # Breakdown of mysql using time.clock()
+    #   4.1s    2 calls to element.get for file_id, revision_id
+    #   4.5s    cache_hit lookup
+    #   7.1s    InventoryFile.copy()
+    #   2.4s    InventoryDirectory.copy()
+    #   0.4s    decoding unique entries
+    #   1.6s    decoding entries after FIFO fills up
+    #   0.8s    Adding nodes to FIFO (including flushes)
+    #   0.1s    cache miss lookups
+    # Using an LRU cache
+    #   4.1s    2 calls to element.get for file_id, revision_id
+    #   9.9s    cache_hit lookup
+    #   10.8s   InventoryEntry.copy()
+    #   0.3s    cache miss lookus
+    #   1.2s    decoding entries
+    #   1.0s    adding nodes to LRU
+    if entry_cache is not None and revision is not None:
+        key = (file_id, revision)
+        try:
+            # We copy it, because some operations may mutate it
+            cached_ie = entry_cache[key]
+        except KeyError:
+            pass
+        else:
+            # Only copying directory entries drops us 2.85s => 2.35s
+            if return_from_cache:
+                if cached_ie.kind == 'directory':
+                    return cached_ie.copy()
+                return cached_ie
+            return cached_ie.copy()
+
+    kind = elt.tag
+    if not inventory.InventoryEntry.versionable_kind(kind):
+        raise AssertionError('unsupported entry kind %s' % kind)
+
+    file_id = get_utf8_or_ascii(file_id)
+    if revision is not None:
+        revision = get_utf8_or_ascii(revision)
+    parent_id = elt_get('parent_id')
+    if parent_id is not None:
+        parent_id = get_utf8_or_ascii(parent_id)
+
+    if kind == 'directory':
+        ie = inventory.InventoryDirectory(file_id,
+                                          elt_get('name'),
+                                          parent_id)
+    elif kind == 'file':
+        ie = inventory.InventoryFile(file_id,
+                                     elt_get('name'),
+                                     parent_id)
+        ie.text_sha1 = elt_get('text_sha1')
+        if elt_get('executable') == 'yes':
+            ie.executable = True
+        v = elt_get('text_size')
+        ie.text_size = v and int(v)
+    elif kind == 'symlink':
+        ie = inventory.InventoryLink(file_id,
+                                     elt_get('name'),
+                                     parent_id)
+        ie.symlink_target = elt_get('symlink_target')
+    elif kind == 'tree-reference':
+        file_id = elt.attrib['file_id']
+        name = elt.attrib['name']
+        parent_id = elt.attrib['parent_id']
+        revision = elt.get('revision')
+        reference_revision = elt.get('reference_revision')
+        ie = inventory.TreeReference(file_id, name, parent_id, revision,
+                                       reference_revision)
+    else:
+        raise errors.UnsupportedInventoryKind(kind)
+    ie.revision = revision
+    if revision is not None and entry_cache is not None:
+        # We cache a copy() because callers like to mutate objects, and
+        # that would cause the item in cache to mutate as well.
+        # This has a small effect on many-inventory performance, because
+        # the majority fraction is spent in cache hits, not misses.
+        entry_cache[key] = ie.copy()
+
+    return ie
+
+
+def unpack_inventory_flat(elt, format_num, unpack_entry,
+            entry_cache=None, return_from_cache=False):
+    """Unpack a flat XML inventory.
+
+    :param elt: XML element for the inventory
+    :param format_num: Expected format number
+    :param unpack_entry: Function for unpacking inventory entries
+    :return: An inventory
+    :raise UnexpectedInventoryFormat: When unexpected elements or data is
+        encountered
+    """
+    if elt.tag != 'inventory':
+        raise errors.UnexpectedInventoryFormat('Root tag is %r' % elt.tag)
+    format = elt.get('format')
+    if format != format_num:
+        raise errors.UnexpectedInventoryFormat('Invalid format version %r'
+                                               % format)
+    revision_id = elt.get('revision_id')
+    if revision_id is not None:
+        revision_id = cache_utf8.encode(revision_id)
+    inv = inventory.Inventory(root_id=None, revision_id=revision_id)
+    for e in elt:
+        ie = unpack_entry(e, entry_cache, return_from_cache)
+        inv.add(ie)
+    return inv
+
+
+def serialize_inventory_flat(inv, append, root_id, supported_kinds, working):
+    """Serialize an inventory to a flat XML file.
+
+    :param inv: Inventory to serialize
+    :param append: Function for writing a line of output
+    :param working: If True skip history data - text_sha1, text_size,
+        reference_revision, symlink_target.    self._check_revisions(inv)
+    """
+    entries = inv.iter_entries()
+    # Skip the root
+    root_path, root_ie = entries.next()
+    for path, ie in entries:
+        if ie.parent_id != root_id:
+            parent_str = ' parent_id="'
+            parent_id  = encode_and_escape(ie.parent_id)
+        else:
+            parent_str = ''
+            parent_id  = ''
+        if ie.kind == 'file':
+            if ie.executable:
+                executable = ' executable="yes"'
+            else:
+                executable = ''
+            if not working:
+                append('<file%s file_id="%s name="%s%s%s revision="%s '
+                    'text_sha1="%s" text_size="%d" />\n' % (
+                    executable, encode_and_escape(ie.file_id),
+                    encode_and_escape(ie.name), parent_str, parent_id,
+                    encode_and_escape(ie.revision), ie.text_sha1,
+                    ie.text_size))
+            else:
+                append('<file%s file_id="%s name="%s%s%s />\n' % (
+                    executable, encode_and_escape(ie.file_id),
+                    encode_and_escape(ie.name), parent_str, parent_id))
+        elif ie.kind == 'directory':
+            if not working:
+                append('<directory file_id="%s name="%s%s%s revision="%s '
+                    '/>\n' % (
+                    encode_and_escape(ie.file_id),
+                    encode_and_escape(ie.name),
+                    parent_str, parent_id,
+                    encode_and_escape(ie.revision)))
+            else:
+                append('<directory file_id="%s name="%s%s%s />\n' % (
+                    encode_and_escape(ie.file_id),
+                    encode_and_escape(ie.name),
+                    parent_str, parent_id))
+        elif ie.kind == 'symlink':
+            if not working:
+                append('<symlink file_id="%s name="%s%s%s revision="%s '
+                    'symlink_target="%s />\n' % (
+                    encode_and_escape(ie.file_id),
+                    encode_and_escape(ie.name),
+                    parent_str, parent_id,
+                    encode_and_escape(ie.revision),
+                    encode_and_escape(ie.symlink_target)))
+            else:
+                append('<symlink file_id="%s name="%s%s%s />\n' % (
+                    encode_and_escape(ie.file_id),
+                    encode_and_escape(ie.name),
+                    parent_str, parent_id))
+        elif ie.kind == 'tree-reference':
+            if ie.kind not in supported_kinds:
+                raise errors.UnsupportedInventoryKind(ie.kind)
+            if not working:
+                append('<tree-reference file_id="%s name="%s%s%s '
+                    'revision="%s reference_revision="%s />\n' % (
+                    encode_and_escape(ie.file_id),
+                    encode_and_escape(ie.name),
+                    parent_str, parent_id,
+                    encode_and_escape(ie.revision),
+                    encode_and_escape(ie.reference_revision)))
+            else:
+                append('<tree-reference file_id="%s name="%s%s%s />\n' % (
+                    encode_and_escape(ie.file_id),
+                    encode_and_escape(ie.name),
+                    parent_str, parent_id))
+        else:
+            raise errors.UnsupportedInventoryKind(ie.kind)
+    append('</inventory>\n')

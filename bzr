@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,6 +16,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 """Bazaar -- a free distributed version-control tool"""
 
 import os
@@ -23,31 +25,14 @@ import sys
 import warnings
 
 # update this on each release
-_script_version = (2, 4, 0)
+_script_version = (2, 6, 0)
 
-try:
-    version_info = sys.version_info
-except AttributeError:
-    version_info = 1, 5 # 1.5 or older
-
-REINVOKE = "__BZR_REINVOKE"
 NEED_VERS = (2, 6)
-KNOWN_PYTHONS = ('python2.6', 'python2.7')
 
-if version_info < NEED_VERS:
-    if not os.environ.has_key(REINVOKE):
-        # mutating os.environ doesn't work in old Pythons
-        os.putenv(REINVOKE, "1")
-        for python in KNOWN_PYTHONS:
-            try:
-                os.execvp(python, [python] + sys.argv)
-            except OSError:
-                pass
+if sys.version_info < NEED_VERS:
     sys.stderr.write("bzr: error: cannot find a suitable python interpreter\n")
     sys.stderr.write("  (need %d.%d or later)\n" % NEED_VERS)
     sys.exit(1)
-if hasattr(os, "unsetenv"):
-    os.unsetenv(REINVOKE)
 
 
 profiling = False
@@ -56,26 +41,9 @@ if '--profile-imports' in sys.argv:
     profile_imports.install()
     profiling = True
 
-if sys.platform == 'darwin':
-    # jameinel says this hack is to force python to honor the LANG setting,
-    # even on Darwin.  Otherwise it is apparently hardcoded to Mac-Roman,
-    # which is incorrect for the normal Terminal.app which wants UTF-8.
-    #
-    # "It might be that I should be setting the "system locale" somewhere else
-    # on the system, rather than setting LANG=en_US.UTF-8 in .bashrc.
-    # Switching to 'posix' and setting LANG worked for me."
-    #
-    # So we can remove this if someone works out the right way to tell Mac
-    # Python which encoding to use.  -- mbp 20080703
-    sys.platform = 'posix'
-    try:
-        import locale
-    finally:
-        sys.platform = 'darwin'
-else:
-    import locale
 
 if os.name == "posix":
+    import locale
     try:
         locale.setlocale(locale.LC_ALL, '')
     except locale.Error, e:
@@ -84,6 +52,10 @@ if os.name == "posix":
             '  Although this should be no problem for bzr itself, it might\n'
             '  cause problems with some plugins. To investigate the issue,\n'
             '  look at the output of the locale(1p) tool.\n' % e)
+    # Use better default than ascii with posix filesystems that deal in bytes
+    # natively even when the C locale or no locale at all is given. Note that
+    # we need an immortal string for the hack, hence the lack of a hyphen.
+    sys._bzr_default_fs_enc = "utf8"
 
 
 # The python2.6 release includes some libraries that have deprecation warnings
@@ -108,10 +80,16 @@ except ImportError, e:
     raise
 
 if bzrlib.version_info[:3] != _script_version:
-    sys.stderr.write("bzr: WARNING: bzrlib version doesn't match the bzr program.\n"
-            "This may indicate an installation problem.\n"
-            "bzrlib from %s is version %r\n"
-            % (bzrlib.__path__, bzrlib.version_info))
+    sys.stderr.write(
+        "bzr: WARNING: bzrlib version doesn't match the bzr program.\n"
+        "This may indicate an installation problem.\n"
+        "bzrlib is version %s from %s\n"
+        "bzr is version %s from %s\n" % (
+        bzrlib._format_version_tuple(bzrlib.version_info),
+        bzrlib.__path__[0],
+        bzrlib._format_version_tuple(_script_version),
+        __file__))
+
 
 import bzrlib.inspect_for_copy
 bzrlib.inspect_for_copy.import_copy_with_hacked_inspect()

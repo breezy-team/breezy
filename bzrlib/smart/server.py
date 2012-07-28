@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,10 +16,13 @@
 
 """Server for smart-server protocol."""
 
+from __future__ import absolute_import
+
 import errno
 import os.path
 import socket
 import sys
+import time
 import threading
 
 from bzrlib.hooks import Hooks
@@ -28,14 +31,19 @@ from bzrlib import (
     trace,
     transport as _mod_transport,
 )
+from bzrlib.i18n import gettext
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from bzrlib.smart import medium
+from bzrlib.smart import (
+    medium,
+    signals,
+    )
 from bzrlib.transport import (
     chroot,
     pathfilter,
     )
 from bzrlib import (
+    config,
     urlutils,
     )
 """)
@@ -50,7 +58,17 @@ class SmartTCPServer(object):
     hooks: An instance of SmartServerHooks.
     """
 
-    def __init__(self, backing_transport, root_client_path='/'):
+    # This is the timeout on the socket we use .accept() on. It is exposed here
+    # so the test suite can set it faster. (It thread.interrupt_main() will not
+    # fire a KeyboardInterrupt during socket.accept)
+    _ACCEPT_TIMEOUT = 1.0
+    _SHUTDOWN_POLL_TIMEOUT = 1.0
+    _LOG_WAITING_TIMEOUT = 10.0
+
+    _timer = time.time
+
+    def __init__(self, backing_transport, root_client_path='/',
+                 client_timeout=None):
         """Construct a new server.
 
         To actually start it running, call either start_background_thread or
@@ -59,9 +77,16 @@ class SmartTCPServer(object):
         :param backing_transport: The transport to serve.
         :param root_client_path: The client path that will correspond to root
             of backing_transport.
+        :param client_timeout: See SmartServerSocketStreamMedium's timeout
+            parameter.
         """
         self.backing_transport = backing_transport
         self.root_client_path = root_client_path
+        self._client_timeout = client_timeout
+        self._active_connections = []
+        # This is set to indicate we want to wait for clients to finish before
+        # we disconnect.
+        self._gracefully_stopping = False
 
     def start_server(self, host, port):
         """Create the server listening socket.
@@ -93,9 +118,15 @@ class SmartTCPServer(object):
         self._sockname = self._server_socket.getsockname()
         self.port = self._sockname[1]
         self._server_socket.listen(1)
-        self._server_socket.settimeout(1)
+        self._server_socket.settimeout(self._ACCEPT_TIMEOUT)
+        # Once we start accept()ing connections, we set started.
         self._started = threading.Event()
+        # Once we stop accept()ing connections (and are closing the socket) we
+        # set _stopped
         self._stopped = threading.Event()
+        # Once we have finished waiting for all clients, etc. We set
+        # _fully_stopped
+        self._fully_stopped = threading.Event()
 
     def _backing_urls(self):
         # There are three interesting urls:
@@ -134,7 +165,38 @@ class SmartTCPServer(object):
         for hook in SmartTCPServer.hooks['server_stopped']:
             hook(backing_urls, self.get_url())
 
+    def _stop_gracefully(self):
+        trace.note(gettext('Requested to stop gracefully'))
+        self._should_terminate = True
+        self._gracefully_stopping = True
+        for handler, _ in self._active_connections:
+            handler._stop_gracefully()
+
+    def _wait_for_clients_to_disconnect(self):
+        self._poll_active_connections()
+        if not self._active_connections:
+            return
+        trace.note(gettext('Waiting for %d client(s) to finish')
+                   % (len(self._active_connections),))
+        t_next_log = self._timer() + self._LOG_WAITING_TIMEOUT
+        while self._active_connections:
+            now = self._timer()
+            if now >= t_next_log:
+                trace.note(gettext('Still waiting for %d client(s) to finish')
+                           % (len(self._active_connections),))
+                t_next_log = now + self._LOG_WAITING_TIMEOUT
+            self._poll_active_connections(self._SHUTDOWN_POLL_TIMEOUT)
+
     def serve(self, thread_name_suffix=''):
+        # Note: There is a temptation to do
+        #       signals.register_on_hangup(id(self), self._stop_gracefully)
+        #       However, that creates a temporary object which is a bound
+        #       method. signals._on_sighup is a WeakKeyDictionary so it
+        #       immediately gets garbage collected, because nothing else
+        #       references it. Instead, we need to keep a real reference to the
+        #       bound method for the lifetime of the serve() function.
+        stop_gracefully = self._stop_gracefully
+        signals.register_on_hangup(id(self), stop_gracefully)
         self._should_terminate = False
         # for hooks we are letting code know that a server has started (and
         # later stopped).
@@ -150,14 +212,19 @@ class SmartTCPServer(object):
                         pass
                     except self._socket_error, e:
                         # if the socket is closed by stop_background_thread
-                        # we might get a EBADF here, any other socket errors
-                        # should get logged.
-                        if e.args[0] != errno.EBADF:
-                            trace.warning("listening socket error: %s", e)
+                        # we might get a EBADF here, or if we get a signal we
+                        # can get EINTR, any other socket errors should get
+                        # logged.
+                        if e.args[0] not in (errno.EBADF, errno.EINTR):
+                            trace.warning(gettext("listening socket error: %s")
+                                          % (e,))
                     else:
                         if self._should_terminate:
+                            conn.close()
                             break
                         self.serve_conn(conn, thread_name_suffix)
+                    # Cleanout any threads that have finished processing.
+                    self._poll_active_connections()
             except KeyboardInterrupt:
                 # dont log when CTRL-C'd.
                 raise
@@ -165,32 +232,55 @@ class SmartTCPServer(object):
                 trace.report_exception(sys.exc_info(), sys.stderr)
                 raise
         finally:
-            self._stopped.set()
             try:
                 # ensure the server socket is closed.
                 self._server_socket.close()
             except self._socket_error:
                 # ignore errors on close
                 pass
+            self._stopped.set()
+            signals.unregister_on_hangup(id(self))
             self.run_server_stopped_hooks()
+        if self._gracefully_stopping:
+            self._wait_for_clients_to_disconnect()
+        self._fully_stopped.set()
 
     def get_url(self):
         """Return the url of the server"""
         return "bzr://%s:%s/" % (self._sockname[0], self._sockname[1])
+
+    def _make_handler(self, conn):
+        return medium.SmartServerSocketStreamMedium(
+            conn, self.backing_transport, self.root_client_path,
+            timeout=self._client_timeout)
+
+    def _poll_active_connections(self, timeout=0.0):
+        """Check to see if any active connections have finished.
+
+        This will iterate through self._active_connections, and update any
+        connections that are finished.
+
+        :param timeout: The timeout to pass to thread.join(). By default, we
+            set it to 0, so that we don't hang if threads are not done yet.
+        :return: None
+        """
+        still_active = []
+        for handler, thread in self._active_connections:
+            thread.join(timeout)
+            if thread.isAlive():
+                still_active.append((handler, thread))
+        self._active_connections = still_active
 
     def serve_conn(self, conn, thread_name_suffix):
         # For WIN32, where the timeout value from the listening socket
         # propagates to the newly accepted socket.
         conn.setblocking(True)
         conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        handler = medium.SmartServerSocketStreamMedium(
-            conn, self.backing_transport, self.root_client_path)
         thread_name = 'smart-server-child' + thread_name_suffix
+        handler = self._make_handler(conn)
         connection_thread = threading.Thread(
             None, handler.serve, name=thread_name)
-        # FIXME: This thread is never joined, it should at least be collected
-        # somewhere so that tests that want to check for leaked threads can get
-        # rid of them -- vila 20100531
+        self._active_connections.append((handler, connection_thread))
         connection_thread.setDaemon(True)
         connection_thread.start()
         return connection_thread
@@ -254,6 +344,11 @@ class SmartServerHooks(Hooks):
             "Called by the bzr server when it stops serving a directory. "
             "server_stopped is called with the same parameters as the "
             "server_started hook: (backing_urls, public_url).", (0, 16))
+        self.add_hook('server_exception',
+            "Called by the bzr server when an exception occurs. "
+            "server_exception is called with the sys.exc_info() tuple "
+            "return true for the hook if the exception has been handled, "
+            "in which case the server will exit normally.", (2, 4))
 
 SmartTCPServer.hooks = SmartServerHooks()
 
@@ -325,28 +420,36 @@ class BzrServerFactory(object):
         chroot_server = chroot.ChrootServer(transport)
         chroot_server.start_server()
         self.cleanups.append(chroot_server.stop_server)
-        transport = _mod_transport.get_transport(chroot_server.get_url())
+        transport = _mod_transport.get_transport_from_url(chroot_server.get_url())
         if self.base_path is not None:
             # Decorate the server's backing transport with a filter that can
             # expand homedirs.
             expand_userdirs = self._make_expand_userdirs_filter(transport)
             expand_userdirs.start_server()
             self.cleanups.append(expand_userdirs.stop_server)
-            transport = _mod_transport.get_transport(expand_userdirs.get_url())
+            transport = _mod_transport.get_transport_from_url(expand_userdirs.get_url())
         self.transport = transport
 
-    def _make_smart_server(self, host, port, inet):
+    def _get_stdin_stdout(self):
+        return sys.stdin, sys.stdout
+
+    def _make_smart_server(self, host, port, inet, timeout):
+        if timeout is None:
+            c = config.GlobalStack()
+            timeout = c.get('serve.client_timeout')
         if inet:
+            stdin, stdout = self._get_stdin_stdout()
             smart_server = medium.SmartServerPipeStreamMedium(
-                sys.stdin, sys.stdout, self.transport)
+                stdin, stdout, self.transport, timeout=timeout)
         else:
             if host is None:
                 host = medium.BZR_DEFAULT_INTERFACE
             if port is None:
                 port = medium.BZR_DEFAULT_PORT
-            smart_server = SmartTCPServer(self.transport)
+            smart_server = SmartTCPServer(self.transport,
+                                          client_timeout=timeout)
             smart_server.start_server(host, port)
-            trace.note('listening on port: %s' % smart_server.port)
+            trace.note(gettext('listening on port: %s') % smart_server.port)
         self.smart_server = smart_server
 
     def _change_globals(self):
@@ -363,10 +466,14 @@ class BzrServerFactory(object):
         self.cleanups.append(restore_default_ui_factory_and_lockdir_timeout)
         ui.ui_factory = ui.SilentUIFactory()
         lockdir._DEFAULT_TIMEOUT_SECONDS = 0
+        orig = signals.install_sighup_handler()
+        def restore_signals():
+            signals.restore_sighup_handler(orig)
+        self.cleanups.append(restore_signals)
 
-    def set_up(self, transport, host, port, inet):
+    def set_up(self, transport, host, port, inet, timeout):
         self._make_backing_transport(transport)
-        self._make_smart_server(host, port, inet)
+        self._make_smart_server(host, port, inet, timeout)
         self._change_globals()
 
     def tear_down(self):
@@ -374,17 +481,22 @@ class BzrServerFactory(object):
             cleanup()
 
 
-def serve_bzr(transport, host=None, port=None, inet=False):
+def serve_bzr(transport, host=None, port=None, inet=False, timeout=None):
     """This is the default implementation of 'bzr serve'.
-    
+
     It creates a TCP or pipe smart server on 'transport, and runs it.  The
     transport will be decorated with a chroot and pathfilter (using
     os.path.expanduser).
     """
     bzr_server = BzrServerFactory()
     try:
-        bzr_server.set_up(transport, host, port, inet)
+        bzr_server.set_up(transport, host, port, inet, timeout)
         bzr_server.smart_server.serve()
+    except:
+        hook_caught_exception = False
+        for hook in SmartTCPServer.hooks['server_exception']:
+            hook_caught_exception = hook(sys.exc_info())
+        if not hook_caught_exception:
+            raise
     finally:
         bzr_server.tear_down()
-

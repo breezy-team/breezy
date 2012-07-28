@@ -38,7 +38,15 @@ from optparse import OptionParser
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from bzrlib import commands, doc_generate
+import bzrlib
+from bzrlib import (
+    commands,
+    # Don't remove the following import, it triggers a format registration that
+    # avoid http://pad.lv/956860
+    branch,
+    doc_generate,
+    )
+
 
 def main(argv):
     parser = OptionParser(usage="""%prog [options] OUTPUT_FORMAT
@@ -71,26 +79,23 @@ Available OUTPUT_FORMAT:
         parser.print_help()
         sys.exit(1)
 
-    commands.install_bzr_command_hooks()
+    with bzrlib.initialize():
+        commands.install_bzr_command_hooks()
+        infogen_type = args[1]
+        infogen_mod = doc_generate.get_module(infogen_type)
+        if options.filename:
+            outfilename = options.filename
+        else:
+            outfilename = infogen_mod.get_filename(options)
+        if outfilename == "-":
+            outfile = sys.stdout
+        else:
+            outfile = open(outfilename,"w")
+        if options.show_filename and (outfilename != "-"):
+            sys.stdout.write(outfilename)
+            sys.stdout.write('\n')
+        infogen_mod.infogen(options, outfile)
 
-    infogen_type = args[1]
-    infogen_mod = doc_generate.get_module(infogen_type)
-
-    if options.filename:
-        outfilename = options.filename
-    else:
-        outfilename = infogen_mod.get_filename(options)
-
-    if outfilename == "-":
-        outfile = sys.stdout
-    else:
-        outfile = open(outfilename,"w")
-
-    if options.show_filename and (outfilename != "-"):
-        sys.stdout.write(outfilename)
-        sys.stdout.write('\n')
-    
-    infogen_mod.infogen(options, outfile)
 
 def print_extended_help(option, opt, value, parser):
     """ Program help examples

@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 # XXX: Some consideration of the problems that might occur if there are
 # files whose id differs only in case.  That should probably be forbidden.
 
@@ -217,7 +219,7 @@ class VersionedFileStore(TransportStore):
                  "is deprecated. Please provide a to_transaction.",
                  DeprecationWarning,
                  stacklevel=2)
-            # we are copying single objects, and there may be open tranasactions
+            # we are copying single objects, and there may be open transactions
             # so again with the passthrough
             to_transaction = PassThroughTransaction()
         pb = bzrlib.ui.ui_factory.nested_progress_bar()

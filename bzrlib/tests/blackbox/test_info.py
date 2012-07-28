@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,11 +17,13 @@
 
 """Tests for the info command of bzr."""
 
+import shutil
 import sys
 
 from bzrlib import (
     branch,
     bzrdir,
+    controldir,
     errors,
     info,
     osutils,
@@ -29,6 +31,7 @@ from bzrlib import (
     upgrade,
     urlutils,
     )
+from bzrlib.tests.matchers import ContainsNoVfsCalls
 from bzrlib.transport import memory
 
 
@@ -44,6 +47,40 @@ class TestInfo(tests.TestCaseWithTransport):
         out, err = self.run_bzr('info '+location, retcode=3)
         self.assertEqual(out, '')
         self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)
+
+    def test_info_empty_controldir(self):
+        self.make_bzrdir('ctrl')
+        out, err = self.run_bzr('info ctrl')
+        self.assertEquals(out,
+            'Empty control directory (format: 2a or pack-0.92)\n'
+            'Location:\n'
+            '  control directory: ctrl\n')
+        self.assertEquals(err, '')
+
+    def test_info_empty_controldir_verbose(self):
+        self.make_bzrdir('ctrl')
+        out, err = self.run_bzr('info -v ctrl')
+        self.assertEqualDiff(out,
+            'Empty control directory (format: 2a or pack-0.92)\n'
+            'Location:\n'
+            '  control directory: ctrl\n\n'
+            'Format:\n'
+            '       control: Meta directory format 1\n\n'
+            'Control directory:\n'
+            '         0 branches\n')
+        self.assertEquals(err, '')
+
+    def test_info_dangling_branch_reference(self):
+        br = self.make_branch('target')
+        br.create_checkout('from', lightweight=True)
+        shutil.rmtree('target')
+        out, err = self.run_bzr('info from')
+        self.assertEquals(out,
+            'Dangling branch reference (format: 2a or pack-0.92)\n'
+            'Location:\n'
+            '   control directory: from\n'
+            '  checkout of branch: target\n')
+        self.assertEquals(err, '')
 
     def test_info_standalone(self):
         transport = self.get_transport()
@@ -74,6 +111,9 @@ Format:
   working tree: Working tree format 3
         branch: Branch format 5
     repository: Knit repository format 1
+
+Control directory:
+         1 branches
 
 In the working tree:
          0 unchanged
@@ -106,6 +146,9 @@ Format:
         branch: Branch format 5
     repository: Knit repository format 1
 
+Control directory:
+         1 branches
+
 In the working tree:
          0 unchanged
          0 modified
@@ -125,7 +168,7 @@ Repository:
 """, out)
         self.assertEqual('', err)
         tree1.commit('commit one')
-        rev = branch1.repository.get_revision(branch1.revision_history()[0])
+        rev = branch1.repository.get_revision(branch1.last_revision())
         datestring_first = osutils.format_date(rev.timestamp, rev.timezone)
 
         # Branch standalone with push location
@@ -160,6 +203,9 @@ Format:
         branch: Branch format 5
     repository: Knit repository format 1
 
+Control directory:
+         1 branches
+
 In the working tree:
          1 unchanged
          0 modified
@@ -185,9 +231,9 @@ Repository:
         # Branch and bind to standalone, needs upgrade to metadir
         # (creates backup as unknown)
         branch1.bzrdir.sprout('bound')
-        knit1_format = bzrdir.format_registry.make_bzrdir('knit')
+        knit1_format = controldir.format_registry.make_bzrdir('knit')
         upgrade.upgrade('bound', knit1_format)
-        branch3 = bzrdir.BzrDir.open('bound').open_branch()
+        branch3 = controldir.ControlDir.open('bound').open_branch()
         branch3.bind(branch1)
         bound_tree = branch3.bzrdir.open_workingtree()
         out, err = self.run_bzr('info -v bound')
@@ -205,6 +251,9 @@ Format:
   working tree: %s
         branch: %s
     repository: %s
+
+Control directory:
+         1 branches
 
 In the working tree:
          1 unchanged
@@ -232,7 +281,7 @@ Repository:
         self.assertEqual('', err)
 
         # Checkout standalone (same as above, but does not have parent set)
-        branch4 = bzrdir.BzrDir.create_branch_convenience('checkout',
+        branch4 = controldir.ControlDir.create_branch_convenience('checkout',
             format=knit1_format)
         branch4.bind(branch1)
         branch4.bzrdir.open_workingtree().update()
@@ -248,6 +297,9 @@ Format:
   working tree: Working tree format 3
         branch: Branch format 5
     repository: %s
+
+Control directory:
+         1 branches
 
 In the working tree:
          1 unchanged
@@ -276,7 +328,7 @@ Repository:
         tree5 = branch1.create_checkout('lightcheckout', lightweight=True)
         branch5 = tree5.branch
         out, err = self.run_bzr('info -v lightcheckout')
-        if "metaweave" in bzrdir.format_registry:
+        if "metaweave" in controldir.format_registry:
             format_description = "knit or metaweave"
         else:
             format_description = "knit"
@@ -291,6 +343,9 @@ Format:
   working tree: Working tree format 3
         branch: Branch format 5
     repository: Knit repository format 1
+
+Control directory:
+         1 branches
 
 In the working tree:
          1 unchanged
@@ -317,7 +372,7 @@ Repository:
         self.build_tree(['standalone/b'])
         tree1.add('b')
         tree1.commit('commit two')
-        rev = branch1.repository.get_revision(branch1.revision_history()[-1])
+        rev = branch1.repository.get_revision(branch1.last_revision())
         datestring_last = osutils.format_date(rev.timestamp, rev.timezone)
 
         # Out of date branched standalone branch will not be detected
@@ -336,6 +391,9 @@ Format:
   working tree: Working tree format 3
         branch: Branch format 5
     repository: Knit repository format 1
+
+Control directory:
+         1 branches
 
 In the working tree:
          1 unchanged
@@ -376,6 +434,9 @@ Format:
         branch: Branch format 5
     repository: %s
 
+Control directory:
+         1 branches
+
 Branch is out of date: missing 1 revision.
 
 In the working tree:
@@ -414,6 +475,9 @@ Format:
   working tree: Working tree format 3
         branch: Branch format 5
     repository: %s
+
+Control directory:
+         1 branches
 
 Branch is out of date: missing 1 revision.
 
@@ -454,6 +518,9 @@ Format:
         branch: Branch format 5
     repository: Knit repository format 1
 
+Control directory:
+         1 branches
+
 Working tree is out of date: missing 1 revision.
 
 In the working tree:
@@ -479,7 +546,7 @@ Repository:
 
     def test_info_standalone_no_tree(self):
         # create standalone branch without a working tree
-        format = bzrdir.format_registry.make_bzrdir('default')
+        format = controldir.format_registry.make_bzrdir('default')
         branch = self.make_branch('branch')
         repo = branch.repository
         out, err = self.run_bzr('info branch -v')
@@ -493,6 +560,9 @@ Format:
         branch: %s
     repository: %s
 
+Control directory:
+         1 branches
+
 Branch history:
          0 revisions
 
@@ -505,7 +575,7 @@ Repository:
         self.assertEqual('', err)
 
     def test_info_shared_repository(self):
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         transport = self.get_transport()
 
         # Create shared repository
@@ -521,6 +591,9 @@ Format:
        control: Meta directory format 1
     repository: %s
 
+Control directory:
+         0 branches
+
 Repository:
          0 revisions
 """ % ('repo', format.repository_format.get_format_description(),
@@ -529,8 +602,8 @@ Repository:
 
         # Create branch inside shared repository
         repo.bzrdir.root_transport.mkdir('branch')
-        branch1 = repo.bzrdir.create_branch_convenience('repo/branch',
-            format=format)
+        branch1 = controldir.ControlDir.create_branch_convenience(
+            'repo/branch', format=format)
         out, err = self.run_bzr('info -v repo/branch')
         self.assertEqualDiff(
 """Repository branch (format: dirstate or knit)
@@ -542,6 +615,9 @@ Format:
        control: Meta directory format 1
         branch: %s
     repository: %s
+
+Control directory:
+         1 branches
 
 Branch history:
          0 revisions
@@ -571,7 +647,7 @@ Repository:
         self.build_tree(['tree/lightcheckout/a'])
         tree2.add('a')
         tree2.commit('commit one')
-        rev = repo.get_revision(branch2.revision_history()[0])
+        rev = repo.get_revision(branch2.last_revision())
         datestring_first = osutils.format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
@@ -586,6 +662,9 @@ Format:
   working tree: Working tree format 6
         branch: %s
     repository: %s
+
+Control directory:
+         1 branches
 
 In the working tree:
          1 unchanged
@@ -624,6 +703,9 @@ Format:
   working tree: Working tree format 6
         branch: %s
     repository: %s
+
+Control directory:
+         1 branches
 
 Branch is out of date: missing 1 revision.
 
@@ -664,6 +746,9 @@ Format:
         branch: %s
     repository: %s
 
+Control directory:
+         1 branches
+
 In the working tree:
          1 unchanged
          0 modified
@@ -690,7 +775,7 @@ Repository:
         tree3.commit('commit two')
 
         # Out of date lightweight checkout
-        rev = repo.get_revision(branch1.revision_history()[-1])
+        rev = repo.get_revision(branch1.last_revision())
         datestring_last = osutils.format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
@@ -705,6 +790,9 @@ Format:
   working tree: Working tree format 6
         branch: %s
     repository: %s
+
+Control directory:
+         1 branches
 
 Working tree is out of date: missing 1 revision.
 
@@ -745,6 +833,9 @@ Format:
         branch: %s
     repository: %s
 
+Control directory:
+         1 branches
+
 Branch history:
          2 revisions
          0 days old
@@ -770,6 +861,9 @@ Format:
        control: Meta directory format 1
     repository: %s
 
+Control directory:
+         0 branches
+
 Repository:
          2 revisions
 """ % (format.repository_format.get_format_description(),
@@ -777,7 +871,7 @@ Repository:
         self.assertEqual('', err)
 
     def test_info_shared_repository_with_trees(self):
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         transport = self.get_transport()
 
         # Create shared repository with working trees
@@ -793,6 +887,9 @@ Format:
        control: Meta directory format 1
     repository: %s
 
+Control directory:
+         0 branches
+
 Create working tree for new branches inside the repository.
 
 Repository:
@@ -803,7 +900,7 @@ Repository:
 
         # Create two branches
         repo.bzrdir.root_transport.mkdir('branch1')
-        branch1 = repo.bzrdir.create_branch_convenience('repo/branch1',
+        branch1 = controldir.ControlDir.create_branch_convenience('repo/branch1',
             format=format)
         branch2 = branch1.bzrdir.sprout('repo/branch2').open_branch()
 
@@ -820,6 +917,9 @@ Format:
   working tree: Working tree format 3
         branch: %s
     repository: %s
+
+Control directory:
+         1 branches
 
 In the working tree:
          0 unchanged
@@ -846,7 +946,7 @@ Repository:
         tree1 = branch1.bzrdir.open_workingtree()
         tree1.add('a')
         tree1.commit('commit one')
-        rev = repo.get_revision(branch1.revision_history()[0])
+        rev = repo.get_revision(branch1.last_revision())
         datestring_first = osutils.format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info -v repo/branch1')
         self.assertEqualDiff(
@@ -860,6 +960,9 @@ Format:
   working tree: Working tree format 3
         branch: %s
     repository: %s
+
+Control directory:
+         1 branches
 
 In the working tree:
          1 unchanged
@@ -902,6 +1005,9 @@ Format:
         branch: %s
     repository: %s
 
+Control directory:
+         1 branches
+
 In the working tree:
          0 unchanged
          0 modified
@@ -941,6 +1047,9 @@ Format:
         branch: %s
     repository: %s
 
+Control directory:
+         1 branches
+
 In the working tree:
          1 unchanged
          0 modified
@@ -976,6 +1085,9 @@ Format:
        control: Meta directory format 1
     repository: %s
 
+Control directory:
+         0 branches
+
 Create working tree for new branches inside the repository.
 
 Repository:
@@ -986,7 +1098,7 @@ Repository:
         self.assertEqual('', err)
 
     def test_info_shared_repository_with_tree_in_root(self):
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         transport = self.get_transport()
 
         # Create shared repository with working trees
@@ -1001,6 +1113,9 @@ Location:
 Format:
        control: Meta directory format 1
     repository: %s
+
+Control directory:
+         0 branches
 
 Create working tree for new branches inside the repository.
 
@@ -1027,6 +1142,9 @@ Format:
         branch: %s
     repository: %s
 
+Control directory:
+         1 branches
+
 In the working tree:
          0 unchanged
          0 modified
@@ -1048,7 +1166,7 @@ Repository:
         self.assertEqual('', err)
 
     def test_info_repository_hook(self):
-        format = bzrdir.format_registry.make_bzrdir('knit')
+        format = controldir.format_registry.make_bzrdir('knit')
         def repo_info(repo, stats, outf):
             outf.write("more info\n")
         info.hooks.install_named_hook('repository', repo_info, None)
@@ -1064,6 +1182,9 @@ Format:
        control: Meta directory format 1
     repository: %s
 
+Control directory:
+         0 branches
+
 Create working tree for new branches inside the repository.
 
 Repository:
@@ -1071,6 +1192,22 @@ Repository:
 more info
 """ % (format.repository_format.get_format_description(),
        ), out)
+        self.assertEqual('', err)
+
+    def test_info_unshared_repository_with_colocated_branches(self):
+        format = controldir.format_registry.make_bzrdir('development-colo')
+        transport = self.get_transport()
+
+        # Create unshared repository
+        repo = self.make_repository('repo', shared=False, format=format)
+        repo.set_make_working_trees(True)
+        repo.bzrdir.create_branch(name='foo')
+        out, err = self.run_bzr('info repo')
+        self.assertEqualDiff(
+"""Unshared repository with trees and colocated branches (format: development-colo)
+Location:
+  repository: repo
+""", out)
         self.assertEqual('', err)
 
     def assertCheckoutStatusOutput(self,
@@ -1187,6 +1324,9 @@ Format:
         branch: %s
     repository: %s
 %s
+Control directory:
+         1 branches
+
 In the working tree:
          0 unchanged
          0 modified
@@ -1221,19 +1361,18 @@ Repository:
                                     format=bzrdir.BzrDirMetaFormat1())
         repo.set_make_working_trees(False)
         repo.bzrdir.root_transport.mkdir('branch')
-        repo_branch = repo.bzrdir.create_branch_convenience('repo/branch',
-                                    format=bzrdir.BzrDirMetaFormat1())
+        repo_branch = controldir.ControlDir.create_branch_convenience(
+            'repo/branch', format=bzrdir.BzrDirMetaFormat1())
         # Do a heavy checkout
         transport.mkdir('tree')
         transport.mkdir('tree/checkout')
-        co_branch = bzrdir.BzrDir.create_branch_convenience('tree/checkout',
-            format=bzrdir.BzrDirMetaFormat1())
+        co_branch = controldir.ControlDir.create_branch_convenience(
+            'tree/checkout', format=bzrdir.BzrDirMetaFormat1())
         co_branch.bind(repo_branch)
         # Do a light checkout of the heavy one
         transport.mkdir('tree/lightcheckout')
         lco_dir = bzrdir.BzrDirMetaFormat1().initialize('tree/lightcheckout')
-        branch.BranchReferenceFormat().initialize(lco_dir,
-            target_branch=co_branch)
+        lco_dir.set_branch_reference(co_branch)
         lco_dir.create_workingtree()
         lco_tree = lco_dir.open_workingtree()
 
@@ -1345,3 +1484,100 @@ Related branches:
      stacked on: mainline
 """, out)
         self.assertEqual("", err)
+
+    def test_info_revinfo_optional(self):
+        tree = self.make_branch_and_tree('.')
+        def last_revision_info(self):
+            raise errors.UnsupportedOperation(last_revision_info, self)
+        self.overrideAttr(
+            branch.Branch, "last_revision_info", last_revision_info)
+        out, err = self.run_bzr('info -v .')
+        self.assertEqual(
+"""Standalone tree (format: 2a)
+Location:
+  branch root: .
+
+Format:
+       control: Meta directory format 1
+  working tree: Working tree format 6
+        branch: Branch format 7
+    repository: Repository format 2a - rich roots, group compression and chk inventories
+
+Control directory:
+         1 branches
+
+In the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+""", out)
+        self.assertEqual("", err)
+
+    def test_info_shows_colocated_branches(self):
+        bzrdir = self.make_branch('.', format='development-colo').bzrdir
+        bzrdir.create_branch(name="colo1")
+        bzrdir.create_branch(name="colo2")
+        bzrdir.create_branch(name="colo3")
+        out, err = self.run_bzr('info -v .')
+        self.assertEqualDiff(
+"""Standalone branch (format: development-colo)
+Location:
+  branch root: .
+
+Format:
+       control: Meta directory format 1 with support for colocated branches
+        branch: Branch format 7
+    repository: Repository format 2a - rich roots, group compression and chk inventories
+
+Control directory:
+         4 branches
+
+Branch history:
+         0 revisions
+
+Repository:
+         0 revisions
+""", out)
+        self.assertEqual("", err)
+
+
+class TestSmartServerInfo(tests.TestCaseWithTransport):
+
+    def test_simple_branch_info(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        t.commit("message")
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['info', self.get_url('branch')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(10, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
+
+    def test_verbose_branch_info(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/foo', 'thecontents')])
+        t.add("foo")
+        t.commit("message")
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['info', '-v', self.get_url('branch')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(14, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

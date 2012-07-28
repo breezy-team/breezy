@@ -21,13 +21,17 @@ from stat import S_ISDIR
 
 import bzrlib.branch
 from bzrlib import (
+    bzrdir,
+    controldir,
     errors,
     repository,
     revision as _mod_revision,
     transport,
     workingtree,
     )
+from bzrlib.remote import RemoteBzrDirFormat
 from bzrlib.tests import (
+    TestNotApplicable,
     TestSkipped,
     )
 from bzrlib.tests.per_bzrdir import TestCaseWithBzrDir
@@ -121,8 +125,8 @@ class TestBzrDir(TestCaseWithBzrDir):
                     self.assertTrue(S_ISDIR(target.stat(path).st_mode))
                     directories.append(path)
                 else:
-                    self.assertEqualDiff(source.get(path).read(),
-                                         target.get(path).read(),
+                    self.assertEqualDiff(source.get_bytes(path),
+                                         target.get_bytes(path),
                                          "text for file %r differs:\n" % path)
 
     def assertRepositoryHasSameItems(self, left_repo, right_repo):
@@ -159,8 +163,12 @@ class TestBzrDir(TestCaseWithBzrDir):
                 for file_id, revision_id in text_index.iterkeys():
                     desired_files.append(
                         (file_id, revision_id, (file_id, revision_id)))
-                left_texts = list(left_repo.iter_files_bytes(desired_files))
-                right_texts = list(right_repo.iter_files_bytes(desired_files))
+                left_texts = [(identifier, "".join(bytes_iterator)) for
+                        (identifier, bytes_iterator) in
+                        left_repo.iter_files_bytes(desired_files)]
+                right_texts = [(identifier, "".join(bytes_iterator)) for
+                        (identifier, bytes_iterator) in
+                        right_repo.iter_files_bytes(desired_files)]
                 left_texts.sort()
                 right_texts.sort()
                 self.assertEqual(left_texts, right_texts)
@@ -328,7 +336,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/repository',
                                      ])
         self.assertRepositoryHasSameItems(tree.branch.repository,
-            target.open_repository())
+            target.open_branch().repository)
         target.open_workingtree().revert()
 
     def test_revert_inventory(self):
@@ -348,7 +356,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/repository',
                                      ])
         self.assertRepositoryHasSameItems(tree.branch.repository,
-            target.open_repository())
+            target.open_branch().repository)
 
         target.open_workingtree().revert()
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
@@ -360,7 +368,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/repository',
                                      ])
         self.assertRepositoryHasSameItems(tree.branch.repository,
-            target.open_repository())
+            target.open_branch().repository)
 
     def test_clone_bzrdir_tree_branch_reference(self):
         # a tree with a branch reference (aka a checkout)
@@ -368,8 +376,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         referenced_branch = self.make_branch('referencced')
         dir = self.make_bzrdir('source')
         try:
-            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                target_branch=referenced_branch)
+            dir.set_branch_reference(referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -412,8 +419,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         referenced_branch = self.make_branch('referencced')
         dir = self.make_bzrdir('source')
         try:
-            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                target_branch=referenced_branch)
+            dir.set_branch_reference(referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -500,8 +506,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     [
-                                     './.bzr/branch/branch.conf',
-                                     './.bzr/branch/parent',
+                                     './.bzr/branch',
                                      './.bzr/checkout/dirstate',
                                      './.bzr/checkout/stat-cache',
                                      './.bzr/checkout/inventory',
@@ -597,3 +602,92 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertTrue(isinstance(found_transport, transport.Transport))
         # and the dir which has been initialized for us must exist.
         found_transport.list_dir('.')
+
+    def assertInitializeEx(self, t, need_meta=False, **kwargs):
+        """Execute initialize_on_transport_ex and check it succeeded correctly.
+
+        This involves checking that the disk objects were created, open with
+        the same format returned, and had the expected disk format.
+
+        :param t: The transport to initialize on.
+        :param **kwargs: Additional arguments to pass to
+            initialize_on_transport_ex.
+        :return: the resulting repo, control dir tuple.
+        """
+        if not self.bzrdir_format.is_initializable():
+            raise TestNotApplicable("control dir format is not "
+                "initializable")
+        repo, control, require_stacking, repo_policy = \
+            self.bzrdir_format.initialize_on_transport_ex(t, **kwargs)
+        if repo is not None:
+            # Repositories are open write-locked
+            self.assertTrue(repo.is_write_locked())
+            self.addCleanup(repo.unlock)
+        self.assertIsInstance(control, bzrdir.BzrDir)
+        opened = bzrdir.BzrDir.open(t.base)
+        expected_format = self.bzrdir_format
+        if need_meta and expected_format.fixed_components:
+            # Pre-metadir formats change when we are making something that
+            # needs a metaformat, because clone is used for push.
+            expected_format = bzrdir.BzrDirMetaFormat1()
+        if not isinstance(expected_format, RemoteBzrDirFormat):
+            self.assertEqual(control._format.network_name(),
+                expected_format.network_name())
+            self.assertEqual(control._format.network_name(),
+                opened._format.network_name())
+        self.assertEqual(control.__class__, opened.__class__)
+        return repo, control
+
+    def test_format_initialize_on_transport_ex_default_stack_on(self):
+        # When initialize_on_transport_ex uses a stacked-on branch because of
+        # a stacking policy on the target, the location of the fallback
+        # repository is the same as the external location of the stacked-on
+        # branch.
+        balloon = self.make_bzrdir('balloon')
+        if isinstance(balloon._format, bzrdir.BzrDirMetaFormat1):
+            stack_on = self.make_branch('stack-on', format='1.9')
+        else:
+            stack_on = self.make_branch('stack-on')
+        if not stack_on.repository._format.supports_nesting_repositories:
+            raise TestNotApplicable("requires nesting repositories")
+        config = self.make_bzrdir('.').get_config()
+        try:
+            config.set_default_stack_on('stack-on')
+        except errors.BzrError:
+            raise TestNotApplicable('Only relevant for stackable formats.')
+        # Initialize a bzrdir subject to the policy.
+        t = self.get_transport('stacked')
+        repo_fmt = controldir.format_registry.make_bzrdir('1.9')
+        repo_name = repo_fmt.repository_format.network_name()
+        repo, control = self.assertInitializeEx(
+            t, need_meta=True, repo_format_name=repo_name, stacked_on=None)
+        # self.addCleanup(repo.unlock)
+        # There's one fallback repo, with a public location.
+        self.assertLength(1, repo._fallback_repositories)
+        fallback_repo = repo._fallback_repositories[0]
+        self.assertEqual(
+            stack_on.base, fallback_repo.bzrdir.root_transport.base)
+        # The bzrdir creates a branch in stacking-capable format.
+        new_branch = control.create_branch()
+        self.assertTrue(new_branch._format.supports_stacking())
+
+    def test_no_leftover_dirs(self):
+        # bug 886196: development-colo uses a branch-lock directory
+        # in the user directory rather than the control directory.
+        if not self.bzrdir_format.colocated_branches:
+            raise TestNotApplicable(
+                "format does not support colocated branches")
+        branch = self.make_branch('.', format='development-colo')
+        branch.bzrdir.create_branch(name="another-colocated-branch")
+        self.assertEquals(
+            branch.bzrdir.user_transport.list_dir("."),
+            [".bzr"])
+
+    def test_get_branches(self):
+        repo = self.make_repository('branch-1')
+        if not repo.bzrdir._format.colocated_branches:
+            raise TestNotApplicable('Format does not support colocation')
+        target_branch = repo.bzrdir.create_branch(name='foo')
+        repo.bzrdir.set_branch_reference(target_branch)
+        self.assertEqual(set(["", 'foo']),
+                         set(repo.bzrdir.get_branches().keys()))

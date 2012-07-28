@@ -27,17 +27,23 @@ from bzrlib.controldir import ControlDirFormat
 from bzrlib.tests import (
     default_transport,
     multiply_tests,
+    test_server,
     )
 from bzrlib.tests.per_controldir import (
     TestCaseWithControlDir,
     make_scenarios,
     )
+from bzrlib.transport import memory
 
 
 def load_tests(standard_tests, module, loader):
     colo_supported_formats = []
     colo_unsupported_formats = []
+    # This will always add scenarios using the smart server.
+    from bzrlib.remote import RemoteBzrDirFormat
     for format in ControlDirFormat.known_formats():
+        if isinstance(format, RemoteBzrDirFormat):
+            continue
         if format.colocated_branches:
             colo_supported_formats.append(format)
         else:
@@ -46,6 +52,22 @@ def load_tests(standard_tests, module, loader):
         colo_supported_formats)
     unsupported_scenarios = make_scenarios(default_transport, None, None,
         colo_unsupported_formats)
+    # test the remote server behaviour when backed with a MemoryTransport
+    # Once for the current version
+    unsupported_scenarios.extend(make_scenarios(
+        memory.MemoryServer,
+        test_server.SmartTCPServer_for_testing,
+        test_server.ReadonlySmartTCPServer_for_testing,
+        [(RemoteBzrDirFormat())],
+        name_suffix='-default'))
+    # And once with < 1.6 - the 'v2' protocol.
+    unsupported_scenarios.extend(make_scenarios(
+        memory.MemoryServer,
+        test_server.SmartTCPServer_for_testing_v2_only,
+        test_server.ReadonlySmartTCPServer_for_testing_v2_only,
+        [(RemoteBzrDirFormat())],
+        name_suffix='-v2'))
+
     result = loader.suiteClass()
     supported_tests = loader.loadTestsFromModuleNames([
         'bzrlib.tests.per_controldir_colo.test_supported'])

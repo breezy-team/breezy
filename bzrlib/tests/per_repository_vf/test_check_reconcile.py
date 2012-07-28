@@ -461,7 +461,8 @@ class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
 
         # make rev1b: A well-formed revision, containing 'a-file'
         # rev1b of a-file has the exact same contents as rev1a.
-        file_contents = repo.revision_tree('rev1a').get_file_text('a-file-id')
+        file_contents = repo.texts.get_record_stream([('a-file-id', 'rev1a')],
+            "unordered", False).next().get_bytes_as('fulltext')
         inv = self.make_one_file_inventory(
             repo, 'rev1b', [], root_revision='rev1b',
             file_contents=file_contents)
@@ -822,7 +823,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         revision = Revision(revision_id, committer='jrandom@example.com',
             timestamp=0, inventory_sha1='', timezone=0, message='foo',
             parent_ids=parent_ids)
-        repo.add_revision(revision_id,revision, inv)
+        repo.add_revision(revision_id, revision, inv)
 
     def make_one_file_inventory(self, repo, revision, parents,
                                 inv_revision=None, root_revision=None,

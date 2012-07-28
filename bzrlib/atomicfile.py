@@ -14,13 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
 
 import os
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import stat
-import socket
 import warnings
 
 from bzrlib import (
@@ -79,14 +79,7 @@ class AtomicFile(object):
             # the common case is that we won't, though.
             st = os.fstat(self._fd)
             if stat.S_IMODE(st.st_mode) != new_mode:
-                os.chmod(self.tmpfilename, new_mode)
-
-    def _get_closed(self):
-        symbol_versioning.warn('AtomicFile.closed deprecated in bzr 0.10',
-                               DeprecationWarning, stacklevel=2)
-        return self._fd is None
-
-    closed = property(_get_closed)
+                osutils.chmod_if_possible(self.tmpfilename, new_mode)
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__,
@@ -119,7 +112,3 @@ class AtomicFile(object):
         """Discard the file unless already committed."""
         if self._fd is not None:
             self.abort()
-
-    def __del__(self):
-        if self._fd is not None:
-            warnings.warn("%r leaked" % self)

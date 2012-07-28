@@ -19,6 +19,8 @@
 These were formats present in pre-1.0 version of Bazaar.
 """
 
+from __future__ import absolute_import
+
 # Since we are a built-in plugin we share the bzrlib version
 from bzrlib import version_info
 
@@ -84,7 +86,7 @@ controldir.format_registry.register_lazy('weave',
 register_metadir(controldir.format_registry, 'metaweave',
     'bzrlib.plugins.weave_fmt.repository.RepositoryFormat7',
     'Transitional format in 0.8.  Slower than knit.',
-    branch_format='bzrlib.branch.BzrBranchFormat5',
+    branch_format='bzrlib.branchfmt.fullhistory.BzrBranchFormat5',
     tree_format='bzrlib.workingtree_3.WorkingTreeFormat3',
     hidden=True,
     deprecated=True)
