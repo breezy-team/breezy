@@ -15,16 +15,15 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for finding and reading the bzr config file[s]."""
-# import system imports here
+
+import base64
 from cStringIO import StringIO
 import os
 import sys
 import threading
 
-
 from testtools import matchers
 
-#import bzrlib specific imports here
 from bzrlib import (
     branch,
     bzrdir,
@@ -2939,11 +2938,10 @@ class TestPlainTextCredentialStore(tests.TestCase):
 class TestBase64CredentialStore(tests.TestCase):
 
     def test_decode_password(self):
-        import base64
         r = config.credential_store_registry
         plain_text = r.get_credential_store('base64')
-        decoded = plain_text.decode_password(dict(password=base64.encodestring('secret-pass')))
-        self.assertEquals('secret-pass', decoded)
+        decoded = plain_text.decode_password(dict(password='c2VjcmV0'))
+        self.assertEquals('secret', decoded)
 
 
 # FIXME: Once we have a way to declare authentication to all test servers, we
