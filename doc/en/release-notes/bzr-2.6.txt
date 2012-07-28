@@ -21,6 +21,10 @@ New Features
 * ``bzr switch --store`` now stores uncommitted changes in the branch, and
   restores them when switching back to the branch. (Aaron Bentley)
 
+* New option '--context' for 'bzr diff' command, to configure the amount of 
+  context (i.e. showing lines that have not changed).  Also available as the 
+  named parameter 'context_lines' to bzrlib.diff.internal_diff(). (Paul Nixon)
+
 Improvements
 ************
 
