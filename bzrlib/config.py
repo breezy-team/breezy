@@ -81,6 +81,7 @@ import bzrlib
 from bzrlib.decorators import needs_write_lock
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import base64
 import fnmatch
 import re
 
@@ -2129,6 +2130,19 @@ class PlainTextCredentialStore(CredentialStore):
 credential_store_registry.register('plain', PlainTextCredentialStore,
                                    help=PlainTextCredentialStore.__doc__)
 credential_store_registry.default_key = 'plain'
+
+
+class Base64CredentialStore(CredentialStore):
+    __doc__ = """Base64 credential store for the authentication.conf file"""
+    
+    def decode_password(self, credentials):
+        """See CredentialStore.decode_password."""
+        # GZ 2012-07-28: Will raise binascii.Error if password is not base64,
+        #                should probably propogate as something more useful.
+        return base64.decodestring(credentials['password'])
+
+credential_store_registry.register('base64', Base64CredentialStore,
+                                   help=Base64CredentialStore.__doc__)
 
 
 class BzrDirConfig(object):

@@ -15,17 +15,16 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for finding and reading the bzr config file[s]."""
-# import system imports here
+
+import base64
 from cStringIO import StringIO
 from textwrap import dedent
 import os
 import sys
 import threading
 
-
 from testtools import matchers
 
-#import bzrlib specific imports here
 from bzrlib import (
     branch,
     config,
@@ -4839,6 +4838,15 @@ class TestPlainTextCredentialStore(tests.TestCase):
         r = config.credential_store_registry
         plain_text = r.get_credential_store()
         decoded = plain_text.decode_password(dict(password='secret'))
+        self.assertEquals('secret', decoded)
+
+
+class TestBase64CredentialStore(tests.TestCase):
+
+    def test_decode_password(self):
+        r = config.credential_store_registry
+        plain_text = r.get_credential_store('base64')
+        decoded = plain_text.decode_password(dict(password='c2VjcmV0'))
         self.assertEquals('secret', decoded)
 
 
