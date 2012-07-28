@@ -28,6 +28,9 @@ Improvements
 specified, not the branch you use.  This was enabled by a new API call in
 Launchpad's web service.  (Aaron Bentley)
 
+* Implement authentication.conf password obfuscation, the password_encoding
+  option can now be set to base64. (Florian Dorn)
+
 Bug Fixes
 *********
 
