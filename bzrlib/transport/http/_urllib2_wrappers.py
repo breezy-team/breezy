@@ -68,6 +68,7 @@ from bzrlib import (
     osutils,
     trace,
     transport,
+    ui,
     urlutils,
     )
 lazy_import.lazy_import(globals(), """
@@ -481,7 +482,8 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
         else:
             host = self.host
         if cert_reqs == ssl.CERT_NONE:
-            trace.warning("Not checking SSL certificate for %s", host)
+            ui.ui_factory.show_user_warning('not_checking_ssl_cert', host=host)
+            ui.ui_factory.suppressed_warnings.add('not_checking_ssl_cert')
             ca_certs = None
         else:
             if self.ca_certs is None:

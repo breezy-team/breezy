@@ -1615,7 +1615,7 @@ class cmd_checkout(Command):
     code.)
     """
 
-    _see_also = ['checkouts', 'branch']
+    _see_also = ['checkouts', 'branch', 'working-trees', 'remove-tree']
     takes_args = ['branch_location?', 'to_location?']
     takes_options = ['revision',
                      Option('lightweight',
@@ -6233,10 +6233,13 @@ class cmd_switch(Command):
                      Option('create-branch', short_name='b',
                         help='Create the target branch from this one before'
                              ' switching to it.'),
+                     Option('store',
+                        help='Store and restore uncommitted changes in the'
+                             ' branch.'),
                     ]
 
     def run(self, to_location=None, force=False, create_branch=False,
-            revision=None, directory=u'.'):
+            revision=None, directory=u'.', store=False):
         from bzrlib import switch
         tree_location = directory
         revision = _get_one_revision('switch', revision)
@@ -6273,7 +6276,8 @@ class cmd_switch(Command):
                     possible_transports=possible_transports)
         if revision is not None:
             revision = revision.as_revision_id(to_branch)
-        switch.switch(control_dir, to_branch, force, revision_id=revision)
+        switch.switch(control_dir, to_branch, force, revision_id=revision,
+                      store_uncommitted=store)
         if had_explicit_nick:
             branch = control_dir.open_branch() #get the new branch!
             branch.nick = to_branch.nick

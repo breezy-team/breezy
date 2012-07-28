@@ -97,6 +97,7 @@ Miscellaneous topics
 
    part2_intro
    adv_merging
+   switch_store
    shelving_changes
    filtered_views
    stacked

@@ -60,6 +60,7 @@ from bzrlib import (
     revision as _mod_revision,
     revisiontree,
     rio as _mod_rio,
+    shelf,
     transform,
     transport,
     ui,
@@ -1355,6 +1356,34 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             if basis_tree is not None:
                 basis_tree.unlock()
         return conflicts
+
+    @needs_write_lock
+    def store_uncommitted(self):
+        """Store uncommitted changes from the tree in the branch."""
+        target_tree = self.basis_tree()
+        shelf_creator = shelf.ShelfCreator(self, target_tree)
+        try:
+            if not shelf_creator.shelve_all():
+                return
+            self.branch.store_uncommitted(shelf_creator)
+            shelf_creator.transform()
+        finally:
+            shelf_creator.finalize()
+        note('Uncommitted changes stored in branch "%s".', self.branch.nick)
+
+    @needs_write_lock
+    def restore_uncommitted(self):
+        """Restore uncommitted changes from the branch into the tree."""
+        unshelver = self.branch.get_unshelver(self)
+        if unshelver is None:
+            return
+        try:
+            merger = unshelver.make_merger()
+            merger.ignore_zero = True
+            merger.do_merge()
+            self.branch.store_uncommitted(None)
+        finally:
+            unshelver.finalize()
 
     def revision_tree(self, revision_id):
         """See Tree.revision_tree.

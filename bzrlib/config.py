@@ -1562,7 +1562,7 @@ def xdg_cache_dir():
         return os.path.expanduser('~/.cache')
 
 
-def _get_default_mail_domain():
+def _get_default_mail_domain(mailname_file='/etc/mailname'):
     """If possible, return the assumed default email domain.
 
     :returns: string mail domain, or None.
@@ -1571,11 +1571,11 @@ def _get_default_mail_domain():
         # No implementation yet; patches welcome
         return None
     try:
-        f = open('/etc/mailname')
+        f = open(mailname_file)
     except (IOError, OSError), e:
         return None
     try:
-        domain = f.read().strip()
+        domain = f.readline().strip()
         return domain
     finally:
         f.close()
