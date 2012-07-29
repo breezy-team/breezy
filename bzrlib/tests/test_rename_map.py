@@ -200,3 +200,23 @@ class TestRenameMap(TestCaseWithTransport):
         notes = self.captureNotes(RenameMap.guess_renames, tree,
                                   dry_run=False)[0]
         self.assertEqual('file => file2', ''.join(notes))
+
+    def test_guess_rename_handles_new_directories(self):
+        """When a file was moved into a new directory."""
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        #self.addCleanup(tree.unlock)
+        self.build_tree(['tree/file'])
+        tree.add('file', 'file-id')
+        tree.commit('Added file')
+        os.mkdir('tree/folder')
+        os.rename('tree/file', 'tree/folder/file2')
+        # has to change dir to tree, because smart_add will look for 'folder'
+        # in 'work/folder' instead of correct location - 'work/tree/folder'
+        os.chdir('tree')
+        notes = self.captureNotes(RenameMap.guess_renames, tree)[0]
+        self.assertEqual('file => folder/file2', ''.join(notes))
+
+        tree.unlock()
+        self.assertEqual('added:\n  folder/\nrenamed:\n  file => folder/file2\n',
+            self.run_bzr("status")[0])
