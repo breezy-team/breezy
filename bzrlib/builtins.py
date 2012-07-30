@@ -1615,7 +1615,7 @@ class cmd_checkout(Command):
     code.)
     """
 
-    _see_also = ['checkouts', 'branch']
+    _see_also = ['checkouts', 'branch', 'working-trees', 'remove-tree']
     takes_args = ['branch_location?', 'to_location?']
     takes_options = ['revision',
                      Option('lightweight',
@@ -2335,13 +2335,18 @@ class cmd_diff(Command):
             help='Diff format to use.',
             lazy_registry=('bzrlib.diff', 'format_registry'),
             title='Diff format'),
+        Option('context',
+            help='How many lines of context to show.',
+            type=int,
+            ),
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
-            prefix=None, old=None, new=None, using=None, format=None):
+            prefix=None, old=None, new=None, using=None, format=None, 
+            context=None):
         from bzrlib.diff import (get_trees_and_branches_to_diff_locked,
             show_diff_trees)
 
@@ -2380,7 +2385,7 @@ class cmd_diff(Command):
                                old_label=old_label, new_label=new_label,
                                extra_trees=extra_trees,
                                path_encoding=path_encoding,
-                               using=using,
+                               using=using, context=context,
                                format_cls=format)
 
 
@@ -6233,10 +6238,13 @@ class cmd_switch(Command):
                      Option('create-branch', short_name='b',
                         help='Create the target branch from this one before'
                              ' switching to it.'),
+                     Option('store',
+                        help='Store and restore uncommitted changes in the'
+                             ' branch.'),
                     ]
 
     def run(self, to_location=None, force=False, create_branch=False,
-            revision=None, directory=u'.'):
+            revision=None, directory=u'.', store=False):
         from bzrlib import switch
         tree_location = directory
         revision = _get_one_revision('switch', revision)
@@ -6273,7 +6281,8 @@ class cmd_switch(Command):
                     possible_transports=possible_transports)
         if revision is not None:
             revision = revision.as_revision_id(to_branch)
-        switch.switch(control_dir, to_branch, force, revision_id=revision)
+        switch.switch(control_dir, to_branch, force, revision_id=revision,
+                      store_uncommitted=store)
         if had_explicit_nick:
             branch = control_dir.open_branch() #get the new branch!
             branch.nick = to_branch.nick

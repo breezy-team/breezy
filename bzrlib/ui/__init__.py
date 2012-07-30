@@ -166,6 +166,8 @@ class UIFactory(object):
             "  bzr upgrade %(basedir)s"),
         locks_steal_dead=(
             u"Stole dead lock %(lock_url)s %(other_holder_info)s."),
+        not_checking_ssl_cert=(
+            u"Not checking SSL certificate for %(host)s."),
         )
 
     def __init__(self):

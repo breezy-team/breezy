@@ -211,6 +211,69 @@ class TestDiff(tests.TestCase):
         self.assertIsInstance(output.getvalue(), str,
             'internal_diff should return bytestrings')
 
+    def test_internal_diff_default_context(self):
+        output = StringIO()
+        diff.internal_diff('old', ['same_text\n','same_text\n','same_text\n',
+                           'same_text\n','same_text\n','old_text\n'],
+                           'new', ['same_text\n','same_text\n','same_text\n',
+                           'same_text\n','same_text\n','new_text\n'], output)
+        lines = output.getvalue().splitlines(True)
+        self.check_patch(lines)
+        self.assertEquals(['--- old\n',
+                           '+++ new\n',
+                           '@@ -3,4 +3,4 @@\n',
+                           ' same_text\n',
+                           ' same_text\n',
+                           ' same_text\n',
+                           '-old_text\n',
+                           '+new_text\n',
+                           '\n',
+                          ]
+                          , lines)
+
+    def test_internal_diff_no_context(self):
+        output = StringIO()
+        diff.internal_diff('old', ['same_text\n','same_text\n','same_text\n',
+                           'same_text\n','same_text\n','old_text\n'],
+                           'new', ['same_text\n','same_text\n','same_text\n',
+                           'same_text\n','same_text\n','new_text\n'], output,
+                           context_lines=0)
+        lines = output.getvalue().splitlines(True)
+        self.check_patch(lines)
+        self.assertEquals(['--- old\n',
+                           '+++ new\n',
+                           '@@ -6,1 +6,1 @@\n',
+                           '-old_text\n',
+                           '+new_text\n',
+                           '\n',
+                          ]
+                          , lines)
+
+    def test_internal_diff_more_context(self):
+        output = StringIO()
+        diff.internal_diff('old', ['same_text\n','same_text\n','same_text\n',
+                           'same_text\n','same_text\n','old_text\n'],
+                           'new', ['same_text\n','same_text\n','same_text\n',
+                           'same_text\n','same_text\n','new_text\n'], output,
+                           context_lines=4)
+        lines = output.getvalue().splitlines(True)
+        self.check_patch(lines)
+        self.assertEquals(['--- old\n',
+                           '+++ new\n',
+                           '@@ -2,5 +2,5 @@\n',
+                           ' same_text\n',
+                           ' same_text\n',
+                           ' same_text\n',
+                           ' same_text\n',
+                           '-old_text\n',
+                           '+new_text\n',
+                           '\n',
+                          ]
+                          , lines)
+
+
+
+
 
 class TestDiffFiles(tests.TestCaseInTempDir):
 

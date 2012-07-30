@@ -16,6 +16,8 @@
 
 """Tests for branch implementations - tests a branch format."""
 
+import contextlib
+
 from bzrlib import (
     branch as _mod_branch,
     controldir,
@@ -25,10 +27,12 @@ from bzrlib import (
     merge,
     osutils,
     urlutils,
+    transform,
     transport,
     remote,
     repository,
     revision,
+    shelf,
     symbol_versioning,
     tests,
     )
@@ -1057,3 +1061,88 @@ class TestBranchControlComponent(per_branch.TestCaseWithBranch):
         # above the control dir but we might need to relax that?
         self.assertEqual(br.control_url.find(br.user_url), 0)
         self.assertEqual(br.control_url, br.control_transport.base)
+
+
+class FakeShelfCreator(object):
+
+    def __init__(self, branch):
+        self.branch = branch
+
+    def write_shelf(self, shelf_file, message=None):
+        tree = self.branch.repository.revision_tree(revision.NULL_REVISION)
+        with transform.TransformPreview(tree) as tt:
+            shelf.ShelfCreator._write_shelf(
+                shelf_file, tt, revision.NULL_REVISION)
+
+
+@contextlib.contextmanager
+def skip_if_storing_uncommitted_unsupported():
+    try:
+        yield
+    except errors.StoringUncommittedNotSupported:
+        raise tests.TestNotApplicable('Cannot store uncommitted changes.')
+
+
+class TestUncommittedChanges(per_branch.TestCaseWithBranch):
+
+    def bind(self, branch, master):
+        try:
+            branch.bind(master)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Branch cannot be bound.')
+
+    def test_store_uncommitted(self):
+        tree = self.make_branch_and_tree('b')
+        branch = tree.branch
+        creator = FakeShelfCreator(branch)
+        with skip_if_storing_uncommitted_unsupported():
+            self.assertIs(None, branch.get_unshelver(tree))
+        branch.store_uncommitted(creator)
+        self.assertIsNot(None, branch.get_unshelver(tree))
+
+    def test_store_uncommitted_bound(self):
+        tree = self.make_branch_and_tree('b')
+        branch = tree.branch
+        master = self.make_branch('master')
+        self.bind(branch, master)
+        creator = FakeShelfCreator(tree.branch)
+        self.assertIs(None, tree.branch.get_unshelver(tree))
+        self.assertIs(None, master.get_unshelver(tree))
+        tree.branch.store_uncommitted(creator)
+        self.assertIsNot(None, master.get_unshelver(tree))
+
+    def test_store_uncommitted_already_stored(self):
+        branch = self.make_branch('b')
+        with skip_if_storing_uncommitted_unsupported():
+            branch.store_uncommitted(FakeShelfCreator(branch))
+        self.assertRaises(errors.ChangesAlreadyStored,
+                          branch.store_uncommitted, FakeShelfCreator(branch))
+
+    def test_store_uncommitted_none(self):
+        branch = self.make_branch('b')
+        with skip_if_storing_uncommitted_unsupported():
+            branch.store_uncommitted(FakeShelfCreator(branch))
+        branch.store_uncommitted(None)
+        self.assertIs(None, branch.get_unshelver(None))
+
+    def test_get_unshelver(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('')
+        self.build_tree_contents([('tree/file', 'contents1')])
+        tree.add('file')
+        with skip_if_storing_uncommitted_unsupported():
+            tree.store_uncommitted()
+        unshelver = tree.branch.get_unshelver(tree)
+        self.assertIsNot(None, unshelver)
+
+    def test_get_unshelver_bound(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('')
+        self.build_tree_contents([('tree/file', 'contents1')])
+        tree.add('file')
+        with skip_if_storing_uncommitted_unsupported():
+            tree.store_uncommitted()
+        branch = self.make_branch('branch')
+        self.bind(branch, tree.branch)
+        unshelver = branch.get_unshelver(tree)
+        self.assertIsNot(None, unshelver)

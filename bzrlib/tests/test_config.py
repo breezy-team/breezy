@@ -15,17 +15,16 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for finding and reading the bzr config file[s]."""
-# import system imports here
+
+import base64
 from cStringIO import StringIO
 from textwrap import dedent
 import os
 import sys
 import threading
 
-
 from testtools import matchers
 
-#import bzrlib specific imports here
 from bzrlib import (
     branch,
     config,
@@ -4568,8 +4567,8 @@ class TestAuthenticationStorage(tests.TestCaseInTempDir):
                                            port=99, path='/foo',
                                            realm='realm')
         CREDENTIALS = {'name': 'name', 'user': 'user', 'password': 'password',
-                       'verify_certificates': False, 'scheme': 'scheme', 
-                       'host': 'host', 'port': 99, 'path': '/foo', 
+                       'verify_certificates': False, 'scheme': 'scheme',
+                       'host': 'host', 'port': 99, 'path': '/foo',
                        'realm': 'realm'}
         self.assertEqual(CREDENTIALS, credentials)
         credentials_from_disk = config.AuthenticationConfig().get_credentials(
@@ -4583,8 +4582,8 @@ class TestAuthenticationStorage(tests.TestCaseInTempDir):
         self.assertIs(None, conf._get_config().get('name'))
         credentials = conf.get_credentials(host='host', scheme='scheme')
         CREDENTIALS = {'name': 'name2', 'user': 'user2', 'password':
-                       'password', 'verify_certificates': True, 
-                       'scheme': 'scheme', 'host': 'host', 'port': None, 
+                       'password', 'verify_certificates': True,
+                       'scheme': 'scheme', 'host': 'host', 'port': None,
                        'path': None, 'realm': None}
         self.assertEqual(CREDENTIALS, credentials)
 
@@ -4842,6 +4841,15 @@ class TestPlainTextCredentialStore(tests.TestCase):
         self.assertEquals('secret', decoded)
 
 
+class TestBase64CredentialStore(tests.TestCase):
+
+    def test_decode_password(self):
+        r = config.credential_store_registry
+        plain_text = r.get_credential_store('base64')
+        decoded = plain_text.decode_password(dict(password='c2VjcmV0'))
+        self.assertEquals('secret', decoded)
+
+
 # FIXME: Once we have a way to declare authentication to all test servers, we
 # can implement generic tests.
 # test_user_password_in_url
@@ -4874,6 +4882,37 @@ class TestAutoUserId(tests.TestCase):
             self.assertIsNot(None, address)
         else:
             self.assertEquals((None, None), (realname, address))
+
+
+class TestDefaultMailDomain(tests.TestCaseInTempDir):
+    """Test retrieving default domain from mailname file"""
+
+    def test_default_mail_domain_simple(self):
+        f = file('simple', 'w')
+        try:
+            f.write("domainname.com\n")
+        finally:
+            f.close()
+        r = config._get_default_mail_domain('simple')
+        self.assertEquals('domainname.com', r)
+
+    def test_default_mail_domain_no_eol(self):
+        f = file('no_eol', 'w')
+        try:
+            f.write("domainname.com")
+        finally:
+            f.close()
+        r = config._get_default_mail_domain('no_eol')
+        self.assertEquals('domainname.com', r)
+
+    def test_default_mail_domain_multiple_lines(self):
+        f = file('multiple_lines', 'w')
+        try:
+            f.write("domainname.com\nsome other text\n")
+        finally:
+            f.close()
+        r = config._get_default_mail_domain('multiple_lines')
+        self.assertEquals('domainname.com', r)
 
 
 class EmailOptionTests(tests.TestCase):
