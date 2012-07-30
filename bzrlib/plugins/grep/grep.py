@@ -68,7 +68,8 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id):
     # requires that start is older than end
     repo = branch.repository
     graph = repo.get_graph()
-    for revision_id in graph.iter_lefthand_ancestry(end_rev_id, (_mod_revision.NULL_REVISION, )):
+    for revision_id in graph.iter_lefthand_ancestry(
+            end_rev_id, (_mod_revision.NULL_REVISION, )):
         revno = branch.revision_id_to_dotted_revno(revision_id)
         revno_str = '.'.join(str(n) for n in revno)
         if revision_id == start_rev_id:
