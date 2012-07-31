@@ -3278,6 +3278,7 @@ class IniFileStore(Store):
         # anyway.
         return 'In-Process Store, no URL'
 
+
 class TransportIniFileStore(IniFileStore):
     """IniFileStore that loads files from a transport.
 
@@ -3406,6 +3407,44 @@ class ControlStore(LockableIniFileStore):
                                           'control.conf',
                                            lock_dir_name='branch_lock')
         self.id = 'control'
+
+
+# FIXME: _shared_stores should be an attribute of a library state once a
+# library_state object is always available.
+_shared_stores = {}
+_once = True
+def get_shared_store(store, state=None):
+    """Get a known shared store.
+
+    Store urls uniquely identify them and are used to ensure a single copy is
+    shared across all users.
+
+    :param store: The store known to the caller.
+
+    :param state: The library state where the known stores are kept.
+
+    :returns: The store received if it's not a known one, an already known
+        otherwise.
+    """
+    if state is None:
+        global _once
+        stores = _shared_stores
+        def save_config_changes():
+            for k, store in stores.iteritems():
+                store.save_changes()
+        if _once:
+            # FIXME: Ugly hack waiting for library_state to always be available.
+            import atexit
+            atexit.register(save_config_changes)
+            _once = False
+    else:
+        stores = states.config_stores
+    url = store.external_url()
+    try:
+        return stores[url]
+    except KeyError:
+        stores[url] = store
+        return store
 
 
 class SectionMatcher(object):
@@ -3797,7 +3836,7 @@ class Stack(object):
         return "<config.%s(%s)>" % (self.__class__.__name__, id(self))
 
     def _get_overrides(self):
-        # Hack around library_state.initialize never called
+        # FIXME: Hack around library_state.initialize never called
         if bzrlib.global_state is not None:
             return bzrlib.global_state.cmdline_overrides.get_sections()
         return []
@@ -3857,7 +3896,7 @@ class _CompatibleStack(Stack):
         self.store.save()
 
 
-class GlobalStack(_CompatibleStack):
+class GlobalStack(Stack):
     """Global options only stack.
 
     The following sections are queried:
@@ -3871,14 +3910,14 @@ class GlobalStack(_CompatibleStack):
     """
 
     def __init__(self):
-        gstore = GlobalStore()
+        gstore = get_shared_store(GlobalStore())
         super(GlobalStack, self).__init__(
             [self._get_overrides,
              NameMatcher(gstore, 'DEFAULT').get_sections],
             gstore, mutable_section_id='DEFAULT')
 
 
-class LocationStack(_CompatibleStack):
+class LocationStack(Stack):
     """Per-location options falling back to global options stack.
 
 
@@ -3900,10 +3939,11 @@ class LocationStack(_CompatibleStack):
         """Make a new stack for a location and global configuration.
 
         :param location: A URL prefix to """
-        lstore = LocationStore()
+        # FIXME: self._get_shared_store ?
+        lstore = get_shared_store(LocationStore())
         if location.startswith('file://'):
             location = urlutils.local_path_from_url(location)
-        gstore = GlobalStore()
+        gstore = get_shared_store(GlobalStore())
         super(LocationStack, self).__init__(
             [self._get_overrides,
              LocationMatcher(lstore, location).get_sections,
@@ -3931,9 +3971,9 @@ class BranchStack(Stack):
     """
 
     def __init__(self, branch):
-        lstore = LocationStore()
+        lstore = get_shared_store(LocationStore())
         bstore = branch._get_config_store()
-        gstore = GlobalStore()
+        gstore = get_shared_store(GlobalStore())
         super(BranchStack, self).__init__(
             [self._get_overrides,
              LocationMatcher(lstore, branch.base).get_sections,
@@ -3961,7 +4001,7 @@ class BranchStack(Stack):
         # unlock saves all the changes.
 
 
-class RemoteControlStack(_CompatibleStack):
+class RemoteControlStack(Stack):
     """Remote control-only options stack."""
 
     # FIXME 2011-11-22 JRV This should probably be renamed to avoid confusion
