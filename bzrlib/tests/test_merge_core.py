@@ -43,6 +43,7 @@ from bzrlib.workingtree import WorkingTree
 
 
 class MergeBuilder(object):
+
     def __init__(self, dir=None):
         self.dir = osutils.mkdtemp(prefix="merge-test", dir=dir)
         self.tree_root = generate_ids.gen_root_id()

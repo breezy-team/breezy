@@ -452,6 +452,8 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertTrue(repo_to.has_revision('from-1'))
         self.assertFalse(repo_to.has_revision('from-2'))
         self.assertEqual(tree_to.branch.last_revision_info()[1], 'from-1')
+        self.assertFalse(
+            tree_to.changes_from(tree_to.basis_tree()).has_changed())
 
         self.run_bzr_error(
             ['bzr: ERROR: bzr push --revision '
@@ -612,6 +614,22 @@ class TestPush(tests.TestCaseWithTransport):
         out, err = self.run_bzr('push ../../pushloc', working_dir='tree/dir')
         self.assertEqual('', out)
         self.assertEqual('Created new branch.\n', err)
+
+    def test_overwrite_tags(self):
+        """--overwrite-tags only overwrites tags, not revisions."""
+        from_tree = self.make_branch_and_tree('from')
+        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        to_tree = self.make_branch_and_tree('to')
+        to_tree.branch.tags.set_tag("mytag", "anotherrevid")
+        revid1 = to_tree.commit('my commit')
+        out = self.run_bzr(['push', '-d', 'from', 'to'])
+        self.assertEquals(out,
+            ('Conflicting tags:\n    mytag\n', 'No new revisions to push.\n'))
+        out = self.run_bzr(['push', '-d', 'from', '--overwrite-tags', 'to'])
+        self.assertEquals(out, ('', '1 tag updated.\n'))
+        self.assertEquals(to_tree.branch.tags.lookup_tag('mytag'),
+                          'somerevid')
+        self.assertEquals(to_tree.branch.last_revision(), revid1)
 
 
 class RedirectingMemoryTransport(memory.MemoryTransport):
@@ -900,4 +918,29 @@ class TestPushOutput(script.TestCaseWithTransportAndScript):
             1: jrandom@example.com ...we need some foo
             2>All changes applied successfully.
             2>Pushed up to revision 1.
+            """)
+
+    def test_push_with_revspec(self):
+        self.run_script("""
+            $ bzr init-repo .
+            Shared repository with trees (format: 2a)
+            Location:
+              shared repository: .
+            $ bzr init trunk
+            Created a repository tree (format: 2a)
+            Using shared repository...
+            $ cd trunk
+            $ bzr commit -m 'first rev' --unchanged
+            2>Committing to:...trunk/
+            2>Committed revision 1.
+            $ echo foo > file
+            $ bzr add
+            adding file
+            $ bzr commit -m 'we need some foo'
+            2>Committing to:...trunk/
+            2>added file
+            2>Committed revision 2.
+            $ bzr push -r 1 ../other
+            2>Created new branch.
+            $ bzr st ../other # checking that file is not created (#484516)
             """)

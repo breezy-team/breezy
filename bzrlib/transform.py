@@ -575,11 +575,6 @@ class TreeTransformBase(object):
             # ensure that all children are registered with the transaction
             list(self.iter_tree_children(parent_id))
 
-    @deprecated_method(deprecated_in((2, 3, 0)))
-    def has_named_child(self, by_parent, parent_id, name):
-        return self._has_named_child(
-            name, parent_id, known_children=by_parent.get(parent_id, []))
-
     def _has_named_child(self, name, parent_id, known_children):
         """Does a parent already have a name child.
 
@@ -2187,6 +2182,14 @@ class _PreviewTree(tree.InventoryTree):
                 ordered_ids.append((trans_id, parent_file_id))
         return ordered_ids
 
+    def iter_child_entries(self, file_id, path=None):
+        self.id2path(file_id)
+        trans_id = self._transform.trans_id_file_id(file_id)
+        todo = [(child_trans_id, trans_id) for child_trans_id in
+                self._all_children(trans_id)]
+        for entry, trans_id in self._make_inv_entries(todo):
+            yield entry
+
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
         # This may not be a maximally efficient implementation, but it is
         # reasonably straightforward.  An implementation that grafts the
@@ -2827,24 +2830,6 @@ def create_entry_executability(tt, entry, trans_id):
     """Set the executability of a trans_id according to an inventory entry"""
     if entry.kind == "file":
         tt.set_executability(entry.executable, trans_id)
-
-
-@deprecated_function(deprecated_in((2, 3, 0)))
-def get_backup_name(entry, by_parent, parent_trans_id, tt):
-    return _get_backup_name(entry.name, by_parent, parent_trans_id, tt)
-
-
-@deprecated_function(deprecated_in((2, 3, 0)))
-def _get_backup_name(name, by_parent, parent_trans_id, tt):
-    """Produce a backup-style name that appears to be available"""
-    def name_gen():
-        counter = 1
-        while True:
-            yield "%s.~%d~" % (name, counter)
-            counter += 1
-    for new_name in name_gen():
-        if not tt.has_named_child(by_parent, parent_trans_id, new_name):
-            return new_name
 
 
 def revert(working_tree, target_tree, filenames, backups=False,

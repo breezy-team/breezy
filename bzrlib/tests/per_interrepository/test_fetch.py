@@ -179,7 +179,10 @@ class TestInterRepository(TestCaseWithInterRepository):
     def test_fetch_parent_inventories_at_stacking_boundary_smart_old(self):
         self.setup_smart_server_with_call_log()
         self.disable_verb('Repository.insert_stream_1.19')
-        self.test_fetch_parent_inventories_at_stacking_boundary()
+        try:
+            self.test_fetch_parent_inventories_at_stacking_boundary()
+        except errors.ConnectionReset:
+            self.knownFailure("Random spurious failure, see bug 874153")
 
     def test_fetch_parent_inventories_at_stacking_boundary(self):
         """Fetch to a stacked branch copies inventories for parents of
@@ -298,8 +301,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         stacked_branch.lock_read()
         self.addCleanup(stacked_branch.unlock)
         stacked_second_tree = stacked_branch.repository.revision_tree('second')
-        self.assertEqual(second_tree.root_inventory,
-            stacked_second_tree.root_inventory)
+        self.assertEqual(second_tree, stacked_second_tree)
         # Finally, it's not enough to see that the basis inventories are
         # present.  The texts introduced in merge (and only those) should be
         # present, and also generating a stream should succeed without blowing

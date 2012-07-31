@@ -60,6 +60,7 @@ from bzrlib import (
     revision as _mod_revision,
     revisiontree,
     rio as _mod_rio,
+    shelf,
     transform,
     transport,
     ui,
@@ -534,7 +535,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         else:
             # TODO now merge from tree.last_revision to revision (to preserve
             # user local changes)
-            merge.transform_tree(tree, self)
+            try:
+                other_tree = self.revision_tree(revision_id)
+            except errors.NoSuchRevision:
+                other_tree = self.branch.repository.revision_tree(revision_id)
+
+            merge.transform_tree(tree, other_tree)
             if revision_id == _mod_revision.NULL_REVISION:
                 new_parents = []
             else:
@@ -1350,6 +1356,34 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             if basis_tree is not None:
                 basis_tree.unlock()
         return conflicts
+
+    @needs_write_lock
+    def store_uncommitted(self):
+        """Store uncommitted changes from the tree in the branch."""
+        target_tree = self.basis_tree()
+        shelf_creator = shelf.ShelfCreator(self, target_tree)
+        try:
+            if not shelf_creator.shelve_all():
+                return
+            self.branch.store_uncommitted(shelf_creator)
+            shelf_creator.transform()
+        finally:
+            shelf_creator.finalize()
+        note('Uncommitted changes stored in branch "%s".', self.branch.nick)
+
+    @needs_write_lock
+    def restore_uncommitted(self):
+        """Restore uncommitted changes from the branch into the tree."""
+        unshelver = self.branch.get_unshelver(self)
+        if unshelver is None:
+            return
+        try:
+            merger = unshelver.make_merger()
+            merger.ignore_zero = True
+            merger.do_merge()
+            self.branch.store_uncommitted(None)
+        finally:
+            unshelver.finalize()
 
     def revision_tree(self, revision_id):
         """See Tree.revision_tree.
@@ -3078,13 +3112,6 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
     def __ne__(self, other):
         return not (self == other)
 
-    @classmethod
-    @symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((2, 4, 0)))
-    def get_default_format(klass):
-        """Return the current default format."""
-        return format_registry.get_default()
-
     def get_format_description(self):
         """Return the short description for this format."""
         raise NotImplementedError(self.get_format_description)
@@ -3106,41 +3133,45 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
         """True if this format supports stored views."""
         return False
 
-    @classmethod
-    @symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((2, 4, 0)))
-    def register_format(klass, format):
-        format_registry.register(format)
+    def get_controldir_for_branch(self):
+        """Get the control directory format for creating branches.
+
+        This is to support testing of working tree formats that can not exist
+        in the same control directory as a branch.
+        """
+        return self._matchingbzrdir
+
+
+class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
+    """Base class for working trees that live in bzr meta directories."""
+
+    def __init__(self):
+        WorkingTreeFormat.__init__(self)
+        bzrdir.BzrFormat.__init__(self)
 
     @classmethod
-    @symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((2, 4, 0)))
-    def register_extra_format(klass, format):
-        format_registry.register_extra(format)
+    def find_format_string(klass, controldir):
+        """Return format name for the working tree object in controldir."""
+        try:
+            transport = controldir.get_workingtree_transport(None)
+            return transport.get_bytes("format")
+        except errors.NoSuchFile:
+            raise errors.NoWorkingTree(base=transport.base)
 
     @classmethod
-    @symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((2, 4, 0)))
-    def unregister_extra_format(klass, format):
-        format_registry.unregister_extra(format)
+    def find_format(klass, controldir):
+        """Return the format for the working tree object in controldir."""
+        format_string = klass.find_format_string(controldir)
+        return klass._find_format(format_registry, 'working tree',
+                format_string)
 
-    @classmethod
-    @symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((2, 4, 0)))
-    def get_formats(klass):
-        return format_registry._get_all()
-
-    @classmethod
-    @symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((2, 4, 0)))
-    def set_default_format(klass, format):
-        format_registry.set_default(format)
-
-    @classmethod
-    @symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((2, 4, 0)))
-    def unregister_format(klass, format):
-        format_registry.remove(format)
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+            basedir=None):
+        WorkingTreeFormat.check_support_status(self,
+            allow_unsupported=allow_unsupported, recommend_upgrade=recommend_upgrade,
+            basedir=basedir)
+        bzrdir.BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
+            recommend_upgrade=recommend_upgrade, basedir=basedir)
 
     def get_controldir_for_branch(self):
         """Get the control directory format for creating branches.

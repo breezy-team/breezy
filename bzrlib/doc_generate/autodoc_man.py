@@ -23,6 +23,8 @@ TODO:
 
 from __future__ import absolute_import
 
+PLUGINS_TO_DOCUMENT = ["launchpad"]
+
 import textwrap
 import time
 
@@ -30,6 +32,9 @@ import bzrlib
 import bzrlib.help
 import bzrlib.help_topics
 import bzrlib.commands
+
+from bzrlib.plugin import load_plugins
+load_plugins()
 
 
 def get_filename(options):
@@ -51,14 +56,15 @@ def infogen(options, outfile):
     outfile.write(man_escape(man_head % params))
     outfile.write(man_escape(getcommand_list(params)))
     outfile.write(man_escape(getcommand_help(params)))
+    outfile.write("".join(environment_variables()))
     outfile.write(man_escape(man_foot % params))
 
 
 def man_escape(string):
     """Escapes strings for man page compatibility"""
     result = string.replace("\\","\\\\")
-    result = result.replace("`","\\`")
-    result = result.replace("'","\\'")
+    result = result.replace("`","\\'")
+    result = result.replace("'","\\*(Aq")
     result = result.replace("-","\\-")
     return result
 
@@ -66,6 +72,11 @@ def man_escape(string):
 def command_name_list():
     """Builds a list of command names from bzrlib"""
     command_names = bzrlib.commands.builtin_command_names()
+    for cmdname in bzrlib.commands.plugin_command_names():
+        cmd_object = bzrlib.commands.get_cmd_object(cmdname)
+        if (PLUGINS_TO_DOCUMENT is None or
+            cmd_object.plugin_name() in PLUGINS_TO_DOCUMENT):
+            command_names.append(cmdname)
     command_names.sort()
     return command_names
 
@@ -105,11 +116,16 @@ def getcommand_help(params):
     return output
 
 
-def format_command (params, cmd):
+def format_command(params, cmd):
     """Provides long help for each public command"""
     subsection_header = '.SS "%s"\n' % (cmd._usage())
     doc = "%s\n" % (cmd.__doc__)
     doc = bzrlib.help_topics.help_as_plain_text(cmd.help())
+
+    # A dot at the beginning of a line is interpreted as a macro.
+    # Simply join lines that begin with a dot with the previous
+    # line to work around this.
+    doc = doc.replace("\n.", ".")
 
     option_str = ""
     options = cmd.options()
@@ -129,7 +145,7 @@ def format_command (params, cmd):
                     subsequent_indent=30*' ',
                     break_long_words=False,
                     )
-                option_str = option_str + wrapped + '\n'       
+                option_str += wrapped + '\n'
 
     aliases_str = ""
     if cmd.aliases:
@@ -156,6 +172,16 @@ def format_alias(params, alias, cmd_name):
     return help
 
 
+def environment_variables():
+    yield ".SH \"ENVIRONMENT\"\n"
+
+    from bzrlib.help_topics import known_env_variables
+    for k, desc in known_env_variables:
+        yield ".TP\n"
+        yield ".I \"%s\"\n" % k
+        yield man_escape(desc) + "\n"
+
+
 man_preamble = """\
 .\\\"Man page for Bazaar (%(bzrcmd)s)
 .\\\"
@@ -165,6 +191,9 @@ man_preamble = """\
 .\\\"
 .\\\" Generation time: %(timestamp)s
 .\\\"
+
+.ie \\n(.g .ds Aq \\(aq
+.el .ds Aq '
 """
 
 
@@ -197,30 +226,6 @@ helps people work together in a team.
 """
 
 man_foot = """\
-.SH "ENVIRONMENT"
-.TP
-.I "BZRPATH"
-Path where
-.B "%(bzrcmd)s"
-is to look for shell plugin external commands.
-.TP
-.I "BZR_EMAIL"
-E-Mail address of the user. Overrides default user config.
-.TP
-.I "EMAIL"
-E-Mail address of the user. Overrides default user config.
-.TP
-.I "BZR_EDITOR"
-Editor for editing commit messages
-.TP
-.I "EDITOR"
-Editor for editing commit messages
-.TP
-.I "BZR_PLUGIN_PATH"
-Paths where bzr should look for plugins
-.TP
-.I "BZR_HOME"
-Home directory for bzr
 .SH "FILES"
 .TP
 .I "~/.bazaar/bazaar.conf"

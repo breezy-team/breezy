@@ -41,6 +41,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import bzrlib
 from bzrlib import (
     commands,
+    # Don't remove the following import, it triggers a format registration that
+    # avoid http://pad.lv/956860
+    branch,
     doc_generate,
     )
 

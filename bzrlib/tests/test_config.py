@@ -15,16 +15,16 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for finding and reading the bzr config file[s]."""
-# import system imports here
+
+import base64
 from cStringIO import StringIO
+from textwrap import dedent
 import os
 import sys
 import threading
 
-
 from testtools import matchers
 
-#import bzrlib specific imports here
 from bzrlib import (
     branch,
     config,
@@ -475,12 +475,6 @@ class TestConfig(tests.TestCase):
 
     def test_constructs(self):
         config.Config()
-
-    def test_no_default_editor(self):
-        self.assertRaises(
-            NotImplementedError,
-            self.applyDeprecated, deprecated_in((2, 4, 0)),
-            config.Config().get_editor)
 
     def test_user_email(self):
         my_config = InstrumentedConfig()
@@ -1188,12 +1182,6 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
     def test_absent_user_id(self):
         my_config = config.GlobalConfig()
         self.assertEqual(None, my_config._get_user_id())
-
-    def test_configured_editor(self):
-        my_config = config.GlobalConfig.from_string(sample_config_text)
-        editor = self.applyDeprecated(
-            deprecated_in((2, 4, 0)), my_config.get_editor)
-        self.assertEqual('vim', editor)
 
     def test_signatures_always(self):
         my_config = config.GlobalConfig.from_string(sample_always_signatures)
@@ -2489,7 +2477,6 @@ class TestRegisteredOptions(tests.TestCase):
 
     def test_help_is_set(self):
         option_help = self.registry.get_help(self.option_name)
-        self.assertNotEquals(None, option_help)
         # Come on, think about the user, he really wants to know what the
         # option is about
         self.assertIsNot(None, option_help)
@@ -2871,6 +2858,20 @@ class TestMutableStore(TestStore):
         store = self.get_store(self)
         store.save()
         self.assertEquals(False, self.has_store(store))
+
+    def test_mutable_section_shared(self):
+        store = self.get_store(self)
+        store._load_from_string('foo=bar\n')
+        # FIXME: There should be a better way than relying on the test
+        # parametrization to identify branch.conf -- vila 2011-0526
+        if self.store_id in ('branch', 'remote_branch'):
+            # branch stores requires write locked branches
+            self.addCleanup(store.branch.lock_write().unlock)
+        section1 = store.get_mutable_section(None)
+        section2 = store.get_mutable_section(None)
+        # If we get different sections, different callers won't share the
+        # modification
+        self.assertIs(section1, section2)
 
     def test_save_emptied_succeeds(self):
         store = self.get_store(self)
@@ -3417,6 +3418,28 @@ foo:policy = appendpath
         matcher = config.LocationMatcher(store, expected_url)
         self.assertEquals(expected_location, matcher.location)
 
+    def test_branch_name_colo(self):
+        store = self.get_store(self)
+        store._load_from_string(dedent("""\
+            [/]
+            push_location=my{branchname}
+        """))
+        matcher = config.LocationMatcher(store, 'file:///,branch=example%3c')
+        self.assertEqual('example<', matcher.branch_name)
+        ((_, section),) = matcher.get_sections()
+        self.assertEqual('example<', section.locals['branchname'])
+
+    def test_branch_name_basename(self):
+        store = self.get_store(self)
+        store._load_from_string(dedent("""\
+            [/]
+            push_location=my{branchname}
+        """))
+        matcher = config.LocationMatcher(store, 'file:///parent/example%3c')
+        self.assertEqual('example<', matcher.branch_name)
+        ((_, section),) = matcher.get_sections()
+        self.assertEqual('example<', section.locals['branchname'])
+
 
 class TestStartingPathMatcher(TestStore):
 
@@ -3582,6 +3605,7 @@ class TestStackWithSimpleStore(tests.TestCase):
         return config.MemoryStack(content)
 
     def test_override_value_from_env(self):
+        self.overrideEnv('FOO', None)
         self.registry.register(
             config.Option('foo', default='bar', override_from_env=['FOO']))
         self.overrideEnv('FOO', 'quux')
@@ -3590,6 +3614,9 @@ class TestStackWithSimpleStore(tests.TestCase):
         self.assertEquals('quux', conf.get('foo'))
 
     def test_first_override_value_from_env_wins(self):
+        self.overrideEnv('NO_VALUE', None)
+        self.overrideEnv('FOO', None)
+        self.overrideEnv('BAZ', None)
         self.registry.register(
             config.Option('foo', default='bar',
                           override_from_env=['NO_VALUE', 'FOO', 'BAZ']))
@@ -4540,8 +4567,8 @@ class TestAuthenticationStorage(tests.TestCaseInTempDir):
                                            port=99, path='/foo',
                                            realm='realm')
         CREDENTIALS = {'name': 'name', 'user': 'user', 'password': 'password',
-                       'verify_certificates': False, 'scheme': 'scheme', 
-                       'host': 'host', 'port': 99, 'path': '/foo', 
+                       'verify_certificates': False, 'scheme': 'scheme',
+                       'host': 'host', 'port': 99, 'path': '/foo',
                        'realm': 'realm'}
         self.assertEqual(CREDENTIALS, credentials)
         credentials_from_disk = config.AuthenticationConfig().get_credentials(
@@ -4555,8 +4582,8 @@ class TestAuthenticationStorage(tests.TestCaseInTempDir):
         self.assertIs(None, conf._get_config().get('name'))
         credentials = conf.get_credentials(host='host', scheme='scheme')
         CREDENTIALS = {'name': 'name2', 'user': 'user2', 'password':
-                       'password', 'verify_certificates': True, 
-                       'scheme': 'scheme', 'host': 'host', 'port': None, 
+                       'password', 'verify_certificates': True,
+                       'scheme': 'scheme', 'host': 'host', 'port': None,
                        'path': None, 'realm': None}
         self.assertEqual(CREDENTIALS, credentials)
 
@@ -4814,6 +4841,15 @@ class TestPlainTextCredentialStore(tests.TestCase):
         self.assertEquals('secret', decoded)
 
 
+class TestBase64CredentialStore(tests.TestCase):
+
+    def test_decode_password(self):
+        r = config.credential_store_registry
+        plain_text = r.get_credential_store('base64')
+        decoded = plain_text.decode_password(dict(password='c2VjcmV0'))
+        self.assertEquals('secret', decoded)
+
+
 # FIXME: Once we have a way to declare authentication to all test servers, we
 # can implement generic tests.
 # test_user_password_in_url
@@ -4846,6 +4882,37 @@ class TestAutoUserId(tests.TestCase):
             self.assertIsNot(None, address)
         else:
             self.assertEquals((None, None), (realname, address))
+
+
+class TestDefaultMailDomain(tests.TestCaseInTempDir):
+    """Test retrieving default domain from mailname file"""
+
+    def test_default_mail_domain_simple(self):
+        f = file('simple', 'w')
+        try:
+            f.write("domainname.com\n")
+        finally:
+            f.close()
+        r = config._get_default_mail_domain('simple')
+        self.assertEquals('domainname.com', r)
+
+    def test_default_mail_domain_no_eol(self):
+        f = file('no_eol', 'w')
+        try:
+            f.write("domainname.com")
+        finally:
+            f.close()
+        r = config._get_default_mail_domain('no_eol')
+        self.assertEquals('domainname.com', r)
+
+    def test_default_mail_domain_multiple_lines(self):
+        f = file('multiple_lines', 'w')
+        try:
+            f.write("domainname.com\nsome other text\n")
+        finally:
+            f.close()
+        r = config._get_default_mail_domain('multiple_lines')
+        self.assertEquals('domainname.com', r)
 
 
 class EmailOptionTests(tests.TestCase):

@@ -2160,13 +2160,6 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         self._ensure_real()
         self._real_repository.create_bundle(target, base, fileobj, format)
 
-    @needs_read_lock
-    @symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((2, 4, 0)))
-    def get_ancestry(self, revision_id, topo_sorted=True):
-        self._ensure_real()
-        return self._real_repository.get_ancestry(revision_id, topo_sorted)
-
     def fileids_altered_by_revision_ids(self, revision_ids):
         self._ensure_real()
         return self._real_repository.fileids_altered_by_revision_ids(revision_ids)
@@ -2708,11 +2701,6 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
     def supports_rich_root(self):
         return self._format.rich_root_data
-
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
-    def iter_reverse_revision_history(self, revision_id):
-        self._ensure_real()
-        return self._real_repository.iter_reverse_revision_history(revision_id)
 
     @property
     def _serializer(self):
@@ -3405,6 +3393,14 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             self.conf_store =  RemoteBranchStore(self)
         return self.conf_store
 
+    def store_uncommitted(self, creator):
+        self._ensure_real()
+        return self._real_branch.store_uncommitted(creator)
+
+    def get_unshelver(self, tree):
+        self._ensure_real()
+        return self._real_branch.get_unshelver(tree)
+
     def _get_real_transport(self):
         # if we try vfs access, return the real branch's vfs transport
         self._ensure_real()
@@ -3792,26 +3788,6 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             raise errors.UnexpectedSmartServerResponse(response)
         self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
-    @needs_write_lock
-    def set_revision_history(self, rev_history):
-        """See Branch.set_revision_history."""
-        self._set_revision_history(rev_history)
-
-    @needs_write_lock
-    def _set_revision_history(self, rev_history):
-        # Send just the tip revision of the history; the server will generate
-        # the full history from that.  If the revision doesn't exist in this
-        # branch, NoSuchRevision will be raised.
-        if rev_history == []:
-            rev_id = 'null:'
-        else:
-            rev_id = rev_history[-1]
-        self._set_last_revision(rev_id)
-        for hook in branch.Branch.hooks['set_rh']:
-            hook(self, rev_history)
-        self._cache_revision_history(rev_history)
-
     def _get_parent_location(self):
         medium = self._client._medium
         if medium._is_remote_before((1, 13)):
@@ -3949,8 +3925,18 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             except errors.UnknownSmartMethod:
                 medium._remember_remote_is_before((1, 6))
         self._clear_cached_state_of_remote_branch_only()
-        self._set_revision_history(self._lefthand_history(revision_id,
-            last_rev=last_rev,other_branch=other_branch))
+        graph = self.repository.get_graph()
+        (last_revno, last_revid) = self.last_revision_info()
+        known_revision_ids = [
+            (last_revid, last_revno),
+            (_mod_revision.NULL_REVISION, 0),
+            ]
+        if last_rev is not None:
+            if not graph.is_ancestor(last_rev, revision_id):
+                # our previous tip is not merged into stop_revision
+                raise errors.DivergedBranches(self, other_branch)
+        revno = graph.find_distance_to_null(revision_id, known_revision_ids)
+        self.set_last_revision_info(revno, revision_id)
 
     def set_push_location(self, location):
         self._set_config_location('push_location', location)

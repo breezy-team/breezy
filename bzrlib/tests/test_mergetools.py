@@ -15,7 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-import re
 import sys
 import tempfile
 
@@ -23,7 +22,6 @@ from bzrlib import (
     mergetools,
     tests
 )
-from bzrlib.tests.features import backslashdir_feature
 
 
 class TestFilenameSubstitution(tests.TestCaseInTempDir):
@@ -39,7 +37,7 @@ class TestFilenameSubstitution(tests.TestCaseInTempDir):
              '-o',
              'test.txt'],
             args)
-        
+
     def test_spaces(self):
         cmd_list = ['kdiff3', '{base}', '{this}', '{other}', '-o', '{result}']
         args, tmpfile = mergetools._subst_filename(cmd_list,
@@ -107,7 +105,7 @@ class TestInvoke(tests.TestCaseInTempDir):
             ('test.txt.THIS', 'this stuff'),
             ('test.txt.OTHER', 'other stuff'),
         ))
-        
+
     def test_invoke_expands_exe_path(self):
         self.overrideEnv('PATH', os.path.dirname(sys.executable))
         def dummy_invoker(exe, args, cleanup):
@@ -120,7 +118,7 @@ class TestInvoke(tests.TestCaseInTempDir):
         self.assertEqual(0, retcode)
         self.assertEqual(sys.executable, self._exe)
         self.assertEqual(['test.txt'], self._args)
-        
+
     def test_success(self):
         def dummy_invoker(exe, args, cleanup):
             self._exe = exe
@@ -131,7 +129,7 @@ class TestInvoke(tests.TestCaseInTempDir):
         self.assertEqual(0, retcode)
         self.assertEqual('tool', self._exe)
         self.assertEqual(['test.txt'], self._args)
-    
+
     def test_failure(self):
         def dummy_invoker(exe, args, cleanup):
             self._exe = exe
@@ -159,7 +157,7 @@ class TestInvoke(tests.TestCaseInTempDir):
         self.assertEqual('tool', self._exe)
         self.assertPathDoesNotExist(self._args[0])
         self.assertFileEqual('temp stuff', 'test.txt')
-    
+
     def test_failure_tempfile(self):
         def dummy_invoker(exe, args, cleanup):
             self._exe = exe

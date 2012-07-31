@@ -333,6 +333,18 @@ Note that ``basename`` here refers to the base name of ``relpath`` which
 itself is defined as the relative path between the section name and the
 location it matches.
 
+Another such option is ``branchname``, which refers to the name of a colocated
+branch.  For non-colocated branches, it behaves like basename.  It can be used
+like this::
+
+  [/home/vila/src/bzr/bugs]
+  mypush = lp:~vila/bzr/{branchname}
+
+When used with a colocated branch named ``832013-expand-in-stack``, we'll get::
+
+  bzr config mypush
+  lp:~vila/bzr/832013-expand-in-stack
+
 When an option is local to a Section, it cannot be referred to from option
 values in any other section from the same ``Store`` nor from any other
 ``Store``.

@@ -353,7 +353,7 @@ class TestCmdServeChrooting(TestBzrServeBase):
         t = self.get_transport()
         t.mkdir('server-root')
         self.run_bzr_serve_then_func(
-            ['--listen', 'localhost', '--port', '0',
+            ['--listen', '127.0.0.1', '--port', '0',
              '--directory', t.local_abspath('server-root'),
              '--allow-writes'],
             func=self.when_server_started)

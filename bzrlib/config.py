@@ -81,6 +81,7 @@ import bzrlib
 from bzrlib.decorators import needs_write_lock
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import base64
 import fnmatch
 import re
 
@@ -204,11 +205,6 @@ class Config(object):
     def config_id(self):
         """Returns a unique ID for the config."""
         raise NotImplementedError(self.config_id)
-
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def get_editor(self):
-        """Get the users pop up editor."""
-        raise NotImplementedError
 
     def get_change_editor(self, old_tree, new_tree):
         from bzrlib import diff
@@ -1056,10 +1052,6 @@ class GlobalConfig(LockableConfig):
         conf._create_from_string(str_or_unicode, save)
         return conf
 
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def get_editor(self):
-        return self._get_user_option('editor')
-
     @needs_write_lock
     def set_user_option(self, option, value):
         """Save option and its value in the configuration."""
@@ -1571,7 +1563,7 @@ def xdg_cache_dir():
         return os.path.expanduser('~/.cache')
 
 
-def _get_default_mail_domain():
+def _get_default_mail_domain(mailname_file='/etc/mailname'):
     """If possible, return the assumed default email domain.
 
     :returns: string mail domain, or None.
@@ -1580,11 +1572,11 @@ def _get_default_mail_domain():
         # No implementation yet; patches welcome
         return None
     try:
-        f = open('/etc/mailname')
+        f = open(mailname_file)
     except (IOError, OSError), e:
         return None
     try:
-        domain = f.read().strip()
+        domain = f.readline().strip()
         return domain
     finally:
         f.close()
@@ -2140,6 +2132,19 @@ credential_store_registry.register('plain', PlainTextCredentialStore,
 credential_store_registry.default_key = 'plain'
 
 
+class Base64CredentialStore(CredentialStore):
+    __doc__ = """Base64 credential store for the authentication.conf file"""
+    
+    def decode_password(self, credentials):
+        """See CredentialStore.decode_password."""
+        # GZ 2012-07-28: Will raise binascii.Error if password is not base64,
+        #                should probably propogate as something more useful.
+        return base64.decodestring(credentials['password'])
+
+credential_store_registry.register('base64', Base64CredentialStore,
+                                   help=Base64CredentialStore.__doc__)
+
+
 class BzrDirConfig(object):
 
     def __init__(self, bzrdir):
@@ -2407,7 +2412,8 @@ class Option(object):
                 value = self.default()
                 if not isinstance(value, unicode):
                     raise AssertionError(
-                    'Callable default values should be unicode')
+                        "Callable default value for '%s' should be unicode"
+                        % (self.name))
             else:
                 value = self.default
         return value
@@ -2965,7 +2971,7 @@ class MutableSection(Section):
             # Report concurrent updates in an ad-hoc way. This should only
             # occurs when different processes try to update the same option
             # which is not supported (as in: the config framework is not meant
-            # to be used a sharing mechanism).
+            # to be used as a sharing mechanism).
             if expected != reloaded:
                 if actual is _DeletedOption:
                     actual = '<DELETED>'
@@ -2991,8 +2997,9 @@ class Store(object):
     mutable_section_class = MutableSection
 
     def __init__(self):
-        # Which sections need to be saved
-        self.dirty_sections = []
+        # Which sections need to be saved (by section id). We use a dict here
+        # so the dirty sections can be shared by multiple callers.
+        self.dirty_sections = {}
 
     def is_loaded(self):
         """Returns True if the Store has been loaded.
@@ -3041,7 +3048,7 @@ class Store(object):
         raise NotImplementedError(self.save)
 
     def _need_saving(self):
-        for s in self.dirty_sections:
+        for s in self.dirty_sections.values():
             if s.orig:
                 # At least one dirty section contains a modification
                 return True
@@ -3061,11 +3068,11 @@ class Store(object):
         # get_mutable_section() call below.
         self.unload()
         # Apply the changes from the preserved dirty sections
-        for dirty in dirty_sections:
-            clean = self.get_mutable_section(dirty.id)
+        for section_id, dirty in dirty_sections.iteritems():
+            clean = self.get_mutable_section(section_id)
             clean.apply_changes(dirty, self)
         # Everything is clean now
-        self.dirty_sections = []
+        self.dirty_sections = {}
 
     def save_changes(self):
         """Saves the Store to persistent storage if changes occurred.
@@ -3151,7 +3158,7 @@ class IniFileStore(Store):
 
     def unload(self):
         self._config_obj = None
-        self.dirty_sections = []
+        self.dirty_sections = {}
 
     def _load_content(self):
         """Load the config file bytes.
@@ -3205,8 +3212,7 @@ class IniFileStore(Store):
         if not self._need_saving():
             return
         # Preserve the current version
-        current = self._config_obj
-        dirty_sections = list(self.dirty_sections)
+        dirty_sections = dict(self.dirty_sections.items())
         self.apply_changes(dirty_sections)
         # Save to the persistent storage
         self.save()
@@ -3247,13 +3253,16 @@ class IniFileStore(Store):
         except errors.NoSuchFile:
             # The file doesn't exist, let's pretend it was empty
             self._load_from_string('')
+        if section_id in self.dirty_sections:
+            # We already created a mutable section for this id
+            return self.dirty_sections[section_id]
         if section_id is None:
             section = self._config_obj
         else:
             section = self._config_obj.setdefault(section_id, {})
         mutable_section = self.mutable_section_class(section_id, section)
         # All mutable sections can become dirty
-        self.dirty_sections.append(mutable_section)
+        self.dirty_sections[section_id] = mutable_section
         return mutable_section
 
     def quote(self, value):
@@ -3489,11 +3498,14 @@ class NameMatcher(SectionMatcher):
 
 class LocationSection(Section):
 
-    def __init__(self, section, extra_path):
+    def __init__(self, section, extra_path, branch_name=None):
         super(LocationSection, self).__init__(section.id, section.options)
         self.extra_path = extra_path
+        if branch_name is None:
+            branch_name = ''
         self.locals = {'relpath': extra_path,
-                       'basename': urlutils.basename(extra_path)}
+                       'basename': urlutils.basename(extra_path),
+                       'branchname': branch_name}
 
     def get(self, name, default=None, expand=True):
         value = super(LocationSection, self).get(name, default)
@@ -3569,9 +3581,15 @@ class LocationMatcher(SectionMatcher):
 
     def __init__(self, store, location):
         super(LocationMatcher, self).__init__(store)
+        url, params = urlutils.split_segment_parameters(location)
         if location.startswith('file://'):
             location = urlutils.local_path_from_url(location)
         self.location = location
+        branch_name = params.get('branch')
+        if branch_name is None:
+            self.branch_name = urlutils.basename(self.location)
+        else:
+            self.branch_name = urlutils.unescape(branch_name)
 
     def _get_matching_sections(self):
         """Get all sections matching ``location``."""
@@ -3603,8 +3621,9 @@ class LocationMatcher(SectionMatcher):
             while True:
                 section = iter_all_sections.next()
                 if section_id == section.id:
-                    matching_sections.append(
-                        (length, LocationSection(section, extra_path)))
+                    section = LocationSection(section, extra_path,
+                                              self.branch_name)
+                    matching_sections.append((length, section))
                     break
         return matching_sections
 

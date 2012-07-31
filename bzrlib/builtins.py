@@ -1153,7 +1153,9 @@ class cmd_pull(Command):
                  "the master branch."
             ),
         Option('show-base',
-            help="Show base revision text in conflicts.")
+            help="Show base revision text in conflicts."),
+        Option('overwrite-tags',
+            help="Overwrite tags only."),
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
@@ -1161,7 +1163,14 @@ class cmd_pull(Command):
     def run(self, location=None, remember=None, overwrite=False,
             revision=None, verbose=False,
             directory=None, local=False,
-            show_base=False):
+            show_base=False, overwrite_tags=False):
+
+        if overwrite:
+            overwrite = ["history", "tags"]
+        elif overwrite_tags:
+            overwrite = ["tags"]
+        else:
+            overwrite = []
         # FIXME: too much stuff is in the command class
         revision_id = None
         mergeable = None
@@ -1305,6 +1314,8 @@ class cmd_push(Command):
         Option('no-tree',
                help="Don't populate the working tree, even for protocols"
                " that support it."),
+        Option('overwrite-tags',
+              help="Overwrite tags only."),
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
@@ -1312,8 +1323,16 @@ class cmd_push(Command):
     def run(self, location=None, remember=None, overwrite=False,
         create_prefix=False, verbose=False, revision=None,
         use_existing_dir=False, directory=None, stacked_on=None,
-        stacked=False, strict=None, no_tree=False):
+        stacked=False, strict=None, no_tree=False,
+        overwrite_tags=False):
         from bzrlib.push import _show_push_branch
+
+        if overwrite:
+            overwrite = ["history", "tags"]
+        elif overwrite_tags:
+            overwrite = ["tags"]
+        else:
+            overwrite = []
 
         if directory is None:
             directory = '.'
@@ -1596,7 +1615,7 @@ class cmd_checkout(Command):
     code.)
     """
 
-    _see_also = ['checkouts', 'branch']
+    _see_also = ['checkouts', 'branch', 'working-trees', 'remove-tree']
     takes_args = ['branch_location?', 'to_location?']
     takes_options = ['revision',
                      Option('lightweight',
@@ -1840,7 +1859,7 @@ class cmd_remove(Command):
 
     This makes Bazaar stop tracking changes to the specified files. Bazaar will
     delete them if they can easily be recovered using revert otherwise they
-    will be backed up (adding an extention of the form .~#~). If no options or
+    will be backed up (adding an extension of the form .~#~). If no options or
     parameters are given Bazaar will scan for files that are being tracked by
     Bazaar but missing in your tree and stop tracking them for you.
     """
@@ -1852,19 +1871,13 @@ class cmd_remove(Command):
             title='Deletion Strategy', value_switches=True, enum_switch=False,
             safe='Backup changed files (default).',
             keep='Delete from bzr but leave the working copy.',
-            no_backup='Don\'t backup changed files.',
-            force='Delete all the specified files, even if they can not be '
-                'recovered and even if they are non-empty directories. '
-                '(deprecated, use no-backup)')]
+            no_backup='Don\'t backup changed files.'),
+        ]
     aliases = ['rm', 'del']
     encoding_type = 'replace'
 
     def run(self, file_list, verbose=False, new=False,
         file_deletion_strategy='safe'):
-        if file_deletion_strategy == 'force':
-            note(gettext("(The --force option is deprecated, rather use --no-backup "
-                "in future.)"))
-            file_deletion_strategy = 'no-backup'
 
         tree, file_list = WorkingTree.open_containing_paths(file_list)
 
@@ -2316,13 +2329,18 @@ class cmd_diff(Command):
             help='Diff format to use.',
             lazy_registry=('bzrlib.diff', 'format_registry'),
             title='Diff format'),
+        Option('context',
+            help='How many lines of context to show.',
+            type=int,
+            ),
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
-            prefix=None, old=None, new=None, using=None, format=None):
+            prefix=None, old=None, new=None, using=None, format=None, 
+            context=None):
         from bzrlib.diff import (get_trees_and_branches_to_diff_locked,
             show_diff_trees)
 
@@ -2361,7 +2379,7 @@ class cmd_diff(Command):
                                old_label=old_label, new_label=new_label,
                                extra_trees=extra_trees,
                                path_encoding=path_encoding,
-                               using=using,
+                               using=using, context=context,
                                format_cls=format)
 
 
@@ -4728,21 +4746,28 @@ class cmd_remerge(Command):
 
 
 class cmd_revert(Command):
-    __doc__ = """Revert files to a previous revision.
+    __doc__ = """\
+    Set files in the working tree back to the contents of a previous revision.
 
     Giving a list of files will revert only those files.  Otherwise, all files
     will be reverted.  If the revision is not specified with '--revision', the
-    last committed revision is used.
+    working tree basis revision is used. A revert operation affects only the
+    working tree, not any revision history like the branch and repository or
+    the working tree basis revision.
 
     To remove only some changes, without reverting to a prior version, use
     merge instead.  For example, "merge . -r -2..-3" (don't forget the ".")
     will remove the changes introduced by the second last commit (-2), without
     affecting the changes introduced by the last commit (-1).  To remove
     certain changes on a hunk-by-hunk basis, see the shelve command.
+    To update the branch to a specific revision or the latest revision and
+    update the working tree accordingly while preserving local changes, see the
+    update command.
 
-    By default, any files that have been manually changed will be backed up
-    first.  (Files changed only by merge are not backed up.)  Backup files have
-    '.~#~' appended to their name, where # is a number.
+    Uncommitted changes to files that are reverted will be discarded.
+    Howver, by default, any files that have been manually changed will be
+    backed up first.  (Files changed only by merge are not backed up.)  Backup
+    files have '.~#~' appended to their name, where # is a number.
 
     When you provide files, you can use their current pathname or the pathname
     from the target revision.  So you can use revert to "undelete" a file by
@@ -4995,9 +5020,13 @@ class cmd_missing(Command):
                              "You have %d extra revisions:\n", 
                              len(local_extra)) %
                 len(local_extra))
+            rev_tag_dict = {}
+            if local_branch.supports_tags():
+                rev_tag_dict = local_branch.tags.get_reverse_tag_dict()
             for revision in iter_log_revisions(local_extra,
                                 local_branch.repository,
-                                verbose):
+                                verbose,
+                                rev_tag_dict):
                 lf.log_revision(revision)
             printed_local = True
             status_code = 1
@@ -5011,9 +5040,12 @@ class cmd_missing(Command):
                              "You are missing %d revisions:\n",
                              len(remote_extra)) %
                 len(remote_extra))
+            if remote_branch.supports_tags():
+                rev_tag_dict = remote_branch.tags.get_reverse_tag_dict()
             for revision in iter_log_revisions(remote_extra,
                                 remote_branch.repository,
-                                verbose):
+                                verbose,
+                                rev_tag_dict):
                 lf.log_revision(revision)
             status_code = 1
 
@@ -6200,10 +6232,13 @@ class cmd_switch(Command):
                      Option('create-branch', short_name='b',
                         help='Create the target branch from this one before'
                              ' switching to it.'),
+                     Option('store',
+                        help='Store and restore uncommitted changes in the'
+                             ' branch.'),
                     ]
 
     def run(self, to_location=None, force=False, create_branch=False,
-            revision=None, directory=u'.'):
+            revision=None, directory=u'.', store=False):
         from bzrlib import switch
         tree_location = directory
         revision = _get_one_revision('switch', revision)
@@ -6240,7 +6275,8 @@ class cmd_switch(Command):
                     possible_transports=possible_transports)
         if revision is not None:
             revision = revision.as_revision_id(to_branch)
-        switch.switch(control_dir, to_branch, force, revision_id=revision)
+        switch.switch(control_dir, to_branch, force, revision_id=revision,
+                      store_uncommitted=store)
         if had_explicit_nick:
             branch = control_dir.open_branch() #get the new branch!
             branch.nick = to_branch.nick

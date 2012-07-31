@@ -531,7 +531,7 @@
              sodipodi:role="line"
              x="331.81714"
              y="264.08142"
-             id="tspan3634">bzr remove --force foo.py</tspan></text>
+             id="tspan3634">bzr remove --no-backup foo.py</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"

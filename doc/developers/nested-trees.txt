@@ -1,0 +1,1023 @@
+************
+Nested Trees
+************
+
+:status: 2012-03-17: Draft spec
+
+.. sectnum::
+
+.. contents::
+
+Principles
+**********
+
+- Never store a location in versioned data.
+
+- Implementation of nested trees shall not make operations observably slower
+  for those not using nested trees.
+
+- A repository that holds a revision R should be able to reconstruct the
+  whole contents of that revision, including any nested trees.  Corolary:
+  if I fetch that revision, even into a branch that has no working tree, it
+  should bring across any referenced revisions, or (implicitly) add fallback
+  repositories.
+
+- The introduction or possible support for nested trees should not
+  have an impact on performance.
+
+Core Concepts
+*************
+
+**Subtree** A tree which is inside another tree, which bzr has been asked to
+treat as part of the outer tree.
+
+**Subbranch** The branch associated with a subtree.
+
+**Containing tree** A tree which has another tree inside it
+
+**Tree reference** A directory in a containing tree which contains a subtree.
+
+
+Basic design approach
+*********************
+(see "Design decisions" for extended rationale)
+By default, APIs and commands for containing trees should behave as though the
+subtrees were plain directories.  By default, commands in subtrees should not
+affect the containing trees.
+
+Downwards recursion
+~~~~~~~~~~~~~~~~~~~
+One of the objectives of nested trees is to provide ways of reproducing
+historical combinations of different codebases.  The dependency chain points
+downwards, such that trees are affected by the revision of their subtrees, but
+subtrees are oblivious to their containing trees.  Just as bazaar doesn't
+entice people to commit inconsistent trees, it should not entice people to
+commit inconsistent combinations of containing tree and subtree.  Therefore,
+commit should recurse downwards by default.
+
+Status and diff should reflect what will happen when commit is used, so they
+should also recurse downward by default.  Add almost does this already.  With
+status, diff, commit and add recursing downwards, it would be confusing to
+users if other operations did not.  Therefore, all operations should recurse
+downwards by default.
+
+No upwards recursion by default
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+One of the reasons for using nested trees is to gain performance by only
+committing in a subtree.  Therefore, operations should not recurse upwards by
+default.  However, some users do want to have upwards recursion, so it should
+be provided as an option.
+
+Modelling nested trees as a composite tree
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The idea that a set of nested trees behaves like a single, larger tree seems
+relatively easy to grasp.  Both for users and for developers, it provides a
+clear expectation for the behaviour of nested trees.  There are no obvious
+drawbacks in terms of code clarity or performance.  Therefore, it seems like a
+good model to start with.
+
+Using root file-ids for tree-references
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The idea that tree-reference file-ids are the same as the file-ids of the
+corresponding root directories has a nice symmetry.  It is one way of ensuring
+that "bzr split" is deterministic, and "bzr join" is deterministic.  When
+performing operations involving a tree and a split version of that tree, using
+the same file-id makes it easy to ensure that operations such as moves and
+renames are applied appropriately to the tree-reference.  Providing mechanisms
+whereby a tree-reference can be treated as it would if it had its old file-id
+encroaches on the territory of path tokens or file-id aliases.  Having "split"
+cause file-id changes means that in comparing these revisions, it would be seen
+as a deleting a directory and creating a new tree-reference with the same name.
+Handling this correctly in operations such as merge and revert would be more
+complicated than if it were treated as a kind change, especially when
+unversioned files are present in the subtree.
+
+Sub-branches
+~~~~~~~~~~~~
+The branches associated with subtrees shall be called "subbranches".
+
+The branch for the top tree will be in a special format, whose last_revision
+file lists all the last_revision info for all of the branches associated with
+the nested tree.  The .bzr directories of subtrees will have a "branch" that
+simply indicates that the top tree's branch should be used.
+
+In the top tree's last_revision file, the revision id and revno will be
+provided, indexed by the tree-reference file-id.
+
+The repository used by the top-tree's branch must be a shared repository, and
+will be used by the sub-branches.
+
+Only the top branch will have a branch.conf.  When an operation on a subbranch
+would normally use values from branch.conf it will look them up in the top
+branch's branch.conf and adjust for the sub-location if appropriate.  e.g. "bzr
+push" in a subtree will push just that subbranch to the corresponding subbranch
+in the configured push location of the top branch.
+
+Rationale
+.........
+If the branches were not local, the local subtrees might not be committable,
+and commits to the remote branch would make the local subtree out of date.
+They should not be in a separate location from the containing branch, because
+they might share history with the tree-reference's branch.  However, those
+local branches should not be at the same location as their tree, because the
+tree might be deleted or moved.  Indeed, they should not be anywhere within a
+working tree.
+
+subtree branches should not be above or beside their containing branch, because
+it could cause terrible confusion if subtrees from two different trees were
+updating the same branches with every push, pull, commit and uncommit.
+
+Subtree branches could be plain branches stored somewhere in the top tree's
+branch, but then a lookup mechanism would be needed to translate from file_id
+to location, and performance with large numbers of subbranches would be poor.
+
+Pull and non-initial push
+~~~~~~~~~~~~~~~~~~~~~~~~~
+When a pull involves updates to tree references, pull will always pull into the
+reference branch.  For all new revisions in the upper branch, it will determine
+the revision values of tree references, and fetch them into the repository.
+
+When new tree references are encountered, pull should create a corresponding
+subbranch in the top branch.
+
+Pulls will update the subtrees whose tree-references change, including creating
+trees for new sub-branches.
+
+Implementation strategies
+*************************
+
+Data storage
+************
+
+Trees
+~~~~~
+The root-ids of trees must be unique, so that the same file-id can be used in
+both the containing tree and the subtree, to simplify access within trees.
+Tree references are an inventory type that is distinct from a directory, and
+has a revision-id associated with it.
+All modern working trees support tree references.  Indices may be provided to
+ensure fast access to the list of subtrees.
+
+The various methods on ``Tree`` need to be updated to handle nested trees.
+
+Tree file ids are tuples containing inventory file ids, describing a path
+to the file. This means that if a file is in a nested tree with the root 
+fileid ``file_id_a`` and the file itself has the inventory file id ``file_id_b``
+then the tree file id is (file_id_a, file_id_b). This makes it easy to look up file ids
+without having to load and scan all nested trees for ``file_id_b``.
+
+Branches
+~~~~~~~~
+A new branch format, "subbranches", is introduced which provides multiple
+sub-branches, with their data referenced by file-id.  A new branch refrerence
+format, "subbranch-reference", is introduced which refers to sub-branches in a
+"subbranches" branch.
+
+Repositories
+~~~~~~~~~~~~
+Some repository formats have 'subtree' variants, e.g. pack-0.92-subtree,
+development-subtree.  These are hidden, experimental formats that support
+storing tree-references in their inventory formats.
+
+Repository indexing might be extended to provide fast access to
+tree-references.
+
+Commands
+********
+
+The following new options are introduced:
+
+``join --reference`` Cause an inner tree to be treated as a subtree.  The outer
+tree's branch must be in the new "subbranches" format.  The inner tree's branch
+will be cloned into the "subbranches" branch, and the local branch will be
+replaced with a "subbranch-reference".  Finally, a tree-reference will be
+added to the containing tree.
+
+(this is already implemented)
+
+API Changes
+***********
+
+Tree file ids as tuples
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Implementation Changes
+**********************
+
+Branch changes
+~~~~~~~~~~~~~~
+
+ pull recurses into reference branches, and pulls *from* the source's reference
+ branches.
+
+Repository changes
+~~~~~~~~~~~~~~~~~~
+
+ fetch provides a list of tree-reference revision ids/file-id pairs for the
+ revisions that were fetched.  Fetch automatically fetches all revisions
+ associted with tree-references that were fetched.
+
+Use Cases
+*********
+
+Case 1
+~~~~~~
+Barry works on a project with three libraries.  He wants to keep up to date
+with the tip of those libraries, but he doesn't want them to be part of his
+source tree.
+
+Example commands::
+
+ Set up the tree:
+ $ bzr branch --nested http://library1 project
+ $ bzr branch --nested http://library2 project
+ $ bzr branch --nested http://library3 project
+ $ bzr commit project -m "Added three libraries"
+
+ Update a library to tip:
+ $ bzr pull -d project/library1 http://library1
+
+Case 2
+~~~~~~
+Now, Barry wants to add a fourth library.
+
+Example commands::
+
+ $ bzr branch --nested http://library4 project
+
+Case 3
+~~~~~~
+Barry wants to publish his project.
+
+Example commands::
+
+ $ bzr push -d project bzr+ssh://project/trunk
+
+Case 4
+~~~~~~
+Barry decides to make part of his project into another library
+
+Example commands::
+
+ $ bzr split --nested project/newlibrary
+
+Case 5
+~~~~~~
+Curtis wants to hack on Barry's project
+
+Example commands::
+
+ $ bzr branch http://project/trunk
+
+Case 6
+~~~~~~
+Barry wants to drop one of the libraries he was using
+
+Example commands::
+
+ $ rm project/library1
+ $ bzr commit project -m "Removed library1"
+
+Case 7
+~~~~~~
+Curtis has made changes to one of the libraries.  Barry wants to merge Curtis'
+changes into his copy.
+
+Example commands::
+
+ $ bzr merge -d project http://curtis.org/trunk/library2
+
+ Or alternatively:
+ $ bzr merge -d project/library2 http://curtis.org/trunk/library2
+
+Case 8
+~~~~~~
+Curtis has made changes to Barry's main project.  Barry wants to merge Curtis'
+changes into his copy.
+
+Example commands::
+
+ $ bzr merge -d project http://curtis.org/trunk
+
+
+Case 9
+~~~~~~
+Barry makes changes in his project and in a library, and he runs status
+
+Example commands::
+
+ $ echo bar > project/foo
+ $ echo qux > project/library2/baz
+ $ bzr status project
+  M foo
+  M library2/baz
+
+Case 10
+~~~~~~~
+Barry wants to upgrade the bazaar format of his project
+
+Example commands::
+
+ $ bzr upgrade project
+
+Case 11
+~~~~~~~
+Curtis wants to apply Barry's latest changes.
+
+Example commands::
+
+ $ bzr merge -d project http://project/trunk
+
+Case 12
+~~~~~~~
+Danilo wants to start a project with two libraries using nested trees from
+scratch.
+
+Example commands::
+
+ $ bzr init project
+ $ bzr branch --nested http://library4 project
+ $ bzr branch --nested http://library5 project
+ $ bzr commit project -m "Created new project."
+
+Case 13
+~~~~~~~
+Edwin has a project that doesn't use nested trees and he wants to start using
+nested trees.
+
+Example commands::
+ $ bzr split --nested project/subdir
+
+Case 14
+~~~~~~~
+Françis has a project with nested trees where the containing tree uses one
+Bazaar format and the subtree uses a different Bazaar format.
+
+Not supported.
+
+Case 15
+~~~~~~~
+Barry commits some changes to a library and to the main project, and then
+discovers the changes are not appropriate.  He has not yet pushed his changes
+anywhere.
+
+Example commands::
+
+ $ bzr merge -d project http://library2
+ $ bzr commit project -m "Updated library2"
+ $ bzr uncommit project --force
+
+Case 16
+~~~~~~~
+Barry commits some changes to a library and to the main project, publishes his
+branch, and then discovers the changes are not appropriate.
+
+Example commands::
+
+ $ bzr merge -d project http://library2
+ $ bzr commit project -m "Updated library2"
+ $ bzr push -d project
+ $ bzr revert -r-2 project
+ $ bzr commit project -m "Reverted inappropriate changes."
+ $ bzr push -d project
+
+Case 17
+~~~~~~~
+Gary is writing a project.  Henninge wants to split a library out of it.
+
+Example commands::
+
+ $ bzr branch project
+ $ bzr split project/library6
+ $ mv project/library6 .
+ $ rm project
+ $ bzr commit -m "split library6 into its own library."
+
+Case 18
+~~~~~~~
+Henning wants to update to receive Gary's latest changes.
+
+Example commands::
+
+ $ bzr merge -d library6
+
+Case 19
+~~~~~~~
+Gary wants to update to receive Henninge's changes, including splitting a
+library out.
+
+Example commands::
+
+ $ bzr split --nested project/library6
+ $ bzr commit project -m "Turned library6 into a library"
+ $ bzr merge -d project/library6 http://library6
+ $ bzr commit project -m "Merge Henninge's changes."
+
+
+Case 20
+~~~~~~~
+Gary wants to update to receive Henninge's changes, without splitting a library
+out.
+
+ $ bzr split --nested project/library6
+ $ bzr commit project -m "Turned library6 into a library"
+ # i.e. a cherrypick that skips the revision where library6 became a library.
+ $ bzr merge -d project/library6 http://library6 -r 5..-1
+ $ bzr commit project -m "Merge Henninge's changes."
+
+Case 21
+~~~~~~~
+
+John works on a project called FooBar, but has decided that it would be better
+structured as two projects, where Bar is a library that may be of general use
+outside of Foo.  As it happens, bar already has its own subdirectory.
+
+He runs:
+::
+
+    # Convert into two trees: foobar and foobar/bar.
+    # In each tree, files will be removed and deleted.  In foobar/bar, "bar"
+    # will have been moved to become the tree root.
+    # These changes will be committed later.
+    $ bzr upgrade foobar --format=subbranches
+    $ bzr split foobar/bar
+
+    # Add a tree-reference from foobar to foobar/bar, change bar's branch
+    # to a reference to subbranch in foobar's branch.
+    $ bzr join --nested foobar/bar
+
+    # This recurses into foobar/bar and commits the deletion of the containing
+    # tree.  In foobar, it commits a kind change for 'bar' from directory to
+    # tree-reference, and the deletion of the contents of bar.
+    $ bzr commit foobar
+
+This commits new revisions to foobar and bar, and foobar's tree-reference bar
+refers to the revision-id of bar.
+
+Next, he adds two new files: foobar/baz and foobar/bar/qux::
+
+    $ vi foobar/baz
+    $ vi foobar/bar/qux
+    # This adds qux to foobar/bar and adds baz to foobar.
+    $ bzr add foobar
+
+Since foobar/bar/qux is in a commitable state and foobar/baz is not, he invokes
+::
+
+    $ bzr commit foobar/bar
+
+This commits foobar/bar/baz/qux to the subtree and commits foobar/bar to the
+containing tree.
+
+(Had he wanted to commit to just the subtree, or just the containing tree, he
+could have specified an option.)
+
+
+Case 21
+~~~~~~~
+
+Robert wants to hack on a project, Baz, that is structured as a nested tree,
+which uses the library "quxlib", from quxlib.org.
+
+He runs:
+::
+
+    $ bzr branch http://baz.org/dev baz
+
+This creates a "subbranches" branch and working tree for baz, as normal.  Since
+tree-references were encountered, it adds subbranches for them to the baz
+branch.  All data is retrieved from baz.org, not quxlib.org.
+
+It creates a working tree for quxlib with a subbranch-reference.  It uses the
+revision-id from the tree-reference in the containing tree, not the head
+revision at baz.org.  This allows Robert to get a known-good nested tree.
+
+Later, Robert decides to update the version of quxlib being used to the latest
+from quxlib.org.  He runs::
+
+    $ bzr pull -d http://quxlib.org
+
+This updates the version of quxlib in the working tree, which mean that baz is
+now out-of-date with its last-committed tree.  Unfortunately, the new rev on
+quxlib is not completely compatible with the old one, and Robert must tweak a
+few files before Baz runs properly.  Once he has done so, he runs::
+
+    $ bzr commit baz
+
+Now he has committed a known-good nested tree, and the baz working tree is once
+again up-to-date.
+
+
+User documentation
+******************
+
+For many large projects, it is often useful to incorporate libraries
+maintained elsewhere or to construct them from multiple subprojects.
+While it is easy for a single user to set up a particular layout of
+multiple branches by hand, the different branches really need to be
+linked together if others are to reproduce the desired layout, and
+if the relationships are going to be managed over time.
+
+Bazaar has good support for building and managing external libraries
+and subprojects via a feature known as *nested trees*. In particular,
+nearly all of Bazaar's commonly used commands understand nested trees
+and Do The Right Thing as explained below. The relationship is hierarchical:
+the containing tree knows about its nested trees, but nested trees are unaware
+of the tree (or trees) containing them.
+
+At the moment, *nested trees* are the only type of nested item
+supported though *nested files* may be supported in the future.
+Nested trees may contain other nested trees as required.
+
+Note: This feature requires a recent branch format such as ``2.0``
+or later.
+
+
+Nesting an external project
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To link an external project into a branch, use the ``branch`` command
+with the ``--nested`` option like this::
+
+  bzr branch --nested SOURCE-URL TARGET-DIR
+
+For example, assuming you already have a ``src/lib`` directory where
+libraries are kept::
+
+  bzr branch --nested http://example.com/xmlsaxlib src/lib/sax
+
+This will create a nested branch in the ``src/lib/sax`` directory,
+join it into the containing branch and save the source location.
+
+If you now run ``bzr status``, it will show the nested branch as
+uncommitted changes like this::
+
+  +  src/lib/sax
+  +  src/lib/sax/README
+  +  src/lib/sax/parser.py
+  ...
+
+To record this change, use the ``commit`` command as you normally would::
+
+  bzr commit -m "added SAX parsing library"
+
+Note that Bazaar stores the tip revision of each nested branch. This
+is an important feature in that it's then easy to reproduce the exact
+combination of libraries used for historical revisions. It also means
+that other developers pulling or merging your changes will get nested
+branches created for them at the right revisions of each.
+
+
+Refreshing a nested branch
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+As bugs are fixed and enhancements are made to nested projects, you
+will want to update the version being used. To do this, ``pull`` the
+latest version of the nested branch. For example::
+
+  bzr pull -d src/lib/sax
+
+If the latest revision is too unstable, you can always use the ``-r``
+option on the ``pull`` command to nominate a particular revision or tag.
+
+Now that you have the required version of the code, you can make
+any required adjustments (e.g. API changes), run your automated tests
+and commit something like this::
+
+  view src/lib/sax/README
+  (hack, hack, hack)
+  make test
+  bzr commit -m "upgraded SAX library to version 2.1.3"
+
+
+Changing a nested tree
+~~~~~~~~~~~~~~~~~~~~~~
+
+As well as keeping track of which revisions of external libraries
+are used over time, one of the reasons for nesting projects is to
+make minor changes. You may want to do this in order to fix and
+track particular bugs you need addressed. In other cases, you may want
+to make various local enhancements that aren't valuable outside
+the context of your project.
+
+As support for nested branches is integrated into most commonly
+used commands, this is actually quite easy to do: simply make
+the change to the required files as you normally would! For example::
+
+  edit src/lib/sax/parser.py
+  bzr commit -m "fix bug #42 in sax parser"
+
+Note that Bazaar is smart enough to recurse by default into nested
+branches, commit changes there, and commit the new nested branch tips
+in the current branch. Both commits get the same commit message.
+
+If you want to only commit the change to a nested branch for now, you
+can change into the nested branch before running commit like this::
+
+  cd src/lib/sax
+  bzr commit -m "fix bug #42 in sax parser"
+
+Alternatively, you can use a selective commit like this::
+
+  bzr commit -m "fix bug #42 in sax parser" src/lib/sax
+
+
+Reviewing nested tree changes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Just like ``commit``, the ``status`` and ``diff`` commands implicitly
+recurse into nested trees. In the case of ``status``, it shows both the
+nested tree as having a pending change as well as the items within it that have
+changed. For example::
+
+   M src/lib/sax
+   M src/lib/sax/parser.py
+
+Once again, if you change into a nested tree though, ``status`` and
+``diff`` will operate just on that tree and not recurse upwards by
+default.
+
+
+Browsing nested tree history
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+As the branches of nested trees have their own history, the ``log`` command
+shows just the history of the containing branch. To see the history for
+a nested branch, nominate the branch explicitly like this::
+
+  bzr log src/lib/sax
+
+Note however that ``log -v`` and ``log -p`` on the containing branch
+will show what files in nested branches were changed in each revision.
+
+
+Splitting out a project
+~~~~~~~~~~~~~~~~~~~~~~~
+
+If you already have a large project and wish to partition it into
+reusable subprojects, use the ``split`` command. This takes an existing
+directory and makes it a separate branch. For example, imagine you have
+a directory holding UI widgets that another project would like to
+leverage. You can make it a separate branch like this::
+
+  bzr split src/uiwidgets
+
+To make the new project available to others, push it to a shared location
+like this::
+
+  cd src/uiwidgets
+  bzr push bzr://example.com/uiwidgets
+
+You also need to link it back into the original project as a nested branch
+using the ``join`` command like this (assuming the current directory is
+``src/uiwidgets``)::
+
+  bzr join --nested .
+  bzr commit -m "uiwidgets is now a nested project"
+
+Similar to ``branch --nested``, ``join --nested`` joins the nominated directory
+(which must hold a branch) into the containing tree.  In order to make sure
+that all versions of a tree can be reproduced, the branches of nested trees
+share a repository with their containing tree.
+
+
+Virtual projects
+~~~~~~~~~~~~~~~~
+
+By design, Bazaar is strict about tracking the actual revisions used of
+nested branches over time. Without this, projects cannot accurately
+reproduce exactly what was used to make a given build. There are
+isolated use cases though where is advantageous to say "give me the
+latest tip of these loosely coupled branches". To do this, create a
+small 'virtual project' which is just a bunch of *unpegged* nested
+branches. To mark nested branches as unpegged, use the ``--no-pegged``
+option of the ``join`` command like this::
+
+  bzr join --nested --no-pegged [DIR]
+
+To stop the nested branch tips from floating and to begin recording
+the tip revisions again, use the ``pegged`` option::
+
+  bzr join --nested --pegged [DIR]
+
+After changing whether one or more nested branches are pegged or not, you
+need to ``commit`` the branch to record that metadata. (The pegged state
+is recorded over time.)
+
+For example, you may be managing a company intranet site as a project
+which is nothing more than a list of unrelated departmental websites
+bundled together. You can set this up like this::
+
+  bzr init intranet-site
+  cd intranet-site
+  bzr branch bzr://ourserver/websites/research
+  bzr branch bzr://ourserver/websites/development
+  bzr branch bzr://ourserver/websites/support
+  bzr branch bzr://ourserver/websites/hr
+  bzr join --nested --no-pegged research
+  bzr join --nested --no-pegged development
+  bzr join --nested --no-pegged support
+  bzr join --nested --no-pegged hr
+  bzr commit -m "initial configuration of intranet-site"
+
+Publishing the overall site is then as easy as going to the server
+hosting your intranet and running something like::
+
+  bzr branch http://mymachine//projects/intranet-site
+
+Refreshing the overall site is as easy as::
+
+  bzr pull
+
+Virtual projects are also useful for providing a partial 'view' over
+a large project containing a large number of subprojects. For example,
+you may be working on an office suite and have a bunch of developers
+that only care about the word processor. You can create a virtual
+project for them like this::
+
+  bzr init wp-modules
+  cd wp-modules
+  bzr branch ../common
+  bzr branch ../printing
+  bzr branch ../spellchecker
+  bzr branch ../wordprocessor
+  bzr join --nested --no-pegged common
+  bzr join --nested --no-pegged printing
+  bzr join --nested --no-pegged spellchecker
+  bzr join --nested --no-pegged wordprocessor
+  bzr commit -m "initial configuration of wp-modules"
+
+Those developers can then get bootstrapped faster and have *just* the
+subprojects they care about by branching from ``wp-modules``.
+
+
+Nested branch tips & tricks
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+As explained above, most of Bazaar's commonly used commands recurse
+downwards into nested branches by default. To prevent this recursion,
+use the ``--no-recurse-nested`` option on various commands (including
+``commit``, ``status`` and ``diff``) that support it.
+
+Thanks to plugins like bzr-svn and bzr-git, Bazaar has strong support
+for transparently accessing branches managed by foreign VCS tools. This
+means that Bazaar can support projects where nested branches are hosted
+in supported foreign systems. For example, to nest a library maintained
+in Subversion::
+
+  bzr branch --nested svn://example.com/xmlhelpers src/lib/xmlhelpers
+
+If you want revisions to be committed both to a remote location and a
+local location, make the top-level branch a bound branch.  (Nested branches
+have no configuration of their own.)
+
+Most likely, you will have some branches that are identical to their upstream
+version and can be pulled, and some that have local changes and must be merged.
+You can update all of them at once using ``merge --pull``.  This will pull
+into the trees with no local changes, and merge into the ones with local
+changes.  Afterward, you should commit, which will commit only into the
+trees that were merged into.
+
+As you'd expect, a nested branch can be moved or deleted using the
+normal commands. For example, after splitting out a subproject, you
+may want to change its location like this::
+
+  bzr mv src/uiwidgets src/lib/uiwidgets
+  bzr commit -m "move uiwidgets into src/lib"
+
+Things to be aware of
+~~~~~~~~~~~~~~~~~~~~~
+
+Commands like ``commit`` and ``push`` need online access to the locations
+for nested branches which have updated their tip. In particular, ``commit``
+will update any changed nested branches first and only commit to the
+containing branch if all nested branch commits succeed. If you are working
+offline, you may want to ensure you have a local mirror location defined
+for nested branches you are likely to tweak. Alternatively, the
+``no-recurse-nested`` option to the ``commit`` command might to useful to
+commit some changes, leaving the nested branch commits until you are back
+online.
+
+At the moment, nested trees need to be incorporated as a whole.
+Filtered views can be used to restrict the set of files and directories
+logically seen. Currently though, filtered views are a lens onto a tree:
+they do not delete other files and the exposed files/directories must
+have the same paths as they do in the original branch. In the future,
+we may add support for nesting and moving selected files from a
+(read-only) nested branch something like this::
+
+  bzr nested DIR --file LICENSE --file doc/README::README
+  bzr commit -m "change which files are nested from project DIR"
+
+If you require this feature, please contact us with your needs.
+
+Design decisions
+****************
+
+The branches of subtrees shall either share a repository with the containing tree,
+or the containing tree's repository will be (implicitly) added as a fallback
+repository.
+
+The branches of subtrees shall be in a special format that shares a single
+last_revision file that is stored in the containing branch.
+
+The subtree branches shall be referenced in the last_revision file by file-id.
+
+Subtree branches shall not support individual configuration.
+
+Fetch shall automatically fetch the revisions mentioned by tree-references,
+recursively.
+
+The reserved revision-id "head:" shall be used in tree-references to refer to
+the tip revision of a branch.
+
+bzr-svn repositories with externals shall behave as though the multiple
+repositories were a single Bazaar repository with multiple branches.
+
+Shall commands recurse downwards by default?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Yes.
+
+Pros:
+
+ - It is hard to accidentally produce inconsistent trees
+ - Inconsistent trees are hard for remote users to handle
+ - Accidentally committing too many things at once is easy to resolve
+ - It is hard to accidentally commit too many things at once
+
+Cons:
+
+ - Accidentally committing nuclear launch codes is easier to do
+ - A commit message that makes sense for the top may not make sense lower down.
+
+
+Shall commands recurse upwards by default?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+No.
+
+
+Shall subtree branches be addressable?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Ideally, yes. We might want to use the path segment parameters syntax here too.
+
+
+Shall we model nested trees as a composite tree?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Yes.  Users will see recurse-downwards behaviour that allows operations that
+cross subtree boundaries, e.g. a merge in the top tree can move a file between
+subtrees.
+
+The downside is that we can't have cheap support for subtrees that are copies
+of one another, because we wouldn't know which copy to apply sets of changes
+to.
+
+
+Shall we use root-ids for tree references?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Yes.  This fits well with our current lack of support of file copies.  If we do
+support file copies in future it will be possible to change this in a future
+format, and perform deterministic upgrades to that format.
+
+
+What about locking?
+~~~~~~~~~~~~~~~~~~~
+
+We should lock recursively.  It matches existing behaviour by failing earlier,
+and the extra cost does not seem onerous.  (To be fully efficient this requires
+an index of the subtrees, otherwise we need to scan the fully
+inventory/dirstate.)
+
+(Also, this decision can be changed later with no compatibility concerns.)
+
+
+How do we handle merge when the subtree hasn't diverged?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+"bzr merge --pull" will be changed so that it will merge (not pull) when the
+local last revision's revno would change (i.e. is a non-lhs parent in the merge
+source).  This is expected to be the most common way to update nested trees.
+
+The existing "bzr merge --pull" behaviour will be renamed to "bzr merge
+--pull-renumber".
+
+"bzr merge" (with no "--pull") will do a merge in all trees.  "bzr pull" will
+do a pull in all trees.
+
+The rationale is that a very common use-case is that the top tree is a project
+the user is actively committing to, and the subtrees are mainly libraries that
+are being mirrored.  So a behaviour that forced every update to be a merge
+would be undesirable for the mirrored subtrees, but an update that is a pull
+wouldn't suit the changing top tree.  And the existing "merge --pull" (that can
+renumber revisions) isn't desireable for either the top tree or subtrees in
+this case.
+
+
+What should uncommit do?
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+It will recurse, and subtrees will be uncommitted back to the revision recorded
+by the revision the top tree is uncommitting to.
+
+This means that operations like::
+
+   $ echo foo > versioned-file-in-top-tree.txt
+   $ bzr ci -m "Change file"
+   $ bzr uncommit
+
+will not cause a change in subtrees, since the top-level commit did not affect
+them.  But on the other hand:
+
+   $ echo foo > subtree/versioned-file-in-subtree.txt
+   $ bzr ci -m "Change file"
+   $ bzr uncommit
+
+will first uncommit to the subtree, then to the top tree.  The uncommit will
+restore both trees to their previous state.
+
+
+Some subtrees should have commits and some should not.  How?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+We will not provide special support for this initially.  We might later support
+flagging some sub-trees as mirror-only or something similar, but this seems like
+it could be a general feature not specific to nesting.  (and it may only require
+a working tree format bump to add).
+
+Comparison with other systems
+*****************************
+
+Git submodules
+~~~~~~~~~~~~~~
+
+This allows separate repositories to be used for submodules.
+
+Mercurial Forests
+~~~~~~~~~~~~~~~~~
+
+The wiki page does not give confidence that this is a well-maintained project.
+It seems similar to config-manager-- its 'snapshot' files are like
+config-manager's config files, describing what branches to get and where to put
+them, optionally specifying a revision.  No metadata about nesting is stored in
+the tree.  Optionally, a 'snapshot.txt' file may be stored in the containing
+tree, but it can also be stored somewhere else.
+
+There is no attempt to integrate subtree support into the core commands.
+
+Mercurial Nested Repositories
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+This design was for an integrated feature, but there are apparently 4
+implementations as extensions.  While it does integrate subtree support into
+core commands, this may be off by default: "The alternative that I lean towards
+is to not recurse unless explicitly instructed to. Most probably, only a few
+commands should arguably even be aware of modules."
+
+Command comparison:
+
+- hg module add ~= bzr join --nested
+- hg module remove ~= bzr remove --keep
+- hg module record's functionality is part of nested commits in nested trees.
+
+Like submodules, this stores location information in versioned data: a
+.hgmodules directory.
+Like submodules and nested trees, particular revisions are recorded.
+
+Subversion "svn:externals"
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+Like bzr, uses per-file metadata.  Like submodules and nested repositories,
+locations are versioned data.  Like Forests, revisions are optional.  Like
+nested repositories, there is limited integration into core commands; checkout
+and update support externals, and commit may support them in the future.
+However, there is no UI specific to creating and updating svn:externals
+references.
+
+Unlike all other alternatives, supports partial checkouts.  This is because svn
+natively supports partial checkouts.  Also, supports checkouts of tags, because
+tags are merely a convention in svn.
+
+Supports pulling in "head" subtrees too, not just specific ("known-good")
+revisions.  Nested trees supports this in order to provide high-fidelity
+imports.
+
+Some support for single-file svn:externals (see
+http://subversion.tigris.org/svn_1.6_releasenotes.html#externals), whereas bzr
+subtrees must be directories.
+
+Has a --ignore-externals option for checking out without pulling in the
+svn:externals items (svn checkout is more or less equivalent to bzr branch).
+You can also use that option on update (more or less like bzr merge).
+
+
+Comments on differences
+~~~~~~~~~~~~~~~~~~~~~~~
+externals support partial checkouts.  Nested trees could gain support for this
+once Bazaar itself supports partial checkouts.  Supporting a single file as a
+"subtree" would also depend on native bzr support.  On platforms that support
+symlinks, using symlinks to portions of a subtree can be an effective
+substitute.
+
+.. vim: ft=rst

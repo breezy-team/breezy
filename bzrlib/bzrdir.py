@@ -53,6 +53,7 @@ from bzrlib import (
     workingtree_3,
     workingtree_4,
     )
+from bzrlib.branchfmt import fullhistory as fullhistorybranch
 from bzrlib.repofmt import knitpack_repo
 from bzrlib.transport import (
     do_catching_redirections,
@@ -464,10 +465,6 @@ class BzrDir(controldir.ControlDir):
                     force_new_repo=force_new_repo, recurse=recurse,
                     stacked=stacked)
         return result
-
-    @deprecated_method(deprecated_in((2, 3, 0)))
-    def generate_backup_name(self, base):
-        return self._available_backup_name(base)
 
     def _available_backup_name(self, base):
         """Find a non-existing backup file name based on base.
@@ -1234,16 +1231,6 @@ class BzrProber(controldir.Prober):
     """The known .bzr formats."""
 
     @classmethod
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def register_bzrdir_format(klass, format):
-        klass.formats.register(format.get_format_string(), format)
-
-    @classmethod
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def unregister_bzrdir_format(klass, format):
-        klass.formats.remove(format.get_format_string())
-
-    @classmethod
     def probe_transport(klass, transport):
         """Return the .bzrdir style format present in a directory."""
         try:
@@ -1825,7 +1812,7 @@ class ConvertMetaToMeta(controldir.Converter):
             old = branch._format.__class__
             new = self.target_format.get_branch_format().__class__
             while old != new:
-                if (old == _mod_branch.BzrBranchFormat5 and
+                if (old == fullhistorybranch.BzrBranchFormat5 and
                     new in (_mod_branch.BzrBranchFormat6,
                         _mod_branch.BzrBranchFormat7,
                         _mod_branch.BzrBranchFormat8)):
@@ -2127,7 +2114,7 @@ def register_metadir(registry, key,
 register_metadir(controldir.format_registry, 'knit',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
     'Format using knits.  Recommended for interoperation with bzr <= 0.14.',
-    branch_format='bzrlib.branch.BzrBranchFormat5',
+    branch_format='bzrlib.branchfmt.fullhistory.BzrBranchFormat5',
     tree_format='bzrlib.workingtree_3.WorkingTreeFormat3',
     hidden=True,
     deprecated=True)
@@ -2136,7 +2123,7 @@ register_metadir(controldir.format_registry, 'dirstate',
     help='Format using dirstate for working trees. '
         'Compatible with bzr 0.8 and '
         'above when accessed over the network. Introduced in bzr 0.15.',
-    branch_format='bzrlib.branch.BzrBranchFormat5',
+    branch_format='bzrlib.branchfmt.fullhistory.BzrBranchFormat5',
     tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     deprecated=True)

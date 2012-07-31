@@ -19,12 +19,12 @@ from bzrlib import (
     bzrdir,
     conflicts,
     errors,
-    symbol_versioning,
     transport,
     workingtree,
     workingtree_3,
     workingtree_4,
     )
+from bzrlib.lock import write_locked
 from bzrlib.lockdir import LockDir
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
@@ -217,31 +217,6 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
         self.assertRaises(errors.UnknownFormatError,
                           workingtree.WorkingTreeFormatMetaDir.find_format,
                           dir)
-
-    def test_register_unregister_format(self):
-        format = SampleTreeFormat()
-        # make a control dir
-        dir = bzrdir.BzrDirMetaFormat1().initialize('.')
-        dir.create_repository()
-        dir.create_branch()
-        # make a branch
-        format.initialize(dir)
-        # register a format for it.
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            workingtree.WorkingTreeFormat.register_format, format)
-        self.assertTrue(format in 
-            self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-                workingtree.WorkingTreeFormat.get_formats))
-        # which branch.Open will refuse (not supported)
-        self.assertRaises(errors.UnsupportedFormatError, workingtree.WorkingTree.open, '.')
-        # but open_downlevel will work
-        self.assertEqual(format.open(dir), workingtree.WorkingTree.open_downlevel('.'))
-        # unregister the format
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            workingtree.WorkingTreeFormat.unregister_format, format)
-        self.assertFalse(format in
-            self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-                workingtree.WorkingTreeFormat.get_formats))
 
     def test_find_format_with_features(self):
         tree = self.make_branch_and_tree('.', format='2a')
@@ -520,3 +495,34 @@ class TestFindTrees(TestCaseWithTransport):
         self.make_branch('qux')
         trees = workingtree.WorkingTree.find_trees('.')
         self.assertEqual(2, len(list(trees)))
+
+
+class TestStoredUncommitted(TestCaseWithTransport):
+
+    def store_uncommitted(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('get root in there')
+        self.build_tree_contents([('tree/file', 'content')])
+        tree.add('file', 'file-id')
+        tree.store_uncommitted()
+        return tree
+
+    def test_store_uncommitted(self):
+        self.store_uncommitted()
+        self.assertPathDoesNotExist('tree/file')
+
+    def test_store_uncommitted_no_change(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('get root in there')
+        tree.store_uncommitted()
+        self.assertIs(None, tree.branch.get_unshelver(tree))
+
+    def test_restore_uncommitted(self):
+        with write_locked(self.store_uncommitted()) as tree:
+            tree.restore_uncommitted()
+            self.assertPathExists('tree/file')
+            self.assertIs(None, tree.branch.get_unshelver(tree))
+
+    def test_restore_uncommitted_none(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.restore_uncommitted()

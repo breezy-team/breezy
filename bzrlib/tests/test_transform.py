@@ -2184,7 +2184,8 @@ class TestBuildTree(tests.TestCaseWithTransport):
         def rot13(chunks, context=None):
             return [''.join(chunks).encode('rot13')]
         rot13filter = filters.ContentFilter(rot13, rot13)
-        filters.register_filter_stack_map('rot13', {'yes': [rot13filter]}.get)
+        filters.filter_stacks_registry.register(
+            'rot13', {'yes': [rot13filter]}.get)
         os.mkdir(self.test_home_dir + '/.bazaar')
         rules_filename = self.test_home_dir + '/.bazaar/rules'
         f = open(rules_filename, 'wb')
@@ -2408,31 +2409,6 @@ class TestCommitTransform(tests.TestCaseWithTransport):
                           'Author2 <author2@example.com>'],
                          revision.get_apparent_authors())
         self.assertEqual('tree', revision.properties['branch-nick'])
-
-
-class TestBackupName(tests.TestCase):
-
-    def test_deprecations(self):
-        class MockTransform(object):
-
-            def has_named_child(self, by_parent, parent_id, name):
-                return name in by_parent.get(parent_id, [])
-
-        class MockEntry(object):
-
-            def __init__(self):
-                object.__init__(self)
-                self.name = "name"
-
-        tt = MockTransform()
-        name1 = self.applyDeprecated(
-            symbol_versioning.deprecated_in((2, 3, 0)),
-            transform.get_backup_name, MockEntry(), {'a':[]}, 'a', tt)
-        self.assertEqual('name.~1~', name1)
-        name2 = self.applyDeprecated(
-            symbol_versioning.deprecated_in((2, 3, 0)),
-            transform._get_backup_name, 'name', {'a':['name.~1~']}, 'a', tt)
-        self.assertEqual('name.~2~', name2)
 
 
 class TestFileMover(tests.TestCaseWithTransport):

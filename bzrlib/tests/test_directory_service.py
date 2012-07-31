@@ -116,3 +116,24 @@ class TestAliasDirectory(TestCaseWithTransport):
         AliasDirectory.branch_aliases.register("booga",
             lambda b: "UHH?", help="Nobody knows")
         self.assertEquals("UHH?", directories.dereference(":booga"))
+
+
+class TestColocatedDirectory(TestCaseWithTransport):
+
+    def test_lookup_non_default(self):
+        default = self.make_branch('.')
+        non_default = default.bzrdir.create_branch(name='nondefault')
+        self.assertEquals(non_default.base, directories.dereference('co:nondefault'))
+
+    def test_lookup_default(self):
+        default = self.make_branch('.')
+        non_default = default.bzrdir.create_branch(name='nondefault')
+        self.assertEquals(urlutils.join_segment_parameters(default.bzrdir.user_url,
+            {"branch": ""}), directories.dereference('co:'))
+
+    def test_no_such_branch(self):
+        # No error is raised in this case, that is up to the code that actually
+        # opens the branch.
+        default = self.make_branch('.')
+        self.assertEquals(urlutils.join_segment_parameters(default.bzrdir.user_url,
+            {"branch": "foo"}), directories.dereference('co:foo'))

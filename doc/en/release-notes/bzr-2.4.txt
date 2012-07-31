@@ -8,7 +8,7 @@ Bazaar Release Notes
 bzr 2.4.3
 #########
 
-:2.4.2: NOT RELEASED YET
+:2.4.3: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -54,6 +54,10 @@ Bug Fixes
 
 * Prevent a traceback being printed to stderr when logging has problems and
   accept utf-8 byte string without breaking. (Martin Packman, #714449)
+
+* _Win32Stat object provides members st_uid and st_gid, those are present
+  in Python's os.stat object. These members required for external tools like
+  bzr-git and dulwich. (Alexander Belchenko, #967060)
 
 Documentation
 *************
