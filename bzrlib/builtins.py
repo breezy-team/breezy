@@ -1871,19 +1871,13 @@ class cmd_remove(Command):
             title='Deletion Strategy', value_switches=True, enum_switch=False,
             safe='Backup changed files (default).',
             keep='Delete from bzr but leave the working copy.',
-            no_backup='Don\'t backup changed files.',
-            force='Delete all the specified files, even if they can not be '
-                'recovered and even if they are non-empty directories. '
-                '(deprecated, use no-backup)')]
+            no_backup='Don\'t backup changed files.'),
+        ]
     aliases = ['rm', 'del']
     encoding_type = 'replace'
 
     def run(self, file_list, verbose=False, new=False,
         file_deletion_strategy='safe'):
-        if file_deletion_strategy == 'force':
-            note(gettext("(The --force option is deprecated, rather use --no-backup "
-                "in future.)"))
-            file_deletion_strategy = 'no-backup'
 
         tree, file_list = WorkingTree.open_containing_paths(file_list)
 
