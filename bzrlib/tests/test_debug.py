@@ -26,11 +26,14 @@ from bzrlib import (
 
 class TestDebugFlags(tests.TestCaseInTempDir):
 
-    def test_set_debug_flags_from_config(self):
-        # test both combinations because configobject automatically splits up
-        # comma-separated lists
-        self.assertDebugFlags(['hpss', 'error'], 'debug_flags = hpss, error\n')
+    def test_set_no_debug_flags_from_config(self):
+        self.assertDebugFlags([], '')
+
+    def test_set_single_debug_flags_from_config(self):
         self.assertDebugFlags(['hpss'], 'debug_flags = hpss\n')
+
+    def test_set_multiple_debug_flags_from_config(self):
+        self.assertDebugFlags(['hpss', 'error'], 'debug_flags = hpss, error\n')
 
     def assertDebugFlags(self, expected_flags, conf_bytes):
         conf = config.GlobalStack()
