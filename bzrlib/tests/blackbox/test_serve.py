@@ -274,6 +274,8 @@ class TestBzrServe(TestBzrServeBase):
     def test_bzr_serve_supports_configurable_timeout(self):
         gs = config.GlobalStack()
         gs.set('serve.client_timeout', 0.2)
+        # Set the config as the subprocess will use it
+        gs.store.save()
         process, url = self.start_server_port()
         self.build_tree_contents([('a_file', 'contents\n')])
         # We can connect and issue a request
@@ -281,9 +283,6 @@ class TestBzrServe(TestBzrServeBase):
         self.assertEqual('contents\n', t.get_bytes('a_file'))
         # However, if we just wait for more content from the server, it will
         # eventually disconnect us.
-        # TODO: Use something like signal.alarm() so that if the server doesn't
-        #       properly handle the timeout, we end up failing the test instead
-        #       of hanging forever.
         m = t.get_smart_medium()
         m.read_bytes(1)
         # Now, we wait for timeout to trigger

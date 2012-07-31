@@ -3433,7 +3433,8 @@ def get_shared_store(store, state=None):
             for k, store in stores.iteritems():
                 store.save_changes()
         if _once:
-            # FIXME: Ugly hack waiting for library_state to always be available.
+            # FIXME: Ugly hack waiting for library_state to always be
+            # available. -- vila 20120731
             import atexit
             atexit.register(save_config_changes)
             _once = False
