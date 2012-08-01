@@ -137,6 +137,7 @@ TestLoader = TestUtil.TestLoader
 isolated_environ = {
     'BZR_HOME': None,
     'HOME': None,
+    'XDG_CONFIG_HOME': None,
     # bzr now uses the Win32 API and doesn't rely on APPDATA, but the
     # tests do check our impls match APPDATA
     'BZR_EDITOR': None, # test_msgeditor manipulates this variable

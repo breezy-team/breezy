@@ -136,19 +136,18 @@ def _get_locale_dir(base):
 
     :param base: plugins can specify their own local directory
     """
-    if hasattr(sys, 'frozen'):
+    fs_enc = sys.getfilesystemencoding()
+    if getattr(sys, 'frozen', False):
         if base is None:
-            base = os.path.dirname(
-                unicode(sys.executable, sys.getfilesystemencoding()))
+            base = os.path.dirname(unicode(sys.executable, fs_enc))
         return os.path.join(base, u'locale')
     else:
         if base is None:
-            base = os.path.dirname(unicode(__file__, sys.getfilesystemencoding()))
+            base = os.path.dirname(unicode(__file__, fs_enc))
         dirpath = os.path.realpath(os.path.join(base, u'locale'))
         if os.path.exists(dirpath):
             return dirpath
-        else:
-            return '/usr/share/locale'
+    return os.path.join(unicode(sys.prefix, fs_enc), u"share", u"locale")
 
 
 def _check_win32_locale():
