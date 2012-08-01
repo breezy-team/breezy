@@ -89,6 +89,7 @@ from bzrlib import (
     atomicfile,
     controldir,
     debug,
+    directory_service,
     errors,
     lazy_regex,
     library_state,
@@ -4068,6 +4069,7 @@ class cmd_config(commands.Command):
             remove=False):
         if directory is None:
             directory = '.'
+        directory = directory_service.directories.dereference(directory)
         directory = urlutils.normalize_url(directory)
         if remove and all:
             raise errors.BzrError(
