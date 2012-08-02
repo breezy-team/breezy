@@ -734,7 +734,7 @@ class TestStaleLockDir(TestCaseWithTransport):
             lambda: 'aproperhostname')
         # This is off by default at present; see the discussion in the bug.
         # If you change the default, don't forget to update the docs.
-        config.GlobalConfig().set_user_option('locks.steal_dead', True)
+        config.GlobalStack().set('locks.steal_dead', True)
         # Create a lock pretending to come from a different nonexistent
         # process on the same machine.
         l1 = LockDir(self.get_transport(), 'a',

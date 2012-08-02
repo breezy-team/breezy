@@ -3044,7 +3044,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         There is no point in forcing them to duplicate the extension related
         warning.
         """
-        config.GlobalConfig().set_user_option('ignore_missing_extensions', True)
+        config.GlobalStack().set('ignore_missing_extensions', True)
 
 
 class ChrootedTestCase(TestCaseWithTransport):

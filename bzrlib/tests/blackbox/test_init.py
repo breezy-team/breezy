@@ -168,10 +168,12 @@ Using shared repository: %s
 
     def test_init_default_format_option(self):
         """bzr init should read default format from option default_format"""
-        conf = _mod_config.GlobalConfig.from_string('''
+        g_store = _mod_config.GlobalStore()
+        g_store._load_from_string('''
 [DEFAULT]
 default_format = 1.9
-''', save=True)
+''')
+        g_store.save()
         out, err = self.run_bzr_subprocess('init')
         self.assertContainsRe(out, '1.9')
 
