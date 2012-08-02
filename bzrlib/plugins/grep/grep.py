@@ -24,15 +24,12 @@ from fnmatch import fnmatch
 import re
 from cStringIO import StringIO
 
-from bzrlib.plugins.grep.termcolor import color_string, re_color_string, FG
+from bzrlib.termcolor import color_string, re_color_string, FG
 
-from bzrlib.workingtree import WorkingTree
-from bzrlib.revision import Revision
 from bzrlib.revisionspec import (
     RevisionSpec,
     RevisionSpec_revid,
     RevisionSpec_revno,
-    RevisionInfo,
     )
 from bzrlib import (
     bzrdir,
@@ -41,12 +38,10 @@ from bzrlib import (
     lazy_regex,
     osutils,
     revision as _mod_revision,
-    textfile,
     trace,
     )
 """)
 
-_terminal_encoding = osutils.get_terminal_encoding()
 _user_encoding = osutils.get_user_encoding()
 
 
@@ -141,6 +136,7 @@ def is_fixed_string(s):
 class _GrepDiffOutputter(object):
     """Precalculate formatting based on options given for diff grep.
     """
+
     def __init__(self, opts):
         self.opts = opts
         self.outf = opts.outf
@@ -232,7 +228,7 @@ def grep_diff(opts):
         if len(opts.revision) == 2:
             end_rev = opts.revision[1]
             end_revid = end_rev.as_revision_id(branch)
-            if end_revid == None:
+            if end_revid is None:
                 end_revno, end_revid = branch.last_revision_info()
             erevno_tuple = branch.revision_id_to_dotted_revno(end_revid)
 
@@ -312,7 +308,7 @@ def versioned_grep(opts):
     try:
         start_rev = opts.revision[0]
         start_revid = start_rev.as_revision_id(branch)
-        if start_revid == None:
+        if start_revid is None:
             start_rev = RevisionSpec_revno.from_string("revno:1")
             start_revid = start_rev.as_revision_id(branch)
         srevno_tuple = branch.revision_id_to_dotted_revno(start_revid)
@@ -320,7 +316,7 @@ def versioned_grep(opts):
         if len(opts.revision) == 2:
             end_rev = opts.revision[1]
             end_revid = end_rev.as_revision_id(branch)
-            if end_revid == None:
+            if end_revid is None:
                 end_revno, end_revid = branch.last_revision_info()
             erevno_tuple = branch.revision_id_to_dotted_revno(end_revid)
 
@@ -447,7 +443,7 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
                     to_grep_append((fid, (fp, fid)))
             else:
                 # we are grepping working tree.
-                if from_dir == None:
+                if from_dir is None:
                     from_dir = '.'
 
                 path_for_file = osutils.pathjoin(tree.basedir, from_dir, fp)

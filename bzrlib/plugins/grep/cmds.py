@@ -147,12 +147,12 @@ class cmd_grep(Command):
             path_list=None, revision=None, pattern=None, include=None,
             exclude=None, fixed_string=False, files_with_matches=False,
             files_without_match=False, color=None, diff=False):
+        from bzrlib import termcolor
         from bzrlib.plugins.grep import (
             grep,
-            termcolor,
             )
         import re
-        if path_list == None:
+        if path_list is None:
             path_list = ['.']
         else:
             if from_root:
@@ -236,14 +236,14 @@ class cmd_grep(Command):
         GrepOptions.outf = self.outf
         GrepOptions.show_color = show_color
 
-        if diff == True:
+        if diff:
             # options not used:
             # files_with_matches, files_without_match
             # levels(?), line_number, from_root
             # include, exclude
             # These are silently ignored.
             grep.grep_diff(GrepOptions)
-        elif revision == None:
+        elif revision is None:
             grep.workingtree_grep(GrepOptions)
         else:
             grep.versioned_grep(GrepOptions)

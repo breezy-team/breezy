@@ -20,12 +20,13 @@ import os
 import re
 import unicodedata as ud
 
-from bzrlib.plugins.grep import features
-from bzrlib.plugins.grep.termcolor import color_string, FG
-
 from bzrlib import tests, osutils
+from bzrlib.termcolor import color_string, FG
 
-from bzrlib.tests.features import UnicodeFilenameFeature
+from bzrlib.tests.features import (
+    ColorFeature,
+    UnicodeFilenameFeature,
+    )
 
 # NOTE: As bzr-grep optimizes PATTERN search to -F/--fixed-string
 # for patterns that are not alphanumeric+whitespace, we test grep
@@ -1988,7 +1989,7 @@ class TestColorGrep(GrepTestBase):
     """Tests for the --color option."""
 
     # GZ 2010-06-05: Does this really require the feature? Nothing prints.
-    _test_needs_features = [features.color_feature]
+    _test_needs_features = [ColorFeature]
 
     _rev_sep = color_string('~', fg=FG.BOLD_YELLOW)
     _sep = color_string(':', fg=FG.BOLD_CYAN)
