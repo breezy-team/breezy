@@ -2604,7 +2604,7 @@ class TestCaseWithMemoryTransport(TestCase):
             wt = controldir.ControlDir.create_standalone_workingtree(root)
             del os.environ['BZR_HOME']
         except Exception, e:
-            self.fail("Fail to initialize the safety net: %r\nExiting\n" % (e,)
+            self.fail("Fail to initialize the safety net: %r\n" % (e,))
         # Hack for speed: remember the raw bytes of the dirstate file so that
         # we don't need to re-open the wt to check it hasn't changed.
         TestCaseWithMemoryTransport._SAFETY_NET_PRISTINE_DIRSTATE = (
