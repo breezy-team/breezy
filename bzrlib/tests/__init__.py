@@ -2595,13 +2595,16 @@ class TestCaseWithMemoryTransport(TestCase):
         real branch.
         """
         root = TestCaseWithMemoryTransport.TEST_ROOT
-        # Make sure we get a readable and accessible home for .bzr.log
-        # and/or config files, and not fallback to weird defaults (see
-        # http://pad.lv/825027).
-        self.assertIs(None, os.environ.get('BZR_HOME', None))
-        os.environ['BZR_HOME'] = root
-        wt = controldir.ControlDir.create_standalone_workingtree(root)
-        del os.environ['BZR_HOME']
+        try:
+            # Make sure we get a readable and accessible home for .bzr.log
+            # and/or config files, and not fallback to weird defaults (see
+            # http://pad.lv/825027).
+            self.assertIs(None, os.environ.get('BZR_HOME', None))
+            os.environ['BZR_HOME'] = root
+            wt = controldir.ControlDir.create_standalone_workingtree(root)
+            del os.environ['BZR_HOME']
+        except Exception, e:
+            self.fail("Fail to initialize the safety net: %r\n" % (e,))
         # Hack for speed: remember the raw bytes of the dirstate file so that
         # we don't need to re-open the wt to check it hasn't changed.
         TestCaseWithMemoryTransport._SAFETY_NET_PRISTINE_DIRSTATE = (
