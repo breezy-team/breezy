@@ -274,7 +274,7 @@ class TestBzrServe(TestBzrServeBase):
     def test_bzr_serve_supports_configurable_timeout(self):
         gs = config.GlobalStack()
         gs.set('serve.client_timeout', 0.2)
-        # Set the config as the subprocess will use it
+        # Save the config as the subprocess will use it
         gs.store.save()
         process, url = self.start_server_port()
         self.build_tree_contents([('a_file', 'contents\n')])
