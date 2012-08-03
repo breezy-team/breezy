@@ -332,7 +332,7 @@ def versioned_grep(opts):
             # faster when we don't want to look at merged revs. We try this
             # with _linear_view_revisions. If all revs are to be grepped we
             # use the slower _graph_view_revisions
-            if opts.levels==1 and grep_mainline:
+            if opts.levels == 1 and grep_mainline:
                 given_revs = _linear_view_revisions(branch, start_revid, end_revid)
             else:
                 given_revs = _graph_view_revisions(branch, start_revid, end_revid)

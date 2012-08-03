@@ -1446,34 +1446,6 @@ class TestGrep(GrepTestBase):
         self.assertContainsRe(out, "file1.txt~1.1.4:text 2", flags=TestGrep._reflags)
         self.assertEqual(len(out.splitlines()), 6)
 
-        out, err = self.run_bzr(['grep', '-r', '1.1.4..1.1.1', 'text'])
-        self.assertContainsRe(out, "file1.txt~1.1.2:text 0", flags=TestGrep._reflags)
-        self.assertContainsRe(out, "file1.txt~1.1.3:text 1", flags=TestGrep._reflags)
-        self.assertContainsRe(out, "file1.txt~1.1.3:text 1", flags=TestGrep._reflags)
-        self.assertContainsRe(out, "file1.txt~1.1.4:text 0", flags=TestGrep._reflags)
-        self.assertContainsRe(out, "file1.txt~1.1.4:text 1", flags=TestGrep._reflags)
-        self.assertContainsRe(out, "file1.txt~1.1.4:text 2", flags=TestGrep._reflags)
-        self.assertEqual(len(out.splitlines()), 6)
-
-        out, err = self.run_bzr(['grep', '--levels=1', '-r', '1.1.1..1.1.4', 'text'])
-        self.assertContainsRe(out, "file1.txt~1.1.2:text 0", flags=TestGrep._reflags)
-        self.assertContainsRe(out, "file1.txt~1.1.3:text 1", flags=TestGrep._reflags)
-        self.assertContainsRe(out, "file1.txt~1.1.3:text 1", flags=TestGrep._reflags)
-        self.assertContainsRe(out, "file1.txt~1.1.4:text 0", flags=TestGrep._reflags)
-        self.assertContainsRe(out, "file1.txt~1.1.4:text 1", flags=TestGrep._reflags)
-        self.assertContainsRe(out, "file1.txt~1.1.4:text 2", flags=TestGrep._reflags)
-        self.assertEqual(len(out.splitlines()), 6)
-
-        out, err = self.run_bzr(['grep', '-r', '1..1.1.4', 'text'])
-        self.assertContainsRe(out, "file1.txt~1.1.2:text 0", flags=TestGrep._reflags)
-        self.assertContainsRe(out, "file1.txt~1.1.3:text 1", flags=TestGrep._reflags)
-        self.assertContainsRe(out, "file1.txt~1.1.3:text 1", flags=TestGrep._reflags)
-        self.assertContainsRe(out, "file1.txt~1.1.4:text 0", flags=TestGrep._reflags)
-        self.assertContainsRe(out, "file1.txt~1.1.4:text 1", flags=TestGrep._reflags)
-        self.assertContainsRe(out, "file1.txt~1.1.4:text 2", flags=TestGrep._reflags)
-        self.assertEqual(len(out.splitlines()), 6)
-
-
     def test_versioned_binary_file_grep(self):
         """(versioned) Grep for pattern in binary file.
         """
