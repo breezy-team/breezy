@@ -19,6 +19,7 @@
 import sys
 import os
 import bzrlib.bzrdir
+from bzrlib import revision as _mod_revision
 from bzrlib.commands import Command
 from bzrlib.errors import BzrCommandError
 from bzrlib.option import Option
@@ -145,7 +146,9 @@ class BisectLog(object):
         repo = self._bzrbranch.repository
         repo.lock_read()
         try:
-            rev_sequence = repo.iter_reverse_revision_history(last_revid)
+            graph = repo.get_graph()
+            rev_sequence = graph.iter_lefthand_ancestry(last_revid,
+                (_mod_revision.NULL_REVISION,))
             high_revid = None
             low_revid = None
             between_revs = []
@@ -198,7 +201,7 @@ class BisectLog(object):
     def _set_status(self, revid, status):
         """Set the bisect status for the given revid."""
         if not self.is_done():
-            if status != "done" and revid in [x[0] for x in self._items 
+            if status != "done" and revid in [x[0] for x in self._items
                                               if x[1] in ['yes', 'no']]:
                 raise RuntimeError("attempting to add revid %s twice" % revid)
             self._items.append((revid, status))
