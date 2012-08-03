@@ -28,12 +28,16 @@ New Features
 Improvements
 ************
 
-``bzr lp-find-proposal`` now only cares about the revision-id that is
-specified, not the branch you use.  This was enabled by a new API call in
-Launchpad's web service.  (Aaron Bentley)
+* ``bzr lp-find-proposal`` now only cares about the revision-id that is
+  specified, not the branch you use.  This was enabled by a new API call in
+  Launchpad's web service.  (Aaron Bentley)
 
 * Implement authentication.conf password obfuscation, the password_encoding
   option can now be set to base64. (Florian Dorn)
+
+* Local configurations files (i.e. accessed on the local file system like
+  ``bazaar.conf`` and ``locations.conf``) are now shared, reducing the
+  number of IOs when querying a configuation option. (Vincent Ladeuil, #832042)
 
 Bug Fixes
 *********
