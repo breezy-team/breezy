@@ -36,7 +36,7 @@ from bzrlib.workingtree import WorkingTree
 class TestInit(TestCaseWithTransport):
 
     def setUp(self):
-        TestCaseWithTransport.setUp(self)
+        super(TestInit, self).setUp()
         self._default_label = '2a'
 
     def test_init_with_format(self):

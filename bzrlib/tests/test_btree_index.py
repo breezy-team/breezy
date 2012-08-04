@@ -59,7 +59,7 @@ class BTreeTestCase(TestCaseWithTransport):
     # that they test.
 
     def setUp(self):
-        TestCaseWithTransport.setUp(self)
+        super(BTreeTestCase, self).setUp()
         self.overrideAttr(btree_index, '_RESERVED_HEADER_BYTES', 100)
 
     def make_nodes(self, count, key_elements, reference_lists):
@@ -1206,7 +1206,7 @@ class TestBTreeNodes(BTreeTestCase):
     scenarios = btreeparser_scenarios()
 
     def setUp(self):
-        BTreeTestCase.setUp(self)
+        super(TestBTreeNodes, self).setUp()
         self.overrideAttr(btree_index, '_btree_serializer', self.parse_btree)
 
     def test_LeafNode_1_0(self):

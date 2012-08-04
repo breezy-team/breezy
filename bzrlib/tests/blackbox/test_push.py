@@ -683,7 +683,7 @@ class RedirectingMemoryServer(memory.MemoryServer):
 class TestPushRedirect(tests.TestCaseWithTransport):
 
     def setUp(self):
-        tests.TestCaseWithTransport.setUp(self)
+        super(TestPushRedirect, self).setUp()
         self.memory_server = RedirectingMemoryServer()
         self.start_server(self.memory_server)
         # Make the branch and tree that we'll be pushing.

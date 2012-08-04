@@ -1771,7 +1771,7 @@ class TestDirReader(tests.TestCaseInTempDir):
     _native_to_unicode = None
 
     def setUp(self):
-        tests.TestCaseInTempDir.setUp(self)
+        super(TestDirReader, self).setUp()
         self.overrideAttr(osutils,
                           '_selected_dir_reader', self._dir_reader_class())
 
@@ -2072,7 +2072,7 @@ class TestCreationOps(tests.TestCaseInTempDir):
     _test_needs_features = [features.chown_feature]
 
     def setUp(self):
-        tests.TestCaseInTempDir.setUp(self)
+        super(TestCreationOps, self).setUp()
         self.overrideAttr(os, 'chown', self._dummy_chown)
 
         # params set by call to _dummy_chown

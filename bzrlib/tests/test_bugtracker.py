@@ -37,7 +37,7 @@ class TestGetBugURL(TestCaseWithMemoryTransport):
             return "http://bugs.com/%s" % bug_id
 
     def setUp(self):
-        TestCaseWithMemoryTransport.setUp(self)
+        super(TestGetBugURL, self).setUp()
         self.tracker_type = TestGetBugURL.TransientTracker
         self.tracker_type.log = []
         bugtracker.tracker_registry.register('transient', self.tracker_type)
@@ -185,7 +185,7 @@ class TestURLParametrizedBugTracker(TestCaseWithMemoryTransport):
     """Tests for URLParametrizedBugTracker."""
 
     def setUp(self):
-        TestCaseWithMemoryTransport.setUp(self)
+        super(TestURLParametrizedBugTracker, self).setUp()
         self.url = 'http://twistedmatrix.com/trac'
         self.tracker = bugtracker.URLParametrizedBugTracker('some', 'ticket/')
 
@@ -220,7 +220,7 @@ class TestURLParametrizedIntegerBugTracker(TestCaseWithMemoryTransport):
     """Tests for URLParametrizedIntegerBugTracker."""
 
     def setUp(self):
-        TestCaseWithMemoryTransport.setUp(self)
+        super(TestURLParametrizedIntegerBugTracker, self).setUp()
         self.url = 'http://twistedmatrix.com/trac'
         self.tracker = bugtracker.URLParametrizedIntegerBugTracker('some',
                                                                    'ticket/')

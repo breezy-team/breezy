@@ -149,7 +149,7 @@ class TestUserIgnores(TestCaseInTempDir):
 class TestRuntimeIgnores(TestCase):
 
     def setUp(self):
-        TestCase.setUp(self)
+        super(TestRuntimeIgnores, self).setUp()
 
         # For the purposes of these tests, we must have no
         # runtime ignores

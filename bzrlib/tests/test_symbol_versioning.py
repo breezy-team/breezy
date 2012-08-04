@@ -222,7 +222,7 @@ class TestDeprecationWarnings(TestCase):
 class TestSuppressAndActivate(TestCase):
 
     def setUp(self):
-        TestCase.setUp(self)
+        super(TestSuppressAndActivate, self).setUp()
         existing_filters = list(warnings.filters)
         def restore():
             warnings.filters[:] = existing_filters

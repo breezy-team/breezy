@@ -2382,7 +2382,7 @@ class TestWithFakedStartBzrSubprocess(tests.TestCaseWithTransport):
     """Base class for tests testing how we might run bzr."""
 
     def setUp(self):
-        tests.TestCaseWithTransport.setUp(self)
+        super(TestWithFakedStartBzrSubprocess, self).setUp()
         self.subprocess_calls = []
 
     def start_bzr_subprocess(self, process_args, env_changes=None,
