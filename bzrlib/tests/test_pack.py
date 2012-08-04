@@ -73,7 +73,7 @@ class TestContainerSerialiser(tests.TestCase):
 class TestContainerWriter(tests.TestCase):
 
     def setUp(self):
-        tests.TestCase.setUp(self)
+        super(TestContainerWriter, self).setUp()
         self.output = StringIO()
         self.writer = pack.ContainerWriter(self.output.write)
 

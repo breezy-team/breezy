@@ -3388,7 +3388,7 @@ class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
     """
 
     def setUp(self):
-        tests.TestCase.setUp(self)
+        super(TestResponseEncoderBufferingProtocolThree, self).setUp()
         self.writes = []
         self.responder = protocol.ProtocolThreeResponder(self.writes.append)
 

@@ -554,7 +554,7 @@ class TestPumpFile(tests.TestCase):
     """Test pumpfile method."""
 
     def setUp(self):
-        tests.TestCase.setUp(self)
+        super(TestPumpFile, self).setUp()
         # create a test datablock
         self.block_size = 512
         pattern = '0123456789ABCDEF'
@@ -1985,7 +1985,7 @@ class TestFailedToLoadExtension(tests.TestCase):
 class TestTerminalWidth(tests.TestCase):
 
     def setUp(self):
-        tests.TestCase.setUp(self)
+        super(TestTerminalWidth, self).setUp()
         self._orig_terminal_size_state = osutils._terminal_size_state
         self._orig_first_terminal_size = osutils._first_terminal_size
         self.addCleanup(self.restore_osutils_globals)
