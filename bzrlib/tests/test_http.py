@@ -2123,7 +2123,6 @@ class TestActivityMixin(object):
     """
 
     def setUp(self):
-        tests.TestCase.setUp(self)
         self.server = self._activity_server(self._protocol_version)
         self.server.start_server()
         self.addCleanup(self.server.stop_server)
@@ -2266,6 +2265,7 @@ class TestActivity(tests.TestCase, TestActivityMixin):
         )
 
     def setUp(self):
+        super(TestActivity, self).setUp()
         TestActivityMixin.setUp(self)
 
 
@@ -2280,6 +2280,7 @@ class TestNoReportActivity(tests.TestCase, TestActivityMixin):
     _protocol_version = 'HTTP/1.1'
 
     def setUp(self):
+        super(TestNoReportActivity, self).setUp()
         self._transport =_urllib.HttpTransport_urllib
         TestActivityMixin.setUp(self)
 
