@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2012-08-06 02:26+0000\n"
-"Last-Translator: Neliton Pereira Jr. <nelitonpjr@gmail.com>\n"
+"PO-Revision-Date: 2012-08-07 00:29+0000\n"
+"Last-Translator: Wellington Oliveira <wellington.oj@gmail.com>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2012-08-06 04:30+0000\n"
+"X-Launchpad-Export-Date: 2012-08-07 04:30+0000\n"
 "X-Generator: Launchpad (build 15745)\n"
 
 #: bzrlib/add.py:93
@@ -5281,12 +5281,12 @@ msgstr "sem alterações"
 
 #: bzrlib/commit.py:998
 msgid "{0} [{1}] - Stage"
-msgstr ""
+msgstr "{0} [{1}] - Stage"
 
 #: bzrlib/commit.py:1001
 #, python-format
 msgid "%s - Stage"
-msgstr ""
+msgstr "%s - Stage"
 
 #: bzrlib/commit_signature_commands.py:34
 msgid "Sign all commits by a given committer."
@@ -7886,7 +7886,7 @@ msgstr ""
 #: bzrlib/smart/server.py:179
 #, python-format
 msgid "Waiting for %d client(s) to finish"
-msgstr ""
+msgstr "Esperando que %d cliente(s) termine(m)"
 
 #: bzrlib/smart/server.py:185
 #, python-format
@@ -7965,7 +7965,7 @@ msgstr "Autenticado como %s"
 
 #: bzrlib/tree.py:647
 msgid "*** {0} content-filter: {1} => {2!r}"
-msgstr ""
+msgstr "*** {0} content-filter: {1} => {2!r}"
 
 #: bzrlib/upgrade.py:77
 #, python-format
@@ -8043,7 +8043,7 @@ msgstr "Obtendo textos"
 
 #: bzrlib/vf_repository.py:2536
 msgid "loading text store"
-msgstr ""
+msgstr "carregando armazenamento de textos"
 
 #: bzrlib/vf_repository.py:2542
 msgid "checking text graph"
@@ -8693,7 +8693,7 @@ msgstr ""
 
 #: dummy/help_topics/log-formats/summary.txt:1
 msgid "Details on the logging formats available"
-msgstr ""
+msgstr "Detalhes sobre os formatos de log disponíveis"
 
 #: dummy/help_topics/other-formats/summary.txt:1
 msgid "Experimental and deprecated storage formats"
@@ -8701,7 +8701,7 @@ msgstr ""
 
 #: dummy/help_topics/patterns/summary.txt:1
 msgid "Information on the pattern syntax"
-msgstr ""
+msgstr "Informações sobre a sintaxe dos padrões"
 
 #: dummy/help_topics/repositories/detail.txt:1
 msgid "Repositories"
@@ -8712,6 +8712,8 @@ msgid ""
 "Repositories in Bazaar are where committed information is stored. There is\n"
 "a repository associated with every branch."
 msgstr ""
+"Repositórios no Bazaar são onde se armazenam as informações submetidas. Há\n"
+"um repositório associado a cada ramo."
 
 #: dummy/help_topics/repositories/detail.txt:6
 msgid ""
@@ -8739,6 +8741,11 @@ msgid ""
 "generally a large space saving. For some operations (e.g. branching\n"
 "within the repository) this translates in to a large time saving."
 msgstr ""
+"Quando dois ramos de um mesmo projeto compartilham um\n"
+"mesmo repositório, geralmente há uma grande economia de\n"
+"espaço. Para algumas operações (i.e. ramificações dentro de\n"
+"um mesmo repositório) isto também remete a uma grande\n"
+"economia de tempo."
 
 #: dummy/help_topics/repositories/detail.txt:21
 msgid ""
@@ -8771,22 +8778,25 @@ msgid ""
 "one\n"
 "                    in which new branches won't get a working tree.\n"
 msgstr ""
+"  init-repository   Cria um repositório compartilhado. Use --no-trees para "
+"criar um\n"
+"                    no qual os ramos não terão árvores de trabalho.\n"
 
 #: dummy/help_topics/repositories/summary.txt:1
 msgid "Basic information on shared repositories."
-msgstr ""
+msgstr "Informações básicas sobre repositórios compartilhados."
 
 #: dummy/help_topics/revisionspec/summary.txt:1
 msgid "Explain how to use --revision"
-msgstr ""
+msgstr "Explica como usar --revision"
 
 #: dummy/help_topics/rules/summary.txt:1
 msgid "Information on defining rule-based preferences"
-msgstr ""
+msgstr "Informações sobre a definição de preferências baseadas em regras"
 
 #: dummy/help_topics/standalone-trees/detail.txt:1
 msgid "Standalone Trees"
-msgstr ""
+msgstr "Árvores independentes"
 
 #: dummy/help_topics/standalone-trees/detail.txt:3
 msgid ""
@@ -8802,11 +8812,11 @@ msgstr ""
 
 #: dummy/help_topics/standalone-trees/detail.txt:10
 msgid "  init    Make a directory into a versioned branch.\n"
-msgstr ""
+msgstr "  init    Torna um diretório em um ramo versionado.\n"
 
 #: dummy/help_topics/standalone-trees/summary.txt:1
 msgid "Information on what a standalone tree is"
-msgstr ""
+msgstr "Informações sobre o que é uma árvore independente"
 
 #: dummy/help_topics/standard-options/detail.txt:1
 msgid "Standard Options"
@@ -8822,6 +8832,9 @@ msgid ""
 "--verbose, -v  Display more information.\n"
 "--quiet, -q    Only display errors and warnings."
 msgstr ""
+"--help, -h     Mostra mensagem de ajuda.\n"
+"--verbose, -v  Mostra informações detalhadas.\n"
+"--quiet, -q    Mostra apenas erros e avisos."
 
 #: dummy/help_topics/standard-options/detail.txt:9
 msgid "Unlike global options, standard options can be used in aliases.\n"
@@ -8829,21 +8842,24 @@ msgstr ""
 
 #: dummy/help_topics/standard-options/summary.txt:1
 msgid "Options that can be used with any command"
-msgstr ""
+msgstr "Opções que podem ser usadas com qualquer comando"
 
 #: dummy/help_topics/status-flags/detail.txt:1
 msgid "Status Flags"
-msgstr ""
+msgstr "Flags de Estado"
 
 #: dummy/help_topics/status-flags/detail.txt:3
 msgid ""
 "Status flags are used to summarise changes to the working tree in a concise\n"
 "manner.  They are in the form::"
 msgstr ""
+"Flags de estado são usadas para resumir mudanças em uma árvore de trabalho "
+"de\n"
+"maneira concisa. Elas são do formato::"
 
 #: dummy/help_topics/status-flags/detail.txt:6
 msgid "   xxx   <filename>"
-msgstr ""
+msgstr "   xxx   <nome-do-arquivo>"
 
 #: dummy/help_topics/status-flags/detail.txt:8
 msgid "where the columns' meanings are as follows."
@@ -8851,7 +8867,7 @@ msgstr ""
 
 #: dummy/help_topics/status-flags/detail.txt:10
 msgid "Column 1 - versioning/renames::"
-msgstr ""
+msgstr "Coluna 1 - versionamento/renomeamento::"
 
 #: dummy/help_topics/status-flags/detail.txt:12
 msgid ""
@@ -8863,10 +8879,17 @@ msgid ""
 "  C File has conflicts\n"
 "  P Entry for a pending merge (not a file)"
 msgstr ""
+"  + Arquivo versionado\n"
+"  - Arquivo não versionado\n"
+"  R Arquivo renomeado\n"
+"  ? Arquivo desconhecido\n"
+"  X Arquivo inexistente (e desconhecido para o bzr)\n"
+"  C Arquivo possui conflitos\n"
+"  P Entrada para uma mesclagem pendente (não é um arquivo)"
 
 #: dummy/help_topics/status-flags/detail.txt:20
 msgid "Column 2 - contents::"
-msgstr ""
+msgstr "Coluna 2 - conteúdos::"
 
 #: dummy/help_topics/status-flags/detail.txt:22
 msgid ""
@@ -8875,22 +8898,26 @@ msgid ""
 "  K File kind changed\n"
 "  M File modified"
 msgstr ""
+"  N Arquivo criado\n"
+"  D Arquivo deletado\n"
+"  K Tipo de arquivo alterado\n"
+"  M Arquivo modificado"
 
 #: dummy/help_topics/status-flags/detail.txt:27
 msgid "Column 3 - execute::"
-msgstr ""
+msgstr "Coluna 3 - executar::"
 
 #: dummy/help_topics/status-flags/detail.txt:29
 msgid "  * The execute bit was changed\n"
-msgstr ""
+msgstr "  * O bit de execução foi mudado\n"
 
 #: dummy/help_topics/status-flags/summary.txt:1
 msgid "Help on status flags"
-msgstr ""
+msgstr "Ajuda sobre as flags de estado"
 
 #: dummy/help_topics/sync-for-reconfigure/detail.txt:1
 msgid "Branches Out of Sync"
-msgstr ""
+msgstr "Ramos não sincronizados"
 
 #: dummy/help_topics/sync-for-reconfigure/detail.txt:3
 msgid ""
@@ -8929,7 +8956,7 @@ msgstr ""
 
 #: dummy/help_topics/topics/summary.txt:1
 msgid "Topics list"
-msgstr ""
+msgstr "Lista de tópicos"
 
 #: dummy/help_topics/url-special-chars/summary.txt:1
 msgid "Special character handling in URLs"
@@ -8941,7 +8968,7 @@ msgstr ""
 
 #: dummy/help_topics/working-trees/detail.txt:1
 msgid "Working Trees"
-msgstr ""
+msgstr "Árvores de trabalho"
 
 #: dummy/help_topics/working-trees/detail.txt:3
 msgid ""
@@ -9000,7 +9027,7 @@ msgstr ""
 
 #: dummy/help_topics/working-trees/detail.txt:33
 msgid "Useful commands::"
-msgstr ""
+msgstr "Comandos úteis::"
 
 #: dummy/help_topics/working-trees/detail.txt:35
 msgid ""
@@ -9014,13 +9041,15 @@ msgstr ""
 
 #: dummy/help_topics/working-trees/summary.txt:1
 msgid "Information on working trees"
-msgstr ""
+msgstr "Informação sobre árvores de trabalho"
 
 #: en/help_topics/authentication.txt:1
 msgid ""
 "Authentication Settings\n"
 "======================="
 msgstr ""
+"Configurações de autenticação\n"
+"======================="
 
 #: en/help_topics/authentication.txt:4
 msgid ""
@@ -9028,6 +9057,9 @@ msgid ""
 "Intent\n"
 "------"
 msgstr ""
+"\n"
+"Objetivo\n"
+"------"
 
 #: en/help_topics/authentication.txt:8
 msgid ""
@@ -9054,6 +9086,8 @@ msgstr ""
 msgid ""
 "The intent is to make this file as small as possible to minimize maintenance."
 msgstr ""
+"A intenção é deixar este arquivo tão pequeno quanto possível para minimizar "
+"a manutenção."
 
 #: en/help_topics/authentication.txt:21
 msgid ""
@@ -9100,6 +9134,8 @@ msgid ""
 "Authentication definitions\n"
 "--------------------------"
 msgstr ""
+"Definições de autenticação\n"
+"--------------------------"
 
 #: en/help_topics/authentication.txt:45
 msgid ""
@@ -9107,10 +9143,13 @@ msgid ""
 "by\n"
 "bzr:"
 msgstr ""
+"Existem dois tipos de autenticação usados pelos diversos esquemas suportados "
+"pelo\n"
+"bzr:"
 
 #: en/help_topics/authentication.txt:48
 msgid "1. user and password"
-msgstr ""
+msgstr "1. usuário e senha"
 
 #: en/help_topics/authentication.txt:50
 msgid ""
@@ -9123,7 +9162,7 @@ msgstr ""
 
 #: en/help_topics/authentication.txt:55
 msgid "2. user, realm and password"
-msgstr ""
+msgstr "2. usuário, domínio e senha"
 
 #: en/help_topics/authentication.txt:57
 msgid ""
@@ -9238,6 +9277,8 @@ msgid ""
 "File format\n"
 "-----------"
 msgstr ""
+"Formato de arquivo\n"
+"-----------"
 
 #: en/help_topics/authentication.txt:113
 msgid ""
@@ -9247,7 +9288,7 @@ msgstr ""
 
 #: en/help_topics/authentication.txt:116
 msgid "Each section describes an authentication definition."
-msgstr ""
+msgstr "Cada seção descreve uma definição de autenticação."
 
 #: en/help_topics/authentication.txt:118
 msgid ""
@@ -9255,10 +9296,13 @@ msgid ""
 "reserved\n"
 "and should appear as the *last* section."
 msgstr ""
+"O nome da seção é uma sequência de caracteres arbitrária, apenas o valor "
+"``DEFAULT`` é reservado\n"
+"e deve aparecer como a *última* seção."
 
 #: en/help_topics/authentication.txt:121
 msgid "Each section should define:"
-msgstr ""
+msgstr "Cada seção deve definir:"
 
 #: en/help_topics/authentication.txt:123
 msgid "* ``user``: the login to be used,"
@@ -9266,7 +9310,7 @@ msgstr ""
 
 #: en/help_topics/authentication.txt:125
 msgid "Each section could define:"
-msgstr ""
+msgstr "Cada seção pode definir:"
 
 #: en/help_topics/authentication.txt:127
 msgid "* ``host``: the remote server,"
@@ -9290,6 +9334,9 @@ msgid ""
 "Examples\n"
 "--------"
 msgstr ""
+"\n"
+"Exemplos\n"
+"--------"
 
 #: en/help_topics/authentication.txt:139
 msgid ""
@@ -9337,7 +9384,7 @@ msgstr ""
 
 #: en/help_topics/authentication.txt:168
 msgid "In the shp.net (fictitious) domain, each project has its own site::"
-msgstr ""
+msgstr "No domínio shp.net (fictício), cada projeto tem seu próprio site::"
 
 #: en/help_topics/authentication.txt:170
 msgid ""
@@ -9399,12 +9446,18 @@ msgid ""
 "Planned enhancements\n"
 "--------------------"
 msgstr ""
+"\n"
+"Melhorias planejadas\n"
+"--------------------"
 
 #: en/help_topics/authentication.txt:212
 msgid ""
 "The following are not yet implemented but planned as parts of a work in\n"
 "progress:"
 msgstr ""
+"As melhorias a seguir ainda não estão implementadas, mas planejadas como "
+"parte de um trabalho em\n"
+"progresso:"
 
 #: en/help_topics/authentication.txt:215
 msgid "* add a  ``password_encoding`` field allowing:"
@@ -9437,7 +9490,7 @@ msgstr ""
 
 #: en/help_topics/bugs.txt:1
 msgid "Bug Tracker Settings"
-msgstr ""
+msgstr "Configurações do rastreador de bug"
 
 #: en/help_topics/bugs.txt:3
 msgid ""
@@ -9515,6 +9568,14 @@ msgid ""
 "configuration section in ``locations.conf``.  You can set up these values\n"
 "for each of the projects you work on."
 msgstr ""
+"Se você usa Bugzilla ou Trac, então você apenas precisa definir uma "
+"variável\n"
+"de configuração que contenha a URL base do rastreador de bug. Estas opções\n"
+"podem ficar em ``bazaar.conf``, ``branch.conf`` ou em uma seção de "
+"configuração\n"
+"específica de uma branch em ``locations.conf``.  Você pode definir tais "
+"valores\n"
+"para cada projeto em que você trabalha."
 
 #: en/help_topics/bugs.txt:48
 msgid ""
@@ -9540,6 +9601,8 @@ msgid ""
 "bugzilla_<tracker>_url\n"
 "----------------------"
 msgstr ""
+"bugzilla_<tracker>_url\n"
+"----------------------"
 
 #: en/help_topics/bugs.txt:59
 msgid ""
@@ -9551,7 +9614,7 @@ msgstr ""
 
 #: en/help_topics/bugs.txt:64
 msgid "    bugzilla_squid_url = http://bugs.squid-cache.org"
-msgstr ""
+msgstr "    bugzilla_squid_url = http://bugs.squid-cache.org"
 
 #: en/help_topics/bugs.txt:66
 msgid ""
@@ -9564,6 +9627,8 @@ msgid ""
 "trac_<tracker>_url\n"
 "------------------"
 msgstr ""
+"trac_<tracker>_url\n"
+"------------------"
 
 #: en/help_topics/bugs.txt:72
 msgid ""
@@ -9575,7 +9640,7 @@ msgstr ""
 
 #: en/help_topics/bugs.txt:77
 msgid "    trac_twisted_url = http://www.twistedmatrix.com/trac"
-msgstr ""
+msgstr "    trac_twisted_url = http://www.twistedmatrix.com/trac"
 
 #: en/help_topics/bugs.txt:79
 msgid ""
@@ -9589,6 +9654,8 @@ msgid ""
 "bugtracker_<tracker>_url\n"
 "------------------------"
 msgstr ""
+"bugtracker_<tracker>_url\n"
+"------------------------"
 
 #: en/help_topics/bugs.txt:85
 msgid ""
@@ -9601,7 +9668,7 @@ msgstr ""
 
 #: en/help_topics/bugs.txt:91
 msgid "    bugtracker_python_url = http://bugs.python.org/issue{id}"
-msgstr ""
+msgstr "    bugtracker_python_url = http://bugs.python.org/issue{id}"
 
 #: en/help_topics/bugs.txt:93
 msgid ""
@@ -9613,6 +9680,7 @@ msgstr ""
 msgid ""
 "    bugtracker_cpan_url = http://rt.cpan.org/Public/Bug/Display.html?id={id}"
 msgstr ""
+"    bugtracker_cpan_url = http://rt.cpan.org/Public/Bug/Display.html?id={id}"
 
 #: en/help_topics/bugs.txt:98
 msgid ""
@@ -9622,7 +9690,7 @@ msgstr ""
 
 #: en/help_topics/bugs.txt:101
 msgid "    bugtracker_hudson_url = http://issues.hudson-ci.org/browse/{id}"
-msgstr ""
+msgstr "    bugtracker_hudson_url = http://issues.hudson-ci.org/browse/{id}"
 
 #: en/help_topics/bugs.txt:103
 msgid ""
@@ -9752,10 +9820,12 @@ msgid ""
 "BZR_EMAIL\n"
 "~~~~~~~~~"
 msgstr ""
+"BZR_EMAIL\n"
+"~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:13
 msgid "Override the email id used by Bazaar.  Typical format::"
-msgstr ""
+msgstr "Sobrescreve o id de email usado pelo Bazaar. Formato típico::"
 
 #: en/help_topics/configuration.txt:15
 msgid "  \"John Doe <jdoe@example.com>\""
@@ -9763,13 +9833,15 @@ msgstr "  \"John Doe <jdoe@exemplo.com>\""
 
 #: en/help_topics/configuration.txt:17
 msgid "See also the ``email`` configuration option."
-msgstr ""
+msgstr "Veja também a opção de configuração ``email``."
 
 #: en/help_topics/configuration.txt:19
 msgid ""
 "BZR_PROGRESS_BAR\n"
 "~~~~~~~~~~~~~~~~"
 msgstr ""
+"BZR_PROGRESS_BAR\n"
+"~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:22
 msgid ""
@@ -9785,6 +9857,8 @@ msgid ""
 "BZR_SIGQUIT_PDB\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"BZR_SIGQUIT_PDB\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:29
 msgid ""
@@ -9807,7 +9881,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:37
 msgid "Override the home directory used by Bazaar."
-msgstr ""
+msgstr "Sobrescreve o diretório home usado pelo Bazaar."
 
 #: en/help_topics/configuration.txt:39
 msgid ""
@@ -9819,7 +9893,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:42
 msgid "Select a different SSH implementation."
-msgstr ""
+msgstr "Seleciona uma implementação SSH diferente."
 
 #: en/help_topics/configuration.txt:44
 msgid ""
@@ -9880,12 +9954,16 @@ msgid ""
 "Location of the Bazaar log file. You can check the current location by\n"
 "running ``bzr version``."
 msgstr ""
+"Localização do arquivo de log do Bazaar. Você pode verificar o local atual\n"
+"executando ``bzr version``."
 
 #: en/help_topics/configuration.txt:70
 msgid ""
 "The log file contains debug information that is useful for diagnosing or\n"
 "reporting problems with Bazaar."
 msgstr ""
+"O arquivo de log contém informações de depuração úteis para diagnosticar ou\n"
+"reportar problemas com Bazaar."
 
 #: en/help_topics/configuration.txt:73
 msgid ""
@@ -12182,7 +12260,7 @@ msgstr ""
 
 #: en/help_topics/env-variables.txt:1
 msgid "Environment Variables"
-msgstr ""
+msgstr "Variáveis de ambiente"
 
 #: en/help_topics/env-variables.txt:3
 msgid ""
