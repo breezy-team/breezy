@@ -41,7 +41,11 @@ except ImportError:
 
 try:
     from bzrlib.tests.ftp_server import pyftpdlib_based
-    pyftpdlib_available = True
+    if pyftpdlib_based.pyftplib_version >= (0, 7, 0):
+        pyftpdlib_available = True
+    else:
+        # 0.6.0 breaks SITE CHMOD
+        pyftpdlib_available = False
 except ImportError:
     pyftpdlib_available = False
 

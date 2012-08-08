@@ -18,7 +18,7 @@
 """Black-box tests for bzr rmbranch."""
 
 from bzrlib import (
-    bzrdir,
+    controldir,
     )
 from bzrlib.tests import (
     TestCaseWithTransport,
@@ -28,7 +28,7 @@ from bzrlib.tests.matchers import ContainsNoVfsCalls
 
 class TestRemoveBranch(TestCaseWithTransport):
 
-    def example_branch(self, path='.', format=None):
+    def example_tree(self, path='.', format=None):
         tree = self.make_branch_and_tree(path, format=format)
         self.build_tree_contents([(path + '/hello', 'foo')])
         tree.add('hello')
@@ -40,35 +40,68 @@ class TestRemoveBranch(TestCaseWithTransport):
 
     def test_remove_local(self):
         # Remove a local branch.
-        self.example_branch('a')
-        self.run_bzr('rmbranch a')
-        dir = bzrdir.BzrDir.open('a')
+        tree = self.example_tree('a')
+        self.run_bzr_error(['Branch is active. Use --force to remove it.\n'],
+            'rmbranch a')
+        self.run_bzr('rmbranch --force a')
+        dir = controldir.ControlDir.open('a')
         self.assertFalse(dir.has_branch())
         self.assertPathExists('a/hello')
         self.assertPathExists('a/goodbye')
 
     def test_no_branch(self):
-        # No branch in the current directory. 
+        # No branch in the current directory.
         self.make_repository('a')
         self.run_bzr_error(['Not a branch'],
             'rmbranch a')
 
+    def test_no_tree(self):
+        # removing the active branch is possible if there is no tree
+        tree = self.example_tree('a')
+        tree.bzrdir.destroy_workingtree()
+        self.run_bzr('rmbranch', working_dir='a')
+        dir = controldir.ControlDir.open('a')
+        self.assertFalse(dir.has_branch())
+
     def test_no_arg(self):
         # location argument defaults to current directory
-        self.example_branch('a')
-        self.run_bzr('rmbranch', working_dir='a')
-        dir = bzrdir.BzrDir.open('a')
+        self.example_tree('a')
+        self.run_bzr_error(['Branch is active. Use --force to remove it.\n'],
+            'rmbranch a')
+        self.run_bzr('rmbranch --force', working_dir='a')
+        dir = controldir.ControlDir.open('a')
         self.assertFalse(dir.has_branch())
 
     def test_remove_colo(self):
         # Remove a colocated branch.
-        tree = self.example_branch('a', format='development-colo')
+        tree = self.example_tree('a')
         tree.bzrdir.create_branch(name="otherbranch")
         self.assertTrue(tree.bzrdir.has_branch('otherbranch'))
         self.run_bzr('rmbranch %s,branch=otherbranch' % tree.bzrdir.user_url)
-        dir = bzrdir.BzrDir.open('a')
+        dir = controldir.ControlDir.open('a')
         self.assertFalse(dir.has_branch('otherbranch'))
         self.assertTrue(dir.has_branch())
+
+    def test_remove_colo_directory(self):
+        # Remove a colocated branch.
+        tree = self.example_tree('a')
+        tree.bzrdir.create_branch(name="otherbranch")
+        self.assertTrue(tree.bzrdir.has_branch('otherbranch'))
+        self.run_bzr('rmbranch otherbranch -d %s' % tree.bzrdir.user_url)
+        dir = controldir.ControlDir.open('a')
+        self.assertFalse(dir.has_branch('otherbranch'))
+        self.assertTrue(dir.has_branch())
+
+    def test_remove_active_colo_branch(self):
+        # Remove a colocated branch.
+        dir = self.make_repository('a').bzrdir
+        branch = dir.create_branch('otherbranch')
+        branch.create_checkout('a')
+        self.run_bzr_error(['Branch is active. Use --force to remove it.\n'],
+            'rmbranch otherbranch -d %s' % branch.bzrdir.user_url)
+        self.assertTrue(dir.has_branch('otherbranch'))
+        self.run_bzr('rmbranch --force otherbranch -d %s' % branch.bzrdir.user_url)
+        self.assertFalse(dir.has_branch('otherbranch'))
 
 
 class TestSmartServerRemoveBranch(TestCaseWithTransport):
@@ -83,6 +116,6 @@ class TestSmartServerRemoveBranch(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(2, self.hpss_calls)
+        self.assertLength(5, self.hpss_calls)
         self.assertLength(1, self.hpss_connections)
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

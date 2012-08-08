@@ -24,6 +24,7 @@ from bzrlib.bzrdir import (
     BzrDirMetaFormat1,
     )
 from bzrlib.controldir import (
+    ControlDir,
     Converter,
     format_registry,
     )
@@ -66,7 +67,7 @@ class BzrDirFormatAllInOne(BzrDirFormat):
         create_prefix=False, force_new_repo=False, stacked_on=None,
         stack_on_pwd=None, repo_format_name=None, make_working_trees=None,
         shared_repo=False):
-        """See BzrDirFormat.initialize_on_transport_ex."""
+        """See ControlDir.initialize_on_transport_ex."""
         require_stacking = (stacked_on is not None)
         # Format 5 cannot stack, but we've been asked to - actually init
         # a Meta1Dir
@@ -116,11 +117,11 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
         return BzrBranchFormat4()
 
     def get_format_description(self):
-        """See BzrDirFormat.get_format_description()."""
+        """See ControlDirFormat.get_format_description()."""
         return "All-in-one format 5"
 
     def get_converter(self, format=None):
-        """See BzrDirFormat.get_converter()."""
+        """See ControlDirFormat.get_converter()."""
         # there is one and only one upgrade path here.
         return ConvertBzrDir5To6()
 
@@ -176,7 +177,7 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
         return "Bazaar-NG branch, format 6\n"
 
     def get_format_description(self):
-        """See BzrDirFormat.get_format_description()."""
+        """See ControlDirFormat.get_format_description()."""
         return "All-in-one format 6"
 
     def get_branch_format(self):
@@ -184,7 +185,7 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
         return BzrBranchFormat4()
 
     def get_converter(self, format=None):
-        """See BzrDirFormat.get_converter()."""
+        """See ControlDirFormat.get_converter()."""
         # there is one and only one upgrade path here.
         return ConvertBzrDir6ToMeta()
 
@@ -240,7 +241,7 @@ class ConvertBzrDir4To5(Converter):
             if isinstance(self.bzrdir.transport, local.LocalTransport):
                 self.bzrdir.get_workingtree_transport(None).delete('stat-cache')
             self._convert_to_weaves()
-            return BzrDir.open(self.bzrdir.user_url)
+            return ControlDir.open(self.bzrdir.user_url)
         finally:
             self.pb.finished()
 
@@ -505,7 +506,7 @@ class ConvertBzrDir5To6(Converter):
         try:
             ui.ui_factory.note(gettext('starting upgrade from format 5 to 6'))
             self._convert_to_prefixed()
-            return BzrDir.open(self.bzrdir.user_url)
+            return ControlDir.open(self.bzrdir.user_url)
         finally:
             pb.finished()
 
@@ -544,7 +545,7 @@ class ConvertBzrDir6ToMeta(Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
-        from bzrlib.branch import BzrBranchFormat5
+        from bzrlib.branchfmt.fullhistory import BzrBranchFormat5
         self.bzrdir = to_convert
         self.pb = ui.ui_factory.nested_progress_bar()
         self.count = 0
@@ -633,7 +634,7 @@ class ConvertBzrDir6ToMeta(Converter):
             BzrDirMetaFormat1().get_format_string(),
             mode=self.file_mode)
         self.pb.finished()
-        return BzrDir.open(self.bzrdir.user_url)
+        return ControlDir.open(self.bzrdir.user_url)
 
     def make_lock(self, name):
         """Make a lock for the new control dir name."""
@@ -685,11 +686,11 @@ class BzrDirFormat4(BzrDirFormat):
         return "Bazaar-NG branch, format 0.0.4\n"
 
     def get_format_description(self):
-        """See BzrDirFormat.get_format_description()."""
+        """See ControlDirFormat.get_format_description()."""
         return "All-in-one format 4"
 
     def get_converter(self, format=None):
-        """See BzrDirFormat.get_converter()."""
+        """See ControlDirFormat.get_converter()."""
         # there is one and only one upgrade path here.
         return ConvertBzrDir4To5()
 
@@ -730,7 +731,7 @@ class BzrDirPreSplitOut(BzrDir):
     """A common class for the all-in-one formats."""
 
     def __init__(self, _transport, _format):
-        """See BzrDir.__init__."""
+        """See ControlDir.__init__."""
         super(BzrDirPreSplitOut, self).__init__(_transport, _format)
         self._control_files = lockable_files.LockableFiles(
                                             self.get_branch_transport(None),
@@ -749,7 +750,7 @@ class BzrDirPreSplitOut(BzrDir):
 
     def clone(self, url, revision_id=None, force_new_repo=False,
               preserve_stacking=False):
-        """See BzrDir.clone().
+        """See ControlDir.clone().
 
         force_new_repo has no effect, since this family of formats always
         require a new repository.
@@ -772,7 +773,7 @@ class BzrDirPreSplitOut(BzrDir):
 
     def create_branch(self, name=None, repository=None,
                       append_revisions_only=None):
-        """See BzrDir.create_branch."""
+        """See ControlDir.create_branch."""
         if repository is not None:
             raise NotImplementedError(
                 "create_branch(repository=<not None>) on %r" % (self,))
@@ -780,22 +781,22 @@ class BzrDirPreSplitOut(BzrDir):
             append_revisions_only=append_revisions_only)
 
     def destroy_branch(self, name=None):
-        """See BzrDir.destroy_branch."""
+        """See ControlDir.destroy_branch."""
         raise errors.UnsupportedOperation(self.destroy_branch, self)
 
     def create_repository(self, shared=False):
-        """See BzrDir.create_repository."""
+        """See ControlDir.create_repository."""
         if shared:
             raise errors.IncompatibleFormat('shared repository', self._format)
         return self.open_repository()
 
     def destroy_repository(self):
-        """See BzrDir.destroy_repository."""
+        """See ControlDir.destroy_repository."""
         raise errors.UnsupportedOperation(self.destroy_repository, self)
 
     def create_workingtree(self, revision_id=None, from_branch=None,
                            accelerator_tree=None, hardlink=False):
-        """See BzrDir.create_workingtree."""
+        """See ControlDir.create_workingtree."""
         # The workingtree is sometimes created when the bzrdir is created,
         # but not when cloning.
 
@@ -833,11 +834,11 @@ class BzrDirPreSplitOut(BzrDir):
                 self.transport, self._control_files._file_mode)
 
     def destroy_workingtree(self):
-        """See BzrDir.destroy_workingtree."""
+        """See ControlDir.destroy_workingtree."""
         raise errors.UnsupportedOperation(self.destroy_workingtree, self)
 
     def destroy_workingtree_metadata(self):
-        """See BzrDir.destroy_workingtree_metadata."""
+        """See ControlDir.destroy_workingtree_metadata."""
         raise errors.UnsupportedOperation(self.destroy_workingtree_metadata,
                                           self)
 
@@ -874,7 +875,7 @@ class BzrDirPreSplitOut(BzrDir):
         raise errors.IncompatibleFormat(workingtree_format, self._format)
 
     def needs_format_conversion(self, format=None):
-        """See BzrDir.needs_format_conversion()."""
+        """See ControlDir.needs_format_conversion()."""
         # if the format is not the same as the system default,
         # an upgrade is needed.
         if format is None:
@@ -885,7 +886,7 @@ class BzrDirPreSplitOut(BzrDir):
 
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False, possible_transports=None):
-        """See BzrDir.open_branch."""
+        """See ControlDir.open_branch."""
         from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
         format = BzrBranchFormat4()
         format.check_support_status(unsupported)
@@ -896,7 +897,7 @@ class BzrDirPreSplitOut(BzrDir):
                possible_transports=None, accelerator_tree=None,
                hardlink=False, stacked=False, create_tree_if_local=True,
                source_branch=None):
-        """See BzrDir.sprout()."""
+        """See ControlDir.sprout()."""
         if source_branch is not None:
             my_branch = self.open_branch()
             if source_branch.base != my_branch.base:
@@ -941,7 +942,7 @@ class BzrDir4(BzrDirPreSplitOut):
     """
 
     def create_repository(self, shared=False):
-        """See BzrDir.create_repository."""
+        """See ControlDir.create_repository."""
         return self._format.repository_format.initialize(self, shared)
 
     def needs_format_conversion(self, format=None):
@@ -952,7 +953,7 @@ class BzrDir4(BzrDirPreSplitOut):
         return True
 
     def open_repository(self):
-        """See BzrDir.open_repository."""
+        """See ControlDir.open_repository."""
         from bzrlib.plugins.weave_fmt.repository import RepositoryFormat4
         return RepositoryFormat4().open(self, _found=True)
 
@@ -964,17 +965,17 @@ class BzrDir5(BzrDirPreSplitOut):
     """
 
     def has_workingtree(self):
-        """See BzrDir.has_workingtree."""
+        """See ControlDir.has_workingtree."""
         return True
     
     def open_repository(self):
-        """See BzrDir.open_repository."""
+        """See ControlDir.open_repository."""
         from bzrlib.plugins.weave_fmt.repository import RepositoryFormat5
         return RepositoryFormat5().open(self, _found=True)
 
     def open_workingtree(self, unsupported=False,
             recommend_upgrade=True):
-        """See BzrDir.create_workingtree."""
+        """See ControlDir.create_workingtree."""
         from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
         wt_format = WorkingTreeFormat2()
         # we don't warn here about upgrades; that ought to be handled for the
@@ -989,16 +990,16 @@ class BzrDir6(BzrDirPreSplitOut):
     """
 
     def has_workingtree(self):
-        """See BzrDir.has_workingtree."""
+        """See ControlDir.has_workingtree."""
         return True
 
     def open_repository(self):
-        """See BzrDir.open_repository."""
+        """See ControlDir.open_repository."""
         from bzrlib.plugins.weave_fmt.repository import RepositoryFormat6
         return RepositoryFormat6().open(self, _found=True)
 
     def open_workingtree(self, unsupported=False, recommend_upgrade=True):
-        """See BzrDir.create_workingtree."""
+        """See ControlDir.create_workingtree."""
         # we don't warn here about upgrades; that ought to be handled for the
         # bzrdir as a whole
         from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2

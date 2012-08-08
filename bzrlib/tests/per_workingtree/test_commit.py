@@ -19,8 +19,8 @@ import os
 
 from bzrlib import (
     branch,
-    bzrdir,
     conflicts,
+    controldir,
     errors,
     mutabletree,
     osutils,
@@ -264,7 +264,7 @@ class TestCommit(TestCaseWithWorkingTree):
         del master
         # check its corrupted.
         self.assertRaises(errors.UnknownFormatError,
-                          bzrdir.BzrDir.open,
+                          controldir.ControlDir.open,
                           'master')
         tree.commit('foo', rev_id='foo', local=True)
 

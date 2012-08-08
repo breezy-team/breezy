@@ -39,17 +39,17 @@ class TestHooks(TestCaseWithTransport):
     def test_hooks_with_unnamed_hook(self):
         self.make_branch('.')
         def foo(): return
-        Branch.hooks.install_named_hook('set_rh', foo, None)
+        Branch.hooks.install_named_hook('post_push', foo, None)
         out, err = self.run_bzr('hooks')
-        self._check_hooks_output(out, {'set_rh': ["No hook name"]})
+        self._check_hooks_output(out, {'post_push': ["No hook name"]})
 
     def test_hooks_with_named_hook(self):
         self.make_branch('.')
         def foo(): return
         name = "Foo Bar Hook"
-        Branch.hooks.install_named_hook('set_rh', foo, name)
+        Branch.hooks.install_named_hook('post_push', foo, name)
         out, err = self.run_bzr('hooks')
-        self._check_hooks_output(out, {'set_rh': [name]})
+        self._check_hooks_output(out, {'post_push': [name]})
 
     def test_hooks_no_branch(self):
         self.run_bzr('hooks')
@@ -57,19 +57,19 @@ class TestHooks(TestCaseWithTransport):
     def test_hooks_lazy_with_unnamed_hook(self):
         self.make_branch('.')
         def foo(): return
-        Branch.hooks.install_named_hook_lazy('set_rh',
+        Branch.hooks.install_named_hook_lazy('post_push',
             'bzrlib.tests.blackbox.test_hooks',
             '_foo_hook',
             None)
         out, err = self.run_bzr('hooks')
-        self._check_hooks_output(out, {'set_rh': ["No hook name"]})
+        self._check_hooks_output(out, {'post_push': ["No hook name"]})
         
     def test_hooks_lazy_with_named_hook(self):
         self.make_branch('.')
         def foo(): return
-        Branch.hooks.install_named_hook_lazy('set_rh',
+        Branch.hooks.install_named_hook_lazy('post_push',
             'bzrlib.tests.blackbox.test_hooks',
             '_foo_hook',
             'hook has a name')
         out, err = self.run_bzr('hooks')
-        self._check_hooks_output(out, {'set_rh': ["hook has a name"]})
+        self._check_hooks_output(out, {'post_push': ["hook has a name"]})

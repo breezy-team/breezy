@@ -31,8 +31,8 @@ import threading
 
 import bzrlib
 from bzrlib import (
-    bzrdir,
     config,
+    controldir,
     debug,
     errors,
     osutils,
@@ -1911,10 +1911,10 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         server._url_protocol = self._url_protocol
         return server
 
-    def test_open_bzrdir(self):
+    def test_open_controldir(self):
         branch = self.make_branch('relpath')
         url = self.http_server.get_url() + 'relpath'
-        bd = bzrdir.BzrDir.open(url)
+        bd = controldir.ControlDir.open(url)
         self.addCleanup(bd.transport.disconnect)
         self.assertIsInstance(bd, _mod_remote.RemoteBzrDir)
 

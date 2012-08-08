@@ -138,15 +138,6 @@ def find_touching_revisions(branch, file_id):
         revno += 1
 
 
-def _enumerate_history(branch):
-    rh = []
-    revno = 1
-    for rev_id in branch.revision_history():
-        rh.append((revno, rev_id))
-        revno += 1
-    return rh
-
-
 def show_log(branch,
              lf,
              specific_fileid=None,

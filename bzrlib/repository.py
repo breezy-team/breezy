@@ -981,17 +981,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
             raise AssertionError('_iter_for_revno returned too much history')
         return (True, partial_history[-1])
 
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
-    def iter_reverse_revision_history(self, revision_id):
-        """Iterate backwards through revision ids in the lefthand history
-
-        :param revision_id: The revision id to start with.  All its lefthand
-            ancestors will be traversed.
-        """
-        graph = self.get_graph()
-        stop_revisions = (None, _mod_revision.NULL_REVISION)
-        return graph.iter_lefthand_ancestry(revision_id, stop_revisions)
-
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
         raise NotImplementedError(self.is_shared)
@@ -1033,40 +1022,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
           a revision-id may not be None or 'null:'
         """
         raise NotImplementedError(self.revision_trees)
-
-    @needs_read_lock
-    @symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((2, 4, 0)))
-    def get_ancestry(self, revision_id, topo_sorted=True):
-        """Return a list of revision-ids integrated by a revision.
-
-        The first element of the list is always None, indicating the origin
-        revision.  This might change when we have history horizons, or
-        perhaps we should have a new API.
-
-        This is topologically sorted.
-        """
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(2, "get_ancestry is linear with history.")
-        if _mod_revision.is_null(revision_id):
-            return [None]
-        if not self.has_revision(revision_id):
-            raise errors.NoSuchRevision(self, revision_id)
-        graph = self.get_graph()
-        keys = set()
-        search = graph._make_breadth_first_searcher([revision_id])
-        while True:
-            try:
-                found, ghosts = search.next_with_ghosts()
-            except StopIteration:
-                break
-            keys.update(found)
-        if _mod_revision.NULL_REVISION in keys:
-            keys.remove(_mod_revision.NULL_REVISION)
-        if topo_sorted:
-            parent_map = graph.get_parent_map(keys)
-            keys = tsort.topo_sort(parent_map)
-        return [None] + list(keys)
 
     def pack(self, hint=None, clean_obsolete_packs=False):
         """Compress the data within the repository.
@@ -1174,10 +1129,10 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
     @needs_read_lock
     def verify_revision_signature(self, revision_id, gpg_strategy):
         """Verify the signature on a revision.
-        
+
         :param revision_id: the revision to verify
         :gpg_strategy: the GPGStrategy object to used
-        
+
         :return: gpg.SIGNATURE_VALID or a failed SIGNATURE_ value
         """
         if not self.has_signature_for_revision_id(revision_id):
@@ -1188,6 +1143,18 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         plaintext = testament.as_short_text()
 
         return gpg_strategy.verify(signature, plaintext)
+
+    @needs_read_lock
+    def verify_revision_signatures(self, revision_ids, gpg_strategy):
+        """Verify revision signatures for a number of revisions.
+
+        :param revision_id: the revision to verify
+        :gpg_strategy: the GPGStrategy object to used
+        :return: Iterator over tuples with revision id, result and keys
+        """
+        for revid in revision_ids:
+            (result, key) = self.verify_revision_signature(revid, gpg_strategy)
+            yield revid, result, key
 
     def has_signature_for_revision_id(self, revision_id):
         """Query for a revision signature for revision_id in the repository."""
@@ -1419,22 +1386,6 @@ class RepositoryFormat(controldir.ControlComponentFormat):
 
     def __ne__(self, other):
         return not self == other
-
-    @classmethod
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
-    def register_format(klass, format):
-        format_registry.register(format)
-
-    @classmethod
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
-    def unregister_format(klass, format):
-        format_registry.remove(format)
-
-    @classmethod
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
-    def get_default_format(klass):
-        """Return the current default format."""
-        return format_registry.get_default()
 
     def get_format_description(self):
         """Return the short description for this format."""

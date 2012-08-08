@@ -19,6 +19,7 @@ import sys
 
 import bzrlib
 from bzrlib import (
+    controldir,
     errors,
     generate_ids,
     merge_directive,
@@ -42,13 +43,14 @@ from bzrlib.workingtree import WorkingTree
 
 
 class MergeBuilder(object):
+
     def __init__(self, dir=None):
         self.dir = osutils.mkdtemp(prefix="merge-test", dir=dir)
         self.tree_root = generate_ids.gen_root_id()
         def wt(name):
            path = pathjoin(self.dir, name)
            os.mkdir(path)
-           wt = bzrlib.bzrdir.BzrDir.create_standalone_workingtree(path)
+           wt = controldir.ControlDir.create_standalone_workingtree(path)
            # the tests perform pulls, so need a branch that is writeable.
            wt.lock_write()
            wt.set_root_id(self.tree_root)

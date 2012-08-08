@@ -21,8 +21,8 @@ from stat import S_ISDIR
 
 import bzrlib.branch
 from bzrlib import (
-    branch,
     bzrdir,
+    controldir,
     errors,
     repository,
     revision as _mod_revision,
@@ -657,7 +657,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             raise TestNotApplicable('Only relevant for stackable formats.')
         # Initialize a bzrdir subject to the policy.
         t = self.get_transport('stacked')
-        repo_fmt = bzrdir.format_registry.make_bzrdir('1.9')
+        repo_fmt = controldir.format_registry.make_bzrdir('1.9')
         repo_name = repo_fmt.repository_format.network_name()
         repo, control = self.assertInitializeEx(
             t, need_meta=True, repo_format_name=repo_name, stacked_on=None)

@@ -18,7 +18,6 @@
 import os
 
 from bzrlib import (
-    bzrdir,
     conflicts,
     errors,
     option,
@@ -757,7 +756,7 @@ $ bzr merge ../trunk
 
     def test_take_this(self):
         self.run_script("""
-$ bzr rm -q dir  --force
+$ bzr rm -q dir --no-backup
 $ bzr resolve dir
 2>2 conflicts resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
@@ -786,7 +785,7 @@ $ bzr add -q dir/file2
 $ bzr commit -q -m 'Add dir/file2 in branch'
 $ bzr branch -q . -r 1 ../branch
 $ cd ../branch
-$ bzr rm -q dir/file --force
+$ bzr rm -q dir/file --no-backup
 $ bzr rm -q dir
 $ bzr commit -q -m 'Remove dir/file'
 $ bzr merge ../trunk
@@ -807,7 +806,7 @@ $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
     def test_adopt_child(self):
         self.run_script("""
 $ bzr mv -q dir/file2 file2
-$ bzr rm -q dir --force
+$ bzr rm -q dir --no-backup
 $ bzr resolve dir
 2>2 conflicts resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
@@ -815,7 +814,7 @@ $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 
     def test_kill_them_all(self):
         self.run_script("""
-$ bzr rm -q dir --force
+$ bzr rm -q dir --no-backup
 $ bzr resolve dir
 2>2 conflicts resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
@@ -846,8 +845,8 @@ $ mkdir dir
 $ echo 'trunk content' >dir/file
 $ bzr add -q
 $ bzr commit -m 'Create trunk' -q
-$ bzr rm -q dir/file --force
-$ bzr rm -q dir --force
+$ bzr rm -q dir/file --no-backup
+$ bzr rm -q dir --no-backup
 $ bzr commit -q -m 'Remove dir/file'
 $ bzr branch -q . -r 1 ../branch
 $ cd ../branch
@@ -871,7 +870,7 @@ $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
     def test_adopt_child(self):
         self.run_script("""
 $ bzr mv -q dir/file2 file2
-$ bzr rm -q dir --force
+$ bzr rm -q dir --no-backup
 $ bzr resolve dir
 2>2 conflicts resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
@@ -879,7 +878,7 @@ $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 
     def test_kill_them_all(self):
         self.run_script("""
-$ bzr rm -q dir --force
+$ bzr rm -q dir --no-backup
 $ bzr resolve dir
 2>2 conflicts resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
@@ -1022,7 +1021,7 @@ $ bzr merge ../trunk
 
     def test_take_this(self):
         self.run_script("""
-$ bzr rm -q foo.new --force
+$ bzr rm -q foo.new --no-backup
 # FIXME: Isn't it weird that foo is now unkown even if foo.new has been put
 # aside ? -- vila 090916
 $ bzr add -q foo
@@ -1033,7 +1032,7 @@ $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 
     def test_take_other(self):
         self.run_script("""
-$ bzr rm -q foo --force
+$ bzr rm -q foo --no-backup
 $ bzr mv -q foo.new foo
 $ bzr resolve foo
 2>1 conflict resolved, 0 remaining

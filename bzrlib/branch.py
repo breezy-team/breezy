@@ -39,6 +39,7 @@ from bzrlib import (
     repository,
     revision as _mod_revision,
     rio,
+    shelf,
     tag as _mod_tag,
     transport,
     ui,
@@ -250,6 +251,23 @@ class Branch(controldir.ControlComponent):
         :return: An object supporting get_option and set_option.
         """
         raise NotImplementedError(self._get_config)
+
+    def store_uncommitted(self, creator):
+        """Store uncommitted changes from a ShelfCreator.
+
+        :param creator: The ShelfCreator containing uncommitted changes, or
+            None to delete any stored changes.
+        :raises: ChangesAlreadyStored if the branch already has changes.
+        """
+        raise NotImplementedError(self.store_uncommitted)
+
+    def get_unshelver(self, tree):
+        """Return a shelf.Unshelver for this branch and tree.
+
+        :param tree: The tree to use to construct the Unshelver.
+        :return: an Unshelver or None if no changes are stored.
+        """
+        raise NotImplementedError(self.get_unshelver)
 
     def _get_fallback_repository(self, url, possible_transports):
         """Get the repository we fallback to at url."""
@@ -766,24 +784,6 @@ class Branch(controldir.ControlComponent):
         """Print `file` to stdout."""
         raise NotImplementedError(self.print_file)
 
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def set_revision_history(self, rev_history):
-        """See Branch.set_revision_history."""
-        self._set_revision_history(rev_history)
-
-    @needs_write_lock
-    def _set_revision_history(self, rev_history):
-        if len(rev_history) == 0:
-            revid = _mod_revision.NULL_REVISION
-        else:
-            revid = rev_history[-1]
-        if rev_history != self._lefthand_history(revid):
-            raise errors.NotLefthandHistory(rev_history)
-        self.set_last_revision_info(len(rev_history), revid)
-        self._cache_revision_history(rev_history)
-        for hook in Branch.hooks['set_rh']:
-            hook(self, rev_history)
-
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
         """Set the last revision of this branch.
@@ -986,8 +986,8 @@ class Branch(controldir.ControlComponent):
         This means the next call to revision_history will need to call
         _gen_revision_history.
 
-        This API is semi-public; it only for use by subclasses, all other code
-        should consider it to be private.
+        This API is semi-public; it is only for use by subclasses, all other
+        code should consider it to be private.
         """
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
@@ -1012,16 +1012,6 @@ class Branch(controldir.ControlComponent):
         should consider it to be private.
         """
         raise NotImplementedError(self._gen_revision_history)
-
-    @deprecated_method(deprecated_in((2, 5, 0)))
-    @needs_read_lock
-    def revision_history(self):
-        """Return sequence of revision ids on this branch.
-
-        This method will cache the revision history for as long as it is safe to
-        do so.
-        """
-        return self._revision_history()
 
     def _revision_history(self):
         if 'evil' in debug.debug_flags:
@@ -1061,18 +1051,6 @@ class Branch(controldir.ControlComponent):
 
     def _read_last_revision_info(self):
         raise NotImplementedError(self._read_last_revision_info)
-
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def import_last_revision_info(self, source_repo, revno, revid):
-        """Set the last revision info, importing from another repo if necessary.
-
-        :param source_repo: Source repository to optionally fetch from
-        :param revno: Revision number of the new tip
-        :param revid: Revision id of the new tip
-        """
-        if not self.repository.has_same_location(source_repo):
-            self.repository.fetch(source_repo, revision_id=revid)
-        self.set_last_revision_info(revno, revid)
 
     def import_last_revision_info_and_tags(self, source, revno, revid,
                                            lossy=False):
@@ -1617,22 +1595,6 @@ class BranchFormat(controldir.ControlComponentFormat):
     def __ne__(self, other):
         return not (self == other)
 
-    @classmethod
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def get_default_format(klass):
-        """Return the current default format."""
-        return format_registry.get_default()
-
-    @classmethod
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def get_formats(klass):
-        """Get all the known formats.
-
-        Warning: This triggers a load of all lazy registered formats: do not
-        use except when that is desireed.
-        """
-        return format_registry._get_all()
-
     def get_reference(self, controldir, name=None):
         """Get the target reference of the branch in controldir.
 
@@ -1726,21 +1688,6 @@ class BranchFormat(controldir.ControlComponentFormat):
         """
         raise NotImplementedError(self.open)
 
-    @classmethod
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def register_format(klass, format):
-        """Register a metadir format.
-
-        See MetaDirBranchFormatFactory for the ability to register a format
-        without loading the code the format needs until it is actually used.
-        """
-        format_registry.register(format)
-
-    @classmethod
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def set_default_format(klass, format):
-        format_registry.set_default(format)
-
     def supports_set_append_revisions_only(self):
         """True if this format supports set_append_revisions_only."""
         return False
@@ -1752,11 +1699,6 @@ class BranchFormat(controldir.ControlComponentFormat):
     def supports_leaving_lock(self):
         """True if this format supports leaving locks in place."""
         return False # by default
-
-    @classmethod
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def unregister_format(klass, format):
-        format_registry.remove(format)
 
     def __str__(self):
         return self.get_format_description().rstrip()
@@ -1805,8 +1747,8 @@ class MetaDirBranchFormatFactory(registry._LazyObjectGetter):
 class BranchHooks(Hooks):
     """A dictionary mapping hook name to a list of callables for branch hooks.
 
-    e.g. ['set_rh'] Is the list of items to be called when the
-    set_revision_history function is invoked.
+    e.g. ['post_push'] Is the list of items to be called when the
+    push function is invoked.
     """
 
     def __init__(self):
@@ -1816,12 +1758,6 @@ class BranchHooks(Hooks):
         notified.
         """
         Hooks.__init__(self, "bzrlib.branch", "Branch.hooks")
-        self.add_hook('set_rh',
-            "Invoked whenever the revision history has been set via "
-            "set_revision_history. The api signature is (branch, "
-            "revision_history), and the branch will be write-locked. "
-            "The set_rh hook can be expensive for bzr to trigger, a better "
-            "hook to use is Branch.post_change_branch_tip.", (0, 15))
         self.add_hook('open',
             "Called with the Branch object that has been opened after a "
             "branch is opened.", (1, 8))
@@ -2045,7 +1981,7 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
 
     def _initialize_helper(self, a_bzrdir, utf8_files, name=None,
                            repository=None):
-        """Initialize a branch in a bzrdir, with specified files
+        """Initialize a branch in a control dir, with specified files
 
         :param a_bzrdir: The bzrdir to initialize the branch in
         :param utf8_files: The files to create as a list of
@@ -2119,45 +2055,6 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
             basedir=basedir)
         bzrdir.BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
             recommend_upgrade=recommend_upgrade, basedir=basedir)
-
-
-class BzrBranchFormat5(BranchFormatMetadir):
-    """Bzr branch format 5.
-
-    This format has:
-     - a revision-history file.
-     - a format string
-     - a lock dir guarding the branch itself
-     - all of this stored in a branch/ subdirectory
-     - works with shared repositories.
-
-    This format is new in bzr 0.8.
-    """
-
-    def _branch_class(self):
-        return BzrBranch5
-
-    @classmethod
-    def get_format_string(cls):
-        """See BranchFormat.get_format_string()."""
-        return "Bazaar-NG branch format 5\n"
-
-    def get_format_description(self):
-        """See BranchFormat.get_format_description()."""
-        return "Branch format 5"
-
-    def initialize(self, a_bzrdir, name=None, repository=None,
-                   append_revisions_only=None):
-        """Create a branch of this format in a_bzrdir."""
-        if append_revisions_only:
-            raise errors.UpgradeRequired(a_bzrdir.user_url)
-        utf8_files = [('revision-history', ''),
-                      ('branch-name', ''),
-                      ]
-        return self._initialize_helper(a_bzrdir, utf8_files, name, repository)
-
-    def supports_tags(self):
-        return False
 
 
 class BzrBranchFormat6(BranchFormatMetadir):
@@ -2414,11 +2311,11 @@ format_registry = BranchFormatRegistry(network_format_registry)
 
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
-__format5 = BzrBranchFormat5()
 __format6 = BzrBranchFormat6()
 __format7 = BzrBranchFormat7()
 __format8 = BzrBranchFormat8()
-format_registry.register(__format5)
+format_registry.register_lazy(
+    "Bazaar-NG branch format 5\n", "bzrlib.branchfmt.fullhistory", "BzrBranchFormat5")
 format_registry.register(BranchReferenceFormat())
 format_registry.register(__format6)
 format_registry.register(__format7)
@@ -2507,6 +2404,45 @@ class BzrBranch(Branch, _RelockDebugMixin):
             self.conf_store =  _mod_config.BranchStore(self)
         return self.conf_store
 
+    def _uncommitted_branch(self):
+        """Return the branch that may contain uncommitted changes."""
+        master = self.get_master_branch()
+        if master is not None:
+            return master
+        else:
+            return self
+
+    def store_uncommitted(self, creator):
+        """Store uncommitted changes from a ShelfCreator.
+
+        :param creator: The ShelfCreator containing uncommitted changes, or
+            None to delete any stored changes.
+        :raises: ChangesAlreadyStored if the branch already has changes.
+        """
+        branch = self._uncommitted_branch()
+        if creator is None:
+            branch._transport.delete('stored-transform')
+            return
+        if branch._transport.has('stored-transform'):
+            raise errors.ChangesAlreadyStored
+        transform = StringIO()
+        creator.write_shelf(transform)
+        transform.seek(0)
+        branch._transport.put_file('stored-transform', transform)
+
+    def get_unshelver(self, tree):
+        """Return a shelf.Unshelver for this branch and tree.
+
+        :param tree: The tree to use to construct the Unshelver.
+        :return: an Unshelver or None if no changes are stored.
+        """
+        branch = self._uncommitted_branch()
+        try:
+            transform = branch._transport.get('stored-transform')
+        except errors.NoSuchFile:
+            return None
+        return shelf.Unshelver.from_tree_and_shelf(tree, transform)
+
     def is_locked(self):
         return self.control_files.is_locked()
 
@@ -2519,9 +2455,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """
         if not self.is_locked():
             self._note_lock('w')
-        # All-in-one needs to always unlock/lock.
-        repo_control = getattr(self.repository, 'control_files', None)
-        if self.control_files == repo_control or not self.is_locked():
             self.repository._warn_if_deprecated(self)
             self.repository.lock_write()
             took_lock = True
@@ -2542,9 +2475,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """
         if not self.is_locked():
             self._note_lock('r')
-        # All-in-one needs to always unlock/lock.
-        repo_control = getattr(self.repository, 'control_files', None)
-        if self.control_files == repo_control or not self.is_locked():
             self.repository._warn_if_deprecated(self)
             self.repository.lock_read()
             took_lock = True
@@ -2560,17 +2490,13 @@ class BzrBranch(Branch, _RelockDebugMixin):
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
-        if self.conf_store is not None:
+        if self.control_files._lock_count == 1 and self.conf_store is not None:
             self.conf_store.save_changes()
         try:
             self.control_files.unlock()
         finally:
-            # All-in-one needs to always unlock/lock.
-            repo_control = getattr(self.repository, 'control_files', None)
-            if (self.control_files == repo_control or
-                not self.control_files.is_locked()):
-                self.repository.unlock()
             if not self.control_files.is_locked():
+                self.repository.unlock()
                 # we just released the lock
                 self._clear_cached_state()
 
@@ -2752,114 +2678,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """
         self._format._update_feature_flags(updated_flags)
         self.control_transport.put_bytes('format', self._format.as_string())
-
-
-class FullHistoryBzrBranch(BzrBranch):
-    """Bzr branch which contains the full revision history."""
-
-    @needs_write_lock
-    def set_last_revision_info(self, revno, revision_id):
-        if not revision_id or not isinstance(revision_id, basestring):
-            raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
-        revision_id = _mod_revision.ensure_null(revision_id)
-        # this old format stores the full history, but this api doesn't
-        # provide it, so we must generate, and might as well check it's
-        # correct
-        history = self._lefthand_history(revision_id)
-        if len(history) != revno:
-            raise AssertionError('%d != %d' % (len(history), revno))
-        self._set_revision_history(history)
-
-    def _read_last_revision_info(self):
-        rh = self._revision_history()
-        revno = len(rh)
-        if revno:
-            return (revno, rh[-1])
-        else:
-            return (0, _mod_revision.NULL_REVISION)
-
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    @needs_write_lock
-    def set_revision_history(self, rev_history):
-        """See Branch.set_revision_history."""
-        self._set_revision_history(rev_history)
-
-    def _set_revision_history(self, rev_history):
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(3, "set_revision_history scales with history.")
-        check_not_reserved_id = _mod_revision.check_not_reserved_id
-        for rev_id in rev_history:
-            check_not_reserved_id(rev_id)
-        if Branch.hooks['post_change_branch_tip']:
-            # Don't calculate the last_revision_info() if there are no hooks
-            # that will use it.
-            old_revno, old_revid = self.last_revision_info()
-        if len(rev_history) == 0:
-            revid = _mod_revision.NULL_REVISION
-        else:
-            revid = rev_history[-1]
-        self._run_pre_change_branch_tip_hooks(len(rev_history), revid)
-        self._write_revision_history(rev_history)
-        self._clear_cached_state()
-        self._cache_revision_history(rev_history)
-        for hook in Branch.hooks['set_rh']:
-            hook(self, rev_history)
-        if Branch.hooks['post_change_branch_tip']:
-            self._run_post_change_branch_tip_hooks(old_revno, old_revid)
-
-    def _write_revision_history(self, history):
-        """Factored out of set_revision_history.
-
-        This performs the actual writing to disk.
-        It is intended to be called by set_revision_history."""
-        self._transport.put_bytes(
-            'revision-history', '\n'.join(history),
-            mode=self.bzrdir._get_file_mode())
-
-    def _gen_revision_history(self):
-        history = self._transport.get_bytes('revision-history').split('\n')
-        if history[-1:] == ['']:
-            # There shouldn't be a trailing newline, but just in case.
-            history.pop()
-        return history
-
-    def _synchronize_history(self, destination, revision_id):
-        if not isinstance(destination, FullHistoryBzrBranch):
-            super(BzrBranch, self)._synchronize_history(
-                destination, revision_id)
-            return
-        if revision_id == _mod_revision.NULL_REVISION:
-            new_history = []
-        else:
-            new_history = self._revision_history()
-        if revision_id is not None and new_history != []:
-            try:
-                new_history = new_history[:new_history.index(revision_id) + 1]
-            except ValueError:
-                rev = self.repository.get_revision(revision_id)
-                new_history = rev.get_history(self.repository)[1:]
-        destination._set_revision_history(new_history)
-
-    @needs_write_lock
-    def generate_revision_history(self, revision_id, last_rev=None,
-        other_branch=None):
-        """Create a new revision history that will finish with revision_id.
-
-        :param revision_id: the new tip to use.
-        :param last_rev: The previous last_revision. If not None, then this
-            must be a ancestory of revision_id, or DivergedBranches is raised.
-        :param other_branch: The other branch that DivergedBranches should
-            raise with respect to.
-        """
-        self._set_revision_history(self._lefthand_history(revision_id,
-            last_rev, other_branch))
-
-
-class BzrBranch5(FullHistoryBzrBranch):
-    """A format 5 branch. This supports new features over plain branches.
-
-    It has support for a master_branch which is the data for bound branches.
-    """
 
 
 class BzrBranch8(BzrBranch):
@@ -3147,14 +2965,6 @@ class PullResult(_Result):
     :ivar tag_updates: A dict with new tags, see BasicTags.merge_to
     """
 
-    @deprecated_method(deprecated_in((2, 3, 0)))
-    def __int__(self):
-        """Return the relative change in revno.
-
-        :deprecated: Use `new_revno` and `old_revno` instead.
-        """
-        return self.new_revno - self.old_revno
-
     def report(self, to_file):
         tag_conflicts = getattr(self, "tag_conflicts", None)
         tag_updates = getattr(self, "tag_updates", None)
@@ -3189,14 +2999,6 @@ class BranchPushResult(_Result):
     :ivar local_branch: If the target is a bound branch this will be the
         target, otherwise it will be None.
     """
-
-    @deprecated_method(deprecated_in((2, 3, 0)))
-    def __int__(self):
-        """Return the relative change in revno.
-
-        :deprecated: Use `new_revno` and `old_revno` instead.
-        """
-        return self.new_revno - self.old_revno
 
     def report(self, to_file):
         # TODO: This function gets passed a to_file, but then
@@ -3357,6 +3159,15 @@ class InterBranch(InterObject):
         :param limit: Optional rough limit of revisions to fetch
         """
         raise NotImplementedError(self.fetch)
+
+
+def _fix_overwrite_type(overwrite):
+    if isinstance(overwrite, bool):
+        if overwrite:
+            return ["history", "tags"]
+        else:
+            return []
+    return overwrite
 
 
 class GenericInterBranch(InterBranch):
@@ -3529,15 +3340,18 @@ class GenericInterBranch(InterBranch):
         result.target_branch = self.target
         result.old_revno, result.old_revid = self.target.last_revision_info()
         self.source.update_references(self.target)
+        overwrite = _fix_overwrite_type(overwrite)
         if result.old_revid != stop_revision:
             # We assume that during 'push' this repository is closer than
             # the target.
             graph = self.source.repository.get_graph(self.target.repository)
-            self._update_revisions(stop_revision, overwrite=overwrite,
-                    graph=graph)
+            self._update_revisions(stop_revision,
+                overwrite=("history" in overwrite),
+                graph=graph)
         if self.source._push_should_merge_tags():
             result.tag_updates, result.tag_conflicts = (
-                self.source.tags.merge_to(self.target.tags, overwrite))
+                self.source.tags.merge_to(
+                self.target.tags, "tags" in overwrite))
         result.new_revno, result.new_revid = self.target.last_revision_info()
         return result
 
@@ -3621,13 +3435,16 @@ class GenericInterBranch(InterBranch):
             # -- JRV20090506
             result.old_revno, result.old_revid = \
                 self.target.last_revision_info()
-            self._update_revisions(stop_revision, overwrite=overwrite,
+            overwrite = _fix_overwrite_type(overwrite)
+            self._update_revisions(stop_revision,
+                overwrite=("history" in overwrite),
                 graph=graph)
             # TODO: The old revid should be specified when merging tags, 
             # so a tags implementation that versions tags can only 
             # pull in the most recent changes. -- JRV20090506
             result.tag_updates, result.tag_conflicts = (
-                self.source.tags.merge_to(self.target.tags, overwrite,
+                self.source.tags.merge_to(self.target.tags,
+                    "tags" in overwrite,
                     ignore_master=not merge_tags_to_master))
             result.new_revno, result.new_revid = self.target.last_revision_info()
             if _hook_master:

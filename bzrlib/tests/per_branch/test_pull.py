@@ -18,7 +18,7 @@
 
 from bzrlib import (
     branch,
-    bzrdir,
+    controldir,
     errors,
     memorytree,
     revision,
@@ -238,7 +238,7 @@ class TestPullHook(per_branch.TestCaseWithBranch):
             # remotebranches can't be bound.  Let's instead make a new local
             # branch of the default type, which does allow binding.
             # See https://bugs.launchpad.net/bzr/+bug/112020
-            local = bzrdir.BzrDir.create_branch_convenience('local2')
+            local = controldir.ControlDir.create_branch_convenience('local2')
             local.bind(target)
         source = self.make_branch('source')
         branch.Branch.hooks.install_named_hook(

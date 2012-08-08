@@ -94,6 +94,13 @@ class TestAdd(tests.TestCaseWithTransport):
         self.run_bzr('add inertiatic/../cicatriz/esp')
         self.assertEquals(self.run_bzr('unknowns')[0], '')
 
+    def test_add_no_recurse(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['inertiatic/', 'inertiatic/esp'])
+        self.assertEquals(self.run_bzr('unknowns')[0], 'inertiatic\n')
+        self.run_bzr('add -N inertiatic')
+        self.assertEquals(self.run_bzr('unknowns')[0], 'inertiatic/esp\n')
+
     def test_add_in_versioned(self):
         """Try to add a file in a versioned directory.
 
@@ -109,8 +116,6 @@ class TestAdd(tests.TestCaseWithTransport):
 
     def test_subdir_add(self):
         """Add in subdirectory should add only things from there down"""
-        from bzrlib.workingtree import WorkingTree
-
         eq = self.assertEqual
         ass = self.assertTrue
 

@@ -19,7 +19,7 @@
 
 from bzrlib import (
     branch,
-    bzrdir,
+    controldir,
     errors,
     tests,
     )
@@ -35,19 +35,18 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         base_tree.add(['a', 'b'])
         base_tree.commit('init')
         base_tree.unlock()
-        branch = base_tree.branch
 
-        child_tree = branch.create_checkout('child')
+        child_tree = base_tree.branch.create_checkout('child')
 
         self.check_revno(1, 'child')
-        d = bzrdir.BzrDir.open('child')
+        d = controldir.ControlDir.open('child')
         self.assertNotEqual(None, d.open_branch().get_master_branch())
 
         return base_tree, child_tree
 
     def check_revno(self, val, loc='.'):
         self.assertEqual(
-            val, bzrdir.BzrDir.open(loc).open_branch().last_revision_info()[0])
+            val, controldir.ControlDir.open(loc).open_branch().last_revision_info()[0])
 
     def test_simple_binding(self):
         tree = self.make_branch_and_tree('base')
@@ -59,7 +58,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
 
         self.run_bzr('bind ../base', working_dir='child')
 
-        d = bzrdir.BzrDir.open('child')
+        d = controldir.ControlDir.open('child')
         self.assertNotEqual(None, d.open_branch().get_master_branch())
 
         self.run_bzr('unbind', working_dir='child')
@@ -133,7 +132,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         self.run_bzr('bind ../child', working_dir='child2')
 
         # Refresh the child tree object as 'unbind' modified it
-        child2_tree = bzrdir.BzrDir.open('child2').open_workingtree()
+        child2_tree = controldir.ControlDir.open('child2').open_workingtree()
         self.assertRaises(errors.CommitToDoubleBoundBranch,
                 child2_tree.commit, message='child2', allow_pointless=True)
 
@@ -356,7 +355,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         branch = tree.branch
         tree.bzrdir.sprout('child')
         self.run_bzr('bind --directory=child base')
-        d = bzrdir.BzrDir.open('child')
+        d = controldir.ControlDir.open('child')
         self.assertNotEqual(None, d.open_branch().get_master_branch())
         self.run_bzr('unbind -d child')
         self.assertEqual(None, d.open_branch().get_master_branch())

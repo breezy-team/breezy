@@ -68,6 +68,7 @@ from bzrlib import (
     osutils,
     trace,
     transport,
+    ui,
     urlutils,
     )
 lazy_import.lazy_import(globals(), """
@@ -476,9 +477,13 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
         # FIXME JRV 2011-12-18: Use location config here?
         config_stack = config.GlobalStack()
         cert_reqs = config_stack.get('ssl.cert_reqs')
+        if self.proxied_host is not None:
+            host = self.proxied_host.split(":", 1)[0]
+        else:
+            host = self.host
         if cert_reqs == ssl.CERT_NONE:
-            trace.warning("Not checking SSL certificate for %s: %d",
-                self.host, self.port)
+            ui.ui_factory.show_user_warning('not_checking_ssl_cert', host=host)
+            ui.ui_factory.suppressed_warnings.add('not_checking_ssl_cert')
             ca_certs = None
         else:
             if self.ca_certs is None:
@@ -503,7 +508,7 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
             raise
         if cert_reqs == ssl.CERT_REQUIRED:
             peer_cert = ssl_sock.getpeercert()
-            match_hostname(peer_cert, self.host)
+            match_hostname(peer_cert, host)
 
         # Wrap the ssl socket before anybody use it
         self._wrap_socket_for_reporting(ssl_sock)

@@ -16,19 +16,23 @@
 
 """Tests for branch implementations - tests a branch format."""
 
+import contextlib
+
 from bzrlib import (
     branch as _mod_branch,
-    bzrdir,
+    controldir,
     config,
     delta as _mod_delta,
     errors,
     merge,
     osutils,
     urlutils,
+    transform,
     transport,
     remote,
     repository,
     revision,
+    shelf,
     symbol_versioning,
     tests,
     )
@@ -475,17 +479,6 @@ class TestBranch(per_branch.TestCaseWithBranch):
         checkout = source_branch.create_checkout('c')
         self.assertEqual(rev_id, checkout.last_revision())
 
-    def test_set_revision_history(self):
-        tree = self.make_branch_and_tree('a')
-        tree.commit('a commit', rev_id='rev1')
-        br = tree.branch
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            br.set_revision_history, ["rev1"])
-        self.assertEquals(br.last_revision(), "rev1")
-        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
-            br.set_revision_history, [])
-        self.assertEquals(br.last_revision(), 'null:')
-
     def test_heads_to_fetch(self):
         # heads_to_fetch is a method that returns a collection of revids that
         # need to be fetched to copy this branch into another repo.  At a
@@ -708,7 +701,7 @@ class TestFormat(per_branch.TestCaseWithBranch):
         self.assertIsInstance(made_branch, _mod_branch.Branch)
 
         # find it via bzrdir opening:
-        opened_control = bzrdir.BzrDir.open(readonly_t.base)
+        opened_control = controldir.ControlDir.open(readonly_t.base)
         direct_opened_branch = opened_control.open_branch()
         self.assertEqual(direct_opened_branch.__class__, made_branch.__class__)
         self.assertEqual(opened_control, direct_opened_branch.bzrdir)
@@ -849,13 +842,13 @@ class TestIgnoreFallbacksParameter(per_branch.TestCaseWithBranch):
     def test_fallbacks_not_opened(self):
         stacked = self.make_branch_with_fallback()
         self.get_transport('').rename('fallback', 'moved')
-        reopened_dir = bzrdir.BzrDir.open(stacked.base)
+        reopened_dir = controldir.ControlDir.open(stacked.base)
         reopened = reopened_dir.open_branch(ignore_fallbacks=True)
         self.assertEqual([], reopened.repository._fallback_repositories)
 
     def test_fallbacks_are_opened(self):
         stacked = self.make_branch_with_fallback()
-        reopened_dir = bzrdir.BzrDir.open(stacked.base)
+        reopened_dir = controldir.ControlDir.open(stacked.base)
         reopened = reopened_dir.open_branch(ignore_fallbacks=False)
         self.assertLength(1, reopened.repository._fallback_repositories)
 
@@ -1068,3 +1061,88 @@ class TestBranchControlComponent(per_branch.TestCaseWithBranch):
         # above the control dir but we might need to relax that?
         self.assertEqual(br.control_url.find(br.user_url), 0)
         self.assertEqual(br.control_url, br.control_transport.base)
+
+
+class FakeShelfCreator(object):
+
+    def __init__(self, branch):
+        self.branch = branch
+
+    def write_shelf(self, shelf_file, message=None):
+        tree = self.branch.repository.revision_tree(revision.NULL_REVISION)
+        with transform.TransformPreview(tree) as tt:
+            shelf.ShelfCreator._write_shelf(
+                shelf_file, tt, revision.NULL_REVISION)
+
+
+@contextlib.contextmanager
+def skip_if_storing_uncommitted_unsupported():
+    try:
+        yield
+    except errors.StoringUncommittedNotSupported:
+        raise tests.TestNotApplicable('Cannot store uncommitted changes.')
+
+
+class TestUncommittedChanges(per_branch.TestCaseWithBranch):
+
+    def bind(self, branch, master):
+        try:
+            branch.bind(master)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Branch cannot be bound.')
+
+    def test_store_uncommitted(self):
+        tree = self.make_branch_and_tree('b')
+        branch = tree.branch
+        creator = FakeShelfCreator(branch)
+        with skip_if_storing_uncommitted_unsupported():
+            self.assertIs(None, branch.get_unshelver(tree))
+        branch.store_uncommitted(creator)
+        self.assertIsNot(None, branch.get_unshelver(tree))
+
+    def test_store_uncommitted_bound(self):
+        tree = self.make_branch_and_tree('b')
+        branch = tree.branch
+        master = self.make_branch('master')
+        self.bind(branch, master)
+        creator = FakeShelfCreator(tree.branch)
+        self.assertIs(None, tree.branch.get_unshelver(tree))
+        self.assertIs(None, master.get_unshelver(tree))
+        tree.branch.store_uncommitted(creator)
+        self.assertIsNot(None, master.get_unshelver(tree))
+
+    def test_store_uncommitted_already_stored(self):
+        branch = self.make_branch('b')
+        with skip_if_storing_uncommitted_unsupported():
+            branch.store_uncommitted(FakeShelfCreator(branch))
+        self.assertRaises(errors.ChangesAlreadyStored,
+                          branch.store_uncommitted, FakeShelfCreator(branch))
+
+    def test_store_uncommitted_none(self):
+        branch = self.make_branch('b')
+        with skip_if_storing_uncommitted_unsupported():
+            branch.store_uncommitted(FakeShelfCreator(branch))
+        branch.store_uncommitted(None)
+        self.assertIs(None, branch.get_unshelver(None))
+
+    def test_get_unshelver(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('')
+        self.build_tree_contents([('tree/file', 'contents1')])
+        tree.add('file')
+        with skip_if_storing_uncommitted_unsupported():
+            tree.store_uncommitted()
+        unshelver = tree.branch.get_unshelver(tree)
+        self.assertIsNot(None, unshelver)
+
+    def test_get_unshelver_bound(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('')
+        self.build_tree_contents([('tree/file', 'contents1')])
+        tree.add('file')
+        with skip_if_storing_uncommitted_unsupported():
+            tree.store_uncommitted()
+        branch = self.make_branch('branch')
+        self.bind(branch, tree.branch)
+        unshelver = branch.get_unshelver(tree)
+        self.assertIsNot(None, unshelver)

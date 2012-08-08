@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,23 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Branch formats.
 
-"""Sphinx writers tests."""
+This package contains various branch format implementations. Ideally
+all specific format implementations will be moved out of bzrlib.branch
+into this package.
+"""
 
-from bzrlib.tests import features
+from __future__ import absolute_import
 
-def load_tests(basic_tests, module, loader):
-    suite = loader.suiteClass()
-    # add the tests for this module
-    suite.addTests(basic_tests)
-
-    if features.sphinx.available():
-        testmod_names = [
-            'texinfo',
-            ]
-        # add the tests for the sub modules
-        suite.addTests(loader.loadTestsFromModuleNames(
-                ['bzrlib.tests.doc_generate.writers.test_' + name
-                 for name in testmod_names]))
-
-    return suite

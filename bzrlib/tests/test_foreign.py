@@ -330,7 +330,7 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
 
     def cloning_metadir(self, stacked=False):
         """Produce a metadir suitable for cloning with."""
-        return bzrdir.format_registry.make_bzrdir("default")
+        return controldir.format_registry.make_bzrdir("default")
 
     def checkout_metadir(self):
         return self.cloning_metadir()
@@ -446,7 +446,7 @@ class DummyForeignVcsTests(tests.TestCaseWithTransport):
     def test_create(self):
         """Test we can create dummies."""
         self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
-        dir = bzrdir.BzrDir.open("d")
+        dir = controldir.ControlDir.open("d")
         self.assertEquals("A Dummy VCS Dir", dir._format.get_format_string())
         dir.open_repository()
         dir.open_branch()
@@ -455,7 +455,7 @@ class DummyForeignVcsTests(tests.TestCaseWithTransport):
     def test_sprout(self):
         """Test we can clone dummies and that the format is not preserved."""
         self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
-        dir = bzrdir.BzrDir.open("d")
+        dir = controldir.ControlDir.open("d")
         newdir = dir.sprout("e")
         self.assertNotEquals("A Dummy VCS Dir",
                              newdir._format.get_format_string())

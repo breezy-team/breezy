@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2011 Canonical Ltd
+# Copyright (C) 2008-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -95,8 +95,19 @@ cdef class _Win32Stat:
             return self._st_size
 
     # os.stat always returns 0, so we hard code it here
-    cdef readonly int st_dev
-    cdef readonly int st_ino
+    property st_dev:
+        def __get__(self):
+            return 0
+    property st_ino:
+        def __get__(self):
+            return 0
+    # st_uid and st_gid required for some external tools like bzr-git & dulwich
+    property st_uid:
+        def __get__(self):
+            return 0
+    property st_gid:
+        def __get__(self):
+            return 0
 
     def __repr__(self):
         """Repr is the same as a Stat object.
@@ -195,8 +206,6 @@ cdef class Win32ReadDir:
         statvalue.st_mtime = _ftime_to_timestamp(&data.ftLastWriteTime)
         statvalue.st_atime = _ftime_to_timestamp(&data.ftLastAccessTime)
         statvalue._st_size = _get_size(data)
-        statvalue.st_ino = 0
-        statvalue.st_dev = 0
         return statvalue
 
     def read_dir(self, prefix, top):
@@ -288,6 +297,4 @@ def wrap_stat(st):
     statvalue.st_mtime = st.st_mtime
     statvalue.st_atime = st.st_atime
     statvalue._st_size = st.st_size
-    statvalue.st_ino = 0
-    statvalue.st_dev = 0
     return statvalue

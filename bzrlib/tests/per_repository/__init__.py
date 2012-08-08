@@ -25,7 +25,6 @@ rather than in tests/per_branch/*.py.
 """
 
 from bzrlib import (
-    bzrdir,
     repository,
     )
 from bzrlib.remote import RemoteRepositoryFormat
@@ -121,7 +120,6 @@ def load_tests(standard_tests, module, loader):
         'test_get_parent_map',
         'test_has_same_location',
         'test_has_revisions',
-        'test_iter_reverse_revision_history',
         'test_locking',
         'test_pack',
         'test_reconcile',

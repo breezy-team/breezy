@@ -20,7 +20,7 @@ import sys
 
 from bzrlib import (
     branch,
-    bzrdir,
+    controldir,
     errors,
     memorytree,
     remote,
@@ -87,7 +87,8 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
             # repository, but the default format is unstackble.  So explicitly
             # make a stackable real repository and use that.
             repo = self.make_repository(relpath, format='1.9')
-            repo = bzrdir.BzrDir.open(self.get_url(relpath)).open_repository()
+            dir = controldir.ControlDir.open(self.get_url(relpath))
+            repo = dir.open_repository()
         else:
             repo = self.make_repository(relpath)
         if not repo._format.supports_external_lookups:
