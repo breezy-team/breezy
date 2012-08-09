@@ -68,7 +68,7 @@ class WSGITestMixin(object):
 class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
 
     def setUp(self):
-        tests.TestCase.setUp(self)
+        super(TestWSGI, self).setUp()
         self.status = None
         self.headers = None
 

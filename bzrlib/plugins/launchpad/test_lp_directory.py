@@ -451,7 +451,7 @@ class TestXMLRPCTransport(tests.TestCase):
     server_class = None
 
     def setUp(self):
-        tests.TestCase.setUp(self)
+        super(TestXMLRPCTransport, self).setUp()
         self.server = self.server_class()
         self.server.start_server()
         self.addCleanup(self.server.stop_server)

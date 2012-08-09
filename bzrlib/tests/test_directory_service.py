@@ -42,7 +42,7 @@ class FooService(object):
 class TestDirectoryLookup(TestCase):
 
     def setUp(self):
-        TestCase.setUp(self)
+        super(TestDirectoryLookup, self).setUp()
         self.registry = DirectoryServiceRegistry()
         self.registry.register('foo:', FooService, 'Map foo URLs to http urls')
 

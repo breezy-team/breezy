@@ -24,7 +24,7 @@ from bzrlib.tests import TestCaseWithTransport
 class TestInventory(TestCaseWithTransport):
 
     def setUp(self):
-        TestCaseWithTransport.setUp(self)
+        super(TestInventory, self).setUp()
 
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/c'])

@@ -554,7 +554,7 @@ class TestPumpFile(tests.TestCase):
     """Test pumpfile method."""
 
     def setUp(self):
-        tests.TestCase.setUp(self)
+        super(TestPumpFile, self).setUp()
         # create a test datablock
         self.block_size = 512
         pattern = '0123456789ABCDEF'
@@ -1771,7 +1771,7 @@ class TestDirReader(tests.TestCaseInTempDir):
     _native_to_unicode = None
 
     def setUp(self):
-        tests.TestCaseInTempDir.setUp(self)
+        super(TestDirReader, self).setUp()
         self.overrideAttr(osutils,
                           '_selected_dir_reader', self._dir_reader_class())
 
@@ -1985,7 +1985,7 @@ class TestFailedToLoadExtension(tests.TestCase):
 class TestTerminalWidth(tests.TestCase):
 
     def setUp(self):
-        tests.TestCase.setUp(self)
+        super(TestTerminalWidth, self).setUp()
         self._orig_terminal_size_state = osutils._terminal_size_state
         self._orig_first_terminal_size = osutils._first_terminal_size
         self.addCleanup(self.restore_osutils_globals)
@@ -2072,7 +2072,7 @@ class TestCreationOps(tests.TestCaseInTempDir):
     _test_needs_features = [features.chown_feature]
 
     def setUp(self):
-        tests.TestCaseInTempDir.setUp(self)
+        super(TestCreationOps, self).setUp()
         self.overrideAttr(os, 'chown', self._dummy_chown)
 
         # params set by call to _dummy_chown

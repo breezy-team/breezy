@@ -272,7 +272,7 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
                                       _TestLockableFiles_mixin):
 
     def setUp(self):
-        TestCaseInTempDir.setUp(self)
+        super(TestLockableFiles_TransportLock, self).setUp()
         t = transport.get_transport_from_path('.')
         t.mkdir('.bzr')
         self.sub_transport = t.clone('.bzr')
@@ -293,11 +293,11 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
 
 
 class TestLockableFiles_LockDir(TestCaseInTempDir,
-                              _TestLockableFiles_mixin):
+                                _TestLockableFiles_mixin):
     """LockableFile tests run with LockDir underneath"""
 
     def setUp(self):
-        TestCaseInTempDir.setUp(self)
+        super(TestLockableFiles_LockDir, self).setUp()
         self.transport = transport.get_transport_from_path('.')
         self.lockable = self.get_lockable()
         # the lock creation here sets mode - test_permissions on branch
@@ -329,11 +329,11 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
 
 
 class TestLockableFiles_RemoteLockDir(TestCaseWithSmartMedium,
-                              _TestLockableFiles_mixin):
+                                      _TestLockableFiles_mixin):
     """LockableFile tests run with RemoteLockDir on a branch."""
 
     def setUp(self):
-        TestCaseWithSmartMedium.setUp(self)
+        super(TestLockableFiles_RemoteLockDir, self).setUp()
         # can only get a RemoteLockDir with some RemoteObject...
         # use a branch as thats what we want. These mixin tests test the end
         # to end behaviour, so stubbing out the backend and simulating would

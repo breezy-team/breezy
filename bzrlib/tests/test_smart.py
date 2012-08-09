@@ -82,7 +82,7 @@ class TestCaseWithChrootedTransport(tests.TestCaseWithTransport):
 
     def setUp(self):
         self.vfs_transport_factory = memory.MemoryServer
-        tests.TestCaseWithTransport.setUp(self)
+        super(TestCaseWithChrootedTransport, self).setUp()
         self._chroot_server = None
 
     def get_transport(self, relpath=None):
@@ -1058,7 +1058,7 @@ class SetLastRevisionTestBase(TestLockedBranch):
     """Base test case for verbs that implement set_last_revision."""
 
     def setUp(self):
-        tests.TestCaseWithMemoryTransport.setUp(self)
+        super(SetLastRevisionTestBase, self).setUp()
         backing_transport = self.get_transport()
         self.request = self.request_class(backing_transport)
         self.tree = self.make_branch_and_memory_tree('.')
@@ -1373,9 +1373,6 @@ class TestSmartServerBranchRequestGetStackedOnURL(tests.TestCaseWithMemoryTransp
 
 class TestSmartServerBranchRequestLockWrite(TestLockedBranch):
 
-    def setUp(self):
-        tests.TestCaseWithMemoryTransport.setUp(self)
-
     def test_lock_write_on_unlocked_branch(self):
         backing = self.get_transport()
         request = smart_branch.SmartServerBranchRequestLockWrite(backing)
@@ -1481,9 +1478,6 @@ class TestSmartServerBranchRequestLockWrite(TestLockedBranch):
 
 class TestSmartServerBranchRequestGetPhysicalLockStatus(TestLockedBranch):
 
-    def setUp(self):
-        tests.TestCaseWithMemoryTransport.setUp(self)
-
     def test_true(self):
         backing = self.get_transport()
         request = smart_branch.SmartServerBranchRequestGetPhysicalLockStatus(
@@ -1508,9 +1502,6 @@ class TestSmartServerBranchRequestGetPhysicalLockStatus(TestLockedBranch):
 
 
 class TestSmartServerBranchRequestUnlock(TestLockedBranch):
-
-    def setUp(self):
-        tests.TestCaseWithMemoryTransport.setUp(self)
 
     def test_unlock_on_locked_branch_and_repo(self):
         backing = self.get_transport()
@@ -2200,9 +2191,6 @@ class TestSmartServerRepositoryInsertStreamLocked(TestInsertStreamBase):
 
 
 class TestSmartServerRepositoryUnlock(tests.TestCaseWithMemoryTransport):
-
-    def setUp(self):
-        tests.TestCaseWithMemoryTransport.setUp(self)
 
     def test_unlock_on_locked_repo(self):
         backing = self.get_transport()

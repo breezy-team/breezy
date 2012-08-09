@@ -1309,7 +1309,7 @@ Joe Foo 2005-11-22 commit 2a
 class TestLogWithBugs(TestCaseForLogFormatter, TestLogMixin):
 
     def setUp(self):
-        TestCaseForLogFormatter.setUp(self)
+        super(TestLogWithBugs, self).setUp()
         log.properties_handler_registry.register(
             'bugs_properties_handler',
             log._bugs_properties_handler)
@@ -1389,7 +1389,7 @@ message:
 class TestLogForAuthors(TestCaseForLogFormatter):
 
     def setUp(self):
-        TestCaseForLogFormatter.setUp(self)
+        super(TestLogForAuthors, self).setUp()
         self.wt = self.make_standard_commit('nicky',
             authors=['John Doe <jdoe@example.com>',
                      'Jane Rey <jrey@example.com>'])

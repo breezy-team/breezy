@@ -841,7 +841,7 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
 
     def setUp(self):
-        TestCaseWithMemoryTransport.setUp(self)
+        super(TestPlanMergeVersionedFile, self).setUp()
         mapper = PrefixMapper()
         factory = make_file_factory(True, mapper)
         self.vf1 = factory(self.get_transport('root-1'))
@@ -2746,7 +2746,7 @@ class VirtualVersionedFilesTests(TestCase):
         return ret
 
     def setUp(self):
-        TestCase.setUp(self)
+        super(VirtualVersionedFilesTests, self).setUp()
         self._lines = {}
         self._parent_map = {}
         self.texts = VirtualVersionedFiles(self._get_parent_map,

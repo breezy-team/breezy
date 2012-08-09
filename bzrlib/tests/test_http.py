@@ -487,7 +487,7 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
         )
 
     def setUp(self):
-        http_utils.TestCaseWithWebserver.setUp(self)
+        super(TestHTTPConnections, self).setUp()
         self.build_tree(['foo/', 'foo/bar'], line_endings='binary',
                         transport=self.get_transport())
 
@@ -1163,7 +1163,7 @@ class TestLimitedRangeRequestServer(http_utils.TestCaseWithWebserver):
                                       protocol_version=self._protocol_version)
 
     def setUp(self):
-        http_utils.TestCaseWithWebserver.setUp(self)
+        super(TestLimitedRangeRequestServer, self).setUp()
         # We need to manipulate ranges that correspond to real chunks in the
         # response, so we build a content appropriately.
         filler = ''.join(['abcdefghij' for x in range(102)])
@@ -1355,7 +1355,7 @@ class TestRanges(http_utils.TestCaseWithWebserver):
         )
 
     def setUp(self):
-        http_utils.TestCaseWithWebserver.setUp(self)
+        super(TestRanges, self).setUp()
         self.build_tree_contents([('a', '0123456789')],)
 
     def create_transport_readonly_server(self):
@@ -2123,7 +2123,6 @@ class TestActivityMixin(object):
     """
 
     def setUp(self):
-        tests.TestCase.setUp(self)
         self.server = self._activity_server(self._protocol_version)
         self.server.start_server()
         self.addCleanup(self.server.stop_server)
@@ -2266,6 +2265,7 @@ class TestActivity(tests.TestCase, TestActivityMixin):
         )
 
     def setUp(self):
+        super(TestActivity, self).setUp()
         TestActivityMixin.setUp(self)
 
 
@@ -2280,6 +2280,7 @@ class TestNoReportActivity(tests.TestCase, TestActivityMixin):
     _protocol_version = 'HTTP/1.1'
 
     def setUp(self):
+        super(TestNoReportActivity, self).setUp()
         self._transport =_urllib.HttpTransport_urllib
         TestActivityMixin.setUp(self)
 

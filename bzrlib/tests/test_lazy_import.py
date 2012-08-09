@@ -94,7 +94,7 @@ class TestScopeReplacer(TestCase):
     """
 
     def setUp(self):
-        TestCase.setUp(self)
+        super(TestScopeReplacer, self).setUp()
         # These tests assume we will not be proxying, so make sure proxying is
         # disabled.
         orig_proxy = lazy_import.ScopeReplacer._should_proxy
@@ -456,7 +456,7 @@ class ImportReplacerHelper(TestCaseInTempDir):
     """Test the ability to have a lazily imported module or object"""
 
     def setUp(self):
-        TestCaseInTempDir.setUp(self)
+        super(ImportReplacerHelper, self).setUp()
         self.create_modules()
         base_path = self.test_dir + '/base'
 

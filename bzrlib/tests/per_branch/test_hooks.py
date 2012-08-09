@@ -294,7 +294,7 @@ class TestAllMethodsThatChangeTipWillRunHooks(ChangeBranchTipTestCase):
     """
 
     def setUp(self):
-        ChangeBranchTipTestCase.setUp(self)
+        super(TestAllMethodsThatChangeTipWillRunHooks, self).setUp()
         self.installPreAndPostHooks()
 
     def installPreAndPostHooks(self):

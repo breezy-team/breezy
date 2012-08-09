@@ -64,8 +64,7 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
     _native_to_unicode = None # Not used yet
 
     def setUp(self):
-        tests.TestCaseWithTransport.setUp(self)
-
+        super(TestCaseWithDirState, self).setUp()
         self.overrideAttr(osutils,
                           '_selected_dir_reader', self._dir_reader_class())
 
