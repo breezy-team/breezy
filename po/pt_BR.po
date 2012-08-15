@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2012-08-10 20:03+0000\n"
+"PO-Revision-Date: 2012-08-14 13:50+0000\n"
 "Last-Translator: Winícius Santos de A. Marques <wsamarques@gmail.com>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2012-08-11 04:30+0000\n"
-"X-Generator: Launchpad (build 15780)\n"
+"X-Launchpad-Export-Date: 2012-08-15 04:30+0000\n"
+"X-Generator: Launchpad (build 15801)\n"
 
 #: bzrlib/add.py:93
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -8808,7 +8808,7 @@ msgstr ""
 
 #: dummy/help_topics/standalone-trees/detail.txt:8
 msgid "Related Commands::"
-msgstr ""
+msgstr "Comandos Relacionados::"
 
 #: dummy/help_topics/standalone-trees/detail.txt:10
 msgid "  init    Make a directory into a versioned branch.\n"
@@ -8839,6 +8839,8 @@ msgstr ""
 #: dummy/help_topics/standard-options/detail.txt:9
 msgid "Unlike global options, standard options can be used in aliases.\n"
 msgstr ""
+"Ao contrário das opções globais, opções padrão podem ser utilizadas em "
+"sinônimos.\n"
 
 #: dummy/help_topics/standard-options/summary.txt:1
 msgid "Options that can be used with any command"
@@ -9314,7 +9316,7 @@ msgstr "Cada seção pode definir:"
 
 #: en/help_topics/authentication.txt:127
 msgid "* ``host``: the remote server,"
-msgstr ""
+msgstr "* ``host``: o servidor remoto,"
 
 #: en/help_topics/authentication.txt:129
 msgid "* ``port``: the port the server is listening,"
@@ -9326,7 +9328,7 @@ msgstr ""
 
 #: en/help_topics/authentication.txt:133
 msgid "* ``password``: the password."
-msgstr ""
+msgstr "* ``password``: a senha."
 
 #: en/help_topics/authentication.txt:135
 msgid ""
@@ -10116,7 +10118,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:149
 msgid "  BZR_DISABLE_PLUGINS='myplugin:yourplugin'"
-msgstr ""
+msgstr "  BZR_DISABLE_PLUGINS='myplugin:yourplugin'"
 
 #: en/help_topics/configuration.txt:151
 msgid ""
@@ -10185,6 +10187,9 @@ msgid ""
 "http_proxy, https_proxy\n"
 "~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"\n"
+"http_proxy, https_proxy\n"
+"~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:187
 msgid "Specifies the network proxy for outgoing connections, for example::"
@@ -10367,6 +10372,9 @@ msgid ""
 "    my_server      = bzr+ssh://example.com\n"
 "    push_location   = {my_server}/project/{my_branch_name}"
 msgstr ""
+"    my_branch_name = recurso_x\n"
+"    my_server      = bzr+ssh://exemplo.com\n"
+"    push_location   = {meu_servidor}/projeto/{nome_do_meu_ramo}"
 
 #: en/help_topics/configuration.txt:269
 msgid ""
@@ -10450,12 +10458,16 @@ msgid ""
 "  [/home/vila/src/bzr/bugs]\n"
 "  mypush = lp:~vila/bzr/{relpath}"
 msgstr ""
+"  [/home/vila/src/bzr/bugs]\n"
+"  mypush = lp:~vila/bzr/{caminho_relativo}"
 
 #: en/help_topics/configuration.txt:315
 msgid ""
 "In both cases, when used in a directory like\n"
 "``/home/vila/src/bzr/bugs/832013-expand-in-stack`` we'll get::"
 msgstr ""
+"Em ambos os casos, quando usado em um diretório como\n"
+"``/home/vila/src/bzr/bugs/832013-expand-in-stack`` nós teremos::"
 
 #: en/help_topics/configuration.txt:318 en/help_topics/configuration.txt:329
 msgid ""
@@ -10465,19 +10477,23 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:321
 msgid "Another such option is ``basename`` which can be used like this::"
-msgstr ""
+msgstr "Outra opção é ``basename`` a qual pode ser usada desta maneira::"
 
 #: en/help_topics/configuration.txt:323
 msgid ""
 "  [/home/vila/src/bzr]\n"
 "  mypush = lp:~vila/bzr/{basename}"
 msgstr ""
+"  [/home/vila/src/bzr]\n"
+"  mypush = lp:~vila/bzr/{basename}"
 
 #: en/help_topics/configuration.txt:326
 msgid ""
 "When used in a directory like\n"
 "``/home/vila/src/bzr/bugs/832013-expand-in-stack`` we'll get::"
 msgstr ""
+"Quando utilizada em um diretório como\n"
+"``/home/vila/src/bzr/bugs/832013-expand-in-stack`` nós obtemos::"
 
 #: en/help_topics/configuration.txt:332
 msgid ""
@@ -10485,6 +10501,9 @@ msgid ""
 "itself is defined as the relative path between the section name and the\n"
 "location it matches."
 msgstr ""
+"Note que ``basename`` aqui se refere ao nome da base de ``relpath``, que\n"
+"se define como o caminho relativo entre o nome da seção e o\n"
+"local ao qual ele corresponde."
 
 #: en/help_topics/configuration.txt:336
 msgid ""
@@ -10526,6 +10545,9 @@ msgid ""
 "The main configuration file, bazaar.conf\n"
 "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"\n"
+"O arquivos de configuração principal, bazaar.conf\n"
+"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:356
 msgid ""
@@ -10538,6 +10560,7 @@ msgstr ""
 #: en/help_topics/configuration.txt:361
 msgid "A typical ``bazaar.conf`` section often looks like the following::"
 msgstr ""
+"Uma seção ``bazaar.conf`` típica muitas vezes se parece com a seguinte::"
 
 #: en/help_topics/configuration.txt:363
 msgid ""
@@ -10557,6 +10580,9 @@ msgid ""
 "The branch location configuration file, locations.conf\n"
 "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"\n"
+"O arquivo de configuração local do ramo, locations.conf\n"
+"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:372
 msgid ""
@@ -10589,6 +10615,8 @@ msgid ""
 "The authentication configuration file, authentication.conf\n"
 "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"O arquivo de configuração da autentificação, authentication.conf\n"
+"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:387
 msgid ""
@@ -10597,6 +10625,10 @@ msgid ""
 "part\n"
 "of bzr that requires authentication (smtp for example)."
 msgstr ""
+"``authentication.conf`` permite especificar credenciais para\n"
+"servidores remotos. Isso pode ser usado para todos os protocolos de "
+"transporte suportados e em qualquer parte\n"
+"do bzr que necessite de autentificação (smtp por exemplo)."
 
 #: en/help_topics/configuration.txt:391
 msgid ""
@@ -10610,6 +10642,9 @@ msgid ""
 "configuration\n"
 "file see :doc:`authentication-help`."
 msgstr ""
+"Para mais informações sobre os possíveis usos do arquivo de configuração de "
+"autentificação\n"
+"olhe :doc:`authentication-help`."
 
 #: en/help_topics/configuration.txt:397
 msgid ""
@@ -10617,12 +10652,17 @@ msgid ""
 "Common options\n"
 "--------------"
 msgstr ""
+"\n"
+"Opções comuns\n"
+"--------------"
 
 #: en/help_topics/configuration.txt:401
 msgid ""
 "debug_flags\n"
 "~~~~~~~~~~~"
 msgstr ""
+"debug_flags\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:404
 msgid ""
@@ -10633,11 +10673,11 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:408
 msgid "    debug_flags = hpss"
-msgstr ""
+msgstr "    debug_flags = hpss"
 
 #: en/help_topics/configuration.txt:412
 msgid "    debug_flags = hpss,evil"
-msgstr ""
+msgstr "    debug_flags = hpss,evil"
 
 #: en/help_topics/configuration.txt:414
 msgid ""
@@ -10678,6 +10718,8 @@ msgid ""
 "log_format\n"
 "~~~~~~~~~~"
 msgstr ""
+"log_format\n"
+"~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:433
 msgid ""
@@ -10691,12 +10733,17 @@ msgid ""
 "check_signatures\n"
 "~~~~~~~~~~~~~~~~"
 msgstr ""
+"check_signatures\n"
+"~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:440
 msgid ""
 "Reserved for future use.  These options will allow a policy for branches to\n"
 "require signatures."
 msgstr ""
+"Reservado para uso futuro. Estas opções possibilitarão uma política para "
+"ramos\n"
+"requererem assinaturas."
 
 #: en/help_topics/configuration.txt:443
 msgid ""
@@ -10709,6 +10756,8 @@ msgid ""
 "ignore\n"
 "    Do not check gnupg signatures of revisions."
 msgstr ""
+"ignore\n"
+"    Não verifica as assinaturas gnupg das versões."
 
 #: en/help_topics/configuration.txt:449
 msgid ""
@@ -10723,6 +10772,8 @@ msgid ""
 "create_signatures\n"
 "~~~~~~~~~~~~~~~~~"
 msgstr ""
+"create_signatures\n"
+"~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:457
 msgid ""
@@ -10730,6 +10781,9 @@ msgid ""
 "not\n"
 "sign new commits."
 msgstr ""
+"Define o comportamento na assinatura de revisões para submissões. Por "
+"padrão, bzr não\n"
+"assina novas submissões."
 
 #: en/help_topics/configuration.txt:460
 msgid ""
@@ -10744,12 +10798,16 @@ msgid ""
 "when-required\n"
 "    Reserved for future use."
 msgstr ""
+"when-required\n"
+"    Reservado para uso futuro."
 
 #: en/help_topics/configuration.txt:467
 msgid ""
 "never\n"
 "    Reserved for future use."
 msgstr ""
+"never\n"
+"    Reservado para uso futuro."
 
 #: en/help_topics/configuration.txt:470
 msgid ""
@@ -10764,6 +10822,8 @@ msgid ""
 "dirstate.fdatasync\n"
 "~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"dirstate.fdatasync\n"
+"~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:477
 msgid ""
@@ -10777,6 +10837,8 @@ msgid ""
 "gpg_signing_key\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"gpg_signing_key\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:484
 msgid ""
@@ -10815,6 +10877,8 @@ msgid ""
 "gpg_signing_command\n"
 "~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"gpg_signing_command\n"
+"~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:504
 msgid ""
@@ -10825,7 +10889,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:507
 msgid "    gpg_signing_command = /usr/bin/gnpg"
-msgstr ""
+msgstr "    gpg_signing_command = /usr/bin/gnpg"
 
 #: en/help_topics/configuration.txt:509
 msgid ""
@@ -10857,7 +10921,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:521
 msgid "It is overridden by the BZR_REMOTE_PATH environment variable."
-msgstr ""
+msgstr "É substituído pela variável de ambiente BZR_REMOTE_PATH."
 
 #: en/help_topics/configuration.txt:523
 msgid ""
@@ -10922,7 +10986,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:553
 msgid "Supported values for specific clients:"
-msgstr ""
+msgstr "Valores suportados para clientes específicos:"
 
 #: en/help_topics/configuration.txt:555
 msgid ""
@@ -10937,7 +11001,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:562
 msgid "Supported generic values are:"
-msgstr ""
+msgstr "Os valores genéricos suportados são:"
 
 #: en/help_topics/configuration.txt:564
 msgid ""
@@ -10954,6 +11018,8 @@ msgid ""
 "repository.fdatasync\n"
 "~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"repository.fdatasync\n"
+"~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:574
 msgid ""
@@ -10999,6 +11065,8 @@ msgid ""
 "suppress_warnings\n"
 "~~~~~~~~~~~~~~~~~"
 msgstr ""
+"suppress_warnings\n"
+"~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:594
 msgid ""
@@ -11008,7 +11076,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:597
 msgid "Valid values:"
-msgstr ""
+msgstr "Valores válidos:"
 
 #: en/help_topics/configuration.txt:599
 msgid ""
@@ -11023,6 +11091,8 @@ msgid ""
 "default_format\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"default_format\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:606
 msgid ""
@@ -11037,12 +11107,17 @@ msgid ""
 "Unicode options\n"
 "---------------"
 msgstr ""
+"\n"
+"Opções Unicode\n"
+"---------------"
 
 #: en/help_topics/configuration.txt:613
 msgid ""
 "output_encoding\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
+"output_encoding\n"
+"~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:616
 msgid ""
@@ -11071,6 +11146,8 @@ msgid ""
 "append_revisions_only\n"
 "~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"append_revisions_only\n"
+"~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:632
 msgid ""
@@ -11146,6 +11223,8 @@ msgid ""
 "bound_location\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
+"bound_location\n"
+"~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:668
 msgid ""
@@ -11390,7 +11469,7 @@ msgstr ""
 
 #: en/help_topics/conflict-types.txt:65
 msgid "  Text conflict in FILE"
-msgstr ""
+msgstr "  Conflito de texto em FILE"
 
 #: en/help_topics/conflict-types.txt:67
 msgid ""
@@ -11457,6 +11536,9 @@ msgid ""
 "When you have resolved text conflicts, just run ``bzr resolve --auto``, and\n"
 "Bazaar will auto-detect which conflicts you have resolved."
 msgstr ""
+"Quando você tiver resolvido conflitos de texto, apenas execute ``bzr resolve "
+"--auto``, e\n"
+"o Bazaar detectará automaticamente quais conflitos foram resolvidos."
 
 #: en/help_topics/conflict-types.txt:103
 msgid ""
@@ -11489,10 +11571,12 @@ msgid ""
 "Content conflicts\n"
 "-----------------"
 msgstr ""
+"Content conflicts\n"
+"-----------------"
 
 #: en/help_topics/conflict-types.txt:122
 msgid "  Contents conflict in FILE"
-msgstr ""
+msgstr "  Conflitos de conteúdo em ARQUIVO"
 
 #: en/help_topics/conflict-types.txt:124
 msgid ""
@@ -11528,7 +11612,7 @@ msgstr ""
 #: en/help_topics/conflict-types.txt:291 en/help_topics/conflict-types.txt:326
 #: en/help_topics/conflict-types.txt:361
 msgid "``bzr resolve`` recognizes the following actions:"
-msgstr ""
+msgstr "``bzr resolve`` reconhece as seguintes ações:"
 
 #: en/help_topics/conflict-types.txt:139
 msgid ""
@@ -11557,12 +11641,16 @@ msgid ""
 "Tag conflicts\n"
 "-------------"
 msgstr ""
+"Tag conflicts\n"
+"-------------"
 
 #: en/help_topics/conflict-types.txt:153
 msgid ""
 "  Conflicting tags:\n"
 "      version-0.1"
 msgstr ""
+"  Tags conflitantes:\n"
+"      version-0.1"
 
 #: en/help_topics/conflict-types.txt:156
 msgid ""
