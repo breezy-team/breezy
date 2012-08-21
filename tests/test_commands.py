@@ -59,7 +59,8 @@ class TestSourceStream(tests.TestCase):
         self.assertIsNot("bla", stream.read())
 
 
-fast_export_baseline_data = """commit refs/heads/master
+fast_export_baseline_data = """reset refs/heads/master
+commit refs/heads/master
 mark :1
 committer
 data 15
@@ -103,7 +104,7 @@ class TestFastExport(ExternalBase):
         tree = self.make_branch_and_tree("br")
         tree.commit("pointless")
         data = self.run_bzr("fast-export br")[0]
-        self.assertTrue(data.startswith('commit refs/heads/master\nmark :1\ncommitter'))
+        self.assertTrue(data.startswith('reset refs/heads/master\ncommit refs/heads/master\nmark :1\ncommitter'))
 
     def test_file(self):
         tree = self.make_branch_and_tree("br")
