@@ -3384,6 +3384,10 @@ class LockableIniFileStore(TransportIniFileStore):
 # on the relevant parts of the API that needs testing -- vila 20110503 (based
 # on a poolie's remark)
 class GlobalStore(LockableIniFileStore):
+    "A config store for global options.
+
+    There is a single GlobalStore for a given process.
+    """
 
     def __init__(self, possible_transports=None):
         t = transport.get_transport_from_path(
@@ -3393,6 +3397,10 @@ class GlobalStore(LockableIniFileStore):
 
 
 class LocationStore(LockableIniFileStore):
+    "A config store for global options.
+
+    There is a single GlobalStore for a given process.
+    """
 
     def __init__(self, possible_transports=None):
         t = transport.get_transport_from_path(
@@ -3402,6 +3410,10 @@ class LocationStore(LockableIniFileStore):
 
 
 class BranchStore(TransportIniFileStore):
+    "A config store for branch options.
+
+    There is a single BranchStore for a given branch.
+    """
 
     def __init__(self, branch):
         super(BranchStore, self).__init__(branch.control_transport,
