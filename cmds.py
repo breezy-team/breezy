@@ -368,7 +368,8 @@ def find_credits(repository, revid):
            }
     repository.lock_read()
     try:
-        ancestry = filter(lambda x: x is not None, repository.get_ancestry(revid))
+        graph = repository.get_graph()
+        ancestry = [r for (r, ps) in graph.iter_ancestry([revid]) if ps is not None]
         revs = repository.get_revisions(ancestry)
         pb = ui.ui_factory.nested_progress_bar()
         try:
