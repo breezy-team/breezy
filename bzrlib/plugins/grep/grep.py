@@ -24,7 +24,7 @@ from fnmatch import fnmatch
 import re
 from cStringIO import StringIO
 
-from bzrlib.termcolor import color_string, re_color_string, FG
+from bzrlib._termcolor import color_string, re_color_string, FG
 
 from bzrlib.revisionspec import (
     RevisionSpec,

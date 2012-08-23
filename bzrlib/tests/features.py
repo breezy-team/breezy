@@ -497,7 +497,7 @@ win32_feature = Win32Feature()
 class _ColorFeature(Feature):
 
     def _probe(self):
-        from bzrlib.termcolor import allow_color
+        from bzrlib._termcolor import allow_color
         return allow_color()
 
     def feature_name(self):

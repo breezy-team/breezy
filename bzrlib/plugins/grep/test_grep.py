@@ -21,7 +21,7 @@ import re
 import unicodedata as ud
 
 from bzrlib import tests, osutils
-from bzrlib.termcolor import color_string, FG
+from bzrlib._termcolor import color_string, FG
 
 from bzrlib.tests.features import (
     ColorFeature,

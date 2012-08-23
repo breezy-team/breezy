@@ -147,7 +147,7 @@ class cmd_grep(Command):
             path_list=None, revision=None, pattern=None, include=None,
             exclude=None, fixed_string=False, files_with_matches=False,
             files_without_match=False, color=None, diff=False):
-        from bzrlib import termcolor
+        from bzrlib import _termcolor
         from bzrlib.plugins.grep import (
             grep,
             )
@@ -208,7 +208,7 @@ class cmd_grep(Command):
         elif color == 'never':
             show_color = False
         elif color == 'auto':
-            show_color = termcolor.allow_color()
+            show_color = _termcolor.allow_color()
 
         GrepOptions.verbose = verbose
         GrepOptions.ignore_case = ignore_case
