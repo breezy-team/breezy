@@ -3384,7 +3384,7 @@ class LockableIniFileStore(TransportIniFileStore):
 # on the relevant parts of the API that needs testing -- vila 20110503 (based
 # on a poolie's remark)
 class GlobalStore(LockableIniFileStore):
-    "A config store for global options.
+    """A config store for global options.
 
     There is a single GlobalStore for a given process.
     """
@@ -3397,7 +3397,7 @@ class GlobalStore(LockableIniFileStore):
 
 
 class LocationStore(LockableIniFileStore):
-    "A config store for global options.
+    """A config store for global options.
 
     There is a single GlobalStore for a given process.
     """
@@ -3410,7 +3410,7 @@ class LocationStore(LockableIniFileStore):
 
 
 class BranchStore(TransportIniFileStore):
-    "A config store for branch options.
+    """A config store for branch options.
 
     There is a single BranchStore for a given branch.
     """
