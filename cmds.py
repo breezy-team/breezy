@@ -28,6 +28,7 @@ from bzrlib import (
     ui,
     workingtree,
     )
+from bzrlib.revision import NULL_REVISION
 from bzrlib.plugins.stats.classify import classify_delta
 
 from itertools import izip
@@ -168,7 +169,10 @@ def get_info(a_repo, revision):
     a_repo.lock_read()
     try:
         trace.note('getting ancestry')
-        ancestry = a_repo.get_ancestry(revision)[1:]
+        graph = a_repo.get_graph()
+        ancestry = [
+            r for (r, ps) in graph.iter_ancestry([revision])
+            if ps is not None and r != NULL_REVISION]
         revs, canonical_committer = get_revisions_and_committers(a_repo, ancestry)
     finally:
         a_repo.unlock()
@@ -185,11 +189,9 @@ def get_diff_info(a_repo, start_rev, end_rev):
     pb = ui.ui_factory.nested_progress_bar()
     a_repo.lock_read()
     try:
-        trace.note('getting ancestry 1')
-        start_ancestry = set(a_repo.get_ancestry(start_rev))
-        trace.note('getting ancestry 2')
-        ancestry = a_repo.get_ancestry(end_rev)[1:]
-        ancestry = [rev for rev in ancestry if rev not in start_ancestry]
+        graph = a_repo.get_graph()
+        trace.note('getting ancestry diff')
+        ancestry = graph.find_difference(start_rev, end_rev)[1]
         revs, canonical_committer = get_revisions_and_committers(a_repo, ancestry)
     finally:
         a_repo.unlock()
@@ -368,7 +370,8 @@ def find_credits(repository, revid):
            }
     repository.lock_read()
     try:
-        ancestry = filter(lambda x: x is not None, repository.get_ancestry(revid))
+        graph = repository.get_graph()
+        ancestry = [r for (r, ps) in graph.iter_ancestry([revid]) if ps is not None]
         revs = repository.get_revisions(ancestry)
         pb = ui.ui_factory.nested_progress_bar()
         try:
