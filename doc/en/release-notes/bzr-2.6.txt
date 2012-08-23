@@ -106,6 +106,8 @@ New Features
 * New option ``--overwrite-tags`` for ``bzr pull`` and ``bzr push``.
   (Jelmer Vernooij, #681792)
 
+* The 'grep' plugin is now shipped with bzr. (Jelmer Vernooij)
+
 Improvements
 ************
 

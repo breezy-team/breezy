@@ -1,0 +1,73 @@
+This is the NEWS file from bzr-grep from before it was merged into bzr core.
+For changes before then, please refer to the main bzr log file.
+
+bzr-grep 0.5.0-final - Unreleased
+==================================
+* ``bzr grep`` now supports ``--diff|-p`` option to search through
+  changesets. (Parth Malwankar, #540705)
+
+* Option ``grep_color`` can be set in ``bazaar.conf`` instead of using
+  the option ``--color`` from the command line. (Johan Dahlin)
+
+bzr-grep 0.4.0-final - 08-Jun-2010
+==================================
+* Add seperate output formatter to reduce duplication of search loops,
+  additionally make -Fi use regexp rather than lowercasing pattern and
+  entirety of text for the same reason. This also fixes bug #590589
+  - UnicodeDecodeError with options -Fi. (Martin [gz])
+
+* Added fast path for no match that avoids splitting the file text into
+  seperate lines and testing each one, by checking the entire text for a
+  possible match initially. (Martin [gz])
+
+* Added Makefile. (Parth Malwankar)
+
+* Fixed setup.py to work correctly. (Martin [gz])
+
+bzr-grep 0.3.0-final - 23-May-2010
+==================================
+* Support for --color option (POSIX only). (Parth Malwankar, #571694)
+
+* Revisions in branches without trees can now be searched with
+  -r option. (Parth Malwankar, #584240)
+
+* Trying to search working tree for a treeless branch no longer
+  produces a stack trace but gives an error message suggesting use of
+  -r option. (Parth Malwankar, #572658)
+
+bzr-grep 0.2.0-final - 30-Mar-2010
+==================================
+* 'binary file skipped' warning is not shows without --verbose flag
+  (Parth Malwankar, #539031)
+
+* Added support for -F/--fixed-string for faster search.
+  Simple patterns [a-zA-Z0-9 _] are now implicitly -F and searched faster.
+  (Parth Malwankar, #539263)
+
+* Better unicode handling. bzr-grep no longer crashes with UnicodeDecode
+  error for some outputs. (Parth Malwankar, #539258)
+
+* Faster grep for revision range. bzr-grep now caches results for
+  files that have not changed between revisions.
+  (Parth Malwankar, #542375)
+
+* Faster grep for specific revision. (Parth Malwankar, #539429)
+
+* Significant performance improvement. Working tree grep for bzr.dev
+  has gone from ~7.5s to ~1s. (Parth Malwankar, #539028)
+
+* Support for -L/--files-without-match and -l/files-with-matches
+  (Parth Malwankar, #540097)
+
+bzr-grep 0.1.0-final - 14-Mar-2010
+==================================
+* --recursive is now default. (Parth Malwankar, #536688)
+
+* ``bzr grep`` searches working copy by default. (Parth Malwankar, #537072)
+
+* --include/exclude=GLOB is now supported. (Parth Malwankar, #529889)
+
+bzr-grep 0.0.1-final - 10-Mar-2010
+==================================
+* Initial release (Parth Malwankar)
+
