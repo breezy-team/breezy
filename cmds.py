@@ -189,11 +189,9 @@ def get_diff_info(a_repo, start_rev, end_rev):
     pb = ui.ui_factory.nested_progress_bar()
     a_repo.lock_read()
     try:
-        trace.note('getting ancestry 1')
-        start_ancestry = set(a_repo.get_ancestry(start_rev))
-        trace.note('getting ancestry 2')
-        ancestry = a_repo.get_ancestry(end_rev)[1:]
-        ancestry = [rev for rev in ancestry if rev not in start_ancestry]
+        graph = a_repo.get_graph()
+        trace.note('getting ancestry diff')
+        ancestry = graph.find_difference(start_rev, end_rev)[1]
         revs, canonical_committer = get_revisions_and_committers(a_repo, ancestry)
     finally:
         a_repo.unlock()
