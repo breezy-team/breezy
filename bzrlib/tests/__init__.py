@@ -1001,6 +1001,8 @@ class TestCase(testtools.TestCase):
     def setUp(self):
         super(TestCase, self).setUp()
 
+        # At this point we're still accessing the config files in $BZR_HOME (as
+        # set by the user running selftest).
         timeout = config.GlobalStack().get('selftest.timeout')
         if timeout:
             timeout_fixture = fixtures.TimeoutFixture(timeout)
@@ -2447,6 +2449,34 @@ class TestCaseWithMemoryTransport(TestCase):
         self.transport_readonly_server = None
         self.__vfs_server = None
 
+    def setUp(self):
+        super(TestCaseWithMemoryTransport, self).setUp()
+
+        def _add_disconnect_cleanup(transport):
+            """Schedule disconnection of given transport at test cleanup
+
+            This needs to happen for all connected transports or leaks occur.
+
+            Note reconnections may mean we call disconnect multiple times per
+            transport which is suboptimal but seems harmless.
+            """
+            self.addCleanup(transport.disconnect)
+
+        _mod_transport.Transport.hooks.install_named_hook('post_connect',
+            _add_disconnect_cleanup, None)
+
+        self._make_test_root()
+        self.addCleanup(os.chdir, os.getcwdu())
+        self.makeAndChdirToTestDir()
+        self.overrideEnvironmentForTesting()
+        self.__readonly_server = None
+        self.__server = None
+        self.reduceLockdirTimeout()
+        # Each test may use its own config files even if the local config files
+        # don't actually exist. They'll rightly fail if they try to create them
+        # though.
+        self.overrideAttr(config, '_shared_stores', {})
+
     def get_transport(self, relpath=None):
         """Return a writeable transport.
 
@@ -2733,30 +2763,6 @@ class TestCaseWithMemoryTransport(TestCase):
         self.overrideEnv('HOME', test_home_dir)
         self.overrideEnv('BZR_HOME', test_home_dir)
 
-    def setUp(self):
-        super(TestCaseWithMemoryTransport, self).setUp()
-
-        def _add_disconnect_cleanup(transport):
-            """Schedule disconnection of given transport at test cleanup
-
-            This needs to happen for all connected transports or leaks occur.
-
-            Note reconnections may mean we call disconnect multiple times per
-            transport which is suboptimal but seems harmless.
-            """
-            self.addCleanup(transport.disconnect)
- 
-        _mod_transport.Transport.hooks.install_named_hook('post_connect',
-            _add_disconnect_cleanup, None)
-
-        self._make_test_root()
-        self.addCleanup(os.chdir, os.getcwdu())
-        self.makeAndChdirToTestDir()
-        self.overrideEnvironmentForTesting()
-        self.__readonly_server = None
-        self.__server = None
-        self.reduceLockdirTimeout()
-
     def setup_smart_server_with_call_log(self):
         """Sets up a smart server as the transport server with a call log."""
         self.transport_server = test_server.SmartTCPServer_for_testing
@@ -2949,6 +2955,10 @@ class TestCaseWithTransport(TestCaseInTempDir):
     readwrite one must both define get_url() as resolving to os.getcwd().
     """
 
+    def setUp(self):
+        super(TestCaseWithTransport, self).setUp()
+        self.__vfs_server = None
+
     def get_vfs_only_server(self):
         """See TestCaseWithMemoryTransport.
 
@@ -3037,17 +3047,13 @@ class TestCaseWithTransport(TestCaseInTempDir):
         self.assertFalse(differences.has_changed(),
             "Trees %r and %r are different: %r" % (left, right, differences))
 
-    def setUp(self):
-        super(TestCaseWithTransport, self).setUp()
-        self.__vfs_server = None
-
     def disable_missing_extensions_warning(self):
         """Some tests expect a precise stderr content.
 
         There is no point in forcing them to duplicate the extension related
         warning.
         """
-        config.GlobalConfig().set_user_option('ignore_missing_extensions', True)
+        config.GlobalStack().set('ignore_missing_extensions', True)
 
 
 class ChrootedTestCase(TestCaseWithTransport):

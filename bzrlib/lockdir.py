@@ -858,6 +858,6 @@ def get_username_for_lock_info():
     as it gives some clue who the user is.
     """
     try:
-        return config.GlobalConfig().username()
+        return config.GlobalStack().get('email')
     except errors.NoWhoami:
         return osutils.getuser_unicode()

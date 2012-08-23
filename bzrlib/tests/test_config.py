@@ -4347,6 +4347,15 @@ class TestConfigGetSections(tests.TestCaseWithTransport):
         self.assertSectionNames(['ALIASES'], self.bazaar_config, 'ALIASES')
 
 
+class TestSharedStores(tests.TestCaseInTempDir):
+
+    def test_bazaar_conf_shared(self):
+        g1 = config.GlobalStack()
+        g2 = config.GlobalStack()
+        # The two stacks share the same store
+        self.assertIs(g1.store, g2.store)
+
+
 class TestAuthenticationConfigFile(tests.TestCase):
     """Test the authentication.conf file matching"""
 

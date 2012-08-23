@@ -384,7 +384,7 @@ class RemoteControlStore(_mod_config.IniFileStore):
             self._real_store = _mod_config.ControlStore(self.bzrdir)
 
     def external_url(self):
-        return self.bzrdir.user_url
+        return urlutils.join(self.branch.user_url, 'control.conf')
 
     def _load_content(self):
         medium = self.bzrdir._client._medium
@@ -3251,7 +3251,7 @@ class RemoteBranchStore(_mod_config.IniFileStore):
         self._real_store = None
 
     def external_url(self):
-        return self.branch.user_url
+        return urlutils.join(self.branch.user_url, 'branch.conf')
 
     def _load_content(self):
         path = self.branch._remote_path()
