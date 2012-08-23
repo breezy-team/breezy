@@ -28,6 +28,7 @@ from bzrlib import (
     ui,
     workingtree,
     )
+from bzrlib.revision import NULL_REVISION
 from bzrlib.plugins.stats.classify import classify_delta
 
 from itertools import izip
@@ -168,7 +169,10 @@ def get_info(a_repo, revision):
     a_repo.lock_read()
     try:
         trace.note('getting ancestry')
-        ancestry = a_repo.get_ancestry(revision)[1:]
+        graph = a_repo.get_graph()
+        ancestry = [
+            r for (r, ps) in graph.iter_ancestry([revision])
+            if ps is not None and r != NULL_REVISION]
         revs, canonical_committer = get_revisions_and_committers(a_repo, ancestry)
     finally:
         a_repo.unlock()
