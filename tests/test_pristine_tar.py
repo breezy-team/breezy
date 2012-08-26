@@ -99,3 +99,6 @@ class StoreGitPristineTarData(TestCase):
         self.assertEquals(r[cid].tree, tree.id)
         self.assertEquals(r[tree["foo.delta"][1]].data, "mydelta")
         self.assertEquals(r[tree["foo.id"][1]].data, "myid")
+
+        self.assertEquals(("mydelta", "myid"),
+            read_git_pristine_tar_data(r, "foo"))
