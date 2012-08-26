@@ -21,6 +21,8 @@ from base64 import (
     standard_b64decode,
     )
 
+from dulwich.objects import Tree
+
 
 def revision_pristine_tar_data(rev):
     """Export the pristine tar data from a revision."""
@@ -34,3 +36,29 @@ def revision_pristine_tar_data(rev):
         raise KeyError
 
     return standard_b64decode(uuencoded)
+
+
+def get_pristine_tar_tree(repo):
+    """Retrieve the pristine tar tree for a repository.
+
+    """
+    try:
+        cid = repo.refs["refs/heads/pristine-tar"]
+    except KeyError:
+        return Tree()
+    tid = repo.object_store[cid].tree
+    return repo.object_store[tid]
+
+
+def read_git_pristine_tar_data(repo, filename):
+    """Read pristine data from a Git repository.
+
+    :param repo: Git repository to read from
+    :param filename: Name of file to read
+    :return: Tuple with delta and id
+    """
+    tree = get_pristine_tar_tree(repo)
+    delta = tree[filename + ".delta"][1]
+    gitid = tree[filename + ".id"][1]
+    return (repo.object_store[delta].data,
+            repo.object_store[gitid].data)

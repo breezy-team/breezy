@@ -18,10 +18,23 @@
 
 from base64 import standard_b64encode
 
-from bzrlib.plugins.git.pristine_tar import revision_pristine_tar_data
+from bzrlib.plugins.git.pristine_tar import (
+    revision_pristine_tar_data,
+    read_git_pristine_tar_data,
+    )
 
 from bzrlib.revision import Revision
 from bzrlib.tests import TestCase
+
+from dulwich.objects import (
+    Blob,
+    Tree,
+    )
+from dulwich.repo import (
+    MemoryRepo as GitMemoryRepo,
+    )
+import stat
+
 
 class RevisionPristineTarDataTests(TestCase):
 
@@ -34,3 +47,39 @@ class RevisionPristineTarDataTests(TestCase):
         rev = Revision("myrevid")
         rev.properties["deb-pristine-delta"] = standard_b64encode("bla")
         self.assertEquals("bla", revision_pristine_tar_data(rev))
+
+
+class ReadPristineTarData(TestCase):
+
+    def test_read_pristine_tar_data_no_branch(self):
+        r = GitMemoryRepo()
+        self.assertRaises(KeyError, read_git_pristine_tar_data,
+            r, "foo")
+
+    def test_read_pristine_tar_data_no_file(self):
+        r = GitMemoryRepo()
+        t = Tree()
+        b = Blob.from_string("README")
+        r.object_store.add_object(b)
+        t.add("README", stat.S_IFREG | 0644, b.id)
+        r.object_store.add_object(t)
+        r.do_commit("Add README", tree=t.id,
+                    ref='refs/heads/pristine-tar')
+        self.assertRaises(KeyError, read_git_pristine_tar_data,
+            r, "foo")
+
+    def test_read_pristine_tar_data(self):
+        r = GitMemoryRepo()
+        delta = Blob.from_string("some yummy data")
+        r.object_store.add_object(delta)
+        idfile = Blob.from_string("someid")
+        r.object_store.add_object(idfile)
+        t = Tree()
+        t.add("foo.delta", stat.S_IFREG | 0644, delta.id)
+        t.add("foo.id", stat.S_IFREG | 0644, idfile.id)
+        r.object_store.add_object(t)
+        r.do_commit("pristine tar delta for foo", tree=t.id,
+                    ref='refs/heads/pristine-tar')
+        self.assertEquals(
+            ("some yummy data", "someid"),
+            read_git_pristine_tar_data(r, 'foo'))
