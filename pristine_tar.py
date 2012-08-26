@@ -21,8 +21,17 @@ from base64 import (
     standard_b64decode,
     )
 
-from dulwich.objects import Tree
+from dulwich.objects import (
+    Blob,
+    Tree,
+    )
 
+import stat
+
+README_CONTENTS = """\
+This branch contains delta files that pristine-tar can use to
+regenerate tarballs for its own releases.
+"""
 
 def revision_pristine_tar_data(rev):
     """Export the pristine tar data from a revision."""
@@ -62,3 +71,34 @@ def read_git_pristine_tar_data(repo, filename):
     gitid = tree[filename + ".id"][1]
     return (repo.object_store[delta].data,
             repo.object_store[gitid].data)
+
+
+def store_git_pristine_tar_data(repo, filename, delta, gitid,
+        message=None, **kwargs):
+    """Add pristine tar data to a Git repository.
+
+    :param repo: Git repository to add data to
+    :param filename: Name of file to store for
+    :param delta: pristine-tar delta
+    :param gitid: Git id the pristine tar delta is generated against
+    """
+    delta_ob = Blob.from_string(delta)
+    delta_name = filename + ".delta"
+    id_ob = Blob.from_string(gitid)
+    id_name = filename + ".id"
+    objects = [
+        (delta_ob, delta_name),
+        (id_ob, id_name)]
+    tree = get_pristine_tar_tree(repo)
+    tree.add(delta_name, stat.S_IFREG | 0644, delta_ob.id)
+    tree.add(id_name, stat.S_IFREG | 0644, id_ob.id)
+    if not "README" in tree:
+        readme_ob = Blob.from_string(README_CONTENTS)
+        objects.append((readme_ob, "README"))
+        tree.add("README", stat.S_IFREG | 0644, readme_ob.id)
+    objects.append((tree, ""))
+    repo.object_store.add_objects(objects)
+    if message is None:
+        message = 'pristine-tar data for %s' % filename
+    return repo.do_commit(ref='refs/heads/pristine-tar', tree=tree.id,
+        message=message, **kwargs)

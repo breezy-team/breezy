@@ -19,8 +19,10 @@
 from base64 import standard_b64encode
 
 from bzrlib.plugins.git.pristine_tar import (
+    get_pristine_tar_tree,
     revision_pristine_tar_data,
     read_git_pristine_tar_data,
+    store_git_pristine_tar_data,
     )
 
 from bzrlib.revision import Revision
@@ -83,3 +85,17 @@ class ReadPristineTarData(TestCase):
         self.assertEquals(
             ("some yummy data", "someid"),
             read_git_pristine_tar_data(r, 'foo'))
+
+
+class StoreGitPristineTarData(TestCase):
+
+    def test_store_new(self):
+        r = GitMemoryRepo()
+        cid = store_git_pristine_tar_data(r, "foo", "mydelta", "myid")
+        tree = get_pristine_tar_tree(r)
+        self.assertEquals(
+            (stat.S_IFREG | 0644, "7b02de8ac4162e64f402c43487d8a40a505482e1"),
+            tree["README"])
+        self.assertEquals(r[cid].tree, tree.id)
+        self.assertEquals(r[tree["foo.delta"][1]].data, "mydelta")
+        self.assertEquals(r[tree["foo.id"][1]].data, "myid")
