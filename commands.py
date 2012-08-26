@@ -296,3 +296,56 @@ class cmd_git_apply(Command):
                     f.close()
         finally:
             tree.unlock()
+
+
+class cmd_git_push_pristine_tar_deltas(Command):
+    """Push pristine tar deltas to a git repository."""
+
+    takes_options = [Option('directory',
+        short_name='d',
+        help='Location of repository.', type=unicode)]
+    takes_args = ['target', 'package']
+
+    def run(self, target, package, directory='.'):
+        from bzrlib.branch import Branch
+        from bzrlib.errors import (
+            BzrCommandError,
+            NoSuchRevision,
+            )
+        from bzrlib.trace import warning
+        from bzrlib.repository import Repository
+        from bzrlib.plugins.git.object_store import get_object_store
+        from bzrlib.plugins.git.pristine_tar import (
+            revision_pristine_tar_data,
+            store_git_pristine_tar_data,
+            )
+        source = Branch.open_containing(directory)[0]
+        target_bzr = Repository.open(target)
+        target = getattr(target_bzr, '_git', None)
+        git_store = get_object_store(source.repository)
+        self.add_cleanup(git_store.unlock)
+        git_store.lock_read()
+        if target is None:
+            raise BzrCommandError("Target not a git repository")
+        tag_dict = source.tags.get_tag_dict()
+        for name, revid in tag_dict.iteritems():
+            try:
+                rev = source.repository.get_revision(revid)
+            except NoSuchRevision:
+                continue
+            try:
+                delta, kind = revision_pristine_tar_data(rev)
+            except KeyError:
+                continue
+            gitid = git_store._lookup_revision_sha1(revid)
+            if not (name.startswith('upstream/') or name.startswith('upstream-')):
+                warning("Unexpected pristine tar revision tagged %s. Ignoring.",
+                     name)
+                continue
+            upstream_version = name[len("upstream/"):]
+            filename = '%s_%s.orig.tar.%s' % (package, upstream_version, kind)
+            if not gitid in target:
+                warning("base git id %s for %s missing in target repository",
+                        gitid, filename)
+            store_git_pristine_tar_data(target, filename.encode('utf-8'),
+                delta, gitid)

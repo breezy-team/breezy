@@ -48,7 +48,7 @@ class RevisionPristineTarDataTests(TestCase):
     def test_pristine_tar_delta_gz(self):
         rev = Revision("myrevid")
         rev.properties["deb-pristine-delta"] = standard_b64encode("bla")
-        self.assertEquals("bla", revision_pristine_tar_data(rev))
+        self.assertEquals(("bla", "gz"), revision_pristine_tar_data(rev))
 
 
 class ReadPristineTarData(TestCase):
