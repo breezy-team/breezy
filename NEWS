@@ -1,3 +1,10 @@
+0.6.10	UNRELEASED
+
+ FEATURES
+
+  * New command 'bzr git-push-pristine-tar', which pushes pristine tar deltas
+    to a git repository. (Jelmer Vernooij)
+
 0.6.9	2012-05-29
 
  BUG FIXES

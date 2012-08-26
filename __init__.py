@@ -262,6 +262,9 @@ plugin_cmds.register_lazy("cmd_git_object", ["git-objects", "git-cat"],
     "bzrlib.plugins.git.commands")
 plugin_cmds.register_lazy("cmd_git_refs", [], "bzrlib.plugins.git.commands")
 plugin_cmds.register_lazy("cmd_git_apply", [], "bzrlib.plugins.git.commands")
+plugin_cmds.register_lazy("cmd_git_push_pristine_tar_deltas",
+        ['git-push-pristine-tar', 'git-push-pristine'],
+    "bzrlib.plugins.git.commands")
 
 def extract_git_foreign_revid(rev):
     try:
