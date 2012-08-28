@@ -935,9 +935,8 @@ def exception_to_return_code(the_callable, *args, **kwargs):
         exitcode = trace.report_exception(exc_info, sys.stderr)
         if os.environ.get('BZR_PDB'):
             print '**** entering debugger'
-            tb = exc_info[2]
             import pdb
-            pdb.post_mortem(tb)
+            pdb.post_mortem(exc_info[2])
         return exitcode
 
 
