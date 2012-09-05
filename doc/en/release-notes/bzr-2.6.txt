@@ -47,6 +47,9 @@ Bug Fixes
   and would be ignored.
   (Haw Loeung, #932515)
 
+* Warn when ``--show-base`` is used for ``pull`` in a treeless branch
+  instead of failing. It's useless but harmless. (Vincent Ladeuil, #1022160)
+
 * When a missing referenced chk root error is encountered, bzr now suggests
   running ``bzr reconcile --canonicalize-chks``. (Jelmer Vernooij, #1021537)
 

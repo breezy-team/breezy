@@ -501,16 +501,15 @@ class TestPull(tests.TestCaseWithTransport):
                              'fee>>>>>>> MERGE-SOURCE\n',
                              open(osutils.pathjoin('b', 'hello')).read())
 
-    def test_pull_show_base_working_tree_only(self):
-        """--show-base only allowed if there's a working tree
+    def test_pull_warns_about_show_base_when_no_working_tree(self):
+        """--show-base is useless if there's no working tree
 
-        see https://bugs.launchpad.net/bzr/+bug/202374"""
-        # create a branch, see that --show-base fails
+        see https://bugs.launchpad.net/bzr/+bug/1022160"""
         self.make_branch('from')
         self.make_branch('to')
-        out=self.run_bzr(['pull','-d','to','from','--show-base'],retcode=3)
-        self.assertEqual(
-            out, ('','bzr: ERROR: Need working tree for --show-base.\n'))
+        out = self.run_bzr(['pull','-d','to','from','--show-base'])
+        self.assertEqual(out, ('No revisions or tags to pull.\n',
+                               'No working tree, ignoring --show-base\n'))
 
     def test_pull_tag_conflicts(self):
         """pulling tags with conflicts will change the exit code"""
