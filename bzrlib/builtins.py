@@ -5114,6 +5114,7 @@ class cmd_testament(Command):
             Option('strict',
                    help='Produce a strict-format testament.')]
     takes_args = ['branch?']
+    encoding_type = 'exact'
     @display_command
     def run(self, branch=u'.', revision=None, long=False, strict=False):
         from bzrlib.testament import Testament, StrictTestament
@@ -5132,9 +5133,9 @@ class cmd_testament(Command):
             rev_id = revision[0].as_revision_id(b)
         t = testament_class.from_revision(b.repository, rev_id)
         if long:
-            sys.stdout.writelines(t.as_text_lines())
+            self.outf.writelines(t.as_text_lines())
         else:
-            sys.stdout.write(t.as_short_text())
+            self.outf.write(t.as_short_text())
 
 
 class cmd_annotate(Command):
