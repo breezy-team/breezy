@@ -1184,9 +1184,8 @@ class cmd_pull(Command):
             tree_to = None
             branch_to = Branch.open_containing(directory)[0]
             self.add_cleanup(branch_to.lock_write().unlock)
-
-        if tree_to is None and show_base:
-            raise errors.BzrCommandError(gettext("Need working tree for --show-base."))
+            if show_base:
+                warning(gettext("No working tree, ignoring --show-base"))
 
         if local and not branch_to.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
