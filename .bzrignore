@@ -25,6 +25,7 @@ BRANCH-INFO
 # setup.py working directory
 ./build
 ./build-win32
+./bzrlib/locale
 # Editor temporary/working/backup files
 *$
 .*.sw[nop]
