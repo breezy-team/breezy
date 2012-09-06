@@ -3873,6 +3873,9 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             target, overwrite=overwrite, stop_revision=stop_revision, lossy=lossy,
             _override_hook_source_branch=self)
 
+    def peek_lock_mode(self):
+        return self._lock_mode
+
     def is_locked(self):
         return self._lock_count >= 1
 

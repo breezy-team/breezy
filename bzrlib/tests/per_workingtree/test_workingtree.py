@@ -173,6 +173,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_lock_locks_branch(self):
         tree = self.make_branch_and_tree('.')
+        self.assertEqual(None, tree.branch.peek_lock_mode())
         tree.lock_read()
         self.assertEqual('r', tree.branch.peek_lock_mode())
         tree.unlock()
