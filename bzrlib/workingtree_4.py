@@ -1679,7 +1679,9 @@ class WorkingTreeFormat6(DirStateWorkingTreeFormat):
 
     def _get_matchingbzrdir(self):
         """Overrideable method to get a bzrdir for testing."""
-        return bzrdir.format_registry.make_bzrdir('2a')
+        # We use 'development-subtree' instead of '2a', because we have a
+        # few tests that want to test tree references
+        return bzrdir.format_registry.make_bzrdir('development-subtree')
 
 
 class DirStateRevisionTree(InventoryTree):
