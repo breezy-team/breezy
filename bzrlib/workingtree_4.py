@@ -1677,6 +1677,10 @@ class WorkingTreeFormat6(DirStateWorkingTreeFormat):
     def supports_views(self):
         return True
 
+    def _get_matchingbzrdir(self):
+        """Overrideable method to get a bzrdir for testing."""
+        return bzrdir.format_registry.make_bzrdir('2a')
+
 
 class DirStateRevisionTree(InventoryTree):
     """A revision tree pulling the inventory from a dirstate.
