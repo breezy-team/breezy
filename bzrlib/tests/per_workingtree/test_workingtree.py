@@ -57,6 +57,16 @@ from bzrlib.conflicts import ConflictList, TextConflict, ContentsConflict
 
 class TestWorkingTree(TestCaseWithWorkingTree):
 
+    def requireBranchReference(self):
+        test_branch = self.make_branch('test-branch')
+        try:
+            # if there is a working tree now, this is not supported.
+            test_branch.bzrdir.open_workingtree()
+            raise TestNotApplicable("only on trees that can be separate"
+                " from their branch.")
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            pass
+
     def test_branch_builder(self):
         # Just a smoke test that we get a branch at the specified relpath
         builder = self.make_branch_builder('foobar')
@@ -478,19 +488,19 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # that formats where initialising a branch does not initialise a
         # tree - and thus have separable entities - support skewing the
         # two things.
-        main_branch = self.make_branch('tree')
+        test_branch = self.make_branch('test-branch')
         try:
             # if there is a working tree now, this is not supported.
-            main_branch.bzrdir.open_workingtree()
+            test_branch.bzrdir.open_workingtree()
             return
-        except errors.NoWorkingTree:
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
             pass
-        wt = main_branch.bzrdir.create_workingtree()
+        wt = self.make_branch_and_tree('tree')
         # create an out of date working tree by making a checkout in this
         # current format
         self.build_tree(['checkout/', 'tree/file'])
         checkout = bzrdir.BzrDirMetaFormat1().initialize('checkout')
-        checkout.set_branch_reference(main_branch)
+        checkout.set_branch_reference(wt.branch)
         old_tree = self.workingtree_format.initialize(checkout)
         # now commit to 'tree'
         wt.add('file')
@@ -545,19 +555,13 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # that formats where initialising a branch does not initialise a
         # tree - and thus have separable entities - support skewing the
         # two things.
-        main_branch = self.make_branch('tree')
-        try:
-            # if there is a working tree now, this is not supported.
-            main_branch.bzrdir.open_workingtree()
-            return
-        except errors.NoWorkingTree:
-            pass
-        wt = main_branch.bzrdir.create_workingtree()
+        self.requireBranchReference()
+        wt = self.make_branch_and_tree('tree')
         # create an out of date working tree by making a checkout in this
         # current format
         self.build_tree(['checkout/', 'tree/file'])
         checkout = bzrdir.BzrDirMetaFormat1().initialize('checkout')
-        checkout.set_branch_reference(main_branch)
+        checkout.set_branch_reference(wt.branch)
         old_tree = self.workingtree_format.initialize(checkout)
         # now commit to 'tree'
         wt.add('file')
