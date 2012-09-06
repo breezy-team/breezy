@@ -1,7 +1,6 @@
 bzr (2.6.0~bzr6558-1) UNRELEASED; urgency=low
 
   [ Jelmer Vernooij ]
-  * New upstream snapshot.
   * Remove myself from uploaders.
   * New upstream snapshot.
 
