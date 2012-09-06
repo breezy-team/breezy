@@ -700,7 +700,7 @@ class TestRevisionSpec_mainline(TestRevisionSpec):
 class TestRevisionSpec_annotate(TestRevisionSpec):
 
     def setUp(self):
-        TestRevisionSpec.setUp(self)
+        super(TestRevisionSpec_annotate, self).setUp()
         self.tree = self.make_branch_and_tree('annotate-tree')
         self.build_tree_contents([('annotate-tree/file1', '1\n')])
         self.tree.add('file1')

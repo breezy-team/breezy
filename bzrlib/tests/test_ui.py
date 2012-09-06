@@ -56,8 +56,7 @@ class TestUIConfiguration(tests.TestCaseWithTransport):
 
     def test_output_encoding_configuration(self):
         enc = fixtures.generate_unicode_encodings().next()
-        config.GlobalConfig().set_user_option('output_encoding',
-            enc)
+        config.GlobalStack().set('output_encoding', enc)
         ui = tests.TestUIFactory(stdin=None,
             stdout=tests.StringIOWrapper(),
             stderr=tests.StringIOWrapper())

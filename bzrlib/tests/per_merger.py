@@ -209,7 +209,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
     """Tests that the 'merge_file_content' hook is invoked."""
 
     def setUp(self):
-        TestCaseWithTransport.setUp(self)
+        super(TestHookMergeFileContent, self).setUp()
         self.hook_log = []
 
     def install_hook_inactive(self):

@@ -34,7 +34,7 @@ class TestDependencyManagement(TestCase):
     _test_needs_features = [launchpadlib_feature]
 
     def setUp(self):
-        TestCase.setUp(self)
+        super(TestDependencyManagement, self).setUp()
         from bzrlib.plugins.launchpad import lp_api
         self.lp_api = lp_api
 

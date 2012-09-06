@@ -32,6 +32,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``bzr config`` properly handles aliases and references in the
+  ``--directory`` parameter (Vincent Ladeuil, Wouter van Heyst, #947049)
+
 * Revert use of --no-tty when gpg signing commits. (Jelmer Vernooij, #1014570)
 
 Documentation

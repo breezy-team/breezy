@@ -51,7 +51,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
         if not f():
             raise TestSkipped("format %s doesn't support content filtering"
                 % fmt)
-        TestCaseWithWorkingTree.setUp(self)
+        super(TestEolConversion, self).setUp()
 
     def patch_rules_searcher(self, eol):
         """Patch in a custom rules searcher with a given eol setting."""

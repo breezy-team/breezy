@@ -3270,7 +3270,7 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
     """
 
     def setUp(self):
-        TestRemoteRepository.setUp(self)
+        super(TestRepositoryInsertStream, self).setUp()
         self.disable_verb('Repository.insert_stream_1.19')
 
     def test_unlocked_repo(self):

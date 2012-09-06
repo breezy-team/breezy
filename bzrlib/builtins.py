@@ -1184,9 +1184,8 @@ class cmd_pull(Command):
             tree_to = None
             branch_to = Branch.open_containing(directory)[0]
             self.add_cleanup(branch_to.lock_write().unlock)
-
-        if tree_to is None and show_base:
-            raise errors.BzrCommandError(gettext("Need working tree for --show-base."))
+            if show_base:
+                warning(gettext("No working tree, ignoring --show-base"))
 
         if local and not branch_to.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
@@ -1871,19 +1870,13 @@ class cmd_remove(Command):
             title='Deletion Strategy', value_switches=True, enum_switch=False,
             safe='Backup changed files (default).',
             keep='Delete from bzr but leave the working copy.',
-            no_backup='Don\'t backup changed files.',
-            force='Delete all the specified files, even if they can not be '
-                'recovered and even if they are non-empty directories. '
-                '(deprecated, use no-backup)')]
+            no_backup='Don\'t backup changed files.'),
+        ]
     aliases = ['rm', 'del']
     encoding_type = 'replace'
 
     def run(self, file_list, verbose=False, new=False,
         file_deletion_strategy='safe'):
-        if file_deletion_strategy == 'force':
-            note(gettext("(The --force option is deprecated, rather use --no-backup "
-                "in future.)"))
-            file_deletion_strategy = 'no-backup'
 
         tree, file_list = WorkingTree.open_containing_paths(file_list)
 
@@ -2335,13 +2328,18 @@ class cmd_diff(Command):
             help='Diff format to use.',
             lazy_registry=('bzrlib.diff', 'format_registry'),
             title='Diff format'),
+        Option('context',
+            help='How many lines of context to show.',
+            type=int,
+            ),
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
-            prefix=None, old=None, new=None, using=None, format=None):
+            prefix=None, old=None, new=None, using=None, format=None, 
+            context=None):
         from bzrlib.diff import (get_trees_and_branches_to_diff_locked,
             show_diff_trees)
 
@@ -2380,7 +2378,7 @@ class cmd_diff(Command):
                                old_label=old_label, new_label=new_label,
                                extra_trees=extra_trees,
                                path_encoding=path_encoding,
-                               using=using,
+                               using=using, context=context,
                                format_cls=format)
 
 
@@ -5142,6 +5140,7 @@ class cmd_testament(Command):
             Option('strict',
                    help='Produce a strict-format testament.')]
     takes_args = ['branch?']
+    encoding_type = 'exact'
     @display_command
     def run(self, branch=u'.', revision=None, long=False, strict=False):
         from bzrlib.testament import Testament, StrictTestament
@@ -5160,9 +5159,9 @@ class cmd_testament(Command):
             rev_id = revision[0].as_revision_id(b)
         t = testament_class.from_revision(b.repository, rev_id)
         if long:
-            sys.stdout.writelines(t.as_text_lines())
+            self.outf.writelines(t.as_text_lines())
         else:
-            sys.stdout.write(t.as_short_text())
+            self.outf.write(t.as_short_text())
 
 
 class cmd_annotate(Command):

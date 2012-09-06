@@ -40,7 +40,7 @@ class TestTreeViews(TestCaseWithWorkingTree):
                 "supports views, assuming not" % fmt)
         if not f():
             raise TestSkipped("format %s doesn't support views" % fmt)
-        TestCaseWithWorkingTree.setUp(self)
+        super(TestTreeViews, self).setUp()
 
     def test_views_initially_empty(self):
         wt = self.make_branch_and_tree('wt')
@@ -172,7 +172,7 @@ class TestUnsupportedViews(TestCaseWithWorkingTree):
             raise TestSkipped("Format %s declares that views are supported"
                               % fmt)
             # it's covered by TestTreeViews
-        TestCaseWithWorkingTree.setUp(self)
+        super(TestUnsupportedViews, self).setUp()
 
     def test_view_methods_raise(self):
         wt = self.make_branch_and_tree('wt')

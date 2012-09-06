@@ -15,17 +15,16 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for finding and reading the bzr config file[s]."""
-# import system imports here
+
+import base64
 from cStringIO import StringIO
 from textwrap import dedent
 import os
 import sys
 import threading
 
-
 from testtools import matchers
 
-#import bzrlib specific imports here
 from bzrlib import (
     branch,
     config,
@@ -4348,6 +4347,15 @@ class TestConfigGetSections(tests.TestCaseWithTransport):
         self.assertSectionNames(['ALIASES'], self.bazaar_config, 'ALIASES')
 
 
+class TestSharedStores(tests.TestCaseInTempDir):
+
+    def test_bazaar_conf_shared(self):
+        g1 = config.GlobalStack()
+        g2 = config.GlobalStack()
+        # The two stacks share the same store
+        self.assertIs(g1.store, g2.store)
+
+
 class TestAuthenticationConfigFile(tests.TestCase):
     """Test the authentication.conf file matching"""
 
@@ -4839,6 +4847,15 @@ class TestPlainTextCredentialStore(tests.TestCase):
         r = config.credential_store_registry
         plain_text = r.get_credential_store()
         decoded = plain_text.decode_password(dict(password='secret'))
+        self.assertEquals('secret', decoded)
+
+
+class TestBase64CredentialStore(tests.TestCase):
+
+    def test_decode_password(self):
+        r = config.credential_store_registry
+        plain_text = r.get_credential_store('base64')
+        decoded = plain_text.decode_password(dict(password='c2VjcmV0'))
         self.assertEquals('secret', decoded)
 
 

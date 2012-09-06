@@ -500,7 +500,7 @@ class TestEncodeAndEscape(TestCase):
     """Whitebox testing of the _encode_and_escape function."""
 
     def setUp(self):
-        TestCase.setUp(self)
+        super(TestEncodeAndEscape, self).setUp()
         # Keep the cache clear before and after the test
         bzrlib.xml_serializer._clear_cache()
         self.addCleanup(bzrlib.xml_serializer._clear_cache)

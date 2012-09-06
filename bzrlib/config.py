@@ -81,6 +81,7 @@ import bzrlib
 from bzrlib.decorators import needs_write_lock
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import base64
 import fnmatch
 import re
 
@@ -88,6 +89,7 @@ from bzrlib import (
     atomicfile,
     controldir,
     debug,
+    directory_service,
     errors,
     lazy_regex,
     library_state,
@@ -2131,6 +2133,19 @@ credential_store_registry.register('plain', PlainTextCredentialStore,
 credential_store_registry.default_key = 'plain'
 
 
+class Base64CredentialStore(CredentialStore):
+    __doc__ = """Base64 credential store for the authentication.conf file"""
+    
+    def decode_password(self, credentials):
+        """See CredentialStore.decode_password."""
+        # GZ 2012-07-28: Will raise binascii.Error if password is not base64,
+        #                should probably propogate as something more useful.
+        return base64.decodestring(credentials['password'])
+
+credential_store_registry.register('base64', Base64CredentialStore,
+                                   help=Base64CredentialStore.__doc__)
+
+
 class BzrDirConfig(object):
 
     def __init__(self, bzrdir):
@@ -3273,6 +3288,7 @@ class IniFileStore(Store):
         # anyway.
         return 'In-Process Store, no URL'
 
+
 class TransportIniFileStore(IniFileStore):
     """IniFileStore that loads files from a transport.
 
@@ -3368,6 +3384,10 @@ class LockableIniFileStore(TransportIniFileStore):
 # on the relevant parts of the API that needs testing -- vila 20110503 (based
 # on a poolie's remark)
 class GlobalStore(LockableIniFileStore):
+    """A config store for global options.
+
+    There is a single GlobalStore for a given process.
+    """
 
     def __init__(self, possible_transports=None):
         t = transport.get_transport_from_path(
@@ -3377,6 +3397,10 @@ class GlobalStore(LockableIniFileStore):
 
 
 class LocationStore(LockableIniFileStore):
+    """A config store for global options.
+
+    There is a single GlobalStore for a given process.
+    """
 
     def __init__(self, possible_transports=None):
         t = transport.get_transport_from_path(
@@ -3386,6 +3410,10 @@ class LocationStore(LockableIniFileStore):
 
 
 class BranchStore(TransportIniFileStore):
+    """A config store for branch options.
+
+    There is a single BranchStore for a given branch.
+    """
 
     def __init__(self, branch):
         super(BranchStore, self).__init__(branch.control_transport,
@@ -3608,6 +3636,10 @@ def iter_option_refs(string):
         yield is_ref, chunk
         is_ref = not is_ref
 
+# FIXME: _shared_stores should be an attribute of a library state once a
+# library_state object is always available.
+_shared_stores = {}
+_shared_stores_at_exit_installed = False
 
 class Stack(object):
     """A stack of configurations where an option can be defined"""
@@ -3802,10 +3834,46 @@ class Stack(object):
         return "<config.%s(%s)>" % (self.__class__.__name__, id(self))
 
     def _get_overrides(self):
-        # Hack around library_state.initialize never called
+        # FIXME: Hack around library_state.initialize never called
         if bzrlib.global_state is not None:
             return bzrlib.global_state.cmdline_overrides.get_sections()
         return []
+
+    def get_shared_store(self, store, state=None):
+        """Get a known shared store.
+
+        Store urls uniquely identify them and are used to ensure a single copy
+        is shared across all users.
+
+        :param store: The store known to the caller.
+
+        :param state: The library state where the known stores are kept.
+
+        :returns: The store received if it's not a known one, an already known
+            otherwise.
+        """
+        if state is None:
+            state = bzrlib.global_state
+        if state is None:
+            global _shared_stores_at_exit_installed
+            stores = _shared_stores
+            def save_config_changes():
+                for k, store in stores.iteritems():
+                    store.save_changes()
+            if not _shared_stores_at_exit_installed:
+                # FIXME: Ugly hack waiting for library_state to always be
+                # available. -- vila 20120731
+                import atexit
+                atexit.register(save_config_changes)
+                _shared_stores_at_exit_installed = True
+        else:
+            stores = state.config_stores
+        url = store.external_url()
+        try:
+            return stores[url]
+        except KeyError:
+            stores[url] = store
+            return store
 
 
 class MemoryStack(Stack):
@@ -3862,7 +3930,7 @@ class _CompatibleStack(Stack):
         self.store.save()
 
 
-class GlobalStack(_CompatibleStack):
+class GlobalStack(Stack):
     """Global options only stack.
 
     The following sections are queried:
@@ -3876,14 +3944,14 @@ class GlobalStack(_CompatibleStack):
     """
 
     def __init__(self):
-        gstore = GlobalStore()
+        gstore = self.get_shared_store(GlobalStore())
         super(GlobalStack, self).__init__(
             [self._get_overrides,
              NameMatcher(gstore, 'DEFAULT').get_sections],
             gstore, mutable_section_id='DEFAULT')
 
 
-class LocationStack(_CompatibleStack):
+class LocationStack(Stack):
     """Per-location options falling back to global options stack.
 
 
@@ -3905,10 +3973,10 @@ class LocationStack(_CompatibleStack):
         """Make a new stack for a location and global configuration.
 
         :param location: A URL prefix to """
-        lstore = LocationStore()
+        lstore = self.get_shared_store(LocationStore())
         if location.startswith('file://'):
             location = urlutils.local_path_from_url(location)
-        gstore = GlobalStore()
+        gstore = self.get_shared_store(GlobalStore())
         super(LocationStack, self).__init__(
             [self._get_overrides,
              LocationMatcher(lstore, location).get_sections,
@@ -3936,9 +4004,9 @@ class BranchStack(Stack):
     """
 
     def __init__(self, branch):
-        lstore = LocationStore()
+        lstore = self.get_shared_store(LocationStore())
         bstore = branch._get_config_store()
-        gstore = GlobalStore()
+        gstore = self.get_shared_store(GlobalStore())
         super(BranchStack, self).__init__(
             [self._get_overrides,
              LocationMatcher(lstore, branch.base).get_sections,
@@ -3966,7 +4034,7 @@ class BranchStack(Stack):
         # unlock saves all the changes.
 
 
-class RemoteControlStack(_CompatibleStack):
+class RemoteControlStack(Stack):
     """Remote control-only options stack."""
 
     # FIXME 2011-11-22 JRV This should probably be renamed to avoid confusion
@@ -4054,6 +4122,7 @@ class cmd_config(commands.Command):
             remove=False):
         if directory is None:
             directory = '.'
+        directory = directory_service.directories.dereference(directory)
         directory = urlutils.normalize_url(directory)
         if remove and all:
             raise errors.BzrError(

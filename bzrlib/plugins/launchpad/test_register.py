@@ -331,6 +331,9 @@ class TestGatherUserCredentials(tests.TestCaseInTempDir):
         service = LaunchpadService()
         g_conf = config.GlobalStack()
         g_conf.set('email', 'Test User <test@user.com>')
+        g_conf.store.save()
+        # FIXME: auth_path base dir exists only because bazaar.conf has just
+        # been saved, brittle... -- vila 20120731
         f = open(auth_path, 'wb')
         try:
             scheme, hostinfo = urlparse.urlsplit(service.service_url)[:2]
@@ -352,6 +355,7 @@ class TestGatherUserCredentials(tests.TestCaseInTempDir):
         self.assertIs(None, service.registrant_password)
         g_conf = config.GlobalStack()
         g_conf.set('email', 'Test User <test@user.com>')
+        g_conf.store.save()
         stdout = tests.StringIOWrapper()
         stderr = tests.StringIOWrapper()
         ui.ui_factory = tests.TestUIFactory(stdin='userpass\n',
