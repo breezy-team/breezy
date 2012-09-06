@@ -76,6 +76,8 @@ class BzrLibraryState(object):
         # There is no overrides by default, they are set later when the command
         # arguments are parsed.
         self.cmdline_overrides = config.CommandLineStore()
+        # No config stores are cached to start with
+        self.config_stores = {} # By url
         self.started = False
 
     def __enter__(self):
@@ -106,6 +108,10 @@ class BzrLibraryState(object):
         self.started = True
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            # Save config changes
+            for k, store in self.config_stores.iteritems():
+                store.save_changes()
         self.cleanups.cleanup_now()
         trace._flush_stdout_stderr()
         trace._flush_trace()

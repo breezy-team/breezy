@@ -90,7 +90,6 @@ class ContentFilterContext(object):
         # Cached values
         self._revision_id = None
         self._revision = None
-        self._config = None
 
     def relpath(self):
         """Relative path of file to tree-root."""
@@ -130,16 +129,6 @@ class ContentFilterContext(object):
                     repo = self._tree.branch.repository
                 self._revision = repo.get_revision(rev_id)
         return self._revision
-
-    def config(self):
-        """The Config object to search for configuration settings."""
-        if self._config is None:
-            branch = getattr(self._tree, 'branch', None)
-            if branch is not None:
-                self._config = branch.get_config()
-            else:
-                self._config = config.GlobalConfig()
-        return self._config
 
 
 def filtered_input_file(f, filters):

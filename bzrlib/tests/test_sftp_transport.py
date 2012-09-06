@@ -147,8 +147,9 @@ class SFTPTransportTestRelativeRoot(TestCaseWithSFTPServer):
 
 
 class SFTPNonServerTest(TestCase):
+
     def setUp(self):
-        TestCase.setUp(self)
+        super(SFTPNonServerTest, self).setUp()
         self.requireFeature(features.paramiko)
 
     def test_parse_url_with_home_dir(self):
@@ -361,7 +362,7 @@ class FakeSocket(object):
 class TestSocketDelay(TestCase):
 
     def setUp(self):
-        TestCase.setUp(self)
+        super(TestSocketDelay, self).setUp()
         self.requireFeature(features.paramiko)
 
     def test_delay(self):

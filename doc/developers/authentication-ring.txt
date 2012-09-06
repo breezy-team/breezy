@@ -158,7 +158,7 @@ future versions.
 
 Encoding passwords in ``base64``, while weak, provides protection against
 accidental reading (if an administrator have to look into the file, he will not
-see the passwords in clear).(Not implemented yet).
+see the passwords in clear).
 
 This specification intends to ease the authentication providing, not to secure
 it in the best possible way.
@@ -266,6 +266,7 @@ The use cases described below use the file format defined above.
         scheme=https
         host=home.net
         user=joe
+        # Obtain the base64 encoded password by running 'echo -n "secret-pass" | base64'
         password='c2VjcmV0LXBhc3M='
         password_encoding=base64
         verify_certificates=no # Still searching a free certificate provider

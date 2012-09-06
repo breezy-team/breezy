@@ -72,7 +72,7 @@ class TestTerminalEncoding(TestCase):
     """Test the auto-detection of proper terminal encoding."""
 
     def setUp(self):
-        TestCase.setUp(self)
+        super(TestTerminalEncoding, self).setUp()
         self.overrideAttr(sys, 'stdin')
         self.overrideAttr(sys, 'stdout')
         self.overrideAttr(sys, 'stderr')
@@ -167,7 +167,7 @@ class TestUserEncoding(TestCase):
     """Test detection of default user encoding."""
 
     def setUp(self):
-        TestCase.setUp(self)
+        super(TestUserEncoding, self).setUp()
         self.overrideAttr(osutils, '_cached_user_encoding', None)
         self.overrideAttr(locale, 'getpreferredencoding', self.get_encoding)
         self.overrideAttr(locale, 'CODESET', None)

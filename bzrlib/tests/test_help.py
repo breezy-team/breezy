@@ -499,7 +499,7 @@ Description:
 class TestHelp(tests.TestCase):
 
     def setUp(self):
-        tests.TestCase.setUp(self)
+        super(TestHelp, self).setUp()
         commands.install_bzr_command_hooks()
 
 

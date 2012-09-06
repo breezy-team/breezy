@@ -800,7 +800,7 @@ class TestRangeFileSizeReadLimited(tests.TestCase):
     """
 
     def setUp(self):
-        tests.TestCase.setUp(self)
+        super(TestRangeFileSizeReadLimited, self).setUp()
         # create a test datablock larger than _max_read_size.
         chunk_size = response.RangeFile._max_read_size
         test_pattern = '0123456789ABCDEF'

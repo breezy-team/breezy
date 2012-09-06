@@ -559,7 +559,7 @@ class TestMerge(TestCaseWithTransport):
 class TestPlanMerge(TestCaseWithMemoryTransport):
 
     def setUp(self):
-        TestCaseWithMemoryTransport.setUp(self)
+        super(TestPlanMerge, self).setUp()
         mapper = versionedfile.PrefixMapper()
         factory = knit.make_file_factory(True, mapper)
         self.vf = factory(self.get_transport())

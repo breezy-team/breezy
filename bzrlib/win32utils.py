@@ -515,7 +515,7 @@ def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
                                   default.
     :return: A list of unicode strings.
     """
-    # First, spit the command line
+    # First, split the command line
     s = cmdline.Splitter(command_line, single_quotes_allowed=single_quotes_allowed)
     
     # Bug #587868 Now make sure that the length of s agrees with sys.argv 

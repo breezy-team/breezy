@@ -21,12 +21,23 @@ New Features
 * ``bzr switch --store`` now stores uncommitted changes in the branch, and
   restores them when switching back to the branch. (Aaron Bentley)
 
+* New option '--context' for 'bzr diff' command, to configure the amount of 
+  context (i.e. showing lines that have not changed).  Also available as the 
+  named parameter 'context_lines' to bzrlib.diff.internal_diff(). (Paul Nixon)
+
 Improvements
 ************
 
-``bzr lp-find-proposal`` now only cares about the revision-id that is
-specified, not the branch you use.  This was enabled by a new API call in
-Launchpad's web service.  (Aaron Bentley)
+* ``bzr lp-find-proposal`` now only cares about the revision-id that is
+  specified, not the branch you use.  This was enabled by a new API call in
+  Launchpad's web service.  (Aaron Bentley)
+
+* Implement authentication.conf password obfuscation, the password_encoding
+  option can now be set to base64. (Florian Dorn)
+
+* Local configurations files (i.e. accessed on the local file system like
+  ``bazaar.conf`` and ``locations.conf``) are now shared, reducing the
+  number of IOs when querying a configuation option. (Vincent Ladeuil, #832042)
 
 Bug Fixes
 *********
@@ -35,6 +46,15 @@ Bug Fixes
   We only want to read in the first line so that comments could be added
   and would be ignored.
   (Haw Loeung, #932515)
+
+* Warn when ``--show-base`` is used for ``pull`` in a treeless branch
+  instead of failing. It's useless but harmless. (Vincent Ladeuil, #1022160)
+
+* When a missing referenced chk root error is encountered, bzr now suggests
+  running ``bzr reconcile --canonicalize-chks``. (Jelmer Vernooij, #1021537)
+
+* When pushing a specific revision, create the new working tree at
+  that revision. (#484516, Neil Martinsen-Burrell)
 
 Documentation
 *************
@@ -89,6 +109,8 @@ New Features
 * New option ``--overwrite-tags`` for ``bzr pull`` and ``bzr push``.
   (Jelmer Vernooij, #681792)
 
+* The 'grep' plugin is now shipped with bzr. (Jelmer Vernooij)
+
 Improvements
 ************
 
@@ -109,7 +131,6 @@ Bug Fixes
 
 * Option values set on locked branches should be saved only when the branch
   is finally unlocked. (Vincent Ladeuil, #948339)
-
 
 Documentation
 *************

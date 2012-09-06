@@ -1131,7 +1131,7 @@ class TestRunner(tests.TestCase):
         class SkippedTest(tests.TestCase):
 
             def setUp(self):
-                tests.TestCase.setUp(self)
+                super(SkippedTest, self).setUp()
                 calls.append('setUp')
                 self.addCleanup(self.cleanup)
 
@@ -1630,7 +1630,7 @@ class TestTestCase(tests.TestCase):
         class Test(tests.TestCase):
 
             def setUp(self):
-                tests.TestCase.setUp(self)
+                super(Test, self).setUp()
                 self.orig = self.overrideAttr(obj, 'test_attr')
 
             def test_value(self):
@@ -1649,7 +1649,7 @@ class TestTestCase(tests.TestCase):
         class Test(tests.TestCase):
 
             def setUp(self):
-                tests.TestCase.setUp(self)
+                super(Test, self).setUp()
                 self.orig = self.overrideAttr(obj, 'test_attr', new='modified')
 
             def test_value(self):
@@ -2382,7 +2382,7 @@ class TestWithFakedStartBzrSubprocess(tests.TestCaseWithTransport):
     """Base class for tests testing how we might run bzr."""
 
     def setUp(self):
-        tests.TestCaseWithTransport.setUp(self)
+        super(TestWithFakedStartBzrSubprocess, self).setUp()
         self.subprocess_calls = []
 
     def start_bzr_subprocess(self, process_args, env_changes=None,
@@ -2602,7 +2602,7 @@ class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):
 class TestSelftestFiltering(tests.TestCase):
 
     def setUp(self):
-        tests.TestCase.setUp(self)
+        super(TestSelftestFiltering, self).setUp()
         self.suite = TestUtil.TestSuite()
         self.loader = TestUtil.TestLoader()
         self.suite.addTest(self.loader.loadTestsFromModule(

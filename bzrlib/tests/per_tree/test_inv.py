@@ -42,7 +42,7 @@ class TestInventoryWithSymlinks(per_tree.TestCaseWithTree):
     _test_needs_features = [features.SymlinkFeature]
 
     def setUp(self):
-        per_tree.TestCaseWithTree.setUp(self)
+        super(TestInventoryWithSymlinks, self).setUp()
         self.tree = self.get_tree_with_subdirs_and_all_content_types()
         self.tree.lock_read()
         self.addCleanup(self.tree.unlock)

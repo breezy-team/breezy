@@ -492,3 +492,15 @@ class Win32Feature(Feature):
 
 
 win32_feature = Win32Feature()
+
+
+class _ColorFeature(Feature):
+
+    def _probe(self):
+        from bzrlib._termcolor import allow_color
+        return allow_color()
+
+    def feature_name(self):
+        return "Terminal supports color."
+
+ColorFeature = _ColorFeature()
