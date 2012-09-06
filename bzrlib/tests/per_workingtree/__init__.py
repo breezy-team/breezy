@@ -25,9 +25,14 @@ rather than in tests/per_workingtree/*.py.
 from bzrlib import (
     branchbuilder,
     tests,
+    transport,
     workingtree,
     )
-from bzrlib.tests import per_controldir
+from bzrlib.transport import memory
+from bzrlib.tests import (
+    per_controldir,
+    test_server,
+    )
 
 
 def make_scenarios(transport_server, transport_readonly_server, formats):
@@ -37,6 +42,13 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
                        make_scenario(transport_server,
                                      transport_readonly_server,
                                      workingtree_format)))
+    default_wt_format = workingtree.format_registry.get_default()
+    scenario = make_scenario(test_server.SmartTCPServer_for_testing,
+                      test_server.ReadonlySmartTCPServer_for_testing,
+                      default_wt_format)
+    scenario['repo_is_remote'] = True;
+    scenario['vfs_transport_factory'] = memory.MemoryServer
+    result.append((default_wt_format.__class__.__name__ + ',remote', scenario))
     return result
 
 
@@ -47,6 +59,7 @@ def make_scenario(transport_server, transport_readonly_server,
         "transport_readonly_server": transport_readonly_server,
         "bzrdir_format": workingtree_format._matchingbzrdir,
         "workingtree_format": workingtree_format,
+        "repo_is_remote": False,
         }
 
 
@@ -71,8 +84,22 @@ class TestCaseWithWorkingTree(per_controldir.TestCaseWithControlDir):
     def make_branch_and_tree(self, relpath, format=None):
         made_control = self.make_bzrdir(relpath, format=format)
         made_control.create_repository()
-        made_control.create_branch()
-        return self.workingtree_format.initialize(made_control)
+        b = made_control.create_branch()
+        if self.repo_is_remote:
+            # If the repo is remote, then we just create a local lightweight
+            # checkout
+            # XXX: This duplicates a lot of Branch.create_checkout, but we know
+            #      we want a) lightweight, and b) a specific WT format. We also
+            #      know that nothing should already exist, etc.
+            t = transport.get_transport(relpath)
+            t.ensure_base()
+            bzrdir_format = self.workingtree_format.get_controldir_for_branch()
+            wt_dir = bzrdir_format.initialize_on_transport(t)
+            branch_ref = wt_dir.set_branch_reference(b)
+            wt = wt_dir.create_workingtree(None, from_branch=branch_ref)
+        else:
+            wt = self.workingtree_format.initialize(made_control)
+        return wt
 
     def make_branch_builder(self, relpath, format=None):
         if format is None:
