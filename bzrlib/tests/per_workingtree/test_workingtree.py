@@ -485,13 +485,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # that formats where initialising a branch does not initialise a
         # tree - and thus have separable entities - support skewing the
         # two things.
-        test_branch = self.make_branch('test-branch')
-        try:
-            # if there is a working tree now, this is not supported.
-            test_branch.bzrdir.open_workingtree()
-            return
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
-            pass
+        self.requireBranchReference()
         wt = self.make_branch_and_tree('tree')
         # create an out of date working tree by making a checkout in this
         # current format

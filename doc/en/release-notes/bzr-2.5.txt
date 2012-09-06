@@ -41,6 +41,10 @@ Bug Fixes
 
 * Revert use of --no-tty when gpg signing commits. (Jelmer Vernooij, #1014570)
 
+* Some small bug fixes wrt lightweight checkouts and remote repositories.
+  A test permutation was added that runs all working tree tests against a
+  lightweight checkout. (John Arbash Meinel, #1046697)
+
 Documentation
 *************
 
