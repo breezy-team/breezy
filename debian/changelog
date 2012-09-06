@@ -2,6 +2,7 @@ bzr (2.6.0~bzr6542-1) UNRELEASED; urgency=low
 
   [ Jelmer Vernooij ]
   * New upstream snapshot.
+  * Remove myself from uploaders.
 
   [ Max Bowsher]
   * Fix 03_spurious_test_failure to not patch the same file twice, causing

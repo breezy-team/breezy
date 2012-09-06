@@ -2,8 +2,7 @@ Source: bzr
 Section: vcs
 Priority: optional
 Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
-Uploaders: Wouter van Heyst <larstiq@larstiq.dyndns.org>,
-           Jelmer Vernooij <jelmer@debian.org>
+Uploaders: Wouter van Heyst <larstiq@larstiq.dyndns.org>
 Build-Conflicts: python-gpgme, python-sphinx
 Build-Depends: cython-dbg | python-pyrex,
                ca-certificates,
