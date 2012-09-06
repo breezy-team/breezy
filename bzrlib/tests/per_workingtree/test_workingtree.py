@@ -132,8 +132,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                          result[0][:4])
 
     def test_open_containing(self):
-        branch = self.make_branch_and_tree('.').branch
-        local_base = urlutils.local_path_from_url(branch.base)
+        local_wt = self.make_branch_and_tree('.')
+        local_url = local_wt.bzrdir.root_transport.base
+        local_base = urlutils.local_path_from_url(local_url)
+        del local_wt
 
         # Empty opens '.'
         wt, relpath = WorkingTree.open_containing()
@@ -372,14 +374,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # that formats where initialising a branch does not initialise a
         # tree - and thus have separable entities - support skewing the
         # two things.
-        branch = self.make_branch('tree')
-        try:
-            # if there is a working tree now, this is not supported.
-            branch.bzrdir.open_workingtree()
-            return
-        except errors.NoWorkingTree:
-            pass
-        wt = branch.bzrdir.create_workingtree()
+        self.requireBranchReference()
+        wt = self.make_branch_and_tree('tree')
         wt.commit('A', allow_pointless=True, rev_id='A')
         wt.set_last_revision(None)
         self.assertEqual([], wt.get_parent_ids())
