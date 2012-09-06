@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2011 Canonical Ltd
+# Copyright (C) 2007-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1886,8 +1886,19 @@ class DirStateRevisionTree(InventoryTree):
         return self.inventory[file_id].text_size
 
     def get_file_text(self, file_id, path=None):
-        _, content = list(self.iter_files_bytes([(file_id, None)]))[0]
-        return ''.join(content)
+        full_content = None
+        for _, content in self.iter_files_bytes([(file_id, None)]):
+            if full_content is not None:
+                raise AssertionError('iter_files_bytes returned'
+                    ' too many entries')
+            # For each entry returned by iter_files_bytes, we must consume the
+            # content before we step the iterator.
+            full_content = ''.join(content)
+            del content
+        if full_content is None:
+            raise AssertionError('iter_files_bytes did not return'
+                ' the requested data')
+        return full_content
 
     def get_reference_revision(self, file_id, path=None):
         return self.inventory[file_id].reference_revision
