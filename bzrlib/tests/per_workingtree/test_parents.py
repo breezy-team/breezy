@@ -474,8 +474,7 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         # extra assurance is well worth it.
         tree._validate()
         # If tree.branch is remote
-        if (tree.bzrdir.root_transport.base
-            != tree.branch.bzrdir.root_transport.base):
+        if tree.user_url != tree.branch.user_url:
             # We have a lightweight checkout, delete both locations
             tree.branch.bzrdir.root_transport.delete_tree('.')
         tree.bzrdir.root_transport.delete_tree('.')
