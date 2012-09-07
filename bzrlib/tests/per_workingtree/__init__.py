@@ -35,7 +35,9 @@ from bzrlib.tests import (
     )
 
 
-def make_scenarios(transport_server, transport_readonly_server, formats):
+def make_scenarios(transport_server, transport_readonly_server, formats,
+                   remote_server=None, remote_readonly_server=None,
+                   remote_backing_server=None):
     result = []
     for workingtree_format in formats:
         result.append((workingtree_format.__class__.__name__,
@@ -43,11 +45,16 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
                                      transport_readonly_server,
                                      workingtree_format)))
     default_wt_format = workingtree.format_registry.get_default()
-    scenario = make_scenario(test_server.SmartTCPServer_for_testing,
-                      test_server.ReadonlySmartTCPServer_for_testing,
-                      default_wt_format)
+    if remote_server is None:
+        remote_server = test_server.SmartTCPServer_for_testing
+    if remote_readonly_server is None:
+        remote_readonly_server = test_server.ReadonlySmartTCPServer_for_testing
+    if remote_backing_server is None:
+        remote_backing_server = memory.MemoryServer
+    scenario = make_scenario(remote_server, remote_readonly_server,
+                             default_wt_format)
     scenario['repo_is_remote'] = True;
-    scenario['vfs_transport_factory'] = memory.MemoryServer
+    scenario['vfs_transport_factory'] = remote_backing_server
     result.append((default_wt_format.__class__.__name__ + ',remote', scenario))
     return result
 

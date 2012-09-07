@@ -334,31 +334,51 @@ class TestWorkingTreeScenarios(tests.TestCase):
         server1 = "a"
         server2 = "b"
         formats = [workingtree_4.WorkingTreeFormat4(),
-                   workingtree_3.WorkingTreeFormat3(),]
-        scenarios = make_scenarios(server1, server2, formats)
+                   workingtree_3.WorkingTreeFormat3(),
+                   workingtree_4.WorkingTreeFormat6()]
+        scenarios = make_scenarios(server1, server2, formats,
+            remote_server='c', remote_readonly_server='d',
+            remote_backing_server='e')
         self.assertEqual([
             ('WorkingTreeFormat4',
              {'bzrdir_format': formats[0]._matchingbzrdir,
+              'repo_is_remote': False,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': formats[0]}),
             ('WorkingTreeFormat3',
              {'bzrdir_format': formats[1]._matchingbzrdir,
+              'repo_is_remote': False,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
-              'workingtree_format': formats[1]})],
-            scenarios)
+              'workingtree_format': formats[1]}),
+            ('WorkingTreeFormat6',
+             {'bzrdir_format': formats[2]._matchingbzrdir,
+              'repo_is_remote': False,
+              'transport_readonly_server': 'b',
+              'transport_server': 'a',
+              'workingtree_format': formats[2]}),
+            ('WorkingTreeFormat6,remote',
+             {'bzrdir_format': formats[2]._matchingbzrdir,
+              'repo_is_remote': True,
+              'transport_readonly_server': 'd',
+              'transport_server': 'c',
+              'vfs_transport_factory': 'e',
+              'workingtree_format': formats[2]}),
+            ], scenarios)
 
 
 class TestTreeScenarios(tests.TestCase):
 
     def test_scenarios(self):
         # the tree implementation scenario generator is meant to setup one
-        # instance for each working tree format, and one additional instance
+        # instance for each working tree format, one additional instance
         # that will use the default wt format, but create a revision tree for
-        # the tests.  this means that the wt ones should have the
-        # workingtree_to_test_tree attribute set to 'return_parameter' and the
-        # revision one set to revision_tree_from_workingtree.
+        # the tests, and one more that uses the default wt format as a
+        # lightweight checkout of a remote repository.  This means that the wt
+        # ones should have the workingtree_to_test_tree attribute set to
+        # 'return_parameter' and the revision one set to
+        # revision_tree_from_workingtree.
 
         from bzrlib.tests.per_tree import (
             _dirstate_tree_from_workingtree,
@@ -370,16 +390,21 @@ class TestTreeScenarios(tests.TestCase):
             )
         server1 = "a"
         server2 = "b"
+        smart_server = test_server.SmartTCPServer_for_testing
+        smart_readonly_server = test_server.ReadonlySmartTCPServer_for_testing
+        mem_server = memory.MemoryServer
         formats = [workingtree_4.WorkingTreeFormat4(),
                    workingtree_3.WorkingTreeFormat3(),]
         scenarios = make_scenarios(server1, server2, formats)
-        self.assertEqual(7, len(scenarios))
+        self.assertEqual(8, len(scenarios))
         default_wt_format = workingtree.format_registry.get_default()
         wt4_format = workingtree_4.WorkingTreeFormat4()
         wt5_format = workingtree_4.WorkingTreeFormat5()
+        wt6_format = workingtree_4.WorkingTreeFormat6()
         expected_scenarios = [
             ('WorkingTreeFormat4',
              {'bzrdir_format': formats[0]._matchingbzrdir,
+              'repo_is_remote': False,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': formats[0],
@@ -387,14 +412,25 @@ class TestTreeScenarios(tests.TestCase):
               }),
             ('WorkingTreeFormat3',
              {'bzrdir_format': formats[1]._matchingbzrdir,
+              'repo_is_remote': False,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': formats[1],
               '_workingtree_to_test_tree': return_parameter,
              }),
+            ('WorkingTreeFormat6,remote',
+             {'bzrdir_format': wt6_format._matchingbzrdir,
+              'repo_is_remote': True,
+              'transport_readonly_server': smart_readonly_server,
+              'transport_server': smart_server,
+              'vfs_transport_factory': mem_server,
+              'workingtree_format': wt6_format,
+              '_workingtree_to_test_tree': return_parameter,
+             }),
             ('RevisionTree',
              {'_workingtree_to_test_tree': revision_tree_from_workingtree,
               'bzrdir_format': default_wt_format._matchingbzrdir,
+              'repo_is_remote': False,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': default_wt_format,
@@ -402,6 +438,7 @@ class TestTreeScenarios(tests.TestCase):
             ('DirStateRevisionTree,WT4',
              {'_workingtree_to_test_tree': _dirstate_tree_from_workingtree,
               'bzrdir_format': wt4_format._matchingbzrdir,
+              'repo_is_remote': False,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': wt4_format,
@@ -409,6 +446,7 @@ class TestTreeScenarios(tests.TestCase):
             ('DirStateRevisionTree,WT5',
              {'_workingtree_to_test_tree': _dirstate_tree_from_workingtree,
               'bzrdir_format': wt5_format._matchingbzrdir,
+              'repo_is_remote': False,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': wt5_format,
@@ -416,12 +454,14 @@ class TestTreeScenarios(tests.TestCase):
             ('PreviewTree',
              {'_workingtree_to_test_tree': preview_tree_pre,
               'bzrdir_format': default_wt_format._matchingbzrdir,
+              'repo_is_remote': False,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': default_wt_format}),
             ('PreviewTreePost',
              {'_workingtree_to_test_tree': preview_tree_post,
               'bzrdir_format': default_wt_format._matchingbzrdir,
+              'repo_is_remote': False,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': default_wt_format}),
