@@ -104,7 +104,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         made_control = self.make_bzrdir(relpath, format=bzrdir_format)
         made_control.create_repository()
         b = made_control.create_branch()
-        if self.repo_is_remote:
+        if getattr(self, 'repo_is_remote', False):
             # If the repo is remote, then we just create a local lightweight
             # checkout
             # XXX: This duplicates a lot of Branch.create_checkout, but we know
