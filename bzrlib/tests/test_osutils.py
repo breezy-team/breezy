@@ -819,6 +819,44 @@ class TestSafeFileId(tests.TestCase):
         self.assertEqual(None, osutils.safe_file_id(None))
 
 
+
+class TestSendAll(tests.TestCase):
+
+    def test_send_with_no_progress(self):
+        # See https://bugs.launchpad.net/bzr/+bug/1047309
+        # It seems that paramiko can get into a state where it doesn't error,
+        # but it returns 0 bytes sent for requests over and over again.
+        class NoSendingSocket(object):
+            def __init__(self):
+                self.call_count = 0
+            def send(self, bytes):
+                self.call_count += 1
+                if self.call_count > 100:
+                    # Prevent the test suite from hanging
+                    raise RuntimeError('too many calls')
+                return 0
+        sock = NoSendingSocket()
+        self.assertRaises(IOError, osutils.send_all, sock, 'content')
+
+    def test_send_minimal_progress(self):
+        # Even if we occasionally get 0 bytes sent, we still progress and
+        # finish
+        class SlowSendingSocket(object):
+            def __init__(self):
+                self.call_count = 0
+            def send(self, bytes):
+                self.call_count += 1
+                if self.call_count > 100:
+                    # Prevent the test suite from hanging
+                    raise RuntimeError('too many calls')
+                if self.call_count % 3 == 0:
+                    return 0
+                return 1
+        sock = SlowSendingSocket()
+        osutils.send_all(sock, 'a reasonable amount of content')
+        self.assertEqual(44, sock.call_count)
+
+
 class TestPosixFuncs(tests.TestCase):
     """Test that the posix version of normpath returns an appropriate path
        when used with 2 leading slashes."""

@@ -2118,6 +2118,12 @@ def recv_all(socket, count):
     return b
 
 
+# Consider making this configurable, but right now that seems very much YAGNI
+# This is how many 0's we can get in-a-row. If we manage to send some data
+# after a while, this number gets reset.
+_max_no_content_sends = 3
+
+
 def send_all(sock, bytes, report_activity=None):
     """Send all bytes on a socket.
 
@@ -2132,6 +2138,7 @@ def send_all(sock, bytes, report_activity=None):
         Transport._report_activity
     """
     sent_total = 0
+    no_content_count = 0
     byte_count = len(bytes)
     while sent_total < byte_count:
         try:
@@ -2140,8 +2147,17 @@ def send_all(sock, bytes, report_activity=None):
             if e.args[0] != errno.EINTR:
                 raise
         else:
+            if sent == 0:
+                no_content_count += 1
+                if no_content_count > _max_no_content_sends:
+                    raise IOError(errno.ECONNRESET,
+                        'Sending to %s returned 0 bytes sent %d times in a row'
+                        % (sock, no_content_count))
+            else:
+                no_content_count = 0
             sent_total += sent
-            report_activity(sent, 'write')
+            if report_activity is not None:
+                report_activity(sent, 'write')
 
 
 def connect_socket(address):
