@@ -1055,7 +1055,13 @@ class SmartClientSocketMedium(SmartClientStreamMedium):
     def _accept_bytes(self, bytes):
         """See SmartClientMedium.accept_bytes."""
         self._ensure_connection()
-        osutils.send_all(self._socket, bytes, self._report_activity)
+        try:
+            osutils.send_all(self._socket, bytes, self._report_activity)
+        except (OSError, IOError, socket.error), e:
+            if e.errno in (errno.EINVAL, errno.EPIPE, errno.ECONNRESET):
+                raise errors.ConnectionReset(
+                    "Error trying to write to socket:\n%s" % (e,))
+            raise
 
     def _ensure_connection(self):
         """Connect this medium if not already connected."""
