@@ -35,7 +35,15 @@ Bug Fixes
 * ``bzr config`` properly handles aliases and references in the
   ``--directory`` parameter (Vincent Ladeuil, Wouter van Heyst, #947049)
 
+* Lightweight checkouts of remote repositories had a bug with how they
+  extracted texts from the repository. (Just an ordering constraint on how
+  they consumed the stream.) (John Arbash Meinel, #1046284)
+
 * Revert use of --no-tty when gpg signing commits. (Jelmer Vernooij, #1014570)
+
+* Some small bug fixes wrt lightweight checkouts and remote repositories.
+  A test permutation was added that runs all working tree tests against a
+  lightweight checkout. (John Arbash Meinel, #1046697)
 
 Documentation
 *************

@@ -71,8 +71,7 @@ class TestExecutable(TestCaseWithWorkingTree):
         self.wt.commit('adding a,b', rev_id='r1')
         # Now make sure that 'bzr branch' also preserves the
         # executable bit
-        # TODO: Maybe this should be a blackbox test
-        dir2 = self.wt.branch.bzrdir.clone('b2', revision_id='r1')
+        dir2 = self.wt.branch.bzrdir.sprout('b2', revision_id='r1')
         wt2 = dir2.open_workingtree()
         self.assertEqual(['r1'], wt2.get_parent_ids())
         self.assertEqual('r1', wt2.branch.last_revision())
