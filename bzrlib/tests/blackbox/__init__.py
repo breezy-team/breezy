@@ -92,6 +92,7 @@ def load_tests(basic_tests, module, loader):
                      'test_non_ascii',
                      'test_outside_wt',
                      'test_pack',
+                     'test_ping',
                      'test_pull',
                      'test_push',
                      'test_reconcile',
