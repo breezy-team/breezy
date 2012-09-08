@@ -49,5 +49,3 @@ class cmd_ping(Command):
         self.outf.write('Response: %r\n' % (response,))
         if getattr(handler, 'headers', None) is not None:
             self.outf.write('Headers: %r\n' % (handler.headers,))
-
-register_command(cmd_ping)

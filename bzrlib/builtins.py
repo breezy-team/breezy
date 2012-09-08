@@ -6727,6 +6727,7 @@ def _register_lazy_builtins():
         ('cmd_version_info', [], 'bzrlib.cmd_version_info'),
         ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
         ('cmd_conflicts', [], 'bzrlib.conflicts'),
+        ('cmd_ping', [], 'bzrlib.smart.ping'),
         ('cmd_sign_my_commits', [], 'bzrlib.commit_signature_commands'),
         ('cmd_verify_signatures', [], 'bzrlib.commit_signature_commands'),
         ('cmd_test_script', [], 'bzrlib.cmd_test_script'),

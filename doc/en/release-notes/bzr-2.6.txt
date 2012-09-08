@@ -25,6 +25,8 @@ New Features
   context (i.e. showing lines that have not changed).  Also available as the 
   named parameter 'context_lines' to bzrlib.diff.internal_diff(). (Paul Nixon)
 
+* The 'ping' plugin is now shipped with bzr. (Jelmer Vernooij)
+
 Improvements
 ************
 
