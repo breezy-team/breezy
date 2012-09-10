@@ -910,7 +910,7 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
         except IOError, e:
             if e.errno in (errno.EINVAL, errno.EPIPE):
                 raise errors.ConnectionReset(
-                    "Error trying to write to subprocess:\n%s" % (e,))
+                    "Error trying to write to subprocess", e)
             raise
         self._report_activity(len(bytes), 'write')
 
@@ -1043,7 +1043,7 @@ BZR_DEFAULT_PORT = 4155
 
 class SmartClientSocketMedium(SmartClientStreamMedium):
     """A client medium using a socket.
-    
+
     This class isn't usable directly.  Use one of its subclasses instead.
     """
 
@@ -1055,13 +1055,7 @@ class SmartClientSocketMedium(SmartClientStreamMedium):
     def _accept_bytes(self, bytes):
         """See SmartClientMedium.accept_bytes."""
         self._ensure_connection()
-        try:
-            osutils.send_all(self._socket, bytes, self._report_activity)
-        except (OSError, IOError, socket.error), e:
-            if e.errno in (errno.EINVAL, errno.EPIPE, errno.ECONNRESET):
-                raise errors.ConnectionReset(
-                    "Error trying to write to socket:\n%s" % (e,))
-            raise
+        osutils.send_all(self._socket, bytes, self._report_activity)
 
     def _ensure_connection(self):
         """Connect this medium if not already connected."""
