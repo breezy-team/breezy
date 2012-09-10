@@ -634,25 +634,6 @@ class SmartClientMediumTests(tests.TestCase):
         self.assertRaises(
             errors.ConnectionError, client_medium._ensure_connection)
 
-    def test_disconnected_socket(self):
-        class DisconnectedSocket(object):
-            def __init__(self, err):
-                self.err = err
-            def send(self, content):
-                raise self.err
-            def close(self):
-                pass
-        # All of these should be treated as ConnectionReset
-        errs = []
-        for err_cls in (IOError, socket.error):
-            for errnum in osutils._end_of_stream_errors:
-                errs.append(err_cls(errnum))
-        for err in errs:
-            sock = DisconnectedSocket(err)
-            med = medium.SmartClientAlreadyConnectedSocketMedium('base', sock)
-            self.assertRaises(errors.ConnectionReset,
-                med.accept_bytes, 'some more content')
-
 
 class TestSmartClientStreamMediumRequest(tests.TestCase):
     """Tests the for SmartClientStreamMediumRequest.
