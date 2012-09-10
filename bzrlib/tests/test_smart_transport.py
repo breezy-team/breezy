@@ -644,8 +644,9 @@ class SmartClientMediumTests(tests.TestCase):
                 pass
         # All of these should be treated as ConnectionReset
         errs = []
-        for errnum in osutils._end_of_stream_errors:
-            errs.append(IOError(errnum))
+        for err_cls in (IOError, socket.error):
+            for errnum in osutils._end_of_stream_errors:
+                errs.append(err_cls(errnum))
         for err in errs:
             sock = DisconnectedSocket(err)
             med = medium.SmartClientAlreadyConnectedSocketMedium('base', sock)
