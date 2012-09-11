@@ -801,6 +801,27 @@ class TestSafeFileId(tests.TestCase):
         self.assertEqual(None, osutils.safe_file_id(None))
 
 
+class TestSendAll(tests.TestCase):
+
+    def test_send_with_disconnected_socket(self):
+        class DisconnectedSocket(object):
+            def __init__(self, err):
+                self.err = err
+            def send(self, content):
+                raise self.err
+            def close(self):
+                pass
+        # All of these should be treated as ConnectionReset
+        errs = []
+        for err_cls in (IOError, socket.error):
+            for errnum in osutils._end_of_stream_errors:
+                errs.append(err_cls(errnum))
+        for err in errs:
+            sock = DisconnectedSocket(err)
+            self.assertRaises(errors.ConnectionReset,
+                osutils.send_all, sock, 'some more content')
+
+
 class TestWin32Funcs(tests.TestCase):
     """Test that _win32 versions of os utilities return appropriate paths."""
 
