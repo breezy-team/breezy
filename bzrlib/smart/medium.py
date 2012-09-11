@@ -910,7 +910,7 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
         except IOError, e:
             if e.errno in (errno.EINVAL, errno.EPIPE):
                 raise errors.ConnectionReset(
-                    "Error trying to write to subprocess:\n%s" % (e,))
+                    "Error trying to write to subprocess", e)
             raise
         self._report_activity(len(bytes), 'write')
 
@@ -1043,7 +1043,7 @@ BZR_DEFAULT_PORT = 4155
 
 class SmartClientSocketMedium(SmartClientStreamMedium):
     """A client medium using a socket.
-    
+
     This class isn't usable directly.  Use one of its subclasses instead.
     """
 

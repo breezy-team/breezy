@@ -2064,7 +2064,7 @@ def get_host_name():
 # data at once.
 MAX_SOCKET_CHUNK = 64 * 1024
 
-_end_of_stream_errors = [errno.ECONNRESET]
+_end_of_stream_errors = [errno.ECONNRESET, errno.EPIPE, errno.EINVAL]
 for _eno in ['WSAECONNRESET', 'WSAECONNABORTED']:
     _eno = getattr(errno, _eno, None)
     if _eno is not None:
@@ -2136,7 +2136,10 @@ def send_all(sock, bytes, report_activity=None):
     while sent_total < byte_count:
         try:
             sent = sock.send(buffer(bytes, sent_total, MAX_SOCKET_CHUNK))
-        except socket.error, e:
+        except (socket.error, IOError), e:
+            if e.args[0] in _end_of_stream_errors:
+                raise errors.ConnectionReset(
+                    "Error trying to write to socket", e)
             if e.args[0] != errno.EINTR:
                 raise
         else:
