@@ -47,6 +47,10 @@ Bug Fixes
 Improvements
 ************
 
+ * When opening formats with feature flags, optional features are
+   ignored and an improved error is printed for non-optional features.
+   (Jelmer Vernooij)
+
 Documentation
 *************
 
