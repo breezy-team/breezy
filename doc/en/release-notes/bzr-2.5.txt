@@ -39,6 +39,13 @@ Bug Fixes
   extracted texts from the repository. (Just an ordering constraint on how
   they consumed the stream.) (John Arbash Meinel, #1046284)
 
+* ``osutils.send_all`` now detects if we get a series of zero bytes sent,
+  and fails with a ECONNRESET. It seems if paramiko gets disconnected, it
+  will get into a state where it returns 0 bytes sent, but doesn't raise
+  an error. This change allows us to get a couple hiccups of no content
+  sent, but if it is consistent, we will consider it to be a failure.
+  (John Arbash Meinel, #1047309)
+
 * Revert use of --no-tty when gpg signing commits. (Jelmer Vernooij, #1014570)
 
 * Some small bug fixes wrt lightweight checkouts and remote repositories.

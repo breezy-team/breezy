@@ -2143,8 +2143,12 @@ def send_all(sock, bytes, report_activity=None):
             if e.args[0] != errno.EINTR:
                 raise
         else:
+            if sent == 0:
+                raise errors.ConnectionReset('Sending to %s returned 0 bytes'
+                                             % (sock,))
             sent_total += sent
-            report_activity(sent, 'write')
+            if report_activity is not None:
+                report_activity(sent, 'write')
 
 
 def connect_socket(address):
