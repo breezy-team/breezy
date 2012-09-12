@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -134,7 +134,7 @@ class SmartServerRequest(object):
         It will return a SmartServerResponse if the command does not expect a
         body.
 
-        :param *args: the arguments of the request.
+        :param args: the arguments of the request.
         """
         self._check_enabled()
         return self.do(*args)
@@ -534,8 +534,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Branch.lock_write', 'bzrlib.smart.branch',
     'SmartServerBranchRequestLockWrite', info='semi')
-request_handlers.register_lazy( 'Branch.revision_history',
-    'bzrlib.smart.branch', 'SmartServerRequestRevisionHistory', info='read')
+request_handlers.register_lazy(
+    'Branch.revision_history', 'bzrlib.smart.branch',
+    'SmartServerRequestRevisionHistory', info='read')
 request_handlers.register_lazy(
     'Branch.set_config_option', 'bzrlib.smart.branch',
     'SmartServerBranchRequestSetConfigOption', info='idem')
@@ -552,8 +553,8 @@ request_handlers.register_lazy(
     'Branch.set_parent_location', 'bzrlib.smart.branch',
     'SmartServerBranchRequestSetParentLocation', info='idem')
 request_handlers.register_lazy(
-    'Branch.unlock', 'bzrlib.smart.branch', 'SmartServerBranchRequestUnlock',
-    info='semi')
+    'Branch.unlock', 'bzrlib.smart.branch',
+    'SmartServerBranchRequestUnlock', info='semi')
 request_handlers.register_lazy(
     'BzrDir.cloning_metadir', 'bzrlib.smart.bzrdir',
     'SmartServerBzrDirRequestCloningMetaDir', info='read')
@@ -676,5 +677,5 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'stat', 'bzrlib.smart.vfs', 'StatRequest', info='read')
 request_handlers.register_lazy(
-    'Transport.is_readonly', 'bzrlib.smart.request', 'SmartServerIsReadonly',
-    info='read')
+    'Transport.is_readonly', 'bzrlib.smart.request',
+    'SmartServerIsReadonly', info='read')
