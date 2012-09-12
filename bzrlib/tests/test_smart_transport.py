@@ -18,13 +18,17 @@
 
 # all of this deals with byte strings so this is safe
 from cStringIO import StringIO
+import errno
 import os
 import socket
+import subprocess
+import sys
 import threading
 
 import bzrlib
 from bzrlib import (
         bzrdir,
+        debug,
         errors,
         osutils,
         tests,
@@ -49,6 +53,29 @@ from bzrlib.transport import (
 from bzrlib.transport.http import SmartClientHTTPMediumRequest
 
 
+def create_file_pipes():
+    r, w = os.pipe()
+    # These must be opened without buffering, or we get undefined results
+    rf = os.fdopen(r, 'rb', 0)
+    wf = os.fdopen(w, 'wb', 0)
+    return rf, wf
+
+
+def portable_socket_pair():
+    """Return a pair of TCP sockets connected to each other.
+
+    Unlike socket.socketpair, this should work on Windows.
+    """
+    listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listen_sock.bind(('127.0.0.1', 0))
+    listen_sock.listen(1)
+    client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_sock.connect(listen_sock.getsockname())
+    server_sock, addr = listen_sock.accept()
+    listen_sock.close()
+    return server_sock, client_sock
+
+
 class StringIOSSHVendor(object):
     """A SSH vendor that uses StringIO to buffer writes and answer reads."""
 
@@ -63,6 +90,27 @@ class StringIOSSHVendor(object):
         return StringIOSSHConnection(self)
 
 
+class FirstRejectedStringIOSSHVendor(StringIOSSHVendor):
+    """The first connection will be considered closed.
+
+    The second connection will succeed normally.
+    """
+
+    def __init__(self, read_from, write_to, fail_at_write=True):
+        super(FirstRejectedStringIOSSHVendor, self).__init__(read_from,
+            write_to)
+        self.fail_at_write = fail_at_write
+        self._first = True
+
+    def connect_ssh(self, username, password, host, port, command):
+        self.calls.append(('connect_ssh', username, password, host, port,
+            command))
+        if self._first:
+            self._first = False
+            return ClosedSSHConnection(self)
+        return StringIOSSHConnection(self)
+
+
 class StringIOSSHConnection(object):
     """A SSH connection that uses StringIO to buffer writes and answer reads."""
 
@@ -71,9 +119,34 @@ class StringIOSSHConnection(object):
 
     def close(self):
         self.vendor.calls.append(('close', ))
+        self.vendor.read_from.close()
+        self.vendor.write_to.close()
 
     def get_filelike_channels(self):
         return self.vendor.read_from, self.vendor.write_to
+
+
+class ClosedSSHConnection(object):
+    """An SSH connection that just has closed channels."""
+
+    def __init__(self, vendor):
+        self.vendor = vendor
+
+    def close(self):
+        self.vendor.calls.append(('close', ))
+
+    def get_filelike_channels(self):
+        # We create matching pipes, and then close the ssh side
+        bzr_read, ssh_write = create_file_pipes()
+        # We always fail when bzr goes to read
+        ssh_write.close()
+        if self.vendor.fail_at_write:
+            # If set, we'll also fail when bzr goes to write
+            ssh_read, bzr_write = create_file_pipes()
+            ssh_read.close()
+        else:
+            bzr_write = self.vendor.write_to
+        return bzr_read, bzr_write
 
 
 class _InvalidHostnameFeature(tests.Feature):
@@ -170,6 +243,91 @@ class SmartClientMediumTests(tests.TestCase):
             None, output, 'base')
         client_medium._accept_bytes('abc')
         self.assertEqual('abc', output.getvalue())
+
+    def test_simple_pipes__accept_bytes_subprocess_closed(self):
+        # It is unfortunate that we have to use Popen for this. However,
+        # os.pipe() does not behave the same as subprocess.Popen().
+        # On Windows, if you use os.pipe() and close the write side,
+        # read.read() hangs. On Linux, read.read() returns the empty string.
+        p = subprocess.Popen([sys.executable, '-c',
+            'import sys\n'
+            'sys.stdout.write(sys.stdin.read(4))\n'
+            'sys.stdout.close()\n'],
+            stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+        client_medium = medium.SmartSimplePipesClientMedium(
+            p.stdout, p.stdin, 'base')
+        client_medium._accept_bytes('abc\n')
+        self.assertEqual('abc', client_medium._read_bytes(3))
+        p.wait()
+        # While writing to the underlying pipe,
+        #   Windows py2.6.6 we get IOError(EINVAL)
+        #   Lucid py2.6.5, we get IOError(EPIPE)
+        # In both cases, it should be wrapped to ConnectionReset
+        self.assertRaises(errors.ConnectionReset,
+                          client_medium._accept_bytes, 'more')
+
+    def test_simple_pipes__accept_bytes_pipe_closed(self):
+        child_read, client_write = create_file_pipes()
+        client_medium = medium.SmartSimplePipesClientMedium(
+            None, client_write, 'base')
+        client_medium._accept_bytes('abc\n')
+        self.assertEqual('abc\n', child_read.read(4))
+        # While writing to the underlying pipe,
+        #   Windows py2.6.6 we get IOError(EINVAL)
+        #   Lucid py2.6.5, we get IOError(EPIPE)
+        # In both cases, it should be wrapped to ConnectionReset
+        child_read.close()
+        self.assertRaises(errors.ConnectionReset,
+                          client_medium._accept_bytes, 'more')
+
+    def test_simple_pipes__flush_pipe_closed(self):
+        child_read, client_write = create_file_pipes()
+        client_medium = medium.SmartSimplePipesClientMedium(
+            None, client_write, 'base')
+        client_medium._accept_bytes('abc\n')
+        child_read.close()
+        # Even though the pipe is closed, flush on the write side seems to be a
+        # no-op, rather than a failure.
+        client_medium._flush()
+
+    def test_simple_pipes__flush_subprocess_closed(self):
+        p = subprocess.Popen([sys.executable, '-c',
+            'import sys\n'
+            'sys.stdout.write(sys.stdin.read(4))\n'
+            'sys.stdout.close()\n'],
+            stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+        client_medium = medium.SmartSimplePipesClientMedium(
+            p.stdout, p.stdin, 'base')
+        client_medium._accept_bytes('abc\n')
+        p.wait()
+        # Even though the child process is dead, flush seems to be a no-op.
+        client_medium._flush()
+
+    def test_simple_pipes__read_bytes_pipe_closed(self):
+        child_read, client_write = create_file_pipes()
+        client_medium = medium.SmartSimplePipesClientMedium(
+            child_read, client_write, 'base')
+        client_medium._accept_bytes('abc\n')
+        client_write.close()
+        self.assertEqual('abc\n', client_medium._read_bytes(4))
+        self.assertEqual('', client_medium._read_bytes(4))
+
+    def test_simple_pipes__read_bytes_subprocess_closed(self):
+        p = subprocess.Popen([sys.executable, '-c',
+            'import sys\n'
+            'if sys.platform == "win32":\n'
+            '    import msvcrt, os\n'
+            '    msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)\n'
+            '    msvcrt.setmode(sys.stdin.fileno(), os.O_BINARY)\n'
+            'sys.stdout.write(sys.stdin.read(4))\n'
+            'sys.stdout.close()\n'],
+            stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+        client_medium = medium.SmartSimplePipesClientMedium(
+            p.stdout, p.stdin, 'base')
+        client_medium._accept_bytes('abc\n')
+        p.wait()
+        self.assertEqual('abc\n', client_medium._read_bytes(4))
+        self.assertEqual('', client_medium._read_bytes(4))
 
     def test_simple_pipes_client_disconnect_does_nothing(self):
         # calling disconnect does nothing.
@@ -556,6 +714,28 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         request.finished_reading()
         self.assertRaises(errors.ReadingCompleted, request.read_bytes, None)
 
+    def test_reset(self):
+        server_sock, client_sock = portable_socket_pair()
+        # TODO: Use SmartClientAlreadyConnectedSocketMedium for the versions of
+        #       bzr where it exists.
+        client_medium = medium.SmartTCPClientMedium(None, None, None)
+        client_medium._socket = client_sock
+        client_medium._connected = True
+        req = client_medium.get_request()
+        self.assertRaises(errors.TooManyConcurrentRequests,
+            client_medium.get_request)
+        client_medium.reset()
+        # The stream should be reset, marked as disconnected, though ready for
+        # us to make a new request
+        self.assertFalse(client_medium._connected)
+        self.assertIs(None, client_medium._socket)
+        try:
+            self.assertEqual('', client_sock.recv(1))
+        except socket.error, e:
+            if e.errno not in (errno.EBADF,):
+                raise
+        req = client_medium.get_request()
+
 
 class RemoteTransportTests(TestCaseWithSmartMedium):
 
@@ -608,20 +788,6 @@ class TestSmartServerStreamMedium(tests.TestCase):
     def setUp(self):
         super(TestSmartServerStreamMedium, self).setUp()
         self._captureVar('BZR_NO_SMART_VFS', None)
-
-    def portable_socket_pair(self):
-        """Return a pair of TCP sockets connected to each other.
-
-        Unlike socket.socketpair, this should work on Windows.
-        """
-        listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        listen_sock.bind(('127.0.0.1', 0))
-        listen_sock.listen(1)
-        client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_sock.connect(listen_sock.getsockname())
-        server_sock, addr = listen_sock.accept()
-        listen_sock.close()
-        return server_sock, client_sock
 
     def test_smart_query_version(self):
         """Feed a canned query version to a server"""
@@ -687,7 +853,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
 
     def test_socket_stream_with_bulk_data(self):
         sample_request_bytes = 'command\n9\nbulk datadone\n'
-        server_sock, client_sock = self.portable_socket_pair()
+        server_sock, client_sock = portable_socket_pair()
         server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
         sample_protocol = SampleRequest(expected_bytes=sample_request_bytes)
@@ -706,7 +872,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertTrue(server.finished)
 
     def test_socket_stream_shutdown_detection(self):
-        server_sock, client_sock = self.portable_socket_pair()
+        server_sock, client_sock = portable_socket_pair()
         client_sock.close()
         server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
@@ -726,7 +892,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         rest_of_request_bytes = 'lo\n'
         expected_response = (
             protocol.RESPONSE_VERSION_TWO + 'success\nok\x012\n')
-        server_sock, client_sock = self.portable_socket_pair()
+        server_sock, client_sock = portable_socket_pair()
         server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
         client_sock.sendall(incomplete_request_bytes)
@@ -802,7 +968,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # _serve_one_request should still process both of them as if they had
         # been received separately.
         sample_request_bytes = 'command\n'
-        server_sock, client_sock = self.portable_socket_pair()
+        server_sock, client_sock = portable_socket_pair()
         server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
         first_protocol = SampleRequest(expected_bytes=sample_request_bytes)
@@ -839,7 +1005,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertTrue(server.finished)
 
     def test_socket_stream_error_handling(self):
-        server_sock, client_sock = self.portable_socket_pair()
+        server_sock, client_sock = portable_socket_pair()
         server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
         fake_protocol = ErrorRaisingProtocol(Exception('boom'))
@@ -860,7 +1026,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertEqual('', from_server.getvalue())
 
     def test_socket_stream_keyboard_interrupt_handling(self):
-        server_sock, client_sock = self.portable_socket_pair()
+        server_sock, client_sock = portable_socket_pair()
         server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
         fake_protocol = ErrorRaisingProtocol(KeyboardInterrupt('boom'))
@@ -877,7 +1043,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         return server._build_protocol()
 
     def build_protocol_socket(self, bytes):
-        server_sock, client_sock = self.portable_socket_pair()
+        server_sock, client_sock = portable_socket_pair()
         server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
         client_sock.sendall(bytes)
@@ -3212,6 +3378,114 @@ class Test_SmartClient(tests.TestCase):
             bzrlib.__version__, smart_client._headers['Software version'])
         # XXX: need a test that smart_client._headers is passed to the request
         # encoder.
+
+
+class Test_SmartClientRequest(tests.TestCase):
+
+    def make_client_with_failing_medium(self, fail_at_write=True):
+        response = StringIO()
+        output = StringIO()
+        vendor = FirstRejectedStringIOSSHVendor(response, output,
+                    fail_at_write=fail_at_write)
+        client_medium = medium.SmartSSHClientMedium(
+            'a host', 'a port', 'a user', 'a pass', 'base', vendor,
+            'bzr')
+        smart_client = client._SmartClient(client_medium, headers={})
+        return output, vendor, smart_client
+
+    def test__send_no_retry_pipes(self):
+        client_read, server_write = create_file_pipes()
+        server_read, client_write = create_file_pipes()
+        client_medium = medium.SmartSimplePipesClientMedium(client_read,
+            client_write, base='/')
+        smart_client = client._SmartClient(client_medium)
+        smart_request = client._SmartClientRequest(smart_client,
+            'hello', ())
+        # Close the server side
+        server_read.close()
+        encoder, response_handler = smart_request._construct_protocol(3)
+        self.assertRaises(errors.ConnectionReset,
+            smart_request._send_no_retry, encoder)
+
+    def test__send_read_response_sockets(self):
+        listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        listen_sock.bind(('127.0.0.1', 0))
+        listen_sock.listen(1)
+        host, port = listen_sock.getsockname()
+        client_medium = medium.SmartTCPClientMedium(host, port, '/')
+        client_medium._ensure_connection()
+        smart_client = client._SmartClient(client_medium)
+        smart_request = client._SmartClientRequest(smart_client, 'hello', ())
+        # Accept the connection, but don't actually talk to the client.
+        server_sock, _ = listen_sock.accept()
+        server_sock.close()
+        # Sockets buffer and don't really notice that the server has closed the
+        # connection until we try to read again.
+        handler = smart_request._send(3)
+        self.assertRaises(errors.ConnectionReset,
+            handler.read_response_tuple, expect_body=False)
+
+    def test__send_retries_on_write(self):
+        output, vendor, smart_client = self.make_client_with_failing_medium()
+        smart_request = client._SmartClientRequest(smart_client, 'hello', ())
+        handler = smart_request._send(3)
+        self.assertEqual('bzr message 3 (bzr 1.6)\n' # protocol
+                         '\x00\x00\x00\x02de'   # empty headers
+                         's\x00\x00\x00\tl5:helloee',
+                         output.getvalue())
+        self.assertEqual(
+            [('connect_ssh', 'a user', 'a pass', 'a host', 'a port',
+              ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes']),
+             ('close',),
+             ('connect_ssh', 'a user', 'a pass', 'a host', 'a port',
+              ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes']),
+            ],
+            vendor.calls)
+
+    def test__send_doesnt_retry_read_failure(self):
+        output, vendor, smart_client = self.make_client_with_failing_medium(
+            fail_at_write=False)
+        smart_request = client._SmartClientRequest(smart_client, 'hello', ())
+        handler = smart_request._send(3)
+        self.assertEqual('bzr message 3 (bzr 1.6)\n' # protocol
+                         '\x00\x00\x00\x02de'   # empty headers
+                         's\x00\x00\x00\tl5:helloee',
+                         output.getvalue())
+        self.assertEqual(
+            [('connect_ssh', 'a user', 'a pass', 'a host', 'a port',
+              ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes']),
+            ],
+            vendor.calls)
+        self.assertRaises(errors.ConnectionReset, handler.read_response_tuple)
+
+    def test__send_doesnt_retry_body_stream(self):
+        # We don't know how much of body_stream would get iterated as part of
+        # _send before it failed to actually send the request, so we
+        # just always fail in this condition.
+        output, vendor, smart_client = self.make_client_with_failing_medium()
+        smart_request = client._SmartClientRequest(smart_client, 'hello', (),
+            body_stream=['a', 'b'])
+        self.assertRaises(errors.ConnectionReset, smart_request._send, 3)
+        # We got one connect, but it fails, so we disconnect, but we don't
+        # retry it
+        self.assertEqual(
+            [('connect_ssh', 'a user', 'a pass', 'a host', 'a port',
+              ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes']),
+             ('close',),
+            ],
+            vendor.calls)
+
+    def test__send_disabled_retry(self):
+        debug.debug_flags.add('noretry')
+        output, vendor, smart_client = self.make_client_with_failing_medium()
+        smart_request = client._SmartClientRequest(smart_client, 'hello', ())
+        self.assertRaises(errors.ConnectionReset, smart_request._send, 3)
+        self.assertEqual(
+            [('connect_ssh', 'a user', 'a pass', 'a host', 'a port',
+              ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes']),
+             ('close',),
+            ],
+            vendor.calls)
 
 
 class LengthPrefixedBodyDecoder(tests.TestCase):
