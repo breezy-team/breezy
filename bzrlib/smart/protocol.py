@@ -62,7 +62,13 @@ def _decode_tuple(req_line):
 
 def _encode_tuple(args):
     """Encode the tuple args to a bytestream."""
-    return '\x01'.join(args) + '\n'
+    joined = '\x01'.join(args) + '\n'
+    if type(joined) is unicode:
+        # XXX: We should fix things so this never happens!  -AJB, 20100304
+        mutter('response args contain unicode, should be only bytes: %r',
+               joined)
+        joined = joined.encode('ascii')
+    return joined
 
 
 class Requester(object):
