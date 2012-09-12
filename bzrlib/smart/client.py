@@ -14,6 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from bzrlib import lazy_import
+lazy_import.lazy_import(globals(), """
+from bzrlib.smart import request as _mod_request
+""")
+
 import bzrlib
 from bzrlib.smart import message, protocol
 from bzrlib import (
@@ -149,6 +154,22 @@ class _SmartClientRequest(object):
         else:
             return self._call(protocol_version)
 
+    def _is_safe_to_send_twice(self):
+        """Check if the current method is re-entrant safe."""
+        if self.body_stream is not None or 'noretry' in debug.debug_flags:
+            # We can't restart a body stream that has already been consumed.
+            return False
+        request_type = _mod_request.request_handlers.get_info(self.method)
+        if request_type in ('read', 'idem', 'semi'):
+            return True
+        # If we have gotten this far, 'stream' cannot be retried, because we
+        # already consumed the local stream.
+        if request_type in ('semivfs', 'mutate', 'stream'):
+            return False
+        trace.mutter('Unknown request type: %s for method %s'
+                     % (request_type, self.method))
+        return False
+
     def _run_call_hooks(self):
         if not _SmartClient.hooks['call']:
             return
@@ -164,8 +185,21 @@ class _SmartClientRequest(object):
         where the code will be to retry requests if the connection is closed.
         """
         response_handler = self._send(protocol_version)
-        response_tuple = response_handler.read_response_tuple(
-            expect_body=self.expect_response_body)
+        try:
+            response_tuple = response_handler.read_response_tuple(
+                expect_body=self.expect_response_body)
+        except errors.ConnectionReset, e:
+            self.client._medium.reset()
+            if not self._is_safe_to_send_twice():
+                raise
+            trace.warning('ConnectionReset reading response for %r, retrying'
+                          % (self.method,))
+            trace.log_exception_quietly()
+            encoder, response_handler = self._construct_protocol(
+                protocol_version)
+            self._send_no_retry(encoder)
+            response_tuple = response_handler.read_response_tuple(
+                expect_body=self.expect_response_body)
         return (response_tuple, response_handler)
 
     def _call_determining_protocol_version(self):

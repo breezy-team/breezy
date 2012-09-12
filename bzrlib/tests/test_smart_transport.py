@@ -3382,16 +3382,51 @@ class Test_SmartClient(tests.TestCase):
 
 class Test_SmartClientRequest(tests.TestCase):
 
-    def make_client_with_failing_medium(self, fail_at_write=True):
-        response = StringIO()
+    def make_client_with_failing_medium(self, fail_at_write=True, response=''):
+        response_io = StringIO(response)
         output = StringIO()
-        vendor = FirstRejectedStringIOSSHVendor(response, output,
+        vendor = FirstRejectedStringIOSSHVendor(response_io, output,
                     fail_at_write=fail_at_write)
         client_medium = medium.SmartSSHClientMedium(
             'a host', 'a port', 'a user', 'a pass', 'base', vendor,
             'bzr')
         smart_client = client._SmartClient(client_medium, headers={})
         return output, vendor, smart_client
+
+    def make_response(self, args, body=None, body_stream=None):
+        response_io = StringIO()
+        response = _mod_request.SuccessfulSmartServerResponse(args, body=body,
+            body_stream=body_stream)
+        responder = protocol.ProtocolThreeResponder(response_io.write)
+        responder.send_response(response)
+        return response_io.getvalue()
+
+    def test__call_doesnt_retry_append(self):
+        response = self.make_response(('appended', '8'))
+        output, vendor, smart_client = self.make_client_with_failing_medium(
+            fail_at_write=False, response=response)
+        smart_request = client._SmartClientRequest(smart_client, 'append',
+            ('foo', ''), body='content\n')
+        self.assertRaises(errors.ConnectionReset, smart_request._call, 3)
+
+    def test__call_retries_get_bytes(self):
+        response = self.make_response(('ok',), 'content\n')
+        output, vendor, smart_client = self.make_client_with_failing_medium(
+            fail_at_write=False, response=response)
+        smart_request = client._SmartClientRequest(smart_client, 'get',
+            ('foo',))
+        response, response_handler = smart_request._call(3)
+        self.assertEqual(('ok',), response)
+        self.assertEqual('content\n', response_handler.read_body_bytes())
+
+    def test__call_noretry_get_bytes(self):
+        debug.debug_flags.add('noretry')
+        response = self.make_response(('ok',), 'content\n')
+        output, vendor, smart_client = self.make_client_with_failing_medium(
+            fail_at_write=False, response=response)
+        smart_request = client._SmartClientRequest(smart_client, 'get',
+            ('foo',))
+        self.assertRaises(errors.ConnectionReset, smart_request._call, 3)
 
     def test__send_no_retry_pipes(self):
         client_read, server_write = create_file_pipes()
