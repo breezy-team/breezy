@@ -40,6 +40,7 @@ from shutil import (
     rmtree,
     )
 import signal
+import socket
 import subprocess
 import tempfile
 from tempfile import (
@@ -1929,6 +1930,20 @@ def get_host_name():
         return socket.gethostname().decode(get_user_encoding())
 
 
+# We must not read/write any more than 64k at a time from/to a socket so we
+# don't risk "no buffer space available" errors on some platforms.  Windows in
+# particular is likely to throw WSAECONNABORTED or WSAENOBUFS if given too much
+# data at once.
+MAX_SOCKET_CHUNK = 64 * 1024
+
+_end_of_stream_errors = [errno.ECONNRESET, errno.EPIPE, errno.EINVAL]
+for _eno in ['WSAECONNRESET', 'WSAECONNABORTED']:
+    _eno = getattr(errno, _eno, None)
+    if _eno is not None:
+        _end_of_stream_errors.append(_eno)
+del _eno
+
+
 def recv_all(socket, bytes):
     """Receive an exact number of bytes.
 
@@ -1948,21 +1963,37 @@ def recv_all(socket, bytes):
     return b
 
 
-def send_all(socket, bytes, report_activity=None):
+def send_all(sock, bytes, report_activity=None):
     """Send all bytes on a socket.
 
-    Regular socket.sendall() can give socket error 10053 on Windows.  This
-    implementation sends no more than 64k at a time, which avoids this problem.
+    Breaks large blocks in smaller chunks to avoid buffering limitations on
+    some platforms, and catches EINTR which may be thrown if the send is
+    interrupted by a signal.
+
+    This is preferred to socket.sendall(), because it avoids portability bugs
+    and provides activity reporting.
 
     :param report_activity: Call this as bytes are read, see
         Transport._report_activity
     """
-    chunk_size = 2**16
-    for pos in xrange(0, len(bytes), chunk_size):
-        block = bytes[pos:pos+chunk_size]
-        if report_activity is not None:
-            report_activity(len(block), 'write')
-        until_no_eintr(socket.sendall, block)
+    sent_total = 0
+    byte_count = len(bytes)
+    while sent_total < byte_count:
+        try:
+            sent = sock.send(buffer(bytes, sent_total, MAX_SOCKET_CHUNK))
+        except (socket.error, IOError), e:
+            if e.args[0] in _end_of_stream_errors:
+                raise errors.ConnectionReset(
+                    "Error trying to write to socket", e)
+            if e.args[0] != errno.EINTR:
+                raise
+        else:
+            if sent == 0:
+                raise errors.ConnectionReset('Sending to %s returned 0 bytes'
+                                             % (sock,))
+            sent_total += sent
+            if report_activity is not None:
+                report_activity(sent, 'write')
 
 
 def dereference_path(path):
