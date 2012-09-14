@@ -100,6 +100,16 @@ class BTreeTestCase(TestCaseWithTransport):
         self.overrideAttr(btree_index, '_PAGE_SIZE')
         btree_index._PAGE_SIZE = 2048
 
+    def assertEqualsApproxCompressed(self, expected, actual, slop=6):
+        """Check a count of compressed bytes is approximately as expected
+
+        Relying on compressed length being stable even with fixed inputs is
+        slightly bogus, but zlib is stable enough that this mostly works.
+        """
+        if not expected - slop < actual < expected + slop:
+            self.fail("Expected around %d bytes compressed but got %d" %
+                (expected, actual))
+
 
 class TestBTreeBuilder(BTreeTestCase):
 
@@ -196,7 +206,7 @@ class TestBTreeBuilder(BTreeTestCase):
         temp_file = builder.finish()
         content = temp_file.read()
         del temp_file
-        self.assertEqual(9283, len(content))
+        self.assertEqualsApproxCompressed(9283, len(content))
         self.assertEqual(
             "B+Tree Graph Index 2\nnode_ref_lists=0\nkey_elements=1\nlen=400\n"
             "row_lengths=1,2\n",
@@ -230,7 +240,7 @@ class TestBTreeBuilder(BTreeTestCase):
         temp_file = builder.finish()
         content = temp_file.read()
         del temp_file
-        self.assertEqual(155, len(content))
+        self.assertEqualsApproxCompressed(155, len(content))
         self.assertEqual(
             "B+Tree Graph Index 2\nnode_ref_lists=0\nkey_elements=1\nlen=10\n"
             "row_lengths=1\n",
@@ -252,7 +262,7 @@ class TestBTreeBuilder(BTreeTestCase):
         temp_file = builder.finish()
         content = temp_file.read()
         del temp_file
-        self.assertEqual(9283, len(content))
+        self.assertEqualsApproxCompressed(9283, len(content))
         self.assertEqual(
             "B+Tree Graph Index 2\nnode_ref_lists=0\nkey_elements=1\nlen=400\n"
             "row_lengths=1,2\n",
@@ -311,7 +321,7 @@ class TestBTreeBuilder(BTreeTestCase):
         temp_file = builder.finish()
         content = temp_file.read()
         del temp_file
-        self.assertEqual(12643, len(content))
+        self.assertEqualsApproxCompressed(12643, len(content))
         self.assertEqual(
             "B+Tree Graph Index 2\nnode_ref_lists=2\nkey_elements=2\nlen=200\n"
             "row_lengths=1,3\n",
@@ -697,7 +707,7 @@ class TestBTreeIndex(BTreeTestCase):
         # The entire index should have been read, as it is one page long.
         self.assertEqual([('readv', 'index', [(0, size)], False, None)],
             t._activity)
-        self.assertEqual(1173, size)
+        self.assertEqualsApproxCompressed(1173, size)
 
     def test_with_offset_no_size(self):
         index = self.make_index_with_offset(key_elements=1, ref_lists=1,
@@ -747,7 +757,7 @@ class TestBTreeIndex(BTreeTestCase):
             builder.add_node(*node)
         t = transport.get_transport('trace+' + self.get_url(''))
         size = t.put_file('index', builder.finish())
-        self.assertEqual(17692, size)
+        self.assertEqualsApproxCompressed(17692, size)
         index = btree_index.BTreeGraphIndex(t, 'index', size)
         del t._activity[:]
         self.assertEqual([], t._activity)
@@ -770,7 +780,7 @@ class TestBTreeIndex(BTreeTestCase):
         # The entire index should have been read linearly.
         self.assertEqual([('readv', 'index', [(0, size)], False, None)],
                          t._activity)
-        self.assertEqual(1488, size)
+        self.assertEqualsApproxCompressed(1488, size)
 
     def test_validate_two_pages(self):
         builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2)
@@ -780,15 +790,16 @@ class TestBTreeIndex(BTreeTestCase):
         t = transport.get_transport('trace+' + self.get_url(''))
         size = t.put_file('index', builder.finish())
         # Root page, 2 leaf pages
-        self.assertEqual(9339, size)
+        self.assertEqualsApproxCompressed(9339, size)
         index = btree_index.BTreeGraphIndex(t, 'index', size)
         del t._activity[:]
         self.assertEqual([], t._activity)
         index.validate()
+        rem = size - 8192 # Number of remaining bytes after second block
         # The entire index should have been read linearly.
         self.assertEqual(
             [('readv', 'index', [(0, 4096)], False, None),
-             ('readv', 'index', [(4096, 4096), (8192, 1147)], False, None)],
+             ('readv', 'index', [(4096, 4096), (8192, rem)], False, None)],
             t._activity)
         # XXX: TODO: write some badly-ordered nodes, and some pointers-to-wrong
         # node and make validate find them.
@@ -849,8 +860,6 @@ class TestBTreeIndex(BTreeTestCase):
             builder.add_node(*node)
         t = transport.get_transport('trace+' + self.get_url(''))
         size = t.put_file('index', builder.finish())
-        self.assertEqual(1303220, size, 'number of expected bytes in the'
-                                        ' output changed')
         page_size = btree_index._PAGE_SIZE
         del builder
         index = btree_index.BTreeGraphIndex(t, 'index', size)
@@ -872,19 +881,19 @@ class TestBTreeIndex(BTreeTestCase):
         # The entire index should have been read
         total_pages = sum(index._row_lengths)
         self.assertEqual(total_pages, index._row_offsets[-1])
-        self.assertEqual(1303220, size)
+        self.assertEqualsApproxCompressed(1303220, size)
         # The start of the leaves
         first_byte = index._row_offsets[-2] * page_size
         readv_request = []
         for offset in range(first_byte, size, page_size):
             readv_request.append((offset, page_size))
         # The last page is truncated
-        readv_request[-1] = (readv_request[-1][0], 1303220 % page_size)
+        readv_request[-1] = (readv_request[-1][0], size % page_size)
         expected = [('readv', 'index', [(0, page_size)], False, None),
              ('readv',  'index', readv_request, False, None)]
         if expected != t._activity:
             self.assertEqualDiff(pprint.pformat(expected),
-                                 pprint.pformat(transport._activity))
+                                 pprint.pformat(t._activity))
 
     def _test_iter_entries_references_resolved(self):
         index = self.make_index(1, nodes=[

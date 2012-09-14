@@ -1572,6 +1572,7 @@ class RetryWithNewPacks(BzrError):
             problem we can raise the original error (value from sys.exc_info())
         """
         BzrError.__init__(self)
+        self.context = context
         self.reload_occurred = reload_occurred
         self.exc_info = exc_info
         self.orig_error = exc_info[1]
@@ -1964,7 +1965,7 @@ class DuplicateHelpPrefix(BzrError):
         self.prefix = prefix
 
 
-class MalformedTransform(BzrError):
+class MalformedTransform(InternalBzrError):
 
     _fmt = "Tree transform is malformed %(conflicts)r"
 
@@ -3316,3 +3317,23 @@ class NoCompatibleInter(BzrError):
     def __init__(self, source, target):
         self.source = source
         self.target = target
+
+
+class MissingFeature(BzrError):
+
+    _fmt = ("Missing feature %(feature)s not provided by this "
+            "version of Bazaar or any plugin.")
+
+    def __init__(self, feature):
+        self.feature = feature
+
+
+class ParseFormatError(BzrError):
+
+    _fmt = "Parse error on line %(lineno)d of format name: %(line)s"
+
+    def __init__(self, lineno, line, text):
+        BzrError.__init__(self)
+        self.lineno = lineno
+        self.line = line
+        self.text = text

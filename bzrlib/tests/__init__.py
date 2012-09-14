@@ -1939,8 +1939,8 @@ class TestCase(testtools.TestCase):
 
         self.log('run bzr: %r', args)
         # FIXME: don't call into logging here
-        handler = logging.StreamHandler(stderr)
-        handler.setLevel(logging.INFO)
+        handler = trace.EncodedStreamHandler(stderr, errors="replace",
+            level=logging.INFO)
         logger = logging.getLogger('')
         logger.addHandler(handler)
         old_ui_factory = ui.ui_factory
@@ -4756,7 +4756,7 @@ class _PosixPermissionsFeature(Feature):
             f = tempfile.mkstemp(prefix='bzr_perms_chk_')
             fd, name = f
             os.close(fd)
-            os.chmod(name, write_perms)
+            osutils.chmod_if_possible(name, write_perms)
 
             read_perms = os.stat(name).st_mode & 0777
             os.unlink(name)

@@ -5,7 +5,7 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.4.2
+bzr 2.4.3
 #########
 
 :2.4.2: NOT RELEASED YET
@@ -26,35 +26,42 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
-* Fixed a bug where ``bzr tags -r x..y`` loaded the branch history once for
-  every revision in the range; it's now much faster. (Vincent Ladeuil, #857335)
-
 Bug Fixes
 *********
 
-* Fixed an infinite loop when creating a repo at the root of the filesystem,
-  i.e. "/", due to posixpath.normpath() not collapsing 2 leading slashes into
-  one, thus respecting the POSIX standard, but making relpath() loop infinitely.
-  (Florian Vichot, #861008)
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
 
-* Fixed loading of external merge tools from config to properly decode
-  command-lines which contain embedded quotes. (Gordon Tyler, #828803)
+* Cope with Unix filesystems, such as smbfs, where chmod gives 'permission
+  denied'.  (Martin Pool, #606537)
 
-* Include declaration of 'changed' to avoid an UnboundLocalError in dirstate
-  pyrex code with new Cython versions. (Denys Duchier, #837221)
+* When the ``limbo`` or ``pending-deletion`` directories exist, typically
+  because of an interrupted tree update, but are empty, bzr no longer
+  errors out, because there is nothing for the user to clean up.  Also,
+  errors in creation of these directories are no longer squelched.
+  (Martin Pool, #427773)
 
-* Prevent several kinds of OverflowError and other fallout from failing to fit
-  stat fields into four bytes in dirstate pack_stat implementations.
-  (Martin Packman, #683191 #706957)
+* During merges, when two entries end up using the same path for two
+  different file-ids (the same file being 'bzr added' in two different
+  branches) , 'duplicate' conflicts are created instead of 'content'
+  ones. This was previously leading to a 'Malformed tramsform' exception.
+  (Vincent Ladeuil, #880701)
 
-* Return early from create_delta_index_from_delta given tiny inputs. This
-  avoids raising a spurious MemoryError on certain platforms such as AIX.
-  (John Arbash Meinel, #856731)
+* 'Malformed transform' exceptions are now recognized as internal errors
+  instead of user errors and report a traceback. This will reduce user
+  confusion as there is generally nothing users can do about them.
+  (Vincent Ladeuil, #880701)
 
-* Teach the bzr client how to reconnect if we get ``ConnectionReset``
-  while making an RPC request. This doesn't handle all possible network
-  disconnects, but it should at least handle when the server is asked to
-  shutdown gracefully. (John Arbash Meinel, #819604)
+* Prevent a traceback being printed to stderr when logging has problems and
+  accept utf-8 byte string without breaking. (Martin Packman, #714449)
+
+* Use ``encoding_type='exact'`` for ``bzr testament`` so that on Windows
+  the sha hash of the long testament matches the sha hash in the short
+  form. (John Arbash Meinel, #1010339)
+
+* _Win32Stat object provides members st_uid and st_gid, those are present
+  in Python's os.stat object. These members required for external tools like
+  bzr-git and dulwich. (Alexander Belchenko, #967060)
 
 Documentation
 *************
@@ -79,6 +86,84 @@ Testing
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
+
+* Account for slightly improved compression with newer versions of zlib in
+  ``bt.test_btree_index`` tests. (Martin Packman, #940453)
+
+
+bzr 2.4.2
+#########
+
+:2.4.2: 2011-10-27
+
+This is a bugfix release. Most of the bugs dealt with portability
+issues. Upgrading is recommended for all users of earlier 2.4 releases.
+
+External Compatibility Breaks
+*****************************
+
+None.
+
+New Features
+************
+
+None.
+
+Improvements
+************
+
+* Fixed a bug where ``bzr tags -r x..y`` loaded the branch history once for
+  every revision in the range; it's now much faster. (Vincent Ladeuil, #857335)
+
+Bug Fixes
+*********
+
+* Fixed an infinite loop when creating a repo at the root of the filesystem, 
+  i.e. "/", due to posixpath.normpath() not collapsing 2 leading slashes into 
+  one, thus respecting the POSIX standard, but making relpath() loop infinitely.
+  (Florian Vichot, #861008)
+
+* Fixed loading of external merge tools from config to properly decode
+  command-lines which contain embedded quotes. (Gordon Tyler, #828803)
+
+* Include declaration of 'changed' to avoid an UnboundLocalError in dirstate
+  pyrex code with new Cython versions. (Denys Duchier, #837221)
+
+* Prevent several kinds of OverflowError and other fallout from failing to fit
+  stat fields into four bytes in dirstate pack_stat implementations.
+  (Martin Packman, #683191 #706957)
+
+* Return early from create_delta_index_from_delta given tiny inputs. This
+  avoids raising a spurious MemoryError on certain platforms such as AIX.
+  (John Arbash Meinel, #856731)
+
+* Teach the bzr client how to reconnect if we get ``ConnectionReset``
+  while making an RPC request. This doesn't handle all possible network
+  disconnects, but it should at least handle when the server is asked to
+  shutdown gracefully. (John Arbash Meinel, #819604)
+
+
+Documentation
+*************
+
+* Corrected documentation for ``bzr serve`` in the Admin Guide.
+  (Morten Bøgeskov, Martin Pool, #832576)
+
+API Changes
+***********
+
+None.
+
+Internals
+*********
+
+No changes.
+
+Testing
+*******
+
+* Accept both old and new style testtools output in selftest tests.
+  (Jelmer Vernooij, Martin Packman, #815423)
 
 * Fix the race for TestingThreadingTCPServer in
   test_server_crash_while_responding. (Vincent Ladeuil, #869366)

@@ -3030,6 +3030,7 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
         """Return the format for the working tree object in a_bzrdir."""
         try:
             format_string = klass.find_format_string(a_bzrdir)
+            format_string = bzrdir.extract_format_string(format_string)
             return format_registry.get(format_string)
         except KeyError:
             raise errors.UnknownFormatError(format=format_string,

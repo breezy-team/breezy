@@ -294,7 +294,9 @@ class BTreeBuilder(index.GraphIndexBuilder):
             flag when writing out. This is used by the _spill_mem_keys_to_disk
             functionality.
         """
+        new_leaf = False
         if rows[-1].writer is None:
+            new_leaf = True
             # opening a new leaf chunk;
             for pos, internal_row in enumerate(rows[:-1]):
                 # flesh out any internal nodes that are needed to
@@ -320,6 +322,10 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 optimize_for_size=self._optimize_for_size)
             rows[-1].writer.write(_LEAF_FLAG)
         if rows[-1].writer.write(line):
+            if new_leaf:
+                # We just created this leaf, and now the line doesn't fit.
+                # Clearly it will never fit, so punt.
+                raise errors.BadIndexKey(line)
             # this key did not fit in the node:
             rows[-1].finish_node()
             key_line = string_key + "\n"

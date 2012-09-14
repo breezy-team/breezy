@@ -93,3 +93,22 @@ class TestWin32Finder(tests.TestCaseInTempDir):
         self.assertEqual(errno.ENOENT, e.errno)
         self.assertEqual(3, e.winerror)
         self.assertEqual((3, u'no_such_dir/*'), e.args)
+
+
+class Test_Win32Stat(tests.TestCaseInTempDir):
+
+    _test_needs_features = [win32_readdir_feature]
+
+    def setUp(self):
+        super(Test_Win32Stat, self).setUp()
+        from bzrlib._walkdirs_win32 import lstat
+        self.win32_lstat = lstat
+
+    def test_zero_members_present(self):
+        self.build_tree(['foo'])
+        st = self.win32_lstat('foo')
+        # we only want to ensure that some members are present
+        self.assertEqual(0, st.st_dev)
+        self.assertEqual(0, st.st_ino)
+        self.assertEqual(0, st.st_uid)
+        self.assertEqual(0, st.st_gid)
