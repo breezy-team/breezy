@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@ import posixpath
 # and need the former on windows
 import shutil
 from shutil import rmtree
+import signal
 import socket
 import subprocess
 # We need to import both tempfile and mkdtemp as we export the later on posix
@@ -2044,7 +2045,7 @@ def get_host_name():
 # data at once.
 MAX_SOCKET_CHUNK = 64 * 1024
 
-_end_of_stream_errors = [errno.ECONNRESET]
+_end_of_stream_errors = [errno.ECONNRESET, errno.EPIPE, errno.EINVAL]
 for _eno in ['WSAECONNRESET', 'WSAECONNABORTED']:
     _eno = getattr(errno, _eno, None)
     if _eno is not None:
@@ -2116,12 +2117,19 @@ def send_all(sock, bytes, report_activity=None):
     while sent_total < byte_count:
         try:
             sent = sock.send(buffer(bytes, sent_total, MAX_SOCKET_CHUNK))
-        except socket.error, e:
+        except (socket.error, IOError), e:
+            if e.args[0] in _end_of_stream_errors:
+                raise errors.ConnectionReset(
+                    "Error trying to write to socket", e)
             if e.args[0] != errno.EINTR:
                 raise
         else:
+            if sent == 0:
+                raise errors.ConnectionReset('Sending to %s returned 0 bytes'
+                                             % (sock,))
             sent_total += sent
-            report_activity(sent, 'write')
+            if report_activity is not None:
+                report_activity(sent, 'write')
 
 
 def connect_socket(address):
