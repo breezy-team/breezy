@@ -803,7 +803,6 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         # method before calling the super init.
         SmartClientStreamMedium.__init__(self, base)
         self._vendor = vendor
-        self._bzr_remote_path = bzr_remote_path
         self._ssh_connection = None
 
     def __repr__(self):
