@@ -16,6 +16,8 @@
 
 """Ping plugin for bzr."""
 
+from __future__ import absolute_import
+
 from bzrlib.commands import Command
 from bzrlib.lazy_import import lazy_import
 
