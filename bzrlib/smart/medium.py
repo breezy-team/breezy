@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -177,6 +177,14 @@ class SmartMedium(object):
         ui.ui_factory.report_transport_activity(self, bytes, direction)
 
 
+_bad_file_descriptor = (errno.EBADF,)
+if sys.platform == 'win32':
+    # Given on Windows if you pass a closed socket to select.select. Probably
+    # also given if you pass a file handle to select.
+    WSAENOTSOCK = 10038
+    _bad_file_descriptor += (WSAENOTSOCK,)
+
+
 class SmartServerStreamMedium(SmartMedium):
     """Handles smart commands coming over a stream.
 
@@ -240,6 +248,8 @@ class SmartServerStreamMedium(SmartMedium):
 
         :param protocol: a SmartServerRequestProtocol.
         """
+        if protocol is None:
+            return
         try:
             self._serve_one_request_unguarded(protocol)
         except KeyboardInterrupt:
@@ -738,7 +748,7 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
         except IOError, e:
             if e.errno in (errno.EINVAL, errno.EPIPE):
                 raise errors.ConnectionReset(
-                    "Error trying to write to subprocess:\n%s" % (e,))
+                    "Error trying to write to subprocess", e)
             raise
         self._report_activity(len(bytes), 'write')
 
@@ -793,6 +803,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         # method before calling the super init.
         SmartClientStreamMedium.__init__(self, base)
         self._vendor = vendor
+        self._bzr_remote_path = bzr_remote_path
         self._ssh_connection = None
 
     def __repr__(self):
@@ -915,6 +926,20 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
         SmartClientSocketMedium.__init__(self, base)
         self._host = host
         self._port = port
+        self._socket = None
+
+    def _accept_bytes(self, bytes):
+        """See SmartClientMedium.accept_bytes."""
+        self._ensure_connection()
+        osutils.send_all(self._socket, bytes, self._report_activity)
+
+    def disconnect(self):
+        """See SmartClientMedium.disconnect()."""
+        if not self._connected:
+            return
+        self._socket.close()
+        self._socket = None
+        self._connected = False
 
     def _ensure_connection(self):
         """Connect this medium if not already connected."""
