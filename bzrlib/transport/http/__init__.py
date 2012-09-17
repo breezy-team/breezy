@@ -40,41 +40,6 @@ from bzrlib.transport import (
     ConnectedTransport,
     )
 
-# TODO: This is not used anymore by HttpTransport_urllib
-# (extracting the auth info and prompting the user for a password
-# have been split), only the tests still use it. It should be
-# deleted and the tests rewritten ASAP to stay in sync.
-def extract_auth(url, password_manager):
-    """Extract auth parameters from am HTTP/HTTPS url and add them to the given
-    password manager.  Return the url, minus those auth parameters (which
-    confuse urllib2).
-    """
-    if not re.match(r'^(https?)(\+\w+)?://', url):
-        raise ValueError(
-            'invalid absolute url %r' % (url,))
-    scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
-
-    if '@' in netloc:
-        auth, netloc = netloc.split('@', 1)
-        if ':' in auth:
-            username, password = auth.split(':', 1)
-        else:
-            username, password = auth, None
-        if ':' in netloc:
-            host = netloc.split(':', 1)[0]
-        else:
-            host = netloc
-        username = urlutils.unquote(username)
-        if password is not None:
-            password = urlutils.unquote(password)
-        else:
-            password = ui.ui_factory.get_password(
-                prompt=u'HTTP %(user)s@%(host)s password',
-                user=username, host=host)
-        password_manager.add_password(None, host, username, password)
-    url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
-    return url
-
 
 class HttpTransportBase(ConnectedTransport):
     """Base class for http implementations.
