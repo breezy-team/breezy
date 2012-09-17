@@ -2944,7 +2944,7 @@ class MutableSection(Section):
         self.options[name] = value
 
     def remove(self, name):
-        if name not in self.orig:
+        if name not in self.orig and name in self.options:
             self.orig[name] = self.get(name, None)
         del self.options[name]
 
