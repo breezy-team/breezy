@@ -384,24 +384,6 @@ class TestWithTransport_pycurl(object):
     _transport = property(_get_pycurl_maybe)
 
 
-class TestHttpUrls(tests.TestCase):
-
-    # TODO: This should be moved to authorization tests once they
-    # are written.
-
-    def test_url_parsing(self):
-        f = FakeManager()
-        url = http.extract_auth('http://example.com', f)
-        self.assertEqual('http://example.com', url)
-        self.assertEqual(0, len(f.credentials))
-        url = http.extract_auth(
-            'http://user:pass@example.com/bzr/bzr.dev', f)
-        self.assertEqual('http://example.com/bzr/bzr.dev', url)
-        self.assertEqual(1, len(f.credentials))
-        self.assertEqual([None, 'example.com', 'user', 'pass'],
-                         f.credentials[0])
-
-
 class TestHttpTransportUrls(tests.TestCase):
     """Test the http urls."""
 
