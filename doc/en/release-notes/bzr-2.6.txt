@@ -63,6 +63,9 @@ Documentation
 
 .. Improved or updated documentation.
 
+* Clarify ``bzr config`` usages especially around other option references
+  expansion. (Vincent Ladeuil, #996401)
+
 API Changes
 ***********
 
