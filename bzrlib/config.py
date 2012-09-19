@@ -4085,17 +4085,21 @@ class BranchOnlyStack(Stack):
 class cmd_config(commands.Command):
     __doc__ = """Display, set or remove a configuration option.
 
-    Display the active value for a given option.
+    Display the active value for option NAME.
 
     If --all is specified, NAME is interpreted as a regular expression and all
-    matching options are displayed mentioning their scope. The active value
-    that bzr will take into account is the first one displayed for each option.
+    matching options are displayed mentioning their scope and without resolving
+    option references in the value). The active value that bzr will take into
+    account is the first one displayed for each option.
 
-    If no NAME is given, --all .* is implied.
+    If NAME is not given, --all .* is implied (all options are displayed for the
+    current scope).
 
-    Setting a value is achieved by using name=value without spaces. The value
+    Setting a value is achieved by using NAME=value without spaces. The value
     is set in the most relevant scope and can be checked by displaying the
     option again.
+
+    Removing a value is achieved by using --remove NAME.
     """
 
     takes_args = ['name?']
