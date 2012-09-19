@@ -2135,7 +2135,7 @@ credential_store_registry.default_key = 'plain'
 
 class Base64CredentialStore(CredentialStore):
     __doc__ = """Base64 credential store for the authentication.conf file"""
-    
+
     def decode_password(self, credentials):
         """See CredentialStore.decode_password."""
         # GZ 2012-07-28: Will raise binascii.Error if password is not base64,
@@ -2161,7 +2161,8 @@ class BzrDirConfig(object):
         for those under repositories.
         """
         if self._config is None:
-            raise errors.BzrError("Cannot set configuration in %s" % self._bzrdir)
+            raise errors.BzrError("Cannot set configuration in %s"
+                                  % self._bzrdir)
         if value is None:
             self._config.set_option('', 'default_stack_on')
         else:
@@ -2473,8 +2474,8 @@ def float_from_store(unicode_str):
     return float(unicode_str)
 
 
-# Use a an empty dict to initialize an empty configobj avoiding all
-# parsing and encoding checks
+# Use an empty dict to initialize an empty configobj avoiding all parsing and
+# encoding checks
 _list_converter_config = configobj.ConfigObj(
     {}, encoding='utf-8', list_values=True, interpolation=False)
 
@@ -2802,6 +2803,8 @@ An ordered list of python functions to call, separated by spaces.
 
 Each function takes branch, rev_id as parameters.
 '''))
+option_registry.register_lazy('progress_bar', 'bzrlib.ui.text',
+                              'opt_progress_bar')
 option_registry.register(
     Option('public_branch',
            default=None,

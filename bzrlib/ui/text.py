@@ -31,6 +31,7 @@ import getpass
 import warnings
 
 from bzrlib import (
+    config,
     debug,
     progress,
     osutils,
@@ -155,8 +156,14 @@ class _ChooseUI(object):
             return index
 
 
+opt_progress_bar = config.Option(
+    'progress_bar', help='Progress bar type.',
+    default_from_env=['BZR_PROGRESS_BAR'], default=None,
+    invalid='error')
+
+
 class TextUIFactory(UIFactory):
-    """A UI factory for Text user interefaces."""
+    """A UI factory for Text user interfaces."""
 
     def __init__(self,
                  stdin=None,
@@ -279,14 +286,14 @@ class TextUIFactory(UIFactory):
         # do that.  otherwise, guess based on $TERM and tty presence.
         if self.is_quiet():
             return NullProgressView()
-        elif os.environ.get('BZR_PROGRESS_BAR') == 'text':
-            return TextProgressView(self.stderr)
-        elif os.environ.get('BZR_PROGRESS_BAR') == 'none':
+        pb_type = config.GlobalStack().get('progress_bar')
+        if pb_type == 'none': # Explicit requirement
             return NullProgressView()
-        elif progress._supports_progress(self.stderr):
+        if (pb_type == 'text' # Explicit requirement
+            or progress._supports_progress(self.stderr)): # Guess
             return TextProgressView(self.stderr)
-        else:
-            return NullProgressView()
+        # No explicit requirement and no successful guess
+        return NullProgressView()
 
     def _make_output_stream_explicit(self, encoding, encoding_type):
         if encoding_type == 'exact':

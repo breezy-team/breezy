@@ -52,9 +52,8 @@ class TestDebugBytes(tests.TestCaseWithTransport):
         # I would like to avoid run_bzr_subprocess here, but we need it to be
         # connected to a real TextUIFactory. The NullProgressView always
         # ignores transport activity.
-        env = {'BZR_PROGRESS_BAR': 'text'}
-        out, err = self.run_bzr_subprocess('branch -Dbytes %s/tree target'
-                                           % (remote_trans.base,),
-                                           env_changes=env)
+        out, err = self.run_bzr_subprocess(
+            'branch -Dbytes -Oprogress_bar=text %s/tree target'
+            % (remote_trans.base,))
         self.assertContainsRe(err, 'Branched 1 revision')
         self.assertContainsRe(err, 'Transferred:.*kB')
