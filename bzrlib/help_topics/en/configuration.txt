@@ -713,15 +713,18 @@ For example::
 
   bzr.mergetool.kdiff3 = kdiff3 {base} {this} {other} -o {result}
 
-Note that because mergetool configuration options are templates and that
-they use options that are never put into configuration files but provided by
-bzr itself during conflict resolutions, the following will (rightly) break::
+The markers above are not regular configuration options, they are provided
+explicitly during conflit resolutions (as opposed to configuration
+files). As such, when defining templates be careful of the following
+caveat::
 
   $ bzr config bzr.mergetool.kdiff3='kdiff3 {base} {this} {other} -o {result}'
   $ bzr config bzr.mergetool.kdiff3
   bzr: ERROR: Option base is not defined while expanding "kdiff3 {base} {this} {other} -o {result}".
 
-Instead, to disable option expansion in this particular case, one should use::
+Since ``bzr config`` is used here outside of any conflict resolution, there
+is no way for the markers to be defined. Instead, to disable option
+expansion in this particular case, one should use::
 
   $ bzr config --all bzr.mergetool.kdiff3
   branch:
