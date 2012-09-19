@@ -3117,7 +3117,8 @@ class RemoteBranchFormat(branch.BranchFormat):
         return a_bzrdir.open_branch(name=name, 
             ignore_fallbacks=ignore_fallbacks)
 
-    def _vfs_initialize(self, a_bzrdir, name, append_revisions_only):
+    def _vfs_initialize(self, a_bzrdir, name, append_revisions_only,
+                        repository=None):
         # Initialisation when using a local bzrdir object, or a non-vfs init
         # method is not available on the server.
         # self._custom_format is always set - the start of initialize ensures
@@ -3125,11 +3126,13 @@ class RemoteBranchFormat(branch.BranchFormat):
         if isinstance(a_bzrdir, RemoteBzrDir):
             a_bzrdir._ensure_real()
             result = self._custom_format.initialize(a_bzrdir._real_bzrdir,
-                name=name, append_revisions_only=append_revisions_only)
+                name=name, append_revisions_only=append_revisions_only,
+                repository=repository)
         else:
             # We assume the bzrdir is parameterised; it may not be.
             result = self._custom_format.initialize(a_bzrdir, name=name,
-                append_revisions_only=append_revisions_only)
+                append_revisions_only=append_revisions_only,
+                repository=repository)
         if (isinstance(a_bzrdir, RemoteBzrDir) and
             not isinstance(result, RemoteBranch)):
             result = RemoteBranch(a_bzrdir, a_bzrdir.find_repository(), result,
@@ -3152,11 +3155,13 @@ class RemoteBranchFormat(branch.BranchFormat):
         # Being asked to create on a non RemoteBzrDir:
         if not isinstance(a_bzrdir, RemoteBzrDir):
             return self._vfs_initialize(a_bzrdir, name=name,
-                append_revisions_only=append_revisions_only)
+                append_revisions_only=append_revisions_only,
+                repository=repository)
         medium = a_bzrdir._client._medium
         if medium._is_remote_before((1, 13)):
             return self._vfs_initialize(a_bzrdir, name=name,
-                append_revisions_only=append_revisions_only)
+                append_revisions_only=append_revisions_only,
+                repository=repository)
         # Creating on a remote bzr dir.
         # 2) try direct creation via RPC
         path = a_bzrdir._path_for_remote_call(a_bzrdir._client)
@@ -3170,7 +3175,8 @@ class RemoteBranchFormat(branch.BranchFormat):
             # Fallback - use vfs methods
             medium._remember_remote_is_before((1, 13))
             return self._vfs_initialize(a_bzrdir, name=name,
-                    append_revisions_only=append_revisions_only)
+                    append_revisions_only=append_revisions_only,
+                    repository=repository)
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
         # Turn the response into a RemoteRepository object.
@@ -3844,6 +3850,9 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         return self._real_branch.push(
             target, overwrite=overwrite, stop_revision=stop_revision, lossy=lossy,
             _override_hook_source_branch=self)
+
+    def peek_lock_mode(self):
+        return self._lock_mode
 
     def is_locked(self):
         return self._lock_count >= 1

@@ -22,7 +22,7 @@ The views are actually in the WorkingTree.views namespace, but these are
 
 
 from bzrlib import views, errors
-from bzrlib.tests import TestSkipped
+from bzrlib.tests import TestNotApplicable, TestSkipped
 from bzrlib.workingtree import WorkingTree
 
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
@@ -39,7 +39,7 @@ class TestTreeViews(TestCaseWithWorkingTree):
             raise TestSkipped("format %s doesn't declare whether it "
                 "supports views, assuming not" % fmt)
         if not f():
-            raise TestSkipped("format %s doesn't support views" % fmt)
+            raise TestNotApplicable("format %s doesn't support views" % fmt)
         super(TestTreeViews, self).setUp()
 
     def test_views_initially_empty(self):
