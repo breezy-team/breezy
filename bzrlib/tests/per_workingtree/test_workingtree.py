@@ -58,10 +58,20 @@ from bzrlib.conflicts import ConflictList, TextConflict, ContentsConflict
 
 class TestWorkingTree(TestCaseWithWorkingTree):
 
+    def requireBranchReference(self):
+        test_branch = self.make_branch('test-branch')
+        try:
+            # if there is a working tree now, this is not supported.
+            test_branch.bzrdir.open_workingtree()
+            raise TestNotApplicable("only on trees that can be separate"
+                " from their branch.")
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            pass
+
     def test_branch_builder(self):
         # Just a smoke test that we get a branch at the specified relpath
         builder = self.make_branch_builder('foobar')
-        br = branch.Branch.open('foobar')
+        br = branch.Branch.open(self.get_url('foobar'))
 
     def test_list_files(self):
         tree = self.make_branch_and_tree('.')
@@ -129,8 +139,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertIsInstance(conf, config.Stack)
 
     def test_open_containing(self):
-        branch = self.make_branch_and_tree('.').branch
-        local_base = urlutils.local_path_from_url(branch.base)
+        local_wt = self.make_branch_and_tree('.')
+        local_url = local_wt.bzrdir.root_transport.base
+        local_base = urlutils.local_path_from_url(local_url)
+        del local_wt
 
         # Empty opens '.'
         wt, relpath = WorkingTree.open_containing()
@@ -168,6 +180,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_lock_locks_branch(self):
         tree = self.make_branch_and_tree('.')
+        self.assertEqual(None, tree.branch.peek_lock_mode())
         tree.lock_read()
         self.assertEqual('r', tree.branch.peek_lock_mode())
         tree.unlock()
@@ -366,14 +379,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # that formats where initialising a branch does not initialise a
         # tree - and thus have separable entities - support skewing the
         # two things.
-        branch = self.make_branch('tree')
-        try:
-            # if there is a working tree now, this is not supported.
-            branch.bzrdir.open_workingtree()
-            return
-        except errors.NoWorkingTree:
-            pass
-        wt = branch.bzrdir.create_workingtree()
+        self.requireBranchReference()
+        wt = self.make_branch_and_tree('tree')
         wt.commit('A', allow_pointless=True, rev_id='A')
         wt.set_last_revision(None)
         self.assertEqual([], wt.get_parent_ids())
@@ -482,19 +489,13 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # that formats where initialising a branch does not initialise a
         # tree - and thus have separable entities - support skewing the
         # two things.
-        main_branch = self.make_branch('tree')
-        try:
-            # if there is a working tree now, this is not supported.
-            main_branch.bzrdir.open_workingtree()
-            return
-        except errors.NoWorkingTree:
-            pass
-        wt = main_branch.bzrdir.create_workingtree()
+        self.requireBranchReference()
+        wt = self.make_branch_and_tree('tree')
         # create an out of date working tree by making a checkout in this
         # current format
         self.build_tree(['checkout/', 'tree/file'])
         checkout = bzrdir.BzrDirMetaFormat1().initialize('checkout')
-        checkout.set_branch_reference(main_branch)
+        checkout.set_branch_reference(wt.branch)
         old_tree = self.workingtree_format.initialize(checkout)
         # now commit to 'tree'
         wt.add('file')
@@ -549,19 +550,13 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # that formats where initialising a branch does not initialise a
         # tree - and thus have separable entities - support skewing the
         # two things.
-        main_branch = self.make_branch('tree')
-        try:
-            # if there is a working tree now, this is not supported.
-            main_branch.bzrdir.open_workingtree()
-            return
-        except errors.NoWorkingTree:
-            pass
-        wt = main_branch.bzrdir.create_workingtree()
+        self.requireBranchReference()
+        wt = self.make_branch_and_tree('tree')
         # create an out of date working tree by making a checkout in this
         # current format
         self.build_tree(['checkout/', 'tree/file'])
         checkout = bzrdir.BzrDirMetaFormat1().initialize('checkout')
-        checkout.set_branch_reference(main_branch)
+        checkout.set_branch_reference(wt.branch)
         old_tree = self.workingtree_format.initialize(checkout)
         # now commit to 'tree'
         wt.add('file')

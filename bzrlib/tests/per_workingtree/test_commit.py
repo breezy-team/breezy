@@ -26,6 +26,7 @@ from bzrlib import (
     osutils,
     revision as _mod_revision,
     tests,
+    transport as _mod_transport,
     ui,
     )
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
@@ -316,7 +317,7 @@ class TestCommit(TestCaseWithWorkingTree):
         wt.lock_write()
         self.build_tree(['a', 'b/', 'b/c', 'd'])
         wt.add(['a', 'b', 'b/c', 'd'], ['a-id', 'b-id', 'c-id', 'd-id'])
-        this_dir = self.get_transport()
+        this_dir = wt.bzrdir.root_transport
         this_dir.delete_tree('b')
         this_dir.delete('d')
         # now we have a tree with a through d in the inventory, but only
@@ -352,7 +353,7 @@ class TestCommit(TestCaseWithWorkingTree):
         wt.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
         wt.commit('first')
         wt.remove('b/c')
-        this_dir = self.get_transport()
+        this_dir = wt.bzrdir.root_transport
         this_dir.delete_tree('b')
         wt.lock_write()
         wt.commit('commit deleted rename')
