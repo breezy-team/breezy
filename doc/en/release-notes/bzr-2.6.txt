@@ -46,7 +46,7 @@ Bug Fixes
 
 * Add a ``progress_bar`` configuration option defaulting to
   ``BZR_PROGRESS_BAR``. This can be set in ``bazaar.conf`` or specified from
-  the command line with ``-Oprogress_bar=text``. (Vincent Ladeuil, #388725)
+  the command line with ``-Oprogress_bar=text``. (Vincent Ladeuil, #388275)
 
 * Fixed a bug where the entire contents of ``/etc/mailname`` is read in.
   We only want to read in the first line so that comments could be added
