@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2012-08-14 13:50+0000\n"
-"Last-Translator: Winícius Santos de A. Marques <wsamarques@gmail.com>\n"
+"PO-Revision-Date: 2012-09-20 23:37+0000\n"
+"Last-Translator: Daniel Lara <daniellarasouza@yahoo.com.br>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2012-08-15 04:30+0000\n"
-"X-Generator: Launchpad (build 15801)\n"
+"X-Launchpad-Export-Date: 2012-09-21 04:30+0000\n"
+"X-Generator: Launchpad (build 15985)\n"
 
 #: bzrlib/add.py:93
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -6941,7 +6941,7 @@ msgstr "direção inválida %r"
 
 #: bzrlib/log.py:653
 msgid "Start revision not found in history of end revision."
-msgstr ""
+msgstr "Início da versão não encontrado no histórico de fim da versão."
 
 #: bzrlib/log.py:1071 bzrlib/log.py:1129
 msgid "Logging revision 0 is invalid."
@@ -7881,7 +7881,7 @@ msgstr "Chamadas HPSS: {0} ({1} vps) {2}"
 
 #: bzrlib/smart/server.py:169
 msgid "Requested to stop gracefully"
-msgstr ""
+msgstr "Parada suave requisitada"
 
 #: bzrlib/smart/server.py:179
 #, python-format
@@ -7956,7 +7956,7 @@ msgstr "Adicionando conteúdo do arquivo"
 
 #: bzrlib/transform.py:3017
 msgid "Resolution pass"
-msgstr ""
+msgstr "Passada de resolução"
 
 #: bzrlib/transport/ftp/_gssapi.py:88
 #, python-format
@@ -8047,7 +8047,7 @@ msgstr "carregando armazenamento de textos"
 
 #: bzrlib/vf_repository.py:2542
 msgid "checking text graph"
-msgstr ""
+msgstr "Verificando Gráfico do Texto"
 
 #: bzrlib/vf_repository.py:2998 bzrlib/vf_repository.py:3012
 #: bzrlib/vf_repository.py:3127
@@ -8689,7 +8689,7 @@ msgstr "Usando o Bazaar com o Launchpad.net"
 
 #: dummy/help_topics/location-alias/summary.txt:1
 msgid "Aliases for remembered locations"
-msgstr ""
+msgstr "Apelidos para os locais memorizados"
 
 #: dummy/help_topics/log-formats/summary.txt:1
 msgid "Details on the logging formats available"
@@ -8697,7 +8697,7 @@ msgstr "Detalhes sobre os formatos de log disponíveis"
 
 #: dummy/help_topics/other-formats/summary.txt:1
 msgid "Experimental and deprecated storage formats"
-msgstr ""
+msgstr "Formatos de armazenamento experimentais e obsoletos"
 
 #: dummy/help_topics/patterns/summary.txt:1
 msgid "Information on the pattern syntax"
@@ -8757,6 +8757,12 @@ msgid ""
 "this\n"
 "directory will then use it for storage."
 msgstr ""
+"Para criar um repositório compartilhado use o comando init-repository (ou o\n"
+"sinônimo init-repo). Este comando recebe a localização do repositório a ser\n"
+"criado. Isto quer dizer que 'bzr init-repository repo' vai criar um "
+"diretório\n"
+"chamado 'repo', que contém um repositório compartilhado. Qualquer novo\n"
+"ramo que for criado neste diretório vai utilizá-lo para armazenamento."
 
 #: dummy/help_topics/repositories/detail.txt:27
 msgid ""
@@ -8771,6 +8777,15 @@ msgid ""
 "the branches will not have working trees pass the '--no-trees' option to\n"
 "'init-repository'."
 msgstr ""
+"É uma boa idéia criar um repositório sempre que você possa criar mais\n"
+"de um ramo em um projeto. Isto é verdade tanto para áreas de trabalho\n"
+"aonde você está realizando o desenvolvimento, quanto para qualquer\n"
+"área de servidor que você use para hospedar projetos. No último caso, é\n"
+"comum querer ramos sem árvores de trabalho. Como os arquivos no\n"
+"ramo não serão editados diretamente não há necessidade de usar espaço\n"
+"em disco para uma árvore de trabalho. Para criar um repositório no qual\n"
+"ramos não terão árvores de trabalho passe a opção '--no-trees' para\n"
+"'init-repository'."
 
 #: dummy/help_topics/repositories/detail.txt:38
 msgid ""
@@ -8865,7 +8880,7 @@ msgstr "   xxx   <nome-do-arquivo>"
 
 #: dummy/help_topics/status-flags/detail.txt:8
 msgid "where the columns' meanings are as follows."
-msgstr ""
+msgstr "aonde os significados das colunas são os seguintes."
 
 #: dummy/help_topics/status-flags/detail.txt:10
 msgid "Column 1 - versioning/renames::"
@@ -9308,7 +9323,7 @@ msgstr "Cada seção deve definir:"
 
 #: en/help_topics/authentication.txt:123
 msgid "* ``user``: the login to be used,"
-msgstr ""
+msgstr "* ``user``: o login a ser usado,"
 
 #: en/help_topics/authentication.txt:125
 msgid "Each section could define:"
@@ -9320,11 +9335,11 @@ msgstr "* ``host``: o servidor remoto,"
 
 #: en/help_topics/authentication.txt:129
 msgid "* ``port``: the port the server is listening,"
-msgstr ""
+msgstr "* ``port``: a porta que o servidor está escutando,"
 
 #: en/help_topics/authentication.txt:131
 msgid "* ``path``: the branch location,"
-msgstr ""
+msgstr "* ``path``: o local do ramo,"
 
 #: en/help_topics/authentication.txt:133
 msgid "* ``password``: the password."
@@ -10056,6 +10071,8 @@ msgid ""
 "The examples below use ':' as the separator, windows users\n"
 "should use ';'."
 msgstr ""
+"Os exemplos abaixo usam ':' como separador, usuários de windows\n"
+"devem usar ';'."
 
 #: en/help_topics/configuration.txt:119
 msgid "Overriding the default user plugin directory::"
@@ -10071,7 +10088,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:125
 msgid "  BZR_PLUGIN_PATH='-site:+user'"
-msgstr ""
+msgstr "  BZR_PLUGIN_PATH='-site:+user'"
 
 #: en/help_topics/configuration.txt:127
 msgid "Disabling all plugins (better achieved with --no-plugins)::"
@@ -10079,7 +10096,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:129
 msgid "  BZR_PLUGIN_PATH='-user:-core:-site'"
-msgstr ""
+msgstr "  BZR_PLUGIN_PATH='-user:-core:-site'"
 
 #: en/help_topics/configuration.txt:131
 msgid "Overriding the default site plugin directory::"
@@ -10087,7 +10104,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:133
 msgid "  BZR_PLUGIN_PATH='/path/to/my/site/plugins:-site':+user"
-msgstr ""
+msgstr "  BZR_PLUGIN_PATH='/path/to/my/site/plugins:-site':+user"
 
 #: en/help_topics/configuration.txt:135
 msgid ""
@@ -10417,6 +10434,9 @@ msgid ""
 "  push_location = sftp://example.com/location\n"
 "  push_location:policy = appendpath"
 msgstr ""
+"  [/top/location]\n"
+"  push_location = sftp://example.com/location\n"
+"  push_location:policy = appendpath"
 
 #: en/help_topics/configuration.txt:295
 msgid ""
@@ -10441,6 +10461,7 @@ msgstr ""
 #: en/help_topics/configuration.txt:304
 msgid "For example, the ``appendpath`` policy can be used like this::"
 msgstr ""
+"Por exemplo, a política ``appendpath`` pode ser utilizada desta forma::"
 
 #: en/help_topics/configuration.txt:306
 msgid ""
@@ -10448,10 +10469,14 @@ msgid ""
 "  mypush = lp:~vila/bzr\n"
 "  mypush:policy=appendpath"
 msgstr ""
+"  [/home/vila/src/bzr/bugs]\n"
+"  mypush = lp:~vila/bzr\n"
+"  mypush:policy=appendpath"
 
 #: en/help_topics/configuration.txt:310
 msgid "Using ``relpath`` to achieve the same result is done like this::"
 msgstr ""
+"O uso de ``relpath`` para alcançar o mesmo resultado é feito desta forma::"
 
 #: en/help_topics/configuration.txt:312
 msgid ""
@@ -10474,6 +10499,8 @@ msgid ""
 "   $ bzr config mypush\n"
 "   lp:~vila/bzr/832013-expand-in-stack"
 msgstr ""
+"   $ bzr config mypush\n"
+"   lp:~vila/bzr/832013-expand-in-stack"
 
 #: en/help_topics/configuration.txt:321
 msgid "Another such option is ``basename`` which can be used like this::"
@@ -10635,6 +10662,9 @@ msgid ""
 "The syntax of the file obeys the same rules as the others except for the\n"
 "option policies which don't apply."
 msgstr ""
+"A sintaxe do arquivo obedece as mesmas regras que os outros com exceção para "
+"as\n"
+"políticas de opção que não se aplicam."
 
 #: en/help_topics/configuration.txt:394
 msgid ""
@@ -10816,6 +10846,10 @@ msgid ""
 "refuse\n"
 "to sign newly committed revisions, even if the branch requires signatures."
 msgstr ""
+"É planejado que, futuramente, ``when-required`` assinará versões\n"
+"recentemente submetidas apenas quando o ramo as requisitar. ``never`` "
+"recusará\n"
+"assinar versões recentemente submetidas, mesmo que o ramo exija assinaturas."
 
 #: en/help_topics/configuration.txt:474
 msgid ""
@@ -11237,6 +11271,8 @@ msgid ""
 "bound\n"
 "~~~~~"
 msgstr ""
+"bound\n"
+"~~~~~"
 
 #: en/help_topics/configuration.txt:674
 msgid ""
@@ -11250,6 +11286,8 @@ msgid ""
 "send_strict\n"
 "~~~~~~~~~~~"
 msgstr ""
+"send_strict\n"
+"~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:680
 msgid ""
@@ -11262,6 +11300,8 @@ msgid ""
 "add.maximum_file_size\n"
 "~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"add.maximum_file_size\n"
+"~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:686
 msgid ""
@@ -11280,12 +11320,16 @@ msgid ""
 "External Merge Tools\n"
 "--------------------"
 msgstr ""
+"Ferramentas Externas de Mesclagem\n"
+"--------------------"
 
 #: en/help_topics/configuration.txt:695
 msgid ""
 "bzr.mergetool.<name>\n"
 "~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"bzr.mergetool.<name>\n"
+"~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:698
 msgid ""
@@ -11315,13 +11359,15 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:714
 msgid "  bzr.mergetool.kdiff3 = kdiff3 {base} {this} {other} -o {result}"
-msgstr ""
+msgstr "  bzr.mergetool.kdiff3 = kdiff3 {base} {this} {other} -o {result}"
 
 #: en/help_topics/configuration.txt:716
 msgid ""
 "bzr.default_mergetool\n"
 "~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
+"bzr.default_mergetool\n"
+"~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:719
 msgid ""
@@ -11332,13 +11378,15 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:724
 msgid "  bzr.default_mergetool = kdiff3\n"
-msgstr ""
+msgstr "  bzr.default_mergetool = kdiff3\n"
 
 #: en/help_topics/conflict-types.txt:1
 msgid ""
 "Conflict Types\n"
 "=============="
 msgstr ""
+"Tipos de conflito\n"
+"=============="
 
 #: en/help_topics/conflict-types.txt:4
 msgid ""
@@ -11392,6 +11440,7 @@ msgstr ""
 #: en/help_topics/conflict-types.txt:29
 msgid "Whatever the conflict is, resolving it is roughly done in two steps:"
 msgstr ""
+"Seja qual for o conflito, sua resolução é basicamente feita em duas etapas:"
 
 #: en/help_topics/conflict-types.txt:31
 msgid ""
@@ -11418,6 +11467,9 @@ msgid ""
 "Yet, whether Bazaar makes a choice or not, there are some other simple but\n"
 "different ways to resolve the conflict."
 msgstr ""
+"Ainda assim, faça o Bazaar uma escolha ou não, existem algumas outras "
+"maneiras simples, porém\n"
+"diferentes, de resolver o conflito."
 
 #: en/help_topics/conflict-types.txt:44
 msgid ""
@@ -11436,7 +11488,7 @@ msgstr ""
 
 #: en/help_topics/conflict-types.txt:51
 msgid "  ``bzr resolve FILE --action=done'"
-msgstr ""
+msgstr "  ``bzr resolve FILE --action=done'"
 
 #: en/help_topics/conflict-types.txt:53
 msgid ""
@@ -11447,17 +11499,19 @@ msgstr ""
 
 #: en/help_topics/conflict-types.txt:56
 msgid "   ``bzr resolve FILE``"
-msgstr ""
+msgstr "   ``bzr resolve FILE``"
 
 #: en/help_topics/conflict-types.txt:58
 msgid "See ``bzr help resolve`` for more details."
-msgstr ""
+msgstr "Veja ``bzr help resolve`` para mais detalhes."
 
 #: en/help_topics/conflict-types.txt:60
 msgid ""
 "Text conflicts\n"
 "--------------"
 msgstr ""
+"Conflitos de texto\n"
+"--------------"
 
 #: en/help_topics/conflict-types.txt:63 en/help_topics/conflict-types.txt:120
 #: en/help_topics/conflict-types.txt:151 en/help_topics/conflict-types.txt:175
@@ -11465,7 +11519,7 @@ msgstr ""
 #: en/help_topics/conflict-types.txt:239 en/help_topics/conflict-types.txt:281
 #: en/help_topics/conflict-types.txt:303 en/help_topics/conflict-types.txt:339
 msgid "Typical message::"
-msgstr ""
+msgstr "Mensagem típica::"
 
 #: en/help_topics/conflict-types.txt:65
 msgid "  Text conflict in FILE"
