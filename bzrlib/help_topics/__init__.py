@@ -620,7 +620,8 @@ known_env_variables = [
 
 def _env_variables(topic):
     import textwrap
-    ret = ["Environment Variables\n\n"]
+    ret = ["Environment Variables\n\n"
+        "See bzr help configuration for more details.\n\n"]
     max_key_len = max([len(k[0]) for k in known_env_variables])
     desc_len = (80 - max_key_len - 2)
     ret.append("=" * max_key_len + " " + "=" * desc_len + "\n")
