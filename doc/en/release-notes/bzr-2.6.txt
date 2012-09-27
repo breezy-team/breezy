@@ -30,6 +30,10 @@ New Features
 Improvements
 ************
 
+* ``bzr help env-variables`` now points users at ``bzr help configuration``
+  which has much more detailed information on the same stuff.
+  (Robert Collins)
+
 * ``bzr lp-find-proposal`` now only cares about the revision-id that is
   specified, not the branch you use.  This was enabled by a new API call in
   Launchpad's web service.  (Aaron Bentley)
