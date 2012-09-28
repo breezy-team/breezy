@@ -685,8 +685,8 @@ class cmd_revno(Command):
             if revision:
                 if len(revision) != 1:
                     raise errors.BzrCommandError(gettext(
-                        "Tags can only be placed on a single revision, "
-                        "not on a range"))
+                        "Revision numbers only make sense for single "
+                        "revisions, not ranges"))
                 revid = revision[0].as_revision_id(b)
             else:
                 revid = b.last_revision()
