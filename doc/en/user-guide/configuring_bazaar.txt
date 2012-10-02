@@ -129,12 +129,42 @@ will display some output of the form::
 Each configuration file is associated with a given scope whose name is
 displayed before each set of defined options.
 
+If you need to look at a specific option, you can use::
+
+  bzr config <option>
+
+This will display only the option value and is intended to be used in
+scripts.
+
 Modifying the active configuration
 ----------------------------------
 
 To set an option to a given value use::
 
   bzr config opt=value
+
+An option value can reference another option by enclosing it in curly
+braces::
+
+  bzr config opt={other_opt}/subdir
+
+If ``other_opt`` is set to ``'root``, ``bzr config opt`` will display::
+
+  root/subdir
+
+Note that when ``--all`` is used, the references are left as-is to better
+reflect the content of the config files and make it easier to organize them::
+
+  bzr config --all .*opt
+
+  bazaar:
+    [DEFAULT]
+    opt = {other_opt}/subdir
+    other_opt = root
+
+
+
+
 
 To remove an option use::
 

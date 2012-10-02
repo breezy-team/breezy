@@ -41,15 +41,21 @@ class TestLocale(tests.TestCaseWithTransport):
                     timestamp=1156451297.96, timezone=0)
         self.tree = tree
 
+    def run_log_quiet_long(self, args, env_changes={}):
+        cmd = ['--no-aliases', '--no-plugins', '-Oprogress_bar=none',
+               'log', '-q', '--log-format=long']
+        cmd.extend(args)
+        return self.run_bzr_subprocess(cmd, env_changes=env_changes)
+
     def test_log_C(self):
         self.disable_missing_extensions_warning()
-        # C is not necessarily the default locale, so set both LANG and LC_ALL
-        # explicitly because LC_ALL is preferred on (some?) Linux systems but
-        # only LANG is respected on Windows.
-        out, err = self.run_bzr_subprocess(
-            '--no-aliases --no-plugins log -q --log-format=long tree',
-               env_changes={'LANG': 'C', 'BZR_PROGRESS_BAR':'none',
-                            'LC_ALL': 'C', 'LC_CTYPE':None, 'LANGUAGE':None})
+        out, err = self.run_log_quiet_long(
+            ['tree'],
+            # C is not necessarily the default locale, so set both LANG and
+            # LC_ALL explicitly because LC_ALL is preferred on (some?) Linux
+            # systems but only LANG is respected on Windows.
+            env_changes={'LANG': 'C', 'LC_ALL': 'C', 'LC_CTYPE':None,
+                         'LANGUAGE':None})
         self.assertEqual('', err)
         self.assertEqualDiff("""\
 ------------------------------------------------------------
@@ -62,10 +68,10 @@ message:
 """, out)
 
     def test_log_BOGUS(self):
-        out, err = self.run_bzr_subprocess(
-            '--no-aliases --no-plugins log -q --log-format=long tree',
-               env_changes={'LANG':'BOGUS', 'BZR_PROGRESS_BAR':'none',
-                            'LC_ALL':None, 'LC_CTYPE':None, 'LANGUAGE':None})
+        out, err = self.run_log_quiet_long(
+            ['tree'],
+            env_changes={'LANG':'BOGUS', 'LC_ALL':None, 'LC_CTYPE':None,
+                         'LANGUAGE':None})
         self.assertStartsWith(err, 'bzr: warning: unsupported locale setting')
         self.assertEqualDiff("""\
 ------------------------------------------------------------

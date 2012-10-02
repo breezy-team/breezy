@@ -21,9 +21,7 @@ import os
 
 from bzrlib import (
     errors,
-    osutils,
     revision as _mod_revision,
-    tests,
     )
 from bzrlib.inventory import (
     Inventory,
@@ -475,7 +473,11 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         # large hammer, this is a particularly sensitive area of code, so the
         # extra assurance is well worth it.
         tree._validate()
-        osutils.rmtree('tree')
+        # If tree.branch is remote
+        if tree.user_url != tree.branch.user_url:
+            # We have a lightweight checkout, delete both locations
+            tree.branch.bzrdir.root_transport.delete_tree('.')
+        tree.bzrdir.root_transport.delete_tree('.')
 
     def test_no_parents_just_root(self):
         """Test doing an empty commit - no parent, set a root only."""

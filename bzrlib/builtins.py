@@ -685,8 +685,8 @@ class cmd_revno(Command):
             if revision:
                 if len(revision) != 1:
                     raise errors.BzrCommandError(gettext(
-                        "Tags can only be placed on a single revision, "
-                        "not on a range"))
+                        "Revision numbers only make sense for single "
+                        "revisions, not ranges"))
                 revid = revision[0].as_revision_id(b)
             else:
                 revid = b.last_revision()
@@ -6727,6 +6727,7 @@ def _register_lazy_builtins():
         ('cmd_version_info', [], 'bzrlib.cmd_version_info'),
         ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
         ('cmd_conflicts', [], 'bzrlib.conflicts'),
+        ('cmd_ping', [], 'bzrlib.smart.ping'),
         ('cmd_sign_my_commits', [], 'bzrlib.commit_signature_commands'),
         ('cmd_verify_signatures', [], 'bzrlib.commit_signature_commands'),
         ('cmd_test_script', [], 'bzrlib.cmd_test_script'),

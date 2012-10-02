@@ -25,8 +25,14 @@ New Features
   context (i.e. showing lines that have not changed).  Also available as the 
   named parameter 'context_lines' to bzrlib.diff.internal_diff(). (Paul Nixon)
 
+* The 'ping' plugin is now shipped with bzr. (Jelmer Vernooij)
+
 Improvements
 ************
+
+* ``bzr help env-variables`` now points users at ``bzr help configuration``
+  which has much more detailed information on the same stuff.
+  (Robert Collins)
 
 * ``bzr lp-find-proposal`` now only cares about the revision-id that is
   specified, not the branch you use.  This was enabled by a new API call in
@@ -41,6 +47,10 @@ Improvements
 
 Bug Fixes
 *********
+
+* Add a ``progress_bar`` configuration option defaulting to
+  ``BZR_PROGRESS_BAR``. This can be set in ``bazaar.conf`` or specified from
+  the command line with ``-Oprogress_bar=text``. (Vincent Ladeuil, #388275)
 
 * Fixed a bug where the entire contents of ``/etc/mailname`` is read in.
   We only want to read in the first line so that comments could be added
@@ -60,6 +70,9 @@ Documentation
 *************
 
 .. Improved or updated documentation.
+
+* Clarify ``bzr config`` usages especially around other option references
+  expansion. (Vincent Ladeuil, #996401)
 
 API Changes
 ***********
