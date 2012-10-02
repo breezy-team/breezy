@@ -2135,7 +2135,7 @@ credential_store_registry.default_key = 'plain'
 
 class Base64CredentialStore(CredentialStore):
     __doc__ = """Base64 credential store for the authentication.conf file"""
-    
+
     def decode_password(self, credentials):
         """See CredentialStore.decode_password."""
         # GZ 2012-07-28: Will raise binascii.Error if password is not base64,
@@ -2161,7 +2161,8 @@ class BzrDirConfig(object):
         for those under repositories.
         """
         if self._config is None:
-            raise errors.BzrError("Cannot set configuration in %s" % self._bzrdir)
+            raise errors.BzrError("Cannot set configuration in %s"
+                                  % self._bzrdir)
         if value is None:
             self._config.set_option('', 'default_stack_on')
         else:
@@ -2473,8 +2474,8 @@ def float_from_store(unicode_str):
     return float(unicode_str)
 
 
-# Use a an empty dict to initialize an empty configobj avoiding all
-# parsing and encoding checks
+# Use an empty dict to initialize an empty configobj avoiding all parsing and
+# encoding checks
 _list_converter_config = configobj.ConfigObj(
     {}, encoding='utf-8', list_values=True, interpolation=False)
 
@@ -2802,6 +2803,8 @@ An ordered list of python functions to call, separated by spaces.
 
 Each function takes branch, rev_id as parameters.
 '''))
+option_registry.register_lazy('progress_bar', 'bzrlib.ui.text',
+                              'opt_progress_bar')
 option_registry.register(
     Option('public_branch',
            default=None,
@@ -2944,7 +2947,7 @@ class MutableSection(Section):
         self.options[name] = value
 
     def remove(self, name):
-        if name not in self.orig:
+        if name not in self.orig and name in self.options:
             self.orig[name] = self.get(name, None)
         del self.options[name]
 
@@ -4085,17 +4088,21 @@ class BranchOnlyStack(Stack):
 class cmd_config(commands.Command):
     __doc__ = """Display, set or remove a configuration option.
 
-    Display the active value for a given option.
+    Display the active value for option NAME.
 
     If --all is specified, NAME is interpreted as a regular expression and all
-    matching options are displayed mentioning their scope. The active value
-    that bzr will take into account is the first one displayed for each option.
+    matching options are displayed mentioning their scope and without resolving
+    option references in the value). The active value that bzr will take into
+    account is the first one displayed for each option.
 
-    If no NAME is given, --all .* is implied.
+    If NAME is not given, --all .* is implied (all options are displayed for the
+    current scope).
 
-    Setting a value is achieved by using name=value without spaces. The value
+    Setting a value is achieved by using NAME=value without spaces. The value
     is set in the most relevant scope and can be checked by displaying the
     option again.
+
+    Removing a value is achieved by using --remove NAME.
     """
 
     takes_args = ['name?']

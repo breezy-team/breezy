@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2011 Canonical Ltd
+# Copyright (C) 2007-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1693,6 +1693,12 @@ class WorkingTreeFormat6(DirStateWorkingTreeFormat):
     def supports_views(self):
         return True
 
+    def _get_matchingbzrdir(self):
+        """Overrideable method to get a bzrdir for testing."""
+        # We use 'development-subtree' instead of '2a', because we have a
+        # few tests that want to test tree references
+        return bzrdir.format_registry.make_bzrdir('development-subtree')
+
 
 class DirStateRevisionTree(InventoryTree):
     """A revision tree pulling the inventory from a dirstate.
@@ -1901,8 +1907,18 @@ class DirStateRevisionTree(InventoryTree):
         return inv[inv_file_id].text_size
 
     def get_file_text(self, file_id, path=None):
-        _, content = list(self.iter_files_bytes([(file_id, None)]))[0]
-        return ''.join(content)
+        content = None
+        for _, content_iter in self.iter_files_bytes([(file_id, None)]):
+            if content is not None:
+                raise AssertionError('iter_files_bytes returned'
+                    ' too many entries')
+            # For each entry returned by iter_files_bytes, we must consume the
+            # content_iter before we step the files iterator.
+            content = ''.join(content_iter)
+        if content is None:
+            raise AssertionError('iter_files_bytes did not return'
+                ' the requested data')
+        return content
 
     def get_reference_revision(self, file_id, path=None):
         inv, inv_file_id = self._unpack_file_id(file_id)

@@ -135,6 +135,9 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
 
         self.build_tree(build_paths)
         wt = self.make_branch_and_tree('.')
+        if wt.user_url != wt.branch.user_url:
+            # Lightweight checkout, make sure we have a repo location.
+            wt.branch.bzrdir.root_transport.mkdir('original')
         child_tree = self.make_branch_and_tree('original/child')
         wt.smart_add((".",))
         for path in paths:

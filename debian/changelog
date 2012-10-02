@@ -1,4 +1,4 @@
-bzr (2.6.0~bzr6558-1) UNRELEASED; urgency=low
+bzr (2.6.0~bzr6567-1) UNRELEASED; urgency=low
 
   [ Jelmer Vernooij ]
   * Remove myself from uploaders.
@@ -8,7 +8,7 @@ bzr (2.6.0~bzr6558-1) UNRELEASED; urgency=low
   * Fix 03_spurious_test_failure to not patch the same file twice, causing
     dpkg-source -x to emit a warning.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Fri, 07 Sep 2012 01:43:28 +0200
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 02 Oct 2012 19:44:50 +0200
 
 bzr (2.6.0~bzr6531-1) unstable; urgency=low
 
