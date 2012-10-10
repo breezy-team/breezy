@@ -713,16 +713,16 @@ For example::
 
   bzr.mergetool.kdiff3 = kdiff3 {base} {this} {other} -o {result}
 
-Because mergetool and config itself both use curly braces as interpolation
-markers, trying to display the mergetool line results in the following
-problem::
+Because ``mergetool`` and ``config`` itself both use curly braces as
+interpolation markers, trying to display the mergetool line results in the
+following problem::
 
 
   $ bzr config bzr.mergetool.kdiff3='kdiff3 {base} {this} {other} -o {result}'
   $ bzr config bzr.mergetool.kdiff3
   bzr: ERROR: Option base is not defined while expanding "kdiff3 {base} {this} {other} -o {result}".
 
-To avoid this, config can be instructed not to try expanding variables::
+To avoid this, ``config`` can be instructed not to try expanding variables::
 
   $ bzr config --all bzr.mergetool.kdiff3
   branch:
