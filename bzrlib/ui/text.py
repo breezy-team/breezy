@@ -238,8 +238,11 @@ class TextUIFactory(UIFactory):
             password = self.stdin.readline()
             if not password:
                 password = None
-            elif password[-1] == '\n':
-                password = password[:-1]
+            else:
+                password = password.decode(self.stdin.encoding)
+
+                if password[-1] == '\n':
+                    password = password[:-1]
         return password
 
     def get_password(self, prompt=u'', **kwargs):
@@ -273,8 +276,10 @@ class TextUIFactory(UIFactory):
         username = self.stdin.readline()
         if not username:
             username = None
-        elif username[-1] == '\n':
-            username = username[:-1]
+        else:
+            username = username.decode(self.stdin.encoding)
+            if username[-1] == '\n':
+                username = username[:-1]
         return username
 
     def make_progress_view(self):

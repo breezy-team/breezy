@@ -57,6 +57,9 @@ Bug Fixes
   and would be ignored.
   (Haw Loeung, #932515)
 
+* ``Authentication.Config`` now always returns unicode user names and passwords.
+  (Vincent Ladeuil, #514301)
+
 * Warn when ``--show-base`` is used for ``pull`` in a treeless branch
   instead of failing. It's useless but harmless. (Vincent Ladeuil, #1022160)
 
