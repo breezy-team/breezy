@@ -158,7 +158,7 @@ FastCGI
 
     fcgi.WSGIServer(smart_server_app).run()
         
-　`fcgi`のモジュールはhttp://svn.saddi.com/py-lib/trunk/fcgi.pyで見つかります。
+　`fcgi` のモジュールはhttp://svn.saddi.com/py-lib/trunk/fcgi.pyで見つかります。
 これは flup_ の一部です。
 
 .. _flup: http://www.saddi.com/software/flup/

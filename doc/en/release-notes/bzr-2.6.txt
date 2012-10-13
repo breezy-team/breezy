@@ -57,6 +57,10 @@ Bug Fixes
   and would be ignored.
   (Haw Loeung, #932515)
 
+* Fixed a syntax error in ``doc/ja/user-guide/http_smart_server.txt`` that
+  causes breakage with docutils 0.9.1.
+  (Vincent Ladeuil, Jelmer Vernooij, #1066307)
+
 * ``Authentication.Config`` now always returns unicode user names and passwords.
   (Vincent Ladeuil, #514301)
 
