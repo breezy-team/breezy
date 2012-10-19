@@ -180,6 +180,9 @@ class Proposer(object):
                 error_lines.append(line)
             raise Exception(''.join(error_lines))
 
+    def approve_proposal(self, mp):
+        self.call_webservice(mp.setStatus, status='Approved')
+
     def create_proposal(self):
         """Perform the submission."""
         prerequisite_branch = self._get_prerequisite_branch()
@@ -203,7 +206,7 @@ class Proposer(object):
             commit_message=self.commit_message, reviewers=reviewers,
             review_types=review_types)
         if self.approve:
-            self.call_webservice(mp.setStatus, status='Approved')
+            self.approve_proposal(mp)
         if self.fixes:
             if self.fixes.startswith('lp:'):
                 self.fixes = self.fixes[3:]
