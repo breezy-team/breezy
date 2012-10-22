@@ -194,8 +194,8 @@ class Proposer(object):
         self.call_webservice(
             mp.createComment,
             vote=u'Approve',
-            subject=u"Self-approval",
-            content=u"Proposal approved by proposer at time of creation.")
+            subject='', # Use the default subject.
+            content=u"Rubberstamp! Proposer approves of own proposal.")
         self.call_webservice(mp.setStatus, status=u'Approved', revid=revid)
 
     def create_proposal(self):
