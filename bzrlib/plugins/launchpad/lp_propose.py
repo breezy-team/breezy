@@ -191,7 +191,12 @@ class Proposer(object):
 
     def approve_proposal(self, mp):
         revid = self.get_source_revid()
-        self.call_webservice(mp.setStatus, status='Approved', revid=revid)
+        self.call_webservice(
+            mp.createComment,
+            vote=u'Approve',
+            subject=u"Self-approval",
+            content=u"Proposal approved by proposer at time of creation.")
+        self.call_webservice(mp.setStatus, status=u'Approved', revid=revid)
 
     def create_proposal(self):
         """Perform the submission."""
