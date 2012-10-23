@@ -15,6 +15,9 @@ External Compatibility Breaks
 
 .. These may require users to change the way they use Bazaar.
 
+* ``bzr lp-propose --approve`` now also adds an "Approve" vote to the merge
+  proposal.  (Jonathan Lange)
+
 New Features
 ************
 
@@ -43,7 +46,12 @@ Improvements
 
 * Local configurations files (i.e. accessed on the local file system like
   ``bazaar.conf`` and ``locations.conf``) are now shared, reducing the
-  number of IOs when querying a configuation option. (Vincent Ladeuil, #832042)
+  number of IOs when querying a configuation option. (Vincent Ladeuil,
+  #832042)
+
+* ``bzr lp-propose --approve`` now correctly specifies the approved revision
+  and provides an "Approve" vote from the proposer, allowing for smoother
+  interaction with downstream merge tools.  (Jonathan Lange)
 
 Bug Fixes
 *********
