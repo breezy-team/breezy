@@ -32,8 +32,10 @@ Depends: python-bzrlib (>= ${source:Version}),
          python-bzrlib (<= ${source:Version}.1~),
          ${misc:Depends},
          ${python:Depends}
-Breaks: python-bzrlib (<< 2.4.0~beta3~), bzr-pqm (<< 1.4.0~bzr80), bzr-xmloutput (<< 0.8.8+bzr160)
+Breaks: python-bzrlib (<< 2.4.0~beta3~), bzr-pqm (<< 1.4.0~bzr80), bzr-xmloutput (<< 0.8.8+bzr160), bzr-grep
 Suggests: bzr-doc, bzr-gtk, bzr-svn, python-bzrlib.tests, bzrtools
+Provides: bzr-grep
+Replaces: bzr-grep
 Description: easy to use distributed version control system
  Bazaar is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and
