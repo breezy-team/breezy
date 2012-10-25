@@ -293,7 +293,8 @@ class cmd_lp_propose_merge(Command):
                      Option('message', short_name='m', type=unicode,
                             help='Commit message.'),
                      Option('approve',
-                            help='Mark the proposal as approved immediately.'),
+                            help=('Mark the proposal as approved immediately, '
+                                  'setting the approved revision to tip.')),
                      Option('fixes', 'The bug this proposal fixes.', str),
                      ListOption('review', short_name='R', type=unicode,
                             help='Requested reviewer and optional type.')]
