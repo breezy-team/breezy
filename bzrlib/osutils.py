@@ -2531,7 +2531,14 @@ def fdatasync(fileno):
     """
     fn = getattr(os, 'fdatasync', getattr(os, 'fsync', None))
     if fn is not None:
-        fn(fileno)
+        try:
+            fn(fileno)
+        except IOError, e:
+            # See bug #1075108, on some platforms fdatasync exists, but can
+            # raise ENOTSUP. However, we are calling fdatasync to be helpful
+            # and reduce the chance of corruption-on-powerloss situations. It
+            # is not a mandatory call, so it is ok to suppress failures.
+            trace.mutter("ignoring error calling fdatasync: %s" % (e,))
 
 
 def ensure_empty_directory_exists(path, exception_class):
