@@ -1751,9 +1751,15 @@ class TestCase(testtools.TestCase):
 
         :returns: The actual attr value.
         """
-        value = getattr(obj, attr_name)
         # The actual value is captured by the call below
-        self.addCleanup(setattr, obj, attr_name, value)
+        value = getattr(obj, attr_name, _unitialized_attr)
+        if value is _unitialized_attr:
+            # When the test completes, the attribute should not exist, but if
+            # we aren't setting a value, we don't need to do anything.
+            if new is not _unitialized_attr:
+                self.addCleanup(delattr, obj, attr_name)
+        else:
+            self.addCleanup(setattr, obj, attr_name, value)
         if new is not _unitialized_attr:
             setattr(obj, attr_name, new)
         return value
