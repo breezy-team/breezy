@@ -673,7 +673,8 @@ def tree_contains_upstream_source(tree):
          if f[1] == 'V'])
     if len(present_files) == 0:
         return None
-    packaging_files = frozenset(["debian", ".bzr-builddeb", ".bzrignore"])
+    packaging_files = frozenset([
+        "debian", ".bzr-builddeb", ".bzrignore", ".gitignore"])
     return (len(present_files - packaging_files) > 0)
 
 
