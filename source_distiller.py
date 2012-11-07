@@ -83,7 +83,7 @@ class SourceDistiller(object):
         raise NotImplementedError(self._distill)
 
     def _prepare_working_tree(self):
-        for (dp, ie) in self.tree.inventory.iter_entries():
+        for (dp, ie) in self.tree.iter_entries_by_dir():
             ie._read_tree_state(dp, self.tree)
 
 
