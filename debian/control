@@ -24,6 +24,7 @@ X-Python-Version: >= 2.6
 Vcs-Bzr: http://bzr.debian.org/pkg-bazaar/bzr/2.6
 Homepage: http://bazaar-vcs.org
 Dm-Upload-Allowed: yes
+XS-Testsuite: autopkgtest
 
 Package: bzr
 Recommends: python-gpgme
