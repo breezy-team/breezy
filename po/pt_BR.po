@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2012-09-25 17:52+0000\n"
-"Last-Translator: Julian Fernandes <julian@ubuntubrsc.com>\n"
+"PO-Revision-Date: 2012-11-15 22:53+0000\n"
+"Last-Translator: Evertton de Lima <e.everttonlima@gmail.com>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2012-09-26 04:30+0000\n"
-"X-Generator: Launchpad (build 16022)\n"
+"X-Launchpad-Export-Date: 2012-11-16 04:30+0000\n"
+"X-Generator: Launchpad (build 16272)\n"
 
 #: bzrlib/add.py:93
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -35,12 +35,12 @@ msgstr "Enviar para revisão %d."
 #, python-format
 msgid "%d tag updated."
 msgid_plural "%d tags updated."
-msgstr[0] "%d tag atualizada."
-msgstr[1] "%d tags atualizadas."
+msgstr[0] "%d etiqueta atualizada."
+msgstr[1] "%d etiquetas atualizadas."
 
 #: bzrlib/branch.py:2960
 msgid "No new revisions or tags to push."
-msgstr "Nenhuma revisão ou tags para enviar."
+msgstr "Nenhuma revisão ou etiqueta para enviar."
 
 #: bzrlib/branch.py:2962
 msgid "No new revisions to push."
