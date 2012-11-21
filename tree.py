@@ -94,6 +94,19 @@ class GitRevisionTree(revisiontree.RevisionTree):
             return False
         return self.has_filename(path)
 
+    def is_executable(self, file_id, path=None):
+        if path is None:
+            path = self.id2path(file_id)
+        try:
+            (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
+                path)
+        except KeyError:
+            raise errors.NoSuchId(self, file_id)
+        if mode is None:
+            # the tree root is a directory
+            return False
+        return mode_is_executable(mode)
+
     def kind(self, file_id, path=None):
         if path is None:
             path = self.id2path(file_id)

@@ -5,6 +5,10 @@
   * New command 'bzr git-push-pristine-tar', which pushes pristine tar deltas
     to a git repository. (Jelmer Vernooij)
 
+ BUG FIXES
+
+  * Implement ``GitRevisionTree.is_executable``. (Jelmer Vernooij)
+
 0.6.9	2012-05-29
 
  BUG FIXES
