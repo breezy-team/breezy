@@ -137,6 +137,15 @@ class Proposer(object):
             })
         return body
 
+    def get_source_revid(self):
+        """Get the revision ID of the source branch."""
+        source_branch = self.source_branch.bzr
+        source_branch.lock_read()
+        try:
+            return source_branch.last_revision()
+        finally:
+            source_branch.unlock()
+
     def check_proposal(self):
         """Check that the submission is sensible."""
         if self.source_branch.lp.self_link == self.target_branch.lp.self_link:
@@ -180,6 +189,15 @@ class Proposer(object):
                 error_lines.append(line)
             raise Exception(''.join(error_lines))
 
+    def approve_proposal(self, mp):
+        revid = self.get_source_revid()
+        self.call_webservice(
+            mp.createComment,
+            vote=u'Approve',
+            subject='', # Use the default subject.
+            content=u"Rubberstamp! Proposer approves of own proposal.")
+        self.call_webservice(mp.setStatus, status=u'Approved', revid=revid)
+
     def create_proposal(self):
         """Perform the submission."""
         prerequisite_branch = self._get_prerequisite_branch()
@@ -203,7 +221,7 @@ class Proposer(object):
             commit_message=self.commit_message, reviewers=reviewers,
             review_types=review_types)
         if self.approve:
-            self.call_webservice(mp.setStatus, status='Approved')
+            self.approve_proposal(mp)
         if self.fixes:
             if self.fixes.startswith('lp:'):
                 self.fixes = self.fixes[3:]

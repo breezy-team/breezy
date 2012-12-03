@@ -15,6 +15,9 @@ External Compatibility Breaks
 
 .. These may require users to change the way they use Bazaar.
 
+* ``bzr lp-propose --approve`` now also adds an "Approve" vote to the merge
+  proposal.  (Jonathan Lange)
+
 New Features
 ************
 
@@ -43,7 +46,12 @@ Improvements
 
 * Local configurations files (i.e. accessed on the local file system like
   ``bazaar.conf`` and ``locations.conf``) are now shared, reducing the
-  number of IOs when querying a configuation option. (Vincent Ladeuil, #832042)
+  number of IOs when querying a configuation option. (Vincent Ladeuil,
+  #832042)
+
+* ``bzr lp-propose --approve`` now correctly specifies the approved revision
+  and provides an "Approve" vote from the proposer, allowing for smoother
+  interaction with downstream merge tools.  (Jonathan Lange)
 
 Bug Fixes
 *********
@@ -56,6 +64,10 @@ Bug Fixes
   We only want to read in the first line so that comments could be added
   and would be ignored.
   (Haw Loeung, #932515)
+
+* Fixed a syntax error in ``doc/ja/user-guide/http_smart_server.txt`` that
+  causes breakage with docutils 0.9.1.
+  (Vincent Ladeuil, Jelmer Vernooij, #1066307)
 
 * ``Authentication.Config`` now always returns unicode user names and passwords.
   (Vincent Ladeuil, #514301)
