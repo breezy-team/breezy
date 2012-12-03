@@ -1,4 +1,4 @@
-bzr-builddeb (2.8.5) UNRELEASED; urgency=low
+bzr-builddeb (2.8.5) experimental; urgency=low
 
   * Cope with quilt output being empty in error message. LP: #1014543
   * Remove myself and Reinhard from uploaders.
