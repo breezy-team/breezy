@@ -1,0 +1,137 @@
+Description: Revert UI changes that break tests with LC_ALL=C
+Author: Jelmer Vernooij <jelmer@debian.org>
+Bug: https://bugs.launchpad.net/bzr/+bug/1086209
+
+=== modified file 'bzrlib/tests/test_ui.py'
+--- old/bzrlib/tests/test_ui.py	2012-09-17 09:06:56 +0000
++++ new/bzrlib/tests/test_ui.py	2012-12-04 00:57:43 +0000
+@@ -97,20 +97,28 @@
+             pb.finished()
+ 
+     def test_text_factory_utf8_password(self):
+-        """Test an utf8 password."""
+-        ui = _mod_ui_text.TextUIFactory(None, None, None)
+-        ui.stdin = tests.StringIOWrapper(u'baz\u1234'.encode('utf8'))
+-        ui.stdout = tests.StringIOWrapper()
+-        ui.stderr = tests.StringIOWrapper()
++        """Test an utf8 password.
++
++        We can't predict what encoding users will have for stdin, so we force
++        it to utf8 to test that we transport the password correctly.
++        """
++        ui = self.make_test_ui_factory(u'baz\u1234'.encode('utf8'))
+         ui.stderr.encoding = ui.stdout.encoding = ui.stdin.encoding = 'utf8'
+         pb = ui.nested_progress_bar()
+-        password = ui.get_password(u'Hello \u1234 %(user)s', user=u'some\u1234')
+-        self.assertEqual(u'baz\u1234', password)
+-        self.assertEqual(u'Hello \u1234 some\u1234: ',
+-                         ui.stderr.getvalue().decode('utf8'))
+-        # stdin and stdout should be empty
+-        self.assertEqual('', ui.stdin.readline())
+-        self.assertEqual('', ui.stdout.getvalue())
++        try:
++            password = self.apply_redirected(ui.stdin, ui.stdout, ui.stderr,
++                                             ui.get_password,
++                                             u'Hello \u1234 %(user)s',
++                                             user=u'some\u1234')
++            # We use StringIO objects, we need to decode them
++            self.assertEqual(u'baz\u1234', password.decode('utf8'))
++            self.assertEqual(u'Hello \u1234 some\u1234: ',
++                             ui.stderr.getvalue().decode('utf8'))
++            # stdin and stdout should be empty
++            self.assertEqual('', ui.stdin.readline())
++            self.assertEqual('', ui.stdout.readline())
++        finally:
++            pb.finished()
+ 
+     def test_text_ui_get_boolean(self):
+         stdin = tests.StringIOWrapper("y\n" # True
+@@ -262,30 +270,36 @@
+             pb.finished()
+ 
+     def test_text_ui_getusername(self):
+-        ui = _mod_ui_text.TextUIFactory(None, None, None)
+-        ui.stdin = tests.StringIOWrapper('someuser\n\n')
+-        ui.stdout = tests.StringIOWrapper()
+-        ui.stderr = tests.StringIOWrapper()
+-        ui.stdout.encoding = 'utf8'
+-        self.assertEqual('someuser',
+-                         ui.get_username(u'Hello %(host)s', host='some'))
+-        self.assertEquals('Hello some: ', ui.stderr.getvalue())
+-        self.assertEquals('', ui.stdout.getvalue())
+-        self.assertEqual('', ui.get_username(u"Gebruiker"))
++        factory = _mod_ui_text.TextUIFactory(None, None, None)
++        factory.stdin = tests.StringIOWrapper("someuser\n\n")
++        factory.stdout = tests.StringIOWrapper()
++        factory.stderr = tests.StringIOWrapper()
++        factory.stdout.encoding = "utf8"
++        # there is no output from the base factory
++        self.assertEqual("someuser",
++                         factory.get_username(u'Hello %(host)s', host='some'))
++        self.assertEquals("Hello some: ", factory.stderr.getvalue())
++        self.assertEquals('', factory.stdout.getvalue())
++        self.assertEqual("", factory.get_username(u"Gebruiker"))
+         # stdin should be empty
+-        self.assertEqual('', ui.stdin.readline())
++        self.assertEqual('', factory.stdin.readline())
+ 
+     def test_text_ui_getusername_utf8(self):
+-        ui = _mod_ui_text.TextUIFactory(None, None, None)
+-        ui.stdin = tests.StringIOWrapper(u'someuser\u1234'.encode('utf8'))
+-        ui.stdout = tests.StringIOWrapper()
+-        ui.stderr = tests.StringIOWrapper()
++        ui = tests.TestUIFactory(stdin=u'someuser\u1234'.encode('utf8'),
++                                 stdout=tests.StringIOWrapper(),
++                                 stderr=tests.StringIOWrapper())
+         ui.stderr.encoding = ui.stdout.encoding = ui.stdin.encoding = "utf8"
+-        username = ui.get_username(u'Hello %(host)s', host=u'some\u1234')
+-        self.assertEquals(u"someuser\u1234", username)
+-        self.assertEquals(u"Hello some\u1234: ",
+-                          ui.stderr.getvalue().decode("utf8"))
+-        self.assertEquals('', ui.stdout.getvalue())
++        pb = ui.nested_progress_bar()
++        try:
++            # there is no output from the base factory
++            username = self.apply_redirected(ui.stdin, ui.stdout, ui.stderr,
++                ui.get_username, u'Hello\u1234 %(host)s', host=u'some\u1234')
++            self.assertEquals(u"someuser\u1234", username.decode('utf8'))
++            self.assertEquals(u"Hello\u1234 some\u1234: ",
++                              ui.stderr.getvalue().decode("utf8"))
++            self.assertEquals('', ui.stdout.getvalue())
++        finally:
++            pb.finished()
+ 
+     def test_quietness(self):
+         self.overrideEnv('BZR_PROGRESS_BAR', 'text')
+
+=== modified file 'bzrlib/ui/text.py'
+--- old/bzrlib/ui/text.py	2012-10-13 15:18:13 +0000
++++ new/bzrlib/ui/text.py	2012-12-04 00:57:43 +0000
+@@ -238,11 +238,8 @@
+             password = self.stdin.readline()
+             if not password:
+                 password = None
+-            else:
+-                password = password.decode(self.stdin.encoding)
+-
+-                if password[-1] == '\n':
+-                    password = password[:-1]
++            elif password[-1] == '\n':
++                password = password[:-1]
+         return password
+ 
+     def get_password(self, prompt=u'', **kwargs):
+@@ -276,10 +273,8 @@
+         username = self.stdin.readline()
+         if not username:
+             username = None
+-        else:
+-            username = username.decode(self.stdin.encoding)
+-            if username[-1] == '\n':
+-                username = username[:-1]
++        elif username[-1] == '\n':
++            username = username[:-1]
+         return username
+ 
+     def make_progress_view(self):
+

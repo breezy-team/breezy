@@ -1,9 +1,10 @@
-bzr (2.6.0~bzr6571-1) UNRELEASED; urgency=low
+bzr (2.6.0~bzr6571-1) experimental; urgency=low
 
   [ Jelmer Vernooij ]
   * Remove myself from uploaders.
   * New upstream snapshot.
    + Now ships bzr-grep. Added relevant Replaces/Breaks/Provides.
+   + Add 04_revert_ui_changes to work around test failures.
   * Add autopkgtest header. Closes: #692680
 
   [ Max Bowsher]
