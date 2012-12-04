@@ -105,7 +105,7 @@ Testing
 *******
 
 * Fix test failures occurring only with LC_ALL=C, when prompting a user,
-  ``stdee`` encoding should be preferred over terminal encoding if
+  ``stderr`` encoding should be preferred over terminal encoding if
   available. (Vincent Ladeuil, #1086209)
 
 
