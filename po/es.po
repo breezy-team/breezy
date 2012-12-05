@@ -9,15 +9,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2012-07-22 15:37+0000\n"
-"Last-Translator: Adolfo Jayme Barrientos <fitoschido@gmail.com>\n"
+"PO-Revision-Date: 2012-12-04 17:47+0000\n"
+"Last-Translator: calabero111 <Unknown>\n"
 "Language-Team: Spanish <es@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Launchpad-Export-Date: 2012-07-23 04:30+0000\n"
-"X-Generator: Launchpad (build 15654)\n"
+"X-Launchpad-Export-Date: 2012-12-05 04:30+0000\n"
+"X-Generator: Launchpad (build 16335)\n"
 
 #: bzrlib/add.py:93
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -36,8 +36,8 @@ msgstr "Subido a la revisión %d."
 #, python-format
 msgid "%d tag updated."
 msgid_plural "%d tags updated."
-msgstr[0] "%d etiqueta actualizada"
-msgstr[1] "%d etiquetas actualizadas"
+msgstr[0] "%d etiqueta actualizada."
+msgstr[1] "%d etiquetas actualizadas."
 
 #: bzrlib/branch.py:2960
 msgid "No new revisions or tags to push."
@@ -1193,6 +1193,14 @@ msgid ""
 "parameters are given Bazaar will scan for files that are being tracked by\n"
 "Bazaar but missing in your tree and stop tracking them for you."
 msgstr ""
+"Esto hace que Bazaar deje tracear cambios de los archivos especificados. "
+"Bazaar \n"
+"eliminará estos archivos si pueden ser recuperados fácilmente usando "
+"revertir, en caso contrario \n"
+"serán respaldados (añadiendo una extensión de la forma .~#~). Si no se "
+"proporcionan opciones o \n"
+"parámetros, Bazaar escaneará los archivos que están siendo seguidos por\n"
+" Bazaar pero que faltan en tu árbol y dejarán de ser seguidos."
 
 #: bzrlib/builtins.py:1868
 msgid "Only remove files that have never been committed."
@@ -1459,6 +1467,9 @@ msgid ""
 "        cd trunk-checkout\n"
 "        (add files here)"
 msgstr ""
+"        bzr checkout --lightweight repo/trunk trunk-checkout\n"
+"        cd trunk-checkout\n"
+"        (añadir archivos aquí)"
 
 #: bzrlib/builtins.py:2193
 msgid ""
@@ -1491,6 +1502,13 @@ msgid ""
 "the first argument, if any, or the current tree if no arguments are\n"
 "given."
 msgstr ""
+"Si no se dan argumentos, todos los cambios aparecen en el árbol actual.\n"
+"Si se facilitan los archivos, solo se mostrarán los cambios en esos "
+"archivos.\n"
+"Las ramas múltiples y remotas podrán compararse mediante las opciones --old "
+"y\n"
+"--new. Si no se facilita, el valor predeterminado para ambos se deriva\n"
+"desde el primer argumento, si lo hay, o al árbol  actual si no los tiene."
 
 #: bzrlib/builtins.py:2234
 msgid ""
@@ -1997,6 +2015,7 @@ msgstr ""
 msgid ""
 "  You may find it useful to add the aliases below to ``bazaar.conf``::"
 msgstr ""
+"  Puede resultarle útil añadir los alias de abajo para «bazaar.conf»::"
 
 #: bzrlib/builtins.py:2622
 msgid ""
@@ -2258,6 +2277,8 @@ msgid ""
 ":Examples:\n"
 "    Ignore the top level Makefile::"
 msgstr ""
+":Ejemplos:\n"
+"    Ignore el Makefile del nivel superior::"
 
 #: bzrlib/builtins.py:3148
 msgid "        bzr ignore ./Makefile"
@@ -2354,6 +2375,9 @@ msgid ""
 "List all the ignored files and the ignore pattern that caused the file to\n"
 "be ignored."
 msgstr ""
+"Listar todos los archivos ignorados y el patrón de ignorar que hicieron que "
+"el archivo\n"
+"fuese ignorado."
 
 #: bzrlib/builtins.py:3243
 msgid "Alternatively, to list just the files::"
@@ -2454,6 +2478,8 @@ msgstr ""
 msgid ""
 "Export the working tree contents rather than that of the last revision."
 msgstr ""
+"Exportar el contenido del árbol de trabajo en lugar de la de la última "
+"revisión."
 
 #: bzrlib/builtins.py:3348
 msgid "--uncommitted requires a working tree"
@@ -2520,6 +2546,10 @@ msgid ""
 "commit is assumed to be the author. These defaults can be overridden\n"
 "as explained below."
 msgstr ""
+"Por defecto, el árbol entero está comprometido y la persona que realiza\n"
+"la confirmación se da por supuesto que es el autor. Estos valores por "
+"defecto pueden ser reemplazados\n"
+"tal y como se explica más abajo."
 
 #: bzrlib/builtins.py:3456
 msgid ":Selective commits:"
@@ -2642,18 +2672,25 @@ msgid ""
 "Perform a local commit in a bound branch.  Local commits are not pushed to "
 "the master branch until a normal commit is performed."
 msgstr ""
+"Se realiza un compromiso local en una rama unida. Ese compromiso hace que no "
+"sean empujadas a la rama principal hasta que no se realice una confirmación "
+"normal."
 
 #: bzrlib/builtins.py:3533
 msgid ""
 "When no message is supplied, show the diff along with the status summary in "
 "the message editor."
 msgstr ""
+"Cuando no se suministra ningún mensaje, se muestra el diff en conjunto con "
+"el resumen estado del editor de mensajes."
 
 #: bzrlib/builtins.py:3536
 msgid ""
 "When committing to a foreign version control system do not push data that "
 "can not be natively represented."
 msgstr ""
+"Al comprometerse con un sistema de control de versiones extranjeras no "
+"enviará datos que no puedan ser representados de forma nativa."
 
 #: bzrlib/builtins.py:3554
 #, python-format
@@ -2754,6 +2791,10 @@ msgid ""
 "The working tree and branch checks will only give output if a problem is\n"
 "detected. The output fields of the repository check are:"
 msgstr ""
+"El árbol de trabajo y los controles de rama sólo darán resultado si se "
+"detecta\n"
+"un problema. El resultado de los campos de verificación del repositorio son "
+"los siguientes:"
 
 #: bzrlib/builtins.py:3718
 msgid ""
@@ -2805,6 +2846,9 @@ msgid ""
 "given\n"
 "location will be checked."
 msgstr ""
+"Si no se aplican las restricciones especificadas, se verificarán todos los "
+"datos\n"
+" Bazaar que están en la localización."
 
 #: bzrlib/builtins.py:3746
 msgid "    Check the tree and branch at 'foo'::"
@@ -2963,6 +3007,9 @@ msgid ""
 "Bound branches use the nickname of its master branch unless it is set\n"
 "locally."
 msgstr ""
+"Las ramas enlazadas usarán el apodo de su rama principal a menos que se "
+"ajuste\n"
+"localmente."
 
 #: bzrlib/builtins.py:3930
 msgid "Set/unset and display aliases."
@@ -3010,12 +3057,13 @@ msgstr "Elimina los alias."
 
 #: bzrlib/builtins.py:3970
 msgid "bzr alias --remove expects an alias to remove."
-msgstr ""
+msgstr "bzr alias --remove está esperando un alias para ser eliminado."
 
 #: bzrlib/builtins.py:4151
 msgid ""
 "subunit not available. subunit needs to be installed to use --subunit."
 msgstr ""
+"subunit ni disponible. Necesita instalar subunit para usar --subunit."
 
 #: bzrlib/builtins.py:4168
 msgid ""
@@ -3038,7 +3086,7 @@ msgstr "¡Seguro que si!\n"
 #: bzrlib/builtins.py:4262
 #, python-format
 msgid "merge base is revision %s\n"
-msgstr ""
+msgstr "la base de combinación es la revisión %s\n"
 
 #: bzrlib/builtins.py:4266
 msgid "Perform a three-way merge."
@@ -3203,15 +3251,20 @@ msgid ""
 "the source rather than merging.  When this happens, you do not need to "
 "commit the result."
 msgstr ""
+"Si el destino ya está totalmente combinado con la fuente, use la fuente en "
+"vez de la combinación. Cuando esto ocurra, no debe comprometerse con el "
+"resultado."
 
 #: bzrlib/builtins.py:4367
 msgid ""
 "Branch to merge into, rather than the one containing the working directory."
 msgstr ""
+"Branch  desea combinarse, en lugar de aquel contenido en el directorio de "
+"trabajo."
 
 #: bzrlib/builtins.py:4369
 msgid "Instead of merging, show a diff of the merge."
-msgstr ""
+msgstr "En lugar de la combinación, se muestra un resumen de la combinación."
 
 #: bzrlib/builtins.py:4371
 msgid "Select changes interactively."
@@ -3222,10 +3275,13 @@ msgid ""
 "Merging into empty branches not currently supported, "
 "https://bugs.launchpad.net/bzr/+bug/308562"
 msgstr ""
+"La combinación en ramas vacías no se soporta actualmente, "
+"https://bugs.launchpad.net/bzr/+bug/308562"
 
 #: bzrlib/builtins.py:4420
 msgid "Cannot use --uncommitted with bundles or merge directives."
 msgstr ""
+"No puede usarse --uncommited con los paquetes o cdirectivas combinadas."
 
 #: bzrlib/builtins.py:4431
 msgid "Cannot use --uncommitted and --revision at the same time."
@@ -3260,7 +3316,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4536
 msgid "Cannot do conflict reduction and show base."
-msgstr ""
+msgstr "No se pueden realizar la reducción de conflictos y mostrar la base."
 
 #: bzrlib/builtins.py:4647
 msgid "No location specified or remembered"
@@ -3268,7 +3324,7 @@ msgstr "No hay ubicación especificada o recordada"
 
 #: bzrlib/builtins.py:4649
 msgid "{0} remembered {1} location {2}"
-msgstr ""
+msgstr "{0} recordados {1} ubicación {2}"
 
 #: bzrlib/builtins.py:4655
 msgid "Redo a merge."
@@ -3280,6 +3336,11 @@ msgid ""
 "conflicts.  Some merge techniques are better than others, and remerge\n"
 "lets you try different ones on different files."
 msgstr ""
+"Utilice esto si lo que se pretende es probar un técnica de combinación "
+"diferente para resolver\n"
+"conflictos. Algunas técnicas de combinación son mejores que otras y "
+"reinstalar\n"
+"le permite probar distintas cosas en diferentes archivos."
 
 #: bzrlib/builtins.py:4661
 msgid ""
@@ -3287,6 +3348,12 @@ msgid ""
 "merge.  The difference is that remerge can (only) be run when there is a\n"
 "pending merge, and it lets you specify particular files."
 msgstr ""
+"Las opciones para la reinstalación tienen el mismo significado que los "
+"valores predeterminados.\n"
+"La única diferencia que existe es que la reinstalación (solo) se ejecuta  "
+"cuando hay\n"
+"pendiente una combinación, y se permite la especificación de los archivos "
+"particulares."
 
 #: bzrlib/builtins.py:4665
 msgid ""
@@ -3318,11 +3385,15 @@ msgid ""
 "Sorry, remerge only works after normal merges.  Not cherrypicking or multi-"
 "merges."
 msgstr ""
+"Lo sentimos, la reinstalación solo funciona después de fusiones normales. No "
+"hay repesca ni combinaciones múltiples."
 
 #: bzrlib/builtins.py:4751
 msgid ""
 "Set files in the working tree back to the contents of a previous revision."
 msgstr ""
+"Establece los archivos de nuevo en el árbol de trabajo con el contenido de "
+"una revisión anterior."
 
 #: bzrlib/builtins.py:4753
 msgid ""
@@ -3511,7 +3582,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4929
 msgid "Show all revisions in addition to the mainline ones."
-msgstr ""
+msgstr "Mostrar todas las revisiones además de las líneas principales."
 
 #: bzrlib/builtins.py:4983
 msgid "No peer location known or specified."
@@ -3614,7 +3685,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:5138
 msgid "Show testament (signing-form) of a revision."
-msgstr ""
+msgstr "Mostrar el testamento (formulario de firma) de una revisión."
 
 #: bzrlib/builtins.py:5141
 msgid "Produce long-format testament."
@@ -3633,12 +3704,16 @@ msgid ""
 "This prints out the given file with an annotation on the left side\n"
 "indicating which revision, author and date introduced the change."
 msgstr ""
+"Esto solo imprime el archivo dado con una anotación en el lado izquierdo\n"
+"que indica la revisión, el autor y la fecha en que se realizó el cambio."
 
 #: bzrlib/builtins.py:5174
 msgid ""
 "If the origin is the same for a run of consecutive lines, it is\n"
 "shown only at the top, unless the --all option is given."
 msgstr ""
+"Si el origen es igual para el funcionamiento entre línea consecutivas, solo\n"
+"se muestra en la parte superior, a menos que la opción --all así lo diga."
 
 #: bzrlib/builtins.py:5182
 msgid "Show annotations on all lines."
@@ -3651,6 +3726,7 @@ msgstr "Muestra la fecha de ejecución en anotaciones."
 #: bzrlib/builtins.py:5270
 msgid "Cannot sign a range of non-revision-history revisions"
 msgstr ""
+"No se puede firmar un rango de revisiones sin el historial de esas revisiones"
 
 #: bzrlib/builtins.py:5282
 msgid "Please supply either one revision, or a range."
@@ -3856,7 +3932,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:5535
 msgid "Serve contents of this directory."
-msgstr ""
+msgstr "Servir contenidos de esta carpeta"
 
 #: bzrlib/builtins.py:5537
 msgid ""
@@ -4777,7 +4853,7 @@ msgstr ""
 
 #: bzrlib/bundle/apply_bundle.py:40
 msgid "Install revisions"
-msgstr ""
+msgstr "Instalar revisiones"
 
 #: bzrlib/bundle/commands.py:64
 msgid "--verbose requires a merge directive"
@@ -4789,7 +4865,7 @@ msgstr ""
 
 #: bzrlib/bundle/commands.py:77
 msgid "Records\n"
-msgstr ""
+msgstr "Grabaciones\n"
 
 #: bzrlib/bundle/commands.py:81
 msgid "{0}: {1} ({2} multiparent)\n"
@@ -4798,11 +4874,11 @@ msgstr ""
 #: bzrlib/bundle/commands.py:83
 #, python-format
 msgid "unique files: %d\n"
-msgstr ""
+msgstr "archivos únicos: %d\n"
 
 #: bzrlib/bundle/commands.py:92
 msgid "Revisions\n"
-msgstr ""
+msgstr "Revisiones\n"
 
 #: bzrlib/bundle/commands.py:93
 #, python-format
@@ -4818,7 +4894,7 @@ msgstr ""
 
 #: bzrlib/bundle/commands.py:103
 msgid "Decoded contents\n"
-msgstr ""
+msgstr "Contenidos descodificados\n"
 
 #: bzrlib/bundle/serializer/v4.py:327
 #, python-format
@@ -4912,12 +4988,12 @@ msgstr ""
 #: bzrlib/check.py:221
 #, python-format
 msgid "%6d revisions are mentioned but not present"
-msgstr ""
+msgstr "%6d revisiones mencionadas pero no presentes"
 
 #: bzrlib/check.py:224
 #, python-format
 msgid "%6d ghost revisions"
-msgstr ""
+msgstr "%6d revisiones fantasma"
 
 #: bzrlib/check.py:229
 #, python-format
@@ -4990,11 +5066,11 @@ msgstr "Nada que eliminar."
 
 #: bzrlib/clean_tree.py:68
 msgid "Are you sure you wish to delete these"
-msgstr ""
+msgstr "Está seguro de querer eliminar este"
 
 #: bzrlib/clean_tree.py:70
 msgid "Canceled"
-msgstr ""
+msgstr "Cancelado"
 
 #: bzrlib/clean_tree.py:107
 #, python-format
@@ -5086,7 +5162,7 @@ msgstr ""
 
 #: bzrlib/cmd_version_info.py:86
 msgid "Include the last revision for each file."
-msgstr ""
+msgstr "Incluir la úlima revisión para cada archivo."
 
 #: bzrlib/cmd_version_info.py:87
 msgid "Template for the output."
@@ -5146,6 +5222,8 @@ msgid ""
 "See bzr help %s for more details and examples.\n"
 "\n"
 msgstr ""
+"Vea bzr help %s para más detalles y ejemplos.\n"
+"\n"
 
 #: bzrlib/commands.py:538
 msgid ":Aliases:  "
@@ -5307,11 +5385,11 @@ msgstr ""
 
 #: bzrlib/config.py:4018
 msgid "Display, set or remove a configuration option."
-msgstr ""
+msgstr "Mostrar, establecer o eliminar una opción de configuración."
 
 #: bzrlib/config.py:4020
 msgid "Display the active value for a given option."
-msgstr ""
+msgstr "Mostrar el valor activo para la opción dada."
 
 #: bzrlib/config.py:4022
 msgid ""
@@ -5341,11 +5419,11 @@ msgstr ""
 
 #: bzrlib/config.py:4046
 msgid "Remove the option from the configuration file."
-msgstr ""
+msgstr "Eliminar la opción del archivo de configuración."
 
 #: bzrlib/conflicts.py:50
 msgid "List files with conflicts."
-msgstr ""
+msgstr "Lista de archivos con conflictos."
 
 #: bzrlib/conflicts.py:57
 msgid ""
@@ -5360,11 +5438,11 @@ msgstr ""
 
 #: bzrlib/conflicts.py:66
 msgid "List paths of files with text conflicts."
-msgstr ""
+msgstr "Lista de rutas de archivos con conflictos de texto."
 
 #: bzrlib/conflicts.py:85
 msgid "Marks the conflict as resolved."
-msgstr ""
+msgstr "Marca el conflicto como resuelto."
 
 #: bzrlib/conflicts.py:88
 msgid "Resolve the conflict preserving the version in the working tree."
@@ -5376,11 +5454,11 @@ msgstr ""
 
 #: bzrlib/conflicts.py:98
 msgid "How to resolve the conflict."
-msgstr ""
+msgstr "Cómo resolver el conflicto."
 
 #: bzrlib/conflicts.py:104
 msgid "Mark a conflict as resolved."
-msgstr ""
+msgstr "Marcar un conflicto como resuelto."
 
 #: bzrlib/conflicts.py:111
 msgid ""
@@ -5448,7 +5526,7 @@ msgstr ""
 
 #: bzrlib/errors.py:227
 msgid "Invalid revision number %(revno)s"
-msgstr ""
+msgstr "número de revisión no válido %(revno)s"
 
 #: bzrlib/errors.py:236
 msgid "Invalid revision-id {%(revision_id)s} in %(branch)s"
@@ -5460,7 +5538,7 @@ msgstr ""
 
 #: bzrlib/errors.py:261
 msgid "There is no public branch set for \"%(branch_url)s\"."
-msgstr ""
+msgstr "No hay una rama publica establecida para «%(branch_url)s»."
 
 #: bzrlib/errors.py:271
 msgid ""
@@ -5479,11 +5557,11 @@ msgstr ""
 
 #: bzrlib/errors.py:299
 msgid "The branch '%(branch)s' is not stacked."
-msgstr ""
+msgstr "La rama «%(branch)s» no está apilada."
 
 #: bzrlib/errors.py:313
 msgid "No WorkingTree exists for \"%(base)s\"."
-msgstr ""
+msgstr "No existe un árbol de trabajo para «%(base)s»."
 
 #: bzrlib/errors.py:322
 msgid "Not currently building a tree."
@@ -5491,11 +5569,12 @@ msgstr ""
 
 #: bzrlib/errors.py:327
 msgid "%(url)s is not a local path."
-msgstr ""
+msgstr "%(url)s no es una ruta local."
 
 #: bzrlib/errors.py:355
 msgid "%(not_locked)r is not write locked but needs to be."
 msgstr ""
+"%(not_locked)r no está bloqueado contra escritura pero tiene que estarlo."
 
 #: bzrlib/errors.py:363
 msgid "Error in command line options"
@@ -5503,7 +5582,7 @@ msgstr "Error en las opciones de la línea de órdenes"
 
 #: bzrlib/errors.py:368
 msgid "%(value)s is not an index of type %(_type)s."
-msgstr ""
+msgstr "%(value)s no es un índice de tipo %(_type)s."
 
 #: bzrlib/errors.py:378
 msgid "Error in data for index %(value)s."
@@ -5511,35 +5590,35 @@ msgstr ""
 
 #: bzrlib/errors.py:387
 msgid "The key '%(key)s' is already in index '%(index)s'."
-msgstr ""
+msgstr "La clave «%(key)s» ya está en el índice «%(index)s»."
 
 #: bzrlib/errors.py:397
 msgid "The key '%(key)s' is not a valid key."
-msgstr ""
+msgstr "La clave «%(key)s» no es una clave válida."
 
 #: bzrlib/errors.py:406
 msgid "Could not parse options for index %(value)s."
-msgstr ""
+msgstr "No se pueden analizar las opciones para el índice %(value)s."
 
 #: bzrlib/errors.py:415
 msgid "The value '%(value)s' is not a valid value."
-msgstr ""
+msgstr "El valor «%(value)s» no es un valor válido."
 
 #: bzrlib/errors.py:424
 msgid "Bad value \"%(value)s\" for option \"%(name)s\"."
-msgstr ""
+msgstr "Valor erróneo «%(value)s» para la opción «%(name)s»."
 
 #: bzrlib/errors.py:443
 msgid "Generic path error: %(path)r%(extra)s)"
-msgstr ""
+msgstr "Error ruta genérica: %(path)r%(extra)s)"
 
 #: bzrlib/errors.py:456
 msgid "No such file: %(path)r%(extra)s"
-msgstr ""
+msgstr "Ningún archivo: %(path)r%(extra)s"
 
 #: bzrlib/errors.py:461
 msgid "File exists: %(path)r%(extra)s"
-msgstr ""
+msgstr "El archivo existe: %(path)r%(extra)s"
 
 #: bzrlib/errors.py:467
 msgid ""
@@ -5549,7 +5628,7 @@ msgstr ""
 
 #: bzrlib/errors.py:483
 msgid "\"%(path)s\" is not a directory %(extra)s"
-msgstr ""
+msgstr "«%(path)s» no es una carpeta %(extra)s"
 
 #: bzrlib/errors.py:488
 msgid "\"%(path)s\" is not in the working directory %(extra)s"
@@ -5557,7 +5636,7 @@ msgstr ""
 
 #: bzrlib/errors.py:493
 msgid "Directory not empty: \"%(path)s\"%(extra)s"
-msgstr ""
+msgstr "La carpeta no está vacía: «%(path)s»%(extra)s"
 
 #: bzrlib/errors.py:498
 msgid "Hard-linking \"%(path)s\" is not supported"
@@ -5569,7 +5648,7 @@ msgstr ""
 
 #: bzrlib/errors.py:518
 msgid "Permission denied: \"%(path)s\"%(extra)s"
-msgstr ""
+msgstr "Permiso denegado: «%(path)s»%(extra)s"
 
 #: bzrlib/errors.py:523
 msgid "Invalid url supplied to transport: \"%(path)s\"%(extra)s"
@@ -5621,7 +5700,7 @@ msgstr ""
 
 #: bzrlib/errors.py:654
 msgid "Not a branch: \"%(path)s\"%(detail)s."
-msgstr ""
+msgstr "No es una rama: «%(path)s»%(detail)s."
 
 #: bzrlib/errors.py:696
 msgid "No submit branch available for branch \"%(path)s\""
@@ -5633,11 +5712,11 @@ msgstr ""
 
 #: bzrlib/errors.py:710
 msgid "Already a branch: \"%(path)s\"."
-msgstr ""
+msgstr "Ya hay una rama: «%(path)s»."
 
 #: bzrlib/errors.py:715
 msgid "Invalid branch name: %(name)s"
-msgstr ""
+msgstr "Nombre de rama no válido: %(name)s"
 
 #: bzrlib/errors.py:724
 msgid "Parent branch already exists: \"%(path)s\"."
@@ -5688,10 +5767,14 @@ msgid ""
 "%(source)s\n"
 "%(details)s"
 msgstr ""
+"%(target)s\n"
+"no es compatible con\n"
+"%(source)s\n"
+"%(details)s"
 
 #: bzrlib/errors.py:818
 msgid "Revision is not compatible with %(repo_format)s"
-msgstr ""
+msgstr "La revisión no es compatible con %(repo_format)s"
 
 #: bzrlib/errors.py:828
 msgid "%(context_info)s%(path)s is already versioned."
@@ -5729,7 +5812,7 @@ msgstr ""
 
 #: bzrlib/errors.py:976
 msgid "Cannot lock %(lock)s: %(why)s"
-msgstr ""
+msgstr "No se puede bloquear %(lock)s: %(why)s"
 
 #: bzrlib/errors.py:986
 msgid ""
@@ -5917,7 +6000,7 @@ msgstr ""
 
 #: bzrlib/errors.py:1559
 msgid "Transport error: %(msg)s %(orig_error)s"
-msgstr ""
+msgstr "Error de transporte: %(msg)s %(orig_error)s"
 
 #: bzrlib/errors.py:1585
 msgid "Generic bzr smart protocol error: %(details)s"
@@ -5933,7 +6016,7 @@ msgstr ""
 
 #: bzrlib/errors.py:1630
 msgid "Connection error: %(msg)s %(orig_error)s"
-msgstr ""
+msgstr "Error de conexión: %(msg)s %(orig_error)s"
 
 #: bzrlib/errors.py:1635
 msgid "%(msg)s %(host)s%(port)s%(orig_error)s"
@@ -5941,11 +6024,11 @@ msgstr ""
 
 #: bzrlib/errors.py:1656
 msgid "Connection closed: %(msg)s %(orig_error)s"
-msgstr ""
+msgstr "Conexión cerrada: %(msg)s %(orig_error)s"
 
 #: bzrlib/errors.py:1661
 msgid "Connection Timeout: %(msg)s%(orig_error)s"
-msgstr ""
+msgstr "Tiempo de espera de la conexión agotado: %(msg)s%(orig_error)s"
 
 #: bzrlib/errors.py:1666
 msgid "Invalid range access in %(path)s at %(offset)s: %(msg)s"
@@ -5961,7 +6044,7 @@ msgstr ""
 
 #: bzrlib/errors.py:1699
 msgid "Invalid http range %(range)r for %(path)s: %(msg)s"
-msgstr ""
+msgstr "rango http no válido %(range)r para %(path)s: %(msg)s"
 
 #: bzrlib/errors.py:1713
 msgid "HTTP MIME Boundary missing for %(path)s: %(msg)s"
@@ -5981,7 +6064,7 @@ msgstr "Demasiadas redirecciones"
 
 #: bzrlib/errors.py:1749
 msgid "Working tree has conflicts."
-msgstr ""
+msgstr "El árbol de trabajo tiene conflictos."
 
 #: bzrlib/errors.py:1753
 msgid "Config file %(filename)s is not UTF-8 encoded\n"
@@ -6080,7 +6163,7 @@ msgstr ""
 
 #: bzrlib/errors.py:1988
 msgid "Failed to rename %(from_path)s to %(to_path)s: %(why)s"
-msgstr ""
+msgstr "Fallo al renombrar %(from_path)s a %(to_path)s: %(why)s"
 
 #: bzrlib/errors.py:1999
 msgid ""
@@ -6116,15 +6199,15 @@ msgstr ""
 
 #: bzrlib/errors.py:2107
 msgid "%(exe_name)s could not be found on this machine"
-msgstr ""
+msgstr "%(exe_name)s no se encuentra en este equipo"
 
 #: bzrlib/errors.py:2115
 msgid "Diff is not installed on this machine: %(msg)s"
-msgstr ""
+msgstr "Diff no está instalado en este equipo: %(msg)s"
 
 #: bzrlib/errors.py:2123
 msgid "Diff3 is not installed on this machine."
-msgstr ""
+msgstr "Diff3 no está instalado en este equipo."
 
 #: bzrlib/errors.py:2129
 msgid "The content being inserted is already present."
@@ -6229,11 +6312,11 @@ msgstr ""
 
 #: bzrlib/errors.py:2313
 msgid "File is binary but should be text."
-msgstr ""
+msgstr "El archivo es binario pero debe ser texto."
 
 #: bzrlib/errors.py:2318
 msgid "The path %(path)s is not permitted on this platform"
-msgstr ""
+msgstr "La ruta %(path)s no está permitida en esta plataforma"
 
 #: bzrlib/errors.py:2327
 msgid ""
@@ -11885,12 +11968,16 @@ msgid ""
 "Content Filters\n"
 "==============="
 msgstr ""
+"Filtros de contenido\n"
+"==============="
 
 #: en/help_topics/content-filters.txt:4
 msgid ""
 "Content formats\n"
 "---------------"
 msgstr ""
+"Formatos de contenido\n"
+"---------------"
 
 #: en/help_topics/content-filters.txt:7
 msgid ""
@@ -12876,7 +12963,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:204 en/help_topics/hooks.txt:211
 msgid "Introduced in: 2.6"
-msgstr ""
+msgstr "Introducido en: 2.6"
 
 #: en/help_topics/hooks.txt:206
 msgid "Called after executing a command. Called with the command object."
@@ -13125,7 +13212,7 @@ msgstr ""
 #: en/help_topics/hooks.txt:387 en/help_topics/hooks.txt:405
 #: en/help_topics/hooks.txt:413 en/help_topics/hooks.txt:512
 msgid "Introduced in: 2.5"
-msgstr ""
+msgstr "Introducido en: 2.5"
 
 #: en/help_topics/hooks.txt:331
 msgid ""
@@ -13310,7 +13397,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:434
 msgid "Introduced in: unknown"
-msgstr ""
+msgstr "Introducido en: deconocido"
 
 #: en/help_topics/hooks.txt:436
 msgid ""
@@ -13353,7 +13440,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:456 en/help_topics/hooks.txt:475
 msgid "Introduced in: 0.16"
-msgstr ""
+msgstr "Introducido en: 0.16"
 
 #: en/help_topics/hooks.txt:458
 msgid ""
@@ -13411,7 +13498,7 @@ msgstr ""
 
 #: en/help_topics/hooks.txt:487 en/help_topics/hooks.txt:498
 msgid "Introduced in: 2.3"
-msgstr ""
+msgstr "Introducido en: 2.3"
 
 #: en/help_topics/hooks.txt:489
 msgid ""
@@ -13582,7 +13669,7 @@ msgstr "Otros formatos de almacenamiento"
 
 #: en/help_topics/other-formats.txt:3
 msgid "Experimental formats are shown below."
-msgstr ""
+msgstr "Los formatos experimentales se muestran a continuación."
 
 #: en/help_topics/other-formats.txt:5
 msgid ""
@@ -13596,6 +13683,8 @@ msgid ""
 "\n"
 "Deprecated formats are shown below."
 msgstr ""
+"\n"
+"Los formatos obsoletos se muestran a continuación."
 
 #: en/help_topics/other-formats.txt:12
 msgid ""
@@ -13675,6 +13764,7 @@ msgstr ""
 msgid ""
 ".. _Python regular expressions: http://docs.python.org/library/re.html"
 msgstr ""
+".. Expresiones regulares de _Python: http://docs.python.org/library/re.html"
 
 #: en/help_topics/revisionspec.txt:1
 msgid "Revision Identifiers"
@@ -14107,6 +14197,8 @@ msgid ""
 "Special character handling in URLs\n"
 "=================================="
 msgstr ""
+"Manejo de caracteres especiales en las URL\n"
+"=================================="
 
 #: en/help_topics/url-special-chars.txt:4
 msgid "Bazaar allows locations to be specified in multiple ways, either:"
