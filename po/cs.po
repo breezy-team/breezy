@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2012-12-08 22:40+0000\n"
+"PO-Revision-Date: 2012-12-09 21:51+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-12-09 04:30+0000\n"
+"X-Launchpad-Export-Date: 2012-12-10 04:30+0000\n"
 "X-Generator: Launchpad (build 16341)\n"
 
 #: bzrlib/add.py:93
@@ -4278,7 +4278,7 @@ msgstr "Žádné revize ke sbalení."
 
 #: bzrlib/builtins.py:5738
 msgid "Mail or create a merge-directive for submitting changes."
-msgstr "Pošta nebo vytvoření příkazu sloučení pro odeslání změn."
+msgstr "Pošta nebo vytvoření příkazu sloučení pro předložení změn."
 
 #: bzrlib/builtins.py:5740
 msgid "A merge directive provides many things needed for requesting merges:"
@@ -6186,7 +6186,7 @@ msgstr "Není větev: \"%(path)s\"%(detail)s."
 
 #: bzrlib/errors.py:696
 msgid "No submit branch available for branch \"%(path)s\""
-msgstr "Pro větev \"%(path)s\" není dostupná větev odesílání"
+msgstr "Pro větev \"%(path)s\" není dostupná větev předložení"
 
 #: bzrlib/errors.py:705
 msgid "A control directory already exists: \"%(path)s\"."
@@ -7952,9 +7952,9 @@ msgid ""
 "is not supplied, the remembered submit branch will be used.  If no submit\n"
 "branch is remembered, the development focus will be used."
 msgstr ""
-"Větev bude navrhnuta ke sloučení do VĚTVE_ODESLÁNÍ. Pokud VĚTEV_ODESLÁNÍ\n"
-"není zadána, bude použita zapamatovaná větev. Pokud není zapamatována,\n"
-"bude použita, bude použita vývojová."
+"Větev bude navrhnuta ke sloučení do VĚTVE_PŘEDLOŽENÍ. Pokud\n"
+"VĚTEV_PŘEDLOŽENÍ není zadána, bude použita zapamatovaná větev.\n"
+"Pokud není zapamatována, bude použita, bude použita vývojová."
 
 #: bzrlib/plugins/launchpad/cmds.py:281
 msgid ""
@@ -7963,7 +7963,7 @@ msgid ""
 "The parameter the launchpad account name of the desired reviewer.  This\n"
 "may optionally be followed by '=' and the review type.  For example:"
 msgstr ""
-"Standardně bude muset tým pro kontrolu VĚTVE_ODESLÁNÍ projít\n"
+"Standardně bude muset tým pro kontrolu VĚTVE_PŘEDLOŽENÍ projít\n"
 "návrhu ke sloučení. Toto může být potlačeno zadáním --review (-R).\n"
 "Parametr je název účtu požadovaného kontrolora. Toto může být\n"
 "volitelně následováno '=' a typem kontroly. Například:"
@@ -8413,11 +8413,11 @@ msgstr "--remember vyžaduje zadání větve."
 
 #: bzrlib/send.py:78
 msgid "No submit branch known or specified"
-msgstr "Žádná větev odesílání není známa nebo zadána"
+msgstr "Žádná větev předložení není známa nebo zadána"
 
 #: bzrlib/send.py:81
 msgid "Using saved {0} location \"{1}\" to determine what changes to submit."
-msgstr "Použití uloženého umístění {0} \"{1} pro určení změn k odeslání."
+msgstr "Použití uloženého umístění {0} \"{1} pro určení změn k předložení."
 
 #: bzrlib/send.py:99
 #, python-format
@@ -8430,7 +8430,7 @@ msgstr "bzr send přijímá nejvíce dva identifikátory jedné reviz"
 
 #: bzrlib/send.py:128
 msgid "No revisions to submit."
-msgstr "Žádné revize k odeslání."
+msgstr "Žádné revize k předložení."
 
 #: bzrlib/send.py:140
 msgid ""
@@ -12468,7 +12468,7 @@ msgid ""
 "This\n"
 "should usually be set on a per-branch or per-location basis."
 msgstr ""
-"Větev, do které chcete odeslat  vaši současnou práci. To je automaticky\n"
+"Větev, do které chcete předložit vaši současnou práci. To je automaticky\n"
 "nastaveno ``bzr send`` a také používáno zadáním revize ``submit:``.\n"
 "Toto by mělo být standardně nastavováno na základě větve a umístění."
 
@@ -14607,7 +14607,7 @@ msgstr ""
 "ancestry             Vypsat všechny revize sloučené do této větve.\n"
 "assert-fail          Vyzkoušet hlášení chyby aserce.\n"
 "bundle-info          Vypsat zajímavé údaje o svazku.\n"
-"bundle-revisions     Vytvořit příkaz sloučení pro posílání změn.\n"
+"bundle-revisions     Vytvořit příkaz sloučení pro předložení změn.\n"
 "cat-revision         Vypsat metadata pro revizi.\n"
 "dump-btree           Vypsat obsah souboru indexu bstromu na standardní "
 "výstup.\n"
@@ -15623,7 +15623,7 @@ msgid ""
 "server. Called with a bzrlib.smart.client.CallHookParams object.\n"
 "Streaming request bodies, and responses, are not accessible."
 msgstr ""
-"Volán, když chytrý klient odesílá požadavek chytrému serveru. Volán\n"
+"Volán, když chytrý klient předkládá požadavek chytrému serveru. Volán\n"
 "pomocí objektu  bzrlib.smart.client.CallHookParams. Vysílání těl\n"
 "požadavků, a jejich odpovědí, není dostupné."
 
@@ -15855,7 +15855,7 @@ msgstr ""
 "  :parent    Nadřazená této větvi.\n"
 "  :public    Veřejné umístění této větve.\n"
 "  :push      Uložené umístění používané pro `bzr push` bez argumentů.\n"
-"  :submit    Větev pro odesílání z této větve.\n"
+"  :submit    Větev pro předkládání z této větve.\n"
 "  :this      Tato větev."
 
 #: en/help_topics/location-alias.txt:16
@@ -16192,7 +16192,7 @@ msgstr ""
 ":revid:\n"
 "\tVybere revizi pomocí id revize.\n"
 ":submit:\n"
-"\tVybere předka společného s větví odeslání.\n"
+"\tVybere předka společného s větví předložení.\n"
 ":ancestor:\n"
 "\tVybere předka společného s druhou větví.\n"
 ":date:\n"
@@ -16256,8 +16256,8 @@ msgid ""
 msgstr ""
 "    Při porovnání s tímto zobrazí všechny změny, které byly provedeny v\n"
 "    této větvi, a slouží k dobrému odhadu změn při sloučení. Větev\n"
-"    odeslání je použita příkazy sloučení bundle a merge. Pokud není zadána\n"
-"    je místo toho použita nadřazená větev."
+"    přeldožení je použita příkazy sloučení bundle a merge. Pokud není\n"
+"    zadána je místo toho použita nadřazená větev."
 
 #: en/help_topics/revisionspec.txt:73 en/help_topics/revisionspec.txt:85
 msgid ""
