@@ -66,6 +66,10 @@ class TestSplitter(tests.TestCase):
         self.assertAsTokens([(True, '')], u'""')
         self.assertAsTokens([(False, u"''")], u"''")
         self.assertAsTokens([(True, '')], u"''", single_quotes_allowed=True)
+        self.assertAsTokens([(False, u'a'), (True, u''), (False, u'c')],
+                            u'a "" c')
+        self.assertAsTokens([(False, u'a'), (True, u''), (False, u'c')],
+                            u"a '' c", single_quotes_allowed=True)
 
     def test_unicode_chars(self):
         self.assertAsTokens([(False, u'f\xb5\xee'), (False, u'\u1234\u3456')],
