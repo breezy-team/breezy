@@ -4,13 +4,14 @@ Priority: optional
 Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
 Uploaders: Wouter van Heyst <larstiq@larstiq.dyndns.org>,
            Andrew Starr-Bochicchio <asb@debian.org>
-Build-Conflicts: python-gpgme, python-sphinx
-Build-Depends: cython-dbg | python-pyrex,
-               ca-certificates,
+Build-Conflicts: python-gpgme,
+                 python-sphinx
+Build-Depends: ca-certificates,
+               cython-dbg | python-pyrex,
                debhelper (>> 8.1.0~),
                python (>= 2.6.6-3),
-               python-all-dev (>= 2.6.6-3),
                python-all-dbg (>= 2.6.6-3),
+               python-all-dev (>= 2.6.6-3),
                python-configobj (>= 4.7.2+ds-2),
                python-docutils,
                python-lzma-dbg,
@@ -31,12 +32,18 @@ XS-Testsuite: autopkgtest
 Package: bzr
 Recommends: python-gpgme
 Architecture: all
-Depends: python-bzrlib (>= ${source:Version}),
-         python-bzrlib (<= ${source:Version}.1~),
+Depends: python-bzrlib (<= ${source:Version}.1~),
+         python-bzrlib (>= ${source:Version}),
          ${misc:Depends},
          ${python:Depends}
-Breaks: python-bzrlib (<< 2.4.0~beta3~), bzr-pqm (<< 1.4.0~bzr80), bzr-xmloutput (<< 0.8.8+bzr160)
-Suggests: bzr-doc, bzr-gtk, bzr-svn, python-bzrlib.tests, bzrtools
+Breaks: bzr-pqm (<< 1.4.0~bzr80),
+        bzr-xmloutput (<< 0.8.8+bzr160),
+        python-bzrlib (<< 2.4.0~beta3~)
+Suggests: bzr-doc,
+          bzr-gtk,
+          bzr-svn,
+          bzrtools,
+          python-bzrlib.tests
 Description: easy to use distributed version control system
  Bazaar is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and
@@ -68,16 +75,21 @@ Depends: python-configobj,
          ${misc:Depends},
          ${python:Depends},
          ${shlibs:Depends}
-Recommends: ca-certificates, python-launchpadlib, python-paramiko
-Suggests: python-bzrlib.tests,
-          python-kerberos (>= 1.0+svn2455-1),
+Recommends: ca-certificates,
+            python-launchpadlib,
+            python-paramiko
+Suggests: python-bzrlib-dbg,
+          python-bzrlib.tests,
           python-gpgme,
+          python-kerberos (>= 1.0+svn2455-1),
           python-pycurl,
-          python-bzrlib-dbg,
           xdg-utils
-Breaks: bzr (<< 2.3.0-2), bzr-grep
-Provides: ${python:Provides}, bzr-grep
-Replaces: bzr (<< 2.3.0-2), bzr-grep
+Breaks: bzr (<< 2.3.0-2),
+        bzr-grep
+Provides: bzr-grep,
+          ${python:Provides}
+Replaces: bzr (<< 2.3.0-2),
+          bzr-grep
 Description: distributed version control system - python library
  Bazaar is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and
@@ -93,10 +105,15 @@ Package: python-bzrlib-dbg
 Architecture: any
 Priority: extra
 Section: debug
-Depends: ${misc:Depends}, ${python:Depends}, ${shlibs:Depends}, python-bzrlib (= ${binary:Version})
+Depends: python-bzrlib (= ${binary:Version}),
+         ${misc:Depends},
+         ${python:Depends},
+         ${shlibs:Depends}
 Provides: ${python:Provides}
 Recommends: python-dbg
-Suggests: python-meliae-dbg, python-lzma-dbg, python-gpgme-dbg
+Suggests: python-gpgme-dbg,
+          python-lzma-dbg,
+          python-meliae-dbg
 Description: distributed version control system - debug extension
  Bazaar is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and
@@ -107,8 +124,8 @@ Description: distributed version control system - debug extension
 Package: python-bzrlib.tests
 Architecture: all
 Section: python
-Depends: python-bzrlib (>= ${source:Version}),
-         python-bzrlib (<= ${source:Version}.1~),
+Depends: python-bzrlib (<= ${source:Version}.1~),
+         python-bzrlib (>= ${source:Version}),
          python-testtools (>= 0.9.5~),
          ${misc:Depends},
          ${python:Depends}
