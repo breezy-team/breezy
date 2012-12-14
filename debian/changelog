@@ -1,6 +1,7 @@
 bzr (2.6.0~bzr6571-2) UNRELEASED; urgency=low
 
   * Add myself to uploaders.
+  * Fix Vcs-Bzr link and add Vcs-Browser field.
 
  -- Andrew Starr-Bochicchio <asb@debian.org>  Fri, 14 Dec 2012 12:29:26 -0500
 
