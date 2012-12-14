@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2012-12-09 21:51+0000\n"
+"PO-Revision-Date: 2012-12-13 22:07+0000\n"
 "Last-Translator: Zbyněk Schwarz <Unknown>\n"
 "Language-Team: Czech <cs@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-12-10 04:30+0000\n"
-"X-Generator: Launchpad (build 16341)\n"
+"X-Launchpad-Export-Date: 2012-12-14 04:30+0000\n"
+"X-Generator: Launchpad (build 16369)\n"
 
 #: bzrlib/add.py:93
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -5285,7 +5285,7 @@ msgstr "Formát balíku není podporován"
 
 #: bzrlib/bundle/commands.py:77
 msgid "Records\n"
-msgstr "Záznamy\n"
+msgstr "Protokoly\n"
 
 #: bzrlib/bundle/commands.py:81
 msgid "{0}: {1} ({2} multiparent)\n"
@@ -7054,11 +7054,11 @@ msgstr "Nečekaný konec proudu kontejneru"
 
 #: bzrlib/errors.py:2719
 msgid "Unknown record type: %(record_type)r"
-msgstr "Neznámý typ záznamu: %(record_type)r"
+msgstr "Neznámý typ protokolu: %(record_type)r"
 
 #: bzrlib/errors.py:2727
 msgid "Invalid record: %(reason)s"
-msgstr "Neplatný záznam: %(reason)s"
+msgstr "Neplatný protokol: %(reason)s"
 
 #: bzrlib/errors.py:2735
 msgid "Container has data after end marker: %(excess)r"
@@ -7066,7 +7066,7 @@ msgstr "Kontejner má data po konečné značce: %(excess)r"
 
 #: bzrlib/errors.py:2743
 msgid "Container has multiple records with the same name: %(name)s"
-msgstr "Kontejner má mnoho záznamů se stejným názvem: %(name)s"
+msgstr "Kontejner má mnoho protokolů se stejným názvem: %(name)s"
 
 #: bzrlib/errors.py:2756
 msgid "Corrupt or incompatible data stream: %(reason)s"
