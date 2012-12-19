@@ -4,11 +4,11 @@ Priority: optional
 Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
 Uploaders: Wouter van Heyst <larstiq@larstiq.dyndns.org>,
            Andrew Starr-Bochicchio <asb@debian.org>
-Build-Conflicts: python-gpgme,
-                 python-sphinx
+Build-Conflicts: python-gpgme
 Build-Depends: ca-certificates,
                cython-dbg | python-pyrex,
                debhelper (>= 9),
+               fdupes,
                python (>= 2.6.6-3),
                python-all-dbg (>= 2.6.6-3),
                python-all-dev (>= 2.6.6-3),
@@ -20,6 +20,7 @@ Build-Depends: ca-certificates,
                python-paramiko,
                python-pycurl-dbg,
                python-subunit,
+               python-sphinx (>= 1.0.7+dfsg),
                python-testtools (>= 0.9.5~)
 Standards-Version: 3.9.3
 X-Python-Version: >= 2.6
@@ -145,7 +146,7 @@ Description: distributed version control system - testsuite
 Package: bzr-doc
 Architecture: all
 Section: doc
-Depends: ${misc:Depends}
+Depends: ${sphinxdoc:Depends}, ${misc:Depends}
 Suggests: bzr
 Replaces: bzr (<< 2.0.1)
 Breaks: bzr (<< 2.0.1)

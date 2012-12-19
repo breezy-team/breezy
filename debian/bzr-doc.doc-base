@@ -7,5 +7,6 @@ Format: Text
 Files: /usr/share/doc/bzr/txt/index.txt
 
 Format: HTML
-Index: /usr/share/doc/bzr/html/index.html
-Files: /usr/share/doc/bzr/html/*.html
+Index: /usr/share/doc/bzr/html/en/index.html
+Files: /usr/share/doc/bzr/html/en/*.html
+       /usr/share/doc/bzr/html/en/*/*.html

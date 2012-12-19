@@ -4,6 +4,10 @@ bzr (2.6.0~bzr6571-2) UNRELEASED; urgency=low
   * Fix Vcs-Bzr link and add Vcs-Browser field.
   * Run wrap-and-sort over the debian/control file and install files.
   * Bump debian/compat to 9.
+  * Build Sphinx-based docs rather than the plain html ones.
+    The fixes a number of outstanding doc related bugs:
+   - Closes: #670526, #606009
+   - LP: #544149, LP: #1014572, LP: #514609
 
  -- Andrew Starr-Bochicchio <asb@debian.org>  Fri, 14 Dec 2012 12:29:26 -0500
 
