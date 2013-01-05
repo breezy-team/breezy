@@ -9,15 +9,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2012-12-04 17:47+0000\n"
-"Last-Translator: calabero111 <Unknown>\n"
+"PO-Revision-Date: 2013-01-04 11:13+0000\n"
+"Last-Translator: Adolfo Jayme Barrientos <fitoschido@gmail.com>\n"
 "Language-Team: Spanish <es@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Launchpad-Export-Date: 2012-12-05 04:30+0000\n"
-"X-Generator: Launchpad (build 16335)\n"
+"X-Launchpad-Export-Date: 2013-01-05 04:35+0000\n"
+"X-Generator: Launchpad (build 16393)\n"
 
 #: bzrlib/add.py:93
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -6959,12 +6959,12 @@ msgstr ""
 #: bzrlib/log.py:2114
 msgid "fixes bug"
 msgid_plural "fixes bugs"
-msgstr[0] "error areglado"
-msgstr[1] "errores arreglados"
+msgstr[0] "corrige el error"
+msgstr[1] "corrige los errores"
 
 #: bzrlib/merge.py:689
 msgid "All changes applied successfully."
-msgstr "Cambios aplicados con éxito."
+msgstr "Todos los cambios se aplicaron correctamente."
 
 #: bzrlib/merge.py:691
 #, python-format
@@ -14203,6 +14203,7 @@ msgstr ""
 #: en/help_topics/url-special-chars.txt:4
 msgid "Bazaar allows locations to be specified in multiple ways, either:"
 msgstr ""
+"Bazar permite ubicaciones que se especifican en múltiples formas, ya sea:"
 
 #: en/help_topics/url-special-chars.txt:6
 msgid " * Fully qualified URLs"
@@ -14340,7 +14341,7 @@ msgstr "Modificadores permitidos:"
 
 #: en/help_topics/urlspec.txt:16
 msgid "  gio+                Access using any GIO supported protocols."
-msgstr ""
+msgstr "  gio + Access utilizando cualquier protocolo GIO compatible."
 
 #: en/help_topics/urlspec.txt:18
 msgid "Bazaar supports all of the standard parts within the URL::"
