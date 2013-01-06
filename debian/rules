@@ -10,7 +10,7 @@ pythonpath = $$(ls -d $(CURDIR)/build/lib.*-$(1))
 pythonpath_dbg = $$(ls -d $(CURDIR)/build/lib_d.*-$(1) 2>/dev/null || ls -d $(CURDIR)/build/lib.*$(1)-pydebug)
 
 %:
-	dh --with python2 --buildsystem=python_distutils $*
+	dh $* --with python2,sphinxdoc --buildsystem=python_distutils
 
 ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
 CONCURRENCY = BZR_CONCURRENCY=$(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
@@ -29,9 +29,23 @@ endif
 
 override_dh_auto_clean:
 	dh_auto_clean
-	$(MAKE) clean-docs
 	rm -rf debian/bzrhome
 	rm -f bzrlib/*_pyx.c
+	# 'make clean-sphinx' calls Makefiles in sub-directories that are
+	# created only after calling 'make docs-sphinx'. Check for them first.
+	if [ -f doc/es/Makefile ]; then $(MAKE) clean-sphinx; fi
+	# It also doesn't really clean every thing...
+	ls doc/en/user-reference/*txt | grep -v readme.txt | xargs rm -rf
+	rm -rf doc/developers/make.bat \
+		doc/es/make.bat \
+		doc/ja/make.bat \
+		doc/ru/make.bat \
+		doc/developers/Makefile \
+		doc/es/Makefile \
+		doc/ja/Makefile \
+		doc/ru/Makefile \
+		doc/*/_build/ \
+		doc/en/release-notes/index.txt
 
 override_dh_install:
 	find debian/tmp/ -name "*.pyc" | xargs rm -f
@@ -49,24 +63,36 @@ override_dh_install:
 	fi;
 	dh_install --list-missing --fail-missing
 	# Install the documentation; since html and txt and intermixed
-	# under doc/, this is handier than trying to do it from bzr-doc.install. 
-	for ext in txt html; do \
-	    ( cd doc && find -name "*.$$ext" -print0 ) | \
-	    	xargs -r0 -i'{}' -n1 install -D -m 644 'doc/{}' \
-	    	"debian/bzr-doc/usr/share/doc/bzr/$$ext/{}"; \
-	done
-	rm debian/bzr-doc/usr/share/doc/bzr/txt/*/*/licence.txt
-	# Install images as well
-	( cd doc && find -name "*.png" -print0 ) | \
-	    xargs -r0 -i'{}' -n1 install -D -m 644 'doc/{}' \
-	    "debian/bzr-doc/usr/share/doc/bzr/html/{}"
+	# under doc/, this is handier than trying to do it from bzr-doc.install.
+	( cd doc && find -name "*.txt" -not -wholename "*/_build/*" -print0 ) | \
+		xargs -r0 -i'{}' -n1 install -D -m 644 'doc/{}' \
+		"debian/bzr-doc/usr/share/doc/bzr/txt/{}"
 
 override_dh_auto_build:
 	dh_auto_build
-	$(MAKE) docs
+	$(MAKE) docs-sphinx
 
 override_dh_compress:
 	dh_compress -X.xvg -X.pdf
 
 override_dh_strip:
 	dh_strip -ppython-bzrlib --dbg-package=python-bzrlib-dbg
+
+override_dh_link:
+	# symlink identical resources.
+	cd debian/bzr-doc/usr/share/doc && fdupes -rnq . | while read line; do \
+		if [ -z "$$line" ]; then \
+			target=""; \
+		elif [ -z "$$target" ]; then \
+			target=$$line; \
+		else \
+			echo "symlinking duplicate file '$$line' to '$$target'"; \
+			ln -sf /usr/share/doc/"$$target" "$$line"; \
+		fi; \
+	done
+	dh_link
+
+override_dh_sphinxdoc:
+	dh_sphinxdoc -X searchtools.js
+	# dh_sphinxdoc chokes if we delete the extra licence files before it runs.
+	find debian/bzr-doc/usr/share/doc/bzr -name "licence.txt" -print | xargs rm -f

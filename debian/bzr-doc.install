@@ -1,5 +1,5 @@
-
-doc/default.css     usr/share/doc/bzr/html
-doc/en/_static/en/bzr-en-quick-reference.pdf    usr/share/doc/bzr/html/en/quick-reference
-doc/en/_static/en/bzr-en-quick-reference.png    usr/share/doc/bzr/html/en/quick-reference
-doc/en/_static/en/bzr-en-quick-reference.svg    usr/share/doc/bzr/html/en/quick-reference
+doc/developers/_build/html/*    usr/share/doc/bzr/html/developers
+doc/en/_build/html/*    usr/share/doc/bzr/html/en
+doc/es/_build/html/*    usr/share/doc/bzr/html/es
+doc/ja/_build/html/*    usr/share/doc/bzr/html/ja
+doc/ru/_build/html/*    usr/share/doc/bzr/html/ru
