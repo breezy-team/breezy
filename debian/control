@@ -19,8 +19,8 @@ Build-Depends: ca-certificates,
                python-meliae-dbg,
                python-paramiko,
                python-pycurl-dbg,
-               python-subunit,
                python-sphinx (>= 1.0.7+dfsg),
+               python-subunit,
                python-testtools (>= 0.9.5~)
 Standards-Version: 3.9.3
 X-Python-Version: >= 2.6
@@ -146,7 +146,8 @@ Description: distributed version control system - testsuite
 Package: bzr-doc
 Architecture: all
 Section: doc
-Depends: ${sphinxdoc:Depends}, ${misc:Depends}
+Depends: ${misc:Depends},
+         ${sphinxdoc:Depends}
 Suggests: bzr
 Replaces: bzr (<< 2.0.1)
 Breaks: bzr (<< 2.0.1)
