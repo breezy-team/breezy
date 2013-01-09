@@ -93,6 +93,8 @@ override_dh_link:
 	dh_link
 
 override_dh_sphinxdoc:
+ifneq "$(shell dh_listpackages | grep -- -doc)" ""
 	dh_sphinxdoc -X searchtools.js
+endif
 	# dh_sphinxdoc chokes if we delete the extra licence files before it runs.
 	find debian/bzr-doc/usr/share/doc/bzr -name "licence.txt" -print | xargs rm -f

@@ -1,3 +1,11 @@
+bzr (2.6.0~bzr6571-3) UNRELEASED; urgency=low
+
+  * debian/rules: Don't call dh_sphinxdoc if doc package is
+    not being built. Fixes FTBFS on buildds where arch:all
+    packages are not built.
+
+ -- Andrew Starr-Bochicchio <asb@debian.org>  Tue, 08 Jan 2013 19:58:10 -0500
+
 bzr (2.6.0~bzr6571-2) experimental; urgency=low
 
   * Add myself to uploaders.
