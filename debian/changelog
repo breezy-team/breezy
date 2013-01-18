@@ -1,9 +1,9 @@
-bzr (2.6.0~bzr6571-4) UNRELEASED; urgency=low
+bzr (2.6.0~bzr6571-4) experimental; urgency=low
 
   * debian/tests/control: Add python-subunit to autopkgtest
     dependencies (LP: #1101206).
 
- -- Andrew Starr-Bochicchio <asb@debian.org>  Fri, 18 Jan 2013 18:36:16 -0500
+ -- Andrew Starr-Bochicchio <asb@debian.org>  Fri, 18 Jan 2013 18:41:31 -0500
 
 bzr (2.6.0~bzr6571-3) experimental; urgency=low
 
