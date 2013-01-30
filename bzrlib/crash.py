@@ -259,7 +259,7 @@ def _open_crash_file():
         os.open(filename, 
             os.O_WRONLY|os.O_CREAT|os.O_EXCL,
             0600),
-        'w')
+        'wb')
 
 
 def _format_plugin_list():
