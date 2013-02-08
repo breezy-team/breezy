@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2013-01-15 13:45+0000\n"
-"Last-Translator: DNS <dns@rbose.org>\n"
+"PO-Revision-Date: 2013-02-07 16:27+0000\n"
+"Last-Translator: Spencer Young <Unknown>\n"
 "Language-Team: German <de@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Launchpad-Export-Date: 2013-01-16 04:30+0000\n"
-"X-Generator: Launchpad (build 16420)\n"
+"X-Launchpad-Export-Date: 2013-02-08 04:30+0000\n"
+"X-Generator: Launchpad (build 16482)\n"
 
 #: bzrlib/add.py:93
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -1008,7 +1008,7 @@ msgstr "  Informationen über das Format und die dazugehörigen Orte anzeigen:"
 
 #: bzrlib/builtins.py:1829
 msgid "    bzr info"
-msgstr ""
+msgstr "    bzr info"
 
 #: bzrlib/builtins.py:1831
 msgid ""
@@ -1874,7 +1874,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:2699
 msgid "Show digital signature validity."
-msgstr ""
+msgstr "Gültigkeit der digitalen Signatur anzeigen."
 
 #: bzrlib/builtins.py:2702
 msgid "Show revisions whose properties match this expression."
@@ -1913,7 +1913,7 @@ msgstr ""
 #: bzrlib/builtins.py:2933
 #, python-format
 msgid "bzr %s --revision takes one or two values."
-msgstr ""
+msgstr "bzr %s --revision benötigt ein oder zwei Werte."
 
 #: bzrlib/builtins.py:2978
 msgid ""
@@ -1951,7 +1951,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3013
 msgid "Cannot set both --verbose and --null"
-msgstr ""
+msgstr "--verbose und --null können nicht beide festgelegt werden"
 
 #: bzrlib/builtins.py:3022
 msgid "cannot specify both --from-root and PATH"
@@ -2284,7 +2284,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3466
 msgid "    bzr commit foo -x foo/bar"
-msgstr ""
+msgstr "    bzr commit foo -x foo/bar"
 
 #: bzrlib/builtins.py:3468
 msgid "  A selective commit after a merge is not yet supported."
