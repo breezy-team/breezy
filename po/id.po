@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2013-03-01 03:03+0000\n"
+"PO-Revision-Date: 2013-03-01 10:22+0000\n"
 "Last-Translator: dhardiputra <dhardiputra@gmail.com>\n"
 "Language-Team: Indonesian <id@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Launchpad-Export-Date: 2013-03-01 04:36+0000\n"
+"X-Launchpad-Export-Date: 2013-03-02 04:30+0000\n"
 "X-Generator: Launchpad (build 16514)\n"
 
 #: bzrlib/add.py:93
@@ -29,7 +29,7 @@ msgstr ""
 #: bzrlib/branch.py:2955
 #, python-format
 msgid "Pushed up to revision %d."
-msgstr ""
+msgstr "Mendorong ke revisi %d."
 
 #: bzrlib/branch.py:2957
 #, python-format
@@ -40,11 +40,11 @@ msgstr[1] ""
 
 #: bzrlib/branch.py:2960
 msgid "No new revisions or tags to push."
-msgstr ""
+msgstr "Tidak ada revisi baru atau tag."
 
 #: bzrlib/branch.py:2962
 msgid "No new revisions to push."
-msgstr ""
+msgstr "Tidak ada revisi baru."
 
 #: bzrlib/branch.py:2982
 msgid "checked branch {0} format {1}"
@@ -183,6 +183,7 @@ msgstr "Jangan menandai jenis objek dengan menggunakan indikator."
 #: bzrlib/builtins.py:397
 msgid "bzr status --revision takes exactly one or two revision specifiers"
 msgstr ""
+"status bzr -- revisi memakan waktu tepat satu atau dua revisi spesifikasi"
 
 #: bzrlib/builtins.py:441 bzrlib/builtins.py:5230
 msgid "You can only supply one of revision_id or --revision"
@@ -367,7 +368,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:863
 msgid "No error if existing, make parent directories as needed."
-msgstr ""
+msgstr "Jika tidak ada kesalahan, buat direktori induk yang diperlukan."
 
 #: bzrlib/builtins.py:897
 #, python-format
@@ -381,7 +382,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:976
 msgid "Move or rename a file."
-msgstr ""
+msgstr "Memindahkan atau mengganti nama file."
 
 #: bzrlib/builtins.py:978
 msgid "    bzr mv SOURCE... DESTINATION"
@@ -405,7 +406,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:990
 msgid "Files cannot be moved between branches."
-msgstr ""
+msgstr "File tidak dapat dipindahkan antar cabang."
 
 #: bzrlib/builtins.py:997
 msgid ""
@@ -427,7 +428,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1013
 msgid "missing file argument"
-msgstr ""
+msgstr "argumen file hilang"
 
 #: bzrlib/builtins.py:1017
 msgid "can not move root of branch"
@@ -527,7 +528,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1261
 msgid "Update a mirror of this branch."
-msgstr ""
+msgstr "Perbarui cermin dari cabang ini."
 
 #: bzrlib/builtins.py:1263
 msgid ""
@@ -612,11 +613,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:1318
 msgid "Overwrite tags only."
-msgstr ""
+msgstr "Timpa tag saja."
 
 #: bzrlib/builtins.py:1369
 msgid "Could not determine branch to refer to."
-msgstr ""
+msgstr "Tidak dapat menentukan cabang untuk merujuk."
 
 #: bzrlib/builtins.py:1378
 #, python-format
@@ -675,7 +676,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1429
 msgid "Do not use a shared repository, even if available."
-msgstr ""
+msgstr "Jangan menggunakan repositori, bahkan jika tersedia."
 
 #: bzrlib/builtins.py:1431
 msgid ""
@@ -741,7 +742,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1586
 msgid "(default)"
-msgstr ""
+msgstr "(Standar)"
 
 #: bzrlib/builtins.py:1598
 msgid "Create a new checkout of an existing branch."
@@ -902,7 +903,7 @@ msgstr ""
 #: bzrlib/builtins.py:1825 bzrlib/builtins.py:3744 bzrlib/builtins.py:4885
 #: bzrlib/builtins.py:6466
 msgid ":Examples:"
-msgstr ""
+msgstr ":Misal:"
 
 #: bzrlib/builtins.py:1827
 msgid "  Display information on the format and related locations:"
@@ -933,7 +934,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1858
 msgid "Remove files or directories."
-msgstr ""
+msgstr "Hapus file atau direktori."
 
 #: bzrlib/builtins.py:1860
 msgid ""
@@ -946,15 +947,15 @@ msgstr ""
 
 #: bzrlib/builtins.py:1868
 msgid "Only remove files that have never been committed."
-msgstr ""
+msgstr "Hanya menghapus file yang belum pernah dilakukan."
 
 #: bzrlib/builtins.py:1870
 msgid "The file deletion mode to be used."
-msgstr ""
+msgstr "Modus penghapusan file yang akan digunakan."
 
 #: bzrlib/builtins.py:1871
 msgid "Deletion Strategy"
-msgstr ""
+msgstr "Hapus Strategi"
 
 #: bzrlib/builtins.py:1872
 msgid "Backup changed files (default)."
@@ -980,7 +981,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1901
 msgid "No matching files."
-msgstr ""
+msgstr "Tidak ada file yang cocok."
 
 #: bzrlib/builtins.py:1962
 msgid "Reconcile bzr metadata in a branch."
@@ -1157,7 +1158,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:2197
 msgid "Repository format"
-msgstr ""
+msgstr "Format Repositori"
 
 #: bzrlib/builtins.py:2199
 msgid "Branches in the repository will default to not having a working tree."
@@ -1319,7 +1320,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:2314
 msgid "Pass these options to the external diff program."
-msgstr ""
+msgstr "Melewati pilihan ini untuk program diff eksternal."
 
 #: bzrlib/builtins.py:2317
 msgid ""
@@ -1337,7 +1338,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:2330
 msgid "Use this command to compare files."
-msgstr ""
+msgstr "Gunakan perintah ini untuk membandingkan file."
 
 #: bzrlib/builtins.py:2335
 msgid "Diff format to use."
@@ -1378,11 +1379,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:2482
 msgid "The limit argument must be an integer."
-msgstr ""
+msgstr "Argumen batas harus berupa angka."
 
 #: bzrlib/builtins.py:2490
 msgid "The levels argument must be an integer."
-msgstr ""
+msgstr "Argumen tingkat harus integer."
 
 #: bzrlib/builtins.py:2495
 msgid "Show historical log for a branch or subset of a branch."
@@ -1415,7 +1416,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:2513
 msgid ":Output control:"
-msgstr ""
+msgstr ":Kontrol Output:"
 
 #: bzrlib/builtins.py:2515
 msgid ""
@@ -1588,7 +1589,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:2612
 msgid ":Tips & tricks:"
-msgstr ""
+msgstr ":Tip & trik:"
 
 #: bzrlib/builtins.py:2614
 msgid ""
@@ -1651,11 +1652,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:2653
 msgid "Show from oldest to newest."
-msgstr ""
+msgstr "Tampilkan dari yang lama ke baru."
 
 #: bzrlib/builtins.py:2656
 msgid "Show files changed in each revision."
-msgstr ""
+msgstr "Tampilkan file yang diubah dalam setiap revisi."
 
 #: bzrlib/builtins.py:2662
 msgid "Show just the specified revision. See also \"help revisionspec\"."
@@ -1680,6 +1681,7 @@ msgstr ""
 #: bzrlib/builtins.py:2687
 msgid "Show changes made in each revision as a patch."
 msgstr ""
+"Tampilkan perubahan yang dibuat dalam revisi masing-masing sebagai patch."
 
 #: bzrlib/builtins.py:2689
 msgid "Show merged revisions like --levels 0 does."
@@ -1697,11 +1699,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:2699
 msgid "Show digital signature validity."
-msgstr ""
+msgstr "Tampilkan validitas tanda tangan digital."
 
 #: bzrlib/builtins.py:2702
 msgid "Show revisions whose properties match this expression."
-msgstr ""
+msgstr "Tampilkan revisi yang sifat sesuai dengan ungkapan ini."
 
 #: bzrlib/builtins.py:2706
 msgid "Show revisions whose message matches this expression."
@@ -1754,15 +1756,15 @@ msgstr ""
 
 #: bzrlib/builtins.py:2991
 msgid "Print unknown files."
-msgstr ""
+msgstr "Mencetak file tidak diketahui."
 
 #: bzrlib/builtins.py:2992
 msgid "Print versioned files."
-msgstr ""
+msgstr "Mencetak file berversi."
 
 #: bzrlib/builtins.py:2995
 msgid "Print ignored files."
-msgstr ""
+msgstr "Mencetak file diabaikan."
 
 #: bzrlib/builtins.py:2997
 msgid "List entries of a particular kind: file, directory, symlink."
@@ -1782,7 +1784,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3109
 msgid "Ignore specified files or patterns."
-msgstr ""
+msgstr "Abaikan file tertentu atau pola."
 
 #: bzrlib/builtins.py:3111
 msgid "See ``bzr help patterns`` for details on the syntax of patterns."
@@ -1944,7 +1946,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3243
 msgid "Alternatively, to list just the files::"
-msgstr ""
+msgstr "Atau, untuk daftar hanya file ::"
 
 #: bzrlib/builtins.py:3245
 msgid "    bzr ls --ignored"
@@ -2037,11 +2039,11 @@ msgstr ""
 #: bzrlib/builtins.py:3361
 msgid ""
 "Write the contents of a file as of a given revision to standard output."
-msgstr ""
+msgstr "Menulis isi file pada revisi yang diberikan ke output standar."
 
 #: bzrlib/builtins.py:3363
 msgid "If no revision is nominated, the last revision is used."
-msgstr ""
+msgstr "Jika tidak ada revisi lagi, revisi terakhir digunakan."
 
 #: bzrlib/builtins.py:3365
 msgid ""
@@ -2128,7 +2130,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3479
 msgid ":Checks:"
-msgstr ""
+msgstr ":Cek:"
 
 #: bzrlib/builtins.py:3481
 msgid ""
@@ -2164,7 +2166,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3506
 msgid "Description of the new revision."
-msgstr ""
+msgstr "Deskripsi revisi baru."
 
 #: bzrlib/builtins.py:3509
 msgid "Commit even if nothing has changed."
@@ -2435,15 +2437,15 @@ msgstr ""
 
 #: bzrlib/builtins.py:3822
 msgid "Remove the backup.bzr directory if successful."
-msgstr ""
+msgstr "Menghapus direktori backup.bzr jika berhasil."
 
 #: bzrlib/builtins.py:3824
 msgid "Show what would be done, but don't actually do anything."
-msgstr ""
+msgstr "Tampilkan apa yang akan dilakukan, tetapi tidak melakukan apa-apa."
 
 #: bzrlib/builtins.py:3839
 msgid "Show or set bzr user id."
-msgstr ""
+msgstr "Tampilkan atau mengatur id bzr pengguna."
 
 #: bzrlib/builtins.py:3841
 msgid ""
@@ -2465,7 +2467,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:3852
 msgid "Display email address only."
-msgstr ""
+msgstr "Menampilkan alamat email saja."
 
 #: bzrlib/builtins.py:3854
 msgid "Set identity for the current branch instead of globally."
@@ -2550,11 +2552,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:4215
 msgid "Show version of bzr."
-msgstr ""
+msgstr "Tampilkan versi bzr."
 
 #: bzrlib/builtins.py:4219
 msgid "Print just the version number."
-msgstr ""
+msgstr "Mencetak hanya nomor versi."
 
 #: bzrlib/builtins.py:4238
 msgid "It sure does!\n"
@@ -2780,7 +2782,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4647
 msgid "No location specified or remembered"
-msgstr ""
+msgstr "Tidak ada lokasi yang ditentukan atau diingat"
 
 #: bzrlib/builtins.py:4649
 msgid "{0} remembered {1} location {2}"
@@ -2827,7 +2829,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4681
 msgid "Show base revision text in conflicts."
-msgstr ""
+msgstr "Tampilkan revisi dasar teks dalam konflik."
 
 #: bzrlib/builtins.py:4693
 msgid ""
@@ -2927,7 +2929,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4844
 msgid "Show help on all commands."
-msgstr ""
+msgstr "Tampilkan bantuan pada semua perintah."
 
 #: bzrlib/builtins.py:4873
 msgid "Show unmerged/unpulled revisions between two branches."
@@ -2988,7 +2990,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4911
 msgid "Reverse the order of revisions."
-msgstr ""
+msgstr "Membalik urutan revisi."
 
 #: bzrlib/builtins.py:4913
 msgid "Display changes in the local branch only."
@@ -3020,7 +3022,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:4929
 msgid "Show all revisions in addition to the mainline ones."
-msgstr ""
+msgstr "Tampilkan semua revisi selain yang utama."
 
 #: bzrlib/builtins.py:4983
 msgid "No peer location known or specified."
@@ -3086,11 +3088,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:5095
 msgid "Delete obsolete packs to save disk space."
-msgstr ""
+msgstr "Hapus paket usang untuk menghemat ruang disk."
 
 #: bzrlib/builtins.py:5109
 msgid "List the installed plugins."
-msgstr ""
+msgstr "Daftar plugin yang terpasang."
 
 #: bzrlib/builtins.py:5111
 msgid ""
