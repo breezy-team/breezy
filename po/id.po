@@ -8,19 +8,19 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2013-03-01 10:22+0000\n"
+"PO-Revision-Date: 2013-03-11 12:55+0000\n"
 "Last-Translator: dhardiputra <dhardiputra@gmail.com>\n"
 "Language-Team: Indonesian <id@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Launchpad-Export-Date: 2013-03-02 04:30+0000\n"
-"X-Generator: Launchpad (build 16514)\n"
+"X-Launchpad-Export-Date: 2013-03-12 04:30+0000\n"
+"X-Generator: Launchpad (build 16524)\n"
 
 #: bzrlib/add.py:93
 msgid "skipping {0} (larger than {1} of {2} bytes)"
-msgstr ""
+msgstr "melewatkan {0} (larger than {1} of {2} bytes)"
 
 #: bzrlib/branch.py:854
 msgid "Unstacking"
@@ -35,8 +35,7 @@ msgstr "Mendorong ke revisi %d."
 #, python-format
 msgid "%d tag updated."
 msgid_plural "%d tags updated."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d tag diperbarui."
 
 #: bzrlib/branch.py:2960
 msgid "No new revisions or tags to push."
