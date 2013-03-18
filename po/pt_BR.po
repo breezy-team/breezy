@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2013-03-07 17:21+0000\n"
-"Last-Translator: Rafael Neri <Unknown>\n"
+"PO-Revision-Date: 2013-03-18 03:01+0000\n"
+"Last-Translator: Fernando Júnior <Unknown>\n"
 "Language-Team: Brazilian Portuguese <pt_BR@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Launchpad-Export-Date: 2013-03-08 04:30+0000\n"
-"X-Generator: Launchpad (build 16523)\n"
+"X-Launchpad-Export-Date: 2013-03-18 04:30+0000\n"
+"X-Generator: Launchpad (build 16532)\n"
 
 #: bzrlib/add.py:93
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -14261,6 +14261,8 @@ msgstr ":mainline:"
 msgid ""
 "    Select the revision that merged the specified revision into mainline."
 msgstr ""
+"    Selecione a revisão que se fundiu a revisão especificada na linha "
+"principal."
 
 #: en/help_topics/revisionspec.txt:174
 msgid ":last:"
@@ -14350,16 +14352,23 @@ msgid ""
 "the top of the file. Rule patterns use exactly the same conventions\n"
 "as ignore patterns. See :doc:`patterns-help` for details."
 msgstr ""
+"Padrões são ordenados e busca pára assim que uma partidas.\n"
+"Como conseqüência, os padrões mais explícitos devem ser colocados para\n"
+"o topo dos padrões de arquivo. Regra usar exatamente as mesmas convenções "
+"de\n"
+"como ignorar padrões Veja:.doc:`padrões-ajuda` para mais detalhes."
 
 #: en/help_topics/rules.txt:37
 msgid ".. note::"
-msgstr ""
+msgstr ".. nota::"
 
 #: en/help_topics/rules.txt:39
 msgid ""
 "   Patterns containing square brackets or spaces should be\n"
 "   surrounded in quotes to ensure they are correctly parsed.\n"
 msgstr ""
+"   Padrões que contêm colchetes ou espaços deve ser\n"
+"   Cercado por aspas para garantir que eles sejam corretamente analisados.\n"
 
 #: en/help_topics/topics.txt:1
 msgid ""
@@ -14499,6 +14508,8 @@ msgid ""
 "Comma also has special meaning in URLs, because it denotes `segment "
 "parameters`_"
 msgstr ""
+"Vírgula também tem um significado especial em URLs, porque denota "
+"`segmentoparâmetros` _"
 
 #: en/help_topics/url-special-chars.txt:41
 msgid ""
