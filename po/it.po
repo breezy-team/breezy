@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2013-03-22 13:53+0000\n"
+"PO-Revision-Date: 2013-03-24 19:03+0000\n"
 "Last-Translator: Gianfranco Frisani <gfrisani@libero.it>\n"
 "Language-Team: Italian <it@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Launchpad-Export-Date: 2013-03-23 04:30+0000\n"
+"X-Launchpad-Export-Date: 2013-03-25 04:30+0000\n"
 "X-Generator: Launchpad (build 16540)\n"
 
 #: bzrlib/add.py:93
@@ -863,7 +863,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1740
 msgid "bzr update --revision takes exactly one revision"
-msgstr ""
+msgstr "bzr update --revision prende esattamente una revisione"
 
 #: bzrlib/builtins.py:1748
 msgid "bzr update can only update a whole tree, not a file or subdirectory"
@@ -958,7 +958,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1868
 msgid "Only remove files that have never been committed."
-msgstr ""
+msgstr "Rimuove solo i file sui quali non è mai stato eseguito il commit."
 
 #: bzrlib/builtins.py:1870
 msgid "The file deletion mode to be used."
