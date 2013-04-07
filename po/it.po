@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2013-04-04 13:56+0000\n"
+"PO-Revision-Date: 2013-04-06 18:31+0000\n"
 "Last-Translator: Gianfranco Frisani <gfrisani@libero.it>\n"
 "Language-Team: Italian <it@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Launchpad-Export-Date: 2013-04-05 04:30+0000\n"
+"X-Launchpad-Export-Date: 2013-04-07 04:30+0000\n"
 "X-Generator: Launchpad (build 16550)\n"
 
 #: bzrlib/add.py:93
@@ -1744,10 +1744,12 @@ msgstr ""
 #: bzrlib/builtins.py:2714
 msgid "Show revisions whose authors match this expression."
 msgstr ""
+"Visualizza le revisioni i cui autori corrispondono a questa espressione."
 
 #: bzrlib/builtins.py:2718
 msgid "Show revisions whose bugs match this expression."
 msgstr ""
+"Visualizza le revisioni i cui bug corrispondono a questa espressione."
 
 #: bzrlib/builtins.py:2772
 msgid "--exclude-common-ancestry requires -r with two revisions"
