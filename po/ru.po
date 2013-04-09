@@ -8,16 +8,16 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2012-01-21 16:45+0000\n"
-"Last-Translator: Sergey Basalaev <SBasalaev@gmail.com>\n"
+"PO-Revision-Date: 2013-04-08 07:57+0000\n"
+"Last-Translator: Артём Воротников <Unknown>\n"
 "Language-Team: Russian <ru@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
-"X-Launchpad-Export-Date: 2012-07-11 04:33+0000\n"
-"X-Generator: Launchpad (build 15593)\n"
+"X-Launchpad-Export-Date: 2013-04-09 04:32+0000\n"
+"X-Generator: Launchpad (build 16550)\n"
 
 #: bzrlib/add.py:93
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -770,7 +770,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1318
 msgid "Overwrite tags only."
-msgstr ""
+msgstr "Переписать только теги."
 
 #: bzrlib/builtins.py:1369
 msgid "Could not determine branch to refer to."
@@ -782,6 +782,8 @@ msgid ""
 "No push location known or specified. To push to the parent branch (at %s), "
 "use 'bzr push :parent'."
 msgstr ""
+"Не указано местоположение отправки. Чтобы отправить в родительскую ветвь (на "
+"%s) используйте 'bzr push :parent'."
 
 #: bzrlib/builtins.py:1384 bzrlib/foreign.py:306
 msgid "No push location known or specified."
@@ -1007,6 +1009,8 @@ msgid ""
 "You can use this to visit an older revision, or to update a working tree\n"
 "that is out of date from its branch."
 msgstr ""
+"Вы можете использовать это для того, чтобы увидеть старые ревизии или "
+"обновить рабочее дерево, которое устарело по отношению к своей ветке."
 
 #: bzrlib/builtins.py:1709
 msgid ""
@@ -1015,6 +1019,10 @@ msgid ""
 "these changes, use 'bzr revert'.  The uncommitted changes may conflict\n"
 "with the changes brought in by the change in basis revision."
 msgstr ""
+"При наличии не подтверждённых изменений в рабочем дереве,они будут "
+"осуществлены и оставлены как неподтвержденные после обновления. Чтобы "
+"отменить эти изменения используйте 'bzr revert'. Не подтверждённые изменения "
+"могут конфликтовать с изменениями, вызванными обновлением."
 
 #: bzrlib/builtins.py:1714
 msgid ""
@@ -1169,7 +1177,7 @@ msgstr "Стратегия удаления"
 
 #: bzrlib/builtins.py:1872
 msgid "Backup changed files (default)."
-msgstr ""
+msgstr "Создать резервную копию изменённых файлов (по умолчанию)."
 
 #: bzrlib/builtins.py:1873
 msgid "Delete from bzr but leave the working copy."
@@ -1250,6 +1258,8 @@ msgid ""
 "Pack-based format used in 1.x series. Introduced in 0.92. Interoperates with "
 "bzr repositories before 0.92 but cannot be read by bzr < 0.92. "
 msgstr ""
+"Пакетный формат, используемый в версиях 1.х. Представлен в 0.92. "
+"Взаимодействует с хранилищами bzr 0.92 и ниже, но не читается bzr ниже 0.92. "
 
 #: bzrlib/builtins.py:2044 bzrlib/builtins.py:2162 bzrlib/builtins.py:3779
 msgid "The 2a format with experimental support for colocated branches.\n"
@@ -2094,7 +2104,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:2699
 msgid "Show digital signature validity."
-msgstr ""
+msgstr "Показать корректность цифровой подписи."
 
 #: bzrlib/builtins.py:2702
 msgid "Show revisions whose properties match this expression."
@@ -2479,7 +2489,7 @@ msgstr "Тип файла для экспорта."
 
 #: bzrlib/builtins.py:3320
 msgid "Apply content filters to export the convenient form."
-msgstr ""
+msgstr "Применить фильтры содержимого для экспорта в удобной форме."
 
 #: bzrlib/builtins.py:3324
 msgid "Name of the root directory inside the exported file."
@@ -2496,7 +2506,7 @@ msgstr ""
 #: bzrlib/builtins.py:3329
 msgid ""
 "Export the working tree contents rather than that of the last revision."
-msgstr ""
+msgstr "Экспортировать содержимое рабочего дерева вместо последней ревизии."
 
 #: bzrlib/builtins.py:3348
 msgid "--uncommitted requires a working tree"
