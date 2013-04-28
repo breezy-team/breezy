@@ -529,3 +529,65 @@ class TestSwitchUncommitted(TestCaseWithTransport):
         self.assertPathDoesNotExist('checkout/a')
         self.run_bzr(['switch', '-d', 'checkout', 'orig'])
         self.assertPathDoesNotExist('checkout/a')
+
+class TestSwitchStandAloneCorruption(TestCaseWithTransport):
+    def test_empty_tree_switch(self):
+        """Inspired by: https://bugs.launchpad.net/bzr/+bug/1018628
+           switch . on an empty tree gets infinite recursion
+           I think it should give an error and do nothing.
+        """
+        super(TestSwitchStandAloneCorruption, self).setUp()
+        self.script_runner = script.ScriptRunner()
+        self.script_runner.run_script(self, '''
+                $ bzr init
+                Created a standalone tree (format: 2a)
+                $ bzr switch .
+                ERROR: Have a meaningful error with suggestions
+                ''')
+
+    def test_switch_on_previous_rev(self):
+        """Inspired by: https://bugs.launchpad.net/bzr/+bug/1018628
+           switch to previous rev in a standalone directory
+           I think it should give an error and do nothing.
+           "switching" to previous rev in a standalone branch doesn't
+           make sense, unless you are creating a new branch.
+           So maybe there should be a -b flag, with a branch name.
+           Or first revert to a previous revision and then switch -b?
+        """
+        super(TestSwitchStandAloneCorruption, self).setUp()
+        self.script_runner = script.ScriptRunner()
+        self.script_runner.run_script(self, '''
+                $ bzr init
+                Created a standalone tree (format: 2a)
+                $ bzr commit -m 1 --unchanged
+                $ bzr commit -m 2 --unchanged
+                $ bzr switch -r 1
+                ERROR: If you want to switch to a previous version in a
+                standalone tree, you must create a new branch,
+                try bzr switch -b <new_branch_name> -r <rev>
+                ''', null_output_matches_anything=True)
+
+    def test_switch_on_dot_locks_repo_path(self):
+        """This is the probelm I stumbled upon. It's similar to
+           https://bugs.launchpad.net/bzr/+bug/1018628
+           I was playing with colo branches and I accidentally typed
+           "bzr switch ." and that broke the path-independence so renaming
+           the directory would break the whole vcs.
+           I think "bzr switch ." should give an error and do nothing.
+        """
+        super(TestSwitchStandAloneCorruption, self).setUp()
+        self.script_runner = script.ScriptRunner()
+        self.script_runner.run_script(self, '''
+                $ mkdir mywork
+                $ cd mywork
+                $ bzr init
+                Created a standalone tree (format: 2a)
+                $ echo A > a && bzr add a && bzr commit -m A
+                $ bzr switch -b br1
+                $ bzr switch .
+                $ cd ..
+                $ mv mywork mywork1
+                $ cd mywork1
+                $ bzr branches
+                Something meaningful That's not an error about pathnames
+                ''', null_output_matches_anything=True)
