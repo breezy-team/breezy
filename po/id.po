@@ -8,14 +8,14 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2013-04-23 05:43+0000\n"
+"PO-Revision-Date: 2013-05-01 15:22+0000\n"
 "Last-Translator: dhardiputra <dhardiputra@gmail.com>\n"
 "Language-Team: Indonesian <id@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Launchpad-Export-Date: 2013-04-24 04:30+0000\n"
+"X-Launchpad-Export-Date: 2013-05-02 04:30+0000\n"
 "X-Generator: Launchpad (build 16580)\n"
 
 #: bzrlib/add.py:93
@@ -79,6 +79,8 @@ msgid ""
 "added\n"
 "    Versioned in the working copy but not in the previous revision."
 msgstr ""
+"ditambahkan\n"
+"    Berversi dalam copy pekerjaan tetapi tidak dalam revisi sebelumnya."
 
 #: bzrlib/builtins.py:323
 msgid ""
@@ -86,6 +88,9 @@ msgid ""
 "    Versioned in the previous revision but removed or deleted\n"
 "    in the working copy."
 msgstr ""
+"dihapus\n"
+"    Berversi dalam revisi sebelumnya tapi dihapus atau dihapus\n"
+"    dalam copy pekerjaan."
 
 #: bzrlib/builtins.py:327
 msgid ""
@@ -201,7 +206,7 @@ msgstr "Repositori %r tidak mendukung akses ke teks revisi baku"
 
 #: bzrlib/builtins.py:462
 msgid "The repository {0} contains no revision {1}."
-msgstr ""
+msgstr "Repositori {0} tidak mengandung revisi {1}."
 
 #: bzrlib/builtins.py:469
 msgid "You cannot specify a NULL revision."
