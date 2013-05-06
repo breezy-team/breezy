@@ -27,7 +27,6 @@ X-Python-Version: >= 2.6
 Vcs-Bzr: http://bzr.debian.org/bzr/pkg-bazaar/bzr/2.6
 Vcs-Browser: http://bzr.debian.org/loggerhead/pkg-bazaar/bzr/2.6
 Homepage: http://bazaar-vcs.org
-Dm-Upload-Allowed: yes
 XS-Testsuite: autopkgtest
 
 Package: bzr
