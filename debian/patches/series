@@ -2,3 +2,4 @@
 02_external_configobj
 03_spurious_test_failure
 04_revert_ui_changes
+05_remove_gzip_test
