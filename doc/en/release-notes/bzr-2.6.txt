@@ -104,9 +104,9 @@ Internals
 Testing
 *******
 
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
+* Fix test failures occurring only with LC_ALL=C, when prompting a user,
+  ``stderr`` encoding should be preferred over terminal encoding if
+  available. (Vincent Ladeuil, #1086209)
 
 
 bzr 2.6b2

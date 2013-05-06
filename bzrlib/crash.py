@@ -170,7 +170,7 @@ def _write_apport_report_to_file(exc_info):
     pr['Platform'] = platform.platform(aliased=1)
     pr['UserEncoding'] = osutils.get_user_encoding()
     pr['FileSystemEncoding'] = sys.getfilesystemencoding()
-    pr['Locale'] = os.environ.get('LANG')
+    pr['Locale'] = os.environ.get('LANG', 'C')
     pr['BzrPlugins'] = _format_plugin_list()
     pr['PythonLoadedModules'] = _format_module_list()
     pr['BzrDebugFlags'] = pprint.pformat(debug.debug_flags)
@@ -259,7 +259,7 @@ def _open_crash_file():
         os.open(filename, 
             os.O_WRONLY|os.O_CREAT|os.O_EXCL,
             0600),
-        'w')
+        'wb')
 
 
 def _format_plugin_list():

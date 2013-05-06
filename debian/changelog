@@ -1,3 +1,9 @@
+bzr (2.6.0~bzr6573-1) UNRELEASED; urgency=low
+
+  * New upstream snapshot.
+
+ -- Andrew Starr-Bochicchio <a.starr.b@gmail.com>  Mon, 06 May 2013 16:47:00 -0400
+
 bzr (2.6.0~bzr6571-4) experimental; urgency=low
 
   * debian/tests/control: Add python-subunit to autopkgtest
