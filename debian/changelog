@@ -6,6 +6,7 @@ bzr (2.6.0~bzr6573-1) UNRELEASED; urgency=low
   * Drop debian/patches/04_revert_ui_changes, fixed upstream.
   * Drop deprecated Dm-Upload-Allowed field.
   * Bump Standards-Version to 3.9.4, no changes needed.
+  * Drop un-needed Build-Conflicts on python-gpgme.
 
  -- Andrew Starr-Bochicchio <a.starr.b@gmail.com>  Mon, 06 May 2013 16:47:00 -0400
 
