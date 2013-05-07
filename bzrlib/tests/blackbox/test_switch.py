@@ -567,7 +567,7 @@ class TestSwitchStandAloneCorruption(TestCaseWithTransport):
                 try bzr switch -b <new_branch_name> -r <rev>
                 ''', null_output_matches_anything=True)
 
-    def test_switch_on_dot_locks_repo_path(self):
+    def test_switch_create_colo_locks_repo_path(self):
         """This is the probelm I stumbled upon. It's similar to
            https://bugs.launchpad.net/bzr/+bug/1018628
            I was playing with colo branches and I accidentally typed
@@ -584,7 +584,6 @@ class TestSwitchStandAloneCorruption(TestCaseWithTransport):
                 Created a standalone tree (format: 2a)
                 $ echo A > a && bzr add a && bzr commit -m A
                 $ bzr switch -b br1
-                $ bzr switch .
                 $ cd ..
                 $ mv mywork mywork1
                 $ cd mywork1
