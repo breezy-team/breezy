@@ -1,5 +1,6 @@
-bzr (2.6.0~bzr6573-1) UNRELEASED; urgency=low
+bzr (2.6.0~bzr6573-1) unstable; urgency=low
 
+  * Upload to unstable.
   * New upstream snapshot.
   * Remove the test_tuned_gzip.TestToGzip.test_enormous_chunks test
     (LP: #1116079, #1160572). 
@@ -8,7 +9,7 @@ bzr (2.6.0~bzr6573-1) UNRELEASED; urgency=low
   * Bump Standards-Version to 3.9.4, no changes needed.
   * Drop un-needed Build-Conflicts on python-gpgme.
 
- -- Andrew Starr-Bochicchio <a.starr.b@gmail.com>  Mon, 06 May 2013 16:47:00 -0400
+ -- Andrew Starr-Bochicchio <asb@debian.org>  Sat, 11 May 2013 19:13:15 -0400
 
 bzr (2.6.0~bzr6571-4) experimental; urgency=low
 
