@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2013-05-10 13:43+0000\n"
+"PO-Revision-Date: 2013-05-12 10:50+0000\n"
 "Last-Translator: Gianfranco Frisani <gfrisani@libero.it>\n"
 "Language-Team: Italian <it@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Launchpad-Export-Date: 2013-05-11 04:30+0000\n"
-"X-Generator: Launchpad (build 16598)\n"
+"X-Launchpad-Export-Date: 2013-05-13 04:33+0000\n"
+"X-Generator: Launchpad (build 16614)\n"
 
 #: bzrlib/add.py:93
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -6898,17 +6898,17 @@ msgstr ""
 #: bzrlib/plugins/weave_fmt/bzrdir.py:285
 #, python-format
 msgid "%6d revisions and inventories"
-msgstr ""
+msgstr "%6d revisioni e inventari"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:287
 #, python-format
 msgid "%6d revisions not present"
-msgstr ""
+msgstr "%6d revisioni non presenti"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:289
 #, python-format
 msgid "%6d texts"
-msgstr ""
+msgstr "%6d testi"
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:325
 msgid "writing weave"
@@ -7108,7 +7108,7 @@ msgstr ""
 #: bzrlib/reconfigure.py:69
 #, python-format
 msgid "%s is now not stacked\n"
-msgstr ""
+msgstr "%s ora non è in stack\n"
 
 #: bzrlib/remote.py:1228 bzrlib/repository.py:289
 #, python-format
