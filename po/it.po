@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2013-05-12 10:50+0000\n"
+"PO-Revision-Date: 2013-05-13 08:54+0000\n"
 "Last-Translator: Gianfranco Frisani <gfrisani@libero.it>\n"
 "Language-Team: Italian <it@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Launchpad-Export-Date: 2013-05-13 04:33+0000\n"
-"X-Generator: Launchpad (build 16614)\n"
+"X-Launchpad-Export-Date: 2013-05-14 04:30+0000\n"
+"X-Generator: Launchpad (build 16617)\n"
 
 #: bzrlib/add.py:93
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -7480,7 +7480,7 @@ msgstr ""
 
 #: bzrlib/win32utils.py:146
 msgid "Failed to GetProcessMemoryInfo()"
-msgstr ""
+msgstr "GetProcessMemoryInfo() non riuscito"
 
 #: bzrlib/win32utils.py:167
 msgid "Cannot debug memory on win32 without ctypes or win32process"
