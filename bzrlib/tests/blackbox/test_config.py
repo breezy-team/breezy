@@ -364,3 +364,15 @@ class TestSmartServerConfig(tests.TestCaseWithTransport):
         self.assertLength(5, self.hpss_calls)
         self.assertLength(1, self.hpss_connections)
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
+
+
+class TestConfigDirectory(tests.TestCaseWithTransport):
+
+    def test_parent_alias(self):
+        t = self.make_branch_and_tree('base')
+        t.branch.get_config_stack().set('test', 'base')
+        clone = t.branch.bzrdir.sprout('clone').open_branch()
+        clone.get_config_stack().set('test', 'clone')
+        out, err = self.run_bzr(['config', '-d', ':parent', 'test'],
+                                working_dir='clone')
+        self.assertEquals('base\n', out)

@@ -29,6 +29,7 @@ from bzrlib import (
     errors,
     tests,
     transform,
+    transport,
     )
 from bzrlib.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from bzrlib.tests.per_workingtree import (
@@ -99,11 +100,24 @@ class TestTreeImplementationSupport(tests.TestCaseWithTransport):
 class TestCaseWithTree(TestCaseWithControlDir):
 
     def make_branch_and_tree(self, relpath):
-        made_control = self.make_bzrdir(relpath, format=
-            self.workingtree_format._matchingbzrdir)
+        bzrdir_format = self.workingtree_format.get_controldir_for_branch()
+        made_control = self.make_bzrdir(relpath, format=bzrdir_format)
         made_control.create_repository()
-        made_control.create_branch()
-        return self.workingtree_format.initialize(made_control)
+        b = made_control.create_branch()
+        if getattr(self, 'repo_is_remote', False):
+            # If the repo is remote, then we just create a local lightweight
+            # checkout
+            # XXX: This duplicates a lot of Branch.create_checkout, but we know
+            #      we want a) lightweight, and b) a specific WT format. We also
+            #      know that nothing should already exist, etc.
+            t = transport.get_transport(relpath)
+            t.ensure_base()
+            wt_dir = bzrdir_format.initialize_on_transport(t)
+            branch_ref = wt_dir.set_branch_reference(b)
+            wt = wt_dir.create_workingtree(None, from_branch=branch_ref)
+        else:
+            wt = self.workingtree_format.initialize(made_control)
+        return wt
 
     def workingtree_to_test_tree(self, tree):
         return self._workingtree_to_test_tree(self, tree)

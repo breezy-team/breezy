@@ -173,7 +173,7 @@ class TestRemove(TestCaseWithWorkingTree):
         """Removing a absent directory succeeds without corruption (#150438)."""
         paths = ['a/', 'a/b']
         tree = self.get_committed_tree(paths)
-        self.get_transport('.').delete_tree('a')
+        tree.bzrdir.root_transport.delete_tree('a')
         tree.remove(['a'])
         self.assertRemovedAndDeleted('b')
         tree._validate()
