@@ -16,8 +16,10 @@
 
 """Blackbox tests for the 'bzr testament' command"""
 
+import re
 
 from bzrlib.tests.test_testament import (
+    osutils,
     REV_1_SHORT,
     REV_1_SHORT_STRICT,
     REV_2_TESTAMENT,
@@ -46,3 +48,12 @@ class TestTestament(TestamentSetup):
         self.assertEqualDiff(err, '')
         self.assertEqualDiff(out, REV_1_SHORT_STRICT)
 
+    def test_testament_non_ascii(self):
+        self.wt.commit(u"Non \xe5ssci message")
+        long_out, err = self.run_bzr('testament --long')
+        self.assertEqualDiff(err, '')
+        short_out, err = self.run_bzr('testament')
+        self.assertEqualDiff(err, '')
+        sha1_re = re.compile('sha1: (?P<sha1>[a-f0-9]+)$', re.M)
+        sha1 = sha1_re.search(short_out).group('sha1')
+        self.assertEqual(sha1, osutils.sha_string(long_out))

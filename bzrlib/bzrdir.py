@@ -77,6 +77,39 @@ from bzrlib.symbol_versioning import (
     )
 
 
+# Note: jam 20130519 This function was added in 2.4 as part of
+#       6068 Patch Queue Manager       2012-03-27 [merge]
+#           (jelmer) Add support for feature flags. (Jelmer Vernooij)
+#
+#       However, it doesn't seem to be needed or called in 2.5, which has
+#       different support for how it handles feature flags in format strings.
+#       It might be prudent to remove it to avoid confusion.
+def extract_format_string(text):
+    """Read a format string from a file.
+
+    The first line is returned. The other lines can contain
+    optional features. An exception is raised when a
+    required feature is present.
+    """
+    lines = text.splitlines(True)
+    try:
+        firstline = lines.pop(0)
+    except IndexError:
+        raise errors.UnknownFormatError(format=text, kind='')
+    for lineno, line in enumerate(lines):
+        try:
+            (necessity, feature) = line.split(" ", 1)
+        except ValueError:
+            raise errors.ParseFormatError(lineno=lineno+2,
+                line=line, text=text)
+        else:
+            if necessity == "optional":
+                mutter("Ignoring optional feature %s", feature)
+            else:
+                raise errors.MissingFeature(feature)
+    return firstline
+
+
 class BzrDir(controldir.ControlDir):
     """A .bzr control diretory.
 
