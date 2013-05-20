@@ -1,10 +1,10 @@
-bzr (2.6.0~bzr6574-1) UNRELEASED; urgency=low
+bzr (2.6.0~bzr6574-1) unstable; urgency=low
 
   * New upstream snapshot.
    - Fix CVE 2013-2009. Avoid allowing multiple wildcards in a single
      SSL cert hostname segment (Closes: #709068, LP: #1182124).
 
- -- Andrew Starr-Bochicchio <asb@debian.org>  Mon, 20 May 2013 19:14:54 -0400
+ -- Andrew Starr-Bochicchio <asb@debian.org>  Mon, 20 May 2013 19:16:44 -0400
 
 bzr (2.6.0~bzr6573-1) unstable; urgency=low
 
