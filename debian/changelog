@@ -1,6 +1,7 @@
-bzr-builddeb (2.8.6) UNRELEASED; urgency=low
+bzr-builddeb (2.8.6) unstable; urgency=low
 
   * Team upload.
+  * Upload to unstable.
   * Move to minimal dh style rules file. 
   * Drop bzr-svn from Build-Depends-Indep and Suggests (Closes: #709288).
   * Bump Standards-Version to 3.9.4, no changes needed.

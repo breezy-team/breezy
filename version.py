@@ -26,5 +26,5 @@
 # releaselevel of 'dev' for unreleased under-development code.
 #
 # Please set this to 'final' before upload.
-version_info = (2, 1, 2, 'dev', 0)
+version_info = (2, 8, 6, 'final', 0)
 
