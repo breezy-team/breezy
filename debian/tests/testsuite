@@ -1,0 +1,2 @@
+#!/bin/sh
+/usr/bin/bzr selftest -s bp.builddeb --parallel=fork

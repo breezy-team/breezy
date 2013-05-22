@@ -9,6 +9,7 @@ Vcs-Bzr: http://bzr.debian.org/pkg-bazaar/bzr-builddeb/unstable
 Vcs-Browser: http://bzr.debian.org/loggerhead/pkg-bazaar/bzr-builddeb/unstable
 X-Python-Version: >= 2.4
 Standards-Version: 3.9.4
+XS-Testsuite: autopkgtest
 
 Package: bzr-builddeb
 Architecture: all

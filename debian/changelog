@@ -5,6 +5,7 @@ bzr-builddeb (2.8.6) UNRELEASED; urgency=low
   * Drop bzr-svn from Build-Depends-Indep and Suggests (Closes: #709288).
   * Bump Standards-Version to 3.9.4, no changes needed.
   * Drop deprecated debian/pycompat and debian/pyversions files.
+  * Add autopkgtests.
 
  -- Andrew Starr-Bochicchio <asb@debian.org>  Wed, 22 May 2013 14:03:43 -0400
 
