@@ -10,18 +10,8 @@ doc_dir=doc/user_manual/
 rst_docs=$(wildcard $(addsuffix /*.rst, $(doc_dir)))
 html_docs=$(patsubst %.rst, %.html, $(rst_docs))
 
-%.html: %.rst
-	rst2html --stylesheet-path=$(doc_dir)/user_manual.css $< > $@
-
-docs: $(html_docs)
-
-build-indep: $(PYVERS:%=build-python%) docs
-	rst2html README > README.html
-	touch $@
-
-build-arch:
-
-build: build-indep
+%:
+	dh $* --with python2 --buildsystem=python_distutils
 
 ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
 SELFTEST_CONCURRENCY = BZR_CONCURRENCY=$(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
@@ -31,53 +21,20 @@ SELFTEST_CONCURRENCY =
 SELFTEST_PARALLEL =
 endif
 
-build-python%:
-	python$* setup.py build
+override_dh_auto_test:
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 	$(SELFTEST_CONCURRENCY) BZR_PLUGINS_AT=builddeb@$(CURDIR) python$* /usr/bin/bzr selftest \
 	    $(SELFTEST_PARALLEL) -v -s bp.builddeb
 endif
-	touch $@-stamp
 
-clean:
-	dh_testdir
-	dh_testroot
-	rm -f build-stamp install-all-stamp build-python*-stamp
+%.html: %.rst
+	rst2html --stylesheet-path=$(doc_dir)/user_manual.css $< > $@
+
+override_dh_auto_build-indep: $(html_docs)
+	rst2html README > README.html
+
+override_dh_auto_clean:
+	dh_auto_clean
 	rm -f $(html_docs)
 	rm -f README.html
 
-	python setup.py clean --all
-	dh_clean
-
-install: build-indep $(PYVERS:%=install-python%)
-
-install-all-stamp:
-	dh_testdir
-	dh_testroot
-	dh_clean
-	dh_installdirs
-	touch install-all-stamp
-
-install-python%: install-all-stamp
-	python$* setup.py install --root=$(CURDIR)/debian/bzr-builddeb --no-compile --install-layout=deb
-
-binary-indep: build-indep install
-	dh_testdir
-	dh_testroot
-	dh_install
-	dh_installchangelogs
-	dh_installdocs
-	dh_installexamples
-	dh_compress
-	dh_fixperms
-	dh_python2
-	dh_installdeb
-	dh_shlibdeps
-	dh_gencontrol
-	dh_md5sums
-	dh_builddeb
-
-binary-arch: build-arch install
-
-binary: binary-indep binary-arch
-.PHONY: build clean binary-indep binary-arch binary install build-arch build-indep

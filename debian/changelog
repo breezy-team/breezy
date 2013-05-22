@@ -1,7 +1,7 @@
 bzr-builddeb (2.8.6) UNRELEASED; urgency=low
 
   * Team upload.
-  * 
+  * Move to minimal dh style rules file. 
 
  -- Andrew Starr-Bochicchio <asb@debian.org>  Wed, 22 May 2013 14:03:43 -0400
 
