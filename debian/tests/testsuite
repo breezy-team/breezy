@@ -1,2 +1,7 @@
 #!/bin/sh
-/usr/bin/bzr selftest -s bp.builddeb --parallel=fork
+
+# Disable the doctest bzrlib.plugins.builddeb.config.DebBuildConfig.__init__
+# as it wants to find sample conf files from the source tree that are not
+# guaranteed to actually exist.
+/usr/bin/bzr selftest -s bp.builddeb --parallel=fork \
+    -x bzrlib.plugins.builddeb.config.DebBuildConfig.__init__
