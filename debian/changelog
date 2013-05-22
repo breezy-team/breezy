@@ -1,3 +1,10 @@
+bzr-builddeb (2.8.6) UNRELEASED; urgency=low
+
+  * Team upload.
+  * 
+
+ -- Andrew Starr-Bochicchio <asb@debian.org>  Wed, 22 May 2013 14:03:43 -0400
+
 bzr-builddeb (2.8.5) experimental; urgency=low
 
   * Cope with quilt output being empty in error message. LP: #1014543
