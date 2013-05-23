@@ -2522,9 +2522,10 @@ if sys.platform == "win32":
 else:
     is_local_pid_dead = _posix_is_local_pid_dead
 
-_fdatasync_ignored = [getattr(errno, name)
-                      for name in ['EAGAIN', 'EINTR', 'ENOTSUP', 'EACCES']
+_maybe_ignored = ['EAGAIN', 'EINTR', 'ENOTSUP', 'EOPNOTSUPP', 'EACCES']
+_fdatasync_ignored = [getattr(errno, name) for name in _maybe_ignored
                       if getattr(errno, name, None) is not None]
+
 
 def fdatasync(fileno):
     """Flush file contents to disk if possible.

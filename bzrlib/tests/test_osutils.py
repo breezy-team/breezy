@@ -435,6 +435,10 @@ class TestFdatasync(tests.TestCaseInTempDir):
         f.close()
 
     @staticmethod
+    def raise_eopnotsupp(*args, **kwargs):
+        raise IOError(errno.EOPNOTSUPP, os.strerror(errno.EOPNOTSUPP))
+
+    @staticmethod
     def raise_enotsup(*args, **kwargs):
         raise IOError(errno.ENOTSUP, os.strerror(errno.ENOTSUP))
 
@@ -447,8 +451,8 @@ class TestFdatasync(tests.TestCaseInTempDir):
         self.overrideAttr(os, "fsync")
         self.do_fdatasync()
 
-    def test_fdatasync_handles_no_ENOTSUP(self):
-        self.overrideAttr(errno, "ENOTSUP")
+    def test_fdatasync_handles_no_EOPNOTSUPP(self):
+        self.overrideAttr(errno, "EOPNOTSUPP")
         self.do_fdatasync()
 
     def test_fdatasync_catches_ENOTSUP(self):
@@ -456,6 +460,13 @@ class TestFdatasync(tests.TestCaseInTempDir):
         if enotsup is None:
             raise tests.TestNotApplicable("No ENOTSUP on this platform")
         self.overrideAttr(os, "fdatasync", self.raise_enotsup)
+        self.do_fdatasync()
+
+    def test_fdatasync_catches_EOPNOTSUPP(self):
+        enotsup = getattr(errno, "EOPNOTSUPP", None)
+        if enotsup is None:
+            raise tests.TestNotApplicable("No EOPNOTSUPP on this platform")
+        self.overrideAttr(os, "fdatasync", self.raise_eopnotsupp)
         self.do_fdatasync()
 
 
