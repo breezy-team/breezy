@@ -1654,6 +1654,12 @@ class TestTestCase(tests.TestCase):
         self.assertRaises(AssertionError,
             self.assertListRaises, _TestException, success_generator)
 
+    def _run_successful_test(self, test):
+        result = testtools.TestResult()
+        test.run(result)
+        self.assertTrue(result.wasSuccessful())
+        return result
+
     def test_overrideAttr_without_value(self):
         self.test_attr = 'original' # Define a test attribute
         obj = self # Make 'obj' visible to the embedded test
@@ -1669,8 +1675,7 @@ class TestTestCase(tests.TestCase):
                 obj.test_attr = 'modified'
                 self.assertEqual('modified', obj.test_attr)
 
-        test = Test('test_value')
-        test.run(unittest.TestResult())
+        self._run_successful_test(Test('test_value'))
         self.assertEqual('original', obj.test_attr)
 
     def test_overrideAttr_with_value(self):
@@ -1686,9 +1691,40 @@ class TestTestCase(tests.TestCase):
                 self.assertEqual('original', self.orig)
                 self.assertEqual('modified', obj.test_attr)
 
-        test = Test('test_value')
-        test.run(unittest.TestResult())
+        self._run_successful_test(Test('test_value'))
         self.assertEqual('original', obj.test_attr)
+
+    def test_overrideAttr_with_no_existing_value_and_value(self):
+        # Do not define the test_attribute
+        obj = self # Make 'obj' visible to the embedded test
+        class Test(tests.TestCase):
+
+            def setUp(self):
+                tests.TestCase.setUp(self)
+                self.orig = self.overrideAttr(obj, 'test_attr', new='modified')
+
+            def test_value(self):
+                self.assertEqual(tests._unitialized_attr, self.orig)
+                self.assertEqual('modified', obj.test_attr)
+
+        self._run_successful_test(Test('test_value'))
+        self.assertRaises(AttributeError, getattr, obj, 'test_attr')
+
+    def test_overrideAttr_with_no_existing_value_and_no_value(self):
+        # Do not define the test_attribute
+        obj = self # Make 'obj' visible to the embedded test
+        class Test(tests.TestCase):
+
+            def setUp(self):
+                tests.TestCase.setUp(self)
+                self.orig = self.overrideAttr(obj, 'test_attr')
+
+            def test_value(self):
+                self.assertEqual(tests._unitialized_attr, self.orig)
+                self.assertRaises(AttributeError, getattr, obj, 'test_attr')
+
+        self._run_successful_test(Test('test_value'))
+        self.assertRaises(AttributeError, getattr, obj, 'test_attr')
 
     def test_recordCalls(self):
         from bzrlib.tests import test_selftest

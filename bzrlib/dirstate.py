@@ -2566,13 +2566,6 @@ class DirState(object):
         self.update_minimal(('', '', new_id), 'd',
             path_utf8='', packed_stat=entry[1][0][4])
         self._mark_modified()
-        # XXX: This was added by Ian, we need to make sure there
-        #      are tests for it, because it isn't in bzr.dev TRUNK
-        #      It looks like the only place it is called is in setting the root
-        #      id of the tree. So probably we never had an _id_index when we
-        #      don't even have a root yet.
-        if self._id_index is not None:
-            self._add_to_id_index(self._id_index, entry[0])
 
     def set_parent_trees(self, trees, ghosts):
         """Set the parent trees for the dirstate.
@@ -3285,10 +3278,20 @@ class DirState(object):
         if self._id_index is not None:
             for file_id, entry_keys in self._id_index.iteritems():
                 for entry_key in entry_keys:
+                    # Check that the entry in the map is pointing to the same
+                    # file_id
                     if entry_key[2] != file_id:
                         raise AssertionError(
                             'file_id %r did not match entry key %s'
                             % (file_id, entry_key))
+                    # And that from this entry key, we can look up the original
+                    # record
+                    block_index, present = self._find_block_index_from_key(entry_key)
+                    if not present:
+                        raise AssertionError('missing block for entry key: %r', entry_key)
+                    entry_index, present = self._find_entry_index(entry_key, self._dirblocks[block_index][1])
+                    if not present:
+                        raise AssertionError('missing entry for key: %r', entry_key)
                 if len(entry_keys) != len(set(entry_keys)):
                     raise AssertionError(
                         'id_index contained non-unique data for %s'
