@@ -35,6 +35,10 @@ Bug Fixes
 * ``bzr config`` properly handles aliases and references in the
   ``--directory`` parameter (Vincent Ladeuil, Wouter van Heyst, #947049)
 
+* Fix a traceback when trying to checkout a tree that also has an entry
+  with file-id `TREE_ROOT` somewhere other than at the root directory.
+  (John Arbash Meinel, #830947)
+
 * Lightweight checkouts of remote repositories had a bug with how they
   extracted texts from the repository. (Just an ordering constraint on how
   they consumed the stream.) (John Arbash Meinel, #1046284)
@@ -47,6 +51,10 @@ Bug Fixes
   (John Arbash Meinel, #1047309)
 
 * Revert use of --no-tty when gpg signing commits. (Jelmer Vernooij, #1014570)
+
+* Some filesystems give ``EOPNOTSUPP`` when trying to call ``fdatasync``.
+  This shouldn't be treated as a fatal error.
+  (John Arbash Meinel, #1075108)
 
 * Some small bug fixes wrt lightweight checkouts and remote repositories.
   A test permutation was added that runs all working tree tests against a
