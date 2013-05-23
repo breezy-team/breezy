@@ -55,6 +55,10 @@ Bug Fixes
 * Prevent a traceback being printed to stderr when logging has problems and
   accept utf-8 byte string without breaking. (Martin Packman, #714449)
 
+* Some filesystems give ``EOPNOTSUPP`` when trying to call ``fdatasync``.
+  This shouldn't be treated as a fatal error.
+  (John Arbash Meinel, #1075108)
+
 * Use ``encoding_type='exact'`` for ``bzr testament`` so that on Windows
   the sha hash of the long testament matches the sha hash in the short
   form. (John Arbash Meinel, #1010339)
