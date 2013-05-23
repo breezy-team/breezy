@@ -2530,6 +2530,10 @@ if sys.platform == "win32":
 else:
     is_local_pid_dead = _posix_is_local_pid_dead
 
+_maybe_ignored = ['EAGAIN', 'EINTR', 'ENOTSUP', 'EOPNOTSUPP', 'EACCES']
+_fdatasync_ignored = [getattr(errno, name) for name in _maybe_ignored
+                      if getattr(errno, name, None) is not None]
+
 
 def fdatasync(fileno):
     """Flush file contents to disk if possible.
@@ -2539,7 +2543,16 @@ def fdatasync(fileno):
     """
     fn = getattr(os, 'fdatasync', getattr(os, 'fsync', None))
     if fn is not None:
-        fn(fileno)
+        try:
+            fn(fileno)
+        except IOError, e:
+            # See bug #1075108, on some platforms fdatasync exists, but can
+            # raise ENOTSUP. However, we are calling fdatasync to be helpful
+            # and reduce the chance of corruption-on-powerloss situations. It
+            # is not a mandatory call, so it is ok to suppress failures.
+            trace.mutter("ignoring error calling fdatasync: %s" % (e,))
+            if getattr(e, 'errno', None) not in _fdatasync_ignored:
+                raise
 
 
 def ensure_empty_directory_exists(path, exception_class):
