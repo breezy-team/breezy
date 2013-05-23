@@ -2522,6 +2522,9 @@ if sys.platform == "win32":
 else:
     is_local_pid_dead = _posix_is_local_pid_dead
 
+_fdatasync_ignored = [getattr(errno, name)
+                      for name in ['EAGAIN', 'EINTR', 'ENOTSUP', 'EACCES']
+                      if getattr(errno, name, None) is not None]
 
 def fdatasync(fileno):
     """Flush file contents to disk if possible.
@@ -2539,6 +2542,8 @@ def fdatasync(fileno):
             # and reduce the chance of corruption-on-powerloss situations. It
             # is not a mandatory call, so it is ok to suppress failures.
             trace.mutter("ignoring error calling fdatasync: %s" % (e,))
+            if getattr(e, 'errno', None) not in _fdatasync_ignored:
+                raise
 
 
 def ensure_empty_directory_exists(path, exception_class):
