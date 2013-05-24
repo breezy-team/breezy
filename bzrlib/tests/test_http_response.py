@@ -78,13 +78,12 @@ class FakeHTTPConnection(_urllib2_wrappers.HTTPConnection):
 class TestResponseFileIter(tests.TestCase):
 
     def test_iter_empty(self):
-        self._file = response.ResponseFile('empty', StringIO())
-        self.assertEqual([], list(self._file))
+        f = response.ResponseFile('empty', StringIO())
+        self.assertEqual([], list(f))
 
     def test_iter_many(self):
-        self._file = response.ResponseFile(
-            'many', StringIO('0\n1\nboo!\n'))
-        self.assertEqual(['0\n', '1\n', 'boo!\n'], list(self._file))
+        f = response.ResponseFile('many', StringIO('0\n1\nboo!\n'))
+        self.assertEqual(['0\n', '1\n', 'boo!\n'], list(f))
 
 
 class TestHTTPConnection(tests.TestCase):
