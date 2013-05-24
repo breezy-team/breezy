@@ -38,6 +38,7 @@ class ResponseFile(object):
     """A wrapper around the http socket containing the result of a GET request.
 
     Only read() and seek() (forward) are supported.
+
     """
     def __init__(self, path, infile):
         """Constructor.
