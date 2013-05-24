@@ -71,6 +71,13 @@ class ResponseFile(object):
         self._pos += len(data)
         return data
 
+    def __iter__(self):
+        while True:
+            line = self.readline()
+            if not line:
+                return
+            yield line
+
     def tell(self):
         return self._pos
 
