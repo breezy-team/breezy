@@ -72,6 +72,7 @@ class _Quotes(object):
         if next_char == u'\\':
             return _Backslash(self)
         elif next_char == self.quote_char:
+            context.token.append(u'')
             return self.exit_state
         else:
             context.token.append(next_char)
