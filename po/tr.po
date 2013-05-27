@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2011-12-14 14:21+0000\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"PO-Revision-Date: 2013-05-26 21:24+0000\n"
+"Last-Translator: kulkke <Unknown>\n"
 "Language-Team: Turkish <tr@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=1; plural=0;\n"
-"X-Launchpad-Export-Date: 2012-07-11 04:34+0000\n"
-"X-Generator: Launchpad (build 15593)\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Launchpad-Export-Date: 2013-05-27 04:36+0000\n"
+"X-Generator: Launchpad (build 16640)\n"
 
 #: bzrlib/add.py:93
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -36,6 +36,7 @@ msgstr ""
 msgid "%d tag updated."
 msgid_plural "%d tags updated."
 msgstr[0] "%d etiket güncellendi."
+msgstr[1] "%d etiket güncellendi."
 
 #: bzrlib/branch.py:2960
 msgid "No new revisions or tags to push."
@@ -52,7 +53,7 @@ msgstr ""
 #: bzrlib/branch.py:2985
 #, python-format
 msgid "found error:%s"
-msgstr ""
+msgstr "hata bulundu:%s"
 
 #: bzrlib/builtins.py:251 bzrlib/builtins.py:3045 bzrlib/workingtree.py:323
 #, python-format
@@ -177,7 +178,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:382
 msgid "Do not mark object type using indicator."
-msgstr ""
+msgstr "Nesne türünü gösterge kullanarak işaretleme."
 
 #: bzrlib/builtins.py:397
 msgid "bzr status --revision takes exactly one or two revision specifiers"
@@ -253,7 +254,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:656
 msgid "Show current revision number."
-msgstr ""
+msgstr "Geçerli düzeltme numarasını göster."
 
 #: bzrlib/builtins.py:658
 msgid "This is equal to the number of revisions on this branch."
@@ -370,7 +371,7 @@ msgstr ""
 #: bzrlib/builtins.py:897
 #, python-format
 msgid "added %s\n"
-msgstr ""
+msgstr "%s eklendi\n"
 
 #: bzrlib/builtins.py:939
 #, python-format
