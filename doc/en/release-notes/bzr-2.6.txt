@@ -98,6 +98,8 @@ API Changes
 Internals
 *********
 
+* Add __iter__ to http ResponseFile. (Jelmer Vernooij, #1184021)
+
 * The launchpad plugin now requires API 1.6.0 or later.  This version shipped
   with Ubuntu 9.10.  (Aaron Bentley)
 
@@ -107,7 +109,6 @@ Testing
 * Fix test failures occurring only with LC_ALL=C, when prompting a user,
   ``stderr`` encoding should be preferred over terminal encoding if
   available. (Vincent Ladeuil, #1086209)
-
 
 bzr 2.6b2
 #########
