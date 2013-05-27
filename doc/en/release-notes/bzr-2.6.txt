@@ -63,10 +63,6 @@ Bug Fixes
 * ``Authentication.Config`` now always returns unicode user names and passwords.
   (Vincent Ladeuil, #514301)
 
-* Fix a traceback when trying to checkout a tree that also has an entry
-  with file-id `TREE_ROOT` somewhere other than at the root directory.
-  (John Arbash Meinel, #830947)
-
 * Fixed a bug where the entire contents of ``/etc/mailname`` is read in.
   We only want to read in the first line so that comments could be added
   and would be ignored.
@@ -75,10 +71,6 @@ Bug Fixes
 * Fixed a syntax error in ``doc/ja/user-guide/http_smart_server.txt`` that
   causes breakage with docutils 0.9.1.
   (Vincent Ladeuil, Jelmer Vernooij, #1066307)
-
-* Some filesystems give ``EOPNOTSUPP`` when trying to call ``fdatasync``.
-  This shouldn't be treated as a fatal error.
-  (John Arbash Meinel, #1075108)
 
 * Warn when ``--show-base`` is used for ``pull`` in a treeless branch
   instead of failing. It's useless but harmless. (Vincent Ladeuil, #1022160)
@@ -106,6 +98,8 @@ API Changes
 Internals
 *********
 
+* Add __iter__ to http ResponseFile. (Jelmer Vernooij, #1184021)
+
 * The launchpad plugin now requires API 1.6.0 or later.  This version shipped
   with Ubuntu 9.10.  (Aaron Bentley)
 
@@ -115,7 +109,6 @@ Testing
 * Fix test failures occurring only with LC_ALL=C, when prompting a user,
   ``stderr`` encoding should be preferred over terminal encoding if
   available. (Vincent Ladeuil, #1086209)
-
 
 bzr 2.6b2
 #########
