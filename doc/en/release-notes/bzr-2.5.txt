@@ -35,6 +35,9 @@ Bug Fixes
 * ``bzr config`` properly handles aliases and references in the
   ``--directory`` parameter (Vincent Ladeuil, Wouter van Heyst, #947049)
 
+* Empty arguments in EDITOR are now properly preserved.
+  (Ross Lagerwall, #1089792)
+
 * Fix a traceback when trying to checkout a tree that also has an entry
   with file-id `TREE_ROOT` somewhere other than at the root directory.
   (John Arbash Meinel, #830947)
