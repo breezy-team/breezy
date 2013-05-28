@@ -145,7 +145,12 @@ Bug Fixes
   avoids raising a spurious MemoryError on certain platforms such as AIX.
   (John Arbash Meinel, #856731)
 
-  
+* Teach the bzr client how to reconnect if we get ``ConnectionReset``
+  while making an RPC request. This doesn't handle all possible network
+  disconnects, but it should at least handle when the server is asked to
+  shutdown gracefully. (John Arbash Meinel, #819604)
+
+
 Documentation
 *************
 

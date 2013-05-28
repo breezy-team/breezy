@@ -24,6 +24,8 @@ prefix) put in the ``debug_flags`` variable in ``bazaar.conf``.
 -Dindex           Trace major index operations.
 -Dknit            Trace knit operations.
 -Dlock            Trace when lockdir locks are taken or released.
+-Dnoretry         If a connection is reset, fail immediately rather than
+                  retrying the request.
 -Dprogress        Trace progress bar operations.
 -Dmem_dump        Dump memory to a file upon an out of memory error.
 -Dmerge           Emit information for debugging merges.

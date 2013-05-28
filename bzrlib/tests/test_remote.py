@@ -3411,9 +3411,11 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
     def override_verb(self, verb_name, verb):
         request_handlers = request.request_handlers
         orig_verb = request_handlers.get(verb_name)
-        request_handlers.register(verb_name, verb, override_existing=True)
+        orig_info = request_handlers.get_info(verb_name)
+        request_handlers.register(verb_name, verb, override_existing=True,
+                                  info=orig_info)
         self.addCleanup(request_handlers.register, verb_name, orig_verb,
-                override_existing=True)
+                override_existing=True, info=orig_info)
 
     def test_fetch_everything_backwards_compat(self):
         """Can fetch with EverythingResult even with pre 2.4 servers.

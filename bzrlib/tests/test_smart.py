@@ -1860,8 +1860,11 @@ class TestHandlers(tests.TestCase):
         """All registered request_handlers can be found."""
         # If there's a typo in a register_lazy call, this loop will fail with
         # an AttributeError.
-        for key, item in smart_req.request_handlers.iteritems():
-            pass
+        for key in smart_req.request_handlers.keys():
+            try:
+                item = smart_req.request_handlers.get(key)
+            except AttributeError, e:
+                raise AttributeError('failed to get %s: %s' % (key, e))
 
     def assertHandlerEqual(self, verb, handler):
         self.assertEqual(smart_req.request_handlers.get(verb), handler)

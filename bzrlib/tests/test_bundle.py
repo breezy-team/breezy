@@ -1852,20 +1852,23 @@ class _DisconnectingTCPServer(object):
         self.sock.bind(('127.0.0.1', 0))
         self.sock.listen(1)
         self.port = self.sock.getsockname()[1]
+        self.stopping = threading.Event()
         self.thread = threading.Thread(
             name='%s (port %d)' % (self.__class__.__name__, self.port),
             target=self.accept_and_close)
         self.thread.start()
 
     def accept_and_close(self):
-        conn, addr = self.sock.accept()
-        conn.shutdown(socket.SHUT_RDWR)
-        conn.close()
+        while not self.stopping.isSet():
+            conn, addr = self.sock.accept()
+            conn.shutdown(socket.SHUT_RDWR)
+            conn.close()
 
     def get_url(self):
         return 'bzr://127.0.0.1:%d/' % (self.port,)
 
     def stop_server(self):
+        self.stopping.set()
         try:
             # make sure the thread dies by connecting to the listening socket,
             # just in case the test failed to do so.
