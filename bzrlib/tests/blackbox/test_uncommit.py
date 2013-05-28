@@ -280,3 +280,20 @@ You can restore the old tip by running:
         tree.commit(u'\u1234 message')
         out, err = self.run_bzr('uncommit --force tree', encoding='ascii')
         self.assertContainsRe(out, r'\? message')
+
+
+class TestInconsistentDelta(TestCaseWithTransport):
+    # See https://bugs.launchpad.net/bzr/+bug/855155
+    # See https://bugs.launchpad.net/bzr/+bug/1100385
+    # bzr uncommit may result in error
+    # 'An inconsistent delta was supplied involving'
+
+    def test_inconsistent_delta(self):
+        # Script taken from https://bugs.launchpad.net/bzr/+bug/855155/comments/26
+        wt = self.make_branch_and_tree('test')
+        self.build_tree(['test/a/', 'test/a/b', 'test/a/c'])
+        wt.add(['a', 'a/b', 'a/c'])
+        wt.commit('initial commit', rev_id='a1')
+        wt.remove(['a/b', 'a/c'])
+        wt.commit('remove b and c', rev_id='a2')
+        self.run_bzr("uncommit --force test")
