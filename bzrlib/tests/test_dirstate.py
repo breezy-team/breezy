@@ -2477,7 +2477,6 @@ class TestUpdateBasisByDelta(tests.TestCase):
     def create_tree_from_shape(self, rev_id, shape):
         dir_ids = {'': 'root-id'}
         inv = inventory.Inventory('root-id', rev_id)
-        #for path, file_id in shape:
         for info in shape:
             if len(info) == 2:
                 path, file_id = info
@@ -2533,7 +2532,6 @@ class TestUpdateBasisByDelta(tests.TestCase):
         state.set_state_from_scratch(active_tree.inventory,
             [('basis', basis_tree)], [])
         delta = target_tree.inventory._make_delta(basis_tree.inventory)
-        import pdb; pdb.set_trace()
         state.update_basis_by_delta(delta, 'target')
         state._validate()
         dirstate_tree = workingtree_4.DirStateRevisionTree(state,
