@@ -2477,7 +2477,13 @@ class TestUpdateBasisByDelta(tests.TestCase):
     def create_tree_from_shape(self, rev_id, shape):
         dir_ids = {'': 'root-id'}
         inv = inventory.Inventory('root-id', rev_id)
-        for path, file_id in shape:
+        #for path, file_id in shape:
+        for info in shape:
+            if len(info) == 2:
+                path, file_id = info
+                ie_rev_id = rev_id
+            else:
+                path, file_id, ie_rev_id = info
             if path == '':
                 # Replace the root entry
                 del inv._byid[inv.root.file_id]
@@ -2485,7 +2491,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
                 inv._byid[file_id] = inv.root
                 dir_ids[''] = file_id
                 continue
-            inv.add(self.path_to_ie(path, file_id, rev_id, dir_ids))
+            inv.add(self.path_to_ie(path, file_id, ie_rev_id, dir_ids))
         return revisiontree.InventoryRevisionTree(_Repo(), inv, rev_id)
 
     def create_empty_dirstate(self):
@@ -2527,6 +2533,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
         state.set_state_from_scratch(active_tree.inventory,
             [('basis', basis_tree)], [])
         delta = target_tree.inventory._make_delta(basis_tree.inventory)
+        import pdb; pdb.set_trace()
         state.update_basis_by_delta(delta, 'target')
         state._validate()
         dirstate_tree = workingtree_4.DirStateRevisionTree(state,
@@ -2612,6 +2619,13 @@ class TestUpdateBasisByDelta(tests.TestCase):
             basis =[],
             target=[('file', 'file-id')],
             )
+
+    def test_add_file_in_empty_dir_not_matching_active_state(self):
+        state = self.assertUpdate(
+                active=[],
+                basis=[('dir/', 'dir-id')],
+                target=[('dir/', 'dir-id', 'basis'), ('dir/file', 'file-id')],
+                )
 
     def test_add_file_missing_in_active_state(self):
         state = self.assertUpdate(
