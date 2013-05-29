@@ -449,7 +449,7 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
             self.add_dir(new_shape, new_revid, 'root-id', None, '')
 
     def assertTransitionFromBasisToShape(self, basis_shape, basis_revid,
-        new_shape, new_revid, extra_parent=None):
+        new_shape, new_revid, extra_parent=None, set_current_inventory=True):
         # set the inventory revision ids.
         basis_shape.revision_id = basis_revid
         new_shape.revision_id = new_revid
@@ -464,8 +464,9 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
                 parents.append(extra_parent)
             tree.set_parent_ids(parents)
         self.fake_up_revision(tree, new_revid, new_shape)
-        # give tree an inventory of new_shape
-        tree._write_inventory(new_shape)
+        if set_current_inventory:
+            # give tree an inventory of new_shape
+            tree._write_inventory(new_shape)
         self.assertDeltaApplicationResultsInExpectedBasis(tree, new_revid,
             delta, new_shape)
         # The tree should be internally consistent; while this is a moderately
@@ -756,3 +757,17 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         self.add_link(new_shape, old_revid, 'link-id-C', 'dir-id-B', 'C', 'D')
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
             new_shape, new_revid)
+
+    def test_add_files_to_empty_directory(self):
+        old_revid = 'old-parent'
+        basis_shape = Inventory(root_id=None)
+        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
+        self.add_dir(basis_shape, old_revid, 'dir-id-A', 'root-id', 'A')
+        new_revid = 'new-parent'
+        new_shape = Inventory(root_id=None)
+        self.add_new_root(new_shape, old_revid, new_revid)
+        self.add_dir(new_shape, old_revid, 'dir-id-A', 'root-id', 'A')
+        self.add_file(new_shape, new_revid, 'file-id-B', 'dir-id-A', 'B',
+            '1' * 32, 24)
+        self.assertTransitionFromBasisToShape(basis_shape, old_revid,
+                new_shape, new_revid, set_current_inventory=False)
