@@ -35,21 +35,19 @@ Bug Fixes
 * Cope with Unix filesystems, such as smbfs, where chmod gives 'permission
   denied'.  (Martin Pool, #606537)
 
-* Fix a traceback when trying to checkout a tree that also has an entry
-  with file-id `TREE_ROOT` somewhere other than at the root directory.
-  (John Arbash Meinel, #830947)
-
-* When the ``limbo`` or ``pending-deletion`` directories exist, typically
-  because of an interrupted tree update, but are empty, bzr no longer
-  errors out, because there is nothing for the user to clean up.  Also,
-  errors in creation of these directories are no longer squelched.
-  (Martin Pool, #427773)
-
 * During merges, when two entries end up using the same path for two
   different file-ids (the same file being 'bzr added' in two different
   branches) , 'duplicate' conflicts are created instead of 'content'
   ones. This was previously leading to a 'Malformed tramsform' exception.
   (Vincent Ladeuil, #880701)
+
+* Fix a traceback when trying to checkout a tree that also has an entry
+  with file-id `TREE_ROOT` somewhere other than at the root directory.
+  (John Arbash Meinel, #830947)
+
+* Handle when an uncommit/update tries to add a file to an otherwise empty
+  directory. The ``Dirstate.update_basis_by_delta`` would end up
+  incorrectly flagging the delta as invalid. (Brian de Alwis, #855155)
 
 * 'Malformed transform' exceptions are now recognized as internal errors
   instead of user errors and report a traceback. This will reduce user
@@ -63,9 +61,20 @@ Bug Fixes
   This shouldn't be treated as a fatal error.
   (John Arbash Meinel, #1075108)
 
+* Teach the bzr client how to reconnect if we get ``ConnectionReset``
+  while making an RPC request. This doesn't handle all possible network
+  disconnects, but it should at least handle when the server is asked to
+  shutdown gracefully. (John Arbash Meinel, #819604)
+
 * Use ``encoding_type='exact'`` for ``bzr testament`` so that on Windows
   the sha hash of the long testament matches the sha hash in the short
   form. (John Arbash Meinel, #1010339)
+
+* When the ``limbo`` or ``pending-deletion`` directories exist, typically
+  because of an interrupted tree update, but are empty, bzr no longer
+  errors out, because there is nothing for the user to clean up.  Also,
+  errors in creation of these directories are no longer squelched.
+  (Martin Pool, #427773)
 
 * _Win32Stat object provides members st_uid and st_gid, those are present
   in Python's os.stat object. These members required for external tools like
@@ -134,10 +143,6 @@ Bug Fixes
 * Fixed loading of external merge tools from config to properly decode
   command-lines which contain embedded quotes. (Gordon Tyler, #828803)
 
-* Handle when an uncommit/update tries to add a file to an otherwise empty
-  directory. The ``Dirstate.update_basis_by_delta`` would end up
-  incorrectly flagging the delta as invalid. (Brian de Alwis, #855155)
-
 * Include declaration of 'changed' to avoid an UnboundLocalError in dirstate
   pyrex code with new Cython versions. (Denys Duchier, #837221)
 
@@ -148,13 +153,7 @@ Bug Fixes
 * Return early from create_delta_index_from_delta given tiny inputs. This
   avoids raising a spurious MemoryError on certain platforms such as AIX.
   (John Arbash Meinel, #856731)
-
-* Teach the bzr client how to reconnect if we get ``ConnectionReset``
-  while making an RPC request. This doesn't handle all possible network
-  disconnects, but it should at least handle when the server is asked to
-  shutdown gracefully. (John Arbash Meinel, #819604)
-
-
+  
 Documentation
 *************
 
