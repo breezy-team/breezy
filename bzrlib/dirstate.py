@@ -1648,9 +1648,18 @@ class DirState(object):
             entry_key = st(dirname, basename, file_id)
             block_index, present = self._find_block_index_from_key(entry_key)
             if not present:
-                self._raise_invalid(new_path, file_id,
-                    "Unable to find block for this record."
-                    " Was the parent added?")
+                # The block where we want to put the file is not present.
+                # However, it might have just been an empty directory. Look for
+                # the parent in the basis-so-far before throwing an error.
+                parent_dir, parent_base = osutils.split(dirname)
+                parent_block_idx, parent_entry_idx, _, parent_present = \
+                    self._get_block_entry_index(parent_dir, parent_base, 1)
+                if not parent_present:
+                    self._raise_invalid(new_path, file_id,
+                        "Unable to find block for this record."
+                        " Was the parent added?")
+                self._ensure_block(parent_block_idx, parent_entry_idx, dirname)
+
             block = self._dirblocks[block_index][1]
             entry_index, present = self._find_entry_index(entry_key, block)
             if real_add:
