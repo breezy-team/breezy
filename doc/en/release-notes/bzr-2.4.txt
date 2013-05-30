@@ -140,6 +140,10 @@ Bug Fixes
 * Fixed loading of external merge tools from config to properly decode
   command-lines which contain embedded quotes. (Gordon Tyler, #828803)
 
+* Handle when an uncommit/update tries to add a file to an otherwise empty
+  directory. The ``Dirstate.update_basis_by_delta`` would end up
+  incorrectly flagging the delta as invalid. (Brian de Alwis, #855155)
+
 * Include declaration of 'changed' to avoid an UnboundLocalError in dirstate
   pyrex code with new Cython versions. (Denys Duchier, #837221)
 
