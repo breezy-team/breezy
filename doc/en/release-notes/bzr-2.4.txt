@@ -63,6 +63,12 @@ Bug Fixes
   This shouldn't be treated as a fatal error.
   (John Arbash Meinel, #1075108)
 
+* Teach the bzr client how to reconnect if we get ``ConnectionReset``
+  while making an RPC request. This doesn't handle all possible network
+  disconnects, but it should at least handle when the server is asked to
+  shutdown gracefully. This is a backport of the functionality in bzr-2.5.
+  (John Arbash Meinel, #819604)
+
 * Use ``encoding_type='exact'`` for ``bzr testament`` so that on Windows
   the sha hash of the long testament matches the sha hash in the short
   form. (John Arbash Meinel, #1010339)
