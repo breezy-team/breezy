@@ -8,15 +8,15 @@ msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2013-05-27 11:00+0000\n"
+"PO-Revision-Date: 2013-06-02 18:53+0000\n"
 "Last-Translator: Gianfranco Frisani <gfrisani@libero.it>\n"
 "Language-Team: Italian <it@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Launchpad-Export-Date: 2013-05-28 04:30+0000\n"
-"X-Generator: Launchpad (build 16640)\n"
+"X-Launchpad-Export-Date: 2013-06-03 04:30+0000\n"
+"X-Generator: Launchpad (build 16660)\n"
 
 #: bzrlib/add.py:93
 msgid "skipping {0} (larger than {1} of {2} bytes)"
@@ -44,7 +44,7 @@ msgstr ""
 
 #: bzrlib/branch.py:2962
 msgid "No new revisions to push."
-msgstr ""
+msgstr "Nessuna nuova revisione da caricare."
 
 #: bzrlib/branch.py:2982
 msgid "checked branch {0} format {1}"
@@ -53,7 +53,7 @@ msgstr ""
 #: bzrlib/branch.py:2985
 #, python-format
 msgid "found error:%s"
-msgstr ""
+msgstr "trovato errore:%s"
 
 #: bzrlib/builtins.py:251 bzrlib/builtins.py:3045 bzrlib/workingtree.py:323
 #, python-format
@@ -64,6 +64,7 @@ msgstr ""
 #, python-format
 msgid "bzr %s --revision takes exactly one revision identifier"
 msgstr ""
+"bzr %s --revision richiede esattamente un identificativo di revisione"
 
 #: bzrlib/builtins.py:315
 msgid "Display status summary."
@@ -127,6 +128,8 @@ msgid ""
 "To see ignored files use 'bzr ignored'.  For details on the\n"
 "changes to file texts, use 'bzr diff'."
 msgstr ""
+"Per visualizzare i file ignorati, usare «bzr ignored». Per dettagli sulle \n"
+"modifiche effettuate nei file di testo, usare «bzr diff»."
 
 #: bzrlib/builtins.py:349
 msgid ""
@@ -134,6 +137,9 @@ msgid ""
 "to Subversion's status command. To get output similar to svn -q,\n"
 "use bzr status -SV."
 msgstr ""
+"Notare che --short o -S fornisce per ciascun elemento indicatori di\n"
+"stato simili a quelli del comando status di Subversion. Per ottenere\n"
+"un output simile a quello di svn -q, usare bzr status -SV."
 
 #: bzrlib/builtins.py:353
 msgid ""
@@ -142,6 +148,10 @@ msgid ""
 "files or directories is reported.  If a directory is given, status\n"
 "is reported for everything inside that directory."
 msgstr ""
+"Se non vengono specificati argomenti, viene mostrato lo stato\n"
+"dell'intera directory in uso, altrimenti viene riportato solo lo stato\n"
+"dei file o delle directory specificati. Se viene indicata una directory,\n"
+"sarà riportato lo stato del suo contenuto."
 
 #: bzrlib/builtins.py:358
 msgid ""
@@ -150,6 +160,12 @@ msgid ""
 "To skip the display of pending merge information altogether, use\n"
 "the no-pending option or specify a file/directory."
 msgstr ""
+"Prima di rendere definitive le unioni, vengono mostrati i suggerimenti per\n"
+"le revisioni in sospeso. Per visualizzare tutte le revisioni in attesa di "
+"unione,\n"
+"usare l'opzione -v. Per ignorare completamente tutte le informazioni in "
+"attesa\n"
+"di unione, usare l'opzione no-pending o specificare un file o una directory."
 
 #: bzrlib/builtins.py:363
 msgid ""
@@ -163,26 +179,33 @@ msgid ""
 "two revisions, pass a revision range to the revision argument.\n"
 "This will produce the same results as calling 'bzr diff --summarize'."
 msgstr ""
+"Per visualizzare quali file sono stati modificati in una specifica "
+"revisione, o fra\n"
+"due revisioni, inserire un intervallo di revisioni nel corrispondente "
+"argomento.\n"
+"Si otterrà il medesimo risultato dell'evocazione di «bzr diff --summarize»."
 
 #: bzrlib/builtins.py:375
 msgid "Use short status indicators."
-msgstr ""
+msgstr "Usa indicatori di stato brevi"
 
 #: bzrlib/builtins.py:377
 msgid "Only show versioned files."
-msgstr ""
+msgstr "Mostra solo i file con versione"
 
 #: bzrlib/builtins.py:379
 msgid "Don't show pending merges."
-msgstr ""
+msgstr "Non mostra le unioni in sospeso"
 
 #: bzrlib/builtins.py:382
 msgid "Do not mark object type using indicator."
-msgstr ""
+msgstr "Non indica la tipologia dell'oggetto"
 
 #: bzrlib/builtins.py:397
 msgid "bzr status --revision takes exactly one or two revision specifiers"
 msgstr ""
+"bzr status --revision richiede esattamente uno o due specificatori di "
+"revisione."
 
 #: bzrlib/builtins.py:441 bzrlib/builtins.py:5230
 msgid "You can only supply one of revision_id or --revision"
@@ -199,15 +222,16 @@ msgstr ""
 
 #: bzrlib/builtins.py:462
 msgid "The repository {0} contains no revision {1}."
-msgstr ""
+msgstr "Il repository {0} non contiene alcuna revisione {1}."
 
 #: bzrlib/builtins.py:469
 msgid "You cannot specify a NULL revision."
-msgstr ""
+msgstr "Non è possibile specificare una revisione NULL."
 
 #: bzrlib/builtins.py:561
 msgid "Remove the working tree from a given branch/checkout."
 msgstr ""
+"Rimuove l'albero di lavoro da un branch o da un checkout specificato."
 
 #: bzrlib/builtins.py:563
 msgid ""
@@ -219,7 +243,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:566
 msgid "To re-create the working tree, use \"bzr checkout\"."
-msgstr ""
+msgstr "Per creare nuovamente l'albero di lavoro, usare «bzr checkout»."
 
 #: bzrlib/builtins.py:572
 msgid ""
@@ -228,11 +252,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:586
 msgid "No working tree to remove"
-msgstr ""
+msgstr "Nessun albero di lavoro da rimuovere"
 
 #: bzrlib/builtins.py:588
 msgid "You cannot remove the working tree of a remote path"
-msgstr ""
+msgstr "Impossibile rimuovere l'albero di lavoro di un percorso remoto."
 
 #: bzrlib/builtins.py:597
 msgid "You cannot remove the working tree from a lightweight checkout"
@@ -243,6 +267,9 @@ msgid ""
 "The tree does not appear to be corrupt. You probably want \"bzr revert\" "
 "instead. Use \"--force\" if you are sure you want to reset the working tree."
 msgstr ""
+"L'albero non sembra essere danneggiato; probabilmente è necessario usare "
+"«bzr revert». Usare «--force» se è necessario ripristinare l'albero di "
+"lavoro."
 
 #: bzrlib/builtins.py:648
 msgid ""
@@ -252,11 +279,11 @@ msgstr ""
 
 #: bzrlib/builtins.py:652
 msgid "failed to reset the tree state{0}"
-msgstr ""
+msgstr "Il ripristino dello stato dell'albero non è riuscito{0}"
 
 #: bzrlib/builtins.py:656
 msgid "Show current revision number."
-msgstr ""
+msgstr "Mostra il numero di revisione corrente."
 
 #: bzrlib/builtins.py:658
 msgid "This is equal to the number of revisions on this branch."
@@ -264,7 +291,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:671
 msgid "--tree and --revision can not be used together"
-msgstr ""
+msgstr "--tree e --revision non possono essere utilizzati insieme"
 
 #: bzrlib/builtins.py:688 bzrlib/builtins.py:5986
 msgid "Tags can only be placed on a single revision, not on a range"
