@@ -1,16 +1,16 @@
-# Italian translation for bzr
-# Copyright (c) 2011 Rosetta Contributors and Canonical Ltd 2011
+# Sinhalese translation for bzr
+# Copyright (c) 2013 Rosetta Contributors and Canonical Ltd 2013
 # This file is distributed under the same license as the bzr package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2011.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2013.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2013-06-03 17:20+0000\n"
-"Last-Translator: Milo Casagrande <milo.casagrande@gmail.com>\n"
-"Language-Team: Italian <it@li.org>\n"
+"PO-Revision-Date: 2013-06-03 14:34+0000\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: Sinhalese <si@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -24,7 +24,7 @@ msgstr ""
 
 #: bzrlib/branch.py:854
 msgid "Unstacking"
-msgstr "Rimozione dallo stack"
+msgstr ""
 
 #: bzrlib/branch.py:2955
 #, python-format
@@ -44,31 +44,30 @@ msgstr ""
 
 #: bzrlib/branch.py:2962
 msgid "No new revisions to push."
-msgstr "Nessuna nuova revisione da caricare."
+msgstr ""
 
 #: bzrlib/branch.py:2982
 msgid "checked branch {0} format {1}"
-msgstr "controllato branch {0} formato {1}"
+msgstr ""
 
 #: bzrlib/branch.py:2985
 #, python-format
 msgid "found error:%s"
-msgstr "trovato errore:%s"
+msgstr ""
 
 #: bzrlib/builtins.py:251 bzrlib/builtins.py:3045 bzrlib/workingtree.py:323
 #, python-format
 msgid "Ignoring files outside view. View is %s"
-msgstr "Ignorati i file al di fuori della visualizzazione, che è %s"
+msgstr ""
 
 #: bzrlib/builtins.py:260
 #, python-format
 msgid "bzr %s --revision takes exactly one revision identifier"
 msgstr ""
-"bzr %s --revision richiede esattamente un identificativo di revisione"
 
 #: bzrlib/builtins.py:315
 msgid "Display status summary."
-msgstr "Visualizza un riepilogo dello stato"
+msgstr ""
 
 #: bzrlib/builtins.py:317
 msgid ""
@@ -96,28 +95,18 @@ msgid ""
 "    the text may also have changed.  This includes files whose\n"
 "    parent directory was renamed."
 msgstr ""
-"Rinominato\n"
-"    Il percorso del file è stato modificato rispetto alla revisione "
-"precedente;\n"
-"    è possibile che anche il testo sia stato modificato. Sono inclusi file "
-"la cui\n"
-"    directory superiore è stata rinominata."
 
 #: bzrlib/builtins.py:332
 msgid ""
 "modified\n"
 "    Text has changed since the previous revision."
 msgstr ""
-"Modificato\n"
-"    Il testo è stato modificato rispetto alla revisione precedente."
 
 #: bzrlib/builtins.py:335
 msgid ""
 "kind changed\n"
 "    File kind has been changed (e.g. from file to directory)."
 msgstr ""
-"Tipo modificato\n"
-"    La tipologia del file è stata modificata (per es. da file a directory)."
 
 #: bzrlib/builtins.py:338
 msgid ""
@@ -138,8 +127,6 @@ msgid ""
 "To see ignored files use 'bzr ignored'.  For details on the\n"
 "changes to file texts, use 'bzr diff'."
 msgstr ""
-"Per visualizzare i file ignorati, usare «bzr ignored». Per dettagli sulle \n"
-"modifiche effettuate nei file di testo, usare «bzr diff»."
 
 #: bzrlib/builtins.py:349
 msgid ""
@@ -147,9 +134,6 @@ msgid ""
 "to Subversion's status command. To get output similar to svn -q,\n"
 "use bzr status -SV."
 msgstr ""
-"Notare che --short o -S fornisce per ciascun elemento indicatori di\n"
-"stato simili a quelli del comando status di Subversion. Per ottenere\n"
-"un output simile a quello di svn -q, usare bzr status -SV."
 
 #: bzrlib/builtins.py:353
 msgid ""
@@ -158,10 +142,6 @@ msgid ""
 "files or directories is reported.  If a directory is given, status\n"
 "is reported for everything inside that directory."
 msgstr ""
-"Se non vengono specificati argomenti, viene mostrato lo stato\n"
-"dell'intera directory in uso, altrimenti viene riportato solo lo stato\n"
-"dei file o delle directory specificati. Se viene indicata una directory,\n"
-"sarà riportato lo stato del suo contenuto."
 
 #: bzrlib/builtins.py:358
 msgid ""
@@ -170,20 +150,12 @@ msgid ""
 "To skip the display of pending merge information altogether, use\n"
 "the no-pending option or specify a file/directory."
 msgstr ""
-"Prima di rendere definitive le unioni, vengono mostrati i suggerimenti per\n"
-"le revisioni in sospeso. Per visualizzare tutte le revisioni in attesa di "
-"unione,\n"
-"usare l'opzione -v. Per ignorare completamente tutte le informazioni in "
-"attesa\n"
-"di unione, usare l'opzione no-pending o specificare un file o una directory."
 
 #: bzrlib/builtins.py:363
 msgid ""
 "To compare the working directory to a specific revision, pass a\n"
 "single revision to the revision argument."
 msgstr ""
-"Per comparare la directory in uso con una specifica revisione, inserire una\n"
-"singola revisione nel corrispondente argomento."
 
 #: bzrlib/builtins.py:366
 msgid ""
@@ -191,72 +163,61 @@ msgid ""
 "two revisions, pass a revision range to the revision argument.\n"
 "This will produce the same results as calling 'bzr diff --summarize'."
 msgstr ""
-"Per visualizzare quali file sono stati modificati in una specifica "
-"revisione, o fra\n"
-"due revisioni, inserire un intervallo di revisioni nel corrispondente "
-"argomento.\n"
-"Ciò produrrà lo stesso risultato di «bzr diff --summarize»."
 
 #: bzrlib/builtins.py:375
 msgid "Use short status indicators."
-msgstr "Usa indicatori di stato brevi"
+msgstr ""
 
 #: bzrlib/builtins.py:377
 msgid "Only show versioned files."
-msgstr "Mostra solo i file con versione"
+msgstr ""
 
 #: bzrlib/builtins.py:379
 msgid "Don't show pending merges."
-msgstr "Non mostra le unioni in sospeso"
+msgstr ""
 
 #: bzrlib/builtins.py:382
 msgid "Do not mark object type using indicator."
-msgstr "Non indica la tipologia dell'oggetto"
+msgstr ""
 
 #: bzrlib/builtins.py:397
 msgid "bzr status --revision takes exactly one or two revision specifiers"
 msgstr ""
-"bzr status --revision richiede esattamente uno o due specificatori di "
-"revisione"
 
 #: bzrlib/builtins.py:441 bzrlib/builtins.py:5230
 msgid "You can only supply one of revision_id or --revision"
-msgstr "È possibile fornire solo un identificativo di revisione o --revision"
+msgstr ""
 
 #: bzrlib/builtins.py:444 bzrlib/builtins.py:5232
 msgid "You must supply either --revision or a revision_id"
-msgstr "È necessario fornire o --revision o un identificativo di revisione"
+msgstr ""
 
 #: bzrlib/builtins.py:451
 #, python-format
 msgid "Repository %r does not support access to raw revision texts"
 msgstr ""
-"Il repository %r non supporta l'accesso a testi di revisione non formattati"
 
 #: bzrlib/builtins.py:462
 msgid "The repository {0} contains no revision {1}."
-msgstr "Il repository {0} non contiene alcuna revisione {1}."
+msgstr ""
 
 #: bzrlib/builtins.py:469
 msgid "You cannot specify a NULL revision."
-msgstr "Non è possibile specificare una revisione NULL."
+msgstr ""
 
 #: bzrlib/builtins.py:561
 msgid "Remove the working tree from a given branch/checkout."
 msgstr ""
-"Rimuove l'albero di lavoro da un branch o da un checkout specificato."
 
 #: bzrlib/builtins.py:563
 msgid ""
 "Since a lightweight checkout is little more than a working tree\n"
 "this will refuse to run against one."
 msgstr ""
-"Non è possibile eseguire questo comando su di un checkout leggero, dal\n"
-"momento che questo è leggermente superiore a un albero di lavoro."
 
 #: bzrlib/builtins.py:566
 msgid "To re-create the working tree, use \"bzr checkout\"."
-msgstr "Per creare nuovamente l'albero di lavoro, usare «bzr checkout»."
+msgstr ""
 
 #: bzrlib/builtins.py:572
 msgid ""
@@ -265,40 +226,35 @@ msgstr ""
 
 #: bzrlib/builtins.py:586
 msgid "No working tree to remove"
-msgstr "Nessun albero di lavoro da rimuovere"
+msgstr ""
 
 #: bzrlib/builtins.py:588
 msgid "You cannot remove the working tree of a remote path"
-msgstr "Impossibile rimuovere l'albero di lavoro di un percorso remoto."
+msgstr ""
 
 #: bzrlib/builtins.py:597
 msgid "You cannot remove the working tree from a lightweight checkout"
-msgstr "Non è possibile rimuovere l'albero di lavoro da un checkout leggero"
+msgstr ""
 
 #: bzrlib/builtins.py:637
 msgid ""
 "The tree does not appear to be corrupt. You probably want \"bzr revert\" "
 "instead. Use \"--force\" if you are sure you want to reset the working tree."
 msgstr ""
-"L'albero non sembra essere danneggiato; probabilmente è necessario usare "
-"«bzr revert». Usare «--force» se è necessario ripristinare l'albero di "
-"lavoro."
 
 #: bzrlib/builtins.py:648
 msgid ""
 ", the header appears corrupt, try passing -r -1 to set the state to the last "
 "commit"
 msgstr ""
-", l'header sembra danneggiato, provare a inserire -r -1 per impostare lo "
-"stato dell'ultimo commit"
 
 #: bzrlib/builtins.py:652
 msgid "failed to reset the tree state{0}"
-msgstr "Il ripristino dello stato dell'albero non è riuscito{0}"
+msgstr ""
 
 #: bzrlib/builtins.py:656
 msgid "Show current revision number."
-msgstr "Mostra il numero di revisione corrente."
+msgstr ""
 
 #: bzrlib/builtins.py:658
 msgid "This is equal to the number of revisions on this branch."
@@ -306,7 +262,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:671
 msgid "--tree and --revision can not be used together"
-msgstr "--tree e --revision non possono essere utilizzati insieme"
+msgstr ""
 
 #: bzrlib/builtins.py:688 bzrlib/builtins.py:5986
 msgid "Tags can only be placed on a single revision, not on a range"
@@ -618,10 +574,6 @@ msgid ""
 "configuration option. You can use a different format by overriding it with\n"
 "-Olog_format=<other_format>."
 msgstr ""
-"L'opzione --verbose visualizza le revisioni per le quali è stato effettuato "
-"il push\n"
-"usando l'opzione di configurazione log_format. È possibile usare un diverso\n"
-"formato sovrascrivendolo con -Olog_format=<altro_formato>."
 
 #: bzrlib/builtins.py:1296 bzrlib/foreign.py:272
 msgid ""
@@ -674,12 +626,12 @@ msgstr ""
 
 #: bzrlib/builtins.py:1384 bzrlib/foreign.py:306
 msgid "No push location known or specified."
-msgstr "Non è stata specificata o non è nota una localizzazione per il push."
+msgstr ""
 
 #: bzrlib/builtins.py:1388
 #, python-format
 msgid "Using saved push location: %s"
-msgstr "Utilizzo di localizzazione memorizzata per il push: %s"
+msgstr ""
 
 #: bzrlib/builtins.py:1398
 msgid "Create a new branch that is a copy of an existing branch."
@@ -695,13 +647,6 @@ msgid ""
 "identifier, if any. For example, \"branch lp:foo-bar\" will attempt to\n"
 "create ./foo-bar."
 msgstr ""
-"Se viene omesso TO_LOCATION, verrà usato l'ultimo componente del\n"
-"FROM_LOCATION. In altri termini, «branch ../foo/bar» tenterà di creare "
-"./bar.\n"
-"Se non è incorporato nel FROM_LOCATION un «/» o un separatore di percorso,\n"
-"il TO_LOCATION viene ricavato dal FROM_LOCATION separando uno schema\n"
-"principale o un identificativo di drive, se esistenti. Per esempio,\n"
-"«branch lp:foo-bar» tenterà di creare ./foo-bar."
 
 #: bzrlib/builtins.py:1407
 msgid ""
@@ -905,7 +850,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1740
 msgid "bzr update --revision takes exactly one revision"
-msgstr "bzr update --revision prende esattamente una revisione"
+msgstr ""
 
 #: bzrlib/builtins.py:1748
 msgid "bzr update can only update a whole tree, not a file or subdirectory"
@@ -1000,7 +945,7 @@ msgstr ""
 
 #: bzrlib/builtins.py:1868
 msgid "Only remove files that have never been committed."
-msgstr "Rimuove solo i file sui quali non è mai stato eseguito il commit."
+msgstr ""
 
 #: bzrlib/builtins.py:1870
 msgid "The file deletion mode to be used."
@@ -1203,9 +1148,6 @@ msgid ""
 "        cd trunk-checkout\n"
 "        (add files here)"
 msgstr ""
-"        bzr checkout --lightweight repo/trunk trunk-checkout\n"
-"        cd trunk-checkout\n"
-"        (aggiunge file qui)"
 
 #: bzrlib/builtins.py:2193
 msgid ""
@@ -1258,11 +1200,6 @@ msgid ""
 "    3 - error\n"
 "    0 - no change"
 msgstr ""
-":Valori in uscita:\n"
-"    1 - modificato\n"
-"    2 - modifiche non rappresentabili\n"
-"    3 - errore\n"
-"    0 - nessuna modifica"
 
 #: bzrlib/builtins.py:2250
 msgid ""
@@ -1561,13 +1498,6 @@ msgid ""
 "                        branch and the one at location path\n"
 "    -rdate:yesterday..  show changes since yesterday"
 msgstr ""
-"    -r-1 visualizza solo il suggerimento\n"
-"    -r-10.. visualizza le ultime 10 revisioni mainline\n"
-"    -rsubmit:.. visualizza quanto di nuovo c'è sul branch\n"
-"    -rancestor:path.. visualizza le modifiche rispetto al comune "
-"predecessore di questo\n"
-"                        branch e di quello nel percorso di locazione \n"
-"    -rdate:yesterday.. visualizza le modifiche riespetto al giorno precedente"
 
 #: bzrlib/builtins.py:2564
 msgid ""
@@ -1609,9 +1539,6 @@ msgid ""
 "  * revision 2: modify tutorial.txt\n"
 "  * revision 3: rename tutorial.txt to guide.txt; add tutorial.txt"
 msgstr ""
-"  * revision 1: add tutorial.txt\n"
-"  * revision 2: modify tutorial.txt\n"
-"  * revision 3: rename tutorial.txt to guide.txt; add tutorial.txt"
 
 #: bzrlib/builtins.py:2588
 msgid "  In this case:"
@@ -1670,14 +1597,6 @@ msgid ""
 "  Guide <http://doc.bazaar.canonical.com/plugins/en/> and\n"
 "  <http://wiki.bazaar.canonical.com/IDEIntegration>.  "
 msgstr ""
-"  Nell'esplorazione della cronologia gli strumenti GUI e gli IDE sono spesso "
-"migliori\n"
-"  di quelli da riga di comando: può risultare preferibile qlog o viz da qbzr "
-"o bzr_gtk,\n"
-"  la shell bzr-explorer o l'interfaccia web Loggerhead. Consultare la Guida "
-"ai\n"
-"  plugin <http://doc.bazaar.canonical.com/plugins/en/> e\n"
-"  <http://wiki.bazaar.canonical.com/IDEIntegration>.  "
 
 #: bzrlib/builtins.py:2620
 msgid ""
@@ -1794,12 +1713,10 @@ msgstr ""
 #: bzrlib/builtins.py:2714
 msgid "Show revisions whose authors match this expression."
 msgstr ""
-"Visualizza le revisioni i cui autori corrispondono a questa espressione."
 
 #: bzrlib/builtins.py:2718
 msgid "Show revisions whose bugs match this expression."
 msgstr ""
-"Visualizza le revisioni i cui bug corrispondono a questa espressione."
 
 #: bzrlib/builtins.py:2772
 msgid "--exclude-common-ancestry requires -r with two revisions"
@@ -4107,7 +4024,7 @@ msgstr ""
 #: bzrlib/builtins.py:6403
 #, python-format
 msgid "Disabled '%s' view.\n"
-msgstr "Disabilitata la visualizzazione '%s'.\n"
+msgstr ""
 
 #: bzrlib/builtins.py:6407 bzrlib/builtins.py:6429
 msgid "Using '{0}' view: {1}\n"
@@ -4421,9 +4338,6 @@ msgid ""
 "Source branch format does not support stacking, using format:\n"
 "  %s"
 msgstr ""
-"Il formato del branch sorgente non supporta l'effettuazione dello stack, "
-"viene usato il formato:\n"
-"  %s"
 
 #: bzrlib/bzrdir.py:1805
 msgid "starting repository conversion"
@@ -5034,8 +4948,6 @@ msgid ""
 "No help could be found for '%(topic)s'. Please use 'bzr help topics' to "
 "obtain a list of topics."
 msgstr ""
-"Non è stata trovata nessuna informazione per  '%(topic)s'. Usare «bzr help "
-"topics» per ottenere un elenco di argomenti."
 
 #: bzrlib/errors.py:280
 msgid "The file id \"%(file_id)s\" is not present in the tree %(tree)s."
@@ -6583,7 +6495,7 @@ msgstr ""
 #: bzrlib/osutils.py:1259
 #, python-format
 msgid "%r is too short to calculate a relative path"
-msgstr "%r è troppo breve per calcolare un percorso relativo"
+msgstr ""
 
 #: bzrlib/plugin.py:143
 #, python-format
@@ -6942,17 +6854,17 @@ msgstr ""
 #: bzrlib/plugins/weave_fmt/bzrdir.py:285
 #, python-format
 msgid "%6d revisions and inventories"
-msgstr "%6d revisioni e inventari"
+msgstr ""
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:287
 #, python-format
 msgid "%6d revisions not present"
-msgstr "%6d revisioni non presenti"
+msgstr ""
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:289
 #, python-format
 msgid "%6d texts"
-msgstr "%6d testi"
+msgstr ""
 
 #: bzrlib/plugins/weave_fmt/bzrdir.py:325
 msgid "writing weave"
@@ -7152,7 +7064,7 @@ msgstr ""
 #: bzrlib/reconfigure.py:69
 #, python-format
 msgid "%s is now not stacked\n"
-msgstr "%s ora non è in stack\n"
+msgstr ""
 
 #: bzrlib/remote.py:1228 bzrlib/repository.py:289
 #, python-format
@@ -7524,7 +7436,7 @@ msgstr ""
 
 #: bzrlib/win32utils.py:146
 msgid "Failed to GetProcessMemoryInfo()"
-msgstr "GetProcessMemoryInfo() non riuscito"
+msgstr ""
 
 #: bzrlib/win32utils.py:167
 msgid "Cannot debug memory on win32 without ctypes or win32process"
@@ -8768,9 +8680,6 @@ msgid ""
 "Source hosting provider\n"
 "~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
-"\n"
-"Provider sorgente del servizio di host\n"
-"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/authentication.txt:168
 msgid "In the shp.net (fictitious) domain, each project has its own site::"
@@ -9326,8 +9235,6 @@ msgstr ""
 msgid ""
 "* the user specific plugin directory (containing the ``user`` plugins),"
 msgstr ""
-"* nella directory specifica per i plugin dell'utente (contenente i plugin "
-"dell'«utente»),"
 
 #: en/help_topics/configuration.txt:85
 msgid "* the bzrlib directory (containing the ``core`` plugins),"
@@ -9648,9 +9555,6 @@ msgid ""
 "Section options\n"
 "^^^^^^^^^^^^^^^"
 msgstr ""
-"\n"
-"Opzioni di sezione\n"
-"^^^^^^^^^^^^^^^^^^"
 
 #: en/help_topics/configuration.txt:257
 msgid ""
@@ -9859,9 +9763,6 @@ msgid ""
 "The branch location configuration file, locations.conf\n"
 "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 msgstr ""
-"\n"
-"Il file di configurazione di posizione del branch, locations.conf\n"
-"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 #: en/help_topics/configuration.txt:372
 msgid ""
@@ -12907,29 +12808,6 @@ msgid ""
 ":last:\n"
 "\tSelects the nth revision from the end."
 msgstr ""
-":revid:\n"
-"\tSelezione una revisione usando l'identificativo di revisione.\n"
-":submit:\n"
-"\tSeleziona un predecessore comune con il branch di invio.\n"
-":ancestor:\n"
-"\tSeleziona un predecessore comune con un secondo branch.\n"
-":date:\n"
-"\tSelezione una revisione in base a una marca temporale.\n"
-":branch:\n"
-"\tSeleziona l'ultima revisione di un branch specifico.\n"
-":tag:\n"
-"\tSeleziona una revisione identificata da un nome di etichetta.\n"
-":revno:\n"
-"\tSeleziona una revisione usando un numero.\n"
-":before:\n"
-"\tSeleziona il predecessore di una revisione specificata.\n"
-":annotate:\n"
-"\tSeleziona la revisione che ha modificato per ultima la riga specificata.\n"
-":mainline:\n"
-"\tSeleziona la revisione della linea principale unita alla revisione "
-"specificata.\n"
-":last:\n"
-"\tSeleziona l'ennesima revisione dalla fine."
 
 #: en/help_topics/revisionspec.txt:53
 msgid "In addition, plugins can provide other keywords."
