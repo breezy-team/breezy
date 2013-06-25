@@ -85,8 +85,10 @@ class TestBaseImportDsc(BuilddebTestCase):
         upstream_dir = self.make_upstream_tarball(upstream_version)
         debian_dir = os.path.join(upstream_dir, 'debian')
         self.make_debian_dir(debian_dir, version=version)
-        proc = subprocess.Popen('dpkg-source -b %s' % upstream_dir,
-                            shell=True, stdout=subprocess.PIPE)
+        proc = subprocess.Popen('dpkg-source -b --format=1.0 %s' % \
+                                upstream_dir,
+                                shell=True,
+                                stdout=subprocess.PIPE)
         proc.wait()
         self.assertEqual(proc.returncode, 0)
         shutil.rmtree(upstream_dir)

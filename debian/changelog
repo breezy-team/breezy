@@ -1,3 +1,24 @@
+bzr-builddeb (2.8.7) UNRELEASED; urgency=low
+
+  * tests/blackbox/test_import_dsc.py:
+   - Explicitly pass '--format=1.0' to dpkg-source inorder to
+     silence "no source format specified" warnings printed to
+     stderr (Closes: #711042).
+
+ -- Andrew Starr-Bochicchio <asb@debian.org>  Sun, 09 Jun 2013 14:38:31 -0400
+
+bzr-builddeb (2.8.6) unstable; urgency=low
+
+  * Team upload.
+  * Upload to unstable.
+  * Move to minimal dh style rules file. 
+  * Drop bzr-svn from Build-Depends-Indep and Suggests (Closes: #709288).
+  * Bump Standards-Version to 3.9.4, no changes needed.
+  * Drop deprecated debian/pycompat and debian/pyversions files.
+  * Add autopkgtests.
+
+ -- Andrew Starr-Bochicchio <asb@debian.org>  Wed, 22 May 2013 14:03:43 -0400
+
 bzr-builddeb (2.8.5) experimental; urgency=low
 
   * Cope with quilt output being empty in error message. LP: #1014543
