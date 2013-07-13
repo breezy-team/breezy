@@ -103,6 +103,11 @@ Internals
 * The launchpad plugin now requires API 1.6.0 or later.  This version shipped
   with Ubuntu 9.10.  (Aaron Bentley)
 
+* Better align with upstream gzip.py in tuned_gzip.py. We may lose a bit of
+  performance but that's for knit and weave formats and already partly
+  deprecated, better keep compatibility than failing fast ;)
+  (Vincent Ladeuil, #1116079)
+
 Testing
 *******
 
