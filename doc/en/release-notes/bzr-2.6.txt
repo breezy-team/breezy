@@ -72,6 +72,10 @@ Bug Fixes
   causes breakage with docutils 0.9.1.
   (Vincent Ladeuil, Jelmer Vernooij, #1066307)
 
+* Support utf8 characters in platform names even without looking inside the
+  box (Fedora's Schrödinger's Cat).  
+  (Toshio Kuratomi, Vincent Ladeuil, #1195783)
+
 * Warn when ``--show-base`` is used for ``pull`` in a treeless branch
   instead of failing. It's useless but harmless. (Vincent Ladeuil, #1022160)
 

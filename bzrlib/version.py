@@ -19,6 +19,7 @@
 from __future__ import absolute_import
 
 import os
+import platform
 import sys
 
 import bzrlib
@@ -32,8 +33,6 @@ from bzrlib import (
 
 
 def show_version(show_config=True, show_copyright=True, to_file=None):
-    import platform
-
     if to_file is None:
         to_file = sys.stdout
     to_file.write("Bazaar (bzr) %s\n" % bzrlib.__version__)
@@ -66,7 +65,8 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
 
     to_file.write("  Python standard library:" + ' ')
     to_file.write(os.path.dirname(os.__file__) + '\n')
-    to_file.write("  Platform: %s\n" % platform.platform(aliased=1))
+    to_file.write("  Platform: %s\n"
+                  % platform.platform(aliased=1).decode('utf-8'))
     to_file.write("  bzrlib: ")
     if len(bzrlib.__path__) > 1:
         # print repr, which is a good enough way of making it clear it's
