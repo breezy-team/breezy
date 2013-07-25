@@ -627,7 +627,8 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         abs_to = self._remote_path(rel_to)
 
         request = _urllib2_wrappers.Request('MOVE', abs_from, None,
-                                            {'Destination': abs_to},
+                                            {'Destination': abs_to,
+                                             'Overwrite': 'T'},
                                             accepted_errors=[201, 204,
                                                              404, 409])
         response = self._perform(request)
