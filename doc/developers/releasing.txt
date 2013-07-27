@@ -53,7 +53,7 @@ different kinds of users:
    or improvements.
 
 #. stable releases: name ``x.y.z`` where ``x.y.`` is the series and ``z``
-   starts at 1 and is incremented. These releases are targeted at people
+   starts at 0 and is incremented. These releases are targeted at people
    that want bugfixes only and no new features.
 
 

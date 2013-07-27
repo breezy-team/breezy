@@ -16,6 +16,7 @@
 
 """External tests of 'bzr ping'"""
 
+import bzrlib
 from bzrlib import tests
 
 
@@ -33,5 +34,5 @@ class TestSmartServerPing(tests.TestCaseWithTransport):
         self.assertLength(1, self.hpss_connections)
         self.assertEquals(out,
             "Response: ('ok', '2')\n"
-            "Headers: {'Software version': '2.6.0dev3'}\n")
+            "Headers: {'Software version': '%s'}\n" % (bzrlib.version_string,))
         self.assertEquals(err, "")

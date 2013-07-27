@@ -55,7 +55,7 @@ __copyright__ = "Copyright 2005-2012 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (2, 6, 0, 'dev', 3)
+version_info = (2, 6, 0, 'final', 0)
 
 # API compatibility version
 api_minimum_version = (2, 4, 0)

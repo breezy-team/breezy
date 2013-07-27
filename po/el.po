@@ -1,21 +1,21 @@
-# Catalan translation for bzr
-# Copyright (c) 2011 Rosetta Contributors and Canonical Ltd 2011
+# Greek translation for bzr
+# Copyright (c) 2012 Rosetta Contributors and Canonical Ltd 2012
 # This file is distributed under the same license as the bzr package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2011.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2012.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: bzr\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
 "POT-Creation-Date: 2012-07-10 11:35+0200\n"
-"PO-Revision-Date: 2011-09-20 11:06+0000\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: Catalan <ca@li.org>\n"
+"PO-Revision-Date: 2012-07-03 04:42+0000\n"
+"Last-Translator: tzem <athmakrigiannis@gmail.com>\n"
+"Language-Team: Greek <el@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Launchpad-Export-Date: 2012-07-11 04:31+0000\n"
+"X-Launchpad-Export-Date: 2012-07-11 04:32+0000\n"
 "X-Generator: Launchpad (build 15593)\n"
 
 #: bzrlib/add.py:93
@@ -13046,12 +13046,16 @@ msgid ""
 "    [name *.bat]\n"
 "    eol = native"
 msgstr ""
+"    [name *.bat]\n"
+"    eol = native"
 
 #: en/help_topics/rules.txt:14
 msgid ""
 "    [name *.html *.xml]\n"
 "    keywords = xml_escape"
 msgstr ""
+"    [name *.html *.xml]\n"
+"    keywords = xml_escape"
 
 #: en/help_topics/rules.txt:17
 msgid ""
@@ -13200,6 +13204,12 @@ msgid ""
 "  bzr log file://localhost/tmp/%252False\n"
 "  bzr log file:%252False"
 msgstr ""
+"  cd /tmp\n"
+"  bzr log /tmp/%2False\n"
+"  bzr log %2False\n"
+"  bzr log file:///tmp/%252False\n"
+"  bzr log file://localhost/tmp/%252False\n"
+"  bzr log file:%252False"
 
 #: en/help_topics/url-special-chars.txt:34
 msgid "These are valid but do not refer to the same file::"
@@ -13273,7 +13283,7 @@ msgstr ""
 
 #: en/help_topics/urlspec.txt:20
 msgid "  <protocol>://[user[:password]@]host[:port]/[path]"
-msgstr ""
+msgstr "  <protocol>://[user[:password]@]host[:port]/[path]"
 
 #: en/help_topics/urlspec.txt:22
 msgid "allowing URLs such as::"
@@ -13281,7 +13291,7 @@ msgstr ""
 
 #: en/help_topics/urlspec.txt:24
 msgid "  http://bzruser:BadPass@bzr.example.com:8080/bzr/trunk"
-msgstr ""
+msgstr "  http://bzruser:BadPass@bzr.example.com:8080/bzr/trunk"
 
 #: en/help_topics/urlspec.txt:26
 msgid ""
@@ -13294,7 +13304,7 @@ msgstr ""
 
 #: en/help_topics/urlspec.txt:32
 msgid "  bzr+ssh://remote@shell.example.com/~/myproject/trunk"
-msgstr ""
+msgstr "  bzr+ssh://remote@shell.example.com/~/myproject/trunk"
 
 #: en/help_topics/urlspec.txt:34
 msgid "would refer to ``/home/remote/myproject/trunk``."

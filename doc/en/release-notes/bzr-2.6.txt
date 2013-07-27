@@ -8,12 +8,27 @@ Bazaar Release Notes
 bzr 2.6b3
 #########
 
-:2.6b3: NOT RELEASED YET
+:Codename: Surprise
+:2.6.0: 2013-07-27
+
+This release marks the start of a new long-term-stable series. From here, we
+will only make bugfix releases on the 2.6 series (2.6.1, etc), while 2.7
+will become our new development series.
+
+This is a bugfix and polish release over the 2.4 series, with a large number
+of bugs fixed (~170 for the 2.5 series alone). The 2.5 series provides a
+faster smart protocol implementation for many operations, basic support for
+colocated branches. We have started translating bzr with the 2.5 series:
+https://translations.launchpad.net/bzr, more than 20 languages have already
+been registered but these are the early days, contributions welcome.
+
+Only a few bugfixes have been included since 2.5b6 so all known fixed bugs
+are included here.
+
+Users are encouraged to upgrade from the other stable series.
 
 External Compatibility Breaks
 *****************************
-
-.. These may require users to change the way they use Bazaar.
 
 * ``bzr lp-propose --approve`` now also adds an "Approve" vote to the merge
   proposal.  (Jonathan Lange)
@@ -27,6 +42,8 @@ New Features
 * New option '--context' for 'bzr diff' command, to configure the amount of 
   context (i.e. showing lines that have not changed).  Also available as the 
   named parameter 'context_lines' to bzrlib.diff.internal_diff(). (Paul Nixon)
+
+* The 'grep' plugin is now shipped with bzr. (Jelmer Vernooij)
 
 * The 'ping' plugin is now shipped with bzr. (Jelmer Vernooij)
 
@@ -80,7 +97,7 @@ Bug Fixes
   instead of failing. It's useless but harmless. (Vincent Ladeuil, #1022160)
 
 * When a missing referenced chk root error is encountered, bzr now suggests
-  running ``bzr reconcile --canonicalize-chks``. (Jelmer Vernooij, #1021537)
+  running ``bzr reconcile --canonicalize-chks``. (Jelmer Vernooij)
 
 * When pushing a specific revision, create the new working tree at
   that revision. (#484516, Neil Martinsen-Burrell)
@@ -88,16 +105,13 @@ Bug Fixes
 Documentation
 *************
 
-.. Improved or updated documentation.
-
 * Clarify ``bzr config`` usages especially around other option references
   expansion. (Vincent Ladeuil, #996401)
 
 API Changes
 ***********
 
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
+* None.
 
 Internals
 *********
@@ -146,8 +160,6 @@ New Features
 
 * New option ``--overwrite-tags`` for ``bzr pull`` and ``bzr push``.
   (Jelmer Vernooij, #681792)
-
-* The 'grep' plugin is now shipped with bzr. (Jelmer Vernooij)
 
 Improvements
 ************
