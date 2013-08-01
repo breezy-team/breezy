@@ -88,6 +88,22 @@ class MatchHostnameTests(TestCase):
         self.assertRaises(ValueError,
                           _urllib2_wrappers.match_hostname, {}, "example.com")
 
+    def test_wildcards_in_cert(self):
+        def ok(cert, hostname):
+            _urllib2_wrappers.match_hostname(cert, hostname)
+
+        # Python Issue #17980: avoid denials of service by refusing more than
+        # one wildcard per fragment.
+        cert = {'subject': ((('commonName', 'a*b.com'),),)}
+        ok(cert, 'axxb.com')
+        cert = {'subject': ((('commonName', 'a*b.co*'),),)}
+        ok(cert, 'axxb.com')
+        cert = {'subject': ((('commonName', 'a*b*.com'),),)}
+        try:
+            _urllib2_wrappers.match_hostname(cert, 'axxbxxc.com')
+        except ValueError as e:
+            self.assertIn("too many wildcards", str(e))
+
     def test_no_valid_attributes(self):
         self.assertRaises(CertificateError, _urllib2_wrappers.match_hostname,
                           {"Problem": "Solved"}, "example.com")

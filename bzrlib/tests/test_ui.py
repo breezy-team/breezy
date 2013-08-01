@@ -103,7 +103,6 @@ class TestTextUIFactory(tests.TestCase):
         ui.stdout = tests.StringIOWrapper()
         ui.stderr = tests.StringIOWrapper()
         ui.stderr.encoding = ui.stdout.encoding = ui.stdin.encoding = 'utf8'
-        pb = ui.nested_progress_bar()
         password = ui.get_password(u'Hello \u1234 %(user)s', user=u'some\u1234')
         self.assertEqual(u'baz\u1234', password)
         self.assertEqual(u'Hello \u1234 some\u1234: ',

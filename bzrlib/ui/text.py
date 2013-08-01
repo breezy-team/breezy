@@ -336,7 +336,13 @@ class TextUIFactory(UIFactory):
         if kwargs:
             # See <https://launchpad.net/bugs/365891>
             prompt = prompt % kwargs
-        prompt = prompt.encode(osutils.get_terminal_encoding(), 'replace')
+        try:
+            prompt = prompt.encode(self.stderr.encoding)
+        except (UnicodeError, AttributeError):
+            # If stderr has no encoding attribute or can't properly encode,
+            # fallback to terminal encoding for robustness (better display
+            # something to the user than aborting with a traceback).
+            prompt = prompt.encode(osutils.get_terminal_encoding(), 'replace')
         self.clear_term()
         self.stdout.flush()
         self.stderr.write(prompt)

@@ -8,12 +8,27 @@ Bazaar Release Notes
 bzr 2.6b3
 #########
 
-:2.6b3: NOT RELEASED YET
+:Codename: Surprise
+:2.6.0: 2013-07-27
+
+This release marks the start of a new long-term-stable series. From here, we
+will only make bugfix releases on the 2.6 series (2.6.1, etc), while 2.7
+will become our new development series.
+
+This is a bugfix and polish release over the 2.4 series, with a large number
+of bugs fixed (~170 for the 2.5 series alone). The 2.5 series provides a
+faster smart protocol implementation for many operations, basic support for
+colocated branches. We have started translating bzr with the 2.5 series:
+https://translations.launchpad.net/bzr, more than 20 languages have already
+been registered but these are the early days, contributions welcome.
+
+Only a few bugfixes have been included since 2.5b6 so all known fixed bugs
+are included here.
+
+Users are encouraged to upgrade from the other stable series.
 
 External Compatibility Breaks
 *****************************
-
-.. These may require users to change the way they use Bazaar.
 
 * ``bzr lp-propose --approve`` now also adds an "Approve" vote to the merge
   proposal.  (Jonathan Lange)
@@ -27,6 +42,8 @@ New Features
 * New option '--context' for 'bzr diff' command, to configure the amount of 
   context (i.e. showing lines that have not changed).  Also available as the 
   named parameter 'context_lines' to bzrlib.diff.internal_diff(). (Paul Nixon)
+
+* The 'grep' plugin is now shipped with bzr. (Jelmer Vernooij)
 
 * The 'ping' plugin is now shipped with bzr. (Jelmer Vernooij)
 
@@ -60,6 +77,9 @@ Bug Fixes
   ``BZR_PROGRESS_BAR``. This can be set in ``bazaar.conf`` or specified from
   the command line with ``-Oprogress_bar=text``. (Vincent Ladeuil, #388275)
 
+* ``Authentication.Config`` now always returns unicode user names and passwords.
+  (Vincent Ladeuil, #514301)
+
 * Fixed a bug where the entire contents of ``/etc/mailname`` is read in.
   We only want to read in the first line so that comments could be added
   and would be ignored.
@@ -69,14 +89,15 @@ Bug Fixes
   causes breakage with docutils 0.9.1.
   (Vincent Ladeuil, Jelmer Vernooij, #1066307)
 
-* ``Authentication.Config`` now always returns unicode user names and passwords.
-  (Vincent Ladeuil, #514301)
+* Support utf8 characters in platform names even without looking inside the
+  box (Fedora's Schrödinger's Cat).  
+  (Toshio Kuratomi, Vincent Ladeuil, #1195783)
 
 * Warn when ``--show-base`` is used for ``pull`` in a treeless branch
   instead of failing. It's useless but harmless. (Vincent Ladeuil, #1022160)
 
 * When a missing referenced chk root error is encountered, bzr now suggests
-  running ``bzr reconcile --canonicalize-chks``. (Jelmer Vernooij, #1021537)
+  running ``bzr reconcile --canonicalize-chks``. (Jelmer Vernooij)
 
 * When pushing a specific revision, create the new working tree at
   that revision. (#484516, Neil Martinsen-Burrell)
@@ -84,30 +105,33 @@ Bug Fixes
 Documentation
 *************
 
-.. Improved or updated documentation.
-
 * Clarify ``bzr config`` usages especially around other option references
   expansion. (Vincent Ladeuil, #996401)
 
 API Changes
 ***********
 
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
+* None.
 
 Internals
 *********
 
+* Add __iter__ to http ResponseFile. (Jelmer Vernooij, #1184021)
+
 * The launchpad plugin now requires API 1.6.0 or later.  This version shipped
   with Ubuntu 9.10.  (Aaron Bentley)
+
+* Better align with upstream gzip.py in tuned_gzip.py. We may lose a bit of
+  performance but that's for knit and weave formats and already partly
+  deprecated, better keep compatibility than failing fast ;)
+  (Vincent Ladeuil, #1116079)
 
 Testing
 *******
 
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
-
+* Fix test failures occurring only with LC_ALL=C, when prompting a user,
+  ``stderr`` encoding should be preferred over terminal encoding if
+  available. (Vincent Ladeuil, #1086209)
 
 bzr 2.6b2
 #########
@@ -136,8 +160,6 @@ New Features
 
 * New option ``--overwrite-tags`` for ``bzr pull`` and ``bzr push``.
   (Jelmer Vernooij, #681792)
-
-* The 'grep' plugin is now shipped with bzr. (Jelmer Vernooij)
 
 Improvements
 ************

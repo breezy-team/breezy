@@ -75,6 +75,17 @@ class FakeHTTPConnection(_urllib2_wrappers.HTTPConnection):
         pass
 
 
+class TestResponseFileIter(tests.TestCase):
+
+    def test_iter_empty(self):
+        f = response.ResponseFile('empty', StringIO())
+        self.assertEqual([], list(f))
+
+    def test_iter_many(self):
+        f = response.ResponseFile('many', StringIO('0\n1\nboo!\n'))
+        self.assertEqual(['0\n', '1\n', 'boo!\n'], list(f))
+
+
 class TestHTTPConnection(tests.TestCase):
 
     def test_cleanup_pipe(self):
@@ -137,7 +148,6 @@ class TestRangeFileMixin(object):
 
     def test_read_zero(self):
         f = self._file
-        start = self.first_range_start
         self.assertEquals('', f.read(0))
         f.seek(10, 1)
         self.assertEquals('', f.read(0))
@@ -371,13 +381,11 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
 
     def test_seek_across_ranges(self):
         f = self._file
-        start = self.first_range_start
         f.seek(126) # skip the two first ranges
         self.assertEquals('AB', f.read(2))
 
     def test_checked_read_dont_overflow_buffers(self):
         f = self._file
-        start = self.first_range_start
         # We force a very low value to exercise all code paths in _checked_read
         f._discarded_buf_size = 8
         f.seek(126) # skip the two first ranges
