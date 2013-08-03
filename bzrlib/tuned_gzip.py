@@ -127,15 +127,28 @@ class GzipFile(gzip.GzipFile):
             DeprecationWarning, stacklevel=2)
         gzip.GzipFile.__init__(self, *args, **kwargs)
 
-    def _add_read_data(self, data):
-        # 4169 calls in 183
-        # temp var for len(data) and switch to +='s.
-        # 4169 in 139
-        len_data = len(data)
-        self.crc = zlib.crc32(data, self.crc)
-        self.extrabuf += data
-        self.extrasize += len_data
-        self.size += len_data
+    if sys.version_info >= (2, 7, 4):
+        def _add_read_data(self, data):
+            # 4169 calls in 183
+            # temp var for len(data) and switch to +='s.
+            # 4169 in 139
+            len_data = len(data)
+            self.crc = zlib.crc32(data, self.crc) & 0xffffffffL
+            offset = self.offset - self.extrastart
+            self.extrabuf = self.extrabuf[offset:] + data
+            self.extrasize = self.extrasize + len_data
+            self.extrastart = self.offset
+            self.size = self.size + len_data
+    else:
+        def _add_read_data(self, data):
+            # 4169 calls in 183
+            # temp var for len(data) and switch to +='s.
+            # 4169 in 139
+            len_data = len(data)
+            self.crc = zlib.crc32(data, self.crc)
+            self.extrabuf += data
+            self.extrasize += len_data
+            self.size += len_data
 
     def _write_gzip_header(self):
         """A tuned version of gzip._write_gzip_header
@@ -161,97 +174,98 @@ class GzipFile(gzip.GzipFile):
             ''          #     self.fileobj.write(fname + '\000')
             )
 
-    def _read(self, size=1024):
-        # various optimisations:
-        # reduces lsprof count from 2500 to
-        # 8337 calls in 1272, 365 internal
-        if self.fileobj is None:
-            raise EOFError, "Reached EOF"
-
-        if self._new_member:
-            # If the _new_member flag is set, we have to
-            # jump to the next member, if there is one.
-            #
-            # First, check if we're at the end of the file;
-            # if so, it's time to stop; no more members to read.
-            next_header_bytes = self.fileobj.read(10)
-            if next_header_bytes == '':
+    if sys.version_info < (2, 7, 4):
+        def _read(self, size=1024):
+            # various optimisations:
+            # reduces lsprof count from 2500 to
+            # 8337 calls in 1272, 365 internal
+            if self.fileobj is None:
                 raise EOFError, "Reached EOF"
 
-            self._init_read()
-            self._read_gzip_header(next_header_bytes)
-            self.decompress = zlib.decompressobj(-zlib.MAX_WBITS)
-            self._new_member = False
+            if self._new_member:
+                # If the _new_member flag is set, we have to
+                # jump to the next member, if there is one.
+                #
+                # First, check if we're at the end of the file;
+                # if so, it's time to stop; no more members to read.
+                next_header_bytes = self.fileobj.read(10)
+                if next_header_bytes == '':
+                    raise EOFError, "Reached EOF"
 
-        # Read a chunk of data from the file
-        buf = self.fileobj.read(size)
+                self._init_read()
+                self._read_gzip_header(next_header_bytes)
+                self.decompress = zlib.decompressobj(-zlib.MAX_WBITS)
+                self._new_member = False
 
-        # If the EOF has been reached, flush the decompression object
-        # and mark this object as finished.
+            # Read a chunk of data from the file
+            buf = self.fileobj.read(size)
 
-        if buf == "":
-            self._add_read_data(self.decompress.flush())
-            if len(self.decompress.unused_data) < 8:
-                raise AssertionError("what does flush do?")
-            self._gzip_tail = self.decompress.unused_data[0:8]
-            self._read_eof()
-            # tell the driving read() call we have stuffed all the data
-            # in self.extrabuf
-            raise EOFError, 'Reached EOF'
+            # If the EOF has been reached, flush the decompression object
+            # and mark this object as finished.
 
-        self._add_read_data(self.decompress.decompress(buf))
-
-        if self.decompress.unused_data != "":
-            # Ending case: we've come to the end of a member in the file,
-            # so seek back to the start of the data for the next member which
-            # is the length of the decompress objects unused data - the first
-            # 8 bytes for the end crc and size records.
-            #
-            # so seek back to the start of the unused data, finish up
-            # this member, and read a new gzip header.
-            # (The number of bytes to seek back is the length of the unused
-            # data, minus 8 because those 8 bytes are part of this member.
-            seek_length = len (self.decompress.unused_data) - 8
-            if seek_length > 0:
-                # we read too much data
-                self.fileobj.seek(-seek_length, 1)
+            if buf == "":
+                self._add_read_data(self.decompress.flush())
+                if len(self.decompress.unused_data) < 8:
+                    raise AssertionError("what does flush do?")
                 self._gzip_tail = self.decompress.unused_data[0:8]
-            elif seek_length < 0:
-                # we haven't read enough to check the checksum.
-                if not (-8 < seek_length):
-                    raise AssertionError("too great a seek")
-                buf = self.fileobj.read(-seek_length)
-                self._gzip_tail = self.decompress.unused_data + buf
-            else:
-                self._gzip_tail = self.decompress.unused_data
+                self._read_eof()
+                # tell the driving read() call we have stuffed all the data
+                # in self.extrabuf
+                raise EOFError, 'Reached EOF'
 
-            # Check the CRC and file size, and set the flag so we read
-            # a new member on the next call
-            self._read_eof()
-            self._new_member = True
+            self._add_read_data(self.decompress.decompress(buf))
 
-    def _read_eof(self):
-        """tuned to reduce function calls and eliminate file seeking:
-        pass 1:
-        reduces lsprof count from 800 to 288
-        4168 in 296
-        avoid U32 call by using struct format L
-        4168 in 200
-        """
-        # We've read to the end of the file, so we should have 8 bytes of
-        # unused data in the decompressor. If we don't, there is a corrupt file.
-        # We use these 8 bytes to calculate the CRC and the recorded file size.
-        # We then check the that the computed CRC and size of the
-        # uncompressed data matches the stored values.  Note that the size
-        # stored is the true file size mod 2**32.
-        if not (len(self._gzip_tail) == 8):
-            raise AssertionError("gzip trailer is incorrect length.")
-        crc32, isize = struct.unpack("<LL", self._gzip_tail)
-        # note that isize is unsigned - it can exceed 2GB
-        if crc32 != U32(self.crc):
-            raise IOError, "CRC check failed %d %d" % (crc32, U32(self.crc))
-        elif isize != LOWU32(self.size):
-            raise IOError, "Incorrect length of data produced"
+            if self.decompress.unused_data != "":
+                # Ending case: we've come to the end of a member in the file,
+                # so seek back to the start of the data for the next member
+                # which is the length of the decompress objects unused data -
+                # the first 8 bytes for the end crc and size records.
+                #
+                # so seek back to the start of the unused data, finish up
+                # this member, and read a new gzip header.
+                # (The number of bytes to seek back is the length of the unused
+                # data, minus 8 because those 8 bytes are part of this member.
+                seek_length = len (self.decompress.unused_data) - 8
+                if seek_length > 0:
+                    # we read too much data
+                    self.fileobj.seek(-seek_length, 1)
+                    self._gzip_tail = self.decompress.unused_data[0:8]
+                elif seek_length < 0:
+                    # we haven't read enough to check the checksum.
+                    if not (-8 < seek_length):
+                        raise AssertionError("too great a seek")
+                    buf = self.fileobj.read(-seek_length)
+                    self._gzip_tail = self.decompress.unused_data + buf
+                else:
+                    self._gzip_tail = self.decompress.unused_data
+
+                # Check the CRC and file size, and set the flag so we read
+                # a new member on the next call
+                self._read_eof()
+                self._new_member = True
+
+        def _read_eof(self):
+            """tuned to reduce function calls and eliminate file seeking:
+            pass 1:
+            reduces lsprof count from 800 to 288
+            4168 in 296
+            avoid U32 call by using struct format L
+            4168 in 200
+            """
+            # We've read to the end of the file, so we should have 8 bytes of
+            # unused data in the decompressor. If we don't, there is a corrupt
+            # file.  We use these 8 bytes to calculate the CRC and the recorded
+            # file size.  We then check the that the computed CRC and size of
+            # the uncompressed data matches the stored values.  Note that the
+            # size stored is the true file size mod 2**32.
+            if not (len(self._gzip_tail) == 8):
+                raise AssertionError("gzip trailer is incorrect length.")
+            crc32, isize = struct.unpack("<LL", self._gzip_tail)
+            # note that isize is unsigned - it can exceed 2GB
+            if crc32 != U32(self.crc):
+                raise IOError, "CRC check failed %d %d" % (crc32, U32(self.crc))
+            elif isize != LOWU32(self.size):
+                raise IOError, "Incorrect length of data produced"
 
     def _read_gzip_header(self, bytes=None):
         """Supply bytes if the minimum header size is already read.

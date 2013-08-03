@@ -106,14 +106,17 @@ class TestGzip(tests.TestCase):
 class TestToGzip(tests.TestCase):
 
     def assertToGzip(self, chunks):
-        bytes = ''.join(chunks)
+        raw_bytes = ''.join(chunks)
         gzfromchunks = tuned_gzip.chunks_to_gzip(chunks)
-        gzfrombytes = tuned_gzip.bytes_to_gzip(bytes)
+        gzfrombytes = tuned_gzip.bytes_to_gzip(raw_bytes)
         self.assertEqual(gzfrombytes, gzfromchunks)
         decoded = self.applyDeprecated(
             symbol_versioning.deprecated_in((2, 3, 0)),
             tuned_gzip.GzipFile, fileobj=StringIO(gzfromchunks)).read()
-        self.assertEqual(bytes, decoded)
+        lraw, ldecoded = len(raw_bytes), len(decoded)
+        self.assertEqual(lraw, ldecoded,
+                         'Expecting data length %d, got %d' % (lraw, ldecoded))
+        self.assertEqual(raw_bytes, decoded)
 
     def test_single_chunk(self):
         self.assertToGzip(['a modest chunk\nwith some various\nbits\n'])

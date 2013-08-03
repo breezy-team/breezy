@@ -17,12 +17,21 @@
 """Tests for versioning of bzrlib."""
 
 from cStringIO import StringIO
+import platform
 import re
 
-from bzrlib import version, workingtree
-from bzrlib.tests import TestCase, TestSkipped
+from bzrlib import (
+    tests,
+    version,
+    workingtree,
+    )
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
-class TestBzrlibVersioning(TestCase):
+
+load_tests = load_tests_apply_scenarios
+
+
+class TestBzrlibVersioning(tests.TestCase):
 
     def test_get_bzr_source_tree(self):
         """Get tree for bzr source, if any."""
@@ -33,7 +42,8 @@ class TestBzrlibVersioning(TestCase):
         # just assert that it must either return None or the tree.
         src_tree = version._get_bzr_source_tree()
         if src_tree is None:
-            raise TestSkipped("bzr tests aren't run from a bzr working tree")
+            raise tests.TestSkipped(
+                "bzr tests aren't run from a bzr working tree")
         else:
             # ensure that what we got was in fact a working tree instance.
             self.assertIsInstance(src_tree, workingtree.WorkingTree)
@@ -47,3 +57,20 @@ class TestBzrlibVersioning(TestCase):
         m = re.search(r"Python interpreter: (.*) [0-9]", out)
         self.assertIsNot(m, None)
         self.assertPathExists(m.group(1))
+
+class TestPlatformUse(tests.TestCase):
+
+    scenarios = [('ascii', dict(_platform='test-platform')),
+                 ('unicode', dict(_platform='Schr\xc3\xb6dinger'))]
+
+    def setUp(self):
+        super(TestPlatformUse, self).setUp()
+        self.permit_source_tree_branch_repo()
+
+    def test_platform(self):
+        out = self.make_utf8_encoded_stringio()
+        self.overrideAttr(platform, 'platform', lambda **kwargs: self._platform)
+        version.show_version(show_config=False, show_copyright=False,
+                             to_file=out)
+        self.assertContainsRe(out.getvalue(),
+                              r'(?m)^  Platform: %s' % self._platform)
