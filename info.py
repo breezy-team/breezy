@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 bzr_plugin_name = "git"
 
-dulwich_minimum_version = (0, 8, 3)
+dulwich_minimum_version = (0, 9, 0)
 
 # versions ending in 'exp' mean experimental mappings
 # versions ending in 'dev' mean development version
