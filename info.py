@@ -7,7 +7,7 @@ dulwich_minimum_version = (0, 9, 0)
 # versions ending in 'exp' mean experimental mappings
 # versions ending in 'dev' mean development version
 # versions ending in 'final' mean release (well tested, etc)
-bzr_plugin_version = (0, 6, 11, 'dev', 0)
+bzr_plugin_version = (0, 6, 11, 'final', 0)
 
 bzr_commands = ["git-import", "git-object", "git-refs", "git-apply"]
 
