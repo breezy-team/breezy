@@ -1,3 +1,9 @@
+0.6.11	UNRELEASED
+
+ BUG FIXES
+
+  * Add support for Bazaar 2.6.0. (Jelmer Vernooij)
+
 0.6.10	2012-12-13
 
  FEATURES
