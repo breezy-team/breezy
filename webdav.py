@@ -512,7 +512,7 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
                 # Intermediate directories missing
                 raise errors.NoSuchFile(abspath)
             if code not in  (200, 201, 204):
-                self._raise_curl_http_error(abspath, response,
+                self._raise_http_error(abspath, response,
                                             'expected 200, 201 or 204.')
 
         try:
@@ -663,7 +663,7 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         if code == 404:
             raise errors.NoSuchFile(abs_path)
         if code != 204 and code != 200:
-            self._raise_curl_http_error(curl, 'unable to delete')
+            self._raise_http_error(abs_path, response, 'unable to delete')
 
     def copy(self, rel_from, rel_to):
         """See Transport.copy"""
@@ -870,4 +870,4 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
 def get_test_permutations():
     """Return the permutations to be used in testing."""
     import tests.dav_server
-    return [(HttpDavTransport, tests.dav_server.DAVServer),]
+    return [(HttpDavTransport, tests.dav_server.DAVServer),(HttpDavTransport, tests.dav_server.QuirkyDAVServer)]
