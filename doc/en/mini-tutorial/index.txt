@@ -161,8 +161,8 @@ The steps to publishing branches on Launchpad are:
 .. _Upload your SSH public key to Launchpad: https://launchpad.net/~/+editsshkeys
     
 4. `Make a team for your project`_.  Even if you're starting as the only
-   developer on this project, creating a new now will let you more easily 
-   add other people later.
+   developer on this project, creating a new one now will let you more
+   easily add other people later.
  
 .. _Make a team for your project: https://help.launchpad.net/Teams/CreatingAndRunning
       
