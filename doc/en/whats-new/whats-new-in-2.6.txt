@@ -4,7 +4,7 @@ What's New in Bazaar 2.6?
 
 Bazaar 2.6 has been released on the 27th of July 2013 and marks the start of
 a new long-trem stable series. From here, we will only make bugfix releases
-on the 2.6 series (2.6.1, etc)d), while 2.7 will become our new development
+on the 2.6 series (2.6.1, etc), while 2.7 will become our new development
 series.
 
 
