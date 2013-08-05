@@ -543,20 +543,20 @@ available to the world.
 
 #. Go to the release web page at <https://launchpad.net/bzr/x.y/x.y.z>
 
-#. Announce on the `Bazaar website <http://bazaar.canonical.com/>`_.
-   This page is edited via the lp:bzr-website branch. (Changes
+#. Announce on the `Bazaar website <http://bazaar.canonical.com/>`_.  This
+   page is edited in ``build.py`` in the lp:bzr-website branch. (Changes
    pushed to this branch are refreshed by a cron job on escudero.)
 
 #. Check that the documentation for this release is available in
    <http://doc.bazaar.canonical.com>.  It should be automatically build when
    the branch is created, by a cron script ``update-bzr-docs`` on
    ``escudero``. When the first release is created in a new series, a branch
-   needs to be created on escudero::
+   needs to be created on zhongshan::
 
-     ssh escudero.canonical.com
+     ssh zhongshan.canonical.com
      sudo -u bzr-web -s
      cd /srv/doc.bazaar.canonical.com/
-     bzr branch http://bazaar.launchpad.net/~bzr-pqm/bzr/2.5 bzr.2.5
+     bzr branch http://bazaar.launchpad.net/~bzr-pqm/bzr/2.6 bzr/bzr.2.6
 
    And the ``bzr/bin/update-bzr-docs`` script needs to refer to it.
 
@@ -610,7 +610,7 @@ Now that the release is publicly available, tell people about it.
    mentioning the milestone URL <https://launchpad.net/bzr/+milestone/x.y.z>
    so people get an easy access to details.
 
-#. Announce on http://freecode.com/projects/bazaar-vcs
+#. Announce on https://freecode.com/projects/bazaar-vcs
 
    This should be done for beta releases and stable releases. If you do not
    have a Freecode account yet, ask one of the existing admins.
