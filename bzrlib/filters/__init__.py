@@ -18,7 +18,7 @@
 
 A filter consists of a read converter, write converter pair.
 The content in the working tree is called the convenience format
-while the content actually stored in called the canonical format.
+while the content actually stored is called the canonical format.
 The read converter produces canonical content from convenience
 content while the writer goes the other way.
 

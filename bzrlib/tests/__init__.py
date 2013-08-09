@@ -3792,7 +3792,7 @@ def suite_matches_id_list(test_suite, id_list):
 
     :return: (absents, duplicates) absents is a list containing the test found
         in id_list but not in test_suite, duplicates is a list containing the
-        test found multiple times in test_suite.
+        tests found multiple times in test_suite.
 
     When using a prefined test id list, it may occurs that some tests do not
     exist anymore or that some tests use the same id. This function warns the
@@ -4341,7 +4341,7 @@ def apply_scenario(test, scenario):
     """Copy test and apply scenario to it.
 
     :param test: A test to adapt.
-    :param scenario: A tuple describing the scenarion.
+    :param scenario: A tuple describing the scenario.
         The first element of the tuple is the new test id.
         The second element is a dict containing attributes to set on the
         test.
