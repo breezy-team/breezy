@@ -624,7 +624,8 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         abs_to = self._remote_path(rel_to)
 
         request = _urllib2_wrappers.Request('MOVE', abs_from, None,
-                                            {'Destination': abs_to},
+                                            {'Destination': abs_to,
+                                             'Overwrite': 'T'},
                                             accepted_errors=[201, 204,
                                                              404, 409])
         response = self._perform(request)
@@ -651,14 +652,14 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         abs_path = self._remote_path(rel_path)
 
         request = _urllib2_wrappers.Request('DELETE', abs_path,
-                                            accepted_errors=[200, 204,
+                                            accepted_errors=[200, 202, 204,
                                                              404, 999])
         response = self._perform(request)
 
         code = response.code
         if code == 404:
             raise errors.NoSuchFile(abs_path)
-        if code != 204:
+        if code not in (200, 204):
             self._raise_http_error(abs_path, response, 'unable to delete')
 
     def copy(self, rel_from, rel_to):
@@ -866,4 +867,5 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
 def get_test_permutations():
     """Return the permutations to be used in testing."""
     import tests.dav_server
-    return [(HttpDavTransport, tests.dav_server.DAVServer),]
+    return [(HttpDavTransport, tests.dav_server.DAVServer),
+            (HttpDavTransport, tests.dav_server.QuirkyDAVServer)]

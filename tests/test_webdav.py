@@ -410,9 +410,9 @@ class TestDAVErrors(tests.TestCase):
         t = self._transport(self.server.get_url())
         return t
 
-    def test_delete_replies_200(self):
+    def test_delete_replies_202(self):
         """A bogus return code for delete raises an error."""
-        self.server.canned_response = '''HTTP/1.1 200 OK\r
+        self.server.canned_response = '''HTTP/1.1 202 OK\r
 Date: Tue, 10 Aug 2013 14:38:56 GMT\r
 Server: Apache/42 (Wonderland)\r
 '''
