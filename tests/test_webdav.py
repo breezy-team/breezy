@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2013 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@ from bzrlib import (
     tests,
     )
 from bzrlib.plugins.webdav import webdav
+from bzrlib.tests import http_server
 
 
 def _get_list_dir_apache2_depth_1_prop():
@@ -357,3 +358,63 @@ class TestDavSaxParser(tests.TestCase):
         self.assertEquals(-1, st.st_size)
         self.assertTrue(stat.S_ISDIR(st.st_mode))
         self.assertTrue(st.st_mode & stat.S_IXUSR)
+
+
+class CannedRequestHandler(http_server.TestingHTTPRequestHandler):
+    """Request handler for a unique and pre-defined request.
+
+    The only thing we care about here is that a request is emitted by the
+    client and we send back a syntactically correct response.
+
+    We expect to receive a *single* request nothing more (and we won't even
+    check what request it is, we just read until an empty line).
+    """
+
+    def _handle_one_request(self):
+        # The communication between the client and the server is achieved
+        # through the server defined in the client test case.
+        tcs = self.server.test_case_server
+        requestline = self.rfile.readline()
+        # Read headers
+        self.MessageClass(self.rfile, 0)
+        if requestline.startswith('POST'):
+            # The body should be a single line (or we don't know where it ends
+            # and we don't want to issue a blocking read)
+            self.rfile.readline()
+
+        self.wfile.write(tcs.canned_response)
+
+
+class HatterHttpServer(http_server.HttpServer):
+    """A server giving all sort of crazy responses (like Alice's Hatter).
+
+    This is used to test various error cases in the webdav client.
+    """
+
+    def __init__(self):
+        super(HatterHttpServer, self).__init__(CannedRequestHandler,
+                                               protocol_version='HTTP/1.1')
+        self.canned_response = None
+
+
+class TestDAVErrors(tests.TestCase):
+
+    def setUp(self):
+        super(TestDAVErrors, self).setUp()
+        self._transport = webdav.HttpDavTransport
+        self.server = HatterHttpServer()
+        self.server.start_server()
+        self.addCleanup(self.server.stop_server)
+
+    def get_transport(self):
+        t = self._transport(self.server.get_url())
+        return t
+
+    def test_delete_replies_200(self):
+        """A bogus return code for delete raises an error."""
+        self.server.canned_response = '''HTTP/1.1 200 OK\r
+Date: Tue, 10 Aug 2013 14:38:56 GMT\r
+Server: Apache/42 (Wonderland)\r
+'''
+        t = self.get_transport()
+        self.assertRaises(errors.InvalidHttpResponse, t.delete, 'whatever')

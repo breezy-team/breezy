@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2009, 2011, 2012 Canonical Ltd
+# Copyright (C) 2006-2009, 2011, 2012, 2013 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -400,6 +400,12 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
     needed for bzr.
     """
 
+    # Implementation note: most methods relies on _perform() to catch
+    # unexpected status codes (via the xxxRequest's accepted_errors parameter).
+    # These methods should only handle errors (by adding the respective codes
+    # into accepted_errors) to provide specific error messages. I.e. mkdir()
+    # ends with a 'code != 201' to mention 'mkdir failed'.
+
     _debuglevel = 0
     _opener_class = DavOpener
 
@@ -414,10 +420,6 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
             msg = ': ' + info
         raise errors.InvalidHttpResponse(url, 'Unable to handle http code %d%s'
                                          % (response.code, msg))
-
-    def _handle_common_errors(self, code, abspath):
-        if code == 404:
-            raise errors.NoSuchFile(abspath)
 
     def open_write_stream(self, relpath, mode=None):
         """See Transport.open_write_stream."""
@@ -511,9 +513,6 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
             if code in (403, 404, 409):
                 # Intermediate directories missing
                 raise errors.NoSuchFile(abspath)
-            if code not in  (200, 201, 204):
-                self._raise_http_error(abspath, response,
-                                            'expected 200, 201 or 204.')
 
         try:
             bare_put_file_non_atomic()
@@ -560,9 +559,6 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
 
         if code in (403, 404, 409):
             raise errors.NoSuchFile(abspath) # Intermediate directories missing
-        if code not in  (200, 201, 204):
-            self._raise_http_error(abspath, response,
-                                   'expected 200, 201 or 204.')
 
     def mkdir(self, relpath, mode=None):
         """See Transport.mkdir"""
@@ -620,6 +616,7 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
             # overwrite.
             self._raise_http_error(abs_from, response,
                                    'unable to rename to %r' % (abs_to))
+
     def move(self, rel_from, rel_to):
         """See Transport.move"""
 
@@ -648,7 +645,7 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         """
         Delete the item at relpath.
 
-        Note that when a non-empty dir required to be deleted, a conforming DAV
+        Note that when a non-empty dir requires to be deleted, a conforming DAV
         server will delete the dir and all its content. That does not normally
         happen in bzr.
         """
@@ -679,7 +676,7 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         code = response.code
         if code in (404, 409):
             raise errors.NoSuchFile(abs_from)
-        # XXX: our test server returns 201 but apache2 returns 204, need
+        # XXX: our test server returns 201 but apache2 returns 204, needs
         # investivation.
         if code not in(201, 204):
             self._raise_http_error(abs_from, response,
@@ -842,8 +839,8 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         return relpath_size
 
     def _append_by_get_put(self, relpath, bytes):
-        # So  we need to  GET the  file first,  append to  it and
-        # finally PUT  back the  result.
+        # So we need to GET the file first, append to it and finally PUT back
+        # the result.
         full_data = StringIO()
         try:
             data = self.get(relpath)
