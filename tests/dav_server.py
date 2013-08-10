@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2011 Canonical Ltd
+# Copyright (C) 2008, 2009, 2011, 2013 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@ implements the DAV specification parts used by the webdav plugin.
 
 import errno
 import os
-import os.path # FIXME: Can't we use bzrlib.osutils ?
 import re
 import shutil # FIXME: Can't we use bzrlib.osutils ?
 import stat
@@ -32,7 +31,6 @@ import urlparse # FIXME: Can't we use bzrlib.urlutils ?
 
 
 from bzrlib import (
-    tests,
     trace,
     urlutils,
     )
@@ -51,7 +49,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         r'bytes (?P<begin>\d+)-(?P<end>\d+)/(?P<size>\d+|\*)')
 
     delete_success_code = 204
-    default_should_overwrite = True
+    move_default_overwrite = True
 
 
     def date_time_string(self, timestamp=None):
@@ -284,7 +282,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
                 # Ok we fail for an unnkown reason :-/
                 raise
         else:
-            self.send_response(self.delete_success_code) # Default success code
+            self.send_response(self.delete_success_code)
             self.end_headers()
 
     def do_MOVE(self):
@@ -295,12 +293,11 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             self.send_error(400, "Destination header missing")
             return
         overwrite_header = self.headers.get('Overwrite')
+        should_overwrite = self.move_default_overwrite
         if overwrite_header == 'F':
             should_overwrite = False
         elif overwrite_header == 'T':
             should_overwrite = True
-        else:
-            should_overwrite = self.default_should_overwrite
         (scheme, netloc, rel_to,
          params, query, fragment) = urlparse.urlparse(url_to)
         trace.mutter("urlparse: (%s) [%s]" % (url_to, rel_to))
@@ -308,7 +305,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
                                                                rel_to))
         abs_from = self.translate_path(self.path)
         abs_to = self.translate_path(rel_to)
-        if should_overwrite is False and os.access(abs_to, os.F_OK):
+        if not should_overwrite and os.access(abs_to, os.F_OK):
             self.send_error(412, "Precondition Failed")
             return
         try:
@@ -399,10 +396,9 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             self.send_error(400, "Bad Depth")
             return
 
-        path = self.translate_path(self.path)
         # Don't bother parsing the body, we handle only allprop anyway.
         # FIXME: Handle the body :)
-        data = self.read_body()
+        self.read_body()
 
         try:
             response, st = self._generate_response(self.path)
@@ -430,13 +426,6 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(response)
 
-class QuirkyTestingDAVRequestHandler(TestingDAVRequestHandler):
-    """
-    A variant of TesttingDAVRequestHandler implementing various quirky/slightly
-    off-spec behaviors to test how gracefully we handle them.
-    """
-    delete_success_code = 200
-    default_should_overwrite = False
 
 class DAVServer(http_server.HttpServer):
     """Subclass of HttpServer that gives http+webdav urls.
@@ -453,10 +442,21 @@ class DAVServer(http_server.HttpServer):
     # urls returned by this server should require the webdav client impl
     _url_protocol = 'http+webdav'
 
-class QuirkyDAVServer(http_server.HttpServer):
+
+class QuirkyTestingDAVRequestHandler(TestingDAVRequestHandler):
+    """Various quirky/slightly off-spec behaviors.
+
+    Used to test how gracefully we handle them.
     """
-    Variant of DAVServer implementing various quirky/slightly
-    off-spec behaviors to test how gracefully we handle them.
+
+    delete_success_code = 200
+    move_default_overwrite = False
+
+
+class QuirkyDAVServer(http_server.HttpServer):
+    """DAVServer implementing various quirky/slightly off-spec behaviors.
+
+    Used to test how gracefully we handle them.
     """
 
     def __init__(self):
@@ -466,13 +466,4 @@ class QuirkyDAVServer(http_server.HttpServer):
 
     # urls returned by this server should require the webdav client impl
     _url_protocol = 'http+webdav'
-
-class TestCaseWithDAVServer(tests.TestCaseWithTransport):
-    """A support class that provides urls that are http+webdav://.
-
-    This is done by forcing the server to be an http DAV one.
-    """
-    def setUp(self):
-        super(TestCaseWithDAVServer, self).setUp()
-        self.transport_server = DAVServer
 
