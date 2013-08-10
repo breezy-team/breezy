@@ -2316,8 +2316,7 @@ class Option(object):
         :param help: a doc string to explain the option to the user.
 
         :param from_unicode: a callable to convert the unicode string
-            representing the option value in a store. This is not called for
-            the default value.
+            representing the option value in a store or its default value.
 
         :param invalid: the action to be taken when an invalid value is
             encountered in a store. This is called only when from_unicode is
@@ -3400,9 +3399,9 @@ class GlobalStore(LockableIniFileStore):
 
 
 class LocationStore(LockableIniFileStore):
-    """A config store for global options.
+    """A config store for options specific to a location.
 
-    There is a single GlobalStore for a given process.
+    There is a single LocationStore for a given process.
     """
 
     def __init__(self, possible_transports=None):
