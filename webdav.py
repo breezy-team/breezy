@@ -24,10 +24,8 @@ This should enable remote push operations.
 from cStringIO import StringIO
 import os
 import random
-import re
 import sys
 import time
-import urllib2
 import xml.sax
 import xml.sax.handler
 
@@ -37,7 +35,6 @@ from bzrlib import (
     osutils,
     trace,
     transport,
-    urlutils,
     )
 from bzrlib.transport.http import (
     _urllib,
