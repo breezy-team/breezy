@@ -25,6 +25,8 @@ from bzrlib import (
     revision,
     revisionspec,
     tests,
+    gpg,
+    trace,
     )
 
 
@@ -279,6 +281,38 @@ class TestShowLog(tests.TestCaseWithTransport):
         self.assertEqual('1', logentry.revno)
         self.assertEqual('add file1 and file2', logentry.rev.message)
         self.checkDelta(logentry.delta, added=['file1', 'file2'])
+
+
+class TestFormatSignatureValidity(tests.TestCaseWithTransport):
+    class UTFLoopbackGPGStrategy(gpg.LoopbackGPGStrategy):
+        def verify(self, content, testament):
+            return (gpg.SIGNATURE_VALID,
+                u'UTF8 Test \xa1\xb1\xc1\xd1\xe1\xf1 <jrandom@example.com>')
+
+    def has_signature_for_revision_id(self, revision_id):
+        return True
+
+    def get_signature_text(self, revision_id):
+        return ''
+
+    def test_format_signature_validity_utf(self):
+        """Check that GPG signatures containing UTF-8 names are formatted
+        correctly."""
+        # Monkey patch to use our UTF-8 generating GPGStrategy
+        self.overrideAttr(gpg, 'GPGStrategy', self.UTFLoopbackGPGStrategy)
+        wt = self.make_branch_and_tree('.')
+        revid = wt.commit('empty commit')
+        repo = wt.branch.repository
+        # Monkey patch out checking if this rev is actually signed, since we
+        # can't sign it without a heavier TestCase and LoopbackGPGStrategy
+        # doesn't care anyways.
+        self.overrideAttr(repo, 'has_signature_for_revision_id',
+                self.has_signature_for_revision_id)
+        self.overrideAttr(repo, 'get_signature_text', self.get_signature_text)
+        out = log.format_signature_validity(revid, repo)
+        self.assertEqual(
+u'valid signature from UTF8 Test \xa1\xb1\xc1\xd1\xe1\xf1 <jrandom@example.com>',
+                out)
 
 
 class TestShortLogFormatter(TestCaseForLogFormatter):
