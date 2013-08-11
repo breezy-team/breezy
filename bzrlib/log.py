@@ -336,7 +336,7 @@ def format_signature_validity(rev_id, repo):
     if result[0] == gpg.SIGNATURE_VALID:
         return u"valid signature from {0}".format(result[1])
     if result[0] == gpg.SIGNATURE_KEY_MISSING:
-        return u"unknown key {0}".format(result[1])
+        return "unknown key {0}".format(result[1])
     if result[0] == gpg.SIGNATURE_NOT_VALID:
         return "invalid signature!"
     if result[0] == gpg.SIGNATURE_NOT_SIGNED:
