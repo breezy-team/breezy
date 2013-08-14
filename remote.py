@@ -313,12 +313,6 @@ class TemporaryPackIterator(Pack):
         self.resolve_ext_ref = resolve_ext_ref
 
     @property
-    def data(self):
-        if self._data is None:
-            self._data = PackData(self._data_path)
-        return self._data
-
-    @property
     def index(self):
         if self._idx is None:
             if not os.path.exists(self._idx_path):
