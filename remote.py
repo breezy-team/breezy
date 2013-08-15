@@ -311,27 +311,19 @@ class TemporaryPackIterator(Pack):
     def __init__(self, path, resolve_ext_ref):
         super(TemporaryPackIterator, self).__init__(path)
         self.resolve_ext_ref = resolve_ext_ref
+        self._idx_load = lambda: self._idx_load_or_generate(self._idx_path)
 
-    @property
-    def data(self):
-        if self._data is None:
-            self._data = PackData(self._data_path)
-        return self._data
-
-    @property
-    def index(self):
-        if self._idx is None:
-            if not os.path.exists(self._idx_path):
-                pb = ui.ui_factory.nested_progress_bar()
-                try:
-                    def report_progress(cur, total):
-                        pb.update("generating index", cur, total)
-                    self.data.create_index(self._idx_path, 
-                        progress=report_progress)
-                finally:
-                    pb.finished()
-            self._idx = load_pack_index(self._idx_path)
-        return self._idx
+    def _idx_load_or_generate(self, path):
+        if not os.path.exists(path):
+            pb = ui.ui_factory.nested_progress_bar()
+            try:
+                def report_progress(cur, total):
+                    pb.update("generating index", cur, total)
+                self.data.create_index(path,
+                    progress=report_progress)
+            finally:
+                pb.finished()
+        return load_pack_index(path)
 
     def __del__(self):
         if self._idx is not None:
