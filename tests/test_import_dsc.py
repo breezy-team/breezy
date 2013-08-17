@@ -1963,7 +1963,7 @@ class OneZeroSourceExtractorTests(tests.TestCaseInTempDir):
             extractor.cleanup()
 
     def test_extract_format3_native(self):
-        version = Version("0.1-1")
+        version = Version("0.1")
         name = "package"
         builder = SourcePackageBuilder(name, version, native=True,
                 version3=True)
