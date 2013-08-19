@@ -1,3 +1,10 @@
+0.6.12  UNRELEASED
+
+ FEATURES
+
+  * Support thin packs when pushing and fetching to/from remote
+    repositories. (William Grant, #878085)
+
 0.6.11	2013-08-04
 
  BUG FIXES

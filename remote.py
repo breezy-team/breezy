@@ -230,7 +230,7 @@ class RemoteGitDir(GitDir):
                 trace.info("git: %s" % text)
         def wrap_determine_wants(refs_dict):
             return determine_wants(remote_refs_dict_to_container(refs_dict))
-        client = self._get_client(thin_packs=False)
+        client = self._get_client(thin_packs=True)
         try:
             refs_dict = client.fetch_pack(self._client_path, wrap_determine_wants,
                 graph_walker, pack_data, progress)
@@ -240,7 +240,7 @@ class RemoteGitDir(GitDir):
             raise parse_git_error(self.transport.external_url(), e)
 
     def send_pack(self, get_changed_refs, generate_pack_contents):
-        client = self._get_client(thin_packs=False)
+        client = self._get_client(thin_packs=True)
         try:
             return client.send_pack(self._client_path, get_changed_refs,
                 generate_pack_contents)
@@ -309,8 +309,8 @@ class EmptyObjectStoreIterator(dict):
 class TemporaryPackIterator(Pack):
 
     def __init__(self, path, resolve_ext_ref):
-        super(TemporaryPackIterator, self).__init__(path)
-        self.resolve_ext_ref = resolve_ext_ref
+        super(TemporaryPackIterator, self).__init__(
+            path, resolve_ext_ref=resolve_ext_ref)
         self._idx_load = lambda: self._idx_load_or_generate(self._idx_path)
 
     def _idx_load_or_generate(self, path):
@@ -376,7 +376,7 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
             get_client = transport._get_client
             client_path = transport._get_path()
         elif urlparse.urlsplit(transport.external_url())[0] in ("http", "https"):
-            def get_client(thin_packs=False):
+            def get_client(thin_packs):
                 return BzrGitHttpClient(transport, thin_packs=thin_packs)
             client_path, _ = urlutils.split_segment_parameters(transport._path)
         else:
