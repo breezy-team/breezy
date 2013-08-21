@@ -586,6 +586,8 @@ class BazaarObjectStore(BaseObjectStore):
 
         :param sha: SHA1 of the git object
         """
+        if len(sha) == 20:
+            sha = sha_to_hex(sha)
         obj = self[sha]
         return (obj.type, obj.as_raw_string())
 
