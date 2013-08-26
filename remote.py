@@ -72,10 +72,10 @@ from dulwich.errors import (
     )
 from dulwich.pack import (
     Pack,
-    PackData,
     )
 from dulwich.repo import DictRefsContainer
 import os
+import select
 import tempfile
 import urllib
 import urlparse
@@ -182,6 +182,40 @@ class TCPGitSmartTransport(GitSmartTransport):
             return ret
         return dulwich.client.TCPGitClient(self._host, self._port,
             thin_packs=thin_packs, report_activity=self._report_activity)
+
+
+class SSHSocketWrapper(object):
+
+    def __init__(self, sock):
+        self.sock = sock
+
+    def read(self, len=None):
+        return self.sock.recv(len)
+
+    def write(self, data):
+        return self.sock.write(data)
+
+    def can_read(self):
+        return len(select.select([self.sock.fileno()], [], [], 0)[0]) > 0
+
+
+class DulwichSSHVendor(dulwich.client.SSHVendor):
+
+    def __init__(self):
+        from bzrlib.transport import ssh
+        self.bzr_ssh_vendor = ssh._get_ssh_vendor()
+
+    def run_command(self, host, command, username=None, port=None):
+        connection = self.bzr_ssh_vendor.connect_ssh(username=username,
+            password=None, port=port, host=host, command=command)
+        (kind, io_object) = connection.get_sock_or_pipes()
+        if kind == 'socket':
+            return SSHSocketWrapper(io_object)
+        else:
+            raise AssertionError("Unknown io object kind %r'" % kind)
+
+
+#dulwich.client.get_ssh_vendor = DulwichSSHVendor
 
 
 class SSHGitSmartTransport(GitSmartTransport):
