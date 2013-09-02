@@ -86,6 +86,8 @@ def unescape_file_id(file_id):
 
 def fix_person_identifier(text):
     if "<" in text and ">" in text:
+        if not " <" in text and text.count("<") == 1:
+            text = text.replace("<", " <")
         return text
     return "%s <%s>" % (text, text)
 
