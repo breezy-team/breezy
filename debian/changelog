@@ -1,4 +1,4 @@
-bzr-builddeb (2.8.7) UNRELEASED; urgency=low
+bzr-builddeb (2.8.7) unstable; urgency=low
 
   * tests/blackbox/test_import_dsc.py:
    - Explicitly pass '--format=1.0' to dpkg-source inorder to
@@ -14,7 +14,7 @@ bzr-builddeb (2.8.7) UNRELEASED; urgency=low
    - Remove the depricated no-build-needed Features flag and add
      Restrictions: allow-stderr.
 
- -- Andrew Starr-Bochicchio <asb@debian.org>  Sun, 09 Jun 2013 14:38:31 -0400
+ -- Andrew Starr-Bochicchio <asb@debian.org>  Tue, 10 Sep 2013 19:05:58 -0400
 
 bzr-builddeb (2.8.6) unstable; urgency=low
 
