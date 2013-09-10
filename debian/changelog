@@ -4,6 +4,11 @@ bzr-builddeb (2.8.7) UNRELEASED; urgency=low
    - Explicitly pass '--format=1.0' to dpkg-source inorder to
      silence "no source format specified" warnings printed to
      stderr (Closes: #711042).
+  * tests/test_import_dsc.py:
+   - As of dpkg 1.17.0, source format '3.0 (native)' strictly
+     enforces that native packages do not have a Debian revision.
+     Use "0.1" instead of "0.1-1" for the version number in
+     test_extract_format3_native (Closes: #720003). 
 
  -- Andrew Starr-Bochicchio <asb@debian.org>  Sun, 09 Jun 2013 14:38:31 -0400
 
