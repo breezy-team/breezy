@@ -10,6 +10,9 @@ bzr-builddeb (2.8.7) UNRELEASED; urgency=low
      Use "0.1" instead of "0.1-1" for the version number in
      test_extract_format3_native (Closes: #720003). 
   * debian/control: Add myself to Uploaders.
+  * debian/tests/control:
+   - Remove the depricated no-build-needed Features flag and add
+     Restrictions: allow-stderr.
 
  -- Andrew Starr-Bochicchio <asb@debian.org>  Sun, 09 Jun 2013 14:38:31 -0400
 
