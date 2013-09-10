@@ -9,6 +9,7 @@ bzr-builddeb (2.8.7) UNRELEASED; urgency=low
      enforces that native packages do not have a Debian revision.
      Use "0.1" instead of "0.1-1" for the version number in
      test_extract_format3_native (Closes: #720003). 
+  * debian/control: Add myself to Uploaders.
 
  -- Andrew Starr-Bochicchio <asb@debian.org>  Sun, 09 Jun 2013 14:38:31 -0400
 

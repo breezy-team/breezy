@@ -2,7 +2,7 @@ Source: bzr-builddeb
 Section: vcs
 Priority: optional
 Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
-Uploaders: James Westby <james.westby@ubuntu.com>
+Uploaders: James Westby <james.westby@ubuntu.com>, Andrew Starr-Bochicchio <asb@debian.org>
 Build-Depends: debhelper (>= 9), python-all (>= 2.6.6-3), xz-utils
 Build-Depends-Indep: bzr (>= 2.1~), python-docutils, python-debian (>= 0.1.11), python-apt, patchutils, python-testtools (>= 0.9.2), pristine-tar, devscripts (>= 2.10.59), python-subunit, python-bzrlib.tests | bzr (<< 2.4.0~beta1-2), python-lzma, libalgorithm-merge-perl, python-distro-info, quilt
 Vcs-Bzr: http://bzr.debian.org/pkg-bazaar/bzr-builddeb/unstable
