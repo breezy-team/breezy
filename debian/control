@@ -39,7 +39,6 @@ Breaks: bzr-pqm (<< 1.4.0~bzr80),
         bzr-xmloutput (<< 0.8.8+bzr160),
         python-bzrlib (<< 2.4.0~beta3~)
 Suggests: bzr-doc,
-          bzr-gtk,
           bzr-svn,
           bzrtools,
           python-bzrlib.tests
@@ -60,7 +59,7 @@ Description: easy to use distributed version control system
  .
  Bazaar is written in Python, and has a flexible plugin interface which
  can be used to extend its functionality. Many plugins exist, providing
- useful commands (bzrtools), graphical interfaces (bzr-gtk), or native
+ useful commands (bzrtools), graphical interfaces (qbzr), or native
  interaction with Subversion branches (bzr-svn).
  .
  Install python-paramiko if you are going to push branches to remote
@@ -166,7 +165,7 @@ Description: easy to use distributed version control system (documentation)
  .
  Bazaar is written in Python, and has a flexible plugin interface which
  can be used to extend its functionality. Many plugins exist, providing
- useful commands (bzrtools), graphical interfaces (bzr-gtk), or native
+ useful commands (bzrtools), graphical interfaces (qbzr), or native
  interaction with Subversion branches (bzr-svn).
  .
  Install python-paramiko if you are going to push branches to remote

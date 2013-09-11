@@ -1,3 +1,10 @@
+bzr (2.6.0-2) UNRELEASED; urgency=low
+
+  * Drop suggestion of bzr-gtk, which is about to be removed from the
+    archive.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 11 Sep 2013 21:46:30 +0100
+
 bzr (2.6.0-1) unstable; urgency=low
 
   * New upstream release.
