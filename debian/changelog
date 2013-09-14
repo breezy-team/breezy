@@ -1,4 +1,4 @@
-bzr (2.6.0-2) UNRELEASED; urgency=low
+bzr (2.6.0-2) unstable; urgency=low
 
   * Drop suggestion of bzr-gtk, which is about to be removed from the
     archive.
