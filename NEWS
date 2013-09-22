@@ -1,9 +1,13 @@
-0.6.12  UNRELEASED
+0.6.12  2013-09-22
 
  FEATURES
 
   * Support thin packs when pushing and fetching to/from remote
     repositories. (William Grant, #878085)
+
+ CHANGES
+
+  * Fix compatibility with and depend on dulwich 0.9.1. (Jelmer Vernooij)
 
 0.6.11	2013-08-04
 
