@@ -599,7 +599,9 @@ class TransportObjectStore(PackBasedObjectStore):
                 return self.move_in_pack(f)
             else:
                 return None
-        return f, commit
+        def abort():
+            return None
+        return f, commit, abort
 
     @classmethod
     def init(cls, transport):
