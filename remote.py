@@ -268,6 +268,8 @@ class RemoteGitDir(GitDir):
         try:
             refs_dict = client.fetch_pack(self._client_path, wrap_determine_wants,
                 graph_walker, pack_data, progress)
+            if refs_dict is None:
+                refs_dict = {}
             self._refs = remote_refs_dict_to_container(refs_dict)
             return refs_dict
         except GitProtocolError, e:
