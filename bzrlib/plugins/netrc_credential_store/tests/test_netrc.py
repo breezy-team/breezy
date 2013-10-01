@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
+import os
 
 from bzrlib import (
     config,
@@ -43,11 +44,12 @@ class TestNetrcCS(tests.TestCaseInTempDir):
 machine host login joe password secret
 default login anonymous password joe@home
 """
-        f = open(osutils.pathjoin(self.test_home_dir, '.netrc'), 'wb')
-        try:
+        netrc_path = osutils.pathjoin(self.test_home_dir, '.netrc')
+        with open(netrc_path, 'wb') as f:
             f.write(netrc_content)
-        finally:
-            f.close()
+        # python's netrc will complain about access permissions starting with
+        # 2.7.5-8 so we restrict the access unconditionally
+        os.chmod(netrc_path, 0600)
 
     def _get_netrc_cs(self):
         return  config.credential_store_registry.get_credential_store('netrc')
