@@ -16,7 +16,6 @@
 
 """Tests for finding and reading the bzr config file[s]."""
 
-import base64
 from cStringIO import StringIO
 from textwrap import dedent
 import os
@@ -629,7 +628,7 @@ class TestIniConfig(tests.TestCaseInTempDir):
 class TestIniConfigBuilding(TestIniConfig):
 
     def test_contructs(self):
-        my_config = config.IniBasedConfig()
+        config.IniBasedConfig()
 
     def test_from_fp(self):
         my_config = config.IniBasedConfig.from_string(sample_config_text)
@@ -678,8 +677,8 @@ class TestIniConfigSaving(tests.TestCaseInTempDir):
 
     def test_saved_with_content(self):
         content = 'foo = bar\n'
-        conf = config.IniBasedConfig.from_string(
-            content, file_name='./test.conf', save=True)
+        config.IniBasedConfig.from_string(content, file_name='./test.conf',
+                                          save=True)
         self.assertFileEqual(content, 'test.conf')
 
 
@@ -1047,7 +1046,7 @@ class TestSupressWarning(TestIniConfig):
 class TestGetConfig(tests.TestCase):
 
     def test_constructs(self):
-        my_config = config.GlobalConfig()
+        config.GlobalConfig()
 
     def test_calls_read_filenames(self):
         # replace the class that is constructed, to check its parameters
@@ -1065,9 +1064,12 @@ class TestGetConfig(tests.TestCase):
 
 class TestBranchConfig(tests.TestCaseWithTransport):
 
-    def test_constructs(self):
+    def test_constructs_valid(self):
         branch = FakeBranch()
         my_config = config.BranchConfig(branch)
+        self.assertIsNot(None, my_config)
+
+    def test_constructs_error(self):
         self.assertRaises(TypeError, config.BranchConfig)
 
     def test_get_location_config(self):
@@ -1105,6 +1107,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         conf = config.LocationConfig.from_string(
             '[%s]\nnickname = foobar' % (local_url,),
             local_url, save=True)
+        self.assertIsNot(None, conf)
         self.assertEqual('foobar', branch.nick)
 
     def test_config_local_path(self):
@@ -1113,9 +1116,10 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         self.assertEqual('branch', branch.nick)
 
         local_path = osutils.getcwd().encode('utf8')
-        conf = config.LocationConfig.from_string(
+        config.LocationConfig.from_string(
             '[%s/branch]\nnickname = barry' % (local_path,),
             'branch',  save=True)
+        # Now the branch will find its nick via the location config
         self.assertEqual('barry', branch.nick)
 
     def test_config_creates_local(self):
@@ -1369,8 +1373,10 @@ class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
 
 class TestLocationConfig(tests.TestCaseInTempDir, TestOptionsMixin):
 
-    def test_constructs(self):
-        my_config = config.LocationConfig('http://example.com')
+    def test_constructs_valid(self):
+        config.LocationConfig('http://example.com')
+
+    def test_constructs_error(self):
         self.assertRaises(TypeError, config.LocationConfig)
 
     def test_branch_calls_read_filenames(self):
@@ -1662,10 +1668,9 @@ other_url = /other-subdir
         if location_config is None:
             location_config = sample_branches_text
 
-        my_global_config = config.GlobalConfig.from_string(global_config,
-                                                           save=True)
-        my_location_config = config.LocationConfig.from_string(
-            location_config, my_branch.base, save=True)
+        config.GlobalConfig.from_string(global_config, save=True)
+        config.LocationConfig.from_string(location_config, my_branch.base,
+                                          save=True)
         my_config = config.BranchConfig(my_branch)
         self.my_config = my_config
         self.my_location_config = my_config._get_location_config()
@@ -1736,11 +1741,10 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
                           location_config=None, branch_data_config=None):
         my_branch = FakeBranch(location)
         if global_config is not None:
-            my_global_config = config.GlobalConfig.from_string(global_config,
-                                                               save=True)
+            config.GlobalConfig.from_string(global_config, save=True)
         if location_config is not None:
-            my_location_config = config.LocationConfig.from_string(
-                location_config, my_branch.base, save=True)
+            config.LocationConfig.from_string(location_config, my_branch.base,
+                                              save=True)
         my_config = config.BranchConfig(my_branch)
         if branch_data_config is not None:
             my_config.branch.control_files.files['branch.conf'] = \
@@ -3320,7 +3324,7 @@ class TestSectionMatcher(TestStore):
 
     def test_build_doesnt_load_store(self):
         store = self.get_store(self)
-        matcher = self.matcher(store, '/bar')
+        self.matcher(store, '/bar')
         self.assertFalse(store.is_loaded())
 
 
@@ -3461,16 +3465,16 @@ class TestStartingPathMatcher(TestStore):
 
     def test_url_vs_local_paths(self):
         # The matcher location is an url and the section names are local paths
-        sections = self.assertSectionIDs(['/foo/bar', '/foo'],
-                                         'file:///foo/bar/baz', '''\
+        self.assertSectionIDs(['/foo/bar', '/foo'],
+                              'file:///foo/bar/baz', '''\
 [/foo]
 [/foo/bar]
 ''')
 
     def test_local_path_vs_url(self):
         # The matcher location is a local path and the section names are urls
-        sections = self.assertSectionIDs(['file:///foo/bar', 'file:///foo'],
-                                         '/foo/bar/baz', '''\
+        self.assertSectionIDs(['file:///foo/bar', 'file:///foo'],
+                              '/foo/bar/baz', '''\
 [file:///foo]
 [file:///foo/bar]
 ''')
@@ -3693,7 +3697,7 @@ class TestConcreteStacks(TestStackWithTransport):
 
     def test_build_stack(self):
         # Just a smoke test to help debug builders
-        stack = self.get_stack(self)
+        self.get_stack(self)
 
 
 class TestStackGet(TestStackWithTransport):
@@ -4297,7 +4301,7 @@ class TestConfigGetSections(tests.TestCaseWithTransport):
         """
         sections = list(conf._get_sections(name))
         self.assertLength(len(expected), sections)
-        self.assertEqual(expected, [name for name, _, _ in sections])
+        self.assertEqual(expected, [n for n, _, _ in sections])
 
     def test_bazaar_default_section(self):
         self.assertSectionNames(['DEFAULT'], self.bazaar_config)
