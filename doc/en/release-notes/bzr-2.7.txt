@@ -56,6 +56,8 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Restrict access to '.netrc' in tests or recent python (2.7.5-8) will
+  complain. (Vincent Ladeuil, #1233413)
 
 ..
    vim: tw=74 ft=rst ff=unix
