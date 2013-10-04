@@ -1,3 +1,10 @@
+bzr (2.6.0-3) UNRELEASED; urgency=low
+
+  * Backport upstream commit that makes .netrc 0600 in tests so
+    python-2.7.5-8's netrc is happy (Closes: #723894).
+
+ -- Andrew Starr-Bochicchio <asb@debian.org>  Fri, 04 Oct 2013 18:08:51 -0400
+
 bzr (2.6.0-2) unstable; urgency=low
 
   * Drop suggestion of bzr-gtk, which is about to be removed from the
