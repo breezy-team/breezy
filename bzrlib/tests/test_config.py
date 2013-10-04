@@ -2224,6 +2224,44 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
         self.assertSaveHook(remote_bzrdir._get_config())
 
 
+class TestOptionNames(tests.TestCase):
+
+    def is_valid(self, name):
+        return config._option_ref_re.match('{%s}' % name) is not None
+
+    def test_valid_names(self):
+        self.assertTrue(self.is_valid('foo'))
+        self.assertTrue(self.is_valid('foo.bar'))
+        self.assertTrue(self.is_valid('f1'))
+        self.assertTrue(self.is_valid('_'))
+        self.assertTrue(self.is_valid('__bar__'))
+        self.assertTrue(self.is_valid('a_'))
+        self.assertTrue(self.is_valid('a1'))
+
+    def test_invalid_names(self):
+        self.assertFalse(self.is_valid(' foo'))
+        self.assertFalse(self.is_valid('foo '))
+        self.assertFalse(self.is_valid('1'))
+        self.assertFalse(self.is_valid('1,2'))
+        self.assertFalse(self.is_valid('foo$'))
+        self.assertFalse(self.is_valid('!foo'))
+        self.assertFalse(self.is_valid('foo.'))
+        self.assertFalse(self.is_valid('foo..bar'))
+        self.assertFalse(self.is_valid('{}'))
+        self.assertFalse(self.is_valid('{a}'))
+        self.assertFalse(self.is_valid('a\n'))
+
+    def assertSingleGroup(self, reference):
+        # the regexp is used with split and as such should match the reference
+        # *only*, if more groups needs to be defined, (?:...) should be used.
+        m = config._option_ref_re.match('{a}')
+        self.assertLength(1, m.groups())
+
+    def test_valid_references(self):
+        self.assertSingleGroup('{a}')
+        self.assertSingleGroup('{{a}}')
+
+
 class TestOption(tests.TestCase):
 
     def test_default_value(self):
@@ -2451,6 +2489,12 @@ class TestOptionRegistry(tests.TestCase):
         self.registry.register(opt)
         self.assertEquals('A simple option', self.registry.get_help('foo'))
 
+    def test_dont_register_illegal_name(self):
+        self.assertRaises(errors.IllegalOptionName,
+                          self.registry.register, config.Option(' foo'))
+        self.assertRaises(errors.IllegalOptionName,
+                          self.registry.register, config.Option('bar,'))
+
     lazy_option = config.Option('lazy_foo', help='Lazy help')
 
     def test_register_lazy(self):
@@ -2462,6 +2506,19 @@ class TestOptionRegistry(tests.TestCase):
         self.registry.register_lazy('lazy_foo', self.__module__,
                                     'TestOptionRegistry.lazy_option')
         self.assertEquals('Lazy help', self.registry.get_help('lazy_foo'))
+
+    def test_dont_lazy_register_illegal_name(self):
+        # This is where the root cause of http://pad.lv/1235099 is better
+        # understood: 'register_lazy' doc string mentions that key should match
+        # the option name which indirectly requires that the option name is a
+        # valid python identifier. We violate that rule here (using a key that
+        # doesn't match the option name) to test the option name checking.
+        self.assertRaises(errors.IllegalOptionName,
+                          self.registry.register_lazy, ' foo', self.__module__,
+                          'TestOptionRegistry.lazy_option')
+        self.assertRaises(errors.IllegalOptionName,
+                          self.registry.register_lazy, '1,2', self.__module__,
+                          'TestOptionRegistry.lazy_option')
 
 
 class TestRegisteredOptions(tests.TestCase):
@@ -3923,6 +3980,11 @@ class TestStackExpandOptions(tests.TestCaseWithTransport):
     def test_unknown_ref(self):
         self.assertRaises(errors.ExpandingUnknownOption,
                           self.conf.expand_options, '{foo}')
+
+    def test_illegal_def_is_ignored(self):
+        self.assertExpansion('{1,2}', '{1,2}')
+        self.assertExpansion('{ }', '{ }')
+        self.assertExpansion('${Foo,f}', '${Foo,f}')
 
     def test_indirect_ref(self):
         self.conf.store._load_from_string('''
