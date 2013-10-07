@@ -3250,11 +3250,19 @@ class OptionExpansionLoop(BzrError):
 
 class ExpandingUnknownOption(BzrError):
 
-    _fmt = 'Option %(name)s is not defined while expanding "%(string)s".'
+    _fmt = 'Option "%(name)s" is not defined while expanding "%(string)s".'
 
     def __init__(self, name, string):
         self.name = name
         self.string = string
+
+
+class IllegalOptionName(BzrError):
+
+    _fmt = 'Option "%(name)s" is not allowed.'
+
+    def __init__(self, name):
+        self.name = name
 
 
 class NoCompatibleInter(BzrError):
