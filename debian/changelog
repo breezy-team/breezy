@@ -1,3 +1,10 @@
+bzr (2.6.0+bzr6589-1) UNRELEASED; urgency=low
+
+  * New upstream snapshot.
+  * Drop 04_test_netrc_fix_perms, applied upstream.
+
+ -- Andrew Starr-Bochicchio <asb@debian.org>  Tue, 08 Oct 2013 10:09:18 -0400
+
 bzr (2.6.0-3) unstable; urgency=low
 
   * Backport upstream commit that makes .netrc 0600 in tests so

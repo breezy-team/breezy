@@ -289,15 +289,15 @@ class RangeFile(ResponseFile):
                     % (size, self._start, self._size))
 
         # read data from file
-        buffer = StringIO()
+        buf = StringIO()
         limited = size
         if self._size > 0:
             # Don't read past the range definition
             limited = self._start + self._size - self._pos
             if size >= 0:
                 limited = min(limited, size)
-        osutils.pumpfile(self._file, buffer, limited, self._max_read_size)
-        data = buffer.getvalue()
+        osutils.pumpfile(self._file, buf, limited, self._max_read_size)
+        data = buf.getvalue()
 
         # Update _pos respecting the data effectively read
         self._pos += len(data)

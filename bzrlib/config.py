@@ -2316,8 +2316,7 @@ class Option(object):
         :param help: a doc string to explain the option to the user.
 
         :param from_unicode: a callable to convert the unicode string
-            representing the option value in a store. This is not called for
-            the default value.
+            representing the option value in a store or its default value.
 
         :param invalid: the action to be taken when an invalid value is
             encountered in a store. This is called only when from_unicode is
@@ -2553,6 +2552,23 @@ class RegistryOption(Option):
         return "".join(ret)
 
 
+_option_ref_re = lazy_regex.lazy_compile('({[^\d\W](?:\.\w|\w)*})')
+"""Describes an expandable option reference.
+
+We want to match the most embedded reference first.
+
+I.e. for '{{foo}}' we will get '{foo}',
+for '{bar{baz}}' we will get '{baz}'
+"""
+
+def iter_option_refs(string):
+    # Split isolate refs so every other chunk is a ref
+    is_ref = False
+    for chunk  in _option_ref_re.split(string):
+        yield is_ref, chunk
+        is_ref = not is_ref
+
+
 class OptionRegistry(registry.Registry):
     """Register config options by their name.
 
@@ -2560,11 +2576,20 @@ class OptionRegistry(registry.Registry):
     some information from the option object itself.
     """
 
+    def _check_option_name(self, option_name):
+        """Ensures an option name is valid.
+
+        :param option_name: The name to validate.
+        """
+        if _option_ref_re.match('{%s}' % option_name) is None:
+            raise errors.IllegalOptionName(option_name)
+
     def register(self, option):
         """Register a new option to its name.
 
         :param option: The option to register. Its name is used as the key.
         """
+        self._check_option_name(option.name)
         super(OptionRegistry, self).register(option.name, option,
                                              help=option.help)
 
@@ -2579,6 +2604,7 @@ class OptionRegistry(registry.Registry):
         :param member_name: the member of the module to return.  If empty or 
                 None, get() will return the module itself.
         """
+        self._check_option_name(key)
         super(OptionRegistry, self).register_lazy(key,
                                                   module_name, member_name)
 
@@ -3400,9 +3426,9 @@ class GlobalStore(LockableIniFileStore):
 
 
 class LocationStore(LockableIniFileStore):
-    """A config store for global options.
+    """A config store for options specific to a location.
 
-    There is a single GlobalStore for a given process.
+    There is a single LocationStore for a given process.
     """
 
     def __init__(self, possible_transports=None):
@@ -3622,22 +3648,6 @@ class LocationMatcher(SectionMatcher):
             # Finally, we have a valid section
             yield self.store, section
 
-
-_option_ref_re = lazy_regex.lazy_compile('({[^{}\n]+})')
-"""Describes an expandable option reference.
-
-We want to match the most embedded reference first.
-
-I.e. for '{{foo}}' we will get '{foo}',
-for '{bar{baz}}' we will get '{baz}'
-"""
-
-def iter_option_refs(string):
-    # Split isolate refs so every other chunk is a ref
-    is_ref = False
-    for chunk  in _option_ref_re.split(string):
-        yield is_ref, chunk
-        is_ref = not is_ref
 
 # FIXME: _shared_stores should be an attribute of a library state once a
 # library_state object is always available.

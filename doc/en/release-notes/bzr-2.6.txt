@@ -5,7 +5,7 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.6b3
+bzr 2.6.0
 #########
 
 :Codename: Surprise
