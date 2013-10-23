@@ -1,3 +1,3 @@
 Tests: testsuite
-Depends: @, python-bzrlib.tests, python-subunit, python-testtools, python-lzma
+Depends: @, python-bzrlib.tests, python-subunit, python-testtools, python-lzma, python-distro-info, libalgorithm-merge-perl
 Restrictions: allow-stderr

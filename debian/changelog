@@ -1,3 +1,13 @@
+bzr-builddeb (2.8.8) UNRELEASED; urgency=low
+
+  * debian/tests/control: Add python-distro-info and libalgorithm-merge-perl
+    to test depends; the former is required to compare release names and the
+    latter for dpkg-mergechangelogs to generate the expected output (it does
+    different things with conflicts in 3-way merges depending on the presence
+    of this library). (Closes: #727238)
+
+ -- Iain Lane <laney@debian.org>  Wed, 23 Oct 2013 10:52:50 +0100
+
 bzr-builddeb (2.8.7) unstable; urgency=low
 
   * tests/blackbox/test_import_dsc.py:
