@@ -120,8 +120,14 @@ def run_dh_make(tree, package_name, version, use_v3=False):
     else:
         stdin = sys.stdin
         input = None
-    proc = subprocess.Popen(command, cwd=tree.basedir,
-            preexec_fn=util.subprocess_setup, stdin=stdin)
+    try:
+        proc = subprocess.Popen(command, cwd=tree.basedir,
+                preexec_fn=util.subprocess_setup, stdin=stdin)
+    except OSError:
+        raise bzr_errors.BzrCommandError("The dh_make command was not found. "
+                                         "Please install the dh-make package "
+                                         "or use the '--bzr-only' flag and "
+                                         "create the debian/ manually.")
     if input is not None:
         proc.stdin.write(input)
         proc.stdin.close()
