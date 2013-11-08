@@ -1411,18 +1411,21 @@ class cmd_dh_make(Command):
     takes_args = ['package_name', 'version', 'tarball']
 
     bzr_only_opt = Option('bzr-only', help="Don't run dh_make.")
-    v3_opt = Option('v3', help="Use dpkg-source format v3.")
+    v3_opt = Option('v3', hidden=True)
 
     takes_options = [bzr_only_opt, v3_opt]
 
     def run(self, package_name, version, tarball, bzr_only=None, v3=None):
         from bzrlib.plugins.builddeb import dh_make
+        if v3:
+            warning(gettext('The --v3 option has been deprecated. dh_make now '
+                            'creates format v3 packages by default.'))
         tree = dh_make.import_upstream(tarball, package_name,
-            version.encode("utf-8"), use_v3=v3)
+            version.encode("utf-8"))
         if not bzr_only:
             tree.lock_write()
             try:
-                dh_make.run_dh_make(tree, package_name, version, use_v3=v3)
+                dh_make.run_dh_make(tree, package_name, version)
             finally:
                 tree.unlock()
         note(gettext('Package prepared in %s'),
