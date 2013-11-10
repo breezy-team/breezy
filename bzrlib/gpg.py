@@ -336,23 +336,14 @@ class GPGStrategy(object):
                                 command line
         :return: nothing
         """
-        key_patterns = None
+        patterns = None
         acceptable_keys_config = self._config_stack.get('acceptable_keys')
-        try:
-            if isinstance(acceptable_keys_config, unicode):
-                acceptable_keys_config = str(acceptable_keys_config)
-        except UnicodeEncodeError:
-            # gpg Context.keylist(pattern) does not like unicode
-            raise errors.BzrCommandError(
-                gettext('Only ASCII permitted in option names'))
-
         if acceptable_keys_config is not None:
-            key_patterns = acceptable_keys_config
+            patterns = acceptable_keys_config
         if command_line_input is not None: # command line overrides config
-            key_patterns = command_line_input
-        if key_patterns is not None:
-            patterns = key_patterns.split(",")
+            patterns = command_line_input.split(',')
 
+        if patterns:
             self.acceptable_keys = []
             for pattern in patterns:
                 result = self.context.keylist(pattern)
