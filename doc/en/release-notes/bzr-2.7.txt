@@ -32,7 +32,7 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
-* 'acceptable_keys' from 'bazzar.conf' is now properly handled.
+* 'acceptable_keys' from 'bazaar.conf' is now properly handled.
   (Vincent Ladeuil, #1249732)
 
 * Option names are now checked to be valid [dotted] python identifiers. Also
