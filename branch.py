@@ -555,7 +555,7 @@ class LocalGitBranch(GitBranch):
 
     def _get_head(self):
         try:
-            return self.repository._git.ref(self.ref or "HEAD")
+            return self.repository._git.refs[self.ref or "HEAD"]
         except KeyError:
             return None
 
