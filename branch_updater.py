@@ -165,7 +165,8 @@ class BranchUpdater(object):
         # apply tags known in this branch
         my_tags = {}
         if self.tags:
-            ancestry = self.repo.get_ancestry(last_rev_id)
+            graph = self.repo.get_graph()
+            ancestry = [r for (r, ps) in graph.iter_ancestry([last_rev_id]) if ps is not None]
             for tag,rev in self.tags.items():
                 if rev in ancestry:
                     my_tags[tag] = rev
