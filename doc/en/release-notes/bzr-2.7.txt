@@ -60,6 +60,9 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Remove wrong assumption about how TCP server and client interact when run
+  inside the same process. (Vincent Ladeuil, #1269886).
+
 * Restrict access to '.netrc' in tests or recent python (2.7.5-8) will
   complain. (Vincent Ladeuil, #1233413)
 
