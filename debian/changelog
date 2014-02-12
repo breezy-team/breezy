@@ -1,4 +1,4 @@
-bzr (2.6.0+bzr6591-1) UNRELEASED; urgency=low
+bzr (2.6.0+bzr6591-1) unstable; urgency=low
 
   * New upstream snapshot.
    - Remove wrong assumption about how TCP server and client interact
@@ -8,7 +8,7 @@ bzr (2.6.0+bzr6591-1) UNRELEASED; urgency=low
   * Drop 04_test_netrc_fix_perms, applied upstream. 
   * Bump Standards-Version to 3.9.5, no changes needed.
 
- -- Andrew Starr-Bochicchio <asb@debian.org>  Tue, 08 Oct 2013 10:09:18 -0400
+ -- Andrew Starr-Bochicchio <asb@debian.org>  Wed, 12 Feb 2014 14:26:26 -0500
 
 bzr (2.6.0-3) unstable; urgency=low
 
