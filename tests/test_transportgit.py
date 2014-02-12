@@ -18,11 +18,10 @@
 
 
 from dulwich.tests.test_object_store import PackBasedObjectStoreTests
-from dulwich.tests.test_repository import RefsContainerTests
 
 from bzrlib.tests import TestCaseWithTransport
 
-from bzrlib.plugins.git.transportgit import TransportObjectStore, TransportRefsContainer
+from bzrlib.plugins.git.transportgit import TransportObjectStore
 
 
 class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport):
