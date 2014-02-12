@@ -6,6 +6,7 @@ bzr (2.6.0+bzr6591-1) UNRELEASED; urgency=low
    - The XDG Base Directory Specification uses the XDG_CACHE_HOME,
      not XDG_CACHE_DIR (Closes: #736448).
   * Drop 04_test_netrc_fix_perms, applied upstream. 
+  * Bump Standards-Version to 3.9.5, no changes needed.
 
  -- Andrew Starr-Bochicchio <asb@debian.org>  Tue, 08 Oct 2013 10:09:18 -0400
 

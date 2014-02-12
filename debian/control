@@ -21,7 +21,7 @@ Build-Depends: ca-certificates,
                python-sphinx (>= 1.0.7+dfsg),
                python-subunit,
                python-testtools (>= 0.9.5~)
-Standards-Version: 3.9.4
+Standards-Version: 3.9.5
 X-Python-Version: >= 2.6
 Vcs-Bzr: http://bzr.debian.org/bzr/pkg-bazaar/bzr/2.6
 Vcs-Browser: http://bzr.debian.org/loggerhead/pkg-bazaar/bzr/2.6
