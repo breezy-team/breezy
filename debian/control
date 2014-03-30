@@ -39,7 +39,6 @@ Breaks: bzr-pqm (<< 1.4.0~bzr80),
         bzr-xmloutput (<< 0.8.8+bzr160),
         python-bzrlib (<< 2.4.0~beta3~)
 Suggests: bzr-doc,
-          bzr-svn,
           bzrtools,
           python-bzrlib.tests
 Description: easy to use distributed version control system
