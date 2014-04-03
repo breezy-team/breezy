@@ -36,6 +36,9 @@ Bug Fixes
   ignore invalid references (i.e. using invalid option names) while
   expanding option values. (Vincent Ladeuil, #1235099)
 
+* Fix pyrex version checking to be more robust.
+  (Andrew Starr-Bochicchio, #1030521 )
+
 Documentation
 *************
 

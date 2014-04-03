@@ -16,6 +16,7 @@
 
 """Test for setup.py build process"""
 
+from distutils import version
 import os
 import sys
 import subprocess
@@ -79,3 +80,13 @@ class TestSetup(tests.TestCaseInTempDir):
         self.log('stderr: %r', stderr)
         self.assertEqual(0, p.returncode,
                          'invocation of %r failed' % args)
+
+
+class TestDistutilsVersion(tests.TestCase):
+
+    def test_version_with_string(self):
+        # We really care about two pyrex specific versions and our ability to
+        # detect them
+        lv = version.LooseVersion
+        self.assertTrue(lv("0.9.4.1") < lv('0.17.beta1'))
+        self.assertTrue(lv("0.9.6.3") < lv('0.10'))
