@@ -943,9 +943,15 @@ class TestWin32Funcs(tests.TestCase):
                          osutils._win32_pathjoin('path/to', 'C:/foo'))
         self.assertEqual('path/to/foo',
                          osutils._win32_pathjoin('path/to/', 'foo'))
-        self.assertEqual('/foo',
+
+    def test_pathjoin_late_bugfix(self):
+        if sys.version_info < (2, 7, 6):
+            expected = '/foo'
+        else:
+            expected = 'C:/foo'
+        self.assertEqual(expected,
                          osutils._win32_pathjoin('C:/path/to/', '/foo'))
-        self.assertEqual('/foo',
+        self.assertEqual(expected,
                          osutils._win32_pathjoin('C:\\path\\to\\', '\\foo'))
 
     def test_normpath(self):
