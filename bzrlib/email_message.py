@@ -149,7 +149,7 @@ class EmailMessage(object):
 
     @staticmethod
     def send(config, from_address, to_address, subject, body, attachment=None,
-            attachment_filename=None, attachment_mime_subtype='plain'):
+             attachment_filename=None, attachment_mime_subtype='plain'):
         """Create an email message and send it with SMTPConnection.
 
         :param config: config object to pass to SMTPConnection constructor.
