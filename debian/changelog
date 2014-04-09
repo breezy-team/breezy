@@ -1,9 +1,10 @@
-bzr (2.6.0+bzr6592-1) UNRELEASED; urgency=medium
+bzr (2.6.0+bzr6593-1) UNRELEASED; urgency=medium
 
   * New upstream snapshot:
    - Use LooseVersion from distutils to check Pyrex/Cython version
      in order to handle non-integers in the version string.
      Closes: #743096, #683130, LP: #1030521
+   - Fix test failures with python-2.7.6 (LP: #1303879).
   * debian/control: No longer suggest bzr-svn (Closes: #709290).
 
  -- Andrew Starr-Bochicchio <asb@debian.org>  Sun, 30 Mar 2014 14:57:05 -0400

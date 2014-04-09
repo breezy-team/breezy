@@ -63,6 +63,12 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Handle (minor) incompatible change in python 2.7.6 leading to test
+  failures. Only tests are affected. (Vincent Ladeuil, #1303879)
+
+* Take python 2.7.6 late (better than never) bugfix in ntpath.py into
+  account. Only tests are affected (Vincent Ladeuil, #1303879).
+
 * Remove wrong assumption about how TCP server and client interact when run
   inside the same process. (Vincent Ladeuil, #1269886).
 
