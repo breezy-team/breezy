@@ -165,7 +165,8 @@ class cmd_verify_signatures(Command):
         if all_verifiable:
                write(gettext("All commits signed with verifiable keys"))
                if verbose:
-                   write(gpg.verbose_valid_message(result))
+                   for message in gpg.verbose_valid_message(result):
+                       write_verbose(message)
                return 0
         else:
             write(gpg.valid_commits_message(count))
