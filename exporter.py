@@ -149,7 +149,7 @@ class BzrFastExporter(object):
     def __init__(self, source, outf, ref=None, checkpoint=-1,
         import_marks_file=None, export_marks_file=None, revision=None,
         verbose=False, plain_format=False, rewrite_tags=False,
-        baseline=False):
+        no_tags=False, baseline=False):
         """Export branch data in fast import format.
 
         :param plain_format: if True, 'classic' fast-import format is
@@ -160,6 +160,7 @@ class BzrFastExporter(object):
             will be rewritten to be git-compatible.
             Otherwise tags which aren't valid for git will be skipped if
             plain_format is set.
+        :param no_tags: if True tags won't be exported at all
         """
         self.branch = source
         self.outf = outf
@@ -171,6 +172,7 @@ class BzrFastExporter(object):
         self.excluded_revisions = set()
         self.plain_format = plain_format
         self.rewrite_tags = rewrite_tags
+        self.no_tags = no_tags
         self.baseline = baseline
         self._multi_author_api_available = hasattr(bzrlib.revision.Revision,
             'get_apparent_authors')
@@ -236,7 +238,7 @@ class BzrFastExporter(object):
                 self.emit_baseline(interesting.pop(0), self.ref)
             for revid in interesting:
                 self.emit_commit(revid, self.ref)
-            if self.branch.supports_tags():
+            if self.branch.supports_tags() and not self.no_tags:
                 self.emit_tags()
         finally:
             self.branch.repository.unlock()

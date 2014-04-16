@@ -682,12 +682,15 @@ class cmd_fast_export(Command):
                         help="Export an 'absolute' baseline commit prior to"
                              "the first relative commit",
                         ),
+                    Option('no-tags',
+                        help="Don't export tags"
+                        ),
                      ]
     encoding_type = 'exact'
     def run(self, source=None, destination=None, verbose=False,
         git_branch="master", checkpoint=10000, marks=None,
         import_marks=None, export_marks=None, revision=None,
-        plain=True, rewrite_tag_names=False, baseline=False):
+        plain=True, rewrite_tag_names=False, no_tags=False, baseline=False):
         load_fastimport()
         from bzrlib.branch import Branch
         from bzrlib.plugins.fastimport import exporter
@@ -704,5 +707,5 @@ class cmd_fast_export(Command):
             outf=outf, ref="refs/heads/%s" % git_branch, checkpoint=checkpoint,
             import_marks_file=import_marks, export_marks_file=export_marks,
             revision=revision, verbose=verbose, plain_format=plain,
-            rewrite_tags=rewrite_tag_names, baseline=baseline)
+            rewrite_tags=rewrite_tag_names, no_tags=no_tags, baseline=baseline)
         return exporter.run()

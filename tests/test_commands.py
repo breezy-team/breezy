@@ -134,6 +134,16 @@ class TestFastExport(ExternalBase):
         # "bad Tag" should be exported as bad_Tag
         self.assertNotEqual(-1, data.find("reset refs/tags/bad_Tag"))
 
+    def test_no_tags(self):
+        tree = self.make_branch_and_tree("br")
+        tree.commit("pointless")
+        self.assertTrue(tree.branch.supports_tags())
+        rev_id = tree.branch.dotted_revno_to_revision_id((1,))
+        tree.branch.tags.set_tag("someTag", rev_id)
+
+        data = self.run_bzr("fast-export --plain --no-tags br")[0]
+        self.assertEqual(-1, data.find("reset refs/tags/someTag"))
+
     def test_baseline_option(self):
         tree = self.make_branch_and_tree("bl")
 
