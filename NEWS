@@ -6,11 +6,22 @@ bzr-fastimport Release Notes
 
 0.14 UNRELEASED
 
+Compatibility
+-------------
+
+* Replace Repo.get_ancestry(as per #1040560), which is removed in bzr 2.6.
+  (Zygmunt Krynicki)
+
 Bug fixes
 ---------
 
 * Print sane error when a fastimport file is incomplete.
   (Jelmer Vernooij, #937972)
+
+Features
+--------
+
+* New option --no-tags for 'bzr fast-export'. (Alex Usov)
 
 0.13 2012-02-29
 

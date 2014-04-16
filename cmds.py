@@ -650,6 +650,13 @@ class cmd_fast_export(Command):
 
      If you get a "Missing space after source" error from git-fast-import,
      see the top of the commands.py module for a work-around.
+
+     Since bzr uses per-branch tags and git/hg use per-repo tags, the
+     way bzr fast-export presently emits tags (unconditional reset &
+     new ref) may result in clashes when several different branches
+     are imported into single git/hg repo.  If this occurs, use the
+     bzr fast-export option --no-tags during the export of one or more
+     branches to avoid the issue.
     """
     hidden = False
     _see_also = ['fast-import', 'fast-import-filter']
