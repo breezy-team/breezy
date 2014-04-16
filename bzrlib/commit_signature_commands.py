@@ -111,7 +111,7 @@ class cmd_verify_signatures(Command):
                         ' acceptable for verification.',
                    short_name='k',
                    type=str,),
-            'revision', 
+            'revision',
             'verbose',
           ]
     takes_args = ['location?']
@@ -160,8 +160,8 @@ class cmd_verify_signatures(Command):
                     # Ignore ghosts
                     continue
                 revisions.append(rev_id)
-        count, result, all_verifiable =\
-                                gpg.bulk_verify_signatures(repo, revisions, gpg_strategy)
+        count, result, all_verifiable = gpg.bulk_verify_signatures(
+            repo, revisions, gpg_strategy)
         if all_verifiable:
                write(gettext("All commits signed with verifiable keys"))
                if verbose:
