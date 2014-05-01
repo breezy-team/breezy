@@ -32,6 +32,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* 'acceptable_keys' from 'bazaar.conf' is now properly handled.
+  (Vincent Ladeuil, #1249732)
+
 * Option names are now checked to be valid [dotted] python identifiers. Also
   ignore invalid references (i.e. using invalid option names) while
   expanding option values. (Vincent Ladeuil, #1235099)
@@ -62,6 +65,12 @@ Testing
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
+
+* Handle (minor) incompatible change in python 2.7.6 leading to test
+  failures. Only tests are affected. (Vincent Ladeuil, #1303879)
+
+* Take python 2.7.6 late (better than never) bugfix in ntpath.py into
+  account. Only tests are affected (Vincent Ladeuil, #1303879).
 
 * Remove wrong assumption about how TCP server and client interact when run
   inside the same process. (Vincent Ladeuil, #1269886).
