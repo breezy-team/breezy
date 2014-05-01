@@ -118,6 +118,7 @@ def load_tests(basic_tests, module, loader):
                      'test_shell_complete',
                      'test_shelve',
                      'test_sign_my_commits',
+                     'test_verify_signatures',
                      'test_split',
                      'test_status',
                      'test_switch',

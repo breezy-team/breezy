@@ -127,3 +127,7 @@ class TestToGzip(tests.TestCase):
     def test_large_chunks(self):
         self.assertToGzip(['a large string\n'*1024])
         self.assertToGzip(['a large string\n']*1024)
+
+    def test_enormous_chunks(self):
+        self.assertToGzip(['a large string\n'*1024*256])
+        self.assertToGzip(['a large string\n']*1024*256)

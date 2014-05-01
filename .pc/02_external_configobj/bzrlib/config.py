@@ -104,7 +104,7 @@ from bzrlib import (
     win32utils,
     )
 from bzrlib.i18n import gettext
-import configobj
+from bzrlib.util.configobj import configobj
 """)
 from bzrlib import (
     commands,

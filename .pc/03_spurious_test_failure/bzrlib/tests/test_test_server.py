@@ -74,12 +74,7 @@ class TCPClient(object):
         return self.sock.sendall(s)
 
     def read(self, bufsize=4096):
-        try:
-            return self.sock.recv(bufsize)
-        except socket.error, e:
-            if e.errno == errno.ECONNRESET:
-                return ""
-            raise
+        return self.sock.recv(bufsize)
 
 
 class TCPConnectionHandler(SocketServer.BaseRequestHandler):
@@ -171,6 +166,37 @@ class TestTCPServerInAThread(tests.TestCase):
         # The exception is raised in the main thread
         self.assertRaises(CantStart,
                           self.get_server, server_class=CantStartServer)
+
+    def test_server_fails_while_serving_or_stopping(self):
+        class CantConnect(Exception):
+            pass
+
+        class FailingConnectionHandler(TCPConnectionHandler):
+
+            def handle(self):
+                raise CantConnect()
+
+        server = self.get_server(
+            connection_handler_class=FailingConnectionHandler)
+        # The server won't fail until a client connect
+        client = self.get_client()
+        client.connect((server.host, server.port))
+        # We make sure the server wants to handle a request, but the request is
+        # guaranteed to fail. However, the server should make sure that the
+        # connection gets closed, and stop_server should then raise the
+        # original exception.
+        client.write('ping\n')
+        try:
+            self.assertEqual('', client.read())
+        except socket.error, e:
+            # On Windows, failing during 'handle' means we get
+            # 'forced-close-of-connection'. Possibly because we haven't
+            # processed the write request before we close the socket.
+            WSAECONNRESET = 10054
+            if e.errno in (WSAECONNRESET,):
+                pass
+        # Now the server has raised the exception in its own thread
+        self.assertRaises(CantConnect, server.stop_server)
 
     def test_server_crash_while_responding(self):
         # We want to ensure the exception has been caught

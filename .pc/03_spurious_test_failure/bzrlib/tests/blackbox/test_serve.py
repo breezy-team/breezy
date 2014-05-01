@@ -329,6 +329,8 @@ class TestBzrServe(TestBzrServeBase):
         # request to finish
         self.assertEqual('Requested to stop gracefully\n',
                          process.stderr.readline())
+        self.assertEqual('Waiting for 1 client(s) to finish\n',
+                         process.stderr.readline())
         body = response_handler.read_body_bytes()
         if body != big_contents:
             self.fail('Failed to properly read the contents of "bigfile"')

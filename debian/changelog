@@ -1,3 +1,18 @@
+bzr (2.6.0+bzr6595-1) unstable; urgency=medium
+
+  [ Jelmer Vernooij ]
+  * Re-add myself to uploaders.
+  * Don't pass blob to file.writelines(), but rather to file.write().
+    Closes: #722091
+
+  [ Dimitri John Ledkov ]
+  * New upstream snapshot:
+    - verify-signature crashes on non ascii characters (LP: #1123460)
+    - verify-signature crashes when acceptable_keys is defined (LP:
+    #1249732)
+
+ -- Dimitri John Ledkov <xnox@ubuntu.com>  Thu, 01 May 2014 18:27:49 +0100
+
 bzr (2.6.0+bzr6593-1) unstable; urgency=medium
 
   * New upstream snapshot:
