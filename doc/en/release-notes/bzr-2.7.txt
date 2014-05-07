@@ -59,6 +59,12 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+Changed Behaviour
+*****************
+
+* Also honor $XDG_CONFIG_HOME specification on Mac OS X platform.
+  (Fabien Meghazi)
+
 Testing
 *******
 

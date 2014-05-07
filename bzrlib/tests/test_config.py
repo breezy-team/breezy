@@ -595,7 +595,7 @@ class TestXDGConfigDir(tests.TestCaseInTempDir):
     # subdirectory of $XDG_CONFIG_HOME
 
     def setUp(self):
-        if sys.platform in ('darwin', 'win32'):
+        if sys.platform == 'win32':
             raise tests.TestNotApplicable(
                 'XDG config dir not used on this platform')
         super(TestXDGConfigDir, self).setUp()
