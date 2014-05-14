@@ -1,4 +1,4 @@
-bzr-builddeb (2.8.8) UNRELEASED; urgency=low
+bzr-builddeb (2.8.8) unstable; urgency=low
 
   [ Iain Lane ]
   * debian/tests/control: Add python-distro-info and libalgorithm-merge-perl
@@ -18,7 +18,7 @@ bzr-builddeb (2.8.8) UNRELEASED; urgency=low
     the timestamp. Thanks to Anders Kaseorg! (LP: #475983).
   * Bump Standards-Version to 3.9.5, no changes.
 
- -- Iain Lane <laney@debian.org>  Wed, 23 Oct 2013 10:52:50 +0100
+ -- Andrew Starr-Bochicchio <asb@debian.org>  Wed, 14 May 2014 00:24:35 -0400
 
 bzr-builddeb (2.8.7) unstable; urgency=low
 
