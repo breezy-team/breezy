@@ -8,7 +8,7 @@ Build-Depends-Indep: bzr (>= 2.1~), python-docutils, python-debian (>= 0.1.11), 
 Vcs-Bzr: http://bzr.debian.org/pkg-bazaar/bzr-builddeb/unstable
 Vcs-Browser: http://bzr.debian.org/loggerhead/pkg-bazaar/bzr-builddeb/unstable
 X-Python-Version: >= 2.4
-Standards-Version: 3.9.4
+Standards-Version: 3.9.5
 XS-Testsuite: autopkgtest
 
 Package: bzr-builddeb

@@ -16,6 +16,7 @@ bzr-builddeb (2.8.8) UNRELEASED; urgency=low
     quilt > 0.63-2.
   * import_dsc.py: Use calendar.timegm instead of time.mktime when importing
     the timestamp. Thanks to Anders Kaseorg! (LP: #475983).
+  * Bump Standards-Version to 3.9.5, no changes.
 
  -- Iain Lane <laney@debian.org>  Wed, 23 Oct 2013 10:52:50 +0100
 
