@@ -175,8 +175,14 @@ def quilt_unapplied(working_dir, patches_dir=None, series_file=None):
     :param series_file: Optional series file
     """
     try:
-        return run_quilt(["unapplied"], working_dir=working_dir,
-                patches_dir=patches_dir, series_file=series_file).splitlines()
+        unapplied_patches = run_quilt(["unapplied"],
+                            working_dir=working_dir, patches_dir=patches_dir,
+                            series_file=series_file).splitlines()
+        patch_basenames = []
+        for patch in unapplied_patches:
+            patch = os.path.basename(patch)
+            patch_basenames.append(patch)
+        return patch_basenames
     except QuiltError, e:
         if e.retcode == 1:
             return []

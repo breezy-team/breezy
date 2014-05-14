@@ -11,6 +11,9 @@ bzr-builddeb (2.8.8) UNRELEASED; urgency=low
   * Display a helpful error message if dh-make is not installed (LP: #641418).
   * Deprecate --v3 option for the dh-make command. dh_make has been
     creating v3 source packages since 2010 (LP: #811723).
+  * quilt.py: quilt_unapplied should only return patch basenames regardless
+    of whether or not QUILT_PATCHES_PREFIX is set. Fixes test failure with
+    quilt > 0.63-2.
 
  -- Iain Lane <laney@debian.org>  Wed, 23 Oct 2013 10:52:50 +0100
 

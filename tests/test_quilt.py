@@ -86,3 +86,13 @@ class QuiltTests(TestCaseWithTransport):
             ("source/debian/patches/series", "patch1.diff\n"),
             ("source/debian/patches/patch1.diff", "foob ar")])
         self.assertEquals(["patch1.diff"], quilt_unapplied("source"))
+
+
+    def test_unapplied_multi(self):
+        self.make_empty_quilt_dir("source")
+        self.build_tree_contents([
+            ("source/debian/patches/series", "patch1.diff\npatch2.diff"),
+            ("source/debian/patches/patch1.diff", "foob ar"),
+            ("source/debian/patches/patch2.diff", "bazb ar")])
+        self.assertEquals(["patch1.diff", "patch2.diff"],
+                          quilt_unapplied("source", "debian/patches"))
