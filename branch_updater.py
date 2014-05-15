@@ -22,6 +22,7 @@ from bzrlib.trace import show_error, note
 
 from bzrlib.plugins.fastimport.helpers import (
     best_format_for_objects_in_a_repository,
+    single_plural,
     )
 
 
@@ -149,7 +150,6 @@ class BranchUpdater(object):
 
         :return: whether the branch was changed or not
         """
-        from fastimport.helpers import single_plural
         last_rev_id = self.cache_mgr.lookup_committish(last_mark)
         self.repo.lock_read()
         try:

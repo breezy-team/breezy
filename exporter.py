@@ -64,7 +64,7 @@ from bzrlib.plugins.fastimport import (
     )
 
 from fastimport import commands
-from fastimport.helpers import (
+from bzrlib.plugins.fastimport.helpers import (
     binary_stream,
     single_plural,
     )

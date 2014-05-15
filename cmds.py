@@ -19,7 +19,10 @@ from bzrlib import bzrdir
 from bzrlib.commands import Command
 from bzrlib.option import Option, ListOption, RegistryOption
 
-from bzrlib.plugins.fastimport import load_fastimport
+from bzrlib.plugins.fastimport import (
+    helpers,
+    load_fastimport,
+    )
 
 
 def _run(source, processor_factory, verbose=False, user_map=None, **kwargs):
@@ -47,7 +50,6 @@ def _run(source, processor_factory, verbose=False, user_map=None, **kwargs):
 def _get_source_stream(source):
     if source == '-' or source is None:
         import sys
-        from fastimport import helpers
         stream = helpers.binary_stream(sys.stdin)
     elif source.endswith('.gz'):
         import gzip
