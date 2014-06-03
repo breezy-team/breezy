@@ -28,7 +28,7 @@ from bzrlib.plugins.fastimport import (
 from bzrlib.plugins.fastimport.reftracker import (
     RefTracker,
     )
-from fastimport.helpers import (
+from bzrlib.plugins.fastimport.helpers import (
     single_plural,
     )
 
@@ -273,5 +273,16 @@ class CacheManager(object):
         if self._decref(id, self._sticky_blobs, None):
             self._sticky_memory_bytes -= len(content)
         return content
+
+
+def invert_dictset(d):
+    """Invert a dictionary with keys matching a set of values, turned into lists."""
+    # Based on recipe from ASPN
+    result = {}
+    for k, c in d.iteritems():
+        for v in c:
+            keys = result.setdefault(v, [])
+            keys.append(k)
+    return result
 
 

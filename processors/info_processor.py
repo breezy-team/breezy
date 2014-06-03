@@ -18,13 +18,13 @@
 from bzrlib.plugins.fastimport import (
     reftracker,
     )
+from bzrlib.plugins.fastimport.helpers import (
+    invert_dict,
+    invert_dictset,
+    )
 from fastimport import (
     commands,
     processor,
-    )
-from fastimport.helpers import (
-    invert_dict,
-    invert_dictset,
     )
 import stat
 
