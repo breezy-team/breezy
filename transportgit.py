@@ -536,7 +536,7 @@ class TransportObjectStore(PackBasedObjectStore):
         idxfile = self.pack_transport.get(basename + ".idx")
         idx = load_pack_index_file(basename+".idx", idxfile)
         final_pack = Pack.from_objects(p, idx)
-        self._add_known_pack(final_pack)
+        self._add_known_pack(basename, final_pack)
         return final_pack
 
     def add_thin_pack(self):
