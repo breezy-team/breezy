@@ -3559,7 +3559,6 @@ class StartingPathMatcher(SectionMatcher):
         """
         location_parts = self.location.rstrip('/').split('/')
         store = self.store
-        sections = []
         # Later sections are more specific, they should be returned first
         for _, section in reversed(list(store.get_sections())):
             if section.id is None:
@@ -4246,6 +4245,8 @@ class cmd_config(commands.Command):
     def _set_config_option(self, name, value, directory, scope):
         conf = self._get_stack(directory, scope, write_access=True)
         conf.set(name, value)
+        # Explicitly save the changes
+        conf.store.save_changes()
 
     def _remove_config_option(self, name, directory, scope):
         if name is None:
@@ -4254,6 +4255,8 @@ class cmd_config(commands.Command):
         conf = self._get_stack(directory, scope, write_access=True)
         try:
             conf.remove(name)
+            # Explicitly save the changes
+            conf.store.save_changes()
         except KeyError:
             raise errors.NoSuchConfigOption(name)
 
