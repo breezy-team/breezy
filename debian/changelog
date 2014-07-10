@@ -4,6 +4,8 @@ bzr (2.6.0+bzr6595-2) UNRELEASED; urgency=medium
   * Conflict and build-conflict with newer versions of paramiko that no
     longer accept 'buffer' objects. This is a stop-gap until paramiko is
     fixed. Closes: #750347
+  * Add patch 06_win32_paths: Fixes some unit tests for win32-specific
+    functions.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Fri, 11 Jul 2014 00:58:14 +0200
 

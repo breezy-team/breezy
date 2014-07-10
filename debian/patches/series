@@ -3,3 +3,4 @@
 03_spurious_test_failure
 04_autodoc_write
 05_remove_gzip_test
+06_win32_paths

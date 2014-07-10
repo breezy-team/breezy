@@ -1,0 +1,68 @@
+=== modified file 'bzrlib/tests/test_osutils.py'
+--- old/bzrlib/tests/test_osutils.py	2014-04-09 23:58:58 +0000
++++ new/bzrlib/tests/test_osutils.py	2014-07-08 23:58:04 +0000
+@@ -927,8 +927,8 @@
+     def test_abspath(self):
+         self.assertEqual('C:/foo', osutils._win32_abspath('C:\\foo'))
+         self.assertEqual('C:/foo', osutils._win32_abspath('C:/foo'))
+-        self.assertEqual('//HOST/path', osutils._win32_abspath(r'\\HOST\path'))
+-        self.assertEqual('//HOST/path', osutils._win32_abspath('//HOST/path'))
++        self.assertEqual('//HOST/PATH', osutils._win32_abspath(r'\\HOST\path'))
++        self.assertEqual('//HOST/PATH', osutils._win32_abspath('//HOST/path'))
+ 
+     def test_realpath(self):
+         self.assertEqual('C:/foo', osutils._win32_realpath('C:\\foo'))
+@@ -981,8 +981,8 @@
+         self.assertEqual('C:/foo', osutils._win98_abspath('C:\\foo'))
+         self.assertEqual('C:/foo', osutils._win98_abspath('C:/foo'))
+         # UNC path
+-        self.assertEqual('//HOST/path', osutils._win98_abspath(r'\\HOST\path'))
+-        self.assertEqual('//HOST/path', osutils._win98_abspath('//HOST/path'))
++        self.assertEqual('//HOST/PATH', osutils._win98_abspath(r'\\HOST\path'))
++        self.assertEqual('//HOST/PATH', osutils._win98_abspath('//HOST/path'))
+         # relative path
+         cwd = osutils.getcwd().rstrip('/')
+         drive = osutils.ntpath.splitdrive(cwd)[0]
+
+=== modified file 'bzrlib/tests/test_transport.py'
+--- old/bzrlib/tests/test_transport.py	2011-12-27 15:31:59 +0000
++++ new/bzrlib/tests/test_transport.py	2014-07-08 23:59:18 +0000
+@@ -821,10 +821,10 @@
+         t = local.EmulatedWin32LocalTransport('file://HOST/path/to/some/dir/')
+         for i in xrange(4):
+             t = t.clone('..')
+-        self.assertEquals(t.base, 'file://HOST/')
++        self.assertEquals(t.base, 'file://HOST/PATH/')
+         # make sure we reach the root
+         t = t.clone('..')
+-        self.assertEquals(t.base, 'file://HOST/')
++        self.assertEquals(t.base, 'file://HOST/PATH/')
+ 
+ 
+ class TestConnectedTransport(tests.TestCase):
+
+=== modified file 'bzrlib/tests/test_urlutils.py'
+--- old/bzrlib/tests/test_urlutils.py	2012-01-13 13:45:44 +0000
++++ new/bzrlib/tests/test_urlutils.py	2014-07-08 23:58:52 +0000
+@@ -412,9 +412,9 @@
+ 
+     def test_win32_unc_path_to_url(self):
+         to_url = urlutils._win32_local_path_to_url
+-        self.assertEqual('file://HOST/path',
++        self.assertEqual('file://HOST/PATH',
+             to_url(r'\\HOST\path'))
+-        self.assertEqual('file://HOST/path',
++        self.assertEqual('file://HOST/PATH',
+             to_url('//HOST/path'))
+ 
+         try:
+@@ -422,7 +422,7 @@
+         except UnicodeError:
+             raise TestSkipped("local encoding cannot handle unicode")
+ 
+-        self.assertEqual('file://HOST/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
++        self.assertEqual('file://HOST/PATH/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
+         self.assertFalse(isinstance(result, unicode))
+ 
+     def test_win32_local_path_from_url(self):
+
