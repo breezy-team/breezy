@@ -5,6 +5,7 @@ Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
 Uploaders: Wouter van Heyst <larstiq@larstiq.dyndns.org>,
            Andrew Starr-Bochicchio <asb@debian.org>,
            Jelmer Vernooij <jelmer@debian.org>
+Build-Conflicts: python-paramiko (>= 1.12.0)
 Build-Depends: ca-certificates,
                cython-dbg | python-pyrex,
                debhelper (>= 9),
@@ -17,7 +18,6 @@ Build-Depends: ca-certificates,
                python-lzma-dbg,
                python-medusa,
                python-meliae-dbg,
-               python-paramiko,
                python-pycurl-dbg,
                python-sphinx (>= 1.0.7+dfsg),
                python-subunit,
@@ -75,7 +75,8 @@ Depends: python-configobj,
          ${shlibs:Depends}
 Recommends: ca-certificates,
             python-launchpadlib,
-            python-paramiko
+            python-paramiko (<< 1.12.0)
+Conflicts: python-paramiko (>= 1.12.0)
 Suggests: python-bzrlib-dbg,
           python-bzrlib.tests,
           python-gpgme,
@@ -167,9 +168,5 @@ Description: easy to use distributed version control system (documentation)
  can be used to extend its functionality. Many plugins exist, providing
  useful commands (bzrtools), graphical interfaces (qbzr), or native
  interaction with Subversion branches (bzr-svn).
- .
- Install python-paramiko if you are going to push branches to remote
- hosts with sftp, and python-pycurl if you'd like for SSL certificates
- always to be verified.
  .
  This package provides the documentation.
