@@ -1,3 +1,9 @@
+bzr (2.6.0+bzr6595-3) UNRELEASED; urgency=medium
+
+  * Add dependency on ca-certifcates in autopktest .
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 15 Jul 2014 18:19:10 +0200
+
 bzr (2.6.0+bzr6595-2) unstable; urgency=medium
 
   * Use canonical URL for Vcs-Bzr.
