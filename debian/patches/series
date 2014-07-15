@@ -4,3 +4,4 @@
 04_autodoc_write
 05_remove_gzip_test
 06_win32_paths
+07_shorten_test_names

@@ -1,0 +1,26 @@
+Author: Jelmer Vernooij <jelmer@debian.org>
+Description: Shorten test names, since otherwise paths exceed 256 characters on ci.debian.net
+Status: not forwarded upstream
+
+=== modified file 'bzrlib/tests/per_interrepository/test_interrepository.py'
+--- old/bzrlib/tests/per_interrepository/test_interrepository.py	2011-06-16 15:29:10 +0000
++++ new/bzrlib/tests/per_interrepository/test_interrepository.py	2014-07-15 16:24:24 +0000
+@@ -97,7 +97,7 @@
+         self.assertEqual(('search', set(['rev2']), set(['rev1']), 1),
+             result.get_recipe())
+ 
+-    def test_search_missing_revision_ids_absent_requested_raises(self):
++    def test_absent_requested_raises(self):
+         # Asking for missing revisions with a tip that is itself absent in the
+         # source raises NoSuchRevision.
+         repo_b = self.make_to_repository('target')
+@@ -119,7 +119,7 @@
+             repo_b.search_missing_revision_ids, repo_a, revision_id='pizza',
+             find_ghosts=False)
+ 
+-    def test_search_missing_revision_ids_revision_limited(self):
++    def test_search_missing_rev_limited(self):
+         # revision ids in repository A that are not referenced by the
+         # requested revision are not returned.
+         # make a repository to compare against that is empty
+
