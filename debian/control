@@ -75,12 +75,12 @@ Depends: python-configobj,
          ${shlibs:Depends}
 Recommends: ca-certificates,
             python-launchpadlib,
-            python-paramiko (<< 1.12.0)
 Conflicts: python-paramiko (>= 1.12.0)
 Suggests: python-bzrlib-dbg,
           python-bzrlib.tests,
           python-gpgme,
           python-kerberos (>= 1.0+svn2455-1),
+          python-paramiko,
           python-pycurl,
           xdg-utils
 Breaks: bzr (<< 2.3.0-2),

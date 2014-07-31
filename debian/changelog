@@ -1,3 +1,9 @@
+bzr (2.6.0+bzr6595-5) UNRELEASED; urgency=medium
+
+  * Move paramiko from recommends to suggests.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Thu, 31 Jul 2014 19:03:13 +0200
+
 bzr (2.6.0+bzr6595-4) unstable; urgency=medium
 
   * For autopktest, install python-{medusa,lzma,meliae,pycurl} to avoid
