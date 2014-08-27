@@ -1,6 +1,6 @@
-bzr (2.6.0+bzr6595-5) UNRELEASED; urgency=medium
+bzr (2.6.0+bzr6595-5) unstable; urgency=medium
 
-  * Allow installation with version 1.14.1 of paramiko, which has a
+  * Allow installation with version 1.14.1 of paramiko, which will have a
     fix for #750517 that was breaking bzr.
   * Recommend ssh or paramiko (for bzr+ssh://) and suggest
     paramiko (for sftp://).
