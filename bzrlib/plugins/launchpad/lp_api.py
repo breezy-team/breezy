@@ -23,6 +23,7 @@ from __future__ import absolute_import
 # needed by a command that uses it.
 
 
+import httplib2
 import os
 import re
 import urlparse
@@ -112,7 +113,7 @@ class NoLaunchpadBranch(errors.BzrError):
         errors.BzrError.__init__(self, branch=branch, url=branch.base)
 
 
-def login(service, timeout=None, proxy_info=None,
+def login(service, timeout=None, proxy_info=httplib2.proxy_info_from_environment('https'),
           version=Launchpad.DEFAULT_VERSION):
     """Log in to the Launchpad API.
 
