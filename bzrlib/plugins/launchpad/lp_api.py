@@ -113,12 +113,14 @@ class NoLaunchpadBranch(errors.BzrError):
         errors.BzrError.__init__(self, branch=branch, url=branch.base)
 
 
-def login(service, timeout=None, proxy_info=httplib2.proxy_info_from_environment('https'),
+def login(service, timeout=None, proxy_info=None,
           version=Launchpad.DEFAULT_VERSION):
     """Log in to the Launchpad API.
 
     :return: The root `Launchpad` object from launchpadlib.
     """
+    if proxy_info is None:
+        proxy_info = httplib2.proxy_info_from_environment('https')
     cache_directory = get_cache_directory()
     launchpad = Launchpad.login_with(
         'bzr', _get_api_url(service), cache_directory, timeout=timeout,
