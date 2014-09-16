@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2014 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -142,6 +142,19 @@ class TestDiff(tests.TestCase):
         self.assertRaises(errors.NoDiff, diff.external_diff,
                           'old', ['boo\n'], 'new', ['goo\n'],
                           StringIO(), diff_opts=['-u'])
+
+    def test_default_style_unified(self):
+        """Check for default style '-u' only if no other style specified
+        in 'diff-options'.
+        """
+        # Verify that style defaults to unified, id est '-u' appended
+        # to option list, in the absence of an alternative style.
+        self.assertEqual(['-a', '-u'], diff.default_style_unified(["-a"]))
+        # Verify that for all valid style options, '-u' is not
+        # appended to option list.
+        for s in diff.style_option_list:
+            ret_opts = diff.default_style_unified(diff_opts=["%s" % (s,)])
+            self.assertEqual(["%s" % (s,)], ret_opts)
 
     def test_internal_diff_default(self):
         # Default internal diff encoding is utf8
@@ -1391,7 +1404,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         diff_obj._execute('old', 'new')
         self.assertEqual(output.getvalue().rstrip(), 'old new')
 
-    def test_excute_missing(self):
+    def test_execute_missing(self):
         diff_obj = diff.DiffFromTool(['a-tool-which-is-unlikely-to-exist'],
                                      None, None, None)
         self.addCleanup(diff_obj.finish)

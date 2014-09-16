@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd.
+# Copyright (C) 2005-2014 Canonical Ltd.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -119,7 +119,7 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
 
 
 def _spawn_external_diff(diffcmd, capture_errors=True):
-    """Spawn the externall diff process, and return the child handle.
+    """Spawn the external diff process, and return the child handle.
 
     :param diffcmd: The command list to spawn
     :param capture_errors: Capture stderr as well as setting LANG=C
@@ -153,6 +153,40 @@ def _spawn_external_diff(diffcmd, capture_errors=True):
         raise
 
     return pipe
+
+# diff style options as of GNU diff v3.2
+style_option_list = ['-c', '-C', '--context',
+                     '-e', '--ed',
+                     '-f', '--forward-ed',
+                     '-q', '--brief',
+                     '--normal',
+                     '-n', '--rcs',
+                     '-u', '-U', '--unified',
+                     '-y', '--side-by-side',
+                     '-D', '--ifdef']
+
+def default_style_unified(diff_opts):
+    """Default to unified diff style if alternative not specified in diff_opts.
+
+        diff only allows one style to be specified; they don't override.
+        Note that some of these take optargs, and the optargs can be
+        directly appended to the options.
+        This is only an approximate parser; it doesn't properly understand
+        the grammar.
+
+    :param diff_opts: List of options for external (GNU) diff.
+    :return: List of options with default style=='unified'.
+    """
+    for s in style_option_list:
+        for j in diff_opts:
+            if j.startswith(s):
+                break
+        else:
+            continue
+        break
+    else:
+        diff_opts.append('-u')
+    return diff_opts
 
 
 def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
@@ -195,26 +229,7 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                    '--binary',
                   ]
 
-        # diff only allows one style to be specified; they don't override.
-        # note that some of these take optargs, and the optargs can be
-        # directly appended to the options.
-        # this is only an approximate parser; it doesn't properly understand
-        # the grammar.
-        for s in ['-c', '-u', '-C', '-U',
-                  '-e', '--ed',
-                  '-q', '--brief',
-                  '--normal',
-                  '-n', '--rcs',
-                  '-y', '--side-by-side',
-                  '-D', '--ifdef']:
-            for j in diff_opts:
-                if j.startswith(s):
-                    break
-            else:
-                continue
-            break
-        else:
-            diffcmd.append('-u')
+        diff_opts = default_style_unified(diff_opts)
 
         if diff_opts:
             diffcmd.extend(diff_opts)
@@ -265,7 +280,7 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                 msg = 'exit code %d' % rc
 
             raise errors.BzrError('external diff failed with %s; command: %r'
-                                  % (rc, diffcmd))
+                                  % (msg, diffcmd))
 
 
     finally:
@@ -282,7 +297,7 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                         old_abspath, e)
         try:
             os.remove(new_abspath)
-        except OSError:
+        except OSError, e:
             if e.errno not in (errno.ENOENT,):
                 warning('Failed to delete temporary file: %s %s',
                         new_abspath, e)
