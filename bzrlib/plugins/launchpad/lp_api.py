@@ -23,6 +23,7 @@ from __future__ import absolute_import
 # needed by a command that uses it.
 
 
+import httplib2
 import os
 import re
 import urlparse
@@ -118,6 +119,8 @@ def login(service, timeout=None, proxy_info=None,
 
     :return: The root `Launchpad` object from launchpadlib.
     """
+    if proxy_info is None:
+        proxy_info = httplib2.proxy_info_from_environment('https')
     cache_directory = get_cache_directory()
     launchpad = Launchpad.login_with(
         'bzr', _get_api_url(service), cache_directory, timeout=timeout,
