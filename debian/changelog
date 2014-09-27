@@ -3,6 +3,9 @@ bzr (2.6.0+bzr6595-6) UNRELEASED; urgency=medium
   * Re-add python-paramiko as build-dependency now 1.14.1 is in the
     archive.
   * Re-remove myself from uploaders.
+  * Use bundled configobj again, because system configobj has
+    changed behaviour that breaks the bzr testsuite, reverting
+    patch 02_external_configobj. Closes: #760054
 
  -- Jelmer Vernooij <jelmer@debian.org>  Sun, 07 Sep 2014 20:34:03 +0200
 
