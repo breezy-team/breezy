@@ -1,4 +1,4 @@
-bzr (2.6.0+bzr6595-6) UNRELEASED; urgency=medium
+bzr (2.6.0+bzr6595-6) unstable; urgency=medium
 
   * Re-add python-paramiko as build-dependency now 1.14.1 is in the
     archive.
@@ -8,6 +8,7 @@ bzr (2.6.0+bzr6595-6) UNRELEASED; urgency=medium
     patch 02_external_configobj. Closes: #760054
   * Add 08_disable_put_file_unicode: Disable test_put_file_unicode for now,
     which is broken for SFTP because of upstream changes in paramiko.
+  * Team upload.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Sun, 07 Sep 2014 20:34:03 +0200
 
