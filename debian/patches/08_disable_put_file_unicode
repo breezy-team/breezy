@@ -1,0 +1,24 @@
+=== modified file 'a/bzrlib/tests/per_transport.py'
+--- a/bzrlib/tests/per_transport.py	2011-12-27 15:31:59 +0000
++++ b/bzrlib/tests/per_transport.py	2014-09-27 17:31:38 +0000
+@@ -534,19 +534,6 @@
+             (AssertionError, UnicodeEncodeError),
+             t.put_bytes, 'foo', unicode_string)
+ 
+-    def test_put_file_unicode(self):
+-        # Like put_bytes, except with a StringIO.StringIO of a unicode string.
+-        # This situation can happen (and has) if code is careless about the type
+-        # of "string" they initialise/write to a StringIO with.  We cannot use
+-        # cStringIO, because it never returns unicode from read.
+-        # Like put_bytes, UnicodeEncodeError isn't quite the right exception to
+-        # raise, but we raise it for hysterical raisins.
+-        t = self.get_transport()
+-        if t.is_readonly():
+-            return
+-        unicode_file = pyStringIO(u'\u1234')
+-        self.assertRaises(UnicodeEncodeError, t.put_file, 'foo', unicode_file)
+-
+     def test_mkdir(self):
+         t = self.get_transport()
+ 
+
