@@ -157,7 +157,7 @@ def _spawn_external_diff(diffcmd, capture_errors=True):
 # diff style options as of GNU diff v3.2
 style_option_list = ['-c', '-C', '--context',
                      '-e', '--ed',
-                     '-f', '--forward-ed',
+                     '-f', '--forward-ed', # Not in diff 3.3 ??
                      '-q', '--brief',
                      '--normal',
                      '-n', '--rcs',
@@ -286,21 +286,19 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
     finally:
         oldtmpf.close()                 # and delete
         newtmpf.close()
-        # Clean up. Warn in case the files couldn't be deleted
-        # (in case windows still holds the file open, but not
-        # if the files have already been deleted)
-        try:
-            os.remove(old_abspath)
-        except OSError, e:
-            if e.errno not in (errno.ENOENT,):
-                warning('Failed to delete temporary file: %s %s',
-                        old_abspath, e)
-        try:
-            os.remove(new_abspath)
-        except OSError, e:
-            if e.errno not in (errno.ENOENT,):
-                warning('Failed to delete temporary file: %s %s',
-                        new_abspath, e)
+
+        def cleanup(path):
+            # Warn in case the file couldn't be deleted (in case windows still
+            # holds the file open, but not if the files have already been
+            # deleted)
+            try:
+                os.remove(path)
+            except OSError, e:
+                if e.errno not in (errno.ENOENT,):
+                    warning('Failed to delete temporary file: %s %s', path, e)
+
+        cleanup(old_abspath)
+        cleanup(new_abspath)
 
 
 def get_trees_and_branches_to_diff_locked(
