@@ -157,7 +157,7 @@ def _spawn_external_diff(diffcmd, capture_errors=True):
 # diff style options as of GNU diff v3.2
 style_option_list = ['-c', '-C', '--context',
                      '-e', '--ed',
-                     '-f', '--forward-ed', # Not in diff 3.3 ??
+                     '-f', '--forward-ed',
                      '-q', '--brief',
                      '--normal',
                      '-n', '--rcs',
