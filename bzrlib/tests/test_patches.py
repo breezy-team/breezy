@@ -64,12 +64,18 @@ class PatchesTester(TestCase):
 
     def test_parse_patches_file_modified_header(self):
         """Parse a patch containing a file modified header"""
-        lines = ["=== modified file 'orig/commands.py'",
-                 "--- orig/commands.py",
-                 "+++ mod/dommands.py"]
-        patch = parse_patches(iter(lines))
-        self.assertEqual(patch.get_modified_header(),
-                         "=== modified file 'orig/commands.py'")
+        # https://bugs.launchpad.net/bzr/+bug/1400567
+
+        lines = ["=== modified file 'orig/commands.py'\n",
+                 "--- orig/commands.py\n",
+                 "+++ mod/dommands.py\n"]
+
+        # XXX: just parse 1 patch
+        patches = parse_patches(lines)
+        for patch in patches:
+            print '\nmod file header: %s' % patch.get_modified_header()
+            self.assertEqual(patch.get_modified_header(),
+                             "=== modified file 'orig/commands.py'")
 
     def testValidPatchHeader(self):
         """Parse a valid patch header"""

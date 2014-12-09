@@ -32,8 +32,15 @@ import re
 binary_files_re = 'Binary files (.*) and (.*) differ\n'
 
 def get_patch_names(iter_lines):
-    try:
+    modified = False
+    line = iter_lines.next()
+
+    if line.startswith("=== "):
+        modified = True
         line = iter_lines.next()
+
+    try:
+        print 'line: %s' % line
         match = re.match(binary_files_re, line)
         if match is not None:
             raise BinaryFiles(match.group(1), match.group(2))
@@ -51,7 +58,7 @@ def get_patch_names(iter_lines):
             mod_name = line[4:].rstrip("\n")
     except StopIteration:
         raise MalformedPatchHeader("No mod line", "")
-    return (orig_name, mod_name)
+    return (orig_name, mod_name, modified)
 
 
 def parse_range(textrange):
@@ -254,9 +261,10 @@ def iter_hunks(iter_lines, allow_dirty=False):
 
 
 class BinaryPatch(object):
-    def __init__(self, oldname, newname):
+    def __init__(self, oldname, newname, modified=False):
         self.oldname = oldname
         self.newname = newname
+        self.modified = modified  # patch has file modified header
 
     def __str__(self):
         return 'Binary files %s and %s differ\n' % (self.oldname, self.newname)
@@ -264,14 +272,18 @@ class BinaryPatch(object):
 
 class Patch(BinaryPatch):
 
-    def __init__(self, oldname, newname):
-        BinaryPatch.__init__(self, oldname, newname)
+    def __init__(self, oldname, newname, modified):
+        BinaryPatch.__init__(self, oldname, newname, modified)
         self.hunks = []
 
     def __str__(self):
         ret = self.get_header()
         ret += "".join([str(h) for h in self.hunks])
         return ret
+
+    def get_modified_header(self):
+        if self.modified:
+            return "=== modified file '%s'" % self.oldname
 
     def get_header(self):
         return "--- %s\n+++ %s\n" % (self.oldname, self.newname)
@@ -326,11 +338,11 @@ def parse_patch(iter_lines, allow_dirty=False):
     '''
     iter_lines = iter_lines_handle_nl(iter_lines)
     try:
-        (orig_name, mod_name) = get_patch_names(iter_lines)
+        (orig_name, mod_name, modified) = get_patch_names(iter_lines)
     except BinaryFiles, e:
         return BinaryPatch(e.orig_name, e.mod_name)
     else:
-        patch = Patch(orig_name, mod_name)
+        patch = Patch(orig_name, mod_name, modified)
         for hunk in iter_hunks(iter_lines, allow_dirty):
             patch.hunks.append(hunk)
         return patch
@@ -356,6 +368,7 @@ def iter_file_patch(iter_lines, allow_dirty=False):
     beginning = True
     for line in iter_lines:
         if line.startswith('=== ') or line.startswith('*** '):
+        #if line.startswith('*** '):
             continue
         if line.startswith('#'):
             continue
