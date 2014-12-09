@@ -32,15 +32,14 @@ import re
 binary_files_re = 'Binary files (.*) and (.*) differ\n'
 
 def get_patch_names(iter_lines):
-    modified = False
+    modified_header = False
     line = iter_lines.next()
 
     if line.startswith("=== "):
-        modified = True
+        modified_header = True
         line = iter_lines.next()
 
     try:
-        print 'line: %s' % line
         match = re.match(binary_files_re, line)
         if match is not None:
             raise BinaryFiles(match.group(1), match.group(2))
@@ -58,7 +57,7 @@ def get_patch_names(iter_lines):
             mod_name = line[4:].rstrip("\n")
     except StopIteration:
         raise MalformedPatchHeader("No mod line", "")
-    return (orig_name, mod_name, modified)
+    return (orig_name, mod_name, modified_header)
 
 
 def parse_range(textrange):
@@ -366,9 +365,11 @@ def iter_file_patch(iter_lines, allow_dirty=False):
     saved_lines = []
     orig_range = 0
     beginning = True
+    modified_header = False
     for line in iter_lines:
-        if line.startswith('=== ') or line.startswith('*** '):
-        #if line.startswith('*** '):
+        if line.startswith('=== '):
+            modified_header = True
+        if line.startswith('*** '):
             continue
         if line.startswith('#'):
             continue
@@ -383,7 +384,8 @@ def iter_file_patch(iter_lines, allow_dirty=False):
                 beginning = False
             elif len(saved_lines) > 0:
                 yield saved_lines
-            saved_lines = []
+            if not modified_header:
+                saved_lines = []
         elif line.startswith('@@'):
             hunk = hunk_from_header(line)
             orig_range = hunk.orig_range

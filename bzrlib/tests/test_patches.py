@@ -71,16 +71,15 @@ class PatchesTester(TestCase):
                  "+++ mod/dommands.py\n"]
 
         # XXX: just parse 1 patch
-        patches = parse_patches(lines)
+        patches = parse_patches(lines, allow_dirty=True)
         for patch in patches:
-            print '\nmod file header: %s' % patch.get_modified_header()
             self.assertEqual(patch.get_modified_header(),
                              "=== modified file 'orig/commands.py'")
 
     def testValidPatchHeader(self):
         """Parse a valid patch header"""
         lines = "--- orig/commands.py\n+++ mod/dommands.py\n".split('\n')
-        (orig, mod) = get_patch_names(lines.__iter__())
+        (orig, mod, modified) = get_patch_names(lines.__iter__())
         self.assertEqual(orig, "orig/commands.py")
         self.assertEqual(mod, "mod/dommands.py")
 
