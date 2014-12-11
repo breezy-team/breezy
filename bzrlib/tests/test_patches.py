@@ -62,20 +62,24 @@ class PatchesTester(TestCase):
                  "+++ mod/dommands.py"]
         bits = parse_patches(iter(lines), allow_dirty=True)
 
-    def test_parse_patches_file_modified_header(self):
-        """Parse a patch containing a file modified header"""
-        # https://bugs.launchpad.net/bzr/+bug/1400567
-        lines = ["=== modified file 'orig/commands.py'\n",
+    def test_preserve_dirty_head(self):
+        """Parse a patch containing a dirty header, and preserve lines"""
+        lines = ["=== added directory 'foo/bar'\n",
+                 "=== modified file 'orig/commands.py'\n",
                  "--- orig/commands.py\n",
                  "+++ mod/dommands.py\n"]
-        patch = parse_patch(lines.__iter__())
-        self.assertEqual(patch.get_modified_header(),
-                         "=== modified file 'orig/commands.py'")
+        patches = parse_patches(lines.__iter__(), allow_dirty=True,
+                                keep_dirty=True)
+        self.assertEqual(patches[0]['dirty_head'],
+                         ["=== added directory 'foo/bar'\n",
+                          "=== modified file 'orig/commands.py'\n"])
+        self.assertEqual(patches[0]['patch'].get_header().splitlines(True),
+                         ["--- orig/commands.py\n", "+++ mod/dommands.py\n"])
 
     def testValidPatchHeader(self):
         """Parse a valid patch header"""
         lines = "--- orig/commands.py\n+++ mod/dommands.py\n".split('\n')
-        (orig, mod, modified) = get_patch_names(lines.__iter__())
+        (orig, mod) = get_patch_names(lines.__iter__())
         self.assertEqual(orig, "orig/commands.py")
         self.assertEqual(mod, "mod/dommands.py")
 

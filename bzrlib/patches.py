@@ -31,14 +31,9 @@ import re
 
 binary_files_re = 'Binary files (.*) and (.*) differ\n'
 
+
 def get_patch_names(iter_lines):
-    modified_header = False
     line = iter_lines.next()
-
-    if line.startswith("=== "):
-        modified_header = True
-        line = iter_lines.next()
-
     try:
         match = re.match(binary_files_re, line)
         if match is not None:
@@ -57,7 +52,7 @@ def get_patch_names(iter_lines):
             mod_name = line[4:].rstrip("\n")
     except StopIteration:
         raise MalformedPatchHeader("No mod line", "")
-    return (orig_name, mod_name, modified_header)
+    return (orig_name, mod_name)
 
 
 def parse_range(textrange):
@@ -260,10 +255,9 @@ def iter_hunks(iter_lines, allow_dirty=False):
 
 
 class BinaryPatch(object):
-    def __init__(self, oldname, newname, modified=False):
+    def __init__(self, oldname, newname):
         self.oldname = oldname
         self.newname = newname
-        self.modified = modified  # patch has file modified header
 
     def __str__(self):
         return 'Binary files %s and %s differ\n' % (self.oldname, self.newname)
@@ -271,18 +265,14 @@ class BinaryPatch(object):
 
 class Patch(BinaryPatch):
 
-    def __init__(self, oldname, newname, modified):
-        BinaryPatch.__init__(self, oldname, newname, modified)
+    def __init__(self, oldname, newname):
+        BinaryPatch.__init__(self, oldname, newname)
         self.hunks = []
 
     def __str__(self):
         ret = self.get_header()
         ret += "".join([str(h) for h in self.hunks])
         return ret
-
-    def get_modified_header(self):
-        if self.modified:
-            return "=== modified file '%s'" % self.oldname
 
     def get_header(self):
         return "--- %s\n+++ %s\n" % (self.oldname, self.newname)
@@ -328,7 +318,6 @@ class Patch(BinaryPatch):
                 if isinstance(line, ContextLine):
                     pos += 1
 
-
 def parse_patch(iter_lines, allow_dirty=False):
     '''
     :arg iter_lines: iterable of lines to parse
@@ -337,17 +326,17 @@ def parse_patch(iter_lines, allow_dirty=False):
     '''
     iter_lines = iter_lines_handle_nl(iter_lines)
     try:
-        (orig_name, mod_name, modified) = get_patch_names(iter_lines)
+        (orig_name, mod_name) = get_patch_names(iter_lines)
     except BinaryFiles, e:
         return BinaryPatch(e.orig_name, e.mod_name)
     else:
-        patch = Patch(orig_name, mod_name, modified)
+        patch = Patch(orig_name, mod_name)
         for hunk in iter_hunks(iter_lines, allow_dirty):
             patch.hunks.append(hunk)
         return patch
 
 
-def iter_file_patch(iter_lines, allow_dirty=False):
+def iter_file_patch(iter_lines, allow_dirty=False, keep_dirty=False):
     '''
     :arg iter_lines: iterable of lines to parse for patches
     :kwarg allow_dirty: If True, allow comments and other non-patch text
@@ -363,12 +352,13 @@ def iter_file_patch(iter_lines, allow_dirty=False):
     # (as allow_dirty does).
     regex = re.compile(binary_files_re)
     saved_lines = []
+    dirty_head = []
     orig_range = 0
     beginning = True
-    modified_header = False
     for line in iter_lines:
         if line.startswith('=== '):
-            modified_header = True
+            dirty_head.append(line)
+            continue
         if line.startswith('*** '):
             continue
         if line.startswith('#'):
@@ -384,14 +374,16 @@ def iter_file_patch(iter_lines, allow_dirty=False):
                 beginning = False
             elif len(saved_lines) > 0:
                 yield saved_lines
-            if not modified_header:
-                saved_lines = []
+            saved_lines = []
         elif line.startswith('@@'):
             hunk = hunk_from_header(line)
             orig_range = hunk.orig_range
         saved_lines.append(line)
     if len(saved_lines) > 0:
-        yield saved_lines
+        if keep_dirty:
+            yield (saved_lines, dirty_head)
+        else:
+            yield saved_lines
 
 
 def iter_lines_handle_nl(iter_lines):
@@ -415,15 +407,24 @@ def iter_lines_handle_nl(iter_lines):
         yield last_line
 
 
-def parse_patches(iter_lines, allow_dirty=False):
+def parse_patches(iter_lines, allow_dirty=False, keep_dirty=False):
     '''
     :arg iter_lines: iterable of lines to parse for patches
     :kwarg allow_dirty: If True, allow text that's not part of the patch at
         selected places.  This includes comments before and after a patch
         for instance.  Default False.
+    :kwarg keep_dirty: If True, returns a dict of patches with dirty headers.
+        Default False.
     '''
+    if keep_dirty:
+        patches = []
+        for lines, dirty in iter_file_patch(
+                iter_lines, allow_dirty, keep_dirty):
+            patches.append({'patch': parse_patch(lines, allow_dirty),
+                            'dirty_head': dirty})
+        return patches
     return [parse_patch(f.__iter__(), allow_dirty) for f in
-                        iter_file_patch(iter_lines, allow_dirty)]
+            iter_file_patch(iter_lines, allow_dirty, keep_dirty)]
 
 
 def difference_index(atext, btext):
