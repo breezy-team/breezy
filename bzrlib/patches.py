@@ -355,6 +355,7 @@ def iter_file_patch(iter_lines, allow_dirty=False, keep_dirty=False):
     dirty_head = []
     orig_range = 0
     beginning = True
+
     for line in iter_lines:
         if line.startswith('=== '):
             dirty_head.append(line)
@@ -373,15 +374,21 @@ def iter_file_patch(iter_lines, allow_dirty=False, keep_dirty=False):
                 # parse the patch
                 beginning = False
             elif len(saved_lines) > 0:
-                yield saved_lines
+                if keep_dirty and len(dirty_head) > 0:
+                    yield {'saved_lines': saved_lines,
+                           'dirty_head': dirty_head}
+                    dirty_head = []
+                else:
+                    yield saved_lines
             saved_lines = []
         elif line.startswith('@@'):
             hunk = hunk_from_header(line)
             orig_range = hunk.orig_range
         saved_lines.append(line)
     if len(saved_lines) > 0:
-        if keep_dirty:
-            yield (saved_lines, dirty_head)
+        if keep_dirty and len(dirty_head) > 0:
+            yield {'saved_lines': saved_lines,
+                   'dirty_head': dirty_head}
         else:
             yield saved_lines
 
@@ -416,15 +423,15 @@ def parse_patches(iter_lines, allow_dirty=False, keep_dirty=False):
     :kwarg keep_dirty: If True, returns a dict of patches with dirty headers.
         Default False.
     '''
-    if keep_dirty:
-        patches = []
-        for lines, dirty in iter_file_patch(
-                iter_lines, allow_dirty, keep_dirty):
-            patches.append({'patch': parse_patch(lines, allow_dirty),
-                            'dirty_head': dirty})
-        return patches
-    return [parse_patch(f.__iter__(), allow_dirty) for f in
-            iter_file_patch(iter_lines, allow_dirty, keep_dirty)]
+    patches = []
+    for patch_lines in iter_file_patch(iter_lines, allow_dirty, keep_dirty):
+        if 'dirty_head' in patch_lines:
+            patches.append({'patch': parse_patch(
+                patch_lines['saved_lines'], allow_dirty),
+                            'dirty_head': patch_lines['dirty_head']})
+        else:
+            patches.append(parse_patch(patch_lines, allow_dirty))
+    return patches
 
 
 def difference_index(atext, btext):

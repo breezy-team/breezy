@@ -68,8 +68,8 @@ class PatchesTester(TestCase):
                  "=== modified file 'orig/commands.py'\n",
                  "--- orig/commands.py\n",
                  "+++ mod/dommands.py\n"]
-        patches = parse_patches(lines.__iter__(), allow_dirty=True,
-                                keep_dirty=True)
+        patches = parse_patches(
+            lines.__iter__(), allow_dirty=True, keep_dirty=True)
         self.assertEqual(patches[0]['dirty_head'],
                          ["=== added directory 'foo/bar'\n",
                           "=== modified file 'orig/commands.py'\n"])
