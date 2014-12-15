@@ -26,6 +26,10 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* bzrlib.patches.parse_patches can optionally return a list of 'dirty'
+  patch headers (prefixed with '===').
+  (Kit Randel, #1400567)
+
 Bug Fixes
 *********
 
