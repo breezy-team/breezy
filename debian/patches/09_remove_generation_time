@@ -1,0 +1,32 @@
+Description: Remove generation time from scripts; this causes unreproducible builds.
+Origin: commit, revision id: jelmer@samba.org-20150314234401-vk8pqfi2zw549uxg
+Author: Jelmer Vernooij <jelmer@samba.org>
+Last-Update: 2015-03-14
+Applied-Upstream: no
+X-Bzr-Revision-Id: jelmer@samba.org-20150314234401-vk8pqfi2zw549uxg
+
+=== modified file 'bzrlib/doc_generate/autodoc_man.py'
+--- old/bzrlib/doc_generate/autodoc_man.py	2012-03-16 13:46:56 +0000
++++ new/bzrlib/doc_generate/autodoc_man.py	2015-03-14 23:44:01 +0000
+@@ -189,8 +189,6 @@
+ .\\\"     \"%(bzrcmd)s help commands\"
+ .\\\"     \"%(bzrcmd)s help <cmd>\"
+ .\\\"
+-.\\\" Generation time: %(timestamp)s
+-.\\\"
+ 
+ .ie \\n(.g .ds Aq \\(aq
+ .el .ds Aq '
+
+=== modified file 'bzrlib/doc_generate/autodoc_rstx.py'
+--- old/bzrlib/doc_generate/autodoc_rstx.py	2014-05-08 01:28:12 +0000
++++ new/bzrlib/doc_generate/autodoc_rstx.py	2015-03-14 23:44:01 +0000
+@@ -144,7 +144,6 @@
+ ..     %(bzrcmd)s help commands
+ ..     %(bzrcmd)s help <cmd>
+ ..
+-.. Generation time: %(timestamp)s
+ 
+ """
+ 
+
