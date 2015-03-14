@@ -189,8 +189,6 @@ man_preamble = """\
 .\\\"     \"%(bzrcmd)s help commands\"
 .\\\"     \"%(bzrcmd)s help <cmd>\"
 .\\\"
-.\\\" Generation time: %(timestamp)s
-.\\\"
 
 .ie \\n(.g .ds Aq \\(aq
 .el .ds Aq '
