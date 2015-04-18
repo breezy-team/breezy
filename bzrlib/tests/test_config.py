@@ -558,7 +558,7 @@ class TestConfigPath(tests.TestCase):
     def setUp(self):
         super(TestConfigPath, self).setUp()
         self.overrideEnv('HOME', '/home/bogus')
-        self.overrideEnv('XDG_CACHE_DIR', '')
+        self.overrideEnv('XDG_CACHE_HOME', '')
         if sys.platform == 'win32':
             self.overrideEnv(
                 'BZR_HOME', r'C:\Documents and Settings\bogus\Application Data')
@@ -595,7 +595,7 @@ class TestXDGConfigDir(tests.TestCaseInTempDir):
     # subdirectory of $XDG_CONFIG_HOME
 
     def setUp(self):
-        if sys.platform in ('darwin', 'win32'):
+        if sys.platform == 'win32':
             raise tests.TestNotApplicable(
                 'XDG config dir not used on this platform')
         super(TestXDGConfigDir, self).setUp()

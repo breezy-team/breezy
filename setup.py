@@ -105,6 +105,7 @@ BZRLIB['packages'] = get_bzrlib_packages()
 
 from distutils import log
 from distutils.core import setup
+from distutils.version import LooseVersion
 from distutils.command.install_scripts import install_scripts
 from distutils.command.install_data import install_data
 from distutils.command.build import build
@@ -202,7 +203,7 @@ except ImportError:
     from distutils.command.build_ext import build_ext
 else:
     have_pyrex = True
-    pyrex_version_info = tuple(map(int, pyrex_version.rstrip("+").split('.')))
+    pyrex_version_info = LooseVersion(pyrex_version)
 
 
 class build_ext_if_possible(build_ext):
@@ -299,7 +300,7 @@ if sys.platform == 'win32':
                         libraries=['Ws2_32'])
     add_pyrex_extension('bzrlib._walkdirs_win32')
 else:
-    if have_pyrex and pyrex_version_info[:3] == (0,9,4):
+    if have_pyrex and pyrex_version_info == LooseVersion("0.9.4.1"):
         # Pyrex 0.9.4.1 fails to compile this extension correctly
         # The code it generates re-uses a "local" pointer and
         # calls "PY_DECREF" after having set it to NULL. (It mixes PY_XDECREF
@@ -317,7 +318,7 @@ else:
 add_pyrex_extension('bzrlib._chk_map_pyx')
 ext_modules.append(Extension('bzrlib._patiencediff_c',
                              ['bzrlib/_patiencediff_c.c']))
-if have_pyrex and pyrex_version_info < (0, 9, 6, 3):
+if have_pyrex and pyrex_version_info < LooseVersion("0.9.6.3"):
     print("")
     print('Your Pyrex/Cython version %s is too old to build the simple_set' % (
         pyrex_version))

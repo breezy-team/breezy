@@ -1488,7 +1488,7 @@ def config_dir():
     """Return per-user configuration directory as unicode string
 
     By default this is %APPDATA%/bazaar/2.0 on Windows, ~/.bazaar on Mac OS X
-    and Linux.  On Linux, if there is a $XDG_CONFIG_HOME/bazaar directory,
+    and Linux.  On Mac OS X and Linux, if there is a $XDG_CONFIG_HOME/bazaar directory,
     that will be used instead.
 
     TODO: Global option --config-dir to override this.
@@ -1503,16 +1503,14 @@ def config_dir():
         #                APPDATA, but hard to move. See bug 348640 for more.
         return osutils.pathjoin(base, 'bazaar', '2.0')
     if base is None:
-        # GZ 2012-02-01: What should OSX use instead of XDG if anything?
-        if sys.platform != 'darwin':
-            xdg_dir = osutils.path_from_environ('XDG_CONFIG_HOME')
-            if xdg_dir is None:
-                xdg_dir = osutils.pathjoin(osutils._get_home_dir(), ".config")
-            xdg_dir = osutils.pathjoin(xdg_dir, 'bazaar')
-            if osutils.isdir(xdg_dir):
-                trace.mutter(
-                    "Using configuration in XDG directory %s." % xdg_dir)
-                return xdg_dir
+        xdg_dir = osutils.path_from_environ('XDG_CONFIG_HOME')
+        if xdg_dir is None:
+            xdg_dir = osutils.pathjoin(osutils._get_home_dir(), ".config")
+        xdg_dir = osutils.pathjoin(xdg_dir, 'bazaar')
+        if osutils.isdir(xdg_dir):
+            trace.mutter(
+                "Using configuration in XDG directory %s." % xdg_dir)
+            return xdg_dir
         base = osutils._get_home_dir()
     return osutils.pathjoin(base, ".bazaar")
 
@@ -1557,7 +1555,7 @@ def crash_dir():
 def xdg_cache_dir():
     # See http://standards.freedesktop.org/basedir-spec/latest/ar01s03.html
     # Possibly this should be different on Windows?
-    e = os.environ.get('XDG_CACHE_DIR', None)
+    e = os.environ.get('XDG_CACHE_HOME', None)
     if e:
         return e
     else:
@@ -3561,7 +3559,6 @@ class StartingPathMatcher(SectionMatcher):
         """
         location_parts = self.location.rstrip('/').split('/')
         store = self.store
-        sections = []
         # Later sections are more specific, they should be returned first
         for _, section in reversed(list(store.get_sections())):
             if section.id is None:
@@ -4248,6 +4245,8 @@ class cmd_config(commands.Command):
     def _set_config_option(self, name, value, directory, scope):
         conf = self._get_stack(directory, scope, write_access=True)
         conf.set(name, value)
+        # Explicitly save the changes
+        conf.store.save_changes()
 
     def _remove_config_option(self, name, directory, scope):
         if name is None:
@@ -4256,6 +4255,8 @@ class cmd_config(commands.Command):
         conf = self._get_stack(directory, scope, write_access=True)
         try:
             conf.remove(name)
+            # Explicitly save the changes
+            conf.store.save_changes()
         except KeyError:
             raise errors.NoSuchConfigOption(name)
 

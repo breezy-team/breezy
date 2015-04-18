@@ -1453,9 +1453,6 @@ class TestSmartTCPServer(tests.TestCase):
         server._stopped.wait()
         # It should not be accepting another connection.
         self.assertRaises(socket.error, self.connect_to_server, server)
-        # It should also not be fully stopped
-        server._fully_stopped.wait(0.01)
-        self.assertFalse(server._fully_stopped.isSet())
         response_handler.read_body_bytes()
         client_sock.close()
         server_side_thread.join()

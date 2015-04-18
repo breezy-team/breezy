@@ -15,7 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Black-box tests for bzr sign-my-commits."""
+"""Black-box tests for bzr verify-signatures."""
 
 from bzrlib import (
     gpg,
@@ -24,7 +24,7 @@ from bzrlib import (
 from bzrlib.tests.matchers import ContainsNoVfsCalls
 
 
-class SignMyCommits(tests.TestCaseWithTransport):
+class TestVerifySignatures(tests.TestCaseWithTransport):
 
     def monkey_patch_gpg(self):
         """Monkey patch the gpg signing strategy to be a loopback.
@@ -46,78 +46,53 @@ class SignMyCommits(tests.TestCaseWithTransport):
         wt.commit("base E", allow_pointless=True, rev_id='E')
         return wt
 
-    def assertUnsigned(self, repo, revision_id):
-        """Assert that revision_id is not signed in repo."""
-        self.assertFalse(repo.has_signature_for_revision_id(revision_id))
-
-    def assertSigned(self, repo, revision_id):
-        """Assert that revision_id is signed in repo."""
-        self.assertTrue(repo.has_signature_for_revision_id(revision_id))
-
-    def test_sign_my_commits(self):
-        #Test re signing of data.
+    def test_verify_signatures(self):
         wt = self.setup_tree()
-        repo = wt.branch.repository
-
         self.monkey_patch_gpg()
-
-        self.assertUnsigned(repo, 'A')
-        self.assertUnsigned(repo, 'B')
-        self.assertUnsigned(repo, 'C')
-        self.assertUnsigned(repo, 'D')
-
         self.run_bzr('sign-my-commits')
+        out = self.run_bzr('verify-signatures', retcode=1)
+        self.assertEquals(('4 commits with valid signatures\n'
+                           '0 commits with key now expired\n'
+                           '0 commits with unknown keys\n'
+                           '0 commits not valid\n'
+                           '1 commit not signed\n', ''), out)
 
-        self.assertSigned(repo, 'A')
-        self.assertSigned(repo, 'B')
-        self.assertSigned(repo, 'C')
-        self.assertUnsigned(repo, 'D')
-
-    def test_sign_my_commits_location(self):
-        wt = self.setup_tree('other')
-        repo = wt.branch.repository
-
-        self.monkey_patch_gpg()
-
-        self.run_bzr('sign-my-commits other')
-
-        self.assertSigned(repo, 'A')
-        self.assertSigned(repo, 'B')
-        self.assertSigned(repo, 'C')
-        self.assertUnsigned(repo, 'D')
-
-    def test_sign_diff_committer(self):
+    def test_verify_signatures_acceptable_key(self):
         wt = self.setup_tree()
-        repo = wt.branch.repository
-
         self.monkey_patch_gpg()
+        self.run_bzr('sign-my-commits')
+        out = self.run_bzr(['verify-signatures', '--acceptable-keys=foo,bar'],
+                            retcode=1)
+        self.assertEquals(('4 commits with valid signatures\n'
+                           '0 commits with key now expired\n'
+                           '0 commits with unknown keys\n'
+                           '0 commits not valid\n'
+                           '1 commit not signed\n', ''), out)
 
+    def test_verify_signatures_verbose(self):
+        wt = self.setup_tree()
+        self.monkey_patch_gpg()
+        self.run_bzr('sign-my-commits')
+        out = self.run_bzr('verify-signatures --verbose', retcode=1)
+        self.assertEquals(('4 commits with valid signatures\n'
+                           '  None signed 4 commits\n'
+                           '0 commits with key now expired\n'
+                           '0 commits with unknown keys\n'
+                           '0 commits not valid\n'
+                           '1 commit not signed\n'
+                           '  1 commit by author Alternate <alt@foo.com>\n', ''), out)
+
+    def test_verify_signatures_verbose_all_valid(self):
+        wt = self.setup_tree()
+        self.monkey_patch_gpg()
+        self.run_bzr('sign-my-commits')
         self.run_bzr(['sign-my-commits', '.', 'Alternate <alt@foo.com>'])
-
-        self.assertUnsigned(repo, 'A')
-        self.assertUnsigned(repo, 'B')
-        self.assertUnsigned(repo, 'C')
-        self.assertSigned(repo, 'D')
-
-    def test_sign_dry_run(self):
-        wt = self.setup_tree()
-        repo = wt.branch.repository
-
-        self.monkey_patch_gpg()
-
-        out = self.run_bzr('sign-my-commits --dry-run')[0]
-
-        outlines = out.splitlines()
-        self.assertEquals(5, len(outlines))
-        self.assertEquals('Signed 4 revisions.', outlines[-1])
-        self.assertUnsigned(repo, 'A')
-        self.assertUnsigned(repo, 'B')
-        self.assertUnsigned(repo, 'C')
-        self.assertUnsigned(repo, 'D')
-        self.assertUnsigned(repo, 'E')
+        out = self.run_bzr('verify-signatures --verbose')
+        self.assertEquals(('All commits signed with verifiable keys\n'
+                           '  None signed 5 commits\n', ''), out)
 
 
-class TestSmartServerSignMyCommits(tests.TestCaseWithTransport):
+class TestSmartServerVerifySignatures(tests.TestCaseWithTransport):
 
     def monkey_patch_gpg(self):
         """Monkey patch the gpg signing strategy to be a loopback.
@@ -128,20 +103,22 @@ class TestSmartServerSignMyCommits(tests.TestCaseWithTransport):
         # monkey patch gpg signing mechanism
         self.overrideAttr(gpg, 'GPGStrategy', gpg.LoopbackGPGStrategy)
 
-    def test_sign_single_commit(self):
+    def test_verify_signatures(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
         self.build_tree_contents([('branch/foo', 'thecontents')])
         t.add("foo")
         t.commit("message")
-        self.reset_smart_call_log()
         self.monkey_patch_gpg()
         out, err = self.run_bzr(['sign-my-commits', self.get_url('branch')])
+        self.reset_smart_call_log()
+        self.run_bzr('sign-my-commits')
+        out = self.run_bzr(['verify-signatures', self.get_url('branch')])
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(15, self.hpss_calls)
+        self.assertLength(10, self.hpss_calls)
         self.assertLength(1, self.hpss_connections)
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

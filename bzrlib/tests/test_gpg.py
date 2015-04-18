@@ -499,6 +499,15 @@ sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
         self.assertEqual(my_gpg.acceptable_keys,
                          [u'B5DEED5FCB15DAE6ECEF919587681B1EE3080E45'])
 
+    def test_set_acceptable_keys_from_config(self):
+        self.requireFeature(features.gpgme)
+        self.import_keys()
+        my_gpg = gpg.GPGStrategy(FakeConfig(
+                'acceptable_keys=bazaar@example.com'))
+        my_gpg.set_acceptable_keys(None)
+        self.assertEqual(my_gpg.acceptable_keys,
+                         [u'B5DEED5FCB15DAE6ECEF919587681B1EE3080E45'])
+
     def test_set_acceptable_keys_unknown(self):
         self.requireFeature(features.gpgme)
         my_gpg = gpg.GPGStrategy(FakeConfig())
