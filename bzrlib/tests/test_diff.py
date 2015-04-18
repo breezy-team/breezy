@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2014 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
 import os
 from cStringIO import StringIO
 import subprocess
-import sys
 import tempfile
 
 from bzrlib import (
@@ -32,12 +31,15 @@ from bzrlib import (
     tests,
     transform,
     )
-from bzrlib.symbol_versioning import deprecated_in
-from bzrlib.tests import features, EncodingAdapter
-from bzrlib.tests.blackbox.test_diff import subst_dates
 from bzrlib.tests import (
     features,
-    )
+    EncodingAdapter,
+)
+from bzrlib.tests.blackbox.test_diff import subst_dates
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
+
+
+load_tests = load_tests_apply_scenarios
 
 
 def udiff_lines(old, new, allow_binary=False):
@@ -61,6 +63,29 @@ def external_udiff_lines(old, new, use_stringio=False):
     lines = output.readlines()
     output.close()
     return lines
+
+
+class TestDiffOptions(tests.TestCase):
+
+    def test_unified_added(self):
+        """Check for default style '-u' only if no other style specified
+        in 'diff-options'.
+        """
+        # Verify that style defaults to unified, id est '-u' appended
+        # to option list, in the absence of an alternative style.
+        self.assertEqual(['-a', '-u'], diff.default_style_unified(['-a']))
+
+
+class TestDiffOptionsScenarios(tests.TestCase):
+
+    scenarios = [(s, dict(style=s)) for s in diff.style_option_list]
+    style = None # Set by load_tests_apply_scenarios from scenarios
+
+    def test_unified_not_added(self):
+        # Verify that for all valid style options, '-u' is not
+        # appended to option list.
+        ret_opts = diff.default_style_unified(diff_opts=["%s" % (self.style,)])
+        self.assertEqual(["%s" % (self.style,)], ret_opts)
 
 
 class TestDiff(tests.TestCase):
@@ -1391,7 +1416,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         diff_obj._execute('old', 'new')
         self.assertEqual(output.getvalue().rstrip(), 'old new')
 
-    def test_excute_missing(self):
+    def test_execute_missing(self):
         diff_obj = diff.DiffFromTool(['a-tool-which-is-unlikely-to-exist'],
                                      None, None, None)
         self.addCleanup(diff_obj.finish)
@@ -1471,7 +1496,6 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
     def test_encodable_filename(self):
         # Just checks file path for external diff tool.
         # We cannot change CPython's internal encoding used by os.exec*.
-        import sys
         diffobj = diff.DiffFromTool(['dummy', '@old_path', '@new_path'],
                                     None, None, None)
         for _, scenario in EncodingAdapter.encoding_scenarios:
@@ -1489,7 +1513,6 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
             self.assert_(fullpath.startswith(diffobj._root + '/safe'))
 
     def test_unencodable_filename(self):
-        import sys
         diffobj = diff.DiffFromTool(['dummy', '@old_path', '@new_path'],
                                     None, None, None)
         for _, scenario in EncodingAdapter.encoding_scenarios:
