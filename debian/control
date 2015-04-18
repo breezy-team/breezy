@@ -3,7 +3,8 @@ Section: vcs
 Priority: optional
 Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
 Uploaders: Wouter van Heyst <larstiq@larstiq.dyndns.org>,
-           Andrew Starr-Bochicchio <asb@debian.org>
+           Andrew Starr-Bochicchio <asb@debian.org>,
+           Jelmer Vernooij <jelmer@debian.org>
 Build-Depends: ca-certificates,
                cython-dbg | python-pyrex,
                debhelper (>= 9),
@@ -21,7 +22,7 @@ Build-Depends: ca-certificates,
                python-sphinx (>= 1.0.7+dfsg),
                python-subunit,
                python-testtools (>= 0.9.5~)
-Standards-Version: 3.9.5
+Standards-Version: 3.9.6
 X-Python-Version: >= 2.6
 Vcs-Bzr: http://anonscm.debian.org/bzr/pkg-bazaar/bzr/2.6
 Vcs-Browser: http://bzr.debian.org/loggerhead/pkg-bazaar/bzr/2.6

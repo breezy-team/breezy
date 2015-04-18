@@ -4,6 +4,8 @@ bzr (2.6.0+bzr6602-1) UNRELEASED; urgency=medium
     manpage, as it causes unreproducible builds.
   * New upstream snapshot.
   * Drop 04_autodoc_write patch; applied upstream.
+  * Team upload.
+  * Bump standards version to 3.9.6 (no changes).
 
  -- Jelmer Vernooij <jelmer@debian.org>  Sat, 18 Apr 2015 21:54:06 +0000
 
