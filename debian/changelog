@@ -3,6 +3,7 @@ bzr (2.6.0+bzr6602-1) UNRELEASED; urgency=medium
   * Add patch 09_remove_generation_time: Removes generation time from
     manpage, as it causes unreproducible builds.
   * New upstream snapshot.
+  * Drop 04_autodoc_write patch; applied upstream.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Sat, 18 Apr 2015 21:54:06 +0000
 
