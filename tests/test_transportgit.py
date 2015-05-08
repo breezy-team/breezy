@@ -18,7 +18,7 @@
 
 
 from dulwich.tests.test_object_store import PackBasedObjectStoreTests
-from dulwich.tests.test_repository import RefsContainerTests
+from dulwich.tests.test_refs import RefsContainerTests
 
 from bzrlib.tests import TestCaseWithTransport
 
