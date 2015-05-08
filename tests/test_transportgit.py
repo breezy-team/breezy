@@ -17,8 +17,10 @@
 """Tests for bzr-git's object store."""
 
 
+from dulwich.objects import Blob
 from dulwich.tests.test_object_store import PackBasedObjectStoreTests
 from dulwich.tests.test_refs import RefsContainerTests
+from dulwich.tests.utils import make_object
 
 from bzrlib.tests import TestCaseWithTransport
 
@@ -34,6 +36,22 @@ class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport
     def tearDown(self):
         PackBasedObjectStoreTests.tearDown(self)
         TestCaseWithTransport.tearDown(self)
+
+    def test_remembers_packs(self):
+        self.store.add_object(make_object(Blob, data="data"))
+        self.assertEqual(0, len(self.store.packs))
+        self.store.pack_loose_objects()
+        self.assertEqual(1, len(self.store.packs))
+
+        # Packing a second object creates a second pack.
+        self.store.add_object(make_object(Blob, data="more data"))
+        self.store.pack_loose_objects()
+        self.assertEqual(2, len(self.store.packs))
+
+        # If we reopen the store, it reloads both packs.
+        restore = TransportObjectStore(self.get_transport())
+        self.assertEqual(2, len(restore.packs))
+
 
 # FIXME: Unfortunately RefsContainerTests requires on a specific set of refs existing.
 

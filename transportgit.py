@@ -483,6 +483,7 @@ class TransportObjectStore(PackBasedObjectStore):
                 idxname = name.replace(".pack", ".idx")
                 idx = load_pack_index_file(idxname, self.pack_transport.get(idxname))
                 pack = Pack.from_objects(pd, idx)
+                pack._basename = idxname[:-5]
                 ret.append(pack)
         return ret
 
