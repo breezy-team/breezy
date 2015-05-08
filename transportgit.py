@@ -591,8 +591,9 @@ class TransportObjectStore(PackBasedObjectStore):
             write_pack_index_v2(idxfile, data.sorted_entries(), data_sum)
         finally:
             idxfile.close()
-        final_pack = Pack("pack-%s" % pack_sha)
-        self._add_known_pack(final_pack)
+        basename = "pack-%s" % pack_sha
+        final_pack = Pack(basename)
+        self._add_known_pack(basename, final_pack)
         return final_pack
 
     def add_pack(self):
