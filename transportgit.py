@@ -411,9 +411,6 @@ class TransportObjectStore(PackBasedObjectStore):
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.transport)
 
-    def _pack_cache_stale(self):
-        return False # FIXME
-
     @property
     def alternates(self):
         if self._alternates is not None:
@@ -441,6 +438,17 @@ class TransportObjectStore(PackBasedObjectStore):
             return ret
         finally:
             f.close()
+
+    @property
+    def packs(self):
+        # FIXME: Never invalidates.
+        if not self._pack_cache:
+            self._update_pack_cache()
+        return self._pack_cache.values()
+
+    def _update_pack_cache(self):
+        for pack in self._load_packs():
+            self._pack_cache[pack._basename] = pack
 
     def _pack_names(self):
         try:

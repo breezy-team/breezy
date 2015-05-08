@@ -5,6 +5,8 @@
   * "Support" empty repositories; print an appropriate error.
     (Jelmer Vernooij, #1219424)
 
+  * Fix compatibility with and depend on dulwich 0.9.6. (William Grant)
+
 0.6.12  2013-09-22
 
  FEATURES
