@@ -219,7 +219,6 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                         shamap[file_id] = blob.id
             if not file_id in shamap:
                 new_blobs.append((path[1], file_id))
-            dirty_dirs.add(parent[1])
         elif kind[1] == "symlink":
             if changed_content:
                 target = tree.get_symlink_target(file_id)
@@ -229,14 +228,11 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                     find_unchanged_parent_ie(file_id, kind[1], target, other_parent_trees)
                 except KeyError:
                     yield path[1], blob, (file_id, tree.get_file_revision(file_id, path[1]))
-            dirty_dirs.add(parent[1])
         elif kind[1] not in (None, "directory"):
             raise AssertionError(kind[1])
-        if (path[0] not in (None, "") and
-            tree.has_id(parent[0]) and
-            tree.kind(parent[0]) == "directory"):
-            # Removal
-            dirty_dirs.add(parent[0])
+        for p in parent:
+            if p and tree.has_id(p) and tree.kind(p) == "directory":
+                dirty_dirs.add(p)
 
     # Fetch contents of the blobs that were changed
     for (path, file_id), chunks in tree.iter_files_bytes(
