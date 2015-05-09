@@ -173,7 +173,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         in empty directories. None to skip empty directories
     :return: Yields (path, object, ie) entries
     """
-    new_trees = {}
+    dirty_dirs = set()
     new_blobs = []
     shamap = {}
     try:
@@ -219,7 +219,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                         shamap[file_id] = blob.id
             if not file_id in shamap:
                 new_blobs.append((path[1], file_id))
-            new_trees[posixpath.dirname(path[1])] = parent[1]
+            dirty_dirs.add(parent[1])
         elif kind[1] == "symlink":
             if changed_content:
                 target = tree.get_symlink_target(file_id)
@@ -229,14 +229,14 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                     find_unchanged_parent_ie(file_id, kind[1], target, other_parent_trees)
                 except KeyError:
                     yield path[1], blob, (file_id, tree.get_file_revision(file_id, path[1]))
-            new_trees[posixpath.dirname(path[1])] = parent[1]
+            dirty_dirs.add(parent[1])
         elif kind[1] not in (None, "directory"):
             raise AssertionError(kind[1])
         if (path[0] not in (None, "") and
             tree.has_id(parent[0]) and
             tree.kind(parent[0]) == "directory"):
             # Removal
-            new_trees[posixpath.dirname(path[0])] = parent[0]
+            dirty_dirs.add(parent[0])
 
     # Fetch contents of the blobs that were changed
     for (path, file_id), chunks in tree.iter_files_bytes(
@@ -250,18 +250,24 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         parent_path = posixpath.dirname(path)
         file_id = tree.path2id(parent_path)
         assert file_id is not None, "Unable to find file id for %r" % parent_path
-        new_trees[parent_path] = file_id
+        dirty_dirs.add(file_id)
+
+    try:
+        inv = tree.root_inventory
+    except AttributeError:
+        inv = tree.inventory
 
     trees = {}
-    while new_trees:
-        items = new_trees.items()
-        new_trees = {}
-        for path, file_id in items:
-            if path != "":
-                parent_path = urlutils.dirname(path)
-                parent_id = tree.path2id(parent_path)
-                new_trees[parent_path] = parent_id
-            trees[path] = file_id
+    while dirty_dirs:
+        new_dirs = set()
+        for file_id in dirty_dirs:
+            if file_id is None or not inv.has_id(file_id):
+                continue
+            trees[inv.id2path(file_id)] = file_id
+            ie = inv[file_id]
+            if ie.parent_id is not None:
+                new_dirs.add(ie.parent_id)
+        dirty_dirs = new_dirs
 
     def ie_to_hexsha(ie):
         try:
@@ -286,11 +292,6 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                 return ret.id
             else:
                 raise AssertionError
-
-    try:
-        inv = tree.root_inventory
-    except AttributeError:
-        inv = tree.inventory
 
     for path in sorted(trees.keys(), reverse=True):
         file_id = trees[path]
