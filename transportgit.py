@@ -411,9 +411,6 @@ class TransportObjectStore(PackBasedObjectStore):
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.transport)
 
-    def _pack_cache_stale(self):
-        return False # FIXME
-
     @property
     def alternates(self):
         if self._alternates is not None:
@@ -441,6 +438,17 @@ class TransportObjectStore(PackBasedObjectStore):
             return ret
         finally:
             f.close()
+
+    @property
+    def packs(self):
+        # FIXME: Never invalidates.
+        if not self._pack_cache:
+            self._update_pack_cache()
+        return self._pack_cache.values()
+
+    def _update_pack_cache(self):
+        for pack in self._load_packs():
+            self._pack_cache[pack._basename] = pack
 
     def _pack_names(self):
         try:
@@ -475,6 +483,7 @@ class TransportObjectStore(PackBasedObjectStore):
                 idxname = name.replace(".pack", ".idx")
                 idx = load_pack_index_file(idxname, self.pack_transport.get(idxname))
                 pack = Pack.from_objects(pd, idx)
+                pack._basename = idxname[:-5]
                 ret.append(pack)
         return ret
 
@@ -536,7 +545,7 @@ class TransportObjectStore(PackBasedObjectStore):
         idxfile = self.pack_transport.get(basename + ".idx")
         idx = load_pack_index_file(basename+".idx", idxfile)
         final_pack = Pack.from_objects(p, idx)
-        self._add_known_pack(final_pack)
+        self._add_known_pack(basename, final_pack)
         return final_pack
 
     def add_thin_pack(self):
@@ -582,8 +591,9 @@ class TransportObjectStore(PackBasedObjectStore):
             write_pack_index_v2(idxfile, data.sorted_entries(), data_sum)
         finally:
             idxfile.close()
-        final_pack = Pack("pack-%s" % pack_sha)
-        self._add_known_pack(final_pack)
+        basename = "pack-%s" % pack_sha
+        final_pack = Pack(basename)
+        self._add_known_pack(basename, final_pack)
         return final_pack
 
     def add_pack(self):

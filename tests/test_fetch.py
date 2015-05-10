@@ -297,7 +297,7 @@ class RepositoryFetchTests(object):
         gitsha = marks[mark]
         tag = Tag()
         tag.name = "sometag"
-        tag.tag_time = time.time()
+        tag.tag_time = int(time.time())
         tag.tag_timezone = 0
         tag.tagger = "Somebody <somebody@example.com>"
         tag.message = "Created tag pointed at tree"

@@ -25,6 +25,7 @@ from dulwich.objects import (
     ZERO_SHA,
     )
 from dulwich.object_store import (
+    ObjectStoreGraphWalker,
     tree_lookup_path,
     )
 from dulwich.walk import Walker
@@ -702,8 +703,9 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
         store.lock_write()
         try:
             heads = self.get_target_heads()
-            graph_walker = store.get_graph_walker(
-                    [store._lookup_revision_sha1(head) for head in heads])
+            graph_walker = ObjectStoreGraphWalker(
+                [store._lookup_revision_sha1(head) for head in heads],
+                store)
             wants_recorder = DetermineWantsRecorder(determine_wants)
 
             pb = ui.ui_factory.nested_progress_bar()
