@@ -705,7 +705,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
             heads = self.get_target_heads()
             graph_walker = ObjectStoreGraphWalker(
                 [store._lookup_revision_sha1(head) for head in heads],
-                store)
+                lambda sha: store[sha].parents)
             wants_recorder = DetermineWantsRecorder(determine_wants)
 
             pb = ui.ui_factory.nested_progress_bar()
