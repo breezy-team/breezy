@@ -16,6 +16,17 @@ Comment:
  New co-maintainer Jelmer Vernooij <jelmer@samba.org>		2008-05-02
  New co-maintainer John Francesco Ferlito <johnf@inodes.org	2009-03-11
 License: GPL-2+
+
+Files: *
+Copyright: 2004-2012 Canonical Ltd
+Comment: Upstream authors (among others):
+ Martin Pool <mbp@canonical.com>
+ Robert Collins <robertc@robertcollins.net>
+ Aaron Bentley <aaron.bentley@utoronto.ca>
+ John Arbash Meinel <john@arbash-meinel.com>
+License: GPL-2+
+
+License: GPL-2+
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation; either version 2 of the License, or
@@ -32,12 +43,3 @@ License: GPL-2+
  .
  On Debian systems, the full text of the GNU General Public License is available
  in /usr/share/common-licenses/GPL-2.
-
-Files: *
-Copyright: 2004-2012 Canonical Ltd
-Comment: Upstream authors (among others):
- Martin Pool <mbp@canonical.com>
- Robert Collins <robertc@robertcollins.net>
- Aaron Bentley <aaron.bentley@utoronto.ca>
- John Arbash Meinel <john@arbash-meinel.com>
-License: GPL-2+
