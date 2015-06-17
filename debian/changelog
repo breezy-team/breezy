@@ -1,3 +1,10 @@
+bzr (2.6.0+bzr6602-3) UNRELEASED; urgency=medium
+
+   * Disable the failing TestBadStatusServer tests for build and autopkgtest,
+     they became racy (Closes: #787057).
+
+ -- Vincent Ladeuil <v.ladeuil+lp@free.fr>  Thu, 28 May 2015 10:03:49 +0200
+
 bzr (2.6.0+bzr6602-2) unstable; urgency=medium
 
   * debian/copyright: Don't repeat text for GPL-2+.

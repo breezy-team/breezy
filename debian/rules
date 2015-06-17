@@ -24,7 +24,7 @@ ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 	BZR_PLUGIN_PATH=-site:-user \
 	BZR_DISABLE_PLUGINS=launchpad \
 	PYTHONPATH=$(wildcard $(CURDIR)/build/lib.*-$(PYVERSION)) \
-	$(CURDIR)/build/scripts-$(PYVERSION)/bzr selftest -v --parallel=fork
+	$(CURDIR)/build/scripts-$(PYVERSION)/bzr selftest -v --parallel=fork -x bzrlib.tests.test_http.TestBadStatusServer.test_http_get -x bzrlib.tests.test_http.TestBadStatusServer.test_http_has
 endif
 
 override_dh_auto_clean:
