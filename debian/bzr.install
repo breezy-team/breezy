@@ -1,3 +1,2 @@
-contrib/bash/bzr	etc/bash_completion.d/
 debian/tmp/usr/bin/bzr	usr/bin
 debian/tmp/usr/man/man1/bzr.1	usr/share/man/man1/

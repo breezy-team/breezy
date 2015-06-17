@@ -10,7 +10,7 @@ pythonpath = $$(ls -d $(CURDIR)/build/lib.*-$(1))
 pythonpath_dbg = $$(ls -d $(CURDIR)/build/lib_d.*-$(1) 2>/dev/null || ls -d $(CURDIR)/build/lib.*$(1)-pydebug)
 
 %:
-	dh $* --with python2,sphinxdoc --buildsystem=python_distutils
+	dh $* --with python2,sphinxdoc,bash_completion  --buildsystem=python_distutils
 
 ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
 CONCURRENCY = BZR_CONCURRENCY=$(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))

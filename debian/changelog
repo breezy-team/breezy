@@ -6,6 +6,8 @@ bzr (2.6.0+bzr6602-3) UNRELEASED; urgency=medium
 
   [ Andrew Starr-Bochicchio ]
   * debian/copyright: Make linitan clean by reordering paragraphs.
+  * debian/bzr.bash-completion: Install bash completion file using
+    dh_bash-completion.
 
  -- Vincent Ladeuil <v.ladeuil+lp@free.fr>  Thu, 28 May 2015 10:03:49 +0200
 
