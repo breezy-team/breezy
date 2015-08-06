@@ -7,6 +7,9 @@
 
   * Fix compatibility with and depend on dulwich 0.9.6. (William Grant)
 
+  * Correctly handle all moves when converting bzr trees to git.
+    (William Grant, #818318)
+
 0.6.12  2013-09-22
 
  FEATURES

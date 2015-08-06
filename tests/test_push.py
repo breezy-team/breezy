@@ -109,8 +109,7 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
         commit = store[gitid]
         tree = store[commit.tree]
         tree.check()
-        self.expectFailure("fails with KeyError (bug 818318)",
-            self.assertTrue, tree["baz"][1] in store)
+        self.assertTrue(tree["baz"][1] in store)
         baz = store[tree["baz"][1]]
         baz.check()
         ircdotnet = store[baz["IrcDotNet"][1]]
