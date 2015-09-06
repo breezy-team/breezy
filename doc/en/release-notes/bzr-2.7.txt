@@ -76,6 +76,11 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Fix racy http tests (TestBadStatusServer is so simple, it exposes a race
+  in python 2.7.9. This happens only when both the http server and client
+  are run in the same process.). Only tests are affected.
+  (Vincent Ladeuil, #1451448)
+     
 * Fix warnings on stderr caused by the atexit handler triggering for the
   wrong reason: the 'config' command should explicitly save the changes when
   modifying or removing an option and not rely on the atexit
