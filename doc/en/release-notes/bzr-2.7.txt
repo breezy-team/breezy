@@ -76,6 +76,10 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Skip windows-only tests that start failing with python 2.7.9, there is no
+  way to fix them without testing on windows itself.
+  (Vincent Ladeuil, #1451448)
+     
 * Fix racy http tests (TestBadStatusServer is so simple, it exposes a race
   in python 2.7.9. This happens only when both the http server and client
   are run in the same process.). Only tests are affected.

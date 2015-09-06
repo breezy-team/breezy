@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2015 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -925,6 +925,7 @@ class TestWin32Funcs(tests.TestCase):
     """Test that _win32 versions of os utilities return appropriate paths."""
 
     def test_abspath(self):
+        self.requireFeature(features.win32_feature)
         self.assertEqual('C:/foo', osutils._win32_abspath('C:\\foo'))
         self.assertEqual('C:/foo', osutils._win32_abspath('C:/foo'))
         self.assertEqual('//HOST/path', osutils._win32_abspath(r'\\HOST\path'))
@@ -977,6 +978,7 @@ class TestWin32Funcs(tests.TestCase):
         self.assertEqual('C:\\foo', osutils._win32_fixdrive('c:\\foo'))
 
     def test_win98_abspath(self):
+        self.requireFeature(features.win32_feature)
         # absolute path
         self.assertEqual('C:/foo', osutils._win98_abspath('C:\\foo'))
         self.assertEqual('C:/foo', osutils._win98_abspath('C:/foo'))
