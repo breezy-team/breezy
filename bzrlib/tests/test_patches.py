@@ -67,14 +67,22 @@ class PatchesTester(TestCase):
         lines = ["=== added directory 'foo/bar'\n",
                  "=== modified file 'orig/commands.py'\n",
                  "--- orig/commands.py\n",
-                 "+++ mod/dommands.py\n"]
+                 "+++ mod/dommands.py\n",
+                 "=== modified file 'orig/another.py'\n",
+                 "--- orig/another.py\n",
+                 "+++ mod/another.py\n"]
         patches = parse_patches(
             lines.__iter__(), allow_dirty=True, keep_dirty=True)
+        self.assertLength(2, patches)
         self.assertEqual(patches[0]['dirty_head'],
                          ["=== added directory 'foo/bar'\n",
                           "=== modified file 'orig/commands.py'\n"])
         self.assertEqual(patches[0]['patch'].get_header().splitlines(True),
                          ["--- orig/commands.py\n", "+++ mod/dommands.py\n"])
+        self.assertEqual(patches[1]['dirty_head'],
+                         ["=== modified file 'orig/another.py'\n"])
+        self.assertEqual(patches[1]['patch'].get_header().splitlines(True),
+                         ["--- orig/another.py\n", "+++ mod/another.py\n"])
 
     def testValidPatchHeader(self):
         """Parse a valid patch header"""
