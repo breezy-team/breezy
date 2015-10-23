@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2011, 2015 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -630,10 +630,13 @@ class TransportTests(TestTransportImplementation):
     def test_opening_a_file_stream_can_set_mode(self):
         t = self.get_transport()
         if t.is_readonly():
+            self.assertRaises((TransportNotPossible, NotImplementedError),
+                              t.open_write_stream, 'foo')
             return
         if not t._can_roundtrip_unix_modebits():
             # Can't roundtrip, so no need to run this test
             return
+
         def check_mode(name, mode, expected):
             handle = t.open_write_stream(name, mode=mode)
             handle.close()
@@ -921,7 +924,9 @@ class TransportTests(TestTransportImplementation):
     def test_rename_dir_succeeds(self):
         t = self.get_transport()
         if t.is_readonly():
-            raise TestSkipped("transport is readonly")
+            self.assertRaises((TransportNotPossible, NotImplementedError),
+                              t.rename, 'foo', 'bar')
+            return
         t.mkdir('adir')
         t.mkdir('adir/asubdir')
         t.rename('adir', 'bdir')
@@ -932,7 +937,9 @@ class TransportTests(TestTransportImplementation):
         """Attempting to replace a nonemtpy directory should fail"""
         t = self.get_transport()
         if t.is_readonly():
-            raise TestSkipped("transport is readonly")
+            self.assertRaises((TransportNotPossible, NotImplementedError),
+                              t.rename, 'foo', 'bar')
+            return
         t.mkdir('adir')
         t.mkdir('adir/asubdir')
         t.mkdir('bdir')
