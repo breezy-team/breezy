@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2011, 2015 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -815,6 +815,7 @@ class TestLocalTransportWriteStream(tests.TestCaseWithTransport):
 class TestWin32LocalTransport(tests.TestCase):
 
     def test_unc_clone_to_root(self):
+        self.requireFeature(features.win32_feature)
         # Win32 UNC path like \\HOST\path
         # clone to root should stop at least at \\HOST part
         # not on \\
