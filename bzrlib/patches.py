@@ -358,6 +358,14 @@ def iter_file_patch(iter_lines, allow_dirty=False, keep_dirty=False):
 
     for line in iter_lines:
         if line.startswith('=== '):
+            if len(saved_lines) > 0:
+                if keep_dirty and len(dirty_head) > 0:
+                    yield {'saved_lines': saved_lines,
+                           'dirty_head': dirty_head}
+                    dirty_head = []
+                else:
+                    yield saved_lines
+                saved_lines = []
             dirty_head.append(line)
             continue
         if line.startswith('*** '):

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2012 Canonical Ltd
+# Copyright (C) 2006-2012, 2015 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ from bzrlib.errors import (
     InvalidRebaseURLs,
     PathNotChild,
     )
-from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
+from bzrlib.tests import features, TestCaseInTempDir, TestCase, TestSkipped
 
 
 class TestUrlToPath(TestCase):
@@ -411,6 +411,7 @@ class TestUrlToPath(TestCase):
         self.assertFalse(isinstance(result, unicode))
 
     def test_win32_unc_path_to_url(self):
+        self.requireFeature(features.win32_feature)
         to_url = urlutils._win32_local_path_to_url
         self.assertEqual('file://HOST/path',
             to_url(r'\\HOST\path'))

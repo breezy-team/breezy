@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012, 2015 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -656,13 +656,28 @@ class TestBadStatusServer(TestSpecificRequestHandler):
 
     _req_handler_class = BadStatusRequestHandler
 
+    def setUp(self):
+        super(TestBadStatusServer, self).setUp()
+        # See https://bugs.launchpad.net/bzr/+bug/1451448 for details.
+        # TD;LR: Running both a TCP client and server in the same process and
+        # thread uncovers a race in python. The fix is to run the server in a
+        # different process. Trying to fix yet another race here is not worth
+        # the effort. -- vila 2015-09-06
+        if 'HTTP/1.0' in self.id():
+            raise tests.TestSkipped(
+                'Client/Server in the same process and thread can hang')
+
     def test_http_has(self):
         t = self.get_readonly_transport()
-        self.assertRaises(errors.InvalidHttpResponse, t.has, 'foo/bar')
+        self.assertRaises((errors.ConnectionError, errors.ConnectionReset,
+                           errors.InvalidHttpResponse),
+                          t.has, 'foo/bar')
 
     def test_http_get(self):
         t = self.get_readonly_transport()
-        self.assertRaises(errors.InvalidHttpResponse, t.get, 'foo/bar')
+        self.assertRaises((errors.ConnectionError, errors.ConnectionReset,
+                           errors.InvalidHttpResponse),
+                          t.get, 'foo/bar')
 
 
 class InvalidStatusRequestHandler(http_server.TestingHTTPRequestHandler):
