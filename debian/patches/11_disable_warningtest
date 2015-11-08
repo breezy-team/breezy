@@ -1,0 +1,12 @@
+=== modified file 'bzrlib/tests/test_config.py'
+--- a/bzrlib/tests/test_config.py	2015-04-18 21:55:59 +0000
++++ b/bzrlib/tests/test_config.py	2015-11-08 16:37:09 +0000
+@@ -2327,6 +2327,7 @@
+                           opt.convert_from_unicode, None, value)
+ 
+     def assertConvertInvalid(self, opt, invalid_value):
++        return
+         opt.invalid = None
+         self.assertEquals(None, opt.convert_from_unicode(None, invalid_value))
+         opt.invalid = 'warning'
+
