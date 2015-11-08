@@ -1,6 +1,7 @@
 bzr (2.6.0+bzr6606-1) UNRELEASED; urgency=medium
 
   * New upstream snapshot.
+   + Fixes compatibility with newer versions of paramiko. Closes: #794146
   * Add patch 10_fix_float: Fixes compatibility with newer versions of
     testtools. Closes: #804388
   * Drop patch 09_remove_generation_time: applied upstream.
