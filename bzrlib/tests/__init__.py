@@ -372,7 +372,7 @@ class ExtendedTestResult(testtools.TextTestResult):
     def _elapsedTestTimeString(self):
         """Return a time string for the overall time the current test has taken."""
         return self._formatTime(self._delta_to_float(
-            self._now() - self._start_datetime), 3)
+            self._now() - self._start_datetime, 3))
 
     def _testTimeString(self, testCase):
         benchmark_time = self._extractBenchmarkTime(testCase)
