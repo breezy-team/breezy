@@ -1,4 +1,4 @@
-bzr (2.6.0+bzr6606-1) UNRELEASED; urgency=medium
+bzr (2.6.0+bzr6606-1) unstable; urgency=medium
 
   * New upstream snapshot.
    + Fixes compatibility with newer versions of paramiko. Closes: #794146
