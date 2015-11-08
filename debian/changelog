@@ -5,6 +5,7 @@ bzr (2.6.0+bzr6606-1) UNRELEASED; urgency=medium
   * Add patch 10_fix_float: Fixes compatibility with newer versions of
     testtools. Closes: #804388
   * Drop patch 09_remove_generation_time: applied upstream.
+  * Specify -Derror when running selftest.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Sun, 08 Nov 2015 13:02:47 +0000
 
