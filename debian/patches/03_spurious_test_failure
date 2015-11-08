@@ -2,9 +2,11 @@ Description: Fix some spurious test failures
 Author: Jelmer Vernooij <jelmer@debian.org>
 Status: Not forwarded upstream (workaround)
 
---- a/bzrlib/tests/test_test_server.py
-+++ b/bzrlib/tests/test_test_server.py
-@@ -74,7 +74,12 @@
+Index: unstable/bzrlib/tests/test_test_server.py
+===================================================================
+--- unstable.orig/bzrlib/tests/test_test_server.py
++++ unstable/bzrlib/tests/test_test_server.py
+@@ -74,7 +74,12 @@ class TCPClient(object):
          return self.sock.sendall(s)
  
      def read(self, bufsize=4096):
@@ -18,7 +20,7 @@ Status: Not forwarded upstream (workaround)
  
  
  class TCPConnectionHandler(SocketServer.BaseRequestHandler):
-@@ -167,37 +172,6 @@
+@@ -167,37 +172,6 @@ class TestTCPServerInAThread(tests.TestC
          self.assertRaises(CantStart,
                            self.get_server, server_class=CantStartServer)
  
@@ -56,9 +58,11 @@ Status: Not forwarded upstream (workaround)
      def test_server_crash_while_responding(self):
          # We want to ensure the exception has been caught
          caught = threading.Event()
---- a/bzrlib/tests/blackbox/test_serve.py
-+++ b/bzrlib/tests/blackbox/test_serve.py
-@@ -330,8 +330,6 @@
+Index: unstable/bzrlib/tests/blackbox/test_serve.py
+===================================================================
+--- unstable.orig/bzrlib/tests/blackbox/test_serve.py
++++ unstable/bzrlib/tests/blackbox/test_serve.py
+@@ -329,8 +329,6 @@ class TestBzrServe(TestBzrServeBase):
          # request to finish
          self.assertEqual('Requested to stop gracefully\n',
                           process.stderr.readline())

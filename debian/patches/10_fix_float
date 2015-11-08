@@ -7,9 +7,11 @@ Applied-Upstream: no
 X-Bzr-Revision-Id: jelmer@jelmer.uk-20151108122750-m2hcegf5af28mkp4
 
 === modified file 'bzrlib/tests/__init__.py'
---- old/bzrlib/tests/__init__.py	2013-08-09 15:09:23 +0000
-+++ new/bzrlib/tests/__init__.py	2015-11-08 12:27:50 +0000
-@@ -32,6 +32,7 @@
+Index: unstable/bzrlib/tests/__init__.py
+===================================================================
+--- unstable.orig/bzrlib/tests/__init__.py
++++ unstable/bzrlib/tests/__init__.py
+@@ -32,6 +32,7 @@ import doctest
  import errno
  import itertools
  import logging
@@ -17,7 +19,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20151108122750-m2hcegf5af28mkp4
  import os
  import platform
  import pprint
-@@ -359,10 +360,19 @@
+@@ -359,10 +360,19 @@ class ExtendedTestResult(testtools.TextT
              return float(''.join(details['benchtime'].iter_bytes()))
          return getattr(testCase, "_benchtime", None)
  
@@ -38,4 +40,3 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20151108122750-m2hcegf5af28mkp4
  
      def _testTimeString(self, testCase):
          benchmark_time = self._extractBenchmarkTime(testCase)
-

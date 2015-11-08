@@ -4,11 +4,11 @@ Author: Matthias Klose <doko@ubuntu.com>
 Status: Not forwarded upstream (workaround)
 LP-Bug: https://bugs.launchpad.net/ubuntu/+source/bzr/+bug/1116079
 
-Index: b/bzrlib/tests/test_tuned_gzip.py
+Index: unstable/bzrlib/tests/test_tuned_gzip.py
 ===================================================================
---- a/bzrlib/tests/test_tuned_gzip.py	2011-05-13 12:51:05.000000000 +0000
-+++ b/bzrlib/tests/test_tuned_gzip.py	2013-04-02 10:09:19.622871879 +0000
-@@ -124,7 +124,3 @@
+--- unstable.orig/bzrlib/tests/test_tuned_gzip.py
++++ unstable/bzrlib/tests/test_tuned_gzip.py
+@@ -127,7 +127,3 @@ class TestToGzip(tests.TestCase):
      def test_large_chunks(self):
          self.assertToGzip(['a large string\n'*1024])
          self.assertToGzip(['a large string\n']*1024)
