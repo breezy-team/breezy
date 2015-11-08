@@ -32,6 +32,7 @@ import doctest
 import errno
 import itertools
 import logging
+import math
 import os
 import platform
 import pprint
@@ -359,10 +360,19 @@ class ExtendedTestResult(testtools.TextTestResult):
             return float(''.join(details['benchtime'].iter_bytes()))
         return getattr(testCase, "_benchtime", None)
 
+    def _delta_to_float(self, a_timedelta, precision):
+        # This calls ceiling to ensure that the most pessimistic view of time
+        # taken is shown (rather than leaving it to the Python %f operator
+        # to decide whether to round/floor/ceiling. This was added when we
+        # had pyp3 test failures that suggest a floor was happening.
+        shift = 10 ** precision
+        return math.ceil((a_timedelta.days * 86400.0 + a_timedelta.seconds +
+            a_timedelta.microseconds / 1000000.0) * shift) / shift
+
     def _elapsedTestTimeString(self):
         """Return a time string for the overall time the current test has taken."""
         return self._formatTime(self._delta_to_float(
-            self._now() - self._start_datetime))
+            self._now() - self._start_datetime), 3)
 
     def _testTimeString(self, testCase):
         benchmark_time = self._extractBenchmarkTime(testCase)
