@@ -1,0 +1,41 @@
+Description: Add local copy of _delta_to_float from testtools, rather than
+ relying on the signature and behaviour of a private method to stay the same.
+Origin: commit, revision id: jelmer@jelmer.uk-20151108122750-m2hcegf5af28mkp4
+Author: Jelmer Vernooij <jelmer@jelmer.uk>
+Last-Update: 2015-11-08
+Applied-Upstream: no
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20151108122750-m2hcegf5af28mkp4
+
+=== modified file 'bzrlib/tests/__init__.py'
+--- old/bzrlib/tests/__init__.py	2013-08-09 15:09:23 +0000
++++ new/bzrlib/tests/__init__.py	2015-11-08 12:27:50 +0000
+@@ -32,6 +32,7 @@
+ import errno
+ import itertools
+ import logging
++import math
+ import os
+ import platform
+ import pprint
+@@ -359,10 +360,19 @@
+             return float(''.join(details['benchtime'].iter_bytes()))
+         return getattr(testCase, "_benchtime", None)
+ 
++    def _delta_to_float(self, a_timedelta, precision):
++        # This calls ceiling to ensure that the most pessimistic view of time
++        # taken is shown (rather than leaving it to the Python %f operator
++        # to decide whether to round/floor/ceiling. This was added when we
++        # had pyp3 test failures that suggest a floor was happening.
++        shift = 10 ** precision
++        return math.ceil((a_timedelta.days * 86400.0 + a_timedelta.seconds +
++            a_timedelta.microseconds / 1000000.0) * shift) / shift
++
+     def _elapsedTestTimeString(self):
+         """Return a time string for the overall time the current test has taken."""
+         return self._formatTime(self._delta_to_float(
+-            self._now() - self._start_datetime))
++            self._now() - self._start_datetime), 3)
+ 
+     def _testTimeString(self, testCase):
+         benchmark_time = self._extractBenchmarkTime(testCase)
+

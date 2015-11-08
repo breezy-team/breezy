@@ -1,6 +1,8 @@
 bzr (2.6.0+bzr6606-1) UNRELEASED; urgency=medium
 
   * New upstream snapshot.
+  * Add patch 10_fix_float: Fixes compatibility with newer versions of
+    testtools.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Sun, 08 Nov 2015 13:02:47 +0000
 
