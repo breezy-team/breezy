@@ -6,3 +6,4 @@
 08_disable_put_file_unicode
 10_fix_float
 11_disable_warningtest
+12_autodoc_unicode
