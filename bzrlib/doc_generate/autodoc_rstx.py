@@ -131,7 +131,7 @@ def _dump_text(output_dir, topic, text):
     topic_id = "%s-%s" % (topic, "help")
     filename = bzrlib.osutils.pathjoin(output_dir, topic_id + ".txt")
     f =  open(filename, "w")
-    f.write(text)
+    f.write(text.encode('utf-8'))
     f.close()
     return topic_id
 
