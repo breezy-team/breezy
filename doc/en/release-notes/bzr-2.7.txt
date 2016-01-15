@@ -89,12 +89,12 @@ Testing
 * Handle (minor) incompatible change in python 2.7.6 leading to test
   failures. Only tests are affected. (Vincent Ladeuil, #1303879)
 
-* Take python 2.7.6 late (better than never) bugfix in ntpath.py into
-  account. Only tests are affected (Vincent Ladeuil, #1303879).
-
 * Remove wrong assumption about how TCP server and client interact when run
   inside the same process. (Vincent Ladeuil, #1269886).
 
+* Rename assertWarns in bt.test_config so it doesn't clash with the
+  assertWarns introduced in recent python (Vincent Ladeuil, #1514210)
+    
 * Restrict access to '.netrc' in tests or recent python (2.7.5-8) will
   complain. (Vincent Ladeuil, #1233413)
 
@@ -102,5 +102,8 @@ Testing
   way to fix them without testing on windows itself.
   (Vincent Ladeuil, #1451448)
      
+* Take python 2.7.6 late (better than never) bugfix in ntpath.py into
+  account. Only tests are affected (Vincent Ladeuil, #1303879).
+
 ..
    vim: tw=74 ft=rst ff=unix
