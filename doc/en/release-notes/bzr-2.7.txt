@@ -46,6 +46,9 @@ Bug Fixes
 * Fix pyrex version checking to be more robust.
   (Andrew Starr-Bochicchio, #1030521 )
 
+* Forbid more operations for ReadonlyTransportDecorator.
+  (Vincent Ladeuil, #150196)
+
 Documentation
 *************
 
