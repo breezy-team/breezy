@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -873,7 +873,7 @@ class Transport(object):
             yield self.get(relpath)
             count += 1
 
-    def put_bytes(self, relpath, bytes, mode=None):
+    def put_bytes(self, relpath, raw_bytes, mode=None):
         """Atomically put the supplied bytes into the given location.
 
         :param relpath: The location to put the contents, relative to the
@@ -882,12 +882,12 @@ class Transport(object):
         :param mode: Create the file with the given mode.
         :return: None
         """
-        if not isinstance(bytes, str):
-            raise AssertionError(
-                'bytes must be a plain string, not %s' % type(bytes))
-        return self.put_file(relpath, StringIO(bytes), mode=mode)
+        if not isinstance(raw_bytes, str):
+            raise TypeError(
+                'raw_bytes must be a plain string, not %s' % type(raw_bytes))
+        return self.put_file(relpath, StringIO(raw_bytes), mode=mode)
 
-    def put_bytes_non_atomic(self, relpath, bytes, mode=None,
+    def put_bytes_non_atomic(self, relpath, raw_bytes, mode=None,
                              create_parent_dir=False,
                              dir_mode=None):
         """Copy the string into the target location.
@@ -896,8 +896,8 @@ class Transport(object):
         Transport.put_bytes_non_atomic for more information.
 
         :param relpath: The remote location to put the contents.
-        :param bytes:   A string object containing the raw bytes to write into
-                        the target file.
+        :param raw_bytes:   A string object containing the raw bytes to write
+                        into the target file.
         :param mode:    Possible access permissions for new file.
                         None means do not set remote permissions.
         :param create_parent_dir: If we cannot create the target file because
@@ -905,10 +905,10 @@ class Transport(object):
                         create it, and then try again.
         :param dir_mode: Possible access permissions for new directories.
         """
-        if not isinstance(bytes, str):
-            raise AssertionError(
-                'bytes must be a plain string, not %s' % type(bytes))
-        self.put_file_non_atomic(relpath, StringIO(bytes), mode=mode,
+        if not isinstance(raw_bytes, str):
+            raise TypeError(
+                'raw_bytes must be a plain string, not %s' % type(raw_bytes))
+        self.put_file_non_atomic(relpath, StringIO(raw_bytes), mode=mode,
                                  create_parent_dir=create_parent_dir,
                                  dir_mode=dir_mode)
 

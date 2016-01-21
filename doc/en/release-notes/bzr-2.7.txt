@@ -63,6 +63,10 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* Make all transport put_bytes() raises TypeError instead of AssertionError
+  or UnicodeEncodeError when given unicode strings rather than bytes.
+  (Vincent Ladeuil, #106898)
+
 Changed Behaviour
 *****************
 
