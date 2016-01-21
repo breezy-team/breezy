@@ -39,9 +39,9 @@ Bug Fixes
 * 'acceptable_keys' from 'bazaar.conf' is now properly handled.
   (Vincent Ladeuil, #1249732)
 
-* Option names are now checked to be valid [dotted] python identifiers. Also
-  ignore invalid references (i.e. using invalid option names) while
-  expanding option values. (Vincent Ladeuil, #1235099)
+* Option names are now checked to be valid identifiers (including embedded
+  dots or hyphens). Also ignore invalid references (i.e. using invalid
+  option names) while expanding option values. (Vincent Ladeuil, #1235099)
 
 * Fix pyrex version checking to be more robust.
   (Andrew Starr-Bochicchio, #1030521 )
