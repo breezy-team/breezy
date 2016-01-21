@@ -2,9 +2,8 @@ Transitioning Unix installs to the XDG Base Directory Specification
 ===================================================================
 
 Currently, Bazaar stores its configuration files and plugins under the
-directory ~/.bazaar on unix installs.  On Windows, this is
-%APPDATA%/Bazaar/2.0 and on Mac OS X, the directory is ~/.bazaar.  With the
-XDG Base Directory specification
+directory ~/.bazaar on unix installs. On Windows, this is %APPDATA%/Bazaar/2.0.
+With the XDG Base Directory specification
 (http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html), many
 Linux and Unix platforms have tried to centralize configuration files under a
 specific directory referred to as $XDG_CONFIG_HOME.  This has a default value
@@ -13,10 +12,8 @@ of ~/.config.
 Bazaar would like to be a good Unix citizen by using these standard locations
 for configuration files.  As such, we should support that location, but not
 require it.  Note that the following descriptions do not apply
-to Windows or Mac OS X which should use their own native configuration
-locations.  (On Windows, we currently do this by working under %APPDATA%.  The
-Mac OS X equivalent would be ~/Library/Application Support/Bazaar but there is
-also cultural support for ~/.bazaar on that platform.)
+to Windows which should use their own native configuration
+locations.  (On Windows, we currently do this by working under %APPDATA%.
 
 * If $XDG_CONFIG_HOME/bazaar exists, use the files there for configuration,
   noting in the log that we are doing so.  This allows individuals who would

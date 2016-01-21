@@ -14,13 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import sys
 from email.Header import decode_header
 
 from bzrlib import __version__ as _bzrlib_version
 from bzrlib.email_message import EmailMessage
 from bzrlib.errors import BzrBadParameterNotUnicode
 from bzrlib.smtp_connection import SMTPConnection
-from bzrlib.tests import TestCase
+from bzrlib import tests
 
 EMPTY_MESSAGE = '''\
 From: from@from.com
@@ -65,9 +66,22 @@ Content-Disposition: inline
 body
 ''' %  { 'version': _bzrlib_version, 'boundary': BOUNDARY }
 
-SIMPLE_MULTIPART_MESSAGE = _MULTIPART_HEAD + '--%s--' % BOUNDARY
 
-COMPLEX_MULTIPART_MESSAGE = _MULTIPART_HEAD + '''\
+def final_newline_or_not(msg):
+    if sys.version_info >= (2, 7, 6):
+        # Some internals of python's email module changed in an (minor)
+        # incompatible way: a final newline is appended in 2.7.6...
+       msg += '\n'
+    return msg
+
+
+def simple_multipart_message():
+    msg = _MULTIPART_HEAD + '--%s--' % BOUNDARY
+    return final_newline_or_not(msg)
+
+
+def complex_multipart_message(typ):
+    msg = _MULTIPART_HEAD + '''\
 --%(boundary)s
 MIME-Version: 1.0
 Content-Type: text/%%s; charset="us-ascii"; name="lines.txt"
@@ -81,9 +95,11 @@ d
 e
 
 --%(boundary)s--''' %  { 'boundary': BOUNDARY }
+    msg = final_newline_or_not(msg)
+    return msg % (typ,)
 
 
-class TestEmailMessage(TestCase):
+class TestEmailMessage(tests.TestCase):
 
     def test_empty_message(self):
         msg = EmailMessage('from@from.com', 'to@to.com', 'subject')
@@ -100,15 +116,18 @@ class TestEmailMessage(TestCase):
             msg = EmailMessage('from@from.com', 'to@to.com', 'subject', body)
             self.assertEqualDiff(expected, msg.as_string())
 
-    def test_multipart_message(self):
+    def test_multipart_message_simple(self):
         msg = EmailMessage('from@from.com', 'to@to.com', 'subject')
         msg.add_inline_attachment('body')
-        self.assertEqualDiff(SIMPLE_MULTIPART_MESSAGE, msg.as_string(BOUNDARY))
+        self.assertEqualDiff(simple_multipart_message(),
+                             msg.as_string(BOUNDARY))
 
+
+    def test_multipart_message_complex(self):
         msg = EmailMessage('from@from.com', 'to@to.com', 'subject', 'body')
         msg.add_inline_attachment(u'a\nb\nc\nd\ne\n', 'lines.txt', 'x-subtype')
-        self.assertEqualDiff(COMPLEX_MULTIPART_MESSAGE % 'x-subtype',
-                msg.as_string(BOUNDARY))
+        self.assertEqualDiff(complex_multipart_message('x-subtype'),
+                             msg.as_string(BOUNDARY))
 
     def test_headers_accept_unicode_and_utf8(self):
         for user in [ u'Pepe P\xe9rez <pperez@ejemplo.com>',
@@ -147,40 +166,6 @@ class TestEmailMessage(TestCase):
         msg['Cc'] = 'cc@cc.com'
         self.assertEqual('to2@to.com', msg['To'])
         self.assertEqual('cc@cc.com', msg['Cc'])
-
-    def test_send(self):
-        class FakeConfig:
-            def get(self, option):
-                return None
-
-        messages = []
-
-        def send_as_append(_self, msg):
-            messages.append(msg.as_string(BOUNDARY))
-
-        old_send_email = SMTPConnection.send_email
-        try:
-            SMTPConnection.send_email = send_as_append
-
-            EmailMessage.send(FakeConfig(), 'from@from.com', 'to@to.com',
-                    'subject', 'body', u'a\nb\nc\nd\ne\n', 'lines.txt')
-            self.assertEqualDiff(COMPLEX_MULTIPART_MESSAGE % 'plain',
-                    messages[0])
-            messages[:] = []
-
-            EmailMessage.send(FakeConfig(), 'from@from.com', 'to@to.com',
-                    'subject', 'body', u'a\nb\nc\nd\ne\n', 'lines.txt',
-                    'x-patch')
-            self.assertEqualDiff(COMPLEX_MULTIPART_MESSAGE % 'x-patch',
-                    messages[0])
-            messages[:] = []
-
-            EmailMessage.send(FakeConfig(), 'from@from.com', 'to@to.com',
-                    'subject', 'body')
-            self.assertEqualDiff(SIMPLE_MESSAGE_ASCII , messages[0])
-            messages[:] = []
-        finally:
-            SMTPConnection.send_email = old_send_email
 
     def test_address_to_encoded_header(self):
         def decode(s):
@@ -224,3 +209,46 @@ class TestEmailMessage(TestCase):
         }
         for string_, pair in pairs.items():
             self.assertEqual(pair, EmailMessage.string_with_encoding(string_))
+
+
+class TestSend(tests.TestCase):
+
+    def setUp(self):
+        super(TestSend, self).setUp()
+        self.messages = []
+
+        def send_as_append(_self, msg):
+            self.messages.append(msg.as_string(BOUNDARY))
+
+        self.overrideAttr(SMTPConnection, 'send_email', send_as_append)
+
+
+
+    def send_email(self, attachment=None, attachment_filename=None,
+                   attachment_mime_subtype='plain'):
+        class FakeConfig:
+            def get(self, option):
+                return None
+
+        EmailMessage.send(FakeConfig(), 'from@from.com', 'to@to.com',
+                          'subject', 'body',
+                          attachment=attachment,
+                          attachment_filename=attachment_filename,
+                          attachment_mime_subtype=attachment_mime_subtype)
+
+    def assertMessage(self, expected):
+        self.assertLength(1, self.messages)
+        self.assertEqualDiff(expected, self.messages[0])
+
+    def test_send_plain(self):
+        self.send_email(u'a\nb\nc\nd\ne\n', 'lines.txt')
+        self.assertMessage(complex_multipart_message('plain'))
+
+    def test_send_patch(self):
+        self.send_email(u'a\nb\nc\nd\ne\n', 'lines.txt', 'x-patch')
+        self.assertMessage(complex_multipart_message('x-patch'))
+
+    def test_send_simple(self):
+          self.send_email()
+          self.assertMessage(SIMPLE_MESSAGE_ASCII)
+

@@ -58,9 +58,31 @@ class PatchesTester(TestCase):
         # https://bugs.launchpad.net/bzr/+bug/502076
         # https://code.launchpad.net/~toshio/bzr/allow-dirty-patches/+merge/18854
         lines = ["diff -pruN commands.py",
-            "--- orig/commands.py",
-            "+++ mod/dommands.py"]
+                 "--- orig/commands.py",
+                 "+++ mod/dommands.py"]
         bits = parse_patches(iter(lines), allow_dirty=True)
+
+    def test_preserve_dirty_head(self):
+        """Parse a patch containing a dirty header, and preserve lines"""
+        lines = ["=== added directory 'foo/bar'\n",
+                 "=== modified file 'orig/commands.py'\n",
+                 "--- orig/commands.py\n",
+                 "+++ mod/dommands.py\n",
+                 "=== modified file 'orig/another.py'\n",
+                 "--- orig/another.py\n",
+                 "+++ mod/another.py\n"]
+        patches = parse_patches(
+            lines.__iter__(), allow_dirty=True, keep_dirty=True)
+        self.assertLength(2, patches)
+        self.assertEqual(patches[0]['dirty_head'],
+                         ["=== added directory 'foo/bar'\n",
+                          "=== modified file 'orig/commands.py'\n"])
+        self.assertEqual(patches[0]['patch'].get_header().splitlines(True),
+                         ["--- orig/commands.py\n", "+++ mod/dommands.py\n"])
+        self.assertEqual(patches[1]['dirty_head'],
+                         ["=== modified file 'orig/another.py'\n"])
+        self.assertEqual(patches[1]['patch'].get_header().splitlines(True),
+                         ["--- orig/another.py\n", "+++ mod/another.py\n"])
 
     def testValidPatchHeader(self):
         """Parse a valid patch header"""
@@ -78,7 +100,7 @@ class PatchesTester(TestCase):
     def testValidHunkHeader(self):
         """Parse a valid hunk header"""
         header = "@@ -34,11 +50,6 @@\n"
-        hunk = hunk_from_header(header);
+        hunk = hunk_from_header(header)
         self.assertEqual(hunk.orig_pos, 34)
         self.assertEqual(hunk.orig_range, 11)
         self.assertEqual(hunk.mod_pos, 50)
@@ -88,7 +110,7 @@ class PatchesTester(TestCase):
     def testValidHunkHeader2(self):
         """Parse a tricky, valid hunk header"""
         header = "@@ -1 +0,0 @@\n"
-        hunk = hunk_from_header(header);
+        hunk = hunk_from_header(header)
         self.assertEqual(hunk.orig_pos, 1)
         self.assertEqual(hunk.orig_range, 1)
         self.assertEqual(hunk.mod_pos, 0)
@@ -117,7 +139,7 @@ class PatchesTester(TestCase):
         self.makeMalformed("@@ -34,11 +50,6.5 @@\n")
         self.makeMalformed("@@ -34,11 +50,-6 @@\n")
 
-    def lineThing(self,text, type):
+    def lineThing(self, text, type):
         line = parse_line(text)
         self.assertIsInstance(line, type)
         self.assertEqual(str(line), text)
@@ -146,7 +168,7 @@ class PatchesTester(TestCase):
         i = difference_index(patchtext, pstr)
         if i is not None:
             print "%i: \"%s\" != \"%s\"" % (i, patchtext[i], pstr[i])
-        self.assertEqual (patchtext, str(patch))
+        self.assertEqual(patchtext, str(patch))
 
     def testAll(self):
         """Test parsing a whole patch"""
@@ -161,7 +183,7 @@ class PatchesTester(TestCase):
         self.assertContainsRe(patches[0].oldname, '^bar\t')
         self.assertContainsRe(patches[0].newname, '^qux\t')
         self.assertContainsRe(str(patches[0]),
-                                  'Binary files bar\t.* and qux\t.* differ\n')
+                              'Binary files bar\t.* and qux\t.* differ\n')
 
     def test_parse_binary_after_normal(self):
         patches = parse_patches(self.data_lines("binary-after-normal.patch"))
@@ -170,7 +192,7 @@ class PatchesTester(TestCase):
         self.assertContainsRe(patches[1].oldname, '^bar\t')
         self.assertContainsRe(patches[1].newname, '^qux\t')
         self.assertContainsRe(str(patches[1]),
-                                  'Binary files bar\t.* and qux\t.* differ\n')
+                              'Binary files bar\t.* and qux\t.* differ\n')
 
     def test_roundtrip_binary(self):
         patchtext = ''.join(self.data_lines("binary.patch"))
@@ -228,7 +250,6 @@ class PatchesTester(TestCase):
             mod_lines = list(self.datafile(mod))
 
             patched_file = IterableFile(iter_patched(orig_lines, patch))
-            lines = []
             count = 0
             for patch_line in patched_file:
                 self.assertEqual(patch_line, mod_lines[count])
@@ -238,7 +259,6 @@ class PatchesTester(TestCase):
     def test_iter_patched_binary(self):
         binary_lines = self.data_lines('binary.patch')
         e = self.assertRaises(BinaryFiles, iter_patched, [], binary_lines)
-
 
     def test_iter_patched_from_hunks(self):
         """Test a few patch files, and make sure they work."""
@@ -256,7 +276,6 @@ class PatchesTester(TestCase):
             mod_lines = list(self.datafile(mod))
             iter_patched = iter_patched_from_hunks(orig_lines, parsed.hunks)
             patched_file = IterableFile(iter_patched)
-            lines = []
             count = 0
             for patch_line in patched_file:
                 self.assertEqual(patch_line, mod_lines[count])
