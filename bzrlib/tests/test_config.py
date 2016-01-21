@@ -2237,6 +2237,8 @@ class TestOptionNames(tests.TestCase):
         self.assertTrue(self.is_valid('__bar__'))
         self.assertTrue(self.is_valid('a_'))
         self.assertTrue(self.is_valid('a1'))
+        # Don't break bzr-svn for no good reason
+        self.assertTrue(self.is_valid('guessed-layout'))
 
     def test_invalid_names(self):
         self.assertFalse(self.is_valid(' foo'))
@@ -2250,6 +2252,10 @@ class TestOptionNames(tests.TestCase):
         self.assertFalse(self.is_valid('{}'))
         self.assertFalse(self.is_valid('{a}'))
         self.assertFalse(self.is_valid('a\n'))
+        self.assertFalse(self.is_valid('-'))
+        self.assertFalse(self.is_valid('-a'))
+        self.assertFalse(self.is_valid('a-'))
+        self.assertFalse(self.is_valid('a--a'))
 
     def assertSingleGroup(self, reference):
         # the regexp is used with split and as such should match the reference

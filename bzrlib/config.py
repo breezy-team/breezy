@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2012 Canonical Ltd
+# Copyright (C) 2005-2014, 2016 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #            and others
 #
@@ -2550,7 +2550,7 @@ class RegistryOption(Option):
         return "".join(ret)
 
 
-_option_ref_re = lazy_regex.lazy_compile('({[^\d\W](?:\.\w|\w)*})')
+_option_ref_re = lazy_regex.lazy_compile('({[^\d\W](?:\.\w|-\w|\w)*})')
 """Describes an expandable option reference.
 
 We want to match the most embedded reference first.
