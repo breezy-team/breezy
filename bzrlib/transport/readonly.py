@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2009 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010, 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -41,6 +41,10 @@ class ReadonlyTransportDecorator(decorator.TransportDecorator):
         """Readonly transport decorators are invoked via 'readonly+'"""
         return 'readonly+'
 
+    def rename(self, rel_from, rel_to):
+        """See Transport.rename."""
+        raise TransportNotPossible('readonly transport')
+
     def delete(self, relpath):
         """See Transport.delete()."""
         raise TransportNotPossible('readonly transport')
@@ -61,6 +65,10 @@ class ReadonlyTransportDecorator(decorator.TransportDecorator):
         """See Transport.mkdir()."""
         raise TransportNotPossible('readonly transport')
 
+    def open_write_stream(self, relpath, mode=None):
+        """See Transport.open_write_stream()."""
+        raise TransportNotPossible('readonly transport')
+
     def is_readonly(self):
         """See Transport.is_readonly."""
         return True
@@ -74,7 +82,7 @@ class ReadonlyTransportDecorator(decorator.TransportDecorator):
         raise TransportNotPossible('readonly transport')
 
     def get_smart_client(self):
-        raise NoSmartServer(self.base)
+        raise NoSmartMedium(self)
 
     def get_smart_medium(self):
         raise NoSmartMedium(self)
@@ -83,4 +91,4 @@ class ReadonlyTransportDecorator(decorator.TransportDecorator):
 def get_test_permutations():
     """Return the permutations to be used in testing."""
     from bzrlib.tests import test_server
-    return [(ReadonlyTransportDecorator, test_server.ReadonlyServer),]
+    return [(ReadonlyTransportDecorator, test_server.ReadonlyServer)]

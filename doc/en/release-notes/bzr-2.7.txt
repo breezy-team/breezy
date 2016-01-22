@@ -39,12 +39,15 @@ Bug Fixes
 * 'acceptable_keys' from 'bazaar.conf' is now properly handled.
   (Vincent Ladeuil, #1249732)
 
-* Option names are now checked to be valid [dotted] python identifiers. Also
-  ignore invalid references (i.e. using invalid option names) while
-  expanding option values. (Vincent Ladeuil, #1235099)
+* Option names are now checked to be valid identifiers (including embedded
+  dots or hyphens). Also ignore invalid references (i.e. using invalid
+  option names) while expanding option values. (Vincent Ladeuil, #1235099)
 
 * Fix pyrex version checking to be more robust.
   (Andrew Starr-Bochicchio, #1030521 )
+
+* Forbid more operations for ReadonlyTransportDecorator so no more write
+  methods can be used my mistake.  (Vincent Ladeuil, #150196)
 
 Documentation
 *************
@@ -80,6 +83,8 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Fix gpgme test failure starting on wily. (Vincent Ladeuil)
+     
 * Fix racy http tests (TestBadStatusServer is so simple, it exposes a race
   in python 2.7.9. This happens only when both the http server and client
   are run in the same process.). Only tests are affected.
