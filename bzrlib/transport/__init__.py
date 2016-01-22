@@ -878,7 +878,7 @@ class Transport(object):
 
         :param relpath: The location to put the contents, relative to the
             transport base.
-        :param bytes: A bytestring of data.
+        :param raw_bytes: A bytestring of data.
         :param mode: Create the file with the given mode.
         :return: None
         """

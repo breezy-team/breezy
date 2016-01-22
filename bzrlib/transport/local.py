@@ -188,7 +188,7 @@ class LocalTransport(transport.Transport):
         """Copy the string into the location.
 
         :param relpath: Location to put the contents, relative to base.
-        :param bytes:   String
+        :param raw_bytes:   String
         """
         if not isinstance(raw_bytes, str):
             raise TypeError(
