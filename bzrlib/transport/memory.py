@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -148,15 +148,9 @@ class MemoryTransport(transport.Transport):
         """See Transport.put_file()."""
         _abspath = self._abspath(relpath)
         self._check_parent(_abspath)
-        bytes = f.read()
-        if type(bytes) is not str:
-            # Although not strictly correct, we raise UnicodeEncodeError to be
-            # compatible with other transports.
-            raise UnicodeEncodeError(
-                'undefined', bytes, 0, 1,
-                'put_file must be given a file of bytes, not unicode.')
-        self._files[_abspath] = (bytes, mode)
-        return len(bytes)
+        raw_bytes = f.read()
+        self._files[_abspath] = (raw_bytes, mode)
+        return len(raw_bytes)
 
     def mkdir(self, relpath, mode=None):
         """See Transport.mkdir()."""
