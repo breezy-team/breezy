@@ -452,8 +452,14 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
                 "verification entirely.\n")
             raise
         if cert_reqs == ssl.CERT_REQUIRED:
-            peer_cert = ssl_sock.getpeercert()
-            ssl.match_hostname(peer_cert, host)
+            if sys.version_info < (2, 7, 9):
+                # python2.6 doesn't provide ssl.match_hostname
+                trace.warning(
+                    'https certificates verification is only available for'
+                    ' python versions >= 2.7.9')
+            else:
+                peer_cert = ssl_sock.getpeercert()
+                ssl.match_hostname(peer_cert, host)
 
         # Wrap the ssl socket before anybody use it
         self._wrap_socket_for_reporting(ssl_sock)
