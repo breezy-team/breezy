@@ -19,7 +19,7 @@
 """
 
 import os
-import ssl
+import sys
 
 from bzrlib import (
     config,
@@ -28,14 +28,12 @@ from bzrlib import (
 from bzrlib.errors import (
     ConfigOptionValueError,
 )
-from bzrlib.tests import (
-    TestCase,
-    TestCaseInTempDir,
-)
+from bzrlib import tests
 from bzrlib.transport.http import _urllib2_wrappers
+from bzrlib.transport.http._urllib2_wrappers import ssl
 
 
-class CaCertsConfigTests(TestCaseInTempDir):
+class CaCertsConfigTests(tests.TestCaseInTempDir):
 
     def get_stack(self, content):
         return config.MemoryStack(content.encode('utf-8'))
@@ -67,7 +65,7 @@ class CaCertsConfigTests(TestCaseInTempDir):
                               "is not valid for \"ssl.ca_certs\"")
 
 
-class CertReqsConfigTests(TestCaseInTempDir):
+class CertReqsConfigTests(tests.TestCaseInTempDir):
 
     def test_default(self):
         stack = config.MemoryStack("")
@@ -82,7 +80,14 @@ class CertReqsConfigTests(TestCaseInTempDir):
         self.assertRaises(ConfigOptionValueError, stack.get, "ssl.cert_reqs")
 
 
-class MatchHostnameTests(TestCase):
+class MatchHostnameTests(tests.TestCase):
+
+    def setUp(self):
+        super(MatchHostnameTests, self).setUp()
+        if sys.version_info < (2, 7, 9):
+            raise tests.TestSkipped(
+                'python version too old to provide proper'
+                ' https hostname verification')
 
     def test_no_certificate(self):
         self.assertRaises(ValueError,
