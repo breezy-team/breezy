@@ -70,6 +70,9 @@ Internals
   or UnicodeEncodeError when given unicode strings rather than bytes.
   (Vincent Ladeuil, #106898)
 
+* Use ssl.match_hostname from the python ssl module and stop carrying a
+  specific version that has become obsolete. (Vincent Ladeuil, #1538480)
+
 Changed Behaviour
 *****************
 
