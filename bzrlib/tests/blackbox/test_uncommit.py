@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011, 2013, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -63,7 +63,7 @@ class TestUncommit(TestCaseWithTransport):
         # This should look like we are back in revno 1
         self.assertEqual(['a1'], wt.get_parent_ids())
         out, err = self.run_bzr('status')
-        self.assertEquals(out, 'modified:\n  a\n')
+        self.assertEqual(out, 'modified:\n  a\n')
 
     def test_uncommit_interactive(self):
         """Uncommit seeks confirmation, and doesn't proceed without it."""
@@ -105,9 +105,9 @@ class TestUncommit(TestCaseWithTransport):
 
         # uncommit in a checkout should uncommit the parent branch
         # (but doesn't effect the other working tree)
-        self.assertEquals(['a1'], checkout_tree.get_parent_ids())
-        self.assertEquals('a1', wt.branch.last_revision())
-        self.assertEquals(['a2'], wt.get_parent_ids())
+        self.assertEqual(['a1'], checkout_tree.get_parent_ids())
+        self.assertEqual('a1', wt.branch.last_revision())
+        self.assertEqual(['a2'], wt.get_parent_ids())
 
     def test_uncommit_bound(self):
         os.mkdir('a')
@@ -287,14 +287,14 @@ You can restore the old tip by running:
         revid = tree.commit('message')
         tree.branch.tags.set_tag("atag", revid)
         out, err = self.run_bzr('uncommit --force tree')
-        self.assertEquals({}, tree.branch.tags.get_tag_dict())
+        self.assertEqual({}, tree.branch.tags.get_tag_dict())
 
     def test_uncommit_keep_tags(self):
         tree = self.make_branch_and_tree('tree')
         revid = tree.commit('message')
         tree.branch.tags.set_tag("atag", revid)
         out, err = self.run_bzr('uncommit --keep-tags --force tree')
-        self.assertEquals({"atag": revid}, tree.branch.tags.get_tag_dict())
+        self.assertEqual({"atag": revid}, tree.branch.tags.get_tag_dict())
 
 
 class TestSmartServerUncommit(TestCaseWithTransport):

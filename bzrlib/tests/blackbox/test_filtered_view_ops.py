@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,63 +33,63 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
     def test_view_on_status(self):
         wt = self.make_abc_tree_with_ab_view()
         out, err = self.run_bzr('status')
-        self.assertEquals('Ignoring files outside view. View is a, b\n', err)
-        self.assertEquals('unknown:\n  a\n  b\n', out)
+        self.assertEqual('Ignoring files outside view. View is a, b\n', err)
+        self.assertEqual('unknown:\n  a\n  b\n', out)
 
     def test_view_on_status_selected(self):
         wt = self.make_abc_tree_with_ab_view()
         out, err = self.run_bzr('status a')
-        self.assertEquals('', err)
-        self.assertEquals('unknown:\n  a\n', out)
+        self.assertEqual('', err)
+        self.assertEqual('unknown:\n  a\n', out)
         out, err = self.run_bzr('status c', retcode=3)
-        self.assertEquals('bzr: ERROR: Specified file "c" is outside the '
+        self.assertEqual('bzr: ERROR: Specified file "c" is outside the '
                           'current view: a, b\n', err)
-        self.assertEquals('', out)
+        self.assertEqual('', out)
 
     def test_view_on_add(self):
         wt = self.make_abc_tree_with_ab_view()
         out, err = self.run_bzr('add')
-        self.assertEquals('Ignoring files outside view. View is a, b\n', err)
-        self.assertEquals('adding a\nadding b\n', out)
+        self.assertEqual('Ignoring files outside view. View is a, b\n', err)
+        self.assertEqual('adding a\nadding b\n', out)
 
     def test_view_on_add_selected(self):
         wt = self.make_abc_tree_with_ab_view()
         out, err = self.run_bzr('add a')
-        self.assertEquals('', err)
-        self.assertEquals('adding a\n', out)
+        self.assertEqual('', err)
+        self.assertEqual('adding a\n', out)
         out, err = self.run_bzr('add c', retcode=3)
-        self.assertEquals('bzr: ERROR: Specified file "c" is outside the '
+        self.assertEqual('bzr: ERROR: Specified file "c" is outside the '
                           'current view: a, b\n', err)
-        self.assertEquals('', out)
+        self.assertEqual('', out)
 
     def test_view_on_diff(self):
         wt = self.make_abc_tree_with_ab_view()
         self.run_bzr('add')
         out, err = self.run_bzr('diff', retcode=1)
-        self.assertEquals('*** Ignoring files outside view. View is a, b\n', err)
+        self.assertEqual('*** Ignoring files outside view. View is a, b\n', err)
 
     def test_view_on_diff_selected(self):
         wt = self.make_abc_tree_with_ab_view()
         self.run_bzr('add')
         out, err = self.run_bzr('diff a', retcode=1)
-        self.assertEquals('', err)
+        self.assertEqual('', err)
         self.assertStartsWith(out, "=== added file 'a'\n")
         out, err = self.run_bzr('diff c', retcode=3)
-        self.assertEquals('bzr: ERROR: Specified file "c" is outside the '
+        self.assertEqual('bzr: ERROR: Specified file "c" is outside the '
                           'current view: a, b\n', err)
-        self.assertEquals('', out)
+        self.assertEqual('', out)
 
     def test_view_on_commit(self):
         wt = self.make_abc_tree_with_ab_view()
         self.run_bzr('add')
         out, err = self.run_bzr('commit -m "testing commit"')
         err_lines = err.splitlines()
-        self.assertEquals('Ignoring files outside view. View is a, b', err_lines[0])
+        self.assertEqual('Ignoring files outside view. View is a, b', err_lines[0])
         self.assertStartsWith(err_lines[1], 'Committing to:')
-        self.assertEquals('added a', err_lines[2])
-        self.assertEquals('added b', err_lines[3])
-        self.assertEquals('Committed revision 1.', err_lines[4])
-        self.assertEquals('', out)
+        self.assertEqual('added a', err_lines[2])
+        self.assertEqual('added b', err_lines[3])
+        self.assertEqual('Committed revision 1.', err_lines[4])
+        self.assertEqual('', out)
 
     def test_view_on_commit_selected(self):
         wt = self.make_abc_tree_with_ab_view()
@@ -97,54 +97,54 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
         out, err = self.run_bzr('commit -m "file in view" a')
         err_lines = err.splitlines()
         self.assertStartsWith(err_lines[0], 'Committing to:')
-        self.assertEquals('added a', err_lines[1])
-        self.assertEquals('Committed revision 1.', err_lines[2])
-        self.assertEquals('', out)
+        self.assertEqual('added a', err_lines[1])
+        self.assertEqual('Committed revision 1.', err_lines[2])
+        self.assertEqual('', out)
         out, err = self.run_bzr('commit -m "file out of view" c', retcode=3)
-        self.assertEquals('bzr: ERROR: Specified file "c" is outside the '
+        self.assertEqual('bzr: ERROR: Specified file "c" is outside the '
                           'current view: a, b\n', err)
-        self.assertEquals('', out)
+        self.assertEqual('', out)
 
     def test_view_on_remove_selected(self):
         wt = self.make_abc_tree_with_ab_view()
         self.run_bzr('add')
         out, err = self.run_bzr('remove --keep a')
-        self.assertEquals('removed a\n', err)
-        self.assertEquals('', out)
+        self.assertEqual('removed a\n', err)
+        self.assertEqual('', out)
         out, err = self.run_bzr('remove --keep c', retcode=3)
-        self.assertEquals('bzr: ERROR: Specified file "c" is outside the '
+        self.assertEqual('bzr: ERROR: Specified file "c" is outside the '
                           'current view: a, b\n', err)
-        self.assertEquals('', out)
+        self.assertEqual('', out)
 
     def test_view_on_revert(self):
         wt = self.make_abc_tree_with_ab_view()
         self.run_bzr('add')
         out, err = self.run_bzr('revert')
         err_lines = err.splitlines()
-        self.assertEquals('Ignoring files outside view. View is a, b', err_lines[0])
-        self.assertEquals('-   a', err_lines[1])
-        self.assertEquals('-   b', err_lines[2])
-        self.assertEquals('', out)
+        self.assertEqual('Ignoring files outside view. View is a, b', err_lines[0])
+        self.assertEqual('-   a', err_lines[1])
+        self.assertEqual('-   b', err_lines[2])
+        self.assertEqual('', out)
 
     def test_view_on_revert_selected(self):
         wt = self.make_abc_tree_with_ab_view()
         self.run_bzr('add')
         out, err = self.run_bzr('revert a')
-        self.assertEquals('-   a\n', err)
-        self.assertEquals('', out)
+        self.assertEqual('-   a\n', err)
+        self.assertEqual('', out)
         out, err = self.run_bzr('revert c', retcode=3)
-        self.assertEquals('bzr: ERROR: Specified file "c" is outside the '
+        self.assertEqual('bzr: ERROR: Specified file "c" is outside the '
                           'current view: a, b\n', err)
-        self.assertEquals('', out)
+        self.assertEqual('', out)
 
     def test_view_on_ls(self):
         wt = self.make_abc_tree_with_ab_view()
         self.run_bzr('add')
         out, err = self.run_bzr('ls')
         out_lines = out.splitlines()
-        self.assertEquals('Ignoring files outside view. View is a, b\n', err)
-        self.assertEquals('a', out_lines[0])
-        self.assertEquals('b', out_lines[1])
+        self.assertEqual('Ignoring files outside view. View is a, b\n', err)
+        self.assertEqual('a', out_lines[0])
+        self.assertEqual('b', out_lines[1])
 
 
 class TestViewTreeOperations(tests.TestCaseWithTransport):

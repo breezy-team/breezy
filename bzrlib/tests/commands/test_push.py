@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2010, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ class TestPush(TestCaseWithConnectionHookedTransport):
         # We don't care about the ouput but 'outf' should be defined
         cmd.outf = tests.StringIOWrapper()
         cmd.run(self.get_url('remote'), directory='branch')
-        self.assertEquals(1, len(self.connections))
+        self.assertEqual(1, len(self.connections))
 
     def test_push_onto_stacked(self):
         self.make_branch_and_tree('base', format='1.9')

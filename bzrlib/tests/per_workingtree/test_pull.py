@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009-2012, 2016 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -35,7 +35,7 @@ class TestPull(per_workingtree.TestCaseWithWorkingTree):
         tree_a, tree_b = self.get_pullable_trees()
         root_id = tree_a.get_root_id()
         tree_a.pull(tree_b.branch, stop_revision=NULL_REVISION, overwrite=True)
-        self.assertEquals(root_id, tree_a.get_root_id())
+        self.assertEqual(root_id, tree_a.get_root_id())
 
     def test_pull(self):
         tree_a, tree_b = self.get_pullable_trees()

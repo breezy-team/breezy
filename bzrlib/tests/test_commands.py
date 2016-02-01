@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -98,14 +98,14 @@ class TestInsideCommand(tests.TestCaseInTempDir):
             # We override the run() command method so we can observe the
             # overrides from inside.
             c = config.GlobalStack()
-            self.assertEquals('12', c.get('xx'))
-            self.assertEquals('foo', c.get('yy'))
+            self.assertEqual('12', c.get('xx'))
+            self.assertEqual('foo', c.get('yy'))
         self.overrideAttr(builtins.cmd_rocks, 'run', run)
         self.run_bzr(['rocks', '-Oxx=12', '-Oyy=foo'])
         c = config.GlobalStack()
         # Ensure that we don't leak outside of the command
-        self.assertEquals(None, c.get('xx'))
-        self.assertEquals(None, c.get('yy'))
+        self.assertEqual(None, c.get('xx'))
+        self.assertEqual(None, c.get('yy'))
 
 
 class TestInvokedAs(tests.TestCase):
@@ -117,7 +117,7 @@ class TestInvokedAs(tests.TestCase):
         # get one from the real get_cmd_object.
         c = commands.get_cmd_object('ci')
         self.assertIsInstance(c, builtins.cmd_commit)
-        self.assertEquals(c.invoked_as, 'ci')
+        self.assertEqual(c.invoked_as, 'ci')
 
 
 class TestGetAlias(tests.TestCase):

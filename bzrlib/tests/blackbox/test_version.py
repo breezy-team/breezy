@@ -43,7 +43,7 @@ class TestVersion(TestCase):
         self.assertNotEqual(output.index('Canonical'), -1)
         # make sure --version is consistent
         tmp_output = self.run_bzr('--version')[0]
-        self.assertEquals(output, tmp_output)
+        self.assertEqual(output, tmp_output)
 
     def test_version(self):
         self.permit_source_tree_branch_repo()

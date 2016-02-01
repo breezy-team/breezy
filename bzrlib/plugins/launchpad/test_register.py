@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -118,7 +118,7 @@ class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
                     % (auth_hdrs,))
             authinfo = auth_hdrs[0]
             expected_auth = 'testuser@launchpad.net:testpassword'
-            test.assertEquals(authinfo,
+            test.assertEqual(authinfo,
                     'Basic ' + base64.encodestring(expected_auth).strip())
         elif http_headers:
             raise AssertionError()
@@ -190,7 +190,7 @@ class TestBranchRegistration(TestCaseWithTransport):
         out, err = self.run_bzr(['register-branch',
                                 'http://test-server.com/bzr/branch',
                                 '--dry-run'])
-        self.assertEquals(out, 'Branch registered.\n')
+        self.assertEqual(out, 'Branch registered.\n')
 
     def test_onto_transport(self):
         """How the request is sent by transmitting across a mock Transport"""
@@ -206,9 +206,9 @@ class TestBranchRegistration(TestCaseWithTransport):
                 'author@launchpad.net',
                 'product')
         rego.submit(service)
-        self.assertEquals(transport.connected_host, 'xmlrpc.launchpad.net')
-        self.assertEquals(len(transport.sent_params), 6)
-        self.assertEquals(transport.sent_params,
+        self.assertEqual(transport.connected_host, 'xmlrpc.launchpad.net')
+        self.assertEqual(len(transport.sent_params), 6)
+        self.assertEqual(transport.sent_params,
                 ('http://test-server.com/bzr/branch',  # branch_url
                  'branch-id',                          # branch_name
                  'my test branch',                     # branch_title
@@ -223,9 +223,9 @@ class TestBranchRegistration(TestCaseWithTransport):
         service = LaunchpadService(transport)
         resolve = ResolveLaunchpadPathRequest('bzr')
         resolve.submit(service)
-        self.assertEquals(transport.connected_host, 'xmlrpc.launchpad.net')
-        self.assertEquals(len(transport.sent_params), 1)
-        self.assertEquals(transport.sent_params, ('bzr', ))
+        self.assertEqual(transport.connected_host, 'xmlrpc.launchpad.net')
+        self.assertEqual(len(transport.sent_params), 1)
+        self.assertEqual(transport.sent_params, ('bzr', ))
         self.assertTrue(transport.got_request)
 
     def test_subclass_request(self):
@@ -240,62 +240,62 @@ class TestBranchRegistration(TestCaseWithTransport):
         service.registrant_password = ''
         request = DummyRequest()
         request.submit(service)
-        self.assertEquals(service.called_method_name, 'dummy_request')
-        self.assertEquals(service.called_method_params, (42,))
+        self.assertEqual(service.called_method_name, 'dummy_request')
+        self.assertEqual(service.called_method_params, (42,))
 
     def test_mock_server_registration(self):
         """Send registration to mock server"""
         test_case = self
         class MockRegistrationService(MockLaunchpadService):
             def send_request(self, method_name, method_params, authenticated):
-                test_case.assertEquals(method_name, "register_branch")
-                test_case.assertEquals(list(method_params),
+                test_case.assertEqual(method_name, "register_branch")
+                test_case.assertEqual(list(method_params),
                         ['url', 'name', 'title', 'description', 'email', 'name'])
-                test_case.assertEquals(authenticated, True)
+                test_case.assertEqual(authenticated, True)
                 return 'result'
         service = MockRegistrationService()
         rego = BranchRegistrationRequest('url', 'name', 'title',
                         'description', 'email', 'name')
         result = rego.submit(service)
-        self.assertEquals(result, 'result')
+        self.assertEqual(result, 'result')
 
     def test_mock_server_registration_with_defaults(self):
         """Send registration to mock server"""
         test_case = self
         class MockRegistrationService(MockLaunchpadService):
             def send_request(self, method_name, method_params, authenticated):
-                test_case.assertEquals(method_name, "register_branch")
-                test_case.assertEquals(list(method_params),
+                test_case.assertEqual(method_name, "register_branch")
+                test_case.assertEqual(list(method_params),
                         ['http://server/branch', 'branch', '', '', '', ''])
-                test_case.assertEquals(authenticated, True)
+                test_case.assertEqual(authenticated, True)
                 return 'result'
         service = MockRegistrationService()
         rego = BranchRegistrationRequest('http://server/branch')
         result = rego.submit(service)
-        self.assertEquals(result, 'result')
+        self.assertEqual(result, 'result')
 
     def test_mock_bug_branch_link(self):
         """Send bug-branch link to mock server"""
         test_case = self
         class MockService(MockLaunchpadService):
             def send_request(self, method_name, method_params, authenticated):
-                test_case.assertEquals(method_name, "link_branch_to_bug")
-                test_case.assertEquals(list(method_params),
+                test_case.assertEqual(method_name, "link_branch_to_bug")
+                test_case.assertEqual(list(method_params),
                         ['http://server/branch', 1234, ''])
-                test_case.assertEquals(authenticated, True)
+                test_case.assertEqual(authenticated, True)
                 return 'http://launchpad.net/bug/1234'
         service = MockService()
         rego = BranchBugLinkRequest('http://server/branch', 1234)
         result = rego.submit(service)
-        self.assertEquals(result, 'http://launchpad.net/bug/1234')
+        self.assertEqual(result, 'http://launchpad.net/bug/1234')
 
     def test_mock_resolve_lp_url(self):
         test_case = self
         class MockService(MockLaunchpadService):
             def send_request(self, method_name, method_params, authenticated):
-                test_case.assertEquals(method_name, "resolve_lp_path")
-                test_case.assertEquals(list(method_params), ['bzr'])
-                test_case.assertEquals(authenticated, False)
+                test_case.assertEqual(method_name, "resolve_lp_path")
+                test_case.assertEqual(list(method_params), ['bzr'])
+                test_case.assertEqual(authenticated, False)
                 return dict(urls=[
                         'bzr+ssh://bazaar.launchpad.net~bzr/bzr/trunk',
                         'sftp://bazaar.launchpad.net~bzr/bzr/trunk',
@@ -305,7 +305,7 @@ class TestBranchRegistration(TestCaseWithTransport):
         resolve = ResolveLaunchpadPathRequest('bzr')
         result = resolve.submit(service)
         self.assertTrue('urls' in result)
-        self.assertEquals(result['urls'], [
+        self.assertEqual(result['urls'], [
                 'bzr+ssh://bazaar.launchpad.net~bzr/bzr/trunk',
                 'sftp://bazaar.launchpad.net~bzr/bzr/trunk',
                 'bzr+http://bazaar.launchpad.net~bzr/bzr/trunk',
@@ -364,7 +364,7 @@ class TestGatherUserCredentials(tests.TestCaseInTempDir):
         service.gather_user_credentials()
         self.assertEqual('test@user.com', service.registrant_email)
         self.assertEqual('userpass', service.registrant_password)
-        self.assertEquals('', stdout.getvalue())
+        self.assertEqual('', stdout.getvalue())
         self.assertContainsRe(stderr.getvalue(),
                              'launchpad.net password for test@user\\.com')
 

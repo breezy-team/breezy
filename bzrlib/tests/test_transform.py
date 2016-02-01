@@ -801,7 +801,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         os.symlink = None
         try:
             err = self.assertRaises(errors.UnableCreateSymlink, tt_helper)
-            self.assertEquals(
+            self.assertEqual(
                 "Unable to create symlink 'foo' on this platform",
                 str(err))
         finally:
@@ -3642,13 +3642,13 @@ class TestOrphan(tests.TestCaseWithTransport):
             warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
         remaining_conflicts = resolve_conflicts(tt)
-        self.assertEquals(['dir/foo has been orphaned in bzr-orphans'],
+        self.assertEqual(['dir/foo has been orphaned in bzr-orphans'],
                           warnings)
         # Yeah for resolved conflicts !
         self.assertLength(0, remaining_conflicts)
         # We have a new orphan
-        self.assertEquals('foo.~1~', tt.final_name(orphan_tid))
-        self.assertEquals('bzr-orphans',
+        self.assertEqual('foo.~1~', tt.final_name(orphan_tid))
+        self.assertEqual('bzr-orphans',
                           tt.final_name(tt.final_parent(orphan_tid)))
 
     def test_never_orphan(self):
@@ -3714,7 +3714,7 @@ class TestTransformHooks(tests.TestCaseWithTransport):
         old_root_id = transform.tree_file_id(root)
         transform.apply()
         self.assertEqual(old_root_id, self.wt.get_root_id())
-        self.assertEquals([(self.wt, transform)], calls)
+        self.assertEqual([(self.wt, transform)], calls)
 
     def test_post_commit_hooks(self):
         calls = []
@@ -3726,4 +3726,4 @@ class TestTransformHooks(tests.TestCaseWithTransport):
         old_root_id = transform.tree_file_id(root)
         transform.apply()
         self.assertEqual(old_root_id, self.wt.get_root_id())
-        self.assertEquals([(self.wt, transform)], calls)
+        self.assertEqual([(self.wt, transform)], calls)

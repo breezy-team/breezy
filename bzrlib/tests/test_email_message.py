@@ -188,12 +188,12 @@ class TestEmailMessage(tests.TestCase):
         address = u'Pepe P\xe9rez <pperez@ejemplo.com>' # unicode ok
         encoded = EmailMessage.address_to_encoded_header(address)
         self.assertTrue('pperez@ejemplo.com' in encoded) # addr must be unencoded
-        self.assertEquals(address, decode(encoded))
+        self.assertEqual(address, decode(encoded))
 
         address = 'Pepe P\xc3\xa9red <pperez@ejemplo.com>' # UTF-8 ok
         encoded = EmailMessage.address_to_encoded_header(address)
         self.assertTrue('pperez@ejemplo.com' in encoded)
-        self.assertEquals(address, decode(encoded).encode('utf-8'))
+        self.assertEqual(address, decode(encoded).encode('utf-8'))
 
         address = 'Pepe P\xe9rez <pperez@ejemplo.com>' # ISO-8859-1 not ok
         self.assertRaises(BzrBadParameterNotUnicode,

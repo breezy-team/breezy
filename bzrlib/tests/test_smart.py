@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2012 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -944,7 +944,7 @@ class TestSmartServerBranchRequestPutConfigFile(TestLockedBranch):
         self.assertEqual(
             smart_req.SmartServerResponse(('ok', )),
             request.do_body('foo bar baz'))
-        self.assertEquals(
+        self.assertEqual(
             branch.control_transport.get_bytes('branch.conf'),
             'foo bar baz')
         branch.unlock()
@@ -1033,7 +1033,7 @@ class TestSmartServerBranchRequestSetTagsBytes(TestLockedBranch):
         response = request.do_chunk(tag_bytes)
         self.assertEqual(None, response)
         response = request.do_end()
-        self.assertEquals(
+        self.assertEqual(
             smart_req.SuccessfulSmartServerResponse(()), response)
         base_branch.unlock()
 
@@ -1295,7 +1295,7 @@ class TestSmartServerBranchRequestGetParent(tests.TestCaseWithMemoryTransport):
         base_branch = self.make_branch('base')
         request = smart_branch.SmartServerBranchGetParent(self.get_transport())
         response = request.execute('base')
-        self.assertEquals(
+        self.assertEqual(
             smart_req.SuccessfulSmartServerResponse(('',)), response)
 
     def test_get_parent_something(self):
@@ -1303,7 +1303,7 @@ class TestSmartServerBranchRequestGetParent(tests.TestCaseWithMemoryTransport):
         base_branch.set_parent(self.get_url('foo'))
         request = smart_branch.SmartServerBranchGetParent(self.get_transport())
         response = request.execute('base')
-        self.assertEquals(
+        self.assertEqual(
             smart_req.SuccessfulSmartServerResponse(("../foo",)),
             response)
 
@@ -1352,7 +1352,7 @@ class TestSmartServerBranchRequestGetTagsBytes(
         request = smart_branch.SmartServerBranchGetTagsBytes(
             self.get_transport())
         response = request.execute('base')
-        self.assertEquals(
+        self.assertEqual(
             smart_req.SuccessfulSmartServerResponse(('',)), response)
 
 
@@ -1366,7 +1366,7 @@ class TestSmartServerBranchRequestGetStackedOnURL(tests.TestCaseWithMemoryTransp
         request = smart_branch.SmartServerBranchRequestGetStackedOnURL(
             self.get_transport())
         response = request.execute('stacked')
-        self.assertEquals(
+        self.assertEqual(
             smart_req.SmartServerResponse(('ok', '../base')),
             response)
 
@@ -1484,7 +1484,7 @@ class TestSmartServerBranchRequestGetPhysicalLockStatus(TestLockedBranch):
             backing)
         branch = self.make_branch('.')
         branch_token, repo_token = self.get_lock_tokens(branch)
-        self.assertEquals(True, branch.get_physical_lock_status())
+        self.assertEqual(True, branch.get_physical_lock_status())
         response = request.execute('')
         self.assertEqual(
             smart_req.SmartServerResponse(('yes',)), response)
@@ -1495,7 +1495,7 @@ class TestSmartServerBranchRequestGetPhysicalLockStatus(TestLockedBranch):
         request = smart_branch.SmartServerBranchRequestGetPhysicalLockStatus(
             backing)
         branch = self.make_branch('.')
-        self.assertEquals(False, branch.get_physical_lock_status())
+        self.assertEqual(False, branch.get_physical_lock_status())
         response = request.execute('')
         self.assertEqual(
             smart_req.SmartServerResponse(('no',)), response)
@@ -1601,7 +1601,7 @@ class TestSmartServerRepositoryAllRevisionIds(
         backing = self.get_transport()
         request = smart_repo.SmartServerRepositoryAllRevisionIds(backing)
         self.make_repository('.')
-        self.assertEquals(
+        self.assertEqual(
             smart_req.SuccessfulSmartServerResponse(("ok", ), ""),
             request.execute(''))
 
@@ -1615,7 +1615,7 @@ class TestSmartServerRepositoryAllRevisionIds(
         tree.commit(rev_id='origineel', message="message")
         tree.commit(rev_id='nog-een-revisie', message="message")
         tree.unlock()
-        self.assertEquals(
+        self.assertEqual(
             smart_req.SuccessfulSmartServerResponse(("ok", ),
                 "origineel\nnog-een-revisie"),
             request.execute(''))
@@ -1783,7 +1783,7 @@ class TestSmartServerRepositoryIterRevisions(
         response = request.do_body("rev1\nrev2")
         self.assertTrue(response.is_successful())
         # Format 2a uses serializer format 10
-        self.assertEquals(response.args, ("ok", "10"))
+        self.assertEqual(response.args, ("ok", "10"))
 
         self.addCleanup(tree.branch.lock_read().unlock)
         entries = [zlib.compress(record.get_bytes_as("fulltext")) for record in
@@ -1804,10 +1804,10 @@ class TestSmartServerRepositoryIterRevisions(
         response = request.do_body("rev1\nrev2")
         self.assertTrue(response.is_successful())
         # Format 2a uses serializer format 10
-        self.assertEquals(response.args, ("ok", "10"))
+        self.assertEqual(response.args, ("ok", "10"))
 
         contents = "".join(response.body_stream)
-        self.assertEquals(contents, "")
+        self.assertEqual(contents, "")
 
 
 class GetStreamTestBase(tests.TestCaseWithMemoryTransport):
@@ -1902,8 +1902,8 @@ class TestSmartServerRepositoryIterFilesBytes(tests.TestCaseWithTransport):
         self.assertIs(None, request.execute(''))
         response = request.do_body("thefileid\0somerev\n")
         self.assertTrue(response.is_successful())
-        self.assertEquals(response.args, ("ok", ))
-        self.assertEquals("".join(response.body_stream),
+        self.assertEqual(response.args, ("ok", ))
+        self.assertEqual("".join(response.body_stream),
             "ok\x000\n" + zlib.compress("somecontents"))
 
     def test_missing(self):
@@ -1914,8 +1914,8 @@ class TestSmartServerRepositoryIterFilesBytes(tests.TestCaseWithTransport):
         self.assertIs(None, request.execute(''))
         response = request.do_body("thefileid\0revision\n")
         self.assertTrue(response.is_successful())
-        self.assertEquals(response.args, ("ok", ))
-        self.assertEquals("".join(response.body_stream),
+        self.assertEqual(response.args, ("ok", ))
+        self.assertEqual("".join(response.body_stream),
             "absent\x00thefileid\x00revision\x000\n")
 
 
@@ -2238,7 +2238,7 @@ class TestSmartServerRepositoryGetPhysicalLockStatus(
     def test_without_write_lock(self):
         backing = self.get_transport()
         repo = self.make_repository('.')
-        self.assertEquals(False, repo.get_physical_lock_status())
+        self.assertEqual(False, repo.get_physical_lock_status())
         request_class = smart_repo.SmartServerRepositoryGetPhysicalLockStatus
         request = request_class(backing)
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(('no',)),
@@ -2611,9 +2611,9 @@ class SmartTCPServerHookTests(tests.TestCaseWithMemoryTransport):
             None)
         self.server._sockname = ('example.com', 42)
         self.server.run_server_started_hooks()
-        self.assertEquals(started_calls,
+        self.assertEqual(started_calls,
             [([self.get_transport().base], 'bzr://example.com:42/')])
-        self.assertEquals(started_ex_calls,
+        self.assertEqual(started_ex_calls,
             [([self.get_transport().base], self.server)])
 
     def test_run_server_started_hooks_ipv6(self):
@@ -2624,7 +2624,7 @@ class SmartTCPServerHookTests(tests.TestCaseWithMemoryTransport):
             lambda backing_urls, url: started_calls.append((backing_urls, url)),
             None)
         self.server.run_server_started_hooks()
-        self.assertEquals(started_calls,
+        self.assertEqual(started_calls,
                 [([self.get_transport().base], 'bzr://:::42/')])
 
     def test_run_server_stopped_hooks(self):
@@ -2635,7 +2635,7 @@ class SmartTCPServerHookTests(tests.TestCaseWithMemoryTransport):
             lambda backing_urls, url: stopped_calls.append((backing_urls, url)),
             None)
         self.server.run_server_stopped_hooks()
-        self.assertEquals(stopped_calls,
+        self.assertEqual(stopped_calls,
             [([self.get_transport().base], 'bzr://example.com:42/')])
 
 
@@ -2674,13 +2674,13 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
         self.assertIs(None, request.execute('', 'unordered'))
         response = request.do_body("somerev\n")
         self.assertTrue(response.is_successful())
-        self.assertEquals(response.args, ("ok", ))
+        self.assertEqual(response.args, ("ok", ))
         stream = [('inventory-deltas', [
             versionedfile.FulltextContentFactory('somerev', None, None,
                 self._get_serialized_inventory_delta(
                     t.branch.repository, 'null:', 'somerev'))])]
         fmt = controldir.format_registry.get('2a')().repository_format
-        self.assertEquals(
+        self.assertEqual(
             "".join(response.body_stream),
             "".join(smart_repo._stream_to_byte_stream(stream, fmt)))
 
@@ -2695,6 +2695,6 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
         self.assertIs(None, request.execute('', 'unordered'))
         response = request.do_body("")
         self.assertTrue(response.is_successful())
-        self.assertEquals(response.args, ("ok", ))
-        self.assertEquals("".join(response.body_stream),
+        self.assertEqual(response.args, ("ok", ))
+        self.assertEqual("".join(response.body_stream),
             "Bazaar pack format 1 (introduced in 0.18)\nB54\n\nBazaar repository format 2a (needs bzr 1.16 or later)\nE")

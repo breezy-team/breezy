@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2011 Canonical Ltd
+# Copyright (C) 2007-2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -63,16 +63,16 @@ class TestTagging(TestCaseWithTransport):
         out, err = self.run_bzr('tag -d branch NEWTAG')
         self.assertContainsRe(err, 'Created tag NEWTAG.')
         # tag should be observable through the api
-        self.assertEquals(t.branch.tags.get_tag_dict(),
+        self.assertEqual(t.branch.tags.get_tag_dict(),
                 dict(NEWTAG='first-revid'))
         # can also create tags using -r
         self.run_bzr('tag -d branch tag2 -r1')
-        self.assertEquals(t.branch.tags.lookup_tag('tag2'), 'first-revid')
+        self.assertEqual(t.branch.tags.lookup_tag('tag2'), 'first-revid')
         # regression test: make sure a unicode revision from the user
         # gets turned into a str object properly. The use of a unicode
         # object for the revid is intentional.
         self.run_bzr(['tag', '-d', 'branch', 'tag3', u'-rrevid:first-revid'])
-        self.assertEquals(t.branch.tags.lookup_tag('tag3'), 'first-revid')
+        self.assertEqual(t.branch.tags.lookup_tag('tag3'), 'first-revid')
         # can also delete an existing tag
         out, err = self.run_bzr('tag --delete -d branch tag2')
         # cannot replace an existing tag normally
@@ -80,7 +80,7 @@ class TestTagging(TestCaseWithTransport):
         self.assertContainsRe(err, 'Tag NEWTAG already exists\\.')
         # ... but can if you use --force
         out, err = self.run_bzr('tag -d branch NEWTAG --force -r0')
-        self.assertEquals("Updated tag NEWTAG.\n", err)
+        self.assertEqual("Updated tag NEWTAG.\n", err)
 
     def test_tag_same_revision(self):
         t = self.make_branch_and_tree('branch')
@@ -109,15 +109,15 @@ class TestTagging(TestCaseWithTransport):
         # branching copies the tag across
         self.run_bzr('branch branch1 branch2')
         b2 = Branch.open('branch2')
-        self.assertEquals(b2.tags.lookup_tag('tag1'), 'first-revid')
+        self.assertEqual(b2.tags.lookup_tag('tag1'), 'first-revid')
         # make a new tag and pull it
         b1.tags.set_tag('tag2', 'twa')
         self.run_bzr('pull -d branch2 branch1')
-        self.assertEquals(b2.tags.lookup_tag('tag2'), 'twa')
+        self.assertEqual(b2.tags.lookup_tag('tag2'), 'twa')
         # make a new tag and push it
         b1.tags.set_tag('tag3', 'san')
         self.run_bzr('push -d branch1 branch2')
-        self.assertEquals(b2.tags.lookup_tag('tag3'), 'san')
+        self.assertEqual(b2.tags.lookup_tag('tag3'), 'san')
         # make a new tag and merge it
         t.commit(allow_pointless=True, message='second commit',
             rev_id='second-revid')
@@ -125,11 +125,11 @@ class TestTagging(TestCaseWithTransport):
         t2.commit(allow_pointless=True, message='commit in second')
         b1.tags.set_tag('tag4', 'second-revid')
         self.run_bzr('merge -d branch2 branch1')
-        self.assertEquals(b2.tags.lookup_tag('tag4'), 'second-revid')
+        self.assertEqual(b2.tags.lookup_tag('tag4'), 'second-revid')
         # pushing to a new location copies the tag across
         self.run_bzr('push -d branch1 branch3')
         b3 = Branch.open('branch3')
-        self.assertEquals(b3.tags.lookup_tag('tag1'), 'first-revid')
+        self.assertEqual(b3.tags.lookup_tag('tag1'), 'first-revid')
 
     def make_master_and_checkout(self):
         builder = self.make_branch_builder('master')
@@ -221,33 +221,33 @@ class TestTagging(TestCaseWithTransport):
         # natural order
         out, err = self.run_bzr('tags -d branch1',
                                 encoding='utf-8')
-        self.assertEquals(err, '')
+        self.assertEqual(err, '')
         self.assertContainsRe(out, (u'^tag1\u30d0  *2\ntag2\u30d0  *1\n' +
             u'tag10\u30d0 *\\?\n').encode('utf-8'))
 
         # lexicographical order
         out, err = self.run_bzr('tags --sort=alpha -d branch1',
                                 encoding='utf-8')
-        self.assertEquals(err, '')
+        self.assertEqual(err, '')
         self.assertContainsRe(out, (u'^tag10\u30d0  *\\?\ntag1\u30d0  *2\n' +
             u'tag2\u30d0 *1\n').encode('utf-8'))
 
         out, err = self.run_bzr('tags --sort=alpha --show-ids -d branch1',
                                 encoding='utf-8')
-        self.assertEquals(err, '')
+        self.assertEqual(err, '')
         self.assertContainsRe(out, (u'^tag10\u30d0  *missing\n' +
             u'tag1\u30d0  *revid-2\ntag2\u30d0 *revid-1\n').encode('utf-8'))
 
         # chronological order
         out, err = self.run_bzr('tags --sort=time -d branch1',
                 encoding='utf-8')
-        self.assertEquals(err, '')
+        self.assertEqual(err, '')
         self.assertContainsRe(out, (u'^tag2\u30d0  *1\ntag1\u30d0  *2\n' +
             u'tag10\u30d0 *\\?\n').encode('utf-8'))
 
         out, err = self.run_bzr('tags --sort=time --show-ids -d branch1',
                 encoding='utf-8')
-        self.assertEquals(err, '')
+        self.assertEqual(err, '')
         self.assertContainsRe(out, (u'^tag2\u30d0  *revid-1\n' +
             u'tag1\u30d0  *revid-2\ntag10\u30d0 *missing\n').encode('utf-8'))
 
@@ -264,10 +264,10 @@ class TestTagging(TestCaseWithTransport):
         tree1.commit('merge', rev_id='revid-4')
 
         out, err = self.run_bzr('tags -d branch1', encoding='utf-8')
-        self.assertEquals(err, '')
+        self.assertEqual(err, '')
         self.assertContainsRe(out, r'tagD  *2\.1\.1\n')
         out, err = self.run_bzr('tags -d branch2', encoding='utf-8')
-        self.assertEquals(err, '')
+        self.assertEqual(err, '')
         self.assertContainsRe(out, r'tagD  *3\n')
 
     def test_list_tags_dotted_revnos_unsupported(self):
@@ -279,7 +279,7 @@ class TestTagging(TestCaseWithTransport):
         self.overrideAttr(Branch, "revision_id_to_dotted_revno",
             revision_id_to_dotted_revno)
         out, err = self.run_bzr('tags -d branch', encoding='utf-8')
-        self.assertEquals(out, 'mytag                ?\n')
+        self.assertEqual(out, 'mytag                ?\n')
 
     def test_list_tags_revision_filtering(self):
         tree1 = self.make_branch_and_tree('.')
@@ -338,8 +338,8 @@ class TestTagging(TestCaseWithTransport):
 
         # sorted by number of dots
         out, err = self.run_bzr('tags --sort=dots -d branch1')
-        self.assertEquals(err, '')
-        self.assertEquals([
+        self.assertEqual(err, '')
+        self.assertEqual([
             'tag.                 1',
             'tag..                2',
             'tag...               1',
@@ -349,7 +349,7 @@ class TestTagging(TestCaseWithTransport):
     def _check_tag_filter(self, argstr, expected_revnos):
         #upper bound of laziness
         out, err = self.run_bzr('tags ' + argstr)
-        self.assertEquals(err, '')
+        self.assertEqual(err, '')
         self.assertContainsRe(out, "^" + ''.join(["tag %s +%s\n" % (
             revno, revno) for revno in expected_revnos]) + "$")
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2011 Canonical Ltd
+# Copyright (C) 2007-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -597,7 +597,7 @@ class TestConfigOptionIndex(TestHelp):
         self.assertLength(1, topics)
         opt = topics[0]
         self.assertIsInstance(opt, config.Option)
-        self.assertEquals('default_format', opt.name)
+        self.assertEqual('default_format', opt.name)
 
 
 class TestCommandIndex(TestHelp):

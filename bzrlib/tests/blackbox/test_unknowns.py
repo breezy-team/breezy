@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2010, 2016 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -28,27 +28,27 @@ class TestUnknowns(TestCaseWithTransport):
 
         # in empty directory, no unknowns
         tree = self.make_branch_and_tree('.')
-        self.assertEquals(self.run_bzr('unknowns')[0], '')
+        self.assertEqual(self.run_bzr('unknowns')[0], '')
 
         # single unknown file
         self.build_tree_contents([('a', 'contents of a\n')])
-        self.assertEquals(self.run_bzr('unknowns')[0], 'a\n')
+        self.assertEqual(self.run_bzr('unknowns')[0], 'a\n')
 
         # multiple unknown files, including one with a space in its name
         self.build_tree(['b', 'c', 'd e'])
-        self.assertEquals(self.run_bzr('unknowns')[0], 'a\nb\nc\n"d e"\n')
+        self.assertEqual(self.run_bzr('unknowns')[0], 'a\nb\nc\n"d e"\n')
 
         # after add, file no longer shown
         tree.add(['a', 'd e'])
-        self.assertEquals(self.run_bzr('unknowns')[0], 'b\nc\n')
+        self.assertEqual(self.run_bzr('unknowns')[0], 'b\nc\n')
 
         # after all added, none shown
         tree.add(['b', 'c'])
-        self.assertEquals(self.run_bzr('unknowns')[0], '')
+        self.assertEqual(self.run_bzr('unknowns')[0], '')
 
     def test_unknowns_directory(self):
         """Test --directory option"""
         tree = self.make_branch_and_tree('a')
         self.build_tree(['a/README'])
         out, err = self.run_bzr(['unknowns', '--directory=a'])
-        self.assertEquals('README\n', out)
+        self.assertEqual('README\n', out)

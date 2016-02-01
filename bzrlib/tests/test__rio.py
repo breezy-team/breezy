@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -63,7 +63,7 @@ class TestReadUTF8Stanza(tests.TestCase):
 
     def assertReadStanza(self, result, line_iter):
         s = self.module._read_stanza_utf8(line_iter)
-        self.assertEquals(result, s)
+        self.assertEqual(result, s)
         if s is not None:
             for tag, value in s.iter_pairs():
                 self.assertIsInstance(tag, str)
@@ -119,7 +119,7 @@ class TestReadUnicodeStanza(tests.TestCase):
 
     def assertReadStanza(self, result, line_iter):
         s = self.module._read_stanza_unicode(line_iter)
-        self.assertEquals(result, s)
+        self.assertEqual(result, s)
         if s is not None:
             for tag, value in s.iter_pairs():
                 self.assertIsInstance(tag, str)

@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010, 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ class TestRevert(TestCaseWithTransport):
         f.close()
 
         # check status
-        self.assertEquals('modified:\n  dir/file\n', self.run_bzr('status')[0])
+        self.assertEqual('modified:\n  dir/file\n', self.run_bzr('status')[0])
 
     def _prepare_rename_mod_tree(self):
         self.build_tree(['a/', 'a/b', 'a/c', 'a/d/', 'a/d/e', 'f/', 'f/g',
@@ -66,9 +66,9 @@ class TestRevert(TestCaseWithTransport):
         os.chdir('dir')
         mutter('cd dir\n')
 
-        self.assertEquals('1\n', self.run_bzr('revno')[0])
+        self.assertEqual('1\n', self.run_bzr('revno')[0])
         self.run_bzr('revert %s file' % param)
-        self.assertEquals('spam', open('file', 'rb').read())
+        self.assertEqual('spam', open('file', 'rb').read())
 
     def test_revert_in_subdir(self):
         self.helper()
@@ -199,12 +199,12 @@ class TestRevert(TestCaseWithTransport):
         first_rev_id = tree.commit('initial commit')
         self.build_tree_contents([('file', 'new content')])
         existing_parents = tree.get_parent_ids()
-        self.assertEquals([first_rev_id], existing_parents)
+        self.assertEqual([first_rev_id], existing_parents)
         merged_parents = existing_parents + ['merged-in-rev']
         tree.set_parent_ids(merged_parents)
-        self.assertEquals(merged_parents, tree.get_parent_ids())
+        self.assertEqual(merged_parents, tree.get_parent_ids())
         self.run_bzr(['revert', '--forget-merges'])
-        self.assertEquals([first_rev_id], tree.get_parent_ids())
+        self.assertEqual([first_rev_id], tree.get_parent_ids())
         # changed files are not reverted
         self.assertFileEqual('new content', 'file')
         # you can give it the path of a tree

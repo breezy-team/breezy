@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2009 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -60,7 +60,7 @@ log_format=line
         self._make_simple_branch()
         # only the lines formatter is this short, one line by revision
         log = self.run_bzr('log')[0]
-        self.assertEquals(2, len(log.splitlines()))
+        self.assertEqual(2, len(log.splitlines()))
 
     def test_log_format_arg(self):
         self._make_simple_branch()
@@ -77,7 +77,7 @@ log_format=line
         # one line for 'You are missing 2 revision(s)'
         # one line by missing revision (the line log format is used as
         # configured)
-        self.assertEquals(4, len(missing.splitlines()))
+        self.assertEqual(4, len(missing.splitlines()))
 
     def test_missing_format_arg(self):
         wt = self._make_simple_branch('a')
@@ -90,7 +90,7 @@ log_format=line
         # one line for 'Using save location'
         # one line for 'You are missing 2 revision(s)'
         # three lines by missing revision
-        self.assertEquals(8, len(missing.splitlines()))
+        self.assertEqual(8, len(missing.splitlines()))
 
     def test_logformat_gnu_changelog(self):
         # from http://launchpad.net/bugs/29582/
@@ -100,7 +100,7 @@ log_format=line
 
         log, err = self.run_bzr(['log', '--log-format', 'gnu-changelog',
                                  '--timezone=utc'])
-        self.assertEquals('', err)
+        self.assertEqual('', err)
         expected = """2009-03-03  Joe Foo  <joe@foo.com>
 
 \tfirst revision

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2012 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 # Authors: Aaron Bentley
 #
 # This program is free software; you can redistribute it and/or modify
@@ -316,7 +316,7 @@ class TestSendStrictMixin(TestSendMixin):
             self.assertContainsRe(err, self._default_additional_warning)
             self.assertEndsWith(err, bundling_revs)
         else:
-            self.assertEquals(bundling_revs, err)
+            self.assertEqual(bundling_revs, err)
         md = merge_directive.MergeDirective.from_lines(StringIO(out))
         self.assertEqual('parent', md.base_revision_id)
         br = serializer.read_bundle(StringIO(md.get_raw_bundle()))

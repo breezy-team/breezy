@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -90,7 +90,7 @@ class TestCommit(TestCaseWithTransport):
         with file('hello', 'w') as f: f.write('version 2')
         rev2 = wt.commit(message='commit 2')
 
-        eq = self.assertEquals
+        eq = self.assertEqual
         eq(b.revno(), 2)
         rev = b.repository.get_revision(rev1)
         eq(rev.message, 'add hello')
@@ -114,7 +114,7 @@ class TestCommit(TestCaseWithTransport):
         with file('hello', 'w') as f: f.write('hello world')
         wt.add('hello')
         revid = wt.commit(message='add hello', rev_id='revid', lossy=True)
-        self.assertEquals('revid', revid)
+        self.assertEqual('revid', revid)
 
     def test_commit_lossy_foreign(self):
         """Attempt a lossy commit to a foreign branch."""
@@ -126,7 +126,7 @@ class TestCommit(TestCaseWithTransport):
         wt.add('hello')
         revid = wt.commit(message='add hello', lossy=True,
             timestamp=1302659388, timezone=0)
-        self.assertEquals('dummy-v1:1302659388.0-0-UNKNOWN', revid)
+        self.assertEqual('dummy-v1:1302659388.0-0-UNKNOWN', revid)
 
     def test_commit_bound_lossy_foreign(self):
         """Attempt a lossy commit to a bzr branch bound to a foreign branch."""
@@ -139,10 +139,10 @@ class TestCommit(TestCaseWithTransport):
         wt.add('hello')
         revid = wt.commit(message='add hello', lossy=True,
             timestamp=1302659388, timezone=0)
-        self.assertEquals('dummy-v1:1302659388.0-0-0', revid)
-        self.assertEquals('dummy-v1:1302659388.0-0-0',
+        self.assertEqual('dummy-v1:1302659388.0-0-0', revid)
+        self.assertEqual('dummy-v1:1302659388.0-0-0',
             foreign_branch.last_revision())
-        self.assertEquals('dummy-v1:1302659388.0-0-0',
+        self.assertEqual('dummy-v1:1302659388.0-0-0',
             wt.branch.last_revision())
 
     def test_missing_commit(self):
@@ -156,7 +156,7 @@ class TestCommit(TestCaseWithTransport):
         os.remove('hello')
         reporter = CapturingReporter()
         wt.commit('removed hello', rev_id='rev2', reporter=reporter)
-        self.assertEquals(
+        self.assertEqual(
             [('missing', u'hello'), ('deleted', u'hello')],
             reporter.calls)
 
@@ -190,12 +190,12 @@ class TestCommit(TestCaseWithTransport):
         with file('hello', 'w') as f: f.write('hello')
         wt.add(['hello'])
         wt.commit(message='add hello')
-        self.assertEquals(b.revno(), 1)
+        self.assertEqual(b.revno(), 1)
         self.assertRaises(PointlessCommit,
                           wt.commit,
                           message='fails',
                           allow_pointless=False)
-        self.assertEquals(b.revno(), 1)
+        self.assertEqual(b.revno(), 1)
 
     def test_commit_empty(self):
         """Commiting an empty tree works."""
@@ -207,7 +207,7 @@ class TestCommit(TestCaseWithTransport):
                           message='empty tree',
                           allow_pointless=False)
         wt.commit(message='empty tree', allow_pointless=True)
-        self.assertEquals(b.revno(), 2)
+        self.assertEqual(b.revno(), 2)
 
     def test_selective_delete(self):
         """Selective commit in tree with deletions"""
@@ -232,21 +232,21 @@ class TestCommit(TestCaseWithTransport):
                  allow_pointless=False,
                  rev_id='test@rev-3')
 
-        eq = self.assertEquals
+        eq = self.assertEqual
         eq(b.revno(), 3)
 
         tree2 = b.repository.revision_tree('test@rev-2')
         tree2.lock_read()
         self.addCleanup(tree2.unlock)
         self.assertTrue(tree2.has_filename('hello'))
-        self.assertEquals(tree2.get_file_text('hello-id'), 'hello')
-        self.assertEquals(tree2.get_file_text('buongia-id'), 'new text')
+        self.assertEqual(tree2.get_file_text('hello-id'), 'hello')
+        self.assertEqual(tree2.get_file_text('buongia-id'), 'new text')
 
         tree3 = b.repository.revision_tree('test@rev-3')
         tree3.lock_read()
         self.addCleanup(tree3.unlock)
         self.assertFalse(tree3.has_filename('hello'))
-        self.assertEquals(tree3.get_file_text('buongia-id'), 'new text')
+        self.assertEqual(tree3.get_file_text('buongia-id'), 'new text')
 
     def test_commit_rename(self):
         """Test commit of a revision where a file is renamed."""
@@ -259,7 +259,7 @@ class TestCommit(TestCaseWithTransport):
         tree.rename_one('hello', 'fruity')
         tree.commit(message='renamed', rev_id='test@rev-2', allow_pointless=False)
 
-        eq = self.assertEquals
+        eq = self.assertEqual
         tree1 = b.repository.revision_tree('test@rev-1')
         tree1.lock_read()
         self.addCleanup(tree1.unlock)
@@ -290,7 +290,7 @@ class TestCommit(TestCaseWithTransport):
 
     def test_commit_move(self):
         """Test commit of revisions with moved files and directories"""
-        eq = self.assertEquals
+        eq = self.assertEqual
         wt = self.make_branch_and_tree('.')
         b = wt.branch
         r1 = 'test@rev-1'
@@ -489,7 +489,7 @@ create_signatures=always
         wt = self.make_branch_and_tree('.')
         c = Commit()
         c.commit(working_tree=wt, message='empty tree', allow_pointless=True)
-        self.assertEquals(wt.branch.revno(), 1)
+        self.assertEqual(wt.branch.revno(), 1)
         self.assertEqual({},
                          wt.branch.repository.get_revision(
                             wt.branch.last_revision()).properties)

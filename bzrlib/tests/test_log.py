@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2013, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1660,7 +1660,7 @@ class TestLogDefaults(TestCaseForLogFormatter):
         request = log.make_log_request_dict(limit=10)
         log.Logger(b, request).show(log_formatter)
         # should have all three revisions:
-        self.assertEquals(len(log_formatter.revisions), 3)
+        self.assertEqual(len(log_formatter.revisions), 3)
 
         del log_formatter
         log_formatter = LogCatcher()
@@ -1668,5 +1668,5 @@ class TestLogDefaults(TestCaseForLogFormatter):
         request = log.make_log_request_dict(limit=10, levels=1)
         log.Logger(b, request).show(log_formatter)
         # should now only have 2 revisions:
-        self.assertEquals(len(log_formatter.revisions), 2)
+        self.assertEqual(len(log_formatter.revisions), 2)
 

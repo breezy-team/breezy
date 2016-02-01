@@ -226,10 +226,10 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
         tree.branch.update_feature_flags({"name": "optional"})
         found_format = _mod_branch.BranchFormatMetadir.find_format(tree.bzrdir)
         self.assertIsInstance(found_format, _mod_branch.BranchFormatMetadir)
-        self.assertEquals(found_format.features.get("name"), "optional")
+        self.assertEqual(found_format.features.get("name"), "optional")
         tree.branch.update_feature_flags({"name": None})
         branch = _mod_branch.Branch.open('.')
-        self.assertEquals(branch._format.features, {})
+        self.assertEqual(branch._format.features, {})
 
 
 class TestBranchFormatRegistry(tests.TestCase):
@@ -242,12 +242,12 @@ class TestBranchFormatRegistry(tests.TestCase):
         self.assertIs(None, self.registry.get_default())
         format = SampleBranchFormat()
         self.registry.set_default(format)
-        self.assertEquals(format, self.registry.get_default())
+        self.assertEqual(format, self.registry.get_default())
 
     def test_register_unregister_format(self):
         format = SampleBranchFormat()
         self.registry.register(format)
-        self.assertEquals(format,
+        self.assertEqual(format,
             self.registry.get("Sample branch format."))
         self.registry.remove(format)
         self.assertRaises(KeyError, self.registry.get,
@@ -255,22 +255,22 @@ class TestBranchFormatRegistry(tests.TestCase):
 
     def test_get_all(self):
         format = SampleBranchFormat()
-        self.assertEquals([], self.registry._get_all())
+        self.assertEqual([], self.registry._get_all())
         self.registry.register(format)
-        self.assertEquals([format], self.registry._get_all())
+        self.assertEqual([format], self.registry._get_all())
 
     def test_register_extra(self):
         format = SampleExtraBranchFormat()
-        self.assertEquals([], self.registry._get_all())
+        self.assertEqual([], self.registry._get_all())
         self.registry.register_extra(format)
-        self.assertEquals([format], self.registry._get_all())
+        self.assertEqual([format], self.registry._get_all())
 
     def test_register_extra_lazy(self):
-        self.assertEquals([], self.registry._get_all())
+        self.assertEqual([], self.registry._get_all())
         self.registry.register_extra_lazy("bzrlib.tests.test_branch",
             "SampleExtraBranchFormat")
         formats = self.registry._get_all()
-        self.assertEquals(1, len(formats))
+        self.assertEqual(1, len(formats))
         self.assertIsInstance(formats[0], SampleExtraBranchFormat)
 
 
@@ -634,7 +634,7 @@ class TestBranchOptions(tests.TestCaseWithTransport):
                          self.branch.get_append_revisions_only())
 
     def test_valid_append_revisions_only(self):
-        self.assertEquals(None,
+        self.assertEqual(None,
                           self.config_stack.get('append_revisions_only'))
         self.check_append_revisions_only(None)
         self.check_append_revisions_only(False, 'False')

@@ -388,10 +388,10 @@ class TestOptionMisc(TestCase):
     def test_short_name(self):
         registry = controldir.ControlDirFormatRegistry()
         opt = option.RegistryOption('format', help='', registry=registry)
-        self.assertEquals(None, opt.short_name())
+        self.assertEqual(None, opt.short_name())
         opt = option.RegistryOption('format', short_name='F', help='',
             registry=registry)
-        self.assertEquals('F', opt.short_name())
+        self.assertEqual('F', opt.short_name())
 
     def test_option_custom_help(self):
         the_opt = option.Option.OPTIONS['help']

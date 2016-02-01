@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Canonical Ltd
+# Copyright (C) 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ class TestGraph(TestCaseWithRepository):
         """
         branch_a, branch_b, branch_c, revid_1 = self.make_double_stacked_branches()
         for br in [branch_a, branch_b, branch_c]:
-            self.assertEquals(
+            self.assertEqual(
                 [revid_1],
                 br.repository.get_known_graph_ancestry([revid_1]).topo_sort())
 

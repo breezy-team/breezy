@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2007 Canonical Ltd
+# Copyright (C) 2007, 2009-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ class TestLastRevisionInfo(TestCaseWithTransport):
         tree1.commit('1st post')
         revid = tree1.commit('2st post', allow_pointless=True)
         branch2 = self.make_branch('branch2')
-        self.assertEquals((2, revid),
+        self.assertEqual((2, revid),
             branch2.import_last_revision_info_and_tags(tree1.branch, 2, revid))
         self.assertEqual((2, revid), branch2.last_revision_info())
         self.assertTrue(branch2.repository.has_revision(revid))

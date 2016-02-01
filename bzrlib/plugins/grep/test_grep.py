@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2011, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2169,7 +2169,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         self.build_tree_contents([('hello', 'hello world!\n')])
         tree.commit('updated hello')
         out, err = self.run_bzr(['grep', '-p', 'hello'])
-        self.assertEquals(err, '')
+        self.assertEqual(err, '')
         self.assertEqualDiff(subst_dates(out), '''\
 === revno:3 ===
   === modified file 'hello'
@@ -2188,7 +2188,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         self.build_tree_contents([('hello', 'hello world!\n')])
         tree.commit('updated hello')
         out, err = self.run_bzr(['grep', '-p', '-r', '3', 'hello'])
-        self.assertEquals(err, '')
+        self.assertEqual(err, '')
         self.assertEqualDiff(subst_dates(out), '''\
 === revno:3 ===
   === modified file 'hello'
@@ -2209,7 +2209,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         #self.build_tree_contents([('hello', 'hello world!3\n')]) # rev 5
         tree.commit('rev5')
         out, err = self.run_bzr(['grep', '-p', '-r', '2..5', 'hello'])
-        self.assertEquals(err, '')
+        self.assertEqual(err, '')
         self.assertEqualDiff(subst_dates(out), '''\
 === revno:5 ===
   === modified file 'hello'
@@ -2233,7 +2233,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         tree.commit('updated hello')
         out, err = self.run_bzr(['grep', '--diff', '-r', '3',
             '--color', 'always', 'hello'])
-        self.assertEquals(err, '')
+        self.assertEqual(err, '')
         revno = color_string('=== revno:3 ===', fg=FG.BOLD_BLUE) + '\n'
         filename = color_string("  === modified file 'hello'", fg=FG.BOLD_MAGENTA) + '\n'
         redhello = color_string('hello', fg=FG.BOLD_RED)
@@ -2249,6 +2249,6 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         """grep -p with zero revisions."""
         out, err = self.run_bzr(['init'])
         out, err = self.run_bzr(['grep', '--diff', 'foo'], 3)
-        self.assertEquals(out, '')
+        self.assertEqual(out, '')
         self.assertContainsRe(err, "ERROR:.*revision.* does not exist in branch")
 

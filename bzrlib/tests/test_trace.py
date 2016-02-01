@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -82,7 +82,7 @@ class TestTrace(TestCase):
         except MemoryError:
             pass
         msg = _format_exception()
-        self.assertEquals(msg,
+        self.assertEqual(msg,
             "bzr: out of memory\nUse -Dmem_dump to dump memory to a file.\n")
 
     def test_format_mem_dump(self):
@@ -204,9 +204,9 @@ class TestTrace(TestCase):
     def test_report_broken_pipe(self):
         try:
             raise IOError(errno.EPIPE, 'broken pipe foofofo')
-        except IOError, e:
+        except IOError as e:
             msg = _format_exception()
-            self.assertEquals(msg, "bzr: broken pipe\n")
+            self.assertEqual(msg, "bzr: broken pipe\n")
         else:
             self.fail("expected error not raised")
 

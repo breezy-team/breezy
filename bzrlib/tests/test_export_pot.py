@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Canonical Ltd
+# Copyright (C) 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -160,7 +160,7 @@ class TestModuleContext(tests.TestCase):
     """Checks for source context tracking objects"""
 
     def check_context(self, context, path, lineno):
-        self.assertEquals((context.path, context.lineno), (path, lineno))
+        self.assertEqual((context.path, context.lineno), (path, lineno))
 
     def test___init__(self):
         context = export_pot._ModuleContext("one.py")
@@ -182,7 +182,7 @@ class TestModuleContext(tests.TestCase):
         contextB2 = contextA.from_class(B)
         self.check_context(contextB2, path, 7)
         self.check_context(context, path, 1)
-        self.assertEquals("", self.get_log())
+        self.assertEqual("", self.get_log())
 
     def test_from_class_missing(self):
         """When class has no lineno the old context details are returned"""
@@ -209,7 +209,7 @@ class TestModuleContext(tests.TestCase):
         context2B = context1.from_string("two")
         self.check_context(context2B, path, 42)
         self.check_context(context, path, 1)
-        self.assertEquals("", self.get_log())
+        self.assertEqual("", self.get_log())
 
     def test_from_string_missing(self):
         """When string has no lineno the old context details are returned"""

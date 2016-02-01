@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2011, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -147,8 +147,8 @@ class TestExecutable(TestCaseWithWorkingTree):
 
         # Make sure pull will delete the files
         wt2.pull(self.wt.branch)
-        self.assertEquals(['r2'], wt2.get_parent_ids())
-        self.assertEquals('r2', wt2.branch.last_revision())
+        self.assertEqual(['r2'], wt2.get_parent_ids())
+        self.assertEqual('r2', wt2.branch.last_revision())
         self.check_empty(wt2)
 
         # Now restore the files on the first branch and commit
@@ -161,8 +161,8 @@ class TestExecutable(TestCaseWithWorkingTree):
         self.check_exist(self.wt)
 
         wt2.pull(self.wt.branch)
-        self.assertEquals(['r3'], wt2.get_parent_ids())
-        self.assertEquals('r3', wt2.branch.last_revision())
+        self.assertEqual(['r3'], wt2.get_parent_ids())
+        self.assertEqual('r3', wt2.branch.last_revision())
         self.check_exist(wt2)
 
     def test_08_no_op_revert(self):

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -175,7 +175,7 @@ class TestTreeIgnores(TestCaseWithTransport):
     
     def assertPatternsEquals(self, patterns):
         contents = open(".bzrignore", 'rU').read().strip().split('\n')
-        self.assertEquals(sorted(patterns), sorted(contents))
+        self.assertEqual(sorted(patterns), sorted(contents))
 
     def test_new_file(self):
         tree = self.make_branch_and_tree(".")
@@ -222,5 +222,5 @@ class TestTreeIgnores(TestCaseWithTransport):
         self.build_tree_contents([('.bzrignore', "myentry1\r\n")])
         tree.add([".bzrignore"])
         ignores.tree_ignores_add_patterns(tree, ["myentry2", "foo"])
-        self.assertEquals(open('.bzrignore', 'rb').read(), 'myentry1\r\nmyentry2\r\nfoo\r\n')
+        self.assertEqual(open('.bzrignore', 'rb').read(), 'myentry1\r\nmyentry2\r\nfoo\r\n')
         self.assertPatternsEquals(["myentry1", "myentry2", "foo"])

@@ -169,7 +169,7 @@ class TestAppPaths(TestCase):
         for a in ('iexplore', 'iexplore.exe'):
             p = get_app_path(a)
             d, b = os.path.split(p)
-            self.assertEquals('iexplore.exe', b.lower())
+            self.assertEqual('iexplore.exe', b.lower())
             self.assertNotEqual('', d)
 
     def test_wordpad(self):
@@ -180,12 +180,12 @@ class TestAppPaths(TestCase):
         for a in ('wordpad', 'wordpad.exe'):
             p = get_app_path(a)
             d, b = os.path.split(p)
-            self.assertEquals('wordpad.exe', b.lower())
+            self.assertEqual('wordpad.exe', b.lower())
             self.assertNotEqual('', d)
 
     def test_not_existing(self):
         p = get_app_path('not-existing')
-        self.assertEquals('not-existing', p)
+        self.assertEqual('not-existing', p)
 
 
 class TestLocations(TestCase):
@@ -242,7 +242,7 @@ class TestLocationsCtypes(TestCase):
         # version (ie, "C:\DOCUME~1\...").  Its even possible the returned
         # values will differ only by case - handle these situations as we
         # come across them.
-        self.assertEquals(p1, p2)
+        self.assertEqual(p1, p2)
 
     def test_appdata_not_using_environment(self):
         # Test that we aren't falling back to the environment

@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009, 2010, 2011 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -58,7 +58,7 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
             retcode=errors.EXIT_ERROR)
         self.assertContainsRe(err, r"^bzr: ERROR: .*'\\xa0'.* unsupported",
             flags=re.MULTILINE)
-        self.assertEquals(out, "")
+        self.assertEqual(out, "")
 
     def test_utf8_default_fs_enc(self):
         """In the C locale bzr treats a posix filesystem as UTF-8 encoded"""

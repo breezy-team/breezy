@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2007, 2009-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -57,13 +57,13 @@ class TestTagRevisionRenames(TestCaseWithTransport):
         store = self.make_branch_supporting_tags('a').tags
         store.set_tag("foo", "myoldrevid")
         store.rename_revisions({"myoldrevid": "mynewrevid"})
-        self.assertEquals({"foo": "mynewrevid"}, store.get_tag_dict())
+        self.assertEqual({"foo": "mynewrevid"}, store.get_tag_dict())
 
     def test_unknown_ignored(self):
         store = self.make_branch_supporting_tags('a').tags
         store.set_tag("foo", "myoldrevid")
         store.rename_revisions({"anotherrevid": "mynewrevid"})
-        self.assertEquals({"foo": "myoldrevid"}, store.get_tag_dict())
+        self.assertEqual({"foo": "myoldrevid"}, store.get_tag_dict())
 
 
 class TestTagMerging(TestCaseWithTransport):
@@ -133,7 +133,7 @@ class TestTagsInCheckouts(TestCaseWithTransport):
         child = self.make_branch('child')
         child.bind(master)
         child.tags.set_tag('foo', 'rev-1')
-        self.assertEquals('rev-1', master.tags.lookup_tag('foo'))
+        self.assertEqual('rev-1', master.tags.lookup_tag('foo'))
         # deleting a tag updates the master too
         child.tags.delete_tag('foo')
         self.assertRaises(errors.NoSuchTag,
@@ -144,7 +144,7 @@ class TestTagsInCheckouts(TestCaseWithTransport):
         master = self.make_branch('master')
         master.tags.set_tag('foo', 'rev-1')
         co_tree = master.create_checkout('checkout')
-        self.assertEquals('rev-1',
+        self.assertEqual('rev-1',
             co_tree.branch.tags.lookup_tag('foo'))
 
     def test_update_updates_tags(self):
@@ -155,11 +155,11 @@ class TestTagsInCheckouts(TestCaseWithTransport):
         child.bind(master)
         child.update()
         # after an update, the child has all the master's tags
-        self.assertEquals('rev-1', child.tags.lookup_tag('foo'))
+        self.assertEqual('rev-1', child.tags.lookup_tag('foo'))
         # add another tag and update again
         master.tags.set_tag('tag2', 'target2')
         child.update()
-        self.assertEquals('target2', child.tags.lookup_tag('tag2'))
+        self.assertEqual('target2', child.tags.lookup_tag('tag2'))
 
     def test_tag_deletion_from_master_to_bound(self):
         master = self.make_branch('master')

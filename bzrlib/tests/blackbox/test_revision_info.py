@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2010, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ class TestRevisionInfo(TestCaseWithTransport):
         The output is supplied first, so that you can supply a variable
         number of arguments to bzr.
         """
-        self.assertEquals(self.run_bzr(*args)[0], output)
+        self.assertEqual(self.run_bzr(*args)[0], output)
 
     def test_revision_info(self):
         """Test that 'bzr revision-info' reports the correct thing."""

@@ -296,16 +296,16 @@ class TestUrlToPath(TestCase):
 
     def test_join_segment_parameters_raw(self):
         join_segment_parameters_raw = urlutils.join_segment_parameters_raw
-        self.assertEquals("/somedir/path", 
+        self.assertEqual("/somedir/path", 
             join_segment_parameters_raw("/somedir/path"))
-        self.assertEquals("/somedir/path,rawdata", 
+        self.assertEqual("/somedir/path,rawdata", 
             join_segment_parameters_raw("/somedir/path", "rawdata"))
         self.assertRaises(InvalidURLJoin,
             join_segment_parameters_raw, "/somedir/path",
                 "rawdata1,rawdata2,rawdata3")
-        self.assertEquals("/somedir/path,bla,bar",
+        self.assertEqual("/somedir/path,bla,bar",
             join_segment_parameters_raw("/somedir/path", "bla", "bar"))
-        self.assertEquals("/somedir,exist=some/path,bla,bar",
+        self.assertEqual("/somedir,exist=some/path,bla,bar",
             join_segment_parameters_raw("/somedir,exist=some/path",
                 "bla", "bar"))
         self.assertRaises(TypeError, join_segment_parameters_raw, 
@@ -313,28 +313,28 @@ class TestUrlToPath(TestCase):
 
     def test_join_segment_parameters(self):
         join_segment_parameters = urlutils.join_segment_parameters
-        self.assertEquals("/somedir/path", 
+        self.assertEqual("/somedir/path", 
             join_segment_parameters("/somedir/path", {}))
-        self.assertEquals("/somedir/path,key1=val1", 
+        self.assertEqual("/somedir/path,key1=val1", 
             join_segment_parameters("/somedir/path", {"key1": "val1"}))
         self.assertRaises(InvalidURLJoin,
             join_segment_parameters, "/somedir/path",
             {"branch": "brr,brr,brr"})
         self.assertRaises(InvalidURLJoin,
             join_segment_parameters, "/somedir/path", {"key1=val1": "val2"})
-        self.assertEquals("/somedir/path,key1=val1,key2=val2",
+        self.assertEqual("/somedir/path,key1=val1,key2=val2",
             join_segment_parameters("/somedir/path", {
                 "key1": "val1", "key2": "val2"}))
-        self.assertEquals("/somedir/path,key1=val1,key2=val2",
+        self.assertEqual("/somedir/path,key1=val1,key2=val2",
             join_segment_parameters("/somedir/path,key1=val1", {
                 "key2": "val2"}))
-        self.assertEquals("/somedir/path,key1=val2",
+        self.assertEqual("/somedir/path,key1=val2",
             join_segment_parameters("/somedir/path,key1=val1", {
                 "key1": "val2"}))
-        self.assertEquals("/somedir,exist=some/path,key1=val1",
+        self.assertEqual("/somedir,exist=some/path,key1=val1",
             join_segment_parameters("/somedir,exist=some/path",
                 {"key1": "val1"}))
-        self.assertEquals("/,key1=val1,key2=val2",
+        self.assertEqual("/,key1=val1,key2=val2",
             join_segment_parameters("/,key1=val1", {"key2": "val2"}))
         self.assertRaises(TypeError,
             join_segment_parameters, "/,key1=val1", {"foo": 42})
@@ -508,54 +508,54 @@ class TestUrlToPath(TestCase):
     def test_split_segment_parameters_raw(self):
         split_segment_parameters_raw = urlutils.split_segment_parameters_raw
         # Check relative references with absolute paths
-        self.assertEquals(("/some/path", []),
+        self.assertEqual(("/some/path", []),
             split_segment_parameters_raw("/some/path"))
-        self.assertEquals(("/some/path", ["tip"]),
+        self.assertEqual(("/some/path", ["tip"]),
             split_segment_parameters_raw("/some/path,tip"))
-        self.assertEquals(("/some,dir/path", ["tip"]),
+        self.assertEqual(("/some,dir/path", ["tip"]),
             split_segment_parameters_raw("/some,dir/path,tip"))
-        self.assertEquals(("/somedir/path", ["heads%2Ftip"]),
+        self.assertEqual(("/somedir/path", ["heads%2Ftip"]),
             split_segment_parameters_raw("/somedir/path,heads%2Ftip"))
-        self.assertEquals(("/somedir/path", ["heads%2Ftip", "bar"]),
+        self.assertEqual(("/somedir/path", ["heads%2Ftip", "bar"]),
             split_segment_parameters_raw("/somedir/path,heads%2Ftip,bar"))
         # Check relative references with relative paths
-        self.assertEquals(("", ["key1=val1"]),
+        self.assertEqual(("", ["key1=val1"]),
             split_segment_parameters_raw(",key1=val1"))
-        self.assertEquals(("foo/", ["key1=val1"]),
+        self.assertEqual(("foo/", ["key1=val1"]),
             split_segment_parameters_raw("foo/,key1=val1"))
-        self.assertEquals(("foo", ["key1=val1"]),
+        self.assertEqual(("foo", ["key1=val1"]),
             split_segment_parameters_raw("foo,key1=val1"))
-        self.assertEquals(("foo/base,la=bla/other/elements", []),
+        self.assertEqual(("foo/base,la=bla/other/elements", []),
             split_segment_parameters_raw("foo/base,la=bla/other/elements"))
-        self.assertEquals(("foo/base,la=bla/other/elements", ["a=b"]),
+        self.assertEqual(("foo/base,la=bla/other/elements", ["a=b"]),
             split_segment_parameters_raw("foo/base,la=bla/other/elements,a=b"))
         # TODO: Check full URLs as well as relative references
 
     def test_split_segment_parameters(self):
         split_segment_parameters = urlutils.split_segment_parameters
         # Check relative references with absolute paths
-        self.assertEquals(("/some/path", {}),
+        self.assertEqual(("/some/path", {}),
             split_segment_parameters("/some/path"))
-        self.assertEquals(("/some/path", {"branch": "tip"}),
+        self.assertEqual(("/some/path", {"branch": "tip"}),
             split_segment_parameters("/some/path,branch=tip"))
-        self.assertEquals(("/some,dir/path", {"branch": "tip"}),
+        self.assertEqual(("/some,dir/path", {"branch": "tip"}),
             split_segment_parameters("/some,dir/path,branch=tip"))
-        self.assertEquals(("/somedir/path", {"ref": "heads%2Ftip"}),
+        self.assertEqual(("/somedir/path", {"ref": "heads%2Ftip"}),
             split_segment_parameters("/somedir/path,ref=heads%2Ftip"))
-        self.assertEquals(("/somedir/path",
+        self.assertEqual(("/somedir/path",
             {"ref": "heads%2Ftip", "key1": "val1"}),
             split_segment_parameters(
                 "/somedir/path,ref=heads%2Ftip,key1=val1"))
-        self.assertEquals(("/somedir/path", {"ref": "heads%2F=tip"}),
+        self.assertEqual(("/somedir/path", {"ref": "heads%2F=tip"}),
             split_segment_parameters("/somedir/path,ref=heads%2F=tip"))
         # Check relative references with relative paths
-        self.assertEquals(("", {"key1": "val1"}),
+        self.assertEqual(("", {"key1": "val1"}),
             split_segment_parameters(",key1=val1"))
-        self.assertEquals(("foo/", {"key1": "val1"}),
+        self.assertEqual(("foo/", {"key1": "val1"}),
             split_segment_parameters("foo/,key1=val1"))
-        self.assertEquals(("foo/base,key1=val1/other/elements", {}),
+        self.assertEqual(("foo/base,key1=val1/other/elements", {}),
             split_segment_parameters("foo/base,key1=val1/other/elements"))
-        self.assertEquals(("foo/base,key1=val1/other/elements",
+        self.assertEqual(("foo/base,key1=val1/other/elements",
             {"key2": "val2"}), split_segment_parameters(
                 "foo/base,key1=val1/other/elements,key2=val2"))
         # TODO: Check full URLs as well as relative references
@@ -830,17 +830,17 @@ class TestParseURL(TestCase):
 
     def test_parse_simple(self):
         parsed = urlutils.parse_url('http://example.com:80/one')
-        self.assertEquals(('http', None, None, 'example.com', 80, '/one'),
+        self.assertEqual(('http', None, None, 'example.com', 80, '/one'),
             parsed)
 
     def test_ipv6(self):
         parsed = urlutils.parse_url('http://[1:2:3::40]/one')
-        self.assertEquals(('http', None, None, '1:2:3::40', None, '/one'),
+        self.assertEqual(('http', None, None, '1:2:3::40', None, '/one'),
             parsed)
 
     def test_ipv6_port(self):
         parsed = urlutils.parse_url('http://[1:2:3::40]:80/one')
-        self.assertEquals(('http', None, None, '1:2:3::40', 80, '/one'),
+        self.assertEqual(('http', None, None, '1:2:3::40', 80, '/one'),
             parsed)
 
 
@@ -848,60 +848,60 @@ class TestURL(TestCase):
 
     def test_parse_simple(self):
         parsed = urlutils.URL.from_string('http://example.com:80/one')
-        self.assertEquals('http', parsed.scheme)
+        self.assertEqual('http', parsed.scheme)
         self.assertIs(None, parsed.user)
         self.assertIs(None, parsed.password)
-        self.assertEquals('example.com', parsed.host)
-        self.assertEquals(80, parsed.port)
-        self.assertEquals('/one', parsed.path)
+        self.assertEqual('example.com', parsed.host)
+        self.assertEqual(80, parsed.port)
+        self.assertEqual('/one', parsed.path)
 
     def test_ipv6(self):
         parsed = urlutils.URL.from_string('http://[1:2:3::40]/one')
-        self.assertEquals('http', parsed.scheme)
+        self.assertEqual('http', parsed.scheme)
         self.assertIs(None, parsed.port)
         self.assertIs(None, parsed.user)
         self.assertIs(None, parsed.password)
-        self.assertEquals('1:2:3::40', parsed.host)
-        self.assertEquals('/one', parsed.path)
+        self.assertEqual('1:2:3::40', parsed.host)
+        self.assertEqual('/one', parsed.path)
 
     def test_ipv6_port(self):
         parsed = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
-        self.assertEquals('http', parsed.scheme)
-        self.assertEquals('1:2:3::40', parsed.host)
+        self.assertEqual('http', parsed.scheme)
+        self.assertEqual('1:2:3::40', parsed.host)
         self.assertIs(None, parsed.user)
         self.assertIs(None, parsed.password)
-        self.assertEquals(80, parsed.port)
-        self.assertEquals('/one', parsed.path)
+        self.assertEqual(80, parsed.port)
+        self.assertEqual('/one', parsed.path)
 
     def test_quoted(self):
         parsed = urlutils.URL.from_string(
             'http://ro%62ey:h%40t@ex%41mple.com:2222/path')
-        self.assertEquals(parsed.quoted_host, 'ex%41mple.com')
-        self.assertEquals(parsed.host, 'exAmple.com')
-        self.assertEquals(parsed.port, 2222)
-        self.assertEquals(parsed.quoted_user, 'ro%62ey')
-        self.assertEquals(parsed.user, 'robey')
-        self.assertEquals(parsed.quoted_password, 'h%40t')
-        self.assertEquals(parsed.password, 'h@t')
-        self.assertEquals(parsed.path, '/path')
+        self.assertEqual(parsed.quoted_host, 'ex%41mple.com')
+        self.assertEqual(parsed.host, 'exAmple.com')
+        self.assertEqual(parsed.port, 2222)
+        self.assertEqual(parsed.quoted_user, 'ro%62ey')
+        self.assertEqual(parsed.user, 'robey')
+        self.assertEqual(parsed.quoted_password, 'h%40t')
+        self.assertEqual(parsed.password, 'h@t')
+        self.assertEqual(parsed.path, '/path')
 
     def test_eq(self):
         parsed1 = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
         parsed2 = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
-        self.assertEquals(parsed1, parsed2)
-        self.assertEquals(parsed1, parsed1)
+        self.assertEqual(parsed1, parsed2)
+        self.assertEqual(parsed1, parsed1)
         parsed2.path = '/two'
         self.assertNotEqual(parsed1, parsed2)
 
     def test_repr(self):
         parsed = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
-        self.assertEquals(
+        self.assertEqual(
             "<URL('http', None, None, '1:2:3::40', 80, '/one')>",
             repr(parsed))
 
     def test_str(self):
         parsed = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
-        self.assertEquals('http://[1:2:3::40]:80/one', str(parsed))
+        self.assertEqual('http://[1:2:3::40]:80/one', str(parsed))
 
     def test__combine_paths(self):
         combine = urlutils.URL._combine_paths
@@ -917,12 +917,12 @@ class TestURL(TestCase):
     def test_clone(self):
         url = urlutils.URL.from_string('http://[1:2:3::40]:80/one')
         url1 = url.clone("two")
-        self.assertEquals("/one/two", url1.path)
+        self.assertEqual("/one/two", url1.path)
         url2 = url.clone("/two")
-        self.assertEquals("/two", url2.path)
+        self.assertEqual("/two", url2.path)
         url3 = url.clone()
         self.assertIsNot(url, url3)
-        self.assertEquals(url, url3)
+        self.assertEqual(url, url3)
 
 
 class TestFileRelpath(TestCase):
@@ -954,46 +954,46 @@ class TestFileRelpath(TestCase):
 
     def test_same_url_posix(self):
         self._with_posix_paths()
-        self.assertEquals("",
+        self.assertEqual("",
             urlutils.file_relpath("file:///a", "file:///a"))
-        self.assertEquals("",
+        self.assertEqual("",
             urlutils.file_relpath("file:///a", "file:///a/"))
-        self.assertEquals("",
+        self.assertEqual("",
             urlutils.file_relpath("file:///a/", "file:///a"))
 
     def test_same_url_win32(self):
         self._with_win32_paths()
-        self.assertEquals("",
+        self.assertEqual("",
             urlutils.file_relpath("file:///A:/", "file:///A:/"))
-        self.assertEquals("",
+        self.assertEqual("",
             urlutils.file_relpath("file:///A|/", "file:///A:/"))
-        self.assertEquals("",
+        self.assertEqual("",
             urlutils.file_relpath("file:///A:/b/", "file:///A:/b/"))
-        self.assertEquals("",
+        self.assertEqual("",
             urlutils.file_relpath("file:///A:/b", "file:///A:/b/"))
-        self.assertEquals("",
+        self.assertEqual("",
             urlutils.file_relpath("file:///A:/b/", "file:///A:/b"))
 
     def test_child_posix(self):
         self._with_posix_paths()
-        self.assertEquals("b",
+        self.assertEqual("b",
             urlutils.file_relpath("file:///a", "file:///a/b"))
-        self.assertEquals("b",
+        self.assertEqual("b",
             urlutils.file_relpath("file:///a/", "file:///a/b"))
-        self.assertEquals("b/c",
+        self.assertEqual("b/c",
             urlutils.file_relpath("file:///a", "file:///a/b/c"))
 
     def test_child_win32(self):
         self._with_win32_paths()
-        self.assertEquals("b",
+        self.assertEqual("b",
             urlutils.file_relpath("file:///A:/", "file:///A:/b"))
-        self.assertEquals("b",
+        self.assertEqual("b",
             urlutils.file_relpath("file:///A|/", "file:///A:/b"))
-        self.assertEquals("c",
+        self.assertEqual("c",
             urlutils.file_relpath("file:///A:/b", "file:///A:/b/c"))
-        self.assertEquals("c",
+        self.assertEqual("c",
             urlutils.file_relpath("file:///A:/b/", "file:///A:/b/c"))
-        self.assertEquals("c/d",
+        self.assertEqual("c/d",
             urlutils.file_relpath("file:///A:/b", "file:///A:/b/c/d"))
 
     def test_sibling_posix(self):

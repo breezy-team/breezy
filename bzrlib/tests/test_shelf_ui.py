@@ -306,7 +306,7 @@ class TestShelver(ShelfTestCase):
         tree1.merge_from_branch(tree2.branch,
                                 from_revision=revision.NULL_REVISION)
         tree1.commit('merging in tree2')
-        self.assertEquals(tree1_root_id, tree1.get_root_id())
+        self.assertEqual(tree1_root_id, tree1.get_root_id())
         # This is essentially assertNotRaises(InconsistentDelta)
         # With testtools 0.9.9, it can be rewritten as:
         # with ExpectedException(AssertionError,

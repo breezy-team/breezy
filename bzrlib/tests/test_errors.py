@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -133,15 +133,15 @@ class TestErrors(TestCaseWithTransport):
         error = errors.InvalidHttpRange('path',
                                         'Content-Range: potatoes 0-00/o0oo0',
                                         'bad range')
-        self.assertEquals("Invalid http range"
-                          " 'Content-Range: potatoes 0-00/o0oo0'"
-                          " for path: bad range",
-                          str(error))
+        self.assertEqual("Invalid http range"
+                         " 'Content-Range: potatoes 0-00/o0oo0'"
+                         " for path: bad range",
+                         str(error))
 
     def test_invalid_range(self):
         error = errors.InvalidRange('path', 12, 'bad range')
-        self.assertEquals("Invalid range access in path at 12: bad range",
-                          str(error))
+        self.assertEqual("Invalid range access in path at 12: bad range",
+                         str(error))
 
     def test_inventory_modified(self):
         error = errors.InventoryModified("a tree to be repred")
@@ -517,7 +517,7 @@ class TestErrors(TestCaseWithTransport):
 
     def test_immortal_pending_deletion_message(self):
         err = errors.ImmortalPendingDeletion('foo')
-        self.assertEquals(
+        self.assertEqual(
             "Unable to delete transform temporary directory foo.  "
             "Please examine foo to see if it contains any files "
             "you wish to keep, and delete it when you are done.",
@@ -525,15 +525,15 @@ class TestErrors(TestCaseWithTransport):
 
     def test_unable_create_symlink(self):
         err = errors.UnableCreateSymlink()
-        self.assertEquals(
+        self.assertEqual(
             "Unable to create symlink on this platform",
             str(err))
         err = errors.UnableCreateSymlink(path=u'foo')
-        self.assertEquals(
+        self.assertEqual(
             "Unable to create symlink 'foo' on this platform",
             str(err))
         err = errors.UnableCreateSymlink(path=u'\xb5')
-        self.assertEquals(
+        self.assertEqual(
             "Unable to create symlink u'\\xb5' on this platform",
             str(err))
 
@@ -546,45 +546,45 @@ class TestErrors(TestCaseWithTransport):
 
     def test_incorrect_url(self):
         err = errors.InvalidBugTrackerURL('foo', 'http://bug.com/')
-        self.assertEquals(
+        self.assertEqual(
             ("The URL for bug tracker \"foo\" doesn't contain {id}: "
              "http://bug.com/"),
             str(err))
 
     def test_unable_encode_path(self):
         err = errors.UnableEncodePath('foo', 'executable')
-        self.assertEquals("Unable to encode executable path 'foo' in "
-            "user encoding " + osutils.get_user_encoding(),
-            str(err))
+        self.assertEqual("Unable to encode executable path 'foo' in "
+                         "user encoding " + osutils.get_user_encoding(),
+                         str(err))
 
     def test_unknown_format(self):
         err = errors.UnknownFormatError('bar', kind='foo')
-        self.assertEquals("Unknown foo format: 'bar'", str(err))
+        self.assertEqual("Unknown foo format: 'bar'", str(err))
 
     def test_unknown_rules(self):
         err = errors.UnknownRules(['foo', 'bar'])
-        self.assertEquals("Unknown rules detected: foo, bar.", str(err))
+        self.assertEqual("Unknown rules detected: foo, bar.", str(err))
 
     def test_tip_change_rejected(self):
         err = errors.TipChangeRejected(u'Unicode message\N{INTERROBANG}')
-        self.assertEquals(
+        self.assertEqual(
             u'Tip change rejected: Unicode message\N{INTERROBANG}',
             unicode(err))
-        self.assertEquals(
+        self.assertEqual(
             'Tip change rejected: Unicode message\xe2\x80\xbd',
             str(err))
 
     def test_error_from_smart_server(self):
         error_tuple = ('error', 'tuple')
         err = errors.ErrorFromSmartServer(error_tuple)
-        self.assertEquals(
+        self.assertEqual(
             "Error received from smart server: ('error', 'tuple')", str(err))
 
     def test_untranslateable_error_from_smart_server(self):
         error_tuple = ('error', 'tuple')
         orig_err = errors.ErrorFromSmartServer(error_tuple)
         err = errors.UnknownErrorFromSmartServer(orig_err)
-        self.assertEquals(
+        self.assertEqual(
             "Server sent an unexpected error: ('error', 'tuple')", str(err))
 
     def test_smart_message_handler_error(self):
@@ -608,7 +608,7 @@ class TestErrors(TestCaseWithTransport):
 
     def test_no_such_view(self):
         err = errors.NoSuchView('foo')
-        self.assertEquals("No such view: foo.", str(err))
+        self.assertEqual("No such view: foo.", str(err))
 
     def test_views_not_supported(self):
         err = errors.ViewsNotSupported('atree')
@@ -619,14 +619,14 @@ class TestErrors(TestCaseWithTransport):
 
     def test_file_outside_view(self):
         err = errors.FileOutsideView('baz', ['foo', 'bar'])
-        self.assertEquals('Specified file "baz" is outside the current view: '
-            'foo, bar', str(err))
+        self.assertEqual('Specified file "baz" is outside the current view: '
+                         'foo, bar', str(err))
 
     def test_invalid_shelf_id(self):
         invalid_id = "foo"
         err = errors.InvalidShelfId(invalid_id)
         self.assertEqual('"foo" is not a valid shelf id, '
-            'try a number instead.', str(err))
+                         'try a number instead.', str(err))
 
     def test_unresumable_write_group(self):
         repo = "dummy repo"
@@ -736,7 +736,7 @@ class TestErrorFormatting(TestCase):
     def test_missing_format_string(self):
         e = ErrorWithNoFormat(param='randomvalue')
         self.assertStartsWith(str(e),
-            "Unprintable exception ErrorWithNoFormat")
+                              "Unprintable exception ErrorWithNoFormat")
 
     def test_mismatched_format_args(self):
         # Even though ErrorWithBadFormat's format string does not match the
@@ -749,17 +749,18 @@ class TestErrorFormatting(TestCase):
     def test_cannot_bind_address(self):
         # see <https://bugs.launchpad.net/bzr/+bug/286871>
         e = errors.CannotBindAddress('example.com', 22,
-            socket.error(13, 'Permission denied'))
-        self.assertContainsRe(str(e),
+                                     socket.error(13, 'Permission denied'))
+        self.assertContainsRe(
+            str(e),
             r'Cannot bind address "example\.com:22":.*Permission denied')
 
-    def test_file_timestamp_unavailable(self):            
+    def test_file_timestamp_unavailable(self):
         e = errors.FileTimestampUnavailable("/path/foo")
-        self.assertEquals("The filestamp for /path/foo is not available.",
-            str(e))
-            
+        self.assertEqual("The filestamp for /path/foo is not available.",
+                         str(e))
+
     def test_transform_rename_failed(self):
         e = errors.TransformRenameFailed(u"from", u"to", "readonly file", 2)
-        self.assertEquals(
+        self.assertEqual(
             u"Failed to rename from to to: readonly file",
             str(e))

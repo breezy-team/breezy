@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2011 Canonical Ltd
+# Copyright (C) 2007-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -229,10 +229,10 @@ class DirectoryUrlTests(TestCaseInTempDir):
             self, 'apt', dict(urls=[
                     'http://bazaar.launchpad.net/~apt/apt/devel']))
         directory = LaunchpadDirectory()
-        self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
+        self.assertEqual('http://bazaar.launchpad.net/~apt/apt/devel',
                           directory._resolve('lp:apt', factory))
         # Make sure that resolve went to the production server.
-        self.assertEquals('https://xmlrpc.launchpad.net/bazaar/',
+        self.assertEqual('https://xmlrpc.launchpad.net/bazaar/',
                           factory._service_url)
 
     def test_qastaging(self):
@@ -242,10 +242,10 @@ class DirectoryUrlTests(TestCaseInTempDir):
                     'http://bazaar.qastaging.launchpad.net/~apt/apt/devel']))
         url = 'lp://qastaging/apt'
         directory = LaunchpadDirectory()
-        self.assertEquals('http://bazaar.qastaging.launchpad.net/~apt/apt/devel',
+        self.assertEqual('http://bazaar.qastaging.launchpad.net/~apt/apt/devel',
                           directory._resolve(url, factory))
         # Make sure that resolve went to the qastaging server.
-        self.assertEquals('https://xmlrpc.qastaging.launchpad.net/bazaar/',
+        self.assertEqual('https://xmlrpc.qastaging.launchpad.net/bazaar/',
                           factory._service_url)
 
     def test_staging(self):
@@ -255,10 +255,10 @@ class DirectoryUrlTests(TestCaseInTempDir):
                     'http://bazaar.staging.launchpad.net/~apt/apt/devel']))
         url = 'lp://staging/apt'
         directory = LaunchpadDirectory()
-        self.assertEquals('http://bazaar.staging.launchpad.net/~apt/apt/devel',
+        self.assertEqual('http://bazaar.staging.launchpad.net/~apt/apt/devel',
                           directory._resolve(url, factory))
         # Make sure that resolve went to the staging server.
-        self.assertEquals('https://xmlrpc.staging.launchpad.net/bazaar/',
+        self.assertEqual('https://xmlrpc.staging.launchpad.net/bazaar/',
                           factory._service_url)
 
     def test_url_from_directory(self):
@@ -267,7 +267,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
             self, 'apt', dict(urls=[
                     'http://bazaar.launchpad.net/~apt/apt/devel']))
         directory = LaunchpadDirectory()
-        self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
+        self.assertEqual('http://bazaar.launchpad.net/~apt/apt/devel',
                           directory._resolve('lp:///apt', factory))
 
     def test_directory_skip_bad_schemes(self):
@@ -277,7 +277,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
                     'http://bazaar.launchpad.net/~apt/apt/devel',
                     'http://another/location']))
         directory = LaunchpadDirectory()
-        self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
+        self.assertEqual('http://bazaar.launchpad.net/~apt/apt/devel',
                           directory._resolve('lp:///apt', factory))
 
     def test_directory_no_matching_schemes(self):
@@ -309,7 +309,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
                     'bzr+ssh://bazaar.launchpad.net/~apt/apt/devel',
                     'http://bazaar.launchpad.net/~apt/apt/devel']))
         directory = LaunchpadDirectory()
-        self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
+        self.assertEqual('http://bazaar.launchpad.net/~apt/apt/devel',
                           directory._resolve('lp:///apt', factory))
 
     def test_skip_sftp_launchpad_net_when_anonymous(self):
@@ -321,7 +321,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
                     'sftp://bazaar.launchpad.net/~apt/apt/devel',
                     'http://bazaar.launchpad.net/~apt/apt/devel']))
         directory = LaunchpadDirectory()
-        self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
+        self.assertEqual('http://bazaar.launchpad.net/~apt/apt/devel',
                           directory._resolve('lp:///apt', factory))
 
     def test_with_login_avoid_resolve_factory(self):
@@ -332,7 +332,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
                     'bzr+ssh://my-super-custom/special/devel',
                     'http://bazaar.launchpad.net/~apt/apt/devel']))
         directory = LaunchpadDirectory()
-        self.assertEquals(
+        self.assertEqual(
             'bzr+ssh://bazaar.launchpad.net/+branch/apt',
             directory._resolve('lp:///apt', factory, _lp_login='username'))
 
@@ -344,7 +344,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
                     'bzr+ssh://example.com/~apt/apt/devel',
                     'http://bazaar.launchpad.net/~apt/apt/devel']))
         directory = LaunchpadDirectory()
-        self.assertEquals('bzr+ssh://example.com/~apt/apt/devel',
+        self.assertEqual('bzr+ssh://example.com/~apt/apt/devel',
                           directory._resolve('lp:///apt', factory))
 
     # TODO: check we get an error if the url is unreasonable
@@ -358,12 +358,12 @@ class DirectoryUrlTests(TestCaseInTempDir):
             self, '~username/apt/test', dict(urls=[
                 'bzr+ssh://bazaar.launchpad.net/~username/apt/test']))
         directory = LaunchpadDirectory()
-        self.assertEquals(
+        self.assertEqual(
             'bzr+ssh://bazaar.launchpad.net/~username/apt/test',
             directory._resolve('lp:~/apt/test', factory, _lp_login='username'))
         # Should also happen when the login is just set by config
         set_lp_login('username')
-        self.assertEquals(
+        self.assertEqual(
             'bzr+ssh://bazaar.launchpad.net/~username/apt/test',
             directory._resolve('lp:~/apt/test', factory))
 
@@ -508,7 +508,7 @@ Content-Type: text/plain; charset=UTF-8\r
         result = self.do_request(self.server.get_url())
         urls = result.get('urls', None)
         self.assertIsNot(None, urls)
-        self.assertEquals(
+        self.assertEqual(
             ['bzr+ssh://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev',
              'http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev'],
             urls)

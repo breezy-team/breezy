@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2011, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -59,7 +59,7 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         made_control.create_repository()
         made_branch = made_control.create_branch("colo")
         self.assertIsInstance(made_branch, Branch)
-        self.assertEquals("colo", made_branch.name)
+        self.assertEqual("colo", made_branch.name)
         self.assertEqual(made_control, made_branch.bzrdir)
 
     def test_open_by_url(self):
@@ -83,7 +83,7 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         self.assertNotEqual(made_branch.user_url, other_branch.user_url)
         self.assertNotEqual(made_branch.control_url, other_branch.control_url)
         re_made_branch = Branch.open(made_branch.user_url)
-        self.assertEquals(re_made_branch.name, "colo")
+        self.assertEqual(re_made_branch.name, "colo")
         self.assertEqual(made_branch.control_url, re_made_branch.control_url)
         self.assertEqual(made_branch.user_url, re_made_branch.user_url)
 
@@ -105,7 +105,7 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
             urlutils.join_segment_parameters(
                 other_branch.bzrdir.user_url, {"branch": "target"}))
         to_branch = to_dir.open_branch(name="target")
-        self.assertEquals(revid, to_branch.last_revision())
+        self.assertEqual(revid, to_branch.last_revision())
 
     def test_unicode(self):
         self.requireFeature(UnicodeFilenameFeature)
@@ -125,7 +125,7 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         self.assertTrue(
             u"col\xe9" in [b.name for b in made_control.list_branches()])
         made_branch = Branch.open(made_branch.user_url)
-        self.assertEquals(u"col\xe9", made_branch.name)
+        self.assertEqual(u"col\xe9", made_branch.name)
         made_control.destroy_branch(u"col\xe9")
 
     def test_get_branches(self):
@@ -154,5 +154,5 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         except errors.IncompatibleFormat:
             raise tests.TestNotApplicable(
                 'Control dir does not support creating branch references.')
-        self.assertEquals(referenced.base,
+        self.assertEqual(referenced.base,
             repo.bzrdir.get_branch_reference('foo'))

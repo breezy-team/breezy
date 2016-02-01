@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011, 2016 Canonical Ltd
+# Copyright (C) 2005-2011, 2015, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -988,14 +988,14 @@ class TransportTests(TestTransportImplementation):
         # perhaps all of this could be done in a subdirectory
 
         t.put_bytes('a', 'a first file\n')
-        self.assertEquals([True, False], list(t.has_multi(['a', 'b'])))
+        self.assertEqual([True, False], list(t.has_multi(['a', 'b'])))
 
         t.move('a', 'b')
         self.assertTrue(t.has('b'))
         self.assertFalse(t.has('a'))
 
         self.check_transport_contents('a first file\n', t, 'b')
-        self.assertEquals([False, True], list(t.has_multi(['a', 'b'])))
+        self.assertEqual([False, True], list(t.has_multi(['a', 'b'])))
 
         # Overwrite a file
         t.put_bytes('c', 'c this file\n')
@@ -1194,11 +1194,11 @@ class TransportTests(TestTransportImplementation):
             raise TestSkipped("not a connected transport")
 
         t2 = t1.clone('subdir')
-        self.assertEquals(t1._parsed_url.scheme, t2._parsed_url.scheme)
-        self.assertEquals(t1._parsed_url.user, t2._parsed_url.user)
-        self.assertEquals(t1._parsed_url.password, t2._parsed_url.password)
-        self.assertEquals(t1._parsed_url.host, t2._parsed_url.host)
-        self.assertEquals(t1._parsed_url.port, t2._parsed_url.port)
+        self.assertEqual(t1._parsed_url.scheme, t2._parsed_url.scheme)
+        self.assertEqual(t1._parsed_url.user, t2._parsed_url.user)
+        self.assertEqual(t1._parsed_url.password, t2._parsed_url.password)
+        self.assertEqual(t1._parsed_url.host, t2._parsed_url.host)
+        self.assertEqual(t1._parsed_url.port, t2._parsed_url.port)
 
     def test__reuse_for(self):
         t = self.get_transport()
@@ -1768,7 +1768,7 @@ class TransportTests(TestTransportImplementation):
         """Segment parameters should be stripped and stored in
         transport.segment_parameters."""
         transport = self.get_transport("foo")
-        self.assertEquals({}, transport.get_segment_parameters())
+        self.assertEqual({}, transport.get_segment_parameters())
 
     def test_segment_parameters(self):
         """Segment parameters should be stripped and stored in
@@ -1777,19 +1777,19 @@ class TransportTests(TestTransportImplementation):
         parameters = {"key1": "val1", "key2": "val2"}
         url = urlutils.join_segment_parameters(base_url, parameters)
         transport = _mod_transport.get_transport_from_url(url)
-        self.assertEquals(parameters, transport.get_segment_parameters())
+        self.assertEqual(parameters, transport.get_segment_parameters())
 
     def test_set_segment_parameters(self):
         """Segment parameters can be set and show up in base."""
         transport = self.get_transport("foo")
         orig_base = transport.base
         transport.set_segment_parameter("arm", "board")
-        self.assertEquals("%s,arm=board" % orig_base, transport.base)
-        self.assertEquals({"arm": "board"}, transport.get_segment_parameters())
+        self.assertEqual("%s,arm=board" % orig_base, transport.base)
+        self.assertEqual({"arm": "board"}, transport.get_segment_parameters())
         transport.set_segment_parameter("arm", None)
         transport.set_segment_parameter("nonexistant", None)
-        self.assertEquals({}, transport.get_segment_parameters())
-        self.assertEquals(orig_base, transport.base)
+        self.assertEqual({}, transport.get_segment_parameters())
+        self.assertEqual(orig_base, transport.base)
 
     def test_stat_symlink(self):
         # if a transport points directly to a symlink (and supports symlinks

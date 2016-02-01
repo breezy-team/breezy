@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2010, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ class TestCommitWithBoundBranch(
         # manually
         os.chdir('local')
         commit.run(message=u'empty commit', unchanged=True)
-        self.assertEquals(1, len(self.connections))
+        self.assertEqual(1, len(self.connections))
 
     def test_commit_both_modified(self):
         self.master_wt.commit('empty commit on master')
@@ -55,7 +55,7 @@ class TestCommitWithBoundBranch(
         os.chdir('local')
         self.assertRaises(errors.BoundBranchOutOfDate, commit.run,
                           message=u'empty commit', unchanged=True)
-        self.assertEquals(1, len(self.connections))
+        self.assertEqual(1, len(self.connections))
 
     def test_commit_local(self):
         """Commits with --local should not connect to the master!"""
@@ -68,4 +68,4 @@ class TestCommitWithBoundBranch(
         commit.run(message=u'empty commit', unchanged=True, local=True)
 
         #it shouldn't open any connections
-        self.assertEquals(0, len(self.connections))
+        self.assertEqual(0, len(self.connections))
