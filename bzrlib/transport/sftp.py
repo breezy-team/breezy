@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -593,11 +593,15 @@ class SFTPTransport(ConnectedTransport):
                                     create_parent_dir=create_parent_dir,
                                     dir_mode=dir_mode)
 
-    def put_bytes_non_atomic(self, relpath, bytes, mode=None,
+    def put_bytes_non_atomic(self, relpath, raw_bytes, mode=None,
                              create_parent_dir=False,
                              dir_mode=None):
+        if not isinstance(raw_bytes, str):
+            raise TypeError(
+                'raw_bytes must be a plain string, not %s' % type(raw_bytes))
+
         def writer(fout):
-            fout.write(bytes)
+            fout.write(raw_bytes)
         self._put_non_atomic_helper(relpath, writer, mode=mode,
                                     create_parent_dir=create_parent_dir,
                                     dir_mode=dir_mode)

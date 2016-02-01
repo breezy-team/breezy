@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -247,23 +247,18 @@ class RemoteTransport(transport.ConnectedTransport):
         transport._file_streams[self.abspath(relpath)] = result
         return result
 
-    def put_bytes(self, relpath, upload_contents, mode=None):
-        # FIXME: upload_file is probably not safe for non-ascii characters -
-        # should probably just pass all parameters as length-delimited
-        # strings?
-        if type(upload_contents) is unicode:
-            # Although not strictly correct, we raise UnicodeEncodeError to be
-            # compatible with other transports.
-            raise UnicodeEncodeError(
-                'undefined', upload_contents, 0, 1,
-                'put_bytes must be given bytes, not unicode.')
-        resp = self._call_with_body_bytes('put',
+    def put_bytes(self, relpath, raw_bytes, mode=None):
+        if not isinstance(raw_bytes, str):
+            raise TypeError(
+                'raw_bytes must be a plain string, not %s' % type(raw_bytes))
+        resp = self._call_with_body_bytes(
+            'put',
             (self._remote_path(relpath), self._serialise_optional_mode(mode)),
-            upload_contents)
+            raw_bytes)
         self._ensure_ok(resp)
-        return len(upload_contents)
+        return len(raw_bytes)
 
-    def put_bytes_non_atomic(self, relpath, bytes, mode=None,
+    def put_bytes_non_atomic(self, relpath, raw_bytes, mode=None,
                              create_parent_dir=False,
                              dir_mode=None):
         """See Transport.put_bytes_non_atomic."""
@@ -276,7 +271,7 @@ class RemoteTransport(transport.ConnectedTransport):
             'put_non_atomic',
             (self._remote_path(relpath), self._serialise_optional_mode(mode),
              create_parent_str, self._serialise_optional_mode(dir_mode)),
-            bytes)
+            raw_bytes)
         self._ensure_ok(resp)
 
     def put_file(self, relpath, upload_file, mode=None):

@@ -39,12 +39,15 @@ Bug Fixes
 * 'acceptable_keys' from 'bazaar.conf' is now properly handled.
   (Vincent Ladeuil, #1249732)
 
-* Option names are now checked to be valid [dotted] python identifiers. Also
-  ignore invalid references (i.e. using invalid option names) while
-  expanding option values. (Vincent Ladeuil, #1235099)
+* Option names are now checked to be valid identifiers (including embedded
+  dots or hyphens). Also ignore invalid references (i.e. using invalid
+  option names) while expanding option values. (Vincent Ladeuil, #1235099)
 
 * Fix pyrex version checking to be more robust.
   (Andrew Starr-Bochicchio, #1030521 )
+
+* Forbid more operations for ReadonlyTransportDecorator so no more write
+  methods can be used my mistake.  (Vincent Ladeuil, #150196)
 
 Documentation
 *************
@@ -63,6 +66,13 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* Make all transport put_bytes() raises TypeError instead of AssertionError
+  or UnicodeEncodeError when given unicode strings rather than bytes.
+  (Vincent Ladeuil, #106898)
+
+* Use ssl.match_hostname from the python ssl module and stop carrying a
+  specific version that has become obsolete. (Vincent Ladeuil, #1538480)
+
 Changed Behaviour
 *****************
 
@@ -76,6 +86,8 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Fix gpgme test failure starting on wily. (Vincent Ladeuil)
+     
 * Fix racy http tests (TestBadStatusServer is so simple, it exposes a race
   in python 2.7.9. This happens only when both the http server and client
   are run in the same process.). Only tests are affected.
@@ -89,12 +101,12 @@ Testing
 * Handle (minor) incompatible change in python 2.7.6 leading to test
   failures. Only tests are affected. (Vincent Ladeuil, #1303879)
 
-* Take python 2.7.6 late (better than never) bugfix in ntpath.py into
-  account. Only tests are affected (Vincent Ladeuil, #1303879).
-
 * Remove wrong assumption about how TCP server and client interact when run
   inside the same process. (Vincent Ladeuil, #1269886).
 
+* Rename assertWarns in bt.test_config so it doesn't clash with the
+  assertWarns introduced in recent python (Vincent Ladeuil, #1514210)
+    
 * Restrict access to '.netrc' in tests or recent python (2.7.5-8) will
   complain. (Vincent Ladeuil, #1233413)
 
@@ -102,5 +114,8 @@ Testing
   way to fix them without testing on windows itself.
   (Vincent Ladeuil, #1451448)
      
+* Take python 2.7.6 late (better than never) bugfix in ntpath.py into
+  account. Only tests are affected (Vincent Ladeuil, #1303879).
+
 ..
    vim: tw=74 ft=rst ff=unix

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2012 Canonical Ltd
+# Copyright (C) 2005-2014, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2237,6 +2237,8 @@ class TestOptionNames(tests.TestCase):
         self.assertTrue(self.is_valid('__bar__'))
         self.assertTrue(self.is_valid('a_'))
         self.assertTrue(self.is_valid('a1'))
+        # Don't break bzr-svn for no good reason
+        self.assertTrue(self.is_valid('guessed-layout'))
 
     def test_invalid_names(self):
         self.assertFalse(self.is_valid(' foo'))
@@ -2250,6 +2252,10 @@ class TestOptionNames(tests.TestCase):
         self.assertFalse(self.is_valid('{}'))
         self.assertFalse(self.is_valid('{a}'))
         self.assertFalse(self.is_valid('a\n'))
+        self.assertFalse(self.is_valid('-'))
+        self.assertFalse(self.is_valid('-a'))
+        self.assertFalse(self.is_valid('a-'))
+        self.assertFalse(self.is_valid('a--a'))
 
     def assertSingleGroup(self, reference):
         # the regexp is used with split and as such should match the reference
@@ -2306,13 +2312,14 @@ class TestOption(tests.TestCase):
         self.assertEquals('foo', opt.get_help_topic())
 
 
-class TestOptionConverterMixin(object):
+class TestOptionConverter(tests.TestCase):
 
     def assertConverted(self, expected, opt, value):
         self.assertEquals(expected, opt.convert_from_unicode(None, value))
 
-    def assertWarns(self, opt, value):
+    def assertCallsWarning(self, opt, value):
         warnings = []
+
         def warning(*args):
             warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
@@ -2322,7 +2329,7 @@ class TestOptionConverterMixin(object):
             'Value "%s" is not valid for "%s"' % (value, opt.name),
             warnings[0])
 
-    def assertErrors(self, opt, value):
+    def assertCallsError(self, opt, value):
         self.assertRaises(errors.ConfigOptionValueError,
                           opt.convert_from_unicode, None, value)
 
@@ -2330,12 +2337,12 @@ class TestOptionConverterMixin(object):
         opt.invalid = None
         self.assertEquals(None, opt.convert_from_unicode(None, invalid_value))
         opt.invalid = 'warning'
-        self.assertWarns(opt, invalid_value)
+        self.assertCallsWarning(opt, invalid_value)
         opt.invalid = 'error'
-        self.assertErrors(opt, invalid_value)
+        self.assertCallsError(opt, invalid_value)
 
 
-class TestOptionWithBooleanConverter(tests.TestCase, TestOptionConverterMixin):
+class TestOptionWithBooleanConverter(TestOptionConverter):
 
     def get_option(self):
         return config.Option('foo', help='A boolean.',
@@ -2355,7 +2362,7 @@ class TestOptionWithBooleanConverter(tests.TestCase, TestOptionConverterMixin):
         self.assertConverted(False, opt, u'False')
 
 
-class TestOptionWithIntegerConverter(tests.TestCase, TestOptionConverterMixin):
+class TestOptionWithIntegerConverter(TestOptionConverter):
 
     def get_option(self):
         return config.Option('foo', help='An integer.',
@@ -2373,7 +2380,7 @@ class TestOptionWithIntegerConverter(tests.TestCase, TestOptionConverterMixin):
         self.assertConverted(16, opt, u'16')
 
 
-class TestOptionWithSIUnitConverter(tests.TestCase, TestOptionConverterMixin):
+class TestOptionWithSIUnitConverter(TestOptionConverter):
 
     def get_option(self):
         return config.Option('foo', help='An integer in SI units.',
@@ -2382,8 +2389,8 @@ class TestOptionWithSIUnitConverter(tests.TestCase, TestOptionConverterMixin):
     def test_convert_invalid(self):
         opt = self.get_option()
         self.assertConvertInvalid(opt, u'not-a-unit')
-        self.assertConvertInvalid(opt, u'Gb') # Forgot the int
-        self.assertConvertInvalid(opt, u'1b') # Forgot the unit
+        self.assertConvertInvalid(opt, u'Gb')  # Forgot the value
+        self.assertConvertInvalid(opt, u'1b')  # Forgot the unit
         self.assertConvertInvalid(opt, u'1GG')
         self.assertConvertInvalid(opt, u'1Mbb')
         self.assertConvertInvalid(opt, u'1MM')
@@ -2398,7 +2405,7 @@ class TestOptionWithSIUnitConverter(tests.TestCase, TestOptionConverterMixin):
         self.assertConverted(100, opt, u'100')
 
 
-class TestListOption(tests.TestCase, TestOptionConverterMixin):
+class TestListOption(TestOptionConverter):
 
     def get_option(self):
         return config.ListOption('foo', help='A list.')
@@ -2413,7 +2420,7 @@ class TestListOption(tests.TestCase, TestOptionConverterMixin):
     def test_convert_valid(self):
         opt = self.get_option()
         # An empty string is an empty list
-        self.assertConverted([], opt, '') # Using a bare str() just in case
+        self.assertConverted([], opt, '')  # Using a bare str() just in case
         self.assertConverted([], opt, u'')
         # A boolean
         self.assertConverted([u'True'], opt, u'True')
@@ -2423,11 +2430,11 @@ class TestListOption(tests.TestCase, TestOptionConverterMixin):
         self.assertConverted([u'bar'], opt, u'bar')
 
 
-class TestRegistryOption(tests.TestCase, TestOptionConverterMixin):
+class TestRegistryOption(TestOptionConverter):
 
     def get_option(self, registry):
         return config.RegistryOption('foo', registry,
-                help='A registry option.')
+                                     help='A registry option.')
 
     def test_convert_invalid(self):
         registry = _mod_registry.Registry()

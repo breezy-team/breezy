@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2014, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1638,6 +1638,21 @@ class ReadOnlyEndToEndTests(SmartTCPTests):
         self.overrideEnv('BZR_NO_SMART_VFS', None)
         self.start_server(readonly=True)
         self.assertRaises(errors.TransportNotPossible, self.transport.mkdir,
+            'foo')
+
+    def test_rename_error_readonly(self):
+        """TransportNotPossible should be preserved from the backing transport."""
+        self.overrideEnv('BZR_NO_SMART_VFS', None)
+        self.start_server(readonly=True)
+        self.assertRaises(errors.TransportNotPossible, self.transport.rename,
+                          'foo', 'bar')
+
+    def test_open_write_stream_error_readonly(self):
+        """TransportNotPossible should be preserved from the backing transport."""
+        self.overrideEnv('BZR_NO_SMART_VFS', None)
+        self.start_server(readonly=True)
+        self.assertRaises(
+            errors.TransportNotPossible, self.transport.open_write_stream,
             'foo')
 
 

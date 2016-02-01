@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2012 Canonical Ltd
+# Copyright (C) 2006-2013, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -56,6 +56,7 @@ import urllib
 import urllib2
 import urlparse
 import re
+import ssl
 import sys
 import time
 
@@ -70,23 +71,33 @@ from bzrlib import (
     transport,
     ui,
     urlutils,
-    )
-lazy_import.lazy_import(globals(), """
-import ssl
-""")
+)
+
+try:
+    _ = (ssl.match_hostname, ssl.CertificateError)
+except AttributeError:
+    # Provide fallbacks for python < 2.7.9
+    def match_hostname(cert, host):
+        trace.warning(
+            '%s cannot be verified, https certificates verification is only'
+            ' available for python versions >= 2.7.9' % (host,))
+    ssl.match_hostname = match_hostname
+    ssl.CertificateError = ValueError
 
 
 # Note for packagers: if there is no package providing certs for your platform,
 # the curl project produces http://curl.haxx.se/ca/cacert.pem weekly.
 _ssl_ca_certs_known_locations = [
-    u'/etc/ssl/certs/ca-certificates.crt', # Ubuntu/debian/gentoo
-    u'/etc/pki/tls/certs/ca-bundle.crt', # Fedora/CentOS/RH
-    u'/etc/ssl/ca-bundle.pem', # OpenSuse
-    u'/etc/ssl/cert.pem', # OpenSuse
-    u"/usr/local/share/certs/ca-root-nss.crt", # FreeBSD
+    u'/etc/ssl/certs/ca-certificates.crt',  # Ubuntu/debian/gentoo
+    u'/etc/pki/tls/certs/ca-bundle.crt',  # Fedora/CentOS/RH
+    u'/etc/ssl/ca-bundle.pem',  # OpenSuse
+    u'/etc/ssl/cert.pem',  # OpenSuse
+    u"/usr/local/share/certs/ca-root-nss.crt",  # FreeBSD
     # XXX: Needs checking, can't trust the interweb ;) -- vila 2012-01-25
-    u'/etc/openssl/certs/ca-certificates.crt', # Solaris
-    ]
+    u'/etc/openssl/certs/ca-certificates.crt',  # Solaris
+]
+
+
 def default_ca_certs():
     if sys.platform == 'win32':
         return os.path.join(os.path.dirname(sys.executable), u"cacert.pem")
@@ -115,12 +126,11 @@ def ca_certs_from_store(path):
 def cert_reqs_from_store(unicode_str):
     import ssl
     try:
-        return {
-            "required": ssl.CERT_REQUIRED,
-            "none": ssl.CERT_NONE
-            }[unicode_str]
+        return {"required": ssl.CERT_REQUIRED,
+                "none": ssl.CERT_NONE}[unicode_str]
     except KeyError:
         raise ValueError("invalid value %s" % unicode_str)
+
 
 def default_ca_reqs():
     if sys.platform in ('win32', 'darwin'):
@@ -131,10 +141,10 @@ def default_ca_reqs():
         return u'required'
 
 opt_ssl_ca_certs = config.Option('ssl.ca_certs',
-        from_unicode=ca_certs_from_store,
-        default=default_ca_certs,
-        invalid='warning',
-        help="""\
+                                 from_unicode=ca_certs_from_store,
+                                 default=default_ca_certs,
+                                 invalid='warning',
+                                 help="""\
 Path to certification authority certificates to trust.
 
 This should be a valid path to a bundle containing all root Certificate
@@ -144,10 +154,10 @@ Use ssl.cert_reqs=none to disable certificate verification.
 """)
 
 opt_ssl_cert_reqs = config.Option('ssl.cert_reqs',
-        default=default_ca_reqs,
-        from_unicode=cert_reqs_from_store,
-        invalid='error',
-        help="""\
+                                  default=default_ca_reqs,
+                                  from_unicode=cert_reqs_from_store,
+                                  invalid='error',
+                                  help="""\
 Whether to require a certificate from the remote side. (default:required)
 
 Possible values:
@@ -398,68 +408,6 @@ class HTTPConnection(AbstractHTTPConnection, httplib.HTTPConnection):
         self._wrap_socket_for_reporting(self.sock)
 
 
-# These two methods were imported from Python 3.2's ssl module
-
-def _dnsname_to_pat(dn, max_wildcards=1):
-    pats = []
-    for frag in dn.split(r'.'):
-        if frag.count('*') > max_wildcards:
-            # Python Issue #17980: avoid denials of service by refusing more
-            # than one wildcard per fragment.  A survery of established
-            # policy among SSL implementations showed it to be a
-            # reasonable choice.
-            raise ValueError(
-                "too many wildcards in certificate DNS name: " + repr(dn))
-        if frag == '*':
-            # When '*' is a fragment by itself, it matches a non-empty dotless
-            # fragment.
-            pats.append('[^.]+')
-        else:
-            # Otherwise, '*' matches any dotless fragment.
-            frag = re.escape(frag)
-            pats.append(frag.replace(r'\*', '[^.]*'))
-    return re.compile(r'\A' + r'\.'.join(pats) + r'\Z', re.IGNORECASE)
-
-
-def match_hostname(cert, hostname):
-    """Verify that *cert* (in decoded format as returned by
-    SSLSocket.getpeercert()) matches the *hostname*.  RFC 2818 rules
-    are mostly followed, but IP addresses are not accepted for *hostname*.
-
-    CertificateError is raised on failure. On success, the function
-    returns nothing.
-    """
-    if not cert:
-        raise ValueError("empty or no certificate")
-    dnsnames = []
-    san = cert.get('subjectAltName', ())
-    for key, value in san:
-        if key == 'DNS':
-            if _dnsname_to_pat(value).match(hostname):
-                return
-            dnsnames.append(value)
-    if not san:
-        # The subject is only checked when subjectAltName is empty
-        for sub in cert.get('subject', ()):
-            for key, value in sub:
-                # XXX according to RFC 2818, the most specific Common Name
-                # must be used.
-                if key == 'commonName':
-                    if _dnsname_to_pat(value).match(hostname):
-                        return
-                    dnsnames.append(value)
-    if len(dnsnames) > 1:
-        raise errors.CertificateError(
-            "hostname %r doesn't match either of %s"
-            % (hostname, ', '.join(map(repr, dnsnames))))
-    elif len(dnsnames) == 1:
-        raise errors.CertificateError("hostname %r doesn't match %r" %
-                                      (hostname, dnsnames[0]))
-    else:
-        raise errors.CertificateError("no appropriate commonName or "
-            "subjectAltName fields were found")
-
-
 class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
@@ -503,9 +451,10 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
                     "'bzr help ssl.ca_certs' for more information on setting "
                     "trusted CAs.")
         try:
-            ssl_sock = ssl.wrap_socket(self.sock, self.key_file, self.cert_file,
+            ssl_sock = ssl.wrap_socket(
+                self.sock, self.key_file, self.cert_file,
                 cert_reqs=cert_reqs, ca_certs=ca_certs)
-        except ssl.SSLError, e:
+        except ssl.SSLError:
             trace.note(
                 "\n"
                 "See `bzr help ssl.ca_certs` for how to specify trusted CA"
@@ -515,7 +464,7 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
             raise
         if cert_reqs == ssl.CERT_REQUIRED:
             peer_cert = ssl_sock.getpeercert()
-            match_hostname(peer_cert, host)
+            ssl.match_hostname(peer_cert, host)
 
         # Wrap the ssl socket before anybody use it
         self._wrap_socket_for_reporting(ssl_sock)
@@ -833,7 +782,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                     % (request, request.connection.sock.getsockname())
             response = connection.getresponse()
             convert_to_addinfourl = True
-        except (ssl.SSLError, errors.CertificateError):
+        except (ssl.SSLError, ssl.CertificateError):
             # Something is wrong with either the certificate or the hostname,
             # re-trying won't help
             raise

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -184,13 +184,15 @@ class LocalTransport(transport.Transport):
             fp.close()
         return length
 
-    def put_bytes(self, relpath, bytes, mode=None):
+    def put_bytes(self, relpath, raw_bytes, mode=None):
         """Copy the string into the location.
 
         :param relpath: Location to put the contents, relative to base.
-        :param bytes:   String
+        :param raw_bytes:   String
         """
-
+        if not isinstance(raw_bytes, str):
+            raise TypeError(
+                'raw_bytes must be a plain string, not %s' % type(raw_bytes))
         path = relpath
         try:
             path = self._abspath(relpath)
@@ -200,7 +202,7 @@ class LocalTransport(transport.Transport):
             self._translate_error(e, path)
         try:
             if bytes:
-                fp.write(bytes)
+                fp.write(raw_bytes)
             fp.commit()
         finally:
             fp.close()
