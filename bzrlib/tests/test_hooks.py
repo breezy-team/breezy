@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -142,9 +142,9 @@ class TestHooks(tests.TestCase):
             'TestHooks.hooks', 'set_rh', set_rh, "demo")
         set_rh_lazy_hooks = _mod_hooks._lazy_hooks[
             ('bzrlib.tests.test_hooks', 'TestHooks.hooks', 'set_rh')]
-        self.assertEquals(1, len(set_rh_lazy_hooks))
-        self.assertEquals(set_rh, set_rh_lazy_hooks[0][0].get_obj())
-        self.assertEquals("demo", set_rh_lazy_hooks[0][1])
+        self.assertEqual(1, len(set_rh_lazy_hooks))
+        self.assertEqual(set_rh, set_rh_lazy_hooks[0][0].get_obj())
+        self.assertEqual("demo", set_rh_lazy_hooks[0][1])
         self.assertEqual(list(TestHooks.hooks['set_rh']), [set_rh])
 
     set_rh = lambda: None
@@ -172,8 +172,8 @@ class TestHooks(tests.TestCase):
         for key, callbacks in _mod_hooks._lazy_hooks.iteritems():
             (module_name, member_name, hook_name) = key
             obj = pyutils.get_named_object(module_name, member_name)
-            self.assertEquals(obj._module, module_name)
-            self.assertEquals(obj._member_name, member_name)
+            self.assertEqual(obj._module, module_name)
+            self.assertEqual(obj._member_name, member_name)
             self.assertTrue(hook_name in obj)
             self.assertIs(callbacks, obj[hook_name]._callbacks)
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2010, 2011 Canonical Ltd
+# Copyright (C) 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -81,7 +81,7 @@ class TestCatchingExceptionThread(tests.TestCase):
         self.assertIs(in_thread, tt.sync_event)
         control.set()
         self.assertRaises(MyException, tt.join)
-        self.assertEquals(True, tt.sync_event.isSet())
+        self.assertEqual(True, tt.sync_event.isSet())
 
     def test_switch_and_set(self):
         """Caller can precisely control a thread."""
@@ -111,17 +111,17 @@ class TestCatchingExceptionThread(tests.TestCase):
 
         tt = TestThread()
         tt.start()
-        self.assertEquals('starting', tt.current_step)
+        self.assertEqual('starting', tt.current_step)
         control1.set()
         tt.step1.wait()
-        self.assertEquals('step1', tt.current_step)
+        self.assertEqual('step1', tt.current_step)
         control2.set()
         tt.step2.wait()
-        self.assertEquals('step2', tt.current_step)
+        self.assertEqual('step2', tt.current_step)
         control3.set()
         # We don't wait on tt.final
         tt.join()
-        self.assertEquals('done', tt.current_step)
+        self.assertEqual('done', tt.current_step)
 
     def test_exception_while_switch_and_set(self):
         control1 = threading.Event()
@@ -152,7 +152,7 @@ class TestCatchingExceptionThread(tests.TestCase):
 
         tt = TestThread()
         tt.start()
-        self.assertEquals('starting', tt.current_step)
+        self.assertEqual('starting', tt.current_step)
         control1.set()
         # We now wait on step1 which will be set when catching the exception
         tt.step1.wait()

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -188,7 +188,7 @@ class BranchStatus(TestCaseWithTransport):
         wt2.merge_from_branch(wt.branch)
         message = self.status_string(wt2, verbose=True)
         self.assertStartsWith(message, "pending merges:\n")
-        self.assert_("Empty commit 3" in message)
+        self.assertTrue("Empty commit 3" in message)
         self.assertEndsWith(message, "...\n")
 
     def test_tree_status_ignores(self):
@@ -248,7 +248,7 @@ class BranchStatus(TestCaseWithTransport):
         tof = StringIO()
         show_tree_status(wt, specific_files=['directory'], to_file=tof)
         tof.seek(0)
-        self.assertEquals(tof.readlines(),
+        self.assertEqual(tof.readlines(),
                           ['unknown:\n',
                            '  directory/hello.c\n'
                            ])
@@ -256,31 +256,31 @@ class BranchStatus(TestCaseWithTransport):
         show_tree_status(wt, specific_files=['directory'], to_file=tof,
                          short=True)
         tof.seek(0)
-        self.assertEquals(tof.readlines(), ['?   directory/hello.c\n'])
+        self.assertEqual(tof.readlines(), ['?   directory/hello.c\n'])
 
         tof = StringIO()
         show_tree_status(wt, specific_files=['dir2'], to_file=tof)
         tof.seek(0)
-        self.assertEquals(tof.readlines(),
+        self.assertEqual(tof.readlines(),
                           ['unknown:\n',
                            '  dir2/\n'
                            ])
         tof = StringIO()
         show_tree_status(wt, specific_files=['dir2'], to_file=tof, short=True)
         tof.seek(0)
-        self.assertEquals(tof.readlines(), ['?   dir2/\n'])
+        self.assertEqual(tof.readlines(), ['?   dir2/\n'])
 
         tof = StringIO()
         revs = [RevisionSpec.from_string('0'), RevisionSpec.from_string('1')]
         show_tree_status(wt, specific_files=['test.c'], to_file=tof,
                          short=True, revision=revs)
         tof.seek(0)
-        self.assertEquals(tof.readlines(), ['+N  test.c\n'])
+        self.assertEqual(tof.readlines(), ['+N  test.c\n'])
 
         tof = StringIO()
         show_tree_status(wt, specific_files=['missing.c'], to_file=tof)
         tof.seek(0)
-        self.assertEquals(tof.readlines(),
+        self.assertEqual(tof.readlines(),
                           ['missing:\n',
                            '  missing.c\n'])
 
@@ -288,7 +288,7 @@ class BranchStatus(TestCaseWithTransport):
         show_tree_status(wt, specific_files=['missing.c'], to_file=tof,
                          short=True)
         tof.seek(0)
-        self.assertEquals(tof.readlines(),
+        self.assertEqual(tof.readlines(),
                           ['+!  missing.c\n'])
 
     def test_specific_files_conflicts(self):
@@ -627,7 +627,7 @@ class TestStatus(TestCaseWithTransport):
         self.assertContainsRe(result, "added:\n  hello.txt\n" \
                                       "unknown:\n  world.txt\n")
         result2 = self.run_bzr("status -r 0..")[0]
-        self.assertEquals(result2, result)
+        self.assertEqual(result2, result)
 
     def test_status_short(self):
         tree = self.make_branch_and_tree('.')
@@ -649,7 +649,7 @@ class TestStatus(TestCaseWithTransport):
         self.assertContainsRe(result, "[+]N  hello.txt\n" \
                                       "[?]   world.txt\n")
         result2 = self.run_bzr("status -S -r 0..")[0]
-        self.assertEquals(result2, result)
+        self.assertEqual(result2, result)
 
     def test_status_versioned(self):
         tree = self.make_branch_and_tree('.')
@@ -671,7 +671,7 @@ class TestStatus(TestCaseWithTransport):
         self.assertContainsRe(result, "added:\n  hello.txt\n")
         self.assertNotContainsRe(result, "unknown:\n  world.txt\n")
         result2 = self.run_bzr("status --versioned -r 0..")[0]
-        self.assertEquals(result2, result)
+        self.assertEqual(result2, result)
 
     def test_status_SV(self):
         tree = self.make_branch_and_tree('.')
@@ -693,7 +693,7 @@ class TestStatus(TestCaseWithTransport):
         self.assertContainsRe(result, "[+]N  hello.txt\n")
 
         result2 = self.run_bzr("status -SV -r 0..")[0]
-        self.assertEquals(result2, result)
+        self.assertEqual(result2, result)
 
     def assertStatusContains(self, pattern, short=False):
         """Run status, and assert it contains the given pattern"""
@@ -749,7 +749,7 @@ class TestStatus(TestCaseWithTransport):
 
         self.run_bzr('merge ../b', working_dir='a')
         out, err = self.run_bzr('status --no-pending', working_dir='a')
-        self.assertEquals(out, "added:\n  b\n")
+        self.assertEqual(out, "added:\n  b\n")
 
     def test_pending_specific_files(self):
         """With a specific file list, pending merges are not shown."""
@@ -787,7 +787,7 @@ class TestStatusEncodings(TestCaseWithTransport):
         working_tree = self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr("status")
 
-        self.assertEquals(stdout, """\
+        self.assertEqual(stdout, """\
 added:
   hell?
 """)
@@ -797,7 +797,7 @@ added:
         working_tree = self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr('status')
 
-        self.assertEquals(stdout, u"""\
+        self.assertEqual(stdout, u"""\
 added:
   hell\u00d8
 """.encode('latin-1'))

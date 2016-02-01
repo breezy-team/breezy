@@ -1,4 +1,4 @@
-# Copyright (C) 2009-2012 Canonical Ltd
+# Copyright (C) 2009-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -53,7 +53,7 @@ class TestDpush(tests.TestCaseWithTransport):
         target_tree = self.make_branch_and_tree("dp")
         source_tree = self.make_branch_and_tree("dc")
         output, error = self.run_bzr("dpush -d dc dp", retcode=3)
-        self.assertEquals("", output)
+        self.assertEqual("", output)
         self.assertContainsRe(error,
             'in the same VCS, lossy push not necessary. Please use regular '
             'push.')
@@ -132,7 +132,7 @@ class TestDpush(tests.TestCaseWithTransport):
           [('modify', ('fooid', 'blie'))])
 
         output, error = self.run_bzr("dpush -d dc d", retcode=3)
-        self.assertEquals(output, "")
+        self.assertEqual(output, "")
         self.assertContainsRe(error, "have diverged")
 
 

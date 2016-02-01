@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009, 2011 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -58,14 +58,14 @@ class TestCommitMerge(TestCaseWithTransport):
         wty.merge_from_branch(bx)
         wty.commit('merge from x', rev_id='y@u-0-2', allow_pointless=False)
 
-        self.assertEquals(by.revno(), 3)
+        self.assertEqual(by.revno(), 3)
         graph = wty.branch.repository.get_graph()
         self.addCleanup(wty.lock_read().unlock)
         self.assertThat(by,
             RevisionHistoryMatches([base_rev, 'y@u-0-1', 'y@u-0-2'])
             )
         rev = by.repository.get_revision('y@u-0-2')
-        self.assertEquals(rev.parent_ids,
+        self.assertEqual(rev.parent_ids,
                           ['y@u-0-1', 'x@u-0-1'])
 
     def test_merge_new_file(self):
@@ -98,8 +98,8 @@ class TestCommitMerge(TestCaseWithTransport):
 
         wty.commit('merge from x', rev_id='y@u-0-2', allow_pointless=False)
         tree = by.repository.revision_tree('y@u-0-2')
-        self.assertEquals(tree.get_file_revision('ecks-id'), 'x@u-0-1')
-        self.assertEquals(tree.get_file_revision('why-id'), 'y@u-0-1')
+        self.assertEqual(tree.get_file_revision('ecks-id'), 'x@u-0-1')
+        self.assertEqual(tree.get_file_revision('why-id'), 'y@u-0-1')
 
         check.check_dwim(bx.base, False, True, True)
         check.check_dwim(by.base, False, True, True)

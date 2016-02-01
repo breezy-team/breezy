@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2014 Canonical Ltd
+# Copyright (C) 2005-2012, 2014, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -94,7 +94,7 @@ class TestDiff(tests.TestCase):
         """diff generates a valid diff for patches that add a newline"""
         lines = udiff_lines(['boo'], ['boo\n'])
         self.check_patch(lines)
-        self.assertEquals(lines[4], '\\ No newline at end of file\n')
+        self.assertEqual(lines[4], '\\ No newline at end of file\n')
             ## "expected no-nl, got %r" % lines[4]
 
     def test_add_nl_2(self):
@@ -103,7 +103,7 @@ class TestDiff(tests.TestCase):
         """
         lines = udiff_lines(['boo'], ['goo\n'])
         self.check_patch(lines)
-        self.assertEquals(lines[4], '\\ No newline at end of file\n')
+        self.assertEqual(lines[4], '\\ No newline at end of file\n')
             ## "expected no-nl, got %r" % lines[4]
 
     def test_remove_nl(self):
@@ -112,21 +112,21 @@ class TestDiff(tests.TestCase):
         """
         lines = udiff_lines(['boo\n'], ['boo'])
         self.check_patch(lines)
-        self.assertEquals(lines[5], '\\ No newline at end of file\n')
+        self.assertEqual(lines[5], '\\ No newline at end of file\n')
             ## "expected no-nl, got %r" % lines[5]
 
     def check_patch(self, lines):
-        self.assert_(len(lines) > 1)
+        self.assertTrue(len(lines) > 1)
             ## "Not enough lines for a file header for patch:\n%s" % "".join(lines)
-        self.assert_(lines[0].startswith ('---'))
+        self.assertTrue(lines[0].startswith ('---'))
             ## 'No orig line for patch:\n%s' % "".join(lines)
-        self.assert_(lines[1].startswith ('+++'))
+        self.assertTrue(lines[1].startswith ('+++'))
             ## 'No mod line for patch:\n%s' % "".join(lines)
-        self.assert_(len(lines) > 2)
+        self.assertTrue(len(lines) > 2)
             ## "No hunks for patch:\n%s" % "".join(lines)
-        self.assert_(lines[2].startswith('@@'))
+        self.assertTrue(lines[2].startswith('@@'))
             ## "No hunk header for patch:\n%s" % "".join(lines)
-        self.assert_('@@' in lines[2][2:])
+        self.assertTrue('@@' in lines[2][2:])
             ## "Unterminated hunk header for patch:\n%s" % "".join(lines)
 
     def test_binary_lines(self):
@@ -157,7 +157,7 @@ class TestDiff(tests.TestCase):
         # Older versions of diffutils say "Binary files", newer
         # versions just say "Files".
         self.assertContainsRe(lines[0], '(Binary f|F)iles old and new differ\n')
-        self.assertEquals(lines[1:], ['\n'])
+        self.assertEqual(lines[1:], ['\n'])
 
     def test_no_external_diff(self):
         """Check that NoDiff is raised when diff is not available"""
@@ -175,7 +175,7 @@ class TestDiff(tests.TestCase):
                            u'new_\xe5', ['new_text\n'], output)
         lines = output.getvalue().splitlines(True)
         self.check_patch(lines)
-        self.assertEquals(['--- old_\xc2\xb5\n',
+        self.assertEqual(['--- old_\xc2\xb5\n',
                            '+++ new_\xc3\xa5\n',
                            '@@ -1,1 +1,1 @@\n',
                            '-old_text\n',
@@ -191,7 +191,7 @@ class TestDiff(tests.TestCase):
                            path_encoding='utf8')
         lines = output.getvalue().splitlines(True)
         self.check_patch(lines)
-        self.assertEquals(['--- old_\xc2\xb5\n',
+        self.assertEqual(['--- old_\xc2\xb5\n',
                            '+++ new_\xc3\xa5\n',
                            '@@ -1,1 +1,1 @@\n',
                            '-old_text\n',
@@ -207,7 +207,7 @@ class TestDiff(tests.TestCase):
                            path_encoding='iso-8859-1')
         lines = output.getvalue().splitlines(True)
         self.check_patch(lines)
-        self.assertEquals(['--- old_\xb5\n',
+        self.assertEqual(['--- old_\xb5\n',
                            '+++ new_\xe5\n',
                            '@@ -1,1 +1,1 @@\n',
                            '-old_text\n',
@@ -244,7 +244,7 @@ class TestDiff(tests.TestCase):
                            'same_text\n','same_text\n','new_text\n'], output)
         lines = output.getvalue().splitlines(True)
         self.check_patch(lines)
-        self.assertEquals(['--- old\n',
+        self.assertEqual(['--- old\n',
                            '+++ new\n',
                            '@@ -3,4 +3,4 @@\n',
                            ' same_text\n',
@@ -265,7 +265,7 @@ class TestDiff(tests.TestCase):
                            context_lines=0)
         lines = output.getvalue().splitlines(True)
         self.check_patch(lines)
-        self.assertEquals(['--- old\n',
+        self.assertEqual(['--- old\n',
                            '+++ new\n',
                            '@@ -6,1 +6,1 @@\n',
                            '-old_text\n',
@@ -283,7 +283,7 @@ class TestDiff(tests.TestCase):
                            context_lines=4)
         lines = output.getvalue().splitlines(True)
         self.check_patch(lines)
-        self.assertEquals(['--- old\n',
+        self.assertEqual(['--- old\n',
                            '+++ new\n',
                            '@@ -2,5 +2,5 @@\n',
                            ' same_text\n',
@@ -864,28 +864,28 @@ class TestPatienceDiffLib(tests.TestCase):
         b = ''.join([unichr(i) for i in range(4300, 4800, 2)])
         sm = self._PatienceSequenceMatcher(None, a, b)
         mb = sm.get_matching_blocks()
-        self.assertEquals(35, len(mb))
+        self.assertEqual(35, len(mb))
 
     def test_unique_lcs(self):
         unique_lcs = self._unique_lcs
-        self.assertEquals(unique_lcs('', ''), [])
-        self.assertEquals(unique_lcs('', 'a'), [])
-        self.assertEquals(unique_lcs('a', ''), [])
-        self.assertEquals(unique_lcs('a', 'a'), [(0,0)])
-        self.assertEquals(unique_lcs('a', 'b'), [])
-        self.assertEquals(unique_lcs('ab', 'ab'), [(0,0), (1,1)])
-        self.assertEquals(unique_lcs('abcde', 'cdeab'), [(2,0), (3,1), (4,2)])
-        self.assertEquals(unique_lcs('cdeab', 'abcde'), [(0,2), (1,3), (2,4)])
-        self.assertEquals(unique_lcs('abXde', 'abYde'), [(0,0), (1,1),
+        self.assertEqual(unique_lcs('', ''), [])
+        self.assertEqual(unique_lcs('', 'a'), [])
+        self.assertEqual(unique_lcs('a', ''), [])
+        self.assertEqual(unique_lcs('a', 'a'), [(0,0)])
+        self.assertEqual(unique_lcs('a', 'b'), [])
+        self.assertEqual(unique_lcs('ab', 'ab'), [(0,0), (1,1)])
+        self.assertEqual(unique_lcs('abcde', 'cdeab'), [(2,0), (3,1), (4,2)])
+        self.assertEqual(unique_lcs('cdeab', 'abcde'), [(0,2), (1,3), (2,4)])
+        self.assertEqual(unique_lcs('abXde', 'abYde'), [(0,0), (1,1),
                                                          (3,3), (4,4)])
-        self.assertEquals(unique_lcs('acbac', 'abc'), [(2,1)])
+        self.assertEqual(unique_lcs('acbac', 'abc'), [(2,1)])
 
     def test_recurse_matches(self):
         def test_one(a, b, matches):
             test_matches = []
             self._recurse_matches(
                 a, b, 0, 0, len(a), len(b), test_matches, 10)
-            self.assertEquals(test_matches, matches)
+            self.assertEqual(test_matches, matches)
 
         test_one(['a', '', 'b', '', 'c'], ['a', 'a', 'b', 'c', 'c'],
                  [(0, 0), (2, 2), (4, 4)])
@@ -996,7 +996,7 @@ class TestPatienceDiffLib(tests.TestCase):
     def test_opcodes(self):
         def chk_ops(a, b, expected_codes):
             s = self._PatienceSequenceMatcher(None, a, b)
-            self.assertEquals(expected_codes, s.get_opcodes())
+            self.assertEqual(expected_codes, s.get_opcodes())
 
         chk_ops('', '', [])
         chk_ops([], [], [])
@@ -1072,7 +1072,7 @@ class TestPatienceDiffLib(tests.TestCase):
     def test_grouped_opcodes(self):
         def chk_ops(a, b, expected_codes, n=3):
             s = self._PatienceSequenceMatcher(None, a, b)
-            self.assertEquals(expected_codes, list(s.get_grouped_opcodes(n)))
+            self.assertEqual(expected_codes, list(s.get_grouped_opcodes(n)))
 
         chk_ops('', '', [])
         chk_ops([], [], [])
@@ -1172,7 +1172,7 @@ pynff pzq_zxqve(Pbzznaq):
                  'how are you today?\n']
         unified_diff = patiencediff.unified_diff
         psm = self._PatienceSequenceMatcher
-        self.assertEquals(['--- \n',
+        self.assertEqual(['--- \n',
                            '+++ \n',
                            '@@ -1,3 +1,2 @@\n',
                            ' hello there\n',
@@ -1184,7 +1184,7 @@ pynff pzq_zxqve(Pbzznaq):
         txt_a = map(lambda x: x+'\n', 'abcdefghijklmnop')
         txt_b = map(lambda x: x+'\n', 'abcdefxydefghijklmnop')
         # This is the result with LongestCommonSubstring matching
-        self.assertEquals(['--- \n',
+        self.assertEqual(['--- \n',
                            '+++ \n',
                            '@@ -1,6 +1,11 @@\n',
                            ' a\n',
@@ -1200,7 +1200,7 @@ pynff pzq_zxqve(Pbzznaq):
                            ' f\n']
                           , list(unified_diff(txt_a, txt_b)))
         # And the patience diff
-        self.assertEquals(['--- \n',
+        self.assertEqual(['--- \n',
                            '+++ \n',
                            '@@ -4,6 +4,11 @@\n',
                            ' d\n',
@@ -1226,7 +1226,7 @@ pynff pzq_zxqve(Pbzznaq):
                  'how are you today?\n']
         unified_diff = patiencediff.unified_diff
         psm = self._PatienceSequenceMatcher
-        self.assertEquals(['--- a\t2008-08-08\n',
+        self.assertEqual(['--- a\t2008-08-08\n',
                            '+++ b\t2008-09-09\n',
                            '@@ -1,3 +1,2 @@\n',
                            ' hello there\n',
@@ -1284,7 +1284,7 @@ class TestPatienceDiffLibFiles(tests.TestCaseInTempDir):
 
         unified_diff_files = patiencediff.unified_diff_files
         psm = self._PatienceSequenceMatcher
-        self.assertEquals(['--- a1\n',
+        self.assertEqual(['--- a1\n',
                            '+++ b1\n',
                            '@@ -1,3 +1,2 @@\n',
                            ' hello there\n',
@@ -1300,7 +1300,7 @@ class TestPatienceDiffLibFiles(tests.TestCaseInTempDir):
         with open('b2', 'wb') as f: f.writelines(txt_b)
 
         # This is the result with LongestCommonSubstring matching
-        self.assertEquals(['--- a2\n',
+        self.assertEqual(['--- a2\n',
                            '+++ b2\n',
                            '@@ -1,6 +1,11 @@\n',
                            ' a\n',
@@ -1317,23 +1317,22 @@ class TestPatienceDiffLibFiles(tests.TestCaseInTempDir):
                           , list(unified_diff_files('a2', 'b2')))
 
         # And the patience diff
-        self.assertEquals(['--- a2\n',
-                           '+++ b2\n',
-                           '@@ -4,6 +4,11 @@\n',
-                           ' d\n',
-                           ' e\n',
-                           ' f\n',
-                           '+x\n',
-                           '+y\n',
-                           '+d\n',
-                           '+e\n',
-                           '+f\n',
-                           ' g\n',
-                           ' h\n',
-                           ' i\n',
-                          ]
-                          , list(unified_diff_files('a2', 'b2',
-                                 sequencematcher=psm)))
+        self.assertEqual(['--- a2\n',
+                          '+++ b2\n',
+                          '@@ -4,6 +4,11 @@\n',
+                          ' d\n',
+                          ' e\n',
+                          ' f\n',
+                          '+x\n',
+                          '+y\n',
+                          '+d\n',
+                          '+e\n',
+                          '+f\n',
+                          ' g\n',
+                          ' h\n',
+                          ' i\n'],
+                         list(unified_diff_files('a2', 'b2',
+                                                 sequencematcher=psm)))
 
 
 class TestPatienceDiffLibFiles_c(TestPatienceDiffLibFiles):
@@ -1500,24 +1499,22 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
                                     None, None, None)
         for _, scenario in EncodingAdapter.encoding_scenarios:
             encoding = scenario['encoding']
-            dirname  = scenario['info']['directory']
+            dirname = scenario['info']['directory']
             filename = scenario['info']['filename']
 
             self.overrideAttr(diffobj, '_fenc', lambda: encoding)
             relpath = dirname + u'/' + filename
             fullpath = diffobj._safe_filename('safe', relpath)
-            self.assertEqual(
-                    fullpath,
-                    fullpath.encode(encoding).decode(encoding)
-                    )
-            self.assert_(fullpath.startswith(diffobj._root + '/safe'))
+            self.assertEqual(fullpath,
+                             fullpath.encode(encoding).decode(encoding))
+            self.assertTrue(fullpath.startswith(diffobj._root + '/safe'))
 
     def test_unencodable_filename(self):
         diffobj = diff.DiffFromTool(['dummy', '@old_path', '@new_path'],
                                     None, None, None)
         for _, scenario in EncodingAdapter.encoding_scenarios:
             encoding = scenario['encoding']
-            dirname  = scenario['info']['directory']
+            dirname = scenario['info']['directory']
             filename = scenario['info']['filename']
 
             if encoding == 'iso-8859-1':
@@ -1528,11 +1525,9 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
             self.overrideAttr(diffobj, '_fenc', lambda: encoding)
             relpath = dirname + u'/' + filename
             fullpath = diffobj._safe_filename('safe', relpath)
-            self.assertEqual(
-                    fullpath,
-                    fullpath.encode(encoding).decode(encoding)
-                    )
-            self.assert_(fullpath.startswith(diffobj._root + '/safe'))
+            self.assertEqual(fullpath,
+                             fullpath.encode(encoding).decode(encoding))
+            self.assertTrue(fullpath.startswith(diffobj._root + '/safe'))
 
 
 class TestGetTreesAndBranchesToDiffLocked(tests.TestCaseWithTransport):

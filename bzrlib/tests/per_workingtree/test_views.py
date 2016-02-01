@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -56,24 +56,24 @@ class TestTreeViews(TestCaseWithWorkingTree):
             'other-name': ['dir-2']}
         wt.views.set_view_info(view_current, view_dict)
         current, views = wt.views.get_view_info()
-        self.assertEquals(view_current, current)
-        self.assertEquals(view_dict, views)
+        self.assertEqual(view_current, current)
+        self.assertEqual(view_dict, views)
         # then reopen the tree and see they're still there
         wt = WorkingTree.open('wt')
         current, views = wt.views.get_view_info()
-        self.assertEquals(view_current, current)
-        self.assertEquals(view_dict, views)
+        self.assertEqual(view_current, current)
+        self.assertEqual(view_dict, views)
         # test setting a current view which does not exist
         self.assertRaises(errors.NoSuchView,
             wt.views.set_view_info, 'yet-another', view_dict)
         current, views = wt.views.get_view_info()
-        self.assertEquals(view_current, current)
-        self.assertEquals(view_dict, views)
+        self.assertEqual(view_current, current)
+        self.assertEqual(view_dict, views)
         # test clearing the current view
         wt.views.set_view_info(None, view_dict)
         current, views = wt.views.get_view_info()
-        self.assertEquals(None, current)
-        self.assertEquals(view_dict, views)
+        self.assertEqual(None, current)
+        self.assertEqual(view_dict, views)
 
     def test_lookup_view(self):
         wt = self.make_branch_and_tree('wt')
@@ -94,13 +94,13 @@ class TestTreeViews(TestCaseWithWorkingTree):
         # test that set_view sets the current view by default
         wt.views.set_view('view-1', ['dir-1'])
         current, views = wt.views.get_view_info()
-        self.assertEquals('view-1', current)
-        self.assertEquals({'view-1': ['dir-1']}, views)
+        self.assertEqual('view-1', current)
+        self.assertEqual({'view-1': ['dir-1']}, views)
         # test adding a view and not making it the current one
         wt.views.set_view('view-2', ['dir-2'], make_current=False)
         current, views = wt.views.get_view_info()
-        self.assertEquals('view-1', current)
-        self.assertEquals({'view-1': ['dir-1'], 'view-2': ['dir-2']}, views)
+        self.assertEqual('view-1', current)
+        self.assertEqual({'view-1': ['dir-1'], 'view-2': ['dir-2']}, views)
 
     def test_unicode_view(self):
         wt = self.make_branch_and_tree('wt')
@@ -109,16 +109,16 @@ class TestTreeViews(TestCaseWithWorkingTree):
         view_dict = {view_name: view_files}
         wt.views.set_view_info(view_name, view_dict)
         current, views = wt.views.get_view_info()
-        self.assertEquals(view_name, current)
-        self.assertEquals(view_dict, views)
+        self.assertEqual(view_name, current)
+        self.assertEqual(view_dict, views)
 
     def test_no_such_view(self):
         wt = self.make_branch_and_tree('wt')
         try:
             wt.views.lookup_view('opaque')
         except errors.NoSuchView, e:
-            self.assertEquals(e.view_name, 'opaque')
-            self.assertEquals(str(e), 'No such view: opaque.')
+            self.assertEqual(e.view_name, 'opaque')
+            self.assertEqual(str(e), 'No such view: opaque.')
         else:
             self.fail("didn't get expected exception")
 
@@ -133,7 +133,7 @@ class TestTreeViews(TestCaseWithWorkingTree):
         self.assertRaises(errors.NoSuchView,
             wt.views.lookup_view, view_name)
         # and it's not in the dictionary
-        self.assertEquals(wt.views.get_view_info()[1], {})
+        self.assertEqual(wt.views.get_view_info()[1], {})
         # and you can't remove it a second time
         self.assertRaises(errors.NoSuchView,
             wt.views.delete_view, view_name)

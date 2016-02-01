@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2011, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -41,6 +41,6 @@ class TestGetConfig(per_branch.TestCaseWithBranch):
         b.set_submit_branch('foo')
         # Refresh the branch
         b = branch.Branch.open('.')
-        self.assertEquals('foo', b.get_submit_branch())
+        self.assertEqual('foo', b.get_submit_branch())
 
 

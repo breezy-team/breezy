@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -45,6 +45,6 @@ class TestCat(TestCaseWithConnectionHookedTransport):
 
         cmd = cmd_cat()
         cmd.run(self.get_url('branch/foo'))
-        self.assertEquals(1, len(self.connections))
-        self.assertEquals('foo', self.outf.getvalue())
+        self.assertEqual(1, len(self.connections))
+        self.assertEqual('foo', self.outf.getvalue())
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005-2009, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,9 +30,9 @@ class APITests(TestCase):
 
     def test_library_version(self):
         """Library API version is exposed"""
-        self.assert_(isinstance(bzrlib.__version__, str))
-        self.assert_(isinstance(bzrlib.version_string, str))
-        self.assert_(isinstance(bzrlib.version_info, tuple))
+        self.assertTrue(isinstance(bzrlib.__version__, str))
+        self.assertTrue(isinstance(bzrlib.version_string, str))
+        self.assertTrue(isinstance(bzrlib.version_info, tuple))
         self.assertEqual(len(bzrlib.version_info), 5)
 
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2015 Canonical Ltd
+# Copyright (C) 2005-2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -180,7 +180,7 @@ class TestRename(tests.TestCaseInTempDir):
         # we can't use failUnlessExists on case-insensitive filesystem
         # so try to check shape of the tree
         shape = sorted(os.listdir('.'))
-        self.assertEquals(['A', 'B'], shape)
+        self.assertEqual(['A', 'B'], shape)
 
     def test_rename_exception(self):
         try:
@@ -222,7 +222,7 @@ class TestIsInside(tests.TestCase):
                          (['src'], SRC_FOO_C),
                          (['src'], 'src'),
                          ]:
-            self.assert_(osutils.is_inside_any(dirs, fn))
+            self.assertTrue(osutils.is_inside_any(dirs, fn))
         for dirs, fn in [(['src'], 'srccontrol'),
                          (['src'], 'srccontrol/foo')]:
             self.assertFalse(osutils.is_inside_any(dirs, fn))
@@ -234,7 +234,7 @@ class TestIsInside(tests.TestCase):
                          (['src/bar.c', 'bla/foo.c'], 'src'),
                          (['src'], 'src'),
                          ]:
-            self.assert_(osutils.is_inside_or_parent_of_any(dirs, fn))
+            self.assertTrue(osutils.is_inside_or_parent_of_any(dirs, fn))
 
         for dirs, fn in [(['src'], 'srccontrol'),
                          (['srccontrol/foo.c'], 'src'),
@@ -298,11 +298,11 @@ class TestKind(tests.TestCaseInTempDir):
 
     def test_file_kind(self):
         self.build_tree(['file', 'dir/'])
-        self.assertEquals('file', osutils.file_kind('file'))
-        self.assertEquals('directory', osutils.file_kind('dir/'))
+        self.assertEqual('file', osutils.file_kind('file'))
+        self.assertEqual('directory', osutils.file_kind('dir/'))
         if osutils.has_symlinks():
             os.symlink('symlink', 'symlink')
-            self.assertEquals('symlink', osutils.file_kind('symlink'))
+            self.assertEqual('symlink', osutils.file_kind('symlink'))
 
         # TODO: jam 20060529 Test a block device
         try:
@@ -311,13 +311,13 @@ class TestKind(tests.TestCaseInTempDir):
             if e.errno not in (errno.ENOENT,):
                 raise
         else:
-            self.assertEquals('chardev', osutils.file_kind('/dev/null'))
+            self.assertEqual('chardev', osutils.file_kind('/dev/null'))
 
         mkfifo = getattr(os, 'mkfifo', None)
         if mkfifo:
             mkfifo('fifo')
             try:
-                self.assertEquals('fifo', osutils.file_kind('fifo'))
+                self.assertEqual('fifo', osutils.file_kind('fifo'))
             finally:
                 os.remove('fifo')
 
@@ -326,7 +326,7 @@ class TestKind(tests.TestCaseInTempDir):
             s = socket.socket(AF_UNIX)
             s.bind('socket')
             try:
-                self.assertEquals('socket', osutils.file_kind('socket'))
+                self.assertEqual('socket', osutils.file_kind('socket'))
             finally:
                 os.remove('socket')
 
@@ -1205,8 +1205,8 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # (It would be ok if it happened earlier but at the moment it
         # doesn't.)
         e = self.assertRaises(OSError, list, osutils._walkdirs_utf8("."))
-        self.assertEquals('./test-unreadable', e.filename)
-        self.assertEquals(errno.EACCES, e.errno)
+        self.assertEqual('./test-unreadable', e.filename)
+        self.assertEqual(errno.EACCES, e.errno)
         # Ensure the message contains the file name
         self.assertContainsRe(str(e), "\./test-unreadable")
 
@@ -2003,10 +2003,10 @@ class TestReadLink(tests.TestCaseInTempDir):
         os.symlink(self.target, self.link)
 
     def test_os_readlink_link_encoding(self):
-        self.assertEquals(self.target,  os.readlink(self.link))
+        self.assertEqual(self.target,  os.readlink(self.link))
 
     def test_os_readlink_link_decoding(self):
-        self.assertEquals(self.target.encode(osutils._fs_enc),
+        self.assertEqual(self.target.encode(osutils._fs_enc),
                           os.readlink(self.link.encode(osutils._fs_enc)))
 
 
@@ -2032,8 +2032,8 @@ class TestConcurrency(tests.TestCase):
         self.overrideEnv('BZR_CONCURRENCY', '1')
         self.run_bzr('rocks --concurrency 42')
         # Command line overrides environment variable
-        self.assertEquals('42', os.environ['BZR_CONCURRENCY'])
-        self.assertEquals(42, osutils.local_concurrency(use_cache=False))
+        self.assertEqual('42', os.environ['BZR_CONCURRENCY'])
+        self.assertEqual(42, osutils.local_concurrency(use_cache=False))
 
 
 class TestFailedToLoadExtension(tests.TestCase):
@@ -2052,7 +2052,7 @@ class TestFailedToLoadExtension(tests.TestCase):
     def test_failure_to_load(self):
         self._try_loading()
         self.assertLength(1, osutils._extension_load_failures)
-        self.assertEquals(osutils._extension_load_failures[0],
+        self.assertEqual(osutils._extension_load_failures[0],
             "No module named _fictional_extension_py")
 
     def test_report_extension_load_failures_no_warning(self):
@@ -2179,9 +2179,9 @@ class TestCreationOps(tests.TestCaseInTempDir):
         osutils.copy_ownership_from_path('test_file', ownsrc)
 
         s = os.stat(ownsrc)
-        self.assertEquals(self.path, 'test_file')
-        self.assertEquals(self.uid, s.st_uid)
-        self.assertEquals(self.gid, s.st_gid)
+        self.assertEqual(self.path, 'test_file')
+        self.assertEqual(self.uid, s.st_uid)
+        self.assertEqual(self.gid, s.st_gid)
 
     def test_copy_ownership_nonesrc(self):
         """copy_ownership_from_path test with src=None."""
@@ -2190,9 +2190,9 @@ class TestCreationOps(tests.TestCaseInTempDir):
         osutils.copy_ownership_from_path('test_file')
 
         s = os.stat('..')
-        self.assertEquals(self.path, 'test_file')
-        self.assertEquals(self.uid, s.st_uid)
-        self.assertEquals(self.gid, s.st_gid)
+        self.assertEqual(self.path, 'test_file')
+        self.assertEqual(self.uid, s.st_uid)
+        self.assertEqual(self.gid, s.st_gid)
 
 
 class TestPathFromEnviron(tests.TestCase):

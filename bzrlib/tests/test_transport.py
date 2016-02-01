@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011, 2015 Canonical Ltd
+# Copyright (C) 2005-2011, 2015, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -95,7 +95,7 @@ class TestTransport(tests.TestCase):
             transport.get_transport_from_url('foo://fooserver/foo')
         except errors.UnsupportedProtocol, e:
             e_str = str(e)
-            self.assertEquals('Unsupported protocol'
+            self.assertEqual('Unsupported protocol'
                                 ' for url "foo://fooserver/foo":'
                                 ' Unable to import library "some_lib":'
                                 ' testing missing dependency', str(e))
@@ -121,7 +121,7 @@ class TestTransport(tests.TestCase):
             transport.get_transport_from_url('ssh://fooserver/foo')
         except errors.UnsupportedProtocol, e:
             e_str = str(e)
-            self.assertEquals('Unsupported protocol'
+            self.assertEqual('Unsupported protocol'
                               ' for url "ssh://fooserver/foo":'
                               ' bzr supports bzr+ssh to operate over ssh,'
                               ' use "bzr+ssh://fooserver/foo".',
@@ -298,12 +298,12 @@ class TestMemoryTransport(tests.TestCase):
 
     def test_has_missing(self):
         t = memory.MemoryTransport()
-        self.assertEquals(False, t.has('foo'))
+        self.assertEqual(False, t.has('foo'))
 
     def test_has_present(self):
         t = memory.MemoryTransport()
         t.append_bytes('foo', 'content')
-        self.assertEquals(True, t.has('foo'))
+        self.assertEqual(True, t.has('foo'))
 
     def test_list_dir(self):
         t = memory.MemoryTransport()
@@ -312,8 +312,8 @@ class TestMemoryTransport(tests.TestCase):
         t.put_bytes('dir/subfoo', 'content')
         t.put_bytes('dirlike', 'content')
 
-        self.assertEquals(['dir', 'dirlike', 'foo'], sorted(t.list_dir('.')))
-        self.assertEquals(['subfoo'], sorted(t.list_dir('dir')))
+        self.assertEqual(['dir', 'dirlike', 'foo'], sorted(t.list_dir('.')))
+        self.assertEqual(['subfoo'], sorted(t.list_dir('dir')))
 
     def test_mkdir(self):
         t = memory.MemoryTransport()
@@ -703,13 +703,13 @@ class TestTransportFromPath(tests.TestCaseInTempDir):
     def test_with_path(self):
         t = transport.get_transport_from_path(self.test_dir)
         self.assertIsInstance(t, local.LocalTransport)
-        self.assertEquals(t.base.rstrip("/"),
+        self.assertEqual(t.base.rstrip("/"),
             urlutils.local_path_to_url(self.test_dir))
 
     def test_with_url(self):
         t = transport.get_transport_from_path("file:")
         self.assertIsInstance(t, local.LocalTransport)
-        self.assertEquals(t.base.rstrip("/"),
+        self.assertEqual(t.base.rstrip("/"),
             urlutils.local_path_to_url(os.path.join(self.test_dir, "file:")))
 
 
@@ -723,13 +723,13 @@ class TestTransportFromUrl(tests.TestCaseInTempDir):
         url = urlutils.local_path_to_url(self.test_dir)
         t = transport.get_transport_from_url(url)
         self.assertIsInstance(t, local.LocalTransport)
-        self.assertEquals(t.base.rstrip("/"), url)
+        self.assertEqual(t.base.rstrip("/"), url)
 
     def test_with_url_and_segment_parameters(self):
         url = urlutils.local_path_to_url(self.test_dir)+",branch=foo"
         t = transport.get_transport_from_url(url)
         self.assertIsInstance(t, local.LocalTransport)
-        self.assertEquals(t.base.rstrip("/"), url)
+        self.assertEqual(t.base.rstrip("/"), url)
         with open(os.path.join(self.test_dir, "afile"), 'w') as f:
             f.write("data")
         self.assertTrue(t.has("afile"))
@@ -741,25 +741,25 @@ class TestLocalTransports(tests.TestCase):
         here = osutils.abspath('.')
         t = transport.get_transport(here)
         self.assertIsInstance(t, local.LocalTransport)
-        self.assertEquals(t.base, urlutils.local_path_to_url(here) + '/')
+        self.assertEqual(t.base, urlutils.local_path_to_url(here) + '/')
 
     def test_get_transport_from_relpath(self):
         here = osutils.abspath('.')
         t = transport.get_transport('.')
         self.assertIsInstance(t, local.LocalTransport)
-        self.assertEquals(t.base, urlutils.local_path_to_url('.') + '/')
+        self.assertEqual(t.base, urlutils.local_path_to_url('.') + '/')
 
     def test_get_transport_from_local_url(self):
         here = osutils.abspath('.')
         here_url = urlutils.local_path_to_url(here) + '/'
         t = transport.get_transport(here_url)
         self.assertIsInstance(t, local.LocalTransport)
-        self.assertEquals(t.base, here_url)
+        self.assertEqual(t.base, here_url)
 
     def test_local_abspath(self):
         here = osutils.abspath('.')
         t = transport.get_transport(here)
-        self.assertEquals(t.local_abspath(''), here)
+        self.assertEqual(t.local_abspath(''), here)
 
 
 class TestLocalTransportMutation(tests.TestCaseInTempDir):
@@ -804,8 +804,8 @@ class TestLocalTransportWriteStream(tests.TestCaseWithTransport):
         w.fdatasync()
         with open('out', 'rb') as f:
             # Should have been flushed.
-            self.assertEquals(f.read(), 'foo')
-        self.assertEquals(len(calls), 1, calls)
+            self.assertEqual(f.read(), 'foo')
+        self.assertEqual(len(calls), 1, calls)
 
     def test_missing_directory(self):
         t = self.get_transport('.')
@@ -822,10 +822,10 @@ class TestWin32LocalTransport(tests.TestCase):
         t = local.EmulatedWin32LocalTransport('file://HOST/path/to/some/dir/')
         for i in xrange(4):
             t = t.clone('..')
-        self.assertEquals(t.base, 'file://HOST/')
+        self.assertEqual(t.base, 'file://HOST/')
         # make sure we reach the root
         t = t.clone('..')
-        self.assertEquals(t.base, 'file://HOST/')
+        self.assertEqual(t.base, 'file://HOST/')
 
 
 class TestConnectedTransport(tests.TestCase):
@@ -834,30 +834,30 @@ class TestConnectedTransport(tests.TestCase):
     def test_parse_url(self):
         t = transport.ConnectedTransport(
             'http://simple.example.com/home/source')
-        self.assertEquals(t._parsed_url.host, 'simple.example.com')
-        self.assertEquals(t._parsed_url.port, None)
-        self.assertEquals(t._parsed_url.path, '/home/source/')
+        self.assertEqual(t._parsed_url.host, 'simple.example.com')
+        self.assertEqual(t._parsed_url.port, None)
+        self.assertEqual(t._parsed_url.path, '/home/source/')
         self.assertTrue(t._parsed_url.user is None)
         self.assertTrue(t._parsed_url.password is None)
 
-        self.assertEquals(t.base, 'http://simple.example.com/home/source/')
+        self.assertEqual(t.base, 'http://simple.example.com/home/source/')
 
     def test_parse_url_with_at_in_user(self):
         # Bug 228058
         t = transport.ConnectedTransport('ftp://user@host.com@www.host.com/')
-        self.assertEquals(t._parsed_url.user, 'user@host.com')
+        self.assertEqual(t._parsed_url.user, 'user@host.com')
 
     def test_parse_quoted_url(self):
         t = transport.ConnectedTransport(
             'http://ro%62ey:h%40t@ex%41mple.com:2222/path')
-        self.assertEquals(t._parsed_url.host, 'exAmple.com')
-        self.assertEquals(t._parsed_url.port, 2222)
-        self.assertEquals(t._parsed_url.user, 'robey')
-        self.assertEquals(t._parsed_url.password, 'h@t')
-        self.assertEquals(t._parsed_url.path, '/path/')
+        self.assertEqual(t._parsed_url.host, 'exAmple.com')
+        self.assertEqual(t._parsed_url.port, 2222)
+        self.assertEqual(t._parsed_url.user, 'robey')
+        self.assertEqual(t._parsed_url.password, 'h@t')
+        self.assertEqual(t._parsed_url.path, '/path/')
 
         # Base should not keep track of the password
-        self.assertEquals(t.base, 'http://ro%62ey@ex%41mple.com:2222/path/')
+        self.assertEqual(t.base, 'http://ro%62ey@ex%41mple.com:2222/path/')
 
     def test_parse_invalid_url(self):
         self.assertRaises(errors.InvalidURL,
@@ -867,7 +867,7 @@ class TestConnectedTransport(tests.TestCase):
     def test_relpath(self):
         t = transport.ConnectedTransport('sftp://user@host.com/abs/path')
 
-        self.assertEquals(t.relpath('sftp://user@host.com/abs/path/sub'),
+        self.assertEqual(t.relpath('sftp://user@host.com/abs/path/sub'),
             'sub')
         self.assertRaises(errors.PathNotChild, t.relpath,
                           'http://user@host.com/abs/path/sub')
@@ -879,16 +879,16 @@ class TestConnectedTransport(tests.TestCase):
                           'sftp://user@host.com:33/abs/path/sub')
         # Make sure it works when we don't supply a username
         t = transport.ConnectedTransport('sftp://host.com/abs/path')
-        self.assertEquals(t.relpath('sftp://host.com/abs/path/sub'), 'sub')
+        self.assertEqual(t.relpath('sftp://host.com/abs/path/sub'), 'sub')
 
         # Make sure it works when parts of the path will be url encoded
         t = transport.ConnectedTransport('sftp://host.com/dev/%path')
-        self.assertEquals(t.relpath('sftp://host.com/dev/%path/sub'), 'sub')
+        self.assertEqual(t.relpath('sftp://host.com/dev/%path/sub'), 'sub')
 
     def test_connection_sharing_propagate_credentials(self):
         t = transport.ConnectedTransport('ftp://user@host.com/abs/path')
-        self.assertEquals('user', t._parsed_url.user)
-        self.assertEquals('host.com', t._parsed_url.host)
+        self.assertEqual('user', t._parsed_url.user)
+        self.assertEqual('host.com', t._parsed_url.host)
         self.assertIs(None, t._get_connection())
         self.assertIs(None, t._parsed_url.password)
         c = t.clone('subdir')
@@ -1096,7 +1096,7 @@ class TestUnhtml(tests.TestCase):
     def test_truncation(self):
         fake_html = "<p>something!\n" * 1000
         result = http.unhtml_roughly(fake_html)
-        self.assertEquals(len(result), 1000)
+        self.assertEqual(len(result), 1000)
         self.assertStartsWith(result, " something!")
 
 
@@ -1119,12 +1119,12 @@ class TestLocationToUrl(tests.TestCase):
         return path, url
 
     def test_regular_url(self):
-        self.assertEquals("file://foo", location_to_url("file://foo"))
+        self.assertEqual("file://foo", location_to_url("file://foo"))
 
     def test_directory(self):
         directories.register("bar:", SomeDirectory, "Dummy directory")
         self.addCleanup(directories.remove, "bar:")
-        self.assertEquals("http://bar", location_to_url("bar:"))
+        self.assertEqual("http://bar", location_to_url("bar:"))
 
     def test_unicode_url(self):
         self.assertRaises(errors.InvalidURL, location_to_url,
@@ -1134,15 +1134,15 @@ class TestLocationToUrl(tests.TestCase):
         path, url = self.get_base_location()
         location = path + "\xc3\xaf".decode("utf-8")
         url += '%C3%AF'
-        self.assertEquals(url, location_to_url(location))
+        self.assertEqual(url, location_to_url(location))
 
     def test_path(self):
         path, url = self.get_base_location()
-        self.assertEquals(url, location_to_url(path))
+        self.assertEqual(url, location_to_url(path))
 
     def test_relative_file_url(self):
-        self.assertEquals(urlutils.local_path_to_url(".") + "/bar",
+        self.assertEqual(urlutils.local_path_to_url(".") + "/bar",
             location_to_url("file:bar"))
 
     def test_absolute_file_url(self):
-        self.assertEquals("file:///bar", location_to_url("file:/bar"))
+        self.assertEqual("file:///bar", location_to_url("file:/bar"))

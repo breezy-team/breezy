@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Canonical Ltd
+# Copyright (C) 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -117,8 +117,8 @@ class TestSendRemember(script.TestCaseWithTransportAndScript,
         else:
             expected_submit_branch, expected_public_branch = expected_locations
         br, _ = branch.Branch.open_containing(self.working_dir)
-        self.assertEquals(expected_submit_branch, br.get_submit_branch())
-        self.assertEquals(expected_public_branch, br.get_public_branch())
+        self.assertEqual(expected_submit_branch, br.get_submit_branch())
+        self.assertEqual(expected_public_branch, br.get_public_branch())
 
 
 class TestPushRemember(script.TestCaseWithTransportAndScript,
@@ -156,7 +156,7 @@ class TestPushRemember(script.TestCaseWithTransportAndScript,
     def assertLocations(self, expected_locations):
         br, _ = branch.Branch.open_containing(self.working_dir)
         if not expected_locations:
-            self.assertEquals(None, br.get_push_location())
+            self.assertEqual(None, br.get_push_location())
         else:
             expected_push_location = expected_locations[0]
             push_location = urlutils.relative_url(br.base,
@@ -201,7 +201,7 @@ class TestPullRemember(script.TestCaseWithTransportAndScript,
     def assertLocations(self, expected_locations):
         br, _ = branch.Branch.open_containing(self.working_dir)
         if not expected_locations:
-            self.assertEquals(None, br.get_parent())
+            self.assertEqual(None, br.get_parent())
         else:
             expected_pull_location = expected_locations[0]
             pull_location = urlutils.relative_url(br.base, br.get_parent())

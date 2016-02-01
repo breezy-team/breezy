@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # Authors:
 #   Johan Rydberg <jrydberg@gnu.org>
@@ -182,9 +182,9 @@ class VersionedFileTestMixIn(object):
             versions = f.versions()
             self.assertTrue('r0' in versions)
             self.assertTrue('r1' in versions)
-            self.assertEquals(f.get_lines('r0'), ['a\n', 'b\n'])
-            self.assertEquals(f.get_text('r0'), 'a\nb\n')
-            self.assertEquals(f.get_lines('r1'), ['b\n', 'c\n'])
+            self.assertEqual(f.get_lines('r0'), ['a\n', 'b\n'])
+            self.assertEqual(f.get_text('r0'), 'a\nb\n')
+            self.assertEqual(f.get_lines('r1'), ['b\n', 'c\n'])
             self.assertEqual(2, len(f))
             self.assertEqual(2, f.num_versions())
 
@@ -216,16 +216,16 @@ class VersionedFileTestMixIn(object):
             self.assertTrue('r0' in versions)
             self.assertTrue('r1' in versions)
             self.assertTrue('r2' in versions)
-            self.assertEquals(f.get_lines('r0'), ['a\n', 'b\n'])
-            self.assertEquals(f.get_lines('r1'), ['b\n', 'c\n'])
-            self.assertEquals(f.get_lines('r2'), ['c\n', 'd\n'])
+            self.assertEqual(f.get_lines('r0'), ['a\n', 'b\n'])
+            self.assertEqual(f.get_lines('r1'), ['b\n', 'c\n'])
+            self.assertEqual(f.get_lines('r2'), ['c\n', 'd\n'])
             self.assertEqual(3, f.num_versions())
             origins = f.annotate('r1')
-            self.assertEquals(origins[0][0], 'r0')
-            self.assertEquals(origins[1][0], 'r1')
+            self.assertEqual(origins[0][0], 'r0')
+            self.assertEqual(origins[1][0], 'r1')
             origins = f.annotate('r2')
-            self.assertEquals(origins[0][0], 'r1')
-            self.assertEquals(origins[1][0], 'r2')
+            self.assertEqual(origins[0][0], 'r1')
+            self.assertEqual(origins[1][0], 'r2')
 
         verify_file(f)
         f = self.reopen_file()
@@ -595,8 +595,8 @@ class VersionedFileTestMixIn(object):
         f.add_lines('r0', [], ['a\n', 'b\n'])
         f.add_lines('r1', ['r0'], ['c\n', 'b\n'])
         origins = f.annotate('r1')
-        self.assertEquals(origins[0][0], 'r1')
-        self.assertEquals(origins[1][0], 'r0')
+        self.assertEqual(origins[0][0], 'r1')
+        self.assertEqual(origins[1][0], 'r0')
 
         self.assertRaises(RevisionNotPresent,
             f.annotate, 'foo')
@@ -746,9 +746,9 @@ class VersionedFileTestMixIn(object):
                                  ['base', 'a_ghost'],
                                  ['line\n', 'line_b\n', 'line_c\n'])
         origins = vf.annotate('references_ghost')
-        self.assertEquals(('base', 'line\n'), origins[0])
-        self.assertEquals(('base', 'line_b\n'), origins[1])
-        self.assertEquals(('references_ghost', 'line_c\n'), origins[2])
+        self.assertEqual(('base', 'line\n'), origins[0])
+        self.assertEqual(('base', 'line_b\n'), origins[1])
+        self.assertEqual(('references_ghost', 'line_c\n'), origins[2])
 
     def test_readonly_mode(self):
         t = self.get_transport()
@@ -2768,37 +2768,37 @@ class VirtualVersionedFilesTests(TestCase):
                           [])
 
     def test_get_sha1s_nonexistent(self):
-        self.assertEquals({}, self.texts.get_sha1s([("NONEXISTENT",)]))
+        self.assertEqual({}, self.texts.get_sha1s([("NONEXISTENT",)]))
 
     def test_get_sha1s(self):
         self._lines["key"] = ["dataline1", "dataline2"]
-        self.assertEquals({("key",): osutils.sha_strings(self._lines["key"])},
+        self.assertEqual({("key",): osutils.sha_strings(self._lines["key"])},
                            self.texts.get_sha1s([("key",)]))
 
     def test_get_parent_map(self):
         self._parent_map = {"G": ("A", "B")}
-        self.assertEquals({("G",): (("A",),("B",))},
+        self.assertEqual({("G",): (("A",),("B",))},
                           self.texts.get_parent_map([("G",), ("L",)]))
 
     def test_get_record_stream(self):
         self._lines["A"] = ["FOO", "BAR"]
         it = self.texts.get_record_stream([("A",)], "unordered", True)
         record = it.next()
-        self.assertEquals("chunked", record.storage_kind)
-        self.assertEquals("FOOBAR", record.get_bytes_as("fulltext"))
-        self.assertEquals(["FOO", "BAR"], record.get_bytes_as("chunked"))
+        self.assertEqual("chunked", record.storage_kind)
+        self.assertEqual("FOOBAR", record.get_bytes_as("fulltext"))
+        self.assertEqual(["FOO", "BAR"], record.get_bytes_as("chunked"))
 
     def test_get_record_stream_absent(self):
         it = self.texts.get_record_stream([("A",)], "unordered", True)
         record = it.next()
-        self.assertEquals("absent", record.storage_kind)
+        self.assertEqual("absent", record.storage_kind)
 
     def test_iter_lines_added_or_present_in_keys(self):
         self._lines["A"] = ["FOO", "BAR"]
         self._lines["B"] = ["HEY"]
         self._lines["C"] = ["Alberta"]
         it = self.texts.iter_lines_added_or_present_in_keys([("A",), ("B",)])
-        self.assertEquals(sorted([("FOO", "A"), ("BAR", "A"), ("HEY", "B")]),
+        self.assertEqual(sorted([("FOO", "A"), ("BAR", "A"), ("HEY", "B")]),
             sorted(list(it)))
 
 

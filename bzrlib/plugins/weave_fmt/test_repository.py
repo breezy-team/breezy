@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -313,7 +313,7 @@ class TestSerializer(TestCase):
         inp = StringIO(_working_inventory_v4)
         inv = xml4.serializer_v4.read_inventory(inp)
         self.assertEqual(len(inv), 4)
-        self.assert_(inv.has_id('bar-20050901064931-73b4b1138abc9cd2'))
+        self.assertTrue(inv.has_id('bar-20050901064931-73b4b1138abc9cd2'))
 
     def test_unpack_revision(self):
         """Test unpacking a canned revision v4"""
@@ -327,5 +327,3 @@ class TestSerializer(TestCase):
         eq(len(rev.parent_ids), 1)
         eq(rev.parent_ids[0],
            "mbp@sourcefrog.net-20050905063503-43948f59fa127d92")
-
-

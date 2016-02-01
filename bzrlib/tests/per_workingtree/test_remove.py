@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -184,13 +184,13 @@ class TestRemove(TestCaseWithWorkingTree):
         ignores.add_runtime_ignores(["*ignored*"])
 
         self.build_tree(['unknown_ignored_file'])
-        self.assertNotEquals(None, tree.is_ignored('unknown_ignored_file'))
+        self.assertNotEqual(None, tree.is_ignored('unknown_ignored_file'))
         tree.remove('unknown_ignored_file', keep_files=False)
         self.assertRemovedAndDeleted('unknown_ignored_file')
 
         self.build_tree(['b/unknown_ignored_file', 'b/unknown_ignored_dir/'])
-        self.assertNotEquals(None, tree.is_ignored('b/unknown_ignored_file'))
-        self.assertNotEquals(None, tree.is_ignored('b/unknown_ignored_dir'))
+        self.assertNotEqual(None, tree.is_ignored('b/unknown_ignored_file'))
+        self.assertNotEqual(None, tree.is_ignored('b/unknown_ignored_dir'))
         tree.remove('b', keep_files=False)
         self.assertRemovedAndDeleted('b')
         tree._validate()
@@ -202,7 +202,7 @@ class TestRemove(TestCaseWithWorkingTree):
         tree.add(files)
         ignores.add_runtime_ignores(["*ignored*"])
         self.assertInWorkingTree(files)
-        self.assertNotEquals(None, tree.is_ignored(files[0]))
+        self.assertNotEqual(None, tree.is_ignored(files[0]))
 
         tree.remove(files, keep_files=False)
         self.assertNotInWorkingTree(files)

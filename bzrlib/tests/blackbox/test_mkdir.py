@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Canonical Ltd
+# Copyright (C) 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,33 +27,33 @@ class TestMkdir(tests.TestCaseWithTransport):
     def test_mkdir(self):
         tree = self.make_branch_and_tree('.')
         self.run_bzr(['mkdir', 'somedir'])
-        self.assertEquals(tree.kind(tree.path2id('somedir')), "directory")
+        self.assertEqual(tree.kind(tree.path2id('somedir')), "directory")
 
     def test_mkdir_multi(self):
         tree = self.make_branch_and_tree('.')
         self.run_bzr(['mkdir', 'somedir', 'anotherdir'])
-        self.assertEquals(tree.kind(tree.path2id('somedir')), "directory")
-        self.assertEquals(tree.kind(tree.path2id('anotherdir')), "directory")
+        self.assertEqual(tree.kind(tree.path2id('somedir')), "directory")
+        self.assertEqual(tree.kind(tree.path2id('anotherdir')), "directory")
 
     def test_mkdir_parents(self):
         tree = self.make_branch_and_tree('.')
         self.run_bzr(['mkdir', '-p', 'somedir/foo'])
-        self.assertEquals(tree.kind(tree.path2id('somedir/foo')), "directory")
+        self.assertEqual(tree.kind(tree.path2id('somedir/foo')), "directory")
 
     def test_mkdir_parents_existing_versioned_dir(self):
         tree = self.make_branch_and_tree('.')
         tree.mkdir('somedir')
-        self.assertEquals(tree.kind(tree.path2id('somedir')), "directory")
+        self.assertEqual(tree.kind(tree.path2id('somedir')), "directory")
         self.run_bzr(['mkdir', '-p', 'somedir'])
 
     def test_mkdir_parents_existing_unversioned_dir(self):
         tree = self.make_branch_and_tree('.')
         os.mkdir('somedir')
         self.run_bzr(['mkdir', '-p', 'somedir'])
-        self.assertEquals(tree.kind(tree.path2id('somedir')), "directory")
+        self.assertEqual(tree.kind(tree.path2id('somedir')), "directory")
 
     def test_mkdir_parents_with_unversioned_parent(self):
         tree = self.make_branch_and_tree('.')
         os.mkdir('somedir')
         self.run_bzr(['mkdir', '-p', 'somedir/foo'])
-        self.assertEquals(tree.kind(tree.path2id('somedir/foo')), "directory")
+        self.assertEqual(tree.kind(tree.path2id('somedir/foo')), "directory")

@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,17 +34,17 @@ class TestPush(TestCaseWithControlDir):
         tree = self.create_simple_tree()
         dir = self.make_repository('dir').bzrdir
         result = dir.push_branch(tree.branch)
-        self.assertEquals(tree.branch, result.source_branch)
-        self.assertEquals(dir.open_branch().base, result.target_branch.base)
-        self.assertEquals(dir.open_branch().base,
+        self.assertEqual(tree.branch, result.source_branch)
+        self.assertEqual(dir.open_branch().base, result.target_branch.base)
+        self.assertEqual(dir.open_branch().base,
             tree.branch.get_push_location())
 
     def test_push_new_empty(self):
         tree = self.make_branch_and_tree('tree')
         dir = self.make_repository('dir').bzrdir
         result = dir.push_branch(tree.branch)
-        self.assertEquals(tree.branch.base, result.source_branch.base)
-        self.assertEquals(dir.open_branch().base,
+        self.assertEqual(tree.branch.base, result.source_branch.base)
+        self.assertEqual(dir.open_branch().base,
             result.target_branch.base)
 
     def test_push_incremental(self):
@@ -55,8 +55,8 @@ class TestPush(TestCaseWithControlDir):
         tree.add(['b'])
         tree.commit('two', rev_id='r2')
         result = dir.push_branch(tree.branch)
-        self.assertEquals(tree.last_revision(),
+        self.assertEqual(tree.last_revision(),
             result.branch_push_result.new_revid)
-        self.assertEquals(2, result.branch_push_result.new_revno)
-        self.assertEquals(tree.branch.base, result.source_branch.base)
-        self.assertEquals(dir.open_branch().base, result.target_branch.base)
+        self.assertEqual(2, result.branch_push_result.new_revno)
+        self.assertEqual(tree.branch.base, result.source_branch.base)
+        self.assertEqual(dir.open_branch().base, result.target_branch.base)

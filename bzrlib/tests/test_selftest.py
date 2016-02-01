@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2013, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1002,7 +1002,7 @@ class TestTestResult(tests.TestCase):
             pass
         test = unittest.FunctionTestCase(test_function)
         test.run(result)
-        self.assertEquals(1, result.calls)
+        self.assertEqual(1, result.calls)
 
     def test_startTests_only_once(self):
         """With multiple tests startTests should still only be called once"""
@@ -1014,8 +1014,8 @@ class TestTestResult(tests.TestCase):
             unittest.FunctionTestCase(lambda: None),
             unittest.FunctionTestCase(lambda: None)])
         suite.run(result)
-        self.assertEquals(1, result.calls)
-        self.assertEquals(2, result.count)
+        self.assertEqual(1, result.calls)
+        self.assertEqual(2, result.count)
 
 
 class TestRunner(tests.TestCase):
@@ -1732,7 +1732,7 @@ class TestTestCase(tests.TestCase):
             test_selftest, '_add_numbers')
         self.assertEqual(test_selftest._add_numbers(2, 10),
             12)
-        self.assertEquals(calls, [((2, 10), {})])
+        self.assertEqual(calls, [((2, 10), {})])
 
 
 def _add_numbers(a, b):
@@ -1912,12 +1912,12 @@ class TestExtraAssertions(tests.TestCase):
         self.assertIsInstance(2, int)
         self.assertIsInstance(u'', basestring)
         e = self.assertRaises(AssertionError, self.assertIsInstance, None, int)
-        self.assertEquals(str(e),
+        self.assertEqual(str(e),
             "None is an instance of <type 'NoneType'> rather than <type 'int'>")
         self.assertRaises(AssertionError, self.assertIsInstance, 23.3, int)
         e = self.assertRaises(AssertionError,
             self.assertIsInstance, None, int, "it's just not")
-        self.assertEquals(str(e),
+        self.assertEqual(str(e),
             "None is an instance of <type 'NoneType'> rather than <type 'int'>"
             ": it's just not")
 
@@ -1928,12 +1928,12 @@ class TestExtraAssertions(tests.TestCase):
     def test_assertEqualDiff(self):
         e = self.assertRaises(AssertionError,
                               self.assertEqualDiff, '', '\n')
-        self.assertEquals(str(e),
+        self.assertEqual(str(e),
                           # Don't blink ! The '+' applies to the second string
                           'first string is missing a final newline.\n+ \n')
         e = self.assertRaises(AssertionError,
                               self.assertEqualDiff, '\n', '')
-        self.assertEquals(str(e),
+        self.assertEqual(str(e),
                           # Don't blink ! The '-' applies to the second string
                           'second string is missing a final newline.\n- \n')
 
@@ -1996,12 +1996,12 @@ class TestWarningTests(tests.TestCase):
             warnings.warn("this is your last warning")
             return a + b
         wlist, result = self.callCatchWarnings(meth, 1, 2)
-        self.assertEquals(3, result)
+        self.assertEqual(3, result)
         # would like just to compare them, but UserWarning doesn't implement
         # eq well
         w0, = wlist
         self.assertIsInstance(w0, UserWarning)
-        self.assertEquals("this is your last warning", str(w0))
+        self.assertEqual("this is your last warning", str(w0))
 
 
 class TestConvenienceMakers(tests.TestCaseWithTransport):
@@ -2028,9 +2028,9 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('t1')
         base = tree.bzrdir.root_transport.base
         self.assertStartsWith(base, 'file://')
-        self.assertEquals(tree.bzrdir.root_transport,
+        self.assertEqual(tree.bzrdir.root_transport,
                 tree.branch.bzrdir.root_transport)
-        self.assertEquals(tree.bzrdir.root_transport,
+        self.assertEqual(tree.bzrdir.root_transport,
                 tree.branch.repository.bzrdir.root_transport)
 
 
@@ -2300,9 +2300,9 @@ class TestRunBzr(tests.TestCase):
         self.assertEqual(['rocks'], self.argv)
         self.assertEqual(34, self.retcode)
         self.assertEqual('It sure does!\n', out)
-        self.assertEquals(out, self.out)
+        self.assertEqual(out, self.out)
         self.assertEqual('', err)
-        self.assertEquals(err, self.err)
+        self.assertEqual(err, self.err)
 
     def test_run_bzr_error_regexes(self):
         self.out = ''
@@ -2847,7 +2847,7 @@ class TestBlackboxSupport(tests.TestCase):
             self.run_bzr, ['assert-fail'])
         # make sure we got the real thing, not an error from somewhere else in
         # the test framework
-        self.assertEquals('always fails', str(e))
+        self.assertEqual('always fails', str(e))
         # check that there's no traceback in the test log
         self.assertNotContainsRe(self.get_log(), r'Traceback')
 
@@ -2902,7 +2902,7 @@ class TestTestLoader(tests.TestCase):
     def test_load_tests_from_module_name_smoke_test(self):
         loader = TestUtil.TestLoader()
         suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
-        self.assertEquals(['bzrlib.tests.test_sampler.DemoTest.test_nothing'],
+        self.assertEqual(['bzrlib.tests.test_sampler.DemoTest.test_nothing'],
                           _test_ids(suite))
 
     def test_load_tests_from_module_name_with_bogus_module_name(self):
@@ -2937,8 +2937,8 @@ class TestTestIdList(tests.TestCase):
 
     def test_empty_list(self):
         id_list = self._create_id_list([])
-        self.assertEquals({}, id_list.tests)
-        self.assertEquals({}, id_list.modules)
+        self.assertEqual({}, id_list.tests)
+        self.assertEqual({}, id_list.modules)
 
     def test_valid_list(self):
         id_list = self._create_id_list(
@@ -2971,8 +2971,8 @@ class TestTestIdList(tests.TestCase):
         test_list = ['bzrlib.tests.test_sampler.DemoTest.test_nothing',
                      'bogus']
         not_found, duplicates = tests.suite_matches_id_list(suite, test_list)
-        self.assertEquals(['bogus'], not_found)
-        self.assertEquals([], duplicates)
+        self.assertEqual(['bogus'], not_found)
+        self.assertEqual([], duplicates)
 
     def test_suite_matches_id_list_with_duplicates(self):
         loader = TestUtil.TestLoader()
@@ -2985,8 +2985,8 @@ class TestTestIdList(tests.TestCase):
         test_list = ['bzrlib.tests.test_sampler.DemoTest.test_nothing',]
         not_found, duplicates = tests.suite_matches_id_list(
             dupes, test_list)
-        self.assertEquals([], not_found)
-        self.assertEquals(['bzrlib.tests.test_sampler.DemoTest.test_nothing'],
+        self.assertEqual([], not_found)
+        self.assertEqual(['bzrlib.tests.test_sampler.DemoTest.test_nothing'],
                           duplicates)
 
 
@@ -3065,7 +3065,7 @@ class TestTestSuite(tests.TestCase):
         suite = tests.test_suite(test_list,
                                  ['bzrlib.tests.test_selftest.TestTestSuite'])
         # test_test_suite_list_and_start is not included 
-        self.assertEquals(test_list, _test_ids(suite))
+        self.assertEqual(test_list, _test_ids(suite))
 
 
 class TestLoadTestIdList(tests.TestCaseInTempDir):
@@ -3084,9 +3084,9 @@ class TestLoadTestIdList(tests.TestCaseInTempDir):
         self._create_test_list_file(test_list_fname,
                                     'mod1.cl1.meth1\nmod2.cl2.meth2\n')
         tlist = tests.load_test_id_list(test_list_fname)
-        self.assertEquals(2, len(tlist))
-        self.assertEquals('mod1.cl1.meth1', tlist[0])
-        self.assertEquals('mod2.cl2.meth2', tlist[1])
+        self.assertEqual(2, len(tlist))
+        self.assertEqual('mod1.cl1.meth1', tlist[0])
+        self.assertEqual('mod2.cl2.meth2', tlist[1])
 
     def test_load_dirty_file(self):
         test_list_fname = 'test.list'
@@ -3094,11 +3094,11 @@ class TestLoadTestIdList(tests.TestCaseInTempDir):
                                     '  mod1.cl1.meth1\n\nmod2.cl2.meth2  \n'
                                     'bar baz\n')
         tlist = tests.load_test_id_list(test_list_fname)
-        self.assertEquals(4, len(tlist))
-        self.assertEquals('mod1.cl1.meth1', tlist[0])
-        self.assertEquals('', tlist[1])
-        self.assertEquals('mod2.cl2.meth2', tlist[2])
-        self.assertEquals('bar baz', tlist[3])
+        self.assertEqual(4, len(tlist))
+        self.assertEqual('mod1.cl1.meth1', tlist[0])
+        self.assertEqual('', tlist[1])
+        self.assertEqual('mod2.cl2.meth2', tlist[2])
+        self.assertEqual('bar baz', tlist[3])
 
 
 class TestFilteredByModuleTestLoader(tests.TestCase):
@@ -3112,13 +3112,13 @@ class TestFilteredByModuleTestLoader(tests.TestCase):
         test_list = ['bzrlib.tests.test_sampler.DemoTest.test_nothing']
         loader = self._create_loader(test_list)
         suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
-        self.assertEquals(test_list, _test_ids(suite))
+        self.assertEqual(test_list, _test_ids(suite))
 
     def test_exclude_tests(self):
         test_list = ['bogus']
         loader = self._create_loader(test_list)
         suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
-        self.assertEquals([], _test_ids(suite))
+        self.assertEqual([], _test_ids(suite))
 
 
 class TestFilteredByNameStartTestLoader(tests.TestCase):
@@ -3134,21 +3134,21 @@ class TestFilteredByNameStartTestLoader(tests.TestCase):
         loader = self._create_loader('bzrlib.tests.test_samp')
 
         suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
-        self.assertEquals(test_list, _test_ids(suite))
+        self.assertEqual(test_list, _test_ids(suite))
 
     def test_load_tests_inside_module(self):
         test_list = ['bzrlib.tests.test_sampler.DemoTest.test_nothing']
         loader = self._create_loader('bzrlib.tests.test_sampler.Demo')
 
         suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
-        self.assertEquals(test_list, _test_ids(suite))
+        self.assertEqual(test_list, _test_ids(suite))
 
     def test_exclude_tests(self):
         test_list = ['bogus']
         loader = self._create_loader('bogus')
 
         suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
-        self.assertEquals([], _test_ids(suite))
+        self.assertEqual([], _test_ids(suite))
 
 
 class TestTestPrefixRegistry(tests.TestCase):
@@ -3160,13 +3160,13 @@ class TestTestPrefixRegistry(tests.TestCase):
     def test_register_new_prefix(self):
         tpr = self._get_registry()
         tpr.register('foo', 'fff.ooo.ooo')
-        self.assertEquals('fff.ooo.ooo', tpr.get('foo'))
+        self.assertEqual('fff.ooo.ooo', tpr.get('foo'))
 
     def test_register_existing_prefix(self):
         tpr = self._get_registry()
         tpr.register('bar', 'bbb.aaa.rrr')
         tpr.register('bar', 'bBB.aAA.rRR')
-        self.assertEquals('bbb.aaa.rrr', tpr.get('bar'))
+        self.assertEqual('bbb.aaa.rrr', tpr.get('bar'))
         self.assertThat(self.get_log(),
             DocTestMatches("...bar...bbb.aaa.rrr...BB.aAA.rRR",
                            doctest.ELLIPSIS))
@@ -3178,7 +3178,7 @@ class TestTestPrefixRegistry(tests.TestCase):
     def test_resolve_prefix(self):
         tpr = self._get_registry()
         tpr.register('bar', 'bb.aa.rr')
-        self.assertEquals('bb.aa.rr', tpr.resolve_alias('bar'))
+        self.assertEqual('bb.aa.rr', tpr.resolve_alias('bar'))
 
     def test_resolve_unknown_alias(self):
         tpr = self._get_registry()
@@ -3187,12 +3187,12 @@ class TestTestPrefixRegistry(tests.TestCase):
 
     def test_predefined_prefixes(self):
         tpr = tests.test_prefix_alias_registry
-        self.assertEquals('bzrlib', tpr.resolve_alias('bzrlib'))
-        self.assertEquals('bzrlib.doc', tpr.resolve_alias('bd'))
-        self.assertEquals('bzrlib.utils', tpr.resolve_alias('bu'))
-        self.assertEquals('bzrlib.tests', tpr.resolve_alias('bt'))
-        self.assertEquals('bzrlib.tests.blackbox', tpr.resolve_alias('bb'))
-        self.assertEquals('bzrlib.plugins', tpr.resolve_alias('bp'))
+        self.assertEqual('bzrlib', tpr.resolve_alias('bzrlib'))
+        self.assertEqual('bzrlib.doc', tpr.resolve_alias('bd'))
+        self.assertEqual('bzrlib.utils', tpr.resolve_alias('bu'))
+        self.assertEqual('bzrlib.tests', tpr.resolve_alias('bt'))
+        self.assertEqual('bzrlib.tests.blackbox', tpr.resolve_alias('bb'))
+        self.assertEqual('bzrlib.plugins', tpr.resolve_alias('bp'))
 
 
 class TestThreadLeakDetection(tests.TestCase):
@@ -3521,17 +3521,17 @@ class TestEnvironHandling(tests.TestCase):
             def test_me(self):
                 # The first call save the 42 value
                 self.overrideEnv('MYVAR', None)
-                self.assertEquals(None, os.environ.get('MYVAR'))
+                self.assertEqual(None, os.environ.get('MYVAR'))
                 # Make sure we can call it twice
                 self.overrideEnv('MYVAR', None)
-                self.assertEquals(None, os.environ.get('MYVAR'))
+                self.assertEqual(None, os.environ.get('MYVAR'))
         output = StringIO()
         result = tests.TextTestResult(output, 0, 1)
         Test('test_me').run(result)
         if not result.wasStrictlySuccessful():
             self.fail(output.getvalue())
         # We get our value back
-        self.assertEquals('42', os.environ.get('MYVAR'))
+        self.assertEqual('42', os.environ.get('MYVAR'))
 
 
 class TestIsolatedEnv(tests.TestCase):
@@ -3553,20 +3553,20 @@ class TestIsolatedEnv(tests.TestCase):
         # Make sure we know the definition of BZR_HOME: not part of os.environ
         # for tests.TestCase.
         self.assertTrue('BZR_HOME' in tests.isolated_environ)
-        self.assertEquals(None, tests.isolated_environ['BZR_HOME'])
+        self.assertEqual(None, tests.isolated_environ['BZR_HOME'])
         # Being part of isolated_environ, BZR_HOME should not appear here
         self.assertFalse('BZR_HOME' in os.environ)
         # Make sure we know the definition of LINES: part of os.environ for
         # tests.TestCase
         self.assertTrue('LINES' in tests.isolated_environ)
-        self.assertEquals('25', tests.isolated_environ['LINES'])
-        self.assertEquals('25', os.environ['LINES'])
+        self.assertEqual('25', tests.isolated_environ['LINES'])
+        self.assertEqual('25', os.environ['LINES'])
 
     def test_injecting_unknown_variable(self):
         # BZR_HOME is known to be absent from os.environ
         test = self.ScratchMonkey('test_me')
         tests.override_os_environ(test, {'BZR_HOME': 'foo'})
-        self.assertEquals('foo', os.environ['BZR_HOME'])
+        self.assertEqual('foo', os.environ['BZR_HOME'])
         tests.restore_os_environ(test)
         self.assertFalse('BZR_HOME' in os.environ)
 
@@ -3574,9 +3574,9 @@ class TestIsolatedEnv(tests.TestCase):
         test = self.ScratchMonkey('test_me')
         # LINES is known to be present in os.environ
         tests.override_os_environ(test, {'LINES': '42'})
-        self.assertEquals('42', os.environ['LINES'])
+        self.assertEqual('42', os.environ['LINES'])
         tests.restore_os_environ(test)
-        self.assertEquals('25', os.environ['LINES'])
+        self.assertEqual('25', os.environ['LINES'])
 
     def test_deleting_variable(self):
         test = self.ScratchMonkey('test_me')
@@ -3584,7 +3584,7 @@ class TestIsolatedEnv(tests.TestCase):
         tests.override_os_environ(test, {'LINES': None})
         self.assertTrue('LINES' not in os.environ)
         tests.restore_os_environ(test)
-        self.assertEquals('25', os.environ['LINES'])
+        self.assertEqual('25', os.environ['LINES'])
 
 
 class TestDocTestSuiteIsolation(tests.TestCase):
@@ -3677,7 +3677,7 @@ class TestSelftestExcludePatterns(tests.TestCase):
         # test at the command level without loading the whole test suite
         out, err = self.run_bzr(('selftest', '--list') + selftest_args)
         actual = out.splitlines()
-        self.assertEquals(expected, actual)
+        self.assertEqual(expected, actual)
 
     def test_full_list(self):
         self.assertTestList(['a', 'b', 'c'])
@@ -3718,7 +3718,7 @@ class TestCounterHooks(tests.TestCase, SelfTestHelper):
         test.run(result)
         self.assertTrue(hasattr(test, '_counters'))
         self.assertTrue(test._counters.has_key('myhook'))
-        self.assertEquals(expected_calls, test._counters['myhook'])
+        self.assertEqual(expected_calls, test._counters['myhook'])
 
     def test_no_hook(self):
         self.assertHookCalls(0, 'no_hook')

@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2011, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,8 +32,8 @@ class TestWithoutConfig(tests.TestCaseWithTransport):
 
     def test_config_all(self):
         out, err = self.run_bzr(['config'])
-        self.assertEquals('', out)
-        self.assertEquals('', err)
+        self.assertEqual('', out)
+        self.assertEqual('', err)
 
     def test_remove_unknown_option(self):
         self.run_bzr_error(['The "file" configuration option does not exist',],
@@ -393,4 +393,4 @@ class TestConfigDirectory(tests.TestCaseWithTransport):
         clone.get_config_stack().set('test', 'clone')
         out, err = self.run_bzr(['config', '-d', ':parent', 'test'],
                                 working_dir='clone')
-        self.assertEquals('base\n', out)
+        self.assertEqual('base\n', out)

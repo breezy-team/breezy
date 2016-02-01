@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Canonical Ltd
+# Copyright (C) 2011, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,24 +28,24 @@ class TestBranches(TestCaseWithTransport):
         # support.
         self.run_bzr('init a')
         out, err = self.run_bzr('branches a')
-        self.assertEquals(out, "* (default)\n")
+        self.assertEqual(out, "* (default)\n")
 
     def test_no_branch(self):
         # Listing the branches in a control directory without branches.
         self.run_bzr('init-repo a')
         out, err = self.run_bzr('branches a')
-        self.assertEquals(out, "")
+        self.assertEqual(out, "")
 
     def test_default_current_dir(self):
         # "bzr branches" list the branches in the current directory
         # if no location was specified.
         self.run_bzr('init-repo a')
         out, err = self.run_bzr('branches', working_dir='a')
-        self.assertEquals(out, "")
+        self.assertEqual(out, "")
 
     def test_recursive_current(self):
         self.run_bzr('init .')
-        self.assertEquals(".\n", self.run_bzr('branches --recursive')[0])
+        self.assertEqual(".\n", self.run_bzr('branches --recursive')[0])
 
     def test_recursive(self):
         self.run_bzr('init source')
@@ -65,7 +65,7 @@ class TestBranches(TestCaseWithTransport):
         t.bzrdir.create_branch(name='another')
         t.bzrdir.create_branch(name='colocated')
         out, err = self.run_bzr('branches a')
-        self.assertEquals(out, "* (default)\n"
+        self.assertEqual(out, "* (default)\n"
                                "  another\n"
                                "  colocated\n")
 
@@ -75,7 +75,7 @@ class TestBranches(TestCaseWithTransport):
         branch = t.bzrdir.create_branch(name='colocated')
         t.bzrdir.set_branch_reference(target_branch=branch)
         out, err = self.run_bzr('branches a')
-        self.assertEquals(out, "  another\n"
+        self.assertEqual(out, "  another\n"
                                "* colocated\n")
 
     def test_shared_repos(self):
@@ -84,10 +84,10 @@ class TestBranches(TestCaseWithTransport):
         b = BzrDir.create_branch_convenience('a/branch2')
         b.create_checkout(lightweight=True, to_location='b')
         out, err = self.run_bzr('branches b')
-        self.assertEquals(out, "  branch1\n"
+        self.assertEqual(out, "  branch1\n"
                                "* branch2\n")
 
     def test_standalone_branch(self):
         self.make_branch('a')
         out, err = self.run_bzr('branches a')
-        self.assertEquals(out, "* (default)\n")
+        self.assertEqual(out, "* (default)\n")

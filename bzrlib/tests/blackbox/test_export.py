@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -384,7 +384,7 @@ class TestExport(TestCaseWithTransport):
         tree.commit('setup', timestamp=315532800)
         self.run_bzr('export --per-file-timestamps t branch')
         har_st = os.stat('t/har')
-        self.assertEquals(315532800, har_st.st_mtime)
+        self.assertEqual(315532800, har_st.st_mtime)
 
     def test_dir_export_partial_tree_per_file_timestamps(self):
         tree = self.example_branch()
@@ -394,7 +394,7 @@ class TestExport(TestCaseWithTransport):
         tree.commit('setup', timestamp=315532800)
         self.run_bzr('export --per-file-timestamps tpart branch/subdir')
         foo_st = os.stat('tpart/foo.txt')
-        self.assertEquals(315532800, foo_st.st_mtime)
+        self.assertEqual(315532800, foo_st.st_mtime)
 
     def test_export_directory(self):
         """Test --directory option"""
@@ -430,7 +430,7 @@ class TestExport(TestCaseWithTransport):
         self.run_bzr('export --per-file-timestamps test.zip branch')
         zfile = zipfile.ZipFile('test.zip')
         info = zfile.getinfo("test/har")
-        self.assertEquals(time.localtime(timestamp)[:6], info.date_time)
+        self.assertEqual(time.localtime(timestamp)[:6], info.date_time)
 
 
 class TestSmartServerExport(TestCaseWithTransport):

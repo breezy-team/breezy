@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2008-2011 Canonical Ltd
+# Copyright (C) 2006, 2008-2012, 2016 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -61,7 +61,7 @@ class TestTreeWithCommits(TestCaseWithTransport):
         self.assertIs(None, null_tree.get_root_id())
 
     def test_get_file_revision_root(self):
-        self.assertEquals(self.rev_id,
+        self.assertEqual(self.rev_id,
             self.rev_tree.get_file_revision(self.rev_tree.get_root_id()))
 
     def test_get_file_revision(self):
@@ -70,7 +70,7 @@ class TestTreeWithCommits(TestCaseWithTransport):
         revid1 = self.t.commit('add a')
         revid2 = self.t.commit('another change', allow_pointless=True)
         tree = self.t.branch.repository.revision_tree(revid2)
-        self.assertEquals(revid1,
+        self.assertEqual(revid1,
             tree.get_file_revision(tree.path2id('a')))
 
     def test_get_file_mtime_ghost(self):

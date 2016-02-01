@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2011 Canonical Ltd
+# Copyright (C) 2008-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -103,7 +103,7 @@ class BTreeTestCase(TestCaseWithTransport):
         self.overrideAttr(btree_index, '_PAGE_SIZE')
         btree_index._PAGE_SIZE = 2048
 
-    def assertEqualsApproxCompressed(self, expected, actual, slop=6):
+    def assertEqualApproxCompressed(self, expected, actual, slop=6):
         """Check a count of compressed bytes is approximately as expected
 
         Relying on compressed length being stable even with fixed inputs is
@@ -209,7 +209,7 @@ class TestBTreeBuilder(BTreeTestCase):
         temp_file = builder.finish()
         content = temp_file.read()
         del temp_file
-        self.assertEqualsApproxCompressed(9283, len(content))
+        self.assertEqualApproxCompressed(9283, len(content))
         self.assertEqual(
             "B+Tree Graph Index 2\nnode_ref_lists=0\nkey_elements=1\nlen=400\n"
             "row_lengths=1,2\n",
@@ -243,7 +243,7 @@ class TestBTreeBuilder(BTreeTestCase):
         temp_file = builder.finish()
         content = temp_file.read()
         del temp_file
-        self.assertEqualsApproxCompressed(155, len(content))
+        self.assertEqualApproxCompressed(155, len(content))
         self.assertEqual(
             "B+Tree Graph Index 2\nnode_ref_lists=0\nkey_elements=1\nlen=10\n"
             "row_lengths=1\n",
@@ -265,7 +265,7 @@ class TestBTreeBuilder(BTreeTestCase):
         temp_file = builder.finish()
         content = temp_file.read()
         del temp_file
-        self.assertEqualsApproxCompressed(9283, len(content))
+        self.assertEqualApproxCompressed(9283, len(content))
         self.assertEqual(
             "B+Tree Graph Index 2\nnode_ref_lists=0\nkey_elements=1\nlen=400\n"
             "row_lengths=1,2\n",
@@ -324,7 +324,7 @@ class TestBTreeBuilder(BTreeTestCase):
         temp_file = builder.finish()
         content = temp_file.read()
         del temp_file
-        self.assertEqualsApproxCompressed(12643, len(content))
+        self.assertEqualApproxCompressed(12643, len(content))
         self.assertEqual(
             "B+Tree Graph Index 2\nnode_ref_lists=2\nkey_elements=2\nlen=200\n"
             "row_lengths=1,3\n",
@@ -710,7 +710,7 @@ class TestBTreeIndex(BTreeTestCase):
         # The entire index should have been read, as it is one page long.
         self.assertEqual([('readv', 'index', [(0, size)], False, None)],
             t._activity)
-        self.assertEqualsApproxCompressed(1173, size)
+        self.assertEqualApproxCompressed(1173, size)
 
     def test_with_offset_no_size(self):
         index = self.make_index_with_offset(key_elements=1, ref_lists=1,
@@ -760,7 +760,7 @@ class TestBTreeIndex(BTreeTestCase):
             builder.add_node(*node)
         t = transport.get_transport_from_url('trace+' + self.get_url(''))
         size = t.put_file('index', builder.finish())
-        self.assertEqualsApproxCompressed(17692, size)
+        self.assertEqualApproxCompressed(17692, size)
         index = btree_index.BTreeGraphIndex(t, 'index', size)
         del t._activity[:]
         self.assertEqual([], t._activity)
@@ -783,7 +783,7 @@ class TestBTreeIndex(BTreeTestCase):
         # The entire index should have been read linearly.
         self.assertEqual([('readv', 'index', [(0, size)], False, None)],
                          t._activity)
-        self.assertEqualsApproxCompressed(1488, size)
+        self.assertEqualApproxCompressed(1488, size)
 
     def test_validate_two_pages(self):
         builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2)
@@ -793,7 +793,7 @@ class TestBTreeIndex(BTreeTestCase):
         t = transport.get_transport_from_url('trace+' + self.get_url(''))
         size = t.put_file('index', builder.finish())
         # Root page, 2 leaf pages
-        self.assertEqualsApproxCompressed(9339, size)
+        self.assertEqualApproxCompressed(9339, size)
         index = btree_index.BTreeGraphIndex(t, 'index', size)
         del t._activity[:]
         self.assertEqual([], t._activity)
@@ -892,7 +892,7 @@ class TestBTreeIndex(BTreeTestCase):
         # The entire index should have been read
         total_pages = sum(index._row_lengths)
         self.assertEqual(total_pages, index._row_offsets[-1])
-        self.assertEqualsApproxCompressed(1303220, size)
+        self.assertEqualApproxCompressed(1303220, size)
         # The start of the leaves
         first_byte = index._row_offsets[-2] * page_size
         readv_request = []

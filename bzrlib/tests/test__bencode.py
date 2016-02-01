@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ class TestBencodeDecode(tests.TestCase):
     module = None
 
     def _check(self, expected, source):
-        self.assertEquals(expected, self.module.bdecode(source))
+        self.assertEqual(expected, self.module.bdecode(source))
 
     def _run_check_error(self, exc, bad):
         """Check that bdecoding a string raises a particular exception."""
@@ -155,7 +155,7 @@ class TestBencodeEncode(tests.TestCase):
     module = None
 
     def _check(self, expected, source):
-        self.assertEquals(expected, self.module.bencode(source))
+        self.assertEqual(expected, self.module.bencode(source))
 
     def test_int(self):
         self._check('i4e', 4)

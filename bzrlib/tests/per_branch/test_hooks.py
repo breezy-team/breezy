@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -138,7 +138,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
         """
         branch = self.make_branch_with_revision_ids('revid-one')
         def assertBranchAtRevision1(params):
-            self.assertEquals(
+            self.assertEqual(
                 (1, 'revid-one'), params.branch.last_revision_info())
         _mod_branch.Branch.hooks.install_named_hook(
             'pre_change_branch_tip', assertBranchAtRevision1, None)
@@ -235,7 +235,7 @@ class TestPostChangeBranchTip(ChangeBranchTipTestCase):
         """
         branch = self.make_branch_with_revision_ids('revid-one')
         def assertBranchAtRevision1(params):
-            self.assertEquals(
+            self.assertEqual(
                 (0, revision.NULL_REVISION), params.branch.last_revision_info())
         _mod_branch.Branch.hooks.install_named_hook(
             'post_change_branch_tip', assertBranchAtRevision1, None)

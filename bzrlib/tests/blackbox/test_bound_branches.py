@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2012 Canonical Ltd
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -220,7 +220,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         child_tree.update()
         child_tree.commit(message='merged')
         self.check_revno(3, 'child')
-        self.assertEquals(child_tree.branch.last_revision(),
+        self.assertEqual(child_tree.branch.last_revision(),
                           base_tree.branch.last_revision())
 
     def test_bind_parent_ahead(self):

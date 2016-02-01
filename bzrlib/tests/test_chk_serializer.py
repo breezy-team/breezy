@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2011 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -61,18 +61,18 @@ class TestBEncodeSerializer1(TestCase):
         """Test unpacking a revision"""
         rev = chk_bencode_serializer.read_revision_from_string(
                 _working_revision_bencode1)
-        self.assertEquals(rev.committer,
+        self.assertEqual(rev.committer,
            "Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>")
-        self.assertEquals(rev.inventory_sha1,
+        self.assertEqual(rev.inventory_sha1,
            "4a2c7fb50e077699242cf6eb16a61779c7b680a7")
-        self.assertEquals(["pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc",
+        self.assertEqual(["pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc",
             "jelmer@samba.org-20090510012654-jp9ufxquekaokbeo"],
             rev.parent_ids)
-        self.assertEquals("(Jelmer) Move dpush to InterBranch.", rev.message)
-        self.assertEquals("pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz",
+        self.assertEqual("(Jelmer) Move dpush to InterBranch.", rev.message)
+        self.assertEqual("pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz",
            rev.revision_id)
-        self.assertEquals({"branch-nick": u"+trunk"}, rev.properties)
-        self.assertEquals(3600, rev.timezone)
+        self.assertEqual({"branch-nick": u"+trunk"}, rev.properties)
+        self.assertEqual(3600, rev.timezone)
 
     def test_written_form_matches(self):
         rev = chk_bencode_serializer.read_revision_from_string(
@@ -83,12 +83,12 @@ class TestBEncodeSerializer1(TestCase):
     def test_unpack_revision_no_timezone(self):
         rev = chk_bencode_serializer.read_revision_from_string(
             _working_revision_bencode1_no_timezone)
-        self.assertEquals(None, rev.timezone)
+        self.assertEqual(None, rev.timezone)
 
     def assertRoundTrips(self, serializer, orig_rev):
         text = serializer.write_revision_to_string(orig_rev)
         new_rev = serializer.read_revision_from_string(text)
-        self.assertEquals(orig_rev, new_rev)
+        self.assertEqual(orig_rev, new_rev)
 
     def test_roundtrips_non_ascii(self):
         rev = Revision("revid1")

@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Canonical Ltd
+# Copyright (C) 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -159,4 +159,4 @@ class LoadPluginTranslations(tests.TestCase):
 
     def test_does_not_exist(self):
         translation = i18n.load_plugin_translations("doesnotexist")
-        self.assertEquals("foo", translation.gettext("foo"))
+        self.assertEqual("foo", translation.gettext("foo"))

@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -302,11 +302,11 @@ class TestShelver(ShelfTestCase):
         tree1_root_id = tree1.get_root_id()
         tree2 = self.make_branch_and_tree('tree2')
         rev2 = tree2.commit('add root')
-        self.assertNotEquals(tree1_root_id, tree2.get_root_id())
+        self.assertNotEqual(tree1_root_id, tree2.get_root_id())
         tree1.merge_from_branch(tree2.branch,
                                 from_revision=revision.NULL_REVISION)
         tree1.commit('merging in tree2')
-        self.assertEquals(tree1_root_id, tree1.get_root_id())
+        self.assertEqual(tree1_root_id, tree1.get_root_id())
         # This is essentially assertNotRaises(InconsistentDelta)
         # With testtools 0.9.9, it can be rewritten as:
         # with ExpectedException(AssertionError,

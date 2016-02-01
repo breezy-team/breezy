@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2009, 2011 Canonical Ltd
+# Copyright (C) 2005-2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -168,24 +168,24 @@ class TestMixedTextStore(TestCaseInTempDir, TestStores):
         self.assertPathExists('a.gz')
         self.assertFalse(os.path.lexists('a'))
 
-        self.assertEquals(gzip.GzipFile('a.gz').read(), 'hello there')
+        self.assertEqual(gzip.GzipFile('a.gz').read(), 'hello there')
 
-        self.assertEquals(cs.has_id('a'), True)
-        self.assertEquals(s.has_id('a'), True)
-        self.assertEquals(cs.get('a').read(), 'hello there')
-        self.assertEquals(s.get('a').read(), 'hello there')
+        self.assertEqual(cs.has_id('a'), True)
+        self.assertEqual(s.has_id('a'), True)
+        self.assertEqual(cs.get('a').read(), 'hello there')
+        self.assertEqual(s.get('a').read(), 'hello there')
 
         self.assertRaises(BzrError, s.add, StringIO('goodbye'), 'a')
 
         s.add(StringIO('goodbye'), 'b')
         self.assertPathExists('b')
         self.assertFalse(os.path.lexists('b.gz'))
-        self.assertEquals(open('b').read(), 'goodbye')
+        self.assertEqual(open('b').read(), 'goodbye')
 
-        self.assertEquals(cs.has_id('b'), True)
-        self.assertEquals(s.has_id('b'), True)
-        self.assertEquals(cs.get('b').read(), 'goodbye')
-        self.assertEquals(s.get('b').read(), 'goodbye')
+        self.assertEqual(cs.has_id('b'), True)
+        self.assertEqual(s.has_id('b'), True)
+        self.assertEqual(cs.get('b').read(), 'goodbye')
+        self.assertEqual(s.get('b').read(), 'goodbye')
 
         self.assertRaises(BzrError, cs.add, StringIO('again'), 'b')
 
@@ -402,7 +402,7 @@ class TestTransportStore(TestCase):
         my_store = TransportStore(MemoryTransport(), prefixed=True,
             escaped=True)
         # a particularly perverse file-id! :-)
-        self.assertEquals(my_store._relpath('C:<>'), 'be/%2543%253a%253c%253e')
+        self.assertEqual(my_store._relpath('C:<>'), 'be/%2543%253a%253c%253e')
 
 
 class TestVersionFileStore(TestCaseWithTransport):

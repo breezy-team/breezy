@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -104,4 +104,4 @@ class TestParent(TestCaseWithTransport):
         if base[0] != 'C':
             other = 'file:///C:/path'
         b.set_parent(other)
-        self.assertEquals(other, b._get_parent_location())
+        self.assertEqual(other, b._get_parent_location())

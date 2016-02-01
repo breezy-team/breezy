@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010, 2012 Canonical Ltd
+# Copyright (C) 2006-2010, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,13 +33,13 @@ class TestNick(tests.TestCaseWithTransport):
             cmd.extend(['--directory', directory])
         # The nick command outputs the nick on a single line
         actual = self.run_bzr(cmd, working_dir=working_dir)[0][:-1]
-        self.assertEquals(expected, actual)
+        self.assertEqual(expected, actual)
         if explicit is not None:
             br = branch.Branch.open(working_dir)
             conf = br.get_config()
-            self.assertEquals(explicit, conf.has_explicit_nickname())
+            self.assertEqual(explicit, conf.has_explicit_nickname())
             if explicit:
-                self.assertEquals(expected, conf._get_explicit_nickname())
+                self.assertEqual(expected, conf._get_explicit_nickname())
 
     def test_nick_command(self):
         """bzr nick for viewing, setting nicknames"""

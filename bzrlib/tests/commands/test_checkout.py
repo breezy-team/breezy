@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@ class TestCheckout(TestCaseWithConnectionHookedTransport):
 
         cmd = cmd_checkout()
         cmd.run(self.get_url('branch1'), 'local')
-        self.assertEquals(1, len(self.connections))
+        self.assertEqual(1, len(self.connections))
 
     def test_checkout_lightweight(self):
         self.make_branch_and_tree('branch1')
@@ -36,5 +36,5 @@ class TestCheckout(TestCaseWithConnectionHookedTransport):
 
         cmd = cmd_checkout()
         cmd.run(self.get_url('branch1'), 'local', lightweight=True)
-        self.assertEquals(1, len(self.connections))
+        self.assertEqual(1, len(self.connections))
 
