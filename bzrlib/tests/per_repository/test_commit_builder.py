@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -161,7 +161,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         finally:
             tree.unlock()
         actually_updated_branch = (tree.branch.last_revision() == rev_id)
-        self.assertEquals(actually_updated_branch, will_update_branch)
+        self.assertEqual(actually_updated_branch, will_update_branch)
 
     def test_commit_with_revision_id_record_entry_contents(self):
         tree = self.make_branch_and_tree(".")

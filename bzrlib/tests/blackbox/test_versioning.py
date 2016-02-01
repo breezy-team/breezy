@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009-2012 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ class TestMkdir(TestCaseWithTransport):
 
         self.make_branch_and_tree('.')
         self.run_bzr(['mkdir', 'foo'])
-        self.assert_(os.path.isdir('foo'))
+        self.assertTrue(os.path.isdir('foo'))
 
         self.run_bzr(['mkdir', 'foo'], retcode=3)
 
@@ -56,8 +56,8 @@ class TestMkdir(TestCaseWithTransport):
 
         self.log('delta.added = %r' % delta.added)
 
-        self.assertEquals(len(delta.added), 1)
-        self.assertEquals(delta.added[0][0], 'foo')
+        self.assertEqual(len(delta.added), 1)
+        self.assertEqual(delta.added[0][0], 'foo')
         self.assertFalse(delta.modified)
 
     def test_mkdir_in_subdir(self):
@@ -65,11 +65,11 @@ class TestMkdir(TestCaseWithTransport):
 
         self.make_branch_and_tree('.')
         self.run_bzr(['mkdir', 'dir'])
-        self.assert_(os.path.isdir('dir'))
+        self.assertTrue(os.path.isdir('dir'))
 
         self.log('Run mkdir in subdir')
         self.run_bzr(['mkdir', 'subdir'], working_dir='dir')
-        self.assert_(os.path.isdir('dir/subdir'))
+        self.assertTrue(os.path.isdir('dir/subdir'))
 
         wt = WorkingTree.open('.')
 
@@ -77,9 +77,9 @@ class TestMkdir(TestCaseWithTransport):
 
         self.log('delta.added = %r' % delta.added)
 
-        self.assertEquals(len(delta.added), 2)
-        self.assertEquals(delta.added[0][0], 'dir')
-        self.assertEquals(delta.added[1][0], pathjoin('dir','subdir'))
+        self.assertEqual(len(delta.added), 2)
+        self.assertEqual(delta.added[0][0], 'dir')
+        self.assertEqual(delta.added[1][0], pathjoin('dir','subdir'))
         self.assertFalse(delta.modified)
 
     def test_mkdir_w_nested_trees(self):
@@ -99,18 +99,18 @@ class TestMkdir(TestCaseWithTransport):
         wt_b = WorkingTree.open('a/b')
 
         delta = wt.changes_from(wt.basis_tree())
-        self.assertEquals(len(delta.added), 1)
-        self.assertEquals(delta.added[0][0], 'dir')
+        self.assertEqual(len(delta.added), 1)
+        self.assertEqual(delta.added[0][0], 'dir')
         self.assertFalse(delta.modified)
 
         delta = wt_a.changes_from(wt_a.basis_tree())
-        self.assertEquals(len(delta.added), 1)
-        self.assertEquals(delta.added[0][0], 'dir')
+        self.assertEqual(len(delta.added), 1)
+        self.assertEqual(delta.added[0][0], 'dir')
         self.assertFalse(delta.modified)
 
         delta = wt_b.changes_from(wt_b.basis_tree())
-        self.assertEquals(len(delta.added), 1)
-        self.assertEquals(delta.added[0][0], 'dir')
+        self.assertEqual(len(delta.added), 1)
+        self.assertEqual(delta.added[0][0], 'dir')
         self.assertFalse(delta.modified)
 
     def test_mkdir_quiet(self):
@@ -118,8 +118,8 @@ class TestMkdir(TestCaseWithTransport):
 
         self.make_branch_and_tree('.')
         out, err = self.run_bzr(['mkdir', '--quiet', 'foo'])
-        self.assertEquals('', err)
-        self.assertEquals('', out)
+        self.assertEqual('', err)
+        self.assertEqual('', out)
 
 
 class SubdirCommit(TestCaseWithTransport):

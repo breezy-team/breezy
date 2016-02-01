@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2012 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -122,12 +122,12 @@ class TestMerge(tests.TestCaseWithTransport):
         self.assertTrue("Not a branch" in err)
         self.run_bzr('merge -r revno:%d:./..revno:%d:../b'
                     %(ancestor,b.revno()), working_dir='a')
-        self.assertEquals(a.get_parent_ids(),
+        self.assertEqual(a.get_parent_ids(),
                           [a.branch.last_revision(), b.last_revision()])
         self.check_file_contents('a/goodbye', 'quux')
         a_tree.revert(backups=False)
         self.run_bzr('merge -r revno:%d:../b'%b.revno(), working_dir='a')
-        self.assertEquals(a.get_parent_ids(),
+        self.assertEqual(a.get_parent_ids(),
                           [a.branch.last_revision(), b.last_revision()])
         a_tip = a.commit('merged')
         self.run_bzr('merge ../b -r last:1', working_dir='a')
@@ -263,7 +263,7 @@ class TestMerge(tests.TestCaseWithTransport):
         self.assertEqual(None, branch_b.get_parent())
         # test merge for failure without parent set
         out = self.run_bzr('merge', retcode=3, working_dir='branch_b')
-        self.assertEquals(out,
+        self.assertEqual(out,
                 ('','bzr: ERROR: No location specified or remembered\n'))
 
         # test uncommitted changes
@@ -280,7 +280,7 @@ class TestMerge(tests.TestCaseWithTransport):
         self.assertEndsWith(err, '+N  b\nAll changes applied successfully.\n')
         # re-open branch as external run_bzr modified it
         branch_b = branch_b.bzrdir.open_branch()
-        self.assertEquals(osutils.abspath(branch_b.get_submit_branch()),
+        self.assertEqual(osutils.abspath(branch_b.get_submit_branch()),
                           osutils.abspath(parent))
         # test implicit --remember when committing new file
         self.build_tree(['branch_b/e'])
@@ -295,11 +295,11 @@ class TestMerge(tests.TestCaseWithTransport):
         # test explicit --remember
         out, err = self.run_bzr('merge ../branch_c --remember',
                                 working_dir='branch_b')
-        self.assertEquals(out, '')
-        self.assertEquals(err, '+N  c\nAll changes applied successfully.\n')
+        self.assertEqual(out, '')
+        self.assertEqual(err, '+N  c\nAll changes applied successfully.\n')
         # re-open branch as external run_bzr modified it
         branch_b = branch_b.bzrdir.open_branch()
-        self.assertEquals(osutils.abspath(branch_b.get_submit_branch()),
+        self.assertEqual(osutils.abspath(branch_b.get_submit_branch()),
                           osutils.abspath(branch_c.bzrdir.root_transport.base))
         # re-open tree as external run_bzr modified it
         tree_b = branch_b.bzrdir.open_workingtree()
@@ -595,7 +595,7 @@ class TestMerge(tests.TestCaseWithTransport):
 
         # Remember should not happen if using default from parent
         out, err = self.run_bzr(['merge', '-d', 'b', '--no-remember'])
-        self.assertEquals(None, tree_b.branch.get_submit_branch())
+        self.assertEqual(None, tree_b.branch.get_submit_branch())
 
         # Remember should not happen if user supplies location but ask for not
         # remembering it

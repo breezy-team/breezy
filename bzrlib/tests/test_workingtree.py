@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -186,7 +186,7 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
         transport.put_bytes("format", "some format name")
         # The format does not have to be known by Bazaar,
         # find_format_string just retrieves the name
-        self.assertEquals("some format name",
+        self.assertEqual("some format name",
             workingtree.WorkingTreeFormatMetaDir.find_format_string(branch.bzrdir))
 
     def test_find_format(self):
@@ -224,7 +224,7 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
         found_format = workingtree.WorkingTreeFormatMetaDir.find_format(
             tree.bzrdir)
         self.assertIsInstance(found_format, workingtree.WorkingTreeFormat)
-        self.assertEquals(found_format.features.get("name"), "necessity")
+        self.assertEqual(found_format.features.get("name"), "necessity")
         self.assertRaises(errors.MissingFeature, found_format.check_support_status,
             True)
         self.addCleanup(workingtree.WorkingTreeFormatMetaDir.unregister_feature,
@@ -283,28 +283,28 @@ class TestWorkingTreeFormatRegistry(TestCase):
     def test_register_unregister_format(self):
         format = SampleTreeFormat()
         self.registry.register(format)
-        self.assertEquals(format, self.registry.get("Sample tree format."))
+        self.assertEqual(format, self.registry.get("Sample tree format."))
         self.registry.remove(format)
         self.assertRaises(KeyError, self.registry.get, "Sample tree format.")
 
     def test_get_all(self):
         format = SampleTreeFormat()
-        self.assertEquals([], self.registry._get_all())
+        self.assertEqual([], self.registry._get_all())
         self.registry.register(format)
-        self.assertEquals([format], self.registry._get_all())
+        self.assertEqual([format], self.registry._get_all())
 
     def test_register_extra(self):
         format = SampleExtraTreeFormat()
-        self.assertEquals([], self.registry._get_all())
+        self.assertEqual([], self.registry._get_all())
         self.registry.register_extra(format)
-        self.assertEquals([format], self.registry._get_all())
+        self.assertEqual([format], self.registry._get_all())
 
     def test_register_extra_lazy(self):
-        self.assertEquals([], self.registry._get_all())
+        self.assertEqual([], self.registry._get_all())
         self.registry.register_extra_lazy("bzrlib.tests.test_workingtree",
             "SampleExtraTreeFormat")
         formats = self.registry._get_all()
-        self.assertEquals(1, len(formats))
+        self.assertEqual(1, len(formats))
         self.assertIsInstance(formats[0], SampleExtraTreeFormat)
 
 
@@ -356,11 +356,11 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         self.assertIsDirectory('.bzr/checkout', t)
         self.assertIsDirectory('.bzr/checkout/lock', t)
         our_lock = LockDir(t, '.bzr/checkout/lock')
-        self.assertEquals(our_lock.peek(), None)
+        self.assertEqual(our_lock.peek(), None)
         tree.lock_write()
         self.assertTrue(our_lock.peek())
         tree.unlock()
-        self.assertEquals(our_lock.peek(), None)
+        self.assertEqual(our_lock.peek(), None)
 
     def test_missing_pending_merges(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())

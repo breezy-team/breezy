@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2012 Canonical Ltd
+# Copyright (C) 2007-2012, 2016 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -205,7 +205,7 @@ class TestSwitch(TestCaseWithTransport):
         tree.add('file-2')
         revid2 = tree.commit('rev2')
         self.run_bzr(['switch', '-b', 'anotherbranch'])
-        self.assertEquals(
+        self.assertEqual(
             set(['', 'anotherbranch']),
             set(tree.branch.bzrdir.get_branches().keys()))
 
@@ -238,8 +238,8 @@ class TestSwitch(TestCaseWithTransport):
         otherbranch.generate_revision_history(revid1)
         self.run_bzr(['switch', 'anotherbranch'], working_dir='branch-1')
         tree = WorkingTree.open("branch-1")
-        self.assertEquals(tree.last_revision(), revid1)
-        self.assertEquals(tree.branch.control_url, otherbranch.control_url)
+        self.assertEqual(tree.last_revision(), revid1)
+        self.assertEqual(tree.branch.control_url, otherbranch.control_url)
 
     def test_switch_new_colocated(self):
         # Create a branch branch-1 that initially is a checkout of 'foo'
@@ -253,11 +253,11 @@ class TestSwitch(TestCaseWithTransport):
         revid1 = tree.commit('rev1')
         self.run_bzr(['switch', '-b', 'anotherbranch'], working_dir='branch-1')
         bzrdir = ControlDir.open("branch-1")
-        self.assertEquals(
+        self.assertEqual(
             set([b.name for b in bzrdir.list_branches()]),
             set(["foo", "anotherbranch"]))
-        self.assertEquals(bzrdir.open_branch().name, "anotherbranch")
-        self.assertEquals(bzrdir.open_branch().last_revision(), revid1)
+        self.assertEqual(bzrdir.open_branch().name, "anotherbranch")
+        self.assertEqual(bzrdir.open_branch().last_revision(), revid1)
 
     def test_switch_new_colocated_unicode(self):
         # Create a branch branch-1 that initially is a checkout of 'foo'
@@ -272,11 +272,11 @@ class TestSwitch(TestCaseWithTransport):
         revid1 = tree.commit('rev1')
         self.run_bzr(['switch', '-b', u'branch\xe9'], working_dir='branch-1')
         bzrdir = ControlDir.open("branch-1")
-        self.assertEquals(
+        self.assertEqual(
             set([b.name for b in bzrdir.list_branches()]),
             set(["foo", u"branch\xe9"]))
-        self.assertEquals(bzrdir.open_branch().name, u"branch\xe9")
-        self.assertEquals(bzrdir.open_branch().last_revision(), revid1)
+        self.assertEqual(bzrdir.open_branch().name, u"branch\xe9")
+        self.assertEqual(bzrdir.open_branch().last_revision(), revid1)
 
     def test_switch_only_revision(self):
         tree = self._create_sample_tree()

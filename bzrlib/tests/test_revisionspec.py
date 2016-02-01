@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -363,17 +363,17 @@ class TestRevisionSpec_revno(TestRevisionSpec):
 
     def test_as_tree(self):
         tree = self.get_as_tree('0')
-        self.assertEquals(_mod_revision.NULL_REVISION, tree.get_revision_id())
+        self.assertEqual(_mod_revision.NULL_REVISION, tree.get_revision_id())
         tree = self.get_as_tree('1')
-        self.assertEquals('r1', tree.get_revision_id())
+        self.assertEqual('r1', tree.get_revision_id())
         tree = self.get_as_tree('2')
-        self.assertEquals('r2', tree.get_revision_id())
+        self.assertEqual('r2', tree.get_revision_id())
         tree = self.get_as_tree('-2')
-        self.assertEquals('r1', tree.get_revision_id())
+        self.assertEqual('r1', tree.get_revision_id())
         tree = self.get_as_tree('-1')
-        self.assertEquals('r2', tree.get_revision_id())
+        self.assertEqual('r2', tree.get_revision_id())
         tree = self.get_as_tree('1.1.1')
-        self.assertEquals('alt_r2', tree.get_revision_id())
+        self.assertEqual('alt_r2', tree.get_revision_id())
 
 
 class TestRevisionSpec_revid(TestRevisionSpec):
@@ -656,7 +656,7 @@ class TestRevisionSpec_branch(TestRevisionSpec):
 
     def test_as_tree(self):
         tree = self.get_as_tree('branch:tree', self.tree2)
-        self.assertEquals('r2', tree.get_revision_id())
+        self.assertEqual('r2', tree.get_revision_id())
         self.assertFalse(self.tree2.branch.repository.has_revision('r2'))
 
 

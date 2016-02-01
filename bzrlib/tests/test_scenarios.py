@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -64,7 +64,7 @@ class TestTestScenarios(TestCase):
             self,
             vary_by_color(),
             suite)
-        self.assertEquals(
+        self.assertEqual(
             ['blue', 'green', 'red'],
             get_generated_test_attributes(suite, 'color'))
 
@@ -74,7 +74,7 @@ class TestTestScenarios(TestCase):
             vary_named_attribute('one'),
             vary_named_attribute('two'),
             )
-        self.assertEquals(
+        self.assertEqual(
             2*2,
             len(s),
             s)
@@ -86,7 +86,7 @@ class TestTestScenarios(TestCase):
         multiply_tests_by_their_scenarios(
             test_instance,
             suite)
-        self.assertEquals(
+        self.assertEqual(
             ['a', 'a', 'b', 'b'],
             get_generated_test_attributes(suite, 'value'))
 

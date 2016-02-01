@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010, 2016 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -40,8 +40,8 @@ class TestModified(TestCaseWithTransport):
             if null:
                 command += ' --null'
             out, err = self.run_bzr(command)
-            self.assertEquals(out, expected)
-            self.assertEquals(err, '')
+            self.assertEqual(out, expected)
+            self.assertEqual(err, '')
 
         # in empty directory, nothing modified
         tree = self.make_branch_and_tree('.')
@@ -78,4 +78,4 @@ class TestModified(TestCaseWithTransport):
         tree.commit('r1')
         self.build_tree_contents([('a/README', 'changed\n')])
         out, err = self.run_bzr(['modified', '--directory=a'])
-        self.assertEquals('README\n', out)
+        self.assertEqual('README\n', out)

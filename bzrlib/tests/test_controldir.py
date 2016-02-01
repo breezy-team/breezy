@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Canonical Ltd
+# Copyright (C) 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -50,7 +50,7 @@ class TestMetaComponentFormatRegistry(tests.TestCase):
     def test_register_unregister_format(self):
         format = SampleComponentFormat()
         self.registry.register(format)
-        self.assertEquals(format,
+        self.assertEqual(format,
             self.registry.get("Example component format."))
         self.registry.remove(format)
         self.assertRaises(KeyError, self.registry.get,
@@ -58,30 +58,30 @@ class TestMetaComponentFormatRegistry(tests.TestCase):
 
     def test_get_all(self):
         format = SampleComponentFormat()
-        self.assertEquals([], self.registry._get_all())
+        self.assertEqual([], self.registry._get_all())
         self.registry.register(format)
-        self.assertEquals([format], self.registry._get_all())
+        self.assertEqual([format], self.registry._get_all())
 
     def test_get_all_modules(self):
         format = SampleComponentFormat()
-        self.assertEquals(set(), self.registry._get_all_modules())
+        self.assertEqual(set(), self.registry._get_all_modules())
         self.registry.register(format)
-        self.assertEquals(
+        self.assertEqual(
             set(["bzrlib.tests.test_controldir"]),
             self.registry._get_all_modules())
 
     def test_register_extra(self):
         format = SampleExtraComponentFormat()
-        self.assertEquals([], self.registry._get_all())
+        self.assertEqual([], self.registry._get_all())
         self.registry.register_extra(format)
-        self.assertEquals([format], self.registry._get_all())
+        self.assertEqual([format], self.registry._get_all())
 
     def test_register_extra_lazy(self):
-        self.assertEquals([], self.registry._get_all())
+        self.assertEqual([], self.registry._get_all())
         self.registry.register_extra_lazy("bzrlib.tests.test_controldir",
             "SampleExtraComponentFormat")
         formats = self.registry._get_all()
-        self.assertEquals(1, len(formats))
+        self.assertEqual(1, len(formats))
         self.assertIsInstance(formats[0], SampleExtraComponentFormat)
 
 
@@ -219,7 +219,7 @@ class DefaultControlComponentFormatTests(tests.TestCase):
         format = controldir.ControlComponentFormat()
         format.check_support_status(allow_unsupported=False,
             recommend_upgrade=True)
-        self.assertEquals("", stderr.getvalue())
+        self.assertEqual("", stderr.getvalue())
 
     def test_recommend_upgrade_old_format(self):
         stderr = tests.StringIOWrapper()
@@ -227,10 +227,10 @@ class DefaultControlComponentFormatTests(tests.TestCase):
         format = OldControlComponentFormat()
         format.check_support_status(allow_unsupported=False,
             recommend_upgrade=False)
-        self.assertEquals("", stderr.getvalue())
+        self.assertEqual("", stderr.getvalue())
         format.check_support_status(allow_unsupported=False,
             recommend_upgrade=True, basedir='apath')
-        self.assertEquals(
+        self.assertEqual(
             'An old format that is slow is deprecated and a better format '
             'is available.\nIt is recommended that you upgrade by running '
             'the command\n  bzr upgrade apath\n',

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2010, 2012, 2013, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -103,7 +103,7 @@ garbage""")
         # Now, get the response
         resp = conn.getresponse()
         # Read part of the response
-        self.assertEquals('0123456789\n', resp.read(11))
+        self.assertEqual('0123456789\n', resp.read(11))
         # Override the thresold to force the warning emission
         conn._range_warning_thresold = 6 # There are 7 bytes pending
         conn.cleanup_pipe()
@@ -121,36 +121,36 @@ class TestRangeFileMixin(object):
 
     def test_can_read_at_first_access(self):
         """Test that the just created file can be read."""
-        self.assertEquals(self.alpha, self._file.read())
+        self.assertEqual(self.alpha, self._file.read())
 
     def test_seek_read(self):
         """Test seek/read inside the range."""
         f = self._file
         start = self.first_range_start
         # Before any use, tell() should be at the range start
-        self.assertEquals(start, f.tell())
+        self.assertEqual(start, f.tell())
         cur = start # For an overall offset assertion
         f.seek(start + 3)
         cur += 3
-        self.assertEquals('def', f.read(3))
+        self.assertEqual('def', f.read(3))
         cur += len('def')
         f.seek(4, 1)
         cur += 4
-        self.assertEquals('klmn', f.read(4))
+        self.assertEqual('klmn', f.read(4))
         cur += len('klmn')
         # read(0) in the middle of a range
-        self.assertEquals('', f.read(0))
+        self.assertEqual('', f.read(0))
         # seek in place
         here = f.tell()
         f.seek(0, 1)
-        self.assertEquals(here, f.tell())
-        self.assertEquals(cur, f.tell())
+        self.assertEqual(here, f.tell())
+        self.assertEqual(cur, f.tell())
 
     def test_read_zero(self):
         f = self._file
-        self.assertEquals('', f.read(0))
+        self.assertEqual('', f.read(0))
         f.seek(10, 1)
-        self.assertEquals('', f.read(0))
+        self.assertEqual('', f.read(0))
 
     def test_seek_at_range_end(self):
         f = self._file
@@ -159,15 +159,15 @@ class TestRangeFileMixin(object):
     def test_read_at_range_end(self):
         """Test read behaviour at range end."""
         f = self._file
-        self.assertEquals(self.alpha, f.read())
-        self.assertEquals('', f.read(0))
+        self.assertEqual(self.alpha, f.read())
+        self.assertEqual('', f.read(0))
         self.assertRaises(errors.InvalidRange, f.read, 1)
 
     def test_unbounded_read_after_seek(self):
         f = self._file
         f.seek(24, 1)
         # Should not cross ranges
-        self.assertEquals('yz', f.read())
+        self.assertEqual('yz', f.read())
 
     def test_seek_backwards(self):
         f = self._file
@@ -207,7 +207,7 @@ class TestRangeFileMixin(object):
        """
        f = self._file
        f.seek(-2, 2)
-       self.assertEquals('yz', f.read())
+       self.assertEqual('yz', f.read())
 
 
 class TestRangeFileSizeUnknown(tests.TestCase, TestRangeFileMixin):
@@ -230,9 +230,9 @@ class TestRangeFileSizeUnknown(tests.TestCase, TestRangeFileMixin):
     def test_read_at_range_end(self):
         """Test read behaviour at range end."""
         f = self._file
-        self.assertEquals(self.alpha, f.read())
-        self.assertEquals('', f.read(0))
-        self.assertEquals('', f.read(1))
+        self.assertEqual(self.alpha, f.read())
+        self.assertEqual('', f.read(0))
+        self.assertEqual('', f.read(1))
 
 
 class TestRangeFileSizeKnown(tests.TestCase, TestRangeFileMixin):
@@ -347,14 +347,14 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
 
     def test_read_all_ranges(self):
         f = self._file
-        self.assertEquals(self.alpha, f.read()) # Read first range
+        self.assertEqual(self.alpha, f.read()) # Read first range
         f.seek(100) # Trigger the second range recognition
-        self.assertEquals(self.alpha, f.read()) # Read second range
-        self.assertEquals(126, f.tell())
+        self.assertEqual(self.alpha, f.read()) # Read second range
+        self.assertEqual(126, f.tell())
         f.seek(126) # Start of third range which is also the current pos !
-        self.assertEquals('A', f.read(1))
+        self.assertEqual('A', f.read(1))
         f.seek(10, 1)
-        self.assertEquals('LMN', f.read(3))
+        self.assertEqual('LMN', f.read(3))
 
     def test_seek_from_end(self):
         """See TestRangeFileMixin.test_seek_from_end."""
@@ -364,7 +364,7 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
         # behaviour.
         f = self._file
         f.seek(-2, 2)
-        self.assertEquals('yz', f.read())
+        self.assertEqual('yz', f.read())
         self.assertRaises(errors.InvalidRange, f.seek, -2, 2)
 
     def test_seek_into_void(self):
@@ -382,14 +382,14 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
     def test_seek_across_ranges(self):
         f = self._file
         f.seek(126) # skip the two first ranges
-        self.assertEquals('AB', f.read(2))
+        self.assertEqual('AB', f.read(2))
 
     def test_checked_read_dont_overflow_buffers(self):
         f = self._file
         # We force a very low value to exercise all code paths in _checked_read
         f._discarded_buf_size = 8
         f.seek(126) # skip the two first ranges
-        self.assertEquals('AB', f.read(2))
+        self.assertEqual('AB', f.read(2))
 
     def test_seek_twice_between_ranges(self):
         f = self._file
@@ -407,9 +407,9 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
 
     def test_read_at_range_end(self):
         f = self._file
-        self.assertEquals(self.alpha, f.read())
-        self.assertEquals(self.alpha, f.read())
-        self.assertEquals(self.alpha.upper(), f.read())
+        self.assertEqual(self.alpha, f.read())
+        self.assertEqual(self.alpha, f.read())
+        self.assertEqual(self.alpha.upper(), f.read())
         self.assertRaises(errors.InvalidHttpResponse, f.read, 1)
 
 
@@ -458,7 +458,7 @@ class TestRangeFileVarious(tests.TestCase):
         def ok(expected, header_value):
             f.set_range_from_header(header_value)
             # Slightly peek under the covers to get the size
-            self.assertEquals(expected, (f.tell(), f._size))
+            self.assertEqual(expected, (f.tell(), f._size))
 
         ok((1, 10), 'bytes 1-10/11')
         ok((1, 10), 'bytes 1-10/*')

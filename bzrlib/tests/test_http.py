@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2012, 2015 Canonical Ltd
+# Copyright (C) 2005-2012, 2015, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -288,7 +288,7 @@ class TestHTTPRangeParsing(tests.TestCase):
         self.req_handler = RequestHandler(None, None, None)
 
     def assertRanges(self, ranges, header, file_size):
-        self.assertEquals(ranges,
+        self.assertEqual(ranges,
                           self.req_handler._parse_ranges(header, file_size))
 
     def test_simple_range(self):
@@ -1200,7 +1200,7 @@ class TestHttpProxyWhiteBox(tests.TestCase):
 
     def assertEvaluateProxyBypass(self, expected, host, no_proxy):
         handler = _urllib2_wrappers.ProxyHandler()
-        self.assertEquals(expected,
+        self.assertEqual(expected,
                           handler.evaluate_proxy_bypass(host, no_proxy))
 
     def test_empty_user(self):
@@ -1599,7 +1599,7 @@ class TestUrllib2AuthHandler(tests.TestCaseWithTransport):
             path='/',
             realm='Realm',
             ))
-        self.assertEquals((user, password), got_pass)
+        self.assertEqual((user, password), got_pass)
 
 
 class TestAuth(http_utils.TestCaseWithWebserver):
@@ -2000,7 +2000,7 @@ class Test_redirected_to(tests.TestCase):
         self.assertIsInstance(r, type(t))
         # Both transports share the some connection
         self.assertEqual(t._get_connection(), r._get_connection())
-        self.assertEquals('http://www.example.com/foo/subdir/', r.base)
+        self.assertEqual('http://www.example.com/foo/subdir/', r.base)
 
     def test_redirected_to_self_with_slash(self):
         t = self._transport('http://www.example.com/foo')
@@ -2017,7 +2017,7 @@ class Test_redirected_to(tests.TestCase):
         r = t._redirected_to('http://www.example.com/foo',
                              'http://foo.example.com/foo/subdir')
         self.assertIsInstance(r, type(t))
-        self.assertEquals('http://foo.example.com/foo/subdir/',
+        self.assertEqual('http://foo.example.com/foo/subdir/',
             r.external_url())
 
     def test_redirected_to_same_host_sibling_protocol(self):
@@ -2025,21 +2025,21 @@ class Test_redirected_to(tests.TestCase):
         r = t._redirected_to('http://www.example.com/foo',
                              'https://www.example.com/foo')
         self.assertIsInstance(r, type(t))
-        self.assertEquals('https://www.example.com/foo/',
+        self.assertEqual('https://www.example.com/foo/',
             r.external_url())
 
     def test_redirected_to_same_host_different_protocol(self):
         t = self._transport('http://www.example.com/foo')
         r = t._redirected_to('http://www.example.com/foo',
                              'ftp://www.example.com/foo')
-        self.assertNotEquals(type(r), type(t))
-        self.assertEquals('ftp://www.example.com/foo/', r.external_url())
+        self.assertNotEqual(type(r), type(t))
+        self.assertEqual('ftp://www.example.com/foo/', r.external_url())
 
     def test_redirected_to_same_host_specific_implementation(self):
         t = self._transport('http://www.example.com/foo')
         r = t._redirected_to('http://www.example.com/foo',
                              'https+urllib://www.example.com/foo')
-        self.assertEquals('https://www.example.com/foo/', r.external_url())
+        self.assertEqual('https://www.example.com/foo/', r.external_url())
 
     def test_redirected_to_different_host_same_user(self):
         t = self._transport('http://joe@www.example.com/foo')
@@ -2047,7 +2047,7 @@ class Test_redirected_to(tests.TestCase):
                              'https://foo.example.com/foo')
         self.assertIsInstance(r, type(t))
         self.assertEqual(t._parsed_url.user, r._parsed_url.user)
-        self.assertEquals('https://joe@foo.example.com/foo/', r.external_url())
+        self.assertEqual('https://joe@foo.example.com/foo/', r.external_url())
 
 
 class PredefinedRequestHandler(http_server.TestingHTTPRequestHandler):

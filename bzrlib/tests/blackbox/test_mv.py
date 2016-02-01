@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2012 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -169,8 +169,8 @@ class TestMove(TestCaseWithTransport):
         self.build_tree(['foo/', 'bar'])
         tree.add(['foo', 'bar'])
         out, err = self.run_bzr('mv bar Foo', retcode=3)
-        self.assertEquals('', out)
-        self.assertEquals(
+        self.assertEqual('', out)
+        self.assertEqual(
             'bzr: ERROR: Could not move to Foo: Foo is not versioned.\n',
             err)
 

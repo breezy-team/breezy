@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009-2013, 2016 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -108,8 +108,8 @@ class SignMyCommits(tests.TestCaseWithTransport):
         out = self.run_bzr('sign-my-commits --dry-run')[0]
 
         outlines = out.splitlines()
-        self.assertEquals(5, len(outlines))
-        self.assertEquals('Signed 4 revisions.', outlines[-1])
+        self.assertEqual(5, len(outlines))
+        self.assertEqual('Signed 4 revisions.', outlines[-1])
         self.assertUnsigned(repo, 'A')
         self.assertUnsigned(repo, 'B')
         self.assertUnsigned(repo, 'C')

@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2009, 2011, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -346,7 +346,7 @@ class TestGetFileVerifier(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         (kind, data) = tree.get_file_verifier('file-id-1')
-        self.assertEquals(
+        self.assertEqual(
             tree.get_file_verifier('file-id-1'),
             tree.get_file_verifier('file-id-2'))
         if kind == "SHA1":

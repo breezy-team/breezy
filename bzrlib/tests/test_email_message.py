@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009, 2011, 2014, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -187,13 +187,13 @@ class TestEmailMessage(tests.TestCase):
 
         address = u'Pepe P\xe9rez <pperez@ejemplo.com>' # unicode ok
         encoded = EmailMessage.address_to_encoded_header(address)
-        self.assert_('pperez@ejemplo.com' in encoded) # addr must be unencoded
-        self.assertEquals(address, decode(encoded))
+        self.assertTrue('pperez@ejemplo.com' in encoded) # addr must be unencoded
+        self.assertEqual(address, decode(encoded))
 
         address = 'Pepe P\xc3\xa9red <pperez@ejemplo.com>' # UTF-8 ok
         encoded = EmailMessage.address_to_encoded_header(address)
-        self.assert_('pperez@ejemplo.com' in encoded)
-        self.assertEquals(address, decode(encoded).encode('utf-8'))
+        self.assertTrue('pperez@ejemplo.com' in encoded)
+        self.assertEqual(address, decode(encoded).encode('utf-8'))
 
         address = 'Pepe P\xe9rez <pperez@ejemplo.com>' # ISO-8859-1 not ok
         self.assertRaises(BzrBadParameterNotUnicode,

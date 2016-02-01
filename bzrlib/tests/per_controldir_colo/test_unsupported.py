@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2011, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ class TestNoColocatedSupport(per_controldir.TestCaseWithControlDir):
             made_control = self.make_bzrdir('.', format=self.bzrdir_format)
         except errors.UninitializableFormat:
             raise tests.TestNotApplicable('Control dir format not initializable')
-        self.assertEquals(made_control._format, self.bzrdir_format)
+        self.assertEqual(made_control._format, self.bzrdir_format)
         made_repo = made_control.create_repository()
         return made_control
 

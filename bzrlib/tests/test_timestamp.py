@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2009, 2011 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010, 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -102,16 +102,16 @@ class TestPatchHeader(tests.TestCase):
 class UnpackHighresDateTests(tests.TestCase):
 
     def test_unpack_highres_date(self):
-        self.assertEquals(
+        self.assertEqual(
             (1120153132.3508501, -18000),
             timestamp.unpack_highres_date('Thu 2005-06-30 12:38:52.350850105 -0500'))
-        self.assertEquals(
+        self.assertEqual(
             (1120153132.3508501, 0),
             timestamp.unpack_highres_date('Thu 2005-06-30 17:38:52.350850105 +0000'))
-        self.assertEquals(
+        self.assertEqual(
             (1120153132.3508501, 7200),
             timestamp.unpack_highres_date('Thu 2005-06-30 19:38:52.350850105 +0200'))
-        self.assertEquals(
+        self.assertEqual(
             (1152428738.867522, 19800),
             timestamp.unpack_highres_date('Sun 2006-07-09 12:35:38.867522001 +0530'))
 
@@ -119,8 +119,8 @@ class UnpackHighresDateTests(tests.TestCase):
         t = time.time()
         o = local_time_offset()
         t2, o2 = timestamp.unpack_highres_date(timestamp.format_highres_date(t, o))
-        self.assertEquals(t, t2)
-        self.assertEquals(o, o2)
+        self.assertEqual(t, t2)
+        self.assertEqual(o, o2)
         t -= 24*3600*365*2 # Start 2 years ago
         o = -12*3600
         for count in xrange(500):
@@ -128,7 +128,7 @@ class UnpackHighresDateTests(tests.TestCase):
             o = ((o/3600 + 13) % 25 - 12)*3600 # Add 1 wrap around from [-12, 12]
             date = timestamp.format_highres_date(t, o)
             t2, o2 = timestamp.unpack_highres_date(date)
-            self.assertEquals(t, t2,
+            self.assertEqual(t, t2,
                 'Failed on date %r, %s,%s diff:%s' % (date, t, o, t2-t))
-            self.assertEquals(o, o2,
+            self.assertEqual(o, o2,
                 'Failed on date %r, %s,%s diff:%s' % (date, t, o, t2-t))

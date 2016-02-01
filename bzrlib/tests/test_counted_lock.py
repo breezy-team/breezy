@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -143,7 +143,7 @@ class TestCountedLock(TestCase):
         self.assertTrue(l.is_locked())
         l.unlock()
         self.assertFalse(l.is_locked())
-        self.assertEquals(
+        self.assertEqual(
             ['lock_read', 'unlock'],
             real_lock._calls)
 
@@ -157,12 +157,12 @@ class TestCountedLock(TestCase):
         l = CountedLock(real_lock)
         l.lock_write()
         l.lock_read()
-        self.assertEquals('token', l.lock_write())
+        self.assertEqual('token', l.lock_write())
         l.unlock()
         l.unlock()
         l.unlock()
         self.assertFalse(l.is_locked())
-        self.assertEquals(
+        self.assertEqual(
             ['lock_write', 'unlock'],
             real_lock._calls)
 
@@ -174,7 +174,7 @@ class TestCountedLock(TestCase):
         self.assertRaises(ReadOnlyError, l.lock_write)
         l.unlock()
         self.assertFalse(l.is_locked())
-        self.assertEquals(
+        self.assertEqual(
             ['lock_read', 'unlock'],
             real_lock._calls)
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -87,4 +87,4 @@ class TestBranchReconcile(TestCaseWithBranch):
         tree.branch.set_last_revision_info(2, r2)
 
         reconciler = tree.branch.reconcile()
-        self.assertEquals(r2, tree.branch.last_revision())
+        self.assertEqual(r2, tree.branch.last_revision())

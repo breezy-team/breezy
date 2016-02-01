@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -41,5 +41,5 @@ class TestUpdate(transport_util.TestCaseWithConnectionHookedTransport):
         update.outf = tests.StringIOWrapper()
         # update calls it 'dir' where other commands calls it 'directory'
         update.run(dir='local')
-        self.assertEquals(1, len(self.connections))
+        self.assertEqual(1, len(self.connections))
 

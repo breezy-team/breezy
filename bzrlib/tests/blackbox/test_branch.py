@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2012 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -71,7 +71,7 @@ class TestBranch(tests.TestCaseWithTransport):
         a = self.example_branch('something/a').branch
         self.run_bzr('branch something/a')
         b = branch.Branch.open('a')
-        self.assertEquals(b.last_revision_info(), a.last_revision_info())
+        self.assertEqual(b.last_revision_info(), a.last_revision_info())
 
     def test_into_colocated(self):
         """Branch from a branch into a colocated branch."""
@@ -169,7 +169,7 @@ class TestBranch(tests.TestCaseWithTransport):
         t = self.example_branch('source')
         self.make_bzrdir('target')
         self.run_bzr("branch source target")
-        self.assertEquals(2, len(t.branch.repository.all_revision_ids()))
+        self.assertEqual(2, len(t.branch.repository.all_revision_ids()))
 
     def test_branch_switch_checkout(self):
         # Checkout in the current directory:

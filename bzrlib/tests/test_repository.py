@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -170,7 +170,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
         tree.branch.repository.update_feature_flags({"name": "necessity"})
         found_format = repository.RepositoryFormatMetaDir.find_format(tree.bzrdir)
         self.assertIsInstance(found_format, repository.RepositoryFormatMetaDir)
-        self.assertEquals(found_format.features.get("name"), "necessity")
+        self.assertEqual(found_format.features.get("name"), "necessity")
         self.assertRaises(errors.MissingFeature, found_format.check_support_status,
             True)
         self.addCleanup(repository.RepositoryFormatMetaDir.unregister_feature,
@@ -188,28 +188,28 @@ class TestRepositoryFormatRegistry(TestCase):
     def test_register_unregister_format(self):
         format = SampleRepositoryFormat()
         self.registry.register(format)
-        self.assertEquals(format, self.registry.get("Sample .bzr repository format."))
+        self.assertEqual(format, self.registry.get("Sample .bzr repository format."))
         self.registry.remove(format)
         self.assertRaises(KeyError, self.registry.get, "Sample .bzr repository format.")
 
     def test_get_all(self):
         format = SampleRepositoryFormat()
-        self.assertEquals([], self.registry._get_all())
+        self.assertEqual([], self.registry._get_all())
         self.registry.register(format)
-        self.assertEquals([format], self.registry._get_all())
+        self.assertEqual([format], self.registry._get_all())
 
     def test_register_extra(self):
         format = SampleExtraRepositoryFormat()
-        self.assertEquals([], self.registry._get_all())
+        self.assertEqual([], self.registry._get_all())
         self.registry.register_extra(format)
-        self.assertEquals([format], self.registry._get_all())
+        self.assertEqual([format], self.registry._get_all())
 
     def test_register_extra_lazy(self):
-        self.assertEquals([], self.registry._get_all())
+        self.assertEqual([], self.registry._get_all())
         self.registry.register_extra_lazy("bzrlib.tests.test_repository",
             "SampleExtraRepositoryFormat")
         formats = self.registry._get_all()
-        self.assertEquals(1, len(formats))
+        self.assertEqual(1, len(formats))
         self.assertIsInstance(formats[0], SampleExtraRepositoryFormat)
 
 

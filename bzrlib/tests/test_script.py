@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,10 +28,10 @@ from bzrlib.tests import script
 class TestSyntax(tests.TestCase):
 
     def test_comment_is_ignored(self):
-        self.assertEquals([], script._script_to_commands('#comment\n'))
+        self.assertEqual([], script._script_to_commands('#comment\n'))
 
     def test_comment_multiple_lines(self):
-        self.assertEquals([
+        self.assertEqual([
             (['bar'], None, None, None),
             ],
             script._script_to_commands("""
@@ -50,7 +50,7 @@ class TestSyntax(tests.TestCase):
 
         However we do want to be able to match commands that emit blank lines.
         """
-        self.assertEquals([
+        self.assertEqual([
             (['bar'], None, '\n', None),
             ],
             script._script_to_commands("""
@@ -59,23 +59,23 @@ class TestSyntax(tests.TestCase):
             """))
 
     def test_simple_command(self):
-        self.assertEquals([(['cd', 'trunk'], None, None, None)],
+        self.assertEqual([(['cd', 'trunk'], None, None, None)],
                            script._script_to_commands('$ cd trunk'))
 
     def test_command_with_single_quoted_param(self):
         story = """$ bzr commit -m 'two words'"""
-        self.assertEquals([(['bzr', 'commit', '-m', "'two words'"],
+        self.assertEqual([(['bzr', 'commit', '-m', "'two words'"],
                             None, None, None)],
                            script._script_to_commands(story))
 
     def test_command_with_double_quoted_param(self):
         story = """$ bzr commit -m "two words" """
-        self.assertEquals([(['bzr', 'commit', '-m', '"two words"'],
+        self.assertEqual([(['bzr', 'commit', '-m', '"two words"'],
                             None, None, None)],
                            script._script_to_commands(story))
 
     def test_command_with_input(self):
-        self.assertEquals(
+        self.assertEqual(
             [(['cat', '>file'], 'content\n', None, None)],
             script._script_to_commands('$ cat >file\n<content\n'))
 
@@ -87,7 +87,7 @@ class TestSyntax(tests.TestCase):
             adding file
             adding file2
             """
-        self.assertEquals([(['bzr', 'add'], None,
+        self.assertEqual([(['bzr', 'add'], None,
                             'adding file\nadding file2\n', None)],
                           script._script_to_commands(story))
 
@@ -97,7 +97,7 @@ $ bzr add
 adding file
 adding file2
 """
-        self.assertEquals([(['bzr', 'add'], None,
+        self.assertEqual([(['bzr', 'add'], None,
                             'adding file\nadding file2\n', None)],
                           script._script_to_commands(story))
 
@@ -106,7 +106,7 @@ adding file2
 $ bzr branch foo
 2>bzr: ERROR: Not a branch: "foo"
 """
-        self.assertEquals([(['bzr', 'branch', 'foo'],
+        self.assertEqual([(['bzr', 'branch', 'foo'],
                             None, None, 'bzr: ERROR: Not a branch: "foo"\n')],
                           script._script_to_commands(story))
 
@@ -120,7 +120,7 @@ $ bzr branch foo
         story = """
 $ foo = `bzr file-id toto`
 """
-        self.assertEquals([(['foo', '=', '`bzr file-id toto`'],
+        self.assertEqual([(['foo', '=', '`bzr file-id toto`'],
                             None, None, None)],
                           script._script_to_commands(story))
 
@@ -172,7 +172,7 @@ class TestExecution(script.TestCaseWithTransportAndScript):
         """
         e = self.assertRaises(SyntaxError, self.run_script, "$ foo --frob")
         self.assertContainsRe(e.msg, "not found.*foo")
-        self.assertEquals(e.text, "foo --frob")
+        self.assertEqual(e.text, "foo --frob")
 
     def test_blank_output_mismatches_output(self):
         """If you give output, the output must actually be blank.
@@ -299,7 +299,7 @@ cat dog "chicken" 'dragon'
         self.run_script("""
         $ bzr init --quiet a
         """)
-        self.assertEquals(trace.is_quiet(), False)
+        self.assertEqual(trace.is_quiet(), False)
 
 
 class TestCat(script.TestCaseWithTransportAndScript):
@@ -310,27 +310,27 @@ class TestCat(script.TestCaseWithTransportAndScript):
     def test_cat_input_to_output(self):
         retcode, out, err = self.run_command(['cat'],
                                              'content\n', 'content\n', None)
-        self.assertEquals('content\n', out)
-        self.assertEquals(None, err)
+        self.assertEqual('content\n', out)
+        self.assertEqual(None, err)
 
     def test_cat_file_to_output(self):
         self.build_tree_contents([('file', 'content\n')])
         retcode, out, err = self.run_command(['cat', 'file'],
                                              None, 'content\n', None)
-        self.assertEquals('content\n', out)
-        self.assertEquals(None, err)
+        self.assertEqual('content\n', out)
+        self.assertEqual(None, err)
 
     def test_cat_input_to_file(self):
         retcode, out, err = self.run_command(['cat', '>file'],
                                              'content\n', None, None)
         self.assertFileEqual('content\n', 'file')
-        self.assertEquals(None, out)
-        self.assertEquals(None, err)
+        self.assertEqual(None, out)
+        self.assertEqual(None, err)
         retcode, out, err = self.run_command(['cat', '>>file'],
                                              'more\n', None, None)
         self.assertFileEqual('content\nmore\n', 'file')
-        self.assertEquals(None, out)
-        self.assertEquals(None, err)
+        self.assertEqual(None, out)
+        self.assertEqual(None, err)
 
     def test_cat_file_to_file(self):
         self.build_tree_contents([('file', 'content\n')])
@@ -397,16 +397,16 @@ class TestCd(script.TestCaseWithTransportAndScript):
         self.assertRaises(ValueError, self.run_script, '$ cd ..')
 
     def test_cd_dir_and_back_home(self):
-        self.assertEquals(self.test_dir, osutils.getcwd())
+        self.assertEqual(self.test_dir, osutils.getcwd())
         self.run_script("""
 $ mkdir dir
 $ cd dir
 """)
-        self.assertEquals(osutils.pathjoin(self.test_dir, 'dir'),
+        self.assertEqual(osutils.pathjoin(self.test_dir, 'dir'),
                           osutils.getcwd())
 
         self.run_script('$ cd')
-        self.assertEquals(self.test_dir, osutils.getcwd())
+        self.assertEqual(self.test_dir, osutils.getcwd())
 
 
 class TestBzr(script.TestCaseWithTransportAndScript):
@@ -435,32 +435,32 @@ $ echo foo
 
     def test_echo_to_output(self):
         retcode, out, err = self.run_command(['echo'], None, '\n', None)
-        self.assertEquals('\n', out)
-        self.assertEquals(None, err)
+        self.assertEqual('\n', out)
+        self.assertEqual(None, err)
 
     def test_echo_some_to_output(self):
         retcode, out, err = self.run_command(['echo', 'hello'],
                                              None, 'hello\n', None)
-        self.assertEquals('hello\n', out)
-        self.assertEquals(None, err)
+        self.assertEqual('hello\n', out)
+        self.assertEqual(None, err)
 
     def test_echo_more_output(self):
         retcode, out, err = self.run_command(
             ['echo', 'hello', 'happy', 'world'],
             None, 'hello happy world\n', None)
-        self.assertEquals('hello happy world\n', out)
-        self.assertEquals(None, err)
+        self.assertEqual('hello happy world\n', out)
+        self.assertEqual(None, err)
 
     def test_echo_appended(self):
         retcode, out, err = self.run_command(['echo', 'hello', '>file'],
                                              None, None, None)
-        self.assertEquals(None, out)
-        self.assertEquals(None, err)
+        self.assertEqual(None, out)
+        self.assertEqual(None, err)
         self.assertFileEqual('hello\n', 'file')
         retcode, out, err = self.run_command(['echo', 'happy', '>>file'],
                                              None, None, None)
-        self.assertEquals(None, out)
-        self.assertEquals(None, err)
+        self.assertEqual(None, out)
+        self.assertEqual(None, err)
         self.assertFileEqual('hello\nhappy\n', 'file')
 
     def test_empty_line_in_output_is_respected(self):

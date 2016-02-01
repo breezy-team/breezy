@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2012 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -65,13 +65,13 @@ class TestPush(tests.TestCaseWithTransport):
 
         # If there is no parent location set, :parent isn't mentioned.
         out = self.run_bzr('push', working_dir='a', retcode=3)
-        self.assertEquals(out,
+        self.assertEqual(out,
                 ('','bzr: ERROR: No push location known or specified.\n'))
 
         # If there is a parent location set, the error suggests :parent.
         tree_a.branch.set_parent(tree_b.branch.base)
         out = self.run_bzr('push', working_dir='a', retcode=3)
-        self.assertEquals(out,
+        self.assertEqual(out,
             ('','bzr: ERROR: No push location known or specified. '
                 'To push to the parent branch '
                 '(at %s), use \'bzr push :parent\'.\n' %
@@ -100,26 +100,26 @@ class TestPush(tests.TestCaseWithTransport):
 
         # test push for failure without push location set
         out = self.run_bzr('push', working_dir='branch_a', retcode=3)
-        self.assertEquals(out,
+        self.assertEqual(out,
                 ('','bzr: ERROR: No push location known or specified.\n'))
 
         # test not remembered if cannot actually push
         self.run_bzr('push path/which/doesnt/exist',
                      working_dir='branch_a', retcode=3)
         out = self.run_bzr('push', working_dir='branch_a', retcode=3)
-        self.assertEquals(
+        self.assertEqual(
                 ('', 'bzr: ERROR: No push location known or specified.\n'),
                 out)
 
         # test implicit --remember when no push location set, push fails
         out = self.run_bzr('push ../branch_b',
                            working_dir='branch_a', retcode=3)
-        self.assertEquals(out,
+        self.assertEqual(out,
                 ('','bzr: ERROR: These branches have diverged.  '
                  'See "bzr help diverged-branches" for more information.\n'))
         # Refresh the branch as 'push' modified it
         branch_a = branch_a.bzrdir.open_branch()
-        self.assertEquals(osutils.abspath(branch_a.get_push_location()),
+        self.assertEqual(osutils.abspath(branch_a.get_push_location()),
                           osutils.abspath(branch_b.bzrdir.root_transport.base))
 
         # test implicit --remember after resolving previous failure
@@ -140,7 +140,7 @@ class TestPush(tests.TestCaseWithTransport):
         self.run_bzr('push ../branch_c --remember', working_dir='branch_a')
         # Refresh the branch as 'push' modified it
         branch_a = branch_a.bzrdir.open_branch()
-        self.assertEquals(branch_a.get_push_location(),
+        self.assertEqual(branch_a.get_push_location(),
                           branch_c.bzrdir.root_transport.base)
 
     def test_push_without_tree(self):
@@ -623,13 +623,13 @@ class TestPush(tests.TestCaseWithTransport):
         to_tree.branch.tags.set_tag("mytag", "anotherrevid")
         revid1 = to_tree.commit('my commit')
         out = self.run_bzr(['push', '-d', 'from', 'to'])
-        self.assertEquals(out,
+        self.assertEqual(out,
             ('Conflicting tags:\n    mytag\n', 'No new revisions to push.\n'))
         out = self.run_bzr(['push', '-d', 'from', '--overwrite-tags', 'to'])
-        self.assertEquals(out, ('', '1 tag updated.\n'))
-        self.assertEquals(to_tree.branch.tags.lookup_tag('mytag'),
+        self.assertEqual(out, ('', '1 tag updated.\n'))
+        self.assertEqual(to_tree.branch.tags.lookup_tag('mytag'),
                           'somerevid')
-        self.assertEquals(to_tree.branch.last_revision(), revid1)
+        self.assertEqual(to_tree.branch.last_revision(), revid1)
 
 
 class RedirectingMemoryTransport(memory.MemoryTransport):
@@ -892,8 +892,8 @@ class TestPushForeign(tests.TestCaseWithTransport):
         target_branch = self.make_dummy_builder('dp').get_branch()
         source_tree = self.make_branch_and_tree("dc")
         output, error = self.run_bzr("push -d dc dp", retcode=3)
-        self.assertEquals("", output)
-        self.assertEquals(error, "bzr: ERROR: It is not possible to losslessly"
+        self.assertEqual("", output)
+        self.assertEqual(error, "bzr: ERROR: It is not possible to losslessly"
             " push to dummy. You may want to use dpush instead.\n")
 
 

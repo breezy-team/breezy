@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -101,7 +101,7 @@ class ForeignBranchTests(TestCaseWithTransport):
     def test_null_revid_revno(self):
         """null: should return revno 0."""
         branch = self.make_branch()
-        self.assertEquals(0, branch.revision_id_to_revno(NULL_REVISION))
+        self.assertEqual(0, branch.revision_id_to_revno(NULL_REVISION))
 
     def test_get_stacked_on_url(self):
         """Test that get_stacked_on_url() behaves as expected.
@@ -119,9 +119,9 @@ class ForeignBranchTests(TestCaseWithTransport):
 
     def test_last_revision_empty_branch(self):
         branch = self.make_empty_branch()
-        self.assertEquals(NULL_REVISION, branch.last_revision())
-        self.assertEquals(0, branch.revno())
-        self.assertEquals((0, NULL_REVISION), branch.last_revision_info())
+        self.assertEqual(NULL_REVISION, branch.last_revision())
+        self.assertEqual(0, branch.revno())
+        self.assertEqual((0, NULL_REVISION), branch.last_revision_info())
 
 
 class ForeignBranchFormatTests(TestCaseWithTransport):

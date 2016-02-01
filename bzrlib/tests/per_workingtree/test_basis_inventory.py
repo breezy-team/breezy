@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2008 Canonical Ltd
+# Copyright (C) 2005-2009, 2011, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         self.assertTrue(t._transport.has('basis-inventory-cache'))
 
         basis_inv = t.basis_tree().root_inventory
-        self.assertEquals('r1', basis_inv.revision_id)
+        self.assertEqual('r1', basis_inv.revision_id)
 
         store_inv = b.repository.get_inventory('r1')
         self.assertEqual([], store_inv._make_delta(basis_inv))
@@ -54,7 +54,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
 
         basis_inv_txt = t.read_basis_inventory()
         basis_inv = bzrlib.xml7.serializer_v7.read_inventory_from_string(basis_inv_txt)
-        self.assertEquals('r2', basis_inv.revision_id)
+        self.assertEqual('r2', basis_inv.revision_id)
         store_inv = b.repository.get_inventory('r2')
 
         self.assertEqual([], store_inv._make_delta(basis_inv))

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2014, 2016 Canonical Ltd
+# Copyright (C) 2006-2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -503,21 +503,21 @@ class SmartClientMediumTests(tests.TestCase):
     def test_ssh_client_repr(self):
         client_medium = medium.SmartSSHClientMedium(
             'base', medium.SSHParams("example.com", "4242", "username"))
-        self.assertEquals(
+        self.assertEqual(
             "SmartSSHClientMedium(bzr+ssh://username@example.com:4242/)",
             repr(client_medium))
 
     def test_ssh_client_repr_no_port(self):
         client_medium = medium.SmartSSHClientMedium(
             'base', medium.SSHParams("example.com", None, "username"))
-        self.assertEquals(
+        self.assertEqual(
             "SmartSSHClientMedium(bzr+ssh://username@example.com/)",
             repr(client_medium))
 
     def test_ssh_client_repr_no_username(self):
         client_medium = medium.SmartSSHClientMedium(
             'base', medium.SSHParams("example.com", None, None))
-        self.assertEquals(
+        self.assertEqual(
             "SmartSSHClientMedium(bzr+ssh://example.com/)",
             repr(client_medium))
 
@@ -773,7 +773,7 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
 class RemoteTransportTests(test_smart.TestCaseWithSmartMedium):
 
     def test_plausible_url(self):
-        self.assert_(self.get_url().startswith('bzr://'))
+        self.assertTrue(self.get_url().startswith('bzr://'))
 
     def test_probe_transport(self):
         t = self.get_transport()
@@ -1595,13 +1595,13 @@ class WritableEndToEndTests(SmartTCPTests):
                       conn2.get_smart_medium())
 
     def test__remote_path(self):
-        self.assertEquals('/foo/bar',
+        self.assertEqual('/foo/bar',
                           self.transport._remote_path('foo/bar'))
 
     def test_clone_changes_base(self):
         """Cloning transport produces one with a new base location"""
         conn2 = self.transport.clone('subdir')
-        self.assertEquals(self.transport.base + 'subdir/',
+        self.assertEqual(self.transport.base + 'subdir/',
                           conn2.base)
 
     def test_open_dir(self):
@@ -1610,7 +1610,7 @@ class WritableEndToEndTests(SmartTCPTests):
         transport = self.transport
         self.backing_transport.mkdir('toffee')
         self.backing_transport.mkdir('toffee/apple')
-        self.assertEquals('/toffee', transport._remote_path('toffee'))
+        self.assertEqual('/toffee', transport._remote_path('toffee'))
         toffee_trans = transport.clone('toffee')
         # Check that each transport has only the contents of its directory
         # directly visible. If state was being held in the wrong object, it's
@@ -3199,7 +3199,7 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
         requester, output = self.make_client_encoder_and_output()
         requester.set_headers({'header name': 'header value'})
         requester.call('one arg')
-        self.assertEquals(
+        self.assertEqual(
             'bzr message 3 (bzr 1.6)\n' # protocol version
             '\x00\x00\x00\x1fd11:header name12:header valuee' # headers
             's\x00\x00\x00\x0bl7:one arge' # args
@@ -3215,7 +3215,7 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
         requester, output = self.make_client_encoder_and_output()
         requester.set_headers({'header name': 'header value'})
         requester.call_with_body_bytes(('one arg',), 'body bytes')
-        self.assertEquals(
+        self.assertEqual(
             'bzr message 3 (bzr 1.6)\n' # protocol version
             '\x00\x00\x00\x1fd11:header name12:header valuee' # headers
             's\x00\x00\x00\x0bl7:one arge' # args
@@ -3250,7 +3250,7 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
         requester.set_headers({'header name': 'header value'})
         stream = ['chunk 1', 'chunk two']
         requester.call_with_body_stream(('one arg',), stream)
-        self.assertEquals(
+        self.assertEqual(
             'bzr message 3 (bzr 1.6)\n' # protocol version
             '\x00\x00\x00\x1fd11:header name12:header valuee' # headers
             's\x00\x00\x00\x0bl7:one arge' # args
@@ -3265,7 +3265,7 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
         requester.set_headers({})
         stream = []
         requester.call_with_body_stream(('one arg',), stream)
-        self.assertEquals(
+        self.assertEqual(
             'bzr message 3 (bzr 1.6)\n' # protocol version
             '\x00\x00\x00\x02de' # headers
             's\x00\x00\x00\x0bl7:one arge' # args
@@ -3287,7 +3287,7 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
             raise Exception('Boom!')
         self.assertRaises(Exception, requester.call_with_body_stream,
             ('one arg',), stream_that_fails())
-        self.assertEquals(
+        self.assertEqual(
             'bzr message 3 (bzr 1.6)\n' # protocol version
             '\x00\x00\x00\x02de' # headers
             's\x00\x00\x00\x0bl7:one arge' # args
@@ -4285,27 +4285,27 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         t = remote.RemoteHTTPTransport('bzr+http://www.example.com/foo')
         r = t._redirected_to('http://www.example.com/foo',
                              'http://www.example.com/bar')
-        self.assertEquals(type(r), type(t))
+        self.assertEqual(type(r), type(t))
 
     def test__redirect_sibling_protocol(self):
         t = remote.RemoteHTTPTransport('bzr+http://www.example.com/foo')
         r = t._redirected_to('http://www.example.com/foo',
                              'https://www.example.com/bar')
-        self.assertEquals(type(r), type(t))
+        self.assertEqual(type(r), type(t))
         self.assertStartsWith(r.base, 'bzr+https')
 
     def test__redirect_to_with_user(self):
         t = remote.RemoteHTTPTransport('bzr+http://joe@www.example.com/foo')
         r = t._redirected_to('http://www.example.com/foo',
                              'http://www.example.com/bar')
-        self.assertEquals(type(r), type(t))
-        self.assertEquals('joe', t._parsed_url.user)
-        self.assertEquals(t._parsed_url.user, r._parsed_url.user)
+        self.assertEqual(type(r), type(t))
+        self.assertEqual('joe', t._parsed_url.user)
+        self.assertEqual(t._parsed_url.user, r._parsed_url.user)
 
     def test_redirected_to_same_host_different_protocol(self):
         t = remote.RemoteHTTPTransport('bzr+http://joe@www.example.com/foo')
         r = t._redirected_to('http://www.example.com/foo',
                              'ftp://www.example.com/foo')
-        self.assertNotEquals(type(r), type(t))
+        self.assertNotEqual(type(r), type(t))
 
 

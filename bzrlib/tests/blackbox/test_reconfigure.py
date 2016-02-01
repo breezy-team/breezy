@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2012 Canonical Ltd
+# Copyright (C) 2007-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -242,18 +242,18 @@ class TestReconfigureStacking(tests.TestCaseWithTransport):
         # now reconfigure to be stacked
         out, err = self.run_bzr('reconfigure --stacked-on b1 b2')
         self.assertContainsRe(out, '^.*/b2/ is now stacked on ../b1\n$')
-        self.assertEquals('', err)
+        self.assertEqual('', err)
         # can also give the absolute URL of the branch, and it gets stored 
         # as a relative path if possible
         out, err = self.run_bzr('reconfigure --stacked-on %s b2'
                                 % (self.get_url('b1'),))
         self.assertContainsRe(out, '^.*/b2/ is now stacked on ../b1\n$')
-        self.assertEquals('', err)
+        self.assertEqual('', err)
         # Refresh the branch as 'reconfigure' modified it
         branch_2 = branch_2.bzrdir.open_branch()
         # It should be given a relative URL to the destination, if possible,
         # because that's most likely to work across different transports
-        self.assertEquals('../b1', branch_2.get_stacked_on_url())
+        self.assertEqual('../b1', branch_2.get_stacked_on_url())
         # commit, and it should be stored into b2's repo
         self.build_tree_contents([('foo', 'new foo')])
         tree_2.commit('update foo')
@@ -261,7 +261,7 @@ class TestReconfigureStacking(tests.TestCaseWithTransport):
         out, err = self.run_bzr('reconfigure --unstacked b2')
         self.assertContainsRe(out,
             '^.*/b2/ is now not stacked\n$')
-        self.assertEquals('', err)
+        self.assertEqual('', err)
         # Refresh the branch as 'reconfigure' modified it
         branch_2 = branch_2.bzrdir.open_branch()
         self.assertRaises(errors.NotStacked, branch_2.get_stacked_on_url)

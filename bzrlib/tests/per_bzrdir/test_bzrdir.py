@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2011, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -679,7 +679,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                 "format does not support colocated branches")
         branch = self.make_branch('.', format='development-colo')
         branch.bzrdir.create_branch(name="another-colocated-branch")
-        self.assertEquals(
+        self.assertEqual(
             branch.bzrdir.user_transport.list_dir("."),
             [".bzr"])
 

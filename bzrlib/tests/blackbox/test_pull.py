@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2012 Canonical Ltd
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -540,14 +540,14 @@ class TestPull(tests.TestCaseWithTransport):
         to_tree.branch.tags.set_tag("mytag", "anotherrevid")
         revid1 = to_tree.commit('my commit')
         out = self.run_bzr(['pull', '-d', 'to', 'from'], retcode=1)
-        self.assertEquals(out,
+        self.assertEqual(out,
             ('No revisions to pull.\nConflicting tags:\n    mytag\n', ''))
         out = self.run_bzr(['pull', '-d', 'to', '--overwrite-tags', 'from'])
-        self.assertEquals(out, ('1 tag(s) updated.\n', ''))
+        self.assertEqual(out, ('1 tag(s) updated.\n', ''))
 
-        self.assertEquals(to_tree.branch.tags.lookup_tag('mytag'),
+        self.assertEqual(to_tree.branch.tags.lookup_tag('mytag'),
                           'somerevid')
-        self.assertEquals(to_tree.branch.last_revision(), revid1)
+        self.assertEqual(to_tree.branch.last_revision(), revid1)
 
     def test_pull_tag_overwrite(self):
         """pulling tags with --overwrite only reports changed tags."""

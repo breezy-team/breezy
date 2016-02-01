@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -339,7 +339,7 @@ class CustomVersionInfoTests(VersionInfoTestCase):
         builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt,
             template='revno: {revno}')
         builder.generate(sio)
-        self.assertEquals("revno: 0", sio.getvalue())
+        self.assertEqual("revno: 0", sio.getvalue())
 
         builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt, 
             template='{revno} revid: {revision_id}')
@@ -353,7 +353,7 @@ class CustomVersionInfoTests(VersionInfoTestCase):
         builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt, 
             template='{revno} revid: {revision_id}')
         builder.generate(sio)
-        self.assertEquals("1.1.1 revid: o2", sio.getvalue())
+        self.assertEqual("1.1.1 revid: o2", sio.getvalue())
 
     def regen(self, wt, tpl, **kwargs):
         sio = StringIO()

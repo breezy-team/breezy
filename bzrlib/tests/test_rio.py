@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -46,10 +46,10 @@ class TestRio(TestCase):
         self.assertTrue('number' in s)
         self.assertFalse('color' in s)
         self.assertFalse('42' in s)
-        self.assertEquals(list(s.iter_pairs()),
+        self.assertEqual(list(s.iter_pairs()),
                 [('name', 'fred'), ('number', '42')])
-        self.assertEquals(s.get('number'), '42')
-        self.assertEquals(s.get('name'), 'fred')
+        self.assertEqual(s.get('number'), '42')
+        self.assertEqual(s.get('name'), 'fred')
 
     def test_value_checks(self):
         """rio checks types on construction"""
@@ -68,7 +68,7 @@ class TestRio(TestCase):
     def test_to_lines(self):
         """Write simple rio stanza to string"""
         s = Stanza(number='42', name='fred')
-        self.assertEquals(list(s.to_lines()),
+        self.assertEqual(list(s.to_lines()),
                 ['name: fred\n',
                  'number: 42\n'])
 
@@ -76,7 +76,7 @@ class TestRio(TestCase):
         """Convert rio Stanza to dictionary"""
         s = Stanza(number='42', name='fred')
         sd = s.as_dict()
-        self.assertEquals(sd, dict(number='42', name='fred'))
+        self.assertEqual(sd, dict(number='42', name='fred'))
 
     def test_to_file(self):
         """Write rio to file"""
@@ -102,7 +102,7 @@ motto: war is peace
 ''')
         tmpf.seek(0)
         s2 = read_stanza(tmpf)
-        self.assertEquals(s, s2)
+        self.assertEqual(s, s2)
 
     def test_read_stanza(self):
         """Load stanza from string"""
@@ -115,12 +115,12 @@ committer: Martin Pool <mbp@test.sourcefrog.net>
         s = read_stanza(lines)
         self.assertTrue('revision' in s)
         self.assertEqualDiff(s.get('revision'), 'mbp@sourcefrog.net-123-abc')
-        self.assertEquals(list(s.iter_pairs()),
+        self.assertEqual(list(s.iter_pairs()),
                 [('revision', 'mbp@sourcefrog.net-123-abc'),
                  ('timestamp', '1130653962'),
                  ('timezone', '36000'),
                  ('committer', "Martin Pool <mbp@test.sourcefrog.net>")])
-        self.assertEquals(len(s), 4)
+        self.assertEqual(len(s), 4)
 
     def test_repeated_field(self):
         """Repeated field in rio"""
@@ -129,16 +129,16 @@ committer: Martin Pool <mbp@test.sourcefrog.net>
                      ('a', '1000'), ('b', '2000')]:
             s.add(k, v)
         s2 = read_stanza(s.to_lines())
-        self.assertEquals(s, s2)
-        self.assertEquals(s.get_all('a'), map(str, [10, 100, 1000]))
-        self.assertEquals(s.get_all('b'), map(str, [20, 200, 2000]))
+        self.assertEqual(s, s2)
+        self.assertEqual(s.get_all('a'), map(str, [10, 100, 1000]))
+        self.assertEqual(s.get_all('b'), map(str, [20, 200, 2000]))
 
     def test_backslash(self):
         s = Stanza(q='\\')
         t = s.to_string()
         self.assertEqualDiff(t, 'q: \\\n')
         s2 = read_stanza(s.to_lines())
-        self.assertEquals(s, s2)
+        self.assertEqual(s, s2)
 
     def test_blank_line(self):
         s = Stanza(none='', one='\n', two='\n\n')
@@ -151,7 +151,7 @@ two:\x20
 \t
 """)
         s2 = read_stanza(s.to_lines())
-        self.assertEquals(s, s2)
+        self.assertEqual(s, s2)
 
     def test_whitespace_value(self):
         s = Stanza(space=' ', tabs='\t\t\t', combo='\n\t\t\n')
@@ -163,7 +163,7 @@ space:\x20\x20
 tabs: \t\t\t
 """)
         s2 = read_stanza(s.to_lines())
-        self.assertEquals(s, s2)
+        self.assertEqual(s, s2)
         self.rio_file_stanzas([s])
 
     def test_quoted(self):
@@ -179,10 +179,10 @@ tabs: \t\t\t
                    q9='\\"\\"',
                    )
         s2 = read_stanza(s.to_lines())
-        self.assertEquals(s, s2)
+        self.assertEqual(s, s2)
         # apparent bug in read_stanza
         # s3 = read_stanza(self.stanzas_to_str([s]))
-        # self.assertEquals(s, s3)
+        # self.assertEqual(s, s3)
 
     def test_read_empty(self):
         """Detect end of rio file"""
@@ -238,23 +238,23 @@ val: 129319
 """)
         tmpf.seek(0)
         s = read_stanza(tmpf)
-        self.assertEquals(s, Stanza(version_header='1'))
+        self.assertEqual(s, Stanza(version_header='1'))
         s = read_stanza(tmpf)
-        self.assertEquals(s, Stanza(name="foo", val='123'))
+        self.assertEqual(s, Stanza(name="foo", val='123'))
         s = read_stanza(tmpf)
         self.assertEqualDiff(s.get('name'), 'quoted')
         self.assertEqualDiff(s.get('address'), '  "Willowglen"\n  42 Wallaby Way\n  Sydney')
         s = read_stanza(tmpf)
-        self.assertEquals(s, Stanza(name="bar", val='129319'))
+        self.assertEqual(s, Stanza(name="bar", val='129319'))
         s = read_stanza(tmpf)
-        self.assertEquals(s, None)
+        self.assertEqual(s, None)
         self.check_rio_file(tmpf)
 
     def check_rio_file(self, real_file):
         real_file.seek(0)
         read_write = rio_file(RioReader(real_file)).read()
         real_file.seek(0)
-        self.assertEquals(read_write, real_file.read())
+        self.assertEqual(read_write, real_file.read())
 
     @staticmethod
     def stanzas_to_str(stanzas):
@@ -315,13 +315,13 @@ s: both\\\"
         for expected in expected_vals:
             stanza = read_stanza(tmpf)
             self.rio_file_stanzas([stanza])
-            self.assertEquals(len(stanza), 1)
+            self.assertEqual(len(stanza), 1)
             self.assertEqualDiff(stanza.get('s'), expected)
 
     def test_write_empty_stanza(self):
         """Write empty stanza"""
         l = list(Stanza().to_lines())
-        self.assertEquals(l, [])
+        self.assertEqual(l, [])
 
     def test_rio_raises_type_error(self):
         """TypeError on adding invalid type to Stanza"""
@@ -336,12 +336,12 @@ s: both\\\"
     def test_rio_unicode(self):
         uni_data = u'\N{KATAKANA LETTER O}'
         s = Stanza(foo=uni_data)
-        self.assertEquals(s.get('foo'), uni_data)
+        self.assertEqual(s.get('foo'), uni_data)
         raw_lines = s.to_lines()
-        self.assertEquals(raw_lines,
+        self.assertEqual(raw_lines,
                 ['foo: ' + uni_data.encode('utf-8') + '\n'])
         new_s = read_stanza(raw_lines)
-        self.assertEquals(new_s.get('foo'), uni_data)
+        self.assertEqual(new_s.get('foo'), uni_data)
 
     def test_rio_to_unicode(self):
         uni_data = u'\N{KATAKANA LETTER O}'

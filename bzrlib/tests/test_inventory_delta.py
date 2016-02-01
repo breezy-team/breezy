@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010, 2011 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -200,14 +200,14 @@ None\x00/\x00an-id\x00\x00parent-id\x00dir\x00\x00
             allow_versioned_root=False)
         err = self.assertRaises(inventory_delta.IncompatibleInventoryDelta,
             deserializer.parse_text_bytes, root_only_lines)
-        self.assertEquals("versioned_root not allowed", str(err))
+        self.assertEqual("versioned_root not allowed", str(err))
 
     def test_parse_tree_when_disabled(self):
         deserializer = inventory_delta.InventoryDeltaDeserializer(
             allow_tree_references=False)
         err = self.assertRaises(inventory_delta.IncompatibleInventoryDelta,
             deserializer.parse_text_bytes, reference_lines)
-        self.assertEquals("Tree reference not allowed", str(err))
+        self.assertEqual("Tree reference not allowed", str(err))
 
     def test_parse_tree_when_header_disallows(self):
         # A deserializer that allows tree_references to be set or unset.

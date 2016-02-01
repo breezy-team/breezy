@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -325,8 +325,8 @@ class TestInventoryUpdates(TestCase):
         inv = inventory.Inventory(root_id='someroot')
         inv.root.revision = 'therev'
         inv2 = inv.copy()
-        self.assertEquals('someroot', inv2.root.file_id)
-        self.assertEquals('therev', inv2.root.revision)
+        self.assertEqual('someroot', inv2.root.file_id)
+        self.assertEqual('therev', inv2.root.revision)
 
     def test_create_tree_reference(self):
         inv = inventory.Inventory('tree-root-123')
@@ -1101,7 +1101,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         delta = [("", None, base_inv.root.file_id, None),
             (None, "",  "myrootid", inv.root)]
         new_inv = base_inv.create_by_apply_delta(delta, "expectedid")
-        self.assertEquals(reference_inv.root, new_inv.root)
+        self.assertEqual(reference_inv.root, new_inv.root)
 
     def test_create_by_apply_delta_empty_add_child(self):
         inv = Inventory()
@@ -1552,8 +1552,8 @@ class TestMutableInventoryFromTree(TestCaseWithTransport):
         repository = self.make_repository('.')
         tree = repository.revision_tree(revision.NULL_REVISION)
         inv = mutable_inventory_from_tree(tree)
-        self.assertEquals(revision.NULL_REVISION, inv.revision_id)
-        self.assertEquals(0, len(inv))
+        self.assertEqual(revision.NULL_REVISION, inv.revision_id)
+        self.assertEqual(0, len(inv))
 
     def test_some_files(self):
         wt = self.make_branch_and_tree('.')
@@ -1562,9 +1562,9 @@ class TestMutableInventoryFromTree(TestCaseWithTransport):
         revid = wt.commit("commit")
         tree = wt.branch.repository.revision_tree(revid)
         inv = mutable_inventory_from_tree(tree)
-        self.assertEquals(revid, inv.revision_id)
-        self.assertEquals(2, len(inv))
-        self.assertEquals("a", inv['thefileid'].name)
+        self.assertEqual(revid, inv.revision_id)
+        self.assertEqual(2, len(inv))
+        self.assertEqual("a", inv['thefileid'].name)
         # The inventory should be mutable and independent of
         # the original tree
         self.assertFalse(tree.root_inventory['thefileid'].executable)

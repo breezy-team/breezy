@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2011, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -103,7 +103,7 @@ class TestMatchesAncestry(TestCaseWithTransport):
         m = MatchesAncestry(branch.repository, revid1)
         mismatch = m.match([])
         self.assertIsNot(None, mismatch)
-        self.assertEquals(
+        self.assertEqual(
             "mismatched ancestry for revision '%s' was ['%s'], expected []" % (
                 revid1, revid1),
             mismatch.describe())
@@ -132,7 +132,7 @@ class TestHasLayout(TestCaseWithTransport):
         t.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
         mismatch = HasLayout(['a']).match(t)
         self.assertIsNot(None, mismatch)
-        self.assertEquals(
+        self.assertEqual(
             "['a'] != [u'', u'a', u'b/', u'b/c']",
             mismatch.describe())
 
@@ -146,7 +146,7 @@ class TestHasLayout(TestCaseWithTransport):
         self.assertIs(None, HasLayout(['', 'a', 'b/', 'b/c', 'd/']).match(t))
         mismatch = HasLayout([u'', u'a', u'd/']).match(t)
         self.assertIsNot(None, mismatch)
-        self.assertEquals(
+        self.assertEqual(
             "[u'', u'a'] != [u'', u'a', u'b/', u'b/c']",
             mismatch.describe())
 
@@ -175,8 +175,8 @@ class TestContainsNoVfsCalls(TestCase):
                  self._make_call("Branch.get_config_file", [])]
         mismatch = ContainsNoVfsCalls().match(calls)
         self.assertIsNot(None, mismatch)
-        self.assertEquals([calls[0].call], mismatch.vfs_calls)
-        self.assertEquals("no VFS calls expected, got: append('file')""",
+        self.assertEqual([calls[0].call], mismatch.vfs_calls)
+        self.assertEqual("no VFS calls expected, got: append('file')""",
                 mismatch.describe())
 
 
@@ -199,6 +199,6 @@ class TestRevisionHistoryMatches(TestCaseWithTransport):
         tree.commit('msg1', rev_id='a')
         tree.commit('msg2', rev_id='b')
         matcher = RevisionHistoryMatches(['a', 'b', 'c'])
-        self.assertEquals(
+        self.assertEqual(
             "['a', 'b', 'c'] != ['a', 'b']",
             matcher.match(tree.branch).describe())

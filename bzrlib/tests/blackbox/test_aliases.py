@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -49,21 +49,21 @@ c2=cat -r 1 -r2
         tree.add('a')
         tree.commit(message='1')
 
-        self.assertEquals(bzr('c a'), str1)
+        self.assertEqual(bzr('c a'), str1)
 
         self.build_tree_contents([('a', str2)])
         tree.commit(message='2')
 
-        self.assertEquals(bzr('c a'), str2)
-        self.assertEquals(bzr('c1 a'), str1)
-        self.assertEquals(bzr('c1 --revision 2 a'), str2)
+        self.assertEqual(bzr('c a'), str2)
+        self.assertEqual(bzr('c1 a'), str1)
+        self.assertEqual(bzr('c1 --revision 2 a'), str2)
 
         # If --no-aliases isn't working, we will not get retcode=3
         bzr('--no-aliases c a', retcode=3)
 
         # If --no-aliases breaks all of bzr, we also get retcode=3
         # So we need to catch the output as well
-        self.assertEquals(bzr_catch_error('--no-aliases c a',
+        self.assertEqual(bzr_catch_error('--no-aliases c a',
                                           retcode=None),
                           'bzr: ERROR: unknown command "c"\n')
 

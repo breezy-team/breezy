@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -298,7 +298,7 @@ $ bzr update -r 1
 ''')
         self.assertPathExists('./file1')
         self.assertPathDoesNotExist('./file2')
-        self.assertEquals(['m1'], master.get_parent_ids())
+        self.assertEqual(['m1'], master.get_parent_ids())
 
     def test_update_dash_r_outside_history(self):
         """Ensure that we can update -r to dotted revisions.

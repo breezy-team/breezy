@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 from bzrlib import (
     rules,
-    )
+)
 from bzrlib.tests.per_tree import TestCaseWithTree
 
 
@@ -47,9 +47,9 @@ class TestIterSearchRules(TestCaseWithTree):
             "[name *.txt]\nfoo=bar\na=True\n")
         tree = self.make_tree_with_rules(None)
         result = list(tree.iter_search_rules(['a.txt', 'dir/a.txt'],
-            _default_searcher=per_user))
-        self.assertEquals((('foo', 'baz'),), result[0])
-        self.assertEquals((('foo', 'bar'), ('a', 'True')), result[1])
+                                             _default_searcher=per_user))
+        self.assertEqual((('foo', 'baz'),), result[0])
+        self.assertEqual((('foo', 'bar'), ('a', 'True')), result[1])
 
     def _disabled_test_iter_search_rules_just_tree(self):
         per_user = self.make_per_user_searcher('')
@@ -60,9 +60,9 @@ class TestIterSearchRules(TestCaseWithTree):
             "foo=bar\n"
             "a=True\n")
         result = list(tree.iter_search_rules(['a.txt', 'dir/a.txt'],
-            _default_searcher=per_user))
-        self.assertEquals((('foo', 'baz'),), result[0])
-        self.assertEquals((('foo', 'bar'), ('a', 'True')), result[1])
+                                             _default_searcher=per_user))
+        self.assertEqual((('foo', 'baz'),), result[0])
+        self.assertEqual((('foo', 'bar'), ('a', 'True')), result[1])
 
     def _disabled_test_iter_search_rules_tree_and_per_user(self):
         per_user = self.make_per_user_searcher(
@@ -72,6 +72,6 @@ class TestIterSearchRules(TestCaseWithTree):
             "[name ./a.txt]\n"
             "foo=qwerty\n")
         result = list(tree.iter_search_rules(['a.txt', 'dir/a.txt'],
-            _default_searcher=per_user))
-        self.assertEquals((('foo', 'qwerty'),), result[0])
-        self.assertEquals((('foo', 'bar'), ('a', 'True')), result[1])
+                                             _default_searcher=per_user))
+        self.assertEqual((('foo', 'qwerty'),), result[0])
+        self.assertEqual((('foo', 'bar'), ('a', 'True')), result[1])

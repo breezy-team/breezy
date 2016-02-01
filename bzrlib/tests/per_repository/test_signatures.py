@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2011, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -104,7 +104,7 @@ class TestSignatures(per_repository.TestCaseWithRepository):
         wt = self.make_branch_and_tree('.')
         wt.commit("base", allow_pointless=True, rev_id='A')
         strategy = gpg.LoopbackGPGStrategy(None)
-        self.assertEquals(
+        self.assertEqual(
             (gpg.SIGNATURE_NOT_SIGNED, None),
             wt.branch.repository.verify_revision_signature('A', strategy))
 
@@ -122,7 +122,7 @@ class TestSignatures(per_repository.TestCaseWithRepository):
                          'A').as_short_text() +
                          '-----END PSEUDO-SIGNED CONTENT-----\n',
                          repo.get_signature_text('A'))
-        self.assertEquals(
+        self.assertEqual(
             (gpg.SIGNATURE_VALID, None, ),
             repo.verify_revision_signature('A', strategy))
 
@@ -141,7 +141,7 @@ class TestSignatures(per_repository.TestCaseWithRepository):
                          'A').as_short_text() +
                          '-----END PSEUDO-SIGNED CONTENT-----\n',
                          repo.get_signature_text('A'))
-        self.assertEquals(
+        self.assertEqual(
             [('A', gpg.SIGNATURE_VALID, None),
              ('B', gpg.SIGNATURE_NOT_SIGNED, None)],
             list(repo.verify_revision_signatures(['A', 'B'], strategy)))
