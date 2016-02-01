@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -456,7 +456,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         newtip = transform2.new_file('tip', oz_id, 'other', 'tip-id')
         result = transform2.find_conflicts()
         fp = FinalPaths(transform2)
-        self.assert_('oz/tip' in transform2._tree_path_ids)
+        self.assertTrue('oz/tip' in transform2._tree_path_ids)
         self.assertEqual(fp.get_path(newtip), pathjoin('oz', 'tip'))
         self.assertEqual(len(result), 2)
         self.assertEqual((result[0][0], result[0][1]),

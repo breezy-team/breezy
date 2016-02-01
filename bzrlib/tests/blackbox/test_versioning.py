@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009-2012 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ class TestMkdir(TestCaseWithTransport):
 
         self.make_branch_and_tree('.')
         self.run_bzr(['mkdir', 'foo'])
-        self.assert_(os.path.isdir('foo'))
+        self.assertTrue(os.path.isdir('foo'))
 
         self.run_bzr(['mkdir', 'foo'], retcode=3)
 
@@ -65,11 +65,11 @@ class TestMkdir(TestCaseWithTransport):
 
         self.make_branch_and_tree('.')
         self.run_bzr(['mkdir', 'dir'])
-        self.assert_(os.path.isdir('dir'))
+        self.assertTrue(os.path.isdir('dir'))
 
         self.log('Run mkdir in subdir')
         self.run_bzr(['mkdir', 'subdir'], working_dir='dir')
-        self.assert_(os.path.isdir('dir/subdir'))
+        self.assertTrue(os.path.isdir('dir/subdir'))
 
         wt = WorkingTree.open('.')
 

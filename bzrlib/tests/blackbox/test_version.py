@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008, 2009, 2011 Canonical Ltd
+# Copyright (C) 2007-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@ class TestVersion(TestCase):
         output = self.run_bzr('version')[0]
         self.log('bzr version output:')
         self.log(output)
-        self.assert_(output.startswith('Bazaar (bzr) '))
+        self.assertTrue(output.startswith('Bazaar (bzr) '))
         self.assertNotEqual(output.index('Canonical'), -1)
         # make sure --version is consistent
         tmp_output = self.run_bzr('--version')[0]

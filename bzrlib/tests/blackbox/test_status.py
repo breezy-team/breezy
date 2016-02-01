@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -188,7 +188,7 @@ class BranchStatus(TestCaseWithTransport):
         wt2.merge_from_branch(wt.branch)
         message = self.status_string(wt2, verbose=True)
         self.assertStartsWith(message, "pending merges:\n")
-        self.assert_("Empty commit 3" in message)
+        self.assertTrue("Empty commit 3" in message)
         self.assertEndsWith(message, "...\n")
 
     def test_tree_status_ignores(self):

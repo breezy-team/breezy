@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2014 Canonical Ltd
+# Copyright (C) 2005-2012, 2014, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -116,17 +116,17 @@ class TestDiff(tests.TestCase):
             ## "expected no-nl, got %r" % lines[5]
 
     def check_patch(self, lines):
-        self.assert_(len(lines) > 1)
+        self.assertTrue(len(lines) > 1)
             ## "Not enough lines for a file header for patch:\n%s" % "".join(lines)
-        self.assert_(lines[0].startswith ('---'))
+        self.assertTrue(lines[0].startswith ('---'))
             ## 'No orig line for patch:\n%s' % "".join(lines)
-        self.assert_(lines[1].startswith ('+++'))
+        self.assertTrue(lines[1].startswith ('+++'))
             ## 'No mod line for patch:\n%s' % "".join(lines)
-        self.assert_(len(lines) > 2)
+        self.assertTrue(len(lines) > 2)
             ## "No hunks for patch:\n%s" % "".join(lines)
-        self.assert_(lines[2].startswith('@@'))
+        self.assertTrue(lines[2].startswith('@@'))
             ## "No hunk header for patch:\n%s" % "".join(lines)
-        self.assert_('@@' in lines[2][2:])
+        self.assertTrue('@@' in lines[2][2:])
             ## "Unterminated hunk header for patch:\n%s" % "".join(lines)
 
     def test_binary_lines(self):
@@ -1500,24 +1500,22 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
                                     None, None, None)
         for _, scenario in EncodingAdapter.encoding_scenarios:
             encoding = scenario['encoding']
-            dirname  = scenario['info']['directory']
+            dirname = scenario['info']['directory']
             filename = scenario['info']['filename']
 
             self.overrideAttr(diffobj, '_fenc', lambda: encoding)
             relpath = dirname + u'/' + filename
             fullpath = diffobj._safe_filename('safe', relpath)
-            self.assertEqual(
-                    fullpath,
-                    fullpath.encode(encoding).decode(encoding)
-                    )
-            self.assert_(fullpath.startswith(diffobj._root + '/safe'))
+            self.assertEqual(fullpath,
+                             fullpath.encode(encoding).decode(encoding))
+            self.assertTrue(fullpath.startswith(diffobj._root + '/safe'))
 
     def test_unencodable_filename(self):
         diffobj = diff.DiffFromTool(['dummy', '@old_path', '@new_path'],
                                     None, None, None)
         for _, scenario in EncodingAdapter.encoding_scenarios:
             encoding = scenario['encoding']
-            dirname  = scenario['info']['directory']
+            dirname = scenario['info']['directory']
             filename = scenario['info']['filename']
 
             if encoding == 'iso-8859-1':
@@ -1528,11 +1526,9 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
             self.overrideAttr(diffobj, '_fenc', lambda: encoding)
             relpath = dirname + u'/' + filename
             fullpath = diffobj._safe_filename('safe', relpath)
-            self.assertEqual(
-                    fullpath,
-                    fullpath.encode(encoding).decode(encoding)
-                    )
-            self.assert_(fullpath.startswith(diffobj._root + '/safe'))
+            self.assertEqual(fullpath,
+                             fullpath.encode(encoding).decode(encoding))
+            self.assertTrue(fullpath.startswith(diffobj._root + '/safe'))
 
 
 class TestGetTreesAndBranchesToDiffLocked(tests.TestCaseWithTransport):

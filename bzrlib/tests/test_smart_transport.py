@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2014, 2016 Canonical Ltd
+# Copyright (C) 2006-2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -773,7 +773,7 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
 class RemoteTransportTests(test_smart.TestCaseWithSmartMedium):
 
     def test_plausible_url(self):
-        self.assert_(self.get_url().startswith('bzr://'))
+        self.assertTrue(self.get_url().startswith('bzr://'))
 
     def test_probe_transport(self):
         t = self.get_transport()

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2012 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -81,7 +81,7 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
         branch = BzrBranchFormat5().initialize(bdir)
         t = self.get_transport()
         self.log("branch instance is %r" % branch)
-        self.assert_(isinstance(branch, BzrBranch5))
+        self.assertTrue(isinstance(branch, BzrBranch5))
         self.assertIsDirectory('.', t)
         self.assertIsDirectory('.bzr/branch', t)
         self.assertIsDirectory('.bzr/branch/lock', t)

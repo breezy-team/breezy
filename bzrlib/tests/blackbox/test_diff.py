@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2012 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -61,13 +61,13 @@ class TestDiff(DiffBase):
         self.build_tree_contents([('hello', 'hello world!')])
         tree.commit(message='fixing hello')
         output = self.run_bzr('diff -r 2..3', retcode=1)[0]
-        self.assert_('\n+hello world!' in output)
+        self.assertTrue('\n+hello world!' in output)
         output = self.run_bzr('diff -c 3', retcode=1)[0]
-        self.assert_('\n+hello world!' in output)
+        self.assertTrue('\n+hello world!' in output)
         output = self.run_bzr('diff -r last:3..last:1', retcode=1)[0]
-        self.assert_('\n+baz' in output)
+        self.assertTrue('\n+baz' in output)
         output = self.run_bzr('diff -c last:2', retcode=1)[0]
-        self.assert_('\n+baz' in output)
+        self.assertTrue('\n+baz' in output)
         self.build_tree(['moo'])
         tree.add('moo')
         os.unlink('moo')
@@ -421,4 +421,4 @@ class TestDiffOutput(DiffBase):
         self.make_example_branch()
         self.build_tree_contents([('hello', 'hello world!\n')])
         output = self.run_bzr_subprocess('diff', retcode=1)[0]
-        self.assert_('\n+hello world!\n' in output)
+        self.assertTrue('\n+hello world!\n' in output)

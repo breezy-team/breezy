@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -234,22 +234,22 @@ class TestCommands(TestCaseWithTransport):
         self.create_conflicts()
         self.run_bzr('merge ../other --show-base', retcode=1)
         conflict_text = file('hello').read()
-        self.assert_('<<<<<<<' in conflict_text)
-        self.assert_('>>>>>>>' in conflict_text)
-        self.assert_('=======' in conflict_text)
-        self.assert_('|||||||' in conflict_text)
-        self.assert_('hi world' in conflict_text)
+        self.assertTrue('<<<<<<<' in conflict_text)
+        self.assertTrue('>>>>>>>' in conflict_text)
+        self.assertTrue('=======' in conflict_text)
+        self.assertTrue('|||||||' in conflict_text)
+        self.assertTrue('hi world' in conflict_text)
         self.run_bzr('revert')
         self.run_bzr('resolve --all')
         self.run_bzr('merge ../other', retcode=1)
         conflict_text = file('hello').read()
-        self.assert_('|||||||' not in conflict_text)
-        self.assert_('hi world' not in conflict_text)
+        self.assertTrue('|||||||' not in conflict_text)
+        self.assertTrue('hi world' not in conflict_text)
         result = self.run_bzr('conflicts')[0]
         self.assertEquals(result, "Text conflict in hello\nText conflict in"
                                   " question\n")
         result = self.run_bzr('status')[0]
-        self.assert_("conflicts:\n  Text conflict in hello\n"
+        self.assertTrue("conflicts:\n  Text conflict in hello\n"
                      "  Text conflict in question\n" in result, result)
         self.run_bzr('resolve hello')
         result = self.run_bzr('conflicts')[0]
@@ -422,19 +422,19 @@ class OldTests(TestCaseWithTransport):
         self.run_bzr('log -v --forward')
         self.run_bzr('log -m', retcode=3)
         log_out = self.run_bzr('log -m commit')[0]
-        self.assert_("this is my new commit\n  and" in log_out)
-        self.assert_("rename nested" not in log_out)
-        self.assert_('revision-id' not in log_out)
-        self.assert_('revision-id' in self.run_bzr('log --show-ids -m commit')[0])
+        self.assertTrue("this is my new commit\n  and" in log_out)
+        self.assertTrue("rename nested" not in log_out)
+        self.assertTrue('revision-id' not in log_out)
+        self.assertTrue('revision-id' in self.run_bzr('log --show-ids -m commit')[0])
 
         log_out = self.run_bzr('log --line')[0]
         # determine the widest line we want
         max_width = osutils.terminal_width()
         if max_width is not None:
             for line in log_out.splitlines():
-                self.assert_(len(line) <= max_width - 1, len(line))
-        self.assert_("this is my new commit and" not in log_out)
-        self.assert_("this is my new commit" in log_out)
+                self.assertTrue(len(line) <= max_width - 1, len(line))
+        self.assertTrue("this is my new commit and" not in log_out)
+        self.assertTrue("this is my new commit" in log_out)
 
         progress("file with spaces in name")
         mkdir('sub directory')
@@ -538,8 +538,8 @@ class OldTests(TestCaseWithTransport):
             self.run_bzr('export -r 5 exp5.tmp')
             chdir("exp5.tmp")
             self.assertEquals(listdir_sorted("."), [ "d2", "link2" ])
-            self.assert_(os.path.islink("link2"))
-            self.assert_(listdir_sorted("d2")== [ "link3" ])
+            self.assertTrue(os.path.islink("link2"))
+            self.assertTrue(listdir_sorted("d2")== [ "link3" ])
             chdir("..")
 
             self.run_bzr('export -r 8 exp6.tmp')

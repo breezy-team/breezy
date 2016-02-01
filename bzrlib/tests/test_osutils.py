@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2015 Canonical Ltd
+# Copyright (C) 2005-2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -222,7 +222,7 @@ class TestIsInside(tests.TestCase):
                          (['src'], SRC_FOO_C),
                          (['src'], 'src'),
                          ]:
-            self.assert_(osutils.is_inside_any(dirs, fn))
+            self.assertTrue(osutils.is_inside_any(dirs, fn))
         for dirs, fn in [(['src'], 'srccontrol'),
                          (['src'], 'srccontrol/foo')]:
             self.assertFalse(osutils.is_inside_any(dirs, fn))
@@ -234,7 +234,7 @@ class TestIsInside(tests.TestCase):
                          (['src/bar.c', 'bla/foo.c'], 'src'),
                          (['src'], 'src'),
                          ]:
-            self.assert_(osutils.is_inside_or_parent_of_any(dirs, fn))
+            self.assertTrue(osutils.is_inside_or_parent_of_any(dirs, fn))
 
         for dirs, fn in [(['src'], 'srccontrol'),
                          (['srccontrol/foo.c'], 'src'),
