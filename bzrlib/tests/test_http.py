@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2012, 2015 Canonical Ltd
+# Copyright (C) 2005-2012, 2015, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2032,7 +2032,7 @@ class Test_redirected_to(tests.TestCase):
         t = self._transport('http://www.example.com/foo')
         r = t._redirected_to('http://www.example.com/foo',
                              'ftp://www.example.com/foo')
-        self.assertNotEquals(type(r), type(t))
+        self.assertNotEqual(type(r), type(t))
         self.assertEquals('ftp://www.example.com/foo/', r.external_url())
 
     def test_redirected_to_same_host_specific_implementation(self):

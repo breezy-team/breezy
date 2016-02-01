@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2012, 2015 Canonical Ltd
+# Copyright (C) 2006-2012, 2015, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -891,7 +891,7 @@ class TestURL(TestCase):
         self.assertEquals(parsed1, parsed2)
         self.assertEquals(parsed1, parsed1)
         parsed2.path = '/two'
-        self.assertNotEquals(parsed1, parsed2)
+        self.assertNotEqual(parsed1, parsed2)
 
     def test_repr(self):
         parsed = urlutils.URL.from_string('http://[1:2:3::40]:80/one')

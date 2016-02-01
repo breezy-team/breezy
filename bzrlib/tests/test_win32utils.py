@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2011 Canonical Ltd
+# Copyright (C) 2007-2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -170,7 +170,7 @@ class TestAppPaths(TestCase):
             p = get_app_path(a)
             d, b = os.path.split(p)
             self.assertEquals('iexplore.exe', b.lower())
-            self.assertNotEquals('', d)
+            self.assertNotEqual('', d)
 
     def test_wordpad(self):
         # typical windows users should have wordpad in the system
@@ -181,7 +181,7 @@ class TestAppPaths(TestCase):
             p = get_app_path(a)
             d, b = os.path.split(p)
             self.assertEquals('wordpad.exe', b.lower())
-            self.assertNotEquals('', d)
+            self.assertNotEqual('', d)
 
     def test_not_existing(self):
         p = get_app_path('not-existing')

@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2011 Canonical Ltd
+# Copyright (C) 2008-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -457,7 +457,7 @@ class DummyForeignVcsTests(tests.TestCaseWithTransport):
         self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
         dir = controldir.ControlDir.open("d")
         newdir = dir.sprout("e")
-        self.assertNotEquals("A Dummy VCS Dir",
+        self.assertNotEqual("A Dummy VCS Dir",
                              newdir._format.get_format_string())
 
     def test_push_not_supported(self):

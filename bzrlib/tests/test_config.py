@@ -2548,7 +2548,7 @@ class TestRegisteredOptions(tests.TestCase):
         # Come on, think about the user, he really wants to know what the
         # option is about
         self.assertIsNot(None, option_help)
-        self.assertNotEquals('', option_help)
+        self.assertNotEqual('', option_help)
 
 
 class TestSection(tests.TestCase):

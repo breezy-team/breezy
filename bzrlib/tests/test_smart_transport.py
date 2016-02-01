@@ -4306,6 +4306,6 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         t = remote.RemoteHTTPTransport('bzr+http://joe@www.example.com/foo')
         r = t._redirected_to('http://www.example.com/foo',
                              'ftp://www.example.com/foo')
-        self.assertNotEquals(type(r), type(t))
+        self.assertNotEqual(type(r), type(t))
 
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2013, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1528,7 +1528,7 @@ class TestBzrFormat(TestCase):
         self.assertEquals(format1, format1)
         self.assertEquals(format1, format2)
         format3 = SampleBzrFormat()
-        self.assertNotEquals(format1, format3)
+        self.assertNotEqual(format1, format3)
 
     def test_check_support_status_optional(self):
         # Optional, so silently ignore
