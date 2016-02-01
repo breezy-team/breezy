@@ -1,3 +1,12 @@
+bzr (2.7.0~bzr6614-1) UNRELEASED; urgency=medium
+
+  * New upstream snapshot.
+   + Drop unnecessary patch 08_disable_put_file_unicode.
+   + Drop upstream applied 10_fix_float.
+   + Drop upstream applied 12_autodoc_unicode.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 01 Feb 2016 14:43:21 +0000
+
 bzr (2.6.0+bzr6606-2) unstable; urgency=medium
 
   * Add 12_autodoc_unicode: Fix build with non-ascii language settings.

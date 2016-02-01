@@ -3,7 +3,4 @@
 05_remove_gzip_test
 06_win32_paths
 07_shorten_test_names
-08_disable_put_file_unicode
-10_fix_float
 11_disable_warningtest
-12_autodoc_unicode

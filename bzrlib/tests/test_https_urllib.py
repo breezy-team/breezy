@@ -1,4 +1,4 @@
-# Copyright (C) 2011,2012 Canonical Ltd
+# Copyright (C) 2011, 2012, 2013, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,24 +19,21 @@
 """
 
 import os
-import ssl
+import sys
 
 from bzrlib import (
     config,
     trace,
-    )
+)
 from bzrlib.errors import (
-    CertificateError,
     ConfigOptionValueError,
-    )
-from bzrlib.tests import (
-    TestCase,
-    TestCaseInTempDir,
-    )
+)
+from bzrlib import tests
 from bzrlib.transport.http import _urllib2_wrappers
+from bzrlib.transport.http._urllib2_wrappers import ssl
 
 
-class CaCertsConfigTests(TestCaseInTempDir):
+class CaCertsConfigTests(tests.TestCaseInTempDir):
 
     def get_stack(self, content):
         return config.MemoryStack(content.encode('utf-8'))
@@ -58,6 +55,7 @@ class CaCertsConfigTests(TestCaseInTempDir):
         self.overrideAttr(_urllib2_wrappers.opt_ssl_ca_certs, 'default',
                           os.path.join(self.test_dir, u"nonexisting.pem"))
         self.warnings = []
+
         def warning(*args):
             self.warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
@@ -67,7 +65,7 @@ class CaCertsConfigTests(TestCaseInTempDir):
                               "is not valid for \"ssl.ca_certs\"")
 
 
-class CertReqsConfigTests(TestCaseInTempDir):
+class CertReqsConfigTests(tests.TestCaseInTempDir):
 
     def test_default(self):
         stack = config.MemoryStack("")
@@ -82,35 +80,41 @@ class CertReqsConfigTests(TestCaseInTempDir):
         self.assertRaises(ConfigOptionValueError, stack.get, "ssl.cert_reqs")
 
 
-class MatchHostnameTests(TestCase):
+class MatchHostnameTests(tests.TestCase):
+
+    def setUp(self):
+        super(MatchHostnameTests, self).setUp()
+        if sys.version_info < (2, 7, 9):
+            raise tests.TestSkipped(
+                'python version too old to provide proper'
+                ' https hostname verification')
 
     def test_no_certificate(self):
         self.assertRaises(ValueError,
-                          _urllib2_wrappers.match_hostname, {}, "example.com")
+                          ssl.match_hostname, {}, "example.com")
 
     def test_wildcards_in_cert(self):
         def ok(cert, hostname):
-            _urllib2_wrappers.match_hostname(cert, hostname)
+            ssl.match_hostname(cert, hostname)
+
+        def not_ok(cert, hostname):
+            self.assertRaises(
+                ssl.CertificateError,
+                ssl.match_hostname, cert, hostname)
 
         # Python Issue #17980: avoid denials of service by refusing more than
         # one wildcard per fragment.
-        cert = {'subject': ((('commonName', 'a*b.com'),),)}
-        ok(cert, 'axxb.com')
-        cert = {'subject': ((('commonName', 'a*b.co*'),),)}
-        ok(cert, 'axxb.com')
-        cert = {'subject': ((('commonName', 'a*b*.com'),),)}
-        try:
-            _urllib2_wrappers.match_hostname(cert, 'axxbxxc.com')
-        except ValueError as e:
-            self.assertIn("too many wildcards", str(e))
+        ok({'subject': ((('commonName', 'a*b.com'),),)}, 'axxb.com')
+        not_ok({'subject': ((('commonName', 'a*b.co*'),),)}, 'axxb.com')
+        not_ok({'subject': ((('commonName', 'a*b*.com'),),)}, 'axxbxxc.com')
 
     def test_no_valid_attributes(self):
-        self.assertRaises(CertificateError, _urllib2_wrappers.match_hostname,
+        self.assertRaises(ssl.CertificateError, ssl.match_hostname,
                           {"Problem": "Solved"}, "example.com")
 
     def test_common_name(self):
         cert = {'subject': ((('commonName', 'example.com'),),)}
         self.assertIs(None,
-                      _urllib2_wrappers.match_hostname(cert, "example.com"))
-        self.assertRaises(CertificateError, _urllib2_wrappers.match_hostname,
+                      ssl.match_hostname(cert, "example.com"))
+        self.assertRaises(ssl.CertificateError, ssl.match_hostname,
                           cert, "example.org")

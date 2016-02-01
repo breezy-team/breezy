@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2013, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1684,14 +1684,6 @@ class InvalidHttpResponse(TransportError):
             # preserve as much info as possible to ease debug.
             orig_error = ': %r' % (orig_error,)
         TransportError.__init__(self, msg, orig_error=orig_error)
-
-
-class CertificateError(TransportError):
-
-    _fmt = "Certificate error: %(error)s"
-
-    def __init__(self, error):
-        self.error = error
 
 
 class InvalidHttpRange(InvalidHttpResponse):

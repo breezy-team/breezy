@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -520,32 +520,11 @@ class TransportTests(TestTransportImplementation):
         self.assertTransportMode(t, 'dir777', 0777)
 
     def test_put_bytes_unicode(self):
-        # Expect put_bytes to raise AssertionError or UnicodeEncodeError if
-        # given unicode "bytes".  UnicodeEncodeError doesn't really make sense
-        # (we don't want to encode unicode here at all, callers should be
-        # strictly passing bytes to put_bytes), but we allow it for backwards
-        # compatibility.  At some point we should use a specific exception.
-        # See https://bugs.launchpad.net/bzr/+bug/106898.
         t = self.get_transport()
         if t.is_readonly():
             return
         unicode_string = u'\u1234'
-        self.assertRaises(
-            (AssertionError, UnicodeEncodeError),
-            t.put_bytes, 'foo', unicode_string)
-
-    def test_put_file_unicode(self):
-        # Like put_bytes, except with a StringIO.StringIO of a unicode string.
-        # This situation can happen (and has) if code is careless about the type
-        # of "string" they initialise/write to a StringIO with.  We cannot use
-        # cStringIO, because it never returns unicode from read.
-        # Like put_bytes, UnicodeEncodeError isn't quite the right exception to
-        # raise, but we raise it for hysterical raisins.
-        t = self.get_transport()
-        if t.is_readonly():
-            return
-        unicode_file = pyStringIO(u'\u1234')
-        self.assertRaises(UnicodeEncodeError, t.put_file, 'foo', unicode_file)
+        self.assertRaises(TypeError, t.put_bytes, 'foo', unicode_string)
 
     def test_mkdir(self):
         t = self.get_transport()
@@ -630,10 +609,13 @@ class TransportTests(TestTransportImplementation):
     def test_opening_a_file_stream_can_set_mode(self):
         t = self.get_transport()
         if t.is_readonly():
+            self.assertRaises((TransportNotPossible, NotImplementedError),
+                              t.open_write_stream, 'foo')
             return
         if not t._can_roundtrip_unix_modebits():
             # Can't roundtrip, so no need to run this test
             return
+
         def check_mode(name, mode, expected):
             handle = t.open_write_stream(name, mode=mode)
             handle.close()
@@ -921,7 +903,9 @@ class TransportTests(TestTransportImplementation):
     def test_rename_dir_succeeds(self):
         t = self.get_transport()
         if t.is_readonly():
-            raise TestSkipped("transport is readonly")
+            self.assertRaises((TransportNotPossible, NotImplementedError),
+                              t.rename, 'foo', 'bar')
+            return
         t.mkdir('adir')
         t.mkdir('adir/asubdir')
         t.rename('adir', 'bdir')
@@ -932,7 +916,9 @@ class TransportTests(TestTransportImplementation):
         """Attempting to replace a nonemtpy directory should fail"""
         t = self.get_transport()
         if t.is_readonly():
-            raise TestSkipped("transport is readonly")
+            self.assertRaises((TransportNotPossible, NotImplementedError),
+                              t.rename, 'foo', 'bar')
+            return
         t.mkdir('adir')
         t.mkdir('adir/asubdir')
         t.mkdir('bdir')

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2011 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2011, 2012, 2013, 2016 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -322,12 +322,13 @@ class GPGStrategy(object):
                 return SIGNATURE_NOT_VALID, None
         # A signature from a revoked key gets this.
         # test_verify_revoked_signature()
-        if result[0].summary & gpgme.SIGSUM_SYS_ERROR:
+        if ((result[0].summary & gpgme.SIGSUM_SYS_ERROR
+             or result[0].status.strerror == 'Certificate revoked')):
             return SIGNATURE_NOT_VALID, None
         # Other error types such as revoked keys should (I think) be caught by
         # SIGSUM_RED so anything else means something is buggy.
-        raise errors.SignatureVerificationFailed("Unknown GnuPG key "\
-                                                 "verification result")
+        raise errors.SignatureVerificationFailed(
+            "Unknown GnuPG key verification result")
 
     def set_acceptable_keys(self, command_line_input):
         """Set the acceptable keys for verifying with this GPGStrategy.
