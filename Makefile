@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -435,8 +435,8 @@ clean-win32: clean-docs
 update-pot: po/bzr.pot
 
 TRANSLATABLE_PYFILES:=$(shell find bzrlib -name '*.py' \
-    		| grep -v 'bzrlib/tests/' \
-    		| grep -v 'bzrlib/doc' \
+		| grep -v 'bzrlib/tests/' \
+		| grep -v 'bzrlib/doc' \
 		)
 
 po/bzr.pot: $(PYFILES) $(DOCFILES)

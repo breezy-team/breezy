@@ -5,26 +5,23 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.7b1
+bzr 2.7.0
 #########
 
-:2.7b1: NOT RELEASED YET
+:2.7.0: 2016-02-01
 
 External Compatibility Breaks
 *****************************
 
-.. These may require users to change the way they use Bazaar.
+None.
 
 New Features
 ************
 
-.. New commands, options, etc that users may wish to try out.
+None.
 
 Improvements
 ************
-
-.. Improvements to existing commands, especially improved performance 
-   or memory usage, or better results.
 
 * bzrlib.patches.parse_patches can optionally return a list of 'dirty'
   patch headers (prefixed with '===').
@@ -32,9 +29,6 @@ Improvements
 
 Bug Fixes
 *********
-
-.. Fixes for situations where bzr would previously crash or give incorrect
-   or undesirable results.
 
 * 'acceptable_keys' from 'bazaar.conf' is now properly handled.
   (Vincent Ladeuil, #1249732)
@@ -49,22 +43,14 @@ Bug Fixes
 * Forbid more operations for ReadonlyTransportDecorator so no more write
   methods can be used my mistake.  (Vincent Ladeuil, #150196)
 
-Documentation
-*************
-
-.. Improved or updated documentation.
 
 API Changes
 ***********
 
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
+None.
 
 Internals
 *********
-
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
 
 * Make all transport put_bytes() raises TypeError instead of AssertionError
   or UnicodeEncodeError when given unicode strings rather than bytes.
@@ -81,10 +67,6 @@ Changed Behaviour
 
 Testing
 *******
-
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
 
 * Fix gpgme test failure starting on wily. (Vincent Ladeuil)
      
@@ -116,6 +98,3 @@ Testing
      
 * Take python 2.7.6 late (better than never) bugfix in ntpath.py into
   account. Only tests are affected (Vincent Ladeuil, #1303879).
-
-..
-   vim: tw=74 ft=rst ff=unix
