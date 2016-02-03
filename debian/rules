@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 
-# Get the suppoirted Python versions
+# Get the supported Python versions
 PYVERS = $(shell pyversions -r -v)
 # Get the default Python version
 PYVERSION = $(shell pyversions -d -v)

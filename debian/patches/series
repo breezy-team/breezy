@@ -1,6 +1,3 @@
 01_selftest_package
 03_spurious_test_failure
-05_remove_gzip_test
-06_win32_paths
 07_shorten_test_names
-11_disable_warningtest
