@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2010, 2016 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -47,8 +47,8 @@ class TestAdded(TestCaseWithTransport):
                 command += ' --null'
 
             out, err = self.run_bzr(command)
-            self.assertEquals(out, expected)
-            self.assertEquals(err, '')
+            self.assertEqual(out, expected)
+            self.assertEqual(err, '')
 
         # in empty directory, nothing added
         tree = self.make_branch_and_tree('.')
@@ -74,4 +74,4 @@ class TestAdded(TestCaseWithTransport):
         self.build_tree(['a/README'])
         tree.add('README')
         out, err = self.run_bzr(['added', '--directory=a'])
-        self.assertEquals('README\n', out)
+        self.assertEqual('README\n', out)

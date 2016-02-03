@@ -1,4 +1,4 @@
-# Copyright (C) 2010, 2011 Canonical Ltd
+# Copyright (C) 2010, 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -133,7 +133,7 @@ class TestTCPServerInAThread(tests.TestCase):
 
     def assertClientAddr(self, client, server, conn_rank):
         conn = self.get_server_connection(server, conn_rank)
-        self.assertEquals(client.sock.getsockname(), conn[1])
+        self.assertEqual(client.sock.getsockname(), conn[1])
 
     def test_start_stop(self):
         server = self.get_server()
@@ -152,7 +152,7 @@ class TestTCPServerInAThread(tests.TestCase):
         self.assertIs(None, client.write('ping\n'))
         resp = client.read()
         self.assertClientAddr(client, server, 0)
-        self.assertEquals('pong\n', resp)
+        self.assertEqual('pong\n', resp)
 
     def test_server_fails_to_start(self):
         class CantStart(Exception):
@@ -266,7 +266,7 @@ class TestTCPServerInAThread(tests.TestCase):
 
         server = self.get_server(
             connection_handler_class=FailingWhileServingConnectionHandler)
-        self.assertEquals(True, server.server.serving)
+        self.assertEqual(True, server.server.serving)
         # Install the exception swallower
         server.set_ignored_exceptions(CantServe)
         client = self.get_client()

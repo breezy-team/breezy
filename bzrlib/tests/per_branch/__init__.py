@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
 #          and others
 #
@@ -72,7 +72,7 @@ class TestCaseWithBranch(TestCaseWithControlDir):
 
     def get_default_format(self):
         format = self.bzrdir_format
-        self.assertEquals(format.get_branch_format(), self.branch_format)
+        self.assertEqual(format.get_branch_format(), self.branch_format)
         return format
 
     def make_branch(self, relpath, format=None):

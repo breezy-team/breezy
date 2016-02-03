@@ -1,4 +1,4 @@
-# Copyright (C) 2012 Canonical Ltd
+# Copyright (C) 2012, 2013, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ class TestSmartServerPing(tests.TestCaseWithTransport):
         out, err = self.run_bzr(['ping', self.get_url('branch')])
         self.assertLength(1, self.hpss_calls)
         self.assertLength(1, self.hpss_connections)
-        self.assertEquals(out,
+        self.assertEqual(out,
             "Response: ('ok', '2')\n"
             "Headers: {'Software version': '%s'}\n" % (bzrlib.version_string,))
-        self.assertEquals(err, "")
+        self.assertEqual(err, "")

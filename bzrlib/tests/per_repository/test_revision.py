@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009, 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,8 +37,8 @@ class TestRevProps(TestCaseWithRepository):
                  rev_id='test@user-1')
         rev = b.repository.get_revision('test@user-1')
         self.assertTrue('flavor' in rev.properties)
-        self.assertEquals(rev.properties['flavor'], 'choc-mint')
-        self.assertEquals([('branch-nick', 'Nicholas'),
+        self.assertEqual(rev.properties['flavor'], 'choc-mint')
+        self.assertEqual([('branch-nick', 'Nicholas'),
                            ('condiment', 'orange\n  mint\n\tcandy'),
                            ('empty', ''),
                            ('flavor', 'choc-mint'),
@@ -76,7 +76,7 @@ class TestRevisionAttributes(TestCaseWithRepository):
                       'unicode':u'\xb5',
                       'multiline':'foo\nbar\n\n'
                       })
-        self.assertEquals(tree1.branch.last_revision(), rev1)
+        self.assertEqual(tree1.branch.last_revision(), rev1)
         rev_a = tree1.branch.repository.get_revision(
                             tree1.branch.last_revision())
 

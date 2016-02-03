@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Canonical Ltd
+# Copyright (C) 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,6 +32,6 @@ class TestPerFileGraph(TestCaseWithRepository):
         revid2 = tree.commit("msg")
         self.addCleanup(tree.lock_read().unlock)
         graph = tree.branch.repository.get_file_graph()
-        self.assertEquals({
+        self.assertEqual({
             ("fileid", revid2): (("fileid", revid1),), ("fileid", revid1):()},
             graph.get_parent_map([("fileid", revid2), ("fileid", revid1)]))

@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ class TestNode(tests.TestCase):
         self.assertTrue(len(common) <= len(key))
         self.assertStartsWith(prefix, common)
         self.assertStartsWith(key, common)
-        self.assertEquals(expected_common, common)
+        self.assertEqual(expected_common, common)
 
     def test_common_prefix(self):
         self.assertCommonPrefix('beg', 'beg', 'begin')
@@ -377,7 +377,7 @@ class TestMap(TestCaseWithStore):
             else:
                 # Leaf nodes must have identical contents
                 self.assertEqual(node_one._items, node_two._items)
-        self.assertEquals([], node_two_stack)
+        self.assertEqual([], node_two_stack)
 
     def assertCanonicalForm(self, chkmap):
         """Assert that the chkmap is in 'canonical' form.

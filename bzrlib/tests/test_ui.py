@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -61,7 +61,7 @@ class TestUIConfiguration(tests.TestCaseWithTransport):
             stdout=tests.StringIOWrapper(),
             stderr=tests.StringIOWrapper())
         output = ui.make_output_stream()
-        self.assertEquals(output.encoding, enc)
+        self.assertEqual(output.encoding, enc)
 
 
 class TestTextUIFactory(tests.TestCase):
@@ -75,7 +75,7 @@ class TestTextUIFactory(tests.TestCase):
     def test_text_factory_confirm(self):
         # turns into reading a regular boolean
         ui = self.make_test_ui_factory('n\n')
-        self.assertEquals(ui.confirm_action(u'Should %(thing)s pass?',
+        self.assertEqual(ui.confirm_action(u'Should %(thing)s pass?',
             'bzrlib.tests.test_ui.confirmation',
             {'thing': 'this'},),
             False)
@@ -268,8 +268,8 @@ class TestTextUIFactory(tests.TestCase):
         ui.stdout.encoding = 'utf8'
         self.assertEqual('someuser',
                          ui.get_username(u'Hello %(host)s', host='some'))
-        self.assertEquals('Hello some: ', ui.stderr.getvalue())
-        self.assertEquals('', ui.stdout.getvalue())
+        self.assertEqual('Hello some: ', ui.stderr.getvalue())
+        self.assertEqual('', ui.stdout.getvalue())
         self.assertEqual('', ui.get_username(u"Gebruiker"))
         # stdin should be empty
         self.assertEqual('', ui.stdin.readline())
@@ -281,10 +281,10 @@ class TestTextUIFactory(tests.TestCase):
         ui.stderr = tests.StringIOWrapper()
         ui.stderr.encoding = ui.stdout.encoding = ui.stdin.encoding = "utf8"
         username = ui.get_username(u'Hello %(host)s', host=u'some\u1234')
-        self.assertEquals(u"someuser\u1234", username)
-        self.assertEquals(u"Hello some\u1234: ",
+        self.assertEqual(u"someuser\u1234", username)
+        self.assertEqual(u"Hello some\u1234: ",
                           ui.stderr.getvalue().decode("utf8"))
-        self.assertEquals('', ui.stdout.getvalue())
+        self.assertEqual('', ui.stdout.getvalue())
 
     def test_quietness(self):
         self.overrideEnv('BZR_PROGRESS_BAR', 'text')
@@ -307,8 +307,8 @@ class TestTextUIFactory(tests.TestCase):
         remote_fmt._network_name = RepositoryFormatKnitPack5().network_name()
         ui.show_user_warning('cross_format_fetch', from_format=RepositoryFormat2a(),
             to_format=remote_fmt)
-        self.assertEquals('', out.getvalue())
-        self.assertEquals("Doing on-the-fly conversion from RepositoryFormat2a() to "
+        self.assertEqual('', out.getvalue())
+        self.assertEqual("Doing on-the-fly conversion from RepositoryFormat2a() to "
             "RemoteRepositoryFormat(_network_name='Bazaar RepositoryFormatKnitPack5 "
             "(bzr 1.6)\\n').\nThis may take some time. Upgrade the repositories to "
             "the same format for better performance.\n",
@@ -320,8 +320,8 @@ class TestTextUIFactory(tests.TestCase):
         ui.suppressed_warnings.add('cross_format_fetch')
         ui.show_user_warning('cross_format_fetch', from_format=RepositoryFormat2a(),
             to_format=remote_fmt)
-        self.assertEquals('', out.getvalue())
-        self.assertEquals('', err.getvalue())
+        self.assertEqual('', out.getvalue())
+        self.assertEqual('', err.getvalue())
 
 
 class TestTextUIOutputStream(tests.TestCase):
@@ -449,11 +449,11 @@ class TestBoolFromString(tests.TestCase):
 
     def assertIsTrue(self, s, accepted_values=None):
         res = _mod_ui.bool_from_string(s, accepted_values=accepted_values)
-        self.assertEquals(True, res)
+        self.assertEqual(True, res)
 
     def assertIsFalse(self, s, accepted_values=None):
         res = _mod_ui.bool_from_string(s, accepted_values=accepted_values)
-        self.assertEquals(False, res)
+        self.assertEqual(False, res)
 
     def assertIsNone(self, s, accepted_values=None):
         res = _mod_ui.bool_from_string(s, accepted_values=accepted_values)
@@ -506,7 +506,7 @@ class TestConfirmationUserInterfacePolicy(tests.TestCase):
     def test_confirm_action_default(self):
         base_ui = _mod_ui.NoninteractiveUIFactory()
         for answer in [True, False]:
-            self.assertEquals(
+            self.assertEqual(
                 _mod_ui.ConfirmationUserInterfacePolicy(base_ui, answer, {})
                 .confirm_action("Do something?",
                     "bzrlib.tests.do_something", {}),
@@ -521,9 +521,9 @@ class TestConfirmationUserInterfacePolicy(tests.TestCase):
                         base_ui, default_answer, dict(given_id=specific_answer))
                     result = wrapper.confirm_action("Do something?", conf_id, {})
                     if conf_id == 'given_id':
-                        self.assertEquals(result, specific_answer)
+                        self.assertEqual(result, specific_answer)
                     else:
-                        self.assertEquals(result, default_answer)
+                        self.assertEqual(result, default_answer)
 
     def test_repr(self):
         base_ui = _mod_ui.NoninteractiveUIFactory()

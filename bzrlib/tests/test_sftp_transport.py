@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Robey Pointer <robey@lag.net>
+# Copyright (C) 2005-2012, 2016 Robey Pointer <robey@lag.net>
 # Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -155,11 +155,11 @@ class SFTPNonServerTest(TestCase):
     def test_parse_url_with_home_dir(self):
         s = _mod_sftp.SFTPTransport(
             'sftp://ro%62ey:h%40t@example.com:2222/~/relative')
-        self.assertEquals(s._parsed_url.host, 'example.com')
-        self.assertEquals(s._parsed_url.port, 2222)
-        self.assertEquals(s._parsed_url.user, 'robey')
-        self.assertEquals(s._parsed_url.password, 'h@t')
-        self.assertEquals(s._parsed_url.path, '/~/relative/')
+        self.assertEqual(s._parsed_url.host, 'example.com')
+        self.assertEqual(s._parsed_url.port, 2222)
+        self.assertEqual(s._parsed_url.user, 'robey')
+        self.assertEqual(s._parsed_url.password, 'h@t')
+        self.assertEqual(s._parsed_url.path, '/~/relative/')
 
     def test_relpath(self):
         s = _mod_sftp.SFTPTransport('sftp://user@host.com/abs/path')
@@ -200,13 +200,13 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         b2 = controldir.ControlDir.create_branch_and_repo(self.get_url('/b'))
         b2.pull(b)
 
-        self.assertEquals(b2.last_revision(), 'a1')
+        self.assertEqual(b2.last_revision(), 'a1')
 
         with open('a/foo', 'wt') as f: f.write('something new in foo\n')
         t.commit('new', rev_id='a2')
         b2.pull(b)
 
-        self.assertEquals(b2.last_revision(), 'a2')
+        self.assertEqual(b2.last_revision(), 'a2')
 
 
 class SSHVendorConnection(TestCaseWithSFTPServer):
@@ -496,5 +496,5 @@ class TestUsesAuthConfig(TestCaseWithSFTPServer):
         t = self.get_transport_for_connection(set_config=False)
         self.assertIs(None, t._get_credentials()[0])
         # No prompts should've been printed, stdin shouldn't have been read
-        self.assertEquals("", stdout.getvalue())
-        self.assertEquals(0, ui.ui_factory.stdin.tell())
+        self.assertEqual("", stdout.getvalue())
+        self.assertEqual(0, ui.ui_factory.stdin.tell())

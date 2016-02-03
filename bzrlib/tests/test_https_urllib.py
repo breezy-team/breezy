@@ -47,7 +47,7 @@ class CaCertsConfigTests(tests.TestCaseInTempDir):
         self.build_tree(['cacerts.pem'])
         path = os.path.join(self.test_dir, "cacerts.pem")
         stack = self.get_stack("ssl.ca_certs = %s\n" % path)
-        self.assertEquals(path, stack.get('ssl.ca_certs'))
+        self.assertEqual(path, stack.get('ssl.ca_certs'))
 
     def test_specified_doesnt_exist(self):
         stack = self.get_stack('')
@@ -59,7 +59,7 @@ class CaCertsConfigTests(tests.TestCaseInTempDir):
         def warning(*args):
             self.warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
-        self.assertEquals(None, stack.get('ssl.ca_certs'))
+        self.assertEqual(None, stack.get('ssl.ca_certs'))
         self.assertLength(1, self.warnings)
         self.assertContainsRe(self.warnings[0],
                               "is not valid for \"ssl.ca_certs\"")
@@ -69,13 +69,13 @@ class CertReqsConfigTests(tests.TestCaseInTempDir):
 
     def test_default(self):
         stack = config.MemoryStack("")
-        self.assertEquals(ssl.CERT_REQUIRED, stack.get("ssl.cert_reqs"))
+        self.assertEqual(ssl.CERT_REQUIRED, stack.get("ssl.cert_reqs"))
 
     def test_from_string(self):
         stack = config.MemoryStack("ssl.cert_reqs = none\n")
-        self.assertEquals(ssl.CERT_NONE, stack.get("ssl.cert_reqs"))
+        self.assertEqual(ssl.CERT_NONE, stack.get("ssl.cert_reqs"))
         stack = config.MemoryStack("ssl.cert_reqs = required\n")
-        self.assertEquals(ssl.CERT_REQUIRED, stack.get("ssl.cert_reqs"))
+        self.assertEqual(ssl.CERT_REQUIRED, stack.get("ssl.cert_reqs"))
         stack = config.MemoryStack("ssl.cert_reqs = invalid\n")
         self.assertRaises(ConfigOptionValueError, stack.get, "ssl.cert_reqs")
 

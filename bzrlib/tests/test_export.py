@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ class TestDirExport(tests.TestCaseWithTransport):
     def test_empty(self):
         wt = self.make_branch_and_tree('.')
         export.export(wt, 'target', format="dir")
-        self.assertEquals([], os.listdir("target"))
+        self.assertEqual([], os.listdir("target"))
 
     def test_symlink(self):
         self.requireFeature(features.SymlinkFeature)
@@ -166,7 +166,7 @@ class TestDirExport(tests.TestCaseWithTransport):
         export.export(tree, 'target', format='dir', subdir='subdir',
             per_file_timestamps=True)
         t = self.get_transport('target')
-        self.assertEquals(foo_time, t.stat('foo.txt').st_mtime)
+        self.assertEqual(foo_time, t.stat('foo.txt').st_mtime)
 
 
 class TarExporterTests(tests.TestCaseWithTransport):
@@ -180,7 +180,7 @@ class TarExporterTests(tests.TestCaseWithTransport):
         wt.commit("1")
         export.export(wt, 'target.tar.xz', format="txz")
         tf = tarfile.open(fileobj=lzma.LZMAFile('target.tar.xz'))
-        self.assertEquals(["target/a"], tf.getnames())
+        self.assertEqual(["target/a"], tf.getnames())
 
     def test_lzma(self):
         self.requireFeature(features.lzma)
@@ -191,7 +191,7 @@ class TarExporterTests(tests.TestCaseWithTransport):
         wt.commit("1")
         export.export(wt, 'target.tar.lzma', format="tlzma")
         tf = tarfile.open(fileobj=lzma.LZMAFile('target.tar.lzma'))
-        self.assertEquals(["target/a"], tf.getnames())
+        self.assertEqual(["target/a"], tf.getnames())
 
     def test_tgz(self):
         wt = self.make_branch_and_tree('.')
@@ -200,7 +200,7 @@ class TarExporterTests(tests.TestCaseWithTransport):
         wt.commit("1")
         export.export(wt, 'target.tar.gz', format="tgz")
         tf = tarfile.open('target.tar.gz')
-        self.assertEquals(["target/a"], tf.getnames())
+        self.assertEqual(["target/a"], tf.getnames())
 
     def test_tgz_ignores_dest_path(self):
         # The target path should not be a part of the target file.
@@ -235,7 +235,7 @@ class TarExporterTests(tests.TestCaseWithTransport):
         wt.commit("1")
         export.export(wt, 'target.tar.bz2', format="tbz2")
         tf = tarfile.open('target.tar.bz2')
-        self.assertEquals(["target/a"], tf.getnames())
+        self.assertEqual(["target/a"], tf.getnames())
 
     def test_xz_stdout(self):
         wt = self.make_branch_and_tree('.')
@@ -259,7 +259,7 @@ class TarExporterTests(tests.TestCaseWithTransport):
         target.seek(0)
         ball2 = tarfile.open(None, "r", target)
         self.addCleanup(ball2.close)
-        self.assertEquals(["bar/a"], ball2.getnames())
+        self.assertEqual(["bar/a"], ball2.getnames())
 
 
 class ZipExporterTests(tests.TestCaseWithTransport):
@@ -275,20 +275,20 @@ class ZipExporterTests(tests.TestCaseWithTransport):
             per_file_timestamps=True)
         zfile = zipfile.ZipFile('test.zip')
         info = zfile.getinfo("test/har")
-        self.assertEquals(time.localtime(timestamp)[:6], info.date_time)
+        self.assertEqual(time.localtime(timestamp)[:6], info.date_time)
 
 
 class RootNameTests(tests.TestCase):
 
     def test_root_name(self):
-        self.assertEquals('mytest', get_root_name('../mytest.tar'))
-        self.assertEquals('mytar', get_root_name('mytar.tar'))
-        self.assertEquals('mytar', get_root_name('mytar.tar.bz2'))
-        self.assertEquals('tar.tar.tar', get_root_name('tar.tar.tar.tgz'))
-        self.assertEquals('bzr-0.0.5', get_root_name('bzr-0.0.5.tar.gz'))
-        self.assertEquals('bzr-0.0.5', get_root_name('bzr-0.0.5.zip'))
-        self.assertEquals('bzr-0.0.5', get_root_name('bzr-0.0.5'))
-        self.assertEquals('mytar', get_root_name('a/long/path/mytar.tgz'))
-        self.assertEquals('other',
+        self.assertEqual('mytest', get_root_name('../mytest.tar'))
+        self.assertEqual('mytar', get_root_name('mytar.tar'))
+        self.assertEqual('mytar', get_root_name('mytar.tar.bz2'))
+        self.assertEqual('tar.tar.tar', get_root_name('tar.tar.tar.tgz'))
+        self.assertEqual('bzr-0.0.5', get_root_name('bzr-0.0.5.tar.gz'))
+        self.assertEqual('bzr-0.0.5', get_root_name('bzr-0.0.5.zip'))
+        self.assertEqual('bzr-0.0.5', get_root_name('bzr-0.0.5'))
+        self.assertEqual('mytar', get_root_name('a/long/path/mytar.tgz'))
+        self.assertEqual('other',
             get_root_name('../parent/../dir/other.tbz2'))
-        self.assertEquals('', get_root_name('-'))
+        self.assertEqual('', get_root_name('-'))

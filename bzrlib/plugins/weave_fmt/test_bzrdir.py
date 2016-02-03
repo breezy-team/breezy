@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2011, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -311,13 +311,13 @@ class TestUpgrade(TestCaseWithTransport):
         self.assertIsInstance(control._format, bzrdir.BzrDirMetaFormat1)
         b = control.open_branch()
         self.addCleanup(b.lock_read().unlock)
-        self.assertEquals(b._revision_history(),
+        self.assertEqual(b._revision_history(),
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
             'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
 
     def test_upgrade_simple(self):
         """Upgrade simple v0.0.4 format to latest format"""
-        eq = self.assertEquals
+        eq = self.assertEqual
         self.build_tree_contents(_upgrade1_template)
         upgrade.upgrade(u'.')
         control = controldir.ControlDir.open('.')
@@ -378,7 +378,7 @@ class TestUpgrade(TestCaseWithTransport):
         bzr, but can happen in branches imported from baz and arch, or from
         other systems, where the importer knows about a revision but not
         its contents."""
-        eq = self.assertEquals
+        eq = self.assertEqual
         self.build_tree_contents(_ghost_template)
         upgrade.upgrade(u'.')
         b = branch.Branch.open(u'.')

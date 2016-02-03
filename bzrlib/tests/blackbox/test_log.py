@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -837,9 +837,9 @@ class TestLogEncodings(tests.TestCaseInTempDir):
         test_in_cp866 = '\x92\xa5\xe1\xe2'
         test_in_cp1251 = '\xd2\xe5\xf1\xf2'
         # Make sure the log string is encoded in cp866
-        self.assertEquals(test_in_cp866, message[2:])
+        self.assertEqual(test_in_cp866, message[2:])
         # Make sure the cp1251 string is not found anywhere
-        self.assertEquals(-1, stdout.find(test_in_cp1251))
+        self.assertEqual(-1, stdout.find(test_in_cp1251))
 
 
 class TestLogFile(TestLogWithLogCatcher):
@@ -1018,7 +1018,7 @@ class MainlineGhostTests(TestLogWithLogCatcher):
         (stdout, stderr) = self.run_bzr(['log', '-r..2'], retcode=3)
         self.assertEqual(["2", "1"],
                          [r.revno for r in self.get_captured_revisions()])
-        self.assertEquals("bzr: ERROR: Further revision history missing.", stderr)
+        self.assertEqual("bzr: ERROR: Further revision history missing.", stderr)
 
     def test_log_range_open_end(self):
         self.assertLogRevnos(["-r1.."], ["2", "1"])

@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,8 +36,8 @@ class TestTestScript(tests.TestCaseInTempDir):
         out, err = self.run_bzr(['test-script', 'script'])
         out_lines = out.splitlines()
         self.assertStartsWith(out_lines[-3], 'Ran 1 test in ')
-        self.assertEquals('OK', out_lines[-1])
-        self.assertEquals('', err)
+        self.assertEqual('OK', out_lines[-1])
+        self.assertEqual('', err)
 
     def test_simple_file(self):
         self.build_tree_contents([('script', '''
@@ -47,8 +47,8 @@ hello world
         out, err = self.run_bzr(['test-script', 'script'])
         out_lines = out.splitlines()
         self.assertStartsWith(out_lines[-3], 'Ran 1 test in ')
-        self.assertEquals('OK', out_lines[-1])
-        self.assertEquals('', err)
+        self.assertEqual('OK', out_lines[-1])
+        self.assertEqual('', err)
 
     def test_null_output(self):
         self.build_tree_contents([('script', '''
@@ -57,8 +57,8 @@ $ echo hello world
         out, err = self.run_bzr(['test-script', 'script', '--null-output'])
         out_lines = out.splitlines()
         self.assertStartsWith(out_lines[-3], 'Ran 1 test in ')
-        self.assertEquals('OK', out_lines[-1])
-        self.assertEquals('', err)
+        self.assertEqual('OK', out_lines[-1])
+        self.assertEqual('', err)
 
     def test_failing_script(self):
         self.build_tree_contents([('script', '''
@@ -68,5 +68,5 @@ hello bar
         out, err = self.run_bzr(['test-script', 'script'], retcode=1)
         out_lines = out.splitlines()
         self.assertStartsWith(out_lines[-3], 'Ran 1 test in ')
-        self.assertEquals('FAILED (failures=1)', out_lines[-1])
-        self.assertEquals('', err)
+        self.assertEqual('FAILED (failures=1)', out_lines[-1])
+        self.assertEqual('', err)

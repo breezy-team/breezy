@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -319,7 +319,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
                     unique_revs)
                 l1 = set(l1.keys())
                 l2 = self.compare_tree_fileids(self.branch, start_id, end_id)
-                self.assertEquals(l1, l2)
+                self.assertEqual(l1, l2)
 
 
 class TestFileIdInvolvedNonAscii(FileIdInvolvedBase):

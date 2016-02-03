@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2009, 2011 Canonical Ltd
+# Copyright (C) 2005-2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -588,7 +588,7 @@ class Conflicts(TestBase):
 
         merged = k.merge([1, 2])
 
-        self.assertEquals([[['aaa']],
+        self.assertEqual([[['aaa']],
                            [['111'], ['222']],
                            [['bbb']]])
 
@@ -681,7 +681,7 @@ class JoinWeavesTests(TestBase):
         write_weave(w, tmpf)
 
         # Because we are corrupting, we need to make sure we have the exact text
-        self.assertEquals('# bzr weave file v5\n'
+        self.assertEqual('# bzr weave file v5\n'
                           'i\n1 f572d396fae9206628714fb2ce00f72e94f2258f\nn v1\n\n'
                           'i 0\n1 90f265c6e75f1c8f9ab76dcf85528352c5f215ef\nn v2\n\n'
                           'w\n{ 0\n. hello\n}\n{ 1\n. there\n}\nW\n',

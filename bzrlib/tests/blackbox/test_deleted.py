@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2016 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -34,4 +34,4 @@ class TestDeleted(TestCaseWithTransport):
         tree.commit('r1')
         tree.remove('README')
         out, err = self.run_bzr(['deleted', '--directory=a'])
-        self.assertEquals('README\n', out)
+        self.assertEqual('README\n', out)

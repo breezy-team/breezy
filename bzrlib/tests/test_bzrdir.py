@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2013, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1032,10 +1032,10 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         bzrdir.BzrDirMetaFormat1.register_feature('bar')
         self.addCleanup(bzrdir.BzrDirMetaFormat1.unregister_feature, 'bar')
         dir = bzrdir.BzrDir.open('tree')
-        self.assertEquals("required", dir._format.features.get("bar"))
+        self.assertEqual("required", dir._format.features.get("bar"))
         tree.bzrdir.update_feature_flags({"bar": None, "nonexistant": None})
         dir = bzrdir.BzrDir.open('tree')
-        self.assertEquals({}, dir._format.features)
+        self.assertEqual({}, dir._format.features)
 
     def test_needs_conversion_different_working_tree(self):
         # meta1dirs need an conversion if any element is not the default.
@@ -1231,14 +1231,14 @@ class TestDotBzrHidden(TestCaseWithTransport):
             raise TestSkipped('unable to make file hidden without pywin32 library')
         b = bzrdir.BzrDir.create('.')
         self.build_tree(['a'])
-        self.assertEquals(['a'], self.get_ls())
+        self.assertEqual(['a'], self.get_ls())
 
     def test_dot_bzr_hidden_with_url(self):
         if sys.platform == 'win32' and not win32utils.has_win32file:
             raise TestSkipped('unable to make file hidden without pywin32 library')
         b = bzrdir.BzrDir.create(urlutils.local_path_to_url('.'))
         self.build_tree(['a'])
-        self.assertEquals(['a'], self.get_ls())
+        self.assertEqual(['a'], self.get_ls())
 
 
 class _TestBzrDirFormat(bzrdir.BzrDirMetaFormat1):
@@ -1475,11 +1475,11 @@ class TestBzrFormat(TestCase):
     def test_as_string(self):
         format = SampleBzrFormat()
         format.features = {"foo": "required"}
-        self.assertEquals(format.as_string(),
+        self.assertEqual(format.as_string(),
             "First line\n"
             "required foo\n")
         format.features["another"] = "optional"
-        self.assertEquals(format.as_string(),
+        self.assertEqual(format.as_string(),
             "First line\n"
             "required foo\n"
             "optional another\n")
@@ -1488,7 +1488,7 @@ class TestBzrFormat(TestCase):
         # The network string should include the feature info
         format = SampleBzrFormat()
         format.features = {"foo": "required"}
-        self.assertEquals(
+        self.assertEqual(
             "First line\nrequired foo\n",
             format.network_name())
 
@@ -1496,13 +1496,13 @@ class TestBzrFormat(TestCase):
         # No features
         format = SampleBzrFormat.from_string(
             "First line\n")
-        self.assertEquals({}, format.features)
+        self.assertEqual({}, format.features)
 
     def test_from_string_with_feature(self):
         # Proper feature
         format = SampleBzrFormat.from_string(
             "First line\nrequired foo\n")
-        self.assertEquals("required", format.features.get("foo"))
+        self.assertEqual("required", format.features.get("foo"))
 
     def test_from_string_format_string_mismatch(self):
         # The first line has to match the format string
@@ -1518,17 +1518,17 @@ class TestBzrFormat(TestCase):
         # Feature with spaces (in case we add stuff like this in the future)
         format = SampleBzrFormat.from_string(
             "First line\nrequired foo with spaces\n")
-        self.assertEquals("required", format.features.get("foo with spaces"))
+        self.assertEqual("required", format.features.get("foo with spaces"))
 
     def test_eq(self):
         format1 = SampleBzrFormat()
         format1.features = {"nested-trees": "optional"}
         format2 = SampleBzrFormat()
         format2.features = {"nested-trees": "optional"}
-        self.assertEquals(format1, format1)
-        self.assertEquals(format1, format2)
+        self.assertEqual(format1, format1)
+        self.assertEqual(format1, format2)
         format3 = SampleBzrFormat()
-        self.assertNotEquals(format1, format3)
+        self.assertNotEqual(format1, format3)
 
     def test_check_support_status_optional(self):
         # Optional, so silently ignore

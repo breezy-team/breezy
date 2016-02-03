@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -475,7 +475,7 @@ class TestLockDir(TestCaseWithTransport):
         # now the original caller should succeed in unlocking
         ld1.unlock()
         # and there should be nothing left over
-        self.assertEquals([], t.list_dir('test_lock'))
+        self.assertEqual([], t.list_dir('test_lock'))
 
     def test_failed_lock_leaves_no_trash(self):
         # if we fail to acquire the lock, we don't leave pending directories
@@ -487,7 +487,7 @@ class TestLockDir(TestCaseWithTransport):
         t = self.get_transport().clone('test_lock')
 
         def check_dir(a):
-            self.assertEquals(a, t.list_dir('.'))
+            self.assertEqual(a, t.list_dir('.'))
 
         check_dir([])
         # when held, that's all we see
@@ -512,7 +512,7 @@ class TestLockDir(TestCaseWithTransport):
         lf = LockDir(t, 'test_lock')
         info = lf.peek()
         formatted_info = info.to_readable_dict()
-        self.assertEquals(
+        self.assertEqual(
             dict(user='<unknown>', hostname='<unknown>', pid='<unknown>',
                 time_ago='(unknown)'),
             formatted_info)

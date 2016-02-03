@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -237,15 +237,15 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         self.addCleanup(source.unlock)
 
         expected_canonical_form = 'Foo Txt\nend string\n'
-        self.assertEquals(source.get_file(txt_fileid, filtered=True).read(),
+        self.assertEqual(source.get_file(txt_fileid, filtered=True).read(),
             expected_canonical_form)
-        self.assertEquals(source.get_file(txt_fileid, filtered=False).read(),
+        self.assertEqual(source.get_file(txt_fileid, filtered=False).read(),
             'Foo Txt')
 
         # results are: kind, size, executable, sha1_or_link_target
         result = source.path_content_summary('file1.txt')
 
-        self.assertEquals(result,
+        self.assertEqual(result,
             ('file', None, False, None))
 
         # we could give back the length of the canonical form, but in general

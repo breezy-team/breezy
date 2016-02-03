@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -284,7 +284,7 @@ class TestLoadingPlugins(BaseTestPlugins):
         log = self.load_and_capture(name)
         self.assertNotContainsRe(log,
             r"It requested API version")
-        self.assertEquals(
+        self.assertEqual(
             ['wants100'],
             plugin.plugin_warnings.keys())
         self.assertContainsRe(
@@ -709,7 +709,7 @@ class TestEnvPluginPath(tests.TestCase):
         if setting_dirs:
             self._set_path(*setting_dirs)
         actual = plugin.get_standard_plugins_path()
-        self.assertEquals(self._list2paths(*expected_dirs), actual)
+        self.assertEqual(self._list2paths(*expected_dirs), actual)
 
     def test_default(self):
         self.check_path([self.user, self.core, self.site],
@@ -827,11 +827,11 @@ class TestLoadPluginAtSyntax(tests.TestCase):
         return plugin._get_specific_plugin_paths(paths)
 
     def test_empty(self):
-        self.assertEquals([], self._get_paths(None))
-        self.assertEquals([], self._get_paths(''))
+        self.assertEqual([], self._get_paths(None))
+        self.assertEqual([], self._get_paths(''))
 
     def test_one_path(self):
-        self.assertEquals([('b', 'man')], self._get_paths('b@man'))
+        self.assertEqual([('b', 'man')], self._get_paths('b@man'))
 
     def test_bogus_path(self):
         # We need a '@'
@@ -975,7 +975,7 @@ class TestDescribePlugins(BaseTestPlugins):
         self.overrideAttr(plugin, 'plugin_warnings',
             {'bad': ['Failed to load (just testing)']})
         self.overrideAttr(plugin, 'plugins', dummy_plugins)
-        self.assertEquals("""\
+        self.assertEqual("""\
 bad (failed to load)
   ** Failed to load (just testing)
 

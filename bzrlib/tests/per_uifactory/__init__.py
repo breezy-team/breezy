@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010, 2011 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -58,9 +58,9 @@ class UIFactoryTestMixin(object):
 
     def test_be_quiet(self):
         self.factory.be_quiet(True)
-        self.assertEquals(True, self.factory.is_quiet())
+        self.assertEqual(True, self.factory.is_quiet())
         self.factory.be_quiet(False)
-        self.assertEquals(False, self.factory.is_quiet())
+        self.assertEqual(False, self.factory.is_quiet())
 
     def test_confirm_action(self):
         # confirm_action should be answered by every ui factory; even
@@ -71,7 +71,7 @@ class UIFactoryTestMixin(object):
             {})
         # will be true either because we read it from the input or because
         # that's the default
-        self.assertEquals(result, True)
+        self.assertEqual(result, True)
 
     def test_note(self):
         self.factory.note("a note to the user")
@@ -128,23 +128,23 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
             self.stderr)
 
     def _check_note(self, note_text):
-        self.assertEquals("%s\n" % note_text,
+        self.assertEqual("%s\n" % note_text,
             self.stdout.getvalue())
 
     def _check_show_error(self, msg):
-        self.assertEquals("bzr: error: %s\n" % msg,
+        self.assertEqual("bzr: error: %s\n" % msg,
             self.stderr.getvalue())
-        self.assertEquals("", self.stdout.getvalue())
+        self.assertEqual("", self.stdout.getvalue())
 
     def _check_show_message(self, msg):
-        self.assertEquals("%s\n" % msg,
+        self.assertEqual("%s\n" % msg,
             self.stdout.getvalue())
-        self.assertEquals("", self.stderr.getvalue())
+        self.assertEqual("", self.stderr.getvalue())
 
     def _check_show_warning(self, msg):
-        self.assertEquals("bzr: warning: %s\n" % msg,
+        self.assertEqual("bzr: warning: %s\n" % msg,
             self.stderr.getvalue())
-        self.assertEquals("", self.stdout.getvalue())
+        self.assertEqual("", self.stdout.getvalue())
 
     def _check_log_transport_activity_noarg(self):
         self.assertEqual('', self.stdout.getvalue())

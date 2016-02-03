@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -67,7 +67,7 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
             ('tree/dir/',),
             ('tree/dir/file', 'content'),
             ])
-        self.assertEquals(
+        self.assertEqual(
             tree.smart_add(['tree/link/file']),
             ([u'dir', u'dir/file'], {}))
         # should add the actual parent directory, not the apparent parent
@@ -103,12 +103,12 @@ class TestKindChanges(TestCaseWithWorkingTree):
         tree.commit('change to dir')
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEquals([], list(tree.iter_changes(tree.basis_tree())))
+        self.assertEqual([], list(tree.iter_changes(tree.basis_tree())))
         if tree._format.supports_versioned_directories:
-            self.assertEquals(
+            self.assertEqual(
                 ['a', 'a/f'], sorted(info[0] for info in tree.list_files()))
         else:
-            self.assertEquals([], list(tree.list_files()))
+            self.assertEqual([], list(tree.list_files()))
 
     def test_dir_changes_to_symlink(self):
         # <https://bugs.launchpad.net/bzr/+bug/192859>:
@@ -148,7 +148,7 @@ class TestOpenTree(TestCaseWithWorkingTree):
     def check_open_containing(self, to_open, expected_tree_name,
         expected_relpath):
         wt, relpath = workingtree.WorkingTree.open_containing(to_open)
-        self.assertEquals(relpath, expected_relpath)
+        self.assertEqual(relpath, expected_relpath)
         self.assertEndsWith(wt.basedir, expected_tree_name)
 
     def test_tree_files(self):
@@ -166,7 +166,7 @@ class TestOpenTree(TestCaseWithWorkingTree):
     def check_tree_files(self, to_open, expected_tree, expect_paths):
         tree, relpaths = workingtree.WorkingTree.open_containing_paths(to_open)
         self.assertEndsWith(tree.basedir, expected_tree)
-        self.assertEquals(expect_paths, relpaths)
+        self.assertEqual(expect_paths, relpaths)
 
     def make_test_tree(self):
         tree = self.make_branch_and_tree('tree')

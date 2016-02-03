@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2011, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@ class TestHooks(TestCaseWithTransport):
     def _check_hooks_output(self, command_output, hooks):
         for hook_type in Branch.hooks:
             s = "\n  ".join(hooks.get(hook_type, ["<no hooks installed>"]))
-            self.assert_("%s:\n    %s" % (hook_type, s) in command_output)
+            self.assertTrue("%s:\n    %s" % (hook_type, s) in command_output)
 
     def test_hooks_with_no_hooks(self):
         self.make_branch('.')

@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009, 2010, 2011 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -103,10 +103,10 @@ class TestHelp(tests.TestCaseWithTransport):
         long_help  = self.run_bzr('help --long')[0]
         qmark_long = self.run_bzr('? --long')[0]
         qmark_cmds = self.run_bzr('? commands')[0]
-        self.assertEquals(dash_help, commands)
-        self.assertEquals(dash_help, long_help)
-        self.assertEquals(dash_help, qmark_long)
-        self.assertEquals(dash_help, qmark_cmds)
+        self.assertEqual(dash_help, commands)
+        self.assertEqual(dash_help, long_help)
+        self.assertEqual(dash_help, qmark_long)
+        self.assertEqual(dash_help, qmark_cmds)
 
     def test_help_width_zero(self):
         self.overrideEnv('BZR_COLUMNS', '0')
@@ -138,7 +138,7 @@ class TestHelp(tests.TestCaseWithTransport):
     def test_help_detail(self):
         dash_h  = self.run_bzr('diff -h')[0]
         help_x  = self.run_bzr('help diff')[0]
-        self.assertEquals(dash_h, help_x)
+        self.assertEqual(dash_h, help_x)
         self.assertContainsRe(help_x, "Purpose:")
         self.assertContainsRe(help_x, "Usage:")
         self.assertContainsRe(help_x, "Options:")
@@ -160,7 +160,7 @@ class TestHelp(tests.TestCaseWithTransport):
     def test_help_help(self):
         help = self.run_bzr('help help')[0]
         qmark = self.run_bzr('? ?')[0]
-        self.assertEquals(help, qmark)
+        self.assertEqual(help, qmark)
         for line in help.split('\n'):
             if '--long' in line:
                 self.assertContainsRe(line,

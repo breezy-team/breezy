@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2012 Canonical Ltd
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -324,7 +324,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         if repo.bzrdir._format.colocated_branches:
             raise tests.TestNotApplicable(
                 "control dir does not support colocated branches")
-        self.assertEquals(0, len(repo.bzrdir.list_branches()))
+        self.assertEqual(0, len(repo.bzrdir.list_branches()))
         if not self.bzrdir_format.colocated_branches:
             raise tests.TestNotApplicable("control dir format does not support "
                 "colocated branches")
@@ -335,9 +335,9 @@ class TestBranch(per_branch.TestCaseWithBranch):
             # branch references are not default init'able and
             # not all bzrdirs support colocated branches.
             return
-        self.assertEquals(1, len(repo.bzrdir.list_branches()))
+        self.assertEqual(1, len(repo.bzrdir.list_branches()))
         self.branch_format.initialize(repo.bzrdir, name='branch2')
-        self.assertEquals(2, len(repo.bzrdir.list_branches()))
+        self.assertEqual(2, len(repo.bzrdir.list_branches()))
 
     def test_create_append_revisions_only(self):
         try:
@@ -352,7 +352,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
                 # branch references are not default init'able and
                 # not all branches support append_revisions_only
                 return
-            self.assertEquals(True, branch.get_append_revisions_only())
+            self.assertEqual(True, branch.get_append_revisions_only())
             repo.bzrdir.destroy_branch()
 
     def test_get_set_append_revisions_only(self):

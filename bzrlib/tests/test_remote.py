@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2012 Canonical Ltd
+# Copyright (C) 2006-2013, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -556,7 +556,7 @@ class TestBzrDirGetBranches(TestRemote):
         a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         result = a_bzrdir.get_branches()
-        self.assertEquals(set(["", "foo"]), set(result.keys()))
+        self.assertEqual(set(["", "foo"]), set(result.keys()))
         self.assertEqual(
             [('call_expecting_body', 'BzrDir.get_branches', ('quack/',)),
              ('call', 'BzrDir.find_repositoryV3', ('quack/', )),
@@ -2124,7 +2124,7 @@ class TestBranchRevisionIdToRevno(RemoteBranchTestCase):
         transport.mkdir('quack')
         transport = transport.clone('quack')
         branch = self.make_remote_branch(transport, client)
-        self.assertEquals(0, branch.revision_id_to_revno('null:'))
+        self.assertEqual(0, branch.revision_id_to_revno('null:'))
         self.assertRaises(errors.NoSuchRevision,
             branch.revision_id_to_revno, 'unknown')
         self.assertFinished(client)
@@ -2144,7 +2144,7 @@ class TestBranchRevisionIdToRevno(RemoteBranchTestCase):
         transport.mkdir('quack')
         transport = transport.clone('quack')
         branch = self.make_remote_branch(transport, client)
-        self.assertEquals((0, ), branch.revision_id_to_dotted_revno('null:'))
+        self.assertEqual((0, ), branch.revision_id_to_dotted_revno('null:'))
         self.assertRaises(errors.NoSuchRevision,
             branch.revision_id_to_dotted_revno, 'unknown')
         self.assertFinished(client)
@@ -2154,7 +2154,7 @@ class TestBranchRevisionIdToRevno(RemoteBranchTestCase):
         branch = self.make_branch('.')
         self.disable_verb('Branch.revision_id_to_revno')
         self.reset_smart_call_log()
-        self.assertEquals((0, ),
+        self.assertEqual((0, ),
             branch.revision_id_to_dotted_revno('null:'))
         self.assertLength(8, self.hpss_calls)
 
@@ -2327,7 +2327,7 @@ class TestRepositoryAllRevisionIds(TestRemoteRepository):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response_with_body('', 'ok')
-        self.assertEquals([], repo.all_revision_ids())
+        self.assertEqual([], repo.all_revision_ids())
         self.assertEqual(
             [('call_expecting_body', 'Repository.all_revision_ids',
              ('quack/',))],
@@ -2338,7 +2338,7 @@ class TestRepositoryAllRevisionIds(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response_with_body(
             'rev1\nrev2\nanotherrev\n', 'ok')
-        self.assertEquals(["rev1", "rev2", "anotherrev"],
+        self.assertEqual(["rev1", "rev2", "anotherrev"],
             repo.all_revision_ids())
         self.assertEqual(
             [('call_expecting_body', 'Repository.all_revision_ids',
@@ -2422,7 +2422,7 @@ class TestRepositoryGetSerializerFormat(TestRemoteRepository):
         transport_path = 'hill'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response('ok', '7')
-        self.assertEquals('7', repo.get_serializer_format())
+        self.assertEqual('7', repo.get_serializer_format())
         self.assertEqual(
             [('call', 'VersionedFileRepository.get_serializer_format',
               ('hill/', ))],
@@ -2446,8 +2446,8 @@ class TestRepositoryReconcile(TestRemoteRepository):
              ('call_expecting_body', 'Repository.reconcile',
                 ('hill/', 'a token'))],
             client._calls)
-        self.assertEquals(2, reconciler.garbage_inventories)
-        self.assertEquals(3, reconciler.inconsistent_parents)
+        self.assertEqual(2, reconciler.garbage_inventories)
+        self.assertEqual(3, reconciler.inconsistent_parents)
 
 
 class TestRepositoryGetRevisionSignatureText(TestRemoteRepository):
@@ -2458,7 +2458,7 @@ class TestRepositoryGetRevisionSignatureText(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response_with_body(
             'THETEXT', 'ok')
-        self.assertEquals("THETEXT", repo.get_signature_text("revid"))
+        self.assertEqual("THETEXT", repo.get_signature_text("revid"))
         self.assertEqual(
             [('call_expecting_body', 'Repository.get_revision_signature_text',
              ('quack/', 'revid'))],
@@ -2771,7 +2771,7 @@ class TestRepositoryGetRevisions(TestRemoteRepository):
         client.add_success_response_with_body(
                 [body[:10], body[10:]], 'ok', '10')
         revs = repo.get_revisions(['somerev1'])
-        self.assertEquals(revs, [somerev1])
+        self.assertEqual(revs, [somerev1])
         self.assertEqual(
             [('call_with_body_bytes_expecting_body', 'Repository.iter_revisions',
              ('quack/', ), "somerev1")],
@@ -3098,7 +3098,7 @@ class TestRepositoryWriteGroups(TestRemoteRepository):
             'error', ('UnsuspendableWriteGroup',))
         repo.lock_write()
         repo.start_write_group()
-        self.assertEquals(client._calls[-2:], [ 
+        self.assertEqual(client._calls[-2:], [ 
             ('_ensure_real',),
             ('start_write_group',)])
 
@@ -3137,7 +3137,7 @@ class TestRepositoryWriteGroups(TestRemoteRepository):
     def test_suspend_write_group(self):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
-        self.assertEquals([], repo.suspend_write_group())
+        self.assertEqual([], repo.suspend_write_group())
 
     def test_resume_write_group(self):
         transport_path = 'quack'
@@ -3227,8 +3227,8 @@ class TestRepositoryIterFilesBytes(TestRemoteRepository):
             'success', ('ok',), iter(["ok\x000", "\n", zlib.compress("mydata" * 10)]))
         for (identifier, byte_stream) in repo.iter_files_bytes([("somefile",
                 "somerev", "myid")]):
-            self.assertEquals("myid", identifier)
-            self.assertEquals("".join(byte_stream), "mydata" * 10)
+            self.assertEqual("myid", identifier)
+            self.assertEqual("".join(byte_stream), "mydata" * 10)
 
     def test_missing(self):
         transport_path = 'quack'
@@ -4154,7 +4154,7 @@ class TestUpdateBoundBranchWithModifiedBoundLocation(
     def assertUpdateSucceeds(self, new_location):
         self.checkout.branch.set_bound_location(new_location)
         self.checkout.update()
-        self.assertEquals(self.last_revid, self.checkout.last_revision())
+        self.assertEqual(self.last_revid, self.checkout.last_revision())
 
     def test_without_final_slash(self):
         self.make_master_and_checkout('master', 'checkout')
@@ -4276,13 +4276,13 @@ class TestRepositoryIterInventories(TestRemoteRepository):
         ret = list(repo.iter_inventories(["somerevid"]))
         self.assertLength(1, ret)
         inv = ret[0]
-        self.assertEquals("somerevid", inv.revision_id)
+        self.assertEqual("somerevid", inv.revision_id)
 
     def test_empty(self):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         ret = list(repo.iter_inventories([]))
-        self.assertEquals(ret, [])
+        self.assertEqual(ret, [])
 
     def test_missing(self):
         transport_path = 'quack'

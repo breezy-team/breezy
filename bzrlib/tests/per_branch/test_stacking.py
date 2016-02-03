@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -552,7 +552,7 @@ class TestStacking(TestCaseWithBranch):
         self.assertEqual({}, repo.get_parent_map(['rev1']))
         # revision_history should work, even though the history is spread over
         # multiple repositories.
-        self.assertEquals((2, 'rev2'), stacked.branch.last_revision_info())
+        self.assertEqual((2, 'rev2'), stacked.branch.last_revision_info())
 
 
 class TestStackingConnections(

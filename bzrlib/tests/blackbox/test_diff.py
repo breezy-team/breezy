@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2012 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -61,13 +61,13 @@ class TestDiff(DiffBase):
         self.build_tree_contents([('hello', 'hello world!')])
         tree.commit(message='fixing hello')
         output = self.run_bzr('diff -r 2..3', retcode=1)[0]
-        self.assert_('\n+hello world!' in output)
+        self.assertTrue('\n+hello world!' in output)
         output = self.run_bzr('diff -c 3', retcode=1)[0]
-        self.assert_('\n+hello world!' in output)
+        self.assertTrue('\n+hello world!' in output)
         output = self.run_bzr('diff -r last:3..last:1', retcode=1)[0]
-        self.assert_('\n+baz' in output)
+        self.assertTrue('\n+baz' in output)
         output = self.run_bzr('diff -c last:2', retcode=1)[0]
-        self.assert_('\n+baz' in output)
+        self.assertTrue('\n+baz' in output)
         self.build_tree(['moo'])
         tree.add('moo')
         os.unlink('moo')
@@ -78,7 +78,7 @@ class TestDiff(DiffBase):
         self.make_example_branch()
         self.build_tree_contents([('hello', 'hello world!\n')])
         out, err = self.run_bzr('diff --prefix old/:new/', retcode=1)
-        self.assertEquals(err, '')
+        self.assertEqual(err, '')
         self.assertEqualDiff(subst_dates(out), '''\
 === modified file 'hello'
 --- old/hello\tYYYY-MM-DD HH:MM:SS +ZZZZ
@@ -100,7 +100,7 @@ class TestDiff(DiffBase):
         self.make_example_branch()
         self.build_tree_contents([('hello', 'hello world!\n')])
         out, err = self.run_bzr('diff -p1', retcode=1)
-        self.assertEquals(err, '')
+        self.assertEqual(err, '')
         self.assertEqualDiff(subst_dates(out), '''\
 === modified file 'hello'
 --- old/hello\tYYYY-MM-DD HH:MM:SS +ZZZZ
@@ -116,7 +116,7 @@ class TestDiff(DiffBase):
         self.make_example_branch()
         self.build_tree_contents([('hello', 'hello world!\n')])
         out, err = self.run_bzr('diff -p0', retcode=1)
-        self.assertEquals(err, '')
+        self.assertEqual(err, '')
         self.assertEqualDiff(subst_dates(out), '''\
 === modified file 'hello'
 --- hello\tYYYY-MM-DD HH:MM:SS +ZZZZ
@@ -182,8 +182,8 @@ class TestDiff(DiffBase):
     def check_b2_vs_b1(self, cmd):
         # Compare branch2 vs branch1 using cmd and check the result
         out, err = self.run_bzr(cmd, retcode=1)
-        self.assertEquals('', err)
-        self.assertEquals("=== modified file 'file'\n"
+        self.assertEqual('', err)
+        self.assertEqual("=== modified file 'file'\n"
                           "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
                           "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
                           "@@ -1,1 +1,1 @@\n"
@@ -194,7 +194,7 @@ class TestDiff(DiffBase):
     def check_b1_vs_b2(self, cmd):
         # Compare branch1 vs branch2 using cmd and check the result
         out, err = self.run_bzr(cmd, retcode=1)
-        self.assertEquals('', err)
+        self.assertEqual('', err)
         self.assertEqualDiff("=== modified file 'file'\n"
                               "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
                               "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
@@ -206,8 +206,8 @@ class TestDiff(DiffBase):
     def check_no_diffs(self, cmd):
         # Check that running cmd returns an empty diff
         out, err = self.run_bzr(cmd, retcode=0)
-        self.assertEquals('', err)
-        self.assertEquals('', out)
+        self.assertEqual('', err)
+        self.assertEqual('', out)
 
     def test_diff_branches(self):
         self.example_branches()
@@ -255,11 +255,11 @@ class TestDiff(DiffBase):
 
         out, err = self.run_bzr('diff -r revno:1:branch2..revno:1:branch1',
                                 )
-        self.assertEquals('', err)
-        self.assertEquals('', out)
+        self.assertEqual('', err)
+        self.assertEqual('', out)
         out, err = self.run_bzr('diff -r revno:2:branch2..revno:1:branch1',
                                 retcode=1)
-        self.assertEquals('', err)
+        self.assertEqual('', err)
         self.assertEqualDiff("=== modified file 'file'\n"
                               "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
                               "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
@@ -410,8 +410,8 @@ class TestExternalDiff(DiffBase):
         self.build_tree_contents([('hello', 'Foo\n')])
         out, err = self.run_bzr('diff --diff-options -i --using diff',
                                     retcode=1)
-        self.assertEquals("=== modified file 'hello'\n", out)
-        self.assertEquals('', err)
+        self.assertEqual("=== modified file 'hello'\n", out)
+        self.assertEqual('', err)
 
 
 class TestDiffOutput(DiffBase):
@@ -421,4 +421,4 @@ class TestDiffOutput(DiffBase):
         self.make_example_branch()
         self.build_tree_contents([('hello', 'hello world!\n')])
         output = self.run_bzr_subprocess('diff', retcode=1)[0]
-        self.assert_('\n+hello world!\n' in output)
+        self.assertTrue('\n+hello world!\n' in output)

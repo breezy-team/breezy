@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1035,7 +1035,7 @@ class TestControlDir(TestCaseWithControlDir):
         # network name to use - it's possible that this may somehow have got
         # in through an unisolated test though - see
         # <https://bugs.launchpad.net/bzr/+bug/504102>
-        self.assertEquals(getattr(self.bzrdir_format,
+        self.assertEqual(getattr(self.bzrdir_format,
             '_network_name', None),
             None)
         # supported formats must be able to init and open
@@ -1214,7 +1214,7 @@ class TestControlDir(TestCaseWithControlDir):
             raise TestNotApplicable("format does not support "
                 "append_revisions_only setting")
         self.assertIsInstance(made_branch, bzrlib.branch.Branch)
-        self.assertEquals(True, made_branch.get_append_revisions_only())
+        self.assertEqual(True, made_branch.get_append_revisions_only())
         self.assertEqual(made_control, made_branch.bzrdir)
 
     def test_open_branch(self):
@@ -1240,14 +1240,14 @@ class TestControlDir(TestCaseWithControlDir):
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch()
         branches = made_control.list_branches()
-        self.assertEquals(1, len(branches))
-        self.assertEquals(made_branch.base, branches[0].base)
+        self.assertEqual(1, len(branches))
+        self.assertEqual(made_branch.base, branches[0].base)
         try:
             made_control.destroy_branch()
         except errors.UnsupportedOperation:
             pass # Not all bzrdirs support destroying directories
         else:
-            self.assertEquals([], made_control.list_branches())
+            self.assertEqual([], made_control.list_branches())
 
     def test_get_branches(self):
         repo = self.make_repository('branch-1')
@@ -1384,9 +1384,9 @@ class TestControlDir(TestCaseWithControlDir):
             raise TestSkipped("Can't initialize %r on transport %r"
                               % (self.bzrdir_format, t))
         dir = controldir.ControlDir.open(t.base+",branch=foo")
-        self.assertEquals({"branch": "foo"},
+        self.assertEqual({"branch": "foo"},
             dir.user_transport.get_segment_parameters())
-        self.assertEquals("foo", dir._get_selected_branch())
+        self.assertEqual("foo", dir._get_selected_branch())
 
     def test_get_selected_branch_none_selected(self):
         # _get_selected_branch defaults to None
@@ -1563,10 +1563,10 @@ class TestControlDir(TestCaseWithControlDir):
              ((dir_relpath2, _), entries2)) in izip(
                 osutils.walkdirs(old_path),
                 osutils.walkdirs(new_path)):
-            self.assertEquals(dir_relpath1, dir_relpath2)
+            self.assertEqual(dir_relpath1, dir_relpath2)
             for f1, f2 in zip(entries1, entries2):
-                self.assertEquals(f1[0], f2[0])
-                self.assertEquals(f1[2], f2[2])
+                self.assertEqual(f1[0], f2[0])
+                self.assertEqual(f1[2], f2[2])
                 if f1[2] == "file":
                     osutils.compare_files(open(f1[4]), open(f2[4]))
 

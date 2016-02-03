@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Canonical Ltd
+# Copyright (C) 2011, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -167,7 +167,7 @@ class TestRepository(TestCaseWithRepository):
         repo.commit_write_group()
         repo.unlock()
         repo.lock_read()
-        self.assertEquals(inv_sha1, repo.get_revision('A').inventory_sha1)
+        self.assertEqual(inv_sha1, repo.get_revision('A').inventory_sha1)
         repo.unlock()
 
     def test_install_revisions(self):

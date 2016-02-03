@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,15 +29,15 @@ class TestBranch(TestCaseWithConnectionHookedTransport):
     def test_branch_remote_local(self):
         cmd = cmd_branch()
         cmd.run(self.get_url('branch'), 'local')
-        self.assertEquals(1, len(self.connections))
+        self.assertEqual(1, len(self.connections))
 
     def test_branch_local_remote(self):
         cmd = cmd_branch()
         cmd.run('branch', self.get_url('remote'))
-        self.assertEquals(1, len(self.connections))
+        self.assertEqual(1, len(self.connections))
 
     def test_branch_remote_remote(self):
         cmd = cmd_branch()
         cmd.run(self.get_url('branch'), self.get_url('remote'))
-        self.assertEquals(2, len(self.connections))
+        self.assertEqual(2, len(self.connections))
 

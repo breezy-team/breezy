@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2011 Canonical Ltd
+# Copyright (C) 2007-2012, 2016 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -88,11 +88,11 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.assertIsDirectory('.bzr/checkout', t)
         self.assertIsDirectory('.bzr/checkout/lock', t)
         our_lock = LockDir(t, '.bzr/checkout/lock')
-        self.assertEquals(our_lock.peek(), None)
+        self.assertEqual(our_lock.peek(), None)
         tree.lock_write()
         self.assertTrue(our_lock.peek())
         tree.unlock()
-        self.assertEquals(our_lock.peek(), None)
+        self.assertEqual(our_lock.peek(), None)
 
     def make_workingtree(self, relpath=''):
         url = self.get_url(relpath)

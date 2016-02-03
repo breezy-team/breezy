@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009, 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -54,11 +54,11 @@ class TestRevisionIdToRevno(TestCaseWithBranch):
         # allow both NoSuchRevision and GhostRevisionsHaveNoRevno here.
         self.assertRaises((errors.NoSuchRevision, errors.GhostRevisionsHaveNoRevno),
             tree.branch.revision_id_to_revno, "unknown")
-        self.assertEquals(1, tree.branch.revision_id_to_revno("rev1"))
-        self.assertEquals(2, tree.branch.revision_id_to_revno("rev2"))
+        self.assertEqual(1, tree.branch.revision_id_to_revno("rev1"))
+        self.assertEqual(2, tree.branch.revision_id_to_revno("rev2"))
 
     def test_empty(self):
         branch = self.make_branch('.')
         self.assertRaises(errors.NoSuchRevision,
             branch.revision_id_to_revno, "unknown")
-        self.assertEquals(0, branch.revision_id_to_revno('null:'))
+        self.assertEqual(0, branch.revision_id_to_revno('null:'))

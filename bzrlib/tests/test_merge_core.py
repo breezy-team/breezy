@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -553,7 +553,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         wtb.add('b_file')
         b_rev = wtb.commit('b_revision', allow_pointless=False)
         wta.merge_from_branch(wtb.branch, b_rev, 'null:')
-        self.assert_(os.path.lexists('a/b_file'))
+        self.assertTrue(os.path.lexists('a/b_file'))
         self.assertEqual([b_rev], wta.get_parent_ids()[1:])
 
     def test_merge_unrelated_conflicting(self):
@@ -569,8 +569,8 @@ class FunctionalMergeTest(TestCaseWithTransport):
         wtb.add('file')
         b_rev = wtb.commit('b_revision', allow_pointless=False)
         wta.merge_from_branch(wtb.branch, b_rev, 'null:')
-        self.assert_(os.path.lexists('a/file'))
-        self.assert_(os.path.lexists('a/file.moved'))
+        self.assertTrue(os.path.lexists('a/file'))
+        self.assertTrue(os.path.lexists('a/file.moved'))
         self.assertEqual([b_rev], wta.get_parent_ids()[1:])
 
     def test_merge_deleted_conflicts(self):
@@ -603,7 +603,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.assertFalse(os.path.exists('a/file'))
         b_wt.commit('exec a')
         a_wt.merge_from_branch(b_wt.branch, b_wt.last_revision(), 'null:')
-        self.assert_(os.path.exists('a/file'))
+        self.assertTrue(os.path.exists('a/file'))
 
     def test_merge_swapping_renames(self):
         a_wt = self.make_branch_and_tree('a')
@@ -640,7 +640,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         b_wt.commit('r2')
         a_wt.merge_from_branch(b_wt.branch, b_wt.branch.last_revision(),
                                b_wt.branch.get_rev_id(1))
-        self.assert_(os.path.exists('a/file'))
+        self.assertTrue(os.path.exists('a/file'))
         self.assertEqual(file('a/file').read(),'THAT')
 
     def test_merge_rename_before_create(self):

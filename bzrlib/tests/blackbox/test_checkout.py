@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009-2012 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -188,7 +188,7 @@ class TestCheckout(TestCaseWithTransport):
             working_dir='second')
         # We should always be creating a lighweight checkout for colocated
         # branches.
-        self.assertEquals(
+        self.assertEqual(
             target.open_branch(name='somebranch').base,
             target.get_branch_reference(name=""))
 

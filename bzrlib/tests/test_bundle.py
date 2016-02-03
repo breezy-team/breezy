@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2013, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -545,21 +545,21 @@ class BundleTester(object):
         original_parents = to_tree.get_parent_ids()
         self.assertIs(repository.has_revision(base_rev_id), True)
         for rev in info.real_revisions:
-            self.assert_(not repository.has_revision(rev.revision_id),
-                'Revision {%s} present before applying bundle'
-                % rev.revision_id)
+            self.assertTrue(not repository.has_revision(rev.revision_id),
+                            'Revision {%s} present before applying bundle'
+                            % rev.revision_id)
         merge_bundle(info, to_tree, True, merge.Merge3Merger, False, False)
 
         for rev in info.real_revisions:
-            self.assert_(repository.has_revision(rev.revision_id),
-                'Missing revision {%s} after applying bundle'
-                % rev.revision_id)
+            self.assertTrue(repository.has_revision(rev.revision_id),
+                            'Missing revision {%s} after applying bundle'
+                            % rev.revision_id)
 
-        self.assert_(to_tree.branch.repository.has_revision(info.target))
+        self.assertTrue(to_tree.branch.repository.has_revision(info.target))
         # Do we also want to verify that all the texts have been added?
 
         self.assertEqual(original_parents + [info.target],
-            to_tree.get_parent_ids())
+                         to_tree.get_parent_ids())
 
         rev = info.real_revisions[-1]
         base_tree = self.b1.repository.revision_tree(rev.revision_id)

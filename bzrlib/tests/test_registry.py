@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2008-2011 Canonical Ltd
+# Copyright (C) 2006, 2008-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -344,7 +344,7 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
         a_registry = registry.Registry()
         a_registry.register_lazy('obj', "bzrlib.tests.test_registry",
             'object1')
-        self.assertEquals("bzrlib.tests.test_registry",
+        self.assertEqual("bzrlib.tests.test_registry",
             a_registry._get_module("obj"))
 
     def test_normal_get_module(self):
@@ -352,5 +352,5 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
             """Something"""
         a_registry = registry.Registry()
         a_registry.register("obj", AThing())
-        self.assertEquals("bzrlib.tests.test_registry",
+        self.assertEqual("bzrlib.tests.test_registry",
             a_registry._get_module("obj"))

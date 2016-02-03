@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Canonical Ltd
+# Copyright (C) 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         b2.fetch(b1)
 
         # fetch does not update the last revision
-        self.assertEquals(NULL_REVISION, b2.last_revision())
+        self.assertEqual(NULL_REVISION, b2.last_revision())
 
         rev = b2.repository.get_revision('revision-1')
         tree = b2.repository.revision_tree('revision-1')
@@ -58,9 +58,9 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         b2.fetch(b1, limit=1)
 
         # fetch does not update the last revision
-        self.assertEquals(NULL_REVISION, b2.last_revision())
+        self.assertEqual(NULL_REVISION, b2.last_revision())
 
-        self.assertEquals(
+        self.assertEqual(
             set(['revision-1']),
             b2.repository.has_revisions(
                 ['revision-1', 'revision-2', 'revision-3']))
@@ -76,7 +76,7 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         b2 = self.make_to_branch('b2')
         b2.fetch(b1, limit=1)
 
-        self.assertEquals(
+        self.assertEqual(
             set(['revision-1']),
             b2.repository.has_revisions(
                 ['revision-1', 'revision-2', 'revision-3']))
@@ -87,9 +87,9 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         b2.fetch(b1, limit=1)
 
         # fetch does not update the last revision
-        self.assertEquals(NULL_REVISION, b2.last_revision())
+        self.assertEqual(NULL_REVISION, b2.last_revision())
 
-        self.assertEquals(
+        self.assertEqual(
             set(['revision-1', 'revision-2']),
             b2.repository.has_revisions(
                 ['revision-1', 'revision-2', 'revision-3']))
