@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2012 Canonical Ltd
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -35,34 +35,34 @@ class TestCat(tests.TestCaseWithTransport):
         tree.commit(message='1')
         self.build_tree_contents([('branch/a', 'baz\n')])
 
-        self.assertEquals('foo\n',
+        self.assertEqual('foo\n',
                           self.run_bzr(['cat', 'a'], working_dir='branch')[0])
 
         # On Windows, we used to have a bug where newlines got changed into
         # crlf, whereas cat ought to write out the file exactly as it's
         # recorded (by default.)  That problem can't be reproduced in-process,
         # so we need just one test here that 
-        self.assertEquals('foo\n',
+        self.assertEqual('foo\n',
                           self.run_bzr_subprocess(['cat', 'a'],
                                                   working_dir='branch')[0])
 
         tree.commit(message='2')
-        self.assertEquals(
+        self.assertEqual(
             'baz\n', self.run_bzr(['cat', 'a'], working_dir='branch')[0])
-        self.assertEquals(
+        self.assertEqual(
             'foo\n', self.run_bzr(['cat', 'a', '-r', '1'],
                                   working_dir='branch')[0])
-        self.assertEquals(
+        self.assertEqual(
             'baz\n', self.run_bzr(['cat', 'a', '-r', '-1'],
                                   working_dir='branch')[0])
 
         rev_id = tree.branch.last_revision()
 
-        self.assertEquals(
+        self.assertEqual(
             'baz\n', self.run_bzr(['cat', 'a', '-r', 'revid:%s' % rev_id],
                                   working_dir='branch')[0])
 
-        self.assertEquals('foo\n',
+        self.assertEqual('foo\n',
                           self.run_bzr(['cat', 'branch/a',
                                         '-r', 'revno:1:branch'])[0])
         self.run_bzr(['cat', 'a'], retcode=3)

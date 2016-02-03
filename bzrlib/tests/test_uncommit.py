@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -117,7 +117,7 @@ class TestUncommit(tests.TestCaseWithTransport):
         tree.merge_from_branch(copy.branch)
         tree.branch.tags.set_tag('pointsatmerged', 'merged')
         history.append(tree.commit('merge'))
-        self.assertEquals('merged', tree.branch.tags.lookup_tag('pointsatmerged'))
+        self.assertEqual('merged', tree.branch.tags.lookup_tag('pointsatmerged'))
         self.assertEqual(history[2], tree.last_revision())
         self.assertEqual((3, history[2]), tree.branch.last_revision_info())
         tree.branch.tags.set_tag(u"pointsatexisting", history[1])
@@ -125,7 +125,7 @@ class TestUncommit(tests.TestCaseWithTransport):
         uncommit.uncommit(tree.branch, tree=tree)
         self.assertEqual(history[1], tree.last_revision())
         self.assertEqual((2, history[1]), tree.branch.last_revision_info())
-        self.assertEquals([history[1], 'merged'], tree.get_parent_ids())
+        self.assertEqual([history[1], 'merged'], tree.get_parent_ids())
         self.assertEqual({
             "pointsatexisting": history[1],
             "pointsatmerged": 'merged',

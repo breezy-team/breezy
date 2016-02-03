@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2011 Canonical Ltd
+# Copyright (C) 2008-2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -61,7 +61,7 @@ class TestTransportLog(TestCaseWithMemoryTransport):
 
         result = logging_transport.readv('foo', [(0, 10)])
         self.assertTrue(getattr(result, 'next'))
-        self.assertEquals(list(result),
+        self.assertEqual(list(result),
             [(0, 'abcdefghij')])
 
 

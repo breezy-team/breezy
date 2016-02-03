@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -56,10 +56,10 @@ def fetch_steps(self, br_a, br_b, writable_a):
     repo_b = br_b.repository
     self.assertFalse(repo_b.has_revision(revision_history(br_a)[3]))
     self.assertTrue(repo_b.has_revision(revision_history(br_a)[2]))
-    self.assertEquals(len(revision_history(br_b)), 7)
+    self.assertEqual(len(revision_history(br_b)), 7)
     br_b.fetch(br_a, revision_history(br_a)[2])
     # branch.fetch is not supposed to alter the revision history
-    self.assertEquals(len(revision_history(br_b)), 7)
+    self.assertEqual(len(revision_history(br_b)), 7)
     self.assertFalse(repo_b.has_revision(revision_history(br_a)[3]))
 
     # fetching the next revision up in sample data copies one revision

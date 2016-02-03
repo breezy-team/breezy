@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -101,10 +101,10 @@ class Test_CompatibilityFeature(tests.TestCase):
             caller = sys._getframe(stacklevel)
             reported_file = caller.f_globals['__file__']
             reported_lineno = caller.f_lineno
-            self.assertEquals(__file__, reported_file)
+            self.assertEqual(__file__, reported_file)
             # The call we're tracking occurred the line after we grabbed the
             # lineno.
-            self.assertEquals(self.lineno + 1, reported_lineno)
+            self.assertEqual(self.lineno + 1, reported_lineno)
         self.overrideAttr(symbol_versioning, 'warn', test_caller)
         # Grab the current lineno
         self.lineno = sys._getframe().f_lineno

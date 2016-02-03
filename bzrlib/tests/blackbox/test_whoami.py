@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009-2012 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,26 +30,26 @@ class TestWhoami(tests.TestCaseWithTransport):
 
     def assertWhoAmI(self, expected, *cmd_args, **kwargs):
         out, err = self.run_bzr(('whoami',) + cmd_args, **kwargs)
-        self.assertEquals('', err)
+        self.assertEqual('', err)
         lines = out.splitlines()
         self.assertLength(1, lines)
-        self.assertEquals(expected, lines[0].rstrip())
+        self.assertEqual(expected, lines[0].rstrip())
 
     def test_whoami_no_args_no_conf(self):
         # this should always identify something, if only "john@localhost"
         out = self.run_bzr("whoami")[0]
         self.assertTrue(len(out) > 0)
-        self.assertEquals(1, out.count('@'))
+        self.assertEqual(1, out.count('@'))
 
     def test_whoami_email_no_args(self):
         out = self.run_bzr("whoami --email")[0]
         self.assertTrue(len(out) > 0)
-        self.assertEquals(1, out.count('@'))
+        self.assertEqual(1, out.count('@'))
 
     def test_whoami_email_arg(self):
         # whoami --email is mutually exclusive with any arguments
         out = self.run_bzr("whoami --email 'foo <foo@example.com>'", 3)[0]
-        self.assertEquals("", out)
+        self.assertEqual("", out)
 
     def set_branch_email(self, b, email):
         b.get_config_stack().set('email', email)
@@ -93,7 +93,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         """verify that a warning is displayed if no email is given."""
         self.make_branch_and_tree('.')
         display = self.run_bzr(['whoami', 'Branch Identity'])[1]
-        self.assertEquals('"Branch Identity" does not seem to contain an '
+        self.assertEqual('"Branch Identity" does not seem to contain an '
                           'email address.  This is allowed, but not '
                           'recommended.\n', display)
 
@@ -118,7 +118,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         # Refresh wt as 'whoami' modified it
         wt = wt.bzrdir.open_workingtree()
         c = wt.branch.get_config_stack()
-        self.assertEquals('Changed Identity <changed@identi.ty>',
+        self.assertEqual('Changed Identity <changed@identi.ty>',
                           c.get('email'))
 
     def test_whoami_remote_directory(self):
@@ -134,7 +134,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         # The identity has been set in the branch config (but not the global
         # config)
         c = branch.Branch.open(url).get_config_stack()
-        self.assertEquals('Changed Identity <changed@identi.ty>',
+        self.assertEqual('Changed Identity <changed@identi.ty>',
                           c.get('email'))
         # Ensuring that the value does not come from the bazaar.conf file
         # itself requires some isolation setup

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2010, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -58,12 +58,12 @@ class TestCommands(TestCaseWithTransport):
                          'dir3/', 'dir3/baz'])
         self.run_bzr(['ignore', 'dir1', 'dir2/', 'dir4\\'])
         self.check_file_contents('.bzrignore', 'dir1\ndir2\ndir4\n')
-        self.assertEquals(self.run_bzr('unknowns')[0], 'dir3\n')
+        self.assertEqual(self.run_bzr('unknowns')[0], 'dir3\n')
 
     def test_ignore_patterns(self):
         tree = self.make_branch_and_tree('.')
 
-        self.assertEquals(list(tree.unknowns()), [])
+        self.assertEqual(list(tree.unknowns()), [])
 
         # is_ignored() will now create the user global ignore file
         # if it doesn't exist, so make sure we ignore it in our tests
@@ -71,35 +71,35 @@ class TestCommands(TestCaseWithTransport):
 
         self.build_tree_contents(
             [('foo.tmp', '.tmp files are ignored by default')])
-        self.assertEquals(list(tree.unknowns()), [])
+        self.assertEqual(list(tree.unknowns()), [])
 
         self.build_tree_contents([('foo.c', 'int main() {}')])
-        self.assertEquals(list(tree.unknowns()), ['foo.c'])
+        self.assertEqual(list(tree.unknowns()), ['foo.c'])
 
         tree.add('foo.c')
-        self.assertEquals(list(tree.unknowns()), [])
+        self.assertEqual(list(tree.unknowns()), [])
 
         # 'ignore' works when creating the .bzrignore file
         self.build_tree_contents([('foo.blah', 'blah')])
-        self.assertEquals(list(tree.unknowns()), ['foo.blah'])
+        self.assertEqual(list(tree.unknowns()), ['foo.blah'])
         self.run_bzr('ignore *.blah')
-        self.assertEquals(list(tree.unknowns()), [])
+        self.assertEqual(list(tree.unknowns()), [])
         self.check_file_contents('.bzrignore', '*.blah\n')
 
         # 'ignore' works when then .bzrignore file already exists
         self.build_tree_contents([('garh', 'garh')])
-        self.assertEquals(list(tree.unknowns()), ['garh'])
+        self.assertEqual(list(tree.unknowns()), ['garh'])
         self.run_bzr('ignore garh')
-        self.assertEquals(list(tree.unknowns()), [])
+        self.assertEqual(list(tree.unknowns()), [])
         self.check_file_contents('.bzrignore', '*.blah\ngarh\n')
 
     def test_ignore_multiple_arguments(self):
         """'ignore' works with multiple arguments"""
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a','b','c','d'])
-        self.assertEquals(list(tree.unknowns()), ['a', 'b', 'c', 'd'])
+        self.assertEqual(list(tree.unknowns()), ['a', 'b', 'c', 'd'])
         self.run_bzr('ignore a b c')
-        self.assertEquals(list(tree.unknowns()), ['d'])
+        self.assertEqual(list(tree.unknowns()), ['d'])
         self.check_file_contents('.bzrignore', 'a\nb\nc\n')
 
     def test_ignore_no_arguments(self):

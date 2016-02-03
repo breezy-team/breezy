@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Canonical Ltd
+# Copyright (C) 2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,10 +43,10 @@ class TestFilterTree(tests.TestCaseWithTransport):
 
     def test_get_file_text(self):
         self.make_tree()
-        self.assertEquals(
+        self.assertEqual(
             self.underlying_tree.get_file_text('hello-id'),
             'hello world')
-        self.assertEquals(
+        self.assertEqual(
             self.filter_tree.get_file_text('hello-id'),
             'HELLO WORLD')
 
@@ -55,7 +55,7 @@ class TestFilterTree(tests.TestCaseWithTransport):
         self.make_tree()
         export.export(self.filter_tree, "out.tgz")
         ball = tarfile.open("out.tgz", "r:gz")
-        self.assertEquals(
+        self.assertEqual(
             'HELLO WORLD',
             ball.extractfile('out/hello').read())
 
@@ -63,6 +63,6 @@ class TestFilterTree(tests.TestCaseWithTransport):
         self.make_tree()
         export.export(self.filter_tree, 'out.zip')
         zipf = zipfile.ZipFile('out.zip', 'r')
-        self.assertEquals(
+        self.assertEqual(
             'HELLO WORLD',
             zipf.read('out/hello'))

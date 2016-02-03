@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -346,7 +346,7 @@ class TestOptionDefinitions(TestCase):
             cmd = commands.get_cmd_object(cmd_name)
             for opt_name, opt in sorted(cmd.options().items()):
                 g.append((cmd_name, opt))
-        self.assert_(g)
+        self.assertTrue(g)
         return g
 
     def test_option_grammar(self):
@@ -388,10 +388,10 @@ class TestOptionMisc(TestCase):
     def test_short_name(self):
         registry = controldir.ControlDirFormatRegistry()
         opt = option.RegistryOption('format', help='', registry=registry)
-        self.assertEquals(None, opt.short_name())
+        self.assertEqual(None, opt.short_name())
         opt = option.RegistryOption('format', short_name='F', help='',
             registry=registry)
-        self.assertEquals('F', opt.short_name())
+        self.assertEqual('F', opt.short_name())
 
     def test_option_custom_help(self):
         the_opt = option.Option.OPTIONS['help']

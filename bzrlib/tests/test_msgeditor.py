@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -351,7 +351,7 @@ if len(sys.argv) == 2:
         msgeditor.hooks.install_named_hook("set_commit_message",
                 lambda commit_obj, existing_message: "save me some typing\n", None)
         commit_obj = commit.Commit()
-        self.assertEquals("save me some typing\n",
+        self.assertEqual("save me some typing\n",
             msgeditor.set_commit_message(commit_obj))
 
     def test_generate_commit_message_template_no_hooks(self):
@@ -363,7 +363,7 @@ if len(sys.argv) == 2:
         msgeditor.hooks.install_named_hook("commit_message_template",
                 lambda commit_obj, msg: "save me some typing\n", None)
         commit_obj = commit.Commit()
-        self.assertEquals("save me some typing\n",
+        self.assertEqual("save me some typing\n",
             msgeditor.generate_commit_message_template(commit_obj))
 
 

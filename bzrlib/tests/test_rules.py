@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2011 Canonical Ltd
+# Copyright (C) 2008-2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -41,59 +41,59 @@ class TestIniBasedRulesSearcher(tests.TestCase):
 
     def test_get_items_file_missing(self):
         rs = self.make_searcher(None)
-        self.assertEquals((), rs.get_items('a.txt'))
-        self.assertEquals((), rs.get_selected_items('a.txt', ['foo']))
-        self.assertEquals(None, rs.get_single_value('a.txt', 'foo'))
+        self.assertEqual((), rs.get_items('a.txt'))
+        self.assertEqual((), rs.get_selected_items('a.txt', ['foo']))
+        self.assertEqual(None, rs.get_single_value('a.txt', 'foo'))
 
     def test_get_items_file_empty(self):
         rs = self.make_searcher("")
-        self.assertEquals((), rs.get_items('a.txt'))
-        self.assertEquals((), rs.get_selected_items('a.txt', ['foo']))
-        self.assertEquals(None, rs.get_single_value('a.txt', 'foo'))
+        self.assertEqual((), rs.get_items('a.txt'))
+        self.assertEqual((), rs.get_selected_items('a.txt', ['foo']))
+        self.assertEqual(None, rs.get_single_value('a.txt', 'foo'))
 
     def test_get_items_from_extension_match(self):
         rs = self.make_searcher("[name *.txt]\nfoo=bar\na=True\n")
-        self.assertEquals((), rs.get_items('a.py'))
-        self.assertEquals((('foo', 'bar'), ('a', 'True')),
+        self.assertEqual((), rs.get_items('a.py'))
+        self.assertEqual((('foo', 'bar'), ('a', 'True')),
             rs.get_items('a.txt'))
-        self.assertEquals((('foo', 'bar'), ('a', 'True')),
+        self.assertEqual((('foo', 'bar'), ('a', 'True')),
             rs.get_items('dir/a.txt'))
-        self.assertEquals((('foo', 'bar'),),
+        self.assertEqual((('foo', 'bar'),),
             rs.get_selected_items('a.txt', ['foo']))
-        self.assertEquals('bar', rs.get_single_value('a.txt', 'foo'))
+        self.assertEqual('bar', rs.get_single_value('a.txt', 'foo'))
 
     def test_get_items_from_multiple_glob_match(self):
         rs = self.make_searcher(
             "[name *.txt *.py 'x x' \"y y\"]\nfoo=bar\na=True\n")
-        self.assertEquals((), rs.get_items('NEWS'))
-        self.assertEquals((('foo', 'bar'), ('a', 'True')),
+        self.assertEqual((), rs.get_items('NEWS'))
+        self.assertEqual((('foo', 'bar'), ('a', 'True')),
             rs.get_items('a.py'))
-        self.assertEquals((('foo', 'bar'), ('a', 'True')),
+        self.assertEqual((('foo', 'bar'), ('a', 'True')),
             rs.get_items('a.txt'))
-        self.assertEquals((('foo', 'bar'), ('a', 'True')),
+        self.assertEqual((('foo', 'bar'), ('a', 'True')),
             rs.get_items('x x'))
-        self.assertEquals((('foo', 'bar'), ('a', 'True')),
+        self.assertEqual((('foo', 'bar'), ('a', 'True')),
             rs.get_items('y y'))
-        self.assertEquals('bar', rs.get_single_value('a.txt', 'foo'))
+        self.assertEqual('bar', rs.get_single_value('a.txt', 'foo'))
 
     def test_get_items_pathname_match(self):
         rs = self.make_searcher("[name ./a.txt]\nfoo=baz\n")
-        self.assertEquals((('foo', 'baz'),),
+        self.assertEqual((('foo', 'baz'),),
             rs.get_items('a.txt'))
-        self.assertEquals('baz', rs.get_single_value('a.txt', 'foo'))
-        self.assertEquals((), rs.get_items('dir/a.txt'))
-        self.assertEquals(None, rs.get_single_value('dir/a.txt', 'foo'))
+        self.assertEqual('baz', rs.get_single_value('a.txt', 'foo'))
+        self.assertEqual((), rs.get_items('dir/a.txt'))
+        self.assertEqual(None, rs.get_single_value('dir/a.txt', 'foo'))
 
     def test_get_items_match_first(self):
         rs = self.make_searcher(
             "[name ./a.txt]\nfoo=baz\n"
             "[name *.txt]\nfoo=bar\na=True\n")
-        self.assertEquals((('foo', 'baz'),),
+        self.assertEqual((('foo', 'baz'),),
             rs.get_items('a.txt'))
-        self.assertEquals('baz', rs.get_single_value('a.txt', 'foo'))
-        self.assertEquals((('foo', 'bar'), ('a', 'True')),
+        self.assertEqual('baz', rs.get_single_value('a.txt', 'foo'))
+        self.assertEqual((('foo', 'bar'), ('a', 'True')),
             rs.get_items('dir/a.txt'))
-        self.assertEquals('bar', rs.get_single_value('dir/a.txt', 'foo'))
+        self.assertEqual('bar', rs.get_single_value('dir/a.txt', 'foo'))
 
 
 class TestStackedRulesSearcher(tests.TestCase):
@@ -113,14 +113,14 @@ class TestStackedRulesSearcher(tests.TestCase):
         rs = self.make_searcher(
             "[name ./a.txt]\nfoo=baz\n",
             "[name *.txt]\nfoo=bar\na=True\n")
-        self.assertEquals((('foo', 'baz'),),
+        self.assertEqual((('foo', 'baz'),),
             rs.get_items('a.txt'))
-        self.assertEquals('baz', rs.get_single_value('a.txt', 'foo'))
-        self.assertEquals(None, rs.get_single_value('a.txt', 'a'))
-        self.assertEquals((('foo', 'bar'), ('a', 'True')),
+        self.assertEqual('baz', rs.get_single_value('a.txt', 'foo'))
+        self.assertEqual(None, rs.get_single_value('a.txt', 'a'))
+        self.assertEqual((('foo', 'bar'), ('a', 'True')),
             rs.get_items('dir/a.txt'))
-        self.assertEquals('bar', rs.get_single_value('dir/a.txt', 'foo'))
-        self.assertEquals('True', rs.get_single_value('dir/a.txt', 'a'))
+        self.assertEqual('bar', rs.get_single_value('dir/a.txt', 'foo'))
+        self.assertEqual('True', rs.get_single_value('dir/a.txt', 'a'))
 
 
 class TestRulesPath(tests.TestCase):

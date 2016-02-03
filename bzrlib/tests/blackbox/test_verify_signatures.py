@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2013, 2016 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -51,7 +51,7 @@ class TestVerifySignatures(tests.TestCaseWithTransport):
         self.monkey_patch_gpg()
         self.run_bzr('sign-my-commits')
         out = self.run_bzr('verify-signatures', retcode=1)
-        self.assertEquals(('4 commits with valid signatures\n'
+        self.assertEqual(('4 commits with valid signatures\n'
                            '0 commits with key now expired\n'
                            '0 commits with unknown keys\n'
                            '0 commits not valid\n'
@@ -63,7 +63,7 @@ class TestVerifySignatures(tests.TestCaseWithTransport):
         self.run_bzr('sign-my-commits')
         out = self.run_bzr(['verify-signatures', '--acceptable-keys=foo,bar'],
                             retcode=1)
-        self.assertEquals(('4 commits with valid signatures\n'
+        self.assertEqual(('4 commits with valid signatures\n'
                            '0 commits with key now expired\n'
                            '0 commits with unknown keys\n'
                            '0 commits not valid\n'
@@ -74,13 +74,14 @@ class TestVerifySignatures(tests.TestCaseWithTransport):
         self.monkey_patch_gpg()
         self.run_bzr('sign-my-commits')
         out = self.run_bzr('verify-signatures --verbose', retcode=1)
-        self.assertEquals(('4 commits with valid signatures\n'
-                           '  None signed 4 commits\n'
-                           '0 commits with key now expired\n'
-                           '0 commits with unknown keys\n'
-                           '0 commits not valid\n'
-                           '1 commit not signed\n'
-                           '  1 commit by author Alternate <alt@foo.com>\n', ''), out)
+        self.assertEqual(
+            ('4 commits with valid signatures\n'
+             '  None signed 4 commits\n'
+             '0 commits with key now expired\n'
+             '0 commits with unknown keys\n'
+             '0 commits not valid\n'
+             '1 commit not signed\n'
+             '  1 commit by author Alternate <alt@foo.com>\n', ''), out)
 
     def test_verify_signatures_verbose_all_valid(self):
         wt = self.setup_tree()
@@ -88,8 +89,8 @@ class TestVerifySignatures(tests.TestCaseWithTransport):
         self.run_bzr('sign-my-commits')
         self.run_bzr(['sign-my-commits', '.', 'Alternate <alt@foo.com>'])
         out = self.run_bzr('verify-signatures --verbose')
-        self.assertEquals(('All commits signed with verifiable keys\n'
-                           '  None signed 5 commits\n', ''), out)
+        self.assertEqual(('All commits signed with verifiable keys\n'
+                          '  None signed 5 commits\n', ''), out)
 
 
 class TestSmartServerVerifySignatures(tests.TestCaseWithTransport):

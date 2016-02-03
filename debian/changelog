@@ -1,3 +1,9 @@
+bzr (2.7.0-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Vincent Ladeuil <v.ladeuil+lp@free.fr>  Wed, 03 Feb 2016 21:05:25 +0100
+
 bzr (2.7.0~bzr6614-1) unstable; urgency=medium
 
   * New upstream snapshot.

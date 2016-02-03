@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2012 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -51,11 +51,11 @@ class TestInfo(tests.TestCaseWithTransport):
     def test_info_empty_controldir(self):
         self.make_bzrdir('ctrl')
         out, err = self.run_bzr('info ctrl')
-        self.assertEquals(out,
+        self.assertEqual(out,
             'Empty control directory (format: 2a or pack-0.92)\n'
             'Location:\n'
             '  control directory: ctrl\n')
-        self.assertEquals(err, '')
+        self.assertEqual(err, '')
 
     def test_info_empty_controldir_verbose(self):
         self.make_bzrdir('ctrl')
@@ -68,19 +68,19 @@ class TestInfo(tests.TestCaseWithTransport):
             '       control: Meta directory format 1\n\n'
             'Control directory:\n'
             '         0 branches\n')
-        self.assertEquals(err, '')
+        self.assertEqual(err, '')
 
     def test_info_dangling_branch_reference(self):
         br = self.make_branch('target')
         br.create_checkout('from', lightweight=True)
         shutil.rmtree('target')
         out, err = self.run_bzr('info from')
-        self.assertEquals(out,
+        self.assertEqual(out,
             'Dangling branch reference (format: 2a or pack-0.92)\n'
             'Location:\n'
             '   control directory: from\n'
             '  checkout of branch: target\n')
-        self.assertEquals(err, '')
+        self.assertEqual(err, '')
 
     def test_info_standalone(self):
         transport = self.get_transport()

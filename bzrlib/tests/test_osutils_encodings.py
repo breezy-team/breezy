@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -144,7 +144,7 @@ class TestTerminalEncoding(TestCase):
         self.assertEqual('latin-1', osutils.get_terminal_encoding())
 
         # check stderr
-        self.assertEquals('', sys.stderr.getvalue())
+        self.assertEqual('', sys.stderr.getvalue())
 
     def test_terminal_cp_unknown(self):
         # test against really unknown encoding
@@ -158,7 +158,7 @@ class TestTerminalEncoding(TestCase):
         self.assertEqual('latin-1', osutils.get_terminal_encoding())
 
         # check stderr
-        self.assertEquals('bzr: warning: unknown terminal encoding cp-unknown.\n'
+        self.assertEqual('bzr: warning: unknown terminal encoding cp-unknown.\n'
                           '  Using encoding latin-1 instead.\n',
                           sys.stderr.getvalue())
 
@@ -179,24 +179,24 @@ class TestUserEncoding(TestCase):
     def test_get_user_encoding(self):
         self._encoding = 'user_encoding'
         fake_codec.add('user_encoding')
-        self.assertEquals('iso8859-1', # fake_codec maps to latin-1
+        self.assertEqual('iso8859-1', # fake_codec maps to latin-1
                           osutils.get_user_encoding())
-        self.assertEquals('', sys.stderr.getvalue())
+        self.assertEqual('', sys.stderr.getvalue())
 
     def test_user_cp0(self):
         self._encoding = 'cp0'
-        self.assertEquals('ascii', osutils.get_user_encoding())
-        self.assertEquals('', sys.stderr.getvalue())
+        self.assertEqual('ascii', osutils.get_user_encoding())
+        self.assertEqual('', sys.stderr.getvalue())
 
     def test_user_cp_unknown(self):
         self._encoding = 'cp-unknown'
-        self.assertEquals('ascii', osutils.get_user_encoding())
-        self.assertEquals('bzr: warning: unknown encoding cp-unknown.'
+        self.assertEqual('ascii', osutils.get_user_encoding())
+        self.assertEqual('bzr: warning: unknown encoding cp-unknown.'
                           ' Continuing with ascii encoding.\n',
                           sys.stderr.getvalue())
 
     def test_user_empty(self):
         """Running bzr from a vim script gives '' for a preferred locale"""
         self._encoding = ''
-        self.assertEquals('ascii', osutils.get_user_encoding())
-        self.assertEquals('', sys.stderr.getvalue())
+        self.assertEqual('ascii', osutils.get_user_encoding())
+        self.assertEqual('', sys.stderr.getvalue())

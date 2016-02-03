@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011 Canonical Ltd
+# Copyright (C) 2005-2013, 2015, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1369,6 +1369,8 @@ class TestCase(testtools.TestCase):
             % (message,
                pprint.pformat(a), pprint.pformat(b)))
 
+    # FIXME: This is deprecated in unittest2 but plugins may still use it so we
+    # need a deprecation period for them -- vila 2016-02-01
     assertEquals = assertEqual
 
     def assertEqualDiff(self, a, b, message=None):
@@ -1377,7 +1379,7 @@ class TestCase(testtools.TestCase):
         This is intended for use with multi-line strings where it can
         be hard to find the differences by eye.
         """
-        # TODO: perhaps override assertEquals to call this for strings?
+        # TODO: perhaps override assertEqual to call this for strings?
         if a == b:
             return
         if message is None:
@@ -2050,7 +2052,7 @@ class TestCase(testtools.TestCase):
         if err:
             self.log('errors:\n%r', err)
         if retcode is not None:
-            self.assertEquals(retcode, result,
+            self.assertEqual(retcode, result,
                               message='Unexpected return code')
         return result, out, err
 

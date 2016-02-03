@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011, 2016 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -80,7 +80,7 @@ class TestCaseWithInterBranch(TestCaseWithTransport):
 
     def make_from_branch_and_memory_tree(self, relpath):
         """Create a branch on the default transport and a MemoryTree for it."""
-        self.assertEquals(
+        self.assertEqual(
             self.branch_format_from._matchingbzrdir.get_branch_format(),
             self.branch_format_from)
         return self.make_branch_and_memory_tree(
@@ -88,28 +88,28 @@ class TestCaseWithInterBranch(TestCaseWithTransport):
 
     def make_from_branch_and_tree(self, relpath):
         """Create a branch on the default transport and a working tree for it."""
-        self.assertEquals(
+        self.assertEqual(
             self.branch_format_from._matchingbzrdir.get_branch_format(),
             self.branch_format_from)
         return self.make_branch_and_tree(relpath,
             format=self.branch_format_from._matchingbzrdir)
 
     def make_from_branch_builder(self, relpath):
-        self.assertEquals(
+        self.assertEqual(
             self.branch_format_from._matchingbzrdir.get_branch_format(),
             self.branch_format_from)
         return branchbuilder.BranchBuilder(self.get_transport(relpath),
             format=self.branch_format_from._matchingbzrdir)
 
     def make_to_branch(self, relpath):
-        self.assertEquals(
+        self.assertEqual(
             self.branch_format_to._matchingbzrdir.get_branch_format(),
             self.branch_format_to)
         return self.make_branch(relpath, format=self.branch_format_to._matchingbzrdir)
 
     def make_to_branch_and_memory_tree(self, relpath):
         """Create a branch on the default transport and a MemoryTree for it."""
-        self.assertEquals(
+        self.assertEqual(
             self.branch_format_to._matchingbzrdir.get_branch_format(),
             self.branch_format_to)
         return self.make_branch_and_memory_tree(
@@ -117,7 +117,7 @@ class TestCaseWithInterBranch(TestCaseWithTransport):
 
     def make_to_branch_and_tree(self, relpath):
         """Create a branch on the default transport and a working tree for it."""
-        self.assertEquals(
+        self.assertEqual(
             self.branch_format_to._matchingbzrdir.get_branch_format(),
             self.branch_format_to)
         return self.make_branch_and_tree(relpath,
@@ -140,14 +140,14 @@ class TestCaseWithInterBranch(TestCaseWithTransport):
     def sprout_to(self, origdir, to_url):
         """Sprout a bzrdir, using to_format for the new branch."""
         wt = self._sprout(origdir, to_url, self.branch_format_to._matchingbzrdir)
-        self.assertEquals(wt.branch._format, self.branch_format_to)
+        self.assertEqual(wt.branch._format, self.branch_format_to)
         return wt.bzrdir
 
     def sprout_from(self, origdir, to_url):
         """Sprout a bzrdir, using from_format for the new bzrdir."""
         wt = self._sprout(origdir, to_url,
             self.branch_format_from._matchingbzrdir)
-        self.assertEquals(wt.branch._format, self.branch_format_from)
+        self.assertEqual(wt.branch._format, self.branch_format_from)
         return wt.bzrdir
 
 

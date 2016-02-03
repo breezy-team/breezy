@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005-2009, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ class TopoSortTests(TestCase):
 
     def assertSortAndIterate(self, graph, result_list):
         """Check that sorting and iter_topo_order on graph works."""
-        self.assertEquals(result_list, topo_sort(graph))
+        self.assertEqual(result_list, topo_sort(graph))
         self.assertEqual(result_list,
                          list(TopoSorter(graph).iter_topo_order()))
 

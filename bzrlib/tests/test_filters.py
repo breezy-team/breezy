@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -58,7 +58,7 @@ class TestContentFilterContext(TestCase):
 
     def test_filter_context_with_path(self):
         ctx = ContentFilterContext('foo/bar')
-        self.assertEquals('foo/bar', ctx.relpath())
+        self.assertEqual('foo/bar', ctx.relpath())
 
 
 class TestFilteredInput(TestCase):

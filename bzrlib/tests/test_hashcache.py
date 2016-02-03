@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2009, 2011 Canonical Ltd
+# Copyright (C) 2005-2011, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -54,45 +54,45 @@ class TestHashCache(TestCaseInTempDir):
         """Get correct hash from an empty hashcache"""
         hc = self.make_hashcache()
         self.build_tree_contents([('foo', 'hello')])
-        self.assertEquals(hc.get_sha1('foo'),
+        self.assertEqual(hc.get_sha1('foo'),
                           'aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d')
-        self.assertEquals(hc.miss_count, 1)
-        self.assertEquals(hc.hit_count, 0)
+        self.assertEqual(hc.miss_count, 1)
+        self.assertEqual(hc.hit_count, 0)
 
     def test_hashcache_new_file(self):
         hc = self.make_hashcache()
         self.build_tree_contents([('foo', 'goodbye')])
         # now read without pausing; it may not be possible to cache it as its
         # so new
-        self.assertEquals(hc.get_sha1('foo'), sha1('goodbye'))
+        self.assertEqual(hc.get_sha1('foo'), sha1('goodbye'))
 
     def test_hashcache_nonexistent_file(self):
         hc = self.make_hashcache()
-        self.assertEquals(hc.get_sha1('no-name-yet'), None)
+        self.assertEqual(hc.get_sha1('no-name-yet'), None)
 
     def test_hashcache_replaced_file(self):
         hc = self.make_hashcache()
         self.build_tree_contents([('foo', 'goodbye')])
-        self.assertEquals(hc.get_sha1('foo'), sha1('goodbye'))
+        self.assertEqual(hc.get_sha1('foo'), sha1('goodbye'))
         os.remove('foo')
-        self.assertEquals(hc.get_sha1('foo'), None)
+        self.assertEqual(hc.get_sha1('foo'), None)
         self.build_tree_contents([('foo', 'new content')])
-        self.assertEquals(hc.get_sha1('foo'), sha1('new content'))
+        self.assertEqual(hc.get_sha1('foo'), sha1('new content'))
 
     def test_hashcache_not_file(self):
         hc = self.make_hashcache()
         self.build_tree(['subdir/'])
-        self.assertEquals(hc.get_sha1('subdir'), None)
+        self.assertEqual(hc.get_sha1('subdir'), None)
 
     def test_hashcache_load(self):
         hc = self.make_hashcache()
         self.build_tree_contents([('foo', 'contents')])
         pause()
-        self.assertEquals(hc.get_sha1('foo'), sha1('contents'))
+        self.assertEqual(hc.get_sha1('foo'), sha1('contents'))
         hc.write()
         hc = self.reopen_hashcache()
-        self.assertEquals(hc.get_sha1('foo'), sha1('contents'))
-        self.assertEquals(hc.hit_count, 1)
+        self.assertEqual(hc.get_sha1('foo'), sha1('contents'))
+        self.assertEqual(hc.hit_count, 1)
 
     def test_hammer_hashcache(self):
         hc = self.make_hashcache()
@@ -108,7 +108,7 @@ class TestHashCache(TestCaseInTempDir):
             self.log("iteration %d: %r -> %r",
                      i, last_content, last_sha1)
             got_sha1 = hc.get_sha1('foo')
-            self.assertEquals(got_sha1, last_sha1)
+            self.assertEqual(got_sha1, last_sha1)
             hc.write()
             hc = self.reopen_hashcache()
 
@@ -173,13 +173,13 @@ class TestHashCacheFakeFilesystem(TestCaseInTempDir):
         """A new file gives the right sha1 but misses"""
         hc = self.make_hashcache()
         hc.put_file('foo', 'hello')
-        self.assertEquals(hc.get_sha1('foo'), sha1('hello'))
-        self.assertEquals(hc.miss_count, 1)
-        self.assertEquals(hc.hit_count, 0)
+        self.assertEqual(hc.get_sha1('foo'), sha1('hello'))
+        self.assertEqual(hc.miss_count, 1)
+        self.assertEqual(hc.hit_count, 0)
         # if we try again it's still too new;
-        self.assertEquals(hc.get_sha1('foo'), sha1('hello'))
-        self.assertEquals(hc.miss_count, 2)
-        self.assertEquals(hc.hit_count, 0)
+        self.assertEqual(hc.get_sha1('foo'), sha1('hello'))
+        self.assertEqual(hc.miss_count, 2)
+        self.assertEqual(hc.hit_count, 0)
 
     def test_hashcache_old_file(self):
         """An old file gives the right sha1 and hits"""
@@ -187,18 +187,18 @@ class TestHashCacheFakeFilesystem(TestCaseInTempDir):
         hc.put_file('foo', 'hello')
         hc.pretend_to_sleep(20)
         # file is new; should get the correct hash but miss
-        self.assertEquals(hc.get_sha1('foo'), sha1('hello'))
-        self.assertEquals(hc.miss_count, 1)
-        self.assertEquals(hc.hit_count, 0)
+        self.assertEqual(hc.get_sha1('foo'), sha1('hello'))
+        self.assertEqual(hc.miss_count, 1)
+        self.assertEqual(hc.hit_count, 0)
         # and can now be hit
-        self.assertEquals(hc.get_sha1('foo'), sha1('hello'))
-        self.assertEquals(hc.miss_count, 1)
-        self.assertEquals(hc.hit_count, 1)
+        self.assertEqual(hc.get_sha1('foo'), sha1('hello'))
+        self.assertEqual(hc.miss_count, 1)
+        self.assertEqual(hc.hit_count, 1)
         hc.pretend_to_sleep(3)
         # and again
-        self.assertEquals(hc.get_sha1('foo'), sha1('hello'))
-        self.assertEquals(hc.miss_count, 1)
-        self.assertEquals(hc.hit_count, 2)
+        self.assertEqual(hc.get_sha1('foo'), sha1('hello'))
+        self.assertEqual(hc.miss_count, 1)
+        self.assertEqual(hc.hit_count, 2)
 
     def test_hashcache_invalidates(self):
         hc = self.make_hashcache()
@@ -206,6 +206,6 @@ class TestHashCacheFakeFilesystem(TestCaseInTempDir):
         hc.pretend_to_sleep(20)
         hc.get_sha1('foo')
         hc.put_file('foo', 'h1llo')
-        self.assertEquals(hc.get_sha1('foo'), sha1('h1llo'))
-        self.assertEquals(hc.miss_count, 2)
-        self.assertEquals(hc.hit_count, 0)
+        self.assertEqual(hc.get_sha1('foo'), sha1('h1llo'))
+        self.assertEqual(hc.miss_count, 2)
+        self.assertEqual(hc.hit_count, 0)

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #           and others
 #
@@ -238,7 +238,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt'])
         tree.add('hello.txt')
-        self.assertEquals(list(tree.unknowns()),
+        self.assertEqual(list(tree.unknowns()),
                           [])
 
     def test_unknowns(self):
@@ -247,7 +247,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                          'hello.txt.~1~'])
         self.build_tree_contents([('.bzrignore', '*.~*\n')])
         tree.add('.bzrignore')
-        self.assertEquals(list(tree.unknowns()),
+        self.assertEqual(list(tree.unknowns()),
                           ['hello.txt'])
 
     def test_initialize(self):
@@ -681,11 +681,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             tree.add(['somefile'], ['file-id'])
             tree.set_merge_modified(d)
             mm = tree.merge_modified()
-            self.assertEquals(mm, d)
+            self.assertEqual(mm, d)
         finally:
             tree.unlock()
         mm = tree.merge_modified()
-        self.assertEquals(mm, d)
+        self.assertEqual(mm, d)
 
     def test_conflicts(self):
         from bzrlib.tests.test_conflicts import example_conflicts
@@ -1216,7 +1216,7 @@ class TestWorthSavingLimit(TestCaseWithWorkingTree):
         self.overrideAttr(trace, 'warning', warning)
         self.assertEqual(10, wt._worth_saving_limit())
         self.assertLength(1, warnings)
-        self.assertEquals('Value "a" is not valid for'
+        self.assertEqual('Value "a" is not valid for'
                           ' "bzr.workingtree.worth_saving_limit"',
                           warnings[0])
 

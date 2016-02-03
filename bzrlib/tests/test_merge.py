@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2012 Canonical Ltd
+# Copyright (C) 2005-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -520,7 +520,7 @@ class TestMerge(TestCaseWithTransport):
         merger.merge_type = _mod_merge.Merge3Merger
         conflict_count = merger.do_merge()
         self.assertEqual(0, conflict_count)
-        self.assertEquals(set([old_root_id]), tree.all_file_ids())
+        self.assertEqual(set([old_root_id]), tree.all_file_ids())
         tree.set_parent_ids([])
 
     def test_merge_add_into_deleted_root(self):

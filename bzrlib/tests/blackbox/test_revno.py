@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2011, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,21 +34,21 @@ class TestRevno(tests.TestCaseWithTransport):
         os.mkdir('a')
         os.chdir('a')
         bzr('init')
-        self.assertEquals(int(bzr('revno')), 0)
+        self.assertEqual(int(bzr('revno')), 0)
 
         with open('foo', 'wb') as f: f.write('foo\n')
         bzr('add foo')
         bzr('commit -m foo')
-        self.assertEquals(int(bzr('revno')), 1)
+        self.assertEqual(int(bzr('revno')), 1)
 
         os.mkdir('baz')
         bzr('add baz')
         bzr('commit -m baz')
-        self.assertEquals(int(bzr('revno')), 2)
+        self.assertEqual(int(bzr('revno')), 2)
 
         os.chdir('..')
-        self.assertEquals(int(bzr('revno a')), 2)
-        self.assertEquals(int(bzr('revno a/baz')), 2)
+        self.assertEqual(int(bzr('revno a')), 2)
+        self.assertEqual(int(bzr('revno a/baz')), 2)
 
     def test_revno_tree(self):
         # Make branch and checkout

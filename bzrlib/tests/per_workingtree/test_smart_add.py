@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2007, 2009-2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -102,7 +102,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         self.overrideAttr(trace, 'warning', warning)
         wt.smart_add((u".",))
         self.assertIs(wt.path2id("nested"), None)
-        self.assertEquals(
+        self.assertEqual(
             ['skipping nested tree %r' % nested_wt.basedir], warnings)
 
     def test_add_dot_from_subdir(self):

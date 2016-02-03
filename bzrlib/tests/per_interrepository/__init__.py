@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011, 2016 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
 # -*- coding: utf-8 -*-
 #
@@ -160,7 +160,7 @@ class TestCaseWithInterRepository(TestCaseWithControlDir):
             self.extra_setup(self)
 
     def get_default_format(self):
-        self.assertEquals(
+        self.assertEqual(
             self.repository_format._matchingbzrdir.repository_format,
             self.repository_format)
         return self.repository_format._matchingbzrdir

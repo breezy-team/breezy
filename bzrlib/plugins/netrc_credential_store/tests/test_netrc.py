@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2013, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -61,12 +61,12 @@ default login anonymous password joe@home
     def test_matching_user(self):
         cs = self._get_netrc_cs()
         password = cs.decode_password(dict(host='host', user='joe'))
-        self.assertEquals('secret', password)
+        self.assertEqual('secret', password)
 
     def test_default_password(self):
         cs = self._get_netrc_cs()
         password = cs.decode_password(dict(host='other', user='anonymous'))
-        self.assertEquals('joe@home', password)
+        self.assertEqual('joe@home', password)
 
     def test_default_password_without_user(self):
         cs = self._get_netrc_cs()
@@ -84,4 +84,4 @@ password_encoding = netrc
         conf = config.AuthenticationConfig(_file=StringIO(ac_content))
         credentials = conf.get_credentials('scheme', 'host', user='joe')
         self.assertIsNot(None, credentials)
-        self.assertEquals('secret', credentials.get('password', None))
+        self.assertEqual('secret', credentials.get('password', None))

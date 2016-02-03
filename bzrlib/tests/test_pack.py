@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009, 2011, 2012, 2016 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -160,7 +160,7 @@ class TestContainerWriter(tests.TestCase):
             'Bazaar pack format 1 (introduced in 0.18)\n'
             'B6\nname1\n\nabcabc')
 
-        self.assertEquals([
+        self.assertEqual([
             'Bazaar pack format 1 (introduced in 0.18)\n',
             'B6\nname1\n\n',
             'abcabc'],

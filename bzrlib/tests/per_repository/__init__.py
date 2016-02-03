@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2012, 2016 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
 #          and others
 #
@@ -94,7 +94,7 @@ class TestCaseWithRepository(TestCaseWithControlDir):
 
     def get_default_format(self):
         format = self.repository_format._matchingbzrdir
-        self.assertEquals(format.repository_format, self.repository_format)
+        self.assertEqual(format.repository_format, self.repository_format)
         return format
 
     def make_repository(self, relpath, shared=None, format=None):
