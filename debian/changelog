@@ -4,6 +4,7 @@ bzr (2.7.0-1) unstable; urgency=medium
    + Drop unnecessary patch 05_remove_gzip_test.
    + Drop upstream applied 06_win32_paths.
    + Drop upstream applied 11_disable_warningtest.
+   + Stop skipping tests in override_dh_auto_test (upstream takes care of them)
 
  -- Vincent Ladeuil <v.ladeuil+lp@free.fr>  Wed, 03 Feb 2016 21:05:25 +0100
 
