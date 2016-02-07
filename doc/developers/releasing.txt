@@ -513,7 +513,7 @@ Announcing the source freeze
 ----------------------------
 
 #. Post to the ``bazaar@lists.canonical.com`` and
-   ``bzr-packagers@list.launchpad.net`` lists, saying that the source has
+   ``bzr-packagers@lists.launchpad.net`` lists, saying that the source has
    been frozen. Be extra clear that this is only a *source* release targeted
    at packagers and installer builders (see
    <https://bugs.launchpad.net/launchpad/+bug/645084>).  This is the cue for
@@ -640,17 +640,45 @@ Now that the release is publicly available, tell people about it.
 #. Update `<http://en.wikipedia.org/wiki/Bazaar_(software)>`_ -- this should
    be done for the stable and beta releases.
 
-#. Update the python package index: <http://pypi.python.org/pypi/bzr> - best
-   done by running ::
+#. Update the python package index: <http://pypi.python.org/pypi/bzr>
 
-       python setup.py register
+   From the tarball created and tested earlier ::
+
+     twine upload -s ../bzr-2.7.0.tar.gz
 
    Remember to check the results afterward -- this should be done for
    stable releases but not for beta releases nor SRUs.
 
-   To be able to register the release you must create an account on
-   <http://pypi.python.org/pypi> and have one of the existing owners of
-   the project add you to the group.
+   If in doubt, you can test with <https://testpypi.python.org/pypi> where
+   you can register yourself, register the bzr project and upload (and then
+   remove the upload and delete the project so a new release manager can
+   enjoy the same facilities). If the project already exists, have one of
+   the existing owners of the project add you to the group.
+
+   To use the pypi test site, you need to record your credentials for an
+   existing user (the registration process is manual and starts at
+   <https://testpypi.python.org/pypi?%3Aaction=register_form>.
+
+   Once registered, you can record your crdentials in your ``~/pypirc`` file
+   with ::
+
+     [testpypi]
+     username:<login on testpypi>
+     password:<password on testpypi>
+     repository = https://testpypi.python.org/pypi
+
+   Registering the bzr project if doesn't exist is achieved with::
+
+     python setup.py -r https://testpypi.python.org/pypi register
+
+  Uploading is done with::
+
+    twine upload -r testpypi -s ../bzr-2.7.0.tar.gz
+
+   To be able to upload the release you must create an account on
+   <http://pypi.python.org/pypi> and have one of the existing owners of the
+   project add you to the group and update your ``[pypi]`` section in your
+   ``~/pypirc`` file.
 
 
 Merging the released code back to trunk
