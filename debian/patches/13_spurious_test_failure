@@ -2,7 +2,6 @@ Description: Another spuriously failing test
  The symptom is the same as in 03_spurious_test_failure, the cause is a race triggered by recent python 2.7 versions when client and server share a socket in the same process.
  .
 Author: Vincent Ladeuil <v.ladeuil+lp@free.fr>
-Status: Not upstream, Debian-specific
 
 ---
 

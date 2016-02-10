@@ -1,6 +1,6 @@
 bzr (2.7.0-2) unstable; urgency=medium
 
-  * Add patch 13_spurious_failure: Same root cause as 02_spurious_failure
+  * Add patch 13_spurious_failure: Same root cause as 03_spurious_failure
     (client and server using the same socket in one process is racy).
 
  -- Vincent Ladeuil <v.ladeuil+lp@free.fr>  Wed, 10 Feb 2016 09:49:05 +0100
