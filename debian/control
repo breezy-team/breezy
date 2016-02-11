@@ -25,8 +25,8 @@ Build-Depends: bash-completion,
                python-testtools (>= 0.9.5~)
 Standards-Version: 3.9.6
 X-Python-Version: >= 2.6
-Vcs-Bzr: http://anonscm.debian.org/bzr/pkg-bazaar/bzr/2.6
-Vcs-Browser: http://bzr.debian.org/loggerhead/pkg-bazaar/bzr/2.6
+Vcs-Bzr: http://anonscm.debian.org/bzr/pkg-bazaar/bzr/2.7
+Vcs-Browser: http://bzr.debian.org/loggerhead/pkg-bazaar/bzr/2.7
 Homepage: http://bazaar-vcs.org
 XS-Testsuite: autopkgtest
 
