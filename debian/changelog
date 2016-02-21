@@ -1,3 +1,9 @@
+bzr (2.7.0-3) UNRELEASED; urgency=medium
+
+  * Add Vincent to uploaders.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sun, 21 Feb 2016 23:27:48 +0000
+
 bzr (2.7.0-2) unstable; urgency=medium
 
   * Add patch 13_spurious_failure: Same root cause as 03_spurious_failure
