@@ -1,0 +1,21 @@
+Description: Don't put French text in doc/en/user-reference when LANGUAGE=fr_CH.UTF_8.
+Origin: commit, revision id: jelmer@jelmer.uk-20160403163231-h72bo0uyek2gikw0
+Author: Jelmer Vernooij <jelmer@jelmer.uk>
+Bug: https://launchpad.net/bugs/1565503
+Last-Update: 2016-04-03
+Applied-Upstream: no
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20160403163231-h72bo0uyek2gikw0
+
+=== modified file 'Makefile'
+--- old/Makefile	2016-02-01 18:09:33 +0000
++++ new/Makefile	2016-04-03 16:32:31 +0000
+@@ -148,7 +148,7 @@
+ NEWS_FILES = $(wildcard doc/en/release-notes/bzr-*.txt)
+ 
+ doc/en/user-reference/index.txt: $(MAN_DEPENDENCIES)
+-	$(PYTHON) tools/generate_docs.py -o $@ rstx
++	LANGUAGE=C $(PYTHON) tools/generate_docs.py -o $@ rstx
+ 
+ doc/en/release-notes/index.txt: $(NEWS_FILES) tools/generate_release_notes.py
+ 	$(PYTHON) tools/generate_release_notes.py $@ $(NEWS_FILES)
+

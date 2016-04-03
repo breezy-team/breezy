@@ -1,6 +1,9 @@
 bzr (2.7.0-3) UNRELEASED; urgency=medium
 
   * Add Vincent to uploaders.
+  * Add 14_en_user_guide patch: Make bzr build more reproducible: when
+    locale is set to French, don't leak French phrases into English user-
+    reference. LP: #1565503
 
  -- Jelmer Vernooij <jelmer@debian.org>  Sun, 21 Feb 2016 23:27:48 +0000
 
