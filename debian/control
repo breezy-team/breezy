@@ -24,7 +24,7 @@ Build-Depends: bash-completion,
                python-sphinx (>= 1.0.7+dfsg),
                python-subunit,
                python-testtools (>= 0.9.5~)
-Standards-Version: 3.9.6
+Standards-Version: 3.9.7
 X-Python-Version: >= 2.6
 Vcs-Bzr: http://anonscm.debian.org/bzr/pkg-bazaar/bzr/2.7
 Vcs-Browser: http://bzr.debian.org/loggerhead/pkg-bazaar/bzr/2.7
