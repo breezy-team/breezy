@@ -1,4 +1,4 @@
-bzr (2.7.0-3) UNRELEASED; urgency=medium
+bzr (2.7.0-3) unstable; urgency=low
 
   * Add Vincent to uploaders.
   * Add 14_en_user_guide patch: Make bzr build more reproducible: when
