@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
 Uploaders: Wouter van Heyst <larstiq@larstiq.dyndns.org>,
            Andrew Starr-Bochicchio <asb@debian.org>,
-           Jelmer Vernooij <jelmer@debian.org>,
+           Jelmer Vernooĳ <jelmer@debian.org>,
            Vincent Ladeuil <v.ladeuil+lp@free.fr>
 Build-Depends: bash-completion,
                ca-certificates,
