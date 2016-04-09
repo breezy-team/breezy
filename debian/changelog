@@ -1,3 +1,9 @@
+bzr (2.7.0-5) UNRELEASED; urgency=medium
+
+  * Enable PGP checking of upstream tarball.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 09 Apr 2016 14:45:18 +0000
+
 bzr (2.7.0-4) unstable; urgency=low
 
   * Add patch 15_autodoc_source_epoch: Support SOURCE_DATE_EPOCH for
