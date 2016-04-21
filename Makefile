@@ -148,7 +148,7 @@ SPHINX_DEPENDENCIES = \
 NEWS_FILES = $(wildcard doc/en/release-notes/bzr-*.txt)
 
 doc/en/user-reference/index.txt: $(MAN_DEPENDENCIES)
-	$(PYTHON) tools/generate_docs.py -o $@ rstx
+	LANGUAGE=C $(PYTHON) tools/generate_docs.py -o $@ rstx
 
 doc/en/release-notes/index.txt: $(NEWS_FILES) tools/generate_release_notes.py
 	$(PYTHON) tools/generate_release_notes.py $@ $(NEWS_FILES)
