@@ -1,6 +1,8 @@
 bzr (2.7.0-5) UNRELEASED; urgency=medium
 
   * Enable PGP checking of upstream tarball.
+  * Cope with paramiko making argument to SFTPFile.prefetch() mandatory.
+    Closes: #822116
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 09 Apr 2016 14:45:18 +0000
 

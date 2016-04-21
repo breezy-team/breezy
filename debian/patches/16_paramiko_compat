@@ -1,0 +1,15 @@
+=== modified file 'bzrlib/transport/sftp.py'
+--- a/bzrlib/transport/sftp.py	2016-02-01 14:54:37 +0000
++++ b/bzrlib/transport/sftp.py	2016-04-21 12:09:27 +0000
+@@ -410,8 +410,9 @@
+         try:
+             path = self._remote_path(relpath)
+             f = self._get_sftp().file(path, mode='rb')
++            size = f.stat().st_size
+             if self._do_prefetch and (getattr(f, 'prefetch', None) is not None):
+-                f.prefetch()
++                f.prefetch(size)
+             return f
+         except (IOError, paramiko.SSHException), e:
+             self._translate_io_exception(e, path, ': error retrieving',
+
