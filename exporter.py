@@ -436,7 +436,7 @@ class BzrFastExporter(object):
                     pass
 
         # Build and return the result
-        return commands.CommitCommand(git_ref, mark, author_info,
+        return commands.CommitCommand(git_ref, str(mark), author_info,
             committer_info, revobj.message.encode("utf-8"), from_, merges, iter(file_cmds),
             more_authors=more_author_info, properties=properties)
 
