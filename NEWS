@@ -10,6 +10,10 @@
   * Correctly handle all moves when converting bzr trees to git.
     (William Grant, #818318)
 
+ FEATURES
+
+  * Mark bzr 2.7 as supported.
+
 0.6.12  2013-09-22
 
  FEATURES
