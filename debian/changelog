@@ -1,4 +1,4 @@
-bzr (2.7.0-6) UNRELEASED; urgency=medium
+bzr (2.7.0-6) unstable; urgency=low
 
   * Set PYTHONHASHSEED to 0 when building sphinx docs, to force
     reproducible build.
