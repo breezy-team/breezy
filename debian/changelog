@@ -1,3 +1,10 @@
+bzr (2.7.0-6) UNRELEASED; urgency=medium
+
+  * Set PYTHONHASHSEED to 0 when building sphinx docs, to force
+    reproducible build.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 15 May 2016 18:31:28 +0000
+
 bzr (2.7.0-5) unstable; urgency=medium
 
   * Enable PGP checking of upstream tarball.

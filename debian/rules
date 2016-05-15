@@ -70,7 +70,7 @@ override_dh_install:
 
 override_dh_auto_build:
 	dh_auto_build
-	$(MAKE) docs-sphinx
+	PYTHONHASHSEED=0 $(MAKE) docs-sphinx
 
 override_dh_compress:
 	dh_compress -X.xvg -X.pdf
