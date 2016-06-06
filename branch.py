@@ -1053,7 +1053,7 @@ class InterToGitBranch(branch.GenericInterBranch):
                 return True
             # FIXME: If one side only has the git sha available and the other only
             # has the bzr revid, then this will cause us to show a tag as updated
-            # that hasn't actually been updated. 
+            # that hasn't actually been updated.
             return False
         # FIXME: Check for diverged branches
         for ref, (git_sha, revid) in new_refs.iteritems():

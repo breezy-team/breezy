@@ -90,7 +90,7 @@ class TransportRefsContainer(RefsContainer):
         keys = set()
         try:
             iter_files = self.transport.clone(base).iter_files_recursive()
-            keys.update(("%s/%s" % (base, urllib.unquote(refname))).strip("/") for 
+            keys.update(("%s/%s" % (base, urllib.unquote(refname))).strip("/") for
                     refname in iter_files if check_ref_format("%s/%s" % (base, refname)))
         except (TransportNotPossible, NoSuchFile):
             pass
@@ -318,7 +318,7 @@ class TransportRepo(BaseRepo):
                 refs_container._refs["HEAD"] = head
         else:
             refs_container = TransportRefsContainer(self._controltransport)
-        super(TransportRepo, self).__init__(object_store, 
+        super(TransportRepo, self).__init__(object_store,
                 refs_container)
 
     def get_named_file(self, path):
@@ -597,9 +597,9 @@ class TransportObjectStore(PackBasedObjectStore):
         return final_pack
 
     def add_pack(self):
-        """Add a new pack to this object store. 
+        """Add a new pack to this object store.
 
-        :return: Fileobject to write to and a commit function to 
+        :return: Fileobject to write to and a commit function to
             call when the pack is finished.
         """
         from cStringIO import StringIO

@@ -201,7 +201,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             try:
                 stat_val = os.lstat(self.abspath(path))
             except (errors.NoSuchFile, OSError):
-                # TODO: Rather than come up with something here, use the 
+                # TODO: Rather than come up with something here, use the
                 # old index
                 stat_val = os.stat_result(
                     (stat.S_IFLNK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
@@ -266,7 +266,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         :param force: Delete files and directories, even if they are changed
             and even if the directories are not empty.
         """
-        all_files = set() # specified and nested files 
+        all_files = set() # specified and nested files
 
         if isinstance(files, basestring):
             files = [files]
@@ -859,7 +859,7 @@ class InterIndexGitTree(tree.InterTree):
     @classmethod
     def is_compatible(cls, source, target):
         from bzrlib.plugins.git.repository import GitRevisionTree
-        return (isinstance(source, GitRevisionTree) and 
+        return (isinstance(source, GitRevisionTree) and
                 isinstance(target, GitWorkingTree))
 
     @needs_read_lock
@@ -868,7 +868,7 @@ class InterIndexGitTree(tree.InterTree):
                 want_unversioned=False):
         # FIXME: Handle include_root
         changes = changes_between_git_tree_and_index(
-            self.source.store, self.source.tree, 
+            self.source.store, self.source.tree,
             self.target, want_unchanged=want_unchanged,
             want_unversioned=want_unversioned)
         source_fileid_map = self.source._fileid_map

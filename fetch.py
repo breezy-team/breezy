@@ -16,6 +16,9 @@
 
 from __future__ import absolute_import
 
+from dulwich.errors import (
+    NotCommitError,
+    )
 from dulwich.objects import (
     Commit,
     Tag,
@@ -69,9 +72,6 @@ from bzrlib.versionedfile import (
     ChunkedContentFactory,
     )
 
-from bzrlib.plugins.git.errors import (
-    NotCommitError,
-    )
 from bzrlib.plugins.git.mapping import (
     DEFAULT_FILE_MODE,
     mode_is_executable,
@@ -96,7 +96,7 @@ from bzrlib.plugins.git.repository import (
     )
 
 
-def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha), 
+def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
         base_bzr_tree, parent_id, revision_id,
         parent_bzr_trees, lookup_object, (base_mode, mode), store_updater,
         lookup_file_id):
@@ -218,7 +218,7 @@ def remove_disappeared_children(base_bzr_tree, path, base_tree, existing_childre
         lookup_object):
     """Generate an inventory delta for removed children.
 
-    :param base_bzr_tree: Base bzr tree against which to generate the 
+    :param base_bzr_tree: Base bzr tree against which to generate the
         inventory delta.
     :param path: Path to process (unicode)
     :param base_tree: Git Tree base object
@@ -445,7 +445,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
     trees_cache.add(ret_tree)
     repo.add_revision(rev.revision_id, rev)
     if "verify" in debug.debug_flags:
-        verify_commit_reconstruction(target_git_object_retriever, 
+        verify_commit_reconstruction(target_git_object_retriever,
             lookup_object, o, rev, ret_tree, parent_trees, mapping,
             unusual_modes, verifiers)
 
@@ -504,7 +504,7 @@ def import_git_objects(repo, mapping, object_iter,
         revision_ids = revision_ids[:limit]
     last_imported = None
     for offset in range(0, len(revision_ids), batch_size):
-        target_git_object_retriever.start_write_group() 
+        target_git_object_retriever.start_write_group()
         try:
             repo.start_write_group()
             try:

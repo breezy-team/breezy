@@ -20,7 +20,7 @@ from __future__ import absolute_import
 help_git = """Using Bazaar with Git.
 
 The bzr-git plugin provides support for using Bazaar with local and remote
-Git repositories, as just another format. You can clone, pull from and 
+Git repositories, as just another format. You can clone, pull from and
 push to git repositories as you would with any native Bazaar branch.
 
 The bzr-git plugin also adds three new bzr subcommands:

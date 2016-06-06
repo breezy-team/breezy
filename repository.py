@@ -39,9 +39,6 @@ from bzrlib.foreign import (
 from bzrlib.plugins.git.commit import (
     GitCommitBuilder,
     )
-from bzrlib.plugins.git.errors import (
-    NotCommitError,
-    )
 from bzrlib.plugins.git.filegraph import (
     GitFileLastChangeScanner,
     GitFileParentProvider,
@@ -56,6 +53,9 @@ from bzrlib.plugins.git.tree import (
     )
 
 
+from dulwich.errors import (
+    NotCommitError,
+    )
 from dulwich.objects import (
     Commit,
     ZERO_SHA,

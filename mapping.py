@@ -292,7 +292,7 @@ class BzrGitMapping(foreign.VcsMapping):
             commit.author_timezone = int(rev.properties['author-timezone'])
         else:
             commit.author_timezone = commit.commit_timezone
-        commit.message = self._encode_commit_message(rev, rev.message, 
+        commit.message = self._encode_commit_message(rev, rev.message,
             encoding)
         assert type(commit.message) == str
         if metadata is not None:
@@ -309,7 +309,7 @@ class BzrGitMapping(foreign.VcsMapping):
                     metadata.properties[k] = v
         if not lossy:
             if self.roundtripping:
-                commit.message = inject_bzr_metadata(commit.message, metadata, 
+                commit.message = inject_bzr_metadata(commit.message, metadata,
                                                      encoding)
             else:
                 raise NoPushSupport()

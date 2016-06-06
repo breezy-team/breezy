@@ -190,7 +190,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                 pass
             else:
                 if kind == "file":
-                    if (pkind == "file" and 
+                    if (pkind == "file" and
                         ptree.get_file_sha1(file_id) == other):
                         return (file_id, ptree.get_file_revision(file_id))
                 if kind == "symlink":
@@ -279,7 +279,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                     blob.data = tree.get_file_text(ie.file_id)
                     return blob.id
             elif ie.kind == "directory":
-                # Not all cache backends store the tree information, 
+                # Not all cache backends store the tree information,
                 # calculate again from scratch
                 ret = directory_to_tree(ie.children, ie_to_hexsha,
                     unusual_modes, dummy_file_name, ie.parent_id is None)
@@ -412,7 +412,7 @@ class BazaarObjectStore(BaseObjectStore):
             lossy, verifiers)
 
     def _create_fileid_map_blob(self, tree):
-        # FIXME: This can probably be a lot more efficient, 
+        # FIXME: This can probably be a lot more efficient,
         # not all files necessarily have to be processed.
         file_ids = {}
         for (path, ie) in tree.inventory.iter_entries():
@@ -780,6 +780,6 @@ class BazaarObjectStore(BaseObjectStore):
                 self.repository.unlock()
         return f, commit
 
-    # The pack isn't kept around anyway, so no point 
+    # The pack isn't kept around anyway, so no point
     # in treating full packs different from thin packs
     add_pack = add_thin_pack
