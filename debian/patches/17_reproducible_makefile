@@ -6,9 +6,11 @@ Applied-Upstream: no
 X-Bzr-Revision-Id: richard.wilbur@gmail.com-20160201164730-dd9q6yofj43et741
 
 === modified file 'Makefile'
---- old/Makefile	2016-02-03 20:07:25 +0000
-+++ new/Makefile	2016-06-06 18:47:00 +0000
-@@ -28,6 +28,10 @@
+Index: unstable/Makefile
+===================================================================
+--- unstable.orig/Makefile
++++ unstable/Makefile
+@@ -28,6 +28,10 @@ BZR_TARGET=release
  PLUGIN_TARGET=plugin-release
  PYTHON_BUILDFLAGS=
  
@@ -19,7 +21,7 @@ X-Bzr-Revision-Id: richard.wilbur@gmail.com-20160201164730-dd9q6yofj43et741
  .PHONY: all clean realclean extensions pyflakes api-docs check-nodocs check
  
  all: extensions
-@@ -106,10 +110,10 @@
+@@ -106,10 +110,10 @@ html-docs: html-plain
  ### Man-page Documentation ###
  
  MAN_DEPENDENCIES = bzrlib/builtins.py \
@@ -33,7 +35,7 @@ X-Bzr-Revision-Id: richard.wilbur@gmail.com-20160201164730-dd9q6yofj43et741
  
  MAN_PAGES = man1/bzr.1
  man1/bzr.1: $(MAN_DEPENDENCIES)
-@@ -145,7 +149,7 @@
+@@ -145,7 +149,7 @@ SPHINX_DEPENDENCIES = \
  	doc/developers/Makefile \
  	doc/developers/make.bat
  
@@ -41,8 +43,8 @@ X-Bzr-Revision-Id: richard.wilbur@gmail.com-20160201164730-dd9q6yofj43et741
 +NEWS_FILES = $(call sw,doc/en/release-notes/bzr-*.txt)
  
  doc/en/user-reference/index.txt: $(MAN_DEPENDENCIES)
- 	$(PYTHON) tools/generate_docs.py -o $@ rstx
-@@ -229,19 +233,19 @@
+ 	LANGUAGE=C $(PYTHON) tools/generate_docs.py -o $@ rstx
+@@ -229,19 +233,19 @@ txt_all = \
  	doc/en/tutorials/tutorial.txt \
  	doc/en/tutorials/using_bazaar_with_launchpad.txt \
  	doc/en/tutorials/centralized_workflow.txt \
@@ -68,7 +70,7 @@ X-Bzr-Revision-Id: richard.wilbur@gmail.com-20160201164730-dd9q6yofj43et741
  txt_nohtml = \
  	doc/en/user-guide/index.txt \
  	doc/es/user-guide/index.txt \
-@@ -253,16 +257,16 @@
+@@ -253,16 +257,16 @@ htm_files = $(patsubst %.txt, %.html, $(
  
  non_txt_files = \
         doc/default.css \
@@ -95,7 +97,7 @@ X-Bzr-Revision-Id: richard.wilbur@gmail.com-20160201164730-dd9q6yofj43et741
  
  # doc/developers/*.txt files that should *not* be individually
  # converted to HTML
-@@ -292,20 +296,20 @@
+@@ -292,20 +296,20 @@ dev_txt_nohtml = \
  	doc/developers/status.txt \
  	doc/developers/uncommit.txt
  
@@ -109,23 +111,19 @@ X-Bzr-Revision-Id: richard.wilbur@gmail.com-20160201164730-dd9q6yofj43et741
  	$(rst2html) --stylesheet=../../default.css $(dir $@)index-plain.txt $@
  
 -#doc/es/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/es/user-guide)) 
--#	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
--#
--#doc/ru/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/ru/user-guide)) 
--#	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
--#
--doc/en/admin-guide/index-plain.html: $(wildcard $(addsuffix /*.txt, doc/en/admin-guide)) 
 +#doc/es/user-guide/index.html: $(call sw,$(addsuffix /*.txt, doc/es/user-guide))
-+#	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
-+#
+ #	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
+ #
+-#doc/ru/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/ru/user-guide)) 
 +#doc/ru/user-guide/index.html: $(call sw,$(addsuffix /*.txt, doc/ru/user-guide))
-+#	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
-+#
+ #	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
+ #
+-doc/en/admin-guide/index-plain.html: $(wildcard $(addsuffix /*.txt, doc/en/admin-guide)) 
 +doc/en/admin-guide/index-plain.html: $(call sw,$(addsuffix /*.txt, doc/en/admin-guide))
  	$(rst2html) --stylesheet=../../default.css $(dir $@)index-plain.txt $@
  
  doc/developers/%.html: doc/developers/%.txt
-@@ -323,7 +327,7 @@
+@@ -323,7 +327,7 @@ doc/index.%.html: doc/index.%.txt
  doc/en/release-notes/NEWS.txt: $(NEWS_FILES) tools/generate_release_notes.py
  	$(PYTHON) tools/generate_release_notes.py "$@" $(NEWS_FILES)
  
@@ -134,4 +132,3 @@ X-Bzr-Revision-Id: richard.wilbur@gmail.com-20160201164730-dd9q6yofj43et741
  
  doc/en/upgrade-guide/index.html: $(upgrade_guide_dependencies)
  	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
-

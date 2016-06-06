@@ -7,9 +7,11 @@ Applied-Upstream: no
 X-Bzr-Revision-Id: jelmer@jelmer.uk-20160403163231-h72bo0uyek2gikw0
 
 === modified file 'Makefile'
---- old/Makefile	2016-02-01 18:09:33 +0000
-+++ new/Makefile	2016-04-03 16:32:31 +0000
-@@ -148,7 +148,7 @@
+Index: unstable/Makefile
+===================================================================
+--- unstable.orig/Makefile
++++ unstable/Makefile
+@@ -148,7 +148,7 @@ SPHINX_DEPENDENCIES = \
  NEWS_FILES = $(wildcard doc/en/release-notes/bzr-*.txt)
  
  doc/en/user-reference/index.txt: $(MAN_DEPENDENCIES)
@@ -18,4 +20,3 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20160403163231-h72bo0uyek2gikw0
  
  doc/en/release-notes/index.txt: $(NEWS_FILES) tools/generate_release_notes.py
  	$(PYTHON) tools/generate_release_notes.py $@ $(NEWS_FILES)
-
