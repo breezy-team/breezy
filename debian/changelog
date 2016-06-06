@@ -1,3 +1,9 @@
+bzr (2.7.0-8) UNRELEASED; urgency=medium
+
+  * Bump standards version to 3.9.8 (no changes).
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 06 Jun 2016 19:12:31 +0000
+
 bzr (2.7.0-7) unstable; urgency=low
 
   * Add patch 17_reproducible_makefile: Fix order of documentation files
