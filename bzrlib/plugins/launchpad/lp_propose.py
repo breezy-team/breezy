@@ -94,6 +94,8 @@ class Proposer(object):
 
     def get_comment(self, prerequisite_branch):
         """Determine the initial comment for the merge proposal."""
+        if self.commit_message is not None:
+            return self.commit_message.strip().encode('utf-8')
         info = ["Source: %s\n" % self.source_branch.lp.bzr_identity]
         info.append("Target: %s\n" % self.target_branch.lp.bzr_identity)
         if prerequisite_branch is not None:
