@@ -1,3 +1,10 @@
+bzr (2.7.0-7) UNRELEASED; urgency=medium
+
+  * Add patch 17_reproducible_makefile: Fix order of documentation files
+    processing in Makefiles, making build reproducible.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 06 Jun 2016 18:38:42 +0000
+
 bzr (2.7.0-6) unstable; urgency=low
 
   * Set PYTHONHASHSEED to 0 when building sphinx docs, to force

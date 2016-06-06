@@ -1,0 +1,137 @@
+Origin: commit, revision id: richard.wilbur@gmail.com-20160201164730-dd9q6yofj43et741
+Author: Richard Wilbur <richard.wilbur@gmail.com>
+Bug: https://launchpad.net/bugs/1537319
+Last-Update: 2016-02-01
+Applied-Upstream: no
+X-Bzr-Revision-Id: richard.wilbur@gmail.com-20160201164730-dd9q6yofj43et741
+
+=== modified file 'Makefile'
+--- old/Makefile	2016-02-03 20:07:25 +0000
++++ new/Makefile	2016-06-06 18:47:00 +0000
+@@ -28,6 +28,10 @@
+ PLUGIN_TARGET=plugin-release
+ PYTHON_BUILDFLAGS=
+ 
++# Shorter replacement for $(sort $(wildcard <arg>)) as $(call sw,<arg>)
++sw = $(sort $(wildcard $(1)))
++
++
+ .PHONY: all clean realclean extensions pyflakes api-docs check-nodocs check
+ 
+ all: extensions
+@@ -106,10 +110,10 @@
+ ### Man-page Documentation ###
+ 
+ MAN_DEPENDENCIES = bzrlib/builtins.py \
+-	$(wildcard bzrlib/*.py) \
+-	$(wildcard bzrlib/*/*.py) \
++	$(call sw,bzrlib/*.py) \
++	$(call sw,bzrlib/*/*.py) \
+ 	tools/generate_docs.py \
+-	$(wildcard $(addsuffix /*.txt, bzrlib/help_topics/en)) 
++	$(call sw,$(addsuffix /*.txt, bzrlib/help_topics/en)) 
+ 
+ MAN_PAGES = man1/bzr.1
+ man1/bzr.1: $(MAN_DEPENDENCIES)
+@@ -145,7 +149,7 @@
+ 	doc/developers/Makefile \
+ 	doc/developers/make.bat
+ 
+-NEWS_FILES = $(wildcard doc/en/release-notes/bzr-*.txt)
++NEWS_FILES = $(call sw,doc/en/release-notes/bzr-*.txt)
+ 
+ doc/en/user-reference/index.txt: $(MAN_DEPENDENCIES)
+ 	$(PYTHON) tools/generate_docs.py -o $@ rstx
+@@ -229,19 +233,19 @@
+ 	doc/en/tutorials/tutorial.txt \
+ 	doc/en/tutorials/using_bazaar_with_launchpad.txt \
+ 	doc/en/tutorials/centralized_workflow.txt \
+-        $(wildcard doc/es/tutorials/*.txt) \
+-		$(wildcard doc/ru/tutorials/*.txt) \
++        $(call sw,doc/es/tutorials/*.txt) \
++	$(call sw,doc/ru/tutorials/*.txt) \
+ 	doc/ja/tutorials/tutorial.txt \
+ 	doc/ja/tutorials/using_bazaar_with_launchpad.txt \
+ 	doc/ja/tutorials/centralized_workflow.txt \
+-	$(wildcard doc/*/mini-tutorial/index.txt) \
+-	$(wildcard doc/*/user-guide/index-plain.txt) \
++	$(call sw,doc/*/mini-tutorial/index.txt) \
++	$(call sw,doc/*/user-guide/index-plain.txt) \
+ 	doc/en/admin-guide/index-plain.txt \
+-	$(wildcard doc/es/guia-usario/*.txt) \
++	$(call sw,doc/es/guia-usario/*.txt) \
+ 	$(derived_txt_files) \
+ 	doc/en/upgrade-guide/index.txt \
+ 	doc/index.txt \
+-	$(wildcard doc/index.*.txt)
++	$(call sw,doc/index.*.txt)
+ txt_nohtml = \
+ 	doc/en/user-guide/index.txt \
+ 	doc/es/user-guide/index.txt \
+@@ -253,16 +257,16 @@
+ 
+ non_txt_files = \
+        doc/default.css \
+-       $(wildcard doc/*/bzr-en-quick-reference.svg) \
+-       $(wildcard doc/*/bzr-en-quick-reference.png) \
+-       $(wildcard doc/*/bzr-en-quick-reference.pdf) \
+-       $(wildcard doc/*/bzr-es-quick-reference.svg) \
+-       $(wildcard doc/*/bzr-es-quick-reference.png) \
+-       $(wildcard doc/*/bzr-es-quick-reference.pdf) \
+-       $(wildcard doc/*/bzr-ru-quick-reference.svg) \
+-       $(wildcard doc/*/bzr-ru-quick-reference.png) \
+-       $(wildcard doc/*/bzr-ru-quick-reference.pdf) \
+-       $(wildcard doc/*/user-guide/images/*.png)
++       $(call sw,doc/*/bzr-en-quick-reference.svg) \
++       $(call sw,doc/*/bzr-en-quick-reference.png) \
++       $(call sw,doc/*/bzr-en-quick-reference.pdf) \
++       $(call sw,doc/*/bzr-es-quick-reference.svg) \
++       $(call sw,doc/*/bzr-es-quick-reference.png) \
++       $(call sw,doc/*/bzr-es-quick-reference.pdf) \
++       $(call sw,doc/*/bzr-ru-quick-reference.svg) \
++       $(call sw,doc/*/bzr-ru-quick-reference.png) \
++       $(call sw,doc/*/bzr-ru-quick-reference.pdf) \
++       $(call sw,doc/*/user-guide/images/*.png)
+ 
+ # doc/developers/*.txt files that should *not* be individually
+ # converted to HTML
+@@ -292,20 +296,20 @@
+ 	doc/developers/status.txt \
+ 	doc/developers/uncommit.txt
+ 
+-dev_txt_all = $(wildcard $(addsuffix /*.txt, doc/developers))
++dev_txt_all = $(call sw,$(addsuffix /*.txt, doc/developers))
+ dev_txt_files = $(filter-out $(dev_txt_nohtml), $(dev_txt_all))
+ dev_htm_files = $(patsubst %.txt, %.html, $(dev_txt_files)) 
+ 
+-doc/en/user-guide/index-plain.html: $(wildcard $(addsuffix /*.txt, doc/en/user-guide)) 
++doc/en/user-guide/index-plain.html: $(call sw,$(addsuffix /*.txt, doc/en/user-guide))
+ 	$(rst2html) --stylesheet=../../default.css $(dir $@)index-plain.txt $@
+ 
+-#doc/es/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/es/user-guide)) 
+-#	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
+-#
+-#doc/ru/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/ru/user-guide)) 
+-#	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
+-#
+-doc/en/admin-guide/index-plain.html: $(wildcard $(addsuffix /*.txt, doc/en/admin-guide)) 
++#doc/es/user-guide/index.html: $(call sw,$(addsuffix /*.txt, doc/es/user-guide))
++#	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
++#
++#doc/ru/user-guide/index.html: $(call sw,$(addsuffix /*.txt, doc/ru/user-guide))
++#	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
++#
++doc/en/admin-guide/index-plain.html: $(call sw,$(addsuffix /*.txt, doc/en/admin-guide))
+ 	$(rst2html) --stylesheet=../../default.css $(dir $@)index-plain.txt $@
+ 
+ doc/developers/%.html: doc/developers/%.txt
+@@ -323,7 +327,7 @@
+ doc/en/release-notes/NEWS.txt: $(NEWS_FILES) tools/generate_release_notes.py
+ 	$(PYTHON) tools/generate_release_notes.py "$@" $(NEWS_FILES)
+ 
+-upgrade_guide_dependencies =  $(wildcard $(addsuffix /*.txt, doc/en/upgrade-guide)) 
++upgrade_guide_dependencies =  $(call sw,$(addsuffix /*.txt, doc/en/upgrade-guide))
+ 
+ doc/en/upgrade-guide/index.html: $(upgrade_guide_dependencies)
+ 	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
+
