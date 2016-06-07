@@ -791,7 +791,12 @@ class GitWorkingTree(workingtree.WorkingTree):
         index_mode = entry[-6]
         index_sha = entry[-2]
         disk_path = os.path.join(self.basedir, path)
-        disk_stat = os.lstat(disk_path)
+        try:
+            disk_stat = os.lstat(disk_path)
+        except OSError, (num, msg):
+            if num in (errno.EISDIR, errno.ENOENT):
+                raise KeyError(path)
+            raise
         disk_mtime = disk_stat.st_mtime
         if isinstance(entry[1], tuple):
             index_mtime = entry[1][0]
