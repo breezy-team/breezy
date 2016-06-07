@@ -43,6 +43,7 @@ from bzrlib.revision import (
 from bzrlib.plugins.git.errors import (
     NoPushSupport,
     UnknownCommitExtra,
+    UnknownMercurialCommitExtra,
     )
 from bzrlib.plugins.git.hg import (
     format_hg_metadata,
@@ -58,6 +59,10 @@ from bzrlib.plugins.git.roundtrip import (
 
 DEFAULT_FILE_MODE = stat.S_IFREG | 0644
 HG_RENAME_SOURCE = "HG:rename-source"
+HG_EXTRA = "HG:extra"
+
+# This HG extra is used to indicate the commit that this commit was based on.
+HG_EXTRA_AMEND_SOURCE = "amend_source"
 
 
 def escape_file_id(file_id):
@@ -384,6 +389,11 @@ class BzrGitMapping(foreign.VcsMapping):
         extra_lines = []
         for k, v in commit.extra:
             if k == HG_RENAME_SOURCE:
+                extra_lines.append(k + ' ' + v + '\n')
+            elif k == HG_EXTRA:
+                hgk, hgv = v.split(':', 1)
+                if hgk not in (HG_EXTRA_AMEND_SOURCE, ):
+                    raise UnknownMercurialCommitExtra(commit, hgk)
                 extra_lines.append(k + ' ' + v + '\n')
             else:
                 unknown_extra_fields.append(k)

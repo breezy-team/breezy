@@ -62,3 +62,12 @@ class UnknownCommitExtra(bzr_errors.BzrError):
         bzr_errors.BzrError.__init__(self)
         self.object = object
         self.fields = ",".join(fields)
+
+
+class UnknownMercurialCommitExtra(bzr_errors.BzrError):
+    _fmt = "Unknown mercurial extra fields in %(object)r: %(fields)r."
+
+    def __init__(self, object, fields):
+        bzr_errors.BzrError.__init__(self)
+        self.object = object
+        self.fields = ",".join(fields)
