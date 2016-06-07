@@ -57,6 +57,7 @@ from bzrlib.plugins.git.roundtrip import (
     )
 
 DEFAULT_FILE_MODE = stat.S_IFREG | 0644
+HG_RENAME_SOURCE = "HG:rename-source"
 
 
 def escape_file_id(file_id):
@@ -332,8 +333,13 @@ class BzrGitMapping(foreign.VcsMapping):
         """
         if commit is None:
             raise AssertionError("Commit object can't be None")
-        if commit.extra:
-            raise UnknownCommitExtra(commit, [k for (k, v) in commit.extra])
+        unknown_extra_fields = []
+        for k, v in commit.extra:
+            if k == HG_RENAME_SOURCE and v in ('git', 'hg'):
+                continue
+            unknown_extra_fields.append(k)
+        if unknown_extra_fields:
+            raise UnknownCommitExtra(commit, unknown_extra_fields)
         rev = ForeignRevision(commit.id, self,
                 self.revision_id_foreign_to_bzr(commit.id))
         rev.git_metadata = None

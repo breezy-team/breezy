@@ -14,6 +14,8 @@
 
   * Mark bzr 2.7 as supported.
 
+  * Support 'HG:rename-source' fields.
+
 0.6.12  2013-09-22
 
  FEATURES
