@@ -315,6 +315,8 @@ class BzrGitMapping(foreign.VcsMapping):
             else:
                 raise NoPushSupport()
         assert type(commit.message) == str
+        if 'git-extra' in rev.properties:
+            commit.extra.extend([l.split(' ', 1) for l in rev.properties['git-extra'].splitlines()])
         return commit
 
     def import_fileid_map(self, blob):
@@ -333,13 +335,6 @@ class BzrGitMapping(foreign.VcsMapping):
         """
         if commit is None:
             raise AssertionError("Commit object can't be None")
-        unknown_extra_fields = []
-        for k, v in commit.extra:
-            if k == HG_RENAME_SOURCE and v in ('git', 'hg'):
-                continue
-            unknown_extra_fields.append(k)
-        if unknown_extra_fields:
-            raise UnknownCommitExtra(commit, unknown_extra_fields)
         rev = ForeignRevision(commit.id, self,
                 self.revision_id_foreign_to_bzr(commit.id))
         rev.git_metadata = None
@@ -385,6 +380,17 @@ class BzrGitMapping(foreign.VcsMapping):
             verifiers = {}
         if rev.parent_ids is None:
             rev.parent_ids = tuple([lookup_parent_revid(p) for p in commit.parents])
+        unknown_extra_fields = []
+        extra_lines = []
+        for k, v in commit.extra:
+            if k == HG_RENAME_SOURCE:
+                extra_lines.append(k + ' ' + v + '\n')
+            else:
+                unknown_extra_fields.append(k)
+        if unknown_extra_fields:
+            raise UnknownCommitExtra(commit, unknown_extra_fields)
+        if extra_lines:
+            rev.properties['git-extra'] = ''.join(extra_lines)
         return rev, roundtrip_revid, verifiers
 
     def get_fileid_map(self, lookup_object, tree_sha):

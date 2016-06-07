@@ -186,7 +186,7 @@ class TestImportCommit(tests.TestCase):
         c.commit_timezone = 60 * 5
         c.author_timezone = 60 * 3
         c.author = "Author"
-        c.extra.append(("iamextra", "foo"))
+        c._extra.append(("iamextra", "foo"))
         mapping = BzrGitMappingv1()
         self.assertRaises(UnknownCommitExtra, mapping.import_commit, c,
             mapping.revision_id_foreign_to_bzr)
@@ -334,6 +334,19 @@ class RoundtripRevisionsFromGit(tests.TestCase):
         c.author_time = 5
         c.author_timezone = 60 * 2
         c.author = "Author <author>"
+        self.assertRoundtripCommit(c)
+
+    def test_commit_extra(self):
+        c = Commit()
+        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = "Some message"
+        c.committer = "Committer <Committer>"
+        c.commit_time = 4
+        c.commit_timezone = -60 * 3
+        c.author_time = 5
+        c.author_timezone = 60 * 2
+        c.author = "Author <author>"
+        c._extra = [("HG:rename-source", "hg")]
         self.assertRoundtripCommit(c)
 
 
