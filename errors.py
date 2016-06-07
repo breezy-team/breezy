@@ -61,4 +61,4 @@ class UnknownCommitExtra(bzr_errors.BzrError):
     def __init__(self, object, fields):
         bzr_errors.BzrError.__init__(self)
         self.object = object
-        self.fields = fields
+        self.fields = ",".join(fields)

@@ -333,7 +333,7 @@ class BzrGitMapping(foreign.VcsMapping):
         if commit is None:
             raise AssertionError("Commit object can't be None")
         if commit.extra:
-            raise UnknownCommitExtra(commit, [item[0] for item in commit.extra])
+            raise UnknownCommitExtra(commit, [k for (k, v) in commit.extra])
         rev = ForeignRevision(commit.id, self,
                 self.revision_id_foreign_to_bzr(commit.id))
         rev.git_metadata = None
