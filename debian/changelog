@@ -2,6 +2,8 @@ bzr (2.7.0+bzr6619-1) UNRELEASED; urgency=medium
 
   * Bump standards version to 3.9.8 (no changes).
   * New upstream snapshot.
+  * Be consistent in what file is the target of symlinks when creating
+    symlinks for documentation.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 06 Jun 2016 19:18:34 +0000
 

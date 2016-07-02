@@ -80,16 +80,13 @@ override_dh_strip:
 
 override_dh_link:
 	# symlink identical resources.
-	cd debian/bzr-doc/usr/share/doc && fdupes -rnq . | while read line; do \
-		if [ -z "$$line" ]; then \
-			target=""; \
-		elif [ -z "$$target" ]; then \
-			target=$$line; \
-		else \
-			echo "symlinking duplicate file '$$line' to '$$target'"; \
-			ln -sf /usr/share/doc/"$$target" "$$line"; \
-		fi; \
-	done
+	( cd debian/bzr-doc/usr/share/doc && fdupes -r1q . | while read s; do \
+	      set -- $$(echo $$s | tr ' ' '\n' | sort); \
+	      f=$$1; shift; \
+	      for d; do \
+		  ln -sf /usr/share/doc/"$$d" "$$f"; \
+	      done; \
+	done )
 	dh_link
 
 override_dh_sphinxdoc:
