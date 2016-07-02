@@ -1,4 +1,4 @@
-bzr (2.7.0+bzr6619-1) UNRELEASED; urgency=medium
+bzr (2.7.0+bzr6619-1) unstable; urgency=medium
 
   * Bump standards version to 3.9.8 (no changes).
   * New upstream snapshot.
