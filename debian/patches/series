@@ -2,7 +2,6 @@
 03_spurious_test_failure
 07_shorten_test_names
 13_spurious_test_failure
-14_en_user_guide
 15_autodoc_source_epoch
 16_paramiko_compat
 17_reproducible_makefile
