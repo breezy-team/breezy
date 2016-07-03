@@ -241,8 +241,9 @@ class TransportRefsContainer(RefsContainer):
         :return: True if the set was successful, False otherwise.
         """
         try:
-            realname, _ = self._follow(name)
-        except KeyError:
+            realnames, _ = self.follow(name)
+            realname = realnames[-1]
+        except (KeyError, IndexError):
             realname = name
         self._ensure_dir_exists(realname)
         self.transport.put_bytes(realname, new_ref+"\n")
@@ -259,10 +260,11 @@ class TransportRefsContainer(RefsContainer):
         :return: True if the add was successful, False otherwise.
         """
         try:
-            realname, contents = self._follow(name)
+            realnames, contents = self.follow(name)
             if contents is not None:
                 return False
-        except KeyError:
+            realname = realnames[-1]
+        except (KeyError, IndexError):
             realname = name
         self._check_refname(realname)
         self._ensure_dir_exists(realname)
