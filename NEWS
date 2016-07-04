@@ -10,6 +10,8 @@
   * Correctly handle all moves when converting bzr trees to git.
     (William Grant, #818318)
 
+  * Fix compatibility with dulwich 0.14. (Jelmer Vernooij)
+
  FEATURES
 
   * Mark bzr 2.7 as supported.
