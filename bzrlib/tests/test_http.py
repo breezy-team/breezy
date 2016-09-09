@@ -260,6 +260,16 @@ class TestAuthHeader(tests.TestCase):
         self.assertEqual('basic', scheme)
         self.assertEqual('realm="Thou should not pass"', remainder)
 
+    def test_build_basic_header_with_long_creds(self):
+        handler = _urllib2_wrappers.BasicAuthHandler()
+        user = 'user' * 10  # length 40
+        password = 'password' * 5  # length 40
+        header = handler.build_auth_header(
+            dict(user=user, password=password), None)
+        # https://bugs.launchpad.net/bzr/+bug/1606203 was caused by incorrectly
+        # creating a header value with an embedded '\n'
+        self.assertFalse('\n' in header)
+
     def test_basic_extract_realm(self):
         scheme, remainder = self.parse_header(
             'Basic realm="Thou should not pass"',
