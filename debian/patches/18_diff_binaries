@@ -1,0 +1,17 @@
+Description: diff doesn't exit with 2 anymore on binary files.
+Author: Vincent Ladeuil <v.ladeuil+lp@free.fr>
+
+
+=== modified file 'bzrlib/tests/test_diff.py'
+--- unstable.orig/bzrlib/tests/test_diff.py	2016-02-01 18:06:32 +0000
++++ unstable/bzrlib/tests/test_diff.py	2016-09-11 16:32:54 +0000
+@@ -313,8 +313,6 @@
+         pipe = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                      stdin=subprocess.PIPE)
+         out, err = pipe.communicate()
+-        # Diff returns '2' on Binary files.
+-        self.assertEqual(2, pipe.returncode)
+         # We should output whatever diff tells us, plus a trailing newline
+         self.assertEqual(out.splitlines(True) + ['\n'], lines)
+ 
+

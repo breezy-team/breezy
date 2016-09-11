@@ -5,3 +5,5 @@
 15_autodoc_source_epoch
 16_paramiko_compat
 17_reproducible_makefile
+18_diff_binaries
+19_fix_long_creds

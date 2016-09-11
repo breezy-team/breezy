@@ -1,3 +1,14 @@
+bzr (2.7.0+bzr6619-2) unstable; urgency=medium
+
+  * Add 18_diff_binaries: With diffutils > 3.5, diff stop exiting with '2'
+    on binary files. LP: #1622039
+    Closes: #837268
+
+  * Add 19_fix_long_creds: Fix http Basic auth with credentials longer
+    than ~57 characters. LP: #1606203
+
+ -- Vincent Ladeuil <v.ladeuil+lp@free.fr>  Fri, 09 Sep 2016 16:00:49 +0200
+
 bzr (2.7.0+bzr6619-1) unstable; urgency=medium
 
   * Bump standards version to 3.9.8 (no changes).

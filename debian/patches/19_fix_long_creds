@@ -1,0 +1,49 @@
+Description: http Basic auth was broken
+ When a long (>57) user/pass combination was used, a spurious '\n' ended up in the header value, crashing httplib.
+.
+Author: Vincent Ladeuil <v.ladeuil+lp@free.fr>
+
+
+
+=== modified file 'bzrlib/tests/test_http.py'
+--- unstable.orig/bzrlib/tests/test_http.py	2016-02-01 18:06:32 +0000
++++ unstable/bzrlib/tests/test_http.py	2016-09-09 12:57:44 +0000
+@@ -260,6 +260,16 @@
+         self.assertEqual('basic', scheme)
+         self.assertEqual('realm="Thou should not pass"', remainder)
+ 
++    def test_build_basic_header_with_long_creds(self):
++        handler = _urllib2_wrappers.BasicAuthHandler()
++        user = 'user' * 10  # length 40
++        password = 'password' * 5  # length 40
++        header = handler.build_auth_header(
++            dict(user=user, password=password), None)
++        # https://bugs.launchpad.net/bzr/+bug/1606203 was caused by incorrectly
++        # creating a header value with an embedded '\n'
++        self.assertFalse('\n' in header)
++
+     def test_basic_extract_realm(self):
+         scheme, remainder = self.parse_header(
+             'Basic realm="Thou should not pass"',
+
+=== modified file 'bzrlib/transport/http/_urllib2_wrappers.py'
+--- unstable.orig/bzrlib/transport/http/_urllib2_wrappers.py	2016-01-31 12:55:31 +0000
++++ unstable/bzrlib/transport/http/_urllib2_wrappers.py	2016-09-09 12:58:12 +0000
+@@ -48,6 +48,7 @@
+ # actual code more or less do that, tests should be written to
+ # ensure that.
+ 
++import base64
+ import errno
+ import httplib
+ import os
+@@ -1491,7 +1492,7 @@
+ 
+     def build_auth_header(self, auth, request):
+         raw = '%s:%s' % (auth['user'], auth['password'])
+-        auth_header = 'Basic ' + raw.encode('base64').strip()
++        auth_header = 'Basic ' + base64.b64encode(raw)
+         return auth_header
+ 
+     def extract_realm(self, header_value):
+
