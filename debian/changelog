@@ -2,6 +2,8 @@ bzr (2.7.0+bzr6619-3) UNRELEASED; urgency=medium
 
   * Fix compatibility with python2.7 2.7.12-7. Patch by Vincent.
     Closes: #845335 LP: #1644003
+  * Sanitize URL scheme when running HTTP proxy tests for curl.
+    LP: #1645017
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 26 Nov 2016 16:17:06 +0000
 

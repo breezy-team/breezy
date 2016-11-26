@@ -1,0 +1,52 @@
+Description: Newer versions of pycurl don't allow arbitrary schemes in proxy URLs such as http+pycurl://
+Bug: https://bugs.launchpad.net/bzr/+bug/1645017
+Author: Vincent Ladeuil
+Status: not forwarded (Vincent is working on a proper fix)
+
+=== modified file 'bzrlib/tests/test_http.py'
+--- old/bzrlib/tests/test_http.py	2016-02-03 20:07:25 +0000
++++ new/bzrlib/tests/test_http.py	2016-11-26 18:20:50 +0000
+@@ -1273,6 +1273,8 @@
+             self.no_proxy_host = self.server_host_port
+         # The secondary server is the proxy
+         self.proxy_url = self.get_secondary_url()
++        if self._testing_pycurl():
++            self.proxy_url = self.proxy_url.replace('+pycurl', '')
+ 
+     def _testing_pycurl(self):
+         # TODO: This is duplicated for lots of the classes in this file
+@@ -1853,7 +1855,10 @@
+                                   ])
+ 
+     def get_user_transport(self, user, password):
+-        self.overrideEnv('all_proxy', self.get_user_url(user, password))
++        proxy_url = self.get_user_url(user, password)
++        if self._testing_pycurl():
++            proxy_url = proxy_url.replace('+pycurl', '')
++        self.overrideEnv('all_proxy', proxy_url)
+         return TestAuth.get_user_transport(self, user, password)
+ 
+     def test_empty_pass(self):
+
+=== modified file 'bzrlib/transport/http/_pycurl.py'
+--- old/bzrlib/transport/http/_pycurl.py	2011-12-19 17:39:40 +0000
++++ new/bzrlib/transport/http/_pycurl.py	2016-11-26 18:20:50 +0000
+@@ -85,6 +85,9 @@
+     """
+     return pycurl.__dict__.get(symbol, default)
+ 
++# Yes, weird but returned on weird http error (invalid status line)
++CURLE_FTP_WEIRD_SERVER_REPLY = _get_pycurl_errcode(
++    'E_FTP_WEIRD_SERVER_REPLY', 8)
+ CURLE_COULDNT_CONNECT = _get_pycurl_errcode('E_COULDNT_CONNECT', 7)
+ CURLE_COULDNT_RESOLVE_HOST = _get_pycurl_errcode('E_COULDNT_RESOLVE_HOST', 6)
+ CURLE_COULDNT_RESOLVE_PROXY = _get_pycurl_errcode('E_COULDNT_RESOLVE_PROXY', 5)
+@@ -397,6 +400,7 @@
+             if e[0] in (CURLE_COULDNT_RESOLVE_HOST,
+                         CURLE_COULDNT_RESOLVE_PROXY,
+                         CURLE_COULDNT_CONNECT,
++                        CURLE_FTP_WEIRD_SERVER_REPLY,
+                         CURLE_GOT_NOTHING,
+                         CURLE_SSL_CACERT,
+                         CURLE_SSL_CACERT_BADFILE,
+
