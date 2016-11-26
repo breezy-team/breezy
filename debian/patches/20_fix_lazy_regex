@@ -1,0 +1,22 @@
+Description: Fix lazy_regex module compatibility with gettext (https://hg.python.org/cpython/rev/e0cc3fadd7b3)
+Bug-Debian: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=845335
+Bug-Ubuntu: https://bugs.launchpad.net/bzr/+bug/1644003
+Author: Vincent Ladeuil
+Status: not forwarded (but Vincent is working on a proper fix upstream)
+
+=== modified file 'bzrlib/lazy_regex.py'
+--- old/bzrlib/lazy_regex.py	2011-12-19 13:23:58 +0000
++++ new/bzrlib/lazy_regex.py	2016-11-26 16:09:38 +0000
+@@ -131,3 +131,11 @@
+     raise AssertionError(
+         "re.compile has already been overridden as lazy_compile, but this would" \
+         " cause infinite recursion")
++# re.finditer get confused if it receives a LazyRegex
++if getattr(re, 'finditer', None is not None):
++    def finditer_public(pattern, string, flags=0):
++        if isinstance(pattern, LazyRegex):
++            return pattern.finditer(string)
++        else:
++            return _real_re_compile(pattern, flags).finditer(string)
++re.finditer = finditer_public
+

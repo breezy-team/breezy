@@ -7,3 +7,4 @@
 17_reproducible_makefile
 18_diff_binaries
 19_fix_long_creds
+20_fix_lazy_regex
