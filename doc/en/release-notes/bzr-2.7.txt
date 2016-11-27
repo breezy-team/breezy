@@ -5,6 +5,17 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
+bzr 2.7.1
+#########
+
+
+Bug Fixes
+*********
+
+* Cope with paramiko making argument to SFTPFile.prefetch() mandatory.
+  (Jelmer Vernooij, #1579093)
+
+
 bzr 2.7.0
 #########
 
