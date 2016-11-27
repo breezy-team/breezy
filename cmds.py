@@ -371,7 +371,8 @@ def find_credits(repository, revid):
     repository.lock_read()
     try:
         graph = repository.get_graph()
-        ancestry = [r for (r, ps) in graph.iter_ancestry([revid]) if ps is not None]
+        ancestry = [r for (r, ps) in graph.iter_ancestry([revid])
+                    if ps is not None and r != NULL_REVISION]
         revs = repository.get_revisions(ancestry)
         pb = ui.ui_factory.nested_progress_bar()
         try:
@@ -391,7 +392,7 @@ def find_credits(repository, revid):
     finally:
         repository.unlock()
     def sort_class(name):
-        return map(lambda (x,y): x, 
+        return map(lambda (x,y): x,
                sorted(ret[name].items(), lambda x,y: cmp((x[1], x[0]), (y[1], y[0])), reverse=True))
     return (sort_class("code"), sort_class("documentation"), sort_class("art"), sort_class("translation"))
 
