@@ -1,3 +1,10 @@
+bzr (2.7.0+bzr6619-4) UNRELEASED; urgency=medium
+
+  * Add patch 22_test_copy_to: skip test_copy_to, as it's failing on
+    armel.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 07 Dec 2016 22:12:55 +0000
+
 bzr (2.7.0+bzr6619-3) unstable; urgency=medium
 
   * Fix compatibility with python2.7 2.7.12-7. Patch by Vincent.

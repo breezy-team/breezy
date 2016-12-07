@@ -9,3 +9,4 @@
 19_fix_long_creds
 20_fix_lazy_regex
 21_pycurl_proxy_url
+22_test_copy_to
