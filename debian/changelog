@@ -1,3 +1,10 @@
+bzr (2.7.0+bzr6619-5) UNRELEASED; urgency=medium
+
+  * Order files by name when eliminating dupes, in an attempt to make
+    the build reproducible.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 25 Dec 2016 14:41:05 +0000
+
 bzr (2.7.0+bzr6619-4) unstable; urgency=medium
 
   * Add patch 22_test_copy_to: skip test_copy_to, as it's failing on

@@ -80,7 +80,7 @@ override_dh_strip:
 
 override_dh_link:
 	# symlink identical resources.
-	( cd debian/bzr-doc/usr/share/doc && fdupes -r1q . | while read s; do \
+	( cd debian/bzr-doc/usr/share/doc && fdupes -o name -r1q . | while read s; do \
 	      set -- $$(echo $$s | tr ' ' '\n' | sort); \
 	      f=$$1; shift; \
 	      for d; do \
