@@ -1,4 +1,4 @@
-bzr (2.7.0+bzr6619-5) UNRELEASED; urgency=medium
+bzr (2.7.0+bzr6619-5) unstable; urgency=low
 
   * Order files by name when eliminating dupes, in an attempt to make
     the build reproducible.
