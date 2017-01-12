@@ -1,3 +1,10 @@
+bzr (2.7.0+bzr6619-7) UNRELEASED; urgency=medium
+
+  * Add patch 23_ssl_host: avoid extra checking of server cert. Closes:
+    #850960
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 11 Jan 2017 23:48:19 +0000
+
 bzr (2.7.0+bzr6619-6) unstable; urgency=low
 
   * Disable lzma support on m68k, powerpcspe, sh4 where python-lzma is

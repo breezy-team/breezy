@@ -1,0 +1,38 @@
+Description: Avoid requesting remote SSL certificate before SNI.
+Origin: commit, revision id: jelmer@jelmer.uk-20170111224745-xs2hj04l6xhswuse
+Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
+Bug: https://launchpad.net/bugs/1089352
+Last-Update: 2017-01-11
+Applied-Upstream: no
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20170111224745-xs2hj04l6xhswuse
+
+=== modified file 'bzrlib/transport/http/_urllib2_wrappers.py'
+--- old/bzrlib/transport/http/_urllib2_wrappers.py	2016-01-31 12:55:31 +0000
++++ new/bzrlib/transport/http/_urllib2_wrappers.py	2017-01-11 22:47:45 +0000
+@@ -74,14 +74,9 @@
+ )
+ 
+ try:
+-    _ = (ssl.match_hostname, ssl.CertificateError)
++    ssl.CertificateError
+ except AttributeError:
+     # Provide fallbacks for python < 2.7.9
+-    def match_hostname(cert, host):
+-        trace.warning(
+-            '%s cannot be verified, https certificates verification is only'
+-            ' available for python versions >= 2.7.9' % (host,))
+-    ssl.match_hostname = match_hostname
+     ssl.CertificateError = ValueError
+ 
+ 
+@@ -462,9 +457,6 @@
+                 "Pass -Ossl.cert_reqs=none to disable certificate "
+                 "verification entirely.\n")
+             raise
+-        if cert_reqs == ssl.CERT_REQUIRED:
+-            peer_cert = ssl_sock.getpeercert()
+-            ssl.match_hostname(peer_cert, host)
+ 
+         # Wrap the ssl socket before anybody use it
+         self._wrap_socket_for_reporting(ssl_sock)
+
