@@ -8,6 +8,24 @@ Bazaar Release Notes
 bzr 2.7.1
 #########
 
+:2.7.1: NOT RELEASED YET
+
+
+External Compatibility Breaks
+*****************************
+
+None.
+
+New Features
+************
+
+None.
+
+Improvements
+************
+
+None.
+
 
 Bug Fixes
 *********
@@ -17,6 +35,33 @@ Bug Fixes
 
 * Cope with paramiko making argument to SFTPFile.prefetch() mandatory.
   (Jelmer Vernooij, #1579093)
+
+Documentation
+*************
+
+* Clarify pypi uploads for releases. (Vincent Ladeuil, #1542903)
+
+API Changes
+***********
+
+None.
+
+Internals
+*********
+
+None.
+
+Changed Behaviour
+*****************
+
+None.
+
+Testing
+*******
+
+* Recent versions of pycurl started being stricter about the proxy url,
+  using 'http+pycurl:' is not allowed anymore and should just be 'http:'
+  (Vincent Ladeuil, #1645017).
 
 
 bzr 2.7.0
