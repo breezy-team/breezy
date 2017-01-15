@@ -1283,6 +1283,8 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
             self.no_proxy_host = self.server_host_port
         # The secondary server is the proxy
         self.proxy_url = self.get_secondary_url()
+        if self._testing_pycurl():
+            self.proxy_url = self.proxy_url.replace('+pycurl', '')
 
     def _testing_pycurl(self):
         # TODO: This is duplicated for lots of the classes in this file
@@ -1863,7 +1865,10 @@ class TestProxyAuth(TestAuth):
                                   ])
 
     def get_user_transport(self, user, password):
-        self.overrideEnv('all_proxy', self.get_user_url(user, password))
+        proxy_url = self.get_user_url(user, password)
+        if self._testing_pycurl():
+            proxy_url = proxy_url.replace('+pycurl', '')
+        self.overrideEnv('all_proxy', proxy_url)
         return TestAuth.get_user_transport(self, user, password)
 
     def test_empty_pass(self):
