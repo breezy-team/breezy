@@ -551,12 +551,12 @@ available to the world.
    <http://doc.bazaar.canonical.com>.  It should be automatically build when
    the branch is created, by a cron script ``update-bzr-docs`` on
    ``escudero``. When the first release is created in a new series, a branch
-   needs to be created on zhongshan::
+   needs to be created on ``escudero``::
 
-     ssh zhongshan.canonical.com
+     ssh escudero.canonical.com
      sudo -u bzr-web -s
      cd /srv/doc.bazaar.canonical.com/
-     bzr branch http://bazaar.launchpad.net/~bzr-pqm/bzr/2.6 bzr/bzr.2.6
+     bzr branch lp:bzr/2.7 bzr/bzr.2.7
 
    And the ``bzr/bin/update-bzr-docs`` script needs to refer to it.
 
@@ -648,6 +648,9 @@ Now that the release is publicly available, tell people about it.
 
    Remember to check the results afterward -- this should be done for
    stable releases but not for beta releases nor SRUs.
+
+   The ``twine`` command is provided by the ``twine`` package on Debian and
+   Ubuntu.
 
    If in doubt, you can test with <https://testpypi.python.org/pypi> where
    you can register yourself, register the bzr project and upload (and then
