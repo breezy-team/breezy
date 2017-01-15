@@ -8,6 +8,8 @@ Bazaar Release Notes
 bzr 2.7.1
 #########
 
+:2.7.1: NOT RELEASED YET
+
 
 External Compatibility Breaks
 *****************************
@@ -30,6 +32,11 @@ Bug Fixes
 
 * Cope with paramiko making argument to SFTPFile.prefetch() mandatory.
   (Jelmer Vernooij, #1579093)
+
+Documentation
+*************
+
+* Clarify pypi uploads for releases. (Vincent Ladeuil, #1542903)
 
 API Changes
 ***********
