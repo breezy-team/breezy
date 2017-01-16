@@ -30,6 +30,9 @@ None.
 Bug Fixes
 *********
 
+* Complete monkey-patching of re.finditer or LazyRegexps leak.
+  (Vincent Ladeuil, #1644003)
+
 * Cope with paramiko making argument to SFTPFile.prefetch() mandatory.
   (Jelmer Vernooij, #1579093)
 
