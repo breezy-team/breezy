@@ -1,3 +1,10 @@
+bzr (2.7.0+bzr6619-8) UNRELEASED; urgency=medium
+
+  * Update 23_ssl_host: Actually pass server_hostname to
+    ssl.socket_wrap.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 17 Jan 2017 00:20:26 +0000
+
 bzr (2.7.0+bzr6619-7) unstable; urgency=medium
 
   * Add patch 23_ssl_host: avoid extra checking of server cert. Closes:

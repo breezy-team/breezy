@@ -7,8 +7,8 @@ Applied-Upstream: no
 X-Bzr-Revision-Id: jelmer@jelmer.uk-20170111224745-xs2hj04l6xhswuse
 
 === modified file 'bzrlib/transport/http/_urllib2_wrappers.py'
---- old/bzrlib/transport/http/_urllib2_wrappers.py	2016-01-31 12:55:31 +0000
-+++ new/bzrlib/transport/http/_urllib2_wrappers.py	2017-01-11 22:47:45 +0000
+--- bzrlib/transport/http/_urllib2_wrappers.py	2016-02-01 14:54:37 +0000
++++ bzrlib/transport/http/_urllib2_wrappers.py	2017-01-16 17:14:40 +0000
 @@ -74,14 +74,9 @@
  )
  
@@ -25,6 +25,15 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20170111224745-xs2hj04l6xhswuse
      ssl.CertificateError = ValueError
  
  
+@@ -453,7 +448,7 @@
+         try:
+             ssl_sock = ssl.wrap_socket(
+                 self.sock, self.key_file, self.cert_file,
+-                cert_reqs=cert_reqs, ca_certs=ca_certs)
++                cert_reqs=cert_reqs, ca_certs=ca_certs, server_hostname=host)
+         except ssl.SSLError:
+             trace.note(
+                 "\n"
 @@ -462,9 +457,6 @@
                  "Pass -Ossl.cert_reqs=none to disable certificate "
                  "verification entirely.\n")
