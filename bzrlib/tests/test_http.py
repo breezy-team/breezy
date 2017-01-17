@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2012, 2015, 2016 Canonical Ltd
+# Copyright (C) 2005-2012, 2015, 2016, 2017 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -259,6 +259,16 @@ class TestAuthHeader(tests.TestCase):
             'Basic realm="Thou should not pass"')
         self.assertEqual('basic', scheme)
         self.assertEqual('realm="Thou should not pass"', remainder)
+
+    def test_build_basic_header_with_long_creds(self):
+        handler = _urllib2_wrappers.BasicAuthHandler()
+        user = 'user' * 10  # length 40
+        password = 'password' * 5  # length 40
+        header = handler.build_auth_header(
+            dict(user=user, password=password), None)
+        # https://bugs.launchpad.net/bzr/+bug/1606203 was caused by incorrectly
+        # creating a header value with an embedded '\n'
+        self.assertFalse('\n' in header)
 
     def test_basic_extract_realm(self):
         scheme, remainder = self.parse_header(
@@ -1273,6 +1283,8 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
             self.no_proxy_host = self.server_host_port
         # The secondary server is the proxy
         self.proxy_url = self.get_secondary_url()
+        if self._testing_pycurl():
+            self.proxy_url = self.proxy_url.replace('+pycurl', '')
 
     def _testing_pycurl(self):
         # TODO: This is duplicated for lots of the classes in this file
@@ -1853,7 +1865,10 @@ class TestProxyAuth(TestAuth):
                                   ])
 
     def get_user_transport(self, user, password):
-        self.overrideEnv('all_proxy', self.get_user_url(user, password))
+        proxy_url = self.get_user_url(user, password)
+        if self._testing_pycurl():
+            proxy_url = proxy_url.replace('+pycurl', '')
+        self.overrideEnv('all_proxy', proxy_url)
         return TestAuth.get_user_transport(self, user, password)
 
     def test_empty_pass(self):
