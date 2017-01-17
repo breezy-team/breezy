@@ -6,9 +6,9 @@ Last-Update: 2017-01-11
 Applied-Upstream: no
 X-Bzr-Revision-Id: jelmer@jelmer.uk-20170111224745-xs2hj04l6xhswuse
 
-=== modified file 'bzrlib/transport/http/_urllib2_wrappers.py'
---- bzrlib/transport/http/_urllib2_wrappers.py	2016-02-01 14:54:37 +0000
-+++ bzrlib/transport/http/_urllib2_wrappers.py	2017-01-16 17:14:40 +0000
+=== modified file 'a/bzrlib/transport/http/_urllib2_wrappers.py'
+--- a/bzrlib/transport/http/_urllib2_wrappers.py	2016-02-01 14:54:37 +0000
++++ b/bzrlib/transport/http/_urllib2_wrappers.py	2017-01-16 17:14:40 +0000
 @@ -74,14 +74,9 @@
  )
  
