@@ -21,6 +21,7 @@ from __future__ import absolute_import
 from cStringIO import StringIO
 
 import os
+import sys
 import urllib
 
 from dulwich.errors import (
@@ -322,6 +323,12 @@ class TransportRepo(BaseRepo):
             refs_container = TransportRefsContainer(self._controltransport)
         super(TransportRepo, self).__init__(object_store,
                 refs_container)
+
+    def _determine_file_mode(self):
+        # Be consistent with bzr
+        if sys.platform == 'win32':
+            return False
+        return True
 
     def get_named_file(self, path):
         """Get a file from the control dir with a specific name.

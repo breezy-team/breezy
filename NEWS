@@ -2,6 +2,9 @@
 
  BUG FIXES
 
+  * Fix compatibility with newer versions of Dulwich, which
+    now require Repo._determine_file_mode. (Jelmer Vernooĳ)
+
   * "Support" empty repositories; print an appropriate error.
     (Jelmer Vernooij, #1219424)
 
