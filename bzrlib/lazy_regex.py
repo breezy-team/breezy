@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2008-2011, 2017 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -133,11 +133,11 @@ if _real_re_compile is lazy_compile:
         " cause infinite recursion")
 
 
-# re.finditer get confused if it receives a LazyRegex
-if getattr(re, 'finditer', None is not None):
+# Some libraries calls re.finditer which fails it if receives a LazyRegex.
+if getattr(re, 'finditer', False):
     def finditer_public(pattern, string, flags=0):
         if isinstance(pattern, LazyRegex):
             return pattern.finditer(string)
         else:
             return _real_re_compile(pattern, flags).finditer(string)
-re.finditer = finditer_public
+    re.finditer = finditer_public
