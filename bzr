@@ -27,7 +27,7 @@ import warnings
 # update this on each release
 _script_version = (2, 8, 0)
 
-NEED_VERS = (2, 6)
+NEED_VERS = (2, 7)
 
 if sys.version_info < NEED_VERS:
     sys.stderr.write("bzr: error: cannot find a suitable python interpreter\n")

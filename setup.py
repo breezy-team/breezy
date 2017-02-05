@@ -12,7 +12,7 @@ import sys
 import copy
 import glob
 
-if sys.version_info < (2, 6):
+if sys.version_info < (2, 7):
     sys.stderr.write("[ERROR] Not a supported Python version. Need 2.6+\n")
     sys.exit(1)
 
