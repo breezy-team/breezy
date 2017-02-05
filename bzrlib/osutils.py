@@ -396,7 +396,7 @@ def _win98_abspath(path):
     # check for absolute path
     drive = ntpath.splitdrive(path)[0]
     if drive == '' and path[:2] not in('//','\\\\'):
-        cwd = os.getcwdu()
+        cwd = os.getcwd()
         # we cannot simply os.path.join cwd and path
         # because os.path.join('C:','/path') produce '/path'
         # and this is incorrect
@@ -421,7 +421,7 @@ def _win32_normpath(path):
 
 
 def _win32_getcwd():
-    return _win32_fixdrive(os.getcwdu().replace('\\', '/'))
+    return _win32_fixdrive(os.getcwd().replace('\\', '/'))
 
 
 def _win32_mkdtemp(*args, **kwargs):
@@ -447,7 +447,7 @@ def _win32_rename(old, new):
 
 
 def _mac_getcwd():
-    return unicodedata.normalize('NFC', os.getcwdu())
+    return unicodedata.normalize('NFC', os.getcwd())
 
 
 def _rename_wrap_exception(rename_func):
@@ -482,7 +482,7 @@ normpath = _posix_normpath
 path_from_environ = _posix_path_from_environ
 _get_home_dir = _posix_get_home_dir
 getuser_unicode = _posix_getuser_unicode
-getcwd = os.getcwdu
+getcwd = os.getcwd
 dirname = os.path.dirname
 basename = os.path.basename
 split = os.path.split

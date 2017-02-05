@@ -148,7 +148,7 @@ class FTPTestServer(test_server.TestServer):
             raise AssertionError(
                 "FTPServer currently assumes local transport, got %s"
                 % vfs_server)
-        self._root = os.getcwdu()
+        self._root = os.getcwd()
 
         address = ('localhost', 0) # bind to a random port
         authorizer = AnonymousWithWriteAccessAuthorizer()

@@ -240,7 +240,7 @@ class FTPTestServer(test_server.TestServer):
                                                  test_server.LocalURLServer)):
             raise AssertionError(
                 "FTPServer currently assumes local transport, got %s" % vfs_server)
-        self._root = os.getcwdu()
+        self._root = os.getcwd()
         self._ftp_server = ftp_server(
             authorizer=test_authorizer(root=self._root),
             ip='localhost',

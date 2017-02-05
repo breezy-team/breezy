@@ -483,7 +483,7 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
         ssh._ssh_vendor_manager._cached_ssh_vendor = self._vendor
         if sys.platform == 'win32':
             # Win32 needs to use the UNICODE api
-            self._homedir = os.getcwdu()
+            self._homedir = os.getcwd()
             # Normalize the path or it will be wrongly escaped
             self._homedir = osutils.normpath(self._homedir)
         else:

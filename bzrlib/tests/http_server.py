@@ -472,7 +472,7 @@ class HttpServer(test_server.TestingTCPServerInAThread):
             raise AssertionError(
                 "HTTPServer currently assumes local transport, got %s" %
                 backing_transport_server)
-        self._home_dir = os.getcwdu()
+        self._home_dir = os.getcwd()
         self._local_path_parts = self._home_dir.split(os.path.sep)
         self.logs = []
 
