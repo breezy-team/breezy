@@ -107,7 +107,7 @@ class _Tags(object):
         raise NotImplementedError(self.rename_revisions)
 
     def has_tag(self, tag_name):
-        return self.get_tag_dict().has_key(tag_name)
+        return tag_name in self.get_tag_dict()
 
 
 class DisabledTags(_Tags):

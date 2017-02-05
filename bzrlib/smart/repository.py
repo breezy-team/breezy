@@ -428,15 +428,15 @@ class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
             return FailedSmartServerResponse(('nosuchrevision', revid))
 
         body = ''
-        if stats.has_key('committers'):
+        if 'committers' in stats:
             body += 'committers: %d\n' % stats['committers']
-        if stats.has_key('firstrev'):
+        if 'firstrev' in stats:
             body += 'firstrev: %.3f %d\n' % stats['firstrev']
-        if stats.has_key('latestrev'):
+        if 'latestrev' in stats:
              body += 'latestrev: %.3f %d\n' % stats['latestrev']
-        if stats.has_key('revisions'):
+        if 'revisions' in stats:
             body += 'revisions: %d\n' % stats['revisions']
-        if stats.has_key('size'):
+        if 'size' in stats:
             body += 'size: %d\n' % stats['size']
 
         return SuccessfulSmartServerResponse(('ok', ), body)

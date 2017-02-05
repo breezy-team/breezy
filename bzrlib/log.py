@@ -2104,7 +2104,7 @@ properties_handler_registry = registry.Registry()
 
 # Use the properties handlers to print out bug information if available
 def _bugs_properties_handler(revision):
-    if revision.properties.has_key('bugs'):
+    if 'bugs' in revision.properties:
         bug_lines = revision.properties['bugs'].split('\n')
         bug_rows = [line.split(' ', 1) for line in bug_lines]
         fixed_bug_urls = [row[0] for row in bug_rows if

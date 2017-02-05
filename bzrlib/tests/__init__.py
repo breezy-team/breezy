@@ -1087,7 +1087,7 @@ class TestCase(testtools.TestCase):
         _counters = self._counters # Avoid closing over self
         if counter_name is None:
             counter_name = name
-        if _counters.has_key(counter_name):
+        if counter_name in _counters:
             raise AssertionError('%s is already used as a counter name'
                                   % (counter_name,))
         _counters[counter_name] = 0
@@ -3868,10 +3868,10 @@ class TestIdList(object):
 
     def refers_to(self, module_name):
         """Is there tests for the module or one of its sub modules."""
-        return self.modules.has_key(module_name)
+        return module_name in self.modules
 
     def includes(self, test_id):
-        return self.tests.has_key(test_id)
+        return test_id in self.tests
 
 
 class TestPrefixAliasRegistry(registry.Registry):

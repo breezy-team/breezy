@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 # Copyright (C) 2005-2013, 2016 Canonical Ltd
 #
@@ -46,7 +46,7 @@ if os.name == "posix":
     import locale
     try:
         locale.setlocale(locale.LC_ALL, '')
-    except locale.Error, e:
+    except locale.Error as e:
         sys.stderr.write('bzr: warning: %s\n'
             '  bzr could not set the application locale.\n'
             '  Although this should be no problem for bzr itself, it might\n'

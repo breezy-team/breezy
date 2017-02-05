@@ -286,7 +286,7 @@ class PythonVersionInfoTests(VersionInfoTestCase):
         tvi = self.regen(wt)
         self.assertEqual('3', tvi.version_info['revno'])
         self.assertEqual('r3', tvi.version_info['revision_id'])
-        self.assertTrue(tvi.version_info.has_key('date'))
+        self.assertTrue('date' in tvi.version_info)
         self.assertEqual(None, tvi.version_info['clean'])
 
         tvi = self.regen(wt, check_for_clean=True)

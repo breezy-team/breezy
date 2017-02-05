@@ -1610,8 +1610,8 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             elif ((record.storage_kind in knit_types)
                   and (compression_parent is None
                        or not self._immediate_fallback_vfs
-                       or self._index.has_key(compression_parent)
-                       or not self.has_key(compression_parent))):
+                       or compression_parent in self._index
+                       or compression_parent not in self)):
                 # we can insert the knit record literally if either it has no
                 # compression parent OR we already have its basis in this kvf
                 # OR the basis is not present even in the fallbacks.  In the
@@ -1659,7 +1659,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     #
                     # They're required to be physically in this
                     # KnitVersionedFiles, not in a fallback.
-                    if not self._index.has_key(compression_parent):
+                    if compression_parent not in self._index:
                         pending = buffered_index_entries.setdefault(
                             compression_parent, [])
                         pending.append(index_entry)

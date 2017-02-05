@@ -3717,7 +3717,7 @@ class TestCounterHooks(tests.TestCase, SelfTestHelper):
         result = unittest.TestResult()
         test.run(result)
         self.assertTrue(hasattr(test, '_counters'))
-        self.assertTrue(test._counters.has_key('myhook'))
+        self.assertTrue('myhook' in test._counters)
         self.assertEqual(expected_calls, test._counters['myhook'])
 
     def test_no_hook(self):
