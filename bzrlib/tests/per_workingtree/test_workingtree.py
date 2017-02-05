@@ -986,7 +986,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                 self.assertFalse(tree.is_executable(tree.path2id('filename')))
             finally:
                 tree.unlock()
-            os.chmod('filename', 0755)
+            os.chmod('filename', 0o755)
             self.addCleanup(tree.lock_read().unlock)
             self.assertTrue(tree.is_executable(tree.path2id('filename')))
         else:

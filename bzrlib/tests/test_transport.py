@@ -780,7 +780,7 @@ class TestLocalTransportMutation(tests.TestCaseInTempDir):
             raise e
         self.overrideAttr(os, 'chmod', fake_chmod)
         t.mkdir('test')
-        t.mkdir('test2', mode=0707)
+        t.mkdir('test2', mode=0o707)
         self.assertTrue(os.path.exists('test'))
         self.assertTrue(os.path.exists('test2'))
 

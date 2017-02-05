@@ -324,7 +324,7 @@ class TestCommands(TestCaseWithTransport):
             f.write('#!/bin/sh\n')
         # f.write('echo Hello from test-command')
         f.close()
-        os.chmod(cmd_name, 0755)
+        os.chmod(cmd_name, 0o755)
 
         # It should not find the command in the local
         # directory by default, since it is not in my path

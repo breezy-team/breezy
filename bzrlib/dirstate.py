@@ -1872,7 +1872,7 @@ class DirState(object):
         :param stat_value: The os.lstat for the file.
         """
         try:
-            minikind = _stat_to_minikind[stat_value.st_mode & 0170000]
+            minikind = _stat_to_minikind[stat_value.st_mode & 0o170000]
         except KeyError:
             # Unhandled kind
             return None
@@ -3382,7 +3382,7 @@ def py_update_entry(state, entry, abspath, stat_value,
         target of a symlink.
     """
     try:
-        minikind = _stat_to_minikind[stat_value.st_mode & 0170000]
+        minikind = _stat_to_minikind[stat_value.st_mode & 0o170000]
     except KeyError:
         # Unhandled kind
         return None

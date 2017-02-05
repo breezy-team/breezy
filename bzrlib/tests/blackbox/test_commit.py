@@ -776,7 +776,7 @@ altered in u2
             f = file('fed.sh', 'wb')
             f.write('#!/bin/sh\n')
             f.close()
-            os.chmod('fed.sh', 0755)
+            os.chmod('fed.sh', 0o755)
             self.overrideEnv('BZR_EDITOR', "./fed.sh")
 
     def setup_commit_with_template(self):

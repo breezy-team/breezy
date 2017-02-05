@@ -425,7 +425,7 @@ class _PosixPermissionsFeature(Feature):
             os.close(fd)
             osutils.chmod_if_possible(name, write_perms)
 
-            read_perms = os.stat(name).st_mode & 0777
+            read_perms = os.stat(name).st_mode & 0o777
             os.unlink(name)
             return (write_perms == read_perms)
 

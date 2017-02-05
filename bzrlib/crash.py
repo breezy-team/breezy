@@ -241,7 +241,7 @@ def _open_crash_file():
         # on unix this should be /var/crash and should already exist; on
         # Windows or if it's manually configured it might need to be created,
         # and then it should be private
-        os.makedirs(crash_dir, mode=0600)
+        os.makedirs(crash_dir, mode=0o600)
     date_string = time.strftime('%Y-%m-%dT%H:%M', time.gmtime())
     # XXX: getuid doesn't work on win32, but the crash directory is per-user
     if sys.platform == 'win32':
@@ -258,7 +258,7 @@ def _open_crash_file():
     return filename, os.fdopen(
         os.open(filename, 
             os.O_WRONLY|os.O_CREAT|os.O_EXCL,
-            0600),
+            0o600),
         'wb')
 
 

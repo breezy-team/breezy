@@ -753,7 +753,7 @@ class VersionedFileTestMixIn(object):
     def test_readonly_mode(self):
         t = self.get_transport()
         factory = self.get_factory()
-        vf = factory('id', t, 0777, create=True, access_mode='w')
+        vf = factory('id', t, 0o777, create=True, access_mode='w')
         vf = factory('id', t, access_mode='r')
         self.assertRaises(errors.ReadOnlyError, vf.add_lines, 'base', [], [])
         self.assertRaises(errors.ReadOnlyError,

@@ -1076,7 +1076,7 @@ class Transport(object):
         # create target directory with the same rwx bits as source.
         # use mask to ensure that bits other than rwx are ignored.
         stat = self.stat(from_relpath)
-        target.mkdir('.', stat.st_mode & 0777)
+        target.mkdir('.', stat.st_mode & 0o777)
         source.copy_tree_to_transport(target)
 
     def copy_tree_to_transport(self, to_transport):

@@ -768,14 +768,14 @@ class TreeTransformBase(object):
             if new_executability:
                 umask = os.umask(0)
                 os.umask(umask)
-                to_mode = current_mode | (0100 & ~umask)
+                to_mode = current_mode | (0o100 & ~umask)
                 # Enable x-bit for others only if they can read it.
-                if current_mode & 0004:
-                    to_mode |= 0001 & ~umask
-                if current_mode & 0040:
-                    to_mode |= 0010 & ~umask
+                if current_mode & 0o004:
+                    to_mode |= 0o001 & ~umask
+                if current_mode & 0o040:
+                    to_mode |= 0o010 & ~umask
             else:
-                to_mode = current_mode & ~0111
+                to_mode = current_mode & ~0o111
             osutils.chmod_if_possible(abspath, to_mode)
 
     def _new_entry(self, name, parent_id, file_id):

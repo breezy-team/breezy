@@ -170,7 +170,7 @@ class LockDir(lock.Lock):
 
     __INFO_NAME = '/info'
 
-    def __init__(self, transport, path, file_modebits=0644, dir_modebits=0755,
+    def __init__(self, transport, path, file_modebits=0o644, dir_modebits=0o755,
         extra_holder_info=None):
         """Create a new LockDir object.
 

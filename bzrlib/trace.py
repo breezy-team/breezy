@@ -233,7 +233,7 @@ def _open_bzr_log():
                 if e.errno != errno.ENOENT:
                     raise
             try:
-                fd = os.open(filename, flags | os.O_CREAT | os.O_EXCL, 0666)
+                fd = os.open(filename, flags | os.O_CREAT | os.O_EXCL, 0o666)
             except OSError as e:
                 if e.errno != errno.EEXIST:
                     raise

@@ -225,7 +225,7 @@ class LocalTransport(transport.Transport):
         abspath = self._abspath(relpath)
         if mode is None:
             # os.open() will automatically use the umask
-            local_mode = 0666
+            local_mode = 0o666
         else:
             local_mode = mode
         try:
@@ -305,7 +305,7 @@ class LocalTransport(transport.Transport):
         """Create a real directory, filtering through mode"""
         if mode is None:
             # os.mkdir() will filter through umask
-            local_mode = 0777
+            local_mode = 0o777
         else:
             local_mode = mode
         try:
@@ -340,7 +340,7 @@ class LocalTransport(transport.Transport):
         file_abspath = self._abspath(relpath)
         if mode is None:
             # os.open() will automatically use the umask
-            local_mode = 0666
+            local_mode = 0o666
         else:
             local_mode = mode
         try:

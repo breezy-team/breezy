@@ -65,12 +65,12 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
         item.type = tarfile.DIRTYPE
         item.name += '/'
         item.size = 0
-        item.mode = 0755
+        item.mode = 0o755
         fileobj = None
     elif entry.kind == "symlink":
         item.type = tarfile.SYMTYPE
         item.size = 0
-        item.mode = 0755
+        item.mode = 0o755
         item.linkname = tree.get_symlink_target(entry.file_id, tree_path)
         fileobj = None
     else:

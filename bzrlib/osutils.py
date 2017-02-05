@@ -105,14 +105,14 @@ def make_readonly(filename):
     """Make a filename read-only."""
     mod = os.lstat(filename).st_mode
     if not stat.S_ISLNK(mod):
-        mod = mod & 0777555
+        mod = mod & 0o777555
         chmod_if_possible(filename, mod)
 
 
 def make_writable(filename):
     mod = os.lstat(filename).st_mode
     if not stat.S_ISLNK(mod):
-        mod = mod | 0200
+        mod = mod | 0o200
         chmod_if_possible(filename, mod)
 
 

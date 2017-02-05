@@ -47,6 +47,6 @@ def _kind_from_mode(stat_mode, _formats=_formats, _unknown='unknown'):
     It's performance is critical: Do not mutate without careful benchmarking.
     """
     try:
-        return _formats[stat_mode & 0170000]
+        return _formats[stat_mode & 0o170000]
     except KeyError:
         return _unknown

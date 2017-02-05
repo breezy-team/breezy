@@ -35,8 +35,8 @@ from bzrlib.trace import mutter
 # Windows expects this bit to be set in the 'external_attr' section,
 # or it won't consider the entry a directory.
 ZIP_DIRECTORY_BIT = (1 << 4)
-FILE_PERMISSIONS = (0644 << 16)
-DIR_PERMISSIONS = (0755 << 16)
+FILE_PERMISSIONS = (0o644 << 16)
+DIR_PERMISSIONS = (0o755 << 16)
 
 _FILE_ATTR = stat.S_IFREG | FILE_PERMISSIONS
 _DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT | DIR_PERMISSIONS
