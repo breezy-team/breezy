@@ -1584,8 +1584,8 @@ class TestLeafNode(TestCaseWithStore):
         prefix, result = list(node.map(None, ("blue",), "red"))
         self.assertEqual("", prefix)
         self.assertEqual(2, len(result))
-        split_chars = set([result[0][0], result[1][0]])
-        self.assertEqual(set(["f", "b"]), split_chars)
+        split_chars = {result[0][0], result[1][0]}
+        self.assertEqual({"f", "b"}, split_chars)
         nodes = dict(result)
         node = nodes["f"]
         self.assertEqual({("foo bar",): "baz quux"}, self.to_dict(node, None))
@@ -2141,7 +2141,7 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
         c_map.map(('aaa',), 'new aaa content')
         key2 = c_map._save()
         diff = self.get_difference([key2], [key1])
-        self.assertEqual(set([key1]), diff._all_old_chks)
+        self.assertEqual({key1}, diff._all_old_chks)
         self.assertEqual([], diff._old_queue)
         self.assertEqual([], diff._new_queue)
 

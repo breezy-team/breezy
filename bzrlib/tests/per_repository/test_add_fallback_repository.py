@@ -39,7 +39,7 @@ class TestAddFallbackRepository(TestCaseWithRepository):
         repo.lock_read()
         self.addCleanup(repo.unlock)
         # can see all revisions
-        self.assertEqual(set([revision_id]), set(repo.all_revision_ids()))
+        self.assertEqual({revision_id}, set(repo.all_revision_ids()))
         # and can also query the parent map, either on the revisions
         # versionedfiles, which works in tuple keys...
         self.assertEqual({(revision_id,): ()},

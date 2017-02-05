@@ -147,7 +147,7 @@ class CHKSerializer(serializer.Serializer):
     format_num = '9'
     revision_format_num = None
     support_altered_by_hack = False
-    supported_kinds = set(['file', 'directory', 'symlink', 'tree-reference'])
+    supported_kinds = {'file', 'directory', 'symlink', 'tree-reference'}
 
     def __init__(self, node_size, search_key_name):
         self.maximum_size = node_size

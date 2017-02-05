@@ -144,7 +144,7 @@ class TestUnversion(TestCaseWithWorkingTree):
                           ('dir2/f3', 'f3-id'),
                          ], paths)
 
-        tree.unversion(set(['dir-id']))
+        tree.unversion({'dir-id'})
         paths = [(path, ie.file_id)
                  for path, ie in tree.iter_entries_by_dir()]
 

@@ -91,7 +91,7 @@ class PackCommitBuilder(VersionedFileCommitBuilder):
 
     def _heads(self, file_id, revision_ids):
         keys = [(file_id, revision_id) for revision_id in revision_ids]
-        return set([key[1] for key in self._file_graph.heads(keys)])
+        return {key[1] for key in self._file_graph.heads(keys)}
 
 
 class PackRootCommitBuilder(VersionedFileRootCommitBuilder):
@@ -113,7 +113,7 @@ class PackRootCommitBuilder(VersionedFileRootCommitBuilder):
 
     def _heads(self, file_id, revision_ids):
         keys = [(file_id, revision_id) for revision_id in revision_ids]
-        return set([key[1] for key in self._file_graph.heads(keys)])
+        return {key[1] for key in self._file_graph.heads(keys)}
 
 
 class Pack(object):
@@ -1433,7 +1433,7 @@ class RepositoryPackCollection(object):
             if clear_obsolete_packs:
                 to_preserve = None
                 if obsolete_packs:
-                    to_preserve = set([o.name for o in obsolete_packs])
+                    to_preserve = {o.name for o in obsolete_packs}
                 already_obsolete = self._clear_obsolete_packs(to_preserve)
         finally:
             self._unlock_names()

@@ -749,8 +749,7 @@ class BundleTree(Tree):
     root_inventory = property(_get_inventory)
 
     def all_file_ids(self):
-        return set(
-            [entry.file_id for path, entry in self.inventory.iter_entries()])
+        return {entry.file_id for path, entry in self.inventory.iter_entries()}
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         # The only files returned by this are those from the version

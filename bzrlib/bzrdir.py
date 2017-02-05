@@ -1291,7 +1291,7 @@ class RemoteBzrProber(controldir.Prober):
     @classmethod
     def known_formats(cls):
         from bzrlib.remote import RemoteBzrDirFormat
-        return set([RemoteBzrDirFormat()])
+        return {RemoteBzrDirFormat()}
 
 
 class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):

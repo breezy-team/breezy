@@ -342,7 +342,7 @@ class TestMemoryTransport(tests.TestCase):
         t.put_bytes('dir/bar', 'content')
         t.put_bytes('bar', 'content')
         paths = set(t.iter_files_recursive())
-        self.assertEqual(set(['dir/foo', 'dir/bar', 'bar']), paths)
+        self.assertEqual({'dir/foo', 'dir/bar', 'bar'}, paths)
 
     def test_stat(self):
         t = memory.MemoryTransport()

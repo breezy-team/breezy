@@ -62,7 +62,7 @@ class TestSearchKeys(tests.TestCase):
         for char_in in range(256):
             search_key = self.module._search_key_255(stuple(chr(char_in),))
             chars_used.update(search_key)
-        all_chars = set([chr(x) for x in range(256)])
+        all_chars = {chr(x) for x in range(256)}
         unused_chars = all_chars.symmetric_difference(chars_used)
         self.assertEqual(set('\n'), unused_chars)
 

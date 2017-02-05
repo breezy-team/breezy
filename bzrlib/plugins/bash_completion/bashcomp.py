@@ -296,8 +296,8 @@ class DataCollector(object):
         elif selected_plugins is None:
             self.selected_plugins = None
         else:
-            self.selected_plugins = set([x.replace('-', '_')
-                                         for x in selected_plugins])
+            self.selected_plugins = {x.replace('-', '_')
+                                         for x in selected_plugins}
 
     def collect(self):
         self.global_options()

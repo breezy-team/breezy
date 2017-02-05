@@ -376,7 +376,7 @@ class DummyForeignProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
-        return set([DummyForeignVcsDirFormat()])
+        return {DummyForeignVcsDirFormat()}
 
 
 class ForeignVcsRegistryTests(tests.TestCase):
@@ -432,7 +432,7 @@ class WorkingTreeFileUpdateTests(tests.TestCaseWithTransport):
         foreign.update_workingtree_fileids(wt, target_basis)
         wt.lock_read()
         try:
-            self.assertEqual(set([root_id, "bla-b"]), set(wt.all_file_ids()))
+            self.assertEqual({root_id, "bla-b"}, set(wt.all_file_ids()))
         finally:
             wt.unlock()
 

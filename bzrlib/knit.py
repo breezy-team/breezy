@@ -1563,7 +1563,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         else:
             # self is not annotated, but we can strip annotations cheaply.
             annotated = ""
-            convertibles = set(["knit-annotated-ft-gz"])
+            convertibles = {"knit-annotated-ft-gz"}
             if self._max_delta_chain:
                 delta_types.add("knit-annotated-delta-gz")
                 convertibles.add("knit-annotated-delta-gz")
@@ -3260,7 +3260,7 @@ class _KnitAnnotator(annotate.Annotator):
             passing to read_records_iter to start reading in the raw data from
             the pack file.
         """
-        pending = set([key])
+        pending = {key}
         records = []
         ann_keys = set()
         self._num_needed_children[key] = 1

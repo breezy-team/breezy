@@ -556,7 +556,7 @@ class TestBzrDirGetBranches(TestRemote):
         a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         result = a_bzrdir.get_branches()
-        self.assertEqual(set(["", "foo"]), set(result.keys()))
+        self.assertEqual({"", "foo"}, set(result.keys()))
         self.assertEqual(
             [('call_expecting_body', 'BzrDir.get_branches', ('quack/',)),
              ('call', 'BzrDir.find_repositoryV3', ('quack/', )),
@@ -1387,7 +1387,7 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         branch = self.make_remote_branch(transport, client)
         result = branch.heads_to_fetch()
         self.assertFinished(client)
-        self.assertEqual((set(['rev-tip']), set()), result)
+        self.assertEqual(({'rev-tip'}, set()), result)
 
     def test_uses_last_revision_info_and_tags_when_set(self):
         transport = MemoryTransport()
@@ -1412,7 +1412,7 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         result = branch.heads_to_fetch()
         self.assertFinished(client)
         self.assertEqual(
-            (set(['rev-tip']), set(['rev-foo', 'rev-bar'])), result)
+            ({'rev-tip'}, {'rev-foo', 'rev-bar'}), result)
 
     def test_uses_rpc_for_formats_with_non_default_heads_to_fetch(self):
         transport = MemoryTransport()
@@ -1429,7 +1429,7 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         branch._format._use_default_local_heads_to_fetch = lambda: False
         result = branch.heads_to_fetch()
         self.assertFinished(client)
-        self.assertEqual((set(['tip']), set(['tagged-1', 'tagged-2'])), result)
+        self.assertEqual(({'tip'}, {'tagged-1', 'tagged-2'}), result)
 
     def make_branch_with_tags(self):
         self.setup_smart_server_with_call_log()
@@ -1454,7 +1454,7 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         self.disable_verb(verb)
         self.reset_smart_call_log()
         result = br.heads_to_fetch()
-        self.assertEqual((set(['tip']), set(['rev-1', 'rev-2'])), result)
+        self.assertEqual(({'tip'}, {'rev-1', 'rev-2'}), result)
         self.assertEqual(
             ['Branch.last_revision_info', 'Branch.get_tags_bytes'],
             [call.call.method for call in self.hpss_calls])
@@ -1468,7 +1468,7 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         self.disable_verb(verb)
         self.reset_smart_call_log()
         result = br.heads_to_fetch()
-        self.assertEqual((set(['tip']), set()), result)
+        self.assertEqual(({'tip'}, set()), result)
         self.assertEqual(
             ['Branch.last_revision_info'],
             [call.call.method for call in self.hpss_calls])

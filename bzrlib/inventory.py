@@ -1487,7 +1487,7 @@ class CHKInventory(CommonInventory):
             keys = [StaticTuple(f,).intern() for f in directories_to_expand]
             directories_to_expand = set()
             items = self.parent_id_basename_to_file_id.iteritems(keys)
-            next_file_ids = set([item[1] for item in items])
+            next_file_ids = {item[1] for item in items}
             next_file_ids = next_file_ids.difference(interesting)
             interesting.update(next_file_ids)
             for entry in self._getitems(next_file_ids):

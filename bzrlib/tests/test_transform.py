@@ -913,8 +913,8 @@ class TestTreeTransform(tests.TestCaseWithTransport):
     def test_resolve_conflicts_wrong_existing_parent_kind(self):
         tt = self.prepare_wrong_parent_kind()
         raw_conflicts = resolve_conflicts(tt)
-        self.assertEqual(set([('non-directory parent', 'Created directory',
-                         'new-3')]), raw_conflicts)
+        self.assertEqual({('non-directory parent', 'Created directory',
+                         'new-3')}, raw_conflicts)
         cooked_conflicts = cook_conflicts(raw_conflicts, tt)
         self.assertEqual([NonDirectoryParent('Created directory', 'parent.new',
         'parent-id')], cooked_conflicts)
@@ -932,8 +932,8 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         tt.delete_contents(parent_id)
         tt.create_file('contents', parent_id)
         raw_conflicts = resolve_conflicts(tt)
-        self.assertEqual(set([('non-directory parent', 'Created directory',
-                         'new-3')]), raw_conflicts)
+        self.assertEqual({('non-directory parent', 'Created directory',
+                         'new-3')}, raw_conflicts)
         tt.apply()
         self.assertEqual(None, self.wt.path2id('parent'))
         self.assertEqual('parent-id', self.wt.path2id('parent.new'))
@@ -2882,7 +2882,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview.unversion_file(c_trans_id)
         preview.version_file('c-id', c_trans_id)
         preview_tree = preview.get_preview_tree()
-        self.assertEqual(set(['a-id', 'c-id', tree.get_root_id()]),
+        self.assertEqual({'a-id', 'c-id', tree.get_root_id()},
                          preview_tree.all_file_ids())
 
     def test_path2id_deleted_unchanged(self):
@@ -3208,7 +3208,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
                          'new-versioned-id')
         tree = preview.get_preview_tree()
         preview.unversion_file(preview.trans_id_tree_path('removed-file'))
-        self.assertEqual(set(['new-file', 'removed-file', 'existing-file']),
+        self.assertEqual({'new-file', 'removed-file', 'existing-file'},
                          set(tree.extras()))
 
     def test_merge_into_preview(self):
@@ -3468,8 +3468,8 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         self.assertEqual({'new-1': u'foo\u1234',
                           'new-2': 'bar',
                           tt.root: ''}, tt._tree_id_paths)
-        self.assertEqual(set(['new-1']), tt._removed_id)
-        self.assertEqual(set(['new-2']), tt._removed_contents)
+        self.assertEqual({'new-1'}, tt._removed_id)
+        self.assertEqual({'new-2'}, tt._removed_contents)
 
     def missing_records(self):
         attribs = self.default_attribs()

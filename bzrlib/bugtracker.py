@@ -314,7 +314,7 @@ tracker_registry.register('generic', GenericBugTracker())
 
 FIXED = 'fixed'
 
-ALLOWED_BUG_STATUSES = set([FIXED])
+ALLOWED_BUG_STATUSES = {FIXED}
 
 
 def encode_fixes_bug_urls(bug_urls):

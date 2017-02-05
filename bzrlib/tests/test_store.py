@@ -361,20 +361,20 @@ class TestTransportStore(TestCase):
                              prefixed=False, compressed=False)
         stream = StringIO("content")
         my_store.add(stream, "foo")
-        self.assertEqual(set(['foo']),
+        self.assertEqual({'foo'},
                          set(my_store.__iter__()))
 
     def test___iter__(self):
-        self.assertEqual(set(['foo']),
+        self.assertEqual({'foo'},
                          set(self.get_populated_store().__iter__()))
-        self.assertEqual(set(['foo']),
+        self.assertEqual({'foo'},
                          set(self.get_populated_store(True).__iter__()))
 
     def test___iter__compressed(self):
-        self.assertEqual(set(['foo']),
+        self.assertEqual({'foo'},
                          set(self.get_populated_store(
                              compressed=True).__iter__()))
-        self.assertEqual(set(['foo']),
+        self.assertEqual({'foo'},
                          set(self.get_populated_store(
                              True, compressed=True).__iter__()))
 
@@ -388,7 +388,7 @@ class TestTransportStore(TestCase):
         to_store.register_suffix('sig')
         to_store.copy_all_ids(from_store)
         self.assertEqual(1, len(to_store))
-        self.assertEqual(set(['foo']), set(to_store.__iter__()))
+        self.assertEqual({'foo'}, set(to_store.__iter__()))
         self.assertEqual('content', to_store.get('foo').read())
         self.assertEqual('signature', to_store.get('foo', 'sig').read())
         self.assertRaises(KeyError, to_store.get, 'missing', 'sig')

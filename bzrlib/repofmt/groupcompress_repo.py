@@ -1030,8 +1030,7 @@ class CHKInventoryRepository(PackRepository):
             #       inventories, not missing inventories for revision_ids
             present_parent_inv_keys = self._find_present_inventory_keys(
                                         parent_keys)
-            present_parent_inv_ids = set(
-                [k[-1] for k in present_parent_inv_keys])
+            present_parent_inv_ids = {k[-1] for k in present_parent_inv_keys}
             inventories_to_read = set(revision_ids)
             inventories_to_read.update(present_parent_inv_ids)
             root_key_info = _build_interesting_key_sets(
@@ -1053,7 +1052,7 @@ class CHKInventoryRepository(PackRepository):
                     try:
                         file_id_revisions[file_id].add(revision_id)
                     except KeyError:
-                        file_id_revisions[file_id] = set([revision_id])
+                        file_id_revisions[file_id] = {revision_id}
         finally:
             pb.finished()
         return file_id_revisions

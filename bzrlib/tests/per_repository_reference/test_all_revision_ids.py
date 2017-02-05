@@ -32,7 +32,7 @@ class TestAllRevisionIds(TestCaseWithExternalReferenceRepository):
         tree = self.make_branch_and_tree('base')
         revid = tree.commit('one')
         repo = self.make_referring('referring', tree.branch.repository)
-        self.assertEqual(set([revid]), set(repo.all_revision_ids()))
+        self.assertEqual({revid}, set(repo.all_revision_ids()))
 
     def test_all_revision_ids_from_repo(self):
         tree = self.make_branch_and_tree('spare')
@@ -40,7 +40,7 @@ class TestAllRevisionIds(TestCaseWithExternalReferenceRepository):
         base = self.make_repository('base')
         repo = self.make_referring('referring', base)
         repo.fetch(tree.branch.repository, revid)
-        self.assertEqual(set([revid]), set(repo.all_revision_ids()))
+        self.assertEqual({revid}, set(repo.all_revision_ids()))
 
     def test_all_revision_ids_from_both(self):
         tree = self.make_branch_and_tree('spare')
@@ -49,7 +49,7 @@ class TestAllRevisionIds(TestCaseWithExternalReferenceRepository):
         revid2 = base_tree.commit('two')
         repo = self.make_referring('referring', base_tree.branch.repository)
         repo.fetch(tree.branch.repository, revid)
-        self.assertEqual(set([revid, revid2]), set(repo.all_revision_ids()))
+        self.assertEqual({revid, revid2}, set(repo.all_revision_ids()))
 
     def test_duplicate_ids_do_not_affect_length(self):
         tree = self.make_branch_and_tree('spare')
@@ -58,6 +58,6 @@ class TestAllRevisionIds(TestCaseWithExternalReferenceRepository):
         repo = self.make_referring('referring', base)
         repo.fetch(tree.branch.repository, revid)
         base.fetch(tree.branch.repository, revid)
-        self.assertEqual(set([revid]), set(repo.all_revision_ids()))
+        self.assertEqual({revid}, set(repo.all_revision_ids()))
         self.assertEqual(1, len(repo.all_revision_ids()))
 

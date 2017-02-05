@@ -383,7 +383,7 @@ class TestSource(TestSourceHelper):
             r'\s*(#\s*cannot[- _]raise)?')  # cannot raise comment
         for fname, text in self.get_source_file_contents(
                 extensions=('.pyx',)):
-            known_classes = set([m[-1] for m in class_re.findall(text)])
+            known_classes = {m[-1] for m in class_re.findall(text)}
             known_classes.update(extern_class_re.findall(text))
             cdefs = except_re.findall(text)
             for sig, func, exc_clause, no_exc_comment in cdefs:

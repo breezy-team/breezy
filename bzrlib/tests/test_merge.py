@@ -520,7 +520,7 @@ class TestMerge(TestCaseWithTransport):
         merger.merge_type = _mod_merge.Merge3Merger
         conflict_count = merger.do_merge()
         self.assertEqual(0, conflict_count)
-        self.assertEqual(set([old_root_id]), tree.all_file_ids())
+        self.assertEqual({old_root_id}, tree.all_file_ids())
         tree.set_parent_ids([])
 
     def test_merge_add_into_deleted_root(self):

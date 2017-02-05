@@ -1538,12 +1538,12 @@ class Branch(controldir.ControlComponent):
         :returns: One of: 'a_descends_from_b', 'b_descends_from_a', 'diverged'
         """
         heads = graph.heads([revision_a, revision_b])
-        if heads == set([revision_b]):
+        if heads == {revision_b}:
             return 'b_descends_from_a'
-        elif heads == set([revision_a, revision_b]):
+        elif heads == {revision_a, revision_b}:
             # These branches have diverged
             return 'diverged'
-        elif heads == set([revision_a]):
+        elif heads == {revision_a}:
             return 'a_descends_from_b'
         else:
             raise AssertionError("invalid heads: %r" % (heads,))
@@ -1559,7 +1559,7 @@ class Branch(controldir.ControlComponent):
         """
         # For bzr native formats must_fetch is just the tip, and
         # if_present_fetch are the tags.
-        must_fetch = set([self.last_revision()])
+        must_fetch = {self.last_revision()}
         if_present_fetch = set()
         if self.get_config_stack().get('branch.fetch_tags'):
             try:

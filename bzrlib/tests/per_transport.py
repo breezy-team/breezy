@@ -1456,14 +1456,14 @@ class TransportTests(TestTransportImplementation):
         paths = set(transport.iter_files_recursive())
         # nb the directories are not converted
         self.assertEqual(paths,
-                    set(['isolated/dir/foo',
+                    {'isolated/dir/foo',
                          'isolated/dir/bar',
                          'isolated/dir/b%2525z',
-                         'isolated/bar']))
+                         'isolated/bar'})
         sub_transport = transport.clone('isolated')
         paths = set(sub_transport.iter_files_recursive())
         self.assertEqual(paths,
-            set(['dir/foo', 'dir/bar', 'dir/b%2525z', 'bar']))
+            {'dir/foo', 'dir/bar', 'dir/b%2525z', 'bar'})
 
     def test_copy_tree(self):
         # TODO: test file contents and permissions are preserved. This test was
@@ -1486,14 +1486,14 @@ class TransportTests(TestTransportImplementation):
         transport.copy_tree('from', 'to')
         paths = set(transport.iter_files_recursive())
         self.assertEqual(paths,
-                    set(['from/dir/foo',
+                    {'from/dir/foo',
                          'from/dir/bar',
                          'from/dir/b%2525z',
                          'from/bar',
                          'to/dir/foo',
                          'to/dir/bar',
                          'to/dir/b%2525z',
-                         'to/bar',]))
+                         'to/bar',})
 
     def test_copy_tree_to_transport(self):
         transport = self.get_transport()
@@ -1516,14 +1516,14 @@ class TransportTests(TestTransportImplementation):
         from_transport.copy_tree_to_transport(to_transport)
         paths = set(transport.iter_files_recursive())
         self.assertEqual(paths,
-                    set(['from/dir/foo',
+                    {'from/dir/foo',
                          'from/dir/bar',
                          'from/dir/b%2525z',
                          'from/bar',
                          'to/dir/foo',
                          'to/dir/bar',
                          'to/dir/b%2525z',
-                         'to/bar',]))
+                         'to/bar',})
 
     def test_unicode_paths(self):
         """Test that we can read/write files with Unicode names."""

@@ -1011,15 +1011,15 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
     def test_minimum_path_selection(self):
         self.assertEqual(set(),
             osutils.minimum_path_selection([]))
-        self.assertEqual(set(['a']),
+        self.assertEqual({'a'},
             osutils.minimum_path_selection(['a']))
-        self.assertEqual(set(['a', 'b']),
+        self.assertEqual({'a', 'b'},
             osutils.minimum_path_selection(['a', 'b']))
-        self.assertEqual(set(['a/', 'b']),
+        self.assertEqual({'a/', 'b'},
             osutils.minimum_path_selection(['a/', 'b']))
-        self.assertEqual(set(['a/', 'b']),
+        self.assertEqual({'a/', 'b'},
             osutils.minimum_path_selection(['a/c', 'a/', 'b']))
-        self.assertEqual(set(['a-b', 'a', 'a0b']),
+        self.assertEqual({'a-b', 'a', 'a0b'},
             osutils.minimum_path_selection(['a-b', 'a/b', 'a0b', 'a']))
 
     def test_mkdtemp(self):

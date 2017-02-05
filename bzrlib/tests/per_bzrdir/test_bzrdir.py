@@ -689,5 +689,5 @@ class TestBzrDir(TestCaseWithBzrDir):
             raise TestNotApplicable('Format does not support colocation')
         target_branch = repo.bzrdir.create_branch(name='foo')
         repo.bzrdir.set_branch_reference(target_branch)
-        self.assertEqual(set(["", 'foo']),
+        self.assertEqual({"", 'foo'},
                          set(repo.bzrdir.get_branches().keys()))

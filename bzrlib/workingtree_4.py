@@ -2214,7 +2214,7 @@ class InterDirStateTree(InterTree):
                 specific_files_utf8.add(path.encode('utf8'))
             specific_files = specific_files_utf8
         else:
-            specific_files = set([''])
+            specific_files = {''}
         # -- specific_files is now a utf8 path set --
 
         # -- get the state object and prepare it.

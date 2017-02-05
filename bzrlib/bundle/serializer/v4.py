@@ -320,7 +320,7 @@ class BundleWriteOperation(object):
             # Strip ghosts
             parents = graph.get_parent_map(revision_ids)
             self.revision_ids = [r for r in revision_ids if r in parents]
-        self.revision_keys = set([(revid,) for revid in self.revision_ids])
+        self.revision_keys = {(revid,) for revid in self.revision_ids}
 
     def do_write(self):
         """Write all data to the bundle"""

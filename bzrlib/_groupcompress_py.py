@@ -127,7 +127,7 @@ class LinesDeltaIndex(object):
             try:
                 matches[line].add(start_idx + idx)
             except KeyError:
-                matches[line] = set([start_idx + idx])
+                matches[line] = {start_idx + idx}
 
     def get_matches(self, line):
         """Return the lines which match the line in right."""

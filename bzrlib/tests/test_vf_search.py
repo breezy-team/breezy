@@ -83,17 +83,17 @@ class TestSearchResultRefine(tests.TestCase):
         g = self.make_graph(
             {"tip":["mid"], "mid":["base"], "tag":["base"],
              "base":[NULL_REVISION], NULL_REVISION:[]})
-        result = vf_search.SearchResult(set(['tip', 'tag']),
-            set([NULL_REVISION]), 4, set(['tip', 'mid', 'tag', 'base']))
-        result = result.refine(set(['tip']), set(['mid']))
+        result = vf_search.SearchResult({'tip', 'tag'},
+            {NULL_REVISION}, 4, {'tip', 'mid', 'tag', 'base'})
+        result = result.refine({'tip'}, {'mid'})
         recipe = result.get_recipe()
         # We should be starting from tag (original head) and mid (seen ref)
-        self.assertEqual(set(['mid', 'tag']), recipe[1])
+        self.assertEqual({'mid', 'tag'}, recipe[1])
         # We should be stopping at NULL (original stop) and tip (seen head)
-        self.assertEqual(set([NULL_REVISION, 'tip']), recipe[2])
+        self.assertEqual({NULL_REVISION, 'tip'}, recipe[2])
         self.assertEqual(3, recipe[3])
-        result = result.refine(set(['mid', 'tag', 'base']),
-            set([NULL_REVISION]))
+        result = result.refine({'mid', 'tag', 'base'},
+            {NULL_REVISION})
         recipe = result.get_recipe()
         # We should be starting from nothing (NULL was known as a cut point)
         self.assertEqual(set([]), recipe[1])
@@ -101,7 +101,7 @@ class TestSearchResultRefine(tests.TestCase):
         # tag (seen head) and mid(seen mid-point head). We could come back and
         # define this as not including mid, for minimal results, but it is
         # still 'correct' to include mid, and simpler/easier.
-        self.assertEqual(set([NULL_REVISION, 'tip', 'tag', 'mid']), recipe[2])
+        self.assertEqual({NULL_REVISION, 'tip', 'tag', 'mid'}, recipe[2])
         self.assertEqual(0, recipe[3])
         self.assertTrue(result.is_empty())
 
@@ -189,11 +189,11 @@ class TestPendingAncestryResultRefine(tests.TestCase):
             {"tip":["mid"], "mid":["base"], "tag":["base"],
              "base":[NULL_REVISION], NULL_REVISION:[]})
         result = vf_search.PendingAncestryResult(['tip', 'tag'], None)
-        result = result.refine(set(['tip']), set(['mid']))
-        self.assertEqual(set(['mid', 'tag']), result.heads)
-        result = result.refine(set(['mid', 'tag', 'base']),
-            set([NULL_REVISION]))
-        self.assertEqual(set([NULL_REVISION]), result.heads)
+        result = result.refine({'tip'}, {'mid'})
+        self.assertEqual({'mid', 'tag'}, result.heads)
+        result = result.refine({'mid', 'tag', 'base'},
+            {NULL_REVISION})
+        self.assertEqual({NULL_REVISION}, result.heads)
         self.assertTrue(result.is_empty())
 
 
@@ -211,7 +211,7 @@ class TestPendingAncestryResultGetKeys(tests.TestCaseWithMemoryTransport):
         repo.lock_read()
         self.addCleanup(repo.unlock)
         result = vf_search.PendingAncestryResult(['rev-2'], repo)
-        self.assertEqual(set(['rev-1', 'rev-2']), set(result.get_keys()))
+        self.assertEqual({'rev-1', 'rev-2'}, set(result.get_keys()))
 
     def test_get_keys_excludes_ghosts(self):
         builder = self.make_branch_builder('b')
@@ -236,4 +236,4 @@ class TestPendingAncestryResultGetKeys(tests.TestCaseWithMemoryTransport):
         result = vf_search.PendingAncestryResult(['rev-3'], None)
         result_keys = result._get_keys(StubGraph())
         # Only the non-null keys from the ancestry appear.
-        self.assertEqual(set(['foo']), set(result_keys))
+        self.assertEqual({'foo'}, set(result_keys))

@@ -1816,7 +1816,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.assertEqual(1, self.server.auth_required_errors)
 
     def test_no_credential_leaks_in_log(self):
-        self.overrideAttr(debug, 'debug_flags', set(['http']))
+        self.overrideAttr(debug, 'debug_flags', {'http'})
         user = 'joe'
         password = 'very-sensitive-password'
         self.server.add_user(user, password)

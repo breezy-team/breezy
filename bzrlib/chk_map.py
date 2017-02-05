@@ -138,8 +138,8 @@ class CHKMap(object):
         has_deletes = False
         # Check preconditions first.
         as_st = StaticTuple.from_sequence
-        new_items = set([as_st(key) for (old, key, value) in delta
-                         if key is not None and old is None])
+        new_items = {as_st(key) for (old, key, value) in delta
+                         if key is not None and old is None}
         existing_new = list(self.iteritems(key_filter=new_items))
         if existing_new:
             raise errors.InconsistentDeltaDelta(delta,

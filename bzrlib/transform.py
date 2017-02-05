@@ -2077,8 +2077,8 @@ class _PreviewTree(tree.InventoryTree):
     def _has_id(self, file_id, fallback_check):
         if file_id in self._transform._r_new_id:
             return True
-        elif file_id in set([self._transform.tree_file_id(trans_id) for
-            trans_id in self._transform._removed_id]):
+        elif file_id in {self._transform.tree_file_id(trans_id) for
+            trans_id in self._transform._removed_id}:
             return False
         else:
             return fallback_check(file_id)

@@ -716,7 +716,7 @@ class RevisionTextStore(TextVersionedFiles):
             if not relpath.endswith('.sig'):
                 relpaths.add(relpath)
         paths = list(relpaths)
-        return set([self._mapper.unmap(path) for path in paths])
+        return {self._mapper.unmap(path) for path in paths}
 
 
 class SignatureTextStore(TextVersionedFiles):
@@ -757,7 +757,7 @@ class SignatureTextStore(TextVersionedFiles):
                 continue
             relpaths.add(relpath[:-4])
         paths = list(relpaths)
-        return set([self._mapper.unmap(path) for path in paths])
+        return {self._mapper.unmap(path) for path in paths}
 
 
 class InterWeaveRepo(InterSameDataRepository):

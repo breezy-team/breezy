@@ -283,8 +283,8 @@ class TestPackRepository(TestCaseWithTransport):
         """
         repo = self.make_repository('repo')
         pack_coll = repo._pack_collection
-        indices = set([pack_coll.revision_index, pack_coll.inventory_index,
-                pack_coll.text_index, pack_coll.signature_index])
+        indices = {pack_coll.revision_index, pack_coll.inventory_index,
+                pack_coll.text_index, pack_coll.signature_index}
         if pack_coll.chk_index is not None:
             indices.add(pack_coll.chk_index)
         combined_indices = set(idx.combined_index for idx in indices)

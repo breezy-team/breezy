@@ -1022,7 +1022,7 @@ class DirState(object):
             return
         # only require all dirblocks if we are doing a full-pass removal.
         self._read_dirblocks_if_needed()
-        dead_patterns = set([('a', 'r'), ('a', 'a'), ('r', 'r'), ('r', 'a')])
+        dead_patterns = {('a', 'r'), ('a', 'a'), ('r', 'r'), ('r', 'a')}
         def iter_entries_removable():
             for block in self._dirblocks:
                 deleted_positions = []
@@ -3475,7 +3475,7 @@ class ProcessEntryPython(object):
         self.old_dirname_to_file_id = {}
         self.new_dirname_to_file_id = {}
         # Are we doing a partial iter_changes?
-        self.partial = search_specific_files != set([''])
+        self.partial = search_specific_files != {''}
         # Using a list so that we can access the values and change them in
         # nested scope. Each one is [path, file_id, entry]
         self.last_source_parent = [None, None]
