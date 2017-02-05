@@ -373,7 +373,7 @@ class TestListCommandHook(tests.TestCase):
         self.assertSubset(['foo', 'bar'], cmds)
 
 class TestPreAndPostCommandHooks(tests.TestCase):
-    class TestError(StandardError):
+    class TestError(Exception):
         __doc__ = """A test exception."""
 
     def test_pre_and_post_hooks(self):
