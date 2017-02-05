@@ -273,8 +273,8 @@ class Response(httplib.HTTPResponse):
         httplib.HTTPResponse.begin(self)
         if self.status in self._body_ignored_responses:
             if self.debuglevel >= 2:
-                print("For status: [%s]," % self.status, end=' ')
-                print("will ready body, length: %s" % self.length)
+                print("For status: [%s], will ready body, length: %s" % (
+                    self.status, self.length))
             if not (self.length is None or self.will_close):
                 # In some cases, we just can't read the body not
                 # even try or we may encounter a 104, 'Connection
