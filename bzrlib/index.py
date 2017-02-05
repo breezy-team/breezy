@@ -1310,7 +1310,7 @@ class CombinedGraphIndex(object):
             found_parents[key] = parents
         return found_parents
 
-    has_key = _has_key_from_parent_map
+    __contains__ = _has_key_from_parent_map
 
     def insert_index(self, pos, index, name=None):
         """Insert a new index in the list of indices to query.

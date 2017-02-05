@@ -1619,8 +1619,8 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 # will be well, or it won't turn up at all and we'll raise an
                 # error at the end.
                 #
-                # TODO: self.has_key is somewhat redundant with
-                # self._index.has_key; we really want something that directly
+                # TODO: self.__contains__ is somewhat redundant with
+                # self._index.__contains__; we really want something that directly
                 # asks if it's only present in the fallbacks. -- mbp 20081119
                 if record.storage_kind not in native_types:
                     try:
@@ -2638,7 +2638,7 @@ class _KndxIndex(object):
         entry = self._kndx_cache[prefix][0][suffix]
         return key, entry[2], entry[3]
 
-    has_key = _mod_index._has_key_from_parent_map
+    __contains__ = _mod_index._has_key_from_parent_map
 
     def _init_index(self, path, extra_lines=[]):
         """Initialize an index."""
@@ -3090,7 +3090,7 @@ class _KnitGraphIndex(object):
         node = self._get_node(key)
         return self._node_to_position(node)
 
-    has_key = _mod_index._has_key_from_parent_map
+    __contains__ = _mod_index._has_key_from_parent_map
 
     def keys(self):
         """Get all the keys in the collection.

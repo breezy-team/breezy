@@ -1129,7 +1129,7 @@ class VersionedFiles(object):
         """
         raise NotImplementedError(self.get_sha1s)
 
-    has_key = index._has_key_from_parent_map
+    __contains__ = index._has_key_from_parent_map
 
     def get_missing_compression_parent_keys(self):
         """Return an iterable of keys of missing compression parents.
