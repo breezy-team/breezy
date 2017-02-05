@@ -79,9 +79,9 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
     for (relpath, treepath, file_id), chunks in tree.iter_files_bytes(to_fetch):
         fullpath = osutils.pathjoin(dest, relpath)
         # We set the mode and let the umask sort out the file info
-        mode = 0666
+        mode = 0o666
         if tree.is_executable(file_id, treepath):
-            mode = 0777
+            mode = 0o777
         out = os.fdopen(os.open(fullpath, flags, mode), 'wb')
         try:
             out.writelines(chunks)

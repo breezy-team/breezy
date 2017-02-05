@@ -40,13 +40,13 @@ def U32(i):
     If it's >= 2GB when viewed as a 32-bit unsigned int, return a long.
     """
     if i < 0:
-        i += 1L << 32
+        i += 1 << 32
     return i
 
 
 def LOWU32(i):
     """Return the low-order 32 bits of an int, as a non-negative int."""
-    return i & 0xFFFFFFFFL
+    return i & 0xFFFFFFFF
 
 
 def bytes_to_gzip(bytes, factory=zlib.compressobj,
@@ -133,7 +133,7 @@ class GzipFile(gzip.GzipFile):
             # temp var for len(data) and switch to +='s.
             # 4169 in 139
             len_data = len(data)
-            self.crc = zlib.crc32(data, self.crc) & 0xffffffffL
+            self.crc = zlib.crc32(data, self.crc) & 0xffffffff
             offset = self.offset - self.extrastart
             self.extrabuf = self.extrabuf[offset:] + data
             self.extrasize = self.extrasize + len_data
@@ -424,6 +424,6 @@ class GzipFile(gzip.GzipFile):
             if self.fileobj is None:
                 return
             if self.mode == gzip.WRITE:
-                self.crc &= 0xFFFFFFFFL
+                self.crc &= 0xFFFFFFFF
             gzip.GzipFile.close(self)
 
