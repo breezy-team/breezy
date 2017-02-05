@@ -3309,7 +3309,7 @@ class TestPostMortemDebugging(tests.TestCase):
                 raise RuntimeError
         result = self.TracebackRecordingResult()
         Test().run(result)
-        self.assertEqual(result.postcode, Test.runTest.func_code)
+        self.assertEqual(result.postcode, Test.runTest.__code__)
 
     def test_location_unittest_failure(self):
         """Needs right post mortem traceback with failing unittest case"""
@@ -3318,7 +3318,7 @@ class TestPostMortemDebugging(tests.TestCase):
                 raise self.failureException
         result = self.TracebackRecordingResult()
         Test().run(result)
-        self.assertEqual(result.postcode, Test.runTest.func_code)
+        self.assertEqual(result.postcode, Test.runTest.__code__)
 
     def test_location_bt_error(self):
         """Needs right post mortem traceback with erroring bzrlib.tests case"""
@@ -3327,7 +3327,7 @@ class TestPostMortemDebugging(tests.TestCase):
                 raise RuntimeError
         result = self.TracebackRecordingResult()
         Test("test_error").run(result)
-        self.assertEqual(result.postcode, Test.test_error.func_code)
+        self.assertEqual(result.postcode, Test.test_error.__code__)
 
     def test_location_bt_failure(self):
         """Needs right post mortem traceback with failing bzrlib.tests case"""
@@ -3336,7 +3336,7 @@ class TestPostMortemDebugging(tests.TestCase):
                 raise self.failureException
         result = self.TracebackRecordingResult()
         Test("test_failure").run(result)
-        self.assertEqual(result.postcode, Test.test_failure.func_code)
+        self.assertEqual(result.postcode, Test.test_failure.__code__)
 
     def test_env_var_triggers_post_mortem(self):
         """Check pdb.post_mortem is called iff BZR_TEST_PDB is set"""

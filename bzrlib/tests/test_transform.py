@@ -2537,10 +2537,10 @@ class TestFinalizeRobustness(tests.TestCaseWithTransport):
         """Replace method on instance with one with updated globals"""
         import types
         func = getattr(instance, method_name).im_func
-        new_globals = dict(func.func_globals)
+        new_globals = dict(func.__globals__)
         new_globals.update(globals)
-        new_func = types.FunctionType(func.func_code, new_globals,
-            func.func_name, func.func_defaults)
+        new_func = types.FunctionType(func.__code__, new_globals,
+            func.__name__, func.__defaults__)
         setattr(instance, method_name,
             types.MethodType(new_func, instance, instance.__class__))
         self.addCleanup(delattr, instance, method_name)
