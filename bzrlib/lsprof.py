@@ -130,7 +130,7 @@ class Stats(object):
 
         :param crit: the data attribute used as the sort key."""
         if crit not in profiler_entry.__dict__:
-            raise ValueError, "Can't sort by %s" % crit
+            raise ValueError("Can't sort by %s" % crit)
         self.data.sort(lambda b, a: cmp(getattr(a, crit),
                                         getattr(b, crit)))
         for e in self.data:

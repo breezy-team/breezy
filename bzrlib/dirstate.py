@@ -518,7 +518,7 @@ class DirState(object):
                 block[entry_index][0][0:2] == first_key[0:2]):
                 if block[entry_index][1][0][0] not in 'ar':
                     # this path is in the dirstate in the current tree.
-                    raise Exception, "adding already added path!"
+                    raise Exception("adding already added path!")
                 entry_index += 1
         else:
             # The block where we want to put the file is not present. But it

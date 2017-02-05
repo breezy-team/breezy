@@ -2123,7 +2123,7 @@ class InterDirStateTree(InterTree):
     def __init__(self, source, target):
         super(InterDirStateTree, self).__init__(source, target)
         if not InterDirStateTree.is_compatible(source, target):
-            raise Exception, "invalid source %r and target %r" % (source, target)
+            raise Exception("invalid source %r and target %r" % (source, target))
 
     @staticmethod
     def make_source_parent_tree(source, target):

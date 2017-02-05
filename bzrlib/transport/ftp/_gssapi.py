@@ -84,7 +84,7 @@ class GSSAPIFtp(ftplib.FTP):
                         rc = kerberos.authGSSClientStep(self.vc, resp[9:])
                         if not ((resp.startswith('235 ') and rc == 1) or
                                 (resp.startswith('335 ') and rc == 0)):
-                            raise ftplib.error_reply, resp
+                            raise ftplib.error_reply(resp)
             note(gettext("Authenticated as %s") %
                  kerberos.authGSSClientUserName(self.vc))
 

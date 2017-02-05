@@ -57,7 +57,7 @@ class TestTrace(TestCase):
         # depending on whether apport is available or not.  See test_crash for
         # more.
         try:
-            raise NotImplementedError, "time travel"
+            raise NotImplementedError("time travel")
         except NotImplementedError:
             pass
         err = _format_exception()

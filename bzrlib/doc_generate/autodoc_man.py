@@ -96,7 +96,7 @@ def getcommand_list (params):
             tmp = '.TP\n.B "%s"\n%s\n' % (usage, firstline)
             output = output + tmp
         else:
-            raise RuntimeError, "Command '%s' has no help text" % (cmd_name)
+            raise RuntimeError("Command '%s' has no help text" % (cmd_name))
     return output
 
 

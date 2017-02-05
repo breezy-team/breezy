@@ -1515,7 +1515,7 @@ class TestCase(testtools.TestCase):
                 excName = excClass.__name__
             else:
                 excName = str(excClass)
-            raise self.failureException, "%s not raised" % excName
+            raise self.failureException("%s not raised" % excName)
 
     def assertRaises(self, excClass, callableObj, *args, **kwargs):
         """Assert that a callable raises a particular exception.
@@ -1537,7 +1537,7 @@ class TestCase(testtools.TestCase):
             else:
                 # probably a tuple
                 excName = str(excClass)
-            raise self.failureException, "%s not raised" % excName
+            raise self.failureException("%s not raised" % excName)
 
     def assertIs(self, left, right, message=None):
         if not (left is right):

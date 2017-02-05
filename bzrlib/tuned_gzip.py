@@ -180,7 +180,7 @@ class GzipFile(gzip.GzipFile):
             # reduces lsprof count from 2500 to
             # 8337 calls in 1272, 365 internal
             if self.fileobj is None:
-                raise EOFError, "Reached EOF"
+                raise EOFError("Reached EOF")
 
             if self._new_member:
                 # If the _new_member flag is set, we have to
@@ -190,7 +190,7 @@ class GzipFile(gzip.GzipFile):
                 # if so, it's time to stop; no more members to read.
                 next_header_bytes = self.fileobj.read(10)
                 if next_header_bytes == '':
-                    raise EOFError, "Reached EOF"
+                    raise EOFError("Reached EOF")
 
                 self._init_read()
                 self._read_gzip_header(next_header_bytes)
@@ -211,7 +211,7 @@ class GzipFile(gzip.GzipFile):
                 self._read_eof()
                 # tell the driving read() call we have stuffed all the data
                 # in self.extrabuf
-                raise EOFError, 'Reached EOF'
+                raise EOFError('Reached EOF')
 
             self._add_read_data(self.decompress.decompress(buf))
 
@@ -263,9 +263,9 @@ class GzipFile(gzip.GzipFile):
             crc32, isize = struct.unpack("<LL", self._gzip_tail)
             # note that isize is unsigned - it can exceed 2GB
             if crc32 != U32(self.crc):
-                raise IOError, "CRC check failed %d %d" % (crc32, U32(self.crc))
+                raise IOError("CRC check failed %d %d" % (crc32, U32(self.crc)))
             elif isize != LOWU32(self.size):
-                raise IOError, "Incorrect length of data produced"
+                raise IOError("Incorrect length of data produced")
 
     def _read_gzip_header(self, bytes=None):
         """Supply bytes if the minimum header size is already read.
@@ -280,10 +280,10 @@ class GzipFile(gzip.GzipFile):
             bytes = self.fileobj.read(10)
         magic = bytes[0:2]
         if magic != '\037\213':
-            raise IOError, 'Not a gzipped file'
+            raise IOError('Not a gzipped file')
         method = ord(bytes[2:3])
         if method != 8:
-            raise IOError, 'Unknown compression method'
+            raise IOError('Unknown compression method')
         flag = ord(bytes[3:4])
         # modtime = self.fileobj.read(4) (bytes [4:8])
         # extraflag = self.fileobj.read(1) (bytes[8:9])
@@ -403,7 +403,7 @@ class GzipFile(gzip.GzipFile):
             raise IOError(errno.EBADF, "write() on read-only GzipFile object")
 
         if self.fileobj is None:
-            raise ValueError, "write() on closed GzipFile object"
+            raise ValueError("write() on closed GzipFile object")
         data_len = len(data)
         if data_len > 0:
             self.size = self.size + data_len
