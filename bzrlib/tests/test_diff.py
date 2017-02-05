@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2012, 2014, 2016 Canonical Ltd
+# Copyright (C) 2005-2012, 2014, 2016, 2017 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -313,8 +313,6 @@ class TestDiffFiles(tests.TestCaseInTempDir):
         pipe = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                                      stdin=subprocess.PIPE)
         out, err = pipe.communicate()
-        # Diff returns '2' on Binary files.
-        self.assertEqual(2, pipe.returncode)
         # We should output whatever diff tells us, plus a trailing newline
         self.assertEqual(out.splitlines(True) + ['\n'], lines)
 

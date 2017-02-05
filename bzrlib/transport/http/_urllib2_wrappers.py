@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2013, 2016 Canonical Ltd
+# Copyright (C) 2006-2013, 2016, 2017 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -48,6 +48,7 @@ DEBUG = 0
 # actual code more or less do that, tests should be written to
 # ensure that.
 
+import base64
 import errno
 import httplib
 import os
@@ -1491,7 +1492,7 @@ class BasicAuthHandler(AbstractAuthHandler):
 
     def build_auth_header(self, auth, request):
         raw = '%s:%s' % (auth['user'], auth['password'])
-        auth_header = 'Basic ' + raw.encode('base64').strip()
+        auth_header = 'Basic ' + base64.b64encode(raw)
         return auth_header
 
     def extract_realm(self, header_value):

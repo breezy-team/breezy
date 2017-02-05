@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2012, 2016 Canonical Ltd
+# Copyright (C) 2005-2012, 2016, 2017 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -454,9 +454,6 @@ po/bzr.pot: $(PYFILES) $(DOCFILES)
 .PHONY: dist check-dist-tarball
 
 # build a distribution source tarball
-#
-# this method of copying the pyrex generated files is a bit ugly; it would be
-# nicer to generate it from distutils.
 dist: 
 	version=`./bzr version --short` && \
 	echo Building distribution of bzr $$version && \
@@ -465,10 +462,8 @@ dist:
 	tarball=$$PWD/../bzr-$$version.tar.gz && \
 	$(MAKE) clean && \
 	$(MAKE) && \
-	bzr export $$expdir && \
-	cp bzrlib/*.c bzrlib/*.h $$expdir/bzrlib/. && \
-	tar cfz $$tarball -C $$expbasedir bzr-$$version && \
-	gpg --detach-sign $$tarball && \
+	$(PYTHON) setup.py sdist -d $$PWD/.. && \
+	gpg --detach-sign --armor $$tarball && \
 	rm -rf $$expbasedir
 
 # run all tests in a previously built tarball

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2011, 2016 Canonical Ltd
+# Copyright (C) 2005-2011, 2016, 2017 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -410,8 +410,9 @@ class SFTPTransport(ConnectedTransport):
         try:
             path = self._remote_path(relpath)
             f = self._get_sftp().file(path, mode='rb')
+            size = f.stat().st_size
             if self._do_prefetch and (getattr(f, 'prefetch', None) is not None):
-                f.prefetch()
+                f.prefetch(size)
             return f
         except (IOError, paramiko.SSHException) as e:
             self._translate_io_exception(e, path, ': error retrieving',

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011, 2017 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -85,6 +85,9 @@ def _get_pycurl_errcode(symbol, default):
     """
     return pycurl.__dict__.get(symbol, default)
 
+# Yes, weird but returned on weird http error (invalid status line)
+CURLE_FTP_WEIRD_SERVER_REPLY = _get_pycurl_errcode(
+    'E_FTP_WEIRD_SERVER_REPLY', 8)
 CURLE_COULDNT_CONNECT = _get_pycurl_errcode('E_COULDNT_CONNECT', 7)
 CURLE_COULDNT_RESOLVE_HOST = _get_pycurl_errcode('E_COULDNT_RESOLVE_HOST', 6)
 CURLE_COULDNT_RESOLVE_PROXY = _get_pycurl_errcode('E_COULDNT_RESOLVE_PROXY', 5)
@@ -397,6 +400,7 @@ class PyCurlTransport(HttpTransportBase):
             if e[0] in (CURLE_COULDNT_RESOLVE_HOST,
                         CURLE_COULDNT_RESOLVE_PROXY,
                         CURLE_COULDNT_CONNECT,
+                        CURLE_FTP_WEIRD_SERVER_REPLY,
                         CURLE_GOT_NOTHING,
                         CURLE_SSL_CACERT,
                         CURLE_SSL_CACERT_BADFILE,
