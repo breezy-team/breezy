@@ -332,13 +332,14 @@ def push_log_file(to_file, log_format=None, date_format=None):
     return ('log_memento', old_handlers, new_handler, old_trace_file, to_file)
 
 
-def pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_file)):
+def pop_log_file(entry):
     """Undo changes to logging/tracing done by _push_log_file.
 
     This flushes, but does not close the trace file (so that anything that was
     in it is output.
 
     Takes the memento returned from _push_log_file."""
+    (magic, old_handlers, new_handler, old_trace_file, new_trace_file) = entry
     global _trace_file
     _trace_file = old_trace_file
     bzr_logger = logging.getLogger('bzr')
