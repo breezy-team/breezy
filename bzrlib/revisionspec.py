@@ -76,7 +76,7 @@ class RevisionInfo(object):
             self._has_revno = True
         return self._revno
 
-    def __nonzero__(self):
+    def __bool__(self):
         if self.rev_id is None:
             return False
         # TODO: otherwise, it should depend on how I was built -
