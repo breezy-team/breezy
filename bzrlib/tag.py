@@ -414,7 +414,7 @@ def sort_time(branch, tags):
         try:
             revobj = branch.repository.get_revision(revid)
         except errors.NoSuchRevision:
-            timestamp = sys.maxint # place them at the end
+            timestamp = sys.maxsize # place them at the end
         else:
             timestamp = revobj.timestamp
         timestamps[revid] = timestamp

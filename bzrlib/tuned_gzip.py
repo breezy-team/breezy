@@ -325,7 +325,7 @@ class GzipFile(gzip.GzipFile):
         - i.e. just reduced the function call overhead. May be worth
           keeping.
         """
-        if size < 0: size = sys.maxint
+        if size < 0: size = sys.maxsize
         bufs = []
         readsize = min(200, size)    # Read from the file in small chunks
         while True:
