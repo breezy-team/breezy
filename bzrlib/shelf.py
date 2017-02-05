@@ -404,7 +404,7 @@ class ShelfManager(object):
         filename = self.get_shelf_filename(shelf_id)
         try:
             return open(self.transport.local_abspath(filename), 'rb')
-        except IOError, e:
+        except IOError as e:
             if e.errno != errno.ENOENT:
                 raise
             from bzrlib import errors

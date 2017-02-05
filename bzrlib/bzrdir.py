@@ -2092,7 +2092,7 @@ def register_metadir(registry, key,
         mod_name, factory_name = full_name.rsplit('.', 1)
         try:
             factory = pyutils.get_named_object(mod_name, factory_name)
-        except ImportError, e:
+        except ImportError as e:
             raise ImportError('failed to load %s: %s' % (full_name, e))
         except AttributeError:
             raise AttributeError('no factory %s in module %r'

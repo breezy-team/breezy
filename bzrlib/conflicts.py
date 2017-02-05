@@ -223,19 +223,19 @@ def restore(filename):
     try:
         osutils.rename(filename + ".THIS", filename)
         conflicted = True
-    except OSError, e:
+    except OSError as e:
         if e.errno != errno.ENOENT:
             raise
     try:
         os.unlink(filename + ".BASE")
         conflicted = True
-    except OSError, e:
+    except OSError as e:
         if e.errno != errno.ENOENT:
             raise
     try:
         os.unlink(filename + ".OTHER")
         conflicted = True
-    except OSError, e:
+    except OSError as e:
         if e.errno != errno.ENOENT:
             raise
     if not conflicted:
@@ -438,7 +438,7 @@ class Conflict(object):
         for fname in self.associated_filenames():
             try:
                 osutils.delete_any(tree.abspath(fname))
-            except OSError, e:
+            except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
 

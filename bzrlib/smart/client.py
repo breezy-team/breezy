@@ -190,7 +190,7 @@ class _SmartClientRequest(object):
         try:
             response_tuple = response_handler.read_response_tuple(
                 expect_body=self.expect_response_body)
-        except errors.ConnectionReset, e:
+        except errors.ConnectionReset as e:
             self.client._medium.reset()
             if not self._is_safe_to_send_twice():
                 raise
@@ -216,7 +216,7 @@ class _SmartClientRequest(object):
                 self.client._medium._remember_remote_is_before((1, 6))
             try:
                 response_tuple, response_handler = self._call(protocol_version)
-            except errors.UnexpectedProtocolVersionMarker, err:
+            except errors.UnexpectedProtocolVersionMarker as err:
                 # TODO: We could recover from this without disconnecting if
                 # we recognise the protocol version.
                 trace.warning(
@@ -265,7 +265,7 @@ class _SmartClientRequest(object):
         encoder, response_handler = self._construct_protocol(protocol_version)
         try:
             self._send_no_retry(encoder)
-        except errors.ConnectionReset, e:
+        except errors.ConnectionReset as e:
             # If we fail during the _send_no_retry phase, then we can
             # be confident that the server did not get our request, because we
             # haven't started waiting for the reply yet. So try the request

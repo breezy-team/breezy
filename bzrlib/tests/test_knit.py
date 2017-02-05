@@ -444,7 +444,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # populated
         try:
             raise _TestException('foobar')
-        except _TestException, e:
+        except _TestException as e:
             retry_exc = errors.RetryWithNewPacks(None, reload_occurred=False,
                                                  exc_info=sys.exc_info())
         # GZ 2010-08-10: Cycle with exc_info affects 3 tests
@@ -1194,7 +1194,7 @@ class LowLevelKnitIndexTests(TestCase):
         index = self.get_knit_index(transport, 'filename', 'r')
         try:
             self.assertRaises(errors.KnitCorrupt, index.keys)
-        except TypeError, e:
+        except TypeError as e:
             if (str(e) == ('exceptions must be strings, classes, or instances,'
                            ' not exceptions.IndexError')):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
@@ -1213,7 +1213,7 @@ class LowLevelKnitIndexTests(TestCase):
         index = self.get_knit_index(transport, 'filename', 'r')
         try:
             self.assertRaises(errors.KnitCorrupt, index.keys)
-        except TypeError, e:
+        except TypeError as e:
             if (str(e) == ('exceptions must be strings, classes, or instances,'
                            ' not exceptions.ValueError')):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
@@ -1232,7 +1232,7 @@ class LowLevelKnitIndexTests(TestCase):
         index = self.get_knit_index(transport, 'filename', 'r')
         try:
             self.assertRaises(errors.KnitCorrupt, index.keys)
-        except TypeError, e:
+        except TypeError as e:
             if (str(e) == ('exceptions must be strings, classes, or instances,'
                            ' not exceptions.ValueError')):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
@@ -1249,7 +1249,7 @@ class LowLevelKnitIndexTests(TestCase):
         index = self.get_knit_index(transport, 'filename', 'r')
         try:
             self.assertRaises(errors.KnitCorrupt, index.keys)
-        except TypeError, e:
+        except TypeError as e:
             if (str(e) == ('exceptions must be strings, classes, or instances,'
                            ' not exceptions.ValueError')):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
@@ -1266,7 +1266,7 @@ class LowLevelKnitIndexTests(TestCase):
         index = self.get_knit_index(transport, 'filename', 'r')
         try:
             self.assertRaises(errors.KnitCorrupt, index.keys)
-        except TypeError, e:
+        except TypeError as e:
             if (str(e) == ('exceptions must be strings, classes, or instances,'
                            ' not exceptions.ValueError')):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'

@@ -1359,7 +1359,7 @@ class TestCase(testtools.TestCase):
         try:
             if a == b:
                 return
-        except UnicodeError, e:
+        except UnicodeError as e:
             # If we can't compare without getting a UnicodeError, then
             # obviously they are different
             trace.mutter('UnicodeError: %s', e)
@@ -1508,7 +1508,7 @@ class TestCase(testtools.TestCase):
         """
         try:
             list(func(*args, **kwargs))
-        except excClass, e:
+        except excClass as e:
             return e
         else:
             if getattr(excClass,'__name__', None) is not None:
@@ -1529,7 +1529,7 @@ class TestCase(testtools.TestCase):
         """
         try:
             callableObj(*args, **kwargs)
-        except excClass, e:
+        except excClass as e:
             return e
         else:
             if getattr(excClass,'__name__', None) is not None:
@@ -2651,7 +2651,7 @@ class TestCaseWithMemoryTransport(TestCase):
             os.environ['BZR_HOME'] = root
             wt = controldir.ControlDir.create_standalone_workingtree(root)
             del os.environ['BZR_HOME']
-        except Exception, e:
+        except Exception as e:
             self.fail("Fail to initialize the safety net: %r\n" % (e,))
         # Hack for speed: remember the raw bytes of the dirstate file so that
         # we don't need to re-open the wt to check it hasn't changed.
@@ -3783,7 +3783,7 @@ def load_test_id_list(file_name):
     test_list = []
     try:
         ftest = open(file_name, 'rt')
-    except IOError, e:
+    except IOError as e:
         if e.errno != errno.ENOENT:
             raise
         else:
@@ -4223,7 +4223,7 @@ def test_suite(keep_only=None, starting_with=None):
             # still runs the rest of the examples
             doc_suite = IsolatedDocTestSuite(
                 mod, optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
-        except ValueError, e:
+        except ValueError as e:
             print '**failed to get doctest for: %s\n%s' % (mod, e)
             raise
         if len(doc_suite._tests) == 0:
@@ -4446,7 +4446,7 @@ def _rmtree_temp_dir(dirname, test_id=None):
         dirname = dirname.encode(sys.getfilesystemencoding())
     try:
         osutils.rmtree(dirname)
-    except OSError, e:
+    except OSError as e:
         # We don't want to fail here because some useful display will be lost
         # otherwise. Polluting the tmp dir is bad, but not giving all the
         # possible info to the test runner is even worse.

@@ -168,14 +168,14 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                     self._send_response(self.request.response)
             except KeyboardInterrupt:
                 raise
-            except errors.UnknownSmartMethod, err:
+            except errors.UnknownSmartMethod as err:
                 protocol_error = errors.SmartProtocolError(
                     "bad request %r" % (err.verb,))
                 failure = request.FailedSmartServerResponse(
                     ('error', str(protocol_error)))
                 self._send_response(failure)
                 return
-            except Exception, exception:
+            except Exception as exception:
                 # everything else: pass to client, flush, and quit
                 log_exception_quietly()
                 self._send_response(request.FailedSmartServerResponse(
@@ -409,7 +409,7 @@ class _StatefulDecoder(object):
                 #     _NeedMoreBytes).
                 current_state = self.state_accept
                 self.state_accept()
-        except _NeedMoreBytes, e:
+        except _NeedMoreBytes as e:
             self._number_needed_bytes = e.count
 
 
@@ -908,7 +908,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             _StatefulDecoder.accept_bytes(self, bytes)
         except KeyboardInterrupt:
             raise
-        except errors.SmartMessageHandlerError, exception:
+        except errors.SmartMessageHandlerError as exception:
             # We do *not* set self.decoding_failed here.  The message handler
             # has raised an error, but the decoder is still able to parse bytes
             # and determine when this message ends.
@@ -919,7 +919,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             # exception has interrupted the loop that runs the state machine.
             # So we call accept_bytes again to restart it.
             self.accept_bytes('')
-        except Exception, exception:
+        except Exception as exception:
             # The decoder itself has raised an exception.  We cannot continue
             # decoding.
             self.decoding_failed = True

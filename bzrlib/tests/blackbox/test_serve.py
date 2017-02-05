@@ -70,7 +70,7 @@ class TestBzrServeBase(TestCaseWithTransport):
                 if func is not None:
                     try:
                         func(*func_args, **func_kwargs)
-                    except Exception, e:
+                    except Exception as e:
                         # Log errors to make some test failures a little less
                         # mysterious.
                         trace.mutter('func broke: %r', e)
@@ -96,7 +96,7 @@ class TestBzrServeBase(TestCaseWithTransport):
         try:
             out, err = self.run_bzr(['serve'] + list(serve_args),
                                     retcode=retcode)
-        except KeyboardInterrupt, e:
+        except KeyboardInterrupt as e:
             out, err = e.args
         return out, err
 
@@ -373,7 +373,7 @@ class TestCmdServeChrooting(TestBzrServeBase):
         resp = smart_client.call('BzrDirFormat.initialize', 'foo/')
         try:
             resp = smart_client.call('BzrDir.find_repositoryV3', 'foo/')
-        except errors.ErrorFromSmartServer, e:
+        except errors.ErrorFromSmartServer as e:
             resp = e.error_tuple
         self.client_resp = resp
         client_medium.disconnect()

@@ -59,7 +59,7 @@ class StubSFTPHandle(paramiko.SFTPHandle):
         try:
             return paramiko.SFTPAttributes.from_stat(
                 os.fstat(self.readfile.fileno()))
-        except OSError, e:
+        except OSError as e:
             return paramiko.SFTPServer.convert_errno(e.errno)
 
     def chattr(self, attr):
@@ -68,7 +68,7 @@ class StubSFTPHandle(paramiko.SFTPHandle):
         trace.mutter('Changing permissions on %s to %s', self.filename, attr)
         try:
             paramiko.SFTPServer.set_file_attr(self.filename, attr)
-        except OSError, e:
+        except OSError as e:
             return paramiko.SFTPServer.convert_errno(e.errno)
 
 
@@ -125,7 +125,7 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
     def chattr(self, path, attr):
         try:
             paramiko.SFTPServer.set_file_attr(path, attr)
-        except OSError, e:
+        except OSError as e:
             return paramiko.SFTPServer.convert_errno(e.errno)
         return paramiko.SFTP_OK
 
@@ -146,21 +146,21 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
                 attr.filename = fname
                 out.append(attr)
             return out
-        except OSError, e:
+        except OSError as e:
             return paramiko.SFTPServer.convert_errno(e.errno)
 
     def stat(self, path):
         path = self._realpath(path)
         try:
             return paramiko.SFTPAttributes.from_stat(os.stat(path))
-        except OSError, e:
+        except OSError as e:
             return paramiko.SFTPServer.convert_errno(e.errno)
 
     def lstat(self, path):
         path = self._realpath(path)
         try:
             return paramiko.SFTPAttributes.from_stat(os.lstat(path))
-        except OSError, e:
+        except OSError as e:
             return paramiko.SFTPServer.convert_errno(e.errno)
 
     def open(self, path, flags, attr):
@@ -173,7 +173,7 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
                 # os.open() defaults to 0777 which is
                 # an odd default mode for files
                 fd = os.open(path, flags, 0666)
-        except OSError, e:
+        except OSError as e:
             return paramiko.SFTPServer.convert_errno(e.errno)
 
         if (flags & os.O_CREAT) and (attr is not None):
@@ -188,7 +188,7 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
             fstr = 'rb'
         try:
             f = os.fdopen(fd, fstr)
-        except (IOError, OSError), e:
+        except (IOError, OSError) as e:
             return paramiko.SFTPServer.convert_errno(e.errno)
         fobj = StubSFTPHandle()
         fobj.filename = path
@@ -200,7 +200,7 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
         path = self._realpath(path)
         try:
             os.remove(path)
-        except OSError, e:
+        except OSError as e:
             return paramiko.SFTPServer.convert_errno(e.errno)
         return paramiko.SFTP_OK
 
@@ -209,7 +209,7 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
         newpath = self._realpath(newpath)
         try:
             os.rename(oldpath, newpath)
-        except OSError, e:
+        except OSError as e:
             return paramiko.SFTPServer.convert_errno(e.errno)
         return paramiko.SFTP_OK
 
@@ -225,7 +225,7 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
             if attr is not None:
                 attr._flags &= ~attr.FLAG_PERMISSIONS
                 paramiko.SFTPServer.set_file_attr(path, attr)
-        except OSError, e:
+        except OSError as e:
             return paramiko.SFTPServer.convert_errno(e.errno)
         return paramiko.SFTP_OK
 
@@ -233,7 +233,7 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
         path = self._realpath(path)
         try:
             os.rmdir(path)
-        except OSError, e:
+        except OSError as e:
             return paramiko.SFTPServer.convert_errno(e.errno)
         return paramiko.SFTP_OK
 
@@ -398,14 +398,14 @@ class TestingSFTPWithoutSSHConnectionHandler(TestingSFTPConnectionHandler):
         try:
             sftp_server.start_subsystem(
                 'sftp', None, ssh.SocketAsChannelAdapter(self.request))
-        except socket.error, e:
+        except socket.error as e:
             if (len(e.args) > 0) and (e.args[0] == errno.EPIPE):
                 # it's okay for the client to disconnect abruptly
                 # (bug in paramiko 1.6: it should absorb this exception)
                 pass
             else:
                 raise
-        except Exception, e:
+        except Exception as e:
             # This typically seems to happen during interpreter shutdown, so
             # most of the useful ways to report this error won't work.
             # Writing the exception type, and then the text of the exception,

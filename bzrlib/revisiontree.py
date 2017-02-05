@@ -231,7 +231,7 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
         try:
             for result in self._repository.iter_files_bytes(repo_desired_files):
                 yield result
-        except errors.RevisionNotPresent, e:
+        except errors.RevisionNotPresent as e:
             raise errors.NoSuchFile(e.file_id)
 
     def annotate_iter(self, file_id,

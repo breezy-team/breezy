@@ -22,7 +22,7 @@ from bzrlib import debug
 
 try:
     from bzrlib._static_tuple_c import StaticTuple
-except ImportError, e:
+except ImportError as e:
     from bzrlib import osutils
     osutils.failed_to_load_extension(e)
     from bzrlib._static_tuple_py import StaticTuple

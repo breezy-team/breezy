@@ -464,7 +464,7 @@ class TestConfigObjErrors(tests.TestCase):
         try:
             co = configobj.ConfigObj(StringIO(erroneous_config),
                                      raise_errors=True)
-        except config.configobj.DuplicateError, e:
+        except config.configobj.DuplicateError as e:
             self.assertEqual(3, e.line_number)
         else:
             self.fail('Error in config file not detected')

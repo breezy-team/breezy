@@ -2455,7 +2455,7 @@ class TestFileMover(tests.TestCaseWithTransport):
         mover.rename('c/e', 'c/d')
         try:
             mover.rename('a', 'c')
-        except errors.FileExists, e:
+        except errors.FileExists as e:
             mover.rollback()
         self.assertPathExists('a')
         self.assertPathExists('c/d')

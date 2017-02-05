@@ -58,11 +58,11 @@ from bzrlib.tests.test_server import TestServer
 
 try:
     import glib
-except ImportError, e:
+except ImportError as e:
     raise errors.DependencyNotPresent('glib', e)
 try:
     import gio
-except ImportError, e:
+except ImportError as e:
     raise errors.DependencyNotPresent('gio', e)
 
 
@@ -99,7 +99,7 @@ class GioFileStream(FileStream):
         try:
             #Using pump_string_file seems to make things crash
             osutils.pumpfile(StringIO(bytes), self.stream)
-        except gio.Error, e:
+        except gio.Error as e:
             #self.transport._translate_gio_error(e,self.relpath)
             raise errors.BzrError(str(e))
 
@@ -206,7 +206,7 @@ class GioTransport(ConnectedTransport):
         try:
             obj.mount_enclosing_volume_finish(res)
             self.loop.quit()
-        except gio.Error, e:
+        except gio.Error as e:
             self.loop.quit()
             raise errors.BzrError("Failed to mount the given location: " + str(e));
 
@@ -221,7 +221,7 @@ class GioTransport(ConnectedTransport):
             mount = None
             try:
                 mount = connection.find_enclosing_mount()
-            except gio.Error, e:
+            except gio.Error as e:
                 if (e.code == gio.ERROR_NOT_MOUNTED):
                     self.loop = glib.MainLoop()
                     ui.ui_factory.show_message('Mounting %s using GIO' % \
@@ -235,7 +235,7 @@ class GioTransport(ConnectedTransport):
                     m = connection.mount_enclosing_volume(op,
                             self._mount_done_cb)
                     self.loop.run()
-        except gio.Error, e:
+        except gio.Error as e:
             raise errors.TransportError(msg="Error setting up connection:"
                                         " %s" % str(e), orig_error=e)
         return connection, (user, password)
@@ -265,7 +265,7 @@ class GioTransport(ConnectedTransport):
             if stat.S_ISREG(st.st_mode) or stat.S_ISDIR(st.st_mode):
                 return True
             return False
-        except gio.Error, e:
+        except gio.Error as e:
             if e.code == gio.ERROR_NOT_FOUND:
                 return False
             else:
@@ -290,7 +290,7 @@ class GioTransport(ConnectedTransport):
             fin.close()
             ret = StringIO(buf)
             return ret
-        except gio.Error, e:
+        except gio.Error as e:
             #If we get a not mounted here it might mean
             #that a bad path has been entered (or that mount failed)
             if (e.code == gio.ERROR_NOT_MOUNTED):
@@ -328,7 +328,7 @@ class GioTransport(ConnectedTransport):
                 if mode is not None:
                     self._setmode(relpath, mode)
                 return length
-            except gio.Error, e:
+            except gio.Error as e:
                 self._translate_gio_error(e, relpath)
         finally:
             if not closed and fout is not None:
@@ -344,7 +344,7 @@ class GioTransport(ConnectedTransport):
             f = self._get_GIO(relpath)
             f.make_directory()
             self._setmode(relpath, mode)
-        except gio.Error, e:
+        except gio.Error as e:
             self._translate_gio_error(e, relpath)
 
     def open_write_stream(self, relpath, mode=None):
@@ -378,12 +378,12 @@ class GioTransport(ConnectedTransport):
                 f.delete()
             else:
                 raise errors.NotADirectory(relpath)
-        except gio.Error, e:
+        except gio.Error as e:
             self._translate_gio_error(e, relpath)
-        except errors.NotADirectory, e:
+        except errors.NotADirectory as e:
             #just pass it forward
             raise e
-        except Exception, e:
+        except Exception as e:
             mutter('failed to rmdir %s: %s' % (relpath, e))
             raise errors.PathError(relpath)
 
@@ -412,7 +412,7 @@ class GioTransport(ConnectedTransport):
             #gio.ERROR_NOT_FOUND for the already existing file.
             #It is valid to open a non-existing file for append.
             #This is caused by the broken gio append_to...
-            except gio.Error, e:
+            except gio.Error as e:
                 if e.code != gio.ERROR_NOT_FOUND:
                     self._translate_gio_error(e, relpath)
             length = self._pump(file, fout)
@@ -424,7 +424,7 @@ class GioTransport(ConnectedTransport):
                       (info.st_size, result, length, result + length))
             fo.move(fi, flags=gio.FILE_COPY_OVERWRITE)
             return result
-        except gio.Error, e:
+        except gio.Error as e:
             self._translate_gio_error(e, relpath)
 
     def _setmode(self, relpath, mode):
@@ -438,7 +438,7 @@ class GioTransport(ConnectedTransport):
             try:
                 f = self._get_GIO(relpath)
                 f.set_attribute_uint32(gio.FILE_ATTRIBUTE_UNIX_MODE, mode)
-            except gio.Error, e:
+            except gio.Error as e:
                 if e.code == gio.ERROR_NOT_SUPPORTED:
                     # Command probably not available on this server
                     mutter("GIO Could not set permissions to %s on %s. %s",
@@ -454,7 +454,7 @@ class GioTransport(ConnectedTransport):
             f = self._get_GIO(rel_from)
             t = self._get_GIO(rel_to)
             f.move(t)
-        except gio.Error, e:
+        except gio.Error as e:
             self._translate_gio_error(e, rel_from)
 
     def move(self, rel_from, rel_to):
@@ -465,7 +465,7 @@ class GioTransport(ConnectedTransport):
             f = self._get_GIO(rel_from)
             t = self._get_GIO(rel_to)
             f.move(t, flags=gio.FILE_COPY_OVERWRITE)
-        except gio.Error, e:
+        except gio.Error as e:
             self._translate_gio_error(e, relfrom)
 
     def delete(self, relpath):
@@ -475,7 +475,7 @@ class GioTransport(ConnectedTransport):
                 mutter("GIO delete: %s", relpath)
             f = self._get_GIO(relpath)
             f.delete()
-        except gio.Error, e:
+        except gio.Error as e:
             self._translate_gio_error(e, relpath)
 
     def external_url(self):
@@ -502,7 +502,7 @@ class GioTransport(ConnectedTransport):
             for child in children:
                 entries.append(urlutils.escape(child.get_name()))
             return entries
-        except gio.Error, e:
+        except gio.Error as e:
             self._translate_gio_error(e, relpath)
 
     def iter_files_recursive(self):
@@ -528,7 +528,7 @@ class GioTransport(ConnectedTransport):
                 mutter("GIO stat: %s", relpath)
             f = self._get_GIO(relpath)
             return GioStatResult(f)
-        except gio.Error, e:
+        except gio.Error as e:
             self._translate_gio_error(e, relpath, extra='error w/ stat')
 
     def lock_read(self, relpath):

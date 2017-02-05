@@ -229,12 +229,12 @@ def _open_bzr_log():
             try:
                 fd = os.open(filename, flags)
                 break
-            except OSError, e:
+            except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
             try:
                 fd = os.open(filename, flags | os.O_CREAT | os.O_EXCL, 0666)
-            except OSError, e:
+            except OSError as e:
                 if e.errno != errno.EEXIST:
                     raise
             else:
@@ -255,7 +255,7 @@ def _open_bzr_log():
 
         return bzr_log_file
 
-    except EnvironmentError, e:
+    except EnvironmentError as e:
         # If we are failing to open the log, then most likely logging has not
         # been set up yet. So we just write to stderr rather than using
         # 'warning()'. If we using warning(), users get the unhelpful 'no
@@ -549,11 +549,11 @@ def _flush_stdout_stderr():
     try:
         sys.stdout.flush()
         sys.stderr.flush()
-    except ValueError, e:
+    except ValueError as e:
         # On Windows, I get ValueError calling stdout.flush() on a closed
         # handle
         pass
-    except IOError, e:
+    except IOError as e:
         import errno
         if e.errno in [errno.EINVAL, errno.EPIPE]:
             pass

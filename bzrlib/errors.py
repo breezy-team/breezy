@@ -95,7 +95,7 @@ class BzrError(StandardError):
                 # __str__() should always return a 'str' object
                 # never a 'unicode' object.
                 return s
-        except Exception, e:
+        except Exception as e:
             pass # just bind to 'e' for formatting below
         else:
             e = None

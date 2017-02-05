@@ -72,7 +72,7 @@ def _check_pending_merges(control, force=False):
     """
     try:
         tree = control.open_workingtree()
-    except errors.NotBranchError, ex:
+    except errors.NotBranchError as ex:
         # Lightweight checkout and branch is no longer there
         if force:
             return
@@ -111,7 +111,7 @@ def _set_branch_location(control, to_branch, force=False):
                         'Cannot switch as local commits found in the checkout. '
                         'Commit these to the bound branch or use --force to '
                         'throw them away.'))
-            except errors.BoundBranchConnectionFailure, e:
+            except errors.BoundBranchConnectionFailure as e:
                 raise errors.BzrCommandError(gettext(
                         'Unable to connect to current master branch %(target)s: '
                         '%(error)s To switch anyway, use --force.') %

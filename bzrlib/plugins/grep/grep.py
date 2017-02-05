@@ -122,7 +122,7 @@ def compile_pattern(pattern, flags=0):
         # use python's re.compile as we need to catch re.error in case of bad pattern
         lazy_regex.reset_compile()
         patternc = re.compile(pattern, flags)
-    except re.error, e:
+    except re.error as e:
         raise errors.BzrError("Invalid pattern: '%s'" % pattern)
     return patternc
 

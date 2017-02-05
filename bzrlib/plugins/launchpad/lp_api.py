@@ -43,7 +43,7 @@ from bzrlib.plugins.launchpad.lp_registration import (
 
 try:
     import launchpadlib
-except ImportError, e:
+except ImportError as e:
     raise errors.DependencyNotPresent('launchpadlib', e)
 
 from launchpadlib.launchpad import (

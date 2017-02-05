@@ -447,7 +447,7 @@ class _StraceFeature(Feature):
                 stdout=subprocess.PIPE)
             proc.communicate()
             return True
-        except OSError, e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 # strace is not installed
                 return False
@@ -468,7 +468,7 @@ class _AttribFeature(Feature):
             return False
         try:
             proc = subprocess.Popen(['attrib', '.'], stdout=subprocess.PIPE)
-        except OSError, e:
+        except OSError as e:
             return False
         return (0 == proc.wait())
 

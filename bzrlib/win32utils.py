@@ -497,7 +497,7 @@ def set_file_attr_hidden(path):
             SetFileAttributes = win32file.SetFileAttributes
         try:
             SetFileAttributes(path, win32file.FILE_ATTRIBUTE_HIDDEN)
-        except pywintypes.error, e:
+        except pywintypes.error as e:
             from bzrlib import trace
             trace.mutter('Unable to set hidden attribute on %r: %s', path, e)
 
@@ -606,7 +606,7 @@ if has_win32api:
         """True if pid doesn't correspond to live process on this machine"""
         try:
             handle = win32api.OpenProcess(1, False, pid) # PROCESS_TERMINATE
-        except pywintypes.error, e:
+        except pywintypes.error as e:
             if e[0] == 5: # ERROR_ACCESS_DENIED
                 # Probably something alive we're not allowed to kill
                 return False

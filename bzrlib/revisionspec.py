@@ -422,7 +422,7 @@ class RevisionSpec_revno(RevisionSpec):
                 # right now - RBC 20060928
                 try:
                     match_revno = tuple((int(number) for number in revno_spec.split('.')))
-                except ValueError, e:
+                except ValueError as e:
                     raise errors.InvalidRevisionSpec(self.user_spec, branch, e)
 
                 dotted = True
@@ -533,7 +533,7 @@ class RevisionSpec_last(RevisionSpec):
 
         try:
             offset = int(self.spec)
-        except ValueError, e:
+        except ValueError as e:
             raise errors.InvalidRevisionSpec(self.user_spec, context_branch, e)
 
         if offset <= 0:

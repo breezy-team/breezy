@@ -821,7 +821,7 @@ def parse_args(command, argv, alias_argv=None):
     # option name is given.  See http://bugs.python.org/issue2931
     try:
         options, args = parser.parse_args(args)
-    except UnicodeEncodeError,e:
+    except UnicodeEncodeError as e:
         raise errors.BzrCommandError(
             gettext('Only ASCII permitted in option names'))
 
@@ -928,7 +928,7 @@ def exception_to_return_code(the_callable, *args, **kwargs):
     """
     try:
         return the_callable(*args, **kwargs)
-    except (KeyboardInterrupt, Exception), e:
+    except (KeyboardInterrupt, Exception) as e:
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now
         exc_info = sys.exc_info()
@@ -1138,7 +1138,7 @@ def display_command(func):
             result = func(*args, **kwargs)
             sys.stdout.flush()
             return result
-        except IOError, e:
+        except IOError as e:
             if getattr(e, 'errno', None) is None:
                 raise
             if e.errno != errno.EPIPE:
@@ -1229,7 +1229,7 @@ def run_bzr_catch_user_errors(argv):
     install_bzr_command_hooks()
     try:
         return run_bzr(argv)
-    except Exception, e:
+    except Exception as e:
         if (isinstance(e, (OSError, IOError))
             or not getattr(e, 'internal_error', True)):
             trace.report_exception(sys.exc_info(), sys.stderr)

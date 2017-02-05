@@ -109,7 +109,7 @@ class ftp_channel(medusa.ftp_server.ftp_channel):
             return
         try:
             os.rename(pfrom, pto)
-        except (IOError, OSError), e:
+        except (IOError, OSError) as e:
             # TODO: jam 20060516 return custom responses based on
             #       why the command failed
             # (bialix 20070418) str(e) on Python 2.5 @ Windows
@@ -152,7 +152,7 @@ class ftp_channel(medusa.ftp_server.ftp_channel):
             try:
                 self.filesystem.mkdir (path)
                 self.respond ('257 MKD command successful.')
-            except (IOError, OSError), e:
+            except (IOError, OSError) as e:
                 # (bialix 20070418) str(e) on Python 2.5 @ Windows
                 # sometimes don't provide expected error message;
                 # so we obtain such message via os.strerror()
@@ -282,7 +282,7 @@ class FTPTestServer(test_server.TestServer):
             # testers may wonder why their test just sits there waiting for a
             # server that is already dead. Note that if the tester waits too
             # long under pdb the server will also die.
-        except select.error, e:
+        except select.error as e:
             if e.args[0] != errno.EBADF:
                 raise
 

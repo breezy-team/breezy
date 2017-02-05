@@ -150,11 +150,11 @@ class FtpTransport(ConnectedTransport):
             connection.set_pasv(not self.is_active)
             # binary mode is the default
             connection.voidcmd('TYPE I')
-        except socket.error, e:
+        except socket.error as e:
             raise errors.SocketConnectionError(self._host, self._port,
                                                msg='Unable to connect to',
                                                orig_error= e)
-        except ftplib.error_perm, e:
+        except ftplib.error_perm as e:
             raise errors.TransportError(msg="Error setting up connection:"
                                         " %s" % str(e), orig_error=e)
         return connection, (user, password)
@@ -241,7 +241,7 @@ class FtpTransport(ConnectedTransport):
             s = f.size(abspath)
             mutter("FTP has: %s", abspath)
             return True
-        except ftplib.error_perm, e:
+        except ftplib.error_perm as e:
             if ('is a directory' in str(e).lower()):
                 mutter("FTP has dir: %s: %s", abspath, e)
                 return True
@@ -265,9 +265,9 @@ class FtpTransport(ConnectedTransport):
             f.retrbinary('RETR '+self._remote_path(relpath), ret.write, 8192)
             ret.seek(0)
             return ret
-        except ftplib.error_perm, e:
+        except ftplib.error_perm as e:
             raise errors.NoSuchFile(self.abspath(relpath), extra=str(e))
-        except ftplib.error_temp, e:
+        except ftplib.error_temp as e:
             if retries > _number_of_retries:
                 raise errors.TransportError(msg="FTP temporary error during GET %s. Aborting."
                                      % self.abspath(relpath),
@@ -276,7 +276,7 @@ class FtpTransport(ConnectedTransport):
                 warning("FTP temporary error: %s. Retrying.", str(e))
                 self._reconnect()
                 return self.get(relpath, retries+1)
-        except EOFError, e:
+        except EOFError as e:
             if retries > _number_of_retries:
                 raise errors.TransportError("FTP control connection closed during GET %s."
                                      % self.abspath(relpath),
@@ -329,7 +329,7 @@ class FtpTransport(ConnectedTransport):
                     return len(bytes)
                 else:
                     return fp.counted_bytes
-            except (ftplib.error_temp, EOFError), e:
+            except (ftplib.error_temp, EOFError) as e:
                 warning("Failure during ftp PUT of %s: %s. Deleting temporary file."
                     % (tmp_abspath, e, ))
                 try:
@@ -339,10 +339,10 @@ class FtpTransport(ConnectedTransport):
                             " server.\nFile: %s", tmp_abspath)
                     raise e
                 raise
-        except ftplib.error_perm, e:
+        except ftplib.error_perm as e:
             self._translate_ftp_error(e, abspath, extra='could not store',
                                        unknown_exc=errors.NoSuchFile)
-        except ftplib.error_temp, e:
+        except ftplib.error_temp as e:
             if retries > _number_of_retries:
                 raise errors.TransportError(
                     "FTP temporary error during PUT %s: %s. Aborting."
@@ -369,7 +369,7 @@ class FtpTransport(ConnectedTransport):
             f = self._get_FTP()
             try:
                 f.mkd(abspath)
-            except ftplib.error_reply, e:
+            except ftplib.error_reply as e:
                 # <https://bugs.launchpad.net/bzr/+bug/224373> Microsoft FTP
                 # server returns "250 Directory created." which is kind of
                 # reasonable, 250 meaning "requested file action OK", but not what
@@ -379,7 +379,7 @@ class FtpTransport(ConnectedTransport):
                 else:
                     raise
             self._setmode(relpath, mode)
-        except ftplib.error_perm, e:
+        except ftplib.error_perm as e:
             self._translate_ftp_error(e, abspath,
                 unknown_exc=errors.FileExists)
 
@@ -405,7 +405,7 @@ class FtpTransport(ConnectedTransport):
             mutter("FTP rmd: %s", abspath)
             f = self._get_FTP()
             f.rmd(abspath)
-        except ftplib.error_perm, e:
+        except ftplib.error_perm as e:
             self._translate_ftp_error(e, abspath, unknown_exc=errors.PathError)
 
     def append_file(self, relpath, f, mode=None):
@@ -444,7 +444,7 @@ class FtpTransport(ConnectedTransport):
             conn.close()
             self._setmode(relpath, mode)
             ftp.getresp()
-        except ftplib.error_perm, e:
+        except ftplib.error_perm as e:
             # Check whether the command is not supported (reply code 502)
             if str(e).startswith('502 '):
                 warning("FTP server does not support file appending natively. "
@@ -454,7 +454,7 @@ class FtpTransport(ConnectedTransport):
             else:
                 self._translate_ftp_error(e, abspath, extra='error appending',
                     unknown_exc=errors.NoSuchFile)
-        except ftplib.error_temp, e:
+        except ftplib.error_temp as e:
             if retries > _number_of_retries:
                 raise errors.TransportError(
                     "FTP temporary error during APPEND %s. Aborting."
@@ -485,7 +485,7 @@ class FtpTransport(ConnectedTransport):
                 cmd = "SITE CHMOD %s %s" % (oct(mode),
                                             self._remote_path(relpath))
                 ftp.sendcmd(cmd)
-            except ftplib.error_perm, e:
+            except ftplib.error_perm as e:
                 # Command probably not available on this server
                 warning("FTP Could not set permissions to %s on %s. %s",
                         oct(mode), self._remote_path(relpath), str(e))
@@ -505,7 +505,7 @@ class FtpTransport(ConnectedTransport):
     def _rename(self, abs_from, abs_to, f):
         try:
             f.rename(abs_from, abs_to)
-        except (ftplib.error_temp, ftplib.error_perm), e:
+        except (ftplib.error_temp, ftplib.error_perm) as e:
             self._translate_ftp_error(e, abs_from,
                 ': unable to rename to %r' % (abs_to))
 
@@ -517,7 +517,7 @@ class FtpTransport(ConnectedTransport):
             mutter("FTP mv: %s => %s", abs_from, abs_to)
             f = self._get_FTP()
             self._rename_and_overwrite(abs_from, abs_to, f)
-        except ftplib.error_perm, e:
+        except ftplib.error_perm as e:
             self._translate_ftp_error(e, abs_from,
                 extra='unable to rename to %r' % (rel_to,),
                 unknown_exc=errors.PathError)
@@ -541,7 +541,7 @@ class FtpTransport(ConnectedTransport):
         try:
             mutter("FTP rm: %s", abspath)
             f.delete(abspath)
-        except ftplib.error_perm, e:
+        except ftplib.error_perm as e:
             self._translate_ftp_error(e, abspath, 'error deleting',
                 unknown_exc=errors.NoSuchFile)
 
@@ -562,10 +562,10 @@ class FtpTransport(ConnectedTransport):
         try:
             try:
                 paths = f.nlst(basepath)
-            except ftplib.error_perm, e:
+            except ftplib.error_perm as e:
                 self._translate_ftp_error(e, relpath,
                                            extra='error with list_dir')
-            except ftplib.error_temp, e:
+            except ftplib.error_temp as e:
                 # xs4all's ftp server raises a 450 temp error when listing an
                 # empty directory. Check for that and just return an empty list
                 # in that case. See bug #215522
@@ -611,7 +611,7 @@ class FtpTransport(ConnectedTransport):
             mutter("FTP stat: %s", abspath)
             f = self._get_FTP()
             return FtpStatResult(f, abspath)
-        except ftplib.error_perm, e:
+        except ftplib.error_perm as e:
             self._translate_ftp_error(e, abspath, extra='error w/ stat')
 
     def lock_read(self, relpath):

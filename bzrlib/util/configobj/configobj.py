@@ -1610,7 +1610,7 @@ class ConfigObj(Section):
                             comment = ''
                             try:
                                 value = unrepr(value)
-                            except Exception, e:
+                            except Exception as e:
                                 if type(e) == UnknownType:
                                     msg = 'Unknown name or type in value at line %s.'
                                 else:
@@ -1623,7 +1623,7 @@ class ConfigObj(Section):
                         comment = ''
                         try:
                             value = unrepr(value)
-                        except Exception, e:
+                        except Exception as e:
                             if isinstance(e, UnknownType):
                                 msg = 'Unknown name or type in value at line %s.'
                             else:
@@ -1897,11 +1897,11 @@ class ConfigObj(Section):
                                        raise_errors=True,
                                        file_error=True,
                                        _inspec=True)
-            except ConfigObjError, e:
+            except ConfigObjError as e:
                 # FIXME: Should these errors have a reference
                 #        to the already parsed ConfigObj ?
                 raise ConfigspecError('Parsing configspec failed: %s' % e)
-            except IOError, e:
+            except IOError as e:
                 raise IOError('Reading configspec failed: %s' % e)
 
         self.configspec = configspec
@@ -2139,7 +2139,7 @@ class ConfigObj(Section):
                                         val,
                                         missing=missing
                                         )
-            except validator.baseErrorClass, e:
+            except validator.baseErrorClass as e:
                 if not preserve_errors or isinstance(e, self._vdtMissingValue):
                     out[entry] = False
                 else:

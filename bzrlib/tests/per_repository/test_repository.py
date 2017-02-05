@@ -348,7 +348,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         except errors.UpToDateFormat:
             # this is in the most current format already.
             return
-        except errors.BadConversionTarget, e:
+        except errors.BadConversionTarget as e:
             raise tests.TestSkipped(str(e))
         wt = workingtree.WorkingTree.open(wt.basedir)
         new_signature = wt.branch.repository.get_signature_text('A')
@@ -794,7 +794,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository('repo')
         try:
             repo.set_make_working_trees(True)
-        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation), e:
+        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation) as e:
             raise tests.TestNotApplicable('Format does not support this flag.')
         self.assertTrue(repo.make_working_trees())
 
@@ -802,7 +802,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository('repo')
         try:
             repo.set_make_working_trees(False)
-        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation), e:
+        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation) as e:
             raise tests.TestNotApplicable('Format does not support this flag.')
         self.assertFalse(repo.make_working_trees())
 

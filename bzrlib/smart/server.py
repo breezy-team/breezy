@@ -113,7 +113,7 @@ class SmartTCPServer(object):
                 socket.SO_REUSEADDR, 1)
         try:
             self._server_socket.bind(sockaddr)
-        except self._socket_error, message:
+        except self._socket_error as message:
             raise errors.CannotBindAddress(host, port, message)
         self._sockname = self._server_socket.getsockname()
         self.port = self._sockname[1]
@@ -210,7 +210,7 @@ class SmartTCPServer(object):
                     except self._socket_timeout:
                         # just check if we're asked to stop
                         pass
-                    except self._socket_error, e:
+                    except self._socket_error as e:
                         # if the socket is closed by stop_background_thread
                         # we might get a EBADF here, or if we get a signal we
                         # can get EINTR, any other socket errors should get
@@ -228,7 +228,7 @@ class SmartTCPServer(object):
             except KeyboardInterrupt:
                 # dont log when CTRL-C'd.
                 raise
-            except Exception, e:
+            except Exception as e:
                 trace.report_exception(sys.exc_info(), sys.stderr)
                 raise
         finally:

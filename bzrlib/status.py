@@ -144,13 +144,13 @@ def show_tree_status(wt, show_unchanged=None,
         elif len(revision) > 0:
             try:
                 old = revision[0].as_tree(wt.branch)
-            except errors.NoSuchRevision, e:
+            except errors.NoSuchRevision as e:
                 raise errors.BzrCommandError(str(e))
             if (len(revision) > 1) and (revision[1].spec is not None):
                 try:
                     new = revision[1].as_tree(wt.branch)
                     new_is_working_tree = False
-                except errors.NoSuchRevision, e:
+                except errors.NoSuchRevision as e:
                     raise errors.BzrCommandError(str(e))
             else:
                 new = wt

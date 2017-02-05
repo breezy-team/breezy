@@ -22,6 +22,6 @@ from bzrlib import osutils
 
 try:
     from bzrlib._bencode_pyx import bdecode, bdecode_as_tuple, bencode, Bencached
-except ImportError, e:
+except ImportError as e:
     osutils.failed_to_load_extension(e)
     from bzrlib.util._bencode_py import bdecode, bdecode_as_tuple, bencode, Bencached

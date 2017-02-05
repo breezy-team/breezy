@@ -399,7 +399,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         if stat_value is None:
             try:
                 stat_value = osutils.lstat(file_abspath)
-            except OSError, e:
+            except OSError as e:
                 if e.errno == errno.ENOENT:
                     return None
                 else:
@@ -778,7 +778,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 for rollback in reversed(rollbacks):
                     try:
                         rollback()
-                    except Exception, e:
+                    except Exception as e:
                         exc_info = sys.exc_info()
                 if exc_info:
                     raise exc_info[0], exc_info[1], exc_info[2]
@@ -789,7 +789,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 to_rel_abs = self.abspath(to_rel)
                 try:
                     osutils.rename(from_rel_abs, to_rel_abs)
-                except OSError, e:
+                except OSError as e:
                     raise errors.BzrMoveFailedError(from_rel, to_rel, e[1])
                 rollbacks.append(lambda: osutils.rename(to_rel_abs, from_rel_abs))
             try:

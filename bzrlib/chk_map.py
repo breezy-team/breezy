@@ -1732,7 +1732,7 @@ try:
         _deserialise_leaf_node,
         _deserialise_internal_node,
         )
-except ImportError, e:
+except ImportError as e:
     osutils.failed_to_load_extension(e)
     from bzrlib._chk_map_py import (
         _bytes_to_text_key,

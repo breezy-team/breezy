@@ -248,7 +248,7 @@ class FakeClient(_SmartClient):
     def _get_next_response(self):
         try:
             response_tuple = self.responses.pop(0)
-        except IndexError, e:
+        except IndexError as e:
             raise AssertionError("%r didn't expect any more calls"
                 % (self,))
         if response_tuple[0] == 'unknown':
@@ -3628,7 +3628,7 @@ class TestErrorTranslationBase(tests.TestCaseWithMemoryTransport):
         """
         try:
             raise error_object
-        except errors.ErrorFromSmartServer, server_error:
+        except errors.ErrorFromSmartServer as server_error:
             translated_error = self.assertRaises(
                 errors.BzrError, remote._translate_error, server_error,
                 **context)

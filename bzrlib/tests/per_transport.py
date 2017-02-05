@@ -82,7 +82,7 @@ def transport_test_permutations():
                     {"transport_class":klass,
                      "transport_server":server_factory})
                 result.append(scenario)
-        except errors.DependencyNotPresent, e:
+        except errors.DependencyNotPresent as e:
             # Continue even if a dependency prevents us
             # from adding this test
             pass
@@ -1049,7 +1049,7 @@ class TransportTests(TestTransportImplementation):
 
         try:
             st = t.stat('.')
-        except TransportNotPossible, e:
+        except TransportNotPossible as e:
             # This transport cannot stat
             return
 
@@ -1417,7 +1417,7 @@ class TransportTests(TestTransportImplementation):
         transport = self.get_transport()
         try:
             p = transport.local_abspath('.')
-        except (errors.NotLocalUrl, TransportNotPossible), e:
+        except (errors.NotLocalUrl, TransportNotPossible) as e:
             # should be formattable
             s = str(e)
         else:

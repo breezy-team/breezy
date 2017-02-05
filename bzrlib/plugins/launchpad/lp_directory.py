@@ -98,7 +98,7 @@ class LaunchpadDirectory(object):
         resolve = _request_factory(path)
         try:
             result = resolve.submit(service)
-        except xmlrpclib.Fault, fault:
+        except xmlrpclib.Fault as fault:
             raise errors.InvalidURL(
                 path=url, extra=fault.faultString)
         return result

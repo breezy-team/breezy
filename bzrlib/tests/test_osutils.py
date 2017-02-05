@@ -185,7 +185,7 @@ class TestRename(tests.TestCaseInTempDir):
     def test_rename_exception(self):
         try:
             osutils.rename('nonexistent_path', 'different_nonexistent_path')
-        except OSError, e:
+        except OSError as e:
             self.assertEqual(e.old_filename, 'nonexistent_path')
             self.assertEqual(e.new_filename, 'different_nonexistent_path')
             self.assertTrue('nonexistent_path' in e.strerror)
@@ -307,7 +307,7 @@ class TestKind(tests.TestCaseInTempDir):
         # TODO: jam 20060529 Test a block device
         try:
             os.lstat('/dev/null')
-        except OSError, e:
+        except OSError as e:
             if e.errno not in (errno.ENOENT,):
                 raise
         else:
@@ -1046,7 +1046,7 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
 
         try:
             osutils._win32_rename('b', 'a')
-        except (IOError, OSError), e:
+        except (IOError, OSError) as e:
             self.assertEqual(errno.ENOENT, e.errno)
         self.assertFileEqual('foo\n', 'a')
 
@@ -1054,7 +1054,7 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         os.mkdir('a')
         try:
             osutils._win32_rename('b', 'a')
-        except (IOError, OSError), e:
+        except (IOError, OSError) as e:
             self.assertEqual(errno.ENOENT, e.errno)
 
     def test_rename_current_dir(self):
@@ -1066,7 +1066,7 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         # doesn't exist.
         try:
             osutils._win32_rename('b', '.')
-        except (IOError, OSError), e:
+        except (IOError, OSError) as e:
             self.assertEqual(errno.ENOENT, e.errno)
 
     def test_splitpath(self):
@@ -2041,7 +2041,7 @@ class TestFailedToLoadExtension(tests.TestCase):
     def _try_loading(self):
         try:
             import bzrlib._fictional_extension_py
-        except ImportError, e:
+        except ImportError as e:
             osutils.failed_to_load_extension(e)
             return True
 

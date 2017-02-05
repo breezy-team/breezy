@@ -1146,7 +1146,7 @@ class RepositoryPackCollection(object):
                 txt_index, sig_index, self._upload_transport,
                 self._pack_transport, self._index_transport, self,
                 chk_index=chk_index)
-        except errors.NoSuchFile, e:
+        except errors.NoSuchFile as e:
             raise errors.UnresumableWriteGroup(self.repo, [name], str(e))
         self.add_pack_to_memory(result)
         self._resumed_packs.append(result)
@@ -1235,7 +1235,7 @@ class RepositoryPackCollection(object):
                         pass
                     pack.pack_transport.move(pack.file_name(),
                         '../obsolete_packs/' + pack.file_name())
-            except (errors.PathError, errors.TransportError), e:
+            except (errors.PathError, errors.TransportError) as e:
                 # TODO: Should these be warnings or mutters?
                 mutter("couldn't rename obsolete pack, skipping it:\n%s"
                        % (e,))
@@ -1249,7 +1249,7 @@ class RepositoryPackCollection(object):
                 try:
                     self._index_transport.move(pack.name + suffix,
                         '../obsolete_packs/' + pack.name + suffix)
-                except (errors.PathError, errors.TransportError), e:
+                except (errors.PathError, errors.TransportError) as e:
                     mutter("couldn't rename obsolete index, skipping it:\n%s"
                            % (e,))
 
@@ -1518,7 +1518,7 @@ class RepositoryPackCollection(object):
                 continue
             try:
                 obsolete_pack_transport.delete(filename)
-            except (errors.PathError, errors.TransportError), e:
+            except (errors.PathError, errors.TransportError) as e:
                 warning("couldn't delete obsolete pack, skipping it:\n%s"
                         % (e,))
         return found

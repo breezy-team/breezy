@@ -92,11 +92,11 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                 revision_id=revision_id, stacked_on=stacked_on,
                 create_prefix=create_prefix, use_existing_dir=use_existing_dir,
                 no_tree=no_tree)
-        except errors.AlreadyControlDirError, err:
+        except errors.AlreadyControlDirError as err:
             raise errors.BzrCommandError(gettext(
                 "Target directory %s already contains a .bzr directory, "
                 "but it is not valid.") % (location,))
-        except errors.FileExists, err:
+        except errors.FileExists as err:
             if not use_existing_dir:
                 raise errors.BzrCommandError(gettext("Target directory %s"
                      " already exists, but does not have a .bzr"
@@ -148,7 +148,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             raise errors.BzrCommandError(gettext('These branches have diverged.'
                                     '  See "bzr help diverged-branches"'
                                     ' for more information.'))
-        except errors.NoRoundtrippingSupport, e:
+        except errors.NoRoundtrippingSupport as e:
             raise errors.BzrCommandError(gettext("It is not possible to losslessly "
                 "push to %s. You may want to use dpush instead.") % 
                     e.target_branch.mapping.vcs.abbreviation)

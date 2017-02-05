@@ -90,7 +90,7 @@ class SMTPConnection(object):
         self._connection = self._smtp_factory()
         try:
             self._connection.connect(self._smtp_server)
-        except socket.error, e:
+        except socket.error as e:
             if e.args[0] == errno.ECONNREFUSED:
                 if self._config_smtp_server is None:
                     raise DefaultSMTPConnectionRefused(socket.error,
@@ -181,10 +181,10 @@ class SMTPConnection(object):
             self._connect()
             self._connection.sendmail(from_email, to_emails,
                                       message.as_string())
-        except smtplib.SMTPRecipientsRefused, e:
+        except smtplib.SMTPRecipientsRefused as e:
             raise SMTPError('server refused recipient: %d %s' %
                     e.recipients.values()[0])
-        except smtplib.SMTPResponseException, e:
+        except smtplib.SMTPResponseException as e:
             raise SMTPError('%d %s' % (e.smtp_code, e.smtp_error))
-        except smtplib.SMTPException, e:
+        except smtplib.SMTPException as e:
             raise SMTPError(str(e))

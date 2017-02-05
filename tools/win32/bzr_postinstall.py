@@ -143,7 +143,7 @@ def main():
             elif o == "--check-mfc71":
                 check_mfc71 = True
 
-    except getopt.GetoptError, msg:
+    except getopt.GetoptError as msg:
         print str(msg)
         print USAGE
         return ERROR

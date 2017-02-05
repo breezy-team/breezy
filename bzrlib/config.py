@@ -759,7 +759,7 @@ class IniBasedConfig(Config):
             co_input = self.file_name
         try:
             self._parser = ConfigObj(co_input, encoding='utf-8')
-        except configobj.ConfigObjError, e:
+        except configobj.ConfigObjError as e:
             raise errors.ParseConfigError(e.errors, e.config.filename)
         except UnicodeDecodeError:
             raise errors.ConfigContentError(self.file_name)
@@ -1572,7 +1572,7 @@ def _get_default_mail_domain(mailname_file='/etc/mailname'):
         return None
     try:
         f = open(mailname_file)
-    except (IOError, OSError), e:
+    except (IOError, OSError) as e:
         return None
     try:
         domain = f.readline().strip()
@@ -1639,12 +1639,12 @@ def _auto_user_id():
         try:
             encoding = osutils.get_user_encoding()
             gecos = w.pw_gecos.decode(encoding)
-        except UnicodeError, e:
+        except UnicodeError as e:
             trace.mutter("cannot decode passwd entry %s" % w)
             return None, None
     try:
         username = w.pw_name.decode(encoding)
-    except UnicodeError, e:
+    except UnicodeError as e:
         trace.mutter("cannot decode passwd entry %s" % w)
         return None, None
 
@@ -1751,7 +1751,7 @@ class AuthenticationConfig(object):
             # Note: the encoding below declares that the file itself is utf-8
             # encoded, but the values in the ConfigObj are always Unicode.
             self._config = ConfigObj(self._input, encoding='utf-8')
-        except configobj.ConfigObjError, e:
+        except configobj.ConfigObjError as e:
             raise errors.ParseConfigError(e.errors, e.config.filename)
         except UnicodeError:
             raise errors.ConfigContentError(self._filename)
@@ -2249,7 +2249,7 @@ class TransportConfig(object):
             return f
         except errors.NoSuchFile:
             return StringIO()
-        except errors.PermissionDenied, e:
+        except errors.PermissionDenied as e:
             trace.warning("Permission denied while trying to open "
                 "configuration file %s.", urlutils.unescape_for_display(
                 urlutils.join(self._transport.base, self._filename), "utf-8"))
@@ -2263,7 +2263,7 @@ class TransportConfig(object):
         try:
             try:
                 conf = ConfigObj(f, encoding='utf-8')
-            except configobj.ConfigObjError, e:
+            except configobj.ConfigObjError as e:
                 raise errors.ParseConfigError(e.errors, self._external_url())
             except UnicodeDecodeError:
                 raise errors.ConfigContentError(self._external_url())
@@ -3227,7 +3227,7 @@ class IniFileStore(Store):
             # The config files are always stored utf8-encoded
             self._config_obj = ConfigObj(co_input, encoding='utf-8',
                                          list_values=False)
-        except configobj.ConfigObjError, e:
+        except configobj.ConfigObjError as e:
             self._config_obj = None
             raise errors.ParseConfigError(e.errors, self.external_url())
         except UnicodeDecodeError:

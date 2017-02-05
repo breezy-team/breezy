@@ -132,7 +132,7 @@ class TestLockDir(TestCaseWithTransport):
             # a single process are not detected
             lf2.attempt_lock()
             self.fail('Failed to detect lock collision')
-        except LockContention, e:
+        except LockContention as e:
             self.assertEqual(e.lock, lf2)
             self.assertContainsRe(str(e),
                     r'^Could not acquire.*test_lock.*$')

@@ -92,7 +92,7 @@ def get_user_ignores():
     patterns = set(USER_DEFAULTS)
     try:
         f = open(path, 'rb')
-    except (IOError, OSError), e:
+    except (IOError, OSError) as e:
         # open() shouldn't return an IOError without errno, but just in case
         err = getattr(e, 'errno', None)
         if err not in (errno.ENOENT,):
@@ -102,7 +102,7 @@ def get_user_ignores():
         # since get_* should be a safe operation
         try:
             _set_user_ignores(USER_DEFAULTS)
-        except (IOError, OSError), e:
+        except (IOError, OSError) as e:
             if e.errno not in (errno.EPERM,):
                 raise
         return patterns

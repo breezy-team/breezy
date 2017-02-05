@@ -1710,6 +1710,6 @@ class GraphThunkIdsToKeys(object):
 _counters = [0,0,0,0,0,0,0]
 try:
     from bzrlib._known_graph_pyx import KnownGraph
-except ImportError, e:
+except ImportError as e:
     osutils.failed_to_load_extension(e)
     from bzrlib._known_graph_py import KnownGraph

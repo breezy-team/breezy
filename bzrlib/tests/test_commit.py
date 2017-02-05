@@ -720,7 +720,7 @@ create_signatures=always
         tree = self.make_branch_and_tree('.')
         try:
             tree.commit()
-        except Exception, e:
+        except Exception as e:
             self.assertTrue(isinstance(e, BzrError))
             self.assertEqual('The message or message_callback keyword'
                              ' parameter is required for commit().', str(e))

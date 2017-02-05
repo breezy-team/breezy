@@ -50,7 +50,7 @@ class TestApportReporting(tests.TestCaseInTempDir):
 
         try:
             raise AssertionError("my error")
-        except AssertionError, e:
+        except AssertionError as e:
             pass
 
         crash_filename = crash.report_bug_to_apport(sys.exc_info(),
@@ -98,7 +98,7 @@ class TestNonApportReporting(tests.TestCase):
         err_file = StringIO()
         try:
             raise AssertionError("my error")
-        except AssertionError, e:
+        except AssertionError as e:
             pass
         crash.report_bug_legacy(sys.exc_info(), err_file)
         report = err_file.getvalue()

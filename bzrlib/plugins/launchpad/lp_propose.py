@@ -183,7 +183,7 @@ class Proposer(object):
         from lazr.restfulclient import errors as restful_errors
         try:
             return call(*args, **kwargs)
-        except restful_errors.HTTPError, e:
+        except restful_errors.HTTPError as e:
             error_lines = []
             for line in e.content.splitlines():
                 if line.startswith('Traceback (most recent call last):'):

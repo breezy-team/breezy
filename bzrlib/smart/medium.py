@@ -233,13 +233,13 @@ class SmartServerStreamMedium(SmartMedium):
             while not self.finished:
                 server_protocol = self._build_protocol()
                 self._serve_one_request(server_protocol)
-        except errors.ConnectionTimeout, e:
+        except errors.ConnectionTimeout as e:
             trace.note('%s' % (e,))
             trace.log_exception_quietly()
             self._disconnect_client()
             # We reported it, no reason to make a big fuss.
             return
-        except Exception, e:
+        except Exception as e:
             stderr.write("%s terminating on exception %s\n" % (self, e))
             raise
         self._disconnect_client()
@@ -329,7 +329,7 @@ class SmartServerStreamMedium(SmartMedium):
             self._serve_one_request_unguarded(protocol)
         except KeyboardInterrupt:
             raise
-        except Exception, e:
+        except Exception as e:
             self.terminate_due_to_error()
 
     def terminate_due_to_error(self):
@@ -804,7 +804,7 @@ class SmartClientMedium(SmartMedium):
                 client_protocol = protocol.SmartClientRequestProtocolOne(medium_request)
                 client_protocol.query_version()
                 self._done_hello = True
-            except errors.SmartProtocolError, e:
+            except errors.SmartProtocolError as e:
                 # Cache the error, just like we would cache a successful
                 # result.
                 self._protocol_version_error = e
@@ -907,7 +907,7 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
         """See SmartClientStreamMedium.accept_bytes."""
         try:
             self._writeable_pipe.write(bytes)
-        except IOError, e:
+        except IOError as e:
             if e.errno in (errno.EINVAL, errno.EPIPE):
                 raise errors.ConnectionReset(
                     "Error trying to write to subprocess", e)
@@ -1105,7 +1105,8 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
         try:
             sockaddrs = socket.getaddrinfo(self._host, port, socket.AF_UNSPEC,
                 socket.SOCK_STREAM, 0, 0)
-        except socket.gaierror, (err_num, err_msg):
+        except socket.gaierror as xxx_todo_changeme:
+            (err_num, err_msg) = xxx_todo_changeme.args
             raise errors.ConnectionError("failed to lookup %s:%d: %s" %
                     (self._host, port, err_msg))
         # Initialize err in case there are no addresses returned:
@@ -1116,7 +1117,7 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
                 self._socket.setsockopt(socket.IPPROTO_TCP,
                                         socket.TCP_NODELAY, 1)
                 self._socket.connect(sockaddr)
-            except socket.error, err:
+            except socket.error as err:
                 if self._socket is not None:
                     self._socket.close()
                 self._socket = None

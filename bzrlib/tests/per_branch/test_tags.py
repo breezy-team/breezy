@@ -96,7 +96,7 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         b = self.make_branch('b')
         try:
             b.tags.lookup_tag('bosko')
-        except errors.NoSuchTag, e:
+        except errors.NoSuchTag as e:
             self.assertEqual(e.tag_name, 'bosko')
             self.assertEqual(str(e), 'No such tag: bosko')
         else:

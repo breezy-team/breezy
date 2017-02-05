@@ -42,7 +42,7 @@ class NetrcCredentialStore(config.CredentialStore):
         super(NetrcCredentialStore, self).__init__()
         try:
             self._netrc = netrc.netrc()
-        except IOError, e:
+        except IOError as e:
             if e.args[0] == errno.ENOENT:
                 raise errors.NoSuchFile(e.filename)
             else:

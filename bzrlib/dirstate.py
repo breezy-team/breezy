@@ -1387,7 +1387,7 @@ class DirState(object):
             self._apply_insertions(insertions.values())
             # Validate parents
             self._after_delta_check_parents(parents, 0)
-        except errors.BzrError, e:
+        except errors.BzrError as e:
             self._changes_aborted = True
             if 'integrity error' not in str(e):
                 raise
@@ -1584,7 +1584,7 @@ class DirState(object):
             self._update_basis_apply_changes(changes)
             # Validate parents
             self._after_delta_check_parents(parents, 1)
-        except errors.BzrError, e:
+        except errors.BzrError as e:
             self._changes_aborted = True
             if 'integrity error' not in str(e):
                 raise
@@ -3853,7 +3853,7 @@ class ProcessEntryPython(object):
             root_abspath = self.tree.abspath(current_root_unicode)
             try:
                 root_stat = os.lstat(root_abspath)
-            except OSError, e:
+            except OSError as e:
                 if e.errno == errno.ENOENT:
                     # the path does not exist: let _process_entry know that.
                     root_dir_info = None
@@ -3907,7 +3907,7 @@ class ProcessEntryPython(object):
                 dir_iterator = osutils._walkdirs_utf8(root_abspath, prefix=current_root)
                 try:
                     current_dir_info = dir_iterator.next()
-                except OSError, e:
+                except OSError as e:
                     # on win32, python2.4 has e.errno == ERROR_DIRECTORY, but
                     # python 2.5 has e.errno == EINVAL,
                     #            and e.winerror == ERROR_DIRECTORY
@@ -4239,7 +4239,7 @@ class ProcessEntryPython(object):
         abspath = self.tree.abspath(unicode_path)
         try:
             stat = os.lstat(abspath)
-        except OSError, e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 # the path does not exist.
                 return None
@@ -4269,7 +4269,7 @@ try:
         ProcessEntryC as _process_entry,
         update_entry as update_entry,
         )
-except ImportError, e:
+except ImportError as e:
     osutils.failed_to_load_extension(e)
     from bzrlib._dirstate_helpers_py import (
         _read_dirblocks,

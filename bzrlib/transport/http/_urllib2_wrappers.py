@@ -367,7 +367,7 @@ class AbstractHTTPConnection:
                         'Got a 200 response when asking for multiple ranges,'
                         ' does your server at %s:%s support range requests?',
                         self.host, self.port)
-            except socket.error, e:
+            except socket.error as e:
                 # It's conceivable that the socket is in a bad state here
                 # (including some test cases) and in this case, it doesn't need
                 # cleaning anymore, so no need to fail, we just get rid of the
@@ -591,7 +591,7 @@ class ConnectionHandler(urllib2.BaseHandler):
                 host, proxied_host=request.proxied_host,
                 report_activity=self._report_activity,
                 ca_certs=self.ca_certs)
-        except httplib.InvalidURL, exception:
+        except httplib.InvalidURL as exception:
             # There is only one occurrence of InvalidURL in httplib
             raise errors.InvalidURL(request.get_full_url(),
                                     extra='nonnumeric port')

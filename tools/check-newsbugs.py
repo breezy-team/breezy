@@ -82,7 +82,7 @@ bugnos = read_news_bugnos(args[1])
 for bugno, section in bugnos:
     try:
         bug = launchpad.bugs[bugno]
-    except errors.HTTPError, e:
+    except errors.HTTPError as e:
         if e.response.status == 401:
             print_bug_url(bugno)
             # Private, we can't access the bug content

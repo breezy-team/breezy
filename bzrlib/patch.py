@@ -89,7 +89,7 @@ def diff3(out_file, mine_path, older_path, yours_path):
     args.extend((mine_path, older_path, yours_path))
     try:
         output, stderr, status = write_to_cmd(args)
-    except OSError, e:
+    except OSError as e:
         if e.errno == errno.ENOENT:
             raise NoDiff3
         else:

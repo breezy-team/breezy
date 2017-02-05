@@ -147,7 +147,7 @@ def _spawn_external_diff(diffcmd, capture_errors=True):
                                 stdout=subprocess.PIPE,
                                 stderr=stderr,
                                 env=env)
-    except OSError, e:
+    except OSError as e:
         if e.errno == errno.ENOENT:
             raise errors.NoDiff(str(e))
         raise
@@ -293,7 +293,7 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
             # deleted)
             try:
                 os.remove(path)
-            except OSError, e:
+            except OSError as e:
                 if e.errno not in (errno.ENOENT,):
                     warning('Failed to delete temporary file: %s %s', path, e)
 
@@ -751,7 +751,7 @@ class DiffFromTool(DiffPath):
         try:
             proc = subprocess.Popen(command, stdout=subprocess.PIPE,
                                     cwd=self._root)
-        except OSError, e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 raise errors.ExecutableMissing(command[0])
             else:
@@ -765,7 +765,7 @@ class DiffFromTool(DiffPath):
             return False
         try:
             os.symlink(tree.abspath(''), osutils.pathjoin(self._root, prefix))
-        except OSError, e:
+        except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
         return True
@@ -811,7 +811,7 @@ class DiffFromTool(DiffPath):
         parent_dir = osutils.dirname(full_path)
         try:
             os.makedirs(parent_dir)
-        except OSError, e:
+        except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
         source = tree.get_file(file_id, relpath)
@@ -845,7 +845,7 @@ class DiffFromTool(DiffPath):
     def finish(self):
         try:
             osutils.rmtree(self._root)
-        except OSError, e:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 mutter("The temporary directory \"%s\" was not "
                         "cleanly removed: %s." % (self._root, e))

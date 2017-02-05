@@ -49,7 +49,7 @@ class FakeNFSTransportDecorator(decorator.TransportDecorator):
         """
         try:
             self._decorated.rename(rel_from, rel_to)
-        except (errors.DirectoryNotEmpty, errors.FileExists), e:
+        except (errors.DirectoryNotEmpty, errors.FileExists) as e:
             # if this is a directory rename, raise
             # resourcebusy rather than DirectoryNotEmpty
             stat = self._decorated.stat(rel_to)

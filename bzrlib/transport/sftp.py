@@ -72,7 +72,7 @@ warnings.filterwarnings('ignore',
 
 try:
     import paramiko
-except ImportError, e:
+except ImportError as e:
     raise ParamikoNotPresent(e)
 else:
     from paramiko.sftp import (SFTP_FLAG_WRITE, SFTP_FLAG_CREATE,
@@ -413,7 +413,7 @@ class SFTPTransport(ConnectedTransport):
             if self._do_prefetch and (getattr(f, 'prefetch', None) is not None):
                 f.prefetch()
             return f
-        except (IOError, paramiko.SSHException), e:
+        except (IOError, paramiko.SSHException) as e:
             self._translate_io_exception(e, path, ': error retrieving',
                 failure_exc=errors.ReadError)
 
@@ -444,7 +444,7 @@ class SFTPTransport(ConnectedTransport):
             if 'sftp' in debug.debug_flags:
                 mutter('seek and read %s offsets', len(offsets))
             return self._seek_and_read(fp, offsets, relpath)
-        except (IOError, paramiko.SSHException), e:
+        except (IOError, paramiko.SSHException) as e:
             self._translate_io_exception(e, path, ': error retrieving')
 
     def recommended_page_size(self):
@@ -486,7 +486,7 @@ class SFTPTransport(ConnectedTransport):
             try:
                 fout.set_pipelined(True)
                 length = self._pump(f, fout)
-            except (IOError, paramiko.SSHException), e:
+            except (IOError, paramiko.SSHException) as e:
                 self._translate_io_exception(e, tmp_abspath)
             # XXX: This doesn't truly help like we would like it to.
             #      The problem is that openssh strips sticky bits. So while we
@@ -507,7 +507,7 @@ class SFTPTransport(ConnectedTransport):
             closed = True
             self._rename_and_overwrite(tmp_abspath, abspath)
             return length
-        except Exception, e:
+        except Exception as e:
             # If we fail, try to clean up the temporary file
             # before we throw the exception
             # but don't let another exception mess things up
@@ -542,7 +542,7 @@ class SFTPTransport(ConnectedTransport):
                     fout = self._get_sftp().file(abspath, mode='wb')
                     fout.set_pipelined(True)
                     writer(fout)
-                except (paramiko.SSHException, IOError), e:
+                except (paramiko.SSHException, IOError) as e:
                     self._translate_io_exception(e, abspath,
                                                  ': unable to open')
 
@@ -644,7 +644,7 @@ class SFTPTransport(ConnectedTransport):
                                 ' environment on the server to use umask 0%03o.'
                                 % (abspath, 0777 - mode))
                     self._get_sftp().chmod(abspath, mode=mode)
-        except (paramiko.SSHException, IOError), e:
+        except (paramiko.SSHException, IOError) as e:
             self._translate_io_exception(e, abspath, ': unable to mkdir',
                 failure_exc=FileExists)
 
@@ -668,7 +668,7 @@ class SFTPTransport(ConnectedTransport):
         try:
             handle = self._get_sftp().file(abspath, mode='wb')
             handle.set_pipelined(True)
-        except (paramiko.SSHException, IOError), e:
+        except (paramiko.SSHException, IOError) as e:
             self._translate_io_exception(e, abspath,
                                          ': unable to open')
         _file_streams[self.abspath(relpath)] = handle
@@ -726,7 +726,7 @@ class SFTPTransport(ConnectedTransport):
             result = fout.tell()
             self._pump(f, fout)
             return result
-        except (IOError, paramiko.SSHException), e:
+        except (IOError, paramiko.SSHException) as e:
             self._translate_io_exception(e, relpath, ': unable to append')
 
     def rename(self, rel_from, rel_to):
@@ -734,7 +734,7 @@ class SFTPTransport(ConnectedTransport):
         try:
             self._get_sftp().rename(self._remote_path(rel_from),
                               self._remote_path(rel_to))
-        except (IOError, paramiko.SSHException), e:
+        except (IOError, paramiko.SSHException) as e:
             self._translate_io_exception(e, rel_from,
                     ': unable to rename to %r' % (rel_to))
 
@@ -748,7 +748,7 @@ class SFTPTransport(ConnectedTransport):
             fancy_rename(abs_from, abs_to,
                          rename_func=sftp.rename,
                          unlink_func=sftp.remove)
-        except (IOError, paramiko.SSHException), e:
+        except (IOError, paramiko.SSHException) as e:
             self._translate_io_exception(e, abs_from,
                                          ': unable to rename to %r' % (abs_to))
 
@@ -763,7 +763,7 @@ class SFTPTransport(ConnectedTransport):
         path = self._remote_path(relpath)
         try:
             self._get_sftp().remove(path)
-        except (IOError, paramiko.SSHException), e:
+        except (IOError, paramiko.SSHException) as e:
             self._translate_io_exception(e, path, ': unable to delete')
 
     def external_url(self):
@@ -787,7 +787,7 @@ class SFTPTransport(ConnectedTransport):
         try:
             entries = self._get_sftp().listdir(path)
             self._report_activity(sum(map(len, entries)), 'read')
-        except (IOError, paramiko.SSHException), e:
+        except (IOError, paramiko.SSHException) as e:
             self._translate_io_exception(e, path, ': failed to list_dir')
         return [urlutils.escape(entry) for entry in entries]
 
@@ -796,7 +796,7 @@ class SFTPTransport(ConnectedTransport):
         path = self._remote_path(relpath)
         try:
             return self._get_sftp().rmdir(path)
-        except (IOError, paramiko.SSHException), e:
+        except (IOError, paramiko.SSHException) as e:
             self._translate_io_exception(e, path, ': failed to rmdir')
 
     def stat(self, relpath):
@@ -804,7 +804,7 @@ class SFTPTransport(ConnectedTransport):
         path = self._remote_path(relpath)
         try:
             return self._get_sftp().lstat(path)
-        except (IOError, paramiko.SSHException), e:
+        except (IOError, paramiko.SSHException) as e:
             self._translate_io_exception(e, path, ': unable to stat')
 
     def readlink(self, relpath):
@@ -812,7 +812,7 @@ class SFTPTransport(ConnectedTransport):
         path = self._remote_path(relpath)
         try:
             return self._get_sftp().readlink(path)
-        except (IOError, paramiko.SSHException), e:
+        except (IOError, paramiko.SSHException) as e:
             self._translate_io_exception(e, path, ': unable to readlink')
 
     def symlink(self, source, link_name):
@@ -825,7 +825,7 @@ class SFTPTransport(ConnectedTransport):
                     '%r: unable to create symlink to %r' % (link_name, source),
                     sftp_retval
                 )
-        except (IOError, paramiko.SSHException), e:
+        except (IOError, paramiko.SSHException) as e:
             self._translate_io_exception(e, link_name,
                                          ': unable to create symlink to %r' % (source))
 
@@ -886,7 +886,7 @@ class SFTPTransport(ConnectedTransport):
                 raise TransportError('Expected an SFTP handle')
             handle = msg.get_string()
             return SFTPFile(self._get_sftp(), handle, 'wb', -1)
-        except (paramiko.SSHException, IOError), e:
+        except (paramiko.SSHException, IOError) as e:
             self._translate_io_exception(e, abspath, ': unable to open',
                 failure_exc=FileExists)
 

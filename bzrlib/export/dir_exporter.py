@@ -39,7 +39,7 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
     """
     try:
         os.mkdir(dest)
-    except OSError, e:
+    except OSError as e:
         if e.errno == errno.EEXIST:
             # check if directory empty
             if os.listdir(dest) != []:
@@ -64,7 +64,7 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
             try:
                 symlink_target = tree.get_symlink_target(ie.file_id, tp)
                 os.symlink(symlink_target, fullpath)
-            except OSError, e:
+            except OSError as e:
                 raise errors.BzrError(
                     "Failed to create symlink %r -> %r, error: %s"
                     % (fullpath, symlink_target, e))

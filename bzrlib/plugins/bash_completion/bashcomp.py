@@ -373,7 +373,7 @@ class DataCollector(object):
             if enum_data:
                 try:
                     enum_data.registry_keys = opt.registry.keys()
-                except ImportError, e:
+                except ImportError as e:
                     enum_data.error_messages.append(
                         "ERROR getting registry keys for '--%s': %s"
                         % (opt.name, str(e).split('\n')[0]))

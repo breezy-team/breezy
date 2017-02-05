@@ -303,9 +303,9 @@ class Branch(controldir.ControlComponent):
                 if master is not None:
                     # return the master branch value
                     return master.nick
-            except errors.RecursiveBind, e:
+            except errors.RecursiveBind as e:
                 raise e
-            except errors.BzrError, e:
+            except errors.BzrError as e:
                 # Silently fall back to local implicit nick if the master is
                 # unavailable
                 mutter("Could not connect to bound branch, "
@@ -1139,7 +1139,7 @@ class Branch(controldir.ControlComponent):
             parent = urlutils.local_path_to_url(parent.decode('utf8'))
         try:
             return urlutils.join(self.base[:-1], parent)
-        except errors.InvalidURLJoin, e:
+        except errors.InvalidURLJoin as e:
             raise errors.InaccessibleParent(parent, self.user_url)
 
     def _get_parent_location(self):
@@ -2612,7 +2612,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         try:
             return Branch.open(bound_loc,
                                possible_transports=possible_transports)
-        except (errors.NotBranchError, errors.ConnectionError), e:
+        except (errors.NotBranchError, errors.ConnectionError) as e:
             raise errors.BoundBranchConnectionFailure(
                     self, bound_loc, e)
 
@@ -2900,7 +2900,7 @@ class BzrBranch8(BzrBranch):
         except ValueError:
             try:
                 self._extend_partial_history(stop_revision=revision_id)
-            except errors.RevisionNotPresent, e:
+            except errors.RevisionNotPresent as e:
                 raise errors.GhostRevisionsHaveNoRevno(revision_id, e.revision_id)
             index = len(self._partial_revision_history_cache) - 1
             if index < 0:
@@ -3200,7 +3200,7 @@ class GenericInterBranch(InterBranch):
         self.source._synchronize_history(self.target, revision_id)
         try:
             parent = self.source.get_parent()
-        except errors.InaccessibleParent, e:
+        except errors.InaccessibleParent as e:
             mutter('parent was not accessible to copy: %s', e)
         else:
             if parent:

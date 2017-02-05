@@ -327,7 +327,7 @@ class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):
         """
         try:
             found_flag, result = repository.get_rev_id_for_revno(revno, known_pair)
-        except errors.RevisionNotPresent, err:
+        except errors.RevisionNotPresent as err:
             if err.revision_id != known_pair[1]:
                 raise AssertionError(
                     'get_rev_id_for_revno raised RevisionNotPresent for '
@@ -458,7 +458,7 @@ class SmartServerRepositoryGetRevisionSignatureText(
         """
         try:
             text = repository.get_signature_text(revision_id)
-        except errors.NoSuchRevision, err:
+        except errors.NoSuchRevision as err:
             return FailedSmartServerResponse(
                 ('nosuchrevision', err.revision))
         return SuccessfulSmartServerResponse(('ok', ), text)
@@ -504,11 +504,11 @@ class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
             token = None
         try:
             token = repository.lock_write(token=token).repository_token
-        except errors.LockContention, e:
+        except errors.LockContention as e:
             return FailedSmartServerResponse(('LockContention',))
         except errors.UnlockableTransport:
             return FailedSmartServerResponse(('UnlockableTransport',))
-        except errors.LockFailed, e:
+        except errors.LockFailed as e:
             return FailedSmartServerResponse(('LockFailed',
                 str(e.lock), str(e.why)))
         if token is not None:
@@ -598,7 +598,7 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
         try:
             for bytes in byte_stream:
                 yield bytes
-        except errors.RevisionNotPresent, e:
+        except errors.RevisionNotPresent as e:
             # This shouldn't be able to happen, but as we don't buffer
             # everything it can in theory happen.
             repository.unlock()
@@ -778,7 +778,7 @@ class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
     def do_repository_request(self, repository, token):
         try:
             repository.lock_write(token=token)
-        except errors.TokenMismatch, e:
+        except errors.TokenMismatch as e:
             return FailedSmartServerResponse(('TokenMismatch',))
         repository.dont_leave_lock_in_place()
         repository.unlock()
@@ -1040,7 +1040,7 @@ class SmartServerRepositoryCommitWriteGroup(SmartServerRepositoryRequest):
         try:
             try:
                 repository.resume_write_group(write_group_tokens)
-            except errors.UnresumableWriteGroup, e:
+            except errors.UnresumableWriteGroup as e:
                 return FailedSmartServerResponse(
                     ('UnresumableWriteGroup', e.write_groups, e.reason))
             try:
@@ -1067,7 +1067,7 @@ class SmartServerRepositoryAbortWriteGroup(SmartServerRepositoryRequest):
         try:
             try:
                 repository.resume_write_group(write_group_tokens)
-            except errors.UnresumableWriteGroup, e:
+            except errors.UnresumableWriteGroup as e:
                 return FailedSmartServerResponse(
                     ('UnresumableWriteGroup', e.write_groups, e.reason))
                 repository.abort_write_group()
@@ -1088,7 +1088,7 @@ class SmartServerRepositoryCheckWriteGroup(SmartServerRepositoryRequest):
         try:
             try:
                 repository.resume_write_group(write_group_tokens)
-            except errors.UnresumableWriteGroup, e:
+            except errors.UnresumableWriteGroup as e:
                 return FailedSmartServerResponse(
                     ('UnresumableWriteGroup', e.write_groups, e.reason))
             else:
@@ -1118,7 +1118,7 @@ class SmartServerRepositoryReconcile(SmartServerRepositoryRequest):
     def do_repository_request(self, repository, lock_token):
         try:
             repository.lock_write(token=lock_token)
-        except errors.TokenLockingNotSupported, e:
+        except errors.TokenLockingNotSupported as e:
             return FailedSmartServerResponse(
                 ('TokenLockingNotSupported', ))
         try:

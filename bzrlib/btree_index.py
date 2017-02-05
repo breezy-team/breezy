@@ -1603,6 +1603,6 @@ _gcchk_factory = _LeafNode
 try:
     from bzrlib import _btree_serializer_pyx as _btree_serializer
     _gcchk_factory = _btree_serializer._parse_into_chk
-except ImportError, e:
+except ImportError as e:
     osutils.failed_to_load_extension(e)
     from bzrlib import _btree_serializer_py as _btree_serializer

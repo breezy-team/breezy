@@ -464,7 +464,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             self.addCleanup(inventory_f.close)
             self.assertContainsRe(inventory_f.read(),
                                   '<inventory format="5">\n</inventory>\n')
-        except IOError, e:
+        except IOError as e:
             if e.errno != errno.ENOENT:
                 raise
 

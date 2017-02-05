@@ -1685,7 +1685,7 @@ def _try_transport_factories(base, factory_list):
     for factory in factory_list:
         try:
             return factory.get_obj()(base), None
-        except errors.DependencyNotPresent, e:
+        except errors.DependencyNotPresent as e:
             mutter("failed to instantiate transport %r for %r: %r" %
                     (factory, base, e))
             last_err = e
@@ -1717,7 +1717,7 @@ def do_catching_redirections(action, transport, redirected):
     for redirections in range(MAX_REDIRECTIONS):
         try:
             return action(transport)
-        except errors.RedirectRequested, e:
+        except errors.RedirectRequested as e:
             redirection_notice = '%s is%s redirected to %s' % (
                 e.source, e.permanently, e.target)
             transport = redirected(transport, e, redirection_notice)

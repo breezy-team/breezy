@@ -214,7 +214,7 @@ class LockDir(lock.Lock):
         self._trace("create lock directory")
         try:
             self.transport.mkdir(self.path, mode=mode)
-        except (TransportError, PathError), e:
+        except (TransportError, PathError) as e:
             raise LockFailed(self, e)
 
     def _attempt_lock(self):
@@ -236,7 +236,7 @@ class LockDir(lock.Lock):
         start_time = time.time()
         try:
             tmpname = self._create_pending_dir()
-        except (errors.TransportError, PathError), e:
+        except (errors.TransportError, PathError) as e:
             self._trace("... failed to create pending dir, %s", e)
             raise LockFailed(self, e)
         while True:
@@ -244,7 +244,7 @@ class LockDir(lock.Lock):
                 self.transport.rename(tmpname, self._held_dir)
                 break
             except (errors.TransportError, PathError, DirectoryNotEmpty,
-                    FileExists, ResourceBusy), e:
+                    FileExists, ResourceBusy) as e:
                 self._trace("... contention, %s", e)
                 other_holder = self.peek()
                 self._trace("other holder is %r" % other_holder)
@@ -253,7 +253,7 @@ class LockDir(lock.Lock):
                 except:
                     self._remove_pending_dir(tmpname)
                     raise
-            except Exception, e:
+            except Exception as e:
                 self._trace("... lock failed, %s", e)
                 self._remove_pending_dir(tmpname)
                 raise
@@ -317,7 +317,7 @@ class LockDir(lock.Lock):
         try:
             self.transport.delete(tmpname + self.__INFO_NAME)
             self.transport.rmdir(tmpname)
-        except PathError, e:
+        except PathError as e:
             note(gettext("error removing pending lock: %s"), e)
 
     def _create_pending_dir(self):
@@ -368,7 +368,7 @@ class LockDir(lock.Lock):
             self.transport.delete(tmpname + self.__INFO_NAME)
             try:
                 self.transport.rmdir(tmpname)
-            except DirectoryNotEmpty, e:
+            except DirectoryNotEmpty as e:
                 # There might have been junk left over by a rename that moved
                 # another locker within the 'held' directory.  do a slower
                 # deletion where we list the directory and remove everything
@@ -399,7 +399,7 @@ class LockDir(lock.Lock):
         self._check_not_locked()
         try:
             holder_info = self.peek()
-        except LockCorrupt, e:
+        except LockCorrupt as e:
             # The lock info is corrupt.
             if ui.ui_factory.get_boolean(u"Break (corrupt %r)" % (self,)):
                 self.force_break_corrupt(e.file_data)
@@ -531,7 +531,7 @@ class LockDir(lock.Lock):
             info = self._read_info_file(self._held_info_path)
             self._trace("peek -> held")
             return info
-        except NoSuchFile, e:
+        except NoSuchFile as e:
             self._trace("peek -> not held")
 
     def _prepare_info(self):
@@ -792,7 +792,7 @@ class LockHeldInfo(object):
         lines = osutils.split_lines(info_file_bytes)
         try:
             stanza = rio.read_stanza(lines)
-        except ValueError, e:
+        except ValueError as e:
             mutter('Corrupt lock info file: %r', lines)
             raise LockCorrupt("could not parse lock info file: " + str(e),
                 lines)

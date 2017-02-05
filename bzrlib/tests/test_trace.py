@@ -99,7 +99,7 @@ class TestTrace(TestCase):
     def test_format_os_error(self):
         try:
             os.rmdir('nosuchfile22222')
-        except OSError, e:
+        except OSError as e:
             e_str = str(e)
         msg = _format_exception()
         # Linux seems to give "No such file" but Windows gives "The system
@@ -164,7 +164,7 @@ class TestTrace(TestCase):
         """Short friendly message for missing system modules."""
         try:
             import ImaginaryModule
-        except ImportError, e:
+        except ImportError as e:
             pass
         else:
             self.fail("somehow succeeded in importing %r" % ImaginaryModule)
@@ -176,7 +176,7 @@ class TestTrace(TestCase):
     def test_report_import_syntax_error(self):
         try:
             raise ImportError("syntax error")
-        except ImportError, e:
+        except ImportError as e:
             pass
         msg = _format_exception()
         self.assertContainsRe(msg,

@@ -69,9 +69,9 @@ def report_bug(exc_info, stderr):
         if report_bug_to_apport(exc_info, stderr):
             # wrote a file; if None then report the old way
             return
-    except ImportError, e:
+    except ImportError as e:
         trace.mutter("couldn't find apport bug-reporting library: %s" % e)
-    except Exception, e:
+    except Exception as e:
         # this should only happen if apport is installed but it didn't
         # work, eg because of an io error writing the crash file
         trace.mutter("bzr: failed to report crash using apport: %r" % e)
@@ -225,7 +225,7 @@ def _write_apport_report_to_file(exc_info):
 def _attach_log_tail(pr):
     try:
         bzr_log = open(trace._get_bzr_log_filename(), 'rt')
-    except (IOError, OSError), e:
+    except (IOError, OSError) as e:
         pr['BzrLogTail'] = repr(e)
         return
     try:

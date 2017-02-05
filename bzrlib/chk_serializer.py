@@ -181,7 +181,7 @@ class CHKSerializer(serializer.Serializer):
                 xml_serializer.fromstring(xml_string), revision_id,
                 entry_cache=entry_cache,
                 return_from_cache=return_from_cache)
-        except xml_serializer.ParseError, e:
+        except xml_serializer.ParseError as e:
             raise errors.UnexpectedInventoryFormat(e)
 
     def read_inventory(self, f, revision_id=None):
@@ -192,7 +192,7 @@ class CHKSerializer(serializer.Serializer):
                     revision_id=None)
             finally:
                 f.close()
-        except xml_serializer.ParseError, e:
+        except xml_serializer.ParseError as e:
             raise errors.UnexpectedInventoryFormat(e)
 
     def write_inventory_to_lines(self, inv):

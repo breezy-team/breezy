@@ -73,7 +73,7 @@ class PreDirStateWorkingTree(InventoryWorkingTree):
         if self._hashcache.needs_write:
             try:
                 self._hashcache.write()
-            except OSError, e:
+            except OSError as e:
                 if e.errno not in (errno.EPERM, errno.EACCES):
                     raise
                 # TODO: jam 20061219 Should this be a warning? A single line

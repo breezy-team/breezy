@@ -72,7 +72,7 @@ warnings.filterwarnings('ignore',
 sys._bzr_lazy_regex = True
 try:
     import bzrlib
-except ImportError, e:
+except ImportError as e:
     sys.stderr.write("bzr: ERROR: "
         "Couldn't import bzrlib and dependencies.\n"
         "Please check the directory containing bzrlib is on your PYTHONPATH.\n"

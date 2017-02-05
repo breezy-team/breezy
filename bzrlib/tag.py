@@ -172,7 +172,7 @@ class BasicTags(_Tags):
         try:
             try:
                 tag_content = self.branch._get_tags_bytes()
-            except errors.NoSuchFile, e:
+            except errors.NoSuchFile as e:
                 # ugly, but only abentley should see this :)
                 trace.warning('No branch/tags file in %s.  '
                      'This branch was probably created by bzr 0.15pre.  '
@@ -241,7 +241,7 @@ class BasicTags(_Tags):
             for k, v in bencode.bdecode(tag_content).items():
                 r[k.decode('utf-8')] = v
             return r
-        except ValueError, e:
+        except ValueError as e:
             raise ValueError("failed to deserialize tag dictionary %r: %s"
                 % (tag_content, e))
 

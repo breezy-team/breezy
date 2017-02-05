@@ -87,7 +87,7 @@ Congratulation! Bzr successfully installed.
         # inform user where batch launcher is.
         print "Created:", batch_path
         print "Use this batch file to run bzr"
-    except Exception, e:
+    except Exception as e:
         print "ERROR: Unable to create %s: %s" % (batch_path, e)
 
     ## this hunk borrowed from pywin32_postinstall.py

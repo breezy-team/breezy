@@ -754,7 +754,7 @@ class ControlDir(ControlComponent):
             try:
                 result = klass.open_from_transport(a_transport)
                 return result, urlutils.unescape(a_transport.relpath(url))
-            except errors.NotBranchError, e:
+            except errors.NotBranchError as e:
                 pass
             except errors.PermissionDenied:
                 pass

@@ -51,7 +51,7 @@ from bzrlib.transport.http import (
 
 try:
     import pycurl
-except ImportError, e:
+except ImportError as e:
     trace.mutter("failed to import pycurl: %s", e)
     raise errors.DependencyNotPresent('pycurl', e)
 
@@ -66,7 +66,7 @@ try:
     #
     # reported by Alexander Belchenko, 2006-04-26
     pycurl.Curl()
-except pycurl.error, e:
+except pycurl.error as e:
     trace.mutter("failed to initialize pycurl: %s", e)
     raise errors.DependencyNotPresent('pycurl', e)
 
@@ -273,7 +273,7 @@ class PyCurlTransport(HttpTransportBase):
             self._curl_perform(curl, header,
                                ['Expect: ',
                                 'Content-Type: application/octet-stream'])
-        except pycurl.error, e:
+        except pycurl.error as e:
             if e[0] == CURLE_SEND_ERROR:
                 # When talking to an HTTP/1.0 server, getting a 400+ error code
                 # triggers a bug in some combinations of curl/kernel in rare
@@ -390,7 +390,7 @@ class PyCurlTransport(HttpTransportBase):
                        'Connection: Keep-Alive']
             curl.setopt(pycurl.HTTPHEADER, headers + more_headers)
             curl.perform()
-        except pycurl.error, e:
+        except pycurl.error as e:
             url = curl.getinfo(pycurl.EFFECTIVE_URL)
             trace.mutter('got pycurl error: %s, %s, %s, url: %s ',
                          e[0], e[1], e, url)

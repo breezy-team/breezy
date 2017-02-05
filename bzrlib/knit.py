@@ -490,7 +490,7 @@ class AnnotatedKnitContent(KnitContent):
     def text(self):
         try:
             lines = [text for origin, text in self._lines]
-        except ValueError, e:
+        except ValueError as e:
             # most commonly (only?) caused by the internal form of the knit
             # missing annotation information because of a bug - see thread
             # around 20071015
@@ -1127,7 +1127,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 # boundaries.
                 build_details = self._index.get_build_details([parent])
                 parent_details = build_details[parent]
-            except (RevisionNotPresent, KeyError), e:
+            except (RevisionNotPresent, KeyError) as e:
                 # Some basis is not locally present: always fulltext
                 return False
             index_memo, compression_parent, _, _ = parent_details
@@ -1290,7 +1290,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     (record_details, index_memo, next) = position_map[key]
                     raw_record_map[key] = data, record_details, next
                 return raw_record_map
-            except errors.RetryWithNewPacks, e:
+            except errors.RetryWithNewPacks as e:
                 self._access.reload_or_raise(e)
 
     @classmethod
@@ -1399,7 +1399,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     remaining_keys.discard(content_factory.key)
                     yield content_factory
                 return
-            except errors.RetryWithNewPacks, e:
+            except errors.RetryWithNewPacks as e:
                 self._access.reload_or_raise(e)
 
     def _get_remaining_record_stream(self, keys, ordering,
@@ -1781,7 +1781,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     for line in line_iterator:
                         yield line, key
                 done = True
-            except errors.RetryWithNewPacks, e:
+            except errors.RetryWithNewPacks as e:
                 self._access.reload_or_raise(e)
         # If there are still keys we've not yet found, we look in the fallback
         # vfs, and hope to find them there.  Note that if the keys are found
@@ -1874,7 +1874,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         try:
             # Current serialise
             rec = self._check_header(key, df.readline())
-        except Exception, e:
+        except Exception as e:
             raise KnitCorrupt(self,
                               "While reading {%s} got %s(%s)"
                               % (key, e.__class__.__name__, str(e)))
@@ -1888,7 +1888,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         df = gzip.GzipFile(mode='rb', fileobj=StringIO(data))
         try:
             record_contents = df.readlines()
-        except Exception, e:
+        except Exception as e:
             raise KnitCorrupt(self, "Corrupt compressed record %r, got %s(%s)" %
                 (data, e.__class__.__name__, str(e)))
         header = record_contents.pop(0)
@@ -3334,7 +3334,7 @@ class _KnitAnnotator(annotate.Annotator):
                     num_lines = len(text) # bad assumption
                     yield sub_key, text, num_lines
                 return
-            except errors.RetryWithNewPacks, e:
+            except errors.RetryWithNewPacks as e:
                 self._vf._access.reload_or_raise(e)
                 # The cached build_details are no longer valid
                 self._all_build_details.clear()
@@ -3500,6 +3500,6 @@ class _KnitAnnotator(annotate.Annotator):
 
 try:
     from bzrlib._knit_load_data_pyx import _load_data_c as _load_data
-except ImportError, e:
+except ImportError as e:
     osutils.failed_to_load_extension(e)
     from bzrlib._knit_load_data_py import _load_data_py as _load_data

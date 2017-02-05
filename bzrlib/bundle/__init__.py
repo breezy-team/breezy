@@ -64,11 +64,11 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
             get_bundle, transport, redirected_transport)
     except errors.TooManyRedirections:
         raise errors.NotABundle(transport.clone(filename).base)
-    except (errors.ConnectionReset, errors.ConnectionError), e:
+    except (errors.ConnectionReset, errors.ConnectionError) as e:
         raise
-    except (errors.TransportError, errors.PathError), e:
+    except (errors.TransportError, errors.PathError) as e:
         raise errors.NotABundle(str(e))
-    except (IOError,), e:
+    except (IOError,) as e:
         # jam 20060707
         # Abstraction leakage, SFTPTransport.get('directory')
         # doesn't always fail at get() time. Sometimes it fails

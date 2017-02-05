@@ -649,13 +649,13 @@ def unescape(url):
     #       it into utf-8.
     try:
         url = str(url)
-    except UnicodeError, e:
+    except UnicodeError as e:
         raise errors.InvalidURL(url, 'URL was not a plain ASCII url: %s' % (e,))
 
     unquoted = unquote(url)
     try:
         unicode_path = unquoted.decode('utf-8')
-    except UnicodeError, e:
+    except UnicodeError as e:
         raise errors.InvalidURL(url, 'Unable to encode the URL as utf-8: %s' % (e,))
     return unicode_path
 

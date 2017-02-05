@@ -218,7 +218,7 @@ def tar_lzma_exporter_generator(tree, dest, root, subdir,
             "Writing to fileobject not supported for .tar.lzma")
     try:
         import lzma
-    except ImportError, e:
+    except ImportError as e:
         raise errors.DependencyNotPresent('lzma', e)
 
     stream = lzma.LZMAFile(dest.encode(osutils._fs_enc), 'w',

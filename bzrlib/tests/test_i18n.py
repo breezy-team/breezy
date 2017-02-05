@@ -141,7 +141,7 @@ class TestTranslate(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         try:
             workingtree.WorkingTree.open('./foo')
-        except errors.NotBranchError,e:
+        except errors.NotBranchError as e:
             err = str(e)
         self.assertContainsRe(err, 
                               u"zz\xe5{{Not a branch: .*}}".encode("utf-8"))

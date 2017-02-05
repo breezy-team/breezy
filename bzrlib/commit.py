@@ -446,7 +446,7 @@ class Commit(object):
             # Add revision data to the local branch
             self.rev_id = self.builder.commit(self.message)
 
-        except Exception, e:
+        except Exception as e:
             mutter("aborting commit write group because of exception:")
             trace.log_exception_quietly()
             self.builder.abort()
