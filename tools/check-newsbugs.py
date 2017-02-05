@@ -7,12 +7,12 @@ try:
     from launchpadlib.launchpad import Launchpad
     from lazr.restfulclient import errors
 except ImportError:
-    print "Please install launchpadlib from lp:launchpadlib"
+    print("Please install launchpadlib from lp:launchpadlib")
     sys.exit(1)
 try:
     import hydrazine
 except ImportError:
-    print "Please install hydrazine from lp:hydrazine"
+    print("Please install hydrazine from lp:hydrazine")
     sys.exit(1)
 
 
@@ -22,24 +22,24 @@ options = dict(options)
 if len(args) == 1:
     print ("Usage: check-newsbugs [--launchpad][--webbrowser] "
            "doc/en/release-notes/bzr-x.y.txt")
-    print "Options:"
-    print "--launchpad     Print out Launchpad mail commands for closing bugs "
-    print "                that are already fixed."
-    print "--webbrowser    Open launchpad bug pages for bugs that are already "
-    print "                fixed."
+    print("Options:")
+    print("--launchpad     Print out Launchpad mail commands for closing bugs ")
+    print("                that are already fixed.")
+    print("--webbrowser    Open launchpad bug pages for bugs that are already ")
+    print("                fixed.")
     sys.exit(1)
 
 
 def report_notmarked(bug, task, section):
-    print
-    print "Bug %d was mentioned in NEWS but is not marked fix released:" % (bug.id, )
-    print "Launchpad title: %s" % bug.title
-    print "NEWS summary: "
-    print section
+    print()
+    print("Bug %d was mentioned in NEWS but is not marked fix released:" % (bug.id, ))
+    print("Launchpad title: %s" % bug.title)
+    print("NEWS summary: ")
+    print(section)
     if "--launchpad" in options or "-l" in options:
-        print "  bug %d" % bug.id
-        print "  affects %s" % task.bug_target_name
-        print "  status fixreleased"
+        print("  bug %d" % bug.id)
+        print("  affects %s" % task.bug_target_name)
+        print("  status fixreleased")
     if "--webbrowser" in options or "-w" in options:
         import webbrowser
         webbrowser.open('http://pad.lv/%s>' % (bug.id,))
@@ -75,7 +75,7 @@ def read_news_bugnos(path):
 
 
 def print_bug_url(bugno):
-    print '<URL:http://pad.lv/%s>' % (bugno,)
+    print('<URL:http://pad.lv/%s>' % (bugno,))
 
 launchpad = hydrazine.create_session()
 bugnos = read_news_bugnos(args[1])
@@ -86,7 +86,7 @@ for bugno, section in bugnos:
         if e.response.status == 401:
             print_bug_url(bugno)
             # Private, we can't access the bug content
-            print '%s is private and cannot be accessed' % (bugno,)
+            print('%s is private and cannot be accessed' % (bugno,))
             continue
         raise
 
@@ -109,7 +109,7 @@ for bugno, section in bugnos:
 
     if not found_bzr:
         print_bug_url(bugno)
-        print "Bug %d was mentioned in NEWS but is not marked as affecting bzr" % bugno
+        print("Bug %d was mentioned in NEWS but is not marked as affecting bzr" % bugno)
     elif not fix_released:
         print_bug_url(bugno)
         report_notmarked(bug, task, section)

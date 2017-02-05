@@ -167,7 +167,7 @@ class PatchesTester(TestCase):
         pstr = str(patch)
         i = difference_index(patchtext, pstr)
         if i is not None:
-            print "%i: \"%s\" != \"%s\"" % (i, patchtext[i], pstr[i])
+            print("%i: \"%s\" != \"%s\"" % (i, patchtext[i], pstr[i]))
         self.assertEqual(patchtext, str(patch))
 
     def testAll(self):

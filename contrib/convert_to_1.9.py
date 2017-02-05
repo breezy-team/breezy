@@ -14,7 +14,7 @@ def add_revert_step(func, *args, **kwargs):
     steps_to_revert.append((func, args, kwargs))
 
 def do_revert():
-    print "** Reverting repository"
+    print("** Reverting repository")
     for func, args, kwargs in reversed(steps_to_revert):
         func(*args, **kwargs)
 

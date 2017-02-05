@@ -1184,7 +1184,7 @@ class TestCase(testtools.TestCase):
                 (acquired_locks, released_locks, broken_locks))
             if not self._lock_check_thorough:
                 # Rather than fail, just warn
-                print "Broken test %s: %s" % (self, message)
+                print("Broken test %s: %s" % (self, message))
                 return
             self.fail(message)
 
@@ -4224,7 +4224,7 @@ def test_suite(keep_only=None, starting_with=None):
             doc_suite = IsolatedDocTestSuite(
                 mod, optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
         except ValueError as e:
-            print '**failed to get doctest for: %s\n%s' % (mod, e)
+            print('**failed to get doctest for: %s\n%s' % (mod, e))
             raise
         if len(doc_suite._tests) == 0:
             raise errors.BzrError("no doctests found in %s" % (mod,))

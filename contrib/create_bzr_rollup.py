@@ -23,19 +23,19 @@ def create_tar_gz(local_dir, output_dir=None, verbose=False):
 	final_path = os.path.join(output_dir, out_name + '.tar.gz')
 	if os.path.exists(final_path):
 		if verbose:
-			print 'Output file already exists: %r' % final_path
+			print('Output file already exists: %r' % final_path)
 		return
 	fn, tmp_path=tempfile.mkstemp(suffix='.tar', prefix=out_name, dir=output_dir)
 	os.close(fn)
 	try:
 		if verbose:
-			print 'Creating %r (%r)' % (final_path, tmp_path)
+			print('Creating %r (%r)' % (final_path, tmp_path))
 		tar = tarfile.TarFile(name=tmp_path, mode='w')
 		tar.add(local_dir, arcname=out_name, recursive=True)
 		tar.close()
 
 		if verbose:
-			print 'Compressing...'
+			print('Compressing...')
 		if os.system('gzip "%s"' % tmp_path) != 0:
 			raise ValueError('Failed to compress')
 		tmp_path += '.gz'
@@ -51,19 +51,19 @@ def create_tar_bz2(local_dir, output_dir=None, verbose=False):
 	final_path = os.path.join(output_dir, out_name + '.tar.bz2')
 	if os.path.exists(final_path):
 		if verbose:
-			print 'Output file already exists: %r' % final_path
+			print('Output file already exists: %r' % final_path)
 		return
 	fn, tmp_path=tempfile.mkstemp(suffix='.tar', prefix=out_name, dir=output_dir)
 	os.close(fn)
 	try:
 		if verbose:
-			print 'Creating %r (%r)' % (final_path, tmp_path)
+			print('Creating %r (%r)' % (final_path, tmp_path))
 		tar = tarfile.TarFile(name=tmp_path, mode='w')
 		tar.add(local_dir, arcname=out_name, recursive=True)
 		tar.close()
 
 		if verbose:
-			print 'Compressing...'
+			print('Compressing...')
 		if os.system('bzip2 "%s"' % tmp_path) != 0:
 			raise ValueError('Failed to compress')
 		tmp_path += '.bz2'
@@ -79,13 +79,13 @@ def create_zip(local_dir, output_dir=None, verbose=False):
 	final_path = os.path.join(output_dir, out_name + '.zip')
 	if os.path.exists(final_path):
 		if verbose:
-			print 'Output file already exists: %r' % final_path
+			print('Output file already exists: %r' % final_path)
 		return
 	fn, tmp_path=tempfile.mkstemp(suffix='.zip', prefix=out_name, dir=output_dir)
 	os.close(fn)
 	try:
 		if verbose:
-			print 'Creating %r (%r)' % (final_path, tmp_path)
+			print('Creating %r (%r)' % (final_path, tmp_path))
 		zip = zipfile.ZipFile(file=tmp_path, mode='w')
 		try:
 			for root, dirs, files in os.walk(local_dir):
@@ -153,11 +153,11 @@ def main(args):
 	else:
 		local = args[1]
 	if len(args) > 2:
-		print 'Invalid number of arguments, see --help for details.'
+		print('Invalid number of arguments, see --help for details.')
 
 	if not sync(remote, local, verbose=opts.verbose):
 		if opts.verbose:
-			print '** rsync failed'
+			print('** rsync failed')
 		return 1
 	# Now we have the new update
 	local_dir = get_local_dir(remote, local)

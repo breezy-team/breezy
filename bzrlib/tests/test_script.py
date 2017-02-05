@@ -564,7 +564,7 @@ class cmd_test_confirm(commands.Command):
             ):
             self.outf.write('Do it!\n')
         else:
-            print 'ok, no'
+            print('ok, no')
 
 
 class TestUserInteraction(script.TestCaseWithMemoryTransportAndScript):

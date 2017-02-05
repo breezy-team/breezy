@@ -157,7 +157,7 @@ def main(args):
     matcher = algorithms[opts.matcher]
 
     if len(args) != 2:
-        print 'You must supply 2 filenames to diff'
+        print('You must supply 2 filenames to diff')
         return -1
 
     for line in unified_diff_files(args[0], args[1], sequencematcher=matcher):

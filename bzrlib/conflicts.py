@@ -354,9 +354,9 @@ class ConflictList(object):
         if ignore_misses is not True:
             for path in [p for p in paths if p not in selected_paths]:
                 if not os.path.exists(tree.abspath(path)):
-                    print "%s does not exist" % path
+                    print("%s does not exist" % path)
                 else:
-                    print "%s is not conflicted" % path
+                    print("%s is not conflicted" % path)
         return new_conflicts, selected_conflicts
 
 

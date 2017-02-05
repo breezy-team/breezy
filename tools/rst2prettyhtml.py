@@ -9,18 +9,18 @@ try:
     from docutils.core import publish_file
     from docutils.parsers import rst
 except ImportError:
-    print "Missing dependency.  Please install docutils."
+    print("Missing dependency.  Please install docutils.")
     sys.exit(1)
 try:
     from elementtree.ElementTree import XML
     from elementtree import HTMLTreeBuilder
 except ImportError:
-    print "Missing dependency.  Please install ElementTree."
+    print("Missing dependency.  Please install ElementTree.")
     sys.exit(1)
 try:
     import kid
 except ImportError:
-    print "Missing dependency.  Please install Kid."
+    print("Missing dependency.  Please install Kid.")
     sys.exit(1)
 
 

@@ -160,12 +160,12 @@ def main():
             elif msg_re.search(entry) is not None:
                 found = True
             if found:
-                print 'Bug %s was fixed in bzr-%s/%s by %s:' % (
-                    number, release, date, authors)
-                print entry
+                print('Bug %s was fixed in bzr-%s/%s by %s:' % (
+                    number, release, date, authors))
+                print(entry)
             seen += 1
     finally:
-        print '%s bugs seen' % (seen,)
+        print('%s bugs seen' % (seen,))
         news.close()
 
 

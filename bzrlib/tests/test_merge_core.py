@@ -186,7 +186,7 @@ class MergeBuilder(object):
             try:
                 parent_dir = os.path.dirname(orig_inventory[file_id])
             except:
-                print file_id
+                print(file_id)
                 raise
             if parent_dir == "":
                 return None

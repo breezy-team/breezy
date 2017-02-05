@@ -273,8 +273,8 @@ class Response(httplib.HTTPResponse):
         httplib.HTTPResponse.begin(self)
         if self.status in self._body_ignored_responses:
             if self.debuglevel >= 2:
-                print "For status: [%s]," % self.status,
-                print "will ready body, length: %s" % self.length
+                print("For status: [%s]," % self.status, end=' ')
+                print("will ready body, length: %s" % self.length)
             if not (self.length is None or self.will_close):
                 # In some cases, we just can't read the body not
                 # even try or we may encounter a 104, 'Connection
@@ -285,7 +285,7 @@ class Response(httplib.HTTPResponse):
                 body = self.read(self.length)
                 if self.debuglevel >= 9:
                     # This one can be huge and is generally not interesting
-                    print "Consumed body: [%s]" % body
+                    print("Consumed body: [%s]" % body)
             self.close()
         elif self.status == 200:
             # Whatever the request is, it went ok, so we surely don't want to
@@ -687,17 +687,17 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
         else:
             if first_try:
                 if self._debuglevel >= 2:
-                    print 'Received exception: [%r]' % exc_val
-                    print '  On connection: [%r]' % request.connection
+                    print('Received exception: [%r]' % exc_val)
+                    print('  On connection: [%r]' % request.connection)
                     method = request.get_method()
                     url = request.get_full_url()
-                    print '  Will retry, %s %r' % (method, url)
+                    print('  Will retry, %s %r' % (method, url))
                 request.connection.close()
                 response = self.do_open(http_class, request, False)
             else:
                 if self._debuglevel >= 2:
-                    print 'Received second exception: [%r]' % exc_val
-                    print '  On connection: [%r]' % request.connection
+                    print('Received second exception: [%r]' % exc_val)
+                    print('  On connection: [%r]' % request.connection)
                 if exc_type in (httplib.BadStatusLine, httplib.UnknownProtocol):
                     # httplib.BadStatusLine and
                     # httplib.UnknownProtocol indicates that a
@@ -729,11 +729,11 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                         orig_error=exc_val)
 
                 if self._debuglevel >= 2:
-                    print 'On connection: [%r]' % request.connection
+                    print('On connection: [%r]' % request.connection)
                     method = request.get_method()
                     url = request.get_full_url()
-                    print '  Failed again, %s %r' % (method, url)
-                    print '  Will raise: [%r]' % my_exception
+                    print('  Failed again, %s %r' % (method, url))
+                    print('  Will raise: [%r]' % my_exception)
                 raise my_exception, None, exc_tb
         return response
 
@@ -778,8 +778,8 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                     hdrs.append('%s: %s' % (k, v))
                 trace.mutter('> ' + '\n> '.join(hdrs) + '\n')
             if self._debuglevel >= 1:
-                print 'Request sent: [%r] from (%s)' \
-                    % (request, request.connection.sock.getsockname())
+                print('Request sent: [%r] from (%s)' \
+                    % (request, request.connection.sock.getsockname()))
             response = connection.getresponse()
             convert_to_addinfourl = True
         except (ssl.SSLError, ssl.CertificateError):
@@ -804,9 +804,9 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
 #            response = connection.getresponse()
 
         if self._debuglevel >= 2:
-            print 'Receives response: %r' % response
-            print '  For: %r(%r)' % (request.get_method(),
-                                     request.get_full_url())
+            print('Receives response: %r' % response)
+            print('  For: %r(%r)' % (request.get_method(),
+                                     request.get_full_url()))
 
         if convert_to_addinfourl:
             # Shamelessly copied from urllib2
@@ -819,9 +819,9 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
             resp.msg = r.reason
             resp.version = r.version
             if self._debuglevel >= 2:
-                print 'Create addinfourl: %r' % resp
-                print '  For: %r(%r)' % (request.get_method(),
-                                         request.get_full_url())
+                print('Create addinfourl: %r' % resp)
+                print('  For: %r(%r)' % (request.get_method(),
+                                         request.get_full_url()))
             if 'http' in debug.debug_flags:
                 version = 'HTTP/%d.%d'
                 try:
@@ -965,8 +965,8 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
         else:
             return
         if self._debuglevel >= 1:
-            print 'Redirected to: %s (followed: %r)' % (newurl,
-                                                        req.follow_redirections)
+            print('Redirected to: %s (followed: %r)' % (newurl,
+                                                        req.follow_redirections))
         if req.follow_redirections is False:
             req.redirected_to = newurl
             return fp
@@ -1028,7 +1028,7 @@ class ProxyHandler(urllib2.ProxyHandler):
         # First, let's get rid of urllib2 implementation
         for type, proxy in self.proxies.items():
             if self._debuglevel >= 3:
-                print 'Will unbind %s_open for %r' % (type, proxy)
+                print('Will unbind %s_open for %r' % (type, proxy))
             delattr(self, '%s_open' % type)
 
         def bind_scheme_request(proxy, scheme):
@@ -1036,7 +1036,7 @@ class ProxyHandler(urllib2.ProxyHandler):
                 return
             scheme_request = scheme + '_request'
             if self._debuglevel >= 3:
-                print 'Will bind %s for %r' % (scheme_request, proxy)
+                print('Will bind %s for %r' % (scheme_request, proxy))
             setattr(self, scheme_request,
                 lambda request: self.set_proxy(request, scheme))
         # We are interested only by the http[s] proxies
@@ -1116,7 +1116,7 @@ class ProxyHandler(urllib2.ProxyHandler):
 
         proxy = self.get_proxy_env_var(type)
         if self._debuglevel >= 3:
-            print 'set_proxy %s_request for %r' % (type, proxy)
+            print('set_proxy %s_request for %r' % (type, proxy))
         # FIXME: python 2.5 urlparse provides a better _parse_proxy which can
         # grok user:password@host:port as well as
         # http://user:password@host:port
@@ -1143,7 +1143,7 @@ class ProxyHandler(urllib2.ProxyHandler):
             phost = parsed_url.host + ':%d' % parsed_url.port
         request.set_proxy(phost, type)
         if self._debuglevel >= 3:
-            print 'set_proxy: proxy set to %s://%s' % (type, phost)
+            print('set_proxy: proxy set to %s://%s' % (type, phost))
         return request
 
 

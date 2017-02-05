@@ -82,8 +82,8 @@ if __name__ == '__main__':
 
     packs, mods = mf.get_result()
 
-    print 'Packages:'
-    print packs
+    print('Packages:')
+    print(packs)
 
-    print 'Modules:'
-    print mods
+    print('Modules:')
+    print(mods)
