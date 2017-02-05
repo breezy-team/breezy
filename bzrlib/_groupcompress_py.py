@@ -414,9 +414,9 @@ def decode_copy_instruction(bytes, cmd, pos):
 
 def make_delta(source_bytes, target_bytes):
     """Create a delta from source to target."""
-    if type(source_bytes) is not str:
+    if not isinstance(source_bytes, str):
         raise TypeError('source is not a str')
-    if type(target_bytes) is not str:
+    if not isinstance(target_bytes, str):
         raise TypeError('target is not a str')
     line_locations = LinesDeltaIndex(osutils.split_lines(source_bytes))
     delta, _ = line_locations.make_delta(osutils.split_lines(target_bytes),
@@ -426,9 +426,9 @@ def make_delta(source_bytes, target_bytes):
 
 def apply_delta(basis, delta):
     """Apply delta to this object to become new_version_id."""
-    if type(basis) is not str:
+    if not isinstance(basis, str):
         raise TypeError('basis is not a str')
-    if type(delta) is not str:
+    if not isinstance(delta, str):
         raise TypeError('delta is not a str')
     target_length, pos = decode_base128_int(delta)
     lines = []

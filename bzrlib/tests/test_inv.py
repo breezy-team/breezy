@@ -979,8 +979,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
         bytes = ''.join(chk_inv.to_lines())
         new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
-        fileids = list(new_inv.__iter__())
-        fileids.sort()
+        fileids = sorted(new_inv.__iter__())
         self.assertEqual([inv.root.file_id, "fileid"], fileids)
 
     def test__len__(self):

@@ -2324,7 +2324,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         body = self._serialise_search_recipe(recipe)
         path = self.bzrdir._path_for_remote_call(self._client)
         for key in keys:
-            if type(key) is not str:
+            if not isinstance(key, str):
                 raise ValueError(
                     "key %r not a plain string" % (key,))
         verb = 'Repository.get_parent_map'
@@ -3820,7 +3820,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             return self._vfs_set_parent_location(url)
         try:
             call_url = url or ''
-            if type(call_url) is not str:
+            if not isinstance(call_url, str):
                 raise AssertionError('url must be a str or None (%s)' % url)
             response = self._call('Branch.set_parent_location',
                 self._remote_path(), self._lock_token, self._repo_lock_token,

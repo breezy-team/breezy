@@ -2113,7 +2113,7 @@ class DirState(object):
         """
         self._read_dirblocks_if_needed()
         if path_utf8 is not None:
-            if type(path_utf8) is not str:
+            if not isinstance(path_utf8, str):
                 raise errors.BzrError('path_utf8 is not a str: %s %r'
                     % (type(path_utf8), path_utf8))
             # path lookups are faster

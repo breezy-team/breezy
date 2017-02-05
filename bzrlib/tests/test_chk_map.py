@@ -1919,7 +1919,7 @@ class TestInternalNode(TestCaseWithStore):
         # Ensure test validity: nothing paged in below the root.
         self.assertEqual(2,
             len([value for value in node._items.values()
-                if type(value) is StaticTuple]))
+                if isinstance(value, StaticTuple)]))
         # now, mapping to k3 should add a k3 leaf
         prefix, nodes = node.map(None, ('k3',), 'quux')
         self.assertEqual("k", prefix)
@@ -1958,7 +1958,7 @@ class TestInternalNode(TestCaseWithStore):
         # Ensure test validity: nothing paged in below the root.
         self.assertEqual(2,
             len([value for value in node._items.values()
-                if type(value) is StaticTuple]))
+                if isinstance(value, StaticTuple)]))
         # now, mapping to k23 causes k22 ('k2' in node) to split into k22 and
         # k23, which for simplicity in the current implementation generates
         # a new internal node between node, and k22/k23.

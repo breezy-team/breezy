@@ -201,7 +201,7 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
             file_contents = f.read()
             # figure out what kind of line endings are used
             newline = getattr(f, 'newlines', None)
-            if type(newline) is tuple:
+            if isinstance(newline, tuple):
                 newline = newline[0]
             elif newline is None:
                 newline = os.linesep

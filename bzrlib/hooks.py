@@ -321,7 +321,7 @@ class HookPoint(object):
         return '\n'.join(strings)
 
     def __eq__(self, other):
-        return (type(other) == type(self) and other.__dict__ == self.__dict__)
+        return (isinstance(other, type(self)) and other.__dict__ == self.__dict__)
 
     def hook_lazy(self, callback_module, callback_member, callback_label):
         """Lazily register a callback to be called when this HookPoint fires.

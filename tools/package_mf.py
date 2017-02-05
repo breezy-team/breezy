@@ -59,8 +59,7 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
 
     def get_result(self):
         """Return 2-tuple: (list of packages, list of modules)"""
-        keys = self.modules.keys()
-        keys.sort()
+        keys = sorted(self.modules.keys())
         mods = []
         packs = []
         for key in keys:

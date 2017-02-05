@@ -280,9 +280,8 @@ class TestSource(TestSourceHelper):
             dict_[fname].append(line_no)
 
     def _format_message(self, dict_, message):
-        files = ["%s: %s" % (f, ', '.join([str(i + 1) for i in lines]))
-                for f, lines in dict_.items()]
-        files.sort()
+        files = sorted(["%s: %s" % (f, ', '.join([str(i + 1) for i in lines]))
+                for f, lines in dict_.items()])
         return message + '\n\n    %s' % ('\n    '.join(files))
 
     def test_coding_style(self):

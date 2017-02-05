@@ -1352,7 +1352,7 @@ def decode_filename(filename):
     Otherwise it is decoded from the the filesystem's encoding. If decoding
     fails, a errors.BadFilenameEncoding exception is raised.
     """
-    if type(filename) is unicode:
+    if isinstance(filename, unicode):
         return filename
     try:
         return filename.decode(_fs_enc)
@@ -2102,7 +2102,7 @@ def read_bytes_from_socket(sock, report_activity=None,
     empty string rather than raise an error), and repeats the recv if
     interrupted by a signal.
     """
-    while 1:
+    while True:
         try:
             bytes = sock.recv(max_read_size)
         except socket.error as e:
@@ -2409,7 +2409,7 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
         self.encode = encode
 
     def write(self, object):
-        if type(object) is str:
+        if isinstance(object, str):
             self.stream.write(object)
         else:
             data, _ = self.encode(object, self.errors)

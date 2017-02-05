@@ -432,7 +432,7 @@ class GraphIndex(object):
     def __eq__(self, other):
         """Equal when self and other were created with the same parameters."""
         return (
-            type(self) == type(other) and
+            isinstance(self, type(other)) and
             self._transport == other._transport and
             self._name == other._name and
             self._size == other._size)
@@ -749,7 +749,7 @@ class GraphIndex(object):
                     key_dict = dicts.pop(-1)
                     # can't be empty or would not exist
                     item, value = key_dict.iteritems().next()
-                    if type(value) == dict:
+                    if isinstance(value, dict):
                         # push keys
                         dicts.extend(key_dict.itervalues())
                     else:
@@ -1720,7 +1720,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
                     key_dict = dicts.pop(-1)
                     # can't be empty or would not exist
                     item, value = key_dict.iteritems().next()
-                    if type(value) == dict:
+                    if isinstance(value, dict):
                         # push keys
                         dicts.extend(key_dict.itervalues())
                     else:

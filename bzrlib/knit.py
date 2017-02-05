@@ -685,7 +685,7 @@ class KnitAnnotateFactory(_KnitFactory):
         content = knit._get_content(key)
         # adjust for the fact that serialised annotations are only key suffixes
         # for this factory.
-        if type(key) is tuple:
+        if isinstance(key, tuple):
             prefix = key[:-1]
             origins = content.annotate()
             result = []
@@ -997,11 +997,11 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             lines = osutils.split_lines(line_bytes)
 
         for element in key[:-1]:
-            if type(element) is not str:
+            if not isinstance(element, str):
                 raise TypeError("key contains non-strings: %r" % (key,))
         if key[-1] is None:
             key = key[:-1] + ('sha1:' + digest,)
-        elif type(key[-1]) is not str:
+        elif not isinstance(key[-1], str):
                 raise TypeError("key contains non-strings: %r" % (key,))
         # Knit hunks are still last-element only
         version_id = key[-1]
@@ -1988,7 +1988,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         chunks.extend(dense_lines or lines)
         chunks.append("end %s\n" % key[-1])
         for chunk in chunks:
-            if type(chunk) is not str:
+            if not isinstance(chunk, str):
                 raise AssertionError(
                     'data must be plain bytes was %s' % type(chunk))
         if lines and lines[-1][-1] != '\n':
@@ -2438,7 +2438,7 @@ class _KndxIndex(object):
                     line = "\n%s %s %s %s %s :" % (
                         key[-1], ','.join(options), pos, size,
                         self._dictionary_compress(parents))
-                    if type(line) is not str:
+                    if not isinstance(line, str):
                         raise AssertionError(
                             'data must be utf8 was %s' % type(line))
                     lines.append(line)
@@ -2660,7 +2660,7 @@ class _KndxIndex(object):
         result = set()
         # Identify all key prefixes.
         # XXX: A bit hacky, needs polish.
-        if type(self._mapper) is ConstantMapper:
+        if isinstance(self._mapper, ConstantMapper):
             prefixes = [()]
         else:
             relpaths = set()
@@ -2698,7 +2698,7 @@ class _KndxIndex(object):
                     del self._history
                 except NoSuchFile:
                     self._kndx_cache[prefix] = ({}, [])
-                    if type(self._mapper) is ConstantMapper:
+                    if isinstance(self._mapper, ConstantMapper):
                         # preserve behaviour for revisions.kndx etc.
                         self._init_index(path)
                     del self._cache
@@ -3155,7 +3155,7 @@ class _KnitKeyAccess(object):
             opaque index memo. For _KnitKeyAccess the memo is (key, pos,
             length), where the key is the record key.
         """
-        if type(raw_data) is not str:
+        if not isinstance(raw_data, str):
             raise AssertionError(
                 'data must be plain bytes was %s' % type(raw_data))
         result = []

@@ -552,7 +552,7 @@ def join_segment_parameters_raw(base, *subsegments):
     if not subsegments:
         return base
     for subsegment in subsegments:
-        if type(subsegment) is not str:
+        if not isinstance(subsegment, str):
             raise TypeError("Subsegment %r is not a bytestring" % subsegment)
         if "," in subsegment:
             raise errors.InvalidURLJoin(", exists in subsegments",
@@ -573,9 +573,9 @@ def join_segment_parameters(url, parameters):
     new_parameters = {}
     new_parameters.update(existing_parameters)
     for key, value in parameters.iteritems():
-        if type(key) is not str:
+        if not isinstance(key, str):
             raise TypeError("parameter key %r is not a bytestring" % key)
-        if type(value) is not str:
+        if not isinstance(value, str):
             raise TypeError("parameter value %r for %s is not a bytestring" %
                 (key, value))
         if "=" in key:

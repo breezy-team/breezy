@@ -329,8 +329,7 @@ class BTreeTester(tests.TestCase):
         self.assertTrue(btree.path2id("grandparent/parent/file") is None)
 
     def sorted_ids(self, tree):
-        ids = list(tree.all_file_ids())
-        ids.sort()
+        ids = sorted(tree.all_file_ids())
         return ids
 
     def test_iteration(self):

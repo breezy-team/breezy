@@ -1981,7 +1981,7 @@ class _DirectPackAccess(object):
             length), where the index field is the write_index object supplied
             to the PackAccess object.
         """
-        if type(raw_data) is not str:
+        if not isinstance(raw_data, str):
             raise AssertionError(
                 'data must be plain bytes was %s' % type(raw_data))
         result = []

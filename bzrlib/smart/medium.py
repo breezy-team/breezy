@@ -1126,7 +1126,7 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
         if self._socket is None:
             # socket errors either have a (string) or (errno, string) as their
             # args.
-            if type(err.args) is str:
+            if isinstance(err.args, str):
                 err_msg = err.args
             else:
                 err_msg = err.args[1]

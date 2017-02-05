@@ -340,8 +340,7 @@ class TestCommands(TestCaseWithTransport):
 
 
 def listdir_sorted(dir):
-    L = os.listdir(dir)
-    L.sort()
+    L = sorted(os.listdir(dir))
     return L
 
 

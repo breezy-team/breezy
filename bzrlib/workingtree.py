@@ -2513,8 +2513,7 @@ class InventoryWorkingTree(WorkingTree,
             inv = self.root_inventory
             from_dir_id = inv.root.file_id
             from_dir_abspath = self.basedir
-        children = os.listdir(from_dir_abspath)
-        children.sort()
+        children = sorted(os.listdir(from_dir_abspath))
         # jam 20060527 The kernel sized tree seems equivalent whether we
         # use a deque and popleft to keep them sorted, or if we use a plain
         # list and just reverse() them.
@@ -2590,8 +2589,7 @@ class InventoryWorkingTree(WorkingTree,
 
                 # But do this child first if recursing down
                 if recursive:
-                    new_children = os.listdir(fap)
-                    new_children.sort()
+                    new_children = sorted(os.listdir(fap))
                     new_children = collections.deque(new_children)
                     stack.append((f_ie.file_id, fp, fap, new_children))
                     # Break out of inner loop,

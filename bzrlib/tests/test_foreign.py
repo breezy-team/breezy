@@ -50,7 +50,7 @@ class DummyForeignVcsMapping(foreign.VcsMapping):
     """A simple mapping for the dummy Foreign VCS, for use with testing."""
 
     def __eq__(self, other):
-        return type(self) == type(other)
+        return isinstance(self, type(other))
 
     def revision_id_bzr_to_foreign(self, bzr_revid):
         return tuple(bzr_revid[len("dummy-v1:"):].split("-")), self

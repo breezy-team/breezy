@@ -2679,7 +2679,7 @@ class TestStoreMinimalAPI(tests.TestCaseWithTransport):
 
     def test_id(self):
         store = self.get_store(self)
-        if type(store) == config.TransportIniFileStore:
+        if isinstance(store, config.TransportIniFileStore):
             raise tests.TestNotApplicable(
                 "%s is not a concrete Store implementation"
                 " so it doesn't need an id" % (store.__class__.__name__,))

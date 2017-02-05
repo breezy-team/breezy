@@ -1323,7 +1323,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
             # Current RPC's only know how to create bzr metadir1 instances, so
             # we still delegate to vfs methods if the requested format is not a
             # metadir1
-            if type(self) != BzrDirMetaFormat1:
+            if not isinstance(self, BzrDirMetaFormat1):
                 return self._initialize_on_transport_vfs(transport)
             from bzrlib.remote import RemoteBzrDirFormat
             remote_format = RemoteBzrDirFormat()
@@ -1664,11 +1664,11 @@ class BzrDirMetaFormat1(BzrDirFormat):
         """See BzrDirFormat.get_converter()."""
         if format is None:
             format = BzrDirFormat.get_default_format()
-        if (type(self) is BzrDirMetaFormat1 and
-            type(format) is BzrDirMetaFormat1Colo):
+        if (isinstance(self, BzrDirMetaFormat1) and
+            isinstance(format, BzrDirMetaFormat1Colo)):
             return ConvertMetaToColo(format)
-        if (type(self) is BzrDirMetaFormat1Colo and
-            type(format) is BzrDirMetaFormat1):
+        if (isinstance(self, BzrDirMetaFormat1Colo) and
+            isinstance(format, BzrDirMetaFormat1)):
             return ConvertMetaToColo(format)
         if not isinstance(self, format.__class__):
             # converting away from metadir is not implemented

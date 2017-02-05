@@ -321,6 +321,5 @@ if __name__ == '__main__':
         sys.stderr.write("usage: lsprof.py <script> <arguments...>\n")
         sys.exit(2)
     sys.path.insert(0, os.path.abspath(os.path.dirname(sys.argv[0])))
-    stats = profile(execfile, sys.argv[0], globals(), locals())
-    stats.sort()
+    stats = sorted(profile(execfile, sys.argv[0], globals(), locals()))
     stats.pprint()

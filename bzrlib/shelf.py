@@ -440,8 +440,7 @@ class ShelfManager(object):
 
     def active_shelves(self):
         """Return a list of shelved changes."""
-        active = self.get_shelf_ids(self.transport.list_dir('.'))
-        active.sort()
+        active = sorted(self.get_shelf_ids(self.transport.list_dir('.')))
         return active
 
     def last_shelf(self):

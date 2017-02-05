@@ -1810,7 +1810,7 @@ class AuthenticationConfig(object):
         """
         credentials = None
         for auth_def_name, auth_def in self._get_config().items():
-            if type(auth_def) is not configobj.Section:
+            if not isinstance(auth_def, configobj.Section):
                 raise ValueError("%s defined outside a section" % auth_def_name)
 
             a_scheme, a_host, a_user, a_path = map(

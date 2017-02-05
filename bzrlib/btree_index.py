@@ -397,7 +397,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
                                     self.reference_lists)
             self._add_key(string_key, line, rows, allow_optimize=allow_optimize)
         for row in reversed(rows):
-            pad = (type(row) != _LeafBuilderRow)
+            pad = (not isinstance(row, _LeafBuilderRow))
             row.finish_node(pad=pad)
         lines = [_BTSIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
@@ -430,7 +430,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             position = 0 # Only the root row actually has an offset
             copied_len = osutils.pumpfile(row.spool, result)
             if copied_len != (row.nodes - 1) * _PAGE_SIZE:
-                if type(row) != _LeafBuilderRow:
+                if not isinstance(row, _LeafBuilderRow):
                     raise AssertionError("Incorrect amount of data copied"
                         " expected: %d, got: %d"
                         % ((row.nodes - 1) * _PAGE_SIZE,
@@ -575,7 +575,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
                     key_dict = dicts.pop(-1)
                     # can't be empty or would not exist
                     item, value = key_dict.iteritems().next()
-                    if type(value) == dict:
+                    if isinstance(value, dict):
                         # push keys
                         dicts.extend(key_dict.itervalues())
                     else:
@@ -635,14 +635,12 @@ class _LeafNode(dict):
 
     def all_items(self):
         """Return a sorted list of (key, (value, refs)) items"""
-        items = self.items()
-        items.sort()
+        items = sorted(self.items())
         return items
 
     def all_keys(self):
         """Return a sorted list of all keys."""
-        keys = self.keys()
-        keys.sort()
+        keys = sorted(self.keys())
         return keys
 
 
@@ -717,7 +715,7 @@ class BTreeGraphIndex(object):
     def __eq__(self, other):
         """Equal when self and other were created with the same parameters."""
         return (
-            type(self) == type(other) and
+            isinstance(self, type(other)) and
             self._transport == other._transport and
             self._name == other._name and
             self._size == other._size)
@@ -1429,7 +1427,7 @@ class BTreeGraphIndex(object):
                     key_dict = dicts.pop(-1)
                     # can't be empty or would not exist
                     item, value = key_dict.iteritems().next()
-                    if type(value) == dict:
+                    if isinstance(value, dict):
                         # push keys
                         dicts.extend(key_dict.itervalues())
                     else:

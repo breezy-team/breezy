@@ -105,7 +105,7 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
     _lock_class = lockable_files.TransportLock
 
     def __eq__(self, other):
-        return type(self) == type(other)
+        return isinstance(self, type(other))
 
     @classmethod
     def get_format_string(cls):
@@ -169,7 +169,7 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
     _lock_class = lockable_files.TransportLock
 
     def __eq__(self, other):
-        return type(self) == type(other)
+        return isinstance(self, type(other))
 
     @classmethod
     def get_format_string(cls):
@@ -678,7 +678,7 @@ class BzrDirFormat4(BzrDirFormat):
     _lock_class = lockable_files.TransportLock
 
     def __eq__(self, other):
-        return type(self) == type(other)
+        return isinstance(self, type(other))
 
     @classmethod
     def get_format_string(cls):

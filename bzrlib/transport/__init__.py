@@ -92,8 +92,7 @@ def _get_transport_modules():
     # registered for it.
     modules.add('bzrlib.transport.chroot')
     modules.add('bzrlib.transport.pathfilter')
-    result = list(modules)
-    result.sort()
+    result = sorted(modules)
     return result
 
 

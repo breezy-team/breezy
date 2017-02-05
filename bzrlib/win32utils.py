@@ -375,7 +375,7 @@ def get_host_name():
 @symbol_versioning.deprecated_function(
     symbol_versioning.deprecated_in((2, 5, 0)))
 def _ensure_unicode(s):
-    if s and type(s) != unicode:
+    if s and not isinstance(s, unicode):
         from bzrlib import osutils
         s = s.decode(osutils.get_user_encoding())
     return s

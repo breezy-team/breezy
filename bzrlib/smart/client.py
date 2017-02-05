@@ -73,12 +73,12 @@ class _SmartClient(object):
 
     def call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
-        if type(method) is not str:
+        if not isinstance(method, str):
             raise TypeError('method must be a byte string, not %r' % (method,))
         for arg in args:
-            if type(arg) is not str:
+            if not isinstance(arg, str):
                 raise TypeError('args must be byte strings, not %r' % (args,))
-        if type(body) is not str:
+        if not isinstance(body, str):
             raise TypeError('body must be byte string, not %r' % (body,))
         response, response_handler = self._call_and_read_response(
             method, args, body=body, expect_response_body=False)
@@ -86,12 +86,12 @@ class _SmartClient(object):
 
     def call_with_body_bytes_expecting_body(self, method, args, body):
         """Call a method on the remote server with body bytes."""
-        if type(method) is not str:
+        if not isinstance(method, str):
             raise TypeError('method must be a byte string, not %r' % (method,))
         for arg in args:
-            if type(arg) is not str:
+            if not isinstance(arg, str):
                 raise TypeError('args must be byte strings, not %r' % (args,))
-        if type(body) is not str:
+        if not isinstance(body, str):
             raise TypeError('body must be byte string, not %r' % (body,))
         response, response_handler = self._call_and_read_response(
             method, args, body=body, expect_response_body=True)
@@ -344,7 +344,7 @@ class CallHookParams(object):
         return '<%s %r>' % (self.__class__.__name__, attrs)
 
     def __eq__(self, other):
-        if type(other) is not type(self):
+        if not isinstance(other, type(self)):
             return NotImplemented
         return self.__dict__ == other.__dict__
 

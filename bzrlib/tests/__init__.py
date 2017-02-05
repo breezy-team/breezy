@@ -792,7 +792,7 @@ class TextTestRunner(object):
         # to encode using ascii.
         new_encoding = osutils.get_terminal_encoding()
         codec = codecs.lookup(new_encoding)
-        if type(codec) is tuple:
+        if isinstance(codec, tuple):
             # Python 2.4
             encode = codec[0]
         else:

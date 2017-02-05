@@ -172,9 +172,9 @@ class InventoryDeltaSerializer(object):
             takes.
         :return: The serialized delta as lines.
         """
-        if type(old_name) is not str:
+        if not isinstance(old_name, str):
             raise TypeError('old_name should be str, got %r' % (old_name,))
-        if type(new_name) is not str:
+        if not isinstance(new_name, str):
             raise TypeError('new_name should be str, got %r' % (new_name,))
         lines = ['', '', '', '', '']
         to_line = self._delta_item_to_line

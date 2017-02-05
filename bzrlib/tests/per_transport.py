@@ -1135,8 +1135,7 @@ class TransportTests(TestTransportImplementation):
             return
 
         def sorted_list(d, transport):
-            l = list(transport.list_dir(d))
-            l.sort()
+            l = sorted(transport.list_dir(d))
             return l
 
         self.assertEqual([], sorted_list('.', t))

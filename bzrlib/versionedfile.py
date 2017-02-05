@@ -1319,7 +1319,7 @@ class ThunkedVersionedFiles(VersionedFiles):
     def _get_all_prefixes(self):
         # Identify all key prefixes.
         # XXX: A bit hacky, needs polish.
-        if type(self._mapper) == ConstantMapper:
+        if isinstance(self._mapper, ConstantMapper):
             paths = [self._mapper.map(())]
             prefixes = [()]
         else:
@@ -1502,7 +1502,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
         Lines are added locally, not to fallback versionedfiles.  Also, ghosts
         are permitted.  Only reserved ids are permitted.
         """
-        if type(key) is not tuple:
+        if not isinstance(key, tuple):
             raise TypeError(key)
         if not revision.is_reserved_id(key[-1]):
             raise ValueError('Only reserved ids may be used')

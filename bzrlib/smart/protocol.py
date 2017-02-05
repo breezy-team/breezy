@@ -64,7 +64,7 @@ def _decode_tuple(req_line):
 def _encode_tuple(args):
     """Encode the tuple args to a bytestream."""
     joined = '\x01'.join(args) + '\n'
-    if type(joined) is unicode:
+    if isinstance(joined, unicode):
         # XXX: We should fix things so this never happens!  -AJB, 20100304
         mutter('response args contain unicode, should be only bytes: %r',
                joined)
@@ -865,7 +865,7 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
                     "Connection lost while reading streamed body.")
             _body_decoder.accept_bytes(bytes)
             for body_bytes in iter(_body_decoder.read_next_chunk, None):
-                if 'hpss' in debug.debug_flags and type(body_bytes) is str:
+                if 'hpss' in debug.debug_flags and isinstance(body_bytes, str):
                     mutter('              %d byte chunk read',
                            len(body_bytes))
                 yield body_bytes
@@ -993,7 +993,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
 
     def _state_accept_expecting_headers(self):
         decoded = self._extract_prefixed_bencoded_data()
-        if type(decoded) is not dict:
+        if not isinstance(decoded, dict):
             raise errors.SmartProtocolError(
                 'Header object %r is not a dict' % (decoded,))
         self.state_accept = self._state_accept_expecting_message_part
@@ -1120,7 +1120,7 @@ class _ProtocolThreeEncoder(object):
         self._write_func('s')
         utf8_args = []
         for arg in args:
-            if type(arg) is unicode:
+            if isinstance(arg, unicode):
                 utf8_args.append(arg.encode('utf8'))
             else:
                 utf8_args.append(arg)
