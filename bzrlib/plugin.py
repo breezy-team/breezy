@@ -379,7 +379,7 @@ def _load_plugin_module(name, dir):
     if ('bzrlib.plugins.%s' % name) in PluginImporter.blacklist:
         return
     try:
-        exec "import bzrlib.plugins.%s" % name in {}
+        exec("import bzrlib.plugins.%s" % name, {})
     except KeyboardInterrupt:
         raise
     except errors.IncompatibleAPI as e:

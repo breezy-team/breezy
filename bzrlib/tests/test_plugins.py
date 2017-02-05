@@ -189,9 +189,9 @@ class TestLoadingPlugins(BaseTestPlugins):
             self.assertFalse('bzrlib.plugins.pluginone' in sys.modules)
             self.assertFalse('bzrlib.plugins.plugintwo' in sys.modules)
             bzrlib.plugins.__path__ = ['first', 'second']
-            exec "import bzrlib.plugins.pluginone"
+            exec("import bzrlib.plugins.pluginone")
             self.assertEqual(['first'], self.activeattributes[tempattribute])
-            exec "import bzrlib.plugins.plugintwo"
+            exec("import bzrlib.plugins.plugintwo")
             self.assertEqual(['first', 'second'],
                 self.activeattributes[tempattribute])
         finally:
