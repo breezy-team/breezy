@@ -13,7 +13,7 @@ import copy
 import glob
 
 if sys.version_info < (2, 7):
-    sys.stderr.write("[ERROR] Not a supported Python version. Need 2.6+\n")
+    sys.stderr.write("[ERROR] Not a supported Python version. Need 2.7+\n")
     sys.exit(1)
 
 # NOTE: The directory containing setup.py, whether run by 'python setup.py' or

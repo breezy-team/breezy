@@ -43,10 +43,6 @@ class CatchingExceptionThread(threading.Thread):
         self.ignored_exceptions = None # see set_ignored_exceptions
         self.lock = threading.Lock()
 
-    # compatibility thunk for python-2.4 and python-2.5...
-    if sys.version_info < (2, 6):
-        name = property(threading.Thread.getName, threading.Thread.setName)
-
     def set_sync_event(self, event):
         """Set the ``sync_event`` event used to synchronize exception catching.
 
