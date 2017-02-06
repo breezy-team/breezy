@@ -2536,7 +2536,7 @@ class TestFinalizeRobustness(tests.TestCaseWithTransport):
     def _override_globals_in_method(self, instance, method_name, globals):
         """Replace method on instance with one with updated globals"""
         import types
-        func = getattr(instance, method_name).im_func
+        func = getattr(instance, method_name).__func__
         new_globals = dict(func.__globals__)
         new_globals.update(globals)
         new_func = types.FunctionType(func.__code__, new_globals,

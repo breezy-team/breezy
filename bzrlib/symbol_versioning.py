@@ -81,8 +81,8 @@ def deprecation_string(a_callable, deprecation_version):
         symbol = "%s.%s" % (a_callable.__module__,
                             a_callable.__name__)
     else:
-        symbol = "%s.%s.%s" % (a_callable.im_class.__module__,
-                               a_callable.im_class.__name__,
+        symbol = "%s.%s.%s" % (a_callable.__self__.__class__.__module__,
+                               a_callable.__self__.__class__.__name__,
                                a_callable.__name__
                                )
     return deprecation_version % symbol

@@ -3238,8 +3238,8 @@ class RemoteBranchFormat(branch.BranchFormat):
         self._ensure_real()
         if isinstance(self._custom_format, branch.BranchFormatMetadir):
             branch_class = self._custom_format._branch_class()
-            heads_to_fetch_impl = branch_class.heads_to_fetch.im_func
-            if heads_to_fetch_impl is branch.Branch.heads_to_fetch.im_func:
+            heads_to_fetch_impl = branch_class.heads_to_fetch.__func__
+            if heads_to_fetch_impl is branch.Branch.heads_to_fetch.__func__:
                 return True
         return False
 
