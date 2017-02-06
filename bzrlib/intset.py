@@ -88,6 +88,8 @@ class IntSet(Exception):
         """
         return bool(self._val)
 
+    __nonzero__ = __bool__
+
 
     def __len__(self):
         """Number of elements in set.

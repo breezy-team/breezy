@@ -84,6 +84,8 @@ class RevisionInfo(object):
         # if it's in_store(branch), do the check below
         return self.branch.repository.has_revision(self.rev_id)
 
+    __nonzero__ = __bool__
+
     def __len__(self):
         return 2
 
