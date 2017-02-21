@@ -77,6 +77,8 @@ from cStringIO import StringIO
 import os
 import sys
 
+import configobj
+
 import bzrlib
 from bzrlib.decorators import needs_write_lock
 from bzrlib.lazy_import import lazy_import
@@ -104,7 +106,6 @@ from bzrlib import (
     win32utils,
     )
 from bzrlib.i18n import gettext
-from bzrlib.util.configobj import configobj
 """)
 from bzrlib import (
     commands,
@@ -176,6 +177,28 @@ def signing_policy_from_unicode(signature_string):
                      % signature_string)
 
 
+def _has_decode_bug():
+    """True if configobj will fail to decode to unicode on Python 2."""
+    if sys.version_info > (3,):
+        return False
+    conf = configobj.ConfigObj()
+    decode = getattr(conf, "_decode", None)
+    if decode:
+        result = decode(b"\xc2\xa7", "utf-8")
+        if isinstance(result[0], str):
+            return True
+    return False
+
+
+def _has_triplequote_bug():
+    """True if triple quote logic is reversed, see lp:710410."""
+    conf = configobj.ConfigObj()
+    quote = getattr(conf, "_get_triple_quote", None)
+    if quote and quote('"""') != "'''":
+        return True
+    return False
+
+
 class ConfigObj(configobj.ConfigObj):
 
     def __init__(self, infile=None, **kwargs):
@@ -183,6 +206,19 @@ class ConfigObj(configobj.ConfigObj):
         super(ConfigObj, self).__init__(infile=infile,
                                         interpolation=False,
                                         **kwargs)
+
+    if _has_decode_bug():
+        def _decode(self, infile, encoding):
+            if isinstance(infile, str) and encoding:
+                return infile.decode(encoding).splitlines(True)
+            return super(ConfigObj, self)._decode(infile, encoding)
+
+    if _has_triplequote_bug():
+        def _get_triple_quote(self, value):
+            quot = super(ConfigObj, self)._get_triple_quote(value)
+            if quot == configobj.tdquot:
+                return configobj.tsquot
+            return configobj.tdquot
 
     def get_bool(self, section, key):
         return self[section].as_bool(key)
