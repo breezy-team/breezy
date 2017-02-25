@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009, 2017 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,6 +37,7 @@ enhance that.
 This script provides options for building any individual files or two options
 to build the certificate authority files (--ca) or the server files (--server).
 """
+http://apetec.com/support/GenerateSAN-CSR.htm
 
 from cStringIO import StringIO
 import optparse
@@ -113,7 +114,7 @@ ssl_params=dict(
     server_organization='Testing Ltd',
     server_section='https server',
     server_name='127.0.0.1', # Always accessed under that name
-    server_email='https_server@locahost',
+    server_email='https_server@localhost',
     server_optional_company_name='',
     )
 
@@ -151,7 +152,7 @@ def build_server_key():
     """Generate an ssl server private key.
 
     We generates a key with a password and then copy it without password so
-    that as server can user it without prompting.
+    that a server can use it without prompting.
     """
     key_path = ssl_certs.build_path('server_with_pass.key')
     rm_f(key_path)

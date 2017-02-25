@@ -452,9 +452,10 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
                     "'bzr help ssl.ca_certs' for more information on setting "
                     "trusted CAs.")
         try:
-            ssl_sock = ssl.wrap_socket(
+            ssl_sock = ssl.SSLSocket(
                 self.sock, self.key_file, self.cert_file,
-                cert_reqs=cert_reqs, ca_certs=ca_certs)
+                cert_reqs=cert_reqs, ca_certs=ca_certs,
+                server_hostname=self.host)
         except ssl.SSLError:
             trace.note(
                 "\n"

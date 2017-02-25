@@ -32,6 +32,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Support Server Name Indication (SNI) when talking to https servers.
+  (Vincent Ladeuil, #1089352)
+   
  * When generating documentation with a custom locale set, make sure
    doc/en/user-reference only contains English documentation.
    (Jelmer Vernooij, #1565503)
