@@ -38,8 +38,7 @@ def get_filename(options):
 
 def infogen(options, outfile):
     """Create manual in RSTX format"""
-    t = time.time()
-    tt = time.gmtime(t)
+    tt = bzrlib.osutils.gmtime()
     params = \
            { "bzrcmd": options.bzr_name,
              "datestamp": time.strftime("%Y-%m-%d",tt),

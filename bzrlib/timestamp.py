@@ -57,7 +57,7 @@ def format_highres_date(t, offset=0):
     # revision XML entry will be reproduced faithfully.
     if offset is None:
         offset = 0
-    tt = time.gmtime(t + offset)
+    tt = osutils.gmtime(t + offset)
 
     return (osutils.weekdays[tt[6]] +
             time.strftime(" %Y-%m-%d %H:%M:%S", tt)
@@ -119,10 +119,6 @@ def format_patch_date(secs, offset=0):
     # give the epoch in utc
     if secs == 0:
         offset = 0
-    if secs + offset < 0:
-        from warnings import warn
-        warn("gmtime of negative time (%s, %s) may not work on Windows" %
-                (secs, offset))
     return osutils.format_date(secs, offset=offset,
             date_fmt='%Y-%m-%d %H:%M:%S')
 
