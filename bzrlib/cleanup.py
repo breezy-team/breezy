@@ -161,39 +161,20 @@ def _do_with_cleanups(cleanup_funcs, func, *args, **kwargs):
     Unike `_run_cleanup`, `_do_with_cleanups` can propagate an exception from a
     cleanup, but only if there is no exception from func.
     """
-    # As correct as Python 2.4 allows.
     try:
         result = func(*args, **kwargs)
     except:
         # We have an exception from func already, so suppress cleanup errors.
         _run_cleanups(cleanup_funcs)
         raise
-    else:
-        # No exception from func, so allow the first exception from
-        # cleanup_funcs to propagate if one occurs (but only after running all
-        # of them).
-        exc_info = None
-        for cleanup, c_args, c_kwargs in cleanup_funcs:
-            # XXX: Hmm, if KeyboardInterrupt arrives at exactly this line, we
-            # won't run all cleanups... perhaps we should temporarily install a
-            # SIGINT handler?
-            if exc_info is None:
-                try:
-                    cleanup(*c_args, **c_kwargs)
-                except:
-                    # This is the first cleanup to fail, so remember its
-                    # details.
-                    exc_info = sys.exc_info()
-            else:
-                # We already have an exception to propagate, so log any errors
-                # but don't propagate them.
-                _run_cleanup(cleanup, *c_args, **kwargs)
-        if exc_info is not None:
-            try:
-                raise exc_info[0], exc_info[1], exc_info[2]
-            finally:
-                del exc_info
-        # No error, so we can return the result
-        return result
-
-
+    # No exception from func, so allow first cleanup error to propgate.
+    pending_cleanups = iter(cleanup_funcs)
+    try:
+        for cleanup, c_args, c_kwargs in pending_cleanups:
+            cleanup(*c_args, **c_kwargs)
+    except:
+        # Still run the remaining cleanups but suppress any further errors.
+        _run_cleanups(pending_cleanups)
+        raise
+    # No error, so we can return the result
+    return result
