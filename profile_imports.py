@@ -156,6 +156,13 @@ def timed_import(name, globals=None, locals=None, fromlist=None, level=-1):
         stack_finish(this, tload)
 
 
+def _repr_regexp(pattern, max_len=30):
+    """Present regexp pattern for logging, truncating if over max_len."""
+    if len(pattern) > max_len:
+        return repr(pattern[:max_len-3]) + "..."
+    return repr(pattern)
+
+
 _real_compile = re._compile
 
 
@@ -173,7 +180,7 @@ def timed_compile(*args, **kwargs):
         frame = sys._getframe(5)
         frame_name = frame.f_globals.get('__name__', '<unknown>')
     frame_lineno = frame.f_lineno
-    this = stack_add(extra+repr(args[0]), frame_name, frame_lineno)
+    this = stack_add(extra+_repr_regexp(args[0]), frame_name, frame_lineno)
 
     tstart = _timer()
     try:
