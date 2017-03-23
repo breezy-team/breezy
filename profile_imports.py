@@ -100,7 +100,7 @@ def log_stack_info(out_file, sorted=True, hide_fast=True):
 
 _real_import = __import__
 
-def timed_import(name, globals=None, locals=None, fromlist=None, level=None):
+def timed_import(name, globals=None, locals=None, fromlist=None, level=-1):
     """Wrap around standard importer to log import time"""
     # normally there are 4, but if this is called as __import__ eg by
     # /usr/lib/python2.6/email/__init__.py then there may be only one
@@ -150,12 +150,10 @@ def timed_import(name, globals=None, locals=None, fromlist=None, level=None):
     tstart = _timer()
     try:
         # Do the import
-        mod = _real_import(name, globals, locals, fromlist)
+        return _real_import(name, globals, locals, fromlist, level=level)
     finally:
         tload = _timer()-tstart
         stack_finish(this, tload)
-
-    return mod
 
 
 _real_compile = re._compile
