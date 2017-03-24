@@ -265,7 +265,7 @@ class PythonVersionInfoTests(VersionInfoTestCase):
         finally:
             outf.close()
         module_info = imp.find_module('test_version_information',
-                                      [os.getcwd()])
+                                      [self.test_dir])
         tvi = imp.load_module('tvi', *module_info)
         # Make sure the module isn't cached
         sys.modules.pop('tvi', None)

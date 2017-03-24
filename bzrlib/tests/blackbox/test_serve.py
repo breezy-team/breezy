@@ -260,7 +260,7 @@ class TestBzrServe(TestBzrServeBase):
         # This is a smoke test that the server doesn't crash when run with
         # -Dhpss, and does drop some hpss logging to the file.
         self.make_branch('.')
-        log_fname = os.getcwd() + '/server.log'
+        log_fname = self.test_dir + '/server.log'
         self.overrideEnv('BZR_LOG', log_fname)
         process, transport = self.start_server_inet(['-Dhpss'])
         branch = ControlDir.open_from_transport(transport).open_branch()

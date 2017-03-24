@@ -2484,7 +2484,7 @@ class TestCaseWithMemoryTransport(TestCase):
             _add_disconnect_cleanup, None)
 
         self._make_test_root()
-        self.addCleanup(os.chdir, os.getcwd())
+        self.addCleanup(os.chdir, osutils.getcwd())
         self.makeAndChdirToTestDir()
         self.overrideEnvironmentForTesting()
         self.__readonly_server = None

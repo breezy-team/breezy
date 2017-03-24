@@ -963,7 +963,7 @@ class TestWin32Funcs(tests.TestCase):
 
     def test_getcwd(self):
         cwd = osutils._win32_getcwd()
-        os_cwd = os.getcwd()
+        os_cwd = osutils._getcwd()
         self.assertEqual(os_cwd[1:].replace('\\', '/'), cwd[1:])
         # win32 is inconsistent whether it returns lower or upper case
         # and even if it was consistent the user might type the other
