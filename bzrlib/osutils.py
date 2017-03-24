@@ -262,24 +262,23 @@ def fancy_rename(old, new, rename_func, unlink_func):
     else:
         file_existed = True
 
-    failure_exc = None
     success = False
     try:
-        try:
-            # This may throw an exception, in which case success will
-            # not be set.
-            rename_func(old, new)
-            success = True
-        except (IOError, OSError) as e:
-            # source and target may be aliases of each other (e.g. on a
-            # case-insensitive filesystem), so we may have accidentally renamed
-            # source by when we tried to rename target
-            failure_exc = sys.exc_info()
-            if (file_existed and e.errno in (None, errno.ENOENT)
-                and old.lower() == new.lower()):
-                # source and target are the same file on a case-insensitive
-                # filesystem, so we don't generate an exception
-                failure_exc = None
+        # This may throw an exception, in which case success will
+        # not be set.
+        rename_func(old, new)
+        success = True
+    except (IOError, OSError) as e:
+        # source and target may be aliases of each other (e.g. on a
+        # case-insensitive filesystem), so we may have accidentally renamed
+        # source by when we tried to rename target
+        if (file_existed and e.errno in (None, errno.ENOENT)
+            and old.lower() == new.lower()):
+            # source and target are the same file on a case-insensitive
+            # filesystem, so we don't generate an exception
+            pass
+        else:
+            raise
     finally:
         if file_existed:
             # If the file used to exist, rename it back into place
@@ -288,11 +287,6 @@ def fancy_rename(old, new, rename_func, unlink_func):
                 unlink_func(tmp_name)
             else:
                 rename_func(tmp_name, new)
-    if failure_exc is not None:
-        try:
-            raise failure_exc[0], failure_exc[1], failure_exc[2]
-        finally:
-            del failure_exc
 
 
 # In Python 2.4.2 and older, os.path.abspath and os.path.realpath
