@@ -31,13 +31,13 @@ def U32(i):
     If it's >= 2GB when viewed as a 32-bit unsigned int, return a long.
     """
     if i < 0:
-        i += 1L << 32
+        i += 1 << 32
     return i
 
 
 def LOWU32(i):
     """Return the low-order 32 bits of an int, as a non-negative int."""
-    return i & 0xFFFFFFFFL
+    return i & 0xFFFFFFFF
 
 
 def bytes_to_gzip(bytes, factory=zlib.compressobj,
@@ -58,18 +58,18 @@ def chunks_to_gzip(chunks, factory=zlib.compressobj,
         layout.
     """
     result = [
-        '\037\213'  # self.fileobj.write('\037\213')  # magic header
-        '\010'      # self.fileobj.write('\010')      # compression method
-                    # fname = self.filename[:-3]
-                    # flags = 0
-                    # if fname:
-                    #     flags = FNAME
-        '\x00'      # self.fileobj.write(chr(flags))
-        '\0\0\0\0'  # write32u(self.fileobj, long(time.time()))
-        '\002'      # self.fileobj.write('\002')
-        '\377'      # self.fileobj.write('\377')
-                    # if fname:
-        ''          #     self.fileobj.write(fname + '\000')
+        b'\037\213'  # self.fileobj.write('\037\213')  # magic header
+        b'\010'      # self.fileobj.write('\010')      # compression method
+                     # fname = self.filename[:-3]
+                     # flags = 0
+                     # if fname:
+                     #     flags = FNAME
+        b'\x00'      # self.fileobj.write(chr(flags))
+        b'\0\0\0\0'  # write32u(self.fileobj, long(time.time()))
+        b'\002'      # self.fileobj.write('\002')
+        b'\377'      # self.fileobj.write('\377')
+                     # if fname:
+        b''          #     self.fileobj.write(fname + '\000')
         ]
     # using a compressobj avoids a small header and trailer that the compress()
     # utility function adds.
@@ -85,4 +85,4 @@ def chunks_to_gzip(chunks, factory=zlib.compressobj,
     result.append(compress.flush())
     # size may exceed 2GB, or even 4GB
     result.append(struct.pack("<LL", LOWU32(crc), LOWU32(total_len)))
-    return ''.join(result)
+    return b''.join(result)
