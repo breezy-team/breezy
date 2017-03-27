@@ -100,7 +100,7 @@ def log_stack_info(out_file, sorted=True, hide_fast=True):
 
 _real_import = __import__
 
-def timed_import(name, globals=None, locals=None, fromlist=None, level=None):
+def timed_import(name, globals=None, locals=None, fromlist=None, level=-1):
     """Wrap around standard importer to log import time"""
     # normally there are 4, but if this is called as __import__ eg by
     # /usr/lib/python2.6/email/__init__.py then there may be only one
@@ -150,12 +150,17 @@ def timed_import(name, globals=None, locals=None, fromlist=None, level=None):
     tstart = _timer()
     try:
         # Do the import
-        mod = _real_import(name, globals, locals, fromlist)
+        return _real_import(name, globals, locals, fromlist, level=level)
     finally:
         tload = _timer()-tstart
         stack_finish(this, tload)
 
-    return mod
+
+def _repr_regexp(pattern, max_len=30):
+    """Present regexp pattern for logging, truncating if over max_len."""
+    if len(pattern) > max_len:
+        return repr(pattern[:max_len-3]) + "..."
+    return repr(pattern)
 
 
 _real_compile = re._compile
@@ -175,7 +180,7 @@ def timed_compile(*args, **kwargs):
         frame = sys._getframe(5)
         frame_name = frame.f_globals.get('__name__', '<unknown>')
     frame_lineno = frame.f_lineno
-    this = stack_add(extra+repr(args[0]), frame_name, frame_lineno)
+    this = stack_add(extra+_repr_regexp(args[0]), frame_name, frame_lineno)
 
     tstart = _timer()
     try:
