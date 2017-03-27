@@ -674,19 +674,14 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
             writeline()
     elif opts.fixed_string:
         # Fast path for no match, search through the entire file at once rather
-        # than a line at a time. However, we don't want this without Python 2.5
-        # as the quick string search algorithm wasn't implemented till then:
-        # <http://effbot.org/zone/stringlib.htm>
-        if sys.version_info > (2, 5):
-            i = file_text.find(pattern)
-            if i == -1:
-                return
-            b = file_text.rfind("\n", 0, i) + 1
-            if opts.line_number:
-                start = file_text.count("\n", 0, b) + 1
-            file_text = file_text[b:]
-        else:
-            start = 1
+        # than a line at a time. <http://effbot.org/zone/stringlib.htm>
+        i = file_text.find(pattern)
+        if i == -1:
+            return
+        b = file_text.rfind("\n", 0, i) + 1
+        if opts.line_number:
+            start = file_text.count("\n", 0, b) + 1
+        file_text = file_text[b:]
         if opts.line_number:
             for index, line in enumerate(file_text.splitlines()):
                 if pattern in line:

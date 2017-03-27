@@ -2257,7 +2257,7 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         # GZ 2011-05-18: Old versions of subunit treat unexpected success as a
         #                success, if a min version check is added remove this
         from subunit import TestProtocolClient as _Client
-        if _Client.addUnexpectedSuccess.im_func is _Client.addSuccess.im_func:
+        if _Client.addUnexpectedSuccess.__func__ is _Client.addSuccess.__func__:
             self.expectFailure('subunit treats "unexpectedSuccess"'
                                ' as a plain success',
                 self.assertEqual, 1, len(result.unexpectedSuccesses))

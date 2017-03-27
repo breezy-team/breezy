@@ -5549,7 +5549,7 @@ class cmd_serve(Command):
             allow_writes=False, protocol=None, client_timeout=None):
         from bzrlib import transport
         if directory is None:
-            directory = os.getcwd()
+            directory = osutils.getcwd()
         if protocol is None:
             protocol = transport.transport_server_registry.get()
         url = transport.location_to_url(directory)

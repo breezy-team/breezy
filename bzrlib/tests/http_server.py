@@ -24,7 +24,10 @@ import SimpleHTTPServer
 import socket
 import urlparse
 
-from bzrlib import urlutils
+from bzrlib import (
+    osutils,
+    urlutils,
+)
 from bzrlib.tests import test_server
 
 
@@ -472,7 +475,7 @@ class HttpServer(test_server.TestingTCPServerInAThread):
             raise AssertionError(
                 "HTTPServer currently assumes local transport, got %s" %
                 backing_transport_server)
-        self._home_dir = os.getcwdu()
+        self._home_dir = osutils.getcwd()
         self._local_path_parts = self._home_dir.split(os.path.sep)
         self.logs = []
 

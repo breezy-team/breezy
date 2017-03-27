@@ -76,13 +76,15 @@ class RevisionInfo(object):
             self._has_revno = True
         return self._revno
 
-    def __nonzero__(self):
+    def __bool__(self):
         if self.rev_id is None:
             return False
         # TODO: otherwise, it should depend on how I was built -
         # if it's in_history(branch), then check revision_history(),
         # if it's in_store(branch), do the check below
         return self.branch.repository.has_revision(self.rev_id)
+
+    __nonzero__ = __bool__
 
     def __len__(self):
         return 2

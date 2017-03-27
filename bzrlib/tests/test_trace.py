@@ -315,12 +315,13 @@ class TestTrace(TestCase):
         # set up.
         self.overrideAttr(sys, 'stderr', StringIO())
         # Set the log file to something that cannot exist
-        self.overrideEnv('BZR_LOG', os.getcwd() + '/no-dir/bzr.log')
+        self.overrideEnv('BZR_LOG', '/no-such-dir/bzr.log')
         self.overrideAttr(trace, '_bzr_log_filename')
         logf = trace._open_bzr_log()
         self.assertIs(None, logf)
-        self.assertContainsRe(sys.stderr.getvalue(),
-                              'failed to open trace file: .*/no-dir/bzr.log')
+        self.assertContainsRe(
+            sys.stderr.getvalue(),
+            "failed to open trace file: .* '/no-such-dir/bzr.log'$")
 
 
 class TestVerbosityLevel(TestCase):

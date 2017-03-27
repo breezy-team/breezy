@@ -77,7 +77,7 @@ class IntSet(Exception):
             self.update(values)
 
 
-    def __nonzero__(self):
+    def __bool__(self):
         """IntSets are false if empty, otherwise True.
 
         >>> bool(IntSet())
@@ -87,6 +87,8 @@ class IntSet(Exception):
         True
         """
         return bool(self._val)
+
+    __nonzero__ = __bool__
 
 
     def __len__(self):
