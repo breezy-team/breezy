@@ -23,8 +23,6 @@ __all__ = ['needs_read_lock',
            ]
 
 
-import sys
-
 from bzrlib import trace
 
 
@@ -105,15 +103,10 @@ def %(name)s_read_locked(%(params)s):
     try:
         result = unbound(%(passed_params)s)
     except:
-        import sys
-        exc_info = sys.exc_info()
         try:
             self.unlock()
         finally:
-            try:
-                raise exc_info[0], exc_info[1], exc_info[2]
-            finally:
-                del exc_info
+            raise
     else:
         self.unlock()
         return result
@@ -154,15 +147,10 @@ def _fast_needs_read_lock(unbound):
         try:
             result = unbound(self, *args, **kwargs)
         except:
-            import sys
-            exc_info = sys.exc_info()
             try:
                 self.unlock()
             finally:
-                try:
-                    raise exc_info[0], exc_info[1], exc_info[2]
-                finally:
-                    del exc_info
+                raise
         else:
             self.unlock()
             return result
@@ -179,15 +167,10 @@ def %(name)s_write_locked(%(params)s):
     try:
         result = unbound(%(passed_params)s)
     except:
-        import sys
-        exc_info = sys.exc_info()
         try:
             self.unlock()
         finally:
-            try:
-                raise exc_info[0], exc_info[1], exc_info[2]
-            finally:
-                del exc_info
+            raise
     else:
         self.unlock()
         return result
@@ -217,14 +200,10 @@ def _fast_needs_write_lock(unbound):
         try:
             result = unbound(self, *args, **kwargs)
         except:
-            exc_info = sys.exc_info()
             try:
                 self.unlock()
             finally:
-                try:
-                    raise exc_info[0], exc_info[1], exc_info[2]
-                finally:
-                    del exc_info
+                raise
         else:
             self.unlock()
             return result
