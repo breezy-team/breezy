@@ -127,7 +127,7 @@ class HttpTransportBase(ConnectedTransport):
             self._medium = SmartClientHTTPMedium(self)
         return self._medium
 
-    def _degrade_range_hint(self, relpath, ranges, exc_info):
+    def _degrade_range_hint(self, relpath, ranges):
         if self._range_hint == 'multi':
             self._range_hint = 'single'
             mutter('Retry "%s" with single range request' % relpath)
@@ -135,10 +135,9 @@ class HttpTransportBase(ConnectedTransport):
             self._range_hint = None
             mutter('Retry "%s" without ranges' % relpath)
         else:
-            # We tried all the tricks, but nothing worked. We re-raise the
-            # original exception; the 'mutter' calls above will indicate that
-            # further tries were unsuccessful
-            raise exc_info[0], exc_info[1], exc_info[2]
+            # We tried all the tricks, but nothing worked, caller must reraise.
+            return False
+        return True
 
     # _coalesce_offsets is a helper for readv, it try to combine ranges without
     # degrading readv performances. _bytes_to_read_before_seek is the value
@@ -235,9 +234,9 @@ class HttpTransportBase(ConnectedTransport):
                     # they do not indicate a problem with the server ability to
                     # handle ranges. Except when we fail to get back a required
                     # offset twice in a row. In that case, falling back to
-                    # single range or whole file should help or end up in a
-                    # fatal exception.
-                    self._degrade_range_hint(relpath, coalesced, sys.exc_info())
+                    # single range or whole file should help.
+                    if not self._degrade_range_hint(relpath, coalesced):
+                        raise
                 # Some offsets may have been already processed, so we retry
                 # only the unsuccessful ones.
                 offsets = [cur_offset_and_size] + [o for o in iter_offsets]
