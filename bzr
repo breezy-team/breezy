@@ -91,9 +91,6 @@ if bzrlib.version_info[:3] != _script_version:
         __file__))
 
 
-import bzrlib.inspect_for_copy
-bzrlib.inspect_for_copy.import_copy_with_hacked_inspect()
-
 import bzrlib.breakin
 bzrlib.breakin.hook_debugger_to_signal()
 
