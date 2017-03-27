@@ -2199,7 +2199,7 @@ class _PlanMerge(_PlanMergeBase):
         while True:
             next_lcas = self.graph.find_lca(*cur_ancestors)
             # Map a plain NULL_REVISION to a simple no-ancestors
-            if next_lcas == set([_mod_revision.NULL_REVISION]):
+            if next_lcas == {_mod_revision.NULL_REVISION}:
                 next_lcas = ()
             # Order the lca's based on when they were merged into the tip
             # While the actual merge portion of weave merge uses a set() of

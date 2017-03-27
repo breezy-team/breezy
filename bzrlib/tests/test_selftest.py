@@ -1353,14 +1353,14 @@ class TestTestCase(tests.TestCase):
         """The -Eallow_debug flag prevents bzrlib.debug.debug_flags from being
         sanitised (i.e. cleared) before running a test.
         """
-        self.change_selftest_debug_flags(set(['allow_debug']))
-        bzrlib.debug.debug_flags = set(['a-flag'])
+        self.change_selftest_debug_flags({'allow_debug'})
+        bzrlib.debug.debug_flags = {'a-flag'}
         class TestThatRecordsFlags(tests.TestCase):
             def test_foo(nested_self):
                 self.flags = set(bzrlib.debug.debug_flags)
         test = TestThatRecordsFlags('test_foo')
         test.run(self.make_test_result())
-        flags = set(['a-flag'])
+        flags = {'a-flag'}
         if 'disable_lock_checks' not in tests.selftest_debug_flags:
             flags.add('strict_locks')
         self.assertEqual(flags, self.flags)
@@ -1377,9 +1377,9 @@ class TestTestCase(tests.TestCase):
         # By default we do strict lock checking and thorough lock/unlock
         # tracking.
         self.assertTrue(self.test_lock_check_thorough)
-        self.assertEqual(set(['strict_locks']), self.flags)
+        self.assertEqual({'strict_locks'}, self.flags)
         # Now set the disable_lock_checks flag, and show that this changed.
-        self.change_selftest_debug_flags(set(['disable_lock_checks']))
+        self.change_selftest_debug_flags({'disable_lock_checks'})
         test = TestThatRecordsFlags('test_foo')
         test.run(self.make_test_result())
         self.assertFalse(self.test_lock_check_thorough)
@@ -1395,22 +1395,22 @@ class TestTestCase(tests.TestCase):
         self.change_selftest_debug_flags(set())
         test = TestThatRecordsFlags('test_foo')
         test.run(self.make_test_result())
-        self.assertEqual(set(['strict_locks']), self.flags1)
+        self.assertEqual({'strict_locks'}, self.flags1)
         self.assertEqual(set(), self.flags2)
 
     def test_debug_flags_restored(self):
         """The bzrlib debug flags should be restored to their original state
         after the test was run, even if allow_debug is set.
         """
-        self.change_selftest_debug_flags(set(['allow_debug']))
+        self.change_selftest_debug_flags({'allow_debug'})
         # Now run a test that modifies debug.debug_flags.
-        bzrlib.debug.debug_flags = set(['original-state'])
+        bzrlib.debug.debug_flags = {'original-state'}
         class TestThatModifiesFlags(tests.TestCase):
             def test_foo(self):
-                bzrlib.debug.debug_flags = set(['modified'])
+                bzrlib.debug.debug_flags = {'modified'}
         test = TestThatModifiesFlags('test_foo')
         test.run(self.make_test_result())
-        self.assertEqual(set(['original-state']), bzrlib.debug.debug_flags)
+        self.assertEqual({'original-state'}, bzrlib.debug.debug_flags)
 
     def make_test_result(self):
         """Get a test result that writes to the test log file."""
@@ -3052,7 +3052,7 @@ class TestTestSuite(tests.TestCase):
                 'bzrlib.timestamp.format_highres_date',
                 ])
         suite = tests.test_suite()
-        self.assertEqual(set(["testmod_names", "modules_to_doctest"]),
+        self.assertEqual({"testmod_names", "modules_to_doctest"},
             set(calls))
         self.assertSubset(expected_test_list, _test_ids(suite))
 
@@ -3240,7 +3240,7 @@ class TestThreadLeakDetection(tests.TestCase):
         result.stopTestRun()
         self.assertEqual(result._tests_leaking_threads_count, 1)
         self.assertEqual(result._first_thread_leaker_id, test.id())
-        self.assertEqual(result.leaks, [(test, set([thread]))])
+        self.assertEqual(result.leaks, [(test, {thread})])
         self.assertContainsString(result.stream.getvalue(), "leaking threads")
 
     def test_multiple_leaks(self):
@@ -3276,8 +3276,8 @@ class TestThreadLeakDetection(tests.TestCase):
         self.assertEqual(result._tests_leaking_threads_count, 2)
         self.assertEqual(result._first_thread_leaker_id, first_test.id())
         self.assertEqual(result.leaks, [
-            (first_test, set([thread_b])),
-            (third_test, set([thread_a, thread_c]))])
+            (first_test, {thread_b}),
+            (third_test, {thread_a, thread_c})])
         self.assertContainsString(result.stream.getvalue(), "leaking threads")
 
 
@@ -3309,7 +3309,7 @@ class TestPostMortemDebugging(tests.TestCase):
                 raise RuntimeError
         result = self.TracebackRecordingResult()
         Test().run(result)
-        self.assertEqual(result.postcode, Test.runTest.func_code)
+        self.assertEqual(result.postcode, Test.runTest.__code__)
 
     def test_location_unittest_failure(self):
         """Needs right post mortem traceback with failing unittest case"""
@@ -3318,7 +3318,7 @@ class TestPostMortemDebugging(tests.TestCase):
                 raise self.failureException
         result = self.TracebackRecordingResult()
         Test().run(result)
-        self.assertEqual(result.postcode, Test.runTest.func_code)
+        self.assertEqual(result.postcode, Test.runTest.__code__)
 
     def test_location_bt_error(self):
         """Needs right post mortem traceback with erroring bzrlib.tests case"""
@@ -3327,7 +3327,7 @@ class TestPostMortemDebugging(tests.TestCase):
                 raise RuntimeError
         result = self.TracebackRecordingResult()
         Test("test_error").run(result)
-        self.assertEqual(result.postcode, Test.test_error.func_code)
+        self.assertEqual(result.postcode, Test.test_error.__code__)
 
     def test_location_bt_failure(self):
         """Needs right post mortem traceback with failing bzrlib.tests case"""
@@ -3336,7 +3336,7 @@ class TestPostMortemDebugging(tests.TestCase):
                 raise self.failureException
         result = self.TracebackRecordingResult()
         Test("test_failure").run(result)
-        self.assertEqual(result.postcode, Test.test_failure.func_code)
+        self.assertEqual(result.postcode, Test.test_failure.__code__)
 
     def test_env_var_triggers_post_mortem(self):
         """Check pdb.post_mortem is called iff BZR_TEST_PDB is set"""
@@ -3717,7 +3717,7 @@ class TestCounterHooks(tests.TestCase, SelfTestHelper):
         result = unittest.TestResult()
         test.run(result)
         self.assertTrue(hasattr(test, '_counters'))
-        self.assertTrue(test._counters.has_key('myhook'))
+        self.assertTrue('myhook' in test._counters)
         self.assertEqual(expected_calls, test._counters['myhook'])
 
     def test_no_hook(self):

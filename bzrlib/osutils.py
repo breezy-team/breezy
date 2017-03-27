@@ -105,14 +105,14 @@ def make_readonly(filename):
     """Make a filename read-only."""
     mod = os.lstat(filename).st_mode
     if not stat.S_ISLNK(mod):
-        mod = mod & 0777555
+        mod = mod & 0o777555
         chmod_if_possible(filename, mod)
 
 
 def make_writable(filename):
     mod = os.lstat(filename).st_mode
     if not stat.S_ISLNK(mod):
-        mod = mod | 0200
+        mod = mod | 0o200
         chmod_if_possible(filename, mod)
 
 
@@ -124,7 +124,7 @@ def chmod_if_possible(filename, mode):
         # It is probably faster to just do the chmod, rather than
         # doing a stat, and then trying to compare
         os.chmod(filename, mode)
-    except (IOError, OSError),e:
+    except (IOError, OSError) as e:
         # Permission/access denied seems to commonly happen on smbfs; there's
         # probably no point warning about it.
         # <https://bugs.launchpad.net/bzr/+bug/606537>
@@ -213,7 +213,7 @@ if lexists is None:
             stat = getattr(os, 'lstat', os.stat)
             stat(f)
             return True
-        except OSError, e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 return False;
             else:
@@ -247,15 +247,15 @@ def fancy_rename(old, new, rename_func, unlink_func):
     file_existed = False
     try:
         rename_func(new, tmp_name)
-    except (errors.NoSuchFile,), e:
+    except (errors.NoSuchFile,) as e:
         pass
-    except IOError, e:
+    except IOError as e:
         # RBC 20060103 abstraction leakage: the paramiko SFTP clients rename
         # function raises an IOError with errno is None when a rename fails.
         # This then gets caught here.
         if e.errno not in (None, errno.ENOENT, errno.ENOTDIR):
             raise
-    except Exception, e:
+    except Exception as e:
         if (getattr(e, 'errno', None) is None
             or e.errno not in (errno.ENOENT, errno.ENOTDIR)):
             raise
@@ -270,7 +270,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
             # not be set.
             rename_func(old, new)
             success = True
-        except (IOError, OSError), e:
+        except (IOError, OSError) as e:
             # source and target may be aliases of each other (e.g. on a
             # case-insensitive filesystem), so we may have accidentally renamed
             # source by when we tried to rename target
@@ -436,7 +436,7 @@ def _win32_rename(old, new):
     """
     try:
         fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
-    except OSError, e:
+    except OSError as e:
         if e.errno in (errno.EPERM, errno.EACCES, errno.EBUSY, errno.EINVAL):
             # If we try to rename a non-existant file onto cwd, we get
             # EPERM or EACCES instead of ENOENT, this will raise ENOENT
@@ -460,7 +460,7 @@ def _rename_wrap_exception(rename_func):
     def _rename_wrapper(old, new):
         try:
             rename_func(old, new)
-        except OSError, e:
+        except OSError as e:
             detailed_error = OSError(e.errno, e.strerror +
                                 " [occurred when renaming '%s' to '%s']" %
                                 (old, new))
@@ -1102,7 +1102,7 @@ def report_extension_load_failures():
 
 try:
     from bzrlib._chunks_to_lines_pyx import chunks_to_lines
-except ImportError, e:
+except ImportError as e:
     failed_to_load_extension(e)
     from bzrlib._chunks_to_lines_py import chunks_to_lines
 
@@ -1141,7 +1141,7 @@ def link_or_copy(src, dest):
         return
     try:
         os.link(src, dest)
-    except (OSError, IOError), e:
+    except (OSError, IOError) as e:
         if e.errno != errno.EXDEV:
             raise
         shutil.copyfile(src, dest)
@@ -1154,7 +1154,7 @@ def delete_any(path):
     """
     try:
        _delete_file_or_dir(path)
-    except (OSError, IOError), e:
+    except (OSError, IOError) as e:
         if e.errno in (errno.EPERM, errno.EACCES):
             # make writable and try again
             try:
@@ -1352,7 +1352,7 @@ def decode_filename(filename):
     Otherwise it is decoded from the the filesystem's encoding. If decoding
     fails, a errors.BadFilenameEncoding exception is raised.
     """
-    if type(filename) is unicode:
+    if isinstance(filename, unicode):
         return filename
     try:
         return filename.decode(_fs_enc)
@@ -1778,7 +1778,7 @@ def walkdirs(top, prefix=""):
         append = dirblock.append
         try:
             names = sorted(map(decode_filename, _listdir(top)))
-        except OSError, e:
+        except OSError as e:
             if not _is_error_enotdir(e):
                 raise
         else:
@@ -1852,7 +1852,7 @@ def _walkdirs_utf8(top, prefix=""):
             try:
                 from bzrlib._readdir_pyx import UTF8DirReader
                 _selected_dir_reader = UTF8DirReader()
-            except ImportError, e:
+            except ImportError as e:
                 failed_to_load_extension(e)
                 pass
 
@@ -1988,7 +1988,7 @@ def copy_ownership_from_path(dst, src=None):
     try:
         s = os.stat(src)
         chown(dst, s.st_uid, s.st_gid)
-    except OSError, e:
+    except OSError as e:
         trace.warning(
             'Unable to copy ownership from "%s" to "%s". '
             'You may want to set it manually.', src, dst)
@@ -2102,10 +2102,10 @@ def read_bytes_from_socket(sock, report_activity=None,
     empty string rather than raise an error), and repeats the recv if
     interrupted by a signal.
     """
-    while 1:
+    while True:
         try:
             bytes = sock.recv(max_read_size)
-        except socket.error, e:
+        except socket.error as e:
             eno = e.args[0]
             if eno in _end_of_stream_errors:
                 # The connection was closed by the other side.  Callers expect
@@ -2158,7 +2158,7 @@ def send_all(sock, bytes, report_activity=None):
     while sent_total < byte_count:
         try:
             sent = sock.send(buffer(bytes, sent_total, MAX_SOCKET_CHUNK))
-        except (socket.error, IOError), e:
+        except (socket.error, IOError) as e:
             if e.args[0] in _end_of_stream_errors:
                 raise errors.ConnectionReset(
                     "Error trying to write to socket", e)
@@ -2189,7 +2189,7 @@ def connect_socket(address):
             sock.connect(sa)
             return sock
 
-        except socket.error, err:
+        except socket.error as err:
             # 'err' is now the most recent error
             if sock is not None:
                 sock.close()
@@ -2252,7 +2252,7 @@ def file_kind_from_stat_mode_thunk(mode):
         try:
             from bzrlib._readdir_pyx import UTF8DirReader
             file_kind_from_stat_mode = UTF8DirReader().kind_from_mode
-        except ImportError, e:
+        except ImportError as e:
             # This is one time where we won't warn that an extension failed to
             # load. The extension is never available on Windows anyway.
             from bzrlib._readdir_py import (
@@ -2265,7 +2265,7 @@ def file_stat(f, _lstat=os.lstat):
     try:
         # XXX cache?
         return _lstat(f)
-    except OSError, e:
+    except OSError as e:
         if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
             raise errors.NoSuchFile(f)
         raise
@@ -2291,7 +2291,7 @@ def until_no_eintr(f, *a, **kw):
     while True:
         try:
             return f(*a, **kw)
-        except (IOError, OSError), e:
+        except (IOError, OSError) as e:
             if e.errno == errno.EINTR:
                 continue
             raise
@@ -2313,7 +2313,7 @@ def re_compile_checked(re_string, flags=0, where=""):
         re_obj = re.compile(re_string, flags)
         re_obj.search("")
         return re_obj
-    except errors.InvalidPattern, e:
+    except errors.InvalidPattern as e:
         if where:
             where = ' in ' + where
         # despite the name 'error' is a type
@@ -2409,7 +2409,7 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
         self.encode = encode
 
     def write(self, object):
-        if type(object) is str:
+        if isinstance(object, str):
             self.stream.write(object)
         else:
             data, _ = self.encode(object, self.errors)
@@ -2533,7 +2533,7 @@ def _posix_is_local_pid_dead(pid):
     try:
         # Special meaning of unix kill: just check if it's there.
         os.kill(pid, 0)
-    except OSError, e:
+    except OSError as e:
         if e.errno == errno.ESRCH:
             # On this machine, and really not found: as sure as we can be
             # that it's dead.
@@ -2569,7 +2569,7 @@ def fdatasync(fileno):
     if fn is not None:
         try:
             fn(fileno)
-        except IOError, e:
+        except IOError as e:
             # See bug #1075108, on some platforms fdatasync exists, but can
             # raise ENOTSUP. However, we are calling fdatasync to be helpful
             # and reduce the chance of corruption-on-powerloss situations. It
@@ -2587,7 +2587,7 @@ def ensure_empty_directory_exists(path, exception_class):
     """
     try:
         os.mkdir(path)
-    except OSError, e:
+    except OSError as e:
         if e.errno != errno.EEXIST:
             raise
         if os.listdir(path) != []:

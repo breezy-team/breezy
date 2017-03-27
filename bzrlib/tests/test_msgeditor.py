@@ -151,7 +151,7 @@ added:
             f = file(name, 'wb')
             f.write('#!/bin/sh\n')
             f.close()
-            os.chmod(name, 0755)
+            os.chmod(name, 0o755)
             return './' + name
 
     def test_run_editor(self):
@@ -201,7 +201,7 @@ if len(sys.argv) == 2:
             self.overrideEnv('BZR_EDITOR', 'fed.bat')
         else:
             # [non-win32] make python script executable and set BZR_EDITOR
-            os.chmod('fed.py', 0755)
+            os.chmod('fed.py', 0o755)
             self.overrideEnv('BZR_EDITOR', './fed.py')
 
     def test_edit_commit_message(self):

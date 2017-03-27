@@ -189,9 +189,9 @@ class TestLoadingPlugins(BaseTestPlugins):
             self.assertFalse('bzrlib.plugins.pluginone' in sys.modules)
             self.assertFalse('bzrlib.plugins.plugintwo' in sys.modules)
             bzrlib.plugins.__path__ = ['first', 'second']
-            exec "import bzrlib.plugins.pluginone"
+            exec("import bzrlib.plugins.pluginone")
             self.assertEqual(['first'], self.activeattributes[tempattribute])
-            exec "import bzrlib.plugins.plugintwo"
+            exec("import bzrlib.plugins.plugintwo")
             self.assertEqual(['first', 'second'],
                 self.activeattributes[tempattribute])
         finally:
@@ -536,7 +536,7 @@ class TestHelpIndex(tests.TestCase):
         index = plugin.PluginsHelpIndex()
         # make a new plugin here for this test, even if we're run with
         # --no-plugins
-        self.assertFalse(sys.modules.has_key('bzrlib.plugins.demo_module'))
+        self.assertFalse('bzrlib.plugins.demo_module' in sys.modules)
         demo_module = FakeModule('', 'bzrlib.plugins.demo_module')
         sys.modules['bzrlib.plugins.demo_module'] = demo_module
         try:
@@ -562,7 +562,7 @@ class TestHelpIndex(tests.TestCase):
     def test_get_plugin_topic_with_prefix(self):
         """Searching for plugins/demo_module returns help."""
         index = plugin.PluginsHelpIndex()
-        self.assertFalse(sys.modules.has_key('bzrlib.plugins.demo_module'))
+        self.assertFalse('bzrlib.plugins.demo_module' in sys.modules)
         demo_module = FakeModule('', 'bzrlib.plugins.demo_module')
         sys.modules['bzrlib.plugins.demo_module'] = demo_module
         try:

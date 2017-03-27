@@ -51,7 +51,7 @@ class TestingHTTPSServerMixin:
         if serving:
             try:
                 request.do_handshake()
-            except ssl.SSLError, e:
+            except ssl.SSLError as e:
                 # FIXME: We proabaly want more tests to capture which ssl
                 # errors are worth reporting but mostly our tests want an https
                 # server that works -- vila 2012-01-19

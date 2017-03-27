@@ -381,7 +381,7 @@ class TestingTCPServerMixin(object):
         try:
             sock.shutdown(socket.SHUT_RDWR)
             sock.close()
-        except Exception, e:
+        except Exception as e:
             if self.ignored_exceptions(e):
                 pass
             else:
@@ -559,7 +559,7 @@ class TestingTCPServerInAThread(transport.Server):
             last_conn = None
             try:
                 last_conn = osutils.connect_socket((self.host, self.port))
-            except socket.error, e:
+            except socket.error as e:
                 # But ignore connection errors as the point is to unblock the
                 # server thread, it may happen that it's not blocked or even
                 # not started.
@@ -578,7 +578,7 @@ class TestingTCPServerInAThread(transport.Server):
             # thread
             try:
                 self._server_thread.join()
-            except Exception, e:
+            except Exception as e:
                 if self.server.ignored_exceptions(e):
                     pass
                 else:

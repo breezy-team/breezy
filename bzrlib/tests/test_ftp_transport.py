@@ -146,6 +146,6 @@ class TestFTPErrorTranslation(tests.TestCase):
 
         try:
             raise ftplib.error_temp("Rename/move failure: Directory not empty")
-        except Exception, e:
+        except Exception as e:
             e = self.assertRaises(errors.DirectoryNotEmpty,
                 t._translate_ftp_error, e, "/path")

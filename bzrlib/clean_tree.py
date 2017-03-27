@@ -117,7 +117,7 @@ def delete_items(deletables, dry_run=False):
                 try:
                     os.unlink(path)
                     note('  ' + subp)
-                except OSError, e:
+                except OSError as e:
                     # We handle only permission error here
                     if e.errno != errno.EACCES:
                         raise e

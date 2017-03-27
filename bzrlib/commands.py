@@ -479,7 +479,7 @@ class Command(object):
         purpose,sections,order = self._get_help_parts(doc)
 
         # If a custom usage section was provided, use it
-        if sections.has_key('Usage'):
+        if 'Usage' in sections:
             usage = sections.pop('Usage')
         else:
             usage = self._usage()
@@ -517,7 +517,7 @@ class Command(object):
         if verbose:
             # Add the description, indenting it 2 spaces
             # to match the indentation of the options
-            if sections.has_key(None):
+            if None in sections:
                 text = sections.pop(None)
                 text = '\n  '.join(text.splitlines())
                 result += gettext(':Description:\n  %s\n\n') % (text,)
@@ -577,7 +577,7 @@ class Command(object):
         """
         def save_section(sections, order, label, section):
             if len(section) > 0:
-                if sections.has_key(label):
+                if label in sections:
                     sections[label] += '\n' + section
                 else:
                     order.append(label)
@@ -654,11 +654,11 @@ class Command(object):
         trace.set_verbosity_level(option._verbosity_level)
         if 'verbose' in self.supported_std_options:
             opts['verbose'] = trace.is_verbose()
-        elif opts.has_key('verbose'):
+        elif 'verbose' in opts:
             del opts['verbose']
         if 'quiet' in self.supported_std_options:
             opts['quiet'] = trace.is_quiet()
-        elif opts.has_key('quiet'):
+        elif 'quiet' in opts:
             del opts['quiet']
         # mix arguments and options into one dictionary
         cmdargs = _match_argform(self.name(), self.takes_args, args)
@@ -821,7 +821,7 @@ def parse_args(command, argv, alias_argv=None):
     # option name is given.  See http://bugs.python.org/issue2931
     try:
         options, args = parser.parse_args(args)
-    except UnicodeEncodeError,e:
+    except UnicodeEncodeError as e:
         raise errors.BzrCommandError(
             gettext('Only ASCII permitted in option names'))
 
@@ -928,13 +928,13 @@ def exception_to_return_code(the_callable, *args, **kwargs):
     """
     try:
         return the_callable(*args, **kwargs)
-    except (KeyboardInterrupt, Exception), e:
+    except (KeyboardInterrupt, Exception) as e:
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now
         exc_info = sys.exc_info()
         exitcode = trace.report_exception(exc_info, sys.stderr)
         if os.environ.get('BZR_PDB'):
-            print '**** entering debugger'
+            print('**** entering debugger')
             import pdb
             pdb.post_mortem(exc_info[2])
         return exitcode
@@ -1138,7 +1138,7 @@ def display_command(func):
             result = func(*args, **kwargs)
             sys.stdout.flush()
             return result
-        except IOError, e:
+        except IOError as e:
             if getattr(e, 'errno', None) is None:
                 raise
             if e.errno != errno.EPIPE:
@@ -1229,7 +1229,7 @@ def run_bzr_catch_user_errors(argv):
     install_bzr_command_hooks()
     try:
         return run_bzr(argv)
-    except Exception, e:
+    except Exception as e:
         if (isinstance(e, (OSError, IOError))
             or not getattr(e, 'internal_error', True)):
             trace.report_exception(sys.exc_info(), sys.stderr)

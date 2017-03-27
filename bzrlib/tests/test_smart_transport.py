@@ -764,7 +764,7 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         self.assertIs(None, client_medium._socket)
         try:
             self.assertEqual('', client_sock.recv(1))
-        except socket.error, e:
+        except socket.error as e:
             if e.errno not in (errno.EBADF,):
                 raise
         req = client_medium.get_request()
@@ -1315,7 +1315,7 @@ class TestSmartTCPServer(tests.TestCase):
         try:
             client_sock = self.connect_to_server(server)
             client_sock.close()
-        except socket.error, e:
+        except socket.error as e:
             # If the server has hung up already, that is fine.
             pass
 

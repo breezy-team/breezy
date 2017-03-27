@@ -27,7 +27,7 @@ import warnings
 # update this on each release
 _script_version = (2, 8, 0)
 
-NEED_VERS = (2, 6)
+NEED_VERS = (2, 7)
 
 if sys.version_info < NEED_VERS:
     sys.stderr.write("bzr: error: cannot find a suitable python interpreter\n")
@@ -46,7 +46,7 @@ if os.name == "posix":
     import locale
     try:
         locale.setlocale(locale.LC_ALL, '')
-    except locale.Error, e:
+    except locale.Error as e:
         sys.stderr.write('bzr: warning: %s\n'
             '  bzr could not set the application locale.\n'
             '  Although this should be no problem for bzr itself, it might\n'
@@ -72,7 +72,7 @@ warnings.filterwarnings('ignore',
 sys._bzr_lazy_regex = True
 try:
     import bzrlib
-except ImportError, e:
+except ImportError as e:
     sys.stderr.write("bzr: ERROR: "
         "Couldn't import bzrlib and dependencies.\n"
         "Please check the directory containing bzrlib is on your PYTHONPATH.\n"

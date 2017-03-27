@@ -444,7 +444,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # populated
         try:
             raise _TestException('foobar')
-        except _TestException, e:
+        except _TestException as e:
             retry_exc = errors.RetryWithNewPacks(None, reload_occurred=False,
                                                  exc_info=sys.exc_info())
         # GZ 2010-08-10: Cycle with exc_info affects 3 tests
@@ -943,7 +943,7 @@ class LowLevelKnitIndexTests(TestCase):
             ])
         index = self.get_knit_index(transport, "filename", "r")
         self.assertEqual(1, len(index.keys()))
-        self.assertEqual(set([("version",)]), index.keys())
+        self.assertEqual({("version",)}, index.keys())
 
     def test_read_corrupted_header(self):
         transport = MockTransport(['not a bzr knit index header\n'])
@@ -1026,13 +1026,13 @@ class LowLevelKnitIndexTests(TestCase):
         self.assertEqual(set(), index.keys())
 
         index.add_records([(("a",), ["option"], (("a",), 0, 1), [])])
-        self.assertEqual(set([("a",)]), index.keys())
+        self.assertEqual({("a",)}, index.keys())
 
         index.add_records([(("a",), ["option"], (("a",), 0, 1), [])])
-        self.assertEqual(set([("a",)]), index.keys())
+        self.assertEqual({("a",)}, index.keys())
 
         index.add_records([(("b",), ["option"], (("b",), 0, 1), [])])
-        self.assertEqual(set([("a",), ("b",)]), index.keys())
+        self.assertEqual({("a",), ("b",)}, index.keys())
 
     def add_a_b(self, index, random_id=None):
         kwargs = {}
@@ -1194,7 +1194,7 @@ class LowLevelKnitIndexTests(TestCase):
         index = self.get_knit_index(transport, 'filename', 'r')
         try:
             self.assertRaises(errors.KnitCorrupt, index.keys)
-        except TypeError, e:
+        except TypeError as e:
             if (str(e) == ('exceptions must be strings, classes, or instances,'
                            ' not exceptions.IndexError')):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
@@ -1213,7 +1213,7 @@ class LowLevelKnitIndexTests(TestCase):
         index = self.get_knit_index(transport, 'filename', 'r')
         try:
             self.assertRaises(errors.KnitCorrupt, index.keys)
-        except TypeError, e:
+        except TypeError as e:
             if (str(e) == ('exceptions must be strings, classes, or instances,'
                            ' not exceptions.ValueError')):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
@@ -1232,7 +1232,7 @@ class LowLevelKnitIndexTests(TestCase):
         index = self.get_knit_index(transport, 'filename', 'r')
         try:
             self.assertRaises(errors.KnitCorrupt, index.keys)
-        except TypeError, e:
+        except TypeError as e:
             if (str(e) == ('exceptions must be strings, classes, or instances,'
                            ' not exceptions.ValueError')):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
@@ -1249,7 +1249,7 @@ class LowLevelKnitIndexTests(TestCase):
         index = self.get_knit_index(transport, 'filename', 'r')
         try:
             self.assertRaises(errors.KnitCorrupt, index.keys)
-        except TypeError, e:
+        except TypeError as e:
             if (str(e) == ('exceptions must be strings, classes, or instances,'
                            ' not exceptions.ValueError')):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
@@ -1266,7 +1266,7 @@ class LowLevelKnitIndexTests(TestCase):
         index = self.get_knit_index(transport, 'filename', 'r')
         try:
             self.assertRaises(errors.KnitCorrupt, index.keys)
-        except TypeError, e:
+        except TypeError as e:
             if (str(e) == ('exceptions must be strings, classes, or instances,'
                            ' not exceptions.ValueError')):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
@@ -1291,7 +1291,7 @@ class LowLevelKnitIndexTests(TestCase):
             "b option 10 10 0", # This line isn't terminated, ignored
             ])
         index = self.get_knit_index(transport, "filename", "r")
-        self.assertEqual(set([('a',)]), index.keys())
+        self.assertEqual({('a',)}, index.keys())
 
     def test_skip_incomplete_record(self):
         # A line with bogus data should just be skipped
@@ -1302,7 +1302,7 @@ class LowLevelKnitIndexTests(TestCase):
             "c option 20 10 0 :", # Properly terminated, and starts with '\n'
             ])
         index = self.get_knit_index(transport, "filename", "r")
-        self.assertEqual(set([('a',), ('c',)]), index.keys())
+        self.assertEqual({('a',), ('c',)}, index.keys())
 
     def test_trailing_characters(self):
         # A line with bogus data should just be skipped
@@ -1313,7 +1313,7 @@ class LowLevelKnitIndexTests(TestCase):
             "c option 20 10 0 :", # Properly terminated, and starts with '\n'
             ])
         index = self.get_knit_index(transport, "filename", "r")
-        self.assertEqual(set([('a',), ('c',)]), index.keys())
+        self.assertEqual({('a',), ('c',)}, index.keys())
 
 
 class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
@@ -1549,7 +1549,7 @@ class TestKnitIndex(KnitTests):
             'a-2 fulltext 0 0 0 :\n'
             'a-3 fulltext 0 0 1 :'
             )
-        self.assertEqual(set([('a-3',), ('a-1',), ('a-2',)]), idx.keys())
+        self.assertEqual({('a-3',), ('a-1',), ('a-2',)}, idx.keys())
         self.assertEqual({
             ('a-1',): ((('a-1',), 0, 0), None, (), ('fulltext', False)),
             ('a-2',): ((('a-2',), 0, 0), None, (('a-1',),), ('fulltext', False)),
@@ -1587,7 +1587,7 @@ class TestKnitIndex(KnitTests):
 
         # Assert the pre-condition
         def assertA1Only():
-            self.assertEqual(set([('a-1',)]), set(idx.keys()))
+            self.assertEqual({('a-1',)}, set(idx.keys()))
             self.assertEqual(
                 {('a-1',): ((('a-1',), 0, 0), None, (), ('fulltext', False))},
                 idx.get_build_details([('a-1',)]))
@@ -1662,7 +1662,7 @@ class TestGraphIndexKnit(KnitTests):
 
     def test_keys(self):
         index = self.two_graph_index()
-        self.assertEqual(set([('tail',), ('tip',), ('parent',), ('separate',)]),
+        self.assertEqual({('tail',), ('tip',), ('parent',), ('separate',)},
             set(index.keys()))
 
     def test_get_position(self):
@@ -1964,7 +1964,7 @@ class TestNoParentsGraphIndexKnit(KnitTests):
 
     def test_keys(self):
         index = self.two_graph_index()
-        self.assertEqual(set([('tail',), ('tip',), ('parent',), ('separate',)]),
+        self.assertEqual({('tail',), ('tip',), ('parent',), ('separate',)},
             set(index.keys()))
 
     def test_get_position(self):
@@ -2128,11 +2128,11 @@ class TestKnitVersionedFiles(KnitTests):
             }
         self.assertGroupKeysForIo([([f_a], set())],
                                   [f_a], [], positions)
-        self.assertGroupKeysForIo([([f_a], set([f_a]))],
+        self.assertGroupKeysForIo([([f_a], {f_a})],
                                   [f_a], [f_a], positions)
         self.assertGroupKeysForIo([([f_a, f_b], set([]))],
                                   [f_a, f_b], [], positions)
-        self.assertGroupKeysForIo([([f_a, f_b], set([f_b]))],
+        self.assertGroupKeysForIo([([f_a, f_b], {f_b})],
                                   [f_a, f_b], [f_b], positions)
         self.assertGroupKeysForIo([([f_a, f_b, g_a, g_b], set())],
                                   [f_a, g_a, f_b, g_b], [], positions)
@@ -2235,8 +2235,8 @@ class TestStacking(KnitTests):
         self.assertEqual([(key_basis, 'foo\n'), (key_basis, 'bar\n')], details)
         # Not optimised to date:
         # self.assertEqual([("annotate", key_basis)], basis.calls)
-        self.assertEqual([('get_parent_map', set([key_basis])),
-            ('get_parent_map', set([key_basis])),
+        self.assertEqual([('get_parent_map', {key_basis}),
+            ('get_parent_map', {key_basis}),
             ('get_record_stream', [key_basis], 'topological', True)],
             basis.calls)
 
@@ -2262,7 +2262,7 @@ class TestStacking(KnitTests):
         parent_map = test.get_parent_map([key, key_basis, key_missing])
         self.assertEqual({key: (),
             key_basis: ()}, parent_map)
-        self.assertEqual([("get_parent_map", set([key_basis, key_missing]))],
+        self.assertEqual([("get_parent_map", {key_basis, key_missing})],
             basis.calls)
 
     def test_get_record_stream_unordered_fulltexts(self):
@@ -2299,7 +2299,7 @@ class TestStacking(KnitTests):
         # It's not strictly minimal, but it seems reasonable for now for it to
         # ask which fallbacks have which parents.
         self.assertEqual([
-            ("get_parent_map", set([key_basis, key_missing])),
+            ("get_parent_map", {key_basis, key_missing}),
             ("get_record_stream", [key_basis], 'unordered', True)],
             calls)
 
@@ -2348,7 +2348,7 @@ class TestStacking(KnitTests):
         # It's not strictly minimal, but it seems reasonable for now for it to
         # ask which fallbacks have which parents.
         self.assertEqual([
-            ("get_parent_map", set([key_basis, key_basis_2, key_missing])),
+            ("get_parent_map", {key_basis, key_basis_2, key_missing}),
             # topological is requested from the fallback, because that is what
             # was requested at the top level.
             ("get_record_stream", [key_basis_2, key_basis], 'topological', True)],
@@ -2386,7 +2386,7 @@ class TestStacking(KnitTests):
         # It's not strictly minimal, but it seems reasonable for now for it to
         # ask which fallbacks have which parents.
         self.assertEqual([
-            ("get_parent_map", set([key_basis, key_missing])),
+            ("get_parent_map", {key_basis, key_missing}),
             ("get_record_stream", [key_basis], 'unordered', False)],
             calls)
 
@@ -2432,7 +2432,7 @@ class TestStacking(KnitTests):
         # It's not strictly minimal, but it seems reasonable for now for it to
         # ask which fallbacks have which parents.
         self.assertEqual([
-            ("get_parent_map", set([key_basis, key_basis_2, key_missing])),
+            ("get_parent_map", {key_basis, key_basis_2, key_missing}),
             ("get_record_stream", [key_basis_2, key_basis], 'topological', False)],
             calls)
 
@@ -2456,7 +2456,7 @@ class TestStacking(KnitTests):
         sha1s = test.get_sha1s([key, key_missing, key_basis])
         self.assertEqual({key: key_sha1sum,
             key_basis: basis_sha1sum}, sha1s)
-        self.assertEqual([("get_sha1s", set([key_basis, key_missing]))],
+        self.assertEqual([("get_sha1s", {key_basis, key_missing})],
             basis.calls)
 
     def test_insert_record_stream(self):
@@ -2475,8 +2475,8 @@ class TestStacking(KnitTests):
         test.insert_record_stream(stream)
         # XXX: this does somewhat too many calls in making sure of whether it
         # has to recreate the full text.
-        self.assertEqual([("get_parent_map", set([key_basis])),
-             ('get_parent_map', set([key_basis])),
+        self.assertEqual([("get_parent_map", {key_basis}),
+             ('get_parent_map', {key_basis}),
              ('get_record_stream', [key_basis], 'unordered', True)],
             basis.calls)
         self.assertEqual({key_delta:(key_basis,)},
@@ -2495,7 +2495,7 @@ class TestStacking(KnitTests):
         basis.calls = []
         lines = list(test.iter_lines_added_or_present_in_keys([key1]))
         self.assertEqual([("foo\n", key1)], lines)
-        self.assertEqual([("iter_lines_added_or_present_in_keys", set([key1]))],
+        self.assertEqual([("iter_lines_added_or_present_in_keys", {key1})],
             basis.calls)
         # keys in both are not duplicated:
         test.add_lines(key2, (), ["bar\n"])
@@ -2517,7 +2517,7 @@ class TestStacking(KnitTests):
         basis.add_lines(key1, (), [])
         basis.calls = []
         keys = test.keys()
-        self.assertEqual(set([key1]), set(keys))
+        self.assertEqual({key1}, set(keys))
         self.assertEqual([("keys",)], basis.calls)
         # keys in both are not duplicated:
         test.add_lines(key2, (), [])
@@ -2525,7 +2525,7 @@ class TestStacking(KnitTests):
         basis.calls = []
         keys = test.keys()
         self.assertEqual(2, len(keys))
-        self.assertEqual(set([key1, key2]), set(keys))
+        self.assertEqual({key1, key2}, set(keys))
         self.assertEqual([("keys",)], basis.calls)
 
     def test_add_mpdiffs(self):
@@ -2543,7 +2543,7 @@ class TestStacking(KnitTests):
         diffs = source.make_mpdiffs([key_delta])
         test.add_mpdiffs([(key_delta, (key_basis,),
             source.get_sha1s([key_delta])[key_delta], diffs[0])])
-        self.assertEqual([("get_parent_map", set([key_basis])),
+        self.assertEqual([("get_parent_map", {key_basis}),
             ('get_record_stream', [key_basis], 'unordered', True),],
             basis.calls)
         self.assertEqual({key_delta:(key_basis,)},
@@ -2571,13 +2571,13 @@ class TestStacking(KnitTests):
             diffs)
         self.assertEqual(3, len(basis.calls))
         self.assertEqual([
-            ("get_parent_map", set([key_left, key_right])),
-            ("get_parent_map", set([key_left, key_right])),
+            ("get_parent_map", {key_left, key_right}),
+            ("get_parent_map", {key_left, key_right}),
             ],
             basis.calls[:-1])
         last_call = basis.calls[-1]
         self.assertEqual('get_record_stream', last_call[0])
-        self.assertEqual(set([key_left, key_right]), set(last_call[1]))
+        self.assertEqual({key_left, key_right}, set(last_call[1]))
         self.assertEqual('topological', last_call[2])
         self.assertEqual(True, last_call[3])
 

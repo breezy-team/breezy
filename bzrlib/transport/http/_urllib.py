@@ -71,8 +71,8 @@ class HttpTransport_urllib(http.HttpTransportBase):
         request.proxy_auth = proxy_auth
 
         if self._debuglevel > 0:
-            print 'perform: %s base: %s, url: %s' % (request.method, self.base,
-                                                     request.get_full_url())
+            print('perform: %s base: %s, url: %s' % (request.method, self.base,
+                                                     request.get_full_url()))
         response = self._opener.open(request)
         if self._get_connection() is not request.connection:
             # First connection or reconnection

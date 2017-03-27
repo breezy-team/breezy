@@ -592,12 +592,12 @@ class MultiVersionedFile(BaseVersionedFile):
     def destroy(self):
         try:
             os.unlink(self._filename + '.mpknit')
-        except OSError, e:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
         try:
             os.unlink(self._filename + '.mpidx')
-        except OSError, e:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
 

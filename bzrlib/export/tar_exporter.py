@@ -51,9 +51,9 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
     if entry.kind == "file":
         item.type = tarfile.REGTYPE
         if tree.is_executable(entry.file_id, tree_path):
-            item.mode = 0755
+            item.mode = 0o755
         else:
-            item.mode = 0644
+            item.mode = 0o644
         # This brings the whole file into memory, but that's almost needed for
         # the tarfile contract, which wants the size of the file up front.  We
         # want to make sure it doesn't change, and we need to read it in one
@@ -65,12 +65,12 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
         item.type = tarfile.DIRTYPE
         item.name += '/'
         item.size = 0
-        item.mode = 0755
+        item.mode = 0o755
         fileobj = None
     elif entry.kind == "symlink":
         item.type = tarfile.SYMTYPE
         item.size = 0
-        item.mode = 0755
+        item.mode = 0o755
         item.linkname = tree.get_symlink_target(entry.file_id, tree_path)
         fileobj = None
     else:
@@ -218,7 +218,7 @@ def tar_lzma_exporter_generator(tree, dest, root, subdir,
             "Writing to fileobject not supported for .tar.lzma")
     try:
         import lzma
-    except ImportError, e:
+    except ImportError as e:
         raise errors.DependencyNotPresent('lzma', e)
 
     stream = lzma.LZMAFile(dest.encode(osutils._fs_enc), 'w',

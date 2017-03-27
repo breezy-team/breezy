@@ -169,7 +169,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         target.fetch(stacked_branch.repository, 'third')
         target.lock_read()
         self.addCleanup(target.unlock)
-        all_revs = set(['first', 'second', 'third'])
+        all_revs = {'first', 'second', 'third'}
         self.assertEqual(all_revs, set(target.get_parent_map(all_revs)))
 
     def test_fetch_parent_inventories_at_stacking_boundary_smart(self):
@@ -225,7 +225,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.assertFalse(unstacked_repo.has_revision('left'))
         self.assertFalse(unstacked_repo.has_revision('right'))
         self.assertEqual(
-            set([('left',), ('right',), ('merge',)]),
+            {('left',), ('right',), ('merge',)},
             unstacked_repo.inventories.keys())
         # And the basis inventories have been copied correctly
         trunk.lock_read()
@@ -247,7 +247,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         # present, and also generating a stream should succeed without blowing
         # up.
         self.assertTrue(unstacked_repo.has_revision('merge'))
-        expected_texts = set([('file-id', 'merge')])
+        expected_texts = {('file-id', 'merge')}
         if stacked_branch.repository.texts.get_parent_map([('root-id',
             'merge')]):
             # If a (root-id,merge) text exists, it should be in the stacked
@@ -257,7 +257,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.assertCanStreamRevision(unstacked_repo, 'merge')
 
     def assertCanStreamRevision(self, repo, revision_id):
-        exclude_keys = set(repo.all_revision_ids()) - set([revision_id])
+        exclude_keys = set(repo.all_revision_ids()) - {revision_id}
         search = SearchResult([revision_id], exclude_keys, 1, [revision_id])
         source = repo._get_source(repo._format)
         for substream_kind, substream in source.get_stream(search):
@@ -292,7 +292,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.assertFalse(unstacked_repo.has_revision('second'))
         self.assertFalse(unstacked_repo.has_revision('ghost'))
         self.assertEqual(
-            set([('second',), ('third',)]),
+            {('second',), ('third',)},
             unstacked_repo.inventories.keys())
         # And the basis inventories have been copied correctly
         trunk.lock_read()
@@ -307,7 +307,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         # present, and also generating a stream should succeed without blowing
         # up.
         self.assertTrue(unstacked_repo.has_revision('third'))
-        expected_texts = set([('file-id', 'third')])
+        expected_texts = {('file-id', 'third')}
         if stacked_branch.repository.texts.get_parent_map([('root-id',
             'third')]):
             # If a (root-id,third) text exists, it should be in the stacked
@@ -373,7 +373,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.assertFalse(new_unstacked_repo.has_revision('left'))
         self.assertFalse(new_unstacked_repo.has_revision('right'))
         self.assertEqual(
-            set([('left',), ('right',), ('merge',)]),
+            {('left',), ('right',), ('merge',)},
             new_unstacked_repo.inventories.keys())
         # And the basis inventories have been copied correctly
         new_trunk.lock_read()
@@ -392,7 +392,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         # present, and also generating a stream should succeed without blowing
         # up.
         self.assertTrue(new_unstacked_repo.has_revision('merge'))
-        expected_texts = set([('file-id', 'merge')])
+        expected_texts = {('file-id', 'merge')}
         if new_stacked_branch.repository.texts.get_parent_map([('root-id',
             'merge')]):
             # If a (root-id,merge) text exists, it should be in the stacked
@@ -434,7 +434,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         # generally do).
         try:
             to_repo.fetch(tree.branch.repository, 'rev-two')
-        except (errors.BzrCheckError, errors.RevisionNotPresent), e:
+        except (errors.BzrCheckError, errors.RevisionNotPresent) as e:
             # If an exception is raised, the revision should not be in the
             # target.
             #

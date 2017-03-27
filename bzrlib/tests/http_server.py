@@ -80,7 +80,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         """
         try:
             self._handle_one_request()
-        except socket.error, e:
+        except socket.error as e:
             # Any socket error should close the connection, but some errors are
             # due to the client closing early and we don't want to pollute test
             # results, so we raise only the others.

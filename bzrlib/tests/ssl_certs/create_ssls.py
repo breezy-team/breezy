@@ -62,7 +62,7 @@ from bzrlib.tests import (
     )
 
 def error(s):
-    print s
+    print(s)
     exit(1)
 
 def needs(request, *paths):

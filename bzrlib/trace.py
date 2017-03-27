@@ -229,12 +229,12 @@ def _open_bzr_log():
             try:
                 fd = os.open(filename, flags)
                 break
-            except OSError, e:
+            except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
             try:
-                fd = os.open(filename, flags | os.O_CREAT | os.O_EXCL, 0666)
-            except OSError, e:
+                fd = os.open(filename, flags | os.O_CREAT | os.O_EXCL, 0o666)
+            except OSError as e:
                 if e.errno != errno.EEXIST:
                     raise
             else:
@@ -255,7 +255,7 @@ def _open_bzr_log():
 
         return bzr_log_file
 
-    except EnvironmentError, e:
+    except EnvironmentError as e:
         # If we are failing to open the log, then most likely logging has not
         # been set up yet. So we just write to stderr rather than using
         # 'warning()'. If we using warning(), users get the unhelpful 'no
@@ -332,13 +332,14 @@ def push_log_file(to_file, log_format=None, date_format=None):
     return ('log_memento', old_handlers, new_handler, old_trace_file, to_file)
 
 
-def pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_file)):
+def pop_log_file(entry):
     """Undo changes to logging/tracing done by _push_log_file.
 
     This flushes, but does not close the trace file (so that anything that was
     in it is output.
 
     Takes the memento returned from _push_log_file."""
+    (magic, old_handlers, new_handler, old_trace_file, new_trace_file) = entry
     global _trace_file
     _trace_file = old_trace_file
     bzr_logger = logging.getLogger('bzr')
@@ -549,11 +550,11 @@ def _flush_stdout_stderr():
     try:
         sys.stdout.flush()
         sys.stderr.flush()
-    except ValueError, e:
+    except ValueError as e:
         # On Windows, I get ValueError calling stdout.flush() on a closed
         # handle
         pass
-    except IOError, e:
+    except IOError as e:
         import errno
         if e.errno in [errno.EINVAL, errno.EPIPE]:
             pass

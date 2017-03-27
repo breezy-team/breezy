@@ -128,7 +128,7 @@ read_locked = %(name)s_read_locked
 
     scope = dict(defaults_dict)
     scope['unbound'] = unbound
-    exec func_def in scope
+    exec(func_def, scope)
     read_locked = scope['read_locked']
 
     read_locked.__doc__ = unbound.__doc__
@@ -202,7 +202,7 @@ write_locked = %(name)s_write_locked
 
     scope = dict(defaults_dict)
     scope['unbound'] = unbound
-    exec func_def in scope
+    exec(func_def, scope)
     write_locked = scope['write_locked']
 
     write_locked.__doc__ = unbound.__doc__

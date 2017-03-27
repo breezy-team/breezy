@@ -78,7 +78,7 @@ class TestInventory(per_tree.TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual(set(['dir-id', 'file-id']), tree.paths2ids(['dir']))
+        self.assertEqual({'dir-id', 'file-id'}, tree.paths2ids(['dir']))
 
     def test_paths2ids_forget_old(self):
         work_tree = self.make_branch_and_tree('tree')

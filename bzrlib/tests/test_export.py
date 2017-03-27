@@ -131,7 +131,7 @@ class TestDirExport(tests.TestCaseWithTransport):
         builder.start_series()
         # Earliest allowable date on FAT32 filesystems is 1980-01-01
         a_time = time.mktime((1999, 12, 12, 0, 0, 0, 0, 0, 0))
-        b_time = time.mktime((1980, 01, 01, 0, 0, 0, 0, 0, 0))
+        b_time = time.mktime((1980, 0o1, 0o1, 0, 0, 0, 0, 0, 0))
         builder.build_snapshot(None, None, [
             ('add', ('', 'root-id', 'directory', '')),
             ('add', ('a', 'a-id', 'file', 'content\n'))],

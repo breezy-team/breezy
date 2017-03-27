@@ -302,7 +302,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         t = _mod_transport.get_transport_from_url(self.bogus_url)
         try:
             self.assertRaises(errors.ConnectionError, t.get, 'foobar')
-        except NameError, e:
+        except NameError as e:
             if "global name 'SSHException'" in str(e):
                 self.knownFailure('Known NameError bug in paramiko 1.6.1')
             raise

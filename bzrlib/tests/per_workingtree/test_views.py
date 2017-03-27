@@ -116,7 +116,7 @@ class TestTreeViews(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('wt')
         try:
             wt.views.lookup_view('opaque')
-        except errors.NoSuchView, e:
+        except errors.NoSuchView as e:
             self.assertEqual(e.view_name, 'opaque')
             self.assertEqual(str(e), 'No such view: opaque.')
         else:

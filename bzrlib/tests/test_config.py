@@ -464,7 +464,7 @@ class TestConfigObjErrors(tests.TestCase):
         try:
             co = configobj.ConfigObj(StringIO(erroneous_config),
                                      raise_errors=True)
-        except config.configobj.DuplicateError, e:
+        except config.configobj.DuplicateError as e:
             self.assertEqual(3, e.line_number)
         else:
             self.fail('Error in config file not detected')
@@ -2679,7 +2679,7 @@ class TestStoreMinimalAPI(tests.TestCaseWithTransport):
 
     def test_id(self):
         store = self.get_store(self)
-        if type(store) == config.TransportIniFileStore:
+        if isinstance(store, config.TransportIniFileStore):
             raise tests.TestNotApplicable(
                 "%s is not a concrete Store implementation"
                 " so it doesn't need an id" % (store.__class__.__name__,))

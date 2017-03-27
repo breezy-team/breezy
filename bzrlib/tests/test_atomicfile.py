@@ -94,27 +94,27 @@ class TestAtomicFile(TestCaseInTempDir):
         self.assertEqualMode(mode, stat.S_IMODE(st.st_mode))
 
     def test_mode_0666(self):
-        self._test_mode(0666)
+        self._test_mode(0o666)
 
     def test_mode_0664(self):
-        self._test_mode(0664)
+        self._test_mode(0o664)
 
     def test_mode_0660(self):
-        self._test_mode(0660)
+        self._test_mode(0o660)
 
     def test_mode_0660(self):
-        self._test_mode(0660)
+        self._test_mode(0o660)
 
     def test_mode_0640(self):
-        self._test_mode(0640)
+        self._test_mode(0o640)
 
     def test_mode_0600(self):
-        self._test_mode(0600)
+        self._test_mode(0o600)
 
     def test_mode_0400(self):
-        self._test_mode(0400)
+        self._test_mode(0o400)
         # Make it read-write again so cleanup doesn't complain
-        os.chmod('test', 0600)
+        os.chmod('test', 0o600)
 
     def test_no_mode(self):
         # The default file permissions should be based on umask
@@ -123,4 +123,4 @@ class TestAtomicFile(TestCaseInTempDir):
         f.write('foo\n')
         f.commit()
         st = os.lstat('test')
-        self.assertEqualMode(0666 & ~umask, stat.S_IMODE(st.st_mode))
+        self.assertEqualMode(0o666 & ~umask, stat.S_IMODE(st.st_mode))

@@ -175,7 +175,7 @@ class TransportStore(Store):
         raise NotImplementedError('children need to implement this function.')
 
     def _check_fileid(self, fileid):
-        if type(fileid) != str:
+        if not isinstance(fileid, str):
             raise TypeError('Fileids should be bytestrings: %s %r' % (
                 type(fileid), fileid))
         if '\\' in fileid or '/' in fileid:

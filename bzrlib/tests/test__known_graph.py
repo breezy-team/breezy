@@ -216,112 +216,112 @@ class TestKnownGraphHeads(TestCaseWithKnownGraph):
 
     def test_heads_null(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
-        self.assertEqual(set(['null:']), graph.heads(['null:']))
-        self.assertEqual(set(['rev1']), graph.heads(['null:', 'rev1']))
-        self.assertEqual(set(['rev1']), graph.heads(['rev1', 'null:']))
-        self.assertEqual(set(['rev1']), graph.heads(set(['rev1', 'null:'])))
-        self.assertEqual(set(['rev1']), graph.heads(('rev1', 'null:')))
+        self.assertEqual({'null:'}, graph.heads(['null:']))
+        self.assertEqual({'rev1'}, graph.heads(['null:', 'rev1']))
+        self.assertEqual({'rev1'}, graph.heads(['rev1', 'null:']))
+        self.assertEqual({'rev1'}, graph.heads({'rev1', 'null:'}))
+        self.assertEqual({'rev1'}, graph.heads(('rev1', 'null:')))
 
     def test_heads_one(self):
         # A single node will always be a head
         graph = self.make_known_graph(test_graph.ancestry_1)
-        self.assertEqual(set(['null:']), graph.heads(['null:']))
-        self.assertEqual(set(['rev1']), graph.heads(['rev1']))
-        self.assertEqual(set(['rev2a']), graph.heads(['rev2a']))
-        self.assertEqual(set(['rev2b']), graph.heads(['rev2b']))
-        self.assertEqual(set(['rev3']), graph.heads(['rev3']))
-        self.assertEqual(set(['rev4']), graph.heads(['rev4']))
+        self.assertEqual({'null:'}, graph.heads(['null:']))
+        self.assertEqual({'rev1'}, graph.heads(['rev1']))
+        self.assertEqual({'rev2a'}, graph.heads(['rev2a']))
+        self.assertEqual({'rev2b'}, graph.heads(['rev2b']))
+        self.assertEqual({'rev3'}, graph.heads(['rev3']))
+        self.assertEqual({'rev4'}, graph.heads(['rev4']))
 
     def test_heads_single(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
-        self.assertEqual(set(['rev4']), graph.heads(['null:', 'rev4']))
-        self.assertEqual(set(['rev2a']), graph.heads(['rev1', 'rev2a']))
-        self.assertEqual(set(['rev2b']), graph.heads(['rev1', 'rev2b']))
-        self.assertEqual(set(['rev3']), graph.heads(['rev1', 'rev3']))
-        self.assertEqual(set(['rev3']), graph.heads(['rev3', 'rev2a']))
-        self.assertEqual(set(['rev4']), graph.heads(['rev1', 'rev4']))
-        self.assertEqual(set(['rev4']), graph.heads(['rev2a', 'rev4']))
-        self.assertEqual(set(['rev4']), graph.heads(['rev2b', 'rev4']))
-        self.assertEqual(set(['rev4']), graph.heads(['rev3', 'rev4']))
+        self.assertEqual({'rev4'}, graph.heads(['null:', 'rev4']))
+        self.assertEqual({'rev2a'}, graph.heads(['rev1', 'rev2a']))
+        self.assertEqual({'rev2b'}, graph.heads(['rev1', 'rev2b']))
+        self.assertEqual({'rev3'}, graph.heads(['rev1', 'rev3']))
+        self.assertEqual({'rev3'}, graph.heads(['rev3', 'rev2a']))
+        self.assertEqual({'rev4'}, graph.heads(['rev1', 'rev4']))
+        self.assertEqual({'rev4'}, graph.heads(['rev2a', 'rev4']))
+        self.assertEqual({'rev4'}, graph.heads(['rev2b', 'rev4']))
+        self.assertEqual({'rev4'}, graph.heads(['rev3', 'rev4']))
 
     def test_heads_two_heads(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
-        self.assertEqual(set(['rev2a', 'rev2b']),
+        self.assertEqual({'rev2a', 'rev2b'},
                          graph.heads(['rev2a', 'rev2b']))
-        self.assertEqual(set(['rev3', 'rev2b']),
+        self.assertEqual({'rev3', 'rev2b'},
                          graph.heads(['rev3', 'rev2b']))
 
     def test_heads_criss_cross(self):
         graph = self.make_known_graph(test_graph.criss_cross)
-        self.assertEqual(set(['rev2a']),
+        self.assertEqual({'rev2a'},
                          graph.heads(['rev2a', 'rev1']))
-        self.assertEqual(set(['rev2b']),
+        self.assertEqual({'rev2b'},
                          graph.heads(['rev2b', 'rev1']))
-        self.assertEqual(set(['rev3a']),
+        self.assertEqual({'rev3a'},
                          graph.heads(['rev3a', 'rev1']))
-        self.assertEqual(set(['rev3b']),
+        self.assertEqual({'rev3b'},
                          graph.heads(['rev3b', 'rev1']))
-        self.assertEqual(set(['rev2a', 'rev2b']),
+        self.assertEqual({'rev2a', 'rev2b'},
                          graph.heads(['rev2a', 'rev2b']))
-        self.assertEqual(set(['rev3a']),
+        self.assertEqual({'rev3a'},
                          graph.heads(['rev3a', 'rev2a']))
-        self.assertEqual(set(['rev3a']),
+        self.assertEqual({'rev3a'},
                          graph.heads(['rev3a', 'rev2b']))
-        self.assertEqual(set(['rev3a']),
+        self.assertEqual({'rev3a'},
                          graph.heads(['rev3a', 'rev2a', 'rev2b']))
-        self.assertEqual(set(['rev3b']),
+        self.assertEqual({'rev3b'},
                          graph.heads(['rev3b', 'rev2a']))
-        self.assertEqual(set(['rev3b']),
+        self.assertEqual({'rev3b'},
                          graph.heads(['rev3b', 'rev2b']))
-        self.assertEqual(set(['rev3b']),
+        self.assertEqual({'rev3b'},
                          graph.heads(['rev3b', 'rev2a', 'rev2b']))
-        self.assertEqual(set(['rev3a', 'rev3b']),
+        self.assertEqual({'rev3a', 'rev3b'},
                          graph.heads(['rev3a', 'rev3b']))
-        self.assertEqual(set(['rev3a', 'rev3b']),
+        self.assertEqual({'rev3a', 'rev3b'},
                          graph.heads(['rev3a', 'rev3b', 'rev2a', 'rev2b']))
 
     def test_heads_shortcut(self):
         graph = self.make_known_graph(test_graph.history_shortcut)
-        self.assertEqual(set(['rev2a', 'rev2b', 'rev2c']),
+        self.assertEqual({'rev2a', 'rev2b', 'rev2c'},
                          graph.heads(['rev2a', 'rev2b', 'rev2c']))
-        self.assertEqual(set(['rev3a', 'rev3b']),
+        self.assertEqual({'rev3a', 'rev3b'},
                          graph.heads(['rev3a', 'rev3b']))
-        self.assertEqual(set(['rev3a', 'rev3b']),
+        self.assertEqual({'rev3a', 'rev3b'},
                          graph.heads(['rev2a', 'rev3a', 'rev3b']))
-        self.assertEqual(set(['rev2a', 'rev3b']),
+        self.assertEqual({'rev2a', 'rev3b'},
                          graph.heads(['rev2a', 'rev3b']))
-        self.assertEqual(set(['rev2c', 'rev3a']),
+        self.assertEqual({'rev2c', 'rev3a'},
                          graph.heads(['rev2c', 'rev3a']))
 
     def test_heads_linear(self):
         graph = self.make_known_graph(test_graph.racing_shortcuts)
-        self.assertEqual(set(['w']), graph.heads(['w', 's']))
-        self.assertEqual(set(['z']), graph.heads(['w', 's', 'z']))
-        self.assertEqual(set(['w', 'q']), graph.heads(['w', 's', 'q']))
-        self.assertEqual(set(['z']), graph.heads(['s', 'z']))
+        self.assertEqual({'w'}, graph.heads(['w', 's']))
+        self.assertEqual({'z'}, graph.heads(['w', 's', 'z']))
+        self.assertEqual({'w', 'q'}, graph.heads(['w', 's', 'q']))
+        self.assertEqual({'z'}, graph.heads(['s', 'z']))
 
     def test_heads_alt_merge(self):
         graph = self.make_known_graph(alt_merge)
-        self.assertEqual(set(['c']), graph.heads(['a', 'c']))
+        self.assertEqual({'c'}, graph.heads(['a', 'c']))
 
     def test_heads_with_ghost(self):
         graph = self.make_known_graph(test_graph.with_ghost)
-        self.assertEqual(set(['e', 'g']), graph.heads(['e', 'g']))
-        self.assertEqual(set(['a', 'c']), graph.heads(['a', 'c']))
-        self.assertEqual(set(['a', 'g']), graph.heads(['a', 'g']))
-        self.assertEqual(set(['f', 'g']), graph.heads(['f', 'g']))
-        self.assertEqual(set(['c']), graph.heads(['c', 'g']))
-        self.assertEqual(set(['c']), graph.heads(['c', 'b', 'd', 'g']))
-        self.assertEqual(set(['a', 'c']), graph.heads(['a', 'c', 'e', 'g']))
-        self.assertEqual(set(['a', 'c']), graph.heads(['a', 'c', 'f']))
+        self.assertEqual({'e', 'g'}, graph.heads(['e', 'g']))
+        self.assertEqual({'a', 'c'}, graph.heads(['a', 'c']))
+        self.assertEqual({'a', 'g'}, graph.heads(['a', 'g']))
+        self.assertEqual({'f', 'g'}, graph.heads(['f', 'g']))
+        self.assertEqual({'c'}, graph.heads(['c', 'g']))
+        self.assertEqual({'c'}, graph.heads(['c', 'b', 'd', 'g']))
+        self.assertEqual({'a', 'c'}, graph.heads(['a', 'c', 'e', 'g']))
+        self.assertEqual({'a', 'c'}, graph.heads(['a', 'c', 'f']))
 
     def test_filling_in_ghosts_resets_head_cache(self):
         graph = self.make_known_graph(test_graph.with_ghost)
-        self.assertEqual(set(['e', 'g']), graph.heads(['e', 'g']))
+        self.assertEqual({'e', 'g'}, graph.heads(['e', 'g']))
         # 'g' is filled in, and decends from 'e', so the heads result is now
         # different
         graph.add_node('g', ['e'])
-        self.assertEqual(set(['g']), graph.heads(['e', 'g']))
+        self.assertEqual({'g'}, graph.heads(['e', 'g']))
 
 
 class TestKnownGraphTopoSort(TestCaseWithKnownGraph):

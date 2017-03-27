@@ -88,7 +88,7 @@ class FakeVFATTransportDecorator(decorator.TransportDecorator):
         return self._decorated.get(self._squash_name(relpath))
 
     def mkdir(self, relpath, mode=None):
-        return self._decorated.mkdir(self._squash_name(relpath), 0755)
+        return self._decorated.mkdir(self._squash_name(relpath), 0o755)
 
     def has(self, relpath):
         return self._decorated.has(self._squash_name(relpath))

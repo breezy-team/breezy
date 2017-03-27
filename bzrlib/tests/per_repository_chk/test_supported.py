@@ -45,7 +45,7 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
                 self.assertEqual('4e48e2c9a3d2ca8a708cb0cc545700544efb5021',
                     sha1)
                 self.assertEqual(
-                    set([('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)]),
+                    {('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)},
                     repo.chk_bytes.keys())
             except:
                 repo.abort_write_group()
@@ -58,7 +58,7 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
         repo.lock_read()
         try:
             self.assertEqual(
-                set([('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)]),
+                {('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)},
                 repo.chk_bytes.keys())
         finally:
             repo.unlock()
@@ -67,7 +67,7 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
         repo.lock_read()
         try:
             self.assertEqual(
-                set([('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)]),
+                {('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)},
                 repo.chk_bytes.keys())
         finally:
             repo.unlock()
@@ -78,7 +78,7 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
         node_lines = ["chknode:\n", "0\n", "1\n", "1\n", "foo\n",
                       "\x00sha1:%s\n" % (leaf_sha1,)]
         node_sha1 = osutils.sha_strings(node_lines)
-        expected_set = set([('sha1:' + leaf_sha1,), ('sha1:' + node_sha1,)])
+        expected_set = {('sha1:' + leaf_sha1,), ('sha1:' + node_sha1,)}
         repo = self.make_repository('.')
         repo.lock_write()
         try:
@@ -123,7 +123,7 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
             self.assertEqual('4e48e2c9a3d2ca8a708cb0cc545700544efb5021',
                 sha1)
             self.assertEqual(
-                set([('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)]),
+                {('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)},
                 repo.chk_bytes.keys())
         except:
             repo.abort_write_group()

@@ -1216,13 +1216,13 @@ class TestHttpProxyWhiteBox(tests.TestCase):
     def test_empty_user(self):
         self.overrideEnv('http_proxy', 'http://bar.com')
         request = self._proxied_request()
-        self.assertFalse(request.headers.has_key('Proxy-authorization'))
+        self.assertFalse('Proxy-authorization' in request.headers)
 
     def test_user_with_at(self):
         self.overrideEnv('http_proxy',
                          'http://username@domain:password@proxy_host:1234')
         request = self._proxied_request()
-        self.assertFalse(request.headers.has_key('Proxy-authorization'))
+        self.assertFalse('Proxy-authorization' in request.headers)
 
     def test_invalid_proxy(self):
         """A proxy env variable without scheme"""
@@ -1816,7 +1816,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.assertEqual(1, self.server.auth_required_errors)
 
     def test_no_credential_leaks_in_log(self):
-        self.overrideAttr(debug, 'debug_flags', set(['http']))
+        self.overrideAttr(debug, 'debug_flags', {'http'})
         user = 'joe'
         password = 'very-sensitive-password'
         self.server.add_user(user, password)

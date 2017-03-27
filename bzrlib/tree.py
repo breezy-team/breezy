@@ -837,8 +837,7 @@ class InventoryTree(Tree):
         return inventory.has_id(file_id)
 
     def all_file_ids(self):
-        return set(
-            [entry.file_id for path, entry in self.iter_entries_by_dir()])
+        return {entry.file_id for path, entry in self.iter_entries_by_dir()}
 
     @deprecated_method(deprecated_in((2, 4, 0)))
     def __iter__(self):

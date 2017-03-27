@@ -41,7 +41,7 @@ class cmd_ping(Command):
         transport = get_transport(location)
         try:
             medium = transport.get_smart_medium()
-        except errors.NoSmartMedium, e:
+        except errors.NoSmartMedium as e:
             raise errors.BzrCommandError(str(e))
         client = _SmartClient(medium)
         # Use call_expecting_body (even though we don't expect a body) so that

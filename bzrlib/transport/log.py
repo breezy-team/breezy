@@ -91,7 +91,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
         before = time.time()
         try:
             result = getattr(self._decorated, methodname)(*args, **kwargs)
-        except Exception, e:
+        except Exception as e:
             mutter("  --> %s" % e)
             mutter("      %.03fs" % (time.time() - before))
             raise

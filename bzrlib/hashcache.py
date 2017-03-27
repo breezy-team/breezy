@@ -127,8 +127,7 @@ class HashCache(object):
         """
         # FIXME optimisation opportunity, on linux [and check other oses]:
         # rather than iteritems order, stat in inode order.
-        prep = [(ce[1][3], path, ce) for (path, ce) in self._cache.iteritems()]
-        prep.sort()
+        prep = sorted([(ce[1][3], path, ce) for (path, ce) in self._cache.iteritems()])
 
         for inum, path, cache_entry in prep:
             abspath = osutils.pathjoin(self.root, path)
@@ -256,7 +255,7 @@ class HashCache(object):
         fn = self.cache_file_name()
         try:
             inf = file(fn, 'rb', buffering=65000)
-        except IOError, e:
+        except IOError as e:
             trace.mutter("failed to open %s: %s", fn, e)
             # better write it now so it is valid
             self.needs_write = True

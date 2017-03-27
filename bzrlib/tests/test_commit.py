@@ -589,7 +589,7 @@ create_signatures=always
         this_tree.merge_from_branch(other_tree.branch)
         reporter = CapturingReporter()
         this_tree.commit('do the commit', reporter=reporter)
-        expected = set([
+        expected = {
             ('change', 'modified', 'filetomodify'),
             ('change', 'added', 'newdir'),
             ('change', 'added', 'newfile'),
@@ -599,7 +599,7 @@ create_signatures=always
             ('renamed', 'renamed', 'filetoreparent', 'renameddir/reparentedfile'),
             ('deleted', 'dirtoremove'),
             ('deleted', 'filetoremove'),
-            ])
+            }
         result = set(reporter.calls)
         missing = expected - result
         new = result - expected
@@ -720,7 +720,7 @@ create_signatures=always
         tree = self.make_branch_and_tree('.')
         try:
             tree.commit()
-        except Exception, e:
+        except Exception as e:
             self.assertTrue(isinstance(e, BzrError))
             self.assertEqual('The message or message_callback keyword'
                              ' parameter is required for commit().', str(e))

@@ -93,7 +93,7 @@ class TestTransport(tests.TestCase):
             'foo', 'bzrlib.tests.test_transport', 'BadTransportHandler')
         try:
             transport.get_transport_from_url('foo://fooserver/foo')
-        except errors.UnsupportedProtocol, e:
+        except errors.UnsupportedProtocol as e:
             e_str = str(e)
             self.assertEqual('Unsupported protocol'
                                 ' for url "foo://fooserver/foo":'
@@ -119,7 +119,7 @@ class TestTransport(tests.TestCase):
         """Transport ssh:// should raise an error pointing out bzr+ssh://"""
         try:
             transport.get_transport_from_url('ssh://fooserver/foo')
-        except errors.UnsupportedProtocol, e:
+        except errors.UnsupportedProtocol as e:
             e_str = str(e)
             self.assertEqual('Unsupported protocol'
                               ' for url "ssh://fooserver/foo":'
@@ -134,7 +134,7 @@ class TestTransport(tests.TestCase):
         a_file = transport.LateReadError('a path')
         try:
             a_file.read()
-        except errors.ReadError, error:
+        except errors.ReadError as error:
             self.assertEqual('a path', error.path)
         self.assertRaises(errors.ReadError, a_file.read, 40)
         a_file.close()
@@ -342,7 +342,7 @@ class TestMemoryTransport(tests.TestCase):
         t.put_bytes('dir/bar', 'content')
         t.put_bytes('bar', 'content')
         paths = set(t.iter_files_recursive())
-        self.assertEqual(set(['dir/foo', 'dir/bar', 'bar']), paths)
+        self.assertEqual({'dir/foo', 'dir/bar', 'bar'}, paths)
 
     def test_stat(self):
         t = memory.MemoryTransport()
@@ -780,7 +780,7 @@ class TestLocalTransportMutation(tests.TestCaseInTempDir):
             raise e
         self.overrideAttr(os, 'chmod', fake_chmod)
         t.mkdir('test')
-        t.mkdir('test2', mode=0707)
+        t.mkdir('test2', mode=0o707)
         self.assertTrue(os.path.exists('test'))
         self.assertTrue(os.path.exists('test2'))
 

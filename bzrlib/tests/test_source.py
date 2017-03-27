@@ -280,9 +280,8 @@ class TestSource(TestSourceHelper):
             dict_[fname].append(line_no)
 
     def _format_message(self, dict_, message):
-        files = ["%s: %s" % (f, ', '.join([str(i + 1) for i in lines]))
-                for f, lines in dict_.items()]
-        files.sort()
+        files = sorted(["%s: %s" % (f, ', '.join([str(i + 1) for i in lines]))
+                for f, lines in dict_.items()])
         return message + '\n\n    %s' % ('\n    '.join(files))
 
     def test_coding_style(self):
@@ -383,7 +382,7 @@ class TestSource(TestSourceHelper):
             r'\s*(#\s*cannot[- _]raise)?')  # cannot raise comment
         for fname, text in self.get_source_file_contents(
                 extensions=('.pyx',)):
-            known_classes = set([m[-1] for m in class_re.findall(text)])
+            known_classes = {m[-1] for m in class_re.findall(text)}
             known_classes.update(extern_class_re.findall(text))
             cdefs = except_re.findall(text)
             for sig, func, exc_clause, no_exc_comment in cdefs:

@@ -71,19 +71,19 @@ class _RpcHelper(object):
     def _call(self, method, *args, **err_context):
         try:
             return self._client.call(method, *args)
-        except errors.ErrorFromSmartServer, err:
+        except errors.ErrorFromSmartServer as err:
             self._translate_error(err, **err_context)
 
     def _call_expecting_body(self, method, *args, **err_context):
         try:
             return self._client.call_expecting_body(method, *args)
-        except errors.ErrorFromSmartServer, err:
+        except errors.ErrorFromSmartServer as err:
             self._translate_error(err, **err_context)
 
     def _call_with_body_bytes(self, method, args, body_bytes, **err_context):
         try:
             return self._client.call_with_body_bytes(method, args, body_bytes)
-        except errors.ErrorFromSmartServer, err:
+        except errors.ErrorFromSmartServer as err:
             self._translate_error(err, **err_context)
 
     def _call_with_body_bytes_expecting_body(self, method, args, body_bytes,
@@ -91,7 +91,7 @@ class _RpcHelper(object):
         try:
             return self._client.call_with_body_bytes_expecting_body(
                 method, args, body_bytes)
-        except errors.ErrorFromSmartServer, err:
+        except errors.ErrorFromSmartServer as err:
             self._translate_error(err, **err_context)
 
 
@@ -159,7 +159,7 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         path = client.remote_path_from_transport(transport)
         try:
             response = client.call('BzrDirFormat.initialize', path)
-        except errors.ErrorFromSmartServer, err:
+        except errors.ErrorFromSmartServer as err:
             _translate_error(err, path=path)
         if response[0] != 'ok':
             raise errors.SmartProtocolError('unexpected response code %s' % (response,))
@@ -265,7 +265,7 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
                 stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
                 make_working_trees=make_working_trees, shared_repo=shared_repo,
                 vfs_only=True)
-        except errors.ErrorFromSmartServer, err:
+        except errors.ErrorFromSmartServer as err:
             _translate_error(err, path=path)
         repo_path = response[0]
         bzrdir_name = response[6]
@@ -558,7 +558,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         except errors.UnknownSmartMethod:
             medium._remember_remote_is_before((1, 13))
             return self._vfs_cloning_metadir(require_stacking=require_stacking)
-        except errors.UnknownErrorFromSmartServer, err:
+        except errors.UnknownErrorFromSmartServer as err:
             if err.error_tuple != ('BranchReference',):
                 raise
             # We need to resolve the branch reference to determine the
@@ -1219,7 +1219,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         try:
             response = self._call('Repository.abort_write_group', path,
                 self._lock_token, self._write_group_tokens)
-        except Exception, exc:
+        except Exception as exc:
             self._write_group = None
             if not suppress_errors:
                 raise
@@ -2324,7 +2324,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         body = self._serialise_search_recipe(recipe)
         path = self.bzrdir._path_for_remote_call(self._client)
         for key in keys:
-            if type(key) is not str:
+            if not isinstance(key, str):
                 raise ValueError(
                     "key %r not a plain string" % (key,))
         verb = 'Repository.get_parent_map'
@@ -2381,7 +2381,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         except errors.UnknownSmartMethod:
             self._ensure_real()
             return self._real_repository.get_signature_text(revision_id)
-        except errors.NoSuchRevision, err:
+        except errors.NoSuchRevision as err:
             for fallback in self._fallback_repositories:
                 try:
                     return fallback.get_signature_text(revision_id)
@@ -3000,7 +3000,7 @@ class RemoteStreamSource(vf_repository.StreamSource):
                     verb, args, search_bytes)
             except errors.UnknownSmartMethod:
                 medium._remember_remote_is_before(version)
-            except errors.UnknownErrorFromSmartServer, e:
+            except errors.UnknownErrorFromSmartServer as e:
                 if isinstance(search, vf_search.EverythingResult):
                     error_verb = e.error_from_smart_server.error_verb
                     if error_verb == 'BadSearch':
@@ -3380,7 +3380,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         try:
             fallback_url = self.get_stacked_on_url()
         except (errors.NotStacked, errors.UnstackableBranchFormat,
-            errors.UnstackableRepositoryFormat), e:
+            errors.UnstackableRepositoryFormat) as e:
             return
         self._is_stacked = True
         if possible_transports is None:
@@ -3505,11 +3505,11 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             # self._translate_error, so we can't use self._call either.
             response = self._client.call('Branch.get_stacked_on_url',
                 self._remote_path())
-        except errors.ErrorFromSmartServer, err:
+        except errors.ErrorFromSmartServer as err:
             # there may not be a repository yet, so we can't call through
             # its _translate_error
             _translate_error(err, branch=self)
-        except errors.UnknownSmartMethod, err:
+        except errors.UnknownSmartMethod as err:
             self._ensure_real()
             return self._real_branch.get_stacked_on_url()
         if response[0] != 'ok':
@@ -3599,7 +3599,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             response = self._call(
                 'Branch.lock_write', self._remote_path(), branch_token,
                 repo_token or '', **err_context)
-        except errors.LockContention, e:
+        except errors.LockContention as e:
             # The LockContention from the server doesn't have any
             # information about the lock_url. We re-raise LockContention
             # with valid lock_url.
@@ -3820,7 +3820,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             return self._vfs_set_parent_location(url)
         try:
             call_url = url or ''
-            if type(call_url) is not str:
+            if not isinstance(call_url, str):
                 raise AssertionError('url must be a str or None (%s)' % url)
             response = self._call('Branch.set_parent_location',
                 self._remote_path(), self._lock_token, self._repo_lock_token,
@@ -4165,7 +4165,7 @@ def _translate_error(err, **context):
     def find(name):
         try:
             return context[name]
-        except KeyError, key_err:
+        except KeyError as key_err:
             mutter('Missing key %r in context %r', key_err.args[0], context)
             raise err
     def get_path():
@@ -4174,10 +4174,10 @@ def _translate_error(err, **context):
         """
         try:
             return context['path']
-        except KeyError, key_err:
+        except KeyError as key_err:
             try:
                 return err.error_args[0]
-            except IndexError, idx_err:
+            except IndexError as idx_err:
                 mutter(
                     'Missing key %r in context %r', key_err.args[0], context)
                 raise err

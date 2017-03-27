@@ -50,7 +50,7 @@ class DummyForeignVcsMapping(foreign.VcsMapping):
     """A simple mapping for the dummy Foreign VCS, for use with testing."""
 
     def __eq__(self, other):
-        return type(self) == type(other)
+        return isinstance(self, type(other))
 
     def revision_id_bzr_to_foreign(self, bzr_revid):
         return tuple(bzr_revid[len("dummy-v1:"):].split("-")), self
@@ -376,7 +376,7 @@ class DummyForeignProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
-        return set([DummyForeignVcsDirFormat()])
+        return {DummyForeignVcsDirFormat()}
 
 
 class ForeignVcsRegistryTests(tests.TestCase):
@@ -432,7 +432,7 @@ class WorkingTreeFileUpdateTests(tests.TestCaseWithTransport):
         foreign.update_workingtree_fileids(wt, target_basis)
         wt.lock_read()
         try:
-            self.assertEqual(set([root_id, "bla-b"]), set(wt.all_file_ids()))
+            self.assertEqual({root_id, "bla-b"}, set(wt.all_file_ids()))
         finally:
             wt.unlock()
 

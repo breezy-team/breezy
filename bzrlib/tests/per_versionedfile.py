@@ -753,7 +753,7 @@ class VersionedFileTestMixIn(object):
     def test_readonly_mode(self):
         t = self.get_transport()
         factory = self.get_factory()
-        vf = factory('id', t, 0777, create=True, access_mode='w')
+        vf = factory('id', t, 0o777, create=True, access_mode='w')
         vf = factory('id', t, access_mode='r')
         self.assertRaises(errors.ReadOnlyError, vf.add_lines, 'base', [], [])
         self.assertRaises(errors.ReadOnlyError,
@@ -1693,13 +1693,13 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 ('ed8bce375198ea62444dc71952b22cfc2b09226d', 23)],
                 results)
             # Check the added items got CHK keys.
-            self.assertEqual(set([
+            self.assertEqual({
                 ('sha1:00e364d235126be43292ab09cb4686cf703ddc17',),
                 ('sha1:51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44',),
                 ('sha1:9ef09dfa9d86780bdec9219a22560c6ece8e0ef1',),
                 ('sha1:a8478686da38e370e32e42e8a0c220e33ee9132f',),
                 ('sha1:ed8bce375198ea62444dc71952b22cfc2b09226d',),
-                ]),
+                },
                 files.keys())
         elif self.key_length == 2:
             self.assertEqual([
@@ -1715,7 +1715,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 ('ed8bce375198ea62444dc71952b22cfc2b09226d', 23)],
                 results)
             # Check the added items got CHK keys.
-            self.assertEqual(set([
+            self.assertEqual({
                 ('FileA', 'sha1:00e364d235126be43292ab09cb4686cf703ddc17'),
                 ('FileA', 'sha1:51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44'),
                 ('FileA', 'sha1:9ef09dfa9d86780bdec9219a22560c6ece8e0ef1'),
@@ -1726,7 +1726,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 ('FileB', 'sha1:9ef09dfa9d86780bdec9219a22560c6ece8e0ef1'),
                 ('FileB', 'sha1:a8478686da38e370e32e42e8a0c220e33ee9132f'),
                 ('FileB', 'sha1:ed8bce375198ea62444dc71952b22cfc2b09226d'),
-                ]),
+                },
                 files.keys())
 
     def test_empty_lines(self):
@@ -2515,7 +2515,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 list(files.get_missing_compression_parent_keys()))
             files.insert_record_stream(entries)
             missing_bases = files.get_missing_compression_parent_keys()
-            self.assertEqual(set([self.get_simple_key('left')]),
+            self.assertEqual({self.get_simple_key('left')},
                 set(missing_bases))
             self.assertEqual(set(keys), set(files.get_parent_map(keys)))
         else:
@@ -2539,7 +2539,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         files = self.get_versionedfiles()
         files.insert_record_stream(entries)
         missing_bases = files.get_missing_compression_parent_keys()
-        self.assertEqual(set([self.get_simple_key('left')]),
+        self.assertEqual({self.get_simple_key('left')},
             set(missing_bases))
         # 'merged' is inserted (although a commit of a write group involving
         # this versionedfiles would fail).
@@ -2732,7 +2732,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         else:
             key = ('foo', 'bar',)
         files.add_lines(key, (), [])
-        self.assertEqual(set([key]), set(files.keys()))
+        self.assertEqual({key}, set(files.keys()))
 
 
 class VirtualVersionedFilesTests(TestCase):

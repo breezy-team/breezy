@@ -88,8 +88,8 @@ class TestPermissions(TestCaseWithTransport):
         t.add('a', 'CAPS-ID')
         t.commit('foo')
 
-        chmod_r('.bzr', 0644, 0755)
-        check_mode_r(self, '.bzr', 0644, 0755)
+        chmod_r('.bzr', 0o644, 0o755)
+        check_mode_r(self, '.bzr', 0o644, 0o755)
 
         # although we are modifying the filesystem
         # underneath the objects, they are not locked, and thus it must
@@ -98,41 +98,41 @@ class TestPermissions(TestCaseWithTransport):
         # when a new lock is taken out.
         t = WorkingTree.open('.')
         b = t.branch
-        self.assertEqualMode(0755, b.control_files._dir_mode)
-        self.assertEqualMode(0644, b.control_files._file_mode)
-        self.assertEqualMode(0755, b.bzrdir._get_dir_mode())
-        self.assertEqualMode(0644, b.bzrdir._get_file_mode())
+        self.assertEqualMode(0o755, b.control_files._dir_mode)
+        self.assertEqualMode(0o644, b.control_files._file_mode)
+        self.assertEqualMode(0o755, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(0o644, b.bzrdir._get_file_mode())
 
         # Modifying a file shouldn't break the permissions
         with open('a', 'wb') as f: f.write('foo2\n')
         t.commit('foo2')
         # The mode should be maintained after commit
-        check_mode_r(self, '.bzr', 0644, 0755)
+        check_mode_r(self, '.bzr', 0o644, 0o755)
 
         # Adding a new file should maintain the permissions
         with open('b', 'wb') as f: f.write('new b\n')
         t.add('b')
         t.commit('new b')
-        check_mode_r(self, '.bzr', 0644, 0755)
+        check_mode_r(self, '.bzr', 0o644, 0o755)
 
         # Recursively update the modes of all files
-        chmod_r('.bzr', 0664, 0775)
-        check_mode_r(self, '.bzr', 0664, 0775)
+        chmod_r('.bzr', 0o664, 0o775)
+        check_mode_r(self, '.bzr', 0o664, 0o775)
         t = WorkingTree.open('.')
         b = t.branch
-        self.assertEqualMode(0775, b.control_files._dir_mode)
-        self.assertEqualMode(0664, b.control_files._file_mode)
-        self.assertEqualMode(0775, b.bzrdir._get_dir_mode())
-        self.assertEqualMode(0664, b.bzrdir._get_file_mode())
+        self.assertEqualMode(0o775, b.control_files._dir_mode)
+        self.assertEqualMode(0o664, b.control_files._file_mode)
+        self.assertEqualMode(0o775, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(0o664, b.bzrdir._get_file_mode())
 
         with open('a', 'wb') as f: f.write('foo3\n')
         t.commit('foo3')
-        check_mode_r(self, '.bzr', 0664, 0775)
+        check_mode_r(self, '.bzr', 0o664, 0o775)
 
         with open('c', 'wb') as f: f.write('new c\n')
         t.add('c')
         t.commit('new c')
-        check_mode_r(self, '.bzr', 0664, 0775)
+        check_mode_r(self, '.bzr', 0o664, 0o775)
 
     def test_new_files_group_sticky_bit(self):
         if sys.platform == 'win32':
@@ -148,23 +148,23 @@ class TestPermissions(TestCaseWithTransport):
 
         # Test the group sticky bit
         # Recursively update the modes of all files
-        chmod_r('.bzr', 0664, 02775)
-        check_mode_r(self, '.bzr', 0664, 02775)
+        chmod_r('.bzr', 0o664, 0o2775)
+        check_mode_r(self, '.bzr', 0o664, 0o2775)
         t = WorkingTree.open('.')
         b = t.branch
-        self.assertEqualMode(02775, b.control_files._dir_mode)
-        self.assertEqualMode(0664, b.control_files._file_mode)
-        self.assertEqualMode(02775, b.bzrdir._get_dir_mode())
-        self.assertEqualMode(0664, b.bzrdir._get_file_mode())
+        self.assertEqualMode(0o2775, b.control_files._dir_mode)
+        self.assertEqualMode(0o664, b.control_files._file_mode)
+        self.assertEqualMode(0o2775, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(0o664, b.bzrdir._get_file_mode())
 
         with open('a', 'wb') as f: f.write('foo4\n')
         t.commit('foo4')
-        check_mode_r(self, '.bzr', 0664, 02775)
+        check_mode_r(self, '.bzr', 0o664, 0o2775)
 
         with open('d', 'wb') as f: f.write('new d\n')
         t.add('d')
         t.commit('new d')
-        check_mode_r(self, '.bzr', 0664, 02775)
+        check_mode_r(self, '.bzr', 0o664, 0o2775)
 
 
 class TestSftpPermissions(TestCaseWithSFTPServer):
@@ -187,15 +187,15 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         t_local.commit('foo')
 
         # Delete them because we are modifying the filesystem underneath them
-        chmod_r('local/.bzr', 0644, 0755)
-        check_mode_r(self, 'local/.bzr', 0644, 0755)
+        chmod_r('local/.bzr', 0o644, 0o755)
+        check_mode_r(self, 'local/.bzr', 0o644, 0o755)
 
         t = WorkingTree.open('local')
         b_local = t.branch
-        self.assertEqualMode(0755, b_local.control_files._dir_mode)
-        self.assertEqualMode(0644, b_local.control_files._file_mode)
-        self.assertEqualMode(0755, b_local.bzrdir._get_dir_mode())
-        self.assertEqualMode(0644, b_local.bzrdir._get_file_mode())
+        self.assertEqualMode(0o755, b_local.control_files._dir_mode)
+        self.assertEqualMode(0o644, b_local.control_files._file_mode)
+        self.assertEqualMode(0o755, b_local.bzrdir._get_dir_mode())
+        self.assertEqualMode(0o644, b_local.bzrdir._get_file_mode())
 
         os.mkdir('sftp')
         sftp_url = self.get_url('sftp')
@@ -203,70 +203,70 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
 
         b_sftp.pull(b_local)
         del b_sftp
-        chmod_r('sftp/.bzr', 0644, 0755)
-        check_mode_r(self, 'sftp/.bzr', 0644, 0755)
+        chmod_r('sftp/.bzr', 0o644, 0o755)
+        check_mode_r(self, 'sftp/.bzr', 0o644, 0o755)
 
         b_sftp = Branch.open(sftp_url)
-        self.assertEqualMode(0755, b_sftp.control_files._dir_mode)
-        self.assertEqualMode(0644, b_sftp.control_files._file_mode)
-        self.assertEqualMode(0755, b_sftp.bzrdir._get_dir_mode())
-        self.assertEqualMode(0644, b_sftp.bzrdir._get_file_mode())
+        self.assertEqualMode(0o755, b_sftp.control_files._dir_mode)
+        self.assertEqualMode(0o644, b_sftp.control_files._file_mode)
+        self.assertEqualMode(0o755, b_sftp.bzrdir._get_dir_mode())
+        self.assertEqualMode(0o644, b_sftp.bzrdir._get_file_mode())
 
         with open('local/a', 'wb') as f: f.write('foo2\n')
         t_local.commit('foo2')
         b_sftp.pull(b_local)
         # The mode should be maintained after commit
-        check_mode_r(self, 'sftp/.bzr', 0644, 0755)
+        check_mode_r(self, 'sftp/.bzr', 0o644, 0o755)
 
         with open('local/b', 'wb') as f: f.write('new b\n')
         t_local.add('b')
         t_local.commit('new b')
         b_sftp.pull(b_local)
-        check_mode_r(self, 'sftp/.bzr', 0644, 0755)
+        check_mode_r(self, 'sftp/.bzr', 0o644, 0o755)
 
         del b_sftp
         # Recursively update the modes of all files
-        chmod_r('sftp/.bzr', 0664, 0775)
-        check_mode_r(self, 'sftp/.bzr', 0664, 0775)
+        chmod_r('sftp/.bzr', 0o664, 0o775)
+        check_mode_r(self, 'sftp/.bzr', 0o664, 0o775)
 
         b_sftp = Branch.open(sftp_url)
-        self.assertEqualMode(0775, b_sftp.control_files._dir_mode)
-        self.assertEqualMode(0664, b_sftp.control_files._file_mode)
-        self.assertEqualMode(0775, b_sftp.bzrdir._get_dir_mode())
-        self.assertEqualMode(0664, b_sftp.bzrdir._get_file_mode())
+        self.assertEqualMode(0o775, b_sftp.control_files._dir_mode)
+        self.assertEqualMode(0o664, b_sftp.control_files._file_mode)
+        self.assertEqualMode(0o775, b_sftp.bzrdir._get_dir_mode())
+        self.assertEqualMode(0o664, b_sftp.bzrdir._get_file_mode())
 
         with open('local/a', 'wb') as f: f.write('foo3\n')
         t_local.commit('foo3')
         b_sftp.pull(b_local)
-        check_mode_r(self, 'sftp/.bzr', 0664, 0775)
+        check_mode_r(self, 'sftp/.bzr', 0o664, 0o775)
 
         with open('local/c', 'wb') as f: f.write('new c\n')
         t_local.add('c')
         t_local.commit('new c')
         b_sftp.pull(b_local)
-        check_mode_r(self, 'sftp/.bzr', 0664, 0775)
+        check_mode_r(self, 'sftp/.bzr', 0o664, 0o775)
 
     def test_sftp_server_modes(self):
         if sys.platform == 'win32':
             raise TestSkipped('chmod has no effect on win32')
 
-        umask = 0022
+        umask = 0o022
         original_umask = os.umask(umask)
 
         try:
             t = self.get_transport()
             # Direct access should be masked by umask
-            t._sftp_open_exclusive('a', mode=0666).write('foo\n')
-            self.assertTransportMode(t, 'a', 0666 &~umask)
+            t._sftp_open_exclusive('a', mode=0o666).write('foo\n')
+            self.assertTransportMode(t, 'a', 0o666 &~umask)
 
             # but Transport overrides umask
-            t.put_bytes('b', 'txt', mode=0666)
-            self.assertTransportMode(t, 'b', 0666)
+            t.put_bytes('b', 'txt', mode=0o666)
+            self.assertTransportMode(t, 'b', 0o666)
 
-            t._get_sftp().mkdir('c', mode=0777)
-            self.assertTransportMode(t, 'c', 0777 &~umask)
+            t._get_sftp().mkdir('c', mode=0o777)
+            self.assertTransportMode(t, 'c', 0o777 &~umask)
 
-            t.mkdir('d', mode=0777)
-            self.assertTransportMode(t, 'd', 0777)
+            t.mkdir('d', mode=0o777)
+            self.assertTransportMode(t, 'd', 0o777)
         finally:
             os.umask(original_umask)

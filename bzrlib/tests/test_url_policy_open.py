@@ -81,7 +81,7 @@ class TestBranchOpenerCheckAndFollowBranchReference(TestCase):
     def test_check_initial_url(self):
         # check_and_follow_branch_reference rejects all URLs that are not
         # allowed.
-        opener = self.make_branch_opener(None, [], set(['a']))
+        opener = self.make_branch_opener(None, [], {'a'})
         self.assertRaises(
             BadUrl, opener.check_and_follow_branch_reference, 'a')
 
@@ -288,7 +288,7 @@ class TestBranchOpenerStacking(TestCaseWithTransport):
             [a.base, b.base], probers=[TrackingProber])
         opener.open(b.base)
         self.assertEqual(
-            set(TrackingProber.seen_urls), set([b.base, a.base]))
+            set(TrackingProber.seen_urls), {b.base, a.base})
 
     def test_custom_opener_with_branch_reference(self):
         # A custom function for opening a control dir can be specified.
@@ -300,7 +300,7 @@ class TestBranchOpenerStacking(TestCaseWithTransport):
             [a.base, b.base], probers=[TrackingProber])
         opener.open(b.base)
         self.assertEqual(
-            set(TrackingProber.seen_urls), set([b.base, a.base]))
+            set(TrackingProber.seen_urls), {b.base, a.base})
 
 
 class TestOpenOnlyScheme(TestCaseWithTransport):

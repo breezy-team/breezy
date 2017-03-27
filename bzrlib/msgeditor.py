@@ -65,7 +65,7 @@ def _run_editor(filename):
         try:
             ## mutter("trying editor: %r", (edargs +[filename]))
             x = call(edargs + [filename])
-        except OSError, e:
+        except OSError as e:
             if candidate_source is not None:
                 # We tried this editor because some user configuration (an
                 # environment variable or config file) said to try it.  Let
@@ -203,7 +203,7 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         if msgfilename is not None:
             try:
                 os.unlink(msgfilename)
-            except IOError, e:
+            except IOError as e:
                 trace.warning(
                     "failed to unlink %s: %s; ignored", msgfilename, e)
 

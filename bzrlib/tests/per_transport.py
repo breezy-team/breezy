@@ -82,7 +82,7 @@ def transport_test_permutations():
                     {"transport_class":klass,
                      "transport_server":server_factory})
                 result.append(scenario)
-        except errors.DependencyNotPresent, e:
+        except errors.DependencyNotPresent as e:
             # Continue even if a dependency prevents us
             # from adding this test
             pass
@@ -352,20 +352,20 @@ class TransportTests(TestTransportImplementation):
         if not t._can_roundtrip_unix_modebits():
             # Can't roundtrip, so no need to run this test
             return
-        t.put_bytes('mode644', 'test text\n', mode=0644)
-        self.assertTransportMode(t, 'mode644', 0644)
-        t.put_bytes('mode666', 'test text\n', mode=0666)
-        self.assertTransportMode(t, 'mode666', 0666)
-        t.put_bytes('mode600', 'test text\n', mode=0600)
-        self.assertTransportMode(t, 'mode600', 0600)
+        t.put_bytes('mode644', 'test text\n', mode=0o644)
+        self.assertTransportMode(t, 'mode644', 0o644)
+        t.put_bytes('mode666', 'test text\n', mode=0o666)
+        self.assertTransportMode(t, 'mode666', 0o666)
+        t.put_bytes('mode600', 'test text\n', mode=0o600)
+        self.assertTransportMode(t, 'mode600', 0o600)
         # Yes, you can put_bytes a file such that it becomes readonly
-        t.put_bytes('mode400', 'test text\n', mode=0400)
-        self.assertTransportMode(t, 'mode400', 0400)
+        t.put_bytes('mode400', 'test text\n', mode=0o400)
+        self.assertTransportMode(t, 'mode400', 0o400)
 
         # The default permissions should be based on the current umask
         umask = osutils.get_umask()
         t.put_bytes('nomode', 'test text\n', mode=None)
-        self.assertTransportMode(t, 'nomode', 0666 & ~umask)
+        self.assertTransportMode(t, 'nomode', 0o666 & ~umask)
 
     def test_put_bytes_non_atomic_permissions(self):
         t = self.get_transport()
@@ -375,31 +375,31 @@ class TransportTests(TestTransportImplementation):
         if not t._can_roundtrip_unix_modebits():
             # Can't roundtrip, so no need to run this test
             return
-        t.put_bytes_non_atomic('mode644', 'test text\n', mode=0644)
-        self.assertTransportMode(t, 'mode644', 0644)
-        t.put_bytes_non_atomic('mode666', 'test text\n', mode=0666)
-        self.assertTransportMode(t, 'mode666', 0666)
-        t.put_bytes_non_atomic('mode600', 'test text\n', mode=0600)
-        self.assertTransportMode(t, 'mode600', 0600)
-        t.put_bytes_non_atomic('mode400', 'test text\n', mode=0400)
-        self.assertTransportMode(t, 'mode400', 0400)
+        t.put_bytes_non_atomic('mode644', 'test text\n', mode=0o644)
+        self.assertTransportMode(t, 'mode644', 0o644)
+        t.put_bytes_non_atomic('mode666', 'test text\n', mode=0o666)
+        self.assertTransportMode(t, 'mode666', 0o666)
+        t.put_bytes_non_atomic('mode600', 'test text\n', mode=0o600)
+        self.assertTransportMode(t, 'mode600', 0o600)
+        t.put_bytes_non_atomic('mode400', 'test text\n', mode=0o400)
+        self.assertTransportMode(t, 'mode400', 0o400)
 
         # The default permissions should be based on the current umask
         umask = osutils.get_umask()
         t.put_bytes_non_atomic('nomode', 'test text\n', mode=None)
-        self.assertTransportMode(t, 'nomode', 0666 & ~umask)
+        self.assertTransportMode(t, 'nomode', 0o666 & ~umask)
 
         # We should also be able to set the mode for a parent directory
         # when it is created
-        t.put_bytes_non_atomic('dir700/mode664', 'test text\n', mode=0664,
-                               dir_mode=0700, create_parent_dir=True)
-        self.assertTransportMode(t, 'dir700', 0700)
-        t.put_bytes_non_atomic('dir770/mode664', 'test text\n', mode=0664,
-                               dir_mode=0770, create_parent_dir=True)
-        self.assertTransportMode(t, 'dir770', 0770)
-        t.put_bytes_non_atomic('dir777/mode664', 'test text\n', mode=0664,
-                               dir_mode=0777, create_parent_dir=True)
-        self.assertTransportMode(t, 'dir777', 0777)
+        t.put_bytes_non_atomic('dir700/mode664', 'test text\n', mode=0o664,
+                               dir_mode=0o700, create_parent_dir=True)
+        self.assertTransportMode(t, 'dir700', 0o700)
+        t.put_bytes_non_atomic('dir770/mode664', 'test text\n', mode=0o664,
+                               dir_mode=0o770, create_parent_dir=True)
+        self.assertTransportMode(t, 'dir770', 0o770)
+        t.put_bytes_non_atomic('dir777/mode664', 'test text\n', mode=0o664,
+                               dir_mode=0o777, create_parent_dir=True)
+        self.assertTransportMode(t, 'dir777', 0o777)
 
     def test_put_file(self):
         t = self.get_transport()
@@ -469,19 +469,19 @@ class TransportTests(TestTransportImplementation):
         if not t._can_roundtrip_unix_modebits():
             # Can't roundtrip, so no need to run this test
             return
-        t.put_file('mode644', StringIO('test text\n'), mode=0644)
-        self.assertTransportMode(t, 'mode644', 0644)
-        t.put_file('mode666', StringIO('test text\n'), mode=0666)
-        self.assertTransportMode(t, 'mode666', 0666)
-        t.put_file('mode600', StringIO('test text\n'), mode=0600)
-        self.assertTransportMode(t, 'mode600', 0600)
+        t.put_file('mode644', StringIO('test text\n'), mode=0o644)
+        self.assertTransportMode(t, 'mode644', 0o644)
+        t.put_file('mode666', StringIO('test text\n'), mode=0o666)
+        self.assertTransportMode(t, 'mode666', 0o666)
+        t.put_file('mode600', StringIO('test text\n'), mode=0o600)
+        self.assertTransportMode(t, 'mode600', 0o600)
         # Yes, you can put a file such that it becomes readonly
-        t.put_file('mode400', StringIO('test text\n'), mode=0400)
-        self.assertTransportMode(t, 'mode400', 0400)
+        t.put_file('mode400', StringIO('test text\n'), mode=0o400)
+        self.assertTransportMode(t, 'mode400', 0o400)
         # The default permissions should be based on the current umask
         umask = osutils.get_umask()
         t.put_file('nomode', StringIO('test text\n'), mode=None)
-        self.assertTransportMode(t, 'nomode', 0666 & ~umask)
+        self.assertTransportMode(t, 'nomode', 0o666 & ~umask)
 
     def test_put_file_non_atomic_permissions(self):
         t = self.get_transport()
@@ -491,33 +491,33 @@ class TransportTests(TestTransportImplementation):
         if not t._can_roundtrip_unix_modebits():
             # Can't roundtrip, so no need to run this test
             return
-        t.put_file_non_atomic('mode644', StringIO('test text\n'), mode=0644)
-        self.assertTransportMode(t, 'mode644', 0644)
-        t.put_file_non_atomic('mode666', StringIO('test text\n'), mode=0666)
-        self.assertTransportMode(t, 'mode666', 0666)
-        t.put_file_non_atomic('mode600', StringIO('test text\n'), mode=0600)
-        self.assertTransportMode(t, 'mode600', 0600)
+        t.put_file_non_atomic('mode644', StringIO('test text\n'), mode=0o644)
+        self.assertTransportMode(t, 'mode644', 0o644)
+        t.put_file_non_atomic('mode666', StringIO('test text\n'), mode=0o666)
+        self.assertTransportMode(t, 'mode666', 0o666)
+        t.put_file_non_atomic('mode600', StringIO('test text\n'), mode=0o600)
+        self.assertTransportMode(t, 'mode600', 0o600)
         # Yes, you can put_file_non_atomic a file such that it becomes readonly
-        t.put_file_non_atomic('mode400', StringIO('test text\n'), mode=0400)
-        self.assertTransportMode(t, 'mode400', 0400)
+        t.put_file_non_atomic('mode400', StringIO('test text\n'), mode=0o400)
+        self.assertTransportMode(t, 'mode400', 0o400)
 
         # The default permissions should be based on the current umask
         umask = osutils.get_umask()
         t.put_file_non_atomic('nomode', StringIO('test text\n'), mode=None)
-        self.assertTransportMode(t, 'nomode', 0666 & ~umask)
+        self.assertTransportMode(t, 'nomode', 0o666 & ~umask)
 
         # We should also be able to set the mode for a parent directory
         # when it is created
         sio = StringIO()
-        t.put_file_non_atomic('dir700/mode664', sio, mode=0664,
-                              dir_mode=0700, create_parent_dir=True)
-        self.assertTransportMode(t, 'dir700', 0700)
-        t.put_file_non_atomic('dir770/mode664', sio, mode=0664,
-                              dir_mode=0770, create_parent_dir=True)
-        self.assertTransportMode(t, 'dir770', 0770)
-        t.put_file_non_atomic('dir777/mode664', sio, mode=0664,
-                              dir_mode=0777, create_parent_dir=True)
-        self.assertTransportMode(t, 'dir777', 0777)
+        t.put_file_non_atomic('dir700/mode664', sio, mode=0o664,
+                              dir_mode=0o700, create_parent_dir=True)
+        self.assertTransportMode(t, 'dir700', 0o700)
+        t.put_file_non_atomic('dir770/mode664', sio, mode=0o664,
+                              dir_mode=0o770, create_parent_dir=True)
+        self.assertTransportMode(t, 'dir770', 0o770)
+        t.put_file_non_atomic('dir777/mode664', sio, mode=0o664,
+                              dir_mode=0o777, create_parent_dir=True)
+        self.assertTransportMode(t, 'dir777', 0o777)
 
     def test_put_bytes_unicode(self):
         t = self.get_transport()
@@ -580,21 +580,21 @@ class TransportTests(TestTransportImplementation):
             # no sense testing on this transport
             return
         # Test mkdir with a mode
-        t.mkdir('dmode755', mode=0755)
-        self.assertTransportMode(t, 'dmode755', 0755)
-        t.mkdir('dmode555', mode=0555)
-        self.assertTransportMode(t, 'dmode555', 0555)
-        t.mkdir('dmode777', mode=0777)
-        self.assertTransportMode(t, 'dmode777', 0777)
-        t.mkdir('dmode700', mode=0700)
-        self.assertTransportMode(t, 'dmode700', 0700)
-        t.mkdir_multi(['mdmode755'], mode=0755)
-        self.assertTransportMode(t, 'mdmode755', 0755)
+        t.mkdir('dmode755', mode=0o755)
+        self.assertTransportMode(t, 'dmode755', 0o755)
+        t.mkdir('dmode555', mode=0o555)
+        self.assertTransportMode(t, 'dmode555', 0o555)
+        t.mkdir('dmode777', mode=0o777)
+        self.assertTransportMode(t, 'dmode777', 0o777)
+        t.mkdir('dmode700', mode=0o700)
+        self.assertTransportMode(t, 'dmode700', 0o700)
+        t.mkdir_multi(['mdmode755'], mode=0o755)
+        self.assertTransportMode(t, 'mdmode755', 0o755)
 
         # Default mode should be based on umask
         umask = osutils.get_umask()
         t.mkdir('dnomode', mode=None)
-        self.assertTransportMode(t, 'dnomode', 0777 & ~umask)
+        self.assertTransportMode(t, 'dnomode', 0o777 & ~umask)
 
     def test_opening_a_file_stream_creates_file(self):
         t = self.get_transport()
@@ -620,11 +620,11 @@ class TransportTests(TestTransportImplementation):
             handle = t.open_write_stream(name, mode=mode)
             handle.close()
             self.assertTransportMode(t, name, expected)
-        check_mode('mode644', 0644, 0644)
-        check_mode('mode666', 0666, 0666)
-        check_mode('mode600', 0600, 0600)
+        check_mode('mode644', 0o644, 0o644)
+        check_mode('mode666', 0o666, 0o666)
+        check_mode('mode600', 0o600, 0o600)
         # The default permissions should be based on the current umask
-        check_mode('nomode', None, 0666 & ~osutils.get_umask())
+        check_mode('nomode', None, 0o666 & ~osutils.get_umask())
 
     def test_copy_to(self):
         # FIXME: test:   same server to same server (partly done)
@@ -670,7 +670,7 @@ class TransportTests(TestTransportImplementation):
                                           t, f)
         del temp_transport
 
-        for mode in (0666, 0644, 0600, 0400):
+        for mode in (0o666, 0o644, 0o600, 0o400):
             temp_transport = MemoryTransport("memory:///")
             t.copy_to(files, temp_transport, mode=mode)
             for f in files:
@@ -1049,7 +1049,7 @@ class TransportTests(TestTransportImplementation):
 
         try:
             st = t.stat('.')
-        except TransportNotPossible, e:
+        except TransportNotPossible as e:
             # This transport cannot stat
             return
 
@@ -1135,8 +1135,7 @@ class TransportTests(TestTransportImplementation):
             return
 
         def sorted_list(d, transport):
-            l = list(transport.list_dir(d))
-            l.sort()
+            l = sorted(transport.list_dir(d))
             return l
 
         self.assertEqual([], sorted_list('.', t))
@@ -1417,7 +1416,7 @@ class TransportTests(TestTransportImplementation):
         transport = self.get_transport()
         try:
             p = transport.local_abspath('.')
-        except (errors.NotLocalUrl, TransportNotPossible), e:
+        except (errors.NotLocalUrl, TransportNotPossible) as e:
             # should be formattable
             s = str(e)
         else:
@@ -1456,14 +1455,14 @@ class TransportTests(TestTransportImplementation):
         paths = set(transport.iter_files_recursive())
         # nb the directories are not converted
         self.assertEqual(paths,
-                    set(['isolated/dir/foo',
+                    {'isolated/dir/foo',
                          'isolated/dir/bar',
                          'isolated/dir/b%2525z',
-                         'isolated/bar']))
+                         'isolated/bar'})
         sub_transport = transport.clone('isolated')
         paths = set(sub_transport.iter_files_recursive())
         self.assertEqual(paths,
-            set(['dir/foo', 'dir/bar', 'dir/b%2525z', 'bar']))
+            {'dir/foo', 'dir/bar', 'dir/b%2525z', 'bar'})
 
     def test_copy_tree(self):
         # TODO: test file contents and permissions are preserved. This test was
@@ -1486,14 +1485,14 @@ class TransportTests(TestTransportImplementation):
         transport.copy_tree('from', 'to')
         paths = set(transport.iter_files_recursive())
         self.assertEqual(paths,
-                    set(['from/dir/foo',
+                    {'from/dir/foo',
                          'from/dir/bar',
                          'from/dir/b%2525z',
                          'from/bar',
                          'to/dir/foo',
                          'to/dir/bar',
                          'to/dir/b%2525z',
-                         'to/bar',]))
+                         'to/bar',})
 
     def test_copy_tree_to_transport(self):
         transport = self.get_transport()
@@ -1516,14 +1515,14 @@ class TransportTests(TestTransportImplementation):
         from_transport.copy_tree_to_transport(to_transport)
         paths = set(transport.iter_files_recursive())
         self.assertEqual(paths,
-                    set(['from/dir/foo',
+                    {'from/dir/foo',
                          'from/dir/bar',
                          'from/dir/b%2525z',
                          'from/bar',
                          'to/dir/foo',
                          'to/dir/bar',
                          'to/dir/b%2525z',
-                         'to/bar',]))
+                         'to/bar',})
 
     def test_unicode_paths(self):
         """Test that we can read/write files with Unicode names."""

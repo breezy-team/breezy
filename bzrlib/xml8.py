@@ -78,7 +78,7 @@ class Serializer_v8(XMLSerializer):
     # This format supports the altered-by hack that reads file ids directly out
     # of the versionedfile, without doing XML parsing.
 
-    supported_kinds = set(['file', 'directory', 'symlink'])
+    supported_kinds = {'file', 'directory', 'symlink'}
     format_num = '8'
     revision_format_num = None
 

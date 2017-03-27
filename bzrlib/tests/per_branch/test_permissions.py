@@ -43,7 +43,7 @@ class _NullPermsStat(object):
     def __init__(self, orig_stat):
         self._orig_stat = orig_stat
         # We strip all permission bits from st_mode
-        self.st_mode = orig_stat.st_mode & ~07777
+        self.st_mode = orig_stat.st_mode & ~0o7777
 
     def __getattr__(self, name):
         return getattr(self._orig_stat, name)
@@ -68,18 +68,18 @@ class TestPermissions(tests.TestCaseWithTransport):
                 "Only applicable to bzr branches")
         b = t.branch
         self.assertEqualMode(mode, b.bzrdir._get_dir_mode())
-        self.assertEqualMode(mode & ~07111, b.bzrdir._get_file_mode())
+        self.assertEqualMode(mode & ~0o7111, b.bzrdir._get_file_mode())
         self.assertEqualMode(mode, b.control_files._dir_mode)
-        self.assertEqualMode(mode & ~07111, b.control_files._file_mode)
+        self.assertEqualMode(mode & ~0o7111, b.control_files._file_mode)
 
         os.mkdir('d')
-        os.chmod('d', 0700)
+        os.chmod('d', 0o700)
         b = self.make_branch('d')
-        self.assertEqualMode(0700, b.bzrdir._get_dir_mode())
-        self.assertEqualMode(0600, b.bzrdir._get_file_mode())
-        self.assertEqualMode(0700, b.control_files._dir_mode)
-        self.assertEqualMode(0600, b.control_files._file_mode)
-        check_mode_r(self, 'd/.bzr', 00600, 00700)
+        self.assertEqualMode(0o700, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(0o600, b.bzrdir._get_file_mode())
+        self.assertEqualMode(0o700, b.control_files._dir_mode)
+        self.assertEqualMode(0o600, b.control_files._file_mode)
+        check_mode_r(self, 'd/.bzr', 0o0600, 0o0700)
 
     def test_new_branch_group_sticky_bit(self):
         if isinstance(self.branch_format, RemoteBranchFormat):
@@ -101,22 +101,22 @@ class TestPermissions(tests.TestCaseWithTransport):
             raise tests.TestNotApplicable(
                 "Only applicable to bzr branches")
         os.mkdir('b')
-        os.chmod('b', 02777)
+        os.chmod('b', 0o2777)
         b = self.make_branch('b')
-        self.assertEqualMode(02777, b.bzrdir._get_dir_mode())
-        self.assertEqualMode(00666, b.bzrdir._get_file_mode())
-        self.assertEqualMode(02777, b.control_files._dir_mode)
-        self.assertEqualMode(00666, b.control_files._file_mode)
-        check_mode_r(self, 'b/.bzr', 00666, 02777)
+        self.assertEqualMode(0o2777, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(0o0666, b.bzrdir._get_file_mode())
+        self.assertEqualMode(0o2777, b.control_files._dir_mode)
+        self.assertEqualMode(0o0666, b.control_files._file_mode)
+        check_mode_r(self, 'b/.bzr', 0o0666, 0o2777)
 
         os.mkdir('c')
-        os.chmod('c', 02750)
+        os.chmod('c', 0o2750)
         b = self.make_branch('c')
-        self.assertEqualMode(02750, b.bzrdir._get_dir_mode())
-        self.assertEqualMode(00640, b.bzrdir._get_file_mode())
-        self.assertEqualMode(02750, b.control_files._dir_mode)
-        self.assertEqualMode(00640, b.control_files._file_mode)
-        check_mode_r(self, 'c/.bzr', 00640, 02750)
+        self.assertEqualMode(0o2750, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(0o0640, b.bzrdir._get_file_mode())
+        self.assertEqualMode(0o2750, b.control_files._dir_mode)
+        self.assertEqualMode(0o0640, b.control_files._file_mode)
+        check_mode_r(self, 'c/.bzr', 0o0640, 0o2750)
 
     def test_mode_0(self):
         """Test when a transport returns null permissions for .bzr"""

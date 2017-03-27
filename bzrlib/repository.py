@@ -280,7 +280,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                 (self._write_group, self.get_transaction()))
         try:
             self._abort_write_group()
-        except Exception, exc:
+        except Exception as exc:
             self._write_group = None
             if not suppress_errors:
                 raise
@@ -964,7 +964,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         try:
             _iter_for_revno(
                 self, partial_history, stop_index=distance_from_known)
-        except errors.RevisionNotPresent, err:
+        except errors.RevisionNotPresent as err:
             if err.revision_id == known_revid:
                 # The start revision (known_revid) wasn't found.
                 raise
@@ -1694,7 +1694,7 @@ class InterRepository(InterObject):
         try:
             InterRepository._assert_same_model(source, target)
             return True
-        except errors.IncompatibleRepositories, e:
+        except errors.IncompatibleRepositories as e:
             return False
 
     @staticmethod

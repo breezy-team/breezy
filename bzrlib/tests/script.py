@@ -227,11 +227,11 @@ class ScriptRunner(object):
 
         try:
             self._check_output(output, actual_output, test_case)
-        except AssertionError, e:
+        except AssertionError as e:
             raise AssertionError(str(e) + " in stdout of command %s" % cmd)
         try:
             self._check_output(error, actual_error, test_case)
-        except AssertionError, e:
+        except AssertionError as e:
             raise AssertionError(str(e) +
                 " in stderr of running command %s" % cmd)
         if retcode and not error and actual_error:
@@ -333,7 +333,7 @@ class ScriptRunner(object):
         for in_name in input_names:
             try:
                 inputs.append(self._read_input(None, in_name))
-            except IOError, e:
+            except IOError as e:
                 # Some filenames are illegal on Windows and generate EINVAL
                 # rather than just saying the filename doesn't exist
                 if e.errno in (errno.ENOENT, errno.EINVAL):
@@ -345,7 +345,7 @@ class ScriptRunner(object):
         # Handle output redirections
         try:
             output = self._write_output(output, out_name, out_mode)
-        except IOError, e:
+        except IOError as e:
             # If out_name cannot be created, we may get 'ENOENT', however if
             # out_name is something like '', we can get EINVAL
             if e.errno in (errno.ENOENT, errno.EINVAL):
@@ -366,7 +366,7 @@ class ScriptRunner(object):
         # Handle output redirections
         try:
             output = self._write_output(output, out_name, out_mode)
-        except IOError, e:
+        except IOError as e:
             if e.errno in (errno.ENOENT, errno.EINVAL):
                 return 1, None, '%s: No such file or directory\n' % (out_name,)
             raise
@@ -423,7 +423,7 @@ class ScriptRunner(object):
             # FIXME: Should we put that in osutils ?
             try:
                 os.remove(p)
-            except OSError, e:
+            except OSError as e:
                 # Various OSes raises different exceptions (linux: EISDIR,
                 #   win32: EACCES, OSX: EPERM) when invoked on a directory
                 if e.errno in (errno.EISDIR, errno.EPERM, errno.EACCES):
@@ -457,7 +457,7 @@ class ScriptRunner(object):
             if os.path.isdir(dst):
                 real_dst = os.path.join(dst, os.path.basename(src))
             os.rename(src, real_dst)
-        except OSError, e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 err = error('No such file or directory', src, dst)
             else:

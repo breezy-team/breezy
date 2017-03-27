@@ -35,7 +35,7 @@ from bzrlib.transport.ftp import FtpTransport
 
 try:
     import kerberos
-except ImportError, e:
+except ImportError as e:
     mutter('failed to import kerberos lib: %s', e)
     raise errors.DependencyNotPresent('kerberos', e)
 
@@ -84,7 +84,7 @@ class GSSAPIFtp(ftplib.FTP):
                         rc = kerberos.authGSSClientStep(self.vc, resp[9:])
                         if not ((resp.startswith('235 ') and rc == 1) or
                                 (resp.startswith('335 ') and rc == 0)):
-                            raise ftplib.error_reply, resp
+                            raise ftplib.error_reply(resp)
             note(gettext("Authenticated as %s") %
                  kerberos.authGSSClientUserName(self.vc))
 
@@ -114,7 +114,7 @@ class GSSAPIFtpTransport(FtpTransport):
         """
         try:
             connection.gssapi_login(user=user)
-        except ftplib.error_perm, e:
+        except ftplib.error_perm as e:
             super(GSSAPIFtpTransport, self)._login(connection, auth,
                                                    user, password)
 

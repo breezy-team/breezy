@@ -446,7 +446,7 @@ class DigestAuthServer(AuthServer):
         if realm != self.auth_realm:
             return False
         user = auth['username']
-        if not self.password_of.has_key(user):
+        if user not in self.password_of:
             return False
         algorithm= auth['algorithm']
         if algorithm != 'MD5':

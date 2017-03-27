@@ -518,7 +518,7 @@ class DirState(object):
                 block[entry_index][0][0:2] == first_key[0:2]):
                 if block[entry_index][1][0][0] not in 'ar':
                     # this path is in the dirstate in the current tree.
-                    raise Exception, "adding already added path!"
+                    raise Exception("adding already added path!")
                 entry_index += 1
         else:
             # The block where we want to put the file is not present. But it
@@ -1022,7 +1022,7 @@ class DirState(object):
             return
         # only require all dirblocks if we are doing a full-pass removal.
         self._read_dirblocks_if_needed()
-        dead_patterns = set([('a', 'r'), ('a', 'a'), ('r', 'r'), ('r', 'a')])
+        dead_patterns = {('a', 'r'), ('a', 'a'), ('r', 'r'), ('r', 'a')}
         def iter_entries_removable():
             for block in self._dirblocks:
                 deleted_positions = []
@@ -1387,7 +1387,7 @@ class DirState(object):
             self._apply_insertions(insertions.values())
             # Validate parents
             self._after_delta_check_parents(parents, 0)
-        except errors.BzrError, e:
+        except errors.BzrError as e:
             self._changes_aborted = True
             if 'integrity error' not in str(e):
                 raise
@@ -1584,7 +1584,7 @@ class DirState(object):
             self._update_basis_apply_changes(changes)
             # Validate parents
             self._after_delta_check_parents(parents, 1)
-        except errors.BzrError, e:
+        except errors.BzrError as e:
             self._changes_aborted = True
             if 'integrity error' not in str(e):
                 raise
@@ -1872,7 +1872,7 @@ class DirState(object):
         :param stat_value: The os.lstat for the file.
         """
         try:
-            minikind = _stat_to_minikind[stat_value.st_mode & 0170000]
+            minikind = _stat_to_minikind[stat_value.st_mode & 0o170000]
         except KeyError:
             # Unhandled kind
             return None
@@ -2113,7 +2113,7 @@ class DirState(object):
         """
         self._read_dirblocks_if_needed()
         if path_utf8 is not None:
-            if type(path_utf8) is not str:
+            if not isinstance(path_utf8, str):
                 raise errors.BzrError('path_utf8 is not a str: %s %r'
                     % (type(path_utf8), path_utf8))
             # path lookups are faster
@@ -3382,7 +3382,7 @@ def py_update_entry(state, entry, abspath, stat_value,
         target of a symlink.
     """
     try:
-        minikind = _stat_to_minikind[stat_value.st_mode & 0170000]
+        minikind = _stat_to_minikind[stat_value.st_mode & 0o170000]
     except KeyError:
         # Unhandled kind
         return None
@@ -3475,7 +3475,7 @@ class ProcessEntryPython(object):
         self.old_dirname_to_file_id = {}
         self.new_dirname_to_file_id = {}
         # Are we doing a partial iter_changes?
-        self.partial = search_specific_files != set([''])
+        self.partial = search_specific_files != {''}
         # Using a list so that we can access the values and change them in
         # nested scope. Each one is [path, file_id, entry]
         self.last_source_parent = [None, None]
@@ -3853,7 +3853,7 @@ class ProcessEntryPython(object):
             root_abspath = self.tree.abspath(current_root_unicode)
             try:
                 root_stat = os.lstat(root_abspath)
-            except OSError, e:
+            except OSError as e:
                 if e.errno == errno.ENOENT:
                     # the path does not exist: let _process_entry know that.
                     root_dir_info = None
@@ -3907,7 +3907,7 @@ class ProcessEntryPython(object):
                 dir_iterator = osutils._walkdirs_utf8(root_abspath, prefix=current_root)
                 try:
                     current_dir_info = dir_iterator.next()
-                except OSError, e:
+                except OSError as e:
                     # on win32, python2.4 has e.errno == ERROR_DIRECTORY, but
                     # python 2.5 has e.errno == EINVAL,
                     #            and e.winerror == ERROR_DIRECTORY
@@ -4239,7 +4239,7 @@ class ProcessEntryPython(object):
         abspath = self.tree.abspath(unicode_path)
         try:
             stat = os.lstat(abspath)
-        except OSError, e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 # the path does not exist.
                 return None
@@ -4269,7 +4269,7 @@ try:
         ProcessEntryC as _process_entry,
         update_entry as update_entry,
         )
-except ImportError, e:
+except ImportError as e:
     osutils.failed_to_load_extension(e)
     from bzrlib._dirstate_helpers_py import (
         _read_dirblocks,

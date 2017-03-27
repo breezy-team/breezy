@@ -223,6 +223,5 @@ def _find_unmerged(local_branch, remote_branch, restrict,
 
 
 def sorted_revisions(revisions, history_map):
-    revisions = [(history_map[r],r) for r in revisions]
-    revisions.sort()
+    revisions = sorted([(history_map[r],r) for r in revisions])
     return revisions

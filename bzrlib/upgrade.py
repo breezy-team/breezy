@@ -285,11 +285,11 @@ def _convert_items(items, format, clean_up, dry_run, label=None):
         try:
             if not dry_run:
                 cv = Convert(control_dir=control_dir, format=format)
-        except errors.UpToDateFormat, ex:
+        except errors.UpToDateFormat as ex:
             ui.ui_factory.note(str(ex))
             succeeded.append(control_dir)
             continue
-        except Exception, ex:
+        except Exception as ex:
             trace.warning('conversion error: %s' % ex)
             exceptions.append(ex)
             continue
@@ -301,7 +301,7 @@ def _convert_items(items, format, clean_up, dry_run, label=None):
                 ui.ui_factory.note(gettext('Removing backup ...'))
                 if not dry_run:
                     cv.clean_up()
-            except Exception, ex:
+            except Exception as ex:
                 trace.warning(gettext('failed to clean-up {0}: {1}') % (location, ex))
                 exceptions.append(ex)
 

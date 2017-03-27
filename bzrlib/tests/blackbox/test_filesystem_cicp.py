@@ -214,7 +214,7 @@ lowercaseparent/lowercase is already versioned.
             $ bzr mv camelcaseparent/camelcase camelcaseparent/camelCase
             CamelCaseParent/CamelCase => CamelCaseParent/camelCase
             """)
-        self.failUnlessEqual(canonical_relpath(wt.basedir, 'camelcaseparent/camelcase'),
+        self.assertEqual(canonical_relpath(wt.basedir, 'camelcaseparent/camelcase'),
                              'CamelCaseParent/camelCase')
 
     def test_mv_newcase_after(self):
@@ -230,7 +230,7 @@ lowercaseparent/lowercase is already versioned.
             CamelCaseParent/CamelCase => CamelCaseParent/camelCase
             """)
         # bzr should not have renamed the file to a different case
-        self.failUnlessEqual(canonical_relpath(wt.basedir, 'camelcaseparent/camelcase'),
+        self.assertEqual(canonical_relpath(wt.basedir, 'camelcaseparent/camelcase'),
                              'CamelCaseParent/camelCase')
 
     def test_mv_multiple(self):

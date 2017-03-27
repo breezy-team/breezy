@@ -140,7 +140,7 @@ def send(target_branch, revision, public_branch, remember,
                     raise errors.BzrCommandError(gettext('- not supported for '
                         'merge directives that use more than one output file.'))
                 if not os.path.exists(output):
-                    os.mkdir(output, 0755)
+                    os.mkdir(output, 0o755)
                 for (filename, lines) in directive.to_files():
                     path = os.path.join(output, filename)
                     outfile = open(path, 'wb')

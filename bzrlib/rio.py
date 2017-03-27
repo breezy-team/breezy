@@ -380,7 +380,7 @@ try:
         _read_stanza_unicode,
         _valid_tag,
         )
-except ImportError, e:
+except ImportError as e:
     osutils.failed_to_load_extension(e)
     from bzrlib._rio_py import (
        _read_stanza_utf8,

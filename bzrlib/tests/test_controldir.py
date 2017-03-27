@@ -67,7 +67,7 @@ class TestMetaComponentFormatRegistry(tests.TestCase):
         self.assertEqual(set(), self.registry._get_all_modules())
         self.registry.register(format)
         self.assertEqual(
-            set(["bzrlib.tests.test_controldir"]),
+            {"bzrlib.tests.test_controldir"},
             self.registry._get_all_modules())
 
     def test_register_extra(self):
@@ -148,7 +148,7 @@ class NotBzrDirProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
-        return set([NotBzrDirFormat()])
+        return {NotBzrDirFormat()}
 
 
 class TestNotBzrDir(tests.TestCaseWithTransport):

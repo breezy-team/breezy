@@ -51,11 +51,11 @@ class MemoryStat(object):
         self.st_size = size
         if not is_dir:
             if perms is None:
-                perms = 0644
+                perms = 0o644
             self.st_mode = S_IFREG | perms
         else:
             if perms is None:
-                perms = 0755
+                perms = 0o755
             self.st_mode = S_IFDIR | perms
 
 

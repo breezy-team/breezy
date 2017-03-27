@@ -592,14 +592,14 @@ class BzrDir(controldir.ControlDir):
             # directories and files are read-write for this user. This is
             # mostly a workaround for filesystems which lie about being able to
             # write to a directory (cygwin & win32)
-            if (st.st_mode & 07777 == 00000):
+            if (st.st_mode & 0o7777 == 00000):
                 # FTP allows stat but does not return dir/file modes
                 self._dir_mode = None
                 self._file_mode = None
             else:
-                self._dir_mode = (st.st_mode & 07777) | 00700
+                self._dir_mode = (st.st_mode & 0o7777) | 0o0700
                 # Remove the sticky and execute bits for files
-                self._file_mode = self._dir_mode & ~07111
+                self._file_mode = self._dir_mode & ~0o7111
 
     def _get_file_mode(self):
         """Return Unix mode for newly created files, or None.
@@ -1291,7 +1291,7 @@ class RemoteBzrProber(controldir.Prober):
     @classmethod
     def known_formats(cls):
         from bzrlib.remote import RemoteBzrDirFormat
-        return set([RemoteBzrDirFormat()])
+        return {RemoteBzrDirFormat()}
 
 
 class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
@@ -1323,7 +1323,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
             # Current RPC's only know how to create bzr metadir1 instances, so
             # we still delegate to vfs methods if the requested format is not a
             # metadir1
-            if type(self) != BzrDirMetaFormat1:
+            if not isinstance(self, BzrDirMetaFormat1):
                 return self._initialize_on_transport_vfs(transport)
             from bzrlib.remote import RemoteBzrDirFormat
             remote_format = RemoteBzrDirFormat()
@@ -1664,11 +1664,11 @@ class BzrDirMetaFormat1(BzrDirFormat):
         """See BzrDirFormat.get_converter()."""
         if format is None:
             format = BzrDirFormat.get_default_format()
-        if (type(self) is BzrDirMetaFormat1 and
-            type(format) is BzrDirMetaFormat1Colo):
+        if (isinstance(self, BzrDirMetaFormat1) and
+            isinstance(format, BzrDirMetaFormat1Colo)):
             return ConvertMetaToColo(format)
-        if (type(self) is BzrDirMetaFormat1Colo and
-            type(format) is BzrDirMetaFormat1):
+        if (isinstance(self, BzrDirMetaFormat1Colo) and
+            isinstance(format, BzrDirMetaFormat1)):
             return ConvertMetaToColo(format)
         if not isinstance(self, format.__class__):
             # converting away from metadir is not implemented
@@ -2092,7 +2092,7 @@ def register_metadir(registry, key,
         mod_name, factory_name = full_name.rsplit('.', 1)
         try:
             factory = pyutils.get_named_object(mod_name, factory_name)
-        except ImportError, e:
+        except ImportError as e:
             raise ImportError('failed to load %s: %s' % (full_name, e))
         except AttributeError:
             raise AttributeError('no factory %s in module %r'

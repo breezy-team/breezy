@@ -67,7 +67,7 @@ def _run_cleanup(func, *args, **kwargs):
         func(*args, **kwargs)
     except KeyboardInterrupt:
         raise
-    except Exception, exc:
+    except Exception as exc:
         _log_cleanup_error(exc)
         return False
     return True

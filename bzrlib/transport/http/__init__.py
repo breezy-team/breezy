@@ -227,7 +227,7 @@ class HttpTransportBase(ConnectedTransport):
                         cur_offset_and_size = iter_offsets.next()
 
             except (errors.ShortReadvError, errors.InvalidRange,
-                    errors.InvalidHttpRange, errors.HttpBoundaryMissing), e:
+                    errors.InvalidHttpRange, errors.HttpBoundaryMissing) as e:
                 mutter('Exception %r: %s during http._readv',e, e)
                 if (not isinstance(e, errors.ShortReadvError)
                     or retried_offset == cur_offset_and_size):
@@ -561,7 +561,7 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
                 raise errors.InvalidHttpResponse(
                     t._remote_path('.bzr/smart'),
                     'Expected 200 response code, got %r' % (code,))
-        except (errors.InvalidHttpResponse, errors.ConnectionReset), e:
+        except (errors.InvalidHttpResponse, errors.ConnectionReset) as e:
             raise errors.SmartProtocolError(str(e))
         return body_filelike
 

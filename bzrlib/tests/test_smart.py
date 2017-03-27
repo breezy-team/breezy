@@ -2464,7 +2464,7 @@ class TestHandlers(tests.TestCase):
         for key in smart_req.request_handlers.keys():
             try:
                 item = smart_req.request_handlers.get(key)
-            except AttributeError, e:
+            except AttributeError as e:
                 raise AttributeError('failed to get %s: %s' % (key, e))
 
     def assertHandlerEqual(self, verb, handler):

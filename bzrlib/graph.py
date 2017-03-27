@@ -365,7 +365,7 @@ class Graph(object):
         while cur_tip not in known_revnos:
             unknown_searched[cur_tip] = num_steps
             num_steps += 1
-            to_search = set([cur_tip])
+            to_search = {cur_tip}
             to_search.update(searching_known_tips)
             parent_map = self.get_parent_map(to_search)
             parents = parent_map.get(cur_tip, None)
@@ -828,7 +828,7 @@ class Graph(object):
             # NULL_REVISION is only a head if it is the only entry
             candidate_heads.remove(revision.NULL_REVISION)
             if not candidate_heads:
-                return set([revision.NULL_REVISION])
+                return {revision.NULL_REVISION}
         if len(candidate_heads) < 2:
             return candidate_heads
         searchers = dict((c, self._make_breadth_first_searcher([c]))
@@ -877,7 +877,7 @@ class Graph(object):
                 if ancestor in common_walker.seen:
                     # some searcher has encountered our known common nodes:
                     # just stop it
-                    ancestor_set = set([ancestor])
+                    ancestor_set = {ancestor}
                     for searcher in searchers.itervalues():
                         searcher.stop_searching_any(ancestor_set)
                 else:
@@ -1058,7 +1058,7 @@ class Graph(object):
         smallest number of parent lookups to determine the ancestral
         relationship between N revisions.
         """
-        return set([candidate_descendant]) == self.heads(
+        return {candidate_descendant} == self.heads(
             [candidate_ancestor, candidate_descendant])
 
     def is_between(self, revid, lower_bound_revid, upper_bound_revid):
@@ -1695,7 +1695,7 @@ class GraphThunkIdsToKeys(object):
         """See Graph.heads()"""
         as_keys = [(i,) for i in ids]
         head_keys = self._graph.heads(as_keys)
-        return set([h[0] for h in head_keys])
+        return {h[0] for h in head_keys}
 
     def merge_sort(self, tip_revision):
         nodes = self._graph.merge_sort((tip_revision,))
@@ -1710,6 +1710,6 @@ class GraphThunkIdsToKeys(object):
 _counters = [0,0,0,0,0,0,0]
 try:
     from bzrlib._known_graph_pyx import KnownGraph
-except ImportError, e:
+except ImportError as e:
     osutils.failed_to_load_extension(e)
     from bzrlib._known_graph_py import KnownGraph

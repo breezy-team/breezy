@@ -38,7 +38,7 @@ from bzrlib import (
 
 try:
     import paramiko
-except ImportError, e:
+except ImportError as e:
     # If we have an ssh subprocess, we don't strictly need paramiko for all ssh
     # access
     paramiko = None
@@ -205,7 +205,7 @@ class SocketAsChannelAdapter(object):
     def recv(self, n):
         try:
             return self.__socket.recv(n)
-        except socket.error, e:
+        except socket.error as e:
             if e.args[0] in (errno.EPIPE, errno.ECONNRESET, errno.ECONNABORTED,
                              errno.EBADF):
                 # Connection has closed.  Paramiko expects an empty string in
@@ -267,7 +267,7 @@ class LoopbackVendor(SSHVendor):
         sock = socket.socket()
         try:
             sock.connect((host, port))
-        except socket.error, e:
+        except socket.error as e:
             self._raise_connection_error(host, port=port, orig_error=e)
         return SFTPClient(SocketAsChannelAdapter(sock))
 
@@ -289,7 +289,7 @@ class ParamikoVendor(SSHVendor):
             t = paramiko.Transport((host, port or 22))
             t.set_log_channel('bzr.paramiko')
             t.start_client()
-        except (paramiko.SSHException, socket.error), e:
+        except (paramiko.SSHException, socket.error) as e:
             self._raise_connection_error(host, port=port, orig_error=e)
 
         server_key = t.get_remote_server_key()
@@ -327,7 +327,7 @@ class ParamikoVendor(SSHVendor):
         t = self._connect(username, password, host, port)
         try:
             return t.open_sftp_client()
-        except paramiko.SSHException, e:
+        except paramiko.SSHException as e:
             self._raise_connection_error(host, port=port, orig_error=e,
                                          msg='Unable to start sftp client')
 
@@ -338,7 +338,7 @@ class ParamikoVendor(SSHVendor):
             cmdline = ' '.join(command)
             channel.exec_command(cmdline)
             return _ParamikoSSHConnection(channel)
-        except paramiko.SSHException, e:
+        except paramiko.SSHException as e:
             self._raise_connection_error(host, port=port, orig_error=e,
                                          msg='Unable to invoke remote bzr')
 
@@ -388,7 +388,7 @@ class SubprocessVendor(SSHVendor):
                                                   subsystem='sftp')
             sock = self._connect(argv)
             return SFTPClient(SocketAsChannelAdapter(sock))
-        except _ssh_connection_errors, e:
+        except _ssh_connection_errors as e:
             self._raise_connection_error(host, port=port, orig_error=e)
 
     def connect_ssh(self, username, password, host, port, command):
@@ -396,7 +396,7 @@ class SubprocessVendor(SSHVendor):
             argv = self._get_vendor_specific_argv(username, host, port,
                                                   command=command)
             return self._connect(argv)
-        except _ssh_connection_errors, e:
+        except _ssh_connection_errors as e:
             self._raise_connection_error(host, port=port, orig_error=e)
 
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
@@ -510,7 +510,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
             try:
                 paramiko_transport.auth_publickey(username, key)
                 return
-            except paramiko.SSHException, e:
+            except paramiko.SSHException as e:
                 pass
 
     # okay, try finding id_rsa or id_dss?  (posix only)
@@ -532,10 +532,10 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
             paramiko_transport.auth_none(username)
         finally:
             paramiko_transport.logger.setLevel(old_level)
-    except paramiko.BadAuthenticationType, e:
+    except paramiko.BadAuthenticationType as e:
         # Supported methods are in the exception
         supported_auth_types = e.allowed_types
-    except paramiko.SSHException, e:
+    except paramiko.SSHException as e:
         # Don't know what happened, but just ignore it
         pass
     # We treat 'keyboard-interactive' and 'password' auth methods identically,
@@ -556,7 +556,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
         try:
             paramiko_transport.auth_password(username, password)
             return
-        except paramiko.SSHException, e:
+        except paramiko.SSHException as e:
             pass
 
     # give up and ask for a password
@@ -565,7 +565,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     if password is not None:
         try:
             paramiko_transport.auth_password(username, password)
-        except paramiko.SSHException, e:
+        except paramiko.SSHException as e:
             raise errors.ConnectionError(
                 'Unable to authenticate to SSH host as'
                 '\n  %s@%s\n' % (username, host), e)
@@ -608,12 +608,12 @@ def load_host_keys():
     try:
         SYSTEM_HOSTKEYS = paramiko.util.load_host_keys(
             os.path.expanduser('~/.ssh/known_hosts'))
-    except IOError, e:
+    except IOError as e:
         trace.mutter('failed to load system host keys: ' + str(e))
     bzr_hostkey_path = osutils.pathjoin(config.config_dir(), 'ssh_host_keys')
     try:
         BZR_HOSTKEYS = paramiko.util.load_host_keys(bzr_hostkey_path)
-    except IOError, e:
+    except IOError as e:
         trace.mutter('failed to load bzr host keys: ' + str(e))
         save_host_keys()
 
@@ -633,7 +633,7 @@ def save_host_keys():
             for keytype, key in keys.iteritems():
                 f.write('%s %s %s\n' % (hostname, keytype, key.get_base64()))
         f.close()
-    except IOError, e:
+    except IOError as e:
         trace.mutter('failed to save bzr host keys: ' + str(e))
 
 

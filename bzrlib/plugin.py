@@ -379,17 +379,17 @@ def _load_plugin_module(name, dir):
     if ('bzrlib.plugins.%s' % name) in PluginImporter.blacklist:
         return
     try:
-        exec "import bzrlib.plugins.%s" % name in {}
+        exec("import bzrlib.plugins.%s" % name, {})
     except KeyboardInterrupt:
         raise
-    except errors.IncompatibleAPI, e:
+    except errors.IncompatibleAPI as e:
         warning_message = (
             "Unable to load plugin %r. It requested API version "
             "%s of module %s but the minimum exported version is %s, and "
             "the maximum is %s" %
             (name, e.wanted, e.api, e.minimum, e.current))
         record_plugin_warning(name, warning_message)
-    except Exception, e:
+    except Exception as e:
         trace.warning("%s" % e)
         if re.search('\.|-| ', name):
             sanitised_name = re.sub('[-. ]', '_', name)
@@ -577,7 +577,7 @@ class PlugIn(object):
                     version_info = version_info.split('.')
                 elif len(version_info) == 3:
                     version_info = tuple(version_info) + ('final', 0)
-            except TypeError, e:
+            except TypeError as e:
                 # The given version_info isn't even iteratible
                 trace.log_exception_quietly()
                 version_info = (version_info,)
@@ -589,7 +589,7 @@ class PlugIn(object):
             return "unknown"
         try:
             version_string = _format_version_tuple(version_info)
-        except (ValueError, TypeError, IndexError), e:
+        except (ValueError, TypeError, IndexError) as e:
             trace.log_exception_quietly()
             # try to return something usefull for bad plugins, in stead of
             # stack tracing.

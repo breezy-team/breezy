@@ -73,12 +73,12 @@ class _SmartClient(object):
 
     def call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
-        if type(method) is not str:
+        if not isinstance(method, str):
             raise TypeError('method must be a byte string, not %r' % (method,))
         for arg in args:
-            if type(arg) is not str:
+            if not isinstance(arg, str):
                 raise TypeError('args must be byte strings, not %r' % (args,))
-        if type(body) is not str:
+        if not isinstance(body, str):
             raise TypeError('body must be byte string, not %r' % (body,))
         response, response_handler = self._call_and_read_response(
             method, args, body=body, expect_response_body=False)
@@ -86,12 +86,12 @@ class _SmartClient(object):
 
     def call_with_body_bytes_expecting_body(self, method, args, body):
         """Call a method on the remote server with body bytes."""
-        if type(method) is not str:
+        if not isinstance(method, str):
             raise TypeError('method must be a byte string, not %r' % (method,))
         for arg in args:
-            if type(arg) is not str:
+            if not isinstance(arg, str):
                 raise TypeError('args must be byte strings, not %r' % (args,))
-        if type(body) is not str:
+        if not isinstance(body, str):
             raise TypeError('body must be byte string, not %r' % (body,))
         response, response_handler = self._call_and_read_response(
             method, args, body=body, expect_response_body=True)
@@ -190,7 +190,7 @@ class _SmartClientRequest(object):
         try:
             response_tuple = response_handler.read_response_tuple(
                 expect_body=self.expect_response_body)
-        except errors.ConnectionReset, e:
+        except errors.ConnectionReset as e:
             self.client._medium.reset()
             if not self._is_safe_to_send_twice():
                 raise
@@ -216,7 +216,7 @@ class _SmartClientRequest(object):
                 self.client._medium._remember_remote_is_before((1, 6))
             try:
                 response_tuple, response_handler = self._call(protocol_version)
-            except errors.UnexpectedProtocolVersionMarker, err:
+            except errors.UnexpectedProtocolVersionMarker as err:
                 # TODO: We could recover from this without disconnecting if
                 # we recognise the protocol version.
                 trace.warning(
@@ -265,7 +265,7 @@ class _SmartClientRequest(object):
         encoder, response_handler = self._construct_protocol(protocol_version)
         try:
             self._send_no_retry(encoder)
-        except errors.ConnectionReset, e:
+        except errors.ConnectionReset as e:
             # If we fail during the _send_no_retry phase, then we can
             # be confident that the server did not get our request, because we
             # haven't started waiting for the reply yet. So try the request
@@ -344,7 +344,7 @@ class CallHookParams(object):
         return '<%s %r>' % (self.__class__.__name__, attrs)
 
     def __eq__(self, other):
-        if type(other) is not type(self):
+        if not isinstance(other, type(self)):
             return NotImplemented
         return self.__dict__ == other.__dict__
 

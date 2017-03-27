@@ -164,7 +164,7 @@ def iter_ancestors(revision_id, revision_source, only_present=False):
                 yield ancestor, distance
             try:
                 revision = revision_source.get_revision(ancestor)
-            except errors.NoSuchRevision, e:
+            except errors.NoSuchRevision as e:
                 if e.revision == revision_id:
                     raise
                 else:

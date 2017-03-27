@@ -528,12 +528,12 @@ class TestGraph(TestCaseWithMemoryTransport):
         """
         graph = self.make_graph(ancestry_1)
         self.assertRaises(errors.InvalidRevisionId, graph.find_lca, None)
-        self.assertEqual(set([NULL_REVISION]),
+        self.assertEqual({NULL_REVISION},
                          graph.find_lca(NULL_REVISION, NULL_REVISION))
-        self.assertEqual(set([NULL_REVISION]),
+        self.assertEqual({NULL_REVISION},
                          graph.find_lca(NULL_REVISION, 'rev1'))
-        self.assertEqual(set(['rev1']), graph.find_lca('rev1', 'rev1'))
-        self.assertEqual(set(['rev1']), graph.find_lca('rev2a', 'rev2b'))
+        self.assertEqual({'rev1'}, graph.find_lca('rev1', 'rev1'))
+        self.assertEqual({'rev1'}, graph.find_lca('rev2a', 'rev2b'))
 
     def test_no_unique_lca(self):
         """Test error when one revision is not in the graph"""
@@ -544,15 +544,15 @@ class TestGraph(TestCaseWithMemoryTransport):
     def test_lca_criss_cross(self):
         """Test least-common-ancestor after a criss-cross merge."""
         graph = self.make_graph(criss_cross)
-        self.assertEqual(set(['rev2a', 'rev2b']),
+        self.assertEqual({'rev2a', 'rev2b'},
                          graph.find_lca('rev3a', 'rev3b'))
-        self.assertEqual(set(['rev2b']),
+        self.assertEqual({'rev2b'},
                          graph.find_lca('rev3a', 'rev3b', 'rev2b'))
 
     def test_lca_shortcut(self):
         """Test least-common ancestor on this history shortcut"""
         graph = self.make_graph(history_shortcut)
-        self.assertEqual(set(['rev2b']), graph.find_lca('rev3a', 'rev3b'))
+        self.assertEqual({'rev2b'}, graph.find_lca('rev3a', 'rev3b'))
 
     def test_lefthand_distance_smoke(self):
         """A simple does it work test for graph.lefthand_distance(keys)."""
@@ -590,23 +590,23 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def test__remove_simple_descendants(self):
         graph = self.make_graph(ancestry_1)
-        self.assertRemoveDescendants(set(['rev1']), graph,
-            set(['rev1', 'rev2a', 'rev2b', 'rev3', 'rev4']))
+        self.assertRemoveDescendants({'rev1'}, graph,
+            {'rev1', 'rev2a', 'rev2b', 'rev3', 'rev4'})
 
     def test__remove_simple_descendants_disjoint(self):
         graph = self.make_graph(ancestry_1)
-        self.assertRemoveDescendants(set(['rev1', 'rev3']), graph,
-            set(['rev1', 'rev3']))
+        self.assertRemoveDescendants({'rev1', 'rev3'}, graph,
+            {'rev1', 'rev3'})
 
     def test__remove_simple_descendants_chain(self):
         graph = self.make_graph(ancestry_1)
-        self.assertRemoveDescendants(set(['rev1']), graph,
-            set(['rev1', 'rev2a', 'rev3']))
+        self.assertRemoveDescendants({'rev1'}, graph,
+            {'rev1', 'rev2a', 'rev3'})
 
     def test__remove_simple_descendants_siblings(self):
         graph = self.make_graph(ancestry_1)
-        self.assertRemoveDescendants(set(['rev2a', 'rev2b']), graph,
-            set(['rev2a', 'rev2b', 'rev3']))
+        self.assertRemoveDescendants({'rev2a', 'rev2b'}, graph,
+            {'rev2a', 'rev2b', 'rev3'})
 
     def test_unique_lca_criss_cross(self):
         """Ensure we don't pick non-unique lcas in a criss-cross"""
@@ -652,55 +652,55 @@ class TestGraph(TestCaseWithMemoryTransport):
     def test_graph_difference(self):
         graph = self.make_graph(ancestry_1)
         self.assertEqual((set(), set()), graph.find_difference('rev1', 'rev1'))
-        self.assertEqual((set(), set(['rev1'])),
+        self.assertEqual((set(), {'rev1'}),
                          graph.find_difference(NULL_REVISION, 'rev1'))
-        self.assertEqual((set(['rev1']), set()),
+        self.assertEqual(({'rev1'}, set()),
                          graph.find_difference('rev1', NULL_REVISION))
-        self.assertEqual((set(['rev2a', 'rev3']), set(['rev2b'])),
+        self.assertEqual(({'rev2a', 'rev3'}, {'rev2b'}),
                          graph.find_difference('rev3', 'rev2b'))
-        self.assertEqual((set(['rev4', 'rev3', 'rev2a']), set()),
+        self.assertEqual(({'rev4', 'rev3', 'rev2a'}, set()),
                          graph.find_difference('rev4', 'rev2b'))
 
     def test_graph_difference_separate_ancestry(self):
         graph = self.make_graph(ancestry_2)
-        self.assertEqual((set(['rev1a']), set(['rev1b'])),
+        self.assertEqual(({'rev1a'}, {'rev1b'}),
                          graph.find_difference('rev1a', 'rev1b'))
-        self.assertEqual((set(['rev1a', 'rev2a', 'rev3a', 'rev4a']),
-                          set(['rev1b'])),
+        self.assertEqual(({'rev1a', 'rev2a', 'rev3a', 'rev4a'},
+                          {'rev1b'}),
                          graph.find_difference('rev4a', 'rev1b'))
 
     def test_graph_difference_criss_cross(self):
         graph = self.make_graph(criss_cross)
-        self.assertEqual((set(['rev3a']), set(['rev3b'])),
+        self.assertEqual(({'rev3a'}, {'rev3b'}),
                          graph.find_difference('rev3a', 'rev3b'))
-        self.assertEqual((set([]), set(['rev3b', 'rev2b'])),
+        self.assertEqual((set([]), {'rev3b', 'rev2b'}),
                          graph.find_difference('rev2a', 'rev3b'))
 
     def test_graph_difference_extended_history(self):
         graph = self.make_graph(extended_history_shortcut)
-        self.assertEqual((set(['e']), set(['f'])),
+        self.assertEqual(({'e'}, {'f'}),
                          graph.find_difference('e', 'f'))
-        self.assertEqual((set(['f']), set(['e'])),
+        self.assertEqual(({'f'}, {'e'}),
                          graph.find_difference('f', 'e'))
 
     def test_graph_difference_double_shortcut(self):
         graph = self.make_graph(double_shortcut)
-        self.assertEqual((set(['d', 'f']), set(['e', 'g'])),
+        self.assertEqual(({'d', 'f'}, {'e', 'g'}),
                          graph.find_difference('f', 'g'))
 
     def test_graph_difference_complex_shortcut(self):
         graph = self.make_graph(complex_shortcut)
-        self.assertEqual((set(['m', 'i', 'e']), set(['n', 'h'])),
+        self.assertEqual(({'m', 'i', 'e'}, {'n', 'h'}),
                          graph.find_difference('m', 'n'))
 
     def test_graph_difference_complex_shortcut2(self):
         graph = self.make_graph(complex_shortcut2)
-        self.assertEqual((set(['t']), set(['j', 'u'])),
+        self.assertEqual(({'t'}, {'j', 'u'}),
                          graph.find_difference('t', 'u'))
 
     def test_graph_difference_shortcut_extra_root(self):
         graph = self.make_graph(shortcut_extra_root)
-        self.assertEqual((set(['e']), set(['f', 'g'])),
+        self.assertEqual(({'e'}, {'f', 'g'}),
                          graph.find_difference('e', 'f'))
 
     def test_iter_topo_order(self):
@@ -791,85 +791,85 @@ class TestGraph(TestCaseWithMemoryTransport):
         #      c
         graph = self.make_graph({'c': ['b', 'd'], 'd': ['e'], 'b': ['a'],
                                  'a': [NULL_REVISION], 'e': [NULL_REVISION]})
-        self.assertEqual(set(['c']), graph.heads(['a', 'c', 'e']))
+        self.assertEqual({'c'}, graph.heads(['a', 'c', 'e']))
 
     def test_heads_null(self):
         graph = self.make_graph(ancestry_1)
-        self.assertEqual(set(['null:']), graph.heads(['null:']))
-        self.assertEqual(set(['rev1']), graph.heads(['null:', 'rev1']))
-        self.assertEqual(set(['rev1']), graph.heads(['rev1', 'null:']))
-        self.assertEqual(set(['rev1']), graph.heads(set(['rev1', 'null:'])))
-        self.assertEqual(set(['rev1']), graph.heads(('rev1', 'null:')))
+        self.assertEqual({'null:'}, graph.heads(['null:']))
+        self.assertEqual({'rev1'}, graph.heads(['null:', 'rev1']))
+        self.assertEqual({'rev1'}, graph.heads(['rev1', 'null:']))
+        self.assertEqual({'rev1'}, graph.heads({'rev1', 'null:'}))
+        self.assertEqual({'rev1'}, graph.heads(('rev1', 'null:')))
 
     def test_heads_one(self):
         # A single node will always be a head
         graph = self.make_graph(ancestry_1)
-        self.assertEqual(set(['null:']), graph.heads(['null:']))
-        self.assertEqual(set(['rev1']), graph.heads(['rev1']))
-        self.assertEqual(set(['rev2a']), graph.heads(['rev2a']))
-        self.assertEqual(set(['rev2b']), graph.heads(['rev2b']))
-        self.assertEqual(set(['rev3']), graph.heads(['rev3']))
-        self.assertEqual(set(['rev4']), graph.heads(['rev4']))
+        self.assertEqual({'null:'}, graph.heads(['null:']))
+        self.assertEqual({'rev1'}, graph.heads(['rev1']))
+        self.assertEqual({'rev2a'}, graph.heads(['rev2a']))
+        self.assertEqual({'rev2b'}, graph.heads(['rev2b']))
+        self.assertEqual({'rev3'}, graph.heads(['rev3']))
+        self.assertEqual({'rev4'}, graph.heads(['rev4']))
 
     def test_heads_single(self):
         graph = self.make_graph(ancestry_1)
-        self.assertEqual(set(['rev4']), graph.heads(['null:', 'rev4']))
-        self.assertEqual(set(['rev2a']), graph.heads(['rev1', 'rev2a']))
-        self.assertEqual(set(['rev2b']), graph.heads(['rev1', 'rev2b']))
-        self.assertEqual(set(['rev3']), graph.heads(['rev1', 'rev3']))
-        self.assertEqual(set(['rev4']), graph.heads(['rev1', 'rev4']))
-        self.assertEqual(set(['rev4']), graph.heads(['rev2a', 'rev4']))
-        self.assertEqual(set(['rev4']), graph.heads(['rev2b', 'rev4']))
-        self.assertEqual(set(['rev4']), graph.heads(['rev3', 'rev4']))
+        self.assertEqual({'rev4'}, graph.heads(['null:', 'rev4']))
+        self.assertEqual({'rev2a'}, graph.heads(['rev1', 'rev2a']))
+        self.assertEqual({'rev2b'}, graph.heads(['rev1', 'rev2b']))
+        self.assertEqual({'rev3'}, graph.heads(['rev1', 'rev3']))
+        self.assertEqual({'rev4'}, graph.heads(['rev1', 'rev4']))
+        self.assertEqual({'rev4'}, graph.heads(['rev2a', 'rev4']))
+        self.assertEqual({'rev4'}, graph.heads(['rev2b', 'rev4']))
+        self.assertEqual({'rev4'}, graph.heads(['rev3', 'rev4']))
 
     def test_heads_two_heads(self):
         graph = self.make_graph(ancestry_1)
-        self.assertEqual(set(['rev2a', 'rev2b']),
+        self.assertEqual({'rev2a', 'rev2b'},
                          graph.heads(['rev2a', 'rev2b']))
-        self.assertEqual(set(['rev3', 'rev2b']),
+        self.assertEqual({'rev3', 'rev2b'},
                          graph.heads(['rev3', 'rev2b']))
 
     def test_heads_criss_cross(self):
         graph = self.make_graph(criss_cross)
-        self.assertEqual(set(['rev2a']),
+        self.assertEqual({'rev2a'},
                          graph.heads(['rev2a', 'rev1']))
-        self.assertEqual(set(['rev2b']),
+        self.assertEqual({'rev2b'},
                          graph.heads(['rev2b', 'rev1']))
-        self.assertEqual(set(['rev3a']),
+        self.assertEqual({'rev3a'},
                          graph.heads(['rev3a', 'rev1']))
-        self.assertEqual(set(['rev3b']),
+        self.assertEqual({'rev3b'},
                          graph.heads(['rev3b', 'rev1']))
-        self.assertEqual(set(['rev2a', 'rev2b']),
+        self.assertEqual({'rev2a', 'rev2b'},
                          graph.heads(['rev2a', 'rev2b']))
-        self.assertEqual(set(['rev3a']),
+        self.assertEqual({'rev3a'},
                          graph.heads(['rev3a', 'rev2a']))
-        self.assertEqual(set(['rev3a']),
+        self.assertEqual({'rev3a'},
                          graph.heads(['rev3a', 'rev2b']))
-        self.assertEqual(set(['rev3a']),
+        self.assertEqual({'rev3a'},
                          graph.heads(['rev3a', 'rev2a', 'rev2b']))
-        self.assertEqual(set(['rev3b']),
+        self.assertEqual({'rev3b'},
                          graph.heads(['rev3b', 'rev2a']))
-        self.assertEqual(set(['rev3b']),
+        self.assertEqual({'rev3b'},
                          graph.heads(['rev3b', 'rev2b']))
-        self.assertEqual(set(['rev3b']),
+        self.assertEqual({'rev3b'},
                          graph.heads(['rev3b', 'rev2a', 'rev2b']))
-        self.assertEqual(set(['rev3a', 'rev3b']),
+        self.assertEqual({'rev3a', 'rev3b'},
                          graph.heads(['rev3a', 'rev3b']))
-        self.assertEqual(set(['rev3a', 'rev3b']),
+        self.assertEqual({'rev3a', 'rev3b'},
                          graph.heads(['rev3a', 'rev3b', 'rev2a', 'rev2b']))
 
     def test_heads_shortcut(self):
         graph = self.make_graph(history_shortcut)
 
-        self.assertEqual(set(['rev2a', 'rev2b', 'rev2c']),
+        self.assertEqual({'rev2a', 'rev2b', 'rev2c'},
                          graph.heads(['rev2a', 'rev2b', 'rev2c']))
-        self.assertEqual(set(['rev3a', 'rev3b']),
+        self.assertEqual({'rev3a', 'rev3b'},
                          graph.heads(['rev3a', 'rev3b']))
-        self.assertEqual(set(['rev3a', 'rev3b']),
+        self.assertEqual({'rev3a', 'rev3b'},
                          graph.heads(['rev2a', 'rev3a', 'rev3b']))
-        self.assertEqual(set(['rev2a', 'rev3b']),
+        self.assertEqual({'rev2a', 'rev3b'},
                          graph.heads(['rev2a', 'rev3b']))
-        self.assertEqual(set(['rev2c', 'rev3a']),
+        self.assertEqual({'rev2c', 'rev3a'},
                          graph.heads(['rev2c', 'rev3a']))
 
     def _run_heads_break_deeper(self, graph_dict, search):
@@ -898,7 +898,7 @@ class TestGraph(TestCaseWithMemoryTransport):
             'right':['common'],
             'common':['deeper'],
         }
-        self.assertEqual(set(['left', 'right']),
+        self.assertEqual({'left', 'right'},
             self._run_heads_break_deeper(graph_dict, ['left', 'right']))
 
     def test_heads_limits_search_assymetric(self):
@@ -910,7 +910,7 @@ class TestGraph(TestCaseWithMemoryTransport):
             'common':['aftercommon'],
             'aftercommon':['deeper'],
         }
-        self.assertEqual(set(['left', 'right']),
+        self.assertEqual({'left', 'right'},
             self._run_heads_break_deeper(graph_dict, ['left', 'right']))
 
     def test_heads_limits_search_common_search_must_continue(self):
@@ -923,18 +923,18 @@ class TestGraph(TestCaseWithMemoryTransport):
             'common1':['common2'],
             'common2':['deeper'],
         }
-        self.assertEqual(set(['h1', 'h2']),
+        self.assertEqual({'h1', 'h2'},
             self._run_heads_break_deeper(graph_dict, ['h1', 'h2']))
 
     def test_breadth_first_search_start_ghosts(self):
         graph = self.make_graph({})
         # with_ghosts reports the ghosts
         search = graph._make_breadth_first_searcher(['a-ghost'])
-        self.assertEqual((set(), set(['a-ghost'])), search.next_with_ghosts())
+        self.assertEqual((set(), {'a-ghost'}), search.next_with_ghosts())
         self.assertRaises(StopIteration, search.next_with_ghosts)
         # next includes them
         search = graph._make_breadth_first_searcher(['a-ghost'])
-        self.assertEqual(set(['a-ghost']), search.next())
+        self.assertEqual({'a-ghost'}, search.next())
         self.assertRaises(StopIteration, search.next)
 
     def test_breadth_first_search_deep_ghosts(self):
@@ -945,16 +945,16 @@ class TestGraph(TestCaseWithMemoryTransport):
             })
         # with_ghosts reports the ghosts
         search = graph._make_breadth_first_searcher(['head'])
-        self.assertEqual((set(['head']), set()), search.next_with_ghosts())
-        self.assertEqual((set(['present']), set()), search.next_with_ghosts())
-        self.assertEqual((set(['child']), set(['ghost'])),
+        self.assertEqual(({'head'}, set()), search.next_with_ghosts())
+        self.assertEqual(({'present'}, set()), search.next_with_ghosts())
+        self.assertEqual(({'child'}, {'ghost'}),
             search.next_with_ghosts())
         self.assertRaises(StopIteration, search.next_with_ghosts)
         # next includes them
         search = graph._make_breadth_first_searcher(['head'])
-        self.assertEqual(set(['head']), search.next())
-        self.assertEqual(set(['present']), search.next())
-        self.assertEqual(set(['child', 'ghost']),
+        self.assertEqual({'head'}, search.next())
+        self.assertEqual({'present'}, search.next())
+        self.assertEqual({'child', 'ghost'},
             search.next())
         self.assertRaises(StopIteration, search.next)
 
@@ -968,16 +968,16 @@ class TestGraph(TestCaseWithMemoryTransport):
             })
         # start with next_with_ghosts
         search = graph._make_breadth_first_searcher(['head'])
-        self.assertEqual((set(['head']), set()), search.next_with_ghosts())
-        self.assertEqual(set(['present']), search.next())
-        self.assertEqual((set(['child']), set(['ghost'])),
+        self.assertEqual(({'head'}, set()), search.next_with_ghosts())
+        self.assertEqual({'present'}, search.next())
+        self.assertEqual(({'child'}, {'ghost'}),
             search.next_with_ghosts())
         self.assertRaises(StopIteration, search.next)
         # start with next
         search = graph._make_breadth_first_searcher(['head'])
-        self.assertEqual(set(['head']), search.next())
-        self.assertEqual((set(['present']), set()), search.next_with_ghosts())
-        self.assertEqual(set(['child', 'ghost']),
+        self.assertEqual({'head'}, search.next())
+        self.assertEqual(({'present'}, set()), search.next_with_ghosts())
+        self.assertEqual({'child', 'ghost'},
             search.next())
         self.assertRaises(StopIteration, search.next_with_ghosts)
 
@@ -990,22 +990,22 @@ class TestGraph(TestCaseWithMemoryTransport):
             'other_2':[],
             })
         search = graph._make_breadth_first_searcher(['head'])
-        self.assertEqual((set(['head']), set()), search.next_with_ghosts())
-        self.assertEqual((set(['present']), set()), search.next_with_ghosts())
-        self.assertEqual(set(['present']),
+        self.assertEqual(({'head'}, set()), search.next_with_ghosts())
+        self.assertEqual(({'present'}, set()), search.next_with_ghosts())
+        self.assertEqual({'present'},
             search.stop_searching_any(['present']))
-        self.assertEqual((set(['other']), set(['other_ghost'])),
+        self.assertEqual(({'other'}, {'other_ghost'}),
             search.start_searching(['other', 'other_ghost']))
-        self.assertEqual((set(['other_2']), set()), search.next_with_ghosts())
+        self.assertEqual(({'other_2'}, set()), search.next_with_ghosts())
         self.assertRaises(StopIteration, search.next_with_ghosts)
         # next includes them
         search = graph._make_breadth_first_searcher(['head'])
-        self.assertEqual(set(['head']), search.next())
-        self.assertEqual(set(['present']), search.next())
-        self.assertEqual(set(['present']),
+        self.assertEqual({'head'}, search.next())
+        self.assertEqual({'present'}, search.next())
+        self.assertEqual({'present'},
             search.stop_searching_any(['present']))
         search.start_searching(['other', 'other_ghost'])
-        self.assertEqual(set(['other_2']), search.next())
+        self.assertEqual({'other_2'}, search.next())
         self.assertRaises(StopIteration, search.next)
 
     def assertSeenAndResult(self, instructions, search, next):
@@ -1042,16 +1042,16 @@ class TestGraph(TestCaseWithMemoryTransport):
         search = graph._make_breadth_first_searcher(['head'])
         # At the start, nothing has been seen, to its all excluded:
         state = search.get_state()
-        self.assertEqual((set(['head']), set(['head']), set()),
+        self.assertEqual(({'head'}, {'head'}, set()),
             state)
         self.assertEqual(set(), search.seen)
         # using next:
         expected = [
-            (set(['head']), (set(['head']), set(['child']), 1),
+            ({'head'}, ({'head'}, {'child'}, 1),
              ['head'], None, None),
-            (set(['head', 'child']), (set(['head']), set([NULL_REVISION]), 2),
+            ({'head', 'child'}, ({'head'}, {NULL_REVISION}, 2),
              ['head', 'child'], None, None),
-            (set(['head', 'child', NULL_REVISION]), (set(['head']), set(), 3),
+            ({'head', 'child', NULL_REVISION}, ({'head'}, set(), 3),
              ['head', 'child', NULL_REVISION], None, None),
             ]
         self.assertSeenAndResult(expected, search, search.next)
@@ -1073,23 +1073,23 @@ class TestGraph(TestCaseWithMemoryTransport):
         search.start_searching(['head'])
         # head has been seen:
         state = search.get_state()
-        self.assertEqual((set(['head']), set(['child']), set(['head'])),
+        self.assertEqual(({'head'}, {'child'}, {'head'}),
             state)
-        self.assertEqual(set(['head']), search.seen)
+        self.assertEqual({'head'}, search.seen)
         # using next:
         expected = [
             # stop at child, and start a new search at otherhead:
             # - otherhead counts as seen immediately when start_searching is
             # called.
-            (set(['head', 'child', 'otherhead']),
-             (set(['head', 'otherhead']), set(['child', 'otherchild']), 2),
+            ({'head', 'child', 'otherhead'},
+             ({'head', 'otherhead'}, {'child', 'otherchild'}, 2),
              ['head', 'otherhead'], ['otherhead'], ['child']),
-            (set(['head', 'child', 'otherhead', 'otherchild']),
-             (set(['head', 'otherhead']), set(['child', 'excluded']), 3),
+            ({'head', 'child', 'otherhead', 'otherchild'},
+             ({'head', 'otherhead'}, {'child', 'excluded'}, 3),
              ['head', 'otherhead', 'otherchild'], None, None),
             # stop searching excluded now
-            (set(['head', 'child', 'otherhead', 'otherchild', 'excluded']),
-             (set(['head', 'otherhead']), set(['child', 'excluded']), 3),
+            ({'head', 'child', 'otherhead', 'otherchild', 'excluded'},
+             ({'head', 'otherhead'}, {'child', 'excluded'}, 3),
              ['head', 'otherhead', 'otherchild'], None, ['excluded']),
             ]
         self.assertSeenAndResult(expected, search, search.next)
@@ -1109,13 +1109,13 @@ class TestGraph(TestCaseWithMemoryTransport):
         search = graph._make_breadth_first_searcher(['head'])
         expected = [
             # NULL_REVISION and ghost1 have not been returned
-            (set(['head']),
-             (set(['head']), set(['child', NULL_REVISION, 'ghost1']), 1),
+            ({'head'},
+             ({'head'}, {'child', NULL_REVISION, 'ghost1'}, 1),
              ['head'], None, [NULL_REVISION, 'ghost1']),
             # ghost1 has been returned, NULL_REVISION is to be returned in the
             # next iteration.
-            (set(['head', 'child', 'ghost1']),
-             (set(['head']), set(['ghost1', NULL_REVISION]), 2),
+            ({'head', 'child', 'ghost1'},
+             ({'head'}, {'ghost1', NULL_REVISION}, 2),
              ['head', 'child'], None, [NULL_REVISION, 'ghost1']),
             ]
         self.assertSeenAndResult(expected, search, search.next)
@@ -1135,14 +1135,14 @@ class TestGraph(TestCaseWithMemoryTransport):
             })
         search = graph._make_breadth_first_searcher(['head'])
         expected = [
-            (set(['head']), (set(['head']), set(['middle']), 1),
+            ({'head'}, ({'head'}, {'middle'}, 1),
              ['head'], None, None),
-            (set(['head', 'middle']), (set(['head']), set(['child']), 2),
+            ({'head', 'middle'}, ({'head'}, {'child'}, 2),
              ['head', 'middle'], None, None),
             # 'middle' came from the previous iteration, but we don't stop
             # searching it until *after* advancing the searcher.
-            (set(['head', 'middle', 'child']),
-             (set(['head']), set(['middle', 'child']), 1),
+            ({'head', 'middle', 'child'},
+             ({'head'}, {'middle', 'child'}, 1),
              ['head'], None, ['middle', 'child']),
             ]
         self.assertSeenAndResult(expected, search, search.next)
@@ -1159,11 +1159,11 @@ class TestGraph(TestCaseWithMemoryTransport):
         search = graph._make_breadth_first_searcher(['head'])
         # using next:
         expected = [
-            (set(['head']),
-             (set(['head']), set(['ghost', 'child']), 1),
+            ({'head'},
+             ({'head'}, {'ghost', 'child'}, 1),
              ['head'], None, None),
-            (set(['head', 'child', 'ghost']),
-             (set(['head']), set([NULL_REVISION, 'ghost']), 2),
+            ({'head', 'child', 'ghost'},
+             ({'head'}, {NULL_REVISION, 'ghost'}, 2),
              ['head', 'child'], None, None),
             ]
         self.assertSeenAndResult(expected, search, search.next)
@@ -1180,11 +1180,11 @@ class TestGraph(TestCaseWithMemoryTransport):
         search = graph._make_breadth_first_searcher(['head'])
         # using next:
         expected = [
-            (set(['head', 'ghost']),
-             (set(['head', 'ghost']), set(['child', 'ghost']), 1),
+            ({'head', 'ghost'},
+             ({'head', 'ghost'}, {'child', 'ghost'}, 1),
              ['head'], ['ghost'], None),
-            (set(['head', 'child', 'ghost']),
-             (set(['head', 'ghost']), set([NULL_REVISION, 'ghost']), 2),
+            ({'head', 'child', 'ghost'},
+             ({'head', 'ghost'}, {NULL_REVISION, 'ghost'}, 2),
              ['head', 'child'], None, None),
             ]
         self.assertSeenAndResult(expected, search, search.next)
@@ -1200,11 +1200,11 @@ class TestGraph(TestCaseWithMemoryTransport):
         search = graph._make_breadth_first_searcher(['head'])
         # using next:
         expected = [
-            (set(['head']),
-             (set(['head']), set([NULL_REVISION]), 1),
+            ({'head'},
+             ({'head'}, {NULL_REVISION}, 1),
              ['head'], None, None),
-            (set(['head', NULL_REVISION]),
-             (set(['head']), set([]), 2),
+            ({'head', NULL_REVISION},
+             ({'head'}, set([]), 2),
              ['head', NULL_REVISION], None, None),
             ]
         self.assertSeenAndResult(expected, search, search.next)
@@ -1221,30 +1221,30 @@ class TestGraph(TestCaseWithMemoryTransport):
         search = graph._make_breadth_first_searcher(['head'])
         # using next:
         expected = [
-            (set(['head']),
-             (set(['head']), set([NULL_REVISION]), 1),
+            ({'head'},
+             ({'head'}, {NULL_REVISION}, 1),
              ['head'], None, None),
-            (set(['head', 'ghost', NULL_REVISION]),
-             (set(['head', 'ghost']), set(['ghost']), 2),
+            ({'head', 'ghost', NULL_REVISION},
+             ({'head', 'ghost'}, {'ghost'}, 2),
              ['head', NULL_REVISION], ['ghost'], None),
             ]
         self.assertSeenAndResult(expected, search, search.next)
         self.assertRaises(StopIteration, search.next)
-        self.assertEqual(set(['head', 'ghost', NULL_REVISION]), search.seen)
+        self.assertEqual({'head', 'ghost', NULL_REVISION}, search.seen)
         state = search.get_state()
         self.assertEqual(
-            (set(['ghost', 'head']), set(['ghost']),
-                set(['head', NULL_REVISION])),
+            ({'ghost', 'head'}, {'ghost'},
+                {'head', NULL_REVISION}),
             state)
         # using next_with_ghosts:
         search = graph._make_breadth_first_searcher(['head'])
         self.assertSeenAndResult(expected, search, search.next_with_ghosts)
         self.assertRaises(StopIteration, search.next)
-        self.assertEqual(set(['head', 'ghost', NULL_REVISION]), search.seen)
+        self.assertEqual({'head', 'ghost', NULL_REVISION}, search.seen)
         state = search.get_state()
         self.assertEqual(
-            (set(['ghost', 'head']), set(['ghost']),
-                set(['head', NULL_REVISION])),
+            ({'ghost', 'head'}, {'ghost'},
+                {'head', NULL_REVISION}),
             state)
 
 
@@ -1417,18 +1417,18 @@ class TestFindDescendants(TestGraphBase):
     def test_find_descendants_rev1_rev3(self):
         graph = self.make_graph(ancestry_1)
         descendants = graph.find_descendants('rev1', 'rev3')
-        self.assertEqual(set(['rev1', 'rev2a', 'rev3']), descendants)
+        self.assertEqual({'rev1', 'rev2a', 'rev3'}, descendants)
 
     def test_find_descendants_rev1_rev4(self):
         graph = self.make_graph(ancestry_1)
         descendants = graph.find_descendants('rev1', 'rev4')
-        self.assertEqual(set(['rev1', 'rev2a', 'rev2b', 'rev3', 'rev4']),
+        self.assertEqual({'rev1', 'rev2a', 'rev2b', 'rev3', 'rev4'},
                          descendants)
 
     def test_find_descendants_rev2a_rev4(self):
         graph = self.make_graph(ancestry_1)
         descendants = graph.find_descendants('rev2a', 'rev4')
-        self.assertEqual(set(['rev2a', 'rev3', 'rev4']), descendants)
+        self.assertEqual({'rev2a', 'rev3', 'rev4'}, descendants)
 
 class TestFindLefthandMerger(TestGraphBase):
 
@@ -1520,7 +1520,7 @@ class TestCachingParentsProvider(tests.TestCase):
         self.caching_pp.note_missing_key('b')
         self.assertEqual({}, self.caching_pp.get_parent_map(['b']))
         self.assertEqual([], self.inst_pp.calls)
-        self.assertEqual(set(['b']), self.caching_pp.missing_keys)
+        self.assertEqual({'b'}, self.caching_pp.missing_keys)
 
     def test_get_cached_parent_map(self):
         self.assertEqual({}, self.caching_pp.get_cached_parent_map(['a']))

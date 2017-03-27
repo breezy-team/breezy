@@ -184,7 +184,7 @@ class BodyExternalMailClient(MailClient):
                                                          **kwargs))
             try:
                 subprocess.call(cmdline)
-            except OSError, e:
+            except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
             else:
@@ -533,7 +533,7 @@ class MAPIClient(BodyExternalMailClient):
         try:
             simplemapi.SendMail(to or '', subject or '', body or '',
                                 attach_path)
-        except simplemapi.MAPIError, e:
+        except simplemapi.MAPIError as e:
             if e.code != simplemapi.MAPI_USER_ABORT:
                 raise errors.MailClientNotFound(['MAPI supported mail client'
                                                  ' (error %d)' % (e.code,)])

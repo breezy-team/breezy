@@ -240,7 +240,7 @@ class Registry(object):
                        for key, getter in self._dict.items()])
 
     def _set_default_key(self, key):
-        if not self._dict.has_key(key):
+        if key not in self._dict:
             raise KeyError('No object registered under key %s.' % key)
         else:
             self._default_key = key

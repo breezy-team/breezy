@@ -584,7 +584,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         # canonical size
         try:
             return os.path.getsize(self.id2abspath(file_id))
-        except OSError, e:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
             else:
@@ -598,7 +598,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                 fullpath = normpath(self.abspath(f))
                 try:
                     kinds[pos] = file_kind(fullpath)
-                except OSError, e:
+                except OSError as e:
                     if e.errno == errno.ENOENT:
                         raise errors.NoSuchFile(fullpath)
 
@@ -660,7 +660,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         abspath = self.abspath(path)
         try:
             stat_result = _lstat(abspath)
-        except OSError, e:
+        except OSError as e:
             if getattr(e, 'errno', None) == errno.ENOENT:
                 # no file.
                 return ('missing', None, None, None)
@@ -1123,7 +1123,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         abspath = self.abspath(path)
         try:
             stat_value = os.lstat(abspath)
-        except OSError, e:
+        except OSError as e:
             if getattr(e, 'errno', None) == errno.ENOENT:
                 stat_value = None
                 kind = None
@@ -1593,7 +1593,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         try:
             current_disk = disk_iterator.next()
             disk_finished = False
-        except OSError, e:
+        except OSError as e:
             if not (e.errno == errno.ENOENT or
                 (sys.platform == 'win32' and e.errno == ERROR_PATH_NOT_FOUND)):
                 raise
@@ -2215,7 +2215,7 @@ class InventoryWorkingTree(WorkingTree,
             path = self.id2path(file_id)
         try:
             return os.lstat(self.abspath(path)).st_mtime
-        except OSError, e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 raise errors.FileTimestampUnavailable(path)
             raise
@@ -2513,8 +2513,7 @@ class InventoryWorkingTree(WorkingTree,
             inv = self.root_inventory
             from_dir_id = inv.root.file_id
             from_dir_abspath = self.basedir
-        children = os.listdir(from_dir_abspath)
-        children.sort()
+        children = sorted(os.listdir(from_dir_abspath))
         # jam 20060527 The kernel sized tree seems equivalent whether we
         # use a deque and popleft to keep them sorted, or if we use a plain
         # list and just reverse() them.
@@ -2590,8 +2589,7 @@ class InventoryWorkingTree(WorkingTree,
 
                 # But do this child first if recursing down
                 if recursive:
-                    new_children = os.listdir(fap)
-                    new_children.sort()
+                    new_children = sorted(os.listdir(fap))
                     new_children = collections.deque(new_children)
                     stack.append((f_ie.file_id, fp, fap, new_children))
                     # Break out of inner loop,
@@ -2878,7 +2876,7 @@ class InventoryWorkingTree(WorkingTree,
                     entry.to_tail, entry.to_parent_id, entry.from_rel,
                     entry.from_tail, entry.from_parent_id,
                     entry.only_change_inv))
-            except errors.BzrMoveFailedError, e:
+            except errors.BzrMoveFailedError as e:
                 raise errors.BzrMoveFailedError( '', '', "Rollback failed."
                         " The working tree is in an inconsistent state."
                         " Please consider doing a 'bzr revert'."
@@ -2895,7 +2893,7 @@ class InventoryWorkingTree(WorkingTree,
         if not entry.only_change_inv:
             try:
                 osutils.rename(from_rel_abs, to_rel_abs)
-            except OSError, e:
+            except OSError as e:
                 raise errors.BzrMoveFailedError(entry.from_rel,
                     entry.to_rel, e[1])
         if entry.change_id:

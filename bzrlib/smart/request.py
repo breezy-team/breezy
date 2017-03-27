@@ -360,7 +360,7 @@ class SmartServerRequestHandler(object):
                 self._command.teardown_jail()
         except (KeyboardInterrupt, SystemExit):
             raise
-        except Exception, err:
+        except Exception as err:
             err_struct = _translate_error(err)
             return FailedSmartServerResponse(err_struct)
 

@@ -82,7 +82,7 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
         b = self.create_branch_with_ghost_text()
         repo = b.repository
         self.assertEqual(
-            {'a-file-id':set(['ghost-id'])},
+            {'a-file-id':{'ghost-id'}},
             repo.fileids_altered_by_revision_ids(['B-id']))
 
     def test_file_ids_uses_fallbacks(self):
@@ -112,9 +112,9 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
         stacked.lock_read()
         self.addCleanup(stacked.unlock)
         repo = stacked.repository
-        keys = {'file-id': set(['A-id'])}
+        keys = {'file-id': {'A-id'}}
         if stacked.repository.supports_rich_root():
-            keys['root-id'] = set(['A-id'])
+            keys['root-id'] = {'A-id'}
         self.assertEqual(keys, repo.fileids_altered_by_revision_ids(['A-id']))
 
 
@@ -237,31 +237,31 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         self.addCleanup(self.branch.unlock)
         self.branch.repository.fileids_altered_by_revision_ids(["rev-J","rev-K"])
         self.assertEqual(
-            {'b-file-id-2006-01-01-defg':set(['rev-J']),
-             'c-funky<file-id>quiji%bo':set(['rev-K'])
+            {'b-file-id-2006-01-01-defg':{'rev-J'},
+             'c-funky<file-id>quiji%bo':{'rev-K'}
              },
             self.branch.repository.fileids_altered_by_revision_ids(["rev-J","rev-K"]))
 
         self.assertEqual(
-            {'b-file-id-2006-01-01-defg': set(['rev-<D>']),
-             'file-d': set(['rev-F']),
+            {'b-file-id-2006-01-01-defg': {'rev-<D>'},
+             'file-d': {'rev-F'},
              },
             self.branch.repository.fileids_altered_by_revision_ids(['rev-<D>', 'rev-F']))
 
         self.assertEqual(
             {
-             'b-file-id-2006-01-01-defg': set(['rev-<D>', 'rev-G', 'rev-J']),
-             'c-funky<file-id>quiji%bo': set(['rev-K']),
-             'file-d': set(['rev-F']),
+             'b-file-id-2006-01-01-defg': {'rev-<D>', 'rev-G', 'rev-J'},
+             'c-funky<file-id>quiji%bo': {'rev-K'},
+             'file-d': {'rev-F'},
              },
             self.branch.repository.fileids_altered_by_revision_ids(
                 ['rev-<D>', 'rev-G', 'rev-F', 'rev-K', 'rev-J']))
 
         self.assertEqual(
-            {'a-file-id-2006-01-01-abcd': set(['rev-B']),
-             'b-file-id-2006-01-01-defg': set(['rev-<D>', 'rev-G', 'rev-J']),
-             'c-funky<file-id>quiji%bo': set(['rev-K']),
-             'file-d': set(['rev-F']),
+            {'a-file-id-2006-01-01-abcd': {'rev-B'},
+             'b-file-id-2006-01-01-defg': {'rev-<D>', 'rev-G', 'rev-J'},
+             'c-funky<file-id>quiji%bo': {'rev-K'},
+             'file-d': {'rev-F'},
              },
             self.branch.repository.fileids_altered_by_revision_ids(
                 ['rev-G', 'rev-F', 'rev-C', 'rev-B', 'rev-<D>', 'rev-K', 'rev-J']))
@@ -279,17 +279,17 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         self.branch.lock_read()
         self.addCleanup(self.branch.unlock)
         self.assertEqual(
-            {'a-file-id-2006-01-01-abcd':set(['rev-A']),
-             'b-file-id-2006-01-01-defg': set(['rev-A']),
-             'c-funky<file-id>quiji%bo': set(['rev-A']),
+            {'a-file-id-2006-01-01-abcd':{'rev-A'},
+             'b-file-id-2006-01-01-defg': {'rev-A'},
+             'c-funky<file-id>quiji%bo': {'rev-A'},
              },
             self.fileids_altered_by_revision_ids(["rev-A"]))
         self.assertEqual(
-            {'a-file-id-2006-01-01-abcd':set(['rev-B'])
+            {'a-file-id-2006-01-01-abcd':{'rev-B'}
              },
             self.branch.repository.fileids_altered_by_revision_ids(["rev-B"]))
         self.assertEqual(
-            {'b-file-id-2006-01-01-defg':set(['rev-<D>'])
+            {'b-file-id-2006-01-01-defg':{'rev-<D>'}
              },
             self.branch.repository.fileids_altered_by_revision_ids(["rev-<D>"]))
 
@@ -346,11 +346,11 @@ class TestFileIdInvolvedNonAscii(FileIdInvolvedBase):
         file_ids = repo.fileids_altered_by_revision_ids([revision_id])
         root_id = main_wt.basis_tree().get_root_id()
         if root_id in file_ids:
-            self.assertEqual({file_id:set([revision_id]),
-                              root_id:set([revision_id])
+            self.assertEqual({file_id:{revision_id},
+                              root_id:{revision_id}
                              }, file_ids)
         else:
-            self.assertEqual({file_id:set([revision_id])}, file_ids)
+            self.assertEqual({file_id:{revision_id}}, file_ids)
 
 
 class TestFileIdInvolvedSuperset(FileIdInvolvedBase):

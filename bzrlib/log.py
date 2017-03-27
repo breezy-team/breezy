@@ -824,7 +824,7 @@ def make_log_rev_iterator(branch, view_revisions, generate_delta, search,
     """
     # Convert view_revisions into (view, None, None) groups to fit with
     # the standard interface here.
-    if type(view_revisions) == list:
+    if isinstance(view_revisions, list):
         # A single batch conversion is faster than many incremental ones.
         # As we have all the data, do a batch conversion.
         nones = [None] * len(view_revisions)
@@ -2104,7 +2104,7 @@ properties_handler_registry = registry.Registry()
 
 # Use the properties handlers to print out bug information if available
 def _bugs_properties_handler(revision):
-    if revision.properties.has_key('bugs'):
+    if 'bugs' in revision.properties:
         bug_lines = revision.properties['bugs'].split('\n')
         bug_rows = [line.split(' ', 1) for line in bug_lines]
         fixed_bug_urls = [row[0] for row in bug_rows if

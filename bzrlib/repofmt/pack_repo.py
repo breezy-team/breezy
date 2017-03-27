@@ -91,7 +91,7 @@ class PackCommitBuilder(VersionedFileCommitBuilder):
 
     def _heads(self, file_id, revision_ids):
         keys = [(file_id, revision_id) for revision_id in revision_ids]
-        return set([key[1] for key in self._file_graph.heads(keys)])
+        return {key[1] for key in self._file_graph.heads(keys)}
 
 
 class PackRootCommitBuilder(VersionedFileRootCommitBuilder):
@@ -113,7 +113,7 @@ class PackRootCommitBuilder(VersionedFileRootCommitBuilder):
 
     def _heads(self, file_id, revision_ids):
         keys = [(file_id, revision_id) for revision_id in revision_ids]
-        return set([key[1] for key in self._file_graph.heads(keys)])
+        return {key[1] for key in self._file_graph.heads(keys)}
 
 
 class Pack(object):
@@ -1146,7 +1146,7 @@ class RepositoryPackCollection(object):
                 txt_index, sig_index, self._upload_transport,
                 self._pack_transport, self._index_transport, self,
                 chk_index=chk_index)
-        except errors.NoSuchFile, e:
+        except errors.NoSuchFile as e:
             raise errors.UnresumableWriteGroup(self.repo, [name], str(e))
         self.add_pack_to_memory(result)
         self._resumed_packs.append(result)
@@ -1235,7 +1235,7 @@ class RepositoryPackCollection(object):
                         pass
                     pack.pack_transport.move(pack.file_name(),
                         '../obsolete_packs/' + pack.file_name())
-            except (errors.PathError, errors.TransportError), e:
+            except (errors.PathError, errors.TransportError) as e:
                 # TODO: Should these be warnings or mutters?
                 mutter("couldn't rename obsolete pack, skipping it:\n%s"
                        % (e,))
@@ -1249,7 +1249,7 @@ class RepositoryPackCollection(object):
                 try:
                     self._index_transport.move(pack.name + suffix,
                         '../obsolete_packs/' + pack.name + suffix)
-                except (errors.PathError, errors.TransportError), e:
+                except (errors.PathError, errors.TransportError) as e:
                     mutter("couldn't rename obsolete index, skipping it:\n%s"
                            % (e,))
 
@@ -1433,7 +1433,7 @@ class RepositoryPackCollection(object):
             if clear_obsolete_packs:
                 to_preserve = None
                 if obsolete_packs:
-                    to_preserve = set([o.name for o in obsolete_packs])
+                    to_preserve = {o.name for o in obsolete_packs}
                 already_obsolete = self._clear_obsolete_packs(to_preserve)
         finally:
             self._unlock_names()
@@ -1518,7 +1518,7 @@ class RepositoryPackCollection(object):
                 continue
             try:
                 obsolete_pack_transport.delete(filename)
-            except (errors.PathError, errors.TransportError), e:
+            except (errors.PathError, errors.TransportError) as e:
                 warning("couldn't delete obsolete pack, skipping it:\n%s"
                         % (e,))
         return found
@@ -1981,7 +1981,7 @@ class _DirectPackAccess(object):
             length), where the index field is the write_index object supplied
             to the PackAccess object.
         """
-        if type(raw_data) is not str:
+        if not isinstance(raw_data, str):
             raise AssertionError(
                 'data must be plain bytes was %s' % type(raw_data))
         result = []

@@ -225,7 +225,7 @@ class TestPrettyDecorators(TestCase):
 
         self.assertEqual('my_function', my_function.__name__)
         self.assertEqual('my_function_read_locked',
-                         my_function.func_code.co_name)
+                         my_function.__code__.co_name)
         self.assertEqual('(foo, bar, baz=None, biz=1)',
                          self.get_formatted_args(my_function))
         self.assertDocstring(
@@ -239,7 +239,7 @@ class TestPrettyDecorators(TestCase):
             """Just a function that supplies several arguments."""
 
         self.assertEqual('my_function', my_function.__name__)
-        self.assertEqual('read_locked', my_function.func_code.co_name)
+        self.assertEqual('read_locked', my_function.__code__.co_name)
         self.assertEqual('(self, *args, **kwargs)',
                          self.get_formatted_args(my_function))
         self.assertDocstring(
@@ -254,7 +254,7 @@ class TestPrettyDecorators(TestCase):
 
         self.assertEqual('my_function', my_function.__name__)
         self.assertEqual('my_function_write_locked',
-                         my_function.func_code.co_name)
+                         my_function.__code__.co_name)
         self.assertEqual('(foo, bar, baz=None, biz=1)',
                          self.get_formatted_args(my_function))
         self.assertDocstring(
@@ -268,7 +268,7 @@ class TestPrettyDecorators(TestCase):
             """Just a function that supplies several arguments."""
 
         self.assertEqual('my_function', my_function.__name__)
-        self.assertEqual('write_locked', my_function.func_code.co_name)
+        self.assertEqual('write_locked', my_function.__code__.co_name)
         self.assertEqual('(self, *args, **kwargs)',
                          self.get_formatted_args(my_function))
         self.assertDocstring(

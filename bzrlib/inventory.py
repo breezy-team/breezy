@@ -669,8 +669,7 @@ class CommonInventory(object):
 
         # unrolling the recursive called changed the time from
         # 440ms/663ms (inline/total) to 116ms/116ms
-        children = from_dir.children.items()
-        children.sort()
+        children = sorted(from_dir.children.items())
         if not recursive:
             for name, ie in children:
                 yield name, ie
@@ -695,8 +694,7 @@ class CommonInventory(object):
                     continue
 
                 # But do this child first
-                new_children = ie.children.items()
-                new_children.sort()
+                new_children = sorted(ie.children.items())
                 new_children = collections.deque(new_children)
                 stack.append((path, new_children))
                 # Break out of inner loop, so that we start outer loop with child
@@ -820,8 +818,7 @@ class CommonInventory(object):
         """
         accum = []
         def descend(dir_ie, dir_path):
-            kids = dir_ie.children.items()
-            kids.sort()
+            kids = sorted(dir_ie.children.items())
             for name, ie in kids:
                 child_path = osutils.pathjoin(dir_path, name)
                 accum.append((child_path, ie))
@@ -1487,7 +1484,7 @@ class CHKInventory(CommonInventory):
             keys = [StaticTuple(f,).intern() for f in directories_to_expand]
             directories_to_expand = set()
             items = self.parent_id_basename_to_file_id.iteritems(keys)
-            next_file_ids = set([item[1] for item in items])
+            next_file_ids = {item[1] for item in items}
             next_file_ids = next_file_ids.difference(interesting)
             interesting.update(next_file_ids)
             for entry in self._getitems(next_file_ids):
@@ -2070,7 +2067,7 @@ class CHKInventory(CommonInventory):
 
     def _make_delta(self, old):
         """Make an inventory delta from two inventories."""
-        if type(old) != CHKInventory:
+        if not isinstance(old, CHKInventory):
             return CommonInventory._make_delta(self, old)
         delta = []
         for key, old_value, self_value in \
@@ -2319,7 +2316,7 @@ def _check_delta_ids_are_valid(delta):
         if item[2] is None:
             raise errors.InconsistentDelta(item[0] or item[1], item[2],
                 "entry with file_id None %r" % entry)
-        if type(item[2]) != str:
+        if not isinstance(item[2], str):
             raise errors.InconsistentDelta(item[0] or item[1], item[2],
                 "entry with non bytes file_id %r" % entry)
         yield item

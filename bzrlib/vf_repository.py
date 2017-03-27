@@ -168,8 +168,8 @@ class VersionedFileCommitBuilder(CommitBuilder):
         # inventories for the parents.
         parent_keys = [(p,) for p in self.parents]
         parent_map = self.repository.inventories._index.get_parent_map(parent_keys)
-        missing_parent_keys = set([pk for pk in parent_keys
-                                       if pk not in parent_map])
+        missing_parent_keys = {pk for pk in parent_keys
+                                       if pk not in parent_map}
         fallback_repos = list(reversed(self.repository._fallback_repositories))
         missing_keys = [('inventories', pk[0])
                         for pk in missing_parent_keys]
@@ -1718,8 +1718,7 @@ class VersionedFileRepository(Repository):
         #      missing sigs. Consider removing this work entirely
         revisions_with_signatures = set(self.signatures.get_parent_map(
             [(r,) for r in revision_ids]))
-        revisions_with_signatures = set(
-            [r for (r,) in revisions_with_signatures])
+        revisions_with_signatures = {r for (r,) in revisions_with_signatures}
         revisions_with_signatures.intersection_update(revision_ids)
         yield ("signatures", None, revisions_with_signatures)
 
@@ -2175,7 +2174,7 @@ class StreamSink(object):
             try:
                 parse_result = deserialiser.parse_text_bytes(
                     inventory_delta_bytes)
-            except inventory_delta.IncompatibleInventoryDelta, err:
+            except inventory_delta.IncompatibleInventoryDelta as err:
                 mutter("Incompatible delta: %s", err.msg)
                 raise errors.IncompatibleRevision(self.target_repo._format)
             basis_id, new_id, rich_root, tree_refs, inv_delta = parse_result
@@ -2439,7 +2438,7 @@ class StreamSource(object):
         inventories = self.from_repository.iter_inventories(
             revision_ids, 'topological')
         format = from_repo._format
-        invs_sent_so_far = set([_mod_revision.NULL_REVISION])
+        invs_sent_so_far = {_mod_revision.NULL_REVISION}
         inventory_cache = lru_cache.LRUCache(50)
         null_inventory = from_repo.revision_tree(
             _mod_revision.NULL_REVISION).root_inventory
@@ -2529,8 +2528,8 @@ class _VersionedFileChecker(object):
     def _check_file_version_parents(self, texts, progress_bar):
         """See check_file_version_parents."""
         wrong_parents = {}
-        self.file_ids = set([file_id for file_id, _ in
-            self.text_index.iterkeys()])
+        self.file_ids = {file_id for file_id, _ in
+            self.text_index.iterkeys()}
         # text keys is now grouped by file_id
         n_versions = len(self.text_index)
         progress_bar.update(gettext('loading text store'), 0, n_versions)

@@ -235,7 +235,7 @@ class RepoReconciler(object):
         self.inventory = self.repo.inventories
         self.revisions = self.repo.revisions
         # the total set of revisions to process
-        self.pending = set([key[-1] for key in self.revisions.keys()])
+        self.pending = {key[-1] for key in self.revisions.keys()}
 
         # mapping from revision_id to parents
         self._rev_graph = {}
@@ -269,7 +269,7 @@ class RepoReconciler(object):
         # if this worked, the set of new_inventories.keys should equal
         # self.pending
         if not (set(new_inventories.keys()) ==
-            set([(revid,) for revid in self.pending])):
+            {(revid,) for revid in self.pending}):
             raise AssertionError()
         self.pb.update(gettext('Writing weave'))
         self.repo._activate_new_inventory()

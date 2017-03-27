@@ -103,7 +103,7 @@ class TestCleanTree(TestCaseInTempDir):
             # proper excinfo that needs to be passed to onerror
             try:
                 raise OSError
-            except OSError, e:
+            except OSError as e:
                 e.errno = errno.EACCES
                 excinfo = sys.exc_info()
                 function = os.remove

@@ -96,7 +96,7 @@ class SmartServerRequestBzrDir(SmartServerRequest):
         try:
             self._bzrdir = BzrDir.open_from_transport(
                 self.transport_from_client_path(path))
-        except errors.NotBranchError, e:
+        except errors.NotBranchError as e:
             return FailedSmartServerResponse(('nobranch',))
         return self.do_bzrdir_request(*args)
 
@@ -137,7 +137,7 @@ class SmartServerBzrDirRequestDestroyBranch(SmartServerRequestBzrDir):
         """
         try:
             self._bzrdir.destroy_branch(name)
-        except errors.NotBranchError, e:
+        except errors.NotBranchError as e:
             return FailedSmartServerResponse(('nobranch',))
         return SuccessfulSmartServerResponse(('ok',))
 
@@ -169,7 +169,7 @@ class SmartServerBzrDirRequestDestroyRepository(SmartServerRequestBzrDir):
         """
         try:
             self._bzrdir.destroy_repository()
-        except errors.NoRepositoryPresent, e:
+        except errors.NoRepositoryPresent as e:
             return FailedSmartServerResponse(('norepository',))
         return SuccessfulSmartServerResponse(('ok',))
 
@@ -572,7 +572,7 @@ class SmartServerRequestOpenBranch(SmartServerRequestBzrDir):
                 return SuccessfulSmartServerResponse(('ok', ''))
             else:
                 return SuccessfulSmartServerResponse(('ok', reference_url))
-        except errors.NotBranchError, e:
+        except errors.NotBranchError as e:
             return FailedSmartServerResponse(('nobranch',))
 
 
@@ -588,7 +588,7 @@ class SmartServerRequestOpenBranchV2(SmartServerRequestBzrDir):
                 return SuccessfulSmartServerResponse(('branch', format))
             else:
                 return SuccessfulSmartServerResponse(('ref', reference_url))
-        except errors.NotBranchError, e:
+        except errors.NotBranchError as e:
             return FailedSmartServerResponse(('nobranch',))
 
 
@@ -612,7 +612,7 @@ class SmartServerRequestOpenBranchV3(SmartServerRequestBzrDir):
                 return SuccessfulSmartServerResponse(('branch', format))
             else:
                 return SuccessfulSmartServerResponse(('ref', reference_url))
-        except errors.NotBranchError, e:
+        except errors.NotBranchError as e:
             # Stringify the exception so that its .detail attribute will be
             # filled out.
             str(e)

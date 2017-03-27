@@ -116,7 +116,7 @@ def _format_arg(arg, subst_names):
     arg = arg.replace('{this}', subst_names['this'])
     arg = arg.replace('{other}', subst_names['other'])
     arg = arg.replace('{result}', subst_names['result'])
-    if subst_names.has_key('this_temp'):
+    if 'this_temp' in subst_names:
         arg = arg.replace('{this_temp}', subst_names['this_temp'])
     return arg
 

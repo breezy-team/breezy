@@ -185,7 +185,7 @@ class TestRename(tests.TestCaseInTempDir):
     def test_rename_exception(self):
         try:
             osutils.rename('nonexistent_path', 'different_nonexistent_path')
-        except OSError, e:
+        except OSError as e:
             self.assertEqual(e.old_filename, 'nonexistent_path')
             self.assertEqual(e.new_filename, 'different_nonexistent_path')
             self.assertTrue('nonexistent_path' in e.strerror)
@@ -307,7 +307,7 @@ class TestKind(tests.TestCaseInTempDir):
         # TODO: jam 20060529 Test a block device
         try:
             os.lstat('/dev/null')
-        except OSError, e:
+        except OSError as e:
             if e.errno not in (errno.ENOENT,):
                 raise
         else:
@@ -351,14 +351,14 @@ class TestUmask(tests.TestCaseInTempDir):
 
         orig_umask = osutils.get_umask()
         self.addCleanup(os.umask, orig_umask)
-        os.umask(0222)
-        self.assertEqual(0222, osutils.get_umask())
-        os.umask(0022)
-        self.assertEqual(0022, osutils.get_umask())
-        os.umask(0002)
-        self.assertEqual(0002, osutils.get_umask())
-        os.umask(0027)
-        self.assertEqual(0027, osutils.get_umask())
+        os.umask(0o222)
+        self.assertEqual(0o222, osutils.get_umask())
+        os.umask(0o022)
+        self.assertEqual(0o022, osutils.get_umask())
+        os.umask(0o002)
+        self.assertEqual(0o002, osutils.get_umask())
+        os.umask(0o027)
+        self.assertEqual(0o027, osutils.get_umask())
 
 
 class TestDateTime(tests.TestCase):
@@ -517,12 +517,12 @@ class TestLinks(tests.TestCaseInTempDir):
         # Make a file readonly
         osutils.make_readonly('file')
         mode = os.lstat('file').st_mode
-        self.assertEqual(mode, mode & 0777555)
+        self.assertEqual(mode, mode & 0o777555)
 
         # Make a file writable
         osutils.make_writable('file')
         mode = os.lstat('file').st_mode
-        self.assertEqual(mode, mode | 0200)
+        self.assertEqual(mode, mode | 0o200)
 
         if osutils.has_symlinks():
             # should not error when handed a symlink
@@ -1011,15 +1011,15 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
     def test_minimum_path_selection(self):
         self.assertEqual(set(),
             osutils.minimum_path_selection([]))
-        self.assertEqual(set(['a']),
+        self.assertEqual({'a'},
             osutils.minimum_path_selection(['a']))
-        self.assertEqual(set(['a', 'b']),
+        self.assertEqual({'a', 'b'},
             osutils.minimum_path_selection(['a', 'b']))
-        self.assertEqual(set(['a/', 'b']),
+        self.assertEqual({'a/', 'b'},
             osutils.minimum_path_selection(['a/', 'b']))
-        self.assertEqual(set(['a/', 'b']),
+        self.assertEqual({'a/', 'b'},
             osutils.minimum_path_selection(['a/c', 'a/', 'b']))
-        self.assertEqual(set(['a-b', 'a', 'a0b']),
+        self.assertEqual({'a-b', 'a', 'a0b'},
             osutils.minimum_path_selection(['a-b', 'a/b', 'a0b', 'a']))
 
     def test_mkdtemp(self):
@@ -1046,7 +1046,7 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
 
         try:
             osutils._win32_rename('b', 'a')
-        except (IOError, OSError), e:
+        except (IOError, OSError) as e:
             self.assertEqual(errno.ENOENT, e.errno)
         self.assertFileEqual('foo\n', 'a')
 
@@ -1054,7 +1054,7 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         os.mkdir('a')
         try:
             osutils._win32_rename('b', 'a')
-        except (IOError, OSError), e:
+        except (IOError, OSError) as e:
             self.assertEqual(errno.ENOENT, e.errno)
 
     def test_rename_current_dir(self):
@@ -1066,7 +1066,7 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         # doesn't exist.
         try:
             osutils._win32_rename('b', '.')
-        except (IOError, OSError), e:
+        except (IOError, OSError) as e:
             self.assertEqual(errno.ENOENT, e.errno)
 
     def test_splitpath(self):
@@ -1200,7 +1200,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         os.mkdir("test-unreadable")
         os.chmod("test-unreadable", 0000)
         # must chmod it back so that it can be removed
-        self.addCleanup(os.chmod, "test-unreadable", 0700)
+        self.addCleanup(os.chmod, "test-unreadable", 0o700)
         # The error is not raised until the generator is actually evaluated.
         # (It would be ok if it happened earlier but at the moment it
         # doesn't.)
@@ -2041,7 +2041,7 @@ class TestFailedToLoadExtension(tests.TestCase):
     def _try_loading(self):
         try:
             import bzrlib._fictional_extension_py
-        except ImportError, e:
+        except ImportError as e:
             osutils.failed_to_load_extension(e)
             return True
 

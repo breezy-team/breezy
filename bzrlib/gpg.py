@@ -190,7 +190,7 @@ class GPGStrategy(object):
         try:
             import gpgme
             self.context = gpgme.Context()
-        except ImportError, error:
+        except ImportError as error:
             pass # can't use verify()
 
     @staticmethod
@@ -203,7 +203,7 @@ class GPGStrategy(object):
         try:
             import gpgme
             return True
-        except ImportError, error:
+        except ImportError as error:
             return False
 
     def _command_line(self):
@@ -236,7 +236,7 @@ class GPGStrategy(object):
                 if process.returncode != 0:
                     raise errors.SigningFailed(self._command_line())
                 return result
-            except OSError, e:
+            except OSError as e:
                 if e.errno == errno.EPIPE:
                     raise errors.SigningFailed(self._command_line())
                 else:
@@ -244,7 +244,7 @@ class GPGStrategy(object):
         except ValueError:
             # bad subprocess parameters, should never happen.
             raise
-        except OSError, e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 # gpg is not installed
                 raise errors.SigningFailed(self._command_line())
@@ -261,14 +261,14 @@ class GPGStrategy(object):
         """
         try:
             import gpgme
-        except ImportError, error:
+        except ImportError as error:
             raise errors.GpgmeNotInstalled(error)
 
         signature = StringIO(content)
         plain_output = StringIO()
         try:
             result = self.context.verify(signature, None, plain_output)
-        except gpgme.GpgmeError,error:
+        except gpgme.GpgmeError as error:
             raise errors.SignatureVerificationFailed(error[2])
 
         # No result if input is invalid.

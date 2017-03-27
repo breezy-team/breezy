@@ -119,10 +119,10 @@ def main():
 
         for o, a in opts:
             if o in ("-h", "--help"):
-                print USAGE
+                print(USAGE)
                 return OK
             elif o in ("-v", "--version"):
-                print VERSION_FORMAT % (USAGE.splitlines()[0], VERSION)
+                print(VERSION_FORMAT % (USAGE.splitlines()[0], VERSION))
                 return OK
 
             elif o in ('-n', "--dry-run"):
@@ -143,9 +143,9 @@ def main():
             elif o == "--check-mfc71":
                 check_mfc71 = True
 
-    except getopt.GetoptError, msg:
-        print str(msg)
-        print USAGE
+    except getopt.GetoptError as msg:
+        print(str(msg))
+        print(USAGE)
         return ERROR
 
     # message box from Win32API
@@ -178,9 +178,9 @@ def main():
                                         bzr_dir)
 
         if dry_run:
-            print "*** Write file: start_bzr.bat"
-            print "*** File content:"
-            print ''.join(content)
+            print("*** Write file: start_bzr.bat")
+            print("*** File content:")
+            print(''.join(content))
         else:
             f = file(fname, 'w')
             f.write(''.join(content))
@@ -214,7 +214,7 @@ def main():
             break
 
         if hkey is None:
-            print "Cannot find appropriate registry key for PATH"
+            print("Cannot find appropriate registry key for PATH")
         else:
             path_list = [i for i in path_u.split(os.pathsep) if i != '']
             f_change = False
@@ -224,7 +224,7 @@ def main():
                         del path_list[ix]
                         f_change = True
                     elif add_path:
-                        print "*** Bzr already in PATH"
+                        print("*** Bzr already in PATH")
                     break
             else:
                 if add_path and not delete_path:
@@ -234,9 +234,9 @@ def main():
             if f_change:
                 path_u = os.pathsep.join(path_list)
                 if dry_run:
-                    print "*** Registry key %s\\%s" % (hkey_str[key], subkey)
-                    print "*** Modify PATH variable. New value:"
-                    print path_u
+                    print("*** Registry key %s\\%s" % (hkey_str[key], subkey))
+                    print("*** Modify PATH variable. New value:")
+                    print(path_u)
                 else:
                     _winreg.SetValueEx(hkey, 'Path', 0, type_, path_u)
                     _winreg.FlushKey(hkey)
@@ -257,7 +257,7 @@ def main():
                 if not dry_run:
                     shutil.copyfile(name, backupname)
                 else:
-                    print '*** backup copy of autoexec.bat created'
+                    print('*** backup copy of autoexec.bat created')
 
         GetShortPathName = ctypes.windll.kernel32.GetShortPathNameA
         buf = ctypes.create_string_buffer(260)
@@ -286,7 +286,7 @@ def main():
                         f.write(i)
                 f.close()
             else:
-                print '*** Remove line <%s> from autoexec.bat' % pattern
+                print('*** Remove line <%s> from autoexec.bat' % pattern)
                     
         elif add_path and not found:
             backup_autoexec_bat(abat, abak, dry_run)
@@ -296,7 +296,7 @@ def main():
                 f.write('\n')
                 f.close()
             else:
-                print '*** Add line <%s> to autoexec.bat' % pattern
+                print('*** Add line <%s> to autoexec.bat' % pattern)
 
     if add_shell_menu and not delete_shell_menu:
         hkey = None

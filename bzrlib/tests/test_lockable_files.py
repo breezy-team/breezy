@@ -323,9 +323,9 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
         lockable = LockableFiles(self.transport.clone('readonly'), 'test-lock',
                                  lockdir.LockDir)
         # The directory mode should be read-write-execute for the current user
-        self.assertEqual(00700, lockable._dir_mode & 00700)
+        self.assertEqual(0o0700, lockable._dir_mode & 0o0700)
         # Files should be read-write for the current user
-        self.assertEqual(00600, lockable._file_mode & 00700)
+        self.assertEqual(0o0600, lockable._file_mode & 0o0700)
 
 
 class TestLockableFiles_RemoteLockDir(TestCaseWithSmartMedium,

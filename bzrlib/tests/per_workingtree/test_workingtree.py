@@ -882,7 +882,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual(
-            set(['not-here-and-not-versioned', 'here-and-not-versioned']),
+            {'not-here-and-not-versioned', 'here-and-not-versioned'},
             tree.filter_unversioned_files(paths))
 
     def test_detect_real_kind(self):
@@ -986,7 +986,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                 self.assertFalse(tree.is_executable(tree.path2id('filename')))
             finally:
                 tree.unlock()
-            os.chmod('filename', 0755)
+            os.chmod('filename', 0o755)
             self.addCleanup(tree.lock_read().unlock)
             self.assertTrue(tree.is_executable(tree.path2id('filename')))
         else:
@@ -1000,7 +1000,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree(['tree/a', 'tree/b'])
         tree.add(['a', 'b'], ['a-id', 'b-id'])
         os.unlink('tree/a')
-        self.assertEqual(set(['a-id', 'b-id', tree.get_root_id()]),
+        self.assertEqual({'a-id', 'b-id', tree.get_root_id()},
                          tree.all_file_ids())
 
     def test_sprout_hardlink(self):

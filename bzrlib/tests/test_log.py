@@ -692,12 +692,12 @@ message:
         sio = self.make_utf8_encoded_stringio()
         formatter = log.LongLogFormatter(to_file=sio)
         def trivial_custom_prop_handler(revision):
-            raise StandardError("a test error")
+            raise Exception("a test error")
 
         log.properties_handler_registry.register(
             'trivial_custom_prop_handler',
             trivial_custom_prop_handler)
-        self.assertRaises(StandardError, log.show_log, wt.branch, formatter,)
+        self.assertRaises(Exception, log.show_log, wt.branch, formatter,)
 
     def test_properties_handler_bad_argument(self):
         wt = self.make_standard_commit('bad_argument',

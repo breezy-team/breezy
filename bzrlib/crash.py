@@ -69,9 +69,9 @@ def report_bug(exc_info, stderr):
         if report_bug_to_apport(exc_info, stderr):
             # wrote a file; if None then report the old way
             return
-    except ImportError, e:
+    except ImportError as e:
         trace.mutter("couldn't find apport bug-reporting library: %s" % e)
-    except Exception, e:
+    except Exception as e:
         # this should only happen if apport is installed but it didn't
         # work, eg because of an io error writing the crash file
         trace.mutter("bzr: failed to report crash using apport: %r" % e)
@@ -225,7 +225,7 @@ def _write_apport_report_to_file(exc_info):
 def _attach_log_tail(pr):
     try:
         bzr_log = open(trace._get_bzr_log_filename(), 'rt')
-    except (IOError, OSError), e:
+    except (IOError, OSError) as e:
         pr['BzrLogTail'] = repr(e)
         return
     try:
@@ -241,7 +241,7 @@ def _open_crash_file():
         # on unix this should be /var/crash and should already exist; on
         # Windows or if it's manually configured it might need to be created,
         # and then it should be private
-        os.makedirs(crash_dir, mode=0600)
+        os.makedirs(crash_dir, mode=0o600)
     date_string = time.strftime('%Y-%m-%dT%H:%M', time.gmtime())
     # XXX: getuid doesn't work on win32, but the crash directory is per-user
     if sys.platform == 'win32':
@@ -258,7 +258,7 @@ def _open_crash_file():
     return filename, os.fdopen(
         os.open(filename, 
             os.O_WRONLY|os.O_CREAT|os.O_EXCL,
-            0600),
+            0o600),
         'wb')
 
 

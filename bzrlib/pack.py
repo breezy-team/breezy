@@ -57,7 +57,7 @@ def _check_name_encoding(name):
     """
     try:
         name.decode('utf-8')
-    except UnicodeDecodeError, e:
+    except UnicodeDecodeError as e:
         raise errors.InvalidRecordError(str(e))
 
 

@@ -399,7 +399,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         if stat_value is None:
             try:
                 stat_value = osutils.lstat(file_abspath)
-            except OSError, e:
+            except OSError as e:
                 if e.errno == errno.ENOENT:
                     return None
                 else:
@@ -778,7 +778,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 for rollback in reversed(rollbacks):
                     try:
                         rollback()
-                    except Exception, e:
+                    except Exception as e:
                         exc_info = sys.exc_info()
                 if exc_info:
                     raise exc_info[0], exc_info[1], exc_info[2]
@@ -789,7 +789,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 to_rel_abs = self.abspath(to_rel)
                 try:
                     osutils.rename(from_rel_abs, to_rel_abs)
-                except OSError, e:
+                except OSError as e:
                     raise errors.BzrMoveFailedError(from_rel, to_rel, e[1])
                 rollbacks.append(lambda: osutils.rename(to_rel_abs, from_rel_abs))
             try:
@@ -2123,7 +2123,7 @@ class InterDirStateTree(InterTree):
     def __init__(self, source, target):
         super(InterDirStateTree, self).__init__(source, target)
         if not InterDirStateTree.is_compatible(source, target):
-            raise Exception, "invalid source %r and target %r" % (source, target)
+            raise Exception("invalid source %r and target %r" % (source, target))
 
     @staticmethod
     def make_source_parent_tree(source, target):
@@ -2214,7 +2214,7 @@ class InterDirStateTree(InterTree):
                 specific_files_utf8.add(path.encode('utf8'))
             specific_files = specific_files_utf8
         else:
-            specific_files = set([''])
+            specific_files = {''}
         # -- specific_files is now a utf8 path set --
 
         # -- get the state object and prepare it.

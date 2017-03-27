@@ -62,7 +62,7 @@ class TCPClient(object):
             try:
                 self.sock.shutdown(socket.SHUT_RDWR)
                 self.sock.close()
-            except socket.error, e:
+            except socket.error as e:
                 if e[0] in (errno.EBADF, errno.ENOTCONN):
                     # Right, the socket is already down
                     pass
@@ -188,7 +188,7 @@ class TestTCPServerInAThread(tests.TestCase):
         client.write('ping\n')
         try:
             self.assertEqual('', client.read())
-        except socket.error, e:
+        except socket.error as e:
             # On Windows, failing during 'handle' means we get
             # 'forced-close-of-connection'. Possibly because we haven't
             # processed the write request before we close the socket.

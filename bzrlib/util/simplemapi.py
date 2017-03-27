@@ -158,26 +158,26 @@ def _logon(profileName=None, password=None):
     pSession = LHANDLE()
     rc = MAPILogon(0, profileName, password, MAPI_LOGON_UI, 0, byref(pSession))
     if rc != SUCCESS_SUCCESS:
-        raise MAPIError, rc
+        raise MAPIError(rc)
     return pSession
 
 
 def _logoff(session):
     rc = MAPILogoff(session, 0, 0, 0)
     if rc != SUCCESS_SUCCESS:
-        raise MAPIError, rc
+        raise MAPIError(rc)
 
 
 def _resolveName(session, name):
     pRecipDesc = lpMapiRecipDesc()
     rc = MAPIResolveName(session, 0, name, 0, 0, byref(pRecipDesc))
     if rc != SUCCESS_SUCCESS:
-        raise MAPIError, rc
+        raise MAPIError(rc)
     rd = pRecipDesc.contents
     name, address = rd.lpszName, rd.lpszAddress
     rc = MAPIFreeBuffer(pRecipDesc)
     if rc != SUCCESS_SUCCESS:
-        raise MAPIError, rc
+        raise MAPIError(rc)
     return name, address
 
 
@@ -219,7 +219,7 @@ def _sendMail(session, recipient, subject, body, attach):
 
     rc = MAPISendMail(session, 0, byref(msg), MAPI_DIALOG, 0)
     if rc != SUCCESS_SUCCESS:
-        raise MAPIError, rc
+        raise MAPIError(rc)
 
 
 def SendMail(recipient, subject="", body="", attachfiles=""):

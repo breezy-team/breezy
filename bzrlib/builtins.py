@@ -643,7 +643,7 @@ class cmd_repair_workingtree(Command):
             revision_ids = [r.as_revision_id(tree.branch) for r in revision]
         try:
             tree.reset_state(revision_ids)
-        except errors.BzrError, e:
+        except errors.BzrError as e:
             if revision_ids is None:
                 extra = (gettext(', the header appears corrupt, try passing -r -1'
                          ' to set the state to the last commit'))
@@ -887,7 +887,7 @@ class cmd_mkdir(Command):
             if parents:
                 try:
                     os.makedirs(dir)
-                except OSError, e:
+                except OSError as e:
                     if e.errno != errno.EEXIST:
                         raise
             else:
@@ -1528,7 +1528,7 @@ class cmd_branch(Command):
             note(gettext('Created new stacked branch referring to %s.') %
                 branch.get_stacked_on_url())
         except (errors.NotStacked, errors.UnstackableBranchFormat,
-            errors.UnstackableRepositoryFormat), e:
+            errors.UnstackableRepositoryFormat) as e:
             note(ngettext('Branched %d revision.', 'Branched %d revisions.', branch.revno()) % branch.revno())
         if bind:
             # Bind to the parent
@@ -1789,7 +1789,7 @@ class cmd_update(Command):
                 revision=revision_id,
                 old_tip=old_tip,
                 show_base=show_base)
-        except errors.NoSuchRevision, e:
+        except errors.NoSuchRevision as e:
             raise errors.BzrCommandError(gettext(
                                   "branch has no revision %s\n"
                                   "bzr update --revision only works"
@@ -3350,7 +3350,7 @@ class cmd_export(Command):
         try:
             export(export_tree, dest, format, root, subdir, filtered=filters,
                    per_file_timestamps=per_file_timestamps)
-        except errors.NoSuchExportFormat, e:
+        except errors.NoSuchExportFormat as e:
             raise errors.BzrCommandError(
                 gettext('Unsupported export format: %s') % e.format)
 
@@ -3568,7 +3568,7 @@ class cmd_commit(Command):
             except errors.UnknownBugTrackerAbbreviation:
                 raise errors.BzrCommandError(gettext(
                     'Unrecognized bug %s. Commit refused.') % fixed_bug)
-            except errors.MalformedBugIdentifier, e:
+            except errors.MalformedBugIdentifier as e:
                 raise errors.BzrCommandError(gettext(
                     "%s\nCommit refused.") % (str(e),))
 
@@ -3592,7 +3592,7 @@ class cmd_commit(Command):
         if commit_time is not None:
             try:
                 commit_stamp, offset = timestamp.parse_patch_date(commit_time)
-            except ValueError, e:
+            except ValueError as e:
                 raise errors.BzrCommandError(gettext(
                     "Could not parse --commit-time: " + str(e)))
 
@@ -3696,7 +3696,7 @@ class cmd_commit(Command):
         except StrictCommitFailed:
             raise errors.BzrCommandError(gettext("Commit refused because there are"
                               " unknown files in the working tree."))
-        except errors.BoundBranchOutOfDate, e:
+        except errors.BoundBranchOutOfDate as e:
             e.extra_help = (gettext("\n"
                 'To commit to master branch, run update and then commit.\n'
                 'You can also pass --local to commit to continue working '
@@ -3881,7 +3881,7 @@ class cmd_whoami(Command):
         # display a warning if an email address isn't included in the given name.
         try:
             _mod_config.extract_email_address(name)
-        except errors.NoEmailInUsername, e:
+        except errors.NoEmailInUsername as e:
             warning('"%s" does not seem to contain an email address.  '
                     'This is allowed, but not recommended.', name)
 
@@ -5592,7 +5592,7 @@ class cmd_join(Command):
         if reference:
             try:
                 containing_tree.add_reference(sub_tree)
-            except errors.BadReferenceTarget, e:
+            except errors.BadReferenceTarget as e:
                 # XXX: Would be better to just raise a nicely printable
                 # exception from the real origin.  Also below.  mbp 20070306
                 raise errors.BzrCommandError(
@@ -5600,7 +5600,7 @@ class cmd_join(Command):
         else:
             try:
                 containing_tree.subsume(sub_tree)
-            except errors.BadSubsumeSource, e:
+            except errors.BadSubsumeSource as e:
                 raise errors.BzrCommandError(
                        gettext("Cannot join {0}.  {1}").format(tree, e.reason))
 

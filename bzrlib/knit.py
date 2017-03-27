@@ -490,7 +490,7 @@ class AnnotatedKnitContent(KnitContent):
     def text(self):
         try:
             lines = [text for origin, text in self._lines]
-        except ValueError, e:
+        except ValueError as e:
             # most commonly (only?) caused by the internal form of the knit
             # missing annotation information because of a bug - see thread
             # around 20071015
@@ -685,7 +685,7 @@ class KnitAnnotateFactory(_KnitFactory):
         content = knit._get_content(key)
         # adjust for the fact that serialised annotations are only key suffixes
         # for this factory.
-        if type(key) is tuple:
+        if isinstance(key, tuple):
             prefix = key[:-1]
             origins = content.annotate()
             result = []
@@ -997,11 +997,11 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             lines = osutils.split_lines(line_bytes)
 
         for element in key[:-1]:
-            if type(element) is not str:
+            if not isinstance(element, str):
                 raise TypeError("key contains non-strings: %r" % (key,))
         if key[-1] is None:
             key = key[:-1] + ('sha1:' + digest,)
-        elif type(key[-1]) is not str:
+        elif not isinstance(key[-1], str):
                 raise TypeError("key contains non-strings: %r" % (key,))
         # Knit hunks are still last-element only
         version_id = key[-1]
@@ -1127,7 +1127,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 # boundaries.
                 build_details = self._index.get_build_details([parent])
                 parent_details = build_details[parent]
-            except (RevisionNotPresent, KeyError), e:
+            except (RevisionNotPresent, KeyError) as e:
                 # Some basis is not locally present: always fulltext
                 return False
             index_memo, compression_parent, _, _ = parent_details
@@ -1290,7 +1290,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     (record_details, index_memo, next) = position_map[key]
                     raw_record_map[key] = data, record_details, next
                 return raw_record_map
-            except errors.RetryWithNewPacks, e:
+            except errors.RetryWithNewPacks as e:
                 self._access.reload_or_raise(e)
 
     @classmethod
@@ -1399,7 +1399,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     remaining_keys.discard(content_factory.key)
                     yield content_factory
                 return
-            except errors.RetryWithNewPacks, e:
+            except errors.RetryWithNewPacks as e:
                 self._access.reload_or_raise(e)
 
     def _get_remaining_record_stream(self, keys, ordering,
@@ -1563,7 +1563,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         else:
             # self is not annotated, but we can strip annotations cheaply.
             annotated = ""
-            convertibles = set(["knit-annotated-ft-gz"])
+            convertibles = {"knit-annotated-ft-gz"}
             if self._max_delta_chain:
                 delta_types.add("knit-annotated-delta-gz")
                 convertibles.add("knit-annotated-delta-gz")
@@ -1610,8 +1610,8 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             elif ((record.storage_kind in knit_types)
                   and (compression_parent is None
                        or not self._immediate_fallback_vfs
-                       or self._index.has_key(compression_parent)
-                       or not self.has_key(compression_parent))):
+                       or compression_parent in self._index
+                       or compression_parent not in self)):
                 # we can insert the knit record literally if either it has no
                 # compression parent OR we already have its basis in this kvf
                 # OR the basis is not present even in the fallbacks.  In the
@@ -1619,8 +1619,8 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 # will be well, or it won't turn up at all and we'll raise an
                 # error at the end.
                 #
-                # TODO: self.has_key is somewhat redundant with
-                # self._index.has_key; we really want something that directly
+                # TODO: self.__contains__ is somewhat redundant with
+                # self._index.__contains__; we really want something that directly
                 # asks if it's only present in the fallbacks. -- mbp 20081119
                 if record.storage_kind not in native_types:
                     try:
@@ -1659,7 +1659,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     #
                     # They're required to be physically in this
                     # KnitVersionedFiles, not in a fallback.
-                    if not self._index.has_key(compression_parent):
+                    if compression_parent not in self._index:
                         pending = buffered_index_entries.setdefault(
                             compression_parent, [])
                         pending.append(index_entry)
@@ -1781,7 +1781,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     for line in line_iterator:
                         yield line, key
                 done = True
-            except errors.RetryWithNewPacks, e:
+            except errors.RetryWithNewPacks as e:
                 self._access.reload_or_raise(e)
         # If there are still keys we've not yet found, we look in the fallback
         # vfs, and hope to find them there.  Note that if the keys are found
@@ -1874,7 +1874,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         try:
             # Current serialise
             rec = self._check_header(key, df.readline())
-        except Exception, e:
+        except Exception as e:
             raise KnitCorrupt(self,
                               "While reading {%s} got %s(%s)"
                               % (key, e.__class__.__name__, str(e)))
@@ -1888,7 +1888,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         df = gzip.GzipFile(mode='rb', fileobj=StringIO(data))
         try:
             record_contents = df.readlines()
-        except Exception, e:
+        except Exception as e:
             raise KnitCorrupt(self, "Corrupt compressed record %r, got %s(%s)" %
                 (data, e.__class__.__name__, str(e)))
         header = record_contents.pop(0)
@@ -1988,7 +1988,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         chunks.extend(dense_lines or lines)
         chunks.append("end %s\n" % key[-1])
         for chunk in chunks:
-            if type(chunk) is not str:
+            if not isinstance(chunk, str):
                 raise AssertionError(
                     'data must be plain bytes was %s' % type(chunk))
         if lines and lines[-1][-1] != '\n':
@@ -2438,7 +2438,7 @@ class _KndxIndex(object):
                     line = "\n%s %s %s %s %s :" % (
                         key[-1], ','.join(options), pos, size,
                         self._dictionary_compress(parents))
-                    if type(line) is not str:
+                    if not isinstance(line, str):
                         raise AssertionError(
                             'data must be utf8 was %s' % type(line))
                     lines.append(line)
@@ -2638,7 +2638,7 @@ class _KndxIndex(object):
         entry = self._kndx_cache[prefix][0][suffix]
         return key, entry[2], entry[3]
 
-    has_key = _mod_index._has_key_from_parent_map
+    __contains__ = _mod_index._has_key_from_parent_map
 
     def _init_index(self, path, extra_lines=[]):
         """Initialize an index."""
@@ -2660,7 +2660,7 @@ class _KndxIndex(object):
         result = set()
         # Identify all key prefixes.
         # XXX: A bit hacky, needs polish.
-        if type(self._mapper) is ConstantMapper:
+        if isinstance(self._mapper, ConstantMapper):
             prefixes = [()]
         else:
             relpaths = set()
@@ -2698,7 +2698,7 @@ class _KndxIndex(object):
                     del self._history
                 except NoSuchFile:
                     self._kndx_cache[prefix] = ({}, [])
-                    if type(self._mapper) is ConstantMapper:
+                    if isinstance(self._mapper, ConstantMapper):
                         # preserve behaviour for revisions.kndx etc.
                         self._init_index(path)
                     del self._cache
@@ -3090,7 +3090,7 @@ class _KnitGraphIndex(object):
         node = self._get_node(key)
         return self._node_to_position(node)
 
-    has_key = _mod_index._has_key_from_parent_map
+    __contains__ = _mod_index._has_key_from_parent_map
 
     def keys(self):
         """Get all the keys in the collection.
@@ -3155,7 +3155,7 @@ class _KnitKeyAccess(object):
             opaque index memo. For _KnitKeyAccess the memo is (key, pos,
             length), where the key is the record key.
         """
-        if type(raw_data) is not str:
+        if not isinstance(raw_data, str):
             raise AssertionError(
                 'data must be plain bytes was %s' % type(raw_data))
         result = []
@@ -3260,7 +3260,7 @@ class _KnitAnnotator(annotate.Annotator):
             passing to read_records_iter to start reading in the raw data from
             the pack file.
         """
-        pending = set([key])
+        pending = {key}
         records = []
         ann_keys = set()
         self._num_needed_children[key] = 1
@@ -3334,7 +3334,7 @@ class _KnitAnnotator(annotate.Annotator):
                     num_lines = len(text) # bad assumption
                     yield sub_key, text, num_lines
                 return
-            except errors.RetryWithNewPacks, e:
+            except errors.RetryWithNewPacks as e:
                 self._vf._access.reload_or_raise(e)
                 # The cached build_details are no longer valid
                 self._all_build_details.clear()
@@ -3500,6 +3500,6 @@ class _KnitAnnotator(annotate.Annotator):
 
 try:
     from bzrlib._knit_load_data_pyx import _load_data_c as _load_data
-except ImportError, e:
+except ImportError as e:
     osutils.failed_to_load_extension(e)
     from bzrlib._knit_load_data_py import _load_data_py as _load_data

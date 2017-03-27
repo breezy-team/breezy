@@ -132,7 +132,7 @@ class TestLockDir(TestCaseWithTransport):
             # a single process are not detected
             lf2.attempt_lock()
             self.fail('Failed to detect lock collision')
-        except LockContention, e:
+        except LockContention as e:
             self.assertEqual(e.lock, lf2)
             self.assertContainsRe(str(e),
                     r'^Could not acquire.*test_lock.*$')
@@ -148,7 +148,7 @@ class TestLockDir(TestCaseWithTransport):
         # lock is held, should get some info on it
         info1 = lf1.peek()
         self.assertEqual(set(info1.info_dict.keys()),
-            set(['user', 'nonce', 'hostname', 'pid', 'start_time']))
+            {'user', 'nonce', 'hostname', 'pid', 'start_time'})
         # should get the same info if we look at it through a different
         # instance
         info2 = LockDir(t, 'test_lock').peek()

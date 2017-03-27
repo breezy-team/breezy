@@ -98,7 +98,7 @@ class RevisionInfo(object):
     def __eq__(self, other):
         if type(other) not in (tuple, list, type(self)):
             return False
-        if type(other) is type(self) and self.branch is not other.branch:
+        if isinstance(other, type(self)) and self.branch is not other.branch:
             return False
         return tuple(self) == tuple(other)
 
@@ -422,7 +422,7 @@ class RevisionSpec_revno(RevisionSpec):
                 # right now - RBC 20060928
                 try:
                     match_revno = tuple((int(number) for number in revno_spec.split('.')))
-                except ValueError, e:
+                except ValueError as e:
                     raise errors.InvalidRevisionSpec(self.user_spec, branch, e)
 
                 dotted = True
@@ -533,7 +533,7 @@ class RevisionSpec_last(RevisionSpec):
 
         try:
             offset = int(self.spec)
-        except ValueError, e:
+        except ValueError as e:
             raise errors.InvalidRevisionSpec(self.user_spec, context_branch, e)
 
         if offset <= 0:

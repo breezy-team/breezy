@@ -792,7 +792,7 @@ class TextTestRunner(object):
         # to encode using ascii.
         new_encoding = osutils.get_terminal_encoding()
         codec = codecs.lookup(new_encoding)
-        if type(codec) is tuple:
+        if isinstance(codec, tuple):
             # Python 2.4
             encode = codec[0]
         else:
@@ -1087,7 +1087,7 @@ class TestCase(testtools.TestCase):
         _counters = self._counters # Avoid closing over self
         if counter_name is None:
             counter_name = name
-        if _counters.has_key(counter_name):
+        if counter_name in _counters:
             raise AssertionError('%s is already used as a counter name'
                                   % (counter_name,))
         _counters[counter_name] = 0
@@ -1184,7 +1184,7 @@ class TestCase(testtools.TestCase):
                 (acquired_locks, released_locks, broken_locks))
             if not self._lock_check_thorough:
                 # Rather than fail, just warn
-                print "Broken test %s: %s" % (self, message)
+                print("Broken test %s: %s" % (self, message))
                 return
             self.fail(message)
 
@@ -1359,7 +1359,7 @@ class TestCase(testtools.TestCase):
         try:
             if a == b:
                 return
-        except UnicodeError, e:
+        except UnicodeError as e:
             # If we can't compare without getting a UnicodeError, then
             # obviously they are different
             trace.mutter('UnicodeError: %s', e)
@@ -1508,14 +1508,14 @@ class TestCase(testtools.TestCase):
         """
         try:
             list(func(*args, **kwargs))
-        except excClass, e:
+        except excClass as e:
             return e
         else:
             if getattr(excClass,'__name__', None) is not None:
                 excName = excClass.__name__
             else:
                 excName = str(excClass)
-            raise self.failureException, "%s not raised" % excName
+            raise self.failureException("%s not raised" % excName)
 
     def assertRaises(self, excClass, callableObj, *args, **kwargs):
         """Assert that a callable raises a particular exception.
@@ -1529,7 +1529,7 @@ class TestCase(testtools.TestCase):
         """
         try:
             callableObj(*args, **kwargs)
-        except excClass, e:
+        except excClass as e:
             return e
         else:
             if getattr(excClass,'__name__', None) is not None:
@@ -1537,7 +1537,7 @@ class TestCase(testtools.TestCase):
             else:
                 # probably a tuple
                 excName = str(excClass)
-            raise self.failureException, "%s not raised" % excName
+            raise self.failureException("%s not raised" % excName)
 
     def assertIs(self, left, right, message=None):
         if not (left is right):
@@ -2651,7 +2651,7 @@ class TestCaseWithMemoryTransport(TestCase):
             os.environ['BZR_HOME'] = root
             wt = controldir.ControlDir.create_standalone_workingtree(root)
             del os.environ['BZR_HOME']
-        except Exception, e:
+        except Exception as e:
             self.fail("Fail to initialize the safety net: %r\n" % (e,))
         # Hack for speed: remember the raw bytes of the dirstate file so that
         # we don't need to re-open the wt to check it hasn't changed.
@@ -3783,7 +3783,7 @@ def load_test_id_list(file_name):
     test_list = []
     try:
         ftest = open(file_name, 'rt')
-    except IOError, e:
+    except IOError as e:
         if e.errno != errno.ENOENT:
             raise
         else:
@@ -3868,10 +3868,10 @@ class TestIdList(object):
 
     def refers_to(self, module_name):
         """Is there tests for the module or one of its sub modules."""
-        return self.modules.has_key(module_name)
+        return module_name in self.modules
 
     def includes(self, test_id):
-        return self.tests.has_key(test_id)
+        return test_id in self.tests
 
 
 class TestPrefixAliasRegistry(registry.Registry):
@@ -4223,8 +4223,8 @@ def test_suite(keep_only=None, starting_with=None):
             # still runs the rest of the examples
             doc_suite = IsolatedDocTestSuite(
                 mod, optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
-        except ValueError, e:
-            print '**failed to get doctest for: %s\n%s' % (mod, e)
+        except ValueError as e:
+            print('**failed to get doctest for: %s\n%s' % (mod, e))
             raise
         if len(doc_suite._tests) == 0:
             raise errors.BzrError("no doctests found in %s" % (mod,))
@@ -4446,7 +4446,7 @@ def _rmtree_temp_dir(dirname, test_id=None):
         dirname = dirname.encode(sys.getfilesystemencoding())
     try:
         osutils.rmtree(dirname)
-    except OSError, e:
+    except OSError as e:
         # We don't want to fail here because some useful display will be lost
         # otherwise. Polluting the tmp dir is bad, but not giving all the
         # possible info to the test runner is even worse.

@@ -99,7 +99,7 @@ class TestGzip(tests.TestCase):
             tuned_gzip.GzipFile, mode="w", fileobj=sio)
         gfile.write("\xFF")
         gfile.close()
-        self.assertEqual(gfile.crc & 0xFFFFFFFFL, 0xFF000000L)
+        self.assertEqual(gfile.crc & 0xFFFFFFFF, 0xFF000000)
         self.assertEqual(sio.getvalue()[-8:-4], "\x00\x00\x00\xFF")
 
 

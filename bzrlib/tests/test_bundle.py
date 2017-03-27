@@ -329,8 +329,7 @@ class BTreeTester(tests.TestCase):
         self.assertTrue(btree.path2id("grandparent/parent/file") is None)
 
     def sorted_ids(self, tree):
-        ids = list(tree.all_file_ids())
-        ids.sort()
+        ids = sorted(tree.all_file_ids())
         return ids
 
     def test_iteration(self):
@@ -1335,7 +1334,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
             self.assertEqual(len(branch_rev.parent_ids),
                              len(bundle_rev.parent_ids))
         self.assertEqual(set(rev_ids),
-                         set([r.revision_id for r in bundle.real_revisions]))
+                         {r.revision_id for r in bundle.real_revisions})
         self.valid_apply_bundle(base_rev_id, bundle,
                                    checkout_dir=checkout_dir)
 
@@ -1668,7 +1667,7 @@ class MungedBundleTester(object):
         bundle_txt = StringIO()
         rev_ids = write_bundle(wt.branch.repository, 'a@cset-0-2',
                                'a@cset-0-1', bundle_txt, self.format)
-        self.assertEqual(set(['a@cset-0-2']), set(rev_ids))
+        self.assertEqual({'a@cset-0-2'}, set(rev_ids))
         bundle_txt.seek(0, 0)
         return bundle_txt
 

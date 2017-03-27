@@ -321,7 +321,7 @@ class UIFactory(object):
             return fail
         try:
             return template % message_args
-        except ValueError, e:
+        except ValueError as e:
             fail = "bzr unprintable warning: %r, %r, %s" % (
                 warning_id, message_args, e)
             warnings.warn(fail)   # so tests will fail etc

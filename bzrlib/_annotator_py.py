@@ -70,7 +70,7 @@ class Annotator(object):
         self._num_needed_children[key] = 1
         vf_keys_needed = set()
         ann_keys_needed = set()
-        needed_keys = set([key])
+        needed_keys = {key}
         while needed_keys:
             parent_lookup = []
             next_parent_map = {}

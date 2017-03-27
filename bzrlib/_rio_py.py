@@ -26,7 +26,7 @@ from bzrlib.rio import (
 
 _tag_re = re.compile(r'^[-a-zA-Z0-9_]+$')
 def _valid_tag(tag):
-    if type(tag) != str:
+    if not isinstance(tag, str):
         raise TypeError(tag)
     return bool(_tag_re.match(tag))
 
@@ -34,7 +34,7 @@ def _valid_tag(tag):
 def _read_stanza_utf8(line_iter):
     def iter_unicode_lines():
         for line in line_iter:
-            if type(line) != str:
+            if not isinstance(line, str):
                 raise TypeError(line)
             yield line.decode('utf-8')
     return _read_stanza_unicode(iter_unicode_lines())

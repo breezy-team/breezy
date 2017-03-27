@@ -36,8 +36,8 @@ class TestRenameMap(TestCaseWithTransport):
     def test_add_edge_hashes(self):
         rn = RenameMap(None)
         rn.add_edge_hashes(self.a_lines, 'a')
-        self.assertEqual(set(['a']), rn.edge_hashes[myhash(('a\n', 'b\n'))])
-        self.assertEqual(set(['a']), rn.edge_hashes[myhash(('b\n', 'c\n'))])
+        self.assertEqual({'a'}, rn.edge_hashes[myhash(('a\n', 'b\n'))])
+        self.assertEqual({'a'}, rn.edge_hashes[myhash(('b\n', 'c\n'))])
         self.assertIs(None, rn.edge_hashes.get(myhash(('c\n', 'd\n'))))
 
     def test_add_file_edge_hashes(self):
@@ -46,8 +46,8 @@ class TestRenameMap(TestCaseWithTransport):
         tree.add('a', 'a')
         rn = RenameMap(tree)
         rn.add_file_edge_hashes(tree, ['a'])
-        self.assertEqual(set(['a']), rn.edge_hashes[myhash(('a\n', 'b\n'))])
-        self.assertEqual(set(['a']), rn.edge_hashes[myhash(('b\n', 'c\n'))])
+        self.assertEqual({'a'}, rn.edge_hashes[myhash(('a\n', 'b\n'))])
+        self.assertEqual({'a'}, rn.edge_hashes[myhash(('b\n', 'c\n'))])
         self.assertIs(None, rn.edge_hashes.get(myhash(('c\n', 'd\n'))))
 
     def test_hitcounts(self):
@@ -87,7 +87,7 @@ class TestRenameMap(TestCaseWithTransport):
             'path3/path4/path5': 'c',
         })
         self.assertEqual(
-            {'path2': set(['b']), 'path3/path4': set(['c']), 'path3': set()},
+            {'path2': {'b'}, 'path3/path4': {'c'}, 'path3': set()},
             required_parents)
 
     def test_find_directory_renames(self):
@@ -98,13 +98,13 @@ class TestRenameMap(TestCaseWithTransport):
             'path3/path4/path5': 'c',
         }
         required_parents = {
-            'path2': set(['b']),
-            'path3/path4': set(['c']),
+            'path2': {'b'},
+            'path3/path4': {'c'},
             'path3': set([])}
         missing_parents = {
-            'path2-id': set(['b']),
-            'path4-id': set(['c']),
-            'path3-id': set(['path4-id'])}
+            'path2-id': {'b'},
+            'path4-id': {'c'},
+            'path3-id': {'path4-id'}}
         matches = rn.match_parents(required_parents, missing_parents)
         self.assertEqual({'path3/path4': 'path4-id', 'path2': 'path2-id'},
                          matches)

@@ -1864,10 +1864,10 @@ class TestPackStat(tests.TestCaseWithTransport):
         self.assertEqual(expected, dirstate.pack_stat(stat_value))
 
     def test_pack_stat_int(self):
-        st = _FakeStat(6859L, 1172758614, 1172758617, 777L, 6499538L, 0100644)
+        st = _FakeStat(6859, 1172758614, 1172758617, 777, 6499538, 0o100644)
         # Make sure that all parameters have an impact on the packed stat.
         self.assertPackStat('AAAay0Xm4FZF5uBZAAADCQBjLNIAAIGk', st)
-        st.st_size = 7000L
+        st.st_size = 7000
         #                ay0 => bWE
         self.assertPackStat('AAAbWEXm4FZF5uBZAAADCQBjLNIAAIGk', st)
         st.st_mtime = 1172758620
@@ -1876,13 +1876,13 @@ class TestPackStat(tests.TestCaseWithTransport):
         st.st_ctime = 1172758630
         #                          uBZ => uBm
         self.assertPackStat('AAAbWEXm4FxF5uBmAAADCQBjLNIAAIGk', st)
-        st.st_dev = 888L
+        st.st_dev = 888
         #                                DCQ => DeA
         self.assertPackStat('AAAbWEXm4FxF5uBmAAADeABjLNIAAIGk', st)
-        st.st_ino = 6499540L
+        st.st_ino = 6499540
         #                                     LNI => LNQ
         self.assertPackStat('AAAbWEXm4FxF5uBmAAADeABjLNQAAIGk', st)
-        st.st_mode = 0100744
+        st.st_mode = 0o100744
         #                                          IGk => IHk
         self.assertPackStat('AAAbWEXm4FxF5uBmAAADeABjLNQAAIHk', st)
 
@@ -1892,8 +1892,8 @@ class TestPackStat(tests.TestCaseWithTransport):
         Make sure we don't get warnings or errors, and that we ignore changes <
         1s
         """
-        st = _FakeStat(7000L, 1172758614.0, 1172758617.0,
-                       777L, 6499538L, 0100644)
+        st = _FakeStat(7000, 1172758614.0, 1172758617.0,
+                       777, 6499538, 0o100644)
         # These should all be the same as the integer counterparts
         self.assertPackStat('AAAbWEXm4FZF5uBZAAADCQBjLNIAAIGk', st)
         st.st_mtime = 1172758620.0

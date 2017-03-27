@@ -805,7 +805,7 @@ class Weave(VersionedFile):
             name = self._idx_to_name(i)
             sha1s[name] = sha()
             texts[name] = []
-            new_inc = set([name])
+            new_inc = {name}
             for p in self._parents[i]:
                 new_inc.update(inclusions[self._idx_to_name(p)])
 
@@ -878,8 +878,8 @@ class Weave(VersionedFile):
                 raise errors.WeaveTextDiffers(name, self, other)
             self_parents = self._parents[this_idx]
             other_parents = other._parents[other_idx]
-            n1 = set([self._names[i] for i in self_parents])
-            n2 = set([other._names[i] for i in other_parents])
+            n1 = {self._names[i] for i in self_parents}
+            n2 = {other._names[i] for i in other_parents}
             if not self._compatible_parents(n1, n2):
                 raise WeaveParentMismatch("inconsistent parents "
                     "for version {%s}: %s vs %s" % (name, n1, n2))

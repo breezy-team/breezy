@@ -206,7 +206,7 @@ class TestIsIgnored(TestCaseWithWorkingTree):
 
             tree._flush_ignore_list_cache()
             ignores.add_runtime_ignores(['./foobar.py'])
-            self.assertEqual(set(['./foobar.py']), ignores.get_runtime_ignores())
+            self.assertEqual({'./foobar.py'}, ignores.get_runtime_ignores())
             self.assertEqual('./foobar.py', tree.is_ignored('foobar.py'))
         finally:
             ignores._runtime_ignores = orig_runtime

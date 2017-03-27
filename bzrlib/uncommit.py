@@ -99,7 +99,7 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None,
                 new_revision_id = rev_id
                 break
             if verbose:
-                print 'Removing revno %d: %s' % (cur_revno, rev_id)
+                print('Removing revno %d: %s' % (cur_revno, rev_id))
             cur_revno -= 1
             parents = graph.get_parent_map([rev_id]).get(rev_id, None)
             if not parents:
