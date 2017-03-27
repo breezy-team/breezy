@@ -21,6 +21,8 @@ See ``bzr help rules`` for details.
 
 from __future__ import absolute_import
 
+import configobj
+
 from bzrlib import (
     config,
     cmdline,
@@ -28,7 +30,6 @@ from bzrlib import (
     globbing,
     osutils,
     )
-from bzrlib.util.configobj import configobj
 
 
 # Name of the file holding rules in a tree
