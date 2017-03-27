@@ -22,6 +22,7 @@ import os
 import sys
 import threading
 
+import configobj
 from testtools import matchers
 
 from bzrlib import (
@@ -48,7 +49,6 @@ from bzrlib.tests import (
     scenarios,
     test_server,
     )
-from bzrlib.util.configobj import configobj
 
 
 def lockable_config_scenarios():
