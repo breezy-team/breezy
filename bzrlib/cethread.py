@@ -19,6 +19,10 @@ from __future__ import absolute_import
 import sys
 import threading
 
+from bzrlib.sixish import (
+    reraise,
+)
+
 
 class CatchingExceptionThread(threading.Thread):
     """A thread that keeps track of exceptions.
@@ -142,7 +146,7 @@ class CatchingExceptionThread(threading.Thread):
             if (self.ignored_exceptions is None
                 or not self.ignored_exceptions(exc_value)):
                 # Raise non ignored exceptions
-                raise exc_class, exc_value, exc_tb
+                reraise(exc_class, exc_value, exc_tb)
 
     def pending_exception(self):
         """Raise the caught exception.
