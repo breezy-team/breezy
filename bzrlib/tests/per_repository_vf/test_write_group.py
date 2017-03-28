@@ -392,9 +392,8 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         try:
             new_wg_tokens = same_repo.suspend_write_group()
         except:
-            e = sys.exc_info()
             same_repo.abort_write_group(suppress_errors=True)
-            raise e[0], e[1], e[2]
+            raise
         self.assertEqual(2, len(new_wg_tokens))
         self.assertSubset(wg_tokens, new_wg_tokens)
         same_repo = self.reopen_repo(repo)
