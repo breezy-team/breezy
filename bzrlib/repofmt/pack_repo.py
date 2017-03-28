@@ -60,6 +60,9 @@ from bzrlib.repository import (
     RepositoryFormatMetaDir,
     RepositoryWriteLockResult,
     )
+from bzrlib.sixish import (
+    reraise,
+)
 from bzrlib.vf_repository import (
     MetaDirVersionedFileRepository,
     MetaDirVersionedFileRepositoryFormat,
@@ -2084,8 +2087,5 @@ class _DirectPackAccess(object):
                 # hard error
                 is_error = True
         if is_error:
-            exc_class, exc_value, exc_traceback = retry_exc.exc_info
-            raise exc_class, exc_value, exc_traceback
-
-
-
+            # GZ 2017-03-27: No real reason this needs the original traceback.
+            reraise(*retry_exc.exc_info)
