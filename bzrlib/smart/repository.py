@@ -39,6 +39,9 @@ from bzrlib import (
     vf_search,
     )
 from bzrlib.bzrdir import BzrDir
+from bzrlib.sixish import (
+    reraise,
+)
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -584,12 +587,11 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
             source = repository._get_source(self._to_format)
             stream = source.get_stream(search_result)
         except Exception:
-            exc_info = sys.exc_info()
             try:
                 # On non-error, unlocking is done by the body stream handler.
                 repository.unlock()
             finally:
-                raise exc_info[0], exc_info[1], exc_info[2]
+                raise
         return SuccessfulSmartServerResponse(('ok',),
             body_stream=self.body_stream(stream, repository))
 
@@ -918,8 +920,10 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
         if self.insert_thread is not None:
             self.insert_thread.join()
         if not self.insert_ok:
-            exc_info = self.insert_exception
-            raise exc_info[0], exc_info[1], exc_info[2]
+            try:
+                reraise(*self.insert_exception)
+            finally:
+                del self.insert_exception
         write_group_tokens, missing_keys = self.insert_result
         if write_group_tokens or missing_keys:
             # bzip needed? missing keys should typically be a small set.
