@@ -33,6 +33,9 @@ from bzrlib import (
     errors,
     osutils,
     )
+from bzrlib.sixish import (
+    reraise,
+)
 from bzrlib.smart import message, request
 from bzrlib.trace import log_exception_quietly, mutter
 from bzrlib.bencode import bdecode_as_tuple, bencode
@@ -1376,7 +1379,10 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
                 self._write_structure(('error',))
                 self._write_end()
                 self._medium_request.finished_writing()
-                raise exc_info[0], exc_info[1], exc_info[2]
+                try:
+                    reraise(*exc_info)
+                finally:
+                    del exc_info
             else:
                 self._write_prefixed_body(part)
                 self.flush()

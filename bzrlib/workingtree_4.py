@@ -36,6 +36,7 @@ import stat
 from bzrlib import (
     bzrdir,
     cache_utf8,
+    cleanup,
     config,
     conflicts as _mod_conflicts,
     controldir,
@@ -698,20 +699,23 @@ class DirStateWorkingTree(InventoryWorkingTree):
         else:
             update_inventory = False
 
-        rollbacks = []
+        # GZ 2017-03-28: The rollbacks variable was shadowed in the loop below
+        # missing those added here, but there's also no test coverage for this.
+        rollbacks = cleanup.ObjectWithCleanups()
         def move_one(old_entry, from_path_utf8, minikind, executable,
                      fingerprint, packed_stat, size,
                      to_block, to_key, to_path_utf8):
             state._make_absent(old_entry)
             from_key = old_entry[0]
-            rollbacks.append(
-                lambda:state.update_minimal(from_key,
-                    minikind,
-                    executable=executable,
-                    fingerprint=fingerprint,
-                    packed_stat=packed_stat,
-                    size=size,
-                    path_utf8=from_path_utf8))
+            rollbacks.add_cleanup(
+                state.update_minimal,
+                from_key,
+                minikind,
+                executable=executable,
+                fingerprint=fingerprint,
+                packed_stat=packed_stat,
+                size=size,
+                path_utf8=from_path_utf8)
             state.update_minimal(to_key,
                     minikind,
                     executable=executable,
@@ -721,7 +725,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     path_utf8=to_path_utf8)
             added_entry_index, _ = state._find_entry_index(to_key, to_block[1])
             new_entry = to_block[1][added_entry_index]
-            rollbacks.append(lambda:state._make_absent(new_entry))
+            rollbacks.add_cleanup(state._make_absent, new_entry)
 
         for from_rel in from_paths:
             # from_rel is 'pathinroot/foo/bar'
@@ -766,23 +770,6 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 elif not after:
                     raise errors.RenameFailedFilesExist(from_rel, to_rel)
 
-            rollbacks = []
-            def rollback_rename():
-                """A single rename has failed, roll it back."""
-                # roll back everything, even if we encounter trouble doing one
-                # of them.
-                #
-                # TODO: at least log the other exceptions rather than just
-                # losing them mbp 20070307
-                exc_info = None
-                for rollback in reversed(rollbacks):
-                    try:
-                        rollback()
-                    except Exception as e:
-                        exc_info = sys.exc_info()
-                if exc_info:
-                    raise exc_info[0], exc_info[1], exc_info[2]
-
             # perform the disk move first - its the most likely failure point.
             if move_file:
                 from_rel_abs = self.abspath(from_rel)
@@ -791,7 +778,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     osutils.rename(from_rel_abs, to_rel_abs)
                 except OSError as e:
                     raise errors.BzrMoveFailedError(from_rel, to_rel, e[1])
-                rollbacks.append(lambda: osutils.rename(to_rel_abs, from_rel_abs))
+                rollbacks.add_cleanup(osutils.rename, to_rel_abs, from_rel_abs)
             try:
                 # perform the rename in the inventory next if needed: its easy
                 # to rollback
@@ -800,8 +787,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     from_entry = inv[from_id]
                     current_parent = from_entry.parent_id
                     inv.rename(from_id, to_dir_id, from_tail)
-                    rollbacks.append(
-                        lambda: inv.rename(from_id, current_parent, from_tail))
+                    rollbacks.add_cleanup(
+                        inv.rename, from_id, current_parent, from_tail)
                 # finally do the rename in the dirstate, which is a little
                 # tricky to rollback, but least likely to need it.
                 old_block_index, old_entry_index, dir_present, file_present = \
@@ -875,7 +862,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                                                 to_path_utf8)
                     update_dirblock(from_rel_utf8, to_key, to_rel_utf8)
             except:
-                rollback_rename()
+                rollbacks.cleanup_now()
                 raise
             result.append((from_rel, to_rel))
             state._mark_modified()

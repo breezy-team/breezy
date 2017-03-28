@@ -1343,8 +1343,9 @@ class CombinedGraphIndex(object):
                             yield node
                             seen_keys.add(node[1])
                 return
-            except errors.NoSuchFile:
-                self._reload_or_raise()
+            except errors.NoSuchFile as e:
+                if not self._try_reload(e):
+                    raise
 
     def iter_entries(self, keys):
         """Iterate over keys within the index.
@@ -1372,8 +1373,9 @@ class CombinedGraphIndex(object):
                     if index_hit:
                         hit_indices.append(index)
                 break
-            except errors.NoSuchFile:
-                self._reload_or_raise()
+            except errors.NoSuchFile as e:
+                if not self._try_reload(e):
+                    raise
         self._move_to_front(hit_indices)
 
     def iter_entries_prefix(self, keys):
@@ -1414,8 +1416,9 @@ class CombinedGraphIndex(object):
                     if index_hit:
                         hit_indices.append(index)
                 break
-            except errors.NoSuchFile:
-                self._reload_or_raise()
+            except errors.NoSuchFile as e:
+                if not self._try_reload(e):
+                    raise
         self._move_to_front(hit_indices)
 
     def _move_to_front(self, hit_indices):
@@ -1559,27 +1562,27 @@ class CombinedGraphIndex(object):
         while True:
             try:
                 return sum((index.key_count() for index in self._indices), 0)
-            except errors.NoSuchFile:
-                self._reload_or_raise()
+            except errors.NoSuchFile as e:
+                if not self._try_reload(e):
+                    raise
 
     missing_keys = _missing_keys_from_parent_map
 
-    def _reload_or_raise(self):
+    def _try_reload(self, error):
         """We just got a NoSuchFile exception.
 
         Try to reload the indices, if it fails, just raise the current
         exception.
         """
         if self._reload_func is None:
-            raise
-        exc_type, exc_value, exc_traceback = sys.exc_info()
-        trace.mutter('Trying to reload after getting exception: %s',
-                     exc_value)
+            return False
+        trace.mutter('Trying to reload after getting exception: %s', error)
         if not self._reload_func():
             # We tried to reload, but nothing changed, so we fail anyway
             trace.mutter('_reload_func indicated nothing has changed.'
                          ' Raising original exception.')
-            raise exc_type, exc_value, exc_traceback
+            return False
+        return True
 
     def set_sibling_indices(self, sibling_combined_graph_indices):
         """Set the CombinedGraphIndex objects to reorder after reordering self.
@@ -1593,8 +1596,9 @@ class CombinedGraphIndex(object):
                 for index in self._indices:
                     index.validate()
                 return
-            except errors.NoSuchFile:
-                self._reload_or_raise()
+            except errors.NoSuchFile as e:
+                if not self._try_reload(e):
+                    raise
 
 
 class InMemoryGraphIndex(GraphIndexBuilder):
