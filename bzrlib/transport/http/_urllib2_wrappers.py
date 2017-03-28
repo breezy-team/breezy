@@ -73,6 +73,9 @@ from bzrlib import (
     ui,
     urlutils,
 )
+from bzrlib.sixish import (
+    reraise,
+)
 
 try:
     _ = (ssl.match_hostname, ssl.CertificateError)
@@ -684,7 +687,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
         elif isinstance(exc_val, httplib.ImproperConnectionState):
             # The httplib pipeline is in incorrect state, it's a bug in our
             # implementation.
-            raise exc_type, exc_val, exc_tb
+            reraise(exc_type, exc_val, exc_tb)
         else:
             if first_try:
                 if self._debuglevel >= 2:
@@ -735,7 +738,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                     url = request.get_full_url()
                     print('  Failed again, %s %r' % (method, url))
                     print('  Will raise: [%r]' % my_exception)
-                raise my_exception, None, exc_tb
+                reraise(my_exception, None, exc_tb)
         return response
 
     def do_open(self, http_class, request, first_try=True):
