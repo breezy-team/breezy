@@ -2688,8 +2688,9 @@ class TestStoreMinimalAPI(tests.TestCaseWithTransport):
 
 class TestStore(tests.TestCaseWithTransport):
 
-    def assertSectionContent(self, expected, (store, section)):
+    def assertSectionContent(self, expected, store_and_section):
         """Assert that some options have the proper values in a section."""
+        _, section = store_and_section
         expected_name, expected_options = expected
         self.assertEqual(expected_name, section.id)
         self.assertEqual(

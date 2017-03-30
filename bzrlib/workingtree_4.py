@@ -557,11 +557,11 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 # path is missing on disk.
                 continue
 
-    def _observed_sha1(self, file_id, path, (sha1, statvalue)):
+    def _observed_sha1(self, file_id, path, sha_and_stat):
         """See MutableTree._observed_sha1."""
         state = self.current_dirstate()
         entry = self._get_entry(file_id=file_id, path=path)
-        state._observed_sha1(entry, sha1, statvalue)
+        state._observed_sha1(entry, *sha_and_stat)
 
     def kind(self, file_id):
         """Return the kind of a file.

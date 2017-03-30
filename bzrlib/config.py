@@ -1231,11 +1231,10 @@ class LocationConfig(LockableConfig):
 
     def _get_matching_sections(self):
         """Return an ordered list of section names matching this location."""
-        matches = list(_iter_for_location_by_parts(self._get_parser(),
-                                                   self.location))
         # put the longest (aka more specific) locations first
-        matches.sort(
-            key=lambda (section, extra_path, length): (length, section),
+        matches = sorted(
+            _iter_for_location_by_parts(self._get_parser(), self.location),
+            key=lambda match: (match[2], match[0]),
             reverse=True)
         for (section, extra_path, length) in matches:
             yield section, extra_path
@@ -3665,10 +3664,9 @@ class LocationMatcher(SectionMatcher):
 
     def get_sections(self):
         # Override the default implementation as we want to change the order
-        matching_sections = self._get_matching_sections()
         # We want the longest (aka more specific) locations first
-        sections = sorted(matching_sections,
-                          key=lambda (length, section): (length, section.id),
+        sections = sorted(self._get_matching_sections(),
+                          key=lambda match: (match[0], match[1].id),
                           reverse=True)
         # Sections mentioning 'ignore_parents' restrict the selection
         for _, section in sections:
