@@ -286,7 +286,7 @@ class HashCache(object):
                 trace.warning("bad sha1 in hashcache: %r" % sha1)
                 continue
 
-            fp = tuple(map(long, fields[1:]))
+            fp = tuple(map(int, fields[1:]))
 
             self._cache[path] = (sha1, fp)
 
@@ -314,6 +314,6 @@ class HashCache(object):
             return None
         # we discard any high precision because it's not reliable; perhaps we
         # could do better on some systems?
-        return (stat_value.st_size, long(stat_value.st_mtime),
-                long(stat_value.st_ctime), stat_value.st_ino,
+        return (stat_value.st_size, int(stat_value.st_mtime),
+                int(stat_value.st_ctime), stat_value.st_ino,
                 stat_value.st_dev, stat_value.st_mode)

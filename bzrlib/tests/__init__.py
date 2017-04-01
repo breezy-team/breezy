@@ -3399,8 +3399,8 @@ def filter_tests(pattern):
 
 def random_order(random_seed, runner):
     """Return a test suite decorator factory for randomising tests order.
-    
-    :param random_seed: now, a string which casts to a long, or a long.
+
+    :param random_seed: now, a string which casts to an integer, or an integer.
     :param runner: A test runner with a stream attribute to report on.
     """
     if random_seed is None:
@@ -3478,13 +3478,13 @@ class RandomDecorator(TestDecorator):
     @staticmethod
     def actual_seed(seed):
         if seed == "now":
-            # We convert the seed to a long to make it reuseable across
+            # We convert the seed to an integer to make it reuseable across
             # invocations (because the user can reenter it).
-            return long(time.time())
+            return int(time.time())
         else:
-            # Convert the seed to a long if we can
+            # Convert the seed to an integer if we can
             try:
-                return long(seed)
+                return int(seed)
             except (TypeError, ValueError):
                 pass
         return seed
