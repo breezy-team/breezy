@@ -958,10 +958,13 @@ class TestUIFactory(TextUIFactory):
 
 def isolated_doctest_setUp(test):
     override_os_environ(test)
+    test._orig_ui_factory = ui.ui_factory
+    ui.ui_factory = ui.SilentUIFactory()
 
 
 def isolated_doctest_tearDown(test):
     restore_os_environ(test)
+    ui.ui_factory = test._orig_ui_factory
 
 
 def IsolatedDocTestSuite(*args, **kwargs):

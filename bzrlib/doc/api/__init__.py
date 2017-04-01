@@ -31,6 +31,12 @@ import os
 
 from bzrlib import tests
 
+
+def make_new_test_id(test):
+    new_id = '%s.DocFileTest(%s)' % (__name__, test.id())
+    return lambda: new_id
+
+
 def load_tests(basic_tests, module, loader):
     """This module creates its own test suite with DocFileSuite."""
 
@@ -42,12 +48,10 @@ def load_tests(basic_tests, module, loader):
     scripts = [candidate for candidate in candidates
                if candidate.endswith('.txt')]
     # since this module doesn't define tests, we ignore basic_tests
-    suite = doctest.DocFileSuite(*scripts)
+    suite = doctest.DocFileSuite(*scripts, setUp=tests.isolated_doctest_setUp,
+                                 tearDown=tests.isolated_doctest_tearDown)
     # DocFileCase reduces the test id to the base name of the tested file, we
     # want the module to appears there.
     for t in tests.iter_suite_tests(suite):
-        def make_new_test_id():
-            new_id = '%s.DocFileTest(%s)' % ( __name__, t)
-            return lambda: new_id
-        t.id = make_new_test_id()
+        t.id = make_new_test_id(t)
     return suite
