@@ -109,7 +109,7 @@ class HashCache(object):
         self.update_count = 0
         self._cache = {}
         self._mode = mode
-        self._cache_file_name = osutils.safe_unicode(cache_file_name)
+        self._cache_file_name = cache_file_name
         self._filter_provider = content_filter_stack_provider
 
     def cache_file_name(self):
@@ -181,7 +181,7 @@ class HashCache(object):
                 filters = self._filter_provider(path=path, file_id=None)
             digest = self._really_sha1_file(abspath, filters)
         elif stat.S_ISLNK(mode):
-            target = osutils.readlink(osutils.safe_unicode(abspath))
+            target = osutils.readlink(abspath)
             digest = osutils.sha_string(target.encode('UTF-8'))
         else:
             raise errors.BzrError("file %r: unknown file stat mode: %o"
