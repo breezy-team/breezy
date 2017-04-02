@@ -1486,7 +1486,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
                 result[key] = int(val_text)
             elif key in ('firstrev', 'latestrev'):
                 values = val_text.split(' ')[1:]
-                result[key] = (float(values[0]), long(values[1]))
+                result[key] = (float(values[0]), int(values[1]))
 
         return result
 

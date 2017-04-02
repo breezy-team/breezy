@@ -750,7 +750,9 @@ class Weave(VersionedFile):
 
         NOT FOR PUBLIC USE.
         """
-        if isinstance(name_or_index, (int, long)):
+        # GZ 2017-04-01: This used to check for long as well, but I don't think
+        # there are python implementations with sys.maxsize > sys.maxint
+        if isinstance(name_or_index, int):
             return name_or_index
         else:
             return self._lookup(name_or_index)
