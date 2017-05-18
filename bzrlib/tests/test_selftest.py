@@ -3443,7 +3443,7 @@ class TestUncollectedWarnings(_Selftest, tests.TestCase):
         def test_self_ref(self):
             self.also_self = self.test_self_ref
         def test_skip(self):
-            self.skip("Don't need")
+            self.skipTest("Don't need")
 
     def _get_suite(self):
         return TestUtil.TestSuite([

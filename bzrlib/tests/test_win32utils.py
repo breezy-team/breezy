@@ -106,7 +106,7 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
 
     def test_case_insensitive_globbing(self):
         if os.path.normcase("AbC") == "AbC":
-            self.skip("Test requires case insensitive globbing function")
+            self.skipTest("Test requires case insensitive globbing function")
         self.build_ascii_tree()
         self._run_testset([
             [[u'A'], [u'A']],
@@ -358,7 +358,7 @@ class Test_CommandLineToArgv(tests.TestCaseInTempDir):
 
     def test_case_insensitive_globs(self):
         if os.path.normcase("AbC") == "AbC":
-            self.skip("Test requires case insensitive globbing function")
+            self.skipTest("Test requires case insensitive globbing function")
         self.build_tree(['a/', 'a/b.c', 'a/c.c', 'a/c.h'])
         self.assertCommandLine([u'A/b.c'], 'A/B*')
 
@@ -405,7 +405,7 @@ class TestGetEnvironUnicode(tests.TestCase):
         try:
             bytes_val = unicode_val.encode(osutils.get_user_encoding())
         except UnicodeEncodeError:
-            self.skip("Couldn't encode non-ascii string to place in environ")
+            self.skipTest("Couldn't encode non-ascii string for environ")
         os.environ["TEST"] = bytes_val
         self.assertEqual(unicode_val, win32utils.get_environ_unicode("TEST"))
 

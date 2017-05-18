@@ -1020,7 +1020,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             # windows filesystems fail on renaming open files
             self.addCleanup(file(self.wt.abspath('myfile')).close)
         else:
-            self.skip("Don't know how to force a permissions error on rename")
+            self.skipTest("Can't force a permissions error on rename")
         # now transform to rename
         rename_transform, root_id = self.get_transform()
         file_trans_id = rename_transform.trans_id_file_id('myfile-id')
