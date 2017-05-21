@@ -179,10 +179,10 @@ def _append_new_path(paths, new_path):
 
 def get_core_plugin_path():
     core_path = None
-    bzr_exe = bool(getattr(sys, 'frozen', None))
-    if bzr_exe:    # expand path for bzr.exe
+    brz_exe = bool(getattr(sys, 'frozen', None))
+    if brz_exe:    # expand path for brz.exe
         # We need to use relative path to system-wide plugin
-        # directory because breezy from standalone bzr.exe
+        # directory because breezy from standalone brz.exe
         # could be imported by another standalone program
         # (e.g. bzr-config; or TortoiseBzr/Olive if/when they
         # will become standalone exe). [bialix 20071123]
@@ -225,8 +225,8 @@ def get_standard_plugins_path():
     # Ad-Hoc default: core is not overriden by site but user can overrides both
     # The rationale is that:
     # - 'site' comes last, because these plugins should always be available and
-    #   are supposed to be in sync with the bzr installed on site.
-    # - 'core' comes before 'site' so that running bzr from sources or a user
+    #   are supposed to be in sync with the brz installed on site.
+    # - 'core' comes before 'site' so that running brz from sources or a user
     #   installed version overrides the site version.
     # - 'user' comes first, because... user is always right.
     # - the above rules clearly defines which plugin version will be loaded if
@@ -393,8 +393,8 @@ def _load_plugin_module(name, dir):
         trace.warning("%s" % e)
         if re.search('\.|-| ', name):
             sanitised_name = re.sub('[-. ]', '_', name)
-            if sanitised_name.startswith('bzr_'):
-                sanitised_name = sanitised_name[len('bzr_'):]
+            if sanitised_name.startswith('brz_'):
+                sanitised_name = sanitised_name[len('brz_'):]
             trace.warning("Unable to load %r in %r as a plugin because the "
                     "file path isn't a valid module name; try renaming "
                     "it to %r." % (name, dir, sanitised_name))
@@ -600,7 +600,7 @@ class PlugIn(object):
 
 
 class _PluginImporter(object):
-    """An importer tailored to bzr specific needs.
+    """An importer tailored to brz specific needs.
 
     This is a singleton that takes care of:
     - disabled plugins specified in 'blacklist',
