@@ -1,5 +1,5 @@
 #################
-Bazaar User Guide
+Breezy User Guide
 #################
 
 .. Please mark sections in included files as following:
@@ -113,11 +113,11 @@ A brief tour of some popular plugins
 .. toctree::
    :maxdepth: 1
 
-   bzrtools_plugin
+   brztools_plugin
    svn_plugin
 
 
-Integrating Bazaar into your environment
+Integrating Breezy into your environment
 ########################################
 
 .. toctree::

@@ -23,7 +23,7 @@ import sys
 
 class CustomModuleFinder(modulefinder.ModuleFinder):
     """Custom module finder for processing python packages,
-    e.g. bzr plugins packages.
+    e.g. brz plugins packages.
 
     :param  path:   list of directories to search for modules;
                     if not specified, python standard library only is used.

@@ -1,12 +1,12 @@
 Configuring email
 =================
 
-.. Description of the various ways to specify to Bazaar your email address for commits.
+.. Description of the various ways to specify to Breezy your email address for commits.
 
-Why set up an email address with Bazaar?
+Why set up an email address with Breezy?
 ----------------------------------------
 
-Bazaar stores the specified email address in revisions when they're
+Breezy stores the specified email address in revisions when they're
 created so that people can tell who committed which revisions.  The
 email addresses are not verified, therefore they could be bogus, so
 you have to trust the people involved in your project.  Additionally,
@@ -16,15 +16,15 @@ author of a revision for credit and/or blame.  :)
 How to set up your email address
 --------------------------------
 
-Bazaar will try to guess an email address based on your username and the
+Breezy will try to guess an email address based on your username and the
 hostname if none is set.  This will probably not be what you want, so three
-ways exist to tell Bazaar what email to use:
+ways exist to tell Breezy what email to use:
 
 You can set your email in one of several configuration files.  Like
 other configuration values, you can set it in ``bazaar.conf`` as a
 general setting.  If you want to override the value for a particular
 branch, or set of branches, you can use ``locations.conf``.
-``.bzr/branch/branch.conf`` will also work, but will cause all commits
+``.brz/branch/branch.conf`` will also work, but will cause all commits
 to that branch to use the same email address, even if someone else
 does them.
 
@@ -34,15 +34,15 @@ The order of precedence is
  #. If an email is set for your current branch in the ``locations.conf``
     file.
  #. If an email is set four your current branch in the
-    ``.bzr/branch/branch.conf`` file.
+    ``.brz/branch/branch.conf`` file.
  #. If an email is set in the ``bazaar.conf`` default configuration file.
  #. If the `EMAIL` environment variable is set.
- #. Bazaar will try to guess based on your username and the hostname.
+ #. Breezy will try to guess based on your username and the hostname.
 
-To check on what Bazaar thinks your current email is, use the ``whoami``
+To check on what Breezy thinks your current email is, use the ``whoami``
 ("who am i?") command::
 
-    % bzr whoami
+    % brz whoami
     Joe Cool <joe@example.com>
 
 Setting email via the 'whoami' command
@@ -50,11 +50,11 @@ Setting email via the 'whoami' command
 
 You can use the whoami command to set your email globally::
 
-    % bzr whoami "Joe Cool <joe@example.com>"
+    % brz whoami "Joe Cool <joe@example.com>"
 
 or only for the current branch::
 
-    % bzr whoami --branch "Joe Cool <joe@example.com>"
+    % brz whoami --branch "Joe Cool <joe@example.com>"
 
 These modify your global ``bazaar.conf`` or branch ``branch.conf`` file, respectively.
 
@@ -72,7 +72,7 @@ is case sensitive, and must be in upper-case.
 
 
 For more information on the ini file format, see `Configuration Settings`_ in
-the Bazaar User Reference.
+the Breezy User Reference.
 
 .. _Configuration Settings: ../user-reference/index.html#configuration-settings
 
@@ -90,7 +90,7 @@ overriding the default specified in the ``bazaar.conf`` above.
 
 Setting email via environment variable
 --------------------------------------
-The final method Bazaar will use is checking for the ``BZR_EMAIL``
+The final method Breezy will use is checking for the ``BZR_EMAIL``
 and ``EMAIL`` environment variables.  Generally, you would use this
 method to override the email in a script context.  If you would like
 to set a general default, then please see the ini methods above.
@@ -98,7 +98,7 @@ to set a general default, then please see the ini methods above.
 Concerns about spam
 -------------------
 Some people want to avoid sharing their email address so as not to get
-spam.  Bazaar will never disclose your email address, unless you publish
+spam.  Breezy will never disclose your email address, unless you publish
 a branch or changeset in a public location.  It's recommended that you
 *do* use a real address, so that people can contact you about your work,
 but it's not required.  You can use an address which is obfuscated, which

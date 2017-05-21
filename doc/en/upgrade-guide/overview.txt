@@ -12,7 +12,7 @@ In broad terms, there are 3 steps involved in upgrading a new format:
 
 3. Migrate data to the new default format.
 
-Bazaar supports branches in earlier formats so the third step is strictly not
+Breezy supports branches in earlier formats so the third step is strictly not
 required. However, when new default formats are introduced, they are more
 space efficient, faster on large projects and/or provide new features. So it
 is recommended that most projects migrate to it at a convenient time.
@@ -31,29 +31,29 @@ Upgrading the core software
 The steps required to upgrade the core software vary from operating system to
 operating system.  A brief outline of the steps is given below.
 
-To upgrade Bazaar on Ubuntu:
+To upgrade Breezy on Ubuntu:
 
 1. Ensure your package manager is configured with the required software
    sources, e.g. the official stable release PPA for Ubuntu:
-   https://launchpad.net/~bzr/+archive
+   https://launchpad.net/~brz/+archive
 
 2. Use your package manager to upgrade to the latest version.
 
-To upgrade Bazaar on Windows:
+To upgrade Breezy on Windows:
 
 1. Uninstall the existing version using Add/Remove Programs.
 
 2. Install the new version using the relevant installer.
 
-To upgrade Bazaar on OS X (via the installer):
+To upgrade Breezy on OS X (via the installer):
 
 1. Install the new version using the relevant installer.
 
-To upgrade Bazaar on OS X (via MacPorts):
+To upgrade Breezy on OS X (via MacPorts):
 
 1. Refresh the package metadata using **sudo port selfupdate**
 
-2. Upgrade to the latest version using **sudo port upgrade bzr**
+2. Upgrade to the latest version using **sudo port upgrade brz**
 
 For further information on installing and upgrading, see
 http://wiki.bazaar.canonical.com/Download.
@@ -62,9 +62,9 @@ http://wiki.bazaar.canonical.com/Download.
 Upgrading required plugins
 --------------------------
 
-Many plugins are not dependent on a particular Bazaar version so
+Many plugins are not dependent on a particular Breezy version so
 upgrading them is optional. Other plugins, notably bzrtools and
-bzr-svn, are more tightly associated with Bazaar's APIs so these
+bzr-svn, are more tightly associated with Breezy's APIs so these
 typically need to be upgraded in lockstep with the core software.
 
 For Windows and OS X users, bzrtools and bzr-svn are typically included in
