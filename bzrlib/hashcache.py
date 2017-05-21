@@ -42,6 +42,9 @@ from bzrlib import (
     osutils,
     trace,
     )
+from bzrlib.sixish import (
+    text_type,
+    )
 
 
 FP_MTIME_COLUMN = 1
@@ -95,8 +98,9 @@ class HashCache(object):
             parameters and returns a stack of ContentFilters.
             If None, no content filtering is performed.
         """
-        self.root = osutils.safe_unicode(root)
-        self.root_utf8 = self.root.encode('utf8') # where is the filesystem encoding ?
+        if not isinstance(root, text_type):
+            raise ValueError("Base dir for hashcache must be text")
+        self.root = root
         self.hit_count = 0
         self.miss_count = 0
         self.stat_count = 0
@@ -105,7 +109,7 @@ class HashCache(object):
         self.update_count = 0
         self._cache = {}
         self._mode = mode
-        self._cache_file_name = osutils.safe_unicode(cache_file_name)
+        self._cache_file_name = cache_file_name
         self._filter_provider = content_filter_stack_provider
 
     def cache_file_name(self):
@@ -125,11 +129,10 @@ class HashCache(object):
         Obsolete entries are those where the file has been modified or deleted
         since the entry was inserted.
         """
-        # FIXME optimisation opportunity, on linux [and check other oses]:
-        # rather than iteritems order, stat in inode order.
-        prep = sorted([(ce[1][3], path, ce) for (path, ce) in self._cache.iteritems()])
-
-        for inum, path, cache_entry in prep:
+        # Stat in inode order as optimisation for at least linux.
+        def inode_order(path_and_cache):
+            return path_and_cache[1][1][3]
+        for inum, path, cache_entry in sorted(self._cache, key=inode_order):
             abspath = osutils.pathjoin(self.root, path)
             fp = self._fingerprint(abspath)
             self.stat_count += 1
@@ -145,10 +148,7 @@ class HashCache(object):
     def get_sha1(self, path, stat_value=None):
         """Return the sha1 of a file.
         """
-        if path.__class__ is str:
-            abspath = osutils.pathjoin(self.root_utf8, path)
-        else:
-            abspath = osutils.pathjoin(self.root, path)
+        abspath = osutils.pathjoin(self.root, path)
         self.stat_count += 1
         file_fp = self._fingerprint(abspath, stat_value)
 
@@ -181,7 +181,7 @@ class HashCache(object):
                 filters = self._filter_provider(path=path, file_id=None)
             digest = self._really_sha1_file(abspath, filters)
         elif stat.S_ISLNK(mode):
-            target = osutils.readlink(osutils.safe_unicode(abspath))
+            target = osutils.readlink(abspath)
             digest = osutils.sha_string(target.encode('UTF-8'))
         else:
             raise errors.BzrError("file %r: unknown file stat mode: %o"

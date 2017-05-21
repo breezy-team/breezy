@@ -42,11 +42,11 @@ class TestHashCache(TestCaseInTempDir):
     def make_hashcache(self):
         # make a dummy bzr directory just to hold the cache
         os.mkdir('.bzr')
-        hc = HashCache('.', '.bzr/stat-cache')
+        hc = HashCache(u'.', '.bzr/stat-cache')
         return hc
 
     def reopen_hashcache(self):
-        hc = HashCache('.', '.bzr/stat-cache')
+        hc = HashCache(u'.', '.bzr/stat-cache')
         hc.read()
         return hc
 
@@ -133,7 +133,7 @@ class FakeHashCache(HashCache):
     def __init__(self):
         # set root and cache file name to none to make sure we won't touch the
         # real filesystem
-        HashCache.__init__(self, '.', 'hashcache')
+        HashCache.__init__(self, u'.', 'hashcache')
         self._files = {}
         # simulated clock running forward as operations happen
         self._clock = 0
