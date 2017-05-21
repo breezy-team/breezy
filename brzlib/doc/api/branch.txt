@@ -1,16 +1,16 @@
-The Branch API in bzrlib provides creation and management of Branches.
+The Branch API in brzlib provides creation and management of Branches.
 
 A Branch represents a series of commits and merges carried out by a user.
 
 Make a temporary directory for these tests:
 
-   >>> from bzrlib import osutils
-   >>> test_dir = osutils.mkdtemp(prefix='bzrlib_doc_api_branch_txt_')
+   >>> from brzlib import osutils
+   >>> test_dir = osutils.mkdtemp(prefix='brzlib_doc_api_branch_txt_')
 
 Branches are created by BzrDir's:
 
-   >>> from bzrlib.branch import Branch
-   >>> from bzrlib.bzrdir import BzrDir
+   >>> from brzlib.branch import Branch
+   >>> from brzlib.bzrdir import BzrDir
 
    >>> new_branch = BzrDir.create_branch_convenience(test_dir)
 

@@ -1,10 +1,10 @@
-The Transport API in bzrlib provides URL based access to network resources.
+The Transport API in brzlib provides URL based access to network resources.
 
    >>> import os
    >>> import sys
-   >>> from bzrlib.osutils import getcwd, dirname
-   >>> from bzrlib.urlutils import local_path_from_url
-   >>> import bzrlib.transport as transport
+   >>> from brzlib.osutils import getcwd, dirname
+   >>> from brzlib.urlutils import local_path_from_url
+   >>> import brzlib.transport as transport
    >>> if sys.platform == 'win32':
    ...     root = transport.get_transport_from_url('file:///C:/')
    ... else:
