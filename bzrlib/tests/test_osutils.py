@@ -1233,7 +1233,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # rename the 1file to a latin-1 filename
         os.rename("./1file", "\xe8file")
         if "\xe8file" not in os.listdir("."):
-            self.skip("Lack filesystem that preserves arbitrary bytes")
+            self.skipTest("Lack filesystem that preserves arbitrary bytes")
 
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code

@@ -136,7 +136,8 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         try:
             str_val = uni_val.encode(enc)
         except UnicodeEncodeError:
-            self.skip("Test string %r unrepresentable in user encoding %s" % (
+            self.skipTest(
+                "Test string %r unrepresentable in user encoding %s" % (
                 uni_val, enc))
         self.overrideEnv('BZR_HOME', self.test_base_dir)
         self.overrideEnv("BZR_LOG",
