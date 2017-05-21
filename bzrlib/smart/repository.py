@@ -20,7 +20,10 @@ from __future__ import absolute_import
 
 import bz2
 import os
-import Queue
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 import sys
 import tempfile
 import threading
@@ -889,7 +892,7 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
         tokens = [token for token in resume_tokens.split(' ') if token]
         self.tokens = tokens
         self.repository = repository
-        self.queue = Queue.Queue()
+        self.queue = queue.Queue()
         self.insert_thread = threading.Thread(target=self._inserter_thread)
         self.insert_thread.start()
 
