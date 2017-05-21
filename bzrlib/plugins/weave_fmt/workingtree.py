@@ -18,8 +18,6 @@
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
-
 from bzrlib import (
     conflicts as _mod_conflicts,
     errors,
@@ -31,6 +29,9 @@ from bzrlib import (
     )
 from bzrlib.decorators import needs_read_lock
 from bzrlib.mutabletree import MutableTree
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import (
     WorkingTreeFormat,
@@ -73,7 +74,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         since BzrDirFormat6 and BzrDirFormat5 cannot represent dirs with
         no working tree.  (See bug #43064).
         """
-        sio = StringIO()
+        sio = BytesIO()
         inv = inventory.Inventory()
         xml5.serializer_v5.write_inventory(inv, sio, working=True)
         sio.seek(0)

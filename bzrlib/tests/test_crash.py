@@ -17,7 +17,6 @@
 
 import doctest
 import os
-from StringIO import StringIO
 import sys
 
 from bzrlib import (
@@ -27,7 +26,9 @@ from bzrlib import (
     plugin,
     tests,
     )
-
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.tests import features
 
 
@@ -46,7 +47,7 @@ class TestApportReporting(tests.TestCaseInTempDir):
             'plugin_warnings',
             {'example': ['Failed to load plugin foo']})
 
-        stderr = StringIO()
+        stderr = BytesIO()
 
         try:
             raise AssertionError("my error")
@@ -95,7 +96,7 @@ class TestNonApportReporting(tests.TestCase):
 
     def test_report_bug_legacy(self):
         self.setup_fake_plugins()
-        err_file = StringIO()
+        err_file = BytesIO()
         try:
             raise AssertionError("my error")
         except AssertionError as e:

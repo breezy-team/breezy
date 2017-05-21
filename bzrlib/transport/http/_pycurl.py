@@ -33,7 +33,6 @@ from __future__ import absolute_import
 # from _curl_perform.  Not done because we may deprecate pycurl in the
 # future -- vila 20070212
 
-from cStringIO import StringIO
 import httplib
 
 import bzrlib
@@ -41,6 +40,9 @@ from bzrlib import (
     debug,
     errors,
     trace,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.transport.http import (
     ca_bundle,
@@ -152,12 +154,12 @@ class PyCurlTransport(HttpTransportBase):
         # This means "NO BODY" not 'nobody'
         curl.setopt(pycurl.NOBODY, 1)
         # But we need headers to handle redirections
-        header = StringIO()
+        header = BytesIO()
         curl.setopt(pycurl.HEADERFUNCTION, header.write)
         # In some erroneous cases, pycurl will emit text on
         # stdout if we don't catch it (see InvalidStatus tests
         # for one such occurrence).
-        blackhole = StringIO()
+        blackhole = BytesIO()
         curl.setopt(pycurl.WRITEFUNCTION, blackhole.write)
         self._curl_perform(curl, header)
         code = curl.getinfo(pycurl.HTTP_CODE)
@@ -197,8 +199,8 @@ class PyCurlTransport(HttpTransportBase):
         curl.setopt(pycurl.URL, abspath)
         self._set_curl_options(curl)
 
-        data = StringIO()
-        header = StringIO()
+        data = BytesIO()
+        header = BytesIO()
         curl.setopt(pycurl.WRITEFUNCTION, data.write)
         curl.setopt(pycurl.HEADERFUNCTION, header.write)
 
@@ -267,7 +269,7 @@ class PyCurlTransport(HttpTransportBase):
         curl = self._get_curl()
         abspath, data, header = self._setup_request(curl, '.bzr/smart')
         curl.setopt(pycurl.POST, 1)
-        fake_file = StringIO(body_bytes)
+        fake_file = BytesIO(body_bytes)
         curl.setopt(pycurl.POSTFIELDSIZE, len(body_bytes))
         curl.setopt(pycurl.READFUNCTION, fake_file.read)
         # We override the Expect: header so that pycurl will send the POST

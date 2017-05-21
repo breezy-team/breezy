@@ -16,13 +16,12 @@
 
 from __future__ import absolute_import
 
+import re
 import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from fnmatch import fnmatch
-import re
-from cStringIO import StringIO
 
 from bzrlib._termcolor import color_string, re_color_string, FG
 
@@ -36,11 +35,16 @@ from bzrlib import (
     diff,
     errors,
     lazy_regex,
-    osutils,
     revision as _mod_revision,
-    trace,
     )
 """)
+from bzrlib import (
+    osutils,
+    trace,
+    )
+from bzrlib.sixish import (
+    BytesIO,
+    )
 
 _user_encoding = osutils.get_user_encoding()
 
@@ -277,7 +281,7 @@ def grep_diff(opts):
             else:
                 ancestor_id = new_rev.parent_ids[0]
             old_tree = repo.revision_tree(ancestor_id)
-            s = StringIO()
+            s = BytesIO()
             diff.show_diff_trees(old_tree, new_tree, s,
                 old_label='', new_label='')
             display_revno = True

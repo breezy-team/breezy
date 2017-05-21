@@ -17,10 +17,8 @@
 """UI tests for bzr ignore."""
 
 
-from cStringIO import StringIO
 import os
 import re
-import sys
 
 from bzrlib import (
     ignores,

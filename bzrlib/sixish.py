@@ -37,7 +37,9 @@ from six import (
 # The io module exists in Python 2.7 but lacks optimisation. Most uses are not
 # performance critical, but want to measure before switching from cStringIO.
 if PY3:
-    from io import BytesIO, StringIO
+    import io as _io
+    BytesIO = _io.BytesIO
+    StringIO = _io.StringIO
 else:
     from cStringIO import StringIO as BytesIO
     from StringIO import StringIO

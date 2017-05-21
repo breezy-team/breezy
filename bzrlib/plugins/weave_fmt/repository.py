@@ -24,7 +24,6 @@ from __future__ import absolute_import
 
 import gzip
 import os
-from cStringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -54,6 +53,9 @@ from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
     InterRepository,
     RepositoryFormatMetaDir,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.store.text import TextStore
 from bzrlib.versionedfile import (
@@ -292,7 +294,7 @@ class PreSplitOutRepositoryFormat(VersionedFileRepositoryFormat):
             return self.open(a_bzrdir, _found=True)
 
         # Create an empty weave
-        sio = StringIO()
+        sio = BytesIO()
         weavefile.write_weave_v5(weave.Weave(), sio)
         empty_weave = sio.getvalue()
 
@@ -542,13 +544,13 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
                        repository.
         """
         # Create an empty weave
-        sio = StringIO()
+        sio = BytesIO()
         weavefile.write_weave_v5(weave.Weave(), sio)
         empty_weave = sio.getvalue()
 
         trace.mutter('creating repository in %s.', a_bzrdir.transport.base)
         dirs = ['revision-store', 'weaves']
-        files = [('inventory.weave', StringIO(empty_weave)),
+        files = [('inventory.weave', BytesIO(empty_weave)),
                  ]
         utf8_files = [('format', self.get_format_string())]
 
@@ -656,7 +658,7 @@ class TextVersionedFiles(VersionedFiles):
             else:
                 return None
         if compressed:
-            text = gzip.GzipFile(mode='rb', fileobj=StringIO(text)).read()
+            text = gzip.GzipFile(mode='rb', fileobj=BytesIO(text)).read()
         return text
 
     def _map(self, key):

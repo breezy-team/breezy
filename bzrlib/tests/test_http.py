@@ -24,6 +24,7 @@ transport implementation, http protocol versions and authentication schemes.
 # TODO: What about renaming to bzrlib.tests.transport.http ?
 
 import httplib
+import io
 import SimpleHTTPServer
 import socket
 import sys
@@ -1701,10 +1702,8 @@ class TestAuth(http_utils.TestCaseWithWebserver):
 
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport(None, None)
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n',
-                                            stdout=stdout, stderr=stderr)
+        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n')
+        stdout, stderr = ui.ui_factory.stdout, ui.ui_factory.stderr
         self.assertEqual('contents of a\n',t.get('a').read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
@@ -1723,10 +1722,8 @@ class TestAuth(http_utils.TestCaseWithWebserver):
 
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport('joe', None)
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stdin='foo\n',
-                                            stdout=stdout, stderr=stderr)
+        ui.ui_factory = tests.TestUIFactory(stdin='foo\n')
+        stdout, stderr = ui.ui_factory.stdout, ui.ui_factory.stderr
         self.assertEqual('contents of a\n', t.get('a').read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
@@ -1767,8 +1764,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         stdin_content = 'bar\n'  # Not the right password
         self.server.add_user(user, password)
         t = self.get_user_transport(user, None)
-        ui.ui_factory = tests.TestUIFactory(stdin=stdin_content,
-                                            stderr=tests.StringIOWrapper())
+        ui.ui_factory = tests.TestUIFactory(stdin=stdin_content)
         # Create a minimal config file with the right password
         _setup_authentication_config(scheme='http', port=self.server.port,
                                      user=user, password=password)
@@ -1880,6 +1876,12 @@ class TestProxyAuth(TestAuth):
         super(TestProxyAuth, self).test_empty_pass()
 
 
+class NonClosingBytesIO(io.BytesIO):
+
+    def close(self):
+        """Ignore and leave file open."""
+
+
 class SampleSocket(object):
     """A socket-like object for use in testing the HTTP request handler."""
 
@@ -1888,13 +1890,11 @@ class SampleSocket(object):
 
         :param socket_read_content: a byte sequence
         """
-        # Use plain python StringIO so we can monkey-patch the close method to
-        # not discard the contents.
-        from StringIO import StringIO
-        self.readfile = StringIO(socket_read_content)
-        self.writefile = StringIO()
-        self.writefile.close = lambda: None
-        self.close = lambda: None
+        self.readfile = io.BytesIO(socket_read_content)
+        self.writefile = NonClosingBytesIO()
+
+    def close(self):
+        """Ignore and leave files alone."""
 
     def makefile(self, mode='r', bufsize=None):
         if 'r' in mode:
@@ -2343,10 +2343,7 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
             self.addCleanup(redirected_t.disconnect)
             return redirected_t
 
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n',
-                                            stdout=stdout, stderr=stderr)
+        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n')
         self.assertEqual('redirected once',
                          transport.do_catching_redirections(
                 self.get_a, self.old_transport, redirected).read())
@@ -2354,14 +2351,11 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
         # stdout should be empty, stderr will contains the prompts
-        self.assertEqual('', stdout.getvalue())
+        self.assertEqual('', ui.ui_factory.stdout.getvalue())
 
     def test_auth_on_redirected_via_following_redirections(self):
         self.new_server.add_user('joe', 'foo')
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n',
-                                            stdout=stdout, stderr=stderr)
+        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n')
         t = self.old_transport
         req = RedirectedRequest('GET', t.abspath('a'))
         new_prefix = 'http://%s:%s' % (self.new_server.host,
@@ -2372,5 +2366,5 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
         # stdout should be empty, stderr will contains the prompts
-        self.assertEqual('', stdout.getvalue())
+        self.assertEqual('', ui.ui_factory.stdout.getvalue())
 

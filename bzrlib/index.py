@@ -27,7 +27,6 @@ __all__ = [
     ]
 
 from bisect import bisect_right
-from cStringIO import StringIO
 import re
 import sys
 
@@ -42,6 +41,9 @@ from bzrlib import (
 from bzrlib import (
     debug,
     errors,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.static_tuple import StaticTuple
 
@@ -249,7 +251,7 @@ class GraphIndexBuilder(object):
     def finish(self):
         """Finish the index.
 
-        :returns: cStringIO holding the full context of the index as it 
+        :returns: cBytesIO holding the full context of the index as it 
         should be written to disk.
         """
         lines = [_SIGNATURE]
@@ -331,7 +333,7 @@ class GraphIndexBuilder(object):
             lines.append("%s\x00%s\x00%s\x00%s\n" % (string_key, absent,
                 '\t'.join(flattened_references), value))
         lines.append('\n')
-        result = StringIO(''.join(lines))
+        result = BytesIO(''.join(lines))
         if expected_bytes and len(result.getvalue()) != expected_bytes:
             raise errors.BzrError('Failed index creation. Internal error:'
                 ' mismatched output length and expected length: %d %d' %
@@ -460,7 +462,7 @@ class GraphIndex(object):
             if self._base_offset != 0:
                 # This is wasteful, but it is better than dealing with
                 # adjusting all the offsets, etc.
-                stream = StringIO(stream.read()[self._base_offset:])
+                stream = BytesIO(stream.read()[self._base_offset:])
         self._read_prefix(stream)
         self._expected_elements = 3 + self._key_length
         line_count = 0
@@ -1228,7 +1230,7 @@ class GraphIndex(object):
                 # We read the whole range, most likely because the
                 # Transport upcast our readv ranges into one long request
                 # for enough total data to grab the whole index.
-                self._buffer_all(StringIO(data))
+                self._buffer_all(BytesIO(data))
                 return
             if self._bisect_nodes is None:
                 # this must be the start

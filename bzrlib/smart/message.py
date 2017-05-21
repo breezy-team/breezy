@@ -17,11 +17,13 @@
 from __future__ import absolute_import
 
 import collections
-from cStringIO import StringIO
 
 from bzrlib import (
     debug,
     errors,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.trace import mutter
 
@@ -324,7 +326,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
             body_bytes = ''.join(self._bytes_parts)
             if 'hpss' in debug.debug_flags:
                 mutter('              %d body bytes read', len(body_bytes))
-            self._body = StringIO(body_bytes)
+            self._body = BytesIO(body_bytes)
             self._bytes_parts = None
         return self._body.read(count)
 

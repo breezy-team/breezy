@@ -56,6 +56,7 @@ from __future__ import absolute_import
 # increased cost of logging.py is not so bad, and we could standardize on
 # that.
 
+import errno
 import logging
 import os
 import sys
@@ -63,8 +64,6 @@ import time
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from cStringIO import StringIO
-import errno
 import locale
 import tempfile
 import traceback
@@ -80,6 +79,10 @@ from bzrlib import (
     ui,
     )
 """)
+
+from bzrlib.sixish import (
+    BytesIO,
+    )
 
 
 # global verbosity for bzrlib; controls the log level for stderr; 0=normal; <0
@@ -170,7 +173,7 @@ def mutter_callsite(stacklevel, fmt, *args):
     :param fmt: The format string to pass to mutter.
     :param args: A list of substitution variables.
     """
-    outf = StringIO()
+    outf = BytesIO()
     if stacklevel is None:
         limit = None
     else:

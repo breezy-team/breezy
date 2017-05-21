@@ -24,8 +24,6 @@ from __future__ import absolute_import
 
 __all__ = ['RemoteTransport', 'RemoteTCPTransport', 'RemoteSSHTransport']
 
-from cStringIO import StringIO
-
 from bzrlib import (
     config,
     debug,
@@ -34,6 +32,9 @@ from bzrlib import (
     trace,
     transport,
     urlutils,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.smart import client, medium
 
@@ -217,7 +218,7 @@ class RemoteTransport(transport.ConnectedTransport):
 
         :see: Transport.get_bytes()/get_file()
         """
-        return StringIO(self.get_bytes(relpath))
+        return BytesIO(self.get_bytes(relpath))
 
     def get_bytes(self, relpath):
         remote = self._remote_path(relpath)

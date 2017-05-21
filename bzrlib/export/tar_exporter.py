@@ -19,7 +19,6 @@
 from __future__ import absolute_import
 
 import os
-import StringIO
 import sys
 import tarfile
 
@@ -28,6 +27,9 @@ from bzrlib import (
     osutils,
     )
 from bzrlib.export import _export_iter_entries
+from bzrlib.sixish import (
+    BytesIO,
+    )
 
 
 def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=None):
@@ -60,7 +62,7 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
         # go for content filtering.
         content = tree.get_file_text(entry.file_id, tree_path)
         item.size = len(content)
-        fileobj = StringIO.StringIO(content)
+        fileobj = BytesIO(content)
     elif entry.kind == "directory":
         item.type = tarfile.DIRTYPE
         item.name += '/'

@@ -24,7 +24,6 @@ These tests correspond to tests.test_smart, which exercises the server side.
 """
 
 import bz2
-from cStringIO import StringIO
 import zlib
 
 from bzrlib import (
@@ -63,6 +62,9 @@ from bzrlib.repofmt import groupcompress_repo, knitpack_repo
 from bzrlib.revision import (
     NULL_REVISION,
     Revision,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.smart import medium, request
 from bzrlib.smart.client import _SmartClient
@@ -191,7 +193,7 @@ class FakeProtocol(object):
 
     def read_body_bytes(self, count=-1):
         if self._body_buffer is None:
-            self._body_buffer = StringIO(self.body)
+            self._body_buffer = BytesIO(self.body)
         bytes = self._body_buffer.read(count)
         if self._body_buffer.tell() == len(self._body_buffer.getvalue()):
             self._fake_client.expecting_body = False
@@ -1080,8 +1082,8 @@ class OldSmartClient(object):
     """
 
     def get_request(self):
-        input_file = StringIO('ok\x011\n')
-        output_file = StringIO()
+        input_file = BytesIO(b'ok\x011\n')
+        output_file = BytesIO()
         client_medium = medium.SmartSimplePipesClientMedium(
             input_file, output_file)
         return medium.SmartClientStreamMediumRequest(client_medium)

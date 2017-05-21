@@ -16,13 +16,14 @@
 
 from __future__ import absolute_import
 
-import cStringIO
-
 from bzrlib import (
     cache_utf8,
     lazy_regex,
     revision as _mod_revision,
     trace,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.xml_serializer import (
     Element,
@@ -133,12 +134,12 @@ class Serializer_v8(XMLSerializer):
         return self.write_inventory(inv, None)
 
     def write_inventory_to_string(self, inv, working=False):
-        """Just call write_inventory with a StringIO and return the value.
+        """Just call write_inventory with a BytesIO and return the value.
 
         :param working: If True skip history data - text_sha1, text_size,
             reference_revision, symlink_target.
         """
-        sio = cStringIO.StringIO()
+        sio = BytesIO()
         self.write_inventory(inv, sio, working)
         return sio.getvalue()
 

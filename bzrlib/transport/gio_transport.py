@@ -26,7 +26,6 @@ supported by gio.
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
 import os
 import random
 import stat
@@ -40,6 +39,9 @@ from bzrlib import (
     urlutils,
     debug,
     ui,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.symbol_versioning import (
     DEPRECATED_PARAMETER,
@@ -98,7 +100,7 @@ class GioFileStream(FileStream):
     def write(self, bytes):
         try:
             #Using pump_string_file seems to make things crash
-            osutils.pumpfile(StringIO(bytes), self.stream)
+            osutils.pumpfile(BytesIO(bytes), self.stream)
         except gio.Error as e:
             #self.transport._translate_gio_error(e,self.relpath)
             raise errors.BzrError(str(e))
@@ -279,7 +281,7 @@ class GioTransport(ConnectedTransport):
                         for this operation.
 
         We're meant to return a file-like object which bzr will
-        then read from. For now we do this via the magic of StringIO
+        then read from. For now we do this via the magic of BytesIO
         """
         try:
             if 'gio' in debug.debug_flags:
@@ -288,7 +290,7 @@ class GioTransport(ConnectedTransport):
             fin = f.read()
             buf = fin.read()
             fin.close()
-            ret = StringIO(buf)
+            ret = BytesIO(buf)
             return ret
         except gio.Error as e:
             #If we get a not mounted here it might mean

@@ -19,8 +19,6 @@
 See doc/developer/inventory.txt for more information.
 """
 
-from cStringIO import StringIO
-
 from bzrlib import (
     inventory,
     inventory_delta,
@@ -28,6 +26,9 @@ from bzrlib import (
 from bzrlib.inventory_delta import InventoryDeltaError
 from bzrlib.inventory import Inventory
 from bzrlib.revision import NULL_REVISION
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.tests import TestCase
 
 ### DO NOT REFLOW THESE TEXTS. NEW LINES ARE SIGNIFICANT. ###
@@ -306,7 +307,7 @@ class TestSerialization(TestCase):
         delta = new_inv._make_delta(old_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=True, tree_references=True)
-        self.assertEqual(StringIO(empty_lines).readlines(),
+        self.assertEqual(BytesIO(empty_lines).readlines(),
             serializer.delta_to_lines(NULL_REVISION, NULL_REVISION, delta))
 
     def test_root_only_to_lines(self):
@@ -318,7 +319,7 @@ class TestSerialization(TestCase):
         delta = new_inv._make_delta(old_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=True, tree_references=True)
-        self.assertEqual(StringIO(root_only_lines).readlines(),
+        self.assertEqual(BytesIO(root_only_lines).readlines(),
             serializer.delta_to_lines(NULL_REVISION, 'entry-version', delta))
 
     def test_unversioned_root(self):
@@ -333,7 +334,7 @@ class TestSerialization(TestCase):
             versioned_root=False, tree_references=False)
         serialized_lines = serializer.delta_to_lines(
             NULL_REVISION, 'entry-version', delta)
-        self.assertEqual(StringIO(root_only_unversioned).readlines(),
+        self.assertEqual(BytesIO(root_only_unversioned).readlines(),
             serialized_lines)
         deserializer = inventory_delta.InventoryDeltaDeserializer()
         self.assertEqual(
@@ -434,7 +435,7 @@ class TestSerialization(TestCase):
         delta = new_inv._make_delta(old_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=True, tree_references=True)
-        self.assertEqual(StringIO(reference_lines).readlines(),
+        self.assertEqual(BytesIO(reference_lines).readlines(),
             serializer.delta_to_lines(NULL_REVISION, 'entry-version', delta))
 
     def test_to_inventory_root_id_versioned_not_permitted(self):

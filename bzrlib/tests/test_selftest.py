@@ -16,7 +16,6 @@
 
 """Tests for the test framework."""
 
-from cStringIO import StringIO
 import gc
 import doctest
 import os
@@ -60,6 +59,9 @@ from bzrlib import (
     )
 from bzrlib.repofmt import (
     groupcompress_repo,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.symbol_versioning import (
     deprecated_function,
@@ -806,7 +808,7 @@ class TestTestResult(tests.TestCase):
     def test_lsprofiling(self):
         """Verbose test result prints lsprof statistics from test cases."""
         self.requireFeature(features.lsprof_feature)
-        result_stream = StringIO()
+        result_stream = BytesIO()
         result = bzrlib.tests.VerboseTestResult(
             result_stream,
             descriptions=0,
@@ -851,7 +853,7 @@ class TestTestResult(tests.TestCase):
                 self.time(datetime.datetime.utcfromtimestamp(51.147))
                 super(TimeAddedVerboseTestResult, self).addSuccess(test)
             def report_tests_starting(self): pass
-        sio = StringIO()
+        sio = BytesIO()
         self.get_passing_test().run(TimeAddedVerboseTestResult(sio, 0, 2))
         self.assertEndsWith(sio.getvalue(), "OK    50002ms\n")
 
@@ -881,7 +883,7 @@ class TestTestResult(tests.TestCase):
 
     def test_verbose_report_known_failure(self):
         # verbose test output formatting
-        result_stream = StringIO()
+        result_stream = BytesIO()
         result = bzrlib.tests.VerboseTestResult(
             result_stream,
             descriptions=0,
@@ -928,7 +930,7 @@ class TestTestResult(tests.TestCase):
 
     def test_verbose_report_unsupported(self):
         # verbose test output formatting
-        result_stream = StringIO()
+        result_stream = BytesIO()
         result = bzrlib.tests.VerboseTestResult(
             result_stream,
             descriptions=0,
@@ -1051,7 +1053,7 @@ class TestRunner(tests.TestCase):
         def failing_test():
             raise AssertionError('foo')
         test.addTest(unittest.FunctionTestCase(failing_test))
-        stream = StringIO()
+        stream = BytesIO()
         runner = tests.TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)
         lines = stream.getvalue().splitlines()
@@ -1077,7 +1079,7 @@ class TestRunner(tests.TestCase):
             def known_failure_test(self):
                 self.knownFailure("Never works...")
         test = Test("known_failure_test")
-        stream = StringIO()
+        stream = BytesIO()
         runner = tests.TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)
         self.assertContainsRe(stream.getvalue(),
@@ -1091,7 +1093,7 @@ class TestRunner(tests.TestCase):
         class Test(tests.TestCase):
             def test_truth(self):
                 self.expectFailure("No absolute truth", self.assertTrue, True)
-        runner = tests.TextTestRunner(stream=StringIO())
+        runner = tests.TextTestRunner(stream=BytesIO())
         result = self.run_test_runner(runner, Test("test_truth"))
         self.assertContainsRe(runner.stream.getvalue(),
             "=+\n"
@@ -1116,7 +1118,7 @@ class TestRunner(tests.TestCase):
                 ExtendedToOriginalDecorator.startTest(self, test)
                 calls.append('start')
         test = unittest.FunctionTestCase(lambda:None)
-        stream = StringIO()
+        stream = BytesIO()
         runner = tests.TextTestRunner(stream=stream,
             result_decorators=[LoggingDecorator])
         result = self.run_test_runner(runner, test)
@@ -1183,7 +1185,7 @@ class TestRunner(tests.TestCase):
         class Test(tests.TestCase):
             def not_applicable_test(self):
                 raise tests.TestNotApplicable('this test never runs')
-        out = StringIO()
+        out = BytesIO()
         runner = tests.TextTestRunner(stream=out, verbosity=2)
         test = Test("not_applicable_test")
         result = self.run_test_runner(runner, test)
@@ -1209,7 +1211,7 @@ class TestRunner(tests.TestCase):
         test = unittest.TestSuite()
         test.addTest(test1)
         test.addTest(test2)
-        stream = StringIO()
+        stream = BytesIO()
         runner = tests.TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)
         lines = stream.getvalue().splitlines()
@@ -1226,7 +1228,7 @@ class TestRunner(tests.TestCase):
             unittest.FunctionTestCase(lambda:None),
             unittest.FunctionTestCase(lambda:None)])
         self.assertEqual(suite.countTestCases(), 2)
-        stream = StringIO()
+        stream = BytesIO()
         runner = tests.TextTestRunner(stream=stream, verbosity=2)
         # Need to use the CountingDecorator as that's what sets num_tests
         result = self.run_test_runner(runner, tests.CountingDecorator(suite))
@@ -1240,7 +1242,7 @@ class TestRunner(tests.TestCase):
                 ExtendedToOriginalDecorator.startTestRun(self)
                 calls.append('startTestRun')
         test = unittest.FunctionTestCase(lambda:None)
-        stream = StringIO()
+        stream = BytesIO()
         runner = tests.TextTestRunner(stream=stream,
             result_decorators=[LoggingDecorator])
         result = self.run_test_runner(runner, test)
@@ -1254,7 +1256,7 @@ class TestRunner(tests.TestCase):
                 ExtendedToOriginalDecorator.stopTestRun(self)
                 calls.append('stopTestRun')
         test = unittest.FunctionTestCase(lambda:None)
-        stream = StringIO()
+        stream = BytesIO()
         runner = tests.TextTestRunner(stream=stream,
             result_decorators=[LoggingDecorator])
         result = self.run_test_runner(runner, test)
@@ -1266,7 +1268,7 @@ class TestRunner(tests.TestCase):
             def test_log_unicode(self):
                 self.log(u"\u2606")
                 self.fail("Now print that log!")
-        out = StringIO()
+        out = BytesIO()
         self.overrideAttr(osutils, "get_terminal_encoding",
             lambda trace=False: "ascii")
         result = self.run_test_runner(tests.TextTestRunner(stream=out),
@@ -1455,7 +1457,7 @@ class TestTestCase(tests.TestCase):
     def test_time_creates_benchmark_in_result(self):
         """Test that the TestCase.time() method accumulates a benchmark time."""
         sample_test = TestTestCase("method_that_times_a_bit_twice")
-        output_stream = StringIO()
+        output_stream = BytesIO()
         result = bzrlib.tests.VerboseTestResult(
             output_stream,
             descriptions=0,
@@ -2038,7 +2040,7 @@ class SelfTestHelper(object):
 
     def run_selftest(self, **kwargs):
         """Run selftest returning its output."""
-        output = StringIO()
+        output = BytesIO()
         old_transport = bzrlib.tests.default_transport
         old_root = tests.TestCaseWithMemoryTransport.TEST_ROOT
         tests.TestCaseWithMemoryTransport.TEST_ROOT = None
@@ -2059,8 +2061,8 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         def factory():
             factory_called.append(True)
             return TestUtil.TestSuite()
-        out = StringIO()
-        err = StringIO()
+        out = BytesIO()
+        err = BytesIO()
         self.apply_redirected(out, err, None, bzrlib.tests.selftest,
             test_suite_factory=factory)
         self.assertEqual([True], factory_called)
@@ -2384,7 +2386,7 @@ class TestRunBzrCaptured(tests.TestCaseWithTransport):
 
     def test_stdin(self):
         # test that the stdin keyword to _run_bzr_core is passed through to
-        # apply_redirected as a StringIO. We do this by overriding
+        # apply_redirected as a BytesIO. We do this by overriding
         # apply_redirected in this class, and then calling _run_bzr_core,
         # which calls apply_redirected.
         self.run_bzr(['foo', 'bar'], stdin='gam')
@@ -3200,7 +3202,7 @@ class TestThreadLeakDetection(tests.TestCase):
 
     class LeakRecordingResult(tests.ExtendedTestResult):
         def __init__(self):
-            tests.ExtendedTestResult.__init__(self, StringIO(), 0, 1)
+            tests.ExtendedTestResult.__init__(self, BytesIO(), 0, 1)
             self.leaks = []
         def _report_thread_leak(self, test, leaks, alive):
             self.leaks.append((test, leaks))
@@ -3286,7 +3288,7 @@ class TestPostMortemDebugging(tests.TestCase):
 
     class TracebackRecordingResult(tests.ExtendedTestResult):
         def __init__(self):
-            tests.ExtendedTestResult.__init__(self, StringIO(), 0, 1)
+            tests.ExtendedTestResult.__init__(self, BytesIO(), 0, 1)
             self.postcode = None
         def _post_mortem(self, tb=None):
             """Record the code object at the end of the current traceback"""
@@ -3341,7 +3343,7 @@ class TestPostMortemDebugging(tests.TestCase):
     def test_env_var_triggers_post_mortem(self):
         """Check pdb.post_mortem is called iff BZR_TEST_PDB is set"""
         import pdb
-        result = tests.ExtendedTestResult(StringIO(), 0, 1)
+        result = tests.ExtendedTestResult(BytesIO(), 0, 1)
         post_mortem_calls = []
         self.overrideAttr(pdb, "post_mortem", post_mortem_calls.append)
         self.overrideEnv('BZR_TEST_PDB', None)
@@ -3365,7 +3367,7 @@ class TestRunSuite(tests.TestCase):
                 calls.append(test)
                 return tests.ExtendedTestResult(self.stream, self.descriptions,
                                                 self.verbosity)
-        tests.run_suite(suite, runner_class=MyRunner, stream=StringIO())
+        tests.run_suite(suite, runner_class=MyRunner, stream=BytesIO())
         self.assertLength(1, calls)
 
 
@@ -3376,7 +3378,7 @@ class _Selftest(object):
         """To be overridden by subclasses that run tests out of process"""
 
     def _run_selftest(self, **kwargs):
-        sio = StringIO()
+        sio = BytesIO()
         self._inject_stream_into_subunit(sio)
         tests.selftest(stream=sio, stop_on_failure=False, **kwargs)
         return sio.getvalue()
@@ -3525,7 +3527,7 @@ class TestEnvironHandling(tests.TestCase):
                 # Make sure we can call it twice
                 self.overrideEnv('MYVAR', None)
                 self.assertEqual(None, os.environ.get('MYVAR'))
-        output = StringIO()
+        output = BytesIO()
         result = tests.TextTestResult(output, 0, 1)
         Test('test_me').run(result)
         if not result.wasStrictlySuccessful():
@@ -3613,7 +3615,7 @@ class TestDocTestSuiteIsolation(tests.TestCase):
 
     def run_doctest_suite_for_string(self, klass, string):
         suite = self.get_doctest_suite_for_string(klass, string)
-        output = StringIO()
+        output = BytesIO()
         result = tests.TextTestResult(output, 0, 1)
         suite.run(result)
         return result, output

@@ -14,13 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
-
 from bzrlib import (
     add,
     inventory,
     osutils,
     tests,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 
 
@@ -54,7 +55,7 @@ class TestAddFrom(tests.TestCaseWithTransport):
 
     def add_helper(self, base_tree, base_path, new_tree, file_list,
                    should_print=False):
-        to_file = StringIO()
+        to_file = BytesIO()
         base_tree.lock_read()
         try:
             new_tree.lock_write()
@@ -153,7 +154,7 @@ class TestAddActions(tests.TestCase):
 
     def run_action(self, output):
         inv = inventory.Inventory()
-        stdout = StringIO()
+        stdout = BytesIO()
         action = add.AddAction(to_file=stdout, should_print=bool(output))
 
         self.apply_redirected(None, stdout, None, action, inv, None,

@@ -16,7 +16,6 @@
 
 """Tests for finding and reading the bzr config file[s]."""
 
-from cStringIO import StringIO
 from textwrap import dedent
 import os
 import sys
@@ -39,6 +38,9 @@ from bzrlib import (
     remote,
     tests,
     trace,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.symbol_versioning import (
     deprecated_in,
@@ -355,7 +357,7 @@ class FakeControlFilesAndTransport(object):
     def get(self, filename):
         # from Transport
         try:
-            return StringIO(self.files[filename])
+            return BytesIO(self.files[filename])
         except KeyError:
             raise errors.NoSuchFile(filename)
 
@@ -406,7 +408,7 @@ nonactive = False
 class TestConfigObj(tests.TestCase):
 
     def test_get_bool(self):
-        co = config.ConfigObj(StringIO(bool_config))
+        co = config.ConfigObj(BytesIO(bool_config))
         self.assertIs(co.get_bool('DEFAULT', 'active'), True)
         self.assertIs(co.get_bool('DEFAULT', 'inactive'), False)
         self.assertIs(co.get_bool('UPPERCASE', 'active'), True)
@@ -419,7 +421,7 @@ class TestConfigObj(tests.TestCase):
         """
         co = config.ConfigObj()
         co['test'] = 'foo#bar'
-        outfile = StringIO()
+        outfile = BytesIO()
         co.write(outfile=outfile)
         lines = outfile.getvalue().splitlines()
         self.assertEqual(lines, ['test = "foo#bar"'])
@@ -443,11 +445,11 @@ eggs'''
         # This issue only affects test, but it's better to avoid
         # `co.write()` construct at all.
         # [bialix 20110222] bug report sent to ConfigObj's author
-        outfile = StringIO()
+        outfile = BytesIO()
         co.write(outfile=outfile)
         output = outfile.getvalue()
         # now we're trying to read it back
-        co2 = config.ConfigObj(StringIO(output))
+        co2 = config.ConfigObj(BytesIO(output))
         self.assertEqual(triple_quotes_value, co2['test'])
 
 
@@ -462,7 +464,7 @@ class TestConfigObjErrors(tests.TestCase):
 
     def test_duplicate_section_name_error_line(self):
         try:
-            co = configobj.ConfigObj(StringIO(erroneous_config),
+            co = configobj.ConfigObj(BytesIO(erroneous_config),
                                      raise_errors=True)
         except config.configobj.DuplicateError as e:
             self.assertEqual(3, e.line_number)
@@ -661,7 +663,7 @@ class TestIniConfigBuilding(TestIniConfig):
         self.assertEqual('ini.conf', conf.file_name)
 
     def test_get_parser_file_parameter_is_deprecated_(self):
-        config_file = StringIO(sample_config_text.encode('utf-8'))
+        config_file = BytesIO(sample_config_text.encode('utf-8'))
         conf = config.IniBasedConfig.from_string(sample_config_text)
         conf = self.callDeprecated([
             'IniBasedConfig._get_parser(file=xxx) was deprecated in 2.3.'
@@ -4446,26 +4448,25 @@ class TestAuthenticationConfigFile(tests.TestCase):
         self.assertEqual(expected_password, password)
 
     def test_empty_config(self):
-        conf = config.AuthenticationConfig(_file=StringIO())
+        conf = config.AuthenticationConfig(_file=BytesIO())
         self.assertEqual({}, conf._get_config())
         self._got_user_passwd(None, None, conf, 'http', 'foo.net')
 
     def test_non_utf8_config(self):
-        conf = config.AuthenticationConfig(_file=StringIO(
-                'foo = bar\xff'))
+        conf = config.AuthenticationConfig(_file=BytesIO(b'foo = bar\xff'))
         self.assertRaises(errors.ConfigContentError, conf._get_config)
 
     def test_missing_auth_section_header(self):
-        conf = config.AuthenticationConfig(_file=StringIO('foo = bar'))
+        conf = config.AuthenticationConfig(_file=BytesIO(b'foo = bar'))
         self.assertRaises(ValueError, conf.get_credentials, 'ftp', 'foo.net')
 
     def test_auth_section_header_not_closed(self):
-        conf = config.AuthenticationConfig(_file=StringIO('[DEF'))
+        conf = config.AuthenticationConfig(_file=BytesIO(b'[DEF'))
         self.assertRaises(errors.ParseConfigError, conf._get_config)
 
     def test_auth_value_not_boolean(self):
-        conf = config.AuthenticationConfig(_file=StringIO(
-                """[broken]
+        conf = config.AuthenticationConfig(_file=BytesIO(b"""\
+[broken]
 scheme=ftp
 user=joe
 verify_certificates=askme # Error: Not a boolean
@@ -4473,8 +4474,8 @@ verify_certificates=askme # Error: Not a boolean
         self.assertRaises(ValueError, conf.get_credentials, 'ftp', 'foo.net')
 
     def test_auth_value_not_int(self):
-        conf = config.AuthenticationConfig(_file=StringIO(
-                """[broken]
+        conf = config.AuthenticationConfig(_file=BytesIO(b"""\
+[broken]
 scheme=ftp
 user=joe
 port=port # Error: Not an int
@@ -4482,8 +4483,8 @@ port=port # Error: Not an int
         self.assertRaises(ValueError, conf.get_credentials, 'ftp', 'foo.net')
 
     def test_unknown_password_encoding(self):
-        conf = config.AuthenticationConfig(_file=StringIO(
-                """[broken]
+        conf = config.AuthenticationConfig(_file=BytesIO(b"""\
+[broken]
 scheme=ftp
 user=joe
 password_encoding=unknown
@@ -4492,8 +4493,8 @@ password_encoding=unknown
                           'ftp', 'foo.net', 'joe')
 
     def test_credentials_for_scheme_host(self):
-        conf = config.AuthenticationConfig(_file=StringIO(
-                """# Identity on foo.net
+        conf = config.AuthenticationConfig(_file=BytesIO(b"""\
+# Identity on foo.net
 [ftp definition]
 scheme=ftp
 host=foo.net
@@ -4508,8 +4509,8 @@ password=secret-pass
         self._got_user_passwd(None, None, conf, 'ftp', 'bar.net')
 
     def test_credentials_for_host_port(self):
-        conf = config.AuthenticationConfig(_file=StringIO(
-                """# Identity on foo.net
+        conf = config.AuthenticationConfig(_file=BytesIO(b"""\
+# Identity on foo.net
 [ftp definition]
 scheme=ftp
 port=10021
@@ -4524,8 +4525,8 @@ password=secret-pass
         self._got_user_passwd(None, None, conf, 'ftp', 'foo.net')
 
     def test_for_matching_host(self):
-        conf = config.AuthenticationConfig(_file=StringIO(
-                """# Identity on foo.net
+        conf = config.AuthenticationConfig(_file=BytesIO(b"""\
+# Identity on foo.net
 [sourceforge]
 scheme=bzr
 host=bzr.sf.net
@@ -4545,8 +4546,8 @@ password=bendover
                               conf, 'bzr', 'bbzr.sf.net')
 
     def test_for_matching_host_None(self):
-        conf = config.AuthenticationConfig(_file=StringIO(
-                """# Identity on foo.net
+        conf = config.AuthenticationConfig(_file=BytesIO(b"""\
+# Identity on foo.net
 [catchup bzr]
 scheme=bzr
 user=joe
@@ -4563,8 +4564,7 @@ password=bendover
                               conf, 'ftp', 'quux.net')
 
     def test_credentials_for_path(self):
-        conf = config.AuthenticationConfig(_file=StringIO(
-                """
+        conf = config.AuthenticationConfig(_file=BytesIO(b"""
 [http dir1]
 scheme=http
 host=bar.org
@@ -4589,8 +4589,7 @@ password=bendover
                               conf, 'http', host='bar.org',path='/dir1/subdir')
 
     def test_credentials_for_user(self):
-        conf = config.AuthenticationConfig(_file=StringIO(
-                """
+        conf = config.AuthenticationConfig(_file=BytesIO(b"""
 [with user]
 scheme=http
 host=bar.org
@@ -4608,8 +4607,7 @@ password=jimpass
                               conf, 'http', 'bar.org', user='georges')
 
     def test_credentials_for_user_without_password(self):
-        conf = config.AuthenticationConfig(_file=StringIO(
-                """
+        conf = config.AuthenticationConfig(_file=BytesIO(b"""
 [without password]
 scheme=http
 host=bar.org
@@ -4620,8 +4618,7 @@ user=jim
                               conf, 'http', 'bar.org')
 
     def test_verify_certificates(self):
-        conf = config.AuthenticationConfig(_file=StringIO(
-                """
+        conf = config.AuthenticationConfig(_file=BytesIO(b"""
 [self-signed]
 scheme=https
 host=bar.org
@@ -4684,17 +4681,14 @@ class TestAuthenticationConfig(tests.TestCase):
             'scheme': scheme, 'host': host, 'port': port,
             'user': user, 'realm': realm}
 
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stdin=password + '\n',
-                                            stdout=stdout, stderr=stderr)
+        ui.ui_factory = tests.TestUIFactory(stdin=password + '\n')
         # We use an empty conf so that the user is always prompted
         conf = config.AuthenticationConfig()
         self.assertEqual(password,
                           conf.get_password(scheme, host, user, port=port,
                                             realm=realm, path=path))
-        self.assertEqual(expected_prompt, stderr.getvalue())
-        self.assertEqual('', stdout.getvalue())
+        self.assertEqual(expected_prompt, ui.ui_factory.stderr.getvalue())
+        self.assertEqual('', ui.ui_factory.stdout.getvalue())
 
     def _check_default_username_prompt(self, expected_prompt_format, scheme,
                                        host=None, port=None, realm=None,
@@ -4705,16 +4699,13 @@ class TestAuthenticationConfig(tests.TestCase):
         expected_prompt = expected_prompt_format % {
             'scheme': scheme, 'host': host, 'port': port,
             'realm': realm}
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stdin=username+ '\n',
-                                            stdout=stdout, stderr=stderr)
+        ui.ui_factory = tests.TestUIFactory(stdin=username+ '\n')
         # We use an empty conf so that the user is always prompted
         conf = config.AuthenticationConfig()
         self.assertEqual(username, conf.get_user(scheme, host, port=port,
                           realm=realm, path=path, ask=True))
-        self.assertEqual(expected_prompt, stderr.getvalue())
-        self.assertEqual('', stdout.getvalue())
+        self.assertEqual(expected_prompt, ui.ui_factory.stderr.getvalue())
+        self.assertEqual('', ui.ui_factory.stdout.getvalue())
 
     def test_username_defaults_prompts(self):
         # HTTP prompts can't be tested here, see test_http.py
@@ -4751,8 +4742,7 @@ class TestAuthenticationConfig(tests.TestCase):
             u'SMTP %(user)s@%(host)s:%(port)d password: ', 'smtp', port=10025)
 
     def test_ssh_password_emits_warning(self):
-        conf = config.AuthenticationConfig(_file=StringIO(
-                """
+        conf = config.AuthenticationConfig(_file=BytesIO(b"""
 [ssh with password]
 scheme=ssh
 host=bar.org
@@ -4760,10 +4750,7 @@ user=jim
 password=jimpass
 """))
         entered_password = 'typed-by-hand'
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stdin=entered_password + '\n',
-                                            stdout=stdout, stderr=stderr)
+        ui.ui_factory = tests.TestUIFactory(stdin=entered_password + '\n')
 
         # Since the password defined in the authentication config is ignored,
         # the user is prompted
@@ -4774,19 +4761,14 @@ password=jimpass
             'password ignored in section \[ssh with password\]')
 
     def test_ssh_without_password_doesnt_emit_warning(self):
-        conf = config.AuthenticationConfig(_file=StringIO(
-                """
+        conf = config.AuthenticationConfig(_file=BytesIO(b"""
 [ssh with password]
 scheme=ssh
 host=bar.org
 user=jim
 """))
         entered_password = 'typed-by-hand'
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stdin=entered_password + '\n',
-                                            stdout=stdout,
-                                            stderr=stderr)
+        ui.ui_factory = tests.TestUIFactory(stdin=entered_password + '\n')
 
         # Since the password defined in the authentication config is ignored,
         # the user is prompted
@@ -4804,7 +4786,7 @@ user=jim
         store = StubCredentialStore()
         store.add_credentials("http", "example.com", "joe", "secret")
         config.credential_store_registry.register("stub", store, fallback=True)
-        conf = config.AuthenticationConfig(_file=StringIO())
+        conf = config.AuthenticationConfig(_file=BytesIO())
         creds = conf.get_credentials("http", "example.com")
         self.assertEqual("joe", creds["user"])
         self.assertEqual("secret", creds["password"])

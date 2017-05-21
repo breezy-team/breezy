@@ -54,7 +54,6 @@ in the deltas to provide line annotation
 from __future__ import absolute_import
 
 
-from cStringIO import StringIO
 from itertools import izip
 import operator
 import os
@@ -98,6 +97,9 @@ from bzrlib.osutils import (
     sha_string,
     sha_strings,
     split_lines,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.versionedfile import (
     _KeyRefs,
@@ -1870,7 +1872,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         :return: the header and the decompressor stream.
                  as (stream, header_record)
         """
-        df = gzip.GzipFile(mode='rb', fileobj=StringIO(raw_data))
+        df = gzip.GzipFile(mode='rb', fileobj=BytesIO(raw_data))
         try:
             # Current serialise
             rec = self._check_header(key, df.readline())
@@ -1885,7 +1887,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         # 4168 calls in 2880 217 internal
         # 4168 calls to _parse_record_header in 2121
         # 4168 calls to readlines in 330
-        df = gzip.GzipFile(mode='rb', fileobj=StringIO(data))
+        df = gzip.GzipFile(mode='rb', fileobj=BytesIO(data))
         try:
             record_contents = df.readlines()
         except Exception as e:
@@ -1982,7 +1984,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             the 1000's lines and their \\n's. Using dense_lines if it is
             already known is a win because the string join to create bytes in
             this function spends less time resizing the final string.
-        :return: (len, a StringIO instance with the raw data ready to read.)
+        :return: (len, a BytesIO instance with the raw data ready to read.)
         """
         chunks = ["version %s %d %s\n" % (key[-1], len(lines), digest)]
         chunks.extend(dense_lines or lines)
@@ -2642,7 +2644,7 @@ class _KndxIndex(object):
 
     def _init_index(self, path, extra_lines=[]):
         """Initialize an index."""
-        sio = StringIO()
+        sio = BytesIO()
         sio.write(self.HEADER)
         sio.writelines(extra_lines)
         sio.seek(0)

@@ -16,7 +16,6 @@
 
 """Tests for bzrlib.export."""
 
-from cStringIO import StringIO
 import os
 import tarfile
 import time
@@ -29,6 +28,9 @@ from bzrlib import (
     )
 from bzrlib.export import get_root_name
 from bzrlib.export.tar_exporter import export_tarball_generator
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.tests import features
 
 
@@ -247,7 +249,7 @@ class TarExporterTests(tests.TestCaseWithTransport):
         self.build_tree(['a'])
         wt.add(["a"])
         wt.commit("1", timestamp=42)
-        target = StringIO()
+        target = BytesIO()
         ball = tarfile.open(None, "w|", target)
         wt.lock_read()
         try:

@@ -23,7 +23,6 @@
 
 from gzip import GzipFile
 from itertools import chain, izip
-from StringIO import StringIO
 
 from bzrlib import (
     errors,
@@ -43,6 +42,9 @@ from bzrlib.knit import (
     cleanup_pack_knit,
     make_file_factory,
     make_pack_factory,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.tests import (
     TestCase,
@@ -936,7 +938,6 @@ class TestWeaveHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
 class MergeCasesMixin(object):
 
     def doMerge(self, base, a, b, mp):
-        from cStringIO import StringIO
         from textwrap import dedent
 
         def addcrlf(x):
@@ -956,7 +957,7 @@ class MergeCasesMixin(object):
                 self.log('%12s | %s' % (state, line[:-1]))
 
         self.log('merge:')
-        mt = StringIO()
+        mt = BytesIO()
         mt.writelines(w.weave_merge(p))
         mt.seek(0)
         self.log(mt.getvalue())
@@ -1182,7 +1183,7 @@ class TestWeaveMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
     def log_contents(self, w):
         self.log('weave is:')
-        tmpf = StringIO()
+        tmpf = BytesIO()
         write_weave(w, tmpf)
         self.log(tmpf.getvalue())
 
@@ -1243,11 +1244,11 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
             'version origin 1 b284f94827db1fa2970d9e2014f080413b547a7e\n'
             'origin\n'
             'end origin\n',
-            GzipFile(mode='rb', fileobj=StringIO(ft_data)).read())
+            GzipFile(mode='rb', fileobj=BytesIO(ft_data)).read())
         self.assertEqual(
             'version merged 4 32c2e79763b3f90e8ccde37f9710b6629c25a796\n'
             '1,2,3\nleft\nright\nmerged\nend merged\n',
-            GzipFile(mode='rb', fileobj=StringIO(delta_data)).read())
+            GzipFile(mode='rb', fileobj=BytesIO(delta_data)).read())
 
     def test_deannotation(self):
         """Test converting annotated knits to unannotated knits."""
@@ -1261,11 +1262,11 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
             'version origin 1 00e364d235126be43292ab09cb4686cf703ddc17\n'
             'origin\n'
             'end origin\n',
-            GzipFile(mode='rb', fileobj=StringIO(ft_data)).read())
+            GzipFile(mode='rb', fileobj=BytesIO(ft_data)).read())
         self.assertEqual(
             'version merged 3 ed8bce375198ea62444dc71952b22cfc2b09226d\n'
             '2,2,2\nright\nmerged\nend merged\n',
-            GzipFile(mode='rb', fileobj=StringIO(delta_data)).read())
+            GzipFile(mode='rb', fileobj=BytesIO(delta_data)).read())
 
     def test_annotated_to_fulltext_no_eol(self):
         """Test adapting annotated knits to full texts (for -> weaves)."""

@@ -25,7 +25,6 @@ from __future__ import absolute_import
 import os
 import errno
 from stat import S_IFREG, S_IFDIR
-from cStringIO import StringIO
 
 from bzrlib import (
     transport,
@@ -36,6 +35,9 @@ from bzrlib.errors import (
     LockError,
     InProcessTransport,
     NoSuchFile,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.transport import (
     AppendBasedFileStream,
@@ -142,7 +144,7 @@ class MemoryTransport(transport.Transport):
                 return LateReadError(relpath)
             else:
                 raise NoSuchFile(relpath)
-        return StringIO(self._files[_abspath][0])
+        return BytesIO(self._files[_abspath][0])
 
     def put_file(self, relpath, f, mode=None):
         """See Transport.put_file()."""

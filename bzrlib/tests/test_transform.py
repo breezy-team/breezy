@@ -16,7 +16,6 @@
 
 import errno
 import os
-from StringIO import StringIO
 import sys
 import time
 
@@ -61,6 +60,9 @@ from bzrlib.osutils import (
 )
 from bzrlib.merge import Merge3Merger, Merger
 from bzrlib.mutabletree import MutableTree
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.tests import (
     features,
     TestCaseInTempDir,
@@ -2740,7 +2742,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.addCleanup(preview.finalize)
         preview.new_file('file2', preview.root, 'content B\n', 'file2-id')
         preview_tree = preview.get_preview_tree()
-        out = StringIO()
+        out = BytesIO()
         show_diff_trees(revision_tree, preview_tree, out)
         lines = out.getvalue().splitlines()
         self.assertEqual(lines[0], "=== added file 'file2'")

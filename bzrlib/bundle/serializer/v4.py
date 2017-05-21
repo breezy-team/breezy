@@ -16,11 +16,11 @@
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
 import bz2
 import re
 
 from bzrlib import (
+    bencode,
     errors,
     iterablefile,
     lru_cache,
@@ -35,7 +35,9 @@ from bzrlib import (
     )
 from bzrlib.bundle import bundle_data, serializer as bundle_serializer
 from bzrlib.i18n import ngettext
-from bzrlib import bencode
+from bzrlib.sixish import (
+    BytesIO,
+    )
 
 
 class _MPDiffInventoryGenerator(_mod_versionedfile._MPDiffGenerator):
@@ -204,7 +206,7 @@ class BundleReader(object):
         if stream_input:
             source_file = iterablefile.IterableFile(self.iter_decode(fileobj))
         else:
-            source_file = StringIO(bz2.decompress(fileobj.read()))
+            source_file = BytesIO(bz2.decompress(fileobj.read()))
         self._container_file = source_file
 
     @staticmethod

@@ -19,7 +19,6 @@
 from __future__ import absolute_import
 
 from copy import copy
-from cStringIO import StringIO
 import os
 import struct
 from zlib import adler32
@@ -42,6 +41,9 @@ from bzrlib import (
     )
 """)
 from bzrlib.registry import Registry
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.textmerge import TextMerge
 
 
@@ -584,7 +586,7 @@ class VersionedFile(object):
         raise NotImplementedError(self.get_lines)
 
     def _get_lf_split_line_list(self, version_ids):
-        return [StringIO(t).readlines() for t in self.get_texts(version_ids)]
+        return [BytesIO(t).readlines() for t in self.get_texts(version_ids)]
 
     def get_ancestry(self, version_ids, topo_sorted=True):
         """Return a list of all ancestors of given version(s). This

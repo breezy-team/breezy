@@ -33,7 +33,6 @@ rather starts again from the run_bzr function.
 # UI command/aspect that is being tested.
 
 
-from cStringIO import StringIO
 import os
 import re
 import sys

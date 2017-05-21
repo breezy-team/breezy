@@ -16,8 +16,6 @@
 
 """Tests for branch.push behaviour."""
 
-from cStringIO import StringIO
-
 from testtools.matchers import (
     Equals,
     MatchesAny,
@@ -37,6 +35,9 @@ from bzrlib.branch import Branch
 from bzrlib.controldir import ControlDir
 from bzrlib.memorytree import MemoryTree
 from bzrlib.revision import NULL_REVISION
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.smart.repository import SmartServerRepositoryGetParentMap
 from bzrlib.tests.per_interbranch import (
     TestCaseWithInterBranch,
@@ -225,7 +226,7 @@ class TestPush(TestCaseWithInterBranch):
         # stack on trunk.
         self.make_bzrdir('.').get_config().set_default_stack_on('trunk')
         # Push rev-2 to a new branch "remote".  It will be stacked on "trunk".
-        output = StringIO()
+        output = BytesIO()
         push._show_push_branch(trunk, 'rev-2', self.get_url('remote'), output)
         # Push rev-3 onto "remote".  If "remote" not stacked and is missing the
         # fulltext record for f-id @ rev-1, then this will fail.

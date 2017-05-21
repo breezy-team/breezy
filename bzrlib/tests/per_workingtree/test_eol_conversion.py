@@ -17,9 +17,11 @@
 """Tests for eol conversion."""
 
 import sys
-from cStringIO import StringIO
 
 from bzrlib import rules, status
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 from bzrlib.workingtree import WorkingTree
@@ -97,7 +99,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
             self.assertEqual(expected_unix, content)
         # Confirm that status thinks nothing has changed if the text roundtrips
         if roundtrip:
-            status_io = StringIO()
+            status_io = BytesIO()
             status.show_tree_status(wt2, to_file=status_io)
             self.assertEqual('', status_io.getvalue())
 

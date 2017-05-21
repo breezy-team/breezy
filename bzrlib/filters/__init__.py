@@ -40,7 +40,6 @@ Note that context is currently only supported for write converters.
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
@@ -50,6 +49,9 @@ from bzrlib import (
     registry,
     )
 """)
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.symbol_versioning import (
     deprecated_function,
     deprecated_in,
@@ -143,7 +145,7 @@ def filtered_input_file(f, filters):
         for filter in filters:
             if filter.reader is not None:
                 chunks = filter.reader(chunks)
-        return StringIO(''.join(chunks))
+        return BytesIO(b''.join(chunks))
     else:
         return f
 

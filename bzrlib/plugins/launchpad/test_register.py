@@ -15,7 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import base64
-from StringIO import StringIO
 import urlparse
 import xmlrpclib
 
@@ -23,6 +22,9 @@ from bzrlib import (
     config,
     tests,
     ui,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.tests import TestCaseWithTransport
 
@@ -83,7 +85,7 @@ class InstrumentedXMLRPCConnection(object):
 
     def getfile(self):
         """Return a fake file containing the response content."""
-        return StringIO('''\
+        return BytesIO(b'''\
 <?xml version="1.0" ?>
 <methodResponse>
     <params>
@@ -356,15 +358,12 @@ class TestGatherUserCredentials(tests.TestCaseInTempDir):
         g_conf = config.GlobalStack()
         g_conf.set('email', 'Test User <test@user.com>')
         g_conf.store.save()
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stdin='userpass\n',
-                                            stdout=stdout, stderr=stderr)
+        ui.ui_factory = tests.TestUIFactory(stdin=u'userpass\n')
         self.assertIs(None, service.registrant_password)
         service.gather_user_credentials()
         self.assertEqual('test@user.com', service.registrant_email)
         self.assertEqual('userpass', service.registrant_password)
-        self.assertEqual('', stdout.getvalue())
-        self.assertContainsRe(stderr.getvalue(),
+        self.assertEqual('', ui.ui_factory.stdout.getvalue())
+        self.assertContainsRe(ui.ui_factory.stderr.getvalue(),
                              'launchpad.net password for test@user\\.com')
 

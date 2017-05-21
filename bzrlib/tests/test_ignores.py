@@ -16,11 +16,12 @@
 
 """Tests for handling of ignore files"""
 
-from cStringIO import StringIO
-
 from bzrlib import (
     config,
     ignores,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.tests import (
     TestCase,
@@ -32,7 +33,7 @@ from bzrlib.tests import (
 class TestParseIgnoreFile(TestCase):
 
     def test_parse_fancy(self):
-        ignored = ignores.parse_ignore_file(StringIO(
+        ignored = ignores.parse_ignore_file(BytesIO(
                 './rootdir\n'
                 'randomfile*\n'
                 'path/from/ro?t\n'
@@ -55,12 +56,12 @@ class TestParseIgnoreFile(TestCase):
                          }, ignored)
 
     def test_parse_empty(self):
-        ignored = ignores.parse_ignore_file(StringIO(''))
+        ignored = ignores.parse_ignore_file(BytesIO(b''))
         self.assertEqual(set([]), ignored)
         
     def test_parse_non_utf8(self):
         """Lines with non utf 8 characters should be discarded."""
-        ignored = ignores.parse_ignore_file(StringIO(
+        ignored = ignores.parse_ignore_file(BytesIO(
                 'utf8filename_a\n'
                 'invalid utf8\x80\n'
                 'utf8filename_b\n'

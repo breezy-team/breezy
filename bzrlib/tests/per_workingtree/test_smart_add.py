@@ -16,7 +16,6 @@
 
 """Test that we can use smart_add on all Tree implementations."""
 
-from cStringIO import StringIO
 import os
 import sys
 
@@ -26,6 +25,9 @@ from bzrlib import (
     osutils,
     tests,
     trace,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.tests import (
     features,
@@ -251,7 +253,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         self.assertFalse(list(tree.iter_changes(tree.basis_tree())))
 
     def test_custom_ids(self):
-        sio = StringIO()
+        sio = BytesIO()
         action = test_smart_add.AddCustomIDAction(to_file=sio,
                                                   should_print=True)
         self.build_tree(['file1', 'dir1/', 'dir1/file2'])

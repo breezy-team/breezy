@@ -20,7 +20,6 @@
 # affects the global state of the process.  See bzrlib/plugins.py for more
 # comments.
 
-from cStringIO import StringIO
 import logging
 import os
 import sys
@@ -33,6 +32,9 @@ from bzrlib import (
     plugins,
     tests,
     trace,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 
 
@@ -244,7 +246,7 @@ class TestLoadingPlugins(BaseTestPlugins):
         :return: A string with the log from the plugin loading call.
         """
         # Capture output
-        stream = StringIO()
+        stream = BytesIO()
         try:
             handler = logging.StreamHandler(stream)
             log = logging.getLogger('bzr')

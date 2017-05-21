@@ -16,7 +16,6 @@
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -29,6 +28,9 @@ from bzrlib.bundle import serializer as _serializer
 from bzrlib.merge_directive import MergeDirective
 from bzrlib.i18n import gettext
 """)
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.trace import note
 
 
@@ -49,7 +51,7 @@ def read_mergeable_from_url(url, _do_directive=True, possible_transports=None):
 
 def read_mergeable_from_transport(transport, filename, _do_directive=True):
     def get_bundle(transport):
-        return StringIO(transport.get_bytes(filename)), transport
+        return BytesIO(transport.get_bytes(filename)), transport
 
     def redirected_transport(transport, exception, redirection_notice):
         note(redirection_notice)

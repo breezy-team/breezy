@@ -33,6 +33,9 @@ from bzrlib import (
     )
 from bzrlib.errors import BzrError, BadCommitMessageEncoding
 from bzrlib.hooks import Hooks
+from bzrlib.sixish import (
+    StringIO,
+    )
 
 
 def _get_editor():
@@ -255,7 +258,6 @@ def make_commit_message_template(working_tree, specific_files):
     # TODO: Rather than running the status command, should prepare a draft of
     # the revision to be committed, then pause and ask the user to
     # confirm/write a message.
-    from StringIO import StringIO       # must be unicode-safe
     from bzrlib.status import show_tree_status
     status_tmp = StringIO()
     show_tree_status(working_tree, specific_files=specific_files,
@@ -274,7 +276,6 @@ def make_commit_message_template_encoded(working_tree, specific_files,
     # TODO: Rather than running the status command, should prepare a draft of
     # the revision to be committed, then pause and ask the user to
     # confirm/write a message.
-    from StringIO import StringIO       # must be unicode-safe
     from bzrlib.diff import show_diff_trees
 
     template = make_commit_message_template(working_tree, specific_files)

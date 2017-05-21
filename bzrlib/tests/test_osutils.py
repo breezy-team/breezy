@@ -16,7 +16,6 @@
 
 """Tests for the osutils wrapper."""
 
-from cStringIO import StringIO
 import errno
 import os
 import re
@@ -34,6 +33,9 @@ from bzrlib import (
     tests,
     trace,
     win32utils,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.tests import (
     features,
@@ -612,7 +614,7 @@ class TestPumpFile(tests.TestCase):
         self.assertTrue(self.test_data_len > self.block_size)
 
         from_file = file_utils.FakeReadFile(self.test_data)
-        to_file = StringIO()
+        to_file = BytesIO()
 
         # read (max / 2) bytes and verify read size wasn't affected
         num_bytes_to_read = self.block_size / 2
@@ -653,7 +655,7 @@ class TestPumpFile(tests.TestCase):
 
         # retrieve data in blocks
         from_file = file_utils.FakeReadFile(self.test_data)
-        to_file = StringIO()
+        to_file = BytesIO()
         osutils.pumpfile(from_file, to_file, self.test_data_len,
                          self.block_size)
 
@@ -677,7 +679,7 @@ class TestPumpFile(tests.TestCase):
 
         # retrieve data to EOF
         from_file = file_utils.FakeReadFile(self.test_data)
-        to_file = StringIO()
+        to_file = BytesIO()
         osutils.pumpfile(from_file, to_file, -1, self.block_size)
 
         # verify read size was equal to the maximum read size
@@ -697,7 +699,7 @@ class TestPumpFile(tests.TestCase):
         with this new version."""
         # retrieve data using default (old) pumpfile method
         from_file = file_utils.FakeReadFile(self.test_data)
-        to_file = StringIO()
+        to_file = BytesIO()
         osutils.pumpfile(from_file, to_file)
 
         # report error if the data wasn't equal (we only report the size due
@@ -711,15 +713,15 @@ class TestPumpFile(tests.TestCase):
         activity = []
         def log_activity(length, direction):
             activity.append((length, direction))
-        from_file = StringIO(self.test_data)
-        to_file = StringIO()
+        from_file = BytesIO(self.test_data)
+        to_file = BytesIO()
         osutils.pumpfile(from_file, to_file, buff_size=500,
                          report_activity=log_activity, direction='read')
         self.assertEqual([(500, 'read'), (500, 'read'), (500, 'read'),
                           (36, 'read')], activity)
 
-        from_file = StringIO(self.test_data)
-        to_file = StringIO()
+        from_file = BytesIO(self.test_data)
+        to_file = BytesIO()
         del activity[:]
         osutils.pumpfile(from_file, to_file, buff_size=500,
                          report_activity=log_activity, direction='write')
@@ -727,8 +729,8 @@ class TestPumpFile(tests.TestCase):
                           (36, 'write')], activity)
 
         # And with a limited amount of data
-        from_file = StringIO(self.test_data)
-        to_file = StringIO()
+        from_file = BytesIO(self.test_data)
+        to_file = BytesIO()
         del activity[:]
         osutils.pumpfile(from_file, to_file, buff_size=500, read_length=1028,
                          report_activity=log_activity, direction='read')
@@ -739,22 +741,22 @@ class TestPumpFile(tests.TestCase):
 class TestPumpStringFile(tests.TestCase):
 
     def test_empty(self):
-        output = StringIO()
+        output = BytesIO()
         osutils.pump_string_file("", output)
         self.assertEqual("", output.getvalue())
 
     def test_more_than_segment_size(self):
-        output = StringIO()
+        output = BytesIO()
         osutils.pump_string_file("123456789", output, 2)
         self.assertEqual("123456789", output.getvalue())
 
     def test_segment_size(self):
-        output = StringIO()
+        output = BytesIO()
         osutils.pump_string_file("12", output, 2)
         self.assertEqual("12", output.getvalue())
 
     def test_segment_size_multiple(self):
-        output = StringIO()
+        output = BytesIO()
         osutils.pump_string_file("1234", output, 2)
         self.assertEqual("1234", output.getvalue())
 
@@ -2062,7 +2064,7 @@ class TestFailedToLoadExtension(tests.TestCase):
         self.assertLength(0, warnings)
 
     def test_report_extension_load_failures_message(self):
-        log = StringIO()
+        log = BytesIO()
         trace.push_log_file(log)
         self.assertTrue(self._try_loading())
         osutils.report_extension_load_failures()

@@ -16,8 +16,6 @@
 
 """Helper classes for repository implementation tests."""
 
-from cStringIO import StringIO
-
 from bzrlib import (
     inventory,
     osutils,

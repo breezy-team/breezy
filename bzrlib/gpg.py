@@ -21,7 +21,6 @@ from __future__ import absolute_import
 
 import os
 import sys
-from StringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -35,11 +34,14 @@ from bzrlib import (
     ui,
     )
 from bzrlib.i18n import (
-    gettext, 
+    gettext,
     ngettext,
     )
 """)
 
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.symbol_versioning import (
     deprecated_in,
     deprecated_method,
@@ -264,8 +266,8 @@ class GPGStrategy(object):
         except ImportError as error:
             raise errors.GpgmeNotInstalled(error)
 
-        signature = StringIO(content)
-        plain_output = StringIO()
+        signature = BytesIO(content)
+        plain_output = BytesIO()
         try:
             result = self.context.verify(signature, None, plain_output)
         except gpgme.GpgmeError as error:

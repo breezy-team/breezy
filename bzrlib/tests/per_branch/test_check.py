@@ -16,9 +16,15 @@
 
 """Tests for branch implementations - test check() functionality"""
 
-from StringIO import StringIO
 
-from bzrlib import errors, tests, ui
+from bzrlib import (
+    errors,
+    tests,
+    ui,
+)
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests.per_branch import TestCaseWithBranch
 
@@ -53,7 +59,7 @@ class TestBranchCheck(TestCaseWithBranch):
         self.addCleanup(tree.unlock)
         refs = self.make_refs(tree.branch)
         result = tree.branch.check(refs)
-        ui.ui_factory = tests.TestUIFactory(stdout=StringIO())
+        ui.ui_factory = tests.TestUIFactory(stdout=BytesIO())
         result.report_results(True)
         self.assertContainsRe('revno does not match len',
             ui.ui_factory.stdout.getvalue())

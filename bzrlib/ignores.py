@@ -20,7 +20,6 @@ from __future__ import absolute_import
 
 import errno
 import os
-from cStringIO import StringIO
 
 import bzrlib
 from bzrlib.lazy_import import lazy_import
@@ -32,6 +31,9 @@ from bzrlib import (
     trace,
     )
 """)
+from bzrlib.sixish import (
+    BytesIO,
+    )
 
 # ~/.bazaar/ignore will be filled out using
 # this ignore list, if it does not exist
@@ -211,7 +213,7 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
         file_contents = ""
         newline = os.linesep
     
-    sio = StringIO(file_contents)
+    sio = BytesIO(file_contents)
     try:
         ignores = parse_ignore_file(sio)
     finally:

@@ -28,6 +28,9 @@ from bzrlib import (
     trace,
     ui,
     )
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.tests import (
     TestCase,
     features,
@@ -120,11 +123,10 @@ gpg_signing_command=false'''))
 class TestVerify(TestCase):
 
     def import_keys(self):
-        from StringIO import StringIO
         import gpgme
         context = gpgme.Context()
 
-        key = StringIO("""-----BEGIN PGP PUBLIC KEY BLOCK-----
+        key = BytesIO(b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1.4.11 (GNU/Linux)
 
 mQENBE343IgBCADwzPW7kmKb2bjB+UU+1ER/ABMZspvtoZMPusUw7bk6coXHF/0W
@@ -156,7 +158,7 @@ LhnkL5l4MO0wrUds0UWRwa3d7j/P2ExrqXdlLmEzrifWyEQ=
 -----END PGP PUBLIC KEY BLOCK-----
 """)
 
-        secret_key = StringIO("""-----BEGIN PGP PRIVATE KEY BLOCK-----
+        secret_key = BytesIO(b"""-----BEGIN PGP PRIVATE KEY BLOCK-----
 Version: GnuPG v1.4.11 (GNU/Linux)
 
 lQOYBE343IgBCADwzPW7kmKb2bjB+UU+1ER/ABMZspvtoZMPusUw7bk6coXHF/0W
@@ -215,7 +217,7 @@ Gmk1tz5uh9/6Qiyhr9MAwvC0mhKtfWdebQre9l49EuciCbBXN2Q4iRpElQba1JAW
 -----END PGP PRIVATE KEY BLOCK-----
 """)
 
-        revoked_key = StringIO("""-----BEGIN PGP PUBLIC KEY BLOCK-----
+        revoked_key = BytesIO(b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1.4.11 (GNU/Linux)
 
 mI0ETjlW5gEEAOb/6P+TVM59E897wRtatxys2BhsHCXM4T7xjIiANfDwejDdifqh
@@ -240,7 +242,7 @@ YUJsPy/EL++OKPH1aFasOdTxwkTka85+RdYqhP1+z/aYLFMWq6mRFI+o6x2k5mGi
 -----END PGP PUBLIC KEY BLOCK-----
 """)
 
-        expired_key = StringIO("""-----BEGIN PGP PUBLIC KEY BLOCK-----
+        expired_key = BytesIO(b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1.4.11 (GNU/Linux)
 
 mI0ETjZ6PAEEALkR4GcFQidCCxV7pgQwQd5MZua0YO2l92fVqHX+PhnZ6egCLKdD

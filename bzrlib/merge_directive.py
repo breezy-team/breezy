@@ -16,7 +16,6 @@
 
 from __future__ import absolute_import
 
-from StringIO import StringIO
 import re
 
 from bzrlib import lazy_import
@@ -39,6 +38,9 @@ from bzrlib.bundle import (
     serializer as bundle_serializer,
     )
 """)
+from bzrlib.sixish import (
+    BytesIO,
+    )
 
 
 class MergeRequestBodyParams(object):
@@ -231,13 +233,13 @@ class BaseMergeDirective(object):
     def _generate_diff(repository, revision_id, ancestor_id):
         tree_1 = repository.revision_tree(ancestor_id)
         tree_2 = repository.revision_tree(revision_id)
-        s = StringIO()
+        s = BytesIO()
         diff.show_diff_trees(tree_1, tree_2, s, old_label='', new_label='')
         return s.getvalue()
 
     @staticmethod
     def _generate_bundle(repository, revision_id, ancestor_id):
-        s = StringIO()
+        s = BytesIO()
         bundle_serializer.write_bundle(repository, revision_id,
                                        ancestor_id, s)
         return s.getvalue()
@@ -279,7 +281,7 @@ class BaseMergeDirective(object):
         if not target_repo.has_revision(self.revision_id):
             if self.patch_type == 'bundle':
                 info = bundle_serializer.read_bundle(
-                    StringIO(self.get_raw_bundle()))
+                    BytesIO(self.get_raw_bundle()))
                 # We don't use the bundle's target revision, because
                 # MergeDirective.revision_id is authoritative.
                 try:
@@ -435,7 +437,7 @@ class MergeDirective(BaseMergeDirective):
         else:
             patch = ''.join(patch_lines)
             try:
-                bundle_serializer.read_bundle(StringIO(patch))
+                bundle_serializer.read_bundle(BytesIO(patch))
             except (errors.NotABundle, errors.BundleNotSupported,
                     errors.BadBundle):
                 patch_type = 'diff'
@@ -461,7 +463,7 @@ class MergeDirective(BaseMergeDirective):
 
     @staticmethod
     def _generate_bundle(repository, revision_id, ancestor_id):
-        s = StringIO()
+        s = BytesIO()
         bundle_serializer.write_bundle(repository, revision_id,
                                        ancestor_id, s, '0.9')
         return s.getvalue()
