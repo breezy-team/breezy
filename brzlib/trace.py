@@ -23,11 +23,11 @@ library so that it doesn't need to be done for messages that won't be emitted.
 Messages are classified by severity levels: critical, error, warning, info,
 and debug.
 
-They can be sent to two places: to stderr, and to ~/.bzr.log.  For purposes
+They can be sent to two places: to stderr, and to ~/.brz.log.  For purposes
 such as running the test suite, they can also be redirected away from both of
 those two places to another location.
 
-~/.bzr.log gets all messages, and full tracebacks for uncaught exceptions.
+~/.brz.log gets all messages, and full tracebacks for uncaught exceptions.
 This trace file is always in UTF-8, regardless of the user's default encoding,
 so that we can always rely on writing any message.
 
@@ -92,17 +92,17 @@ _verbosity_level = 0
 # than push/pop_log_file.
 _trace_file = None
 
-# Absolute path for ~/.bzr.log.  Not changed even if the log/trace output is
+# Absolute path for ~/.brz.log.  Not changed even if the log/trace output is
 # redirected elsewhere.  Used to show the location in --version.
-_bzr_log_filename = None
+_brz_log_filename = None
 
 # The time the first message was written to the trace file, so that we can
 # show relative times since startup.
-_bzr_log_start_time = brzlib._start_time
+_brz_log_start_time = brzlib._start_time
 
 
 # held in a global for quick reference
-_bzr_logger = logging.getLogger('bzr')
+_brz_logger = logging.getLogger('brz')
 
 
 def note(*args, **kwargs):
@@ -116,12 +116,12 @@ def note(*args, **kwargs):
     # framework is whack; we should probably have a logging Handler that
     # deals with terminal output if needed.
     ui.ui_factory.clear_term()
-    _bzr_logger.info(*args, **kwargs)
+    _brz_logger.info(*args, **kwargs)
 
 
 def warning(*args, **kwargs):
     ui.ui_factory.clear_term()
-    _bzr_logger.warning(*args, **kwargs)
+    _brz_logger.warning(*args, **kwargs)
 
 
 def show_error(*args, **kwargs):
@@ -129,7 +129,7 @@ def show_error(*args, **kwargs):
 
     Don't use this for exceptions, use report_exception instead.
     """
-    _bzr_logger.error(*args, **kwargs)
+    _brz_logger.error(*args, **kwargs)
 
 
 def mutter(fmt, *args):
@@ -156,7 +156,7 @@ def mutter(fmt, *args):
     else:
         out = fmt
     now = time.time()
-    timestamp = '%0.3f  ' % (now - _bzr_log_start_time,)
+    timestamp = '%0.3f  ' % (now - _brz_log_start_time,)
     out = timestamp + out + '\n'
     _trace_file.write(out)
     # there's no explicit flushing; the file is typically line buffered.
@@ -193,29 +193,29 @@ def _rollover_trace_maybe(trace_fname):
         return
 
 
-def _get_bzr_log_filename():
-    bzr_log = osutils.path_from_environ('BRZ_LOG')
-    if bzr_log:
-        return bzr_log
+def _get_brz_log_filename():
+    brz_log = osutils.path_from_environ('BRZ_LOG')
+    if brz_log:
+        return brz_log
     home = osutils.path_from_environ('BRZ_HOME')
     if home is None:
         # GZ 2012-02-01: Logging to the home dir is bad, but XDG is unclear
         #                over what would be better. On windows, bug 240550
         #                suggests LOCALAPPDATA be used instead.
         home = osutils._get_home_dir()
-    return os.path.join(home, '.bzr.log')
+    return os.path.join(home, '.brz.log')
 
 
-def _open_bzr_log():
-    """Open the .bzr.log trace file.
+def _open_brz_log():
+    """Open the .brz.log trace file.
 
     If the log is more than a particular length, the old file is renamed to
-    .bzr.log.old and a new file is started.  Otherwise, we append to the
+    .brz.log.old and a new file is started.  Otherwise, we append to the
     existing file.
 
-    This sets the global _bzr_log_filename.
+    This sets the global _brz_log_filename.
     """
-    global _bzr_log_filename
+    global _brz_log_filename
 
     def _open_or_create_log_file(filename):
         """Open existing log file, or create with ownership and permissions
@@ -240,26 +240,25 @@ def _open_bzr_log():
             else:
                 osutils.copy_ownership_from_path(filename)
                 break
-        return os.fdopen(fd, 'at', 0) # unbuffered
+        return os.fdopen(fd, 'at', 0)  # unbuffered
 
-
-    _bzr_log_filename = _get_bzr_log_filename()
-    _rollover_trace_maybe(_bzr_log_filename)
+    _brz_log_filename = _get_brz_log_filename()
+    _rollover_trace_maybe(_brz_log_filename)
     try:
-        bzr_log_file = _open_or_create_log_file(_bzr_log_filename)
-        bzr_log_file.write('\n')
-        if bzr_log_file.tell() <= 2:
-            bzr_log_file.write("this is a debug log for diagnosing/reporting problems in bzr\n")
-            bzr_log_file.write("you can delete or truncate this file, or include sections in\n")
-            bzr_log_file.write("bug reports to https://bugs.launchpad.net/bzr/+filebug\n\n")
+        brz_log_file = _open_or_create_log_file(_brz_log_filename)
+        brz_log_file.write('\n')
+        if brz_log_file.tell() <= 2:
+            brz_log_file.write("this is a debug log for diagnosing/reporting problems in brz\n")
+            brz_log_file.write("you can delete or truncate this file, or include sections in\n")
+            brz_log_file.write("bug reports to https://bugs.launchpad.net/brz/+filebug\n\n")
 
-        return bzr_log_file
+        return brz_log_file
 
     except EnvironmentError, e:
         # If we are failing to open the log, then most likely logging has not
         # been set up yet. So we just write to stderr rather than using
         # 'warning()'. If we using warning(), users get the unhelpful 'no
-        # handlers registered for "bzr"' when something goes wrong on the
+        # handlers registered for "brz"' when something goes wrong on the
         # server. (bug #503886)
         sys.stderr.write("failed to open trace file: %s\n" % (e,))
     # TODO: What should happen if we fail to open the trace file?  Maybe the
@@ -269,31 +268,31 @@ def _open_bzr_log():
 
 
 def enable_default_logging():
-    """Configure default logging: messages to stderr and debug to .bzr.log
+    """Configure default logging: messages to stderr and debug to .brz.log
 
     This should only be called once per process.
 
     Non-command-line programs embedding brzlib do not need to call this.  They
     can instead either pass a file to _push_log_file, or act directly on
-    logging.getLogger("bzr").
+    logging.getLogger("brz").
 
     Output can be redirected away by calling _push_log_file.
 
     :return: A memento from push_log_file for restoring the log state.
     """
-    start_time = osutils.format_local_date(_bzr_log_start_time,
+    start_time = osutils.format_local_date(_brz_log_start_time,
                                            timezone='local')
-    bzr_log_file = _open_bzr_log()
-    if bzr_log_file is not None:
-        bzr_log_file.write(start_time.encode('utf-8') + '\n')
-    memento = push_log_file(bzr_log_file,
+    brz_log_file = _open_brz_log()
+    if brz_log_file is not None:
+        brz_log_file.write(start_time.encode('utf-8') + '\n')
+    memento = push_log_file(brz_log_file,
         r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
         r'%Y-%m-%d %H:%M:%S')
-    # after hooking output into bzr_log, we also need to attach a stderr
+    # after hooking output into brz_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding
     stderr_handler = EncodedStreamHandler(sys.stderr,
         osutils.get_terminal_encoding(), 'replace', level=logging.INFO)
-    logging.getLogger('bzr').addHandler(stderr_handler)
+    logging.getLogger('brz').addHandler(stderr_handler)
     return memento
 
 
@@ -312,15 +311,15 @@ def push_log_file(to_file, log_format=None, date_format=None):
         log_format = '%(levelname)8s  %(message)s'
     new_handler.setFormatter(logging.Formatter(log_format, date_format))
     # save and remove any existing log handlers
-    bzr_logger = logging.getLogger('bzr')
-    old_handlers = bzr_logger.handlers[:]
-    del bzr_logger.handlers[:]
+    brz_logger = logging.getLogger('brz')
+    old_handlers = brz_logger.handlers[:]
+    del brz_logger.handlers[:]
     # set that as the default logger
-    bzr_logger.addHandler(new_handler)
-    bzr_logger.setLevel(logging.DEBUG)
+    brz_logger.addHandler(new_handler)
+    brz_logger.setLevel(logging.DEBUG)
     # TODO: check if any changes are needed to the root logger
     #
-    # TODO: also probably need to save and restore the level on bzr_logger.
+    # TODO: also probably need to save and restore the level on brz_logger.
     # but maybe we can avoid setting the logger level altogether, and just set
     # the level on the handler?
     #
@@ -341,12 +340,12 @@ def pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_fi
     Takes the memento returned from _push_log_file."""
     global _trace_file
     _trace_file = old_trace_file
-    bzr_logger = logging.getLogger('bzr')
-    bzr_logger.removeHandler(new_handler)
+    brz_logger = logging.getLogger('brz')
+    brz_logger.removeHandler(new_handler)
     # must be closed, otherwise logging will try to close it at exit, and the
     # file will likely already be closed underneath.
     new_handler.close()
-    bzr_logger.handlers = old_handlers
+    brz_logger.handlers = old_handlers
     if new_trace_file is not None:
         new_trace_file.flush()
 
@@ -390,9 +389,9 @@ def be_quiet(quiet=True):
 def _update_logging_level(quiet=True):
     """Hide INFO messages if quiet."""
     if quiet:
-        _bzr_logger.setLevel(logging.WARNING)
+        _brz_logger.setLevel(logging.WARNING)
     else:
-        _bzr_logger.setLevel(logging.INFO)
+        _brz_logger.setLevel(logging.INFO)
 
 
 def is_quiet():
@@ -439,7 +438,7 @@ def _debug_memory_proc(message='', short=True):
 def _dump_memory_usage(err_file):
     try:
         try:
-            fd, name = tempfile.mkstemp(prefix="bzr_memdump", suffix=".json")
+            fd, name = tempfile.mkstemp(prefix="brz_memdump", suffix=".json")
             dump_file = os.fdopen(fd, 'w')
             from meliae import scanner
             scanner.dump_gc_objects(dump_file)
@@ -472,13 +471,13 @@ def _qualified_exception_name(eclass, unqualified_brzlib_errors=False):
 
 
 def report_exception(exc_info, err_file):
-    """Report an exception to err_file (typically stderr) and to .bzr.log.
+    """Report an exception to err_file (typically stderr) and to .brz.log.
 
     This will show either a full traceback or a short message as appropriate.
 
     :return: The appropriate exit code for this error.
     """
-    # Log the full traceback to ~/.bzr.log
+    # Log the full traceback to ~/.brz.log
     log_exception_quietly()
     if 'error' in debug.debug_flags:
         print_exception(exc_info, err_file)
@@ -539,7 +538,7 @@ def report_user_error(exc_info, err_file, advice=None):
 
 
 def report_bug(exc_info, err_file):
-    """Report an exception that probably indicates a bug in bzr"""
+    """Report an exception that probably indicates a bug in brz"""
     from brzlib.crash import report_bug
     report_bug(exc_info, err_file)
 
@@ -633,12 +632,12 @@ class DefaultConfig(Config):
     """
 
     def __enter__(self):
-        self._original_filename = _bzr_log_filename
+        self._original_filename = _brz_log_filename
         self._original_state = enable_default_logging()
         return self # This is bound to the 'as' clause in a with statement.
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pop_log_file(self._original_state)
-        global _bzr_log_filename
-        _bzr_log_filename = self._original_filename
+        global _brz_log_filename
+        _brz_log_filename = self._original_filename
         return False # propogate exceptions.

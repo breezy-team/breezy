@@ -35,24 +35,24 @@ from brzlib import (
 def show_version(show_config=True, show_copyright=True, to_file=None):
     if to_file is None:
         to_file = sys.stdout
-    to_file.write("Bazaar (bzr) %s\n" % brzlib.__version__)
+    to_file.write("Breezy (brz) %s\n" % brzlib.__version__)
     # is brzlib itself in a branch?
-    src_tree = _get_bzr_source_tree()
+    src_tree = _get_brz_source_tree()
     if src_tree:
         src_revision_id = src_tree.last_revision()
         revno = src_tree.branch.revision_id_to_revno(src_revision_id)
-        to_file.write("  from bzr checkout %s\n" % (src_tree.basedir,))
+        to_file.write("  from brz checkout %s\n" % (src_tree.basedir,))
         to_file.write("    revision: %s\n" % (revno,))
         to_file.write("    revid: %s\n" % (src_revision_id,))
         to_file.write("    branch nick: %s\n" % (src_tree.branch.nick,))
 
     to_file.write("  Python interpreter: ")
     # show path to python interpreter
-    # (bzr.exe use python interpreter from pythonXY.dll
-    # but sys.executable point to bzr.exe itself)
-    # however, sys.frozen exists if running from bzr.exe
+    # (brz.exe use python interpreter from pythonXY.dll
+    # but sys.executable point to brz.exe itself)
+    # however, sys.frozen exists if running from brz.exe
     # see http://www.py2exe.org/index.cgi/Py2exeEnvironment
-    if getattr(sys, 'frozen', None) is None: # if not bzr.exe
+    if getattr(sys, 'frozen', None) is None: # if not brz.exe
         to_file.write(sys.executable + ' ')
     else:
         # pythonXY.dll
@@ -70,7 +70,7 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
     to_file.write("  brzlib: ")
     if len(brzlib.__path__) > 1:
         # print repr, which is a good enough way of making it clear it's
-        # more than one element (eg ['/foo/bar', '/foo/bzr'])
+        # more than one element (eg ['/foo/bar', '/foo/brz'])
         to_file.write(repr(brzlib.__path__) + '\n')
     else:
         to_file.write(brzlib.__path__[0] + '\n')
@@ -78,24 +78,24 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
         config_dir = osutils.normpath(config.config_dir())  # use native slashes
         if not isinstance(config_dir, unicode):
             config_dir = config_dir.decode(osutils.get_user_encoding())
-        to_file.write("  Bazaar configuration: %s\n" % (config_dir,))
-        to_file.write("  Bazaar log file: ")
-        to_file.write(trace._bzr_log_filename + '\n')
+        to_file.write("  Breezy configuration: %s\n" % (config_dir,))
+        to_file.write("  Breezy log file: ")
+        to_file.write(trace._brz_log_filename + '\n')
     if show_copyright:
         to_file.write('\n')
         to_file.write(brzlib.__copyright__ + '\n')
         to_file.write("http://bazaar.canonical.com/\n")
         to_file.write('\n')
-        to_file.write("bzr comes with ABSOLUTELY NO WARRANTY.  bzr is free software, and\n")
+        to_file.write("brz comes with ABSOLUTELY NO WARRANTY.  brz is free software, and\n")
         to_file.write("you may use, modify and redistribute it under the terms of the GNU\n")
         to_file.write("General Public License version 2 or later.\n")
     to_file.write('\n')
 
 
-def _get_bzr_source_tree():
-    """Return the WorkingTree for bzr source, if any.
+def _get_brz_source_tree():
+    """Return the WorkingTree for brz source, if any.
 
-    If bzr is not being run from its working tree, returns None.
+    If brz is not being run from its working tree, returns None.
     """
     try:
         control = controldir.ControlDir.open_containing(__file__)[0]

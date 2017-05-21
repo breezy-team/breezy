@@ -166,7 +166,7 @@ class TestErrors(TestCaseWithTransport):
         error = errors.LockCorrupt("corruption info")
         self.assertEqualDiff("Lock is apparently held, but corrupted: "
             "corruption info\n"
-            "Use 'bzr break-lock' to clear it",
+            "Use 'brz break-lock' to clear it",
             str(error))
 
     def test_knit_data_stream_incompatible(self):
@@ -221,7 +221,7 @@ class TestErrors(TestCaseWithTransport):
     def test_no_help_topic(self):
         error = errors.NoHelpTopic("topic")
         self.assertEqualDiff("No help could be found for 'topic'. "
-            "Please use 'bzr help topics' to obtain a list of topics.",
+            "Please use 'brz help topics' to obtain a list of topics.",
             str(error))
 
     def test_no_such_id(self):
@@ -309,7 +309,7 @@ class TestErrors(TestCaseWithTransport):
         repo = self.make_repository('.')
         error = errors.CorruptRepository(repo)
         self.assertEqualDiff("An error has been detected in the repository %s.\n"
-                             "Please run bzr reconcile on this repository." %
+                             "Please run brz reconcile on this repository." %
                              repo.bzrdir.root_transport.base,
                              str(error))
 
@@ -442,7 +442,7 @@ class TestErrors(TestCaseWithTransport):
         error = errors.MalformedBugIdentifier('bogus', 'reason for bogosity')
         self.assertEqual(
             'Did not understand bug identifier bogus: reason for bogosity. '
-            'See "bzr help bugs" for more information on this feature.',
+            'See "brz help bugs" for more information on this feature.',
             str(error))
 
     def test_unknown_bug_tracker_abbreviation(self):
@@ -692,7 +692,7 @@ class TestErrors(TestCaseWithTransport):
     def test_recursive_bind(self):
         error = errors.RecursiveBind('foo_bar_branch')
         msg = ('Branch "foo_bar_branch" appears to be bound to itself. '
-            'Please use `bzr unbind` to fix.')
+            'Please use `brz unbind` to fix.')
         self.assertEqualDiff(msg, str(error))
 
     def test_retry_with_new_packs(self):

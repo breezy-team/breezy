@@ -103,7 +103,7 @@ class TestNonApportReporting(tests.TestCase):
         crash.report_bug_legacy(sys.exc_info(), err_file)
         report = err_file.getvalue()
         for needle in [
-            "bzr: ERROR: exceptions.AssertionError: my error",
+            "brz: ERROR: exceptions.AssertionError: my error",
             r"Traceback \(most recent call last\):",
             r"plugins: fake_plugin\[1\.2\.3\]",
             ]:

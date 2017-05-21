@@ -199,7 +199,7 @@ class TestLockDir(TestCaseWithTransport):
             r' \(process #\d+\), acquired .* ago\.\n'
             r'Will continue to try until \d{2}:\d{2}:\d{2}, unless '
             r'you press Ctrl-C.\n'
-            r'See "bzr help break-lock" for more.')
+            r'See "brz help break-lock" for more.')
 
     def test_31_lock_wait_easy(self):
         """Succeed when waiting on a lock with no contention.

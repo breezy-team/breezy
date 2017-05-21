@@ -148,7 +148,7 @@ isolated_environ = {
     'BZREMAIL': None, # may still be present in the environment
     'EMAIL': 'jrandom@example.com', # set EMAIL as brz does not guess
     'BRZ_PROGRESS_BAR': None,
-    # This should trap leaks to ~/.bzr.log. This occurs when tests use TestCase
+    # This should trap leaks to ~/.brz.log. This occurs when tests use TestCase
     # as a base class instead of TestCaseInTempDir. Tests inheriting from
     # TestCase should not use disk resources, BRZ_LOG is one.
     'BRZ_LOG': '/you-should-use-TestCaseInTempDir-if-you-need-a-log-file',
@@ -180,7 +180,7 @@ isolated_environ = {
     # -- vila 20080401
     'ftp_proxy': None,
     'FTP_PROXY': None,
-    'BRZ_REMOTE_PATH': None,
+    'BZR_REMOTE_PATH': None,
     # Generally speaking, we don't want apport reporting on crashes in
     # the test envirnoment unless we're specifically testing apport,
     # so that it doesn't leak into the real system environment.  We
@@ -2233,7 +2233,7 @@ class TestCase(testtools.TestCase):
             cleanup_environment()
             # Include the subprocess's log file in the test details, in case
             # the test fails due to an error in the subprocess.
-            self._add_subprocess_log(trace._get_bzr_log_filename())
+            self._add_subprocess_log(trace._get_brz_log_filename())
             command = [sys.executable]
             # frozen executables don't need the path to bzr
             if getattr(sys, "frozen", None) is None:
@@ -2644,7 +2644,7 @@ class TestCaseWithMemoryTransport(TestCase):
         """
         root = TestCaseWithMemoryTransport.TEST_ROOT
         try:
-            # Make sure we get a readable and accessible home for .bzr.log
+            # Make sure we get a readable and accessible home for .brz.log
             # and/or config files, and not fallback to weird defaults (see
             # http://pad.lv/825027).
             self.assertIs(None, os.environ.get('BRZ_HOME', None))

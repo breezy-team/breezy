@@ -37,7 +37,7 @@ class TestGenerateDocs(TestCase):
         super(TestGenerateDocs, self).setUp()
         self.sio = StringIO()
         self.options = Options()
-        self.options.bzr_name = 'bzr'
+        self.options.brz_name = 'bzr'
         brzlib.commands.install_bzr_command_hooks()
 
     def test_man_page(self):

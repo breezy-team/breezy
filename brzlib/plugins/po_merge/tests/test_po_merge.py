@@ -45,10 +45,10 @@ class BlackboxTestPoMerger(script.TestCaseWithTransportAndScript):
         # merge triggers the hook and creates no conflicts for fr.po. But the
         # .pot used is the one present in the tree *before* the merge.
         self.run_script("""\
-$ bzr branch adduser -rrevid:this work
+$ brz branch adduser -rrevid:this work
 2>Branched 2 revisions.
 $ cd work
-$ bzr merge ../adduser -rrevid:other
+$ brz merge ../adduser -rrevid:other
 2> M  po/adduser.pot
 2> M  po/fr.po
 2>Text conflict in po/adduser.pot
@@ -58,11 +58,11 @@ $ bzr merge ../adduser -rrevid:other
     def test_called_on_remerge(self):
         # Merge with no config for the hook to create the conflicts
         self.run_script("""\
-$ bzr branch adduser -rrevid:this work
+$ brz branch adduser -rrevid:this work
 2>Branched 2 revisions.
 $ cd work
 # set po_dirs to an empty list
-$ bzr merge ../adduser -rrevid:other -Opo_merge.po_dirs=
+$ brz merge ../adduser -rrevid:other -Opo_merge.po_dirs=
 2> M  po/adduser.pot
 2> M  po/fr.po
 2>Text conflict in po/adduser.pot
@@ -72,15 +72,15 @@ $ bzr merge ../adduser -rrevid:other -Opo_merge.po_dirs=
         # Fix the conflicts in the .pot file
         with open('po/adduser.pot', 'w') as f:
             f.write(_Adduser['resolved_pot'])
-        # Tell bzr the conflict is resolved
+        # Tell brz the conflict is resolved
         self.run_script("""\
-$ bzr resolve po/adduser.pot
+$ brz resolve po/adduser.pot
 2>1 conflict resolved, 1 remaining
 # Use remerge to trigger the hook, we use the default config options here
-$ bzr remerge po/*.po
+$ brz remerge po/*.po
 2>All changes applied successfully.
 # There should be no conflicts anymore
-$ bzr conflicts
+$ brz conflicts
 """)
 
 
@@ -128,7 +128,7 @@ class TestAdduserBranch(script.TestCaseWithTransportAndScript):
     def assertAdduserBranchContent(self, revid):
         env = dict(revid=revid, branch_name=revid)
         self.run_script("""\
-$ bzr branch adduser -rrevid:%(revid)s %(branch_name)s
+$ brz branch adduser -rrevid:%(revid)s %(branch_name)s
 """ % env, null_output_matches_anything=True)
         self.assertFileEqual(_Adduser['%(revid)s_pot' % env],
                              '%(branch_name)s/po/adduser.pot' % env)

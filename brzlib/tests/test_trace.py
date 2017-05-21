@@ -53,7 +53,7 @@ class TestTrace(TestCase):
 
     def test_format_sys_exception(self):
         # Test handling of an internal/unexpected error that probably
-        # indicates a bug in bzr.  The details of the message may vary
+        # indicates a bug in brz.  The details of the message may vary
         # depending on whether apport is available or not.  See test_crash for
         # more.
         try:
@@ -151,7 +151,7 @@ class TestTrace(TestCase):
         msg = _format_exception()
 
     def test_format_exception(self):
-        """Short formatting of bzr exceptions"""
+        """Short formatting of brz exceptions"""
         try:
             raise errors.NotBranchError('wibble')
         except errors.NotBranchError:
@@ -309,18 +309,18 @@ class TestTrace(TestCase):
             tmp1.close()
             tmp2.close()
 
-    def test__open_bzr_log_uses_stderr_for_failures(self):
-        # If _open_bzr_log cannot open the file, then we should write the
+    def test__open_brz_log_uses_stderr_for_failures(self):
+        # If _open_brz_log cannot open the file, then we should write the
         # warning to stderr. Since this is normally happening before logging is
         # set up.
         self.overrideAttr(sys, 'stderr', StringIO())
         # Set the log file to something that cannot exist
-        self.overrideEnv('BRZ_LOG', os.getcwd() + '/no-dir/bzr.log')
-        self.overrideAttr(trace, '_bzr_log_filename')
-        logf = trace._open_bzr_log()
+        self.overrideEnv('BRZ_LOG', os.getcwd() + '/no-dir/brz.log')
+        self.overrideAttr(trace, '_brz_log_filename')
+        logf = trace._open_brz_log()
         self.assertIs(None, logf)
         self.assertContainsRe(sys.stderr.getvalue(),
-                              'failed to open trace file: .*/no-dir/bzr.log')
+                              'failed to open trace file: .*/no-dir/brz.log')
 
 
 class TestVerbosityLevel(TestCase):
@@ -359,45 +359,45 @@ class TestLogging(TestCase):
         self.assertEqual(" WARNING  Warned\n", self.get_log())
 
     def test_log(self):
-        logging.getLogger("bzr").error("Errored")
+        logging.getLogger("brz").error("Errored")
         self.assertEqual("   ERROR  Errored\n", self.get_log())
 
     def test_log_sub(self):
-        logging.getLogger("bzr.test_log_sub").debug("Whispered")
+        logging.getLogger("brz.test_log_sub").debug("Whispered")
         self.assertEqual("   DEBUG  Whispered\n", self.get_log())
 
     def test_log_unicode_msg(self):
-        logging.getLogger("bzr").debug(u"\xa7")
+        logging.getLogger("brz").debug(u"\xa7")
         self.assertEqual(u"   DEBUG  \xa7\n", self.get_log())
 
     def test_log_unicode_arg(self):
-        logging.getLogger("bzr").debug("%s", u"\xa7")
+        logging.getLogger("brz").debug("%s", u"\xa7")
         self.assertEqual(u"   DEBUG  \xa7\n", self.get_log())
 
     def test_log_utf8_msg(self):
-        logging.getLogger("bzr").debug("\xc2\xa7")
+        logging.getLogger("brz").debug("\xc2\xa7")
         self.assertEqual(u"   DEBUG  \xa7\n", self.get_log())
 
     def test_log_utf8_arg(self):
-        logging.getLogger("bzr").debug("%s", "\xc2\xa7")
+        logging.getLogger("brz").debug("%s", "\xc2\xa7")
         self.assertEqual(u"   DEBUG  \xa7\n", self.get_log())
 
     def test_log_bytes_msg(self):
-        logging.getLogger("bzr").debug("\xa7")
+        logging.getLogger("brz").debug("\xa7")
         log = self.get_log()
         self.assertContainsString(log, "UnicodeDecodeError: ")
         self.assertContainsString(log,
             "Logging record unformattable: '\\xa7' % ()\n")
 
     def test_log_bytes_arg(self):
-        logging.getLogger("bzr").debug("%s", "\xa7")
+        logging.getLogger("brz").debug("%s", "\xa7")
         log = self.get_log()
         self.assertContainsString(log, "UnicodeDecodeError: ")
         self.assertContainsString(log,
             "Logging record unformattable: '%s' % ('\\xa7',)\n")
 
     def test_log_mixed_strings(self):
-        logging.getLogger("bzr").debug(u"%s", "\xa7")
+        logging.getLogger("brz").debug(u"%s", "\xa7")
         log = self.get_log()
         self.assertContainsString(log, "UnicodeDecodeError: ")
         self.assertContainsString(log,
@@ -407,7 +407,7 @@ class TestLogging(TestCase):
         class BadRepr(object):
             def __repr__(self):
                 raise ValueError("Broken object")
-        logging.getLogger("bzr").debug("%s", BadRepr())
+        logging.getLogger("brz").debug("%s", BadRepr())
         log = self.get_log()
         self.assertContainsRe(log, "ValueError: Broken object\n")
         self.assertContainsRe(log, "Logging record unformattable: '%s' % .*\n")
@@ -429,15 +429,15 @@ class TestTraceConfiguration(TestCaseInTempDir):
 
     def test_default_config(self):
         config = trace.DefaultConfig()
-        self.overrideAttr(trace, "_bzr_log_filename", None)
-        trace._bzr_log_filename = None
-        expected_filename = trace._get_bzr_log_filename()
-        self.assertEqual(None, trace._bzr_log_filename)
+        self.overrideAttr(trace, "_brz_log_filename", None)
+        trace._brz_log_filename = None
+        expected_filename = trace._get_brz_log_filename()
+        self.assertEqual(None, trace._brz_log_filename)
         config.__enter__()
         try:
             # Should have entered and setup a default filename.
-            self.assertEqual(expected_filename, trace._bzr_log_filename)
+            self.assertEqual(expected_filename, trace._brz_log_filename)
         finally:
             config.__exit__(None, None, None)
             # Should have exited and cleaned up.
-            self.assertEqual(None, trace._bzr_log_filename)
+            self.assertEqual(None, trace._brz_log_filename)

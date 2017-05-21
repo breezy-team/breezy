@@ -131,11 +131,11 @@ class TestRulesPath(tests.TestCase):
         if sys.platform == 'win32':
             self.overrideEnv(
                 'BRZ_HOME', r'C:\Documents and Settings\bogus\Application Data')
-            self.bzr_home = \
-                'C:/Documents and Settings/bogus/Application Data/bazaar/2.0'
+            self.brz_home = \
+                'C:/Documents and Settings/bogus/Application Data/breezy'
         else:
-            self.bzr_home = '/home/bogus/.bazaar'
+            self.brz_home = '/home/bogus/.config/breezy'
 
     def test_rules_filename(self):
         self.assertEqual(rules.rules_filename(),
-                         self.bzr_home + '/rules')
+                         self.brz_home + '/rules')

@@ -606,7 +606,7 @@ known_env_variables = [
     ("BRZ_PLUGINS_AT", "Plugins to load from a directory not in BRZ_PLUGIN_PATH."),
     ("BRZ_HOME", "Directory holding .bazaar config dir. Overrides HOME."),
     ("BRZ_HOME (Win32)", "Directory holding bazaar config dir. Overrides APPDATA and HOME."),
-    ("BRZ_REMOTE_PATH", "Full name of remote 'brz' command (for brz+ssh:// URLs)."),
+    ("BZR_REMOTE_PATH", "Full name of remote 'brz' command (for brz+ssh:// URLs)."),
     ("BRZ_SSH", "Path to SSH client, or one of paramiko, openssh, sshcorp, plink or lsh."),
     ("BRZ_LOG", "Location of .brz.log (use '/dev/null' to suppress log)."),
     ("BRZ_LOG (Win32)", "Location of .brz.log (use 'NUL' to suppress log)."),

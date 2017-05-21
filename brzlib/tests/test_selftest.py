@@ -2645,7 +2645,7 @@ class TestStartBzrSubProcess(tests.TestCase):
     def test_get_brz_path_with_cwd_brzlib(self):
         self.get_source_path = lambda: ""
         self.overrideAttr(os.path, "isfile", lambda path: True)
-        self.assertEqual(self.get_brz_path(), "bzr")
+        self.assertEqual(self.get_brz_path(), "brz")
 
 
 class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):

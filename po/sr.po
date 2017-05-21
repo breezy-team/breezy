@@ -9615,7 +9615,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:52
 msgid ""
-"BRZ_REMOTE_PATH\n"
+"BZR_REMOTE_PATH\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
 
@@ -11877,7 +11877,7 @@ msgid ""
 "BRZ_HOME (Win32)    Directory holding bazaar config dir. Overrides APPDATA "
 "and\n"
 "                    HOME.\n"
-"BRZ_REMOTE_PATH     Full name of remote 'bzr' command (for bzr+ssh:// "
+"BZR_REMOTE_PATH     Full name of remote 'bzr' command (for bzr+ssh:// "
 "URLs).\n"
 "BRZ_SSH             Path to SSH client, or one of paramiko, openssh, "
 "sshcorp,\n"

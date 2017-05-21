@@ -10,7 +10,7 @@ which may be semi-permanent can also be controlled through the environment.
 BRZ_EMAIL
 ~~~~~~~~~
 
-Override the email id used by Bazaar.  Typical format::
+Override the email id used by Breezy.  Typical format::
 
   "John Doe <jdoe@example.com>"
 
@@ -34,7 +34,7 @@ Control whether SIGQUIT behaves normally or invokes a breakin debugger.
 BRZ_HOME
 ~~~~~~~~
 
-Override the home directory used by Bazaar.
+Override the home directory used by Breezy.
 
 BRZ_SSH
 ~~~~~~~
@@ -49,26 +49,26 @@ Control whether to launch a debugger on error.
 * 0 = Standard behavior
 * 1 = Launch debugger
 
-BRZ_REMOTE_PATH
+BZR_REMOTE_PATH
 ~~~~~~~~~~~~~~~
 
-Path to the Bazaar executable to use when using the bzr+ssh protocol.
+Path to the Bazaar or Breezy executable to use when using the bzr+ssh protocol.
 
 See also the ``bzr_remote_path`` configuration option.
 
 BRZ_EDITOR
 ~~~~~~~~~~
 
-Path to the editor Bazaar should use for commit messages, etc.
+Path to the editor Breezy should use for commit messages, etc.
 
 BRZ_LOG
 ~~~~~~~
 
-Location of the Bazaar log file. You can check the current location by
+Location of the Breezy log file. You can check the current location by
 running ``bzr version``.
 
 The log file contains debug information that is useful for diagnosing or
-reporting problems with Bazaar.
+reporting problems with Breezy.
 
 Setting this to ``NUL`` on Windows or ``/dev/null`` on other platforms
 will disable logging.
@@ -77,8 +77,8 @@ will disable logging.
 BRZ_PLUGIN_PATH
 ~~~~~~~~~~~~~~~
 
-The path to the plugins directory that Bazaar should use.
-If not set, Bazaar will search for plugins in:
+The path to the plugins directory that Breezy should use.
+If not set, Breezy will search for plugins in:
 
 * the user specific plugin directory (containing the ``user`` plugins),
 
@@ -178,7 +178,7 @@ Using a specific version of ``myplugin``:
 BRZPATH
 ~~~~~~~
 
-The path where Bazaar should look for shell plugin external commands.
+The path where Breezy should look for shell plugin external commands.
 
 
 http_proxy, https_proxy
@@ -197,7 +197,7 @@ Location
 ~~~~~~~~
 
 Configuration files are located in ``$HOME/.bazaar`` on Unix and
-``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0`` on
+``C:\Documents and Settings\<username>\Application Data\Breezy\2.0`` on
 Windows. (You can check the location for your system by using
 ``bzr version``.)
 
@@ -228,7 +228,7 @@ Comments
 
 A comment is any line that starts with a "#" (sometimes called a "hash
 mark", "pound sign" or "number sign"). Comment lines are ignored by
-Bazaar when parsing ini files.
+Breezy when parsing ini files.
 
 Section headers
 ^^^^^^^^^^^^^^^
@@ -448,7 +448,7 @@ ignore
 
 check-available
     (default) If gnupg signatures for revisions are present, check them.
-    Bazaar will fail if it finds a bad signature, but will not fail if
+    Breezy will fail if it finds a bad signature, but will not fail if
     no signature is present.
 
 create_signatures
@@ -483,7 +483,7 @@ gpg_signing_key
 
 The GnuPG user identity to use when signing commits.  Can be an e-mail
 address, key fingerprint or full key ID.  When unset or when set to
-"default" Bazaar will use the user e-mail set with ``whoami``.
+"default" Breezy will use the user e-mail set with ``whoami``.
 
 recurse
 ~~~~~~~
@@ -523,14 +523,14 @@ It is overridden by the BZR_REMOTE_PATH environment variable.
 smtp_server
 ~~~~~~~~~~~
 
-(Default: "localhost"). SMTP server to use when Bazaar needs to send
+(Default: "localhost"). SMTP server to use when Breezy needs to send
 email, eg. with ``merge-directive --mail-to``, or the bzr-email plugin.
 
 smtp_username, smtp_password
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 User and password to authenticate to the SMTP server. If smtp_username
-is set, and smtp_password is not, Bazaar will prompt for a password.
+is set, and smtp_password is not, Breezy will prompt for a password.
 These settings are only needed if the SMTP server requires authentication
 to send mail.
 

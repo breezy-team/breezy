@@ -1060,9 +1060,9 @@ class TestSSHConnections(tests.TestCaseWithTransport):
             bzr_remote_path = sys.executable + ' ' + self.get_brz_path()
         else:
             bzr_remote_path = self.get_brz_path()
-        self.overrideEnv('BRZ_REMOTE_PATH', bzr_remote_path)
+        self.overrideEnv('BZR_REMOTE_PATH', bzr_remote_path)
 
-        # Access the branch via a bzr+ssh URL.  The BRZ_REMOTE_PATH environment
+        # Access the branch via a bzr+ssh URL.  The BZR_REMOTE_PATH environment
         # variable is used to tell bzr what command to run on the remote end.
         path_to_branch = osutils.abspath('.')
         if sys.platform == 'win32':

@@ -733,20 +733,20 @@ class TestResolveUnversionedParent(TestResolveConflicts):
     # FIXME: While this *creates* UnversionedParent conflicts, this really only
     # tests MissingParent resolution :-/
     preamble = """
-$ bzr init trunk
+$ brz init trunk
 ...
 $ cd trunk
 $ mkdir dir
-$ bzr add -q dir
-$ bzr commit -m 'Create trunk' -q
+$ brz add -q dir
+$ brz commit -m 'Create trunk' -q
 $ echo 'trunk content' >dir/file
-$ bzr add -q dir/file
-$ bzr commit -q -m 'Add dir/file in trunk'
-$ bzr branch -q . -r 1 ../branch
+$ brz add -q dir/file
+$ brz commit -q -m 'Add dir/file in trunk'
+$ brz branch -q . -r 1 ../branch
 $ cd ../branch
-$ bzr rm dir -q
-$ bzr commit -q -m 'Remove dir in branch'
-$ bzr merge ../trunk
+$ brz rm dir -q
+$ brz commit -q -m 'Remove dir in branch'
+$ brz merge ../trunk
 2>+N  dir/
 2>+N  dir/file
 2>Conflict adding files to dir.  Created directory.
@@ -756,39 +756,39 @@ $ bzr merge ../trunk
 
     def test_take_this(self):
         self.run_script("""
-$ bzr rm -q dir --no-backup
-$ bzr resolve dir
+$ brz rm -q dir --no-backup
+$ brz resolve dir
 2>2 conflicts resolved, 0 remaining
-$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
+$ brz commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_take_other(self):
         self.run_script("""
-$ bzr resolve dir
+$ brz resolve dir
 2>2 conflicts resolved, 0 remaining
-$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
+$ brz commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
 
 class TestResolveMissingParent(TestResolveConflicts):
 
     preamble = """
-$ bzr init trunk
+$ brz init trunk
 ...
 $ cd trunk
 $ mkdir dir
 $ echo 'trunk content' >dir/file
-$ bzr add -q
-$ bzr commit -m 'Create trunk' -q
+$ brz add -q
+$ brz commit -m 'Create trunk' -q
 $ echo 'trunk content' >dir/file2
-$ bzr add -q dir/file2
-$ bzr commit -q -m 'Add dir/file2 in branch'
-$ bzr branch -q . -r 1 ../branch
+$ brz add -q dir/file2
+$ brz commit -q -m 'Add dir/file2 in branch'
+$ brz branch -q . -r 1 ../branch
 $ cd ../branch
-$ bzr rm -q dir/file --no-backup
-$ bzr rm -q dir
-$ bzr commit -q -m 'Remove dir/file'
-$ bzr merge ../trunk
+$ brz rm -q dir/file --no-backup
+$ brz rm -q dir
+$ brz commit -q -m 'Remove dir/file'
+$ brz merge ../trunk
 2>+N  dir/
 2>+N  dir/file2
 2>Conflict adding files to dir.  Created directory.
@@ -798,62 +798,62 @@ $ bzr merge ../trunk
 
     def test_keep_them_all(self):
         self.run_script("""
-$ bzr resolve dir
+$ brz resolve dir
 2>2 conflicts resolved, 0 remaining
-$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
+$ brz commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_adopt_child(self):
         self.run_script("""
-$ bzr mv -q dir/file2 file2
-$ bzr rm -q dir --no-backup
-$ bzr resolve dir
+$ brz mv -q dir/file2 file2
+$ brz rm -q dir --no-backup
+$ brz resolve dir
 2>2 conflicts resolved, 0 remaining
-$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
+$ brz commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_kill_them_all(self):
         self.run_script("""
-$ bzr rm -q dir --no-backup
-$ bzr resolve dir
+$ brz rm -q dir --no-backup
+$ brz resolve dir
 2>2 conflicts resolved, 0 remaining
-$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
+$ brz commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_resolve_taking_this(self):
         self.run_script("""
-$ bzr resolve --take-this dir
+$ brz resolve --take-this dir
 2>...
-$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
+$ brz commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_resolve_taking_other(self):
         self.run_script("""
-$ bzr resolve --take-other dir
+$ brz resolve --take-other dir
 2>...
-$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
+$ brz commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
 
 class TestResolveDeletingParent(TestResolveConflicts):
 
     preamble = """
-$ bzr init trunk
+$ brz init trunk
 ...
 $ cd trunk
 $ mkdir dir
 $ echo 'trunk content' >dir/file
-$ bzr add -q
-$ bzr commit -m 'Create trunk' -q
-$ bzr rm -q dir/file --no-backup
-$ bzr rm -q dir --no-backup
-$ bzr commit -q -m 'Remove dir/file'
-$ bzr branch -q . -r 1 ../branch
+$ brz add -q
+$ brz commit -m 'Create trunk' -q
+$ brz rm -q dir/file --no-backup
+$ brz rm -q dir --no-backup
+$ brz commit -q -m 'Remove dir/file'
+$ brz branch -q . -r 1 ../branch
 $ cd ../branch
 $ echo 'branch content' >dir/file2
-$ bzr add -q dir/file2
-$ bzr commit -q -m 'Add dir/file2 in branch'
-$ bzr merge ../trunk
+$ brz add -q dir/file2
+$ brz commit -q -m 'Add dir/file2 in branch'
+$ brz merge ../trunk
 2>-D  dir/file
 2>Conflict: can't delete dir because it is not empty.  Not deleting.
 2>Conflict because dir is not versioned, but has versioned children.  Versioned directory.
@@ -862,42 +862,42 @@ $ bzr merge ../trunk
 
     def test_keep_them_all(self):
         self.run_script("""
-$ bzr resolve dir
+$ brz resolve dir
 2>2 conflicts resolved, 0 remaining
-$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
+$ brz commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_adopt_child(self):
         self.run_script("""
-$ bzr mv -q dir/file2 file2
-$ bzr rm -q dir --no-backup
-$ bzr resolve dir
+$ brz mv -q dir/file2 file2
+$ brz rm -q dir --no-backup
+$ brz resolve dir
 2>2 conflicts resolved, 0 remaining
-$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
+$ brz commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_kill_them_all(self):
         self.run_script("""
-$ bzr rm -q dir --no-backup
-$ bzr resolve dir
+$ brz rm -q dir --no-backup
+$ brz resolve dir
 2>2 conflicts resolved, 0 remaining
-$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
+$ brz commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_resolve_taking_this(self):
         self.run_script("""
-$ bzr resolve --take-this dir
+$ brz resolve --take-this dir
 2>2 conflicts resolved, 0 remaining
-$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
+$ brz commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_resolve_taking_other(self):
         self.run_script("""
-$ bzr resolve --take-other dir
+$ brz resolve --take-other dir
 2>deleted dir/file2
 2>deleted dir
 2>2 conflicts resolved, 0 remaining
-$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
+$ brz commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
 
@@ -996,21 +996,21 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
 class TestResolveNonDirectoryParent(TestResolveConflicts):
 
     preamble = """
-$ bzr init trunk
+$ brz init trunk
 ...
 $ cd trunk
-$ bzr mkdir foo
+$ brz mkdir foo
 ...
-$ bzr commit -m 'Create trunk' -q
+$ brz commit -m 'Create trunk' -q
 $ echo "Boing" >foo/bar
-$ bzr add -q foo/bar
-$ bzr commit -q -m 'Add foo/bar'
-$ bzr branch -q . -r 1 ../branch
+$ brz add -q foo/bar
+$ brz commit -q -m 'Add foo/bar'
+$ brz branch -q . -r 1 ../branch
 $ cd ../branch
 $ rm -r foo
 $ echo "Boo!" >foo
-$ bzr commit -q -m 'foo is now a file'
-$ bzr merge ../trunk
+$ brz commit -q -m 'foo is now a file'
+$ brz merge ../trunk
 2>+N  foo.new/bar
 2>RK  foo => foo.new/
 # FIXME: The message is misleading, foo.new *is* a directory when the message
@@ -1021,36 +1021,36 @@ $ bzr merge ../trunk
 
     def test_take_this(self):
         self.run_script("""
-$ bzr rm -q foo.new --no-backup
+$ brz rm -q foo.new --no-backup
 # FIXME: Isn't it weird that foo is now unkown even if foo.new has been put
 # aside ? -- vila 090916
-$ bzr add -q foo
-$ bzr resolve foo.new
+$ brz add -q foo
+$ brz resolve foo.new
 2>1 conflict resolved, 0 remaining
-$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
+$ brz commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_take_other(self):
         self.run_script("""
-$ bzr rm -q foo --no-backup
-$ bzr mv -q foo.new foo
-$ bzr resolve foo
+$ brz rm -q foo --no-backup
+$ brz mv -q foo.new foo
+$ brz resolve foo
 2>1 conflict resolved, 0 remaining
-$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
+$ brz commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_resolve_taking_this(self):
         self.run_script("""
-$ bzr resolve --take-this foo.new
+$ brz resolve --take-this foo.new
 2>...
-$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
+$ brz commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_resolve_taking_other(self):
         self.run_script("""
-$ bzr resolve --take-other foo.new
+$ brz resolve --take-other foo.new
 2>...
-$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
+$ brz commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
 
@@ -1062,22 +1062,22 @@ class TestMalformedTransform(script.TestCaseWithTransportAndScript):
         # conflict.
         self.assertRaises(errors.MalformedTransform,
                           self.run_script,"""
-$ bzr init trunk
+$ brz init trunk
 ...
 $ cd trunk
-$ bzr mkdir foo
+$ brz mkdir foo
 ...
-$ bzr commit -m 'Create trunk' -q
+$ brz commit -m 'Create trunk' -q
 $ rm -r foo
 $ echo "Boo!" >foo
-$ bzr commit -m 'foo is now a file' -q
-$ bzr branch -q . -r 1 ../branch -q
+$ brz commit -m 'foo is now a file' -q
+$ brz branch -q . -r 1 ../branch -q
 $ cd ../branch
 $ echo "Boing" >foo/bar
-$ bzr add -q foo/bar -q
-$ bzr commit -m 'Add foo/bar' -q
-$ bzr merge ../trunk
-2>bzr: ERROR: Tree transform is malformed [('unversioned executability', 'new-1')]
+$ brz add -q foo/bar -q
+$ brz commit -m 'Add foo/bar' -q
+$ brz merge ../trunk
+2>brz: ERROR: Tree transform is malformed [('unversioned executability', 'new-1')]
 """)
 
 
@@ -1085,81 +1085,81 @@ class TestNoFinalPath(script.TestCaseWithTransportAndScript):
 
     def test_bug_805809(self):
         self.run_script("""
-$ bzr init trunk
+$ brz init trunk
 Created a standalone tree (format: 2a)
 $ cd trunk
 $ echo trunk >file
-$ bzr add
+$ brz add
 adding file
-$ bzr commit -m 'create file on trunk'
+$ brz commit -m 'create file on trunk'
 2>Committing to: .../trunk/
 2>added file
 2>Committed revision 1.
 # Create a debian branch based on trunk
 $ cd ..
-$ bzr branch trunk -r 1 debian
+$ brz branch trunk -r 1 debian
 2>Branched 1 revision.
 $ cd debian
 $ mkdir dir
-$ bzr add
+$ brz add
 adding dir
-$ bzr mv file dir
+$ brz mv file dir
 file => dir/file
-$ bzr commit -m 'rename file to dir/file for debian'
+$ brz commit -m 'rename file to dir/file for debian'
 2>Committing to: .../debian/
 2>added dir
 2>renamed file => dir/file
 2>Committed revision 2.
 # Create an experimental branch with a new root-id
 $ cd ..
-$ bzr init experimental
+$ brz init experimental
 Created a standalone tree (format: 2a)
 $ cd experimental
 # Work around merging into empty branch not being supported
 # (http://pad.lv/308562)
 $ echo something >not-empty
-$ bzr add
+$ brz add
 adding not-empty
-$ bzr commit -m 'Add some content in experimental'
+$ brz commit -m 'Add some content in experimental'
 2>Committing to: .../experimental/
 2>added not-empty
 2>Committed revision 1.
 # merge debian even without a common ancestor
-$ bzr merge ../debian -r0..2
+$ brz merge ../debian -r0..2
 2>+N  dir/
 2>+N  dir/file
 2>All changes applied successfully.
-$ bzr commit -m 'merging debian into experimental'
+$ brz commit -m 'merging debian into experimental'
 2>Committing to: .../experimental/
 2>added dir
 2>added dir/file
 2>Committed revision 2.
 # Create an ubuntu branch with yet another root-id
 $ cd ..
-$ bzr init ubuntu
+$ brz init ubuntu
 Created a standalone tree (format: 2a)
 $ cd ubuntu
 # Work around merging into empty branch not being supported
 # (http://pad.lv/308562)
 $ echo something >not-empty-ubuntu
-$ bzr add
+$ brz add
 adding not-empty-ubuntu
-$ bzr commit -m 'Add some content in experimental'
+$ brz commit -m 'Add some content in experimental'
 2>Committing to: .../ubuntu/
 2>added not-empty-ubuntu
 2>Committed revision 1.
 # Also merge debian
-$ bzr merge ../debian -r0..2
+$ brz merge ../debian -r0..2
 2>+N  dir/
 2>+N  dir/file
 2>All changes applied successfully.
-$ bzr commit -m 'merging debian'
+$ brz commit -m 'merging debian'
 2>Committing to: .../ubuntu/
 2>added dir
 2>added dir/file
 2>Committed revision 2.
 # Now try to merge experimental
-$ bzr merge ../experimental
+$ brz merge ../experimental
 2>+N  not-empty
 2>Path conflict: dir / dir
 2>1 conflicts encountered.

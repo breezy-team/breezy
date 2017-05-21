@@ -79,7 +79,8 @@ class XMLRPCTransport(xmlrpclib.Transport):
 class LaunchpadService(object):
     """A service to talk to Launchpad via XMLRPC.
 
-    See http://wiki.bazaar.canonical.com/Specs/LaunchpadRpc for the methods we can call.
+    See http://wiki.bazaar.canonical.com/Specs/LaunchpadRpc for the methods we
+    can call.
     """
 
     LAUNCHPAD_DOMAINS = {
@@ -285,7 +286,7 @@ class DryRunLaunchpadService(LaunchpadService):
 
 
 class BranchRegistrationRequest(BaseRequest):
-    """Request to tell Launchpad about a bzr branch."""
+    """Request to tell Launchpad about a brz branch."""
 
     _methodname = 'register_branch'
 
@@ -326,7 +327,7 @@ class BranchRegistrationRequest(BaseRequest):
 
 
 class BranchBugLinkRequest(BaseRequest):
-    """Request to link a bzr branch in Launchpad to a bug."""
+    """Request to link a brz branch in Launchpad to a bug."""
 
     _methodname = 'link_branch_to_bug'
 

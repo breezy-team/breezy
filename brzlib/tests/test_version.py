@@ -33,14 +33,14 @@ load_tests = load_tests_apply_scenarios
 
 class TestBzrlibVersioning(tests.TestCase):
 
-    def test_get_bzr_source_tree(self):
+    def test_get_brz_source_tree(self):
         """Get tree for bzr source, if any."""
         self.permit_source_tree_branch_repo()
         # We don't know if these tests are being run from a checkout or branch
         # of bzr, from an installed copy, or from source unpacked from a
         # tarball.  We don't construct a branch just for testing this, so we
         # just assert that it must either return None or the tree.
-        src_tree = version._get_bzr_source_tree()
+        src_tree = version._get_brz_source_tree()
         if src_tree is None:
             raise tests.TestSkipped(
                 "bzr tests aren't run from a bzr working tree")

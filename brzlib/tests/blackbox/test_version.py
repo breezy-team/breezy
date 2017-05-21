@@ -39,7 +39,7 @@ class TestVersion(TestCase):
         output = self.run_bzr('version')[0]
         self.log('brz version output:')
         self.log(output)
-        self.assertTrue(output.startswith('Bazaar (bzr) '))
+        self.assertTrue(output.startswith('Breezy (brz) '))
         self.assertNotEqual(output.index('Canonical'), -1)
         # make sure --version is consistent
         tmp_output = self.run_bzr('--version')[0]
@@ -50,12 +50,12 @@ class TestVersion(TestCase):
         out = self.run_bzr("version")[0]
         self.assertTrue(len(out) > 0)
         self.assertEqualDiff(out.splitlines()[0],
-            "Bazaar (bzr) %s" % brzlib.__version__)
+            "Breezy (brz) %s" % brzlib.__version__)
         self.assertContainsRe(out, r"(?m)^  Python interpreter:")
         self.assertContainsRe(out, r"(?m)^  Python standard library:")
         self.assertContainsRe(out, r"(?m)^  brzlib:")
-        self.assertContainsRe(out, r"(?m)^  Bazaar configuration:")
-        self.assertContainsRe(out, r'(?m)^  Bazaar log file:.*\.bzr\.log')
+        self.assertContainsRe(out, r"(?m)^  Breezy configuration:")
+        self.assertContainsRe(out, r'(?m)^  Breezy log file:.*\.brz\.log')
 
     def test_version_short(self):
         self.permit_source_tree_branch_repo()
@@ -67,21 +67,21 @@ class TestVersionUnicodeOutput(TestCaseInTempDir):
 
     def _check(self, args):
         self.permit_source_tree_branch_repo()
-        # Even though trace._bzr_log_filename variable
+        # Even though trace._brz_log_filename variable
         # is used only to keep actual log filename
         # and changing this variable in selftest
-        # don't change main .bzr.log location,
+        # don't change main .brz.log location,
         # and therefore pretty safe,
         # but we run these tests in separate temp dir
         # with relative unicoded path
-        old_trace_file = trace._bzr_log_filename
-        trace._bzr_log_filename = u'\u1234/.bzr.log'
+        old_trace_file = trace._brz_log_filename
+        trace._brz_log_filename = u'\u1234/.brz.log'
         try:
             out = self.run_bzr(args)[0]
         finally:
-            trace._bzr_log_filename = old_trace_file
+            trace._brz_log_filename = old_trace_file
         self.assertTrue(len(out) > 0)
-        self.assertContainsRe(out, r'(?m)^  Bazaar log file:.*bzr\.log')
+        self.assertContainsRe(out, r'(?m)^  Breezy log file:.*brz\.log')
 
     def test_command(self):
         self._check("version")
@@ -99,38 +99,38 @@ class TestVersionUnicodeOutput(TestCaseInTempDir):
         self.permit_source_tree_branch_repo()
         out = self.run_bzr("version")[0]
         self.assertTrue(len(out) > 0)
-        self.assertContainsRe(out, r"(?m)^  Bazaar configuration: " + str_val)
+        self.assertContainsRe(out, r"(?m)^  Breezy configuration: " + str_val)
 
 
 class TestVersionBzrLogLocation(TestCaseInTempDir):
 
     def test_simple(self):
-        bzr_log = 'my.bzr.log'
-        self.overrideEnv('BRZ_LOG', bzr_log)
-        default_log = os.path.join(os.environ['BRZ_HOME'], '.bzr.log')
-        self.assertPathDoesNotExist([default_log, bzr_log])
+        brz_log = 'my.brz.log'
+        self.overrideEnv('BRZ_LOG', brz_log)
+        default_log = os.path.join(os.environ['BRZ_HOME'], '.brz.log')
+        self.assertPathDoesNotExist([default_log, brz_log])
         out = self.run_bzr_subprocess('version')[0]
         self.assertTrue(len(out) > 0)
-        self.assertContainsRe(out, r"(?m)^  Bazaar log file: " + bzr_log)
+        self.assertContainsRe(out, r"(?m)^  Breezy log file: " + brz_log)
         self.assertPathDoesNotExist(default_log)
-        self.assertPathExists(bzr_log)
+        self.assertPathExists(brz_log)
 
     def test_dev_null(self):
         # This test uses a subprocess to cause the log opening logic to
         # execute. It would be better to just execute that logic directly.
         if sys.platform == 'win32':
-            bzr_log = 'NUL'
+            brz_log = 'NUL'
         else:
-            bzr_log = '/dev/null'
-        self.overrideEnv('BRZ_LOG', bzr_log)
-        default_log = os.path.join(os.environ['BRZ_HOME'], '.bzr.log')
+            brz_log = '/dev/null'
+        self.overrideEnv('BRZ_LOG', brz_log)
+        default_log = os.path.join(os.environ['BRZ_HOME'], '.brz.log')
         self.assertPathDoesNotExist(default_log)
         out = self.run_bzr_subprocess('version')[0]
         self.assertTrue(len(out) > 0)
-        self.assertContainsRe(out, r"(?m)^  Bazaar log file: " + bzr_log)
+        self.assertContainsRe(out, r"(?m)^  Breezy log file: " + brz_log)
         self.assertPathDoesNotExist(default_log)
 
-    def test_unicode_bzr_log(self):
+    def test_unicode_brz_log(self):
         uni_val = u"\xa7"
         enc = osutils.get_user_encoding()
         try:
@@ -143,6 +143,4 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
             os.path.join(self.test_base_dir, uni_val).encode(enc))
         out, err = self.run_bzr_subprocess("version")
         uni_out = out.decode(enc)
-        self.assertContainsRe(uni_out, u"(?m)^  Bazaar log file: .*/\xa7$")
-
-
+        self.assertContainsRe(uni_out, u"(?m)^  Breezy log file: .*/\xa7$")

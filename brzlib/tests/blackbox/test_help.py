@@ -34,7 +34,7 @@ class TestHelp(tests.TestCaseWithTransport):
         for cmd in ['--help', 'help', '-h', '-?']:
             output = self.run_bzr(cmd)[0]
             line1 = output.split('\n')[0]
-            if not line1.startswith('Bazaar'):
+            if not line1.startswith('Breezy'):
                 self.fail("bad output from brz %s:\n%r" % (cmd, output))
         # see https://launchpad.net/products/bzr/+bug/35940, -h doesn't work
 

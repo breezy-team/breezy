@@ -586,9 +586,9 @@ class Config(object):
 
     def get_bzr_remote_path(self):
         try:
-            return os.environ['BRZ_REMOTE_PATH']
+            return os.environ['BZR_REMOTE_PATH']
         except KeyError:
-            path = self.get_user_option("brz_remote_path")
+            path = self.get_user_option("bzr_remote_path")
             if path is None:
                 path = 'bzr'
             return path
@@ -609,8 +609,8 @@ class Config(object):
     def get_merge_tools(self):
         tools = {}
         for (oname, value, section, conf_id, parser) in self._get_options():
-            if oname.startswith('brz.mergetool.'):
-                tool_name = oname[len('brz.mergetool.'):]
+            if oname.startswith('bzr.mergetool.'):
+                tool_name = oname[len('bzr.mergetool.'):]
                 tools[tool_name] = self.get_user_option(oname, False)
         trace.mutter('loaded merge tools: %r' % tools)
         return tools
@@ -620,7 +620,7 @@ class Config(object):
         # be found in the known_merge_tools if it's not found in the config.
         # This should be done through the proposed config defaults mechanism
         # when it becomes available in the future.
-        command_line = (self.get_user_option('brz.mergetool.%s' % name,
+        command_line = (self.get_user_option('bzr.mergetool.%s' % name,
                                              expand=False)
                         or mergetools.known_merge_tools.get(name, None))
         return command_line
@@ -1484,7 +1484,7 @@ def ensure_config_dir_exists(path=None):
         osutils.copy_ownership_from_path(path)
 
 
-def config_dir():
+def bazaar_config_dir():
     """Return per-user configuration directory as unicode string
 
     By default this is %APPDATA%/bazaar/2.0 on Windows, ~/.bazaar on Mac OS X
@@ -1493,7 +1493,7 @@ def config_dir():
 
     TODO: Global option --config-dir to override this.
     """
-    base = osutils.path_from_environ('BRZ_HOME')
+    base = osutils.path_from_environ('BZR_HOME')
     if sys.platform == 'win32':
         if base is None:
             base = win32utils.get_appdata_location()
@@ -1513,6 +1513,39 @@ def config_dir():
             return xdg_dir
         base = osutils._get_home_dir()
     return osutils.pathjoin(base, ".bazaar")
+
+
+def config_dir():
+    """Return per-user configuration directory as unicode string
+
+    By default this is %APPDATA%/breezy on Windows, $XDG_CONFIG_HOME/breezy on
+    Mac OS X and Linux. If the breezy config directory doesn't exist but
+    the bazaar one (see bazaar_config_dir()) does, use that instead.
+
+    TODO: Global option --config-dir to override this.
+    """
+    base = osutils.path_from_environ('BRZ_HOME')
+    if sys.platform == 'win32':
+        if base is None:
+            base = win32utils.get_appdata_location()
+        if base is None:
+            base = win32utils.get_home_location()
+        # GZ 2012-02-01: Really the two level subdirs only make sense inside
+        #                APPDATA, but hard to move. See bug 348640 for more.
+    if base is None:
+        base = osutils.path_from_environ('XDG_CONFIG_HOME')
+        if base is None:
+            base = osutils.pathjoin(osutils._get_home_dir(), ".config")
+    breezy_dir = osutils.pathjoin(base, 'breezy')
+    if osutils.isdir(breezy_dir):
+        return breezy_dir
+    # If the breezy directory doesn't exist, but the bazaar one does, use that:
+    bazaar_dir = bazaar_config_dir()
+    if osutils.isdir(bazaar_dir):
+        trace.mutter(
+            "Using Bazaar configuration directory (%s)", bazaar_dir)
+        return bazaar_dir
+    return breezy_dir
 
 
 def config_filename():

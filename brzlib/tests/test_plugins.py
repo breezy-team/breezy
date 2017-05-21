@@ -247,7 +247,7 @@ class TestLoadingPlugins(BaseTestPlugins):
         stream = StringIO()
         try:
             handler = logging.StreamHandler(stream)
-            log = logging.getLogger('bzr')
+            log = logging.getLogger('brz')
             log.addHandler(handler)
             try:
                 try:
@@ -293,11 +293,11 @@ class TestLoadingPlugins(BaseTestPlugins):
 
     def test_plugin_with_bad_name_does_not_load(self):
         # The file name here invalid for a python module.
-        name = 'bzr-bad plugin-name..py'
+        name = 'brz-bad plugin-name..py'
         file(name, 'w').close()
         log = self.load_and_capture(name)
         self.assertContainsRe(log,
-            r"Unable to load 'bzr-bad plugin-name\.' in '\.' as a plugin "
+            r"Unable to load 'brz-bad plugin-name\.' in '\.' as a plugin "
             "because the file path isn't a valid module name; try renaming "
             "it to 'bad_plugin_name_'\.")
 

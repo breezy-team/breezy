@@ -561,29 +561,30 @@ class TestConfigPath(tests.TestCase):
         self.overrideEnv('XDG_CACHE_HOME', '')
         if sys.platform == 'win32':
             self.overrideEnv(
-                'BRZ_HOME', r'C:\Documents and Settings\bogus\Application Data')
-            self.bzr_home = \
-                'C:/Documents and Settings/bogus/Application Data/bazaar/2.0'
+                'BRZ_HOME',
+                r'C:\Documents and Settings\bogus\Application Data')
+            self.brz_home = \
+                'C:/Documents and Settings/bogus/Application Data/breezy'
         else:
-            self.bzr_home = '/home/bogus/.bazaar'
+            self.brz_home = '/home/bogus/.config/breezy'
 
     def test_config_dir(self):
-        self.assertEqual(config.config_dir(), self.bzr_home)
+        self.assertEqual(config.config_dir(), self.brz_home)
 
     def test_config_dir_is_unicode(self):
         self.assertIsInstance(config.config_dir(), unicode)
 
     def test_config_filename(self):
         self.assertEqual(config.config_filename(),
-                         self.bzr_home + '/bazaar.conf')
+                         self.brz_home + '/bazaar.conf')
 
     def test_locations_config_filename(self):
         self.assertEqual(config.locations_config_filename(),
-                         self.bzr_home + '/locations.conf')
+                         self.brz_home + '/locations.conf')
 
     def test_authentication_config_filename(self):
         self.assertEqual(config.authentication_config_filename(),
-                         self.bzr_home + '/authentication.conf')
+                         self.brz_home + '/authentication.conf')
 
     def test_xdg_cache_dir(self):
         self.assertEqual(config.xdg_cache_dir(),
@@ -1721,7 +1722,7 @@ other_url = /other-subdir
         self.assertEqual('bzr', my_config.get_bzr_remote_path())
         my_config.set_user_option('bzr_remote_path', '/path-bzr')
         self.assertEqual('/path-bzr', my_config.get_bzr_remote_path())
-        self.overrideEnv('BRZ_REMOTE_PATH', '/environ-bzr')
+        self.overrideEnv('BZR_REMOTE_PATH', '/environ-bzr')
         self.assertEqual('/environ-bzr', my_config.get_bzr_remote_path())
 
 

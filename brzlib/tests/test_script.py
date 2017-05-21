@@ -63,14 +63,14 @@ class TestSyntax(tests.TestCase):
                            script._script_to_commands('$ cd trunk'))
 
     def test_command_with_single_quoted_param(self):
-        story = """$ bzr commit -m 'two words'"""
-        self.assertEqual([(['bzr', 'commit', '-m', "'two words'"],
+        story = """$ brz commit -m 'two words'"""
+        self.assertEqual([(['brz', 'commit', '-m', "'two words'"],
                             None, None, None)],
                            script._script_to_commands(story))
 
     def test_command_with_double_quoted_param(self):
-        story = """$ bzr commit -m "two words" """
-        self.assertEqual([(['bzr', 'commit', '-m', '"two words"'],
+        story = """$ brz commit -m "two words" """
+        self.assertEqual([(['brz', 'commit', '-m', '"two words"'],
                             None, None, None)],
                            script._script_to_commands(story))
 
@@ -83,31 +83,31 @@ class TestSyntax(tests.TestCase):
         # scripts are commonly given indented within the test source code, and
         # common indentation is stripped off
         story = """
-            $ bzr add
+            $ brz add
             adding file
             adding file2
             """
-        self.assertEqual([(['bzr', 'add'], None,
+        self.assertEqual([(['brz', 'add'], None,
                             'adding file\nadding file2\n', None)],
                           script._script_to_commands(story))
 
     def test_command_with_output(self):
         story = """
-$ bzr add
+$ brz add
 adding file
 adding file2
 """
-        self.assertEqual([(['bzr', 'add'], None,
+        self.assertEqual([(['brz', 'add'], None,
                             'adding file\nadding file2\n', None)],
                           script._script_to_commands(story))
 
     def test_command_with_error(self):
         story = """
-$ bzr branch foo
-2>bzr: ERROR: Not a branch: "foo"
+$ brz branch foo
+2>brz: ERROR: Not a branch: "foo"
 """
-        self.assertEqual([(['bzr', 'branch', 'foo'],
-                            None, None, 'bzr: ERROR: Not a branch: "foo"\n')],
+        self.assertEqual([(['brz', 'branch', 'foo'],
+                            None, None, 'brz: ERROR: Not a branch: "foo"\n')],
                           script._script_to_commands(story))
 
     def test_input_without_command(self):
@@ -118,9 +118,9 @@ $ bzr branch foo
 
     def test_command_with_backquotes(self):
         story = """
-$ foo = `bzr file-id toto`
+$ foo = `brz file-id toto`
 """
-        self.assertEqual([(['foo', '=', '`bzr file-id toto`'],
+        self.assertEqual([(['foo', '=', '`brz file-id toto`'],
                             None, None, None)],
                           script._script_to_commands(story))
 
@@ -219,13 +219,13 @@ The cd command ouputs nothing
         story = """
 $ cat
 <Hello
-$ bzr not-a-command
+$ brz not-a-command
 """
         self.assertRaises(AssertionError, self.run_script, story)
 
     def test_continue_on_expected_error(self):
         story = """
-$ bzr not-a-command
+$ brz not-a-command
 2>..."not-a-command"
 """
         self.run_script(story)
@@ -233,13 +233,13 @@ $ bzr not-a-command
     def test_continue_on_error_output(self):
         # The status matters, not the output
         story = """
-$ bzr init
+$ brz init
 ...
 $ cat >file
 <Hello
-$ bzr add file
+$ brz add file
 ...
-$ bzr commit -m 'adding file'
+$ brz commit -m 'adding file'
 2>...
 """
         self.run_script(story)
@@ -256,14 +256,14 @@ last line
 """
         self.run_script(story)
         story = """
-$ bzr not-a-command
+$ brz not-a-command
 2>..."not-a-command"
 """
         self.run_script(story)
 
         story = """
-$ bzr branch not-a-branch
-2>bzr: ERROR: Not a branch...not-a-branch/".
+$ brz branch not-a-branch
+2>brz: ERROR: Not a branch...not-a-branch/".
 """
         self.run_script(story)
 
@@ -297,7 +297,7 @@ cat dog "chicken" 'dragon'
         """
         # see also 656694; we should get rid of global verbosity
         self.run_script("""
-        $ bzr init --quiet a
+        $ brz init --quiet a
         """)
         self.assertEqual(trace.is_quiet(), False)
 
@@ -409,11 +409,11 @@ $ cd dir
         self.assertEqual(self.test_dir, osutils.getcwd())
 
 
-class TestBzr(script.TestCaseWithTransportAndScript):
+class TestBrz(script.TestCaseWithTransportAndScript):
 
-    def test_bzr_smoke(self):
+    def test_brz_smoke(self):
         self.run_script("""
-            $ bzr init branch
+            $ brz init branch
             Created a standalone tree (format: ...)
             """)
         self.assertPathExists('branch')
@@ -579,11 +579,11 @@ class TestUserInteraction(script.TestCaseWithMemoryTransportAndScript):
         commands.builtin_command_registry.register(cmd_test_confirm)
         self.addCleanup(commands.builtin_command_registry.remove, 'test-confirm')
         self.run_script("""
-            $ bzr test-confirm
+            $ brz test-confirm
             2>Really do it? ([y]es, [n]o): yes
             <y
             Do it!
-            $ bzr test-confirm
+            $ brz test-confirm
             2>Really do it? ([y]es, [n]o): no
             <n
             ok, no
@@ -594,13 +594,13 @@ class TestShelve(script.TestCaseWithTransportAndScript):
     def setUp(self):
         super(TestShelve, self).setUp()
         self.run_script("""
-            $ bzr init test
+            $ brz init test
             Created a standalone tree (format: 2a)
             $ cd test
             $ echo foo > file
-            $ bzr add
+            $ brz add
             adding file
-            $ bzr commit -m 'file added'
+            $ brz commit -m 'file added'
             2>Committing to:...test/
             2>added file
             2>Committed revision 1.
@@ -609,7 +609,7 @@ class TestShelve(script.TestCaseWithTransportAndScript):
 
     def test_shelve(self):
         self.run_script("""
-            $ bzr shelve -m 'shelve bar'
+            $ brz shelve -m 'shelve bar'
             2>Shelve? ([y]es, [N]o, [f]inish, [q]uit): yes
             <y
             2>Selected changes:
@@ -620,20 +620,20 @@ class TestShelve(script.TestCaseWithTransportAndScript):
             """,
                         null_output_matches_anything=True)
         self.run_script("""
-            $ bzr shelve --list
+            $ brz shelve --list
               1: shelve bar
             """)
 
     def test_dont_shelve(self):
         # We intentionally provide no input here to test EOF
         self.run_script("""
-            $ bzr shelve -m 'shelve bar'
+            $ brz shelve -m 'shelve bar'
             2>Shelve? ([y]es, [N]o, [f]inish, [q]uit): 
             2>No changes to shelve.
             """,
                         null_output_matches_anything=True)
         self.run_script("""
-            $ bzr st
+            $ brz st
             modified:
               file
             """)

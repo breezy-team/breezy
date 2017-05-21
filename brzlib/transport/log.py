@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Transport decorator that logs transport operations to .bzr.log."""
+"""Transport decorator that logs transport operations to .brz.log."""
 
 from __future__ import absolute_import
 
@@ -31,7 +31,7 @@ from brzlib.transport import decorator
 
 
 class TransportLogDecorator(decorator.TransportDecorator):
-    """Decorator for Transports that logs interesting operations to .bzr.log.
+    """Decorator for Transports that logs interesting operations to .brz.log.
 
     In general we want to log things that usually take a network round trip
     and may be slow.

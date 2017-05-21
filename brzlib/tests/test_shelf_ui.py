@@ -578,7 +578,7 @@ class TestUnshelveScripts(TestUnshelver,
         self.create_tree_with_shelf()
         self.run_script("""
 $ cd tree
-$ bzr unshelve --keep
+$ brz unshelve --keep
 2>Using changes with id "1".
 2> M  foo
 2>All changes applied successfully.
@@ -588,7 +588,7 @@ $ bzr unshelve --keep
         self.create_tree_with_shelf()
         self.run_script("""
 $ cd tree
-$ bzr unshelve --delete-only
+$ brz unshelve --delete-only
 2>Deleted changes with id "1".
 """)
 
@@ -596,7 +596,7 @@ $ bzr unshelve --delete-only
         self.create_tree_with_shelf()
         self.run_script("""
 $ cd tree
-$ bzr unshelve --apply
+$ brz unshelve --apply
 2>Using changes with id "1".
 2> M  foo
 2>All changes applied successfully.
@@ -607,7 +607,7 @@ $ bzr unshelve --apply
         self.create_tree_with_shelf()
         self.run_script("""
 $ cd tree
-$ bzr unshelve --dry-run
+$ brz unshelve --dry-run
 2>Using changes with id "1".
 2> M  foo
 """)
