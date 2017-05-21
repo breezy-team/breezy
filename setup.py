@@ -39,6 +39,7 @@ META_INFO = {
     'version':      brzlib.__version__,
     'author':       'Canonical Ltd',
     'author_email': 'bazaar@lists.canonical.com',
+    'maintainer':   'Breezy Developers',
     'url':          'http://bazaar.canonical.com/',
     'description':  'Friendly distributed version control system',
     'license':      'GNU GPL v2',
