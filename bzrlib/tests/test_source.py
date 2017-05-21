@@ -162,8 +162,6 @@ class TestSource(TestSourceHelper):
     def is_copyright_exception(self, fname):
         """Certain files are allowed to be different"""
         if not self.is_our_code(fname):
-            # We don't ask that external utilities or plugins be
-            # (C) Canonical Ltd
             return True
         for exc in COPYRIGHT_EXCEPTIONS:
             if fname.endswith(exc):
@@ -192,16 +190,16 @@ class TestSource(TestSourceHelper):
         incorrect = []
 
         copyright_re = re.compile('#\\s*copyright.*(?=\n)', re.I)
-        copyright_canonical_re = re.compile(
+        copyright_statement_re = re.compile(
             r'# Copyright \(C\) '  # Opening "# Copyright (C)"
-            r'(\d+)(, \d+)*'       # followed by a series of dates
-            r'.*Canonical Ltd')    # and containing 'Canonical Ltd'.
+            r'(\d+?)((, |-)\d+)*'  # followed by a series of dates
+            r' [^ ]*')             # and then whoever.
 
         for fname, text in self.get_source_file_contents(
                 extensions=('.py', '.pyx')):
             if self.is_copyright_exception(fname):
                 continue
-            match = copyright_canonical_re.search(text)
+            match = copyright_statement_re.search(text)
             if not match:
                 match = copyright_re.search(text)
                 if match:
@@ -223,7 +221,7 @@ class TestSource(TestSourceHelper):
                          " bzrlib/tests/test_source.py",
                          # this is broken to prevent a false match
                          "or add '# Copyright (C)"
-                         " 2007 Canonical Ltd' to these files:",
+                         " 2007 Bazaar hackers' to these files:",
                          "",
                         ]
             for fname, comment in incorrect:
