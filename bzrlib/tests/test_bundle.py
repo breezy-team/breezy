@@ -16,7 +16,10 @@
 
 from cStringIO import StringIO
 import os
-import SocketServer
+try:
+    import socketserver
+except ImportError:
+    import SocketServer as socketserver
 import sys
 
 from bzrlib import (
@@ -1856,7 +1859,7 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
         self.assertRaises(errors.ConnectionReset, read_mergeable_from_url, url)
 
 
-class DisconnectingHandler(SocketServer.BaseRequestHandler):
+class DisconnectingHandler(socketserver.BaseRequestHandler):
     """A request handler that immediately closes any connection made to it."""
 
     def handle(self):

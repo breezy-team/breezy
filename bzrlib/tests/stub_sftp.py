@@ -22,7 +22,10 @@ Adapted from the one in paramiko's unit tests.
 import os
 import paramiko
 import socket
-import SocketServer
+try:
+    import socketserver
+except ImportError:
+    import SocketServer as socketserver
 import sys
 import time
 
@@ -337,7 +340,7 @@ class SocketDelay(object):
         return bytes_sent
 
 
-class TestingSFTPConnectionHandler(SocketServer.BaseRequestHandler):
+class TestingSFTPConnectionHandler(socketserver.BaseRequestHandler):
 
     def setup(self):
         self.wrap_for_latency()

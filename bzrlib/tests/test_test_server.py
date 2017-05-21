@@ -16,7 +16,10 @@
 
 import errno
 import socket
-import SocketServer
+try:
+    import socketserver
+except ImportError:
+    import SocketServer as socketserver
 import threading
 
 
@@ -77,7 +80,7 @@ class TCPClient(object):
         return self.sock.recv(bufsize)
 
 
-class TCPConnectionHandler(SocketServer.BaseRequestHandler):
+class TCPConnectionHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
         self.done = False
