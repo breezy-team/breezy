@@ -89,8 +89,6 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
         to_file.write("bzr comes with ABSOLUTELY NO WARRANTY.  bzr is free software, and\n")
         to_file.write("you may use, modify and redistribute it under the terms of the GNU\n")
         to_file.write("General Public License version 2 or later.\n")
-        to_file.write("\nBazaar is part of the GNU Project to produce a free operating "
-                "system.\n")
     to_file.write('\n')
 
 

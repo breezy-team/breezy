@@ -2611,8 +2611,8 @@ class cmd_log(Command):
 
       GUI tools and IDEs are often better at exploring history than command
       line tools: you may prefer qlog or viz from qbzr or bzr-gtk, the
-      bzr-explorer shell, or the Loggerhead web interface.  See the Plugin
-      Guide <http://doc.bazaar.canonical.com/plugins/en/> and
+      bzr-explorer shell, or the Loggerhead web interface.  See the Bazaar
+      Plugin Guide <http://doc.bazaar.canonical.com/plugins/en/> and
       <http://wiki.bazaar.canonical.com/IDEIntegration>.  
 
       You may find it useful to add the aliases below to ``bazaar.conf``::
