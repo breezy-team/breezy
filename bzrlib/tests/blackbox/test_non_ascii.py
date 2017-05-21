@@ -57,8 +57,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         if encoding is None:
             encoding = osutils.get_user_encoding()
         try:
-            out = self.run_bzr(args,
-                               output_encoding=encoding, encoding=encoding,
+            out = self.run_bzr(args, encoding=encoding,
                                retcode=retcode, working_dir=working_dir)[0]
             return out.decode(encoding)
         except UnicodeError as e:

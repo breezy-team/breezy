@@ -14,12 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for the bzrlib ui
-"""
+"""Tests for the bzrlib ui."""
 
 import time
-
-from StringIO import StringIO
 
 from testtools.matchers import *
 
@@ -31,6 +28,7 @@ from bzrlib import (
     )
 from bzrlib.tests import (
     fixtures,
+    ui_testing,
     )
 from bzrlib.ui import text as _mod_ui_text
 from bzrlib.tests.testui import (
@@ -38,50 +36,29 @@ from bzrlib.tests.testui import (
     )
 
 
-class TTYStringIO(StringIO):
-    """A helper class which makes a StringIO look like a terminal"""
-
-    def isatty(self):
-        return True
-
-
-class NonTTYStringIO(StringIO):
-    """Helper that implements isatty() but returns False"""
-
-    def isatty(self):
-        return False
-
-
-class TestUIConfiguration(tests.TestCaseWithTransport):
+class TestUIConfiguration(tests.TestCase):
 
     def test_output_encoding_configuration(self):
         enc = fixtures.generate_unicode_encodings().next()
         config.GlobalStack().set('output_encoding', enc)
-        ui = tests.TestUIFactory(stdin=None,
-            stdout=tests.StringIOWrapper(),
-            stderr=tests.StringIOWrapper())
+        IO = ui_testing.BytesIOWithEncoding
+        ui = _mod_ui.make_ui_for_terminal(IO(), IO(), IO())
         output = ui.make_output_stream()
         self.assertEqual(output.encoding, enc)
 
 
 class TestTextUIFactory(tests.TestCase):
 
-    def make_test_ui_factory(self, stdin_contents):
-        ui = tests.TestUIFactory(stdin=stdin_contents,
-                                 stdout=tests.StringIOWrapper(),
-                                 stderr=tests.StringIOWrapper())
-        return ui
-
     def test_text_factory_confirm(self):
         # turns into reading a regular boolean
-        ui = self.make_test_ui_factory('n\n')
+        ui = ui_testing.TestUIFactory('n\n')
         self.assertEqual(ui.confirm_action(u'Should %(thing)s pass?',
             'bzrlib.tests.test_ui.confirmation',
             {'thing': 'this'},),
             False)
 
     def test_text_factory_ascii_password(self):
-        ui = self.make_test_ui_factory('secret\n')
+        ui = ui_testing.TestUIFactory('secret\n')
         pb = ui.nested_progress_bar()
         try:
             self.assertEqual('secret',
@@ -96,34 +73,28 @@ class TestTextUIFactory(tests.TestCase):
         finally:
             pb.finished()
 
-    def test_text_factory_utf8_password(self):
-        """Test an utf8 password."""
-        ui = _mod_ui_text.TextUIFactory(None, None, None)
-        ui.stdin = tests.StringIOWrapper(u'baz\u1234'.encode('utf8'))
-        ui.stdout = tests.StringIOWrapper()
-        ui.stderr = tests.StringIOWrapper()
-        ui.stderr.encoding = ui.stdout.encoding = ui.stdin.encoding = 'utf8'
+    def test_text_factory_unicode_password(self):
+        """Test a unicode password."""
+        ui = ui_testing.TextUIFactory(u'baz\u1234')
         password = ui.get_password(u'Hello \u1234 %(user)s', user=u'some\u1234')
         self.assertEqual(u'baz\u1234', password)
-        self.assertEqual(u'Hello \u1234 some\u1234: ',
-                         ui.stderr.getvalue().decode('utf8'))
+        self.assertEqual(u'Hello \u1234 some\u1234: ', ui.stderr.getvalue())
         # stdin and stdout should be empty
         self.assertEqual('', ui.stdin.readline())
         self.assertEqual('', ui.stdout.getvalue())
 
     def test_text_ui_get_boolean(self):
-        stdin = tests.StringIOWrapper("y\n" # True
-                                      "n\n" # False
-                                      " \n y \n" # True
-                                      " no \n" # False
-                                      "yes with garbage\nY\n" # True
-                                      "not an answer\nno\n" # False
-                                      "I'm sure!\nyes\n" # True
-                                      "NO\n" # False
-                                      "foo\n")
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
-        factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
+        stdin_text = (
+            "y\n" # True
+            "n\n" # False
+            " \n y \n" # True
+            " no \n" # False
+            "yes with garbage\nY\n" # True
+            "not an answer\nno\n" # False
+            "I'm sure!\nyes\n" # True
+            "NO\n" # False
+            "foo\n")
+        factory = ui_testing.TextUIFactory(stdin_text)
         self.assertEqual(True, factory.get_boolean(u""))
         self.assertEqual(False, factory.get_boolean(u""))
         self.assertEqual(True, factory.get_boolean(u""))
@@ -139,10 +110,7 @@ class TestTextUIFactory(tests.TestCase):
         self.assertEqual(False, factory.get_boolean(u""))
 
     def test_text_ui_choose_bad_parameters(self):
-        stdin = tests.StringIOWrapper()
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
-        factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
+        factory = ui_testing.TextUIFactory(u"")
         # invalid default index
         self.assertRaises(ValueError, factory.choose, u"", u"&Yes\n&No", 3)
         # duplicated choice
@@ -150,34 +118,32 @@ class TestTextUIFactory(tests.TestCase):
         # duplicated shortcut
         self.assertRaises(ValueError, factory.choose, u"", u"&choice1\nchoi&ce2")
 
-    def test_text_ui_choose_prompt(self):
-        stdin = tests.StringIOWrapper()
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
-        factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
+    def test_text_ui_choose_prompt_explicit(self):
         # choices with explicit shortcuts
+        factory = ui_testing.TextUIFactory(u"")
         factory.choose(u"prompt", u"&yes\n&No\nmore &info")
         self.assertEqual("prompt ([y]es, [N]o, more [i]nfo): \n", factory.stderr.getvalue())
+
+    def test_text_ui_choose_prompt_automatic(self):
         # automatic shortcuts
-        factory.stderr.truncate(0)
+        factory = ui_testing.TextUIFactory(u"")
         factory.choose(u"prompt", u"yes\nNo\nmore info")
         self.assertEqual("prompt ([y]es, [N]o, [m]ore info): \n", factory.stderr.getvalue())
 
     def test_text_ui_choose_return_values(self):
         choose = lambda: factory.choose(u"", u"&Yes\n&No\nMaybe\nmore &info", 3)
-        stdin = tests.StringIOWrapper("y\n" # 0
-                                      "n\n" # 1
-                                      " \n" # default: 3
-                                      " no \n" # 1
-                                      "b\na\nd \n" # bad shortcuts, all ignored
-                                      "yes with garbage\nY\n" # 0
-                                      "not an answer\nno\n" # 1
-                                      "info\nmore info\n" # 3
-                                      "Maybe\n" # 2
-                                      "foo\n")
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
-        factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
+        stdin_text = (
+            "y\n" # 0
+            "n\n" # 1
+            " \n" # default: 3
+            " no \n" # 1
+            "b\na\nd \n" # bad shortcuts, all ignored
+            "yes with garbage\nY\n" # 0
+            "not an answer\nno\n" # 1
+            "info\nmore info\n" # 3
+            "Maybe\n" # 2
+            "foo\n")
+        factory = ui_testing.TextUIFactory(stdin_text)
         self.assertEqual(0, choose())
         self.assertEqual(1, choose())
         self.assertEqual(3, choose())
@@ -193,44 +159,38 @@ class TestTextUIFactory(tests.TestCase):
         self.assertEqual(None, choose())
 
     def test_text_ui_choose_no_default(self):
-        stdin = tests.StringIOWrapper(" \n" # no default, invalid!
-                                      " yes \n" # 0
-                                      "foo\n")
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
-        factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
+        stdin_text = (
+            " \n" # no default, invalid!
+            " yes \n" # 0
+            "foo\n")
+        factory = ui_testing.TextUIFactory(stdin_text)
         self.assertEqual(0, factory.choose(u"", u"&Yes\n&No"))
         self.assertEqual("foo\n", factory.stdin.read())
 
     def test_text_ui_get_integer(self):
-        stdin = tests.StringIOWrapper(
+        stdin_text = (
             "1\n"
             "  -2  \n"
             "hmmm\nwhat else ?\nCome on\nok 42\n4.24\n42\n")
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
-        factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
+        factory = ui_testing.TextUIFactory(stdin_text)
         self.assertEqual(1, factory.get_integer(u""))
         self.assertEqual(-2, factory.get_integer(u""))
         self.assertEqual(42, factory.get_integer(u""))
 
     def test_text_factory_prompt(self):
         # see <https://launchpad.net/bugs/365891>
-        StringIO = tests.StringIOWrapper
-        factory = _mod_ui_text.TextUIFactory(StringIO(), StringIO(), StringIO())
+        factory = ui_testing.TextUIFactory()
         factory.prompt(u'foo %2e')
         self.assertEqual('', factory.stdout.getvalue())
         self.assertEqual('foo %2e', factory.stderr.getvalue())
 
     def test_text_factory_prompts_and_clears(self):
         # a get_boolean call should clear the pb before prompting
-        out = TTYStringIO()
+        out = ui_testing.StringIOAsTTY()
         self.overrideEnv('TERM', 'xterm')
-        factory = _mod_ui_text.TextUIFactory(
-            stdin=tests.StringIOWrapper("yada\ny\n"),
-            stdout=out, stderr=out)
-        factory._avail_width = lambda: 79
+        factory = ui_testing.TextUIFactory("yada\ny\n", stdout=out, stderr=out)
         pb = factory.nested_progress_bar()
+        pb._avail_width = lambda: 79
         pb.show_bar = False
         pb.show_spinner = False
         pb.show_count = False
@@ -249,8 +209,7 @@ class TestTextUIFactory(tests.TestCase):
         self.assertEqual('', factory.stdin.readline())
 
     def test_text_tick_after_update(self):
-        ui_factory = _mod_ui_text.TextUIFactory(stdout=tests.StringIOWrapper(),
-                                                stderr=tests.StringIOWrapper())
+        ui_factory = ui_testing.TextUIFactory()
         pb = ui_factory.nested_progress_bar()
         try:
             pb.update('task', 0, 3)
@@ -261,11 +220,7 @@ class TestTextUIFactory(tests.TestCase):
             pb.finished()
 
     def test_text_ui_getusername(self):
-        ui = _mod_ui_text.TextUIFactory(None, None, None)
-        ui.stdin = tests.StringIOWrapper('someuser\n\n')
-        ui.stdout = tests.StringIOWrapper()
-        ui.stderr = tests.StringIOWrapper()
-        ui.stdout.encoding = 'utf8'
+        ui = ui_testing.TextUIFactory('someuser\n\n')
         self.assertEqual('someuser',
                          ui.get_username(u'Hello %(host)s', host='some'))
         self.assertEqual('Hello some: ', ui.stderr.getvalue())
@@ -274,23 +229,17 @@ class TestTextUIFactory(tests.TestCase):
         # stdin should be empty
         self.assertEqual('', ui.stdin.readline())
 
-    def test_text_ui_getusername_utf8(self):
-        ui = _mod_ui_text.TextUIFactory(None, None, None)
-        ui.stdin = tests.StringIOWrapper(u'someuser\u1234'.encode('utf8'))
-        ui.stdout = tests.StringIOWrapper()
-        ui.stderr = tests.StringIOWrapper()
-        ui.stderr.encoding = ui.stdout.encoding = ui.stdin.encoding = "utf8"
+    def test_text_ui_getusername_unicode(self):
+        ui = ui_testing.TextUIFactory(u'someuser\u1234')
         username = ui.get_username(u'Hello %(host)s', host=u'some\u1234')
         self.assertEqual(u"someuser\u1234", username)
-        self.assertEqual(u"Hello some\u1234: ",
-                          ui.stderr.getvalue().decode("utf8"))
+        self.assertEqual(u"Hello some\u1234: ", ui.stderr.getvalue())
         self.assertEqual('', ui.stdout.getvalue())
 
     def test_quietness(self):
         self.overrideEnv('BZR_PROGRESS_BAR', 'text')
-        ui_factory = _mod_ui_text.TextUIFactory(None,
-            TTYStringIO(),
-            TTYStringIO())
+        ui_factory = ui_testing.TextUIFactory(
+            stderr=ui_testing.StringIOAsTTY())
         self.assertIsInstance(ui_factory._progress_view,
             _mod_ui_text.TextProgressView)
         ui_factory.be_quiet(True)
@@ -300,50 +249,44 @@ class TestTextUIFactory(tests.TestCase):
     def test_text_ui_show_user_warning(self):
         from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
         from bzrlib.repofmt.knitpack_repo import RepositoryFormatKnitPack5
-        err = StringIO()
-        out = StringIO()
-        ui = tests.TextUIFactory(stdin=None, stdout=out, stderr=err)
+        ui = ui_testing.TextUIFactory()
         remote_fmt = remote.RemoteRepositoryFormat()
         remote_fmt._network_name = RepositoryFormatKnitPack5().network_name()
         ui.show_user_warning('cross_format_fetch', from_format=RepositoryFormat2a(),
             to_format=remote_fmt)
-        self.assertEqual('', out.getvalue())
+        self.assertEqual('', ui.stdout.getvalue())
         self.assertEqual("Doing on-the-fly conversion from RepositoryFormat2a() to "
             "RemoteRepositoryFormat(_network_name='Bazaar RepositoryFormatKnitPack5 "
             "(bzr 1.6)\\n').\nThis may take some time. Upgrade the repositories to "
             "the same format for better performance.\n",
-            err.getvalue())
+            ui.stderr.getvalue())
         # and now with it suppressed please
-        err = StringIO()
-        out = StringIO()
-        ui = tests.TextUIFactory(stdin=None, stdout=out, stderr=err)
+        ui = ui_testing.TextUIFactory()
         ui.suppressed_warnings.add('cross_format_fetch')
         ui.show_user_warning('cross_format_fetch', from_format=RepositoryFormat2a(),
             to_format=remote_fmt)
-        self.assertEqual('', out.getvalue())
-        self.assertEqual('', err.getvalue())
+        self.assertEqual('', ui.stdout.getvalue())
+        self.assertEqual('', ui.stderr.getvalue())
 
 
 class TestTextUIOutputStream(tests.TestCase):
     """Tests for output stream that synchronizes with progress bar."""
 
     def test_output_clears_terminal(self):
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
         clear_calls = []
 
-        uif =  _mod_ui_text.TextUIFactory(None, stdout, stderr)
+        uif =  ui_testing.TextUIFactory()
         uif.clear_term = lambda: clear_calls.append('clear')
 
-        stream = _mod_ui_text.TextUIOutputStream(uif, uif.stdout)
-        stream.write("Hello world!\n")
-        stream.write("there's more...\n")
-        stream.writelines(["1\n", "2\n", "3\n"])
+        stream = _mod_ui_text.TextUIOutputStream(uif, uif.stdout, 'utf-8', 'strict')
+        stream.write(u"Hello world!\n")
+        stream.write(u"there's more...\n")
+        stream.writelines([u"1\n", u"2\n", u"3\n"])
 
-        self.assertEqual(stdout.getvalue(),
-            "Hello world!\n"
-            "there's more...\n"
-            "1\n2\n3\n")
+        self.assertEqual(uif.stdout.getvalue(),
+            u"Hello world!\n"
+            u"there's more...\n"
+            u"1\n2\n3\n")
         self.assertEqual(['clear', 'clear', 'clear'],
             clear_calls)
 
@@ -355,7 +298,8 @@ class UITests(tests.TestCase):
     def test_progress_construction(self):
         """TextUIFactory constructs the right progress view.
         """
-        FileStringIO = tests.StringIOWrapper
+        FileStringIO = ui_testing.StringIOWithEncoding
+        TTYStringIO = ui_testing.StringIOAsTTY
         for (file_class, term, pb, expected_pb_class) in (
             # on an xterm, either use them or not as the user requests,
             # otherwise default on
@@ -375,7 +319,7 @@ class UITests(tests.TestCase):
             ):
             self.overrideEnv('TERM', term)
             self.overrideEnv('BZR_PROGRESS_BAR', pb)
-            stdin = file_class('')
+            stdin = file_class(u'')
             stderr = file_class()
             stdout = file_class()
             uif = _mod_ui.make_ui_for_terminal(stdin, stdout, stderr)
@@ -387,9 +331,7 @@ class UITests(tests.TestCase):
 
     def test_text_ui_non_terminal(self):
         """Even on non-ttys, make_ui_for_terminal gives a text ui."""
-        stdin = NonTTYStringIO('')
-        stderr = NonTTYStringIO()
-        stdout = NonTTYStringIO()
+        stdin = stderr = stdout = ui_testing.StringIOWithEncoding()
         for term_type in ['dumb', None, 'xterm']:
             self.overrideEnv('TERM', term_type)
             uif = _mod_ui.make_ui_for_terminal(stdin, stdout, stderr)
@@ -404,7 +346,7 @@ class SilentUITests(tests.TestCase):
         # password.  Possibly it should raise a more specific error but it
         # can't succeed.
         ui = _mod_ui.SilentUIFactory()
-        stdout = tests.StringIOWrapper()
+        stdout = ui_testing.StringIOWithEncoding()
         self.assertRaises(
             NotImplementedError,
             self.apply_redirected,
@@ -414,7 +356,7 @@ class SilentUITests(tests.TestCase):
 
     def test_silent_ui_getbool(self):
         factory = _mod_ui.SilentUIFactory()
-        stdout = tests.StringIOWrapper()
+        stdout = ui_testing.StringIOWithEncoding()
         self.assertRaises(
             NotImplementedError,
             self.apply_redirected,
@@ -426,7 +368,7 @@ class TestUIFactoryTests(tests.TestCase):
     def test_test_ui_factory_progress(self):
         # there's no output; we just want to make sure this doesn't crash -
         # see https://bugs.launchpad.net/bzr/+bug/408201
-        ui = tests.TestUIFactory()
+        ui = ui_testing.TestUIFactory()
         pb = ui.nested_progress_bar()
         pb.update('hello')
         pb.tick()
