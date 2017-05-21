@@ -16,7 +16,7 @@
 #
 
 
-"""Tests of the 'bzr clean-tree' command."""
+"""Tests of the 'brz clean-tree' command."""
 
 
 import os
@@ -95,7 +95,7 @@ class TestBzrTools(TestCaseWithTransport):
         self.touch('bar')
         self.touch('foo')
         run_script(self, """
-        $ bzr clean-tree
+        $ brz clean-tree
         bar
         foo
         2>Are you sure you wish to delete these? ([y]es, [n]o): no
@@ -105,7 +105,7 @@ class TestBzrTools(TestCaseWithTransport):
         self.assertPathExists('bar')
         self.assertPathExists('foo')
         run_script(self, """
-        $ bzr clean-tree
+        $ brz clean-tree
         bar
         foo
         2>Are you sure you wish to delete these? ([y]es, [n]o): yes

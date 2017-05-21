@@ -685,7 +685,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
 
     def test_both_rename2(self):
         create_tree,root = self.get_transform()
-        brzlib = create_tree.new_directory('brzlib', root, 'bzrlib-id')
+        brzlib = create_tree.new_directory('brzlib', root, 'brzlib-id')
         tests = create_tree.new_directory('tests', brzlib, 'tests-id')
         blackbox = create_tree.new_directory('blackbox', tests, 'blackbox-id')
         create_tree.new_file('test_too_much.py', blackbox, 'hello1',

@@ -184,8 +184,8 @@ class ScriptRunner(object):
         def test_bug_nnnnn(self):
             sr = script.ScriptRunner()
             sr.run_script(self, '''
-            $ bzr init
-            $ bzr do-this
+            $ brz init
+            $ brz do-this
             # Boom, error
             ''')
     """
@@ -314,7 +314,7 @@ class ScriptRunner(object):
             output = None
         return output
 
-    def do_bzr(self, test_case, input, args):
+    def do_brz(self, test_case, input, args):
         retcode, out, err = test_case._run_bzr_core(
             args, retcode=None, encoding=None, stdin=input, working_dir=None)
         return retcode, out, err
@@ -506,8 +506,8 @@ class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
 
         def test_bug_nnnnn(self):
             self.run_script('''
-            $ bzr init
-            $ bzr do-this
+            $ brz init
+            $ brz do-this
             # Boom, error
             ''')
     """

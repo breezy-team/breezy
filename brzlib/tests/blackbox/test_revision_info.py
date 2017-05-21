@@ -24,7 +24,7 @@ from brzlib.workingtree import WorkingTree
 class TestRevisionInfo(TestCaseWithTransport):
 
     def check_output(self, output, *args):
-        """Verify that the expected output matches what bzr says.
+        """Verify that the expected output matches what brz says.
 
         The output is supplied first, so that you can supply a variable
         number of arguments to bzr.
@@ -32,7 +32,7 @@ class TestRevisionInfo(TestCaseWithTransport):
         self.assertEqual(self.run_bzr(*args)[0], output)
 
     def test_revision_info(self):
-        """Test that 'bzr revision-info' reports the correct thing."""
+        """Test that 'brz revision-info' reports the correct thing."""
         wt = self.make_branch_and_tree('.')
 
         # Make history with a non-mainline rev
@@ -85,7 +85,7 @@ class TestRevisionInfo(TestCaseWithTransport):
                           'revision-info --revision revid:a@r-0-1.1.1')
 
     def test_revision_info_explicit_branch_dir(self):
-        """Test that 'bzr revision-info' honors the '-d' option."""
+        """Test that 'brz revision-info' honors the '-d' option."""
         wt = self.make_branch_and_tree('branch')
 
         wt.commit('Commit one', rev_id='a@r-0-1')
@@ -112,7 +112,7 @@ class TestRevisionInfo(TestCaseWithTransport):
         # Try getting the --tree revision-info
         out,err = self.run_bzr('revision-info --tree -d branch', retcode=3)
         self.assertEqual('', out)
-        self.assertEqual('bzr: ERROR: No WorkingTree exists for "branch".\n',
+        self.assertEqual('brz: ERROR: No WorkingTree exists for "branch".\n',
             err)
 
     def test_revision_info_not_in_history(self):

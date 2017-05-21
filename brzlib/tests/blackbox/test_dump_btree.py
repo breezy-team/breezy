@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-"""Tests of the 'bzr dump-btree' command."""
+"""Tests of the 'brz dump-btree' command."""
 
 from brzlib import (
     btree_index,

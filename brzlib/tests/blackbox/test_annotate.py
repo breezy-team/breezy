@@ -20,7 +20,7 @@
 
 These check that it behaves properly when it's invoked through the regular
 command-line interface. This doesn't actually run a new interpreter but
-rather starts again from the run_bzr function.
+rather starts again from the run_brz function.
 """
 
 
@@ -147,7 +147,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
         out, err = self.run_bzr('annotate hello.txt -r1..2',
                                 retcode=3)
         self.assertEqual('', out)
-        self.assertEqual('bzr: ERROR: bzr annotate --revision takes'
+        self.assertEqual('brz: ERROR: brz annotate --revision takes'
                          ' exactly one revision identifier\n',
                          err)
 
@@ -288,7 +288,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         tree.commit('add a file')
         out, err = self.run_bzr(['annotate', 'doesnotexist'], retcode=3)
         self.assertEqual('', out)
-        self.assertEqual("bzr: ERROR: doesnotexist is not versioned.\n", err)
+        self.assertEqual("brz: ERROR: doesnotexist is not versioned.\n", err)
 
     def test_annotate_without_workingtree(self):
         tree = self.make_branch_and_tree('.')

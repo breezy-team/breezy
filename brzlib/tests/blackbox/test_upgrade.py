@@ -34,7 +34,7 @@ from brzlib.repofmt.knitpack_repo import RepositoryFormatKnitPack1
 
 
 class OldBzrDir(bzrdir.BzrDirMeta1):
-    """An test bzr dir implementation"""
+    """An test brz dir implementation"""
 
     def needs_format_conversion(self, format):
         return not isinstance(format, self.__class__)
@@ -83,7 +83,7 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         (out, err) = self.run_bzr(
             ['upgrade', self.get_readonly_url("old_format_branch")], retcode=3)
         err_msg = 'Upgrade URL cannot work with readonly URLs.'
-        self.assertEqualDiff('conversion error: %s\nbzr: ERROR: %s\n'
+        self.assertEqualDiff('conversion error: %s\nbrz: ERROR: %s\n'
                              % (err_msg, err_msg),
                              err)
 
@@ -230,7 +230,7 @@ finished
         display_url = t.local_abspath('.')
         backup_dir1 = 'backup.bzr.~1~'
         backup_dir2 = 'backup.bzr.~2~'
-        # explicitly create backup_dir1. bzr should create the .~2~ directory
+        # explicitly create backup_dir1. brz should create the .~2~ directory
         # as backup
         t.mkdir(backup_dir1)
         (out, err) = self.run_bzr(
@@ -278,7 +278,7 @@ class UpgradeRecommendedTests(TestCaseWithTransport):
         # using a deprecated format gives a warning
         self.run_bzr('init --knit a')
         out, err = self.run_bzr('status a')
-        self.assertContainsRe(err, 'bzr upgrade .*[/\\\\]a')
+        self.assertContainsRe(err, 'brz upgrade .*[/\\\\]a')
 
     def test_no_upgrade_recommendation_from_bzrdir(self):
         # we should only get a recommendation to upgrade when we're accessing

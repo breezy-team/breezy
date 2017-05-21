@@ -84,4 +84,4 @@ class TestReference(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         out, err = self.run_bzr('reference file http://example.org',
                                 working_dir='tree', retcode=3)
-        self.assertEqual('bzr: ERROR: file is not versioned.\n', err)
+        self.assertEqual('brz: ERROR: file is not versioned.\n', err)

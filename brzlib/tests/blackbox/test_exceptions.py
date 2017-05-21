@@ -56,12 +56,12 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
             env_changes={"LANG": "C", "LC_ALL": "C"},
             universal_newlines=True,
             retcode=errors.EXIT_ERROR)
-        self.assertContainsRe(err, r"^bzr: ERROR: .*'\\xa0'.* unsupported",
+        self.assertContainsRe(err, r"^brz: ERROR: .*'\\xa0'.* unsupported",
             flags=re.MULTILINE)
         self.assertEqual(out, "")
 
     def test_utf8_default_fs_enc(self):
-        """In the C locale bzr treats a posix filesystem as UTF-8 encoded"""
+        """In the C locale brz treats a posix filesystem as UTF-8 encoded"""
         if os.name != "posix":
             raise tests.TestNotApplicable("Needs system beholden to C locales")
         out, err = self.run_bzr_subprocess(["init", "file:%C2%A7"],
@@ -91,7 +91,7 @@ class TestObsoleteRepoFormat(RepositoryFormat2a):
 class TestDeprecationWarning(tests.TestCaseWithTransport):
     """The deprecation warning is controlled via a global variable:
     repository._deprecation_warning_done. As such, it can be emitted only once
-    during a bzr invocation, no matter how many repositories are involved.
+    during a brz invocation, no matter how many repositories are involved.
 
     It would be better if it was a repo attribute instead but that's far more
     work than I want to do right now -- vila 20091215.
@@ -130,7 +130,7 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
             check = self.assertContainsRe
         else:
             check = self.assertNotContainsRe
-        check(self.get_log(), 'WARNING.*bzr upgrade')
+        check(self.get_log(), 'WARNING.*brz upgrade')
 
     def test_repository_deprecation_warning(self):
         """Old formats give a warning"""

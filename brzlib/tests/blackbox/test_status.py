@@ -51,7 +51,7 @@ class BranchStatus(TestCaseWithTransport):
         # post_status hook handler for the test.
         status.hooks.install_named_hook('post_status',
             status._show_shelve_summary,
-            'bzr status')
+            'brz status')
 
     def assertStatus(self, expected_lines, working_tree, specific_files=None,
         revision=None, short=False, pending=True, verbose=False):
@@ -361,7 +361,7 @@ class BranchStatus(TestCaseWithTransport):
         # Okay, everything's looking good with the existent files.
         # Let's see what happens when we throw in non-existent files.
 
-        # bzr st [--short] NONEXISTENT '
+        # brz st [--short] NONEXISTENT '
         expected = [
           'nonexistent:\n',
           '  NONEXISTENT\n',
@@ -380,7 +380,7 @@ class BranchStatus(TestCaseWithTransport):
                               'NONEXISTENT.*')
 
     def test_status_nonexistent_file_with_others(self):
-        # bzr st [--short] NONEXISTENT ...others..
+        # brz st [--short] NONEXISTENT ...others..
         wt = self._prepare_nonexistent()
         expected = [
           'removed:\n',
@@ -413,7 +413,7 @@ class BranchStatus(TestCaseWithTransport):
                               'NONEXISTENT.*')
 
     def test_status_multiple_nonexistent_files(self):
-        # bzr st [--short] NONEXISTENT ... ANOTHER_NONEXISTENT ...
+        # brz st [--short] NONEXISTENT ... ANOTHER_NONEXISTENT ...
         wt = self._prepare_nonexistent()
         expected = [
           'removed:\n',
@@ -448,7 +448,7 @@ class BranchStatus(TestCaseWithTransport):
                               'ANOTHER_NONEXISTENT NONEXISTENT.*')
 
     def test_status_nonexistent_file_with_unversioned(self):
-        # bzr st [--short] NONEXISTENT A B UNVERSIONED_BUT_EXISTING C D E Q
+        # brz st [--short] NONEXISTENT A B UNVERSIONED_BUT_EXISTING C D E Q
         wt = self._prepare_nonexistent()
         expected = [
           'removed:\n',
@@ -503,7 +503,7 @@ class BranchStatus(TestCaseWithTransport):
             # before run another commands we should unlock tree
             tree.unlock()
         out, err = self.run_bzr('status')
-        self.assertEqual("working tree is out of date, run 'bzr update'\n",
+        self.assertEqual("working tree is out of date, run 'brz update'\n",
                          err)
 
     def test_status_on_ignored(self):
@@ -566,7 +566,7 @@ class BranchStatus(TestCaseWithTransport):
         self.assertStatus([
                 'added:\n',
                 '  bye.c\n',
-                '1 shelf exists. See "bzr shelve --list" for details.\n',
+                '1 shelf exists. See "brz shelve --list" for details.\n',
             ],
             wt)
         self.run_bzr(['shelve', '--all', '-m', 'bar'])
@@ -577,7 +577,7 @@ class BranchStatus(TestCaseWithTransport):
                 'added:\n',
                 '  eggs.c\n',
                 '  spam.c\n',
-                '2 shelves exist. See "bzr shelve --list" for details.\n',
+                '2 shelves exist. See "brz shelve --list" for details.\n',
             ],
             wt)
         self.assertStatus([

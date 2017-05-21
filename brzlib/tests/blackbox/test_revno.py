@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for bzr revno.
+"""Black-box tests for brz revno.
 """
 
 import os
@@ -77,7 +77,7 @@ class TestRevno(tests.TestCaseWithTransport):
         # Try getting it's --tree revno
         out,err = self.run_bzr('revno --tree branch', retcode=3)
         self.assertEqual('', out)
-        self.assertEqual('bzr: ERROR: No WorkingTree exists for "branch".\n',
+        self.assertEqual('brz: ERROR: No WorkingTree exists for "branch".\n',
             err)
 
     def test_dotted_revno_tree(self):
@@ -136,7 +136,7 @@ class TestRevno(tests.TestCaseWithTransport):
         out, err = self.run_bzr('revno -r-2 --tree .', retcode=3)
         self.assertEqual('', out)
         self.assertEqual(
-            'bzr: ERROR: --tree and --revision can not be used together\n',
+            'brz: ERROR: --tree and --revision can not be used together\n',
             err)
 
 

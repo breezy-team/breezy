@@ -16,7 +16,7 @@
 #
 # Author: Aaron Bentley <aaron.bentley@utoronto.ca>
 
-"""Black-box tests for bzr merge.
+"""Black-box tests for brz merge.
 """
 
 import doctest
@@ -264,7 +264,7 @@ class TestMerge(tests.TestCaseWithTransport):
         # test merge for failure without parent set
         out = self.run_bzr('merge', retcode=3, working_dir='branch_b')
         self.assertEqual(out,
-                ('','bzr: ERROR: No location specified or remembered\n'))
+                ('','brz: ERROR: No location specified or remembered\n'))
 
         # test uncommitted changes
         self.build_tree(['branch_b/d'])
@@ -278,7 +278,7 @@ class TestMerge(tests.TestCaseWithTransport):
 
         base = urlutils.local_path_from_url(branch_a.base)
         self.assertEndsWith(err, '+N  b\nAll changes applied successfully.\n')
-        # re-open branch as external run_bzr modified it
+        # re-open branch as external run_brz modified it
         branch_b = branch_b.bzrdir.open_branch()
         self.assertEqual(osutils.abspath(branch_b.get_submit_branch()),
                           osutils.abspath(parent))
@@ -289,7 +289,7 @@ class TestMerge(tests.TestCaseWithTransport):
         out, err = self.run_bzr('merge', working_dir='branch_b')
         self.assertStartsWith(
             err, 'Merging from remembered submit location %s\n' % (base,))
-        # re-open tree as external run_bzr modified it
+        # re-open tree as external run_brz modified it
         tree_b = branch_b.bzrdir.open_workingtree()
         tree_b.commit('merge branch_a')
         # test explicit --remember
@@ -297,11 +297,11 @@ class TestMerge(tests.TestCaseWithTransport):
                                 working_dir='branch_b')
         self.assertEqual(out, '')
         self.assertEqual(err, '+N  c\nAll changes applied successfully.\n')
-        # re-open branch as external run_bzr modified it
+        # re-open branch as external run_brz modified it
         branch_b = branch_b.bzrdir.open_branch()
         self.assertEqual(osutils.abspath(branch_b.get_submit_branch()),
                           osutils.abspath(branch_c.bzrdir.root_transport.base))
-        # re-open tree as external run_bzr modified it
+        # re-open tree as external run_brz modified it
         tree_b = branch_b.bzrdir.open_workingtree()
         tree_b.commit('merge branch_c')
 
@@ -729,8 +729,8 @@ class TestMergeScript(script.TestCaseWithTransportAndScript):
         source.commit('Added a', rev_id='rev1')
         target = self.make_branch_and_tree('target')
         self.run_script("""\
-$ bzr merge -d target source
-2>bzr: ERROR: Merging into empty branches not currently supported, https://bugs.launchpad.net/bzr/+bug/308562
+$ brz merge -d target source
+2>brz: ERROR: Merging into empty branches not currently supported, https://bugs.launchpad.net/bzr/+bug/308562
 """)
 
 class TestMergeForce(tests.TestCaseWithTransport):

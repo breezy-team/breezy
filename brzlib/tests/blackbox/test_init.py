@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Test 'bzr init'"""
+"""Test 'brz init'"""
 
 import os
 import re
@@ -40,7 +40,7 @@ class TestInit(TestCaseWithTransport):
         self._default_label = '2a'
 
     def test_init_with_format(self):
-        # Verify bzr init --format constructs something plausible
+        # Verify brz init --format constructs something plausible
         t = self.get_transport()
         self.run_bzr('init --format default')
         self.assertIsDirectory('.bzr', t)
@@ -65,7 +65,7 @@ class TestInit(TestCaseWithTransport):
         self.assertEqual('', err)
 
     def test_init_at_repository_root(self):
-        # bzr init at the root of a repository should create a branch
+        # brz init at the root of a repository should create a branch
         # and working tree even when creation of working trees is disabled.
         t = self.get_transport()
         t.mkdir('repo')
@@ -110,7 +110,7 @@ Using shared repository: %s
         # init an existing branch.
         out, err = self.run_bzr('init subdir2', retcode=3)
         self.assertEqual('', out)
-        self.assertTrue(err.startswith('bzr: ERROR: Already a branch:'))
+        self.assertTrue(err.startswith('brz: ERROR: Already a branch:'))
 
     def test_init_branch_quiet(self):
         out, err = self.run_bzr('init -q')
@@ -158,7 +158,7 @@ Using shared repository: %s
         return tree
 
     def test_init_create_prefix(self):
-        """'bzr init --create-prefix; will create leading directories."""
+        """'brz init --create-prefix; will create leading directories."""
         tree = self.create_simple_tree()
 
         self.run_bzr_error(['Parent directory of ../new/tree does not exist'],
@@ -167,7 +167,7 @@ Using shared repository: %s
         self.assertPathExists('new/tree/.bzr')
 
     def test_init_default_format_option(self):
-        """bzr init should read default format from option default_format"""
+        """brz init should read default format from option default_format"""
         g_store = _mod_config.GlobalStore()
         g_store._load_from_string('''
 [DEFAULT]
@@ -178,7 +178,7 @@ default_format = 1.9
         self.assertContainsRe(out, '1.9')
 
     def test_init_no_tree(self):
-        """'bzr init --no-tree' creates a branch with no working tree."""
+        """'brz init --no-tree' creates a branch with no working tree."""
         out, err = self.run_bzr('init --no-tree')
         self.assertStartsWith(out, 'Created a standalone branch')
 
@@ -200,9 +200,9 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         out, err = self.run_bzr_error(['Already a branch'],
                                       ['init', self.get_url()])
 
-        # make sure using 'bzr checkout' is not suggested
+        # make sure using 'brz checkout' is not suggested
         # for remote locations missing a working tree
-        self.assertFalse(re.search(r'use bzr checkout', err))
+        self.assertFalse(re.search(r'use brz checkout', err))
 
     def test_init_existing_branch_with_workingtree(self):
         # don't distinguish between the branch having a working tree or not
@@ -225,7 +225,7 @@ class TestSFTPInit(TestCaseWithSFTPServer):
     def test_init_without_username(self):
         """Ensure init works if username is not set.
         """
-        # bzr makes user specified whoami mandatory for operations
+        # brz makes user specified whoami mandatory for operations
         # like commit as whoami is recorded. init however is not so final
         # and uses whoami only in a lock file. Without whoami the login name
         # is used. This test is to ensure that init passes even when whoami

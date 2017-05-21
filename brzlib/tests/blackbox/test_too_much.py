@@ -23,7 +23,7 @@
 
 These check that it behaves properly when it's invoked through the regular
 command-line interface. This doesn't actually run a new interpreter but
-rather starts again from the run_bzr function.
+rather starts again from the run_brz function.
 """
 
 
@@ -308,7 +308,7 @@ class TestCommands(TestCaseWithTransport):
     def test_external_command(self):
         """Test that external commands can be run by setting the path
         """
-        # We don't at present run bzr in a subprocess for blackbox tests, and so
+        # We don't at present run brz in a subprocess for blackbox tests, and so
         # don't really capture stdout, only the internal python stream.
         # Therefore we don't use a subcommand that produces any output or does
         # anything -- we just check that it can be run successfully.
@@ -554,7 +554,7 @@ class OldTests(TestCaseWithTransport):
 
 
 class RemoteTests(object):
-    """Test bzr ui commands against remote branches."""
+    """Test brz ui commands against remote branches."""
 
     def test_branch(self):
         os.mkdir('from')

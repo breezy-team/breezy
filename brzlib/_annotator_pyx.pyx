@@ -55,7 +55,7 @@ cdef extern from "Python.h":
         PyObject *, PyObject *, int opid)
 
 
-from bzrlib import _annotator_py
+from brzlib import _annotator_py
 
 
 cdef int _check_annotations_are_lists(annotations,
@@ -174,7 +174,7 @@ cdef int _apply_parent_annotations(annotations, parent_annotations,
     _check_annotations_are_lists(annotations, parent_annotations)
     par_list = <PyListObject *>parent_annotations
     ann_list = <PyListObject *>annotations
-    # For NEWS and bzrlib/builtins.py, over 99% of the lines are simply copied
+    # For NEWS and brzlib/builtins.py, over 99% of the lines are simply copied
     # across from the parent entry. So this routine is heavily optimized for
     # that. Would be interesting if we could use memcpy() but we have to incref
     # and decref
@@ -269,7 +269,7 @@ class Annotator(_annotator_py.Annotator):
         """
         cdef Py_ssize_t pos, num_lines
 
-        from bzrlib import annotate
+        from brzlib import annotate
 
         custom_tiebreaker = annotate._break_annotation_tie
         annotations, lines = self.annotate(key)

@@ -71,8 +71,8 @@ class TestRemove(TestCaseWithTransport):
 
     def test_remove_new_no_files_specified(self):
         tree = self.make_branch_and_tree('.')
-        self.run_bzr_error(["bzr: ERROR: No matching files."], 'remove --new')
-        self.run_bzr_error(["bzr: ERROR: No matching files."], 'remove --new .')
+        self.run_bzr_error(["brz: ERROR: No matching files."], 'remove --new')
+        self.run_bzr_error(["brz: ERROR: No matching files."], 'remove --new .')
 
     def test_remove_no_files_specified(self):
         tree = self._make_tree_and_add(['foo'])
@@ -208,7 +208,7 @@ class TestRemove(TestCaseWithTransport):
         self.build_tree(files)
         tree = self.make_branch_and_tree('.')
         script.ScriptRunner().run_script(self, '''
-        $ bzr remove --no-backup a b/ b/c d/
+        $ brz remove --no-backup a b/ b/c d/
         2>deleted d
         2>removed b/c (but kept a copy: b/c.~1~)
         2>deleted b

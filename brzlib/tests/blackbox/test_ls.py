@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""External tests of 'bzr ls'"""
+"""External tests of 'brz ls'"""
 
 from brzlib import (
     ignores,
@@ -53,7 +53,7 @@ class TestLS(tests.TestCaseWithTransport):
                            'ls --verbose --null')
 
     def test_ls_basic(self):
-        """Test the abilities of 'bzr ls'"""
+        """Test the abilities of 'brz ls'"""
         self.ls_equals('.bzrignore\na\n')
         self.ls_equals('.bzrignore\na\n', './')
         self.ls_equals('?        .bzrignore\n'

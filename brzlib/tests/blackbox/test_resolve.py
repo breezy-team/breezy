@@ -31,45 +31,45 @@ class TestResolve(script.TestCaseWithTransportAndScript):
     def test_resolve_one_by_one(self):
         self.run_script("""\
 $ cd branch
-$ bzr conflicts
+$ brz conflicts
 Text conflict in my_other_file
 Path conflict: mydir3 / mydir2
 Text conflict in myfile
-$ bzr resolve myfile
+$ brz resolve myfile
 2>1 conflict resolved, 2 remaining
-$ bzr resolve my_other_file
+$ brz resolve my_other_file
 2>1 conflict resolved, 1 remaining
-$ bzr resolve mydir2
+$ brz resolve mydir2
 2>1 conflict resolved, 0 remaining
 """)
 
     def test_resolve_all(self):
         self.run_script("""\
 $ cd branch
-$ bzr resolve --all
+$ brz resolve --all
 2>3 conflicts resolved, 0 remaining
-$ bzr conflicts
+$ brz conflicts
 """)
 
     def test_resolve_from_subdir(self):
         self.run_script("""\
 $ mkdir branch/subdir
 $ cd branch/subdir
-$ bzr resolve ../myfile
+$ brz resolve ../myfile
 2>1 conflict resolved, 2 remaining
 """)
 
     def test_resolve_via_directory_option(self):
         self.run_script("""\
-$ bzr resolve -d branch myfile
+$ brz resolve -d branch myfile
 2>1 conflict resolved, 2 remaining
 """)
 
     def test_resolve_all_via_directory_option(self):
         self.run_script("""\
-$ bzr resolve -d branch --all
+$ brz resolve -d branch --all
 2>3 conflicts resolved, 0 remaining
-$ bzr conflicts -d branch
+$ brz conflicts -d branch
 """)
 
 
@@ -77,24 +77,24 @@ class TestBug788000(script.TestCaseWithTransportAndScript):
 
     def test_bug_788000(self):
         self.run_script('''\
-$ bzr init a
+$ brz init a
 $ mkdir a/dir
 $ echo foo > a/dir/file
-$ bzr add a/dir
+$ brz add a/dir
 $ cd a
-$ bzr commit -m one
+$ brz commit -m one
 $ cd ..
-$ bzr clone a b
+$ brz clone a b
 $ echo bar > b/dir/file
 $ cd a
 $ rm -r dir
-$ bzr commit -m two
+$ brz commit -m two
 $ cd ../b
 ''',
                         null_output_matches_anything=True)
 
         self.run_script('''\
-$ bzr pull
+$ brz pull
 Using saved parent location:...
 Now on revision 2.
 2>RM  dir/file => dir/file.THIS
@@ -104,7 +104,7 @@ Now on revision 2.
 2>3 conflicts encountered.
 ''')
         self.run_script('''\
-$ bzr resolve --take-other
+$ brz resolve --take-other
 2>deleted dir/file.THIS
 2>deleted dir
 2>3 conflicts resolved, 0 remaining

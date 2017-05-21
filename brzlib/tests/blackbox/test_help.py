@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for bzr help.
+"""Black-box tests for brz help.
 """
 
 
@@ -35,11 +35,11 @@ class TestHelp(tests.TestCaseWithTransport):
             output = self.run_bzr(cmd)[0]
             line1 = output.split('\n')[0]
             if not line1.startswith('Bazaar'):
-                self.fail("bad output from bzr %s:\n%r" % (cmd, output))
+                self.fail("bad output from brz %s:\n%r" % (cmd, output))
         # see https://launchpad.net/products/bzr/+bug/35940, -h doesn't work
 
     def test_help_topics(self):
-        """Smoketest for 'bzr help topics'"""
+        """Smoketest for 'brz help topics'"""
         out, err = self.run_bzr('help topics')
         self.assertContainsRe(out, 'basic')
         self.assertContainsRe(out, 'topics')
@@ -47,7 +47,7 @@ class TestHelp(tests.TestCaseWithTransport):
         self.assertContainsRe(out, 'revisionspec')
 
     def test_help_revisionspec(self):
-        """Smoke test for 'bzr help revisionspec'"""
+        """Smoke test for 'brz help revisionspec'"""
         out, err = self.run_bzr('help revisionspec')
         self.assertContainsRe(out, 'revno:')
         self.assertContainsRe(out, 'date:')
@@ -58,16 +58,16 @@ class TestHelp(tests.TestCaseWithTransport):
         self.assertContainsRe(out, 'branch:')
 
     def test_help_checkouts(self):
-        """Smoke test for 'bzr help checkouts'"""
+        """Smoke test for 'brz help checkouts'"""
         out, err = self.run_bzr('help checkouts')
         self.assertContainsRe(out, 'checkout')
         self.assertContainsRe(out, 'lightweight')
 
     def test_help_urlspec(self):
-        """Smoke test for 'bzr help urlspec'"""
+        """Smoke test for 'brz help urlspec'"""
         out, err = self.run_bzr('help urlspec')
         self.assertContainsRe(out, 'aftp://')
-        self.assertContainsRe(out, 'bzr://')
+        self.assertContainsRe(out, 'brz://')
         self.assertContainsRe(out, 'bzr\+ssh://')
         self.assertContainsRe(out, 'file://')
         self.assertContainsRe(out, 'ftp://')
@@ -76,21 +76,21 @@ class TestHelp(tests.TestCaseWithTransport):
         self.assertContainsRe(out, 'sftp://')
 
     def test_help_repositories(self):
-        """Smoke test for 'bzr help repositories'"""
+        """Smoke test for 'brz help repositories'"""
         out, err = self.run_bzr('help repositories')
         from brzlib.help_topics import help_as_plain_text, _repositories
         expected = help_as_plain_text(_repositories)
         self.assertEqual(expected, out)
 
     def test_help_working_trees(self):
-        """Smoke test for 'bzr help working-trees'"""
+        """Smoke test for 'brz help working-trees'"""
         out, err = self.run_bzr('help working-trees')
         from brzlib.help_topics import help_as_plain_text, _working_trees
         expected = help_as_plain_text(_working_trees)
         self.assertEqual(expected, out)
 
     def test_help_status_flags(self):
-        """Smoke test for 'bzr help status-flags'"""
+        """Smoke test for 'brz help status-flags'"""
         out, err = self.run_bzr('help status-flags')
         from brzlib.help_topics import help_as_plain_text, _status_flags
         expected = help_as_plain_text(_status_flags)
@@ -174,10 +174,10 @@ c=cat
 cat=cat
 ''', save=True)
 
-        expected = original + "'bzr cat' is an alias for 'bzr cat'.\n"
+        expected = original + "'brz cat' is an alias for 'brz cat'.\n"
         self.assertEqual(expected, self.run_bzr('help cat')[0])
 
-        self.assertEqual("'bzr c' is an alias for 'bzr cat'.\n",
+        self.assertEqual("'brz c' is an alias for 'brz cat'.\n",
                          self.run_bzr('help c')[0])
 
 

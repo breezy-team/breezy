@@ -28,7 +28,7 @@ class TestCatRevision(TestCaseWithTransport):
         self.assertEqual('', errors)
 
     def test_cat_revision(self):
-        """Test bzr cat-revision.
+        """Test brz cat-revision.
         """
         wt = self.make_branch_and_tree('.')
         r = wt.branch.repository

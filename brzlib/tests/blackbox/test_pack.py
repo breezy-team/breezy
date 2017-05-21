@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-"""Tests of the 'bzr pack' command."""
+"""Tests of the 'brz pack' command."""
 import os
 
 from brzlib import tests
@@ -74,7 +74,7 @@ class TestPack(tests.TestCaseWithTransport):
         t = wt.branch.repository.bzrdir.transport
 
         # do multiple commits to ensure that obsolete packs are created
-        # by 'bzr pack'
+        # by 'brz pack'
         self._make_versioned_file('file0.txt')
         for i in range(5):
             self._update_file('file0.txt', 'HELLO %d\n' % i)

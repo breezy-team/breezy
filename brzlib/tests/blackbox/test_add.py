@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-"""Tests of the 'bzr add' command."""
+"""Tests of the 'brz add' command."""
 
 import os
 
@@ -74,7 +74,7 @@ class TestAdd(tests.TestCaseWithTransport):
     def test_add_in_unversioned(self):
         """Try to add a file in an unversioned directory.
 
-        "bzr add" should add the parent(s) as necessary.
+        "brz add" should add the parent(s) as necessary.
         """
         tree = self.make_branch_and_tree('.')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
@@ -104,7 +104,7 @@ class TestAdd(tests.TestCaseWithTransport):
     def test_add_in_versioned(self):
         """Try to add a file in a versioned directory.
 
-        "bzr add" should do this happily.
+        "brz add" should do this happily.
         """
         tree = self.make_branch_and_tree('.')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
@@ -146,7 +146,7 @@ class TestAdd(tests.TestCaseWithTransport):
         self.run_bzr('check')
 
     def test_add_missing(self):
-        """bzr add foo where foo is missing should error."""
+        """brz add foo where foo is missing should error."""
         self.make_branch_and_tree('.')
         self.run_bzr('add missing-file', retcode=3)
 
@@ -232,8 +232,8 @@ class TestAdd(tests.TestCaseWithTransport):
         self.make_branch_and_tree('tree2')
         self.build_tree(['tree1/a', 'tree2/b'])
         sr.run_script(self, '''
-        $ bzr add tree1/a tree2/b
-        2>bzr: ERROR: Path "...tree2/b" is not a child of path "...tree1"
+        $ brz add tree1/a tree2/b
+        2>brz: ERROR: Path "...tree2/b" is not a child of path "...tree1"
         ''')
 
     def test_add_multiple_files_in_unicode_cwd(self):

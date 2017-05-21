@@ -42,7 +42,7 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
         self.assertEqual('', err)
         self.assertEqual('unknown:\n  a\n', out)
         out, err = self.run_bzr('status c', retcode=3)
-        self.assertEqual('bzr: ERROR: Specified file "c" is outside the '
+        self.assertEqual('brz: ERROR: Specified file "c" is outside the '
                           'current view: a, b\n', err)
         self.assertEqual('', out)
 
@@ -58,7 +58,7 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
         self.assertEqual('', err)
         self.assertEqual('adding a\n', out)
         out, err = self.run_bzr('add c', retcode=3)
-        self.assertEqual('bzr: ERROR: Specified file "c" is outside the '
+        self.assertEqual('brz: ERROR: Specified file "c" is outside the '
                           'current view: a, b\n', err)
         self.assertEqual('', out)
 
@@ -75,7 +75,7 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
         self.assertEqual('', err)
         self.assertStartsWith(out, "=== added file 'a'\n")
         out, err = self.run_bzr('diff c', retcode=3)
-        self.assertEqual('bzr: ERROR: Specified file "c" is outside the '
+        self.assertEqual('brz: ERROR: Specified file "c" is outside the '
                           'current view: a, b\n', err)
         self.assertEqual('', out)
 
@@ -101,7 +101,7 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
         self.assertEqual('Committed revision 1.', err_lines[2])
         self.assertEqual('', out)
         out, err = self.run_bzr('commit -m "file out of view" c', retcode=3)
-        self.assertEqual('bzr: ERROR: Specified file "c" is outside the '
+        self.assertEqual('brz: ERROR: Specified file "c" is outside the '
                           'current view: a, b\n', err)
         self.assertEqual('', out)
 
@@ -112,7 +112,7 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
         self.assertEqual('removed a\n', err)
         self.assertEqual('', out)
         out, err = self.run_bzr('remove --keep c', retcode=3)
-        self.assertEqual('bzr: ERROR: Specified file "c" is outside the '
+        self.assertEqual('brz: ERROR: Specified file "c" is outside the '
                           'current view: a, b\n', err)
         self.assertEqual('', out)
 
@@ -133,7 +133,7 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
         self.assertEqual('-   a\n', err)
         self.assertEqual('', out)
         out, err = self.run_bzr('revert c', retcode=3)
-        self.assertEqual('bzr: ERROR: Specified file "c" is outside the '
+        self.assertEqual('brz: ERROR: Specified file "c" is outside the '
                           'current view: a, b\n', err)
         self.assertEqual('', out)
 

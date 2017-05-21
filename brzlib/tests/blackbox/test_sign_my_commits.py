@@ -15,7 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Black-box tests for bzr sign-my-commits."""
+"""Black-box tests for brz sign-my-commits."""
 
 from brzlib import (
     gpg,

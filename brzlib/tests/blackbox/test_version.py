@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Black-box tests for bzr version."""
+"""Black-box tests for brz version."""
 
 import os
 import sys
@@ -37,7 +37,7 @@ class TestVersion(TestCase):
         # can see the version being tested
         self.permit_source_tree_branch_repo()
         output = self.run_bzr('version')[0]
-        self.log('bzr version output:')
+        self.log('brz version output:')
         self.log(output)
         self.assertTrue(output.startswith('Bazaar (bzr) '))
         self.assertNotEqual(output.index('Canonical'), -1)

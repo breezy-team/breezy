@@ -58,7 +58,7 @@ class TestAdd(TestCICPBase):
         # create a file on disk with the mixed-case name
         self.build_tree(['CamelCase'])
         run_script(self, """
-            $ bzr add camelcase
+            $ brz add camelcase
             adding CamelCase
             """)
 
@@ -68,7 +68,7 @@ class TestAdd(TestCICPBase):
         # create a file on disk with the mixed-case parent and base name
         self.build_tree(['CamelCaseParent/', 'CamelCaseParent/CamelCase'])
         run_script(self, """
-            $ bzr add camelcaseparent/camelcase
+            $ brz add camelcaseparent/camelcase
             adding CamelCaseParent
             adding CamelCaseParent/CamelCase
             """)
@@ -79,7 +79,7 @@ class TestAdd(TestCICPBase):
         # create a file on disk with the mixed-case parent and base name
         self.build_tree(['CamelCaseParent/', 'CamelCaseParent/CamelCase'])
         run_script(self, """
-            $ bzr add
+            $ brz add
             adding CamelCaseParent
             adding CamelCaseParent/CamelCase
             """)
@@ -91,13 +91,13 @@ class TestAdd(TestCICPBase):
         # create a file on disk with the mixed-case name
         self.build_tree(['MixedCase'])
         run_script(self, """
-            $ bzr add MixedCase
+            $ brz add MixedCase
             adding MixedCase
             """)
         # 'accidently' rename the file on disk
         osutils.rename('MixedCase', 'mixedcase')
         run_script(self, """
-            $ bzr add mixedcase
+            $ brz add mixedcase
             """)
 
     def test_re_add_dir(self):
@@ -108,14 +108,14 @@ class TestAdd(TestCICPBase):
         # create a file on disk with the mixed-case name
         self.build_tree(['MixedCaseParent/', 'MixedCaseParent/MixedCase'])
         run_script(self, """
-            $ bzr add MixedCaseParent
+            $ brz add MixedCaseParent
             adding MixedCaseParent
             adding MixedCaseParent/MixedCase
             """)
         # 'accidently' rename the directory on disk
         osutils.rename('MixedCaseParent', 'mixedcaseparent')
         run_script(self, """
-            $ bzr add mixedcaseparent
+            $ brz add mixedcaseparent
             """)
 
     def test_add_not_found(self):
@@ -125,8 +125,8 @@ class TestAdd(TestCICPBase):
         self.build_tree(['MixedCaseParent/', 'MixedCaseParent/MixedCase'])
         expected_fname = pathjoin(wt.basedir, "MixedCaseParent", "notfound")
         run_script(self, """
-            $ bzr add mixedcaseparent/notfound
-            2>bzr: ERROR: No such file: %s
+            $ brz add mixedcaseparent/notfound
+            2>brz: ERROR: No such file: %s
             """ % (repr(expected_fname),))
 
 
@@ -135,9 +135,9 @@ class TestMove(TestCICPBase):
     def test_mv_newname(self):
         wt = self._make_mixed_case_tree()
         run_script(self, """
-            $ bzr add -q
-            $ bzr ci -qm message
-            $ bzr mv camelcaseparent/camelcase camelcaseparent/NewCamelCase
+            $ brz add -q
+            $ brz ci -qm message
+            $ brz mv camelcaseparent/camelcase camelcaseparent/NewCamelCase
             CamelCaseParent/CamelCase => CamelCaseParent/NewCamelCase
             """)
 
@@ -146,10 +146,10 @@ class TestMove(TestCICPBase):
         # In this case we can specify the incorrect case for the destination,
         # as we use --after, so the file-system is sniffed.
         run_script(self, """
-            $ bzr add -q
-            $ bzr ci -qm message
+            $ brz add -q
+            $ brz ci -qm message
             $ mv CamelCaseParent/CamelCase CamelCaseParent/NewCamelCase
-            $ bzr mv --after camelcaseparent/camelcase camelcaseparent/newcamelcase
+            $ brz mv --after camelcaseparent/camelcase camelcaseparent/newcamelcase
             CamelCaseParent/CamelCase => CamelCaseParent/NewCamelCase
             """)
 
@@ -160,8 +160,8 @@ class TestMove(TestCICPBase):
         self.run_bzr('add')
         self.run_bzr('ci -m message')
         run_script(self, """
-            $ bzr mv camelcaseparent/camelcase LOWERCASEPARENT/LOWERCASE
-            2>bzr: ERROR: Could not move CamelCase => lowercase: \
+            $ brz mv camelcaseparent/camelcase LOWERCASEPARENT/LOWERCASE
+            2>brz: ERROR: Could not move CamelCase => lowercase: \
 lowercaseparent/lowercase is already versioned.
             """)
 
@@ -173,12 +173,12 @@ lowercaseparent/lowercase is already versioned.
         self.run_bzr('add')
         self.run_bzr('ci -m message')
         # Remove the source and create a destination file on disk with a different case.
-        # bzr should report that the filename is already versioned.
+        # brz should report that the filename is already versioned.
         os.unlink('CamelCaseParent/CamelCase')
         osutils.rename('lowercaseparent/lowercase', 'lowercaseparent/LOWERCASE')
         run_script(self, """
-            $ bzr mv --after camelcaseparent/camelcase LOWERCASEPARENT/LOWERCASE
-            2>bzr: ERROR: Could not move CamelCase => lowercase: \
+            $ brz mv --after camelcaseparent/camelcase LOWERCASEPARENT/LOWERCASE
+            2>brz: ERROR: Could not move CamelCase => lowercase: \
 lowercaseparent/lowercase is already versioned.
             """)
 
@@ -187,7 +187,7 @@ lowercaseparent/lowercase is already versioned.
         self.run_bzr('add')
         self.run_bzr('ci -m message')
         run_script(self, """
-            $ bzr mv camelcaseparent NewCamelCaseParent
+            $ brz mv camelcaseparent NewCamelCaseParent
             CamelCaseParent => NewCamelCaseParent
             """)
 
@@ -199,7 +199,7 @@ lowercaseparent/lowercase is already versioned.
         # as we use --after, so the file-system is sniffed.
         run_script(self, """
             $ mv CamelCaseParent NewCamelCaseParent
-            $ bzr mv --after camelcaseparent NewCamelCaseParent
+            $ brz mv --after camelcaseparent NewCamelCaseParent
             CamelCaseParent => NewCamelCaseParent
             """)
 
@@ -208,10 +208,10 @@ lowercaseparent/lowercase is already versioned.
         self.run_bzr('add')
         self.run_bzr('ci -m message')
 
-        # perform a mv to the new case - we expect bzr to accept the new
+        # perform a mv to the new case - we expect brz to accept the new
         # name, as specified, and rename the file on the file-system too.
         run_script(self, """
-            $ bzr mv camelcaseparent/camelcase camelcaseparent/camelCase
+            $ brz mv camelcaseparent/camelcase camelcaseparent/camelCase
             CamelCaseParent/CamelCase => CamelCaseParent/camelCase
             """)
         self.failUnlessEqual(canonical_relpath(wt.basedir, 'camelcaseparent/camelcase'),
@@ -226,10 +226,10 @@ lowercaseparent/lowercase is already versioned.
         # new case first.
         osutils.rename('CamelCaseParent/CamelCase', 'CamelCaseParent/camelCase')
         run_script(self, """
-            $ bzr mv --after camelcaseparent/camelcase camelcaseparent/camelCase
+            $ brz mv --after camelcaseparent/camelcase camelcaseparent/camelCase
             CamelCaseParent/CamelCase => CamelCaseParent/camelCase
             """)
-        # bzr should not have renamed the file to a different case
+        # brz should not have renamed the file to a different case
         self.failUnlessEqual(canonical_relpath(wt.basedir, 'camelcaseparent/camelcase'),
                              'CamelCaseParent/camelCase')
 
@@ -238,7 +238,7 @@ lowercaseparent/lowercase is already versioned.
         self.run_bzr('add')
         self.run_bzr('ci -m message')
         run_script(self, """
-            $ bzr mv LOWercaseparent/LOWercase LOWercaseparent/MIXEDCase camelcaseparent
+            $ brz mv LOWercaseparent/LOWercase LOWercaseparent/MIXEDCase camelcaseparent
             lowercaseparent/lowercase => CamelCaseParent/lowercase
             lowercaseparent/mixedCase => CamelCaseParent/mixedCase
             """)
@@ -250,7 +250,7 @@ class TestMisc(TestCICPBase):
         wt = self._make_mixed_case_tree()
         self.run_bzr('add')
         run_script(self, """
-            $ bzr status camelcaseparent/camelcase LOWERCASEPARENT/LOWERCASE
+            $ brz status camelcaseparent/camelcase LOWERCASEPARENT/LOWERCASE
             added:
               CamelCaseParent/
               CamelCaseParent/CamelCase

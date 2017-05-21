@@ -46,7 +46,7 @@ class TestInfo(tests.TestCaseWithTransport):
         location = self.get_url()
         out, err = self.run_bzr('info '+location, retcode=3)
         self.assertEqual(out, '')
-        self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)
+        self.assertEqual(err, 'brz: ERROR: Not a branch: "%s".\n' % location)
 
     def test_info_empty_controldir(self):
         self.make_bzrdir('ctrl')
@@ -1463,7 +1463,7 @@ Repository:
             lco_tree.branch.unlock()
 
         if sys.platform == 'win32':
-            self.knownFailure('Win32 cannot run "bzr info"'
+            self.knownFailure('Win32 cannot run "brz info"'
                               ' when the tree is locked.')
 
     def test_info_stacked(self):

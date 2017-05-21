@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for bzr cat.
+"""Black-box tests for brz cat.
 """
 
 from brzlib import tests
@@ -29,7 +29,7 @@ class TestCat(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('branch')
         self.build_tree_contents([('branch/a', 'foo\n')])
         tree.add('a')
-        # 'bzr cat' without an option should cat the last revision
+        # 'brz cat' without an option should cat the last revision
         self.run_bzr(['cat', 'a'], retcode=3, working_dir='branch')
 
         tree.commit(message='1')
@@ -93,11 +93,11 @@ class TestCat(tests.TestCaseWithTransport):
             self.build_tree_contents([('e-rev', 'new\n')])
             tree.add(['e-rev'])
         finally:
-            # calling bzr as another process require free lock on win32
+            # calling brz as another process require free lock on win32
             tree.unlock()
 
         # 'b-tree' is not present in the old tree.
-        self.run_bzr_error(["^bzr: ERROR: u?'b-tree' "
+        self.run_bzr_error(["^brz: ERROR: u?'b-tree' "
                             "is not present in revision .+$"],
                            'cat b-tree --name-from-revision')
 
@@ -198,7 +198,7 @@ class TestCat(tests.TestCaseWithTransport):
 
     def test_cat_nonexistent_branch(self):
         self.vfs_transport_factory = memory.MemoryServer
-        self.run_bzr_error(['^bzr: ERROR: Not a branch'],
+        self.run_bzr_error(['^brz: ERROR: Not a branch'],
                            ['cat', self.get_url()])
 
     def test_cat_directory(self):

@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for 'bzr modified', which shows modified files."""
+"""Black-box tests for 'brz modified', which shows modified files."""
 
 import os
 

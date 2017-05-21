@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
-"""Black-box tests for bzr aliases.
+"""Black-box tests for brz aliases.
 """
 
 import os
@@ -65,7 +65,7 @@ c2=cat -r 1 -r2
         # So we need to catch the output as well
         self.assertEqual(bzr_catch_error('--no-aliases c a',
                                           retcode=None),
-                          'bzr: ERROR: unknown command "c"\n')
+                          'brz: ERROR: unknown command "c"\n')
 
         bzr('c -r1 -r2', retcode=3)
         bzr('c1 -r1 -r2', retcode=3)

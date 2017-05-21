@@ -148,9 +148,9 @@ class TestTagging(TestCaseWithTransport):
         return fork
 
     def test_merge_without_commit_does_not_propagate_tags_to_master(self):
-        """'bzr merge' alone does not propagate tags to a master branch.
+        """'brz merge' alone does not propagate tags to a master branch.
 
-        (If the user runs 'bzr commit', then that is when the tags from the
+        (If the user runs 'brz commit', then that is when the tags from the
         merge are propagated.)
         """
         master, child = self.make_master_and_checkout()
@@ -167,8 +167,8 @@ class TestTagging(TestCaseWithTransport):
         fork.tags.set_tag('absent-tag', 'absent-rev')
         script.run_script(self, """
             $ cd child
-            $ bzr merge ../fork
-            $ bzr commit -m "Merge fork."
+            $ brz merge ../fork
+            $ brz commit -m "Merge fork."
             2>Committing to: .../master/
             2>Committed revision 2.
             """, null_output_matches_anything=True)
@@ -192,8 +192,8 @@ class TestTagging(TestCaseWithTransport):
         master.tags.set_tag('new-tag', master_r1)
         script.run_script(self, """
             $ cd child
-            $ bzr merge ../fork
-            $ bzr commit -m "Merge fork."
+            $ brz merge ../fork
+            $ brz commit -m "Merge fork."
             2>Committing to: .../master/
             2>Conflicting tags in bound branch:
             2>    new-tag
@@ -303,13 +303,13 @@ class TestTagging(TestCaseWithTransport):
         self._check_tag_filter('-r 2..3', (2, 3))
         self._check_tag_filter('-r 3..2', ())
         self.run_bzr_error(args="tags -r 123",
-            error_regexes=["bzr: ERROR: Requested revision: '123' "
+            error_regexes=["brz: ERROR: Requested revision: '123' "
                 "does not exist in branch:"])
         self.run_bzr_error(args="tags -r ..123",
-            error_regexes=["bzr: ERROR: Requested revision: '123' "
+            error_regexes=["brz: ERROR: Requested revision: '123' "
                 "does not exist in branch:"])
         self.run_bzr_error(args="tags -r 123.123",
-            error_regexes=["bzr: ERROR: Requested revision: '123.123' "
+            error_regexes=["brz: ERROR: Requested revision: '123.123' "
                 "does not exist in branch:"])
 
     def test_sort_tags_custom(self):

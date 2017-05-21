@@ -60,7 +60,7 @@ class TestConflicts(script.TestCaseWithTransportAndScript):
     def test_conflicts(self):
         self.run_script("""\
 $ cd branch
-$ bzr conflicts
+$ brz conflicts
 Text conflict in my_other_file
 Path conflict: mydir3 / mydir2
 Text conflict in myfile
@@ -69,14 +69,14 @@ Text conflict in myfile
     def test_conflicts_text(self):
         self.run_script("""\
 $ cd branch
-$ bzr conflicts --text
+$ brz conflicts --text
 my_other_file
 myfile
 """)
 
     def test_conflicts_directory(self):
         self.run_script("""\
-$ bzr conflicts  -d branch
+$ brz conflicts  -d branch
 Text conflict in my_other_file
 Path conflict: mydir3 / mydir2
 Text conflict in myfile

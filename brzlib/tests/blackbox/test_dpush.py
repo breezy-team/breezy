@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for bzr dpush."""
+"""Black-box tests for brz dpush."""
 
 
 from brzlib import (
@@ -66,11 +66,11 @@ class TestDpush(tests.TestCaseWithTransport):
         dc.open_workingtree().commit('msg')
 
         script.run_script(self, """
-            $ bzr dpush -d dc d
+            $ brz dpush -d dc d
             2>Doing on-the-fly conversion from DummyForeignVcsRepositoryFormat() to RepositoryFormat2a().
             2>This may take some time. Upgrade the repositories to the same format for better performance.
             2>Pushed up to revision 2.
-            $ bzr status dc
+            $ brz status dc
             """)
 
     def test_dpush_new(self):
@@ -83,13 +83,13 @@ class TestDpush(tests.TestCaseWithTransport):
         dc_tree.commit("msg")
 
         script.run_script(self, '''
-            $ bzr dpush -d dc d
+            $ brz dpush -d dc d
             2>Doing on-the-fly conversion from DummyForeignVcsRepositoryFormat() to RepositoryFormat2a().
             2>This may take some time. Upgrade the repositories to the same format for better performance.
             2>Pushed up to revision 2.
-            $ bzr revno dc
+            $ brz revno dc
             2
-            $ bzr status dc
+            $ brz status dc
             ''')
 
     def test_dpush_wt_diff(self):
@@ -103,7 +103,7 @@ class TestDpush(tests.TestCaseWithTransport):
 
         self.build_tree_contents([("dc/foofile", "blaaaal")])
         script.run_script(self, '''
-            $ bzr dpush -d dc d --no-strict
+            $ brz dpush -d dc d --no-strict
             2>Doing on-the-fly conversion from DummyForeignVcsRepositoryFormat() to RepositoryFormat2a().
             2>This may take some time. Upgrade the repositories to the same format for better performance.
             2>Pushed up to revision 2.
@@ -112,7 +112,7 @@ class TestDpush(tests.TestCaseWithTransport):
         # if the dummy vcs wasn't that dummy we could uncomment the line below
         # self.assertFileEqual("blaaaa", "d/foofile")
         script.run_script(self, '''
-            $ bzr status dc
+            $ brz status dc
             modified:
               foofile
             ''')

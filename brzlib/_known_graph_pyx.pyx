@@ -54,7 +54,7 @@ cdef extern from "Python.h":
 from collections import deque
 import gc
 
-from bzrlib import errors, revision
+from brzlib import errors, revision
 
 cdef object NULL_REVISION
 NULL_REVISION = revision.NULL_REVISION

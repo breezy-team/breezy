@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for bzr remove-tree."""
+"""Black-box tests for brz remove-tree."""
 
 import os
 

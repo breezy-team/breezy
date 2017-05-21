@@ -123,7 +123,7 @@ class TestOptions(tests.TestCase, SelfTestPatch):
         return (header,body,footer)
 
     def test_list_only(self):
-        # check that bzr selftest --list-only outputs no ui noise
+        # check that brz selftest --list-only outputs no ui noise
         def selftest(*args, **kwargs):
             """Capture the arguments selftest was run with."""
             return True

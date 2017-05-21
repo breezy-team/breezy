@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for 'bzr added', which shows newly-added files."""
+"""Black-box tests for 'brz added', which shows newly-added files."""
 
 import os
 
@@ -59,7 +59,7 @@ class TestAdded(TestCaseWithTransport):
         check_added('')
 
         # after add, shows up in list
-        # bug report 20060119 by Nathan McCallum -- 'bzr added' causes
+        # bug report 20060119 by Nathan McCallum -- 'brz added' causes
         # NameError
         tree.add(name)
         check_added(output, null)

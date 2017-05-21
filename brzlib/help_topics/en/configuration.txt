@@ -82,7 +82,7 @@ If not set, Bazaar will search for plugins in:
 
 * the user specific plugin directory (containing the ``user`` plugins),
 
-* the bzrlib directory (containing the ``core`` plugins),
+* the brzlib directory (containing the ``core`` plugins),
 
 * the site specific plugin directory if applicable (containing
   the ``site`` plugins).

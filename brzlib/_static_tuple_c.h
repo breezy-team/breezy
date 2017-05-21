@@ -109,7 +109,7 @@ import_static_tuple_c(void)
     struct type_description types[] = {
         {"StaticTuple", &_p_StaticTuple_Type},
         {NULL}};
-    return _import_extension_module("bzrlib._static_tuple_c",
+    return _import_extension_module("brzlib._static_tuple_c",
         functions, types);
 }
 

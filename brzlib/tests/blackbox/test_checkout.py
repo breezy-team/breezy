@@ -85,8 +85,8 @@ class TestCheckout(TestCaseWithTransport):
         branch = result.open_branch()
 
     def test_checkout_reconstitutes_working_trees(self):
-        # doing a 'bzr checkout' in the directory of a branch with no tree
-        # or a 'bzr checkout path' with path the name of a directory with
+        # doing a 'brz checkout' in the directory of a branch with no tree
+        # or a 'brz checkout path' with path the name of a directory with
         # a branch with no tree will reconsistute the tree.
         os.mkdir('treeless-branch')
         branch = controldir.ControlDir.create_branch_convenience(

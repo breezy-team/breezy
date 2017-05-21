@@ -50,13 +50,13 @@ class TestCommit(TestCaseWithTransport):
         self.assertEqual('', out)
         # Two ugly bits here.
         # 1) We really don't want 'aborting commit write group' anymore.
-        # 2) bzr: ERROR: is a really long line, so we wrap it with '\'
+        # 2) brz: ERROR: is a really long line, so we wrap it with '\'
         self.assertThat(
             err,
             DocTestMatches("""\
 Committing to: ...
-bzr: ERROR: No changes to commit.\
- Please 'bzr add' the files you want to commit,\
+brz: ERROR: No changes to commit.\
+ Please 'brz add' the files you want to commit,\
  or use --unchanged to force an empty commit.
 """, flags=doctest.ELLIPSIS|doctest.REPORT_UDIFF))
 
@@ -262,7 +262,7 @@ bzr: ERROR: No changes to commit.\
 
     def test_commit_sanitizes_CR_in_message(self):
         # See bug #433779, basically Emacs likes to pass '\r\n' style line
-        # endings to 'bzr commit -m ""' which breaks because we don't allow
+        # endings to 'brz commit -m ""' which breaks because we don't allow
         # '\r' in commit messages. (Mostly because of issues where XML style
         # formats arbitrarily strip it out of the data while parsing.)
         # To make life easier for users, we just always translate '\r\n' =>
@@ -280,7 +280,7 @@ bzr: ERROR: No changes to commit.\
 
     def test_commit_merge_reports_all_modified_files(self):
         # the commit command should show all the files that are shown by
-        # bzr diff or bzr status when committing, even when they were not
+        # brz diff or brz status when committing, even when they were not
         # changed by the user but rather through doing a merge.
         this_tree = self.make_branch_and_tree('this')
         # we need a bunch of files and dirs, to perform one action on each.
@@ -378,20 +378,20 @@ bzr: ERROR: No changes to commit.\
         # commit to the original branch to make the checkout out of date
         tree.commit('message branch', allow_pointless=True)
         # now commit to the checkout should emit
-        # ERROR: Out of date with the branch, 'bzr update' is suggested
+        # ERROR: Out of date with the branch, 'brz update' is suggested
         output = self.run_bzr('commit --unchanged -m checkout_message '
                              'checkout', retcode=3)
         self.assertEqual(output,
                          ('',
-                          "bzr: ERROR: Working tree is out of date, please "
-                          "run 'bzr update'.\n"))
+                          "brz: ERROR: Working tree is out of date, please "
+                          "run 'brz update'.\n"))
 
     def test_local_commit_unbound(self):
         # a --local commit on an unbound branch is an error
         self.make_branch_and_tree('.')
         out, err = self.run_bzr('commit --local', retcode=3)
         self.assertEqualDiff('', out)
-        self.assertEqualDiff('bzr: ERROR: Cannot perform local-only commits '
+        self.assertEqualDiff('brz: ERROR: Cannot perform local-only commits '
                              'on unbound branches.\n', err)
 
     def test_commit_a_text_merge_in_a_checkout(self):
@@ -621,10 +621,10 @@ altered in u2
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
         self.run_bzr_error(
-            ["bzr: ERROR: No tracker specified for bug 123. Use the form "
+            ["brz: ERROR: No tracker specified for bug 123. Use the form "
             "'tracker:id' or specify a default bug tracker using the "
             "`bugtracker` option.\n"
-            "See \"bzr help bugs\" for more information on this feature. "
+            "See \"brz help bugs\" for more information on this feature. "
             "Commit refused."],
             'commit -m add-b --fixes=123',
             working_dir='tree')
@@ -640,7 +640,7 @@ altered in u2
         tree.add('hello.txt')
         self.run_bzr_error(
             ["Did not understand bug identifier orange: Must be an integer. "
-             "See \"bzr help bugs\" for more information on this feature.\n"
+             "See \"brz help bugs\" for more information on this feature.\n"
              "Commit refused."],
             'commit -m add-b --fixes=lp:orange',
             working_dir='tree')
@@ -652,7 +652,7 @@ altered in u2
         tree.add('hello.txt')
         self.run_bzr_error(
             [r"Invalid bug orange:apples:bananas. Must be in the form of "
-             r"'tracker:id'\. See \"bzr help bugs\" for more information on "
+             r"'tracker:id'\. See \"brz help bugs\" for more information on "
              r"this feature.\nCommit refused\."],
             'commit -m add-b --fixes=orange:apples:bananas',
             working_dir='tree')
@@ -754,7 +754,7 @@ altered in u2
         out, err = self.run_bzr("commit -m hello "
             "--commit-time='NOT A TIME' tree/hello.txt", retcode=3)
         self.assertStartsWith(
-            err, "bzr: ERROR: Could not parse --commit-time:")
+            err, "brz: ERROR: Could not parse --commit-time:")
 
     def test_commit_time_missing_tz(self):
         tree = self.make_branch_and_tree('tree')
@@ -763,7 +763,7 @@ altered in u2
         out, err = self.run_bzr("commit -m hello "
             "--commit-time='2009-10-10 08:00:00' tree/hello.txt", retcode=3)
         self.assertStartsWith(
-            err, "bzr: ERROR: Could not parse --commit-time:")
+            err, "brz: ERROR: Could not parse --commit-time:")
         # Test that it is actually checking and does not simply crash with
         # some other exception
         self.assertContainsString(err, "missing a timezone offset")
@@ -796,7 +796,7 @@ altered in u2
         out, err = self.run_bzr(['commit', '--unchanged', '-mfoo', 'checkout'],
             retcode=3)
         self.assertContainsRe(err,
-            r'^bzr: ERROR: Cannot lock.*readonly transport')
+            r'^brz: ERROR: Cannot lock.*readonly transport')
 
     def setup_editor(self):
         # Test that commit template hooks work
@@ -829,7 +829,7 @@ altered in u2
         out, err = self.run_bzr("commit tree/hello.txt", retcode=3,
             stdin="y\n")
         self.assertContainsRe(err,
-            "bzr: ERROR: Empty commit message specified")
+            "brz: ERROR: Empty commit message specified")
 
     def test_commit_hook_template_accepted(self):
         tree = self.setup_commit_with_template()

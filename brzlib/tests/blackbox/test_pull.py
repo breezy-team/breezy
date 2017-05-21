@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for bzr pull."""
+"""Black-box tests for brz pull."""
 
 import os
 import sys
@@ -242,7 +242,7 @@ class TestPull(tests.TestCaseWithTransport):
         # test pull for failure without parent set
         out = self.run_bzr('pull', retcode=3, working_dir='branch_b')
         self.assertEqual(out,
-                ('','bzr: ERROR: No pull location known or specified.\n'))
+                ('','brz: ERROR: No pull location known or specified.\n'))
         # test implicit --remember when no parent set, this pull conflicts
         self.build_tree(['branch_b/d'])
         tree_b.add('d')
@@ -250,7 +250,7 @@ class TestPull(tests.TestCaseWithTransport):
         out = self.run_bzr('pull ../branch_a', retcode=3,
                            working_dir='branch_b')
         self.assertEqual(out,
-                ('','bzr: ERROR: These branches have diverged.'
+                ('','brz: ERROR: These branches have diverged.'
                     ' Use the missing command to see how.\n'
                     'Use the merge command to reconcile them.\n'))
         tree_b = tree_b.bzrdir.open_workingtree()
@@ -323,7 +323,7 @@ class TestPull(tests.TestCaseWithTransport):
         self.assertNotContainsRe(out, 'foo')
 
     def test_pull_quiet(self):
-        """Check that bzr pull --quiet does not print anything"""
+        """Check that brz pull --quiet does not print anything"""
         tree_a = self.make_branch_and_tree('tree_a')
         self.build_tree(['tree_a/foo'])
         tree_a.add('foo')
@@ -383,7 +383,7 @@ class TestPull(tests.TestCaseWithTransport):
         self.run_bzr(['pull', self.get_url('child')], working_dir='checkout')
 
     def test_pull_smart_stacked_streaming_acceptance(self):
-        """'bzr pull -r 123' works on stacked, smart branches, even when the
+        """'brz pull -r 123' works on stacked, smart branches, even when the
         revision specified by the revno is only present in the fallback
         repository.
 
@@ -473,7 +473,7 @@ class TestPull(tests.TestCaseWithTransport):
             "(?m)Fetching into experimental format")
 
     def test_pull_show_base(self):
-        """bzr pull supports --show-base
+        """brz pull supports --show-base
 
         see https://bugs.launchpad.net/bzr/+bug/202374"""
         # create two trees with conflicts, setup conflict, check that
@@ -565,21 +565,21 @@ class TestPullOutput(script.TestCaseWithTransportAndScript):
 
     def test_pull_log_format(self):
         self.run_script("""
-            $ bzr init trunk
+            $ brz init trunk
             Created a standalone tree (format: 2a)
             $ cd trunk
             $ echo foo > file
-            $ bzr add
+            $ brz add
             adding file
-            $ bzr commit -m 'we need some foo'
+            $ brz commit -m 'we need some foo'
             2>Committing to:...trunk/
             2>added file
             2>Committed revision 1.
             $ cd ..
-            $ bzr init feature
+            $ brz init feature
             Created a standalone tree (format: 2a)
             $ cd feature
-            $ bzr pull -v ../trunk -Olog_format=line
+            $ brz pull -v ../trunk -Olog_format=line
             Now on revision 1.
             Added Revisions:
             1: jrandom@example.com ...we need some foo

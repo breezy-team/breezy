@@ -72,7 +72,7 @@ import operator
 import os
 import stat
 
-from bzrlib import _readdir_py
+from brzlib import _readdir_py
 
 cdef object osutils
 osutils = None
@@ -187,7 +187,7 @@ cdef class Win32ReadDir:
         """See DirReader.top_prefix_to_starting_dir."""
         global osutils
         if osutils is None:
-            from bzrlib import osutils
+            from brzlib import osutils
         return (osutils.safe_utf8(prefix), None, None, None,
                 osutils.safe_unicode(top))
 

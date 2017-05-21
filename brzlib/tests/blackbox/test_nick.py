@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Black-box tests for bzr nick."""
+"""Black-box tests for brz nick."""
 
 import brzlib
 from brzlib import (
@@ -42,7 +42,7 @@ class TestNick(tests.TestCaseWithTransport):
                 self.assertEqual(expected, conf._get_explicit_nickname())
 
     def test_nick_command(self):
-        """bzr nick for viewing, setting nicknames"""
+        """brz nick for viewing, setting nicknames"""
         self.make_branch_and_tree('me.dev')
         self.assertNick('me.dev', working_dir='me.dev')
         # set the nickname

@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for bzr branches."""
+"""Black-box tests for brz branches."""
 
 from brzlib.bzrdir import BzrDir
 from brzlib.tests import TestCaseWithTransport
@@ -37,7 +37,7 @@ class TestBranches(TestCaseWithTransport):
         self.assertEqual(out, "")
 
     def test_default_current_dir(self):
-        # "bzr branches" list the branches in the current directory
+        # "brz branches" list the branches in the current directory
         # if no location was specified.
         self.run_bzr('init-repo a')
         out, err = self.run_bzr('branches', working_dir='a')

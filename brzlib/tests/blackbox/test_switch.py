@@ -288,7 +288,7 @@ class TestSwitch(TestCaseWithTransport):
         self.assertPathDoesNotExist('checkout/file-2')
         # Check that we don't accept a range
         self.run_bzr_error(
-            ['bzr switch --revision takes exactly one revision identifier'],
+            ['brz switch --revision takes exactly one revision identifier'],
             ['switch', '-r0..2'], working_dir='checkout')
 
     def prepare_lightweight_switch(self):
@@ -406,11 +406,11 @@ class TestSwitchParentLocationBase(TestCaseWithTransport):
         super(TestSwitchParentLocationBase, self).setUp()
         self.script_runner = script.ScriptRunner()
         self.script_runner.run_script(self, '''
-                $ bzr init-repo --no-trees repo
+                $ brz init-repo --no-trees repo
                 Shared repository...
                 Location:
                   shared repository: repo
-                $ bzr init repo/trunk
+                $ brz init repo/trunk
                 Created a repository branch...
                 Using shared repository: ...
                 ''')
@@ -426,9 +426,9 @@ class TestSwitchParentLocation(TestSwitchParentLocationBase):
 
     def _checkout_and_switch(self, option=''):
         self.script_runner.run_script(self, '''
-                $ bzr checkout %(option)s repo/trunk checkout
+                $ brz checkout %(option)s repo/trunk checkout
                 $ cd checkout
-                $ bzr switch --create-branch switched
+                $ brz switch --create-branch switched
                 2>Tree is up to date at revision 0.
                 2>Switched to branch:...switched...
                 $ cd ..
@@ -438,13 +438,13 @@ class TestSwitchParentLocation(TestSwitchParentLocationBase):
         return (bound_branch, master_branch)
 
     def test_switch_parent_lightweight(self):
-        """Lightweight checkout using bzr switch."""
+        """Lightweight checkout using brz switch."""
         bb, mb = self._checkout_and_switch(option='--lightweight')
         self.assertParent('repo/trunk', bb)
         self.assertParent('repo/trunk', mb)
 
     def test_switch_parent_heavyweight(self):
-        """Heavyweight checkout using bzr switch."""
+        """Heavyweight checkout using brz switch."""
         bb, mb = self._checkout_and_switch()
         self.assertParent('repo/trunk', bb)
         self.assertParent('repo/trunk', mb)
@@ -452,7 +452,7 @@ class TestSwitchParentLocation(TestSwitchParentLocationBase):
 
 class TestSwitchDoesntOpenMasterBranch(TestCaseWithTransport):
     # See https://bugs.launchpad.net/bzr/+bug/812285
-    # "bzr switch --create-branch" can point the new branch's parent to the
+    # "brz switch --create-branch" can point the new branch's parent to the
     # master branch, but it doesn't have to open it to do so.
 
     def test_switch_create_doesnt_open_master_branch(self):

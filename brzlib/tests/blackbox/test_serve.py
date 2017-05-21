@@ -51,7 +51,7 @@ class TestBzrServeBase(TestCaseWithTransport):
 
     def run_bzr_serve_then_func(self, serve_args, retcode=0, func=None,
                                 *func_args, **func_kwargs):
-        """Run 'bzr serve', and run the given func in a thread once the server
+        """Run 'brz serve', and run the given func in a thread once the server
         has started.
 
         When 'func' terminates, the server will be terminated too.
@@ -143,7 +143,7 @@ class TestBzrServe(TestBzrServeBase):
         self.assertEqual('', result[1])
 
     def assertServerFinishesCleanly(self, process):
-        """Shutdown the bzr serve instance process looking for errors."""
+        """Shutdown the brz serve instance process looking for errors."""
         # Shutdown the server
         result = self.finish_bzr_subprocess(process, retcode=3,
                                             send_signal=signal.SIGINT)
@@ -161,10 +161,10 @@ class TestBzrServe(TestBzrServeBase):
             branch.unlock()
 
     def start_server_inet(self, extra_options=()):
-        """Start a bzr server subprocess using the --inet option.
+        """Start a brz server subprocess using the --inet option.
 
         :param extra_options: extra options to give the server.
-        :return: a tuple with the bzr process handle for passing to
+        :return: a tuple with the brz process handle for passing to
             finish_bzr_subprocess, a client for the server, and a transport.
         """
         # Serve from the current directory
@@ -175,7 +175,7 @@ class TestBzrServe(TestBzrServeBase):
         # Connect to the server
         # We use this url because while this is no valid URL to connect to this
         # server instance, the transport needs a URL.
-        url = 'bzr://localhost/'
+        url = 'brz://localhost/'
         self.permit_url(url)
         client_medium = medium.SmartSimplePipesClientMedium(
             process.stdout, process.stdin, url)
@@ -183,10 +183,10 @@ class TestBzrServe(TestBzrServeBase):
         return process, transport
 
     def start_server_port(self, extra_options=()):
-        """Start a bzr server subprocess.
+        """Start a brz server subprocess.
 
         :param extra_options: extra options to give the server.
-        :return: a tuple with the bzr process handle for passing to
+        :return: a tuple with the brz process handle for passing to
             finish_bzr_subprocess, and the base url for the server.
         """
         # Serve from the current directory
@@ -197,7 +197,7 @@ class TestBzrServe(TestBzrServeBase):
         prefix = 'listening on port: '
         self.assertStartsWith(port_line, prefix)
         port = int(port_line[len(prefix):])
-        url = 'bzr://localhost:%d/' % port
+        url = 'brz://localhost:%d/' % port
         self.permit_url(url)
         return process, url
 
@@ -209,7 +209,7 @@ class TestBzrServe(TestBzrServeBase):
         self.assertEqual('', err)
 
     def test_bzr_serve_inet_readonly(self):
-        """bzr server should provide a read only filesystem by default."""
+        """brz server should provide a read only filesystem by default."""
         process, transport = self.start_server_inet()
         self.assertRaises(errors.TransportNotPossible, transport.mkdir, 'adir')
         self.assertInetServerShutsdownCleanly(process)
@@ -227,7 +227,7 @@ class TestBzrServe(TestBzrServeBase):
         self.assertInetServerShutsdownCleanly(process)
 
     def test_bzr_serve_port_readonly(self):
-        """bzr server should provide a read only filesystem by default."""
+        """brz server should provide a read only filesystem by default."""
         process, url = self.start_server_port()
         t = transport.get_transport_from_url(url)
         self.assertRaises(errors.TransportNotPossible, t.mkdir, 'adir')
@@ -344,7 +344,7 @@ class TestBzrServe(TestBzrServeBase):
 class TestCmdServeChrooting(TestBzrServeBase):
 
     def test_serve_tcp(self):
-        """'bzr serve' wraps the given --directory in a ChrootServer.
+        """'brz serve' wraps the given --directory in a ChrootServer.
 
         So requests that search up through the parent directories (like
         find_repositoryV3) will give "not found" responses, rather than
@@ -367,7 +367,7 @@ class TestCmdServeChrooting(TestBzrServeBase):
         # back.
         client_medium = medium.SmartTCPClientMedium(
             '127.0.0.1', self.tcp_server.port,
-            'bzr://localhost:%d/' % (self.tcp_server.port,))
+            'brz://localhost:%d/' % (self.tcp_server.port,))
         smart_client = client._SmartClient(client_medium)
         resp = smart_client.call('mkdir', 'foo', '')
         resp = smart_client.call('BzrDirFormat.initialize', 'foo/')

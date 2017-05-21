@@ -166,7 +166,7 @@ cdef class _Stat:
                      self.st_mtime, self.st_ctime))
 
 
-from bzrlib import osutils
+from brzlib import osutils
 
 cdef object _safe_utf8
 _safe_utf8 = osutils.safe_utf8

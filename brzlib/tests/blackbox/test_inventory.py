@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Black-box tests for 'bzr inventory'."""
+"""Black-box tests for 'brz inventory'."""
 
 import os
 
@@ -34,7 +34,7 @@ class TestInventory(TestCaseWithTransport):
         self.tree = tree
 
     def assertInventoryEqual(self, expected, args=None, **kwargs):
-        """Test that the output of 'bzr inventory' is as expected.
+        """Test that the output of 'brz inventory' is as expected.
 
         Any arguments supplied will be passed to run_bzr.
         """
@@ -65,7 +65,7 @@ class TestInventory(TestCaseWithTransport):
     def test_inventory_specific_files(self):
         self.assertInventoryEqual('a\n', 'a')
         self.assertInventoryEqual('b\nb/c\n', 'b b/c')
-        # 'bzr inventory' recurses into subdirectories
+        # 'brz inventory' recurses into subdirectories
         self.assertInventoryEqual('b\nb/c\n', 'b')
 
     def test_inventory_mixed(self):

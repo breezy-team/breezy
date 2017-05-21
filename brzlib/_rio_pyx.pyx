@@ -47,7 +47,7 @@ cdef extern from "Python.h":
 cdef extern from "string.h":
     void *memcpy(void *, void *, int)
 
-from bzrlib.rio import Stanza
+from brzlib.rio import Stanza
 
 cdef int _valid_tag_char(char c): # cannot_raise
     return (c == c'_' or c == c'-' or 

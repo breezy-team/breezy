@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""UI tests for bzr ignore."""
+"""UI tests for brz ignore."""
 
 
 from cStringIO import StringIO
@@ -43,7 +43,7 @@ class TestCommands(TestCaseWithTransport):
     def test_ignore_absolutes(self):
         """'ignore' with an absolute path returns an error"""
         self.make_branch_and_tree('.')
-        self.run_bzr_error(('bzr: ERROR: NAME_PATTERN should not '
+        self.run_bzr_error(('brz: ERROR: NAME_PATTERN should not '
                             'be an absolute path\n',),
                            'ignore /crud')
 
@@ -105,7 +105,7 @@ class TestCommands(TestCaseWithTransport):
     def test_ignore_no_arguments(self):
         """'ignore' with no arguments returns an error"""
         self.make_branch_and_tree('.')
-        self.run_bzr_error(('bzr: ERROR: ignore requires at least one '
+        self.run_bzr_error(('brz: ERROR: ignore requires at least one '
                             'NAME_PATTERN or --default-rules.\n',),
                            'ignore')
 
@@ -127,7 +127,7 @@ class TestCommands(TestCaseWithTransport):
                          "Warning: the following files are version controlled"\
                          " and match your ignore pattern:\na\n"\
                          "These files will continue to be version controlled"\
-                         " unless you 'bzr remove' them.\n")
+                         " unless you 'brz remove' them.\n")
 
         # test a single unversioned file
         out, err = self.run_bzr('ignore b')
@@ -140,7 +140,7 @@ class TestCommands(TestCaseWithTransport):
                          "Warning: the following files are version controlled"\
                          " and match your ignore pattern:\n.bzrignore\na\nb\n"\
                          "These files will continue to be version controlled"\
-                         " unless you 'bzr remove' them.\n")
+                         " unless you 'brz remove' them.\n")
 
     def test_ignored_versioned_file_matching_new_pattern(self):
         tree = self.make_branch_and_tree('.')
@@ -155,7 +155,7 @@ class TestCommands(TestCaseWithTransport):
                          "Warning: the following files are version controlled"\
                          " and match your ignore pattern:\nb\n"\
                          "These files will continue to be version controlled"\
-                         " unless you 'bzr remove' them.\n")
+                         " unless you 'brz remove' them.\n")
 
     def test_ignore_directory(self):
         """Test --directory option"""

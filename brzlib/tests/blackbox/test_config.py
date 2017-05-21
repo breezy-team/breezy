@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for bzr config."""
+"""Black-box tests for brz config."""
 
 from brzlib import (
     config,
@@ -77,7 +77,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         self.bazaar_config.set_user_option('multiline', '1\n2\n')
         # Fallout from bug 710410, the triple quotes have been toggled
         script.run_script(self, '''\
-            $ bzr config -d tree
+            $ brz config -d tree
             bazaar:
               [DEFAULT]
               multiline = """1
@@ -89,7 +89,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         self.bazaar_config.set_user_option('multiline', '1\n2\n')
         # Fallout from bug 710410, the triple quotes have been toggled
         script.run_script(self, '''\
-            $ bzr config -d tree multiline
+            $ brz config -d tree multiline
             """1
             2
             """
@@ -100,7 +100,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         self.addCleanup(config.option_registry.remove, 'list')
         self.bazaar_config.set_user_option('list', [1, 'a', 'with, a comma'])
         script.run_script(self, '''\
-            $ bzr config -d tree
+            $ brz config -d tree
             bazaar:
               [DEFAULT]
               list = 1, a, "with, a comma"
@@ -111,7 +111,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         self.addCleanup(config.option_registry.remove, 'list')
         self.bazaar_config.set_user_option('list', [1, 'a', 'with, a comma'])
         script.run_script(self, '''\
-            $ bzr config -d tree list
+            $ brz config -d tree list
             1, a, "with, a comma"
             ''')
 
@@ -119,7 +119,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         self.bazaar_config.set_user_option('bzr.transform.orphan_policy',
                                            u'move')
         script.run_script(self, '''\
-            $ bzr config -d tree
+            $ brz config -d tree
             bazaar:
               [DEFAULT]
               bzr.transform.orphan_policy = move
@@ -129,14 +129,14 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         self.bazaar_config.set_user_option('bzr.transform.orphan_policy',
                                            u'move')
         script.run_script(self, '''\
-            $ bzr config -d tree bzr.transform.orphan_policy
+            $ brz config -d tree bzr.transform.orphan_policy
             move
             ''')
 
     def test_bazaar_config(self):
         self.bazaar_config.set_user_option('hello', 'world')
         script.run_script(self, '''\
-            $ bzr config -d tree
+            $ brz config -d tree
             bazaar:
               [DEFAULT]
               hello = world
@@ -146,7 +146,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         self.locations_config.set_user_option('hello', 'world')
         self.branch_config.set_user_option('hello', 'you')
         script.run_script(self, '''\
-            $ bzr config -d tree
+            $ brz config -d tree
             locations:
               [.../tree]
               hello = world
@@ -158,7 +158,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         self.bazaar_config.set_user_option('hello', 'world')
         self.locations_config.set_user_option('hello', 'world')
         script.run_script(self, '''\
-            $ bzr config
+            $ brz config
             bazaar:
               [DEFAULT]
               hello = world
@@ -167,7 +167,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
     def test_cmd_line(self):
         self.bazaar_config.set_user_option('hello', 'world')
         script.run_script(self, '''\
-            $ bzr config -Ohello=bzr
+            $ brz config -Ohello=bzr
             cmdline:
               hello = bzr
             bazaar:
@@ -194,7 +194,7 @@ url = tree
         # their definition, likewise the path is not appended, we are just
         # presenting the relevant portions of the config files
         script.run_script(self, '''\
-            $ bzr config -d tree --all url
+            $ brz config -d tree --all url
             locations:
               [.../work/tree]
               url = tree
@@ -212,13 +212,13 @@ class TestConfigActive(tests.TestCaseWithTransport):
 
     def test_active_in_locations(self):
         script.run_script(self, '''\
-            $ bzr config -d tree file
+            $ brz config -d tree file
             locations
             ''')
 
     def test_active_in_bazaar(self):
         script.run_script(self, '''\
-            $ bzr config -d tree --scope bazaar file
+            $ brz config -d tree --scope bazaar file
             bazaar
             ''')
 
@@ -226,8 +226,8 @@ class TestConfigActive(tests.TestCaseWithTransport):
         # We need to delete the locations definition that overrides the branch
         # one
         script.run_script(self, '''\
-            $ bzr config -d tree --scope locations --remove file
-            $ bzr config -d tree file
+            $ brz config -d tree --scope locations --remove file
+            $ brz config -d tree file
             branch
             ''')
 
@@ -244,8 +244,8 @@ class TestConfigSetOption(tests.TestCaseWithTransport):
 
     def test_bazaar_config_outside_branch(self):
         script.run_script(self, '''\
-            $ bzr config --scope bazaar hello=world
-            $ bzr config -d tree --all hello
+            $ brz config --scope bazaar hello=world
+            $ brz config -d tree --all hello
             bazaar:
               [DEFAULT]
               hello = world
@@ -253,8 +253,8 @@ class TestConfigSetOption(tests.TestCaseWithTransport):
 
     def test_bazaar_config_inside_branch(self):
         script.run_script(self, '''\
-            $ bzr config -d tree --scope bazaar hello=world
-            $ bzr config -d tree --all hello
+            $ brz config -d tree --scope bazaar hello=world
+            $ brz config -d tree --all hello
             bazaar:
               [DEFAULT]
               hello = world
@@ -262,8 +262,8 @@ class TestConfigSetOption(tests.TestCaseWithTransport):
 
     def test_locations_config_inside_branch(self):
         script.run_script(self, '''\
-            $ bzr config -d tree --scope locations hello=world
-            $ bzr config -d tree --all hello
+            $ brz config -d tree --scope locations hello=world
+            $ brz config -d tree --all hello
             locations:
               [.../work/tree]
               hello = world
@@ -271,16 +271,16 @@ class TestConfigSetOption(tests.TestCaseWithTransport):
 
     def test_branch_config_default(self):
         script.run_script(self, '''\
-            $ bzr config -d tree hello=world
-            $ bzr config -d tree --all hello
+            $ brz config -d tree hello=world
+            $ brz config -d tree --all hello
             branch:
               hello = world
             ''')
 
     def test_branch_config_forcing_branch(self):
         script.run_script(self, '''\
-            $ bzr config -d tree --scope branch hello=world
-            $ bzr config -d tree --all hello
+            $ brz config -d tree --scope branch hello=world
+            $ brz config -d tree --all hello
             branch:
               hello = world
             ''')
@@ -298,8 +298,8 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
 
     def test_bazaar_config_outside_branch(self):
         script.run_script(self, '''\
-            $ bzr config --scope bazaar --remove file
-            $ bzr config -d tree --all file
+            $ brz config --scope bazaar --remove file
+            $ brz config -d tree --all file
             locations:
               [.../work/tree]
               file = locations
@@ -309,8 +309,8 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
 
     def test_bazaar_config_inside_branch(self):
         script.run_script(self, '''\
-            $ bzr config -d tree --scope bazaar --remove file
-            $ bzr config -d tree --all file
+            $ brz config -d tree --scope bazaar --remove file
+            $ brz config -d tree --all file
             locations:
               [.../work/tree]
               file = locations
@@ -320,8 +320,8 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
 
     def test_locations_config_inside_branch(self):
         script.run_script(self, '''\
-            $ bzr config -d tree --scope locations --remove file
-            $ bzr config -d tree --all file
+            $ brz config -d tree --scope locations --remove file
+            $ brz config -d tree --all file
             branch:
               file = branch
             bazaar:
@@ -331,8 +331,8 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
 
     def test_branch_config_default(self):
         script.run_script(self, '''\
-            $ bzr config -d tree --scope locations --remove file
-            $ bzr config -d tree --all file
+            $ brz config -d tree --scope locations --remove file
+            $ brz config -d tree --all file
             branch:
               file = branch
             bazaar:
@@ -340,8 +340,8 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
               file = bazaar
             ''')
         script.run_script(self, '''\
-            $ bzr config -d tree --remove file
-            $ bzr config -d tree --all file
+            $ brz config -d tree --remove file
+            $ brz config -d tree --all file
             bazaar:
               [DEFAULT]
               file = bazaar
@@ -349,8 +349,8 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
 
     def test_branch_config_forcing_branch(self):
         script.run_script(self, '''\
-            $ bzr config -d tree --scope branch --remove file
-            $ bzr config -d tree --all file
+            $ brz config -d tree --scope branch --remove file
+            $ brz config -d tree --all file
             locations:
               [.../work/tree]
               file = locations
@@ -359,8 +359,8 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
               file = bazaar
             ''')
         script.run_script(self, '''\
-            $ bzr config -d tree --scope locations --remove file
-            $ bzr config -d tree --all file
+            $ brz config -d tree --scope locations --remove file
+            $ brz config -d tree --all file
             bazaar:
               [DEFAULT]
               file = bazaar

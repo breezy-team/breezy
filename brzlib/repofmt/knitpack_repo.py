@@ -961,7 +961,7 @@ class KnitPacker(Packer):
 class KnitReconcilePacker(KnitPacker):
     """A packer which regenerates indices etc as it copies.
 
-    This is used by ``bzr reconcile`` to cause parent text pointers to be
+    This is used by ``brz reconcile`` to cause parent text pointers to be
     regenerated.
     """
 

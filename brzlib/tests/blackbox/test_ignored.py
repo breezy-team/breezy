@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-"""Tests of the 'bzr ignored' command."""
+"""Tests of the 'brz ignored' command."""
 
 from brzlib.tests import TestCaseWithTransport
 
@@ -23,7 +23,7 @@ from brzlib.tests import TestCaseWithTransport
 class TestIgnored(TestCaseWithTransport):
 
     def test_ignored_added_file(self):
-        """'bzr ignored' should not list versioned files."""
+        """'brz ignored' should not list versioned files."""
         # this test can go in favour of a more general ui test at some point
         # as it is actually testing the internals layer and should not be.
         # There are no other 'ignored' tests though, so it should be retained

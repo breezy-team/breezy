@@ -186,13 +186,13 @@ class TestReconfigure(TestCaseWithTransportAndScript):
 
     def test_branch_and_use_shared(self):
         self.run_script("""\
-$ bzr init -q branch
+$ brz init -q branch
 $ echo foo > branch/foo
-$ bzr add -q branch/foo
-$ bzr commit -q -m msg branch
-$ bzr init-repo -q .
-$ bzr reconfigure --branch --use-shared branch
-$ bzr info branch
+$ brz add -q branch/foo
+$ brz commit -q -m msg branch
+$ brz init-repo -q .
+$ brz reconfigure --branch --use-shared branch
+$ brz info branch
 Repository branch (format: ...)
 Location:
   shared repository: .
@@ -201,13 +201,13 @@ Location:
 
     def test_use_shared_and_branch(self):
         self.run_script("""\
-$ bzr init -q branch
+$ brz init -q branch
 $ echo foo > branch/foo
-$ bzr add -q branch/foo
-$ bzr commit -q -m msg branch
-$ bzr init-repo -q .
-$ bzr reconfigure --use-shared --branch branch
-$ bzr info branch
+$ brz add -q branch/foo
+$ brz commit -q -m msg branch
+$ brz init-repo -q .
+$ brz reconfigure --use-shared --branch branch
+$ brz info branch
 Repository branch (format: ...)
 Location:
   shared repository: .

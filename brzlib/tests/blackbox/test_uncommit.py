@@ -70,7 +70,7 @@ class TestUncommit(TestCaseWithTransport):
         wt = self.create_simple_tree()
         os.chdir('tree')
         run_script(self, """    
-        $ bzr uncommit
+        $ brz uncommit
         ...
         The above revision(s) will be removed.
         2>Uncommit these revisions? ([y]es, [n]o): no
@@ -238,13 +238,13 @@ class TestUncommit(TestCaseWithTransport):
         script = ScriptRunner()
         script.run_script(self, """
 $ cd tree
-$ bzr uncommit --force 
+$ brz uncommit --force 
     2 ...
       second commit
 ...
 The above revision(s) will be removed.
 You can restore the old tip by running:
-  bzr pull . -r revid:a2
+  brz pull . -r revid:a2
 """)
 
     def test_uncommit_octopus_merge(self):
@@ -319,7 +319,7 @@ class TestSmartServerUncommit(TestCaseWithTransport):
 class TestInconsistentDelta(TestCaseWithTransport):
     # See https://bugs.launchpad.net/bzr/+bug/855155
     # See https://bugs.launchpad.net/bzr/+bug/1100385
-    # bzr uncommit may result in error
+    # brz uncommit may result in error
     # 'An inconsistent delta was supplied involving'
 
     def test_inconsistent_delta(self):

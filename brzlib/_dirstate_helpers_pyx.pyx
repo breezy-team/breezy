@@ -26,9 +26,9 @@ import os
 import stat
 import sys
 
-from bzrlib import cache_utf8, errors, osutils
-from bzrlib.dirstate import DirState
-from bzrlib.osutils import parent_directories, pathjoin, splitpath
+from brzlib import cache_utf8, errors, osutils
+from brzlib.dirstate import DirState
+from brzlib.osutils import parent_directories, pathjoin, splitpath
 
 
 # This is the Windows equivalent of ENOTDIR

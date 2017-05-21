@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for bzr log."""
+"""Black-box tests for brz log."""
 
 from itertools import izip
 import os
@@ -340,51 +340,51 @@ class TestLogErrors(TestLog):
 
     def test_log_zero_revspec(self):
         self.make_minimal_branch()
-        self.run_bzr_error(['bzr: ERROR: Logging revision 0 is invalid.'],
+        self.run_bzr_error(['brz: ERROR: Logging revision 0 is invalid.'],
                            ['log', '-r0'])
 
     def test_log_zero_begin_revspec(self):
         self.make_linear_branch()
-        self.run_bzr_error(['bzr: ERROR: Logging revision 0 is invalid.'],
+        self.run_bzr_error(['brz: ERROR: Logging revision 0 is invalid.'],
                            ['log', '-r0..2'])
 
     def test_log_zero_end_revspec(self):
         self.make_linear_branch()
-        self.run_bzr_error(['bzr: ERROR: Logging revision 0 is invalid.'],
+        self.run_bzr_error(['brz: ERROR: Logging revision 0 is invalid.'],
                            ['log', '-r-2..0'])
 
     def test_log_nonexistent_revno(self):
         self.make_minimal_branch()
-        self.run_bzr_error(["bzr: ERROR: Requested revision: '1234' "
+        self.run_bzr_error(["brz: ERROR: Requested revision: '1234' "
                             "does not exist in branch:"],
                            ['log', '-r1234'])
 
     def test_log_nonexistent_dotted_revno(self):
         self.make_minimal_branch()
-        self.run_bzr_error(["bzr: ERROR: Requested revision: '123.123' "
+        self.run_bzr_error(["brz: ERROR: Requested revision: '123.123' "
                             "does not exist in branch:"],
                            ['log',  '-r123.123'])
 
     def test_log_change_nonexistent_revno(self):
         self.make_minimal_branch()
-        self.run_bzr_error(["bzr: ERROR: Requested revision: '1234' "
+        self.run_bzr_error(["brz: ERROR: Requested revision: '1234' "
                             "does not exist in branch:"],
                            ['log',  '-c1234'])
 
     def test_log_change_nonexistent_dotted_revno(self):
         self.make_minimal_branch()
-        self.run_bzr_error(["bzr: ERROR: Requested revision: '123.123' "
+        self.run_bzr_error(["brz: ERROR: Requested revision: '123.123' "
                             "does not exist in branch:"],
                            ['log', '-c123.123'])
 
     def test_log_change_single_revno_only(self):
         self.make_minimal_branch()
-        self.run_bzr_error(['bzr: ERROR: Option --change does not'
+        self.run_bzr_error(['brz: ERROR: Option --change does not'
                            ' accept revision ranges'],
                            ['log', '--change', '2..3'])
 
     def test_log_change_incompatible_with_revision(self):
-        self.run_bzr_error(['bzr: ERROR: --revision and --change'
+        self.run_bzr_error(['brz: ERROR: --revision and --change'
                            ' are mutually exclusive'],
                            ['log', '--change', '2', '--revision', '3'])
 
@@ -399,13 +399,13 @@ class TestLogErrors(TestLog):
 
     def test_log_reversed_revspecs(self):
         self.make_linear_branch()
-        self.run_bzr_error(('bzr: ERROR: Start revision must be older than '
+        self.run_bzr_error(('brz: ERROR: Start revision must be older than '
                             'the end revision.\n',),
                            ['log', '-r3..1'])
 
     def test_log_reversed_dotted_revspecs(self):
         self.make_merged_branch()
-        self.run_bzr_error(('bzr: ERROR: Start revision not found in '
+        self.run_bzr_error(('brz: ERROR: Start revision not found in '
                             'history of end revision.\n',),
                            "log -r 1.1.1..1")
 
@@ -422,19 +422,19 @@ class TestLogErrors(TestLog):
 
     def test_log_unsupported_timezone(self):
         self.make_linear_branch()
-        self.run_bzr_error(['bzr: ERROR: Unsupported timezone format "foo", '
+        self.run_bzr_error(['brz: ERROR: Unsupported timezone format "foo", '
                             'options are "utc", "original", "local".'],
                            ['log', '--timezone', 'foo'])
 
     def test_log_exclude_ancestry_no_range(self):
         self.make_linear_branch()
-        self.run_bzr_error(['bzr: ERROR: --exclude-common-ancestry'
+        self.run_bzr_error(['brz: ERROR: --exclude-common-ancestry'
                             ' requires -r with two revisions'],
                            ['log', '--exclude-common-ancestry'])
 
     def test_log_exclude_ancestry_single_revision(self):
         self.make_merged_branch()
-        self.run_bzr_error(['bzr: ERROR: --exclude-common-ancestry'
+        self.run_bzr_error(['brz: ERROR: --exclude-common-ancestry'
                             ' requires two different revisions'],
                            ['log', '--exclude-common-ancestry',
                             '-r1.1.1..1.1.1'])
@@ -565,8 +565,8 @@ class TestLogMerges(TestLogWithLogCatcher):
 
     def test_include_merges(self):
         # Confirm --include-merges gives the same output as -n0
-        msg = ("The option '--include-merges' to 'bzr log' "
-               "has been deprecated in bzr 2.5. "
+        msg = ("The option '--include-merges' to 'brz log' "
+               "has been deprecated in brz 2.5. "
                "Please use '--include-merged' instead.\n")
         self.assertLogRevnos(['--include-merges'],
                              ['2', '1.1.2', '1.2.1', '1.1.1', '1'],
@@ -771,14 +771,14 @@ class TestLogEncodings(tests.TestCaseInTempDir):
         self.overrideAttr(osutils, '_cached_user_encoding')
 
     def create_branch(self):
-        bzr = self.run_bzr
+        brz = self.run_bzr
         bzr('init')
         self.build_tree_contents([('a', 'some stuff\n')])
         bzr('add a')
         bzr(['commit', '-m', self._message])
 
     def try_encoding(self, encoding, fail=False):
-        bzr = self.run_bzr
+        brz = self.run_bzr
         if fail:
             self.assertRaises(UnicodeEncodeError,
                 self._mu.encode, encoding)
@@ -817,7 +817,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
             self.try_encoding(encoding, fail=True)
 
     def test_stdout_encoding(self):
-        bzr = self.run_bzr
+        brz = self.run_bzr
         osutils._cached_user_encoding = "cp1251"
 
         bzr('init')
@@ -1018,7 +1018,7 @@ class MainlineGhostTests(TestLogWithLogCatcher):
         (stdout, stderr) = self.run_bzr(['log', '-r..2'], retcode=3)
         self.assertEqual(["2", "1"],
                          [r.revno for r in self.get_captured_revisions()])
-        self.assertEqual("bzr: ERROR: Further revision history missing.", stderr)
+        self.assertEqual("brz: ERROR: Further revision history missing.", stderr)
 
     def test_log_range_open_end(self):
         self.assertLogRevnos(["-r1.."], ["2", "1"])

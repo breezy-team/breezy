@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Black-box tests for bzr handling non-ascii characters."""
+"""Black-box tests for brz handling non-ascii characters."""
 
 import os
 import sys
@@ -32,7 +32,7 @@ load_tests = load_tests_apply_scenarios
 
 
 class TestNonAscii(tests.TestCaseWithTransport):
-    """Test that bzr handles files/committers/etc which are non-ascii."""
+    """Test that brz handles files/committers/etc which are non-ascii."""
 
     scenarios = EncodingAdapter.encoding_scenarios
 
@@ -47,7 +47,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
     def run_bzr_decode(self, args, encoding=None, fail=False, retcode=None,
                        working_dir=None):
-        """Run bzr and decode the output into a particular encoding.
+        """Run brz and decode the output into a particular encoding.
 
         Returns a string containing the stdout output from bzr.
 
@@ -149,8 +149,8 @@ class TestNonAscii(tests.TestCaseWithTransport):
         self.assertEqual(expected, txt)
 
     def test_cat(self):
-        # bzr cat shouldn't change the contents
-        # using run_bzr since that doesn't decode
+        # brz cat shouldn't change the contents
+        # using run_brz since that doesn't decode
         txt = self.run_bzr('cat b')[0]
         self.assertEqual('non-ascii \xFF\xFF\xFC\xFB\x00 in b\n', txt)
 
@@ -477,7 +477,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         fname = self.info['filename'] + '2'
         self.build_tree_contents([(fname, 'unknown\n')])
 
-        # TODO: jam 20060112 bzr unknowns is the only one which
+        # TODO: jam 20060112 brz unknowns is the only one which
         #       quotes paths do we really want it to?
         #       awilkins 20080521 added and modified do it now as well
         txt = self.run_bzr_decode('unknowns')

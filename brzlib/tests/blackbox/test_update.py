@@ -67,7 +67,7 @@ class TestUpdate(tests.TestCaseWithTransport):
         self.run_bzr('checkout branch checkout')
         sr = ScriptRunner()
         sr.run_script(self, '''
-$ bzr update checkout
+$ brz update checkout
 2>Tree is up to date at revision 0 of branch .../branch
 ''')
 
@@ -174,7 +174,7 @@ All changes applied successfully.
 +N  file
 All changes applied successfully.
 Updated to revision 2 of branch %s
-Your local commits will now show as pending merges with 'bzr status', and can be committed with 'bzr commit'.
+Your local commits will now show as pending merges with 'brz status', and can be committed with 'brz commit'.
 """ % osutils.pathjoin(self.test_dir, 'master',),
                          err)
         self.assertEqual([master_tip, child_tip], wt.get_parent_ids())
@@ -184,7 +184,7 @@ Your local commits will now show as pending merges with 'bzr status', and can be
         self.assertTrue(wt.has_filename('file_c'))
 
     def test_update_with_merges(self):
-        # Test that 'bzr update' works correctly when you have
+        # Test that 'brz update' works correctly when you have
         # an update in the master tree, and a lightweight checkout
         # which has merged another branch
         master = self.make_branch_and_tree('master')
@@ -215,7 +215,7 @@ Your local commits will now show as pending merges with 'bzr status', and can be
         self.assertEqual(['o2'], checkout1.get_parent_ids()[1:])
 
         # At this point, 'commit' should fail, because we are out of date
-        self.run_bzr_error(["please run 'bzr update'"],
+        self.run_bzr_error(["please run 'brz update'"],
                            'commit -m merged')
 
         # This should not report about local commits being pending
@@ -240,7 +240,7 @@ Updated to revision 2 of branch %s
         self.run_bzr('update checkout')
 
     def test_update_with_merge_merged_to_master(self):
-        # Test that 'bzr update' works correctly when you have
+        # Test that 'brz update' works correctly when you have
         # an update in the master tree, and a [lightweight or otherwise]
         # checkout which has merge a revision merged to master already.
         master = self.make_branch_and_tree('master')
@@ -291,7 +291,7 @@ Updated to revision 2 of branch %s
 
         sr = ScriptRunner()
         sr.run_script(self, '''
-$ bzr update -r 1
+$ brz update -r 1
 2>-D  file2
 2>All changes applied successfully.
 2>Updated to revision 1 of .../master
@@ -333,7 +333,7 @@ $ bzr update -r 1
         self.assertContainsRe(err, 'Updated to revision 2 of branch .*')
 
     def test_update_dash_r_in_master(self):
-        # Test that 'bzr update' works correctly when you have
+        # Test that 'brz update' works correctly when you have
         # an update in the master tree,
         master = self.make_branch_and_tree('master')
         self.build_tree(['master/file1'])
@@ -350,14 +350,14 @@ $ bzr update -r 1
         os.chdir('checkout')
         sr = ScriptRunner()
         sr.run_script(self, '''
-$ bzr update -r revid:m2
+$ brz update -r revid:m2
 2>+N  file2
 2>All changes applied successfully.
 2>Updated to revision 2 of branch .../master
 ''')
 
     def test_update_show_base(self):
-        """bzr update support --show-base
+        """brz update support --show-base
 
         see https://bugs.launchpad.net/bzr/+bug/202374"""
 
@@ -395,7 +395,7 @@ $ bzr update -r revid:m2
                              open('hello').read())
 
     def test_update_checkout_prevent_double_merge(self):
-        """"Launchpad bug 113809 in bzr "update performs two merges"
+        """"Launchpad bug 113809 in brz "update performs two merges"
         https://launchpad.net/bugs/113809"""
         master = self.make_branch_and_tree('master')
         self.build_tree_contents([('master/file', 'initial contents\n')])
@@ -467,16 +467,16 @@ master
             ('a/file', 'content')])
         sr = ScriptRunner()
         sr.run_script(self, '''
-            $ bzr update ./a
-            2>bzr: ERROR: bzr update can only update a whole tree, not a file or subdirectory
-            $ bzr update ./a/file
-            2>bzr: ERROR: bzr update can only update a whole tree, not a file or subdirectory
-            $ bzr update .
+            $ brz update ./a
+            2>brz: ERROR: brz update can only update a whole tree, not a file or subdirectory
+            $ brz update ./a/file
+            2>brz: ERROR: brz update can only update a whole tree, not a file or subdirectory
+            $ brz update .
             2>Tree is up to date at revision 0 of branch ...
             $ cd a
-            $ bzr update .
-            2>bzr: ERROR: bzr update can only update a whole tree, not a file or subdirectory
+            $ brz update .
+            2>brz: ERROR: brz update can only update a whole tree, not a file or subdirectory
             # however, you can update the whole tree from a subdirectory
-            $ bzr update
+            $ brz update
             2>Tree is up to date at revision 0 of branch ...
             ''')

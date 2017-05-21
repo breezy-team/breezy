@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for 'bzr deleted', which shows newly deleted files."""
+"""Black-box tests for 'brz deleted', which shows newly deleted files."""
 
 import os
 

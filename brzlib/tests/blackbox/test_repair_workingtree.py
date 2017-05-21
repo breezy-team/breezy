@@ -58,10 +58,10 @@ class TestRepairWorkingTree(TestCaseWithTransport):
         tree = self.make_initial_tree()
         # If the tree doesn't appear to be corrupt, we refuse, but prompt the
         # user to let them know that:
-        # a) they may want to use 'bzr revert' instead of repair-workingtree
+        # a) they may want to use 'brz revert' instead of repair-workingtree
         # b) they can use --force if they really want to do this
         self.run_bzr_error(['The tree does not appear to be corrupt',
-                            '"bzr revert"',
+                            '"brz revert"',
                             '--force'],
                            'repair-workingtree -d tree')
 

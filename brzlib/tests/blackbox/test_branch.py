@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for bzr branch."""
+"""Black-box tests for brz branch."""
 
 import os
 
@@ -92,7 +92,7 @@ class TestBranch(tests.TestCaseWithTransport):
         out,err = self.run_bzr('branch a file:b,branch=orig', retcode=3)
         self.assertEqual('', out)
         self.assertEqual(
-            'bzr: ERROR: Already a branch: "file:b,branch=orig".\n', err)
+            'brz: ERROR: Already a branch: "file:b,branch=orig".\n', err)
 
     def test_from_colocated(self):
         """Branch from a colocated branch into a regular branch."""
@@ -289,14 +289,14 @@ class TestBranch(tests.TestCaseWithTransport):
 
     def test_branch_into_existing_dir(self):
         self.example_branch('a')
-        # existing dir with similar files but no .bzr dir
+        # existing dir with similar files but no .brz dir
         self.build_tree_contents([('b/',)])
         self.build_tree_contents([('b/hello', 'bar')])  # different content
         self.build_tree_contents([('b/goodbye', 'baz')])# same content
         # fails without --use-existing-dir
         out,err = self.run_bzr('branch a b', retcode=3)
         self.assertEqual('', out)
-        self.assertEqual('bzr: ERROR: Target directory "b" already exists.\n',
+        self.assertEqual('brz: ERROR: Target directory "b" already exists.\n',
             err)
         # force operation
         self.run_bzr('branch a b --use-existing-dir')
@@ -306,7 +306,7 @@ class TestBranch(tests.TestCaseWithTransport):
         # we can't branch into branch
         out,err = self.run_bzr('branch a b --use-existing-dir', retcode=3)
         self.assertEqual('', out)
-        self.assertEqual('bzr: ERROR: Already a branch: "b".\n', err)
+        self.assertEqual('brz: ERROR: Already a branch: "b".\n', err)
 
     def test_branch_bind(self):
         self.example_branch('a')
@@ -463,7 +463,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
         # We should notify the user that we upgraded their format
         self.assertEqualDiff(
             'Source repository format does not support stacking, using format:\n'
-            '  Packs 5 (adds stacking support, requires bzr 1.6)\n'
+            '  Packs 5 (adds stacking support, requires brz 1.6)\n'
             'Source branch format does not support stacking, using format:\n'
             '  Branch format 7\n'
             'Doing on-the-fly conversion from RepositoryFormatKnitPack1() to RepositoryFormatKnitPack5().\n'
@@ -478,7 +478,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
         # We should notify the user that we upgraded their format
         self.assertEqualDiff(
             'Source repository format does not support stacking, using format:\n'
-            '  Packs 5 rich-root (adds stacking support, requires bzr 1.6.1)\n'
+            '  Packs 5 rich-root (adds stacking support, requires brz 1.6.1)\n'
             'Source branch format does not support stacking, using format:\n'
             '  Branch format 7\n'
             'Doing on-the-fly conversion from RepositoryFormatKnitPack4() to RepositoryFormatKnitPack5RichRoot().\n'
@@ -615,16 +615,16 @@ class TestRemoteBranch(TestCaseWithSFTPServer):
 class TestDeprecatedAliases(tests.TestCaseWithTransport):
 
     def test_deprecated_aliases(self):
-        """bzr branch can be called clone or get, but those names are
+        """brz branch can be called clone or get, but those names are
         deprecated.
 
         See bug 506265.
         """
         for command in ['clone', 'get']:
             run_script(self, """
-            $ bzr %(command)s A B
-            2>The command 'bzr %(command)s' has been deprecated in bzr 2.4. Please use 'bzr branch' instead.
-            2>bzr: ERROR: Not a branch...
+            $ brz %(command)s A B
+            2>The command 'brz %(command)s' has been deprecated in brz 2.4. Please use 'brz branch' instead.
+            2>brz: ERROR: Not a branch...
             """ % locals())
 
 
@@ -632,9 +632,9 @@ class TestBranchParentLocation(test_switch.TestSwitchParentLocationBase):
 
     def _checkout_and_branch(self, option=''):
         self.script_runner.run_script(self, '''
-                $ bzr checkout %(option)s repo/trunk checkout
+                $ brz checkout %(option)s repo/trunk checkout
                 $ cd checkout
-                $ bzr branch --switch ../repo/trunk ../repo/branched
+                $ brz branch --switch ../repo/trunk ../repo/branched
                 2>Branched 0 revisions.
                 2>Tree is up to date at revision 0.
                 2>Switched to branch:...branched...
@@ -645,13 +645,13 @@ class TestBranchParentLocation(test_switch.TestSwitchParentLocationBase):
         return (bound_branch, master_branch)
 
     def test_branch_switch_parent_lightweight(self):
-        """Lightweight checkout using bzr branch --switch."""
+        """Lightweight checkout using brz branch --switch."""
         bb, mb = self._checkout_and_branch(option='--lightweight')
         self.assertParent('repo/trunk', bb)
         self.assertParent('repo/trunk', mb)
 
     def test_branch_switch_parent_heavyweight(self):
-        """Heavyweight checkout using bzr branch --switch."""
+        """Heavyweight checkout using brz branch --switch."""
         bb, mb = self._checkout_and_branch()
         self.assertParent('repo/trunk', bb)
         self.assertParent('repo/trunk', mb)

@@ -514,7 +514,7 @@ class GCCHKPacker(Packer):
 class GCCHKReconcilePacker(GCCHKPacker):
     """A packer which regenerates indices etc as it copies.
 
-    This is used by ``bzr reconcile`` to cause parent text pointers to be
+    This is used by ``brz reconcile`` to cause parent text pointers to be
     regenerated.
     """
 
@@ -760,7 +760,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         if missing_chk_roots:
             problems.append(
                 "missing referenced chk root keys: %s."
-                "Run 'bzr reconcile --canonicalize-chks' on the affected "
+                "Run 'brz reconcile --canonicalize-chks' on the affected "
                 "repository."
                 % (sorted(missing_chk_roots),))
             # Don't bother checking any further.

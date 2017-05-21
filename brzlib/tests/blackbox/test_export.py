@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for bzr export.
+"""Black-box tests for brz export.
 """
 
 from StringIO import StringIO
@@ -417,7 +417,7 @@ class TestExport(TestCaseWithTransport):
         tree.bzrdir.destroy_workingtree()
         os.chdir('branch')
         self.run_bzr_error(
-            ['bzr: ERROR: --uncommitted requires a working tree'],
+            ['brz: ERROR: --uncommitted requires a working tree'],
             'export --uncommitted latest')
 
     def test_zip_export_per_file_timestamps(self):

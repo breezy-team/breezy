@@ -23,7 +23,7 @@ cdef extern from "Python.h":
         pass
 
 cdef extern from "_static_tuple_c.h":
-    ctypedef class bzrlib._static_tuple_c.StaticTuple [object StaticTuple]:
+    ctypedef class brzlib._static_tuple_c.StaticTuple [object StaticTuple]:
         cdef unsigned char size
         cdef unsigned char flags
         cdef PyObject *items[0]

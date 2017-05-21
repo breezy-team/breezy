@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for running bzr outside of a working tree."""
+"""Black-box tests for running brz outside of a working tree."""
 
 import os
 
@@ -29,7 +29,7 @@ from brzlib import (
 
 
 class TestOutsideWT(tests.ChrootedTestCase):
-    """Test that bzr gives proper errors outside of a working tree."""
+    """Test that brz gives proper errors outside of a working tree."""
 
     def test_cwd_log(self):
         # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
@@ -38,14 +38,14 @@ class TestOutsideWT(tests.ChrootedTestCase):
         self.permit_url('file:///')
         self.addCleanup(osutils.rmtree, tmp_dir)
         out, err = self.run_bzr('log', retcode=3, working_dir=tmp_dir)
-        self.assertEqual(u'bzr: ERROR: Not a branch: "%s/".\n'
+        self.assertEqual(u'brz: ERROR: Not a branch: "%s/".\n'
                          % (tmp_dir,),
                          err)
 
     def test_url_log(self):
         url = self.get_readonly_url() + 'subdir/'
         out, err = self.run_bzr(['log', url], retcode=3)
-        self.assertEqual(u'bzr: ERROR: Not a branch:'
+        self.assertEqual(u'brz: ERROR: Not a branch:'
                          u' "%s".\n' % url, err)
 
     def test_diff_outside_tree(self):
@@ -53,14 +53,14 @@ class TestOutsideWT(tests.ChrootedTestCase):
         tree.commit('nothing')
         tree.commit('nothing')
         # A directory we can run commands from which we hope is not contained
-        # in a bzr tree (though if there is one at or above $TEMPDIR, this is
+        # in a brz tree (though if there is one at or above $TEMPDIR, this is
         # false and may cause test failures).
         # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
         tmp_dir = osutils.realpath(osutils.mkdtemp())
         self.addCleanup(osutils.rmtree, tmp_dir)
         # We expect a read-to-root attempt to occur.
         self.permit_url('file:///')
-        expected_error = u'bzr: ERROR: Not a branch: "%s/branch2/".\n' % tmp_dir
+        expected_error = u'brz: ERROR: Not a branch: "%s/branch2/".\n' % tmp_dir
         # -r X..Y
         out, err = self.run_bzr('diff -r revno:2:branch2..revno:1', retcode=3,
             working_dir=tmp_dir)
@@ -79,4 +79,4 @@ class TestOutsideWT(tests.ChrootedTestCase):
         # no -r at all.
         out, err = self.run_bzr('diff', retcode=3, working_dir=tmp_dir)
         self.assertEqual('', out)
-        self.assertEqual(u'bzr: ERROR: Not a branch: "%s/".\n' % tmp_dir, err)
+        self.assertEqual(u'brz: ERROR: Not a branch: "%s/".\n' % tmp_dir, err)

@@ -92,4 +92,4 @@ class TestJoin(tests.TestCaseWithTransport):
         out, err = self.run_bzr('join --reference tree/subtree',
                                 retcode=3)
         self.assertContainsRe(err, r"Can't join trees")
-        self.assertContainsRe(err, r"use bzr upgrade")
+        self.assertContainsRe(err, r"use brz upgrade")

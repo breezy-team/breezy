@@ -19,7 +19,7 @@
 
 These check that it behaves properly when it's invoked through the regular
 command-line interface. This doesn't actually run a new interpreter but
-rather starts again from the run_bzr function.
+rather starts again from the run_brz function.
 """
 
 
@@ -146,7 +146,7 @@ class ExternalBase(tests.TestCaseWithTransport):
 
     @deprecated_method(deprecated_in((2, 2, 0)))
     def check_output(self, output, *args):
-        """Verify that the expected output matches what bzr says.
+        """Verify that the expected output matches what brz says.
 
         The output is supplied first, so that you can supply a variable
         number of arguments to bzr.

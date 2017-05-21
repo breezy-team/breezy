@@ -107,7 +107,7 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertEqual(len(lines1), len(lines2))
 
     def test_no_branch(self):
-        """Test that bzr defaults to the local working directory"""
+        """Test that brz defaults to the local working directory"""
         self.create_tree()
 
         txt1 = self.run_bzr('version-info branch')[0]

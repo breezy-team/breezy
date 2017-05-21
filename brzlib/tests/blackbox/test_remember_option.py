@@ -82,21 +82,21 @@ class TestSendRemember(script.TestCaseWithTransportAndScript,
     def setUp(self):
         super(TestSendRemember, self).setUp()
         self.run_script('''
-            $ bzr init grand_parent
+            $ brz init grand_parent
             $ cd grand_parent
             $ echo grand_parent > file
-            $ bzr add
-            $ bzr commit -m 'initial commit'
+            $ brz add
+            $ brz commit -m 'initial commit'
             $ cd ..
-            $ bzr branch grand_parent parent
+            $ brz branch grand_parent parent
             $ cd parent
             $ echo parent > file
-            $ bzr commit -m 'parent'
+            $ brz commit -m 'parent'
             $ cd ..
-            $ bzr branch parent %(working_dir)s
+            $ brz branch parent %(working_dir)s
             $ cd %(working_dir)s
             $ echo %(working_dir)s > file
-            $ bzr commit -m '%(working_dir)s'
+            $ brz commit -m '%(working_dir)s'
             $ cd ..
             ''' % {'working_dir': self.working_dir},
                         null_output_matches_anything=True)
@@ -106,8 +106,8 @@ class TestSendRemember(script.TestCaseWithTransportAndScript,
         self.do_command(*self.first_use_args)
         # Now create some new targets
         self.run_script('''
-            $ bzr branch grand_parent new_grand_parent
-            $ bzr branch parent new_parent
+            $ brz branch grand_parent new_grand_parent
+            $ brz branch parent new_parent
             ''',
                         null_output_matches_anything=True)
 
@@ -132,11 +132,11 @@ class TestPushRemember(script.TestCaseWithTransportAndScript,
     def setUp(self):
         super(TestPushRemember, self).setUp()
         self.run_script('''
-            $ bzr init %(working_dir)s
+            $ brz init %(working_dir)s
             $ cd %(working_dir)s
             $ echo some content > file
-            $ bzr add
-            $ bzr commit -m 'initial commit'
+            $ brz add
+            $ brz commit -m 'initial commit'
             $ cd ..
             ''' % {'working_dir': self.working_dir},
                         null_output_matches_anything=True)
@@ -148,7 +148,7 @@ class TestPushRemember(script.TestCaseWithTransportAndScript,
         self.run_script('''
             $ cd %(working_dir)s
             $ echo new content > file
-            $ bzr commit -m 'new content'
+            $ brz commit -m 'new content'
             $ cd ..
             ''' % {'working_dir': self.working_dir},
                         null_output_matches_anything=True)
@@ -175,13 +175,13 @@ class TestPullRemember(script.TestCaseWithTransportAndScript,
     def setUp(self):
         super(TestPullRemember, self).setUp()
         self.run_script('''
-            $ bzr init parent
+            $ brz init parent
             $ cd parent
             $ echo parent > file
-            $ bzr add
-            $ bzr commit -m 'initial commit'
+            $ brz add
+            $ brz commit -m 'initial commit'
             $ cd ..
-            $ bzr init %(working_dir)s
+            $ brz init %(working_dir)s
             ''' % {'working_dir': self.working_dir},
                         null_output_matches_anything=True)
 
@@ -190,10 +190,10 @@ class TestPullRemember(script.TestCaseWithTransportAndScript,
         self.do_command(*self.first_use_args)
         # Now create some new content
         self.run_script('''
-            $ bzr branch parent new_parent
+            $ brz branch parent new_parent
             $ cd new_parent
             $ echo new parent > file
-            $ bzr commit -m 'new parent'
+            $ brz commit -m 'new parent'
             $ cd ..
             ''' % {'working_dir': self.working_dir},
                         null_output_matches_anything=True)

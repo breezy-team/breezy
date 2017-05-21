@@ -179,7 +179,7 @@ cdef _import_globals():
     """Set the global attributes. Done lazy to avoid recursive import loops."""
     global _LeafNode, _InternalNode, _unknown
 
-    from bzrlib import chk_map
+    from brzlib import chk_map
     _LeafNode = chk_map.LeafNode
     _InternalNode = chk_map.InternalNode
     _unknown = chk_map._unknown

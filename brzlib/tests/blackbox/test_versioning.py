@@ -42,7 +42,7 @@ class TestMkdir(TestCaseWithTransport):
         self.assertPathDoesNotExist('abc')
 
     def test_mkdir(self):
-        """Basic 'bzr mkdir' operation"""
+        """Basic 'brz mkdir' operation"""
 
         self.make_branch_and_tree('.')
         self.run_bzr(['mkdir', 'foo'])
@@ -61,7 +61,7 @@ class TestMkdir(TestCaseWithTransport):
         self.assertFalse(delta.modified)
 
     def test_mkdir_in_subdir(self):
-        """'bzr mkdir' operation in subdirectory"""
+        """'brz mkdir' operation in subdirectory"""
 
         self.make_branch_and_tree('.')
         self.run_bzr(['mkdir', 'dir'])
@@ -83,7 +83,7 @@ class TestMkdir(TestCaseWithTransport):
         self.assertFalse(delta.modified)
 
     def test_mkdir_w_nested_trees(self):
-        """'bzr mkdir' with nested trees"""
+        """'brz mkdir' with nested trees"""
 
         self.make_branch_and_tree('.')
         self.make_branch_and_tree('a')
@@ -114,7 +114,7 @@ class TestMkdir(TestCaseWithTransport):
         self.assertFalse(delta.modified)
 
     def test_mkdir_quiet(self):
-        """'bzr mkdir --quiet' should not print a status message"""
+        """'brz mkdir --quiet' should not print a status message"""
 
         self.make_branch_and_tree('.')
         out, err = self.run_bzr(['mkdir', '--quiet', 'foo'])

@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for bzr whoami."""
+"""Black-box tests for brz whoami."""
 
 import brzlib
 from brzlib import (

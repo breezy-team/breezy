@@ -33,7 +33,7 @@ from brzlib.tests.script import (
 class TestBreakLock(tests.TestCaseWithTransport):
 
     # General principal for break-lock: All the elements that might be locked
-    # by a bzr operation on PATH, are candidates that break-lock may unlock.
+    # by a brz operation on PATH, are candidates that break-lock may unlock.
     # so pathologically if we have a lightweight checkout A, of branch B, which
     # is bound to location C, the following things should be checked for locks
     # to break:
@@ -73,7 +73,7 @@ class TestBreakLock(tests.TestCaseWithTransport):
         """With --force, the user isn't asked for confirmation"""
         self.master_branch.lock_write()
         run_script(self, """
-        $ bzr break-lock --force master-repo/master-branch
+        $ brz break-lock --force master-repo/master-branch
         Broke lock ...master-branch/.bzr/...
         """)
         # lock should now be dead

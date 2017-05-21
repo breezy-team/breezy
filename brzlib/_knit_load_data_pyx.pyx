@@ -18,7 +18,7 @@
 
 import sys
 
-from bzrlib import errors
+from brzlib import errors
 
 
 cdef extern from "stdlib.h":

@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Black-box tests for bzr push."""
+"""Black-box tests for brz push."""
 
 import re
 
@@ -66,15 +66,15 @@ class TestPush(tests.TestCaseWithTransport):
         # If there is no parent location set, :parent isn't mentioned.
         out = self.run_bzr('push', working_dir='a', retcode=3)
         self.assertEqual(out,
-                ('','bzr: ERROR: No push location known or specified.\n'))
+                ('','brz: ERROR: No push location known or specified.\n'))
 
         # If there is a parent location set, the error suggests :parent.
         tree_a.branch.set_parent(tree_b.branch.base)
         out = self.run_bzr('push', working_dir='a', retcode=3)
         self.assertEqual(out,
-            ('','bzr: ERROR: No push location known or specified. '
+            ('','brz: ERROR: No push location known or specified. '
                 'To push to the parent branch '
-                '(at %s), use \'bzr push :parent\'.\n' %
+                '(at %s), use \'brz push :parent\'.\n' %
                 urlutils.unescape_for_display(tree_b.branch.base, 'utf-8')))
 
     def test_push_remember(self):
@@ -101,22 +101,22 @@ class TestPush(tests.TestCaseWithTransport):
         # test push for failure without push location set
         out = self.run_bzr('push', working_dir='branch_a', retcode=3)
         self.assertEqual(out,
-                ('','bzr: ERROR: No push location known or specified.\n'))
+                ('','brz: ERROR: No push location known or specified.\n'))
 
         # test not remembered if cannot actually push
         self.run_bzr('push path/which/doesnt/exist',
                      working_dir='branch_a', retcode=3)
         out = self.run_bzr('push', working_dir='branch_a', retcode=3)
         self.assertEqual(
-                ('', 'bzr: ERROR: No push location known or specified.\n'),
+                ('', 'brz: ERROR: No push location known or specified.\n'),
                 out)
 
         # test implicit --remember when no push location set, push fails
         out = self.run_bzr('push ../branch_b',
                            working_dir='branch_a', retcode=3)
         self.assertEqual(out,
-                ('','bzr: ERROR: These branches have diverged.  '
-                 'See "bzr help diverged-branches" for more information.\n'))
+                ('','brz: ERROR: These branches have diverged.  '
+                 'See "brz help diverged-branches" for more information.\n'))
         # Refresh the branch as 'push' modified it
         branch_a = branch_a.bzrdir.open_branch()
         self.assertEqual(osutils.abspath(branch_a.get_push_location()),
@@ -144,7 +144,7 @@ class TestPush(tests.TestCaseWithTransport):
                           branch_c.bzrdir.root_transport.base)
 
     def test_push_without_tree(self):
-        # bzr push from a branch that does not have a checkout should work.
+        # brz push from a branch that does not have a checkout should work.
         b = self.make_branch('.')
         out, err = self.run_bzr('push pushed-location')
         self.assertEqual('', out)
@@ -153,7 +153,7 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertEndsWith(b2.base, 'pushed-location/')
 
     def test_push_no_tree(self):
-        # bzr push --no-tree of a branch with working trees
+        # brz push --no-tree of a branch with working trees
         b = self.make_branch_and_tree('push-from')
         self.build_tree(['push-from/file'])
         b.add('file')
@@ -164,7 +164,7 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertPathDoesNotExist('push-to/file')
 
     def test_push_new_branch_revision_count(self):
-        # bzr push of a branch with revisions to a new location
+        # brz push of a branch with revisions to a new location
         # should print the number of revisions equal to the length of the
         # local branch.
         t = self.make_branch_and_tree('tree')
@@ -365,7 +365,7 @@ class TestPush(tests.TestCaseWithTransport):
         return tree
 
     def test_push_create_prefix(self):
-        """'bzr push --create-prefix' will create leading directories."""
+        """'brz push --create-prefix' will create leading directories."""
         tree = self.create_simple_tree()
 
         self.run_bzr_error(['Parent directory of ../new/tree does not exist'],
@@ -378,9 +378,9 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertPathExists('new/tree/a')
 
     def test_push_use_existing(self):
-        """'bzr push --use-existing-dir' can push into an existing dir.
+        """'brz push --use-existing-dir' can push into an existing dir.
 
-        By default, 'bzr push' will not use an existing, non-versioned dir.
+        By default, 'brz push' will not use an existing, non-versioned dir.
         """
         tree = self.create_simple_tree()
         self.build_tree(['target/'])
@@ -399,18 +399,18 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertPathExists('target/a')
 
     def test_push_use_existing_into_empty_bzrdir(self):
-        """'bzr push --use-existing-dir' into a dir with an empty .bzr dir
+        """'brz push --use-existing-dir' into a dir with an empty .brz dir
         fails.
         """
         tree = self.create_simple_tree()
         self.build_tree(['target/', 'target/.bzr/'])
         self.run_bzr_error(
-            ['Target directory ../target already contains a .bzr directory, '
+            ['Target directory ../target already contains a .brz directory, '
              'but it is not valid.'],
             'push ../target --use-existing-dir', working_dir='tree')
 
     def test_push_onto_repo(self):
-        """We should be able to 'bzr push' into an existing bzrdir."""
+        """We should be able to 'brz push' into an existing bzrdir."""
         tree = self.create_simple_tree()
         repo = self.make_repository('repo', shared=True)
 
@@ -435,7 +435,7 @@ class TestPush(tests.TestCaseWithTransport):
         tree = self.create_simple_tree()
         a_bzrdir = self.make_bzrdir('dir')
 
-        self.run_bzr_error(['At ../dir you have a valid .bzr control'],
+        self.run_bzr_error(['At ../dir you have a valid .brz control'],
                 'push ../dir',
                 working_dir='tree')
 
@@ -456,7 +456,7 @@ class TestPush(tests.TestCaseWithTransport):
             tree_to.changes_from(tree_to.basis_tree()).has_changed())
 
         self.run_bzr_error(
-            ['bzr: ERROR: bzr push --revision '
+            ['brz: ERROR: brz push --revision '
              'takes exactly one revision identifier\n'],
             'push -r0..2 ../to', working_dir='from')
 
@@ -735,7 +735,7 @@ class TestPushStrictMixin(object):
     _default_command = ['push', '../to']
     _default_wd = 'local'
     _default_errors = ['Working tree ".*/local/" has uncommitted '
-                       'changes \(See bzr status\)\.',]
+                       'changes \(See brz status\)\.',]
     _default_additional_error = 'Use --no-strict to force the push.\n'
     _default_additional_warning = 'Uncommitted changes will not be pushed.'
 
@@ -841,7 +841,7 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
         # Exercise commands from the checkout directory
         self._default_wd = 'checkout'
         self._default_errors = ["Working tree is out of date, please run"
-                                " 'bzr update'\.",]
+                                " 'brz update'\.",]
 
     def test_push_default(self):
         self.assertPushSucceeds([], with_warning=True)
@@ -893,7 +893,7 @@ class TestPushForeign(tests.TestCaseWithTransport):
         source_tree = self.make_branch_and_tree("dc")
         output, error = self.run_bzr("push -d dc dp", retcode=3)
         self.assertEqual("", output)
-        self.assertEqual(error, "bzr: ERROR: It is not possible to losslessly"
+        self.assertEqual(error, "brz: ERROR: It is not possible to losslessly"
             " push to dummy. You may want to use dpush instead.\n")
 
 
@@ -901,19 +901,19 @@ class TestPushOutput(script.TestCaseWithTransportAndScript):
 
     def test_push_log_format(self):
         self.run_script("""
-            $ bzr init trunk
+            $ brz init trunk
             Created a standalone tree (format: 2a)
             $ cd trunk
             $ echo foo > file
-            $ bzr add
+            $ brz add
             adding file
-            $ bzr commit -m 'we need some foo'
+            $ brz commit -m 'we need some foo'
             2>Committing to:...trunk/
             2>added file
             2>Committed revision 1.
-            $ bzr init ../feature
+            $ brz init ../feature
             Created a standalone tree (format: 2a)
-            $ bzr push -v ../feature -Olog_format=line
+            $ brz push -v ../feature -Olog_format=line
             Added Revisions:
             1: jrandom@example.com ...we need some foo
             2>All changes applied successfully.
@@ -922,25 +922,25 @@ class TestPushOutput(script.TestCaseWithTransportAndScript):
 
     def test_push_with_revspec(self):
         self.run_script("""
-            $ bzr init-repo .
+            $ brz init-repo .
             Shared repository with trees (format: 2a)
             Location:
               shared repository: .
-            $ bzr init trunk
+            $ brz init trunk
             Created a repository tree (format: 2a)
             Using shared repository...
             $ cd trunk
-            $ bzr commit -m 'first rev' --unchanged
+            $ brz commit -m 'first rev' --unchanged
             2>Committing to:...trunk/
             2>Committed revision 1.
             $ echo foo > file
-            $ bzr add
+            $ brz add
             adding file
-            $ bzr commit -m 'we need some foo'
+            $ brz commit -m 'we need some foo'
             2>Committing to:...trunk/
             2>added file
             2>Committed revision 2.
-            $ bzr push -r 1 ../other
+            $ brz push -r 1 ../other
             2>Created new branch.
-            $ bzr st ../other # checking that file is not created (#484516)
+            $ brz st ../other # checking that file is not created (#484516)
             """)
