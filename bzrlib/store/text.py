@@ -27,6 +27,9 @@ import os
 
 from bzrlib import osutils
 from bzrlib.errors import BzrError, NoSuchFile, FileExists
+from bzrlib.sixish import (
+    BytesIO,
+    )
 import bzrlib.store
 from bzrlib.trace import mutter
 
@@ -43,13 +46,12 @@ class TextStore(bzrlib.store.TransportStore):
     """
 
     def _add_compressed(self, fn, f):
-        from cStringIO import StringIO
         from bzrlib.osutils import pumpfile
 
-        if isinstance(f, basestring):
-            f = StringIO(f)
+        if isinstance(f, bytes):
+            f = BytesIO(f)
 
-        sio = StringIO()
+        sio = BytesIO()
         gf = gzip.GzipFile(mode='wb', fileobj=sio)
         # if pumpfile handles files that don't fit in ram,
         # so will this function
@@ -116,12 +118,11 @@ class TextStore(bzrlib.store.TransportStore):
         f = self._transport.get(filename)
         # gzip.GzipFile.read() requires a tell() function
         # but some transports return objects that cannot seek
-        # so buffer them in a StringIO instead
+        # so buffer them in a BytesIO instead
         if getattr(f, 'tell', None) is not None:
             return gzip.GzipFile(mode='rb', fileobj=f)
         try:
-            from cStringIO import StringIO
-            sio = StringIO(f.read())
+            sio = BytesIO(f.read())
             return gzip.GzipFile(mode='rb', fileobj=sio)
         finally:
             f.close()

@@ -19,7 +19,6 @@
 from __future__ import absolute_import
 
 import base64
-from cStringIO import StringIO
 import os
 import pprint
 
@@ -40,6 +39,9 @@ from bzrlib.inventory import (
     )
 from bzrlib.osutils import sha_string, pathjoin
 from bzrlib.revision import Revision, NULL_REVISION
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.testament import StrictTestament
 from bzrlib.trace import mutter, warning
 from bzrlib.tree import Tree
@@ -633,7 +635,7 @@ class BundleTree(Tree):
         if file_patch is None:
             if (patch_original is None and
                 self.kind(file_id) == 'directory'):
-                return StringIO()
+                return BytesIO()
             if patch_original is None:
                 raise AssertionError("None: %s" % file_id)
             return patch_original
@@ -790,4 +792,4 @@ def patched_file(file_patch, original):
     # string.splitlines(True) also splits on '\r', but the iter_patched code
     # only expects to iterate over '\n' style lines
     return IterableFile(iter_patched(original,
-                StringIO(file_patch).readlines()))
+                BytesIO(file_patch).readlines()))

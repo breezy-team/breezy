@@ -21,7 +21,6 @@ client and server.
 from __future__ import absolute_import
 
 import collections
-from cStringIO import StringIO
 import struct
 import sys
 import thread
@@ -34,6 +33,7 @@ from bzrlib import (
     osutils,
     )
 from bzrlib.sixish import (
+    BytesIO,
     reraise,
 )
 from bzrlib.smart import message, request
@@ -779,7 +779,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
                     "Connection lost while reading response body.")
             _body_decoder.accept_bytes(bytes)
         self._request.finished_reading()
-        self._body_buffer = StringIO(_body_decoder.read_pending_data())
+        self._body_buffer = BytesIO(_body_decoder.read_pending_data())
         # XXX: TODO check the trailer result.
         if 'hpss' in debug.debug_flags:
             mutter('              %d body bytes read',

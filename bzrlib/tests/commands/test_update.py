@@ -14,13 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
 from bzrlib import (
     branch,
     builtins,
-    tests,
     )
-from bzrlib.tests import transport_util
+from bzrlib.tests import (
+    transport_util,
+    ui_testing,
+    )
 
 
 class TestUpdate(transport_util.TestCaseWithConnectionHookedTransport):
@@ -38,7 +39,7 @@ class TestUpdate(transport_util.TestCaseWithConnectionHookedTransport):
 
         update = builtins.cmd_update()
         # update needs the encoding from outf to print URLs
-        update.outf = tests.StringIOWrapper()
+        update.outf = ui_testing.StringIOWithEncoding()
         # update calls it 'dir' where other commands calls it 'directory'
         update.run(dir='local')
         self.assertEqual(1, len(self.connections))

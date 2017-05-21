@@ -15,7 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from cStringIO import StringIO
 import errno
 import os
 import subprocess
@@ -30,6 +29,9 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.directory_service import directories
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.transport import (
     chroot,
     fakenfs,
@@ -272,12 +274,12 @@ class TestMemoryTransport(tests.TestCase):
         t = memory.MemoryTransport()
         t.append_bytes('path', 'content')
         self.assertEqual(t.get('path').read(), 'content')
-        t.append_file('path', StringIO('content'))
+        t.append_file('path', BytesIO(b'content'))
         self.assertEqual(t.get('path').read(), 'contentcontent')
 
     def test_put_and_get(self):
         t = memory.MemoryTransport()
-        t.put_file('path', StringIO('content'))
+        t.put_file('path', BytesIO(b'content'))
         self.assertEqual(t.get('path').read(), 'content')
         t.put_bytes('path', 'content')
         self.assertEqual(t.get('path').read(), 'content')
@@ -290,7 +292,7 @@ class TestMemoryTransport(tests.TestCase):
     def test_put_without_dir_fails(self):
         t = memory.MemoryTransport()
         self.assertRaises(errors.NoSuchFile,
-                          t.put_file, 'dir/path', StringIO('content'))
+                          t.put_file, 'dir/path', BytesIO(b'content'))
 
     def test_get_missing(self):
         transport = memory.MemoryTransport()

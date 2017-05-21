@@ -16,7 +16,6 @@
 
 """Tests of the parent related functions of WorkingTrees."""
 
-from cStringIO import StringIO
 import os
 
 from bzrlib import (
@@ -30,6 +29,9 @@ from bzrlib.inventory import (
     InventoryLink,
     )
 from bzrlib.revisiontree import InventoryRevisionTree
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 from bzrlib.tests import (
     features,
@@ -400,7 +402,7 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
                 return 'a' * ie.text_size
 
             def get_file(self, file_id, path=None):
-                return StringIO(self.get_file_text(file_id))
+                return BytesIO(self.get_file_text(file_id))
 
         tree.lock_write()
         try:

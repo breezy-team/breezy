@@ -114,8 +114,6 @@ def _print_annotations(annotation, verbose, to_file, full):
 
     # Output the annotations
     prevanno = ''
-    encoding = getattr(to_file, 'encoding', None) or \
-            osutils.get_terminal_encoding()
     for (revno_str, author, date_str, line_rev_id, text) in annotation:
         if verbose:
             anno = '%-*s %-*s %8s ' % (max_revno_len, revno_str,
@@ -126,16 +124,9 @@ def _print_annotations(annotation, verbose, to_file, full):
             anno = "%-*s %-7s " % (max_revno_len, revno_str, author[:7])
         if anno.lstrip() == "" and full:
             anno = prevanno
-        try:
-            to_file.write(anno)
-        except UnicodeEncodeError:
-            # cmd_annotate should be passing in an 'exact' object, which means
-            # we have a direct handle to sys.stdout or equivalent. It may not
-            # be able to handle the exact Unicode characters, but 'annotate' is
-            # a user function (non-scripting), so shouldn't die because of
-            # unrepresentable annotation characters. So encode using 'replace',
-            # and write them again.
-            to_file.write(anno.encode(encoding, 'replace'))
+        # GZ 2017-05-21: Writing both unicode annotation and bytes from file
+        # which the given to_file must cope with.
+        to_file.write(anno)
         to_file.write('| %s\n' % (text,))
         prevanno = anno
 

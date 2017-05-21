@@ -16,7 +16,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
 import errno
 import os
 
@@ -40,6 +39,9 @@ from bzrlib.errors import (
 from bzrlib.inventory import Inventory
 from bzrlib.mutabletree import MutableTree
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.tests import (
     features,
     TestSkipped,
@@ -318,8 +320,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree(['hello'])
         wt.add(['hello'])
         wt.commit(message='add hello')
-        stdout = StringIO()
-        stderr = StringIO()
+        stdout = BytesIO()
+        stderr = BytesIO()
         self.assertEqual(None, self.apply_redirected(None, stdout, stderr,
                                                      wt.remove,
                                                      ['hello'],

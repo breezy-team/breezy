@@ -17,13 +17,16 @@
 """Whitebox tests for annotate functionality."""
 
 import codecs
-from cStringIO import StringIO
 
 from bzrlib import (
     annotate,
     symbol_versioning,
     tests,
     )
+from bzrlib.sixish import (
+    BytesIO,
+    )
+from bzrlib.tests.ui_testing import StringIOWithEncoding
 
 
 def annotation(text):
@@ -271,7 +274,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
     def assertBranchAnnotate(self, expected, branch, file_id, revision_id,
             verbose=False, full=False, show_ids=False):
         tree = branch.repository.revision_tree(revision_id)
-        to_file = StringIO()
+        to_file = BytesIO()
         annotate.annotate_file_tree(tree, file_id, to_file,
             verbose=verbose, full=full, show_ids=show_ids, branch=branch)
         self.assertAnnotateEqualDiff(to_file.getvalue(), expected)
@@ -403,29 +406,21 @@ class TestAnnotate(tests.TestCaseWithTransport):
         revtree_2 = tree1.branch.repository.revision_tree('rev-2')
 
         # this passes if no exception is raised
-        to_file = StringIO()
+        to_file = BytesIO()
         annotate.annotate_file_tree(revtree_1, 'a-id',
             to_file=to_file, branch=tree1.branch)
 
-        sio = StringIO()
-        to_file = codecs.getwriter('ascii')(sio)
-        to_file.encoding = 'ascii' # codecs does not set it
+        sio = BytesIO()
+        to_file = codecs.getwriter('ascii')(sio, 'replace')
         annotate.annotate_file_tree(revtree_2, 'b-id',
             to_file=to_file, branch=tree1.branch)
         self.assertEqualDiff('2   p?rez   | bye\n', sio.getvalue())
 
-        # test now with to_file.encoding = None
-        to_file = tests.StringIOWrapper()
-        to_file.encoding = None
+        # test now with unicode file-like
+        to_file = StringIOWithEncoding()
         annotate.annotate_file_tree(revtree_2, 'b-id',
             to_file=to_file, branch=tree1.branch)
-        self.assertContainsRe('2   p.rez   | bye\n', to_file.getvalue())
-
-        # and when it does not exist
-        to_file = StringIO()
-        annotate.annotate_file_tree(revtree_2, 'b-id',
-            to_file=to_file, branch=tree1.branch)
-        self.assertContainsRe('2   p.rez   | bye\n', to_file.getvalue())
+        self.assertContainsRe(u'2   p\xe9rez   | bye\n', to_file.getvalue())
 
     def test_annotate_author_or_committer(self):
         tree1 = self.make_branch_and_tree('tree1')
@@ -449,7 +444,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
         self.assertBranchAnnotate('1   committ | hello\n', tree1.branch,
             'a-id', 'rev-1')
 
-        to_file = StringIO()
+        to_file = BytesIO()
         self.assertBranchAnnotate('2   author@ | bye\n', tree1.branch,
             'b-id', 'rev-2')
 

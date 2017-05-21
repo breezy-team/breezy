@@ -15,7 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from cStringIO import StringIO
 import os
 import sys
 from textwrap import dedent
@@ -25,7 +24,10 @@ from bzrlib import (
     shelf_ui,
     revision,
     tests,
-)
+    )
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.tests import script
 from bzrlib.tests import (
     features,
@@ -42,7 +44,7 @@ class ExpectShelver(shelf_ui.Shelver):
                                   auto, auto_apply, file_list, message,
                                   destroy, reporter=reporter)
         self.expected = []
-        self.diff_writer = StringIO()
+        self.diff_writer = BytesIO()
 
     def expect(self, message, response):
         self.expected.append((message, response))
@@ -512,7 +514,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
 
     def test_unshelve_args_preview(self):
         tree = self.create_tree_with_shelf()
-        write_diff_to = StringIO()
+        write_diff_to = BytesIO()
         unshelver = shelf_ui.Unshelver.from_args(
             directory='tree', action='preview', write_diff_to=write_diff_to)
         try:

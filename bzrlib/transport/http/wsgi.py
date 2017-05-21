@@ -22,8 +22,9 @@ For more information about WSGI, see PEP 333:
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
-
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.smart import medium
 from bzrlib.transport import chroot, get_transport
 from bzrlib.urlutils import local_path_to_url
@@ -157,7 +158,7 @@ class SmartWSGIApp(object):
             raise AssertionError(adjusted_relpath)
 
         transport = self.backing_transport.clone(adjusted_relpath)
-        out_buffer = StringIO()
+        out_buffer = BytesIO()
         request_data_length = int(environ['CONTENT_LENGTH'])
         request_data_bytes = environ['wsgi.input'].read(request_data_length)
         smart_protocol_request = self.make_request(

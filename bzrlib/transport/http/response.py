@@ -25,12 +25,14 @@ from __future__ import absolute_import
 
 import os
 import httplib
-from cStringIO import StringIO
 import rfc822
 
 from bzrlib import (
     errors,
     osutils,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 
 
@@ -121,7 +123,7 @@ class RangeFile(ResponseFile):
 
     # in _checked_read() below, we may have to discard several MB in the worst
     # case. To avoid buffering that much, we read and discard by chunks
-    # instead. The underlying file is either a socket or a StringIO, so reading
+    # instead. The underlying file is either a socket or a BytesIO, so reading
     # 8k chunks should be fine.
     _discarded_buf_size = 8192
 
@@ -289,7 +291,7 @@ class RangeFile(ResponseFile):
                     % (size, self._start, self._size))
 
         # read data from file
-        buf = StringIO()
+        buf = BytesIO()
         limited = size
         if self._size > 0:
             # Don't read past the range definition

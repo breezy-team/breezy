@@ -50,7 +50,6 @@ all the changes since the previous revision that touched hello.c.
 from __future__ import absolute_import
 
 import codecs
-from cStringIO import StringIO
 from itertools import (
     chain,
     izip,
@@ -88,6 +87,9 @@ from bzrlib.osutils import (
     get_diff_header_encoding,
     get_terminal_encoding,
     terminal_width,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 
 
@@ -484,7 +486,7 @@ class _DefaultLogGenerator(LogGenerator):
             specific_files = [tree_2.id2path(id) for id in file_ids]
         else:
             specific_files = None
-        s = StringIO()
+        s = BytesIO()
         path_encoding = get_diff_header_encoding()
         diff.show_diff_trees(tree_1, tree_2, s, specific_files, old_label='',
             new_label='', path_encoding=path_encoding)

@@ -16,6 +16,8 @@
 
 """Tests for bzrlib.i18n"""
 
+import io
+
 from bzrlib import (
     i18n,
     tests,
@@ -149,8 +151,7 @@ class TestTranslate(tests.TestCaseWithTransport):
     def test_topic_help_translation(self):
         """does topic help get translated?"""
         from bzrlib import help
-        from StringIO import StringIO
-        out = StringIO()
+        out = io.StringIO()
         help.help("authentication", out)
         self.assertContainsRe(out.getvalue(), "zz\xe5{{Authentication Settings")
 

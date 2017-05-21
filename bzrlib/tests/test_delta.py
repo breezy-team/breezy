@@ -15,12 +15,14 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-from cStringIO import StringIO
 
 from bzrlib import (
     delta as _mod_delta,
     revision as _mod_revision,
     tests,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 
 
@@ -225,7 +227,7 @@ class TestReportChanges(tests.TestCase):
 class TestChangesFrom(tests.TestCaseWithTransport):
 
     def show_string(self, delta, *args,  **kwargs):
-        to_file = StringIO()
+        to_file = BytesIO()
         _mod_delta.report_delta(to_file, delta, *args, **kwargs)
         return to_file.getvalue()
 
@@ -319,19 +321,19 @@ A  f4
 
     def test_delta_show_short_status_no_filter(self):
         d, long_status, short_status = self._get_delta()
-        out = StringIO()
+        out = BytesIO()
         _mod_delta.report_delta(out, d, short_status=True)
         self.assertEqual(short_status, out.getvalue())
 
     def test_delta_show_long_status_no_filter(self):
         d, long_status, short_status = self._get_delta()
-        out = StringIO()
+        out = BytesIO()
         _mod_delta.report_delta(out, d, short_status=False)
         self.assertEqual(long_status, out.getvalue())
 
     def test_delta_show_no_filter(self):
         d, long_status, short_status = self._get_delta()
-        out = StringIO()
+        out = BytesIO()
         def not_a_filter(path, file_id):
             return True
         _mod_delta.report_delta(out, d, short_status=True, filter=not_a_filter)
@@ -339,7 +341,7 @@ A  f4
 
     def test_delta_show_short_status_single_file_filter(self):
         d, long_status, short_status = self._get_delta()
-        out = StringIO()
+        out = BytesIO()
         def only_f2(path, file_id):
             return path == 'f2'
         _mod_delta.report_delta(out, d, short_status=True, filter=only_f2)
@@ -347,7 +349,7 @@ A  f4
 
     def test_delta_show_long_status_single_file_filter(self):
         d, long_status, short_status = self._get_delta()
-        out = StringIO()
+        out = BytesIO()
         def only_f2(path, file_id):
             return path == 'f2'
         _mod_delta.report_delta(out, d, short_status=False, filter=only_f2)
@@ -355,7 +357,7 @@ A  f4
 
     def test_delta_show_short_status_single_file_id_filter(self):
         d, long_status, short_status = self._get_delta()
-        out = StringIO()
+        out = BytesIO()
         def only_f2_id(path, file_id):
             return file_id == 'f2-id'
         _mod_delta.report_delta(out, d, short_status=True, filter=only_f2_id)

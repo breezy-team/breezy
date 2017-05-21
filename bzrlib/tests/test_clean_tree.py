@@ -117,9 +117,8 @@ class TestCleanTree(TestCaseInTempDir):
 
         self.overrideAttr(os, 'unlink', _dummy_unlink)
         self.overrideAttr(shutil, 'rmtree', _dummy_rmtree)
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stdout=stdout, stderr=stderr)
+        ui.ui_factory = tests.TestUIFactory()
+        stderr = ui.ui_factory.stderr
 
         ControlDir.create_standalone_workingtree('.')
         self.build_tree(['0foo', '1bar', '2baz', 'subdir0/'])

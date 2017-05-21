@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
 
 from bzrlib import (
     errors,
@@ -24,8 +23,11 @@ from bzrlib import (
     xml7,
     xml8,
     )
-from bzrlib.tests import TestCase
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.inventory import Inventory
+from bzrlib.tests import TestCase
 import bzrlib.xml5
 
 _revision_v5 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
@@ -196,7 +198,7 @@ class TestSerializer(TestCase):
 
     def test_unpack_revision_5(self):
         """Test unpacking a canned revision v5"""
-        inp = StringIO(_revision_v5)
+        inp = BytesIO(_revision_v5)
         rev = bzrlib.xml5.serializer_v5.read_revision(inp)
         eq = self.assertEqual
         eq(rev.committer,
@@ -207,7 +209,7 @@ class TestSerializer(TestCase):
            "mbp@sourcefrog.net-20050905063503-43948f59fa127d92")
 
     def test_unpack_revision_5_utc(self):
-        inp = StringIO(_revision_v5_utc)
+        inp = BytesIO(_revision_v5_utc)
         rev = bzrlib.xml5.serializer_v5.read_revision(inp)
         eq = self.assertEqual
         eq(rev.committer,
@@ -219,7 +221,7 @@ class TestSerializer(TestCase):
 
     def test_unpack_inventory_5(self):
         """Unpack canned new-style inventory"""
-        inp = StringIO(_committed_inv_v5)
+        inp = BytesIO(_committed_inv_v5)
         inv = bzrlib.xml5.serializer_v5.read_inventory(inp)
         eq = self.assertEqual
         eq(len(inv), 4)
@@ -231,7 +233,7 @@ class TestSerializer(TestCase):
 
     def test_unpack_basis_inventory_5(self):
         """Unpack canned new-style inventory"""
-        inp = StringIO(_basis_inv_v5)
+        inp = BytesIO(_basis_inv_v5)
         inv = bzrlib.xml5.serializer_v5.read_inventory(inp)
         eq = self.assertEqual
         eq(len(inv), 4)
@@ -285,24 +287,24 @@ class TestSerializer(TestCase):
         self.assertEqual('a-rev-id', inv.root.revision)
 
     def test_repack_inventory_5(self):
-        inp = StringIO(_committed_inv_v5)
+        inp = BytesIO(_committed_inv_v5)
         inv = bzrlib.xml5.serializer_v5.read_inventory(inp)
-        outp = StringIO()
+        outp = BytesIO()
         bzrlib.xml5.serializer_v5.write_inventory(inv, outp)
         self.assertEqualDiff(_expected_inv_v5, outp.getvalue())
-        inv2 = bzrlib.xml5.serializer_v5.read_inventory(StringIO(outp.getvalue()))
+        inv2 = bzrlib.xml5.serializer_v5.read_inventory(BytesIO(outp.getvalue()))
         self.assertEqual(inv, inv2)
 
     def assertRoundTrips(self, xml_string):
-        inp = StringIO(xml_string)
+        inp = BytesIO(xml_string)
         inv = bzrlib.xml5.serializer_v5.read_inventory(inp)
-        outp = StringIO()
+        outp = BytesIO()
         bzrlib.xml5.serializer_v5.write_inventory(inv, outp)
         self.assertEqualDiff(xml_string, outp.getvalue())
         lines = bzrlib.xml5.serializer_v5.write_inventory_to_lines(inv)
         outp.seek(0)
         self.assertEqual(outp.readlines(), lines)
-        inv2 = bzrlib.xml5.serializer_v5.read_inventory(StringIO(outp.getvalue()))
+        inv2 = bzrlib.xml5.serializer_v5.read_inventory(BytesIO(outp.getvalue()))
         self.assertEqual(inv, inv2)
 
     def tests_serialize_inventory_v5_with_root(self):
@@ -310,12 +312,12 @@ class TestSerializer(TestCase):
 
     def check_repack_revision(self, txt):
         """Check that repacking a revision yields the same information"""
-        inp = StringIO(txt)
+        inp = BytesIO(txt)
         rev = bzrlib.xml5.serializer_v5.read_revision(inp)
-        outp = StringIO()
+        outp = BytesIO()
         bzrlib.xml5.serializer_v5.write_revision(rev, outp)
         outfile_contents = outp.getvalue()
-        rev2 = bzrlib.xml5.serializer_v5.read_revision(StringIO(outfile_contents))
+        rev2 = bzrlib.xml5.serializer_v5.read_revision(BytesIO(outfile_contents))
         self.assertEqual(rev, rev2)
 
     def test_repack_revision_5(self):
@@ -329,7 +331,7 @@ class TestSerializer(TestCase):
         """Pack revision to XML v5"""
         # fixed 20051025, revisions should have final newline
         rev = bzrlib.xml5.serializer_v5.read_revision_from_string(_revision_v5)
-        outp = StringIO()
+        outp = BytesIO()
         bzrlib.xml5.serializer_v5.write_revision(rev, outp)
         outfile_contents = outp.getvalue()
         self.assertEqual(outfile_contents[-1], '\n')
@@ -340,7 +342,7 @@ class TestSerializer(TestCase):
         """Create an empty property value check that it serializes correctly"""
         s_v5 = bzrlib.xml5.serializer_v5
         rev = s_v5.read_revision_from_string(_revision_v5)
-        outp = StringIO()
+        outp = BytesIO()
         props = {'empty':'', 'one':'one'}
         rev.properties = props
         txt = s_v5.write_revision_to_string(rev)

@@ -19,8 +19,6 @@
 
 from __future__ import absolute_import
 
-import cStringIO
-
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import bisect
@@ -42,6 +40,9 @@ from bzrlib import (
     transport,
     )
 from bzrlib.index import _OPTION_NODE_REFS, _OPTION_KEY_ELEMENTS, _OPTION_LEN
+from bzrlib.sixish import (
+    BytesIO,
+    )
 
 
 _BTSIGNATURE = "B+Tree Graph Index 2\n"
@@ -74,7 +75,7 @@ class _BuilderRow(object):
     def finish_node(self, pad=True):
         byte_lines, _, padding = self.writer.finish()
         if self.nodes == 0:
-            self.spool = cStringIO.StringIO()
+            self.spool = BytesIO()
             # padded note:
             self.spool.write("\x00" * _RESERVED_HEADER_BYTES)
         elif self.nodes == 1:
@@ -408,7 +409,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         if row_lengths and row_lengths[-1] > 1:
             result = tempfile.NamedTemporaryFile(prefix='bzr-index-')
         else:
-            result = cStringIO.StringIO()
+            result = BytesIO()
         result.writelines(lines)
         position = sum(map(len, lines))
         root_row = True

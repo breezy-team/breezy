@@ -22,8 +22,6 @@ For concrete class tests see this file, and for meta-branch tests
 also see this file.
 """
 
-from cStringIO import StringIO
-
 from bzrlib import (
     branch as _mod_branch,
     bzrdir,
@@ -37,6 +35,9 @@ from bzrlib import (
 from bzrlib.branchfmt.fullhistory import (
     BzrBranch5,
     BzrBranchFormat5,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 
 
@@ -710,7 +711,7 @@ class TestPullResult(tests.TestCase):
         r.old_revno = 10
         r.new_revid = "new-revid"
         r.new_revno = 20
-        f = StringIO()
+        f = BytesIO()
         r.report(f)
         self.assertEqual("Now on revision 20.\n", f.getvalue())
         self.assertEqual("Now on revision 20.\n", f.getvalue())
@@ -719,6 +720,6 @@ class TestPullResult(tests.TestCase):
         r = _mod_branch.PullResult()
         r.old_revid = "same-revid"
         r.new_revid = "same-revid"
-        f = StringIO()
+        f = BytesIO()
         r.report(f)
         self.assertEqual("No revisions or tags to pull.\n", f.getvalue())

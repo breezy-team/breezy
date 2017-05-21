@@ -16,7 +16,6 @@
 
 """Tests for Knit data structure"""
 
-from cStringIO import StringIO
 import gzip
 import sys
 
@@ -49,6 +48,9 @@ from bzrlib.patiencediff import PatienceSequenceMatcher
 from bzrlib.repofmt import (
     knitpack_repo,
     pack_repo,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.tests import (
     TestCase,
@@ -246,7 +248,7 @@ class MockTransport(object):
         if self.file_lines is None:
             raise NoSuchFile(filename)
         else:
-            return StringIO("\n".join(self.file_lines))
+            return BytesIO(b"\n".join(self.file_lines))
 
     def readv(self, relpath, offsets):
         fp = self.get(relpath)
@@ -728,7 +730,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
 class LowLevelKnitDataTests(TestCase):
 
     def create_gz_content(self, text):
-        sio = StringIO()
+        sio = BytesIO()
         gz_file = gzip.GzipFile(mode='wb', fileobj=sio)
         gz_file.write(text)
         gz_file.close()
@@ -901,7 +903,7 @@ class LowLevelKnitIndexTests(TestCase):
         index = self.get_knit_index(transport, "filename", "w")
         index.keys()
         call = transport.calls.pop(0)
-        # call[1][1] is a StringIO - we can't test it by simple equality.
+        # call[1][1] is a BytesIO - we can't test it by simple equality.
         self.assertEqual('put_file_non_atomic', call[0])
         self.assertEqual('filename.kndx', call[1][0])
         # With no history, _KndxIndex writes a new index:
@@ -989,7 +991,7 @@ class LowLevelKnitIndexTests(TestCase):
         index.add_records([
             ((utf8_revision_id,), ["option"], ((utf8_revision_id,), 0, 1), [])])
         call = transport.calls.pop(0)
-        # call[1][1] is a StringIO - we can't test it by simple equality.
+        # call[1][1] is a BytesIO - we can't test it by simple equality.
         self.assertEqual('put_file_non_atomic', call[0])
         self.assertEqual('filename.kndx', call[1][0])
         # With no history, _KndxIndex writes a new index:
@@ -1008,7 +1010,7 @@ class LowLevelKnitIndexTests(TestCase):
         index.add_records([
             (("version",), ["option"], (("version",), 0, 1), [(utf8_revision_id,)])])
         call = transport.calls.pop(0)
-        # call[1][1] is a StringIO - we can't test it by simple equality.
+        # call[1][1] is a BytesIO - we can't test it by simple equality.
         self.assertEqual('put_file_non_atomic', call[0])
         self.assertEqual('filename.kndx', call[1][0])
         # With no history, _KndxIndex writes a new index:
@@ -1062,7 +1064,7 @@ class LowLevelKnitIndexTests(TestCase):
 
         self.add_a_b(index)
         call = transport.calls.pop(0)
-        # call[1][1] is a StringIO - we can't test it by simple equality.
+        # call[1][1] is a BytesIO - we can't test it by simple equality.
         self.assertEqual('put_file_non_atomic', call[0])
         self.assertEqual('filename.kndx', call[1][0])
         # With no history, _KndxIndex writes a new index:
@@ -1102,7 +1104,7 @@ class LowLevelKnitIndexTests(TestCase):
         self.assertEqual(_KndxIndex.HEADER, call[1][1].getvalue())
         self.assertEqual({'create_parent_dir': True}, call[2])
         call = transport.calls.pop(0)
-        # call[1][1] is a StringIO - we can't test it by simple equality.
+        # call[1][1] is a BytesIO - we can't test it by simple equality.
         self.assertEqual('put_file_non_atomic', call[0])
         self.assertEqual('filename.kndx', call[1][0])
         # With no history, _KndxIndex writes a new index:

@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
 import re
 import urllib2
 
@@ -24,6 +23,9 @@ from bzrlib import (
     osutils,
     tests,
     transport,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.smart import (
     medium,
@@ -81,7 +83,7 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
         request_bytes = self.rfile.read(data_length)
         protocol_factory, unused_bytes = medium._get_protocol_factory_for_bytes(
             request_bytes)
-        out_buffer = StringIO()
+        out_buffer = BytesIO()
         smart_protocol_request = protocol_factory(t, out_buffer.write, '/')
         # Perhaps there should be a SmartServerHTTPMedium that takes care of
         # feeding the bytes in the http request to the smart_protocol_request,

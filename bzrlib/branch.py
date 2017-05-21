@@ -18,8 +18,6 @@ from __future__ import absolute_import
 
 import bzrlib.bzrdir
 
-from cStringIO import StringIO
-
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
@@ -56,6 +54,7 @@ import bzrlib.bzrdir
 from bzrlib import (
     bzrdir,
     controldir,
+    registry,
     )
 from bzrlib.decorators import (
     needs_read_lock,
@@ -65,7 +64,9 @@ from bzrlib.decorators import (
 from bzrlib.hooks import Hooks
 from bzrlib.inter import InterObject
 from bzrlib.lock import _RelockDebugMixin, LogicalLockResult
-from bzrlib import registry
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.symbol_versioning import (
     deprecated_in,
     deprecated_method,
@@ -2425,7 +2426,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
             return
         if branch._transport.has('stored-transform'):
             raise errors.ChangesAlreadyStored
-        transform = StringIO()
+        transform = BytesIO()
         creator.write_shelf(transform)
         transform.seek(0)
         branch._transport.put_file('stored-transform', transform)
@@ -2749,7 +2750,7 @@ class BzrBranch8(BzrBranch):
 
         :param info_dict: A dict of {file_id: (tree_path, branch_location)}
         """
-        s = StringIO()
+        s = BytesIO()
         writer = rio.RioWriter(s)
         for key, (tree_path, branch_location) in info_dict.iteritems():
             stanza = rio.Stanza(file_id=key, tree_path=tree_path,

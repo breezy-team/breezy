@@ -16,10 +16,10 @@
 
 """Tests for bzrlib.pack."""
 
-
-from cStringIO import StringIO
-
 from bzrlib import pack, errors, tests
+from bzrlib.sixish import (
+    BytesIO,
+    )
 
 
 class TestContainerSerialiser(tests.TestCase):
@@ -74,7 +74,7 @@ class TestContainerWriter(tests.TestCase):
 
     def setUp(self):
         super(TestContainerWriter, self).setUp()
-        self.output = StringIO()
+        self.output = BytesIO()
         self.writer = pack.ContainerWriter(self.output.write)
 
     def assertOutput(self, expected_output):
@@ -233,7 +233,7 @@ class TestContainerReader(tests.TestCase):
     """
 
     def get_reader_for(self, bytes):
-        stream = StringIO(bytes)
+        stream = BytesIO(bytes)
         reader = pack.ContainerReader(stream)
         return reader
 
@@ -373,7 +373,7 @@ class TestBytesRecordReader(tests.TestCase):
     """
 
     def get_reader_for(self, bytes):
-        stream = StringIO(bytes)
+        stream = BytesIO(bytes)
         reader = pack.BytesRecordReader(stream)
         return reader
 
@@ -530,7 +530,7 @@ class TestBytesRecordReader(tests.TestCase):
 class TestMakeReadvReader(tests.TestCaseWithTransport):
 
     def test_read_skipping_records(self):
-        pack_data = StringIO()
+        pack_data = BytesIO()
         writer = pack.ContainerWriter(pack_data.write)
         writer.begin()
         memos = []

@@ -161,10 +161,7 @@ class TestCat(tests.TestCaseWithTransport):
         # subprocess because we really need to patch in a plugin that
         # registers the filters. Instead, we patch in a custom
         # filter_stack and use run_bzr() ...
-        from cStringIO import StringIO
-        from bzrlib.commands import run_bzr
         from bzrlib.tests.test_filters import _stack_2
-        from bzrlib.trace import mutter
         from bzrlib.tree import Tree
         wt = self.make_branch_and_tree('.')
         self.build_tree_contents([

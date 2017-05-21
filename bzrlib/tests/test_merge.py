@@ -15,7 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-from StringIO import StringIO
 
 from bzrlib import (
     branch as _mod_branch,
@@ -182,7 +181,6 @@ class TestMerge(TestCaseWithTransport):
         tree_b.lock_write()
         self.addCleanup(tree_b.unlock)
         tree_a.commit(message="hello again")
-        log = StringIO()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(),
                     this_tree=tree_b, ignore_zero=True)
         self.assertTrue('All changes applied successfully.\n' not in

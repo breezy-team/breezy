@@ -20,10 +20,12 @@ from bzrlib import (
     tests,
     )
 from bzrlib.errors import CantReprocessAndShowBase, BinaryFile
+from bzrlib.sixish import (
+    BytesIO,
+    )
 
 def split_lines(t):
-    from cStringIO import StringIO
-    return StringIO(t).readlines()
+    return BytesIO(t).readlines()
 
 ############################################################
 # test case data from the gnu diffutils manual

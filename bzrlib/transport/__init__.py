@@ -28,7 +28,6 @@ it.
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
 import sys
 
 from bzrlib.lazy_import import lazy_import
@@ -46,6 +45,9 @@ from bzrlib import (
     )
 """)
 
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.symbol_versioning import (
     DEPRECATED_PARAMETER,
     )
@@ -884,7 +886,7 @@ class Transport(object):
         if not isinstance(raw_bytes, str):
             raise TypeError(
                 'raw_bytes must be a plain string, not %s' % type(raw_bytes))
-        return self.put_file(relpath, StringIO(raw_bytes), mode=mode)
+        return self.put_file(relpath, BytesIO(raw_bytes), mode=mode)
 
     def put_bytes_non_atomic(self, relpath, raw_bytes, mode=None,
                              create_parent_dir=False,
@@ -907,7 +909,7 @@ class Transport(object):
         if not isinstance(raw_bytes, str):
             raise TypeError(
                 'raw_bytes must be a plain string, not %s' % type(raw_bytes))
-        self.put_file_non_atomic(relpath, StringIO(raw_bytes), mode=mode,
+        self.put_file_non_atomic(relpath, BytesIO(raw_bytes), mode=mode,
                                  create_parent_dir=create_parent_dir,
                                  dir_mode=dir_mode)
 
@@ -1021,7 +1023,7 @@ class Transport(object):
         if not isinstance(bytes, str):
             raise TypeError(
                 'bytes must be a plain string, not %s' % type(bytes))
-        return self.append_file(relpath, StringIO(bytes), mode=mode)
+        return self.append_file(relpath, BytesIO(bytes), mode=mode)
 
     def append_multi(self, files, pb=None):
         """Append the text in each file-like or string object to

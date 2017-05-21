@@ -19,6 +19,9 @@ from __future__ import absolute_import
 from bzrlib import (
     osutils,
     )
+from bzrlib.sixish import (
+    StringIO,
+    )
 from bzrlib.trace import is_quiet
 
 
@@ -109,8 +112,7 @@ class TreeDelta(object):
 
     def get_changes_as_text(self, show_ids=False, show_unchanged=False,
                             short_status=False):
-        import StringIO
-        output = StringIO.StringIO()
+        output = StringIO()
         report_delta(output, self, short_status, show_ids, show_unchanged)
         return output.getvalue()
 

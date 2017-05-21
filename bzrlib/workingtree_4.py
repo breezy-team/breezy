@@ -24,7 +24,6 @@ WorkingTree.open(dir).
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
 import os
 import sys
 
@@ -69,6 +68,9 @@ from bzrlib.osutils import (
     pathjoin,
     realpath,
     safe_unicode,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.symbol_versioning import (
     deprecated_in,
@@ -1886,7 +1888,7 @@ class DirStateRevisionTree(InventoryTree):
         return inv[inv_file_id].revision
 
     def get_file(self, file_id, path=None):
-        return StringIO(self.get_file_text(file_id))
+        return BytesIO(self.get_file_text(file_id))
 
     def get_file_size(self, file_id):
         """See Tree.get_file_size"""

@@ -16,7 +16,6 @@
 
 """Tests for version_info"""
 
-from cStringIO import StringIO
 import imp
 import os
 import sys
@@ -26,6 +25,9 @@ from bzrlib import (
     registry,
     tests,
     version_info_formats,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.rio import read_stanzas
@@ -78,7 +80,7 @@ class TestVersionInfoRio(VersionInfoTestCase):
     def test_rio_null(self):
         wt = self.make_branch_and_tree('branch')
 
-        sio = StringIO()
+        sio = BytesIO()
         builder = RioVersionInfoBuilder(wt.branch, working_tree=wt)
         builder.generate(sio)
         val = sio.getvalue()
@@ -88,14 +90,14 @@ class TestVersionInfoRio(VersionInfoTestCase):
     def test_rio_dotted_revno(self):
         wt = self.create_tree_with_dotted_revno()
 
-        sio = StringIO()
+        sio = BytesIO()
         builder = RioVersionInfoBuilder(wt.branch, working_tree=wt)
         builder.generate(sio)
         val = sio.getvalue()
         self.assertContainsRe(val, 'revno: 1.1.1')
 
     def regen_text(self, wt, **kwargs):
-        sio = StringIO()
+        sio = BytesIO()
         builder = RioVersionInfoBuilder(wt.branch, working_tree=wt, **kwargs)
         builder.generate(sio)
         val = sio.getvalue()
@@ -133,7 +135,7 @@ class TestVersionInfoRio(VersionInfoTestCase):
         self.assertContainsRe(val, 'message: \xc3\xa52') # utf8 encoding '\xe5'
 
     def regen(self, wt, **kwargs):
-        sio = StringIO()
+        sio = BytesIO()
         builder = RioVersionInfoBuilder(wt.branch, working_tree=wt, **kwargs)
         builder.generate(sio)
         sio.seek(0)
@@ -152,7 +154,7 @@ class TestVersionInfoRio(VersionInfoTestCase):
         self.assertEqual(['bloe'], stanza.get_all('bla'))
 
     def get_one_stanza(self, stanza, key):
-        new_stanzas = list(read_stanzas(StringIO(stanza[key].encode('utf8'))))
+        new_stanzas = list(read_stanzas(BytesIO(stanza[key].encode('utf8'))))
         self.assertEqual(1, len(new_stanzas))
         return new_stanzas[0]
 
@@ -238,7 +240,7 @@ class PythonVersionInfoTests(VersionInfoTestCase):
     def test_python_null(self):
         wt = self.make_branch_and_tree('branch')
 
-        sio = StringIO()
+        sio = BytesIO()
         builder = PythonVersionInfoBuilder(wt.branch, working_tree=wt)
         builder.generate(sio)
         val = sio.getvalue()
@@ -249,7 +251,7 @@ class PythonVersionInfoTests(VersionInfoTestCase):
     def test_python_dotted_revno(self):
         wt = self.create_tree_with_dotted_revno()
 
-        sio = StringIO()
+        sio = BytesIO()
         builder = PythonVersionInfoBuilder(wt.branch, working_tree=wt)
         builder.generate(sio)
         val = sio.getvalue()
@@ -334,7 +336,7 @@ class PythonVersionInfoTests(VersionInfoTestCase):
 class CustomVersionInfoTests(VersionInfoTestCase):
 
     def test_custom_null(self):
-        sio = StringIO()
+        sio = BytesIO()
         wt = self.make_branch_and_tree('branch')
         builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt,
             template='revno: {revno}')
@@ -348,7 +350,7 @@ class CustomVersionInfoTests(VersionInfoTestCase):
             builder.generate, sio)
 
     def test_custom_dotted_revno(self):
-        sio = StringIO()
+        sio = BytesIO()
         wt = self.create_tree_with_dotted_revno()
         builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt, 
             template='{revno} revid: {revision_id}')
@@ -356,7 +358,7 @@ class CustomVersionInfoTests(VersionInfoTestCase):
         self.assertEqual("1.1.1 revid: o2", sio.getvalue())
 
     def regen(self, wt, tpl, **kwargs):
-        sio = StringIO()
+        sio = BytesIO()
         builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt,
                                            template=tpl, **kwargs)
         builder.generate(sio)
@@ -395,7 +397,7 @@ class CustomVersionInfoTests(VersionInfoTestCase):
 
     def test_custom_without_template(self):
         builder = CustomVersionInfoBuilder(None)
-        sio = StringIO()
+        sio = BytesIO()
         self.assertRaises(errors.NoTemplate, builder.generate, sio)
 
 

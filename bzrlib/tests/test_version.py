@@ -16,7 +16,6 @@
 
 """Tests for versioning of bzrlib."""
 
-from cStringIO import StringIO
 import platform
 import re
 
@@ -24,6 +23,9 @@ from bzrlib import (
     tests,
     version,
     workingtree,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
@@ -50,7 +52,7 @@ class TestBzrlibVersioning(tests.TestCase):
 
     def test_python_binary_path(self):
         self.permit_source_tree_branch_repo()
-        sio = StringIO()
+        sio = BytesIO()
         version.show_version(show_config=False, show_copyright=False,
             to_file=sio)
         out = sio.getvalue()

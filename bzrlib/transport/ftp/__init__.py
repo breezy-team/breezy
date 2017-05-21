@@ -27,7 +27,6 @@ active, in which case aftp:// will be your friend.
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
 import ftplib
 import getpass
 import os
@@ -41,6 +40,9 @@ from bzrlib import (
     errors,
     osutils,
     urlutils,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.symbol_versioning import (
     DEPRECATED_PARAMETER,
@@ -256,12 +258,12 @@ class FtpTransport(ConnectedTransport):
                         for this operation.
 
         We're meant to return a file-like object which bzr will
-        then read from. For now we do this via the magic of StringIO
+        then read from. For now we do this via the magic of BytesIO
         """
         try:
             mutter("FTP get: %s", self._remote_path(relpath))
             f = self._get_FTP()
-            ret = StringIO()
+            ret = BytesIO()
             f.retrbinary('RETR '+self._remote_path(relpath), ret.write, 8192)
             ret.seek(0)
             return ret
@@ -305,7 +307,7 @@ class FtpTransport(ConnectedTransport):
         if getattr(fp, 'read', None) is None:
             # hand in a string IO
             bytes = fp
-            fp = StringIO(bytes)
+            fp = BytesIO(bytes)
         else:
             # capture the byte count; .read() may be read only so
             # decorate it.

@@ -18,12 +18,13 @@
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
-
 from bzrlib import (
     errors,
     revision,
     tree,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 
 
@@ -72,7 +73,7 @@ class RevisionTree(tree.Tree):
         return ret
 
     def get_file(self, file_id, path=None):
-        return StringIO(self.get_file_text(file_id))
+        return BytesIO(self.get_file_text(file_id))
 
     def is_locked(self):
         return self._repository.is_locked()

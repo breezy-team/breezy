@@ -18,15 +18,14 @@
 
 from __future__ import absolute_import
 
+import errno
 import os
+import sys
 
 import bzrlib.bzrdir
 
 from bzrlib import lazy_import
 lazy_import.lazy_import(globals(), """
-import cStringIO
-import errno
-import sys
 import time
 
 import bzrlib
@@ -60,6 +59,7 @@ from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList
 from bzrlib.transport import memory
 from bzrlib.revisionspec import RevisionSpec, RevisionInfo
+from bzrlib.sixish import BytesIO
 from bzrlib.smtp_connection import SMTPConnection
 from bzrlib.workingtree import WorkingTree
 from bzrlib.i18n import gettext, ngettext
@@ -507,7 +507,7 @@ class cmd_dump_btree(Command):
         """Create a BTreeGraphIndex and raw bytes."""
         bt = btree_index.BTreeGraphIndex(trans, basename, None)
         bytes = trans.get_bytes(basename)
-        bt._file = cStringIO.StringIO(bytes)
+        bt._file = BytesIO(bytes)
         bt._size = len(bytes)
         return bt, bytes
 

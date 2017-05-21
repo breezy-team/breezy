@@ -26,7 +26,6 @@ from __future__ import absolute_import
 import atexit
 import codecs
 import copy
-from cStringIO import StringIO
 import difflib
 import doctest
 import errno
@@ -88,6 +87,9 @@ try:
 except ImportError:
     # lsprof not available
     pass
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.smart import client, request
 from bzrlib.transport import (
     memory,
@@ -159,7 +161,7 @@ isolated_environ = {
     # Make sure that any text ui tests are consistent regardless of
     # the environment the test case is run in; you may want tests that
     # test other combinations.  'dumb' is a reasonable guess for tests
-    # going to a pipe or a StringIO.
+    # going to a pipe or a BytesIO.
     'TERM': 'dumb',
     'LINES': '25',
     'COLUMNS': '80',
@@ -1691,7 +1693,7 @@ class TestCase(testtools.TestCase):
 
     def _startLogFile(self):
         """Setup a in-memory target for bzr and testcase log messages"""
-        pseudo_log_file = StringIO()
+        pseudo_log_file = BytesIO()
         def _get_log_contents_for_weird_testtools_api():
             return [pseudo_log_file.getvalue().decode(
                 "utf-8", "replace").encode("utf-8")]
@@ -2299,17 +2301,17 @@ class TestCase(testtools.TestCase):
         if not callable(a_callable):
             raise ValueError("a_callable must be callable.")
         if stdin is None:
-            stdin = StringIO("")
+            stdin = BytesIO("")
         if stdout is None:
             if getattr(self, "_log_file", None) is not None:
                 stdout = self._log_file
             else:
-                stdout = StringIO()
+                stdout = BytesIO()
         if stderr is None:
             if getattr(self, "_log_file", None is not None):
                 stderr = self._log_file
             else:
-                stderr = StringIO()
+                stderr = BytesIO()
         real_stdin = sys.stdin
         real_stdout = sys.stdout
         real_stderr = sys.stderr
@@ -2332,12 +2334,12 @@ class TestCase(testtools.TestCase):
         self.overrideAttr(lockdir, '_DEFAULT_TIMEOUT_SECONDS', 0)
 
     def make_utf8_encoded_stringio(self, encoding_type=None):
-        """Return a wrapped StringIO instance, that encodes to UTF-8."""
+        """Return a wrapped BytesIO, that will encode text input to UTF-8."""
         if encoding_type is None:
             encoding_type = 'strict'
-        sio = StringIO()
+        bio = BytesIO()
         output_encoding = 'utf-8'
-        sio = codecs.getwriter(output_encoding)(sio, errors=encoding_type)
+        sio = codecs.getwriter(output_encoding)(bio, errors=encoding_type)
         sio.encoding = output_encoding
         return sio
 

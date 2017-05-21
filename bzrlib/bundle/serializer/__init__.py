@@ -20,7 +20,6 @@
 from __future__ import absolute_import
 
 import base64
-from StringIO import StringIO
 import re
 
 from bzrlib import (
@@ -29,6 +28,9 @@ from bzrlib import (
     )
 from bzrlib.diff import internal_diff
 from bzrlib.revision import NULL_REVISION
+from bzrlib.sixish import (
+    BytesIO,
+    )
 # For backwards-compatibility
 from bzrlib.timestamp import unpack_highres_date, format_highres_date
 
@@ -201,7 +203,7 @@ def register_lazy(version, module, classname, overwrite=False):
 
 
 def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
-    temp = StringIO()
+    temp = BytesIO()
     internal_diff(old_filename, old_lines, new_filename, new_lines, temp,
                   allow_binary=True)
     temp.seek(0)

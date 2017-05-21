@@ -16,9 +16,10 @@
 
 """Tests for WSGI application"""
 
-from cStringIO import StringIO
-
 from bzrlib import tests
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.smart import medium, protocol
 from bzrlib.transport.http import wsgi
 from bzrlib.transport import chroot, memory
@@ -44,8 +45,8 @@ class WSGITestMixin(object):
             # Required WSGI variables
             'wsgi.version': (1,0),
             'wsgi.url_scheme': 'http',
-            'wsgi.input': StringIO(''),
-            'wsgi.errors': StringIO(),
+            'wsgi.input': BytesIO(b''),
+            'wsgi.errors': BytesIO(),
             'wsgi.multithread': False,
             'wsgi.multiprocess': False,
             'wsgi.run_once': True,
@@ -100,7 +101,7 @@ class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
         wsgi_app = wsgi.SmartWSGIApp(transport)
         wsgi_app.backing_transport = transport
         wsgi_app.make_request = self._fake_make_request
-        fake_input = StringIO('fake request')
+        fake_input = BytesIO(b'fake request')
         environ = self.build_environ({
             'REQUEST_METHOD': 'POST',
             'CONTENT_LENGTH': len(fake_input.getvalue()),
@@ -119,7 +120,7 @@ class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
         transport.put_bytes('foo', 'some bytes')
         wsgi_app = wsgi.SmartWSGIApp(transport)
         wsgi_app.make_request = self._fake_make_request
-        fake_input = StringIO('fake request')
+        fake_input = BytesIO(b'fake request')
         environ = self.build_environ({
             'REQUEST_METHOD': 'POST',
             'CONTENT_LENGTH': len(fake_input.getvalue()),
@@ -195,7 +196,7 @@ class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
             return request
         wsgi_app.make_request = make_request
 
-        fake_input = StringIO('incomplete request')
+        fake_input = BytesIO(b'incomplete request')
         environ = self.build_environ({
             'REQUEST_METHOD': 'POST',
             'CONTENT_LENGTH': len(fake_input.getvalue()),
@@ -212,7 +213,7 @@ class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
         # REQUEST_VERSION_TWO as version one.
         transport = memory.MemoryTransport()
         wsgi_app = wsgi.SmartWSGIApp(transport)
-        fake_input = StringIO('hello\n')
+        fake_input = BytesIO(b'hello\n')
         environ = self.build_environ({
             'REQUEST_METHOD': 'POST',
             'CONTENT_LENGTH': len(fake_input.getvalue()),
@@ -230,7 +231,7 @@ class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
         # as version two.
         transport = memory.MemoryTransport()
         wsgi_app = wsgi.SmartWSGIApp(transport)
-        fake_input = StringIO(protocol.REQUEST_VERSION_TWO + 'hello\n')
+        fake_input = BytesIO(protocol.REQUEST_VERSION_TWO + 'hello\n')
         environ = self.build_environ({
             'REQUEST_METHOD': 'POST',
             'CONTENT_LENGTH': len(fake_input.getvalue()),
@@ -248,7 +249,7 @@ class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
 class TestWSGIJail(tests.TestCaseWithMemoryTransport, WSGITestMixin):
 
     def make_hpss_wsgi_request(self, wsgi_relpath, *args):
-        write_buf = StringIO()
+        write_buf = BytesIO()
         request_medium = medium.SmartSimplePipesClientMedium(
             None, write_buf, 'fake:' + wsgi_relpath)
         request_encoder = protocol.ProtocolThreeRequester(

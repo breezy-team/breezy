@@ -18,7 +18,6 @@
 
 """Tests for trace library"""
 
-from cStringIO import StringIO
 import errno
 import logging
 import os
@@ -30,6 +29,9 @@ from bzrlib import (
     debug,
     errors,
     trace,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.tests import features, TestCaseInTempDir, TestCase
 from bzrlib.trace import (
@@ -44,7 +46,7 @@ from bzrlib.trace import (
 
 def _format_exception():
     """Format an exception as it would normally be displayed to the user"""
-    buf = StringIO()
+    buf = BytesIO()
     report_exception(sys.exc_info(), buf)
     return buf.getvalue()
 
@@ -313,7 +315,7 @@ class TestTrace(TestCase):
         # If _open_bzr_log cannot open the file, then we should write the
         # warning to stderr. Since this is normally happening before logging is
         # set up.
-        self.overrideAttr(sys, 'stderr', StringIO())
+        self.overrideAttr(sys, 'stderr', BytesIO())
         # Set the log file to something that cannot exist
         self.overrideEnv('BZR_LOG', '/no-such-dir/bzr.log')
         self.overrideAttr(trace, '_bzr_log_filename')

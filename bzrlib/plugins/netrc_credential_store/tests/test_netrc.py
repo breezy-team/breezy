@@ -14,13 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
-
 from bzrlib import (
     config,
     errors,
     osutils,
     tests,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 
 from bzrlib.plugins import netrc_credential_store
@@ -81,7 +82,7 @@ host = host
 user = joe
 password_encoding = netrc
 """
-        conf = config.AuthenticationConfig(_file=StringIO(ac_content))
+        conf = config.AuthenticationConfig(_file=BytesIO(ac_content))
         credentials = conf.get_credentials('scheme', 'host', user='joe')
         self.assertIsNot(None, credentials)
         self.assertEqual('secret', credentials.get('password', None))

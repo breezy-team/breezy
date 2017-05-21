@@ -16,7 +16,6 @@
 
 """Tests for repository implementations - tests a repository format."""
 
-from cStringIO import StringIO
 import re
 
 from bzrlib import (
@@ -37,6 +36,9 @@ from bzrlib import (
     )
 from bzrlib.repofmt import (
     knitpack_repo,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.tests import (
     per_repository,
@@ -918,7 +920,7 @@ class TestEscaping(tests.TestCaseWithTransport):
         self.build_tree(['repo/file1'])
         wt.add('file1')
         wt.commit('file1', rev_id='rev1')
-        fileobj = StringIO()
+        fileobj = BytesIO()
         wt.branch.repository.create_bundle(
             'rev1', _mod_revision.NULL_REVISION, fileobj)
 

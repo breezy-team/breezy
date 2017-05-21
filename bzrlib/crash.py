@@ -49,7 +49,6 @@ import platform
 import pprint
 import sys
 import time
-from StringIO import StringIO
 
 import bzrlib
 from bzrlib import (
@@ -58,6 +57,9 @@ from bzrlib import (
     osutils,
     plugin,
     trace,
+    )
+from bzrlib.sixish import (
+    StringIO,
     )
 
 

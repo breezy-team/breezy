@@ -14,7 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
+from bzrlib.sixish import (
+    BytesIO,
+    )
+
 
 class FakeReadFile(object):
     """A file-like object that can be given predefined content and read
@@ -22,7 +25,7 @@ class FakeReadFile(object):
 
     def __init__(self, data):
         """Initialize the mock file object with the provided data."""
-        self.data = StringIO(data)
+        self.data = BytesIO(data)
         self.max_read_size = None
         self.read_count = 0
 

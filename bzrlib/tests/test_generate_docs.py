@@ -20,9 +20,11 @@ This test checks that generation will be successful
 and produce non-empty output.
 """
 
-from cStringIO import StringIO
 
 import bzrlib.commands
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.tests import TestCase
 
 
@@ -35,7 +37,7 @@ class TestGenerateDocs(TestCase):
 
     def setUp(self):
         super(TestGenerateDocs, self).setUp()
-        self.sio = StringIO()
+        self.sio = BytesIO()
         self.options = Options()
         self.options.bzr_name = 'bzr'
         bzrlib.commands.install_bzr_command_hooks()

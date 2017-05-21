@@ -16,12 +16,13 @@
 
 """Test read_bundle works properly across various transports."""
 
-import cStringIO
-
 import bzrlib.bundle
 from bzrlib.bundle.serializer import write_bundle
 import bzrlib.bzrdir
 import bzrlib.errors as errors
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib import tests
 from bzrlib.tests.test_transport import TestTransportImplementation
 from bzrlib.tests.per_transport import transport_test_permutations
@@ -46,7 +47,7 @@ def create_bundle_file(test_case):
     wt.add(['a', 'subdir/'])
     wt.commit('new project', rev_id='commit-1')
 
-    out = cStringIO.StringIO()
+    out = BytesIO()
     rev_ids = write_bundle(wt.branch.repository,
                            wt.get_parent_ids()[0], 'null:', out)
     out.seek(0)

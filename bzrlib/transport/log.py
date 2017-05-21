@@ -21,8 +21,6 @@ from __future__ import absolute_import
 # see also the transportstats plugin, which gives you some summary information
 # in a machine-readable dump
 
-import StringIO
-import cStringIO
 import time
 import types
 
@@ -109,8 +107,10 @@ class TransportLogDecorator(decorator.TransportDecorator):
             return_result = iter(result)
         else:
             return_result = result
-        if isinstance(result, (cStringIO.OutputType, StringIO.StringIO)):
-            val = repr(result.getvalue())
+        # Is this an io object with a getvalue() method?
+        getvalue = getattr(result, 'getvalue', None)
+        if getvalue is not None:
+            val = repr(getvalue())
             result_len = len(val)
             shown_result = "%s(%s) (%d bytes)" % (result.__class__.__name__,
                 self._shorten(val), result_len)

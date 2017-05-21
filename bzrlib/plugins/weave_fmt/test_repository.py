@@ -22,7 +22,6 @@ For interface tests see tests/per_repository/*.py.
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
 from stat import S_ISDIR
 import sys
 
@@ -39,6 +38,9 @@ from bzrlib.repository import (
     )
 from bzrlib.serializer import (
     format_registry as serializer_format_registry,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.tests import (
     TestCase,
@@ -310,14 +312,14 @@ class TestSerializer(TestCase):
 
     def test_canned_inventory(self):
         """Test unpacked a canned inventory v4 file."""
-        inp = StringIO(_working_inventory_v4)
+        inp = BytesIO(_working_inventory_v4)
         inv = xml4.serializer_v4.read_inventory(inp)
         self.assertEqual(len(inv), 4)
         self.assertTrue(inv.has_id('bar-20050901064931-73b4b1138abc9cd2'))
 
     def test_unpack_revision(self):
         """Test unpacking a canned revision v4"""
-        inp = StringIO(_revision_v4)
+        inp = BytesIO(_revision_v4)
         rev = xml4.serializer_v4.read_revision(inp)
         eq = self.assertEqual
         eq(rev.committer,

@@ -17,11 +17,13 @@
 
 """Tests being able to ignore bad filetypes."""
 
-from cStringIO import StringIO
 import os
 
 from bzrlib import (
     errors,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.status import show_tree_status
 from bzrlib.tests import TestCaseWithTransport
@@ -32,7 +34,7 @@ from bzrlib.tests.features import (
 
 def verify_status(tester, tree, value):
     """Verify the output of show_tree_status"""
-    tof = StringIO()
+    tof = BytesIO()
     show_tree_status(tree, to_file=tof)
     tof.seek(0)
     tester.assertEqual(value, tof.readlines())

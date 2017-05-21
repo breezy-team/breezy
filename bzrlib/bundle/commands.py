@@ -23,8 +23,6 @@ and for applying a changeset.
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
-
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
@@ -39,6 +37,9 @@ from bzrlib.i18n import gettext
 """)
 
 from bzrlib.commands import Command
+from bzrlib.sixish import (
+    BytesIO,
+    )
 
 
 class cmd_bundle_info(Command):
@@ -56,7 +57,7 @@ class cmd_bundle_info(Command):
         term_encoding = osutils.get_terminal_encoding()
         bundle_info = read_mergeable_from_url(location)
         if isinstance(bundle_info, merge_directive.BaseMergeDirective):
-            bundle_file = StringIO(bundle_info.get_raw_bundle())
+            bundle_file = BytesIO(bundle_info.get_raw_bundle())
             bundle_info = read_bundle(bundle_file)
         else:
             if verbose:

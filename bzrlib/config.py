@@ -73,7 +73,6 @@ up=pull
 """
 
 from __future__ import absolute_import
-from cStringIO import StringIO
 import os
 import sys
 
@@ -112,6 +111,9 @@ from bzrlib import (
     hooks,
     lazy_regex,
     registry,
+    )
+from bzrlib.sixish import (
+    BytesIO,
     )
 from bzrlib.symbol_versioning import (
     deprecated_in,
@@ -772,7 +774,7 @@ class IniBasedConfig(Config):
         return conf
 
     def _create_from_string(self, str_or_unicode, save):
-        self._content = StringIO(str_or_unicode.encode('utf-8'))
+        self._content = BytesIO(str_or_unicode.encode('utf-8'))
         # Some tests use in-memory configs, some other always need the config
         # file to exist on disk.
         if save:
@@ -2278,17 +2280,17 @@ class TransportConfig(object):
 
     def _get_config_file(self):
         try:
-            f = StringIO(self._transport.get_bytes(self._filename))
+            f = BytesIO(self._transport.get_bytes(self._filename))
             for hook in OldConfigHooks['load']:
                 hook(self)
             return f
         except errors.NoSuchFile:
-            return StringIO()
+            return BytesIO()
         except errors.PermissionDenied as e:
             trace.warning("Permission denied while trying to open "
                 "configuration file %s.", urlutils.unescape_for_display(
                 urlutils.join(self._transport.base, self._filename), "utf-8"))
-            return StringIO()
+            return BytesIO()
 
     def _external_url(self):
         return urlutils.join(self._transport.external_url(), self._filename)
@@ -2307,7 +2309,7 @@ class TransportConfig(object):
         return conf
 
     def _set_configobj(self, configobj):
-        out_file = StringIO()
+        out_file = BytesIO()
         configobj.write(out_file)
         out_file.seek(0)
         self._transport.put_file(self._filename, out_file)
@@ -3257,7 +3259,7 @@ class IniFileStore(Store):
         """
         if self.is_loaded():
             raise AssertionError('Already loaded: %r' % (self._config_obj,))
-        co_input = StringIO(bytes)
+        co_input = BytesIO(bytes)
         try:
             # The config files are always stored utf8-encoded
             self._config_obj = ConfigObj(co_input, encoding='utf-8',
@@ -3284,7 +3286,7 @@ class IniFileStore(Store):
         if not self.is_loaded():
             # Nothing to save
             return
-        out = StringIO()
+        out = BytesIO()
         self._config_obj.write(out)
         self._save_content(out.getvalue())
         for hook in ConfigHooks['save']:

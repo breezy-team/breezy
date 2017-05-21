@@ -326,7 +326,7 @@ class TestDataCollector(tests.TestCase):
         raise AssertionError('Option --format not found')
 
 
-class BlackboxTests(tests.TestCase):
+class BlackboxTests(tests.TestCaseWithMemoryTransport):
 
     def test_bash_completion(self):
-        self.run_bzr("bash-completion")
+        self.run_bzr("bash-completion", encoding="utf-8")

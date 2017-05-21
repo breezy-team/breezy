@@ -31,19 +31,18 @@ WorkingTree.open(dir).
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
+import errno
 import os
+import re
 import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bisect import bisect_left
 import collections
-import errno
 import itertools
 import operator
 import stat
-import re
 
 from bzrlib import (
     branch,
@@ -74,15 +73,14 @@ from bzrlib import (
 # is guaranteed to be registered.
 from bzrlib import (
     bzrdir,
+    osutils,
     symbol_versioning,
     )
-
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.i18n import gettext
 from bzrlib.lock import LogicalLockResult
 import bzrlib.mutabletree
 from bzrlib.mutabletree import needs_tree_write_lock
-from bzrlib import osutils
 from bzrlib.osutils import (
     file_kind,
     isdir,
@@ -92,8 +90,11 @@ from bzrlib.osutils import (
     safe_unicode,
     splitpath,
     )
-from bzrlib.trace import mutter, note
 from bzrlib.revision import CURRENT_REVISION
+from bzrlib.sixish import (
+    BytesIO,
+    )
+from bzrlib.trace import mutter, note
 from bzrlib.symbol_versioning import (
     deprecated_passed,
     DEPRECATED_PARAMETER,
@@ -1944,7 +1945,7 @@ class InventoryWorkingTree(WorkingTree,
     def _write_basis_inventory(self, xml):
         """Write the basis inventory XML to the basis-inventory file"""
         path = self._basis_inventory_name()
-        sio = StringIO(xml)
+        sio = BytesIO(xml)
         self._transport.put_file(path, sio,
             mode=self.bzrdir._get_file_mode())
 
@@ -2202,7 +2203,7 @@ class InventoryWorkingTree(WorkingTree,
         # TODO: Maybe this should only write on dirty ?
         if self._control_files._lock_mode != 'w':
             raise errors.NotWriteLocked(self)
-        sio = StringIO()
+        sio = BytesIO()
         self._serialize(self._inventory, sio)
         sio.seek(0)
         self._transport.put_file('inventory', sio,

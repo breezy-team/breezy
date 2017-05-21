@@ -67,7 +67,6 @@ from __future__ import absolute_import
 # FIXME: the conflict markers should be *7* characters
 
 from copy import copy
-from cStringIO import StringIO
 import os
 
 from bzrlib.lazy_import import lazy_import
@@ -86,6 +85,9 @@ from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
 from bzrlib.osutils import dirname, sha, sha_strings, split_lines
 import bzrlib.patiencediff
 from bzrlib.revision import NULL_REVISION
+from bzrlib.sixish import (
+    BytesIO,
+    )
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
 from bzrlib.versionedfile import (
@@ -923,7 +925,7 @@ class WeaveFile(Weave):
         self._filemode = filemode
         try:
             f = self._transport.get(name + WeaveFile.WEAVE_SUFFIX)
-            _read_weave_v5(StringIO(f.read()), self)
+            _read_weave_v5(BytesIO(f.read()), self)
         except errors.NoSuchFile:
             if not create:
                 raise
@@ -943,7 +945,7 @@ class WeaveFile(Weave):
     def copy_to(self, name, transport):
         """See VersionedFile.copy_to()."""
         # as we are all in memory always, just serialise to the new place.
-        sio = StringIO()
+        sio = BytesIO()
         write_weave_v5(self, sio)
         sio.seek(0)
         transport.put_file(name + WeaveFile.WEAVE_SUFFIX, sio, self._filemode)
@@ -951,7 +953,7 @@ class WeaveFile(Weave):
     def _save(self):
         """Save the weave."""
         self._check_write_ok()
-        sio = StringIO()
+        sio = BytesIO()
         write_weave_v5(self, sio)
         sio.seek(0)
         bytes = sio.getvalue()

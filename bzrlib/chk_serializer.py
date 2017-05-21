@@ -18,8 +18,6 @@
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
-
 from bzrlib import lazy_import
 lazy_import.lazy_import(globals(),
 """
@@ -34,6 +32,10 @@ from bzrlib import (
     revision as _mod_revision,
     serializer,
     )
+from bzrlib.sixish import (
+    BytesIO,
+    )
+
 
 
 def _validate_properties(props, _decode=cache_utf8._utf8_decode):
@@ -200,12 +202,12 @@ class CHKSerializer(serializer.Serializer):
         return self.write_inventory(inv, None)
 
     def write_inventory_to_string(self, inv, working=False):
-        """Just call write_inventory with a StringIO and return the value.
+        """Just call write_inventory with a BytesIO and return the value.
 
         :param working: If True skip history data - text_sha1, text_size,
             reference_revision, symlink_target.
         """
-        sio = StringIO()
+        sio = BytesIO()
         self.write_inventory(inv, sio, working)
         return sio.getvalue()
 
