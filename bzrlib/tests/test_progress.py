@@ -14,17 +14,21 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import codecs
+import io
 
-from cStringIO import StringIO
-
-from bzrlib import (
-    tests,
-    )
 from bzrlib.progress import (
     ProgressTask,
     )
 from bzrlib.ui.text import (
     TextProgressView,
+    )
+
+from bzrlib import (
+    tests,
+    )
+from bzrlib.tests import (
+    ui_testing,
     )
 
 
@@ -44,7 +48,7 @@ class TestTextProgressView(tests.TestCase):
         return view
 
     def make_view(self):
-        out = StringIO()
+        out = ui_testing.StringIOWithEncoding()
         return out, self.make_view_only(out)
 
     def make_task(self, parent_task, view, msg, curr, total):
@@ -161,28 +165,25 @@ class TestTextProgressView(tests.TestCase):
         self.assertEqual(len(line), 79)
 
     def test_render_progress_unicode_enc_utf8(self):
-        out = tests.StringIOWrapper()
+        out = ui_testing.StringIOWithEncoding()
         out.encoding = "utf-8"
         view = self.make_view_only(out, 20)
         task = self.make_task(None, view, u"\xa7", 0, 1)
         view.show_progress(task)
-        self.assertEqual('\r/ \xc2\xa7 0/1            \r',
-            out.getvalue())
+        self.assertEqual(u'\r/ \xa7 0/1            \r', out.getvalue())
 
     def test_render_progress_unicode_enc_missing(self):
-        out = StringIO()
+        out = codecs.getwriter("ascii")(io.BytesIO())
         self.assertRaises(AttributeError, getattr, out, "encoding")
         view = self.make_view_only(out, 20)
         task = self.make_task(None, view, u"\xa7", 0, 1)
         view.show_progress(task)
-        self.assertEqual('\r/ ? 0/1             \r',
-            out.getvalue())
+        self.assertEqual(b'\r/ ? 0/1             \r', out.getvalue())
 
     def test_render_progress_unicode_enc_none(self):
-        out = tests.StringIOWrapper()
+        out = ui_testing.StringIOWithEncoding()
         out.encoding = None
         view = self.make_view_only(out, 20)
         task = self.make_task(None, view, u"\xa7", 0, 1)
         view.show_progress(task)
-        self.assertEqual('\r/ ? 0/1             \r',
-            out.getvalue())
+        self.assertEqual(u'\r/ ? 0/1             \r', out.getvalue())

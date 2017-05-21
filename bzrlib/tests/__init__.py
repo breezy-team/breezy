@@ -96,15 +96,15 @@ from bzrlib.transport import (
 from bzrlib.symbol_versioning import (
     deprecated_function,
     deprecated_in,
+    deprecated_method,
     )
 from bzrlib.tests import (
     fixtures,
     test_server,
     TestUtil,
     treeshape,
+    ui_testing,
     )
-from bzrlib.ui import NullProgressView
-from bzrlib.ui.text import TextUIFactory
 from bzrlib.tests.features import _CompatabilityThunkFeature
 
 # Mark this python module as being part of the implementation
@@ -890,70 +890,14 @@ class UnavailableFeature(Exception):
     """
 
 
-class StringIOWrapper(object):
-    """A wrapper around cStringIO which just adds an encoding attribute.
+class StringIOWrapper(ui_testing.BytesIOWithEncoding):
 
-    Internally we can check sys.stdout to see what the output encoding
-    should be. However, cStringIO has no encoding attribute that we can
-    set. So we wrap it instead.
-    """
-    encoding='ascii'
-    _cstring = None
-
+    @deprecated_method(deprecated_in((3, 0)))
     def __init__(self, s=None):
-        if s is not None:
-            self.__dict__['_cstring'] = StringIO(s)
-        else:
-            self.__dict__['_cstring'] = StringIO()
-
-    def __getattr__(self, name, getattr=getattr):
-        return getattr(self.__dict__['_cstring'], name)
-
-    def __setattr__(self, name, val):
-        if name == 'encoding':
-            self.__dict__['encoding'] = val
-        else:
-            return setattr(self._cstring, name, val)
+        super(StringIOWrapper, self).__init__(s)
 
 
-class TestUIFactory(TextUIFactory):
-    """A UI Factory for testing.
-
-    Hide the progress bar but emit note()s.
-    Redirect stdin.
-    Allows get_password to be tested without real tty attached.
-
-    See also CannedInputUIFactory which lets you provide programmatic input in
-    a structured way.
-    """
-    # TODO: Capture progress events at the model level and allow them to be
-    # observed by tests that care.
-    #
-    # XXX: Should probably unify more with CannedInputUIFactory or a
-    # particular configuration of TextUIFactory, or otherwise have a clearer
-    # idea of how they're supposed to be different.
-    # See https://bugs.launchpad.net/bzr/+bug/408213
-
-    def __init__(self, stdout=None, stderr=None, stdin=None):
-        if stdin is not None:
-            # We use a StringIOWrapper to be able to test various
-            # encodings, but the user is still responsible to
-            # encode the string and to set the encoding attribute
-            # of StringIOWrapper.
-            stdin = StringIOWrapper(stdin)
-        super(TestUIFactory, self).__init__(stdin, stdout, stderr)
-
-    def get_non_echoed_password(self):
-        """Get password from stdin without trying to handle the echo mode"""
-        password = self.stdin.readline()
-        if not password:
-            raise EOFError
-        if password[-1] == '\n':
-            password = password[:-1]
-        return password
-
-    def make_progress_view(self):
-        return NullProgressView()
+TestUIFactory = ui_testing.TestUIFactory
 
 
 def isolated_doctest_setUp(test):
@@ -2005,19 +1949,27 @@ class TestCase(testtools.TestCase):
         chk_map.clear_cache()
         if encoding is None:
             encoding = osutils.get_user_encoding()
-        stdout = StringIOWrapper()
-        stderr = StringIOWrapper()
-        stdout.encoding = encoding
-        stderr.encoding = encoding
 
         self.log('run bzr: %r', args)
+
+        stdout = ui_testing.BytesIOWithEncoding()
+        stderr = ui_testing.BytesIOWithEncoding()
+        stdout.encoding = stderr.encoding = encoding
+
         # FIXME: don't call into logging here
-        handler = trace.EncodedStreamHandler(stderr, errors="replace",
-            level=logging.INFO)
+        handler = trace.EncodedStreamHandler(
+            stderr, errors="replace", level=logging.INFO)
         logger = logging.getLogger('')
         logger.addHandler(handler)
+
+        self._last_cmd_stdout = codecs.getwriter(encoding)(stdout)
+        self._last_cmd_stderr = codecs.getwriter(encoding)(stderr)
+
         old_ui_factory = ui.ui_factory
-        ui.ui_factory = TestUIFactory(stdin=stdin, stdout=stdout, stderr=stderr)
+        ui.ui_factory = ui_testing.TestUIFactory(
+            stdin=stdin,
+            stdout=self._last_cmd_stdout,
+            stderr=self._last_cmd_stderr)
 
         cwd = None
         if working_dir is not None:
@@ -2025,23 +1977,11 @@ class TestCase(testtools.TestCase):
             os.chdir(working_dir)
 
         try:
-            try:
-                result = self.apply_redirected(
-                    ui.ui_factory.stdin,
-                    stdout, stderr,
-                    _mod_commands.run_bzr_catch_user_errors,
-                    args)
-            except KeyboardInterrupt:
-                # Reraise KeyboardInterrupt with contents of redirected stdout
-                # and stderr as arguments, for tests which are interested in
-                # stdout and stderr and are expecting the exception.
-                out = stdout.getvalue()
-                err = stderr.getvalue()
-                if out:
-                    self.log('output:\n%r', out)
-                if err:
-                    self.log('errors:\n%r', err)
-                raise KeyboardInterrupt(out, err)
+            result = self.apply_redirected(
+                ui.ui_factory.stdin,
+                stdout, stderr,
+                _mod_commands.run_bzr_catch_user_errors,
+                args)
         finally:
             logger.removeHandler(handler)
             ui.ui_factory = old_ui_factory
@@ -2059,8 +1999,8 @@ class TestCase(testtools.TestCase):
                               message='Unexpected return code')
         return result, out, err
 
-    def run_bzr(self, args, retcode=0, encoding=None, stdin=None,
-                working_dir=None, error_regexes=[], output_encoding=None):
+    def run_bzr(self, args, retcode=0, stdin=None, encoding=None,
+                working_dir=None, error_regexes=[]):
         """Invoke bzr, as if it were run from the command line.
 
         The argument list should not include the bzr program name - the
@@ -2392,9 +2332,7 @@ class TestCase(testtools.TestCase):
         self.overrideAttr(lockdir, '_DEFAULT_TIMEOUT_SECONDS', 0)
 
     def make_utf8_encoded_stringio(self, encoding_type=None):
-        """Return a StringIOWrapper instance, that will encode Unicode
-        input to UTF-8.
-        """
+        """Return a wrapped StringIO instance, that encodes to UTF-8."""
         if encoding_type is None:
             encoding_type = 'strict'
         sio = StringIO()

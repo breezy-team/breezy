@@ -30,7 +30,7 @@ bzrlib.ui.SilentUIFactory
     bzrlib in batch mode or for programs such as loggerhead.
 
 bzrlib.ui.CannedInputUIFactory
-    For use in testing; the input values to be returned are provided 
+    For use in testing; the input values to be returned are provided
     at construction.
 
 bzrlib.ui.text.TextUIFactory
@@ -51,9 +51,14 @@ from bzrlib import (
     config,
     osutils,
     progress,
-    trace,
     )
 """)
+
+from bzrlib.sixish import (
+    PY3,
+    string_types,
+    text_type,
+    )
 
 
 _valid_boolean_strings = dict(yes=True, no=False,
@@ -84,7 +89,7 @@ def bool_from_string(s, accepted_values=None):
     if accepted_values is None:
         accepted_values = _valid_boolean_strings
     val = None
-    if type(s) in (str, unicode):
+    if isinstance(s, string_types):
         try:
             val = accepted_values[s.lower()]
         except KeyError:
@@ -115,7 +120,7 @@ class ConfirmationUserInterfacePolicy(object):
         return '%s(%r, %r, %r)' % (
             self.__class__.__name__,
             self.wrapped_ui,
-            self.default_answer, 
+            self.default_answer,
             self.specific_answers)
 
     def confirm_action(self, prompt, confirmation_id, prompt_kwargs):
@@ -137,7 +142,7 @@ class UIFactory(object):
     UI Factories are also context managers, for some syntactic sugar some users
     need.
 
-    :ivar suppressed_warnings: Identifiers for user warnings that should 
+    :ivar suppressed_warnings: Identifiers for user warnings that should
         no be emitted.
     """
 
@@ -236,30 +241,25 @@ class UIFactory(object):
     def is_quiet(self):
         return self._quiet
 
-    def make_output_stream(self, encoding=None, encoding_type=None):
+    def make_output_stream(self, encoding=None, encoding_type='replace'):
         """Get a stream for sending out bulk text data.
 
         This is used for commands that produce bulk text, such as log or diff
         output, as opposed to user interaction.  This should work even for
         non-interactive user interfaces.  Typically this goes to a decorated
-        version of stdout, but in a GUI it might be appropriate to send it to a 
+        version of stdout, but in a GUI it might be appropriate to send it to a
         window displaying the text.
-     
-        :param encoding: Unicode encoding for output; if not specified 
-            uses the configured 'output_encoding' if any; otherwise the 
-            terminal encoding. 
+
+        The caller may flush but should not close the returned stream.
+
+        :param encoding: Unicode encoding for output; if not specified
+            uses the configured 'output_encoding' if any; otherwise the
+            terminal encoding.
             (See get_terminal_encoding.)
 
         :param encoding_type: How to handle encoding errors:
             replace/strict/escape/exact.  Default is replace.
         """
-        # XXX: is the caller supposed to close the resulting object?
-        if encoding is None:
-            encoding = config.GlobalStack().get('output_encoding')
-        if encoding is None:
-            encoding = osutils.get_terminal_encoding(trace=True)
-        if encoding_type is None:
-            encoding_type = 'replace'
         out_stream = self._make_output_stream_explicit(encoding, encoding_type)
         return out_stream
 
@@ -318,14 +318,14 @@ class UIFactory(object):
         except KeyError:
             fail = "bzr warning: %r, %r" % (warning_id, message_args)
             warnings.warn("no template for warning: " + fail)   # so tests will fail etc
-            return fail
+            return text_type(fail)
         try:
-            return template % message_args
+            return text_type(template) % message_args
         except ValueError as e:
             fail = "bzr unprintable warning: %r, %r, %s" % (
                 warning_id, message_args, e)
             warnings.warn(fail)   # so tests will fail etc
-            return fail
+            return text_type(fail)
 
     def choose(self, msg, choices, default=None):
         """Prompt the user for a list of alternatives.
@@ -412,12 +412,12 @@ class UIFactory(object):
         outdated formats), not for internal program warnings like deprecated
         APIs.
 
-        This can be overridden by UIFactory subclasses to show it in some 
+        This can be overridden by UIFactory subclasses to show it in some
         appropriate way; the default UIFactory is noninteractive and does
         nothing.  format_user_warning maps it to a string, though other
         presentations can be used for particular UIs.
 
-        :param warning_id: An identifier like 'cross_format_fetch' used to 
+        :param warning_id: An identifier like 'cross_format_fetch' used to
             check if the message is suppressed and to look up the string.
         :param message_args: Arguments to be interpolated into the message.
         """
@@ -425,7 +425,7 @@ class UIFactory(object):
 
     def show_error(self, msg):
         """Show an error message (not an exception) to the user.
-        
+
         The message should not have an error prefix or trailing newline.  That
         will be added by the factory if appropriate.
         """
@@ -522,7 +522,12 @@ def make_ui_for_terminal(stdin, stdout, stderr):
     """
     # this is now always TextUIFactory, which in turn decides whether it
     # should display progress bars etc
-    from bzrlib.ui.text import TextUIFactory
+    from bzrlib.ui.text import TextUIFactory, _wrap_in_stream, _wrap_out_stream
+    # GZ 2017-05-21: May want to rewrap streams on Python 3 if encoding config
+    if not PY3:
+        stdin = _wrap_in_stream(stdin)
+        stdout = _wrap_out_stream(stdout)
+        stderr = _wrap_out_stream(stderr)
     return TextUIFactory(stdin, stdout, stderr)
 
 

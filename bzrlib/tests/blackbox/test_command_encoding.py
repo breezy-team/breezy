@@ -16,7 +16,7 @@
 
 """Tests for the Command.encoding_type interface."""
 
-from bzrlib.tests import TestCase
+from bzrlib.tests import TestCaseWithMemoryTransport
 from bzrlib.commands import Command, register_command, plugin_cmds
 
 
@@ -45,10 +45,11 @@ class cmd_echo_replace(cmd_echo_exact):
     encoding_type = 'replace'
 
 
-class TestCommandEncoding(TestCase):
+class TestCommandEncoding(TestCaseWithMemoryTransport):
 
     def test_exact(self):
         def bzr(*args, **kwargs):
+            kwargs['encoding'] = 'ascii'
             return self.run_bzr(*args, **kwargs)[0]
 
         register_command(cmd_echo_exact)

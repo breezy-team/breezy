@@ -97,7 +97,8 @@ class TestBzrServeBase(TestCaseWithTransport):
             out, err = self.run_bzr(['serve'] + list(serve_args),
                                     retcode=retcode)
         except KeyboardInterrupt as e:
-            out, err = e.args
+            return (self._last_cmd_stdout.getvalue(),
+                self._last_cmd_stderr.getvalue())
         return out, err
 
 
