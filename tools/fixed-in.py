@@ -11,8 +11,8 @@ import sys
 class NewsParser(object):
 
     paren_exp_re = re.compile('\(([^)]+)\)')
-    release_re = re.compile("bzr[ -]")
-    release_prefix_length = len('bzr ')
+    release_re = re.compile("brz[ -]")
+    release_prefix_length = len('brz ')
     bugs_re = re.compile('#([0-9]+)')
 
     def __init__(self, news):
@@ -160,7 +160,7 @@ def main():
             elif msg_re.search(entry) is not None:
                 found = True
             if found:
-                print 'Bug %s was fixed in bzr-%s/%s by %s:' % (
+                print 'Bug %s was fixed in brz-%s/%s by %s:' % (
                     number, release, date, authors)
                 print entry
             seen += 1

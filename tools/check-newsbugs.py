@@ -21,7 +21,7 @@ options = dict(options)
 
 if len(args) == 1:
     print ("Usage: check-newsbugs [--launchpad][--webbrowser] "
-           "doc/en/release-notes/bzr-x.y.txt")
+           "doc/en/release-notes/brz-x.y.txt")
     print "Options:"
     print "--launchpad     Print out Launchpad mail commands for closing bugs "
     print "                that are already fixed."
@@ -90,7 +90,7 @@ for bugno, section in bugnos:
             continue
         raise
 
-    found_bzr = False
+    found_brz = False
     fix_released = False
     for task in bug.bug_tasks:
         parts = task.bug_target_name.split('/')
@@ -100,16 +100,16 @@ for bugno, section in bugnos:
         else:
             project = parts[0]
             distribution = parts[1]
-        if project == "bzr":
-            found_bzr = True
+        if project == "brz":
+            found_brz = True
             if not fix_released and task.status == "Fix Released":
                 # We could check that the NEWS section and task_status are in
                 # sync, but that would be overkill. (case at hand: bug #416732)
                 fix_released = True
 
-    if not found_bzr:
+    if not found_brz:
         print_bug_url(bugno)
-        print "Bug %d was mentioned in NEWS but is not marked as affecting bzr" % bugno
+        print "Bug %d was mentioned in NEWS but is not marked as affecting brz" % bugno
     elif not fix_released:
         print_bug_url(bugno)
         report_notmarked(bug, task, section)

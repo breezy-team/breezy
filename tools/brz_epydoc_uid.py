@@ -30,7 +30,7 @@ class ObjectUID(_ObjectUID):
     def __init__(self, obj):
         if isinstance(obj, _ScopeReplacer):
             # The isinstance will trigger a replacement if it is a real
-            # _BzrScopeReplacer, but the local object won't know about it, so
+            # _BrzScopeReplacer, but the local object won't know about it, so
             # replace it locally.
             obj = object.__getattribute__(obj, '_real_obj')
         _ObjectUID.__init__(self, obj)

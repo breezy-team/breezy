@@ -3,10 +3,10 @@
 # Call the command line interface for Epydoc.
 #
 
-"""Wrapper around Epydoc that just makes it understand bzr's lazy imports."""
+"""Wrapper around Epydoc that just makes it understand brz's lazy imports."""
 
 # This will enable the lazy_import compatibility code
-import bzr_epydoc_uid
+import brz_epydoc_uid
 
 from epydoc.cli import cli
 cli()

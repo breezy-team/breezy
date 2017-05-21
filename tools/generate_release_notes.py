@@ -19,10 +19,10 @@
 """Generate doc/en/release-notes/index.txt from the per-series NEWS files.
 
 NEWS files are kept in doc/en/release-notes/, one file per series, e.g.
-doc/en/release-notes/bzr-2.3.txt
+doc/en/release-notes/brz-2.3.txt
 """
 
-# XXX: add test_source test that latest doc/en/release-notes/bzr-*.txt has the
+# XXX: add test_source test that latest doc/en/release-notes/brz-*.txt has the
 # NEWS file-id (so that merges of new work will tend to always land new NEWS
 # entries in the latest series).
 
@@ -61,7 +61,7 @@ def natural_sort_key(file_name):
     
     e.g. 1.10b1 will sort as greater than 1.2::
 
-        >>> natural_sort_key('bzr-1.10b1.txt') > natural_sort_key('bzr-1.2.txt')
+        >>> natural_sort_key('brz-1.10b1.txt') > natural_sort_key('brz-1.2.txt')
         True
     """
     file_name = os.path.basename(file_name)
@@ -91,7 +91,7 @@ def output_news_file_plain(out_file, news_file_name):
         lines = f.readlines()
     finally:
         f.close()
-    title = os.path.basename(news_file_name)[len('bzr-'):-len('.txt')]
+    title = os.path.basename(news_file_name)[len('brz-'):-len('.txt')]
     for line in lines:
         if line == '####################\n':
             line = '#' * len(title) + '\n'
