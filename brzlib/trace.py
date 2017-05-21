@@ -485,10 +485,10 @@ def report_exception(exc_info, err_file):
         return errors.EXIT_ERROR
     exc_type, exc_object, exc_tb = exc_info
     if isinstance(exc_object, KeyboardInterrupt):
-        err_file.write("bzr: interrupted\n")
+        err_file.write("brz: interrupted\n")
         return errors.EXIT_ERROR
     elif isinstance(exc_object, MemoryError):
-        err_file.write("bzr: out of memory\n")
+        err_file.write("brz: out of memory\n")
         if 'mem_dump' in debug.debug_flags:
             _dump_memory_usage(err_file)
         else:
@@ -504,7 +504,7 @@ def report_exception(exc_info, err_file):
         return errors.EXIT_ERROR
     elif osutils.is_environment_error(exc_object):
         if getattr(exc_object, 'errno', None) == errno.EPIPE:
-            err_file.write("bzr: broken pipe\n")
+            err_file.write("brz: broken pipe\n")
             return errors.EXIT_ERROR
         # Might be nice to catch all of these and show them as something more
         # specific, but there are too many cases at the moment.
@@ -517,7 +517,7 @@ def report_exception(exc_info, err_file):
 
 def print_exception(exc_info, err_file):
     exc_type, exc_object, exc_tb = exc_info
-    err_file.write("bzr: ERROR: %s.%s: %s\n" % (
+    err_file.write("brz: ERROR: %s.%s: %s\n" % (
         exc_type.__module__, exc_type.__name__, exc_object))
     err_file.write('\n')
     traceback.print_exception(exc_type, exc_object, exc_tb, file=err_file)
@@ -533,7 +533,7 @@ def report_user_error(exc_info, err_file, advice=None):
     :param advice: Extra advice to the user to be printed following the
         exception.
     """
-    err_file.write("bzr: ERROR: %s\n" % (exc_info[1],))
+    err_file.write("brz: ERROR: %s\n" % (exc_info[1],))
     if advice:
         err_file.write("%s\n" % (advice,))
 

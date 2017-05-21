@@ -62,7 +62,7 @@ class TestTrace(TestCase):
             pass
         err = _format_exception()
         self.assertEqualDiff(err.splitlines()[0],
-                'bzr: ERROR: exceptions.NotImplementedError: time travel')
+                'brz: ERROR: exceptions.NotImplementedError: time travel')
         self.assertContainsRe(err,
             'Bazaar has encountered an internal error.')
 
@@ -74,7 +74,7 @@ class TestTrace(TestCase):
             pass
         msg = _format_exception()
         self.assertTrue(len(msg) > 0)
-        self.assertEqualDiff(msg, 'bzr: interrupted\n')
+        self.assertEqualDiff(msg, 'brz: interrupted\n')
 
     def test_format_memory_error(self):
         try:
@@ -83,7 +83,7 @@ class TestTrace(TestCase):
             pass
         msg = _format_exception()
         self.assertEqual(msg,
-            "bzr: out of memory\nUse -Dmem_dump to dump memory to a file.\n")
+            "brz: out of memory\nUse -Dmem_dump to dump memory to a file.\n")
 
     def test_format_mem_dump(self):
         self.requireFeature(features.meliae)
@@ -94,7 +94,7 @@ class TestTrace(TestCase):
             pass
         msg = _format_exception()
         self.assertStartsWith(msg,
-            "bzr: out of memory\nMemory dumped to ")
+            "brz: out of memory\nMemory dumped to ")
 
     def test_format_os_error(self):
         try:
@@ -104,7 +104,7 @@ class TestTrace(TestCase):
         msg = _format_exception()
         # Linux seems to give "No such file" but Windows gives "The system
         # cannot find the file specified".
-        self.assertEqual('bzr: ERROR: %s\n' % (e_str,), msg)
+        self.assertEqual('brz: ERROR: %s\n' % (e_str,), msg)
 
     def test_format_io_error(self):
         try:
@@ -116,7 +116,7 @@ class TestTrace(TestCase):
         # 'No such file' for open()
         # However it now gets translated so we can not test for a specific message
         self.assertContainsRe(msg,
-            r'^bzr: ERROR: \[Errno .*\] .*nosuchfile')
+            r'^brz: ERROR: \[Errno .*\] .*nosuchfile')
 
     def test_format_pywintypes_error(self):
         self.requireFeature(features.pywintypes)
@@ -129,7 +129,7 @@ class TestTrace(TestCase):
         # GZ 2010-05-03: Formatting for pywintypes.error is basic, a 3-tuple
         #                with errno, function name, and locale error message
         self.assertContainsRe(msg,
-            r"^bzr: ERROR: \(2, 'RemoveDirectory[AW]?', .*\)")
+            r"^brz: ERROR: \(2, 'RemoveDirectory[AW]?', .*\)")
             
     def test_format_sockets_error(self):
         try:
@@ -158,7 +158,7 @@ class TestTrace(TestCase):
             pass
         msg = _format_exception()
         self.assertTrue(len(msg) > 0)
-        self.assertEqualDiff(msg, 'bzr: ERROR: Not a branch: \"wibble\".\n')
+        self.assertEqualDiff(msg, 'brz: ERROR: Not a branch: \"wibble\".\n')
 
     def test_report_external_import_error(self):
         """Short friendly message for missing system modules."""
@@ -170,7 +170,7 @@ class TestTrace(TestCase):
             self.fail("somehow succeeded in importing %r" % ImaginaryModule)
         msg = _format_exception()
         self.assertEqual(msg,
-            'bzr: ERROR: No module named ImaginaryModule\n'
+            'brz: ERROR: No module named ImaginaryModule\n'
             'You may need to install this Python library separately.\n')
 
     def test_report_import_syntax_error(self):
@@ -206,7 +206,7 @@ class TestTrace(TestCase):
             raise IOError(errno.EPIPE, 'broken pipe foofofo')
         except IOError as e:
             msg = _format_exception()
-            self.assertEqual(msg, "bzr: broken pipe\n")
+            self.assertEqual(msg, "brz: broken pipe\n")
         else:
             self.fail("expected error not raised")
 
