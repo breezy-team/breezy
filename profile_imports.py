@@ -118,8 +118,8 @@ def timed_import(name, globals=None, locals=None, fromlist=None, level=None):
         if scope_name is None:
             scope_name = globals.keys()
         else:
-            # Trim out paths before bzrlib
-            loc = scope_name.find('bzrlib')
+            # Trim out paths before brzlib
+            loc = scope_name.find('brzlib')
             if loc != -1:
                 scope_name = scope_name[loc:]
             # For stdlib, trim out early paths

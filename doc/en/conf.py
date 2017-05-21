@@ -13,7 +13,7 @@ import sys, os
 sys.path = [os.path.abspath('../..')] + sys.path
 
 # Most of the configuration for Bazaar docs is defined here ...
-from bzrlib.doc_generate.conf import *
+from brzlib.doc_generate.conf import *
 
 ## Configuration specific to this site ##
 

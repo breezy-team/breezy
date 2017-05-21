@@ -18,8 +18,8 @@ def sync(remote, local, verbose=False):
 	return status==0
 
 def create_tar_gz(local_dir, output_dir=None, verbose=False):
-	import tarfile, bzrlib
-	out_name = os.path.basename(local_dir) + '-' + str(bzrlib.Branch(local_dir).revno())
+	import tarfile, brzlib
+	out_name = os.path.basename(local_dir) + '-' + str(brzlib.Branch(local_dir).revno())
 	final_path = os.path.join(output_dir, out_name + '.tar.gz')
 	if os.path.exists(final_path):
 		if verbose:
@@ -46,8 +46,8 @@ def create_tar_gz(local_dir, output_dir=None, verbose=False):
 		raise
 
 def create_tar_bz2(local_dir, output_dir=None, verbose=False):
-	import tarfile, bzrlib
-	out_name = os.path.basename(local_dir) + '-' + str(bzrlib.Branch(local_dir).revno())
+	import tarfile, brzlib
+	out_name = os.path.basename(local_dir) + '-' + str(brzlib.Branch(local_dir).revno())
 	final_path = os.path.join(output_dir, out_name + '.tar.bz2')
 	if os.path.exists(final_path):
 		if verbose:
@@ -74,8 +74,8 @@ def create_tar_bz2(local_dir, output_dir=None, verbose=False):
 		raise
 
 def create_zip(local_dir, output_dir=None, verbose=False):
-	import zipfile, bzrlib
-	out_name = os.path.basename(local_dir) + '-' + str(bzrlib.Branch(local_dir).revno())
+	import zipfile, brzlib
+	out_name = os.path.basename(local_dir) + '-' + str(brzlib.Branch(local_dir).revno())
 	final_path = os.path.join(output_dir, out_name + '.zip')
 	if os.path.exists(final_path):
 		if verbose:

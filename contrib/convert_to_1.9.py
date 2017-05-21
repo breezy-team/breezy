@@ -25,9 +25,9 @@ def main(args):
 
     opts, args = p.parse_args(args)
 
-    from bzrlib import ui, trace, repository
-    from bzrlib.ui import text
-    from bzrlib.repofmt import pack_repo
+    from brzlib import ui, trace, repository
+    from brzlib.ui import text
+    from brzlib.repofmt import pack_repo
     ui.ui_factory = text.TextUIFactory()
     trace.enable_default_logging()
 
@@ -35,8 +35,8 @@ def main(args):
 
     fmt = getattr(pack_repo, 'RepositoryFormatKnitPack6', None)
     if fmt is None:
-        trace.note("** Your bzrlib does not have RepositoryFormatPack6 (--1.9)")
-        trace.note("   upgrade your bzrlib installation.")
+        trace.note("** Your brzlib does not have RepositoryFormatPack6 (--1.9)")
+        trace.note("   upgrade your brzlib installation.")
         return
 
     r = repository.Repository.open('.')
@@ -75,8 +75,8 @@ def main(args):
 
 
 def do_upgrade(r, fmt, pb):
-    from bzrlib import errors, repository, transport, ui, index, btree_index
-    from bzrlib.repofmt import pack_repo
+    from brzlib import errors, repository, transport, ui, index, btree_index
+    from brzlib.repofmt import pack_repo
     t = r._transport
     index_t = t.clone('indices')
     btree_index_t = t.clone('indices-btree')

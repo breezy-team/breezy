@@ -4,7 +4,7 @@ import os
 import time
 import sys
 import optparse
-from bzrlib import (
+from brzlib import (
     branch,
     commands,
     graph,
@@ -13,7 +13,7 @@ from bzrlib import (
     _known_graph_py,
     _known_graph_pyx,
     )
-from bzrlib.ui import text
+from brzlib.ui import text
 
 p = optparse.OptionParser()
 p.add_option('--quick', default=False, action='store_true')
