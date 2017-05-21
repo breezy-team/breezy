@@ -124,7 +124,9 @@ if __name__ == '__main__':
     # are just about to be discarded anyhow.  This does mean that atexit hooks
     # won't run but we don't use them.  Also file buffers won't be flushed,
     # but our policy is to always close files from a finally block. -- mbp 20070215
-    sys.exitfunc()
+    exitfunc = getattr(sys, "exitfunc", None)
+    if exitfunc is not None:
+        exitfunc()
     os._exit(exit_val)
 else:
     raise ImportError("The bzr script cannot be imported.")
