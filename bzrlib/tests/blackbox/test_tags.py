@@ -314,8 +314,8 @@ class TestTagging(TestCaseWithTransport):
 
     def test_sort_tags_custom(self):
         def sort_by_dots(branch, tags):
-            def sort_key((tag, revid)):
-                return tag.count(".")
+            def sort_key(tag_and_revid):
+                return tag_and_revid[0].count(".")
             tags.sort(key=sort_key)
 
         # Register a custom sort method
