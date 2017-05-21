@@ -89,16 +89,18 @@ except ImportError:
     pass
 from bzrlib.sixish import (
     BytesIO,
+    string_types,
+    text_type,
     )
 from bzrlib.smart import client, request
-from bzrlib.transport import (
-    memory,
-    pathfilter,
-    )
 from bzrlib.symbol_versioning import (
     deprecated_function,
     deprecated_in,
     deprecated_method,
+    )
+from bzrlib.transport import (
+    memory,
+    pathfilter,
     )
 from bzrlib.tests import (
     fixtures,
@@ -200,10 +202,9 @@ def override_os_environ(test, env=None):
     """
     if env is None:
         env = isolated_environ
-    test._original_os_environ = dict([(var, value)
-                                      for var, value in os.environ.iteritems()])
-    for var, value in env.iteritems():
-        osutils.set_or_unset_env(var, value)
+    test._original_os_environ = dict(**os.environ)
+    for var in env:
+        osutils.set_or_unset_env(var, env[var])
         if var not in test._original_os_environ:
             # The var is new, add it with a value of None, so
             # restore_os_environ will delete it
@@ -215,7 +216,7 @@ def restore_os_environ(test):
 
     :param test: A test instance previously passed to override_os_environ.
     """
-    for var, value in test._original_os_environ.iteritems():
+    for var, value in test._original_os_environ.items():
         # Restore the original value (or delete it if the value has been set to
         # None in override_os_environ).
         osutils.set_or_unset_env(var, value)
@@ -1789,7 +1790,7 @@ class TestCase(testtools.TestCase):
         return calls
 
     def _cleanEnvironment(self):
-        for name, value in isolated_environ.iteritems():
+        for name, value in isolated_environ.items():
             self.overrideEnv(name, value)
 
     def _restoreHooks(self):
@@ -1936,10 +1937,8 @@ class TestCase(testtools.TestCase):
     def _run_bzr_autosplit(self, args, retcode, encoding, stdin,
             working_dir):
         """Run bazaar command line, splitting up a string command line."""
-        if isinstance(args, basestring):
-            # shlex don't understand unicode strings,
-            # so args should be plain string (bialix 20070906)
-            args = list(shlex.split(str(args)))
+        if isinstance(args, string_types):
+            args = shlex.split(args)
         return self._run_bzr_core(args, retcode=retcode,
                 encoding=encoding, stdin=stdin, working_dir=working_dir,
                 )
@@ -2157,11 +2156,11 @@ class TestCase(testtools.TestCase):
         old_env = {}
 
         def cleanup_environment():
-            for env_var, value in env_changes.iteritems():
+            for env_var, value in env_changes.items():
                 old_env[env_var] = osutils.set_or_unset_env(env_var, value)
 
         def restore_environment():
-            for env_var, value in old_env.iteritems():
+            for env_var, value in old_env.items():
                 osutils.set_or_unset_env(env_var, value)
 
         bzr_path = self.get_bzr_path()
@@ -2352,6 +2351,9 @@ class TestCase(testtools.TestCase):
         request_handlers.remove(verb)
         self.addCleanup(request_handlers.register, verb, orig_method,
             info=orig_info)
+
+    def __hash__(self):
+        return id(self)
 
 
 class CapturedCall(object):
@@ -2719,7 +2721,7 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def overrideEnvironmentForTesting(self):
         test_home_dir = self.test_home_dir
-        if isinstance(test_home_dir, unicode):
+        if isinstance(test_home_dir, text_type):
             test_home_dir = test_home_dir.encode(sys.getfilesystemencoding())
         self.overrideEnv('HOME', test_home_dir)
         self.overrideEnv('BZR_HOME', test_home_dir)
@@ -4384,7 +4386,7 @@ def _rmtree_temp_dir(dirname, test_id=None):
     # (they are either ascii or mbcs)
     if sys.platform == 'win32':
         # make sure we are using the unicode win32 api
-        dirname = unicode(dirname)
+        dirname = text_type(dirname)
     else:
         dirname = dirname.encode(sys.getfilesystemencoding())
     try:

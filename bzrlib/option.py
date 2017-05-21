@@ -34,6 +34,9 @@ from bzrlib import (
 from bzrlib import (
     registry as _mod_registry,
     )
+from bzrlib.sixish import (
+    text_type,
+    )
 
 
 def _parse_revision_str(revstr):
@@ -126,7 +129,7 @@ def get_merge_type(typestring):
         return merge_types[typestring][0]
     except KeyError:
         templ = '%s%%7s: %%s' % (' '*12)
-        lines = [templ % (f[0], f[1][1]) for f in merge_types.iteritems()]
+        lines = [templ % (f[0], f[1][1]) for f in merge_types.items()]
         type_list = '\n'.join(lines)
         msg = "No known merge type %s. Supported types are:\n%s" %\
             (typestring, type_list)
@@ -458,7 +461,7 @@ def get_optparser(options):
 
     parser = OptionParser()
     parser.remove_option('--help')
-    for option in options.itervalues():
+    for option in options.values():
         option.add_option(parser, option.short_name())
     return parser
 
@@ -539,9 +542,9 @@ _global_option('change',
                short_name='c',
                param_name='revision',
                help='Select changes introduced by the specified revision. See also "help revisionspec".')
-_global_option('directory', short_name='d', type=unicode,
+_global_option('directory', short_name='d', type=text_type,
                help='Branch to operate on, instead of working directory.')
-_global_option('file', type=unicode, short_name='F')
+_global_option('file', type=text_type, short_name='F')
 _global_registry_option('log-format', "Use specified log format.",
                         lazy_registry=('bzrlib.log', 'log_formatter_registry'),
                         value_switches=True, title='Log format',
@@ -549,7 +552,7 @@ _global_registry_option('log-format', "Use specified log format.",
 _global_registry_option('merge-type', 'Select a particular merge algorithm.',
                         lazy_registry=('bzrlib.merge', 'merge_type_registry'),
                         value_switches=True, title='Merge algorithm')
-_global_option('message', type=unicode,
+_global_option('message', type=text_type,
                short_name='m',
                help='Message string.')
 _global_option('null', short_name='0',

@@ -17,7 +17,10 @@
 """Tests for profiling data collection."""
 
 
-import cPickle
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 import threading
 
 import bzrlib
@@ -79,7 +82,7 @@ class TestStatsSave(tests.TestCaseInTempDir):
     def test_stats_save_to_pickle(self):
         f = self._tempfile("pkl")
         self.stats.save(f)
-        data1 = cPickle.load(open(f))
+        data1 = pickle.load(open(f))
         self.assertEqual(type(data1), bzrlib.lsprof.Stats)
 
 

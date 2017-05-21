@@ -52,6 +52,9 @@ from bzrlib.i18n import gettext
 from bzrlib.option import Option
 from bzrlib.plugin import disable_plugins, load_plugins
 from bzrlib import registry
+from bzrlib.sixish import (
+    string_types,
+    )
 
 
 class CommandInfo(object):
@@ -173,7 +176,7 @@ def _register_builtin_commands():
 
 def _scan_module_for_commands(module):
     r = {}
-    for name, obj in module.__dict__.iteritems():
+    for name, obj in module.__dict__.items():
         if name.startswith("cmd_"):
             real_name = _unsquish_command_name(name)
             r[real_name] = obj
@@ -627,7 +630,7 @@ class Command(object):
         r = Option.STD_OPTIONS.copy()
         std_names = r.keys()
         for o in self.takes_options:
-            if isinstance(o, basestring):
+            if isinstance(o, string_types):
                 o = option.Option.OPTIONS[o]
             r[o.name] = o
             if o.name in std_names:
@@ -825,7 +828,7 @@ def parse_args(command, argv, alias_argv=None):
         raise errors.BzrCommandError(
             gettext('Only ASCII permitted in option names'))
 
-    opts = dict([(k, v) for k, v in options.__dict__.iteritems() if
+    opts = dict([(k, v) for k, v in options.__dict__.items() if
                  v is not option.OptionParser.DEFAULT_VALUE])
     return args, opts
 
@@ -1096,7 +1099,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     cmd = argv.pop(0)
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
     if opt_no_l10n:
-        cmd.l10n = False
+        cmd_obj.l10n = False
     run = cmd_obj.run_argv_aliases
     run_argv = [argv, alias_argv]
 
@@ -1277,7 +1280,7 @@ class ProvidersRegistry(registry.Registry):
     """This registry exists to allow other providers to exist"""
 
     def __iter__(self):
-        for key, provider in self.iteritems():
+        for key, provider in self.items():
             yield provider
 
 command_providers_registry = ProvidersRegistry()

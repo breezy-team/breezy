@@ -243,7 +243,7 @@ def get_standard_plugins_path():
                 user=get_user_plugin_path())
 
     # Unset paths that should be removed
-    for k,v in refs.iteritems():
+    for k,v in refs.items():
         removed = '-%s' % k
         # defaults can never mention removing paths as that will make it
         # impossible for the user to revoke these removals.
@@ -308,7 +308,7 @@ def load_from_path(dirs):
     The python module path for bzrlib.plugins will be modified to be 'dirs'.
     """
     # Explicitly load the plugins with a specific path
-    for fullname, path in PluginImporter.specific_paths.iteritems():
+    for fullname, path in PluginImporter.specific_paths.items():
         name = fullname[len('bzrlib.plugins.'):]
         _load_plugin_module(name, path)
 

@@ -55,6 +55,10 @@ from bzrlib import (
 from bzrlib.i18n import gettext
 """)
 
+from bzrlib.sixish import (
+    PY3,
+    text_type,
+    )
 from bzrlib.symbol_versioning import (
     DEPRECATED_PARAMETER,
     deprecated_function,
@@ -94,6 +98,8 @@ O_NOINHERIT = getattr(os, 'O_NOINHERIT', 0)
 
 
 def get_unicode_argv():
+    if PY3:
+        return sys.argv[1:]
     try:
         user_encoding = get_user_encoding()
         return [a.decode(user_encoding) for a in sys.argv[1:]]
@@ -342,6 +348,8 @@ def _posix_get_home_dir():
     path = posixpath.expanduser("~")
     try:
         return path.decode(_fs_enc)
+    except AttributeError:
+        return path
     except UnicodeDecodeError:
         raise errors.BadFilenameEncoding(path, _fs_enc)
 
@@ -909,7 +917,7 @@ def format_local_date(t, offset=0, timezone='original', date_fmt=None,
     (date_fmt, tt, offset_str) = \
                _format_date(t, offset, timezone, date_fmt, show_offset)
     date_str = time.strftime(date_fmt, tt)
-    if not isinstance(date_str, unicode):
+    if not isinstance(date_str, text_type):
         date_str = date_str.decode(get_user_encoding(), 'replace')
     return date_str + offset_str
 
@@ -1364,7 +1372,7 @@ def decode_filename(filename):
     Otherwise it is decoded from the the filesystem's encoding. If decoding
     fails, a errors.BadFilenameEncoding exception is raised.
     """
-    if isinstance(filename, unicode):
+    if isinstance(filename, text_type):
         return filename
     try:
         return filename.decode(_fs_enc)
@@ -1379,7 +1387,7 @@ def safe_unicode(unicode_or_utf8_string):
     Otherwise it is decoded from utf-8. If decoding fails, the exception is
     wrapped in a BzrBadParameterNotUnicode exception.
     """
-    if isinstance(unicode_or_utf8_string, unicode):
+    if isinstance(unicode_or_utf8_string, text_type):
         return unicode_or_utf8_string
     try:
         return unicode_or_utf8_string.decode('utf8')
@@ -1691,7 +1699,7 @@ def set_or_unset_env(env_variable, value):
         if orig_val is not None:
             del os.environ[env_variable]
     else:
-        if isinstance(value, unicode):
+        if not PY3 and isinstance(value, text_type):
             value = value.encode(get_user_encoding())
         os.environ[env_variable] = value
     return orig_val

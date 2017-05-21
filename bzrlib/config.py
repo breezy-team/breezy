@@ -113,7 +113,10 @@ from bzrlib import (
     registry,
     )
 from bzrlib.sixish import (
+    binary_type,
     BytesIO,
+    text_type,
+    string_types,
     )
 from bzrlib.symbol_versioning import (
     deprecated_in,
@@ -436,7 +439,7 @@ class Config(object):
             otherwise.
         """
         l = self.get_user_option(option_name, expand=expand)
-        if isinstance(l, (str, unicode)):
+        if isinstance(l, string_types):
             # A single value, most probably the user forgot (or didn't care to
             # add) the final ','
             l = [l]
@@ -2381,7 +2384,7 @@ class Option(object):
                 raise AssertionError(
                     'Only empty lists are supported as default values')
             self.default = u','
-        elif isinstance(default, (str, unicode, bool, int, float)):
+        elif isinstance(default, (binary_type, text_type, bool, int, float)):
             # Rely on python to convert strings, booleans and integers
             self.default = u'%s' % (default,)
         elif callable(default):
@@ -2446,7 +2449,7 @@ class Option(object):
             # Otherwise, fallback to the value defined at registration
             if callable(self.default):
                 value = self.default()
-                if not isinstance(value, unicode):
+                if not isinstance(value, text_type):
                     raise AssertionError(
                         "Callable default value for '%s' should be unicode"
                         % (self.name))
@@ -2529,7 +2532,7 @@ class ListOption(Option):
             invalid=invalid, unquote=False)
 
     def from_unicode(self, unicode_str):
-        if not isinstance(unicode_str, basestring):
+        if not isinstance(unicode_str, string_types):
             raise TypeError
         # Now inject our string directly as unicode. All callers got their
         # value from configobj, so values that need to be quoted are already
@@ -2537,7 +2540,7 @@ class ListOption(Option):
         _list_converter_config.reset()
         _list_converter_config._parse([u"list=%s" % (unicode_str,)])
         maybe_list = _list_converter_config['list']
-        if isinstance(maybe_list, basestring):
+        if isinstance(maybe_list, string_types):
             if maybe_list:
                 # A single value, most probably the user forgot (or didn't care
                 # to add) the final ','
@@ -2569,7 +2572,7 @@ class RegistryOption(Option):
         self.registry = registry
 
     def from_unicode(self, unicode_str):
-        if not isinstance(unicode_str, basestring):
+        if not isinstance(unicode_str, string_types):
             raise TypeError
         try:
             return self.registry.get(unicode_str)
@@ -3339,7 +3342,7 @@ class IniFileStore(Store):
             self._config_obj.list_values = False
 
     def unquote(self, value):
-        if value and isinstance(value, basestring):
+        if value and isinstance(value, string_types):
             # _unquote doesn't handle None nor empty strings nor anything that
             # is not a string, really.
             value = self._config_obj._unquote(value)
@@ -3388,7 +3391,7 @@ class TransportIniFileStore(IniFileStore):
         # The following will do in the interim but maybe we don't want to
         # expose a path here but rather a config ID and its associated
         # object </hand wawe>.
-        return urlutils.join(self.transport.external_url(), self.file_name)
+        return urlutils.join(self.transport.external_url(), self.file_name.encode("ascii"))
 
 
 # Note that LockableConfigObjStore inherits from ConfigObjStore because we need
@@ -3752,7 +3755,7 @@ class Stack(object):
             # None or ends up being None during expansion or conversion.
             if val is not None:
                 if expand:
-                    if isinstance(val, basestring):
+                    if isinstance(val, string_types):
                         val = self._expand_options_in_string(val)
                     else:
                         trace.warning('Cannot expand "%s":'
@@ -3904,7 +3907,7 @@ class Stack(object):
             global _shared_stores_at_exit_installed
             stores = _shared_stores
             def save_config_changes():
-                for k, store in stores.iteritems():
+                for k, store in stores.items():
                     store.save_changes()
             if not _shared_stores_at_exit_installed:
                 # FIXME: Ugly hack waiting for library_state to always be
@@ -4157,7 +4160,7 @@ class cmd_config(commands.Command):
         # http://pad.lv/788991 -- vila 20101115
         commands.Option('scope', help='Reduce the scope to the specified'
                         ' configuration file.',
-                        type=unicode),
+                        type=text_type),
         commands.Option('all',
             help='Display all the defined values for the matching options.',
             ),

@@ -50,10 +50,7 @@ all the changes since the previous revision that touched hello.c.
 from __future__ import absolute_import
 
 import codecs
-from itertools import (
-    chain,
-    izip,
-    )
+import itertools
 import re
 import sys
 from warnings import (
@@ -90,7 +87,14 @@ from bzrlib.osutils import (
     )
 from bzrlib.sixish import (
     BytesIO,
+    PY3,
     )
+
+
+if PY3:
+    izip = zip
+else:
+    izip = itertools.izip
 
 
 def find_touching_revisions(branch, file_id):
@@ -663,7 +667,7 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
     # shown naturally, i.e. just like it is for linear logging. We can easily
     # make forward the exact opposite display, but showing the merge revisions
     # indented at the end seems slightly nicer in that case.
-    view_revisions = chain(iter(initial_revisions),
+    view_revisions = itertoosl.chain(iter(initial_revisions),
         _graph_view_revisions(branch, start_rev_id, end_rev_id,
                               rebase_initial_depths=(direction == 'reverse'),
                               exclude_common_ancestry=exclude_common_ancestry))

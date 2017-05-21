@@ -301,7 +301,7 @@ def cachedproperty(attrname_or_fn):
     69
 
     """
-    if isinstance(attrname_or_fn, basestring):
+    if isinstance(attrname_or_fn, str):
         attrname = attrname_or_fn
         return _CachedPropertyForAttr(attrname)
     else:

@@ -59,7 +59,6 @@ from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList
 from bzrlib.transport import memory
 from bzrlib.revisionspec import RevisionSpec, RevisionInfo
-from bzrlib.sixish import BytesIO
 from bzrlib.smtp_connection import SMTPConnection
 from bzrlib.workingtree import WorkingTree
 from bzrlib.i18n import gettext, ngettext
@@ -77,6 +76,10 @@ from bzrlib.option import (
     custom_help,
     _parse_revision_str,
     )
+from bzrlib.sixish import (
+    BytesIO,
+    text_type,
+)
 from bzrlib.trace import mutter, note, warning, is_quiet, get_verbosity_level
 from bzrlib import (
     symbol_versioning,
@@ -809,7 +812,7 @@ class cmd_add(Command):
                help="Show what would be done, but don't actually do anything."),
         'verbose',
         Option('file-ids-from',
-               type=unicode,
+               type=text_type,
                help='Lookup file ids from this tree.'),
         ]
     encoding_type = 'replace'
@@ -929,7 +932,7 @@ class cmd_inventory(Command):
         'show-ids',
         Option('kind',
                help='List entries of a particular kind: file, directory, symlink.',
-               type=unicode),
+               type=text_type),
         ]
     takes_args = ['file*']
 
@@ -1306,7 +1309,7 @@ class cmd_push(Command):
             help='Create a stacked branch that refers to another branch '
                 'for the commit history. Only the work not present in the '
                 'referenced branch is included in the branch created.',
-            type=unicode),
+            type=text_type),
         Option('strict',
                help='Refuse to push if there are uncommitted changes in'
                ' the working tree, --no-strict disables the check.'),
@@ -2311,17 +2314,17 @@ class cmd_diff(Command):
                     'two values separated by a colon. (eg "old/:new/").'),
         Option('old',
             help='Branch/tree to compare from.',
-            type=unicode,
+            type=text_type,
             ),
         Option('new',
             help='Branch/tree to compare to.',
-            type=unicode,
+            type=text_type,
             ),
         'revision',
         'change',
         Option('using',
             help='Use this command to compare files.',
-            type=unicode,
+            type=text_type,
             ),
         RegistryOption('format',
             short_name='F',
@@ -2993,7 +2996,7 @@ class cmd_ls(Command):
                 help='Print ignored files.'),
             Option('kind', short_name='k',
                    help='List entries of a particular kind: file, directory, symlink.',
-                   type=unicode),
+                   type=text_type),
             'null',
             'show-ids',
             'directory',
@@ -3313,7 +3316,7 @@ class cmd_export(Command):
     takes_options = ['directory',
         Option('format',
                help="Type of file to export to.",
-               type=unicode),
+               type=text_type),
         'revision',
         Option('filters', help='Apply content filters to export the '
                 'convenient form.'),
@@ -3499,7 +3502,7 @@ class cmd_commit(Command):
     takes_options = [
             ListOption('exclude', type=str, short_name='x',
                 help="Do not consider changes made to a given path."),
-            Option('message', type=unicode,
+            Option('message', type=text_type,
                    short_name='m',
                    help="Description of the new revision."),
             'verbose',
@@ -3518,7 +3521,7 @@ class cmd_commit(Command):
              ListOption('fixes', type=str,
                     help="Mark a bug as being fixed by this revision "
                          "(see \"bzr help bugs\")."),
-             ListOption('author', type=unicode,
+             ListOption('author', type=text_type,
                     help="Set the author's name, if it's different "
                          "from the committer."),
              Option('local',
@@ -5826,19 +5829,19 @@ class cmd_send(Command):
                help='Branch to generate the submission from, '
                'rather than the one containing the working directory.',
                short_name='f',
-               type=unicode),
+               type=text_type),
         Option('output', short_name='o',
                help='Write merge directive to this file or directory; '
                     'use - for stdout.',
-               type=unicode),
+               type=text_type),
         Option('strict',
                help='Refuse to send if there are uncommitted changes in'
                ' the working tree, --no-strict disables the check.'),
         Option('mail-to', help='Mail the request to this address.',
-               type=unicode),
+               type=text_type),
         'revision',
         'message',
-        Option('body', help='Body for the email.', type=unicode),
+        Option('body', help='Body for the email.', type=text_type),
         RegistryOption('format',
                        help='Use the specified output format.',
                        lazy_registry=('bzrlib.send', 'format_registry')),
@@ -5900,9 +5903,9 @@ class cmd_bundle_revisions(cmd_send):
                help='Branch to generate the submission from, '
                'rather than the one containing the working directory.',
                short_name='f',
-               type=unicode),
+               type=text_type),
         Option('output', short_name='o', help='Write directive to this file.',
-               type=unicode),
+               type=text_type),
         Option('strict',
                help='Refuse to bundle revisions if there are uncommitted'
                ' changes in the working tree, --no-strict disables the check.'),
@@ -6140,7 +6143,7 @@ class cmd_reconfigure(Command):
             ' will be lost.'),
         Option('stacked-on',
             help='Reconfigure a branch to be stacked on another branch.',
-            type=unicode,
+            type=text_type,
             ),
         Option('unstacked',
             help='Reconfigure a branch to be unstacked.  This '
@@ -6358,11 +6361,11 @@ class cmd_view(Command):
             ),
         Option('name',
             help='Name of the view to define, list or delete.',
-            type=unicode,
+            type=text_type,
             ),
         Option('switch',
             help='Name of the view to switch to.',
-            type=unicode,
+            type=text_type,
             ),
         ]
 

@@ -377,7 +377,7 @@ def pad_to_width(line, width, encoding_hint='ascii'):
     non-ascii text may be cut and padded incorrectly.
     """
     s = line.encode(encoding_hint, 'replace')
-    return ('%-*.*s' % (width, width, s)).decode(encoding_hint)
+    return (b'%-*.*s' % (width, width, s)).decode(encoding_hint)
 
 
 class TextProgressView(object):

@@ -82,6 +82,7 @@ from bzrlib import (
 
 from bzrlib.sixish import (
     BytesIO,
+    text_type,
     )
 
 
@@ -143,7 +144,7 @@ def mutter(fmt, *args):
     if (getattr(_trace_file, 'closed', None) is not None) and _trace_file.closed:
         return
 
-    if isinstance(fmt, unicode):
+    if isinstance(fmt, text_type):
         fmt = fmt.encode('utf8')
 
     if len(args) > 0:
@@ -152,15 +153,14 @@ def mutter(fmt, *args):
         # is a unicode string
         real_args = []
         for arg in args:
-            if isinstance(arg, unicode):
+            if isinstance(arg, text_type):
                 arg = arg.encode('utf8')
             real_args.append(arg)
         out = fmt % tuple(real_args)
     else:
         out = fmt
     now = time.time()
-    timestamp = '%0.3f  ' % (now - _bzr_log_start_time,)
-    out = timestamp + out + '\n'
+    out = b'%0.3f  %s\n' % (now - _bzr_log_start_time, out)
     _trace_file.write(out)
     # there's no explicit flushing; the file is typically line buffered.
 
@@ -243,14 +243,14 @@ def _open_bzr_log():
             else:
                 osutils.copy_ownership_from_path(filename)
                 break
-        return os.fdopen(fd, 'at', 0) # unbuffered
+        return os.fdopen(fd, 'ab', 0) # unbuffered
 
 
     _bzr_log_filename = _get_bzr_log_filename()
     _rollover_trace_maybe(_bzr_log_filename)
     try:
         bzr_log_file = _open_or_create_log_file(_bzr_log_filename)
-        bzr_log_file.write('\n')
+        bzr_log_file.write(b'\n')
         if bzr_log_file.tell() <= 2:
             bzr_log_file.write("this is a debug log for diagnosing/reporting problems in bzr\n")
             bzr_log_file.write("you can delete or truncate this file, or include sections in\n")
@@ -288,7 +288,7 @@ def enable_default_logging():
                                            timezone='local')
     bzr_log_file = _open_bzr_log()
     if bzr_log_file is not None:
-        bzr_log_file.write(start_time.encode('utf-8') + '\n')
+        bzr_log_file.write(start_time.encode('utf-8') + b'\n')
     memento = push_log_file(bzr_log_file,
         r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
         r'%Y-%m-%d %H:%M:%S')
@@ -598,9 +598,9 @@ class EncodedStreamHandler(logging.Handler):
     def emit(self, record):
         try:
             line = self.format(record)
-            if not isinstance(line, unicode):
+            if not isinstance(line, text_type):
                 line = line.decode("utf-8")
-            self.stream.write(line.encode(self.encoding, self.errors) + "\n")
+            self.stream.write(line.encode(self.encoding, self.errors) + b"\n")
         except Exception:
             log_exception_quietly()
             # Try saving the details that would have been logged in some form

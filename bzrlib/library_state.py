@@ -110,7 +110,7 @@ class BzrLibraryState(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is None:
             # Save config changes
-            for k, store in self.config_stores.iteritems():
+            for k, store in self.config_stores.items():
                 store.save_changes()
         self.cleanups.cleanup_now()
         trace._flush_stdout_stderr()
