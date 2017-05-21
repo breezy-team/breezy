@@ -38,7 +38,7 @@ class TestGenerateDocs(TestCase):
         self.sio = StringIO()
         self.options = Options()
         self.options.brz_name = 'brz'
-        brzlib.commands.install_bzr_command_hooks()
+        breezy.commands.install_bzr_command_hooks()
 
     def test_man_page(self):
         from breezy.doc_generate import autodoc_man
