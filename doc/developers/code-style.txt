@@ -480,18 +480,6 @@ Use ``try/finally`` to explictly close the file. E.g.::
         f.close()
 
 
-Terminology
-===========
-
-Bazaar is a GNU project and uses standard GNU terminology, especially:
-
- * Use the word "Linux" to refer to the Linux kernel, not as a synechoche
-   for the entire operating system.  (See `bug 528253
-   <https://bugs.launchpad.net/bzr/+bug/528253>`_).
-
- * Don't say "open source" when you mean "free software".
-
-
 Dynamic imports
 ===============
 

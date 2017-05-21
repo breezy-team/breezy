@@ -16,10 +16,9 @@
 
 """All of bzr.
 
-Developer documentation is available at
-http://doc.bazaar.canonical.com/bzr.dev/developers/
-
-The project website is at http://bazaar.canonical.com/
+Developer documentation for Bazaar is available at
+http://doc.bazaar.canonical.com/bzr.dev/developers/,
+it should mostly also apply to Breezy.
 
 Some particularly interesting things in brzlib are:
 
