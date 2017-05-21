@@ -5,21 +5,21 @@ Introduction
 ------------
 
 Plugins are very similar to bzr core functionality.  They can import
-anything in bzrlib.  A plugin may simply override standard functionality,
+anything in brzlib.  A plugin may simply override standard functionality,
 but most plugins supply new commands.
 
 Creating a new command
 ----------------------
 
 To create a command, make a new object that derives from
-``bzrlib.commands.Command``, and name it ``cmd_foo``, where foo is the name of
+``brzlib.commands.Command``, and name it ``cmd_foo``, where foo is the name of
 your command.  If you create a command whose name contains an underscore,
 it will appear in the UI with the underscore turned into a hyphen.  For
 example, `cmd_baz_import` will appear as `baz-import`.  For examples of how
 to write commands, please see ``builtins.py``.
 
 Once you've created a command you must register the command with
-``bzrlib.commands.register_command(cmd_foo)``.  You must register the
+``brzlib.commands.register_command(cmd_foo)``.  You must register the
 command when your file is imported, otherwise bzr will not see it.
 
 Installing a hook
@@ -40,7 +40,7 @@ number of your plugin. eg.
 Plugin searching rules
 ----------------------
 
-Bzr will scan ``~/.bazaar/plugins``  and ``bzrlib/plugins`` for plugins
+Bzr will scan ``~/.bazaar/plugins``  and ``brzlib/plugins`` for plugins
 by default.  You can override this with  ``BZR_PLUGIN_PATH``
 (see `User Reference 
 <../user-reference/configuration-help.html#bzr-plugin-path>`_ for details).
