@@ -152,18 +152,18 @@ class UIFactory(object):
             "This format may be unreliable or change in the future "
             "without an upgrade path.\n"),
         deprecated_command=(
-            "The command 'bzr %(deprecated_name)s' "
-            "has been deprecated in bzr %(deprecated_in_version)s. "
-            "Please use 'bzr %(recommended_name)s' instead."),
+            "The command 'brz %(deprecated_name)s' "
+            "has been deprecated in brz %(deprecated_in_version)s. "
+            "Please use 'brz %(recommended_name)s' instead."),
         deprecated_command_option=(
-            "The option '%(deprecated_name)s' to 'bzr %(command)s' "
-            "has been deprecated in bzr %(deprecated_in_version)s. "
+            "The option '%(deprecated_name)s' to 'brz %(command)s' "
+            "has been deprecated in brz %(deprecated_in_version)s. "
             "Please use '%(recommended_name)s' instead."),
         recommend_upgrade=("%(current_format_name)s is deprecated "
             "and a better format is available.\n"
             "It is recommended that you upgrade by "
             "running the command\n"
-            "  bzr upgrade %(basedir)s"),
+            "  brz upgrade %(basedir)s"),
         locks_steal_dead=(
             u"Stole dead lock %(lock_url)s %(other_holder_info)s."),
         not_checking_ssl_cert=(
@@ -204,7 +204,7 @@ class UIFactory(object):
         """Seek user confirmation for an action.
 
         If the UI is noninteractive, or the user does not want to be asked
-        about this action, True is returned, indicating bzr should just
+        about this action, True is returned, indicating brz should just
         proceed.
 
         The confirmation id allows the user to configure certain actions to
@@ -316,13 +316,13 @@ class UIFactory(object):
         try:
             template = self._user_warning_templates[warning_id]
         except KeyError:
-            fail = "bzr warning: %r, %r" % (warning_id, message_args)
+            fail = "brz warning: %r, %r" % (warning_id, message_args)
             warnings.warn("no template for warning: " + fail)   # so tests will fail etc
             return fail
         try:
             return template % message_args
         except ValueError, e:
-            fail = "bzr unprintable warning: %r, %r, %s" % (
+            fail = "brz unprintable warning: %r, %r, %s" % (
                 warning_id, message_args, e)
             warnings.warn(fail)   # so tests will fail etc
             return fail
@@ -454,7 +454,7 @@ class SilentUIFactory(NoninteractiveUIFactory):
     """A UI Factory which never prints anything.
 
     This is the default UI, if another one is never registered by a program
-    using brzlib, and it's also active for example inside 'bzr serve'.
+    using brzlib, and it's also active for example inside 'brz serve'.
 
     Methods that try to read from the user raise an error; methods that do
     output do nothing.

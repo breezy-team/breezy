@@ -175,7 +175,7 @@ class TestBzrServe(TestBzrServeBase):
         # Connect to the server
         # We use this url because while this is no valid URL to connect to this
         # server instance, the transport needs a URL.
-        url = 'brz://localhost/'
+        url = 'bzr://localhost/'
         self.permit_url(url)
         client_medium = medium.SmartSimplePipesClientMedium(
             process.stdout, process.stdin, url)
@@ -197,7 +197,7 @@ class TestBzrServe(TestBzrServeBase):
         prefix = 'listening on port: '
         self.assertStartsWith(port_line, prefix)
         port = int(port_line[len(prefix):])
-        url = 'brz://localhost:%d/' % port
+        url = 'bzr://localhost:%d/' % port
         self.permit_url(url)
         return process, url
 
@@ -367,7 +367,7 @@ class TestCmdServeChrooting(TestBzrServeBase):
         # back.
         client_medium = medium.SmartTCPClientMedium(
             '127.0.0.1', self.tcp_server.port,
-            'brz://localhost:%d/' % (self.tcp_server.port,))
+            'bzr://localhost:%d/' % (self.tcp_server.port,))
         smart_client = client._SmartClient(client_medium)
         resp = smart_client.call('mkdir', 'foo', '')
         resp = smart_client.call('BzrDirFormat.initialize', 'foo/')

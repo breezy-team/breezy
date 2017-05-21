@@ -14,10 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""A collection of extra help information for using bzr.
+"""A collection of extra help information for using brz.
 
 Help topics are meant to be help for items that aren't commands, but will
-help bzr become fully learnable without referring to a tutorial.
+help brz become fully learnable without referring to a tutorial.
 
 Limited formatting of help text is permitted to make the text useful
 both within the reference manual (reStructuredText) and on the screen.
@@ -175,8 +175,8 @@ a range is a sequence of log messages, but to the "diff" command, the range
 denotes a change between revisions (and not a sequence of changes).  In
 addition, "log" considers a closed range whereas "diff" and "merge" consider it
 to be open-ended, that is, they include one end but not the other.  For example:
-"bzr log -r 3647..3649" shows the messages of revisions 3647, 3648 and 3649,
-while "bzr diff -r 3647..3649" includes the changes done in revisions 3648 and
+"brz log -r 3647..3649" shows the messages of revisions 3647, 3648 and 3649,
+while "brz diff -r 3647..3649" includes the changes done in revisions 3648 and
 3649, but not 3647.
 
 The keywords used as revision selection methods are the following:
@@ -260,15 +260,15 @@ def _help_on_transport(name):
 
 allowing URLs such as::
 
-  http://bzruser:BadPass@bzr.example.com:8080/bzr/trunk
+  http://brzuser:BadPass@brz.example.com:8080/brz/trunk
 
-For bzr+ssh:// and sftp:// URLs, Bazaar also supports paths that begin
+For brz+ssh:// and sftp:// URLs, Bazaar also supports paths that begin
 with '~' as meaning that the rest of the path should be interpreted
 relative to the remote user's home directory.  For example if the user
 ``remote`` has a  home directory of ``/home/remote`` on the server
 shell.example.com, then::
 
-  bzr+ssh://remote@shell.example.com/~/myproject/trunk
+  brz+ssh://remote@shell.example.com/~/myproject/trunk
 
 would refer to ``/home/remote/myproject/trunk``.
 
@@ -284,26 +284,26 @@ _basic_help = \
 http://bazaar.canonical.com/
 
 Basic commands:
-  bzr init           makes this directory a versioned branch
-  bzr branch         make a copy of another branch
+  brz init           makes this directory a versioned branch
+  brz branch         make a copy of another branch
 
-  bzr add            make files or directories versioned
-  bzr ignore         ignore a file or pattern
-  bzr mv             move or rename a versioned file
+  brz add            make files or directories versioned
+  brz ignore         ignore a file or pattern
+  brz mv             move or rename a versioned file
 
-  bzr status         summarize changes in working copy
-  bzr diff           show detailed diffs
+  brz status         summarize changes in working copy
+  brz diff           show detailed diffs
 
-  bzr merge          pull in changes from another branch
-  bzr commit         save some or all changes
-  bzr send           send changes via email
+  brz merge          pull in changes from another branch
+  brz commit         save some or all changes
+  brz send           send changes via email
 
-  bzr log            show history of changes
-  bzr check          validate storage
+  brz log            show history of changes
+  brz check          validate storage
 
-  bzr help init      more help on e.g. init command
-  bzr help commands  list all commands
-  bzr help topics    list all help topics
+  brz help init      more help on e.g. init command
+  brz help commands  list all commands
+  brz help topics    list all help topics
 """ % brzlib.__version__
 
 
@@ -311,7 +311,7 @@ _global_options = \
 """Global Options
 
 These options may be used with any command, and may appear in front of any
-command.  (e.g. ``bzr --profile help``).
+command.  (e.g. ``brz --profile help``).
 
 --version      Print the version number. Must be supplied before the command.
 --no-aliases   Do not process command aliases when running this command.
@@ -366,7 +366,7 @@ with shared repositories is very similar to working with SVN or CVS, but
 doesn't have the same restrictions.  And using checkouts still allows
 others working on the project to use whatever workflow they like.
 
-A checkout is created with the bzr checkout command (see "help checkout").
+A checkout is created with the brz checkout command (see "help checkout").
 You pass it a reference to another branch, and it will create a local copy
 for you that still contains a reference to the branch you created the
 checkout from (the master branch). Then if you make any commits they will be
@@ -445,12 +445,12 @@ _repositories = \
 Repositories in Bazaar are where committed information is stored. There is
 a repository associated with every branch.
 
-Repositories are a form of database. Bzr will usually maintain this for
+Repositories are a form of database. Breezy will usually maintain this for
 good performance automatically, but in some situations (e.g. when doing
-very many commits in a short time period) you may want to ask bzr to
-optimise the database indices. This can be done by the 'bzr pack' command.
+very many commits in a short time period) you may want to ask brz to
+optimise the database indices. This can be done by the 'brz pack' command.
 
-By default just running 'bzr init' will create a repository within the new
+By default just running 'brz init' will create a repository within the new
 branch but it is possible to create a shared repository which allows multiple
 branches to share their information in the same location. When a new branch is
 created it will first look to see if there is a containing shared repository it
@@ -462,7 +462,7 @@ within the repository) this translates in to a large time saving.
 
 To create a shared repository use the init-repository command (or the alias
 init-repo). This command takes the location of the repository to create. This
-means that 'bzr init-repository repo' will create a directory named 'repo',
+means that 'brz init-repository repo' will create a directory named 'repo',
 which contains a shared repository. Any new branches that are created in this
 directory will then use it for storage.
 
@@ -498,21 +498,21 @@ may be uncommitted changes or the update may cause content conflicts that are
 difficult to deal with remotely.
 
 If you have a branch with no working tree you can use the 'checkout' command
-to create a working tree. If you run 'bzr checkout .' from the branch it will
+to create a working tree. If you run 'brz checkout .' from the branch it will
 create the working tree. If the branch is updated remotely, you can update the
-working tree by running 'bzr update' in that directory.
+working tree by running 'brz update' in that directory.
 
 If you have a branch with a working tree that you do not want the 'remove-tree'
 command will remove the tree if it is safe. This can be done to avoid the
 warning about the remote working tree not being updated when pushing to the
 branch. It can also be useful when working with a '--no-trees' repository
-(see 'bzr help repositories').
+(see 'brz help repositories').
 
 If you want to have a working tree on a remote machine that you push to you
-can either run 'bzr update' in the remote branch after each push, or use some
+can either run 'brz update' in the remote branch after each push, or use some
 other method to update the tree during the push. There is an 'rspush' plugin
 that will update the working tree using rsync as well as doing a push. There
-is also a 'push-and-update' plugin that automates running 'bzr update' via SSH
+is also a 'push-and-update' plugin that automates running 'brz update' via SSH
 after each push.
 
 Useful commands::
@@ -537,7 +537,7 @@ branch indicates that commits which happen in this branch must also
 happen in the other branch.  Bazaar ensures consistency by not allowing 
 commits when the two branches are out of date.  In order for a commit 
 to succeed, it may be necessary to update the current branch using 
-``bzr update``.
+``brz update``.
 
 Related commands::
 
@@ -553,7 +553,7 @@ _standalone_trees = \
 
 A standalone tree is a working tree with an associated repository. It
 is an independently usable branch, with no dependencies on any other.
-Creating a standalone tree (via bzr init) is the quickest way to put
+Creating a standalone tree (via brz init) is the quickest way to put
 an existing project under version control.
 
 Related Commands::
@@ -578,7 +578,7 @@ Column 1 - versioning/renames::
   - File unversioned
   R File renamed
   ? File unknown
-  X File nonexistent (and unknown to bzr)
+  X File nonexistent (and unknown to brz)
   C File has conflicts
   P Entry for a pending merge (not a file)
 
@@ -596,20 +596,20 @@ Column 3 - execute::
 
 
 known_env_variables = [
-    ("BZRPATH", "Path where bzr is to look for shell plugin external commands."),
+    ("BRZPATH", "Path where brz is to look for shell plugin external commands."),
     ("BRZ_EMAIL", "E-Mail address of the user. Overrides EMAIL."),
     ("EMAIL", "E-Mail address of the user."),
     ("BRZ_EDITOR", "Editor for editing commit messages. Overrides EDITOR."),
     ("EDITOR", "Editor for editing commit messages."),
-    ("BRZ_PLUGIN_PATH", "Paths where bzr should look for plugins."),
-    ("BRZ_DISABLE_PLUGINS", "Plugins that bzr should not load."),
+    ("BRZ_PLUGIN_PATH", "Paths where brz should look for plugins."),
+    ("BRZ_DISABLE_PLUGINS", "Plugins that brz should not load."),
     ("BRZ_PLUGINS_AT", "Plugins to load from a directory not in BRZ_PLUGIN_PATH."),
     ("BRZ_HOME", "Directory holding .bazaar config dir. Overrides HOME."),
     ("BRZ_HOME (Win32)", "Directory holding bazaar config dir. Overrides APPDATA and HOME."),
-    ("BRZ_REMOTE_PATH", "Full name of remote 'bzr' command (for bzr+ssh:// URLs)."),
+    ("BRZ_REMOTE_PATH", "Full name of remote 'brz' command (for brz+ssh:// URLs)."),
     ("BRZ_SSH", "Path to SSH client, or one of paramiko, openssh, sshcorp, plink or lsh."),
-    ("BRZ_LOG", "Location of .bzr.log (use '/dev/null' to suppress log)."),
-    ("BRZ_LOG (Win32)", "Location of .bzr.log (use 'NUL' to suppress log)."),
+    ("BRZ_LOG", "Location of .brz.log (use '/dev/null' to suppress log)."),
+    ("BRZ_LOG (Win32)", "Location of .brz.log (use 'NUL' to suppress log)."),
     ("BRZ_COLUMNS", "Override implicit terminal width."),
     ("BRZ_CONCURRENCY", "Number of processes that can be run concurrently (selftest)"),
     ("BRZ_PROGRESS_BAR", "Override the progress display. Values are 'none' or 'text'."),
@@ -621,7 +621,7 @@ known_env_variables = [
 def _env_variables(topic):
     import textwrap
     ret = ["Environment Variables\n\n"
-        "See bzr help configuration for more details.\n\n"]
+        "See brz help configuration for more details.\n\n"]
     max_key_len = max([len(k[0]) for k in known_env_variables])
     desc_len = (80 - max_key_len - 2)
     ret.append("=" * max_key_len + " " + "=" * desc_len + "\n")
@@ -660,9 +660,9 @@ _criss_cross = \
 A criss-cross in the branch history can cause the default merge technique
 to emit more conflicts than would normally be expected.
 
-In complex merge cases, ``bzr merge --lca`` or ``bzr merge --weave`` may give
-better results.  You may wish to ``bzr revert`` the working tree and merge
-again.  Alternatively, use ``bzr remerge`` on particular conflicted files.
+In complex merge cases, ``brz merge --lca`` or ``brz merge --weave`` may give
+better results.  You may wish to ``brz revert`` the working tree and merge
+again.  Alternatively, use ``brz remerge`` on particular conflicted files.
 
 Criss-crosses occur in a branch's history if two branches merge the same thing
 and then merge one another, or if two branches merge one another at the same
@@ -696,11 +696,11 @@ checkout, data could be lost, so Bazaar refuses.
 How you deal with this depends on *why* the branches are out of sync.
 
 If you have a checkout and have done local commits, you can get back in sync
-by running "bzr update" (and possibly "bzr commit").
+by running "brz update" (and possibly "brz commit").
 
 If you have a branch and the remote branch is out-of-date, you can push
-the local changes using "bzr push".  If the local branch is out of date, you
-can do "bzr pull".  If both branches have had changes, you can merge, commit
+the local changes using "brz push".  If the local branch is out of date, you
+can do "brz pull".  If both branches have had changes, you can merge, commit
 and then push your changes.  If you decide that some of the changes aren't
 useful, you can "push --overwrite" or "pull --overwrite" instead.
 """
@@ -837,7 +837,7 @@ topic_registry.register('sync-for-reconfigure', _branches_out_of_sync,
 
 
 class HelpTopicIndex(object):
-    """A index for bzr help that returns topics."""
+    """A index for brz help that returns topics."""
 
     def __init__(self):
         self.prefix = ''
@@ -913,8 +913,8 @@ def help_as_plain_text(text):
             line = line[1:]
         elif line.endswith('::'):
             line = line[:-1]
-        # Map :doc:`xxx-help` to ``bzr help xxx``
-        line = re.sub(":doc:`(.+?)-help`", r'``bzr help \1``', line)
+        # Map :doc:`xxx-help` to ``brz help xxx``
+        line = re.sub(":doc:`(.+?)-help`", r'``brz help \1``', line)
         result.append(line)
     return "\n".join(result) + "\n"
 

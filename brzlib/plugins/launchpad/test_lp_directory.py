@@ -106,7 +106,7 @@ class LocalDirectoryURLTests(TestCaseInTempDir):
 
     def test_two_part_plus_subdir(self):
         # We allow you to pass more than just what resolves. That way you can
-        # do things like "bzr log lp:apt/2.2/BUGS"
+        # do things like "brz log lp:apt/2.2/BUGS"
         # Though the virtual FS implementation currently aborts when given a
         # URL like this, rather than letting you recurse upwards to find the
         # real branch at lp:apt/2.2

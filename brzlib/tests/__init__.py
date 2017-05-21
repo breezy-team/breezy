@@ -139,14 +139,14 @@ isolated_environ = {
     'BRZ_HOME': None,
     'HOME': None,
     'XDG_CONFIG_HOME': None,
-    # bzr now uses the Win32 API and doesn't rely on APPDATA, but the
+    # brz now uses the Win32 API and doesn't rely on APPDATA, but the
     # tests do check our impls match APPDATA
     'BRZ_EDITOR': None, # test_msgeditor manipulates this variable
     'VISUAL': None,
     'EDITOR': None,
     'BRZ_EMAIL': None,
     'BZREMAIL': None, # may still be present in the environment
-    'EMAIL': 'jrandom@example.com', # set EMAIL as bzr does not guess
+    'EMAIL': 'jrandom@example.com', # set EMAIL as brz does not guess
     'BRZ_PROGRESS_BAR': None,
     # This should trap leaks to ~/.bzr.log. This occurs when tests use TestCase
     # as a base class instead of TestCaseInTempDir. Tests inheriting from
@@ -555,7 +555,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         else:
             bzr_path = sys.executable
         self.stream.write(
-            'bzr selftest: %s\n' % (bzr_path,))
+            'brz selftest: %s\n' % (bzr_path,))
         self.stream.write(
             '   %s\n' % (
                     brzlib.__path__[0],))
@@ -976,7 +976,7 @@ def IsolatedDocTestSuite(*args, **kwargs):
 
 
 class TestCase(testtools.TestCase):
-    """Base class for bzr unit tests.
+    """Base class for brz unit tests.
 
     Tests that need access to disk resources should subclass
     TestCaseInTempDir not TestCase.
@@ -988,7 +988,7 @@ class TestCase(testtools.TestCase):
     is read into memory and removed from disk.
 
     There are also convenience functions to invoke bzr's command-line
-    routine, and to build and check bzr trees.
+    routine, and to build and check brz trees.
 
     In addition to the usual method of overriding tearDown(), this class also
     allows subclasses to register cleanup functions via addCleanup, which are
@@ -1059,7 +1059,7 @@ class TestCase(testtools.TestCase):
     def discardDetail(self, name):
         """Extend the addDetail, getDetails api so we can remove a detail.
 
-        eg. bzr always adds the 'log' detail at startup, but we don't want to
+        eg. brz always adds the 'log' detail at startup, but we don't want to
         include it for skipped, xfail, etc tests.
 
         It is safe to call this for a detail that doesn't exist, in case this
@@ -1221,9 +1221,9 @@ class TestCase(testtools.TestCase):
 
     def permit_url(self, url):
         """Declare that url is an ok url to use in this test.
-        
+
         Do this for memory transports, temporary test directory etc.
-        
+
         Do not do this for the current working directory, /tmp, or any other
         preexisting non isolated url.
         """
@@ -1232,10 +1232,10 @@ class TestCase(testtools.TestCase):
         self._bzr_selftest_roots.append(url)
 
     def permit_source_tree_branch_repo(self):
-        """Permit the source tree bzr is running from to be opened.
+        """Permit the source tree brz is running from to be opened.
 
-        Some code such as brzlib.version attempts to read from the bzr branch
-        that bzr is executing from (if any). This method permits that directory
+        Some code such as brzlib.version attempts to read from the brz branch
+        that brz is executing from (if any). This method permits that directory
         to be used in the test suite.
         """
         path = self.get_source_path()
@@ -1244,7 +1244,7 @@ class TestCase(testtools.TestCase):
             try:
                 workingtree.WorkingTree.open(path)
             except (errors.NotBranchError, errors.NoWorkingTree):
-                raise TestSkipped('Needs a working tree of bzr sources')
+                raise TestSkipped('Needs a working tree of brz sources')
         finally:
             self.enable_directory_isolation()
 
@@ -1282,8 +1282,8 @@ class TestCase(testtools.TestCase):
 
     def record_directory_isolation(self):
         """Gather accessed directories to permit later access.
-        
-        This is used for tests that access the branch bzr is running from.
+
+        This is used for tests that access the branch brz is running from.
         """
         self._directory_isolation = "record"
 
@@ -1334,11 +1334,11 @@ class TestCase(testtools.TestCase):
         # TestCase has no safe place it can write to.
         self._bzr_selftest_roots = []
         # Currently the easiest way to be sure that nothing is going on is to
-        # hook into bzr dir opening. This leaves a small window of error for
+        # hook into brz dir opening. This leaves a small window of error for
         # transport tests, but they are well known, and we can improve on this
         # step.
         controldir.ControlDir.hooks.install_named_hook("pre_open",
-            self._preopen_isolate_transport, "Check bzr directories are safe.")
+            self._preopen_isolate_transport, "Check brz directories are safe.")
 
     def _ndiff_strings(self, a, b):
         """Return ndiff between two strings containing lines.
@@ -1743,7 +1743,7 @@ class TestCase(testtools.TestCase):
         return result
 
     def _startLogFile(self):
-        """Setup a in-memory target for bzr and testcase log messages"""
+        """Setup a in-memory target for brz and testcase log messages"""
         pseudo_log_file = StringIO()
         def _get_log_contents_for_weird_testtools_api():
             return [pseudo_log_file.getvalue().decode(
@@ -1945,7 +1945,7 @@ class TestCase(testtools.TestCase):
     def time(self, callable, *args, **kwargs):
         """Run callable and accrue the time it takes to the benchmark time.
 
-        If lsprofiling is enabled (i.e. by --lsprof-time to bzr selftest) then
+        If lsprofiling is enabled (i.e. by --lsprof-time to brz selftest) then
         this will cause lsprofile statistics to be gathered and stored in
         self._benchcalls.
         """
@@ -2058,10 +2058,10 @@ class TestCase(testtools.TestCase):
 
     def run_bzr(self, args, retcode=0, encoding=None, stdin=None,
                 working_dir=None, error_regexes=[], output_encoding=None):
-        """Invoke bzr, as if it were run from the command line.
+        """Invoke brz, as if it were run from the command line.
 
-        The argument list should not include the bzr program name - the
-        first argument is normally the bzr command.  Arguments may be
+        The argument list should not include the brz program name - the
+        first argument is normally the brz command.  Arguments may be
         passed in three ways:
 
         1- A list of strings, eg ["commit", "a"].  This is recommended
@@ -2071,12 +2071,12 @@ class TestCase(testtools.TestCase):
         2- A single string, eg "add a".  This is the most convenient
         for hardcoded commands.
 
-        This runs bzr through the interface that catches and reports
+        This runs brz through the interface that catches and reports
         errors, and with logging set to something approximating the
         default, so that error reporting can be checked.
 
         This should be the main method for tests that want to exercise the
-        overall behavior of the bzr application (rather than a unit test
+        overall behavior of the brz application (rather than a unit test
         or a functional test of the library.)
 
         This sends the stdout/stderr results into the test's log,
@@ -2102,15 +2102,15 @@ class TestCase(testtools.TestCase):
         return out, err
 
     def run_bzr_error(self, error_regexes, *args, **kwargs):
-        """Run bzr, and check that stderr contains the supplied regexes
+        """Run brz, and check that stderr contains the supplied regexes
 
         :param error_regexes: Sequence of regular expressions which
             must each be found in the error output. The relative ordering
             is not enforced.
-        :param args: command-line arguments for bzr
-        :param kwargs: Keyword arguments which are interpreted by run_bzr
+        :param args: command-line arguments for brz
+        :param kwargs: Keyword arguments which are interpreted by run_brz
             This function changes the default value of retcode to be 3,
-            since in most cases this is run when you expect bzr to fail.
+            since in most cases this is run when you expect brz to fail.
 
         :return: (out, err) The actual output of running the command (in case
             you want to do more inspection)
@@ -2132,9 +2132,9 @@ class TestCase(testtools.TestCase):
         return out, err
 
     def run_bzr_subprocess(self, *args, **kwargs):
-        """Run bzr in a subprocess for testing.
+        """Run brz in a subprocess for testing.
 
-        This starts a new Python interpreter and runs bzr in there.
+        This starts a new Python interpreter and runs brz in there.
         This should only be used for tests that have a justifiable need for
         this isolation: e.g. they are testing startup time, or signal
         handling, or early startup code, etc.  Subprocess code can't be
@@ -2175,15 +2175,15 @@ class TestCase(testtools.TestCase):
                              skip_if_plan_to_signal=False,
                              working_dir=None,
                              allow_plugins=False, stderr=subprocess.PIPE):
-        """Start bzr in a subprocess for testing.
+        """Start brz in a subprocess for testing.
 
-        This starts a new Python interpreter and runs bzr in there.
+        This starts a new Python interpreter and runs brz in there.
         This should only be used for tests that have a justifiable need for
         this isolation: e.g. they are testing startup time, or signal
         handling, or early startup code, etc.  Subprocess code can't be
         profiled or debugged so easily.
 
-        :param process_args: a list of arguments to pass to the bzr executable,
+        :param process_args: a list of arguments to pass to the brz executable,
             for example ``['--version']``.
         :param env_changes: A dictionary which lists changes to environment
             variables. A value of None will unset the env variable.
@@ -2191,7 +2191,7 @@ class TestCase(testtools.TestCase):
             child, so you don't need to fix the environment after running.
         :param skip_if_plan_to_signal: raise TestSkipped when true and system
             doesn't support signalling subprocesses.
-        :param allow_plugins: If False (default) pass --no-plugins to bzr.
+        :param allow_plugins: If False (default) pass --no-plugins to brz.
         :param stderr: file to use for the subprocess's stderr.  Valid values
             are those valid for the stderr argument of `subprocess.Popen`.
             Default value is ``subprocess.PIPE``.
@@ -2291,7 +2291,7 @@ class TestCase(testtools.TestCase):
         return os.path.dirname(os.path.dirname(brzlib.__file__))
 
     def get_brz_path(self):
-        """Return the path of the 'bzr' executable for this test suite."""
+        """Return the path of the 'brz' executable for this test suite."""
         brz_path = os.path.join(self.get_source_path(), "brz")
         if not os.path.isfile(brz_path):
             # We are probably installed. Assume sys.argv is the right file
@@ -2440,7 +2440,7 @@ class TestCaseWithMemoryTransport(TestCase):
     Tests that need disk resources should derive from TestCaseInTempDir
     orTestCaseWithTransport.
 
-    TestCaseWithMemoryTransport sets the TEST_ROOT variable for all bzr tests.
+    TestCaseWithMemoryTransport sets the TEST_ROOT variable for all brz tests.
 
     For TestCaseWithMemoryTransport the ``test_home_dir`` is set to the name of
     a directory which does not exist. This serves to help ensure test isolation
@@ -3295,7 +3295,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               stream=None,
               result_decorators=None,
               ):
-    """Run a test suite for bzr selftest.
+    """Run a test suite for brz selftest.
 
     :param runner_class: The class of runner to use. Must support the
         constructor arguments passed by run_suite which are more than standard
@@ -3682,7 +3682,7 @@ class ProfileResult(testtools.ExtendedToOriginalDecorator):
         self.profiler = None
 
 
-# Controlled by "bzr selftest -E=..." option
+# Controlled by "brz selftest -E=..." option
 # Currently supported:
 #   -Eallow_debug           Will no longer clear debug.debug_flags() so it
 #                           preserves any flags supplied at the command line.

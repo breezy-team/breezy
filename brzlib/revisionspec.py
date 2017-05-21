@@ -675,7 +675,7 @@ class RevisionSpec_date(RevisionSpec):
 
     One way to display all the changes since yesterday would be::
 
-        bzr log -r date:yesterday..
+        brz log -r date:yesterday..
 
     Examples::
 

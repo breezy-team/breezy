@@ -772,10 +772,10 @@ class TestLogEncodings(tests.TestCaseInTempDir):
 
     def create_branch(self):
         brz = self.run_bzr
-        bzr('init')
+        brz('init')
         self.build_tree_contents([('a', 'some stuff\n')])
-        bzr('add a')
-        bzr(['commit', '-m', self._message])
+        brz('add a')
+        brz(['commit', '-m', self._message])
 
     def try_encoding(self, encoding, fail=False):
         brz = self.run_bzr
@@ -793,7 +793,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
         try:
             osutils._cached_user_encoding = 'ascii'
             # We should be able to handle any encoding
-            out, err = bzr('log', encoding=encoding)
+            out, err = brz('log', encoding=encoding)
             if not fail:
                 # Make sure we wrote mu as we expected it to exist
                 self.assertNotEqual(-1, out.find(encoded_msg))
@@ -820,10 +820,10 @@ class TestLogEncodings(tests.TestCaseInTempDir):
         brz = self.run_bzr
         osutils._cached_user_encoding = "cp1251"
 
-        bzr('init')
+        brz('init')
         self.build_tree(['a'])
-        bzr('add a')
-        bzr(['commit', '-m', u'\u0422\u0435\u0441\u0442'])
+        brz('add a')
+        brz(['commit', '-m', u'\u0422\u0435\u0441\u0442'])
         stdout, stderr = self.run_bzr('log', encoding='cp866')
 
         message = stdout.splitlines()[-1]

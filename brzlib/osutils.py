@@ -1572,7 +1572,7 @@ def terminal_width():
     # Note to implementors: if changing the rules for determining the width,
     # make sure you've considered the behaviour in these cases:
     #  - M-x shell in emacs, where $COLUMNS is set and TIOCGWINSZ returns 0,0.
-    #  - bzr log | less, in bash, where $COLUMNS not set and TIOCGWINSZ returns
+    #  - brz log | less, in bash, where $COLUMNS not set and TIOCGWINSZ returns
     #    0,0.
     #  - (add more interesting cases here, if you find any)
     # Some programs implement "Use $COLUMNS (if set) until SIGWINCH occurs",

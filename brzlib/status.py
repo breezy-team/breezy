@@ -138,7 +138,7 @@ def show_tree_status(wt, show_unchanged=None,
         new_is_working_tree = True
         if revision is None:
             if wt.last_revision() != wt.branch.last_revision():
-                warning("working tree is out of date, run 'bzr update'")
+                warning("working tree is out of date, run 'brz update'")
             new = wt
             old = new.basis_tree()
         elif len(revision) > 0:
@@ -356,7 +356,7 @@ def _filter_nonexistent(orig_paths, old_tree, new_tree):
 
     If either of the two lists is empty, return it as an empty list.
 
-    This can be used by operations such as bzr status that can accept
+    This can be used by operations such as brz status that can accept
     unknown or ignored files.
     """
     mutter("check paths: %r", orig_paths)
@@ -472,12 +472,12 @@ def _show_shelve_summary(params):
         else:
             fmt = plural
         params.to_file.write(fmt % len(shelves))
-        params.to_file.write('See "bzr shelve --list" for details.\n')
+        params.to_file.write('See "brz shelve --list" for details.\n')
 
 
 hooks = StatusHooks()
 
 
 hooks.install_named_hook('post_status', _show_shelve_summary,
-    'bzr status')
+    'brz status')
 

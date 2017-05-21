@@ -614,7 +614,7 @@ class TestErrors(TestCaseWithTransport):
         err = errors.ViewsNotSupported('atree')
         err_str = str(err)
         self.assertStartsWith(err_str, "Views are not supported by ")
-        self.assertEndsWith(err_str, "; use 'bzr upgrade' to change your "
+        self.assertEndsWith(err_str, "; use 'brz upgrade' to change your "
             "tree to a later format.")
 
     def test_file_outside_view(self):

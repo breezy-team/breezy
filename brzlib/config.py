@@ -2916,7 +2916,7 @@ option_registry.register(
 option_registry.register(
     Option('validate_signatures_in_log', default=False,
            from_unicode=bool_from_store, invalid='warning',
-           help='''Whether to validate signatures in bzr log.'''))
+           help='''Whether to validate signatures in brz log.'''))
 option_registry.register_lazy('ssl.ca_certs',
     'brzlib.transport.http._urllib2_wrappers', 'opt_ssl_ca_certs')
 

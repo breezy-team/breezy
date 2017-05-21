@@ -463,7 +463,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
         # We should notify the user that we upgraded their format
         self.assertEqualDiff(
             'Source repository format does not support stacking, using format:\n'
-            '  Packs 5 (adds stacking support, requires brz 1.6)\n'
+            '  Packs 5 (adds stacking support, requires bzr 1.6)\n'
             'Source branch format does not support stacking, using format:\n'
             '  Branch format 7\n'
             'Doing on-the-fly conversion from RepositoryFormatKnitPack1() to RepositoryFormatKnitPack5().\n'
@@ -478,7 +478,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
         # We should notify the user that we upgraded their format
         self.assertEqualDiff(
             'Source repository format does not support stacking, using format:\n'
-            '  Packs 5 rich-root (adds stacking support, requires brz 1.6.1)\n'
+            '  Packs 5 rich-root (adds stacking support, requires bzr 1.6.1)\n'
             'Source branch format does not support stacking, using format:\n'
             '  Branch format 7\n'
             'Doing on-the-fly conversion from RepositoryFormatKnitPack4() to RepositoryFormatKnitPack5RichRoot().\n'

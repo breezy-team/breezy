@@ -233,5 +233,5 @@ class DefaultControlComponentFormatTests(tests.TestCase):
         self.assertEqual(
             'An old format that is slow is deprecated and a better format '
             'is available.\nIt is recommended that you upgrade by running '
-            'the command\n  bzr upgrade apath\n',
+            'the command\n  brz upgrade apath\n',
             stderr.getvalue())

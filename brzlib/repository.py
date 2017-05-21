@@ -1197,7 +1197,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
             if 'format_deprecation' in conf.get('suppress_warnings'):
                 return
             warning("Format %s for %s is deprecated -"
-                    " please use 'bzr upgrade' to get better performance"
+                    " please use 'brz upgrade' to get better performance"
                     % (self._format, self.bzrdir.transport.base))
         finally:
             _deprecation_warning_done = True
@@ -1509,7 +1509,7 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
     def find_format(klass, a_bzrdir):
         """Return the format for the repository object in a_bzrdir.
 
-        This is used by bzr native formats that have a "format" file in
+        This is used by brz native formats that have a "format" file in
         the repository.  Other methods may be used by different types of
         control directory.
         """

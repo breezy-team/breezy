@@ -109,7 +109,7 @@ class BEncodeRevisionSerializer1(object):
         #       However, to decode all 25k revisions of bzr takes approx 1.3s
         #       If we remove all extra validation that goes down to about 1.2s.
         #       Of that time, probably 0.6s is spend in bencode.bdecode().
-        #       Regardless 'time bzr log' of everything is 7+s, so 1.3s to
+        #       Regardless 'time brz log' of everything is 7+s, so 1.3s to
         #       extract revision texts isn't a majority of time.
         ret = bencode.bdecode(text)
         if not isinstance(ret, list):
