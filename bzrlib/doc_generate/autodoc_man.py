@@ -32,6 +32,7 @@ import bzrlib
 import bzrlib.help
 import bzrlib.help_topics
 import bzrlib.commands
+import bzrlib.osutils
 
 from bzrlib.plugin import load_plugins
 load_plugins()
@@ -44,8 +45,7 @@ def get_filename(options):
 
 def infogen(options, outfile):
     """Assembles a man page"""
-    t = time.time()
-    tt = time.gmtime(t)
+    tt = bzrlib.osutils.gmtime()
     params = \
            { "bzrcmd": options.bzr_name,
              "datestamp": time.strftime("%Y-%m-%d",tt),

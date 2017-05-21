@@ -23,6 +23,7 @@ import time
 import bzrlib
 import bzrlib.help
 import bzrlib.commands
+import bzrlib.osutils
 
 
 def get_filename(options):
@@ -30,8 +31,7 @@ def get_filename(options):
 
 
 def infogen(options, outfile):
-    t = time.time()
-    tt = time.gmtime(t)
+    tt = bzrlib.osutils.gmtime()
     params = \
            { "bzrcmd": options.bzr_name,
              "datestamp": time.strftime("%Y-%m-%d",tt),

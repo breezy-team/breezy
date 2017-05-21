@@ -713,7 +713,40 @@ altered in u2
         self.assertEqual(
             'Sat 2009-10-10 08:00:00 +0100',
             osutils.format_date(last_rev.timestamp, last_rev.timezone))
-        
+
+    def test_commit_time_negative_windows(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit -m hello "
+            "--commit-time='1969-10-10 00:00:00 +0000' tree/hello.txt")
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual(
+            'Fri 1969-10-10 00:00:00 +0000',
+            osutils.format_date(last_rev.timestamp, last_rev.timezone))
+
+    def test_commit_time_negative_32bit(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit -m hello "
+            "--commit-time='1900-01-01 00:00:00 +0000' tree/hello.txt")
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual(
+            'Mon 1900-01-01 00:00:00 +0000',
+            osutils.format_date(last_rev.timestamp, last_rev.timezone))
+
+    def test_commit_time_positive_32bit(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit -m hello "
+            "--commit-time='2039-01-01 00:00:00 +0000' tree/hello.txt")
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual(
+            'Sat 2039-01-01 00:00:00 +0000',
+            osutils.format_date(last_rev.timestamp, last_rev.timezone))
+
     def test_commit_time_bad_time(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello.txt'])
