@@ -32,13 +32,13 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         # to guess the Launchpad page for the given URL / path. If it cannot
         # find one, it will raise an error.
         self.assertEqual(
-            ['bzr: ERROR: . is not registered on Launchpad.'],
+            ['brz: ERROR: . is not registered on Launchpad.'],
             self.run_open('.', retcode=3))
 
     def test_no_public_location_no_push_location(self):
         self.make_branch('not-public')
         self.assertEqual(
-            ['bzr: ERROR: not-public is not registered on Launchpad.'],
+            ['brz: ERROR: not-public is not registered on Launchpad.'],
             self.run_open('not-public', retcode=3))
 
     def test_non_launchpad_branch(self):
@@ -46,7 +46,7 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         url = 'http://example.com/non-lp'
         branch.set_public_branch(url)
         self.assertEqual(
-            ['bzr: ERROR: %s is not registered on Launchpad.' % url],
+            ['brz: ERROR: %s is not registered on Launchpad.' % url],
             self.run_open('non-lp', retcode=3))
 
     def test_launchpad_branch_with_public_location(self):

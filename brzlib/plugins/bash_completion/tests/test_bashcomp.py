@@ -49,7 +49,7 @@ class BashCompletionMixin(object):
         input += ('COMP_WORDS=( %s )\n' %
                   ' '.join(["'"+w.replace("'", "'\\''")+"'" for w in words]))
         input += 'COMP_CWORD=%d\n' % cword
-        input += '%s\n' % getattr(self, 'script_name', '_bzr')
+        input += '%s\n' % getattr(self, 'script_name', '_brz')
         input += 'echo ${#COMPREPLY[*]}\n'
         input += "IFS=$'\\n'\n"
         input += 'echo "${COMPREPLY[*]}"\n'
@@ -95,12 +95,12 @@ class BashCompletionMixin(object):
 
 
 class TestBashCompletion(tests.TestCase, BashCompletionMixin):
-    """Test bash completions that don't execute bzr."""
+    """Test bash completions that don't execute brz."""
 
     def test_simple_scipt(self):
         """Ensure that the test harness works as expected"""
         self.script = """
-_bzr() {
+_brz() {
     COMPREPLY=()
     # add all words in reverse order, with some markup around them
     for ((i = ${#COMP_WORDS[@]}; i > 0; --i)); do
@@ -114,32 +114,32 @@ _bzr() {
         self.assertCompletionEquals("-'baz+", '-"bar+', '-foo+', '+"bar-')
 
     def test_cmd_ini(self):
-        self.complete(['bzr', 'ini'])
+        self.complete(['brz', 'ini'])
         self.assertCompletionContains('init', 'init-repo', 'init-repository')
         self.assertCompletionOmits('commit')
 
     def test_init_opts(self):
-        self.complete(['bzr', 'init', '-'])
+        self.complete(['brz', 'init', '-'])
         self.assertCompletionContains('-h', '--2a', '--format=2a')
 
     def test_global_opts(self):
-        self.complete(['bzr', '-', 'init'], cword=1)
+        self.complete(['brz', '-', 'init'], cword=1)
         self.assertCompletionContains('--no-plugins', '--builtin')
 
     def test_commit_dashm(self):
-        self.complete(['bzr', 'commit', '-m'])
+        self.complete(['brz', 'commit', '-m'])
         self.assertCompletionEquals('-m')
 
     def test_status_negated(self):
-        self.complete(['bzr', 'status', '--n'])
+        self.complete(['brz', 'status', '--n'])
         self.assertCompletionContains('--no-versioned', '--no-verbose')
 
     def test_init_format_any(self):
-        self.complete(['bzr', 'init', '--format', '=', 'directory'], cword=3)
+        self.complete(['brz', 'init', '--format', '=', 'directory'], cword=3)
         self.assertCompletionContains('1.9', '2a')
 
     def test_init_format_2(self):
-        self.complete(['bzr', 'init', '--format', '=', '2', 'directory'],
+        self.complete(['brz', 'init', '--format', '=', '2', 'directory'],
                       cword=4)
         self.assertCompletionContains('2a')
         self.assertCompletionOmits('1.9')
@@ -147,10 +147,10 @@ _bzr() {
 
 class TestBashCompletionInvoking(tests.TestCaseWithTransport,
                                  BashCompletionMixin):
-    """Test bash completions that might execute bzr.
+    """Test bash completions that might execute brz.
 
-    Only the syntax ``$(bzr ...`` is supported so far. The bzr command
-    will be replaced by the bzr instance running this selftest.
+    Only the syntax ``$(brz ...`` is supported so far. The brz command
+    will be replaced by the brz instance running this selftest.
     """
 
     def setUp(self):
@@ -161,7 +161,7 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
 
     def get_script(self):
         s = super(TestBashCompletionInvoking, self).get_script()
-        return s.replace("$(bzr ", "$('%s' " % self.get_brz_path())
+        return s.replace("$(brz ", "$('%s' " % self.get_brz_path())
 
     def test_revspec_tag_all(self):
         self.requireFeature(features.sed_feature)
@@ -169,7 +169,7 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
         wt.branch.tags.set_tag('tag1', 'null:')
         wt.branch.tags.set_tag('tag2', 'null:')
         wt.branch.tags.set_tag('3tag', 'null:')
-        self.complete(['bzr', 'log', '-r', 'tag', ':'])
+        self.complete(['brz', 'log', '-r', 'tag', ':'])
         self.assertCompletionEquals('tag1', 'tag2', '3tag')
 
     def test_revspec_tag_prefix(self):
@@ -178,18 +178,18 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
         wt.branch.tags.set_tag('tag1', 'null:')
         wt.branch.tags.set_tag('tag2', 'null:')
         wt.branch.tags.set_tag('3tag', 'null:')
-        self.complete(['bzr', 'log', '-r', 'tag', ':', 't'])
+        self.complete(['brz', 'log', '-r', 'tag', ':', 't'])
         self.assertCompletionEquals('tag1', 'tag2')
 
     def test_revspec_tag_spaces(self):
         self.requireFeature(features.sed_feature)
         wt = self.make_branch_and_tree('.', format='dirstate-tags')
         wt.branch.tags.set_tag('tag with spaces', 'null:')
-        self.complete(['bzr', 'log', '-r', 'tag', ':', 't'])
+        self.complete(['brz', 'log', '-r', 'tag', ':', 't'])
         self.assertCompletionEquals(r'tag\ with\ spaces')
-        self.complete(['bzr', 'log', '-r', '"tag:t'])
+        self.complete(['brz', 'log', '-r', '"tag:t'])
         self.assertCompletionEquals('tag:tag with spaces')
-        self.complete(['bzr', 'log', '-r', "'tag:t"])
+        self.complete(['brz', 'log', '-r', "'tag:t"])
         self.assertCompletionEquals('tag:tag with spaces')
 
     def test_revspec_tag_endrange(self):
@@ -197,11 +197,11 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
         wt = self.make_branch_and_tree('.', format='dirstate-tags')
         wt.branch.tags.set_tag('tag1', 'null:')
         wt.branch.tags.set_tag('tag2', 'null:')
-        self.complete(['bzr', 'log', '-r', '3..tag', ':', 't'])
+        self.complete(['brz', 'log', '-r', '3..tag', ':', 't'])
         self.assertCompletionEquals('tag1', 'tag2')
-        self.complete(['bzr', 'log', '-r', '"3..tag:t'])
+        self.complete(['brz', 'log', '-r', '"3..tag:t'])
         self.assertCompletionEquals('3..tag:tag1', '3..tag:tag2')
-        self.complete(['bzr', 'log', '-r', "'3..tag:t"])
+        self.complete(['brz', 'log', '-r', "'3..tag:t"])
         self.assertCompletionEquals('3..tag:tag1', '3..tag:tag2')
 
 
@@ -221,17 +221,17 @@ class TestBashCodeGen(tests.TestCase):
         self.assertEqual('', BashCodeGen(data, debug=False).debug_output())
         self.assertTrue(BashCodeGen(data, debug=True).debug_output())
 
-    def test_bzr_version(self):
+    def test_brz_version(self):
         data = CompletionData()
         cg = BashCodeGen(data)
-        self.assertEqual('%s.' % brzlib.version_string, cg.bzr_version())
+        self.assertEqual('%s.' % brzlib.version_string, cg.brz_version())
         data.plugins['foo'] = PluginData('foo', '1.0')
         data.plugins['bar'] = PluginData('bar', '2.0')
         cg = BashCodeGen(data)
         self.assertEqual('''\
 %s and the following plugins:
 # bar 2.0
-# foo 1.0''' % brzlib.version_string, cg.bzr_version())
+# foo 1.0''' % brzlib.version_string, cg.brz_version())
 
     def test_global_options(self):
         data = CompletionData()

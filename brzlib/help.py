@@ -57,7 +57,7 @@ def help(topic=None, outfile=None):
             raise
 
     if alias is not None:
-        outfile.write("'bzr %s' is an alias for 'bzr %s'.\n" % (topic,
+        outfile.write("'brz %s' is an alias for 'brz %s'.\n" % (topic,
             " ".join(alias)))
 
 

@@ -170,7 +170,7 @@ class TestBranchRegistration(TestCaseWithTransport):
         self.make_repository('.')
         self.run_bzr_error(
             ['register-branch requires a public branch url - '
-             'see bzr help register-branch'],
+             'see brz help register-branch'],
             'register-branch')
 
     def test_register_no_url_in_published_branch_no_error(self):

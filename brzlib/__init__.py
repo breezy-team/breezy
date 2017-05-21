@@ -54,10 +54,10 @@ __copyright__ = "Copyright 2005-2012 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (2, 8, 0, 'dev', 1)
+version_info = (3, 0, 0, 'dev', 1)
 
 # API compatibility version
-api_minimum_version = (2, 4, 0)
+api_minimum_version = (3, 0, 0)
 
 
 def _format_version_tuple(version_info):
@@ -122,7 +122,7 @@ def _format_version_tuple(version_info):
 # to avoid "no attribute '_format_version_tuple'" error when using
 # deprecated_function in the lazy_regex module.
 if getattr(sys, '_brz_lazy_regex', False):
-    # The 'bzr' executable sets _brz_lazy_regex.  We install the lazy regex
+    # The 'brz' executable sets _brz_lazy_regex.  We install the lazy regex
     # hack as soon as possible so that as much of the standard library can
     # benefit, including the 'string' module.
     del sys._brz_lazy_regex
@@ -158,20 +158,20 @@ def _patch_filesystem_default_encoding(new_enc):
     return new_enc
 
 
-# When running under the bzr script, override bad filesystem default encoding.
+# When running under the brz script, override bad filesystem default encoding.
 # This is not safe to do for all users of brzlib, other scripts should instead
 # just ensure a usable locale is set via the $LANG variable on posix systems.
 _fs_enc = sys.getfilesystemencoding()
-if getattr(sys, "_bzr_default_fs_enc", None) is not None:
+if getattr(sys, "_brz_default_fs_enc", None) is not None:
     if (_fs_enc is None or codecs.lookup(_fs_enc).name == "ascii"):
-        _fs_enc = _patch_filesystem_default_encoding(sys._bzr_default_fs_enc)
+        _fs_enc = _patch_filesystem_default_encoding(sys._brz_default_fs_enc)
 if _fs_enc is None:
     _fs_enc = "ascii"
 else:
     _fs_enc = codecs.lookup(_fs_enc).name
 
 
-# bzr has various bits of global state that are slowly being eliminated.
+# brz has various bits of global state that are slowly being eliminated.
 # This variable is intended to permit any new state-like things to be attached
 # to a library_state.BzrLibraryState object rather than getting new global
 # variables that need to be hunted down. Accessing the current BzrLibraryState
@@ -189,18 +189,18 @@ global_state = None
 def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
     """Set up everything needed for normal use of brzlib.
 
-    Most applications that embed brzlib, including bzr itself, should call
-    this function to initialize various subsystems.  
+    Most applications that embed brzlib, including brz itself, should call
+    this function to initialize various subsystems.
 
     More options may be added in future so callers should use named arguments.
 
     The object returned by this function can be used as a contex manager
     through the 'with' statement to automatically shut down when the process
-    is finished with brzlib.  However (from bzr 2.4) it's not necessary to
-    separately enter the context as well as starting bzr: brzlib is ready to
+    is finished with brzlib.  However it's not necessary to
+    separately enter the context as well as starting brz: brzlib is ready to
     go when this function returns.
 
-    :param setup_ui: If true (default) use a terminal UI; otherwise 
+    :param setup_ui: If true (default) use a terminal UI; otherwise
         some other ui_factory must be assigned to `brzlib.ui.ui_factory` by
         the caller.
     :param stdin, stdout, stderr: If provided, use these for terminal IO;

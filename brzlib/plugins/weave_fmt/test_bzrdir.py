@@ -555,7 +555,7 @@ class TestBoundBranch(TestCaseWithTransport):
         # TODO: jam 20060427 Probably something like this really should
         #       print out the actual path, rather than the URL
         cwd = urlutils.local_path_to_url(getcwd())
-        self.assertEqual('bzr: ERROR: To use this feature you must '
+        self.assertEqual('brz: ERROR: To use this feature you must '
                          'upgrade your branch at %s/.\n' % cwd, err)
 
     def test_unbind_format_6_bzrdir(self):
@@ -563,7 +563,7 @@ class TestBoundBranch(TestCaseWithTransport):
         out,err = self.run_bzr('unbind', retcode=3)
         self.assertEqual('', out)
         cwd = urlutils.local_path_to_url(getcwd())
-        self.assertEqual('bzr: ERROR: To use this feature you must '
+        self.assertEqual('brz: ERROR: To use this feature you must '
                          'upgrade your branch at %s/.\n' % cwd, err)
 
 

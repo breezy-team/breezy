@@ -435,7 +435,7 @@ class TestPush(tests.TestCaseWithTransport):
         tree = self.create_simple_tree()
         a_bzrdir = self.make_bzrdir('dir')
 
-        self.run_bzr_error(['At ../dir you have a valid .brz control'],
+        self.run_bzr_error(['At ../dir you have a valid .bzr control'],
                 'push ../dir',
                 working_dir='tree')
 

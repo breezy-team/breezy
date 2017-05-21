@@ -254,7 +254,7 @@ def _help_on_transport(name):
             '  '.join(decl)
 
     out += """\
-\nBazaar supports all of the standard parts within the URL::
+\nBreezy supports all of the standard parts within the URL::
 
   <protocol>://[user[:password]@]host[:port]/[path]
 
@@ -262,7 +262,7 @@ allowing URLs such as::
 
   http://brzuser:BadPass@brz.example.com:8080/brz/trunk
 
-For brz+ssh:// and sftp:// URLs, Bazaar also supports paths that begin
+For brz+ssh:// and sftp:// URLs, Breezy also supports paths that begin
 with '~' as meaning that the rest of the path should be interpreted
 relative to the remote user's home directory.  For example if the user
 ``remote`` has a  home directory of ``/home/remote`` on the server
@@ -280,7 +280,7 @@ See :doc:`location-alias-help` and :doc:`url-special-chars-help`.
 
 
 _basic_help = \
-"""Bazaar %s -- a free distributed version-control tool
+"""Breezy %s -- a free distributed version-control tool
 http://bazaar.canonical.com/
 
 Basic commands:
@@ -361,7 +361,7 @@ _checkouts = \
 Checkouts are source trees that are connected to a branch, so that when
 you commit in the source tree, the commit goes into that branch.  They
 allow you to use a simpler, more centralized workflow, ignoring some of
-Bazaar's decentralized features until you want them. Using checkouts
+Breezy's decentralized features until you want them. Using checkouts
 with shared repositories is very similar to working with SVN or CVS, but
 doesn't have the same restrictions.  And using checkouts still allows
 others working on the project to use whatever workflow they like.
@@ -374,7 +374,7 @@ made on the other branch first. This creates an instant mirror of your work, or
 facilitates lockstep development, where each developer is working together,
 continuously integrating the changes of others.
 
-However the checkout is still a first class branch in Bazaar terms, so that
+However the checkout is still a first class branch in Breezy terms, so that
 you have the full history locally.  As you have a first class branch you can
 also commit locally if you want, for instance due to the temporary loss af a
 network connection. Use the --local option to commit to do this. All the local
@@ -384,7 +384,7 @@ commit.
 If you are using a checkout from a shared branch you will periodically want to
 pull in all the changes made by others. This is done using the "update"
 command. The changes need to be applied before any non-local commit, but
-Bazaar will tell you if there are any changes and suggest that you use this
+Breezy will tell you if there are any changes and suggest that you use this
 command when needed.
 
 It is also possible to create a "lightweight" checkout by passing the
@@ -442,7 +442,7 @@ Related commands::
 _repositories = \
 """Repositories
 
-Repositories in Bazaar are where committed information is stored. There is
+Repositories in Breezy are where committed information is stored. There is
 a repository associated with every branch.
 
 Repositories are a form of database. Breezy will usually maintain this for
@@ -534,7 +534,7 @@ repository (a shared repository). Branches can be copied and merged.
 
 In addition, one branch may be bound to another one.  Binding to another
 branch indicates that commits which happen in this branch must also 
-happen in the other branch.  Bazaar ensures consistency by not allowing 
+happen in the other branch.  Breezy ensures consistency by not allowing 
 commits when the two branches are out of date.  In order for a commit 
 to succeed, it may be necessary to update the current branch using 
 ``brz update``.
@@ -669,7 +669,7 @@ and then merge one another, or if two branches merge one another at the same
 time.  They can be avoided by having each branch only merge from or into a
 designated central branch (a "star topology").
 
-Criss-crosses cause problems because of the way merge works.  Bazaar's default
+Criss-crosses cause problems because of the way merge works.  Breezy's default
 merge is a three-way merger; in order to merge OTHER into THIS, it must
 find a basis for comparison, BASE.  Using BASE, it can determine whether
 differences between THIS and OTHER are due to one side adding lines, or
@@ -677,7 +677,7 @@ from another side removing lines.
 
 Criss-crosses mean there is no good choice for a base.  Selecting the recent
 merge points could cause one side's changes to be silently discarded.
-Selecting older merge points (which Bazaar does) mean that extra conflicts
+Selecting older merge points (which Breezy does) mean that extra conflicts
 are emitted.
 
 The ``weave`` merge type is not affected by this problem because it uses
@@ -691,7 +691,7 @@ When reconfiguring a checkout, tree or branch into a lightweight checkout,
 a local branch must be destroyed.  (For checkouts, this is the local branch
 that serves primarily as a cache.)  If the branch-to-be-destroyed does not
 have the same last revision as the new reference branch for the lightweight
-checkout, data could be lost, so Bazaar refuses.
+checkout, data could be lost, so Breezy refuses.
 
 How you deal with this depends on *why* the branches are out of sync.
 
@@ -710,7 +710,7 @@ _storage_formats = \
 """Storage Formats
 
 To ensure that older clients do not access data incorrectly,
-Bazaar's policy is to introduce a new storage format whenever
+Breezy's policy is to introduce a new storage format whenever
 new features requiring new metadata are added. New storage
 formats may also be introduced to improve performance and
 scalability.
@@ -758,7 +758,7 @@ topic_registry.register('other-formats', get_other_formats_topic,
 topic_registry.register('standard-options', _standard_options,
                         'Options that can be used with any command')
 topic_registry.register('global-options', _global_options,
-                    'Options that control how Bazaar runs')
+                    'Options that control how Breezy runs')
 topic_registry.register('urlspec', _help_on_transport,
                         "Supported transport protocols")
 topic_registry.register('status-flags', _status_flags,

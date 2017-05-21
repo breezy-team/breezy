@@ -507,9 +507,9 @@ if 'bdist_wininst' in sys.argv:
             if r:
                 relative = root[4:]
                 if relative:
-                    target = os.path.join('Doc\\Bazaar', relative)
+                    target = os.path.join('Doc\\Breezy', relative)
                 else:
-                    target = 'Doc\\Bazaar'
+                    target = 'Doc\\Breezy'
                 docs.append((target, r))
         return docs
 
