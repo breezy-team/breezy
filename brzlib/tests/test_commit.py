@@ -424,7 +424,7 @@ class TestCommit(TestCaseWithTransport):
         try:
             from brzlib.testament import Testament
             # monkey patch gpg signing mechanism
-            brzlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
+            brzlib.gpg.GPGStrategy = brzlib.gpg.LoopbackGPGStrategy
             conf = config.MemoryStack('''
 gpg_signing_command=cat -
 create_signatures=always
@@ -450,7 +450,7 @@ create_signatures=always
         self.assertFalse(branch.repository.has_signature_for_revision_id('A'))
         try:
             # monkey patch gpg signing mechanism
-            brzlib.gpg.GPGStrategy = bzrlib.gpg.DisabledGPGStrategy
+            brzlib.gpg.GPGStrategy = brzlib.gpg.DisabledGPGStrategy
             conf = config.MemoryStack('''
 gpg_signing_command=cat -
 create_signatures=always
@@ -476,7 +476,7 @@ create_signatures=always
             calls.append('called')
         brzlib.ahook = called
         try:
-            conf = config.MemoryStack('post_commit=brzlib.ahook bzrlib.ahook')
+            conf = config.MemoryStack('post_commit=brzlib.ahook brzlib.ahook')
             commit.Commit(config_stack=conf).commit(
                 message = "base", allow_pointless=True, rev_id='A',
                 working_tree = wt)

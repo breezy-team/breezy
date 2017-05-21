@@ -105,7 +105,7 @@ def response_tuple_to_repo_format(response):
     return format
 
 
-# Note that RemoteBzrDirProber lives in brzlib.bzrdir so bzrlib.remote
+# Note that RemoteBzrDirProber lives in brzlib.bzrdir so brzlib.remote
 # does not have to be imported unless a remote format is involved.
 
 class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):

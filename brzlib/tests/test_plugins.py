@@ -278,7 +278,7 @@ class TestLoadingPlugins(BaseTestPlugins):
         f = file(name, 'w')
         try:
             f.write("import brzlib.api\n"
-                "brzlib.api.require_any_api(bzrlib, [(1, 0, 0)])\n")
+                "brzlib.api.require_any_api(brzlib, [(1, 0, 0)])\n")
         finally:
             f.close()
         log = self.load_and_capture(name)
@@ -506,7 +506,7 @@ class cmd_myplug(commands.Command):
         try:
             # Check its help
             brzlib.plugin.load_from_path(['plugin_test'])
-            brzlib.commands.register_command( bzrlib.plugins.myplug.cmd_myplug)
+            brzlib.commands.register_command( brzlib.plugins.myplug.cmd_myplug)
             help = self.run_bzr('help myplug')[0]
             self.assertContainsRe(help, 'plugin "myplug"')
             help = self.split_help_commands()['myplug']

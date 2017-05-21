@@ -22,7 +22,7 @@ from brzlib import tests
 
 def load_tests(standard_tests, module, loader):
     suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
-        'brzlib.util._bencode_py', 'bzrlib._bencode_pyx')
+        'brzlib.util._bencode_py', 'brzlib._bencode_pyx')
     return suite
 
 

@@ -3917,8 +3917,8 @@ test_prefix_alias_registry = TestPrefixAliasRegistry()
 
 
 # This alias allows to detect typos ('bzrlin.') by making all valid test ids
-# appear prefixed ('brzlib.' is "replaced" by 'bzrlib.').
-test_prefix_alias_registry.register('brzlib', 'bzrlib')
+# appear prefixed ('brzlib.' is "replaced" by 'brzlib.').
+test_prefix_alias_registry.register('brzlib', 'brzlib')
 
 # Obvious highest levels prefixes, feel free to add your own via a plugin
 test_prefix_alias_registry.register('bd', 'brzlib.doc')

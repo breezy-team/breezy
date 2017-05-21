@@ -16,7 +16,7 @@
 
 """Documentation for brzlib.
 
-See brzlib.doc.api for api documentation and in the future bzrlib.doc.man
+See brzlib.doc.api for api documentation and in the future brzlib.doc.man
 for man page generation.
 """
 

@@ -1470,12 +1470,12 @@ class TestTestCase(tests.TestCase):
         # Note this test won't fail with hooks that the core library doesn't
         # use - but it trigger with a plugin that adds hooks, so its still a
         # useful warning in that case.
-        self.assertEqual(brzlib.branch.BranchHooks(), bzrlib.branch.Branch.hooks)
+        self.assertEqual(brzlib.branch.BranchHooks(), brzlib.branch.Branch.hooks)
         self.assertEqual(
             brzlib.smart.server.SmartServerHooks(),
             brzlib.smart.server.SmartTCPServer.hooks)
         self.assertEqual(
-            brzlib.commands.CommandHooks(), bzrlib.commands.Command.hooks)
+            brzlib.commands.CommandHooks(), brzlib.commands.Command.hooks)
 
     def test__gather_lsprof_in_benchmarks(self):
         """When _gather_lsprof_in_benchmarks is on, accumulate profile data.
@@ -3187,7 +3187,7 @@ class TestTestPrefixRegistry(tests.TestCase):
 
     def test_predefined_prefixes(self):
         tpr = tests.test_prefix_alias_registry
-        self.assertEqual('brzlib', tpr.resolve_alias('bzrlib'))
+        self.assertEqual('brzlib', tpr.resolve_alias('brzlib'))
         self.assertEqual('brzlib.doc', tpr.resolve_alias('bd'))
         self.assertEqual('brzlib.utils', tpr.resolve_alias('bu'))
         self.assertEqual('brzlib.tests', tpr.resolve_alias('bt'))

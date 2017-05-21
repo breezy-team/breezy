@@ -460,13 +460,13 @@ def _dump_memory_usage(err_file):
 def _qualified_exception_name(eclass, unqualified_brzlib_errors=False):
     """Give name of error class including module for non-builtin exceptions
 
-    If `unqualified_brzlib_errors` is True, errors specific to bzrlib will
+    If `unqualified_brzlib_errors` is True, errors specific to brzlib will
     also omit the module prefix.
     """
     class_name = eclass.__name__
     module_name = eclass.__module__
     if module_name in ("exceptions", "__main__") or (
-            unqualified_brzlib_errors and module_name == "bzrlib.errors"):
+            unqualified_brzlib_errors and module_name == "brzlib.errors"):
         return class_name
     return "%s.%s" % (module_name, class_name)
 
@@ -545,7 +545,7 @@ def report_bug(exc_info, err_file):
 
 
 def _flush_stdout_stderr():
-    # called from the brzlib library finalizer returned by bzrlib.initialize()
+    # called from the brzlib library finalizer returned by brzlib.initialize()
     try:
         sys.stdout.flush()
         sys.stderr.flush()
@@ -562,7 +562,7 @@ def _flush_stdout_stderr():
 
 
 def _flush_trace():
-    # called from the brzlib library finalizer returned by bzrlib.initialize()
+    # called from the brzlib library finalizer returned by brzlib.initialize()
     global _trace_file
     if _trace_file:
         _trace_file.flush()

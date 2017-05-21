@@ -1432,7 +1432,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         try:
             from brzlib.testament import Testament
             # monkey patch gpg signing mechanism
-            brzlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
+            brzlib.gpg.GPGStrategy = brzlib.gpg.LoopbackGPGStrategy
             new_config = test_commit.MustSignConfig()
             commit.Commit(config_stack=new_config).commit(message="base",
                                                     allow_pointless=True,

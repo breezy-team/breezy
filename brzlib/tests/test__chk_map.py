@@ -26,7 +26,7 @@ stuple = StaticTuple
 
 def load_tests(standard_tests, module, loader):
     suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
-        'brzlib._chk_map_py', 'bzrlib._chk_map_pyx')
+        'brzlib._chk_map_py', 'brzlib._chk_map_pyx')
     return suite
 
 

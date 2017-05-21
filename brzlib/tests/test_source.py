@@ -49,7 +49,7 @@ LICENSE_EXCEPTIONS = [
     'brzlib/doc_generate/conf.py',
     'brzlib/lsprof.py',
     ]
-# Technically, 'brzlib/lsprof.py' should be 'bzrlib/util/lsprof.py',
+# Technically, 'brzlib/lsprof.py' should be 'brzlib/util/lsprof.py',
 # (we do not check brzlib/util/, since that is code bundled from elsewhere)
 # but for compatibility with previous releases, we don't want to move it.
 #
@@ -122,7 +122,7 @@ class TestSource(TestSourceHelper):
         :param our_files_only: If true, exclude files from included libraries
             or plugins.
         """
-        brzlib_dir = self.get_bzrlib_dir()
+        brzlib_dir = self.get_brzlib_dir()
         if extensions is None:
             extensions = ('.py',)
 

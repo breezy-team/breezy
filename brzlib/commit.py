@@ -613,7 +613,7 @@ class Commit(object):
             for hook in hooks:
                 result = eval(hook + '(branch, rev_id)',
                               {'branch':self.branch,
-                               'brzlib':bzrlib,
+                               'brzlib':brzlib,
                                'rev_id':self.rev_id})
         # process new style post commit hooks
         self._process_hooks("post_commit", old_revno, new_revno)

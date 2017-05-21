@@ -331,7 +331,7 @@ class TestLockDir(TestCaseWithTransport):
         # do this without IO redirection to ensure it doesn't prompt.
         self.assertRaises(AssertionError, ld1.break_lock)
         orig_factory = brzlib.ui.ui_factory
-        brzlib.ui.ui_factory = bzrlib.ui.CannedInputUIFactory([True])
+        brzlib.ui.ui_factory = brzlib.ui.CannedInputUIFactory([True])
         try:
             ld2.break_lock()
             self.assertRaises(LockBroken, ld1.unlock)

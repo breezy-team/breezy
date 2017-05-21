@@ -24,7 +24,7 @@ from brzlib import (
 
 def load_tests(standard_tests, module, loader):
     suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
-        'brzlib._rio_py', 'bzrlib._rio_pyx')
+        'brzlib._rio_py', 'brzlib._rio_pyx')
     return suite
 
 
