@@ -594,7 +594,7 @@ def get_terminal_encoding(trace=False):
     try:
         codecs.lookup(output_encoding)
     except LookupError:
-        sys.stderr.write('bzr: warning:'
+        sys.stderr.write('brz: warning:'
                          ' unknown terminal encoding %s.\n'
                          '  Using encoding %s instead.\n'
                          % (output_encoding, get_user_encoding())
@@ -1104,7 +1104,7 @@ def report_extension_load_failures():
     # the warnings framework should by default show this only once
     from brzlib.trace import warning
     warning(
-        "bzr: warning: some compiled extensions could not be loaded; "
+        "brz: warning: some compiled extensions could not be loaded; "
         "see <https://answers.launchpad.net/bzr/+faq/703>")
     # we no longer show the specific missing extensions here, because it makes
     # the message too long and scary - see
@@ -2054,7 +2054,7 @@ def get_user_encoding(use_cache=DEPRECATED_PARAMETER):
         user_encoding = codecs.lookup(user_encoding).name
     except LookupError:
         if user_encoding not in ("", "cp0"):
-            sys.stderr.write('bzr: warning:'
+            sys.stderr.write('brz: warning:'
                              ' unknown encoding %s.'
                              ' Continuing with ascii encoding.\n'
                              % user_encoding

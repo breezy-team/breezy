@@ -2068,7 +2068,7 @@ class TestFailedToLoadExtension(tests.TestCase):
         osutils.report_extension_load_failures()
         self.assertContainsRe(
             log.getvalue(),
-            r"bzr: warning: some compiled extensions could not be loaded; "
+            r"brz: warning: some compiled extensions could not be loaded; "
             "see <https://answers\.launchpad\.net/bzr/\+faq/703>\n"
             )
 

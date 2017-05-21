@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Tests of the bzr serve command."""
+"""Tests of the brz serve command."""
 
 import os
 import signal
@@ -148,7 +148,7 @@ class TestBzrServe(TestBzrServeBase):
         result = self.finish_bzr_subprocess(process, retcode=3,
                                             send_signal=signal.SIGINT)
         self.assertEqual('', result[0])
-        self.assertEqual('bzr: interrupted\n', result[1])
+        self.assertEqual('brz: interrupted\n', result[1])
 
     def make_read_requests(self, branch):
         """Do some read only requests."""

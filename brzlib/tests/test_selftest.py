@@ -1056,7 +1056,7 @@ class TestRunner(tests.TestCase):
         result = self.run_test_runner(runner, test)
         lines = stream.getvalue().splitlines()
         self.assertContainsRe(stream.getvalue(),
-            '(?sm)^bzr selftest.*$'
+            '(?sm)^brz selftest.*$'
             '.*'
             '^======================================================================\n'
             '^FAIL: failing_test\n'
@@ -2662,7 +2662,7 @@ class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):
         result = self.finish_bzr_subprocess(process, send_signal=signal.SIGINT,
                                             retcode=3)
         self.assertEqual('', result[0])
-        self.assertEqual('bzr: interrupted\n', result[1])
+        self.assertEqual('brz: interrupted\n', result[1])
 
 
 class TestSelftestFiltering(tests.TestCase):
@@ -2863,7 +2863,7 @@ class TestBlackboxSupport(tests.TestCase):
         out, err = self.run_bzr(["log", "%s/nonexistantpath" % url], retcode=3)
         self.assertEqual(out, '')
         self.assertContainsRe(err,
-            'bzr: ERROR: Not a branch: ".*nonexistantpath/".\n')
+            'brz: ERROR: Not a branch: ".*nonexistantpath/".\n')
 
 
 class TestTestLoader(tests.TestCase):

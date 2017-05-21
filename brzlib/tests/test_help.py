@@ -46,7 +46,7 @@ class TestCommandHelp(tests.TestCase):
             _see_also = ['foo', 'bar']
         self.assertCmdHelp('''\
 Purpose: A sample command.
-Usage:   bzr WithSeeAlso
+Usage:   brz WithSeeAlso
 
 Options:
   --usage        Show usage message and options.
@@ -64,7 +64,7 @@ See also: bar, foo
             __doc__ = """A sample command."""
         self.assertCmdHelp('''\
 Purpose: A sample command.
-Usage:   bzr Demo
+Usage:   brz Demo
 
 Options:
   --usage        Show usage message and options.
@@ -78,7 +78,7 @@ Options:
         helptext = cmd.get_help_text()
         self.assertStartsWith(helptext,
             'Purpose: A sample command.\n'
-            'Usage:   bzr Demo')
+            'Usage:   brz Demo')
         self.assertEndsWith(helptext,
             '  -h, --help     Show help message.\n\n')
 
@@ -134,13 +134,13 @@ Options:
 
                 ::
 
-                    bzr Demo something
+                    brz Demo something
             """
         cmd = cmd_Demo()
         helptext = cmd.get_help_text()
         self.assertEqualDiff('''\
 Purpose: A sample command.
-Usage:   bzr Demo
+Usage:   brz Demo
 
 Options:
   --usage        Show usage message and options.
@@ -159,14 +159,14 @@ Examples:
 
     A code block follows.
 
-        bzr Demo something
+        brz Demo something
 
 ''',
                                          helptext)
         helptext = cmd.get_help_text(plain=False)
         self.assertEqualDiff('''\
 :Purpose: A sample command.
-:Usage:   bzr Demo
+:Usage:   brz Demo
 
 :Options:
   --usage        Show usage message and options.
@@ -187,7 +187,7 @@ Examples:
 
     ::
 
-        bzr Demo something
+        brz Demo something
 
 ''',
                              helptext)
@@ -208,7 +208,7 @@ Examples:
         helptext = cmd.get_help_text()
         self.assertEqualDiff('''\
 Purpose: A sample command.
-Usage:   bzr Demo
+Usage:   brz Demo
 
 Options:
   --usage        Show usage message and options.
@@ -229,7 +229,7 @@ Examples:
         helptext = cmd.get_help_text(verbose=False)
         self.assertEqualDiff('''\
 Purpose: A sample command.
-Usage:   bzr Demo
+Usage:   brz Demo
 
 Options:
   --usage        Show usage message and options.
@@ -237,7 +237,7 @@ Options:
   -v, --verbose  Display more information.
   -h, --help     Show help message.
 
-See bzr help Demo for more details and examples.
+See brz help Demo for more details and examples.
 
 ''',
                              helptext)
@@ -265,7 +265,7 @@ Blah blah blah.
         helptext = cmd.get_help_text()
         self.assertEqualDiff('''\
 Purpose: A sample command.
-Usage:   bzr Demo
+Usage:   brz Demo
 
 Options:
   --usage        Show usage message and options.
@@ -355,7 +355,7 @@ class TestCommandHelpI18n(tests.TestCase):
             _see_also = ['foo', 'bar']
         self.assertCmdHelp('''\
 zz{{:Purpose: zz{{A sample command.}}
-}}zz{{:Usage:   bzr WithSeeAlso
+}}zz{{:Usage:   brz WithSeeAlso
 }}
 zz{{:Options:
   --usage        zz{{Show usage message and options.}}
@@ -373,7 +373,7 @@ zz{{:See also: bar, foo}}
             __doc__ = """A sample command."""
         self.assertCmdHelp('''\
 zz{{:Purpose: zz{{A sample command.}}
-}}zz{{:Usage:   bzr Demo
+}}zz{{:Usage:   brz Demo
 }}
 zz{{:Options:
   --usage        zz{{Show usage message and options.}}
@@ -437,7 +437,7 @@ zz{{:See also: gam}}
             """
         self.assertCmdHelp('''\
 zz{{:Purpose: zz{{A sample command.}}
-}}zz{{:Usage:   bzr Demo
+}}zz{{:Usage:   brz Demo
 }}
 zz{{:Options:
   --usage        zz{{Show usage message and options.}}
