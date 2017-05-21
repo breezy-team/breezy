@@ -1,5 +1,5 @@
 #################
-Bazaar User Guide
+Breezy User Guide
 #################
 
 .. Please mark sections in included files as following:
@@ -90,12 +90,12 @@ Miscellaneous topics
 A brief tour of some popular plugins
 ####################################
 
-.. include:: bzrtools_plugin.txt
+.. include:: brztools_plugin.txt
 .. include:: svn_plugin.txt
 .. include later looms_plugin.txt
 
 
-Integrating Bazaar into your environment
+Integrating Breezy into your environment
 ########################################
 
 .. include:: web_browsing.txt

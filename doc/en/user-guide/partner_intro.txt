@@ -16,14 +16,14 @@ and the only way to talk to them was by registering a conference call first?
 Companies and communities that only share code via a central VCS
 repository are living with a similar straitjacket to that every day.
 There are times when central control makes a lot of sense and times
-when peer-to-peer rocks. Either way, Bazaar is designed to help.
+when peer-to-peer rocks. Either way, Breezy is designed to help.
 
 The partner workflow
 --------------------
 
 While it's certainly not the only way to do it, the *partner workflow*
 below is a good starting point for a pair of people who wish to
-collaborate using Bazaar.
+collaborate using Breezy.
 
 .. image:: images/workflows_peer.png
 

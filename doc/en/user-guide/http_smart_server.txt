@@ -39,7 +39,7 @@ like::
         # ...
     </Directory>
 
-We need to change it to handle all requests for URLs ending in `.bzr/smart`.  It
+We need to change it to handle all requests for URLs ending in `.brz/smart`.  It
 will look like::
 
     Alias /code /srv/example.com/www/code
@@ -60,7 +60,7 @@ will look like::
         </Files>
     </Directory>
 
-This instructs Apache to hand requests for any URL ending with `/.bzr/smart`
+This instructs Apache to hand requests for any URL ending with `/.brz/smart`
 inside `/code` to a Breezy smart server via FastCGI.
 
 Refer to the mod_rewrite_ and mod_fastcgi_ documentation for further
@@ -97,7 +97,7 @@ Like with mod_fastcgi, we also define how our script is to be handled::
         </Files>
     </Directory>
 
-This instructs Apache to hand requests for any URL ending with `/.bzr/smart`
+This instructs Apache to hand requests for any URL ending with `/.brz/smart`
 inside `/code` to a Breezy smart server via mod_python.
 
 NOTE: If you don't have brzlib in your PATH, you will be need to change the
@@ -119,7 +119,7 @@ mod_wsgi
 ~~~~~~~~
 
 First, configure mod_wsgi, e.g. enabling the mod with a2enmod wsgi.
-We need to change it to handle all requests for URLs ending in `.bzr/smart`.  It
+We need to change it to handle all requests for URLs ending in `.brz/smart`.  It
 will look like::
 
     WSGIScriptAliasMatch ^/code/.*/\.bzr/smart$ /srv/example.com/scripts/brz.wsgi
@@ -133,7 +133,7 @@ will look like::
         WSGIApplicationGroup %{GLOBAL}
     </Directory>
 
-This instructs Apache to hand requests for any URL ending with `/.bzr/smart`
+This instructs Apache to hand requests for any URL ending with `/.brz/smart`
 inside `/code` to a Breezy smart server via WSGI, and any other URL inside
 `/code` to be served directly by Apache.
 
@@ -246,9 +246,9 @@ The `make_app` helper used in the example constructs a `SmartWSGIApp` with a
 transport based on the `root` path given to it, and calculates the
 'brzlib.relpath` for each request based on the `prefix` and `path_var`
 arguments.  In the example above, it will take the 'REQUEST_URI' (which is set
-by Apache), strip the '/code/' prefix and the '/.bzr/smart' suffix, and set that
-as the 'brzlib.relpath', so that a request for '/code/foo/bar/.bzr/smart' will
-result in a 'brzlib.relpath' of 'foo/bzr'.
+by Apache), strip the '/code/' prefix and the '/.brz/smart' suffix, and set that
+as the 'brzlib.relpath', so that a request for '/code/foo/bar/.brz/smart' will
+result in a 'brzlib.relpath' of 'foo/brz'.
 
 It's possible to configure a smart server for a non-local transport, or that
 does arbitrary path translations, etc, by constructing a `SmartWSGIApp`
@@ -265,7 +265,7 @@ It is possible to allow pushing data over the HTTP smart server. The
 easiest way to do this, is to just supply ``readonly=False`` to the
 ``wsgi.make_app()`` call. But be careful, because the smart protocol does
 not contain any Authentication. So if you enable write support, you will
-want to restrict access to ``.bzr/smart`` URLs to restrict who can
+want to restrict access to ``.brz/smart`` URLs to restrict who can
 actually write data on your system, e.g. in apache it looks like::
 
     <Location /code>

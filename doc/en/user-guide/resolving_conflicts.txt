@@ -5,7 +5,7 @@ Workflow
 --------
 
 Unlike some other tools that force you to resolve each conflict during
-the merge process, Bazaar merges as much as it can and then reports the
+the merge process, Breezy merges as much as it can and then reports the
 conflicts. This can make conflict resolution easier because the contents
 of the whole post-merge tree are available to help you decide how things
 ought to be resolved. You may also wish to selectively run tests as you go
@@ -36,14 +36,14 @@ each file in question, fixing the relevant areas and removing the
 conflict markers as you go.
 
 After fixing all the files in conflict, and removing the markers,
-ask Bazaar to mark them as resolved using the ``resolve`` command like this::
+ask Breezy to mark them as resolved using the ``resolve`` command like this::
 
-  bzr resolve
+  brz resolve
 
 Alternatively, after fixing each file, you can mark it as resolved
 like this::
 
-  bzr resolve foo
+  brz resolve foo
 
 Among other things, the ``resolve`` command cleans up the BASE,
 THIS and OTHER files from your working tree.
@@ -55,7 +55,7 @@ In some cases, you may wish to try a different merge algorithm on a
 given file. To do this, use the ``remerge`` command nominating
 the file like this::
 
-  bzr remerge --weave foo
+  brz remerge --weave foo
 
 where ``foo`` is the file and ``weave`` is one of the available
 merge algorithms. This algorithm is particularly useful when a
@@ -70,7 +70,7 @@ If you have a GUI tool you like using to resolve conflicts, be sure
 to install the *extmerge* plugin. Once installed, it can be used
 like this::
 
-  bzr extmerge foo
+  brz extmerge foo
 
 where ``foo`` is the conflicted file. Rather than provide a list of
 files to resolve, you can give the ``--all`` option to implicitly

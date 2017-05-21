@@ -4,8 +4,8 @@ Using hooks
 What is a hook?
 ---------------
 
-One way to customize Bazaar's behaviour is with *hooks*.  Hooks allow you to
-perform actions before or after certain Bazaar operations.  The operations
+One way to customize Breezy's behaviour is with *hooks*.  Hooks allow you to
+perform actions before or after certain Breezy operations.  The operations
 include ``commit``, ``push``, ``pull``, and ``uncommit``.
 For a complete list of hooks and their parameters, see `Hooks
 <../user-reference/index.html#hooks>`_ in the User Reference.
@@ -54,7 +54,7 @@ identifies where to install the hook.  The second argument is the hook
 itself.  The third argument is a name ``'My post_push hook'``, which can be
 used in progress messages and error messages.
 
-To reduce the start-up time of Bazaar it is also possible to "lazily" install hooks,
+To reduce the start-up time of Breezy it is also possible to "lazily" install hooks,
 using the ``brzlib.hooks.install_lazy_named_hook`` function. This removes the need
 to load the module that contains the hook point just to install the hook. Here's lazy
 version of the example above::
@@ -82,7 +82,7 @@ Example: a merge plugin
 
 Here's a complete plugin that demonstrates the ``Merger.merge_file_content``
 hook.  It installs a hook that forces any merge of a file named ``*.xml``
-to be a conflict, even if Bazaar thinks it can merge it cleanly.
+to be a conflict, even if Breezy thinks it can merge it cleanly.
 
 ``merge_xml.py``::
 
@@ -111,5 +111,5 @@ to be a conflict, even if Bazaar thinks it can merge it cleanly.
 
 ``merge_file_content`` hooks are executed for each file to be merged.  For
 a more a complex example look at the ``news_merge`` plugin that's bundled with
-Bazaar in the ``brzlib/plugins`` directory.
+Breezy in the ``brzlib/plugins`` directory.
 

@@ -47,7 +47,7 @@ Many source trees contain some files that do not need to be versioned,
 such as editor backups, object or bytecode files, and built programs.  You
 can simply not add them, but then they'll always crop up as unknown files.
 You can also tell Breezy to ignore these files by adding them to a file
-called ``.brzignore`` at the top of the tree.
+called ``.bzrignore`` at the top of the tree.
 
 This file contains a list of file wildcards (or "globs"), one per line.
 Typical contents are like this::
@@ -78,16 +78,16 @@ and control whether they are treated as "unknown" or "ignored".  If a file
 is explicitly added, it remains versioned regardless of whether it matches
 an ignore pattern.
 
-The ``.brzignore`` file should normally be versioned, so that new copies
+The ``.bzrignore`` file should normally be versioned, so that new copies
 of the branch see the same patterns::
 
-    % brz add .brzignore
+    % brz add .bzrignore
     % brz commit -m "Add ignore patterns"
 
 The command ``brz ignore PATTERN`` can be used to easily add PATTERN to
-the ``.brzignore file`` (creating it if necessary and registering it to
+the ``.bzrignore file`` (creating it if necessary and registering it to
 be tracked by Breezy).  Removing and modifying patterns are done by
-directly editing the ``.brzignore`` file.
+directly editing the ``.bzrignore`` file.
 
 Global ignores
 --------------

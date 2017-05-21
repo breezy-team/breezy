@@ -4,7 +4,7 @@ Writing a plugin
 Introduction
 ------------
 
-Plugins are very similar to bzr core functionality.  They can import
+Plugins are very similar to brz core functionality.  They can import
 anything in brzlib.  A plugin may simply override standard functionality,
 but most plugins supply new commands.
 
@@ -20,7 +20,7 @@ to write commands, please see ``builtins.py``.
 
 Once you've created a command you must register the command with
 ``brzlib.commands.register_command(cmd_foo)``.  You must register the
-command when your file is imported, otherwise bzr will not see it.
+command when your file is imported, otherwise brz will not see it.
 
 Installing a hook
 -----------------
@@ -43,11 +43,11 @@ Plugin searching rules
 Bzr will scan ``~/.bazaar/plugins``  and ``brzlib/plugins`` for plugins
 by default.  You can override this with  ``BZR_PLUGIN_PATH``
 (see `User Reference 
-<../user-reference/configuration-help.html#bzr-plugin-path>`_ for details).
+<../user-reference/configuration-help.html#brz-plugin-path>`_ for details).
 
 Plugins may be either modules or packages.  If your plugin is a single
 file, you can structure it as a module.  If it has multiple files, or if
-you want to distribute it as a bzr branch, you should structure it as a
+you want to distribute it as a brz branch, you should structure it as a
 package, i.e. a directory with an ``__init__.py`` file.
 
 More information
@@ -56,7 +56,7 @@ More information
 Please feel free to contribute your plugin to BzrTools, if you think it
 would be useful to other people.
 
-See the `Bazaar Developer Guide`_ for details on Bazaar's development
+See the `Breezy Developer Guide`_ for details on Breezy's development
 guidelines and policies.
 
-.. _Bazaar Developer Guide: ../developer-guide/HACKING.html
+.. _Breezy Developer Guide: ../developer-guide/HACKING.html
