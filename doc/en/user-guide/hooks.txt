@@ -74,7 +74,7 @@ Debugging hooks
 To get a list of installed hooks (and available hook points), use the hidden
 ``hooks`` command::
 
-    bzr hooks
+    brz hooks
 
 
 Example: a merge plugin

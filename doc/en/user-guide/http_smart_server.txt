@@ -1,7 +1,7 @@
-Serving Bazaar with Apache
+Serving Breezy with Apache
 ==========================
 
-This document describes one way to set up a Bazaar HTTP smart server,
+This document describes one way to set up a Breezy HTTP smart server,
 using Apache 2.0 and FastCGI or mod_python or mod_wsgi.
 
 For more information on the smart server, and other ways to configure it
@@ -11,7 +11,7 @@ Example
 -------
 
 You have a webserver already publishing `/srv/example.com/www/code` as
-`http://example.com/code/...` with plain HTTP.  It contains bzr branches and
+`http://example.com/code/...` with plain HTTP.  It contains branches and
 directories like `/srv/example.com/www/code/branch-one` and
 `/srv/example.com/www/code/my-repo/branch-two`.  You want to provide read-only
 smart server access to these directories in addition to the existing HTTP
@@ -47,21 +47,21 @@ will look like::
         Options Indexes FollowSymLinks
         RewriteEngine On
         RewriteBase /code
-        RewriteRule ^(.*/)?\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
+        RewriteRule ^(.*/)?\.bzr/smart$ /srv/example.com/scripts/brz-smart.fcgi
     </Directory>
 
-    # bzr-smart.fcgi isn't under the DocumentRoot, so Alias it into the URL
+    # brz-smart.fcgi isn't under the DocumentRoot, so Alias it into the URL
     # namespace so it can be executed.
-    Alias /srv/example.com/scripts/bzr-smart.fcgi /srv/example.com/scripts/bzr-smart.fcgi
+    Alias /srv/example.com/scripts/brz-smart.fcgi /srv/example.com/scripts/brz-smart.fcgi
     <Directory /srv/example.com/scripts>
         Options ExecCGI
-        <Files bzr-smart.fcgi>
+        <Files brz-smart.fcgi>
             SetHandler fastcgi-script
         </Files>
     </Directory>
 
 This instructs Apache to hand requests for any URL ending with `/.bzr/smart`
-inside `/code` to a Bazaar smart server via FastCGI.
+inside `/code` to a Breezy smart server via FastCGI.
 
 Refer to the mod_rewrite_ and mod_fastcgi_ documentation for further
 information.
@@ -80,25 +80,25 @@ httpd.conf::
 Define the rewrite rules with mod_rewrite the same way as for FastCGI, except
 change::
 
-    RewriteRule ^(.*/)?\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
+    RewriteRule ^(.*/)?\.bzr/smart$ /srv/example.com/scripts/brz-smart.fcgi
 
 to::
 
-    RewriteRule ^(.*/)?\.bzr/smart$ /srv/example.com/scripts/bzr-smart.py
+    RewriteRule ^(.*/)?\.bzr/smart$ /srv/example.com/scripts/brz-smart.py
 
 Like with mod_fastcgi, we also define how our script is to be handled::
 
-    Alias /srv/example.com/scripts/bzr-smart.py /srv/example.com/scripts/bzr-smart.py
+    Alias /srv/example.com/scripts/brz-smart.py /srv/example.com/scripts/brz-smart.py
     <Directory /srv/example.com/scripts>
-        <Files bzr-smart.py>
+        <Files brz-smart.py>
             PythonPath "sys.path+['/srv/example.com/scripts']"
             AddHandler python-program .py
-            PythonHandler bzr-smart::handler
+            PythonHandler brz-smart::handler
         </Files>
     </Directory>
 
 This instructs Apache to hand requests for any URL ending with `/.bzr/smart`
-inside `/code` to a Bazaar smart server via mod_python.
+inside `/code` to a Breezy smart server via mod_python.
 
 NOTE: If you don't have brzlib in your PATH, you will be need to change the
 following line::
@@ -107,7 +107,7 @@ following line::
 
 To::
 
-            PythonPath "['/path/to/bzr']+sys.path+['/srv/example.com/scripts']"
+            PythonPath "['/path/to/brz']+sys.path+['/srv/example.com/scripts']"
 
 
 Refer to the mod_python_ documentation for further information.
@@ -122,7 +122,7 @@ First, configure mod_wsgi, e.g. enabling the mod with a2enmod wsgi.
 We need to change it to handle all requests for URLs ending in `.bzr/smart`.  It
 will look like::
 
-    WSGIScriptAliasMatch ^/code/.*/\.bzr/smart$ /srv/example.com/scripts/bzr.wsgi
+    WSGIScriptAliasMatch ^/code/.*/\.bzr/smart$ /srv/example.com/scripts/brz.wsgi
 
     #The three next lines allow regular GETs to work too
     RewriteEngine On
@@ -134,21 +134,21 @@ will look like::
     </Directory>
 
 This instructs Apache to hand requests for any URL ending with `/.bzr/smart`
-inside `/code` to a Bazaar smart server via WSGI, and any other URL inside
+inside `/code` to a Breezy smart server via WSGI, and any other URL inside
 `/code` to be served directly by Apache.
 
 Refer to the mod_wsgi_ documentation for further information.
 
 .. _mod_wsgi: http://code.google.com/p/modwsgi/
 
-Configuring Bazaar
+Configuring Breezy
 ------------------
 
 FastCGI
 ~~~~~~~
 
 We've configured Apache to run the smart server at
-`/srv/example.com/scripts/bzr-smart.fcgi`.  This is just a simple script we need
+`/srv/example.com/scripts/brz-smart.fcgi`.  This is just a simple script we need
 to write to configure a smart server, and glue it to the FastCGI gateway.
 Here's what it looks like::
 
@@ -174,7 +174,7 @@ mod_python
 ~~~~~~~~~~
 
 We've configured Apache to run the smart server at
-`/srv/example.com/scripts/bzr-smart.py`.  This is just a simple script we need
+`/srv/example.com/scripts/brz-smart.py`.  This is just a simple script we need
 to write to configure a smart server, and glue it to the mod_python gateway.
 Here's what it looks like::
 
@@ -197,7 +197,7 @@ Here's what it looks like::
 The `modpywsgi` module can be found at
 http://ice.usq.edu.au/svn/ice/trunk/apps/ice-server/modpywsgi.py. It was
 part of pocoo_. You sould make sure you place modpywsgi.py in the same
-directory as bzr-smart.py (ie. /srv/example.com/scripts/).
+directory as brz-smart.py (ie. /srv/example.com/scripts/).
 
 .. _pocoo: http://dev.pocoo.org/projects/pocoo/
 
@@ -206,7 +206,7 @@ mod_wsgi
 ~~~~~~~~
 
 We've configured Apache to run the smart server at
-`/srv/example.com/scripts/bzr.wsgi`.  This is just a simple script we need
+`/srv/example.com/scripts/brz.wsgi`.  This is just a simple script we need
 to write to configure a smart server, and glue it to the WSGI gateway.
 Here's what it looks like::
 
@@ -223,18 +223,18 @@ Here's what it looks like::
 Clients
 -------
 
-Now you can use `bzr+http://` URLs or just `http://` URLs, e.g.::
+Now you can use `brz+http://` URLs or just `http://` URLs, e.g.::
 
-    bzr log bzr+http://example.com/code/my-branch
+    brz log brz+http://example.com/code/my-branch
 
 Plain HTTP access should continue to work::
 
-    bzr log http://example.com/code/my-branch
+    brz log http://example.com/code/my-branch
 
 Advanced configuration
 ----------------------
 
-Because the Bazaar HTTP smart server is a WSGI application, it can be used with
+Because the Breezy HTTP smart server is a WSGI application, it can be used with
 any 3rd-party WSGI middleware or server that conforms the WSGI standard.  The
 only requirements are:
 
@@ -284,15 +284,15 @@ POST request.  However, it would certainly be possible to have HTTPS
 require authentication and use a writable server, and plain HTTP allow
 read-only access.
 
-If bzr gives an error like this when accessing your HTTPS site::
+If brz gives an error like this when accessing your HTTPS site::
 
-  bzr: ERROR: Connection error: curl connection error (server certificate verification failed.
+  brz: ERROR: Connection error: curl connection error (server certificate verification failed.
   CAfile:/etc/ssl/certs/ca-certificates.crt CRLfile: none)
 
 You can workaround it by using ``https+urllib`` rather than ``http`` in your
 URL, or by uninstalling pycurl.  See `bug 82086`_ for more details.
 
-.. _bug 82086: https://bugs.launchpad.net/bzr/+bug/82086
+.. _bug 82086: https://bugs.launchpad.net/brz/+bug/82086
 
 ..
    vim: ft=rst tw=74 et

@@ -21,12 +21,12 @@ given each time. An explicit list of files can still be given to these
 commands but the nominated files must be within the current view. In
 contrast, tree-centric commands - pull, merge, update, etc. - continue
 to operate on the whole tree but only report changes relevant to the
-current view. In both cases, Bazaar notifies the user each time it uses
+current view. In both cases, Breezy notifies the user each time it uses
 a view implicitly so that it is clear that the operation or output is
 being masked accordingly.
 
 Note: Filtered views are only supported in format 2a, the default in
-Bazaar 2.0, or later.
+Breezy 2.0, or later.
 
 
 Creating a view
@@ -35,7 +35,7 @@ Creating a view
 This is done by specifying the files and directories using the ``view``
 command like this::
 
-  bzr view file1 file2 dir1 ...
+  brz view file1 file2 dir1 ...
 
 The output is::
 
@@ -47,7 +47,7 @@ Listing the current view
 
 To see the current view, use the ``view`` command without arguments::
 
-  bzr view
+  brz view
 
 If no view is current, a message will be output saying ``No current view.``.
 Otherwise the name and content of the current view will be displayed
@@ -66,24 +66,24 @@ between them.
 
 To define a named view and switch to it::
 
-    bzr view --name view-name file1 dir1 ...
+    brz view --name view-name file1 dir1 ...
 
 For example::
 
-  bzr view --name doc NEWS doc/
+  brz view --name doc NEWS doc/
   Using doc view: NEWS, doc/
 
 To list a named view::
 
-  bzr view --name view-name
+  brz view --name view-name
 
 To switch to a named view::
 
-  bzr view --switch view-name
+  brz view --switch view-name
 
 To list all views defined::
 
-  bzr view --all
+  brz view --all
 
 
 Temporarily disabling a view
@@ -96,13 +96,13 @@ to your view after that.
 
 To disable the current view without deleting it::
 
-  bzr view --switch off
+  brz view --switch off
 
 After doing the operations you need to, you can switch back to the
 view you were using by name. For example, if the previous view used
 the default name::
 
-  bzr view --switch my
+  brz view --switch my
 
 
 Deleting views
@@ -110,15 +110,15 @@ Deleting views
 
 To delete the current view::
 
-  bzr view --delete
+  brz view --delete
 
 To delete a named view::
 
-  bzr view --name view-name --delete
+  brz view --name view-name --delete
 
 To delete all views::
 
-  bzr view --delete --all
+  brz view --delete --all
 
 
 Things to be aware of

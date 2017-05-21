@@ -1,5 +1,5 @@
 ===========================
-Using Bazaar with Launchpad
+Using Breezy with Launchpad
 ===========================
 
 
@@ -13,8 +13,8 @@ The team of people required to create the initial release
 of a piece of software may vary in size from one person
 to several thousand people. Depending on the requirements,
 the challenges involved, both technical and managerial,
-can be immense. As explained in the Bazaar User Guide, selecting
-"just right" processes and using tools like Bazaar to support
+can be immense. As explained in the Breezy User Guide, selecting
+"just right" processes and using tools like Breezy to support
 matching workflows can greatly help.
 
 Success with software though requires more than a great team - it
@@ -88,44 +88,14 @@ to the upstream development team. Keeping track of all that over time
 in a sustainable way is no easy task.
 
 
-Launchpad: More development, less friction
-------------------------------------------
-
-As well as sponsoring `Ubuntu <http://www.ubuntu.com>`_ and
-`Bazaar <http://bazaar.canonical.com>`_ development, Canonical
-provides Launchpad, <https://launchpad.net/>, as a free service
-for the community. Launchpad is one of the most
-exciting CDEs around for several notable reasons:
-
-* it models relationships between many of things tracked, e.g.
-  source code branches can be associated with bug fixes
-
-* as well as managing historical knowledge,
-  it supports future development planning and tracking by providing
-  features such as roadmaps, milestones and blueprints
-
-* it provides translation tools and packaging services so that
-  barriers are reduced for translators and testers wishing to
-  join your community and help out
-
-* it provides a nexus for different communities to work
-  together on related issues and roadmaps.
-
-In other words, Launchpad has been designed to help your
-community grow and to reduce the workflow friction both
-*within* your community and *between* communities. Ultimately,
-that means less time on mechanical tasks and more time for
-interesting development.
-
-
-Bazaar: Launchpad's VCS client
+Breezy: Launchpad's VCS client
 ------------------------------
 
-This tutorial looks at how Bazaar and Launchpad can be used together
+This tutorial looks at how Breezy and Launchpad can be used together
 and how they complement each other. It is important to remember that:
 
-1. Bazaar can be used without Launchpad
-2. Launchpad can be used without Bazaar.
+1. Breezy can be used without Launchpad
+2. Launchpad can be used without Breezy.
 
 By design though, their sum is greater than the individual
 parts.
@@ -157,9 +127,9 @@ be given a Status such as *New*, *Development*, *Mature* or
 
 Note: External branches can even be hosted in legacy version control
 tools, i.e. CVS and Subversion. Code in these systems will be
-scanned and converted to Bazaar branches on a periodic basis.
+scanned and converted to Breezy branches on a periodic basis.
 For maximum fidelity of course, it is preferable for external
-branches to be hosted in Bazaar.
+branches to be hosted in Breezy.
 
 
 Browsing branches
@@ -176,25 +146,25 @@ it easy to see things such as:
 * the source code of individual files for a given version.
 
 
-Accessing code in Launchpad using Bazaar
+Accessing code in Launchpad using Breezy
 ========================================
 
 Getting the code for a project
 ------------------------------
 
 As Launchpad keeps track of thousands of projects
-and their latest code whether it be managed by Bazaar, CVS or Subversion,
-Bazaar users can grab that code as easily as this::
+and their latest code whether it be managed by Breezy, CVS or Subversion,
+Breezy users can grab that code as easily as this::
 
-  bzr branch lp:project-name
+  brz branch lp:project-name
 
 where `project-name` is the Launchpad project ID. Here are some examples::
 
-  bzr branch lp:inkscape
-  bzr branch lp:amarok
-  bzr branch lp:python
-  bzr branch lp:rails
-  bzr branch lp:java-gnome
+  brz branch lp:inkscape
+  brz branch lp:amarok
+  brz branch lp:python
+  brz branch lp:rails
+  brz branch lp:java-gnome
 
 You can then browse the code locally using your favorite editor or IDE and
 change the code if you wish.
@@ -202,7 +172,7 @@ change the code if you wish.
 If a project has multiple series registered (e.g. a development series and a
 maintenance series), the latest code for a given series can be fetched using::
 
-  bzr branch lp:project-name/series
+  brz branch lp:project-name/series
 
 Publishing your changes
 -----------------------
@@ -210,20 +180,20 @@ Publishing your changes
 Having fixed that annoying bug or added that cool feature you've always
 wanted, it's time to impress your friends and make the world a better
 place by making your code available to others. As explained earlier,
-Launchpad is a free Bazaar code hosting service so you can push your
+Launchpad is a free Breezy code hosting service so you can push your
 branch to it and others can access your code from there. For example,
 assuming you are a member of the relevant team, login to launchpad like this::
 
-  bzr launchpad-login userid
+  brz launchpad-login userid
 
 where `userid` is your Launchpad user ID.
 You can then push your changes to a team branch like this::
 
-  bzr push lp:~team-name/project-name/branch-name
+  brz push lp:~team-name/project-name/branch-name
 
 Others can then download your code like this::
 
-  bzr branch lp:~team-name/project-name/branch-name
+  brz branch lp:~team-name/project-name/branch-name
 
 
 Personal branches
@@ -232,11 +202,11 @@ Personal branches
 Even if you are not a member of a team, Launchpad can be used to publish
 your changes. In this case, simply create a personal branch like this::
 
-  bzr push lp:~userid/project-name/branch-name
+  brz push lp:~userid/project-name/branch-name
 
 Others can then download your code like this::
 
-  bzr branch lp:~userid/project-name/branch-name
+  brz branch lp:~userid/project-name/branch-name
 
 Note: Even when publishing to a personal branch, it is polite to notify the
 upstream developers about your branch so they can pull your changes from
@@ -247,36 +217,36 @@ quality standards.
 Package source branches
 -----------------------
 
-When `maintaining packages for Ubuntu using Bazaar`_ you can easily access the
+When `maintaining packages for Ubuntu using Breezy`_ you can easily access the
 package's source branch on Launchpad.  The package's source branch in the
 current (default) series can be downloaded like this::
 
-  bzr branch ubuntu:package
+  brz branch ubuntu:package
 
 where *package* is the name of the Ubuntu package you want to access.  To
 download the package branch for a specific series in Ubuntu (e.g. Maverick or
 Lucid), use this::
 
-  bzr branch ubuntu:maverick/package
+  brz branch ubuntu:maverick/package
 
 Ubuntu distroseries can also be abbreviated to just their first letter.  For
 example, the above could also be written::
 
-  bzr branch ubuntu:m/package
+  brz branch ubuntu:m/package
 
 You can also download the package source branch from Launchpad for several
 Debian series.  The default series can be downloaded like this::
 
-  bzr branch debianlp:package
+  brz branch debianlp:package
 
 and a specific series can be downloaded like this::
 
-  bzr branch debianlp:lenny/package
+  brz branch debianlp:lenny/package
 
 Note that the ``debianlp:`` scheme access the Debian source branch for a
 package from Launchpad only.
 
-.. _`maintaining packages for Ubuntu using Bazaar`: https://wiki.ubuntu.com/DistributedDevelopment
+.. _`maintaining packages for Ubuntu using Breezy`: https://wiki.ubuntu.com/DistributedDevelopment
 
 
 Linking branches using Launchpad
@@ -306,14 +276,14 @@ If you wish, you can also provide some arbitrary comments about
 the relationship between the bug and the branch.
 
 
-Changing the state in Launchpad while committing in Bazaar
+Changing the state in Launchpad while committing in Breezy
 ----------------------------------------------------------
 
-Bazaar and Launchpad can work together to reduce some of
-the status housekeeping for you. When you commit using Bazaar,
+Breezy and Launchpad can work together to reduce some of
+the status housekeeping for you. When you commit using Breezy,
 use the --fixes option like this::
 
-  bzr commit --fixes lp:1234 -m "..."
+  brz commit --fixes lp:1234 -m "..."
 
 where 1234 is the bug ID. This will changes the State of the
 bug-branch relationship to *Fix Available*. If the one commit
@@ -387,7 +357,7 @@ Some of the steps involved may include:
 
 This section briefly looks at some of the features in Launchpad that
 help get good quality code into production. Strong integration with
-Bazaar is core to making this happen smoothly.
+Breezy is core to making this happen smoothly.
 
 Note: Where indicated, some of the features below are still under
 development. If one or more of these features interest you, please
@@ -464,21 +434,21 @@ to this is that the tools you choose for your community - particularly
 the CDE and version control tool - can have a large impact on who
 joins and how easily they can contribute.
 
-In their own right, Launchpad and Bazaar are highly useful tools.
+In their own right, Launchpad and Breezy are highly useful tools.
 Together, they can:
 
 * help your community track major assets such as source code and knowledge
 * help it grow by reducing barriers to entry
 * help it interact with related communities.
 
-In particular, Launchpad is a free code hosting service for your Bazaar
+In particular, Launchpad is a free code hosting service for your Breezy
 branches, branches can be browsed online, branches can be linked to bugs
 and blueprints, and the status of bug-branch relationships can be
-automatically managed by mentioning the bug while committing in Bazaar.
+automatically managed by mentioning the bug while committing in Breezy.
 Further integration is under development with the aim of streamlining
 the process from *great idea* to *running code in the hands of end users*.
 
-If you have any feedback on how you'd like to see Bazaar and Launchpad
+If you have any feedback on how you'd like to see Breezy and Launchpad
 further integrated, please contact us on the Bazaar mailing list,
 bazaar@lists.canonical.com.
 

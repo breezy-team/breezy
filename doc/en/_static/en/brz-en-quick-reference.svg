@@ -15,10 +15,10 @@
    sodipodi:version="0.32"
    inkscape:version="0.46"
    version="1.0"
-   sodipodi:docbase="/home/ian/bzr/repo.packs/bzr.quick-start-tweaks/doc/en/quick-reference"
+   sodipodi:docbase="/home/ian/brz/repo.packs/brz.quick-start-tweaks/doc/en/quick-reference"
    sodipodi:docname="quick-start-summary.svg"
    inkscape:output_extension="org.inkscape.output.svg.inkscape"
-   inkscape:export-filename="/home/iacobs/work/pers/bzr-quickref.png"
+   inkscape:export-filename="/home/iacobs/work/pers/brz-quickref.png"
    inkscape:export-xdpi="300"
    inkscape:export-ydpi="300">
   <defs
@@ -223,7 +223,7 @@
         <dc:language>en</dc:language>
         <dc:subject>
           <rdf:Bag>
-            <rdf:li>bzr</rdf:li>
+            <rdf:li>brz</rdf:li>
             <rdf:li>bazaar</rdf:li>
             <rdf:li>reference</rdf:li>
           </rdf:Bag>
@@ -299,7 +299,7 @@
              sodipodi:role="line"
              x="63.794312"
              y="193.07361"
-             id="tspan2171">bzr init myproject</tspan></text>
+             id="tspan2171">brz init myproject</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -329,11 +329,11 @@
              sodipodi:role="line"
              x="64.448624"
              y="237.53181"
-             id="tspan2179">bzr init</tspan><tspan
+             id="tspan2179">brz init</tspan><tspan
              sodipodi:role="line"
              x="64.448624"
              y="248.60515"
-             id="tspan2181">bzr add .</tspan><tspan
+             id="tspan2181">brz add .</tspan><tspan
              sodipodi:role="line"
              x="64.448624"
              y="259.67848"
@@ -363,7 +363,7 @@
              sodipodi:role="line"
              id="tspan2187"
              x="64.448624"
-             y="277.48495">bzr branch myproject newproject</tspan></text>
+             y="277.48495">brz branch myproject newproject</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -389,7 +389,7 @@
              sodipodi:role="line"
              id="tspan3406"
              x="64.448624"
-             y="308.44989">bzr checkout srcproject myproject</tspan></text>
+             y="308.44989">brz checkout srcproject myproject</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -415,7 +415,7 @@
              id="tspan3424"
              sodipodi:role="line"
              x="64.448624"
-             y="341.88864">bzr checkout --lightweight \</tspan><tspan
+             y="341.88864">brz checkout --lightweight \</tspan><tspan
              sodipodi:role="line"
              x="64.448624"
              y="352.96197"
@@ -475,11 +475,11 @@
              sodipodi:role="line"
              x="332.47345"
              y="191.36041"
-             id="tspan3612">bzr add foo.py</tspan><tspan
+             id="tspan3612">brz add foo.py</tspan><tspan
              id="tspan3618"
              sodipodi:role="line"
              x="332.47345"
-             y="202.43375">bzr add bar/</tspan></text>
+             y="202.43375">brz add bar/</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -505,7 +505,7 @@
              sodipodi:role="line"
              x="331.78732"
              y="233.11641"
-             id="tspan3624">bzr remove --keep foo.py</tspan></text>
+             id="tspan3624">brz remove --keep foo.py</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -531,7 +531,7 @@
              sodipodi:role="line"
              x="331.81714"
              y="264.08142"
-             id="tspan3634">bzr remove --no-backup foo.py</tspan></text>
+             id="tspan3634">brz remove --no-backup foo.py</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -586,7 +586,7 @@
              sodipodi:role="line"
              x="62.69976"
              y="441.34354"
-             id="tspan3236">bzr status</tspan></text>
+             id="tspan3236">brz status</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -612,11 +612,11 @@
              sodipodi:role="line"
              x="62.721241"
              y="472.84393"
-             id="tspan3250">bzr log</tspan><tspan
+             id="tspan3250">brz log</tspan><tspan
              id="tspan3294"
              sodipodi:role="line"
              x="62.721241"
-             y="483.91727">bzr log foo.py</tspan><tspan
+             y="483.91727">brz log foo.py</tspan><tspan
              sodipodi:role="line"
              x="62.721241"
              y="494.9906"
@@ -646,7 +646,7 @@
              sodipodi:role="line"
              id="tspan3262"
              x="63.354061"
-             y="517.29712">bzr diff</tspan></text>
+             y="517.29712">brz diff</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -672,7 +672,7 @@
              sodipodi:role="line"
              id="tspan3300"
              x="62.744678"
-             y="625.09357">bzr missing</tspan></text>
+             y="625.09357">brz missing</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -698,7 +698,7 @@
              sodipodi:role="line"
              id="tspan3310"
              x="62.756401"
-             y="687.57349">bzr cat -r3 foo.py</tspan></text>
+             y="687.57349">brz cat -r3 foo.py</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -724,7 +724,7 @@
              sodipodi:role="line"
              id="tspan3320"
              x="62.686089"
-             y="656.12701">bzr info</tspan></text>
+             y="656.12701">brz info</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -750,7 +750,7 @@
              sodipodi:role="line"
              id="tspan3332"
              x="62.879452"
-             y="548.74365">bzr diff foo.py</tspan></text>
+             y="548.74365">brz diff foo.py</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -776,7 +776,7 @@
              sodipodi:role="line"
              id="tspan3701"
              x="62.000679"
-             y="591.70862">bzr diff -r1..3 foo.py</tspan></text>
+             y="591.70862">brz diff -r1..3 foo.py</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -836,11 +836,11 @@
              sodipodi:role="line"
              x="559.03162"
              y="190.88873"
-             id="tspan4142">bzr commit foo.py -m &quot;foo&quot;</tspan><tspan
+             id="tspan4142">brz commit foo.py -m &quot;foo&quot;</tspan><tspan
              id="tspan4144"
              sodipodi:role="line"
              x="559.03162"
-             y="201.96207">bzr commit -m &quot;the rest&quot;</tspan></text>
+             y="201.96207">brz commit -m &quot;the rest&quot;</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -866,7 +866,7 @@
              sodipodi:role="line"
              x="558.37482"
              y="232.2924"
-             id="tspan4154">bzr uncommit</tspan></text>
+             id="tspan4154">brz uncommit</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -892,7 +892,7 @@
              sodipodi:role="line"
              x="558.37488"
              y="263.73889"
-             id="tspan4164">bzr revert</tspan></text>
+             id="tspan4164">brz revert</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -952,11 +952,11 @@
              sodipodi:role="line"
              x="783.75751"
              y="203.02624"
-             id="tspan4296">bzr merge ../myproject-foo</tspan><tspan
+             id="tspan4296">brz merge ../myproject-foo</tspan><tspan
              sodipodi:role="line"
              x="783.75751"
              y="214.09958"
-             id="tspan4298">bzr commit</tspan></text>
+             id="tspan4298">brz commit</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -986,7 +986,7 @@
              sodipodi:role="line"
              x="784.44696"
              y="256.47264"
-             id="tspan4258">bzr pull ../myproject</tspan><tspan
+             id="tspan4258">brz pull ../myproject</tspan><tspan
              sodipodi:role="line"
              x="784.44696"
              y="267.54597"
@@ -1016,7 +1016,7 @@
              sodipodi:role="line"
              id="tspan4270"
              x="784.4118"
-             y="289.69043">bzr update</tspan></text>
+             y="289.69043">brz update</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -1042,7 +1042,7 @@
              sodipodi:role="line"
              id="tspan4280"
              x="785.45477"
-             y="320.70923">bzr resolve</tspan></text>
+             y="320.70923">brz resolve</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -1068,7 +1068,7 @@
              id="tspan4290"
              sodipodi:role="line"
              x="784.65204"
-             y="352.20935">bzr resolve foo.py</tspan></text>
+             y="352.20935">brz resolve foo.py</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -1124,7 +1124,7 @@
              sodipodi:role="line"
              x="781.75745"
              y="475.58072"
-             id="tspan4618">bzr push sftp://host/myproject-fo1</tspan></text>
+             id="tspan4618">brz push sftp://host/myproject-fo1</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -1150,7 +1150,7 @@
              sodipodi:role="line"
              x="782.38519"
              y="440.54575"
-             id="tspan4459">bzr push ../myproject-fo1</tspan></text>
+             id="tspan4459">brz push ../myproject-fo1</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -1176,7 +1176,7 @@
              id="tspan8805"
              sodipodi:role="line"
              x="782.40674"
-             y="505.56467">bzr send</tspan><tspan
+             y="505.56467">brz send</tspan><tspan
              sodipodi:role="line"
              x="782.40674"
              y="516.638"
@@ -1206,7 +1206,7 @@
              sodipodi:role="line"
              id="tspan4483"
              x="783.03955"
-             y="562.4187">bzr export ../myproject-dist/</tspan></text>
+             y="562.4187">brz export ../myproject-dist/</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -1236,7 +1236,7 @@
              sodipodi:role="line"
              id="tspan4523"
              x="782.565"
-             y="605.85291">bzr export ../myproject-dist.zip</tspan></text>
+             y="605.85291">brz export ../myproject-dist.zip</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -1266,7 +1266,7 @@
              id="tspan2450"
              sodipodi:role="line"
              x="782.40674"
-             y="505.56467">bzr send -o ../base.patch</tspan><tspan
+             y="505.56467">brz send -o ../base.patch</tspan><tspan
              sodipodi:role="line"
              x="782.40674"
              y="516.638"
@@ -1299,7 +1299,7 @@
        style="display:inline"
        id="g3653"
        transform="matrix(0.6461515,0,0,0.6526216,160.93614,144.01237)"
-       inkscape:export-filename="/home/matt/Projects/Ubuntu/Bazaar Website/bzr icon 64.png"
+       inkscape:export-filename="/home/matt/Projects/Ubuntu/Bazaar Website/brz icon 64.png"
        inkscape:export-xdpi="45.012665"
        inkscape:export-ydpi="45.012665">
       <path
@@ -1363,11 +1363,11 @@
              sodipodi:role="line"
              id="tspan8843"
              x="299.33002"
-             y="565.94214">bzr://</tspan><tspan
+             y="565.94214">brz://</tspan><tspan
              sodipodi:role="line"
              x="299.33002"
              y="583.94214"
-             id="tspan10799">bzr+ssh://</tspan><tspan
+             id="tspan10799">brz+ssh://</tspan><tspan
              sodipodi:role="line"
              id="tspan8847"
              x="299.33002"
@@ -1575,7 +1575,7 @@
              sodipodi:role="line"
              id="tspan6300"
              x="787.72699"
-             y="76.095581">bzr help</tspan></text>
+             y="76.095581">brz help</tspan></text>
         <a
            id="a6316"
            style="fill:#333333;fill-opacity:1"
