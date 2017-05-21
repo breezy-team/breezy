@@ -38,8 +38,8 @@ from optparse import OptionParser
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-import brzlib
-from brzlib import (
+import breezy
+from breezy import (
     commands,
     # Don't remove the following import, it triggers a format registration that
     # avoid http://pad.lv/956860
@@ -79,7 +79,7 @@ Available OUTPUT_FORMAT:
         parser.print_help()
         sys.exit(1)
 
-    with brzlib.initialize():
+    with breezy.initialize():
         commands.install_bzr_command_hooks()
         infogen_type = args[1]
         infogen_mod = doc_generate.get_module(infogen_type)

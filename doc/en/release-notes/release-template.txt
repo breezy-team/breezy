@@ -35,7 +35,7 @@ API Changes
 ***********
 
 .. Changes that may require updates in plugins or other code that uses
-   brzlib.
+   breezy.
 
 Internals
 *********

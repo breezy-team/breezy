@@ -31,7 +31,7 @@ Add a new option
 ----------------
 
 You add a new ``Option`` to the ``option_registry``, either inside
-``brzlib/config.py`` or during initialization of your plugin (use
+``breezy/config.py`` or during initialization of your plugin (use
 ``register_lazy`` in this case). New plugins should have systematic
 hierarchical names so that related values are grouped together::
 
@@ -310,7 +310,7 @@ inside the section that defines them.
 Specific section matchers can be implemented by overriding ``get_sections``
 or just ``match``.
 
-``brzlib`` provides:
+``breezy`` provides:
 
 * ``NameMatcher(store, unique_id)``: To select a single section matching
   ``unique_id``.
@@ -326,7 +326,7 @@ Stacks
 
 An option can take different values depending on the context it is
 used. This can involve configuration files, options from the command line,
-default values in brzlib and then some.
+default values in breezy and then some.
 
 Such a context is implemented by creating a list of ``Section`` stacked upon
 each other. A ``Stack`` can then be asked for an option value and returns the
@@ -361,6 +361,6 @@ Also note that ``MemoryStack`` can be used without any disk resources which
 allows for simpler and faster tests. A common pattern is to accept a
 ``config`` parameter related to a given feature and test it with predefined
 configurations without involving the whole
-stack. ``brzlib.tests.test_commit``, ``brzlib.tests.test_gpg`` and
-``brzlib.tests.test_smtp_connection`` are good examples.
+stack. ``breezy.tests.test_commit``, ``breezy.tests.test_gpg`` and
+``breezy.tests.test_smtp_connection`` are good examples.
 

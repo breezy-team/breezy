@@ -19,7 +19,7 @@ if sys.version_info < (2, 6):
 # NOTE: The directory containing setup.py, whether run by 'python setup.py' or
 # './setup.py' or the equivalent with another path, should always be at the
 # start of the path, so this should find the right one...
-import brzlib
+import breezy
 
 def get_long_description():
     dirname = os.path.dirname(__file__)
@@ -36,7 +36,7 @@ def get_long_description():
 # see http://docs.python.org/dist/meta-data.html
 META_INFO = {
     'name':         'brz',
-    'version':      brzlib.__version__,
+    'version':      breezy.__version__,
     'author':       'Canonical Ltd',
     'author_email': 'bazaar@lists.canonical.com',
     'maintainer':   'Breezy Developers',
@@ -65,7 +65,7 @@ META_INFO = {
 BZRLIB = {}
 
 PKG_DATA = {# install files from selftest suite
-            'package_data': {'brzlib': ['doc/api/*.txt',
+            'package_data': {'breezy': ['doc/api/*.txt',
                                         'tests/test_patches_data/*',
                                         'help_topics/en/*.txt',
                                         'tests/ssl_certs/ca.crt',
@@ -75,33 +75,33 @@ PKG_DATA = {# install files from selftest suite
                                        ]},
            }
 I18N_FILES = []
-for filepath in glob.glob("brzlib/locale/*/LC_MESSAGES/*.mo"):
-    langfile = filepath[len("brzlib/locale/"):]
+for filepath in glob.glob("breezy/locale/*/LC_MESSAGES/*.mo"):
+    langfile = filepath[len("breezy/locale/"):]
     targetpath = os.path.dirname(os.path.join("share/locale", langfile))
     I18N_FILES.append((targetpath, [filepath]))
 
-def get_brzlib_packages():
-    """Recurse through the brzlib directory, and extract the package names"""
+def get_breezy_packages():
+    """Recurse through the breezy directory, and extract the package names"""
 
     packages = []
-    base_path = os.path.dirname(os.path.abspath(brzlib.__file__))
+    base_path = os.path.dirname(os.path.abspath(breezy.__file__))
     for root, dirs, files in os.walk(base_path):
         if '__init__.py' in files:
             assert root.startswith(base_path)
-            # Get just the path below brzlib
+            # Get just the path below breezy
             package_path = root[len(base_path):]
             # Remove leading and trailing slashes
             package_path = package_path.strip('\\/')
             if not package_path:
-                package_name = 'brzlib'
+                package_name = 'breezy'
             else:
-                package_name = ('brzlib.' +
+                package_name = ('breezy.' +
                             package_path.replace('/', '.').replace('\\', '.'))
             packages.append(package_name)
     return sorted(packages)
 
 
-BZRLIB['packages'] = get_brzlib_packages()
+BZRLIB['packages'] = get_breezy_packages()
 
 
 from distutils import log
@@ -146,7 +146,7 @@ class my_install_scripts(install_scripts):
             return path
 
     def _win_batch_args(self):
-        from brzlib.win32utils import winver
+        from breezy.win32utils import winver
         if winver == 'Windows NT':
             return '%*'
         else:
@@ -174,7 +174,7 @@ class bzr_build(build):
 ## Setup
 ########################
 
-from brzlib.bzr_distutils import build_mo
+from breezy.bzr_distutils import build_mo
 
 command_classes = {'install_scripts': my_install_scripts,
                    'build': bzr_build,
@@ -288,18 +288,18 @@ def add_pyrex_extension(module_name, libraries=None, extra_source=[]):
         define_macros=define_macros, libraries=libraries))
 
 
-add_pyrex_extension('brzlib._annotator_pyx')
-add_pyrex_extension('brzlib._bencode_pyx')
-add_pyrex_extension('brzlib._chunks_to_lines_pyx')
-add_pyrex_extension('brzlib._groupcompress_pyx',
-                    extra_source=['brzlib/diff-delta.c'])
-add_pyrex_extension('brzlib._knit_load_data_pyx')
-add_pyrex_extension('brzlib._known_graph_pyx')
-add_pyrex_extension('brzlib._rio_pyx')
+add_pyrex_extension('breezy._annotator_pyx')
+add_pyrex_extension('breezy._bencode_pyx')
+add_pyrex_extension('breezy._chunks_to_lines_pyx')
+add_pyrex_extension('breezy._groupcompress_pyx',
+                    extra_source=['breezy/diff-delta.c'])
+add_pyrex_extension('breezy._knit_load_data_pyx')
+add_pyrex_extension('breezy._known_graph_pyx')
+add_pyrex_extension('breezy._rio_pyx')
 if sys.platform == 'win32':
-    add_pyrex_extension('brzlib._dirstate_helpers_pyx',
+    add_pyrex_extension('breezy._dirstate_helpers_pyx',
                         libraries=['Ws2_32'])
-    add_pyrex_extension('brzlib._walkdirs_win32')
+    add_pyrex_extension('breezy._walkdirs_win32')
 else:
     if have_pyrex and pyrex_version_info == LooseVersion("0.9.4.1"):
         # Pyrex 0.9.4.1 fails to compile this extension correctly
@@ -308,17 +308,17 @@ else:
         # which is NULL safe with PY_DECREF which is not.)
         # <https://bugs.launchpad.net/bzr/+bug/449372>
         # <https://bugs.launchpad.net/bzr/+bug/276868>
-        print('Cannot build extension "brzlib._dirstate_helpers_pyx" using')
+        print('Cannot build extension "breezy._dirstate_helpers_pyx" using')
         print('your version of pyrex "%s". Please upgrade your pyrex'
               % (pyrex_version,))
         print('install. For now, the non-compiled (python) version will')
         print('be used instead.')
     else:
-        add_pyrex_extension('brzlib._dirstate_helpers_pyx')
-    add_pyrex_extension('brzlib._readdir_pyx')
-add_pyrex_extension('brzlib._chk_map_pyx')
-ext_modules.append(Extension('brzlib._patiencediff_c',
-                             ['brzlib/_patiencediff_c.c']))
+        add_pyrex_extension('breezy._dirstate_helpers_pyx')
+    add_pyrex_extension('breezy._readdir_pyx')
+add_pyrex_extension('breezy._chk_map_pyx')
+ext_modules.append(Extension('breezy._patiencediff_c',
+                             ['breezy/_patiencediff_c.c']))
 if have_pyrex and pyrex_version_info < LooseVersion("0.9.6.3"):
     print("")
     print('Your Pyrex/Cython version %s is too old to build the simple_set' % (
@@ -330,10 +330,10 @@ if have_pyrex and pyrex_version_info < LooseVersion("0.9.6.3"):
 else:
     # We only need 0.9.6.3 to build _simple_set_pyx, but static_tuple depends
     # on simple_set
-    add_pyrex_extension('brzlib._simple_set_pyx')
-    ext_modules.append(Extension('brzlib._static_tuple_c',
-                                 ['brzlib/_static_tuple_c.c']))
-add_pyrex_extension('brzlib._btree_serializer_pyx')
+    add_pyrex_extension('breezy._simple_set_pyx')
+    ext_modules.append(Extension('breezy._static_tuple_c',
+                                 ['breezy/_static_tuple_c.c']))
+add_pyrex_extension('breezy._btree_serializer_pyx')
 
 
 if unavailable_files:
@@ -363,14 +363,14 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     # TBZR points to the TBZR directory
     tbzr_root = os.environ["TBZR"]
 
-    # Ensure tbrzlib itself is on sys.path
+    # Ensure tbreezy itself is on sys.path
     sys.path.append(tbzr_root)
 
-    packages.append("tbrzlib")
+    packages.append("tbreezy")
 
     # collect up our icons.
     cwd = os.getcwd()
-    ico_root = os.path.join(tbzr_root, 'tbrzlib', 'resources')
+    ico_root = os.path.join(tbzr_root, 'tbreezy', 'resources')
     icos = [] # list of (path_root, relative_ico_path)
     # First always brz's icon and its in the root of the brz tree.
     icos.append(('', 'brz.ico'))
@@ -524,7 +524,7 @@ if 'bdist_wininst' in sys.argv:
 
     ARGS.update(META_INFO)
     ARGS.update(BZRLIB)
-    PKG_DATA['package_data']['brzlib'].append('locale/*/LC_MESSAGES/*.mo')
+    PKG_DATA['package_data']['breezy'].append('locale/*/LC_MESSAGES/*.mo')
     ARGS.update(PKG_DATA)
 
     setup(**ARGS)
@@ -534,10 +534,10 @@ elif 'py2exe' in sys.argv:
     import py2exe
 
     # pick real brz version
-    import brzlib
+    import breezy
 
     version_number = []
-    for i in brzlib.version_info[:4]:
+    for i in breezy.version_info[:4]:
         try:
             i = int(i)
         except ValueError:
@@ -590,10 +590,10 @@ elif 'py2exe' in sys.argv:
     gui_target.dest_base = "bzrw"
 
     packages = BZRLIB['packages']
-    packages.remove('brzlib')
-    packages = [i for i in packages if not i.startswith('brzlib.plugins')]
+    packages.remove('breezy')
+    packages = [i for i in packages if not i.startswith('breezy.plugins')]
     includes = []
-    for i in glob.glob('brzlib\\*.py'):
+    for i in glob.glob('breezy\\*.py'):
         module = i[:-3].replace('\\', '.')
         if module.endswith('__init__'):
             module = module[:-len('__init__')]
@@ -634,7 +634,7 @@ elif 'py2exe' in sys.argv:
         excludes.append("email.MIME" + oldname)
 
     # text files for help topis
-    text_topics = glob.glob('brzlib/help_topics/en/*.txt')
+    text_topics = glob.glob('breezy/help_topics/en/*.txt')
     topics_files = [('lib/help_topics/en', text_topics)]
 
     # built-in plugins
@@ -643,8 +643,8 @@ elif 'py2exe' in sys.argv:
     # which hard-codes the list of plugins, gets more upset if modules are
     # missing, etc?
     plugins = None # will be a set after plugin sniffing...
-    for root, dirs, files in os.walk('brzlib/plugins'):
-        if root == 'brzlib/plugins':
+    for root, dirs, files in os.walk('breezy/plugins'):
+        if root == 'breezy/plugins':
             plugins = set(dirs)
             # We ship plugins as normal files on the file-system - however,
             # the build process can cause *some* of these plugin files to end
@@ -652,7 +652,7 @@ elif 'py2exe' in sys.argv:
             # library.zip, and then saw import errors related to that as the
             # rest of the svn plugin wasn't. So we tell py2exe to leave the
             # plugins out of the .zip file
-            excludes.extend(["brzlib.plugins." + d for d in dirs])
+            excludes.extend(["breezy.plugins." + d for d in dirs])
         x = []
         for i in files:
             # Throw away files we don't want packaged. Note that plugins may
@@ -661,16 +661,16 @@ elif 'py2exe' in sys.argv:
             ext = os.path.splitext(i)[1]
             if ext.endswith('~') or ext in [".pyc", ".swp"]:
                 continue
-            if i == '__init__.py' and root == 'brzlib/plugins':
+            if i == '__init__.py' and root == 'breezy/plugins':
                 continue
             x.append(os.path.join(root, i))
         if x:
-            target_dir = root[len('brzlib/'):]  # install to 'plugins/...'
+            target_dir = root[len('breezy/'):]  # install to 'plugins/...'
             plugins_files.append((target_dir, x))
     # find modules for built-in plugins
     import tools.package_mf
     mf = tools.package_mf.CustomModuleFinder()
-    mf.run_package('brzlib/plugins')
+    mf.run_package('breezy/plugins')
     packs, mods = mf.get_result()
     additional_packages.update(packs)
     includes.extend(mods)

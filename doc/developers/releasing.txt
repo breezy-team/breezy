@@ -178,7 +178,7 @@ To start a new release cycle:
     for more details on PQM
 
 #. Update the version number in the ``brz`` script, and the
-   ``brzlib/__init__.py`` file::
+   ``breezy/__init__.py`` file::
    
        version_info = (x, y, z, 'dev', 0)
    
@@ -219,7 +219,7 @@ Update the source code
    their duties ;) If you feel unsafe resolving the conflicts or it's too
    time consuming, contact the related devs and skip this merge.
  
-#. In the release branch, update  ``version_info`` in ``./brzlib/__init__.py``.
+#. In the release branch, update  ``version_info`` in ``./breezy/__init__.py``.
    Make sure the corresponding milestone exists.
    Double check that ./brz ``_script_version`` matches ``version_info``. Check
    the output of ``./brz --version``.
@@ -294,9 +294,9 @@ Update the source code
 
    The diff before you commit will be something like::
 
-      === modified file 'brzlib/__init__.py'
-      --- brzlib/__init__.py	2011-02-09 06:35:00 +0000
-      +++ brzlib/__init__.py	2011-03-10 10:24:47 +0000
+      === modified file 'breezy/__init__.py'
+      --- breezy/__init__.py	2011-02-09 06:35:00 +0000
+      +++ breezy/__init__.py	2011-03-10 10:24:47 +0000
       @@ -52,7 +52,7 @@
        # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
        # releaselevel of 'dev' for unreleased under-development code.
@@ -446,7 +446,7 @@ file correctly, so the sooner the branch is opened again, the better.
 This matters more for ``lp:brz`` than for ``lp:brz/x.y``, ``lp:brz`` should
 always be open for landing, so you should do `At the start of a release
 cycle`_ as soon as possible (i.e. update the version number in ``brz`` and
-``brzlib/__init__``, create/update the news files and create/update the
+``breezy/__init__``, create/update the news files and create/update the
 milestone for the next relase).
 
 You may also need to do `At the start of a series cycle`_ if you're starting
@@ -688,7 +688,7 @@ changes should be merged into the right place because each release series
 has its own release-notes file, but double-check.
 
 If it's not already done, advance the version number in ``brz`` and
-``brzlib/__init__.py``.  Submit this back into pqm for brz.dev.
+``breezy/__init__.py``.  Submit this back into pqm for brz.dev.
 
 As soon as you change the version number in trunk, make sure you have
 created the corresponding milestone to ensure the continuity in bug

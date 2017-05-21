@@ -1,7 +1,7 @@
 # (c) Canonical Ltd, 2006
 # written by Alexander Belchenko for brz project
 #
-# This script will be executed after installation of brzlib package
+# This script will be executed after installation of breezy package
 # and before installer exits.
 # All printed data will appear on the last screen of installation
 # procedure.
@@ -22,7 +22,7 @@ import os
 import sys
 import _winreg
 
-from brzlib import win32utils
+from breezy import win32utils
 
 
 def _quoted_path(path):
@@ -41,11 +41,11 @@ def _win_batch_args():
 if "-install" in sys.argv[1:]:
     # try to detect version number automatically
     try:
-        import brzlib
+        import breezy
     except ImportError:
         ver = ''
     else:
-        ver = brzlib.__version__
+        ver = breezy.__version__
 
     ##
     # XXX change message for something more appropriate

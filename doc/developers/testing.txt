@@ -98,7 +98,7 @@ the --starting-with option will run only the tests whose name starts with the
 specified string. It will also avoid loading the other tests and as a
 consequence starts running your tests quicker::
 
-  ./brz selftest --starting-with brzlib.blackbox
+  ./brz selftest --starting-with breezy.blackbox
 
 This option can be combined with all the other selftest options including
 --load-list. The later is rarely used but allows to run a subset of a list of
@@ -229,7 +229,7 @@ in Breezy.
 Where should I put a new test?
 ------------------------------
 
-brzlib's tests are organised by the type of test.  Most of the tests in
+breezy's tests are organised by the type of test.  Most of the tests in
 brz's test suite belong to one of these categories:
 
  - Unit tests
@@ -237,7 +237,7 @@ brz's test suite belong to one of these categories:
  - Per-implementation tests
  - Doctests
 
-A quick description of these test types and where they belong in brzlib's
+A quick description of these test types and where they belong in breezy's
 source follows.  Not all tests fall neatly into one of these categories;
 in those cases use your judgement.
 
@@ -250,12 +250,12 @@ focused on exercising a single, specific unit of the code as directly
 as possible.  Each unit test is generally fairly short and runs very
 quickly.
 
-They are found in ``brzlib/tests/test_*.py``.  So in general tests should
+They are found in ``breezy/tests/test_*.py``.  So in general tests should
 be placed in a file named test_FOO.py where FOO is the logical thing under
 test.
 
-For example, tests for merge3 in brzlib belong in brzlib/tests/test_merge3.py.
-See brzlib/tests/test_sampler.py for a template test script.
+For example, tests for merge3 in breezy belong in breezy/tests/test_merge3.py.
+See breezy/tests/test_sampler.py for a template test script.
 
 
 Blackbox (UI) tests
@@ -266,12 +266,12 @@ Choose whichever is appropriate: if adding a new command, or a new command
 option, then you should be writing a UI test.  If you are both adding UI
 functionality and library functionality, you will want to write tests for
 both the UI and the core behaviours.  We call UI tests 'blackbox' tests
-and they belong in ``brzlib/tests/blackbox/*.py``.
+and they belong in ``breezy/tests/blackbox/*.py``.
 
 When writing blackbox tests please honour the following conventions:
 
  1. Place the tests for the command 'name' in
-    brzlib/tests/blackbox/test_name.py. This makes it easy for developers
+    breezy/tests/blackbox/test_name.py. This makes it easy for developers
     to locate the test script for a faulty command.
 
  2. Use the 'self.run_brz("name")' utility function to invoke the command
@@ -280,7 +280,7 @@ When writing blackbox tests please honour the following conventions:
     subprocesses and generates the same logging output as running it in a
     subprocess (which invoking the method directly does not).
 
- 3. Only test the one command in a single test script. Use the brzlib
+ 3. Only test the one command in a single test script. Use the breezy
     library when setting up tests and when evaluating the side-effects of
     the command. We do this so that the library api has continual pressure
     on it to be as functional as the command line in a simple manner, and
@@ -300,17 +300,17 @@ Per-implementation tests are tests that are defined once and then run
 against multiple implementations of an interface.  For example,
 ``per_transport.py`` defines tests that all Transport implementations
 (local filesystem, HTTP, and so on) must pass. They are found in
-``brzlib/tests/per_*/*.py``, and ``brzlib/tests/per_*.py``.
+``breezy/tests/per_*/*.py``, and ``breezy/tests/per_*.py``.
 
 These are really a sub-category of unit tests, but an important one.
 
 Along the same lines are tests for extension modules. We generally have
 both a pure-python and a compiled implementation for each module. As such,
 we want to run the same tests against both implementations. These can
-generally be found in ``brzlib/tests/*__*.py`` since extension modules are
+generally be found in ``breezy/tests/*__*.py`` since extension modules are
 usually prefixed with an underscore. Since there are only two
 implementations, we have a helper function
-``brzlib.tests.permute_for_extension``, which can simplify the
+``breezy.tests.permute_for_extension``, which can simplify the
 ``load_tests`` implementation.
 
 
@@ -326,12 +326,12 @@ doctests are not as well isolated as the unit tests, if you need more
 isolation, you're likely want to write unit tests anyway if only to get a
 better control of the test environment.
 
-Most of these are in ``brzlib/doc/api``.  More additions are welcome.
+Most of these are in ``breezy/doc/api``.  More additions are welcome.
 
   __ http://docs.python.org/lib/module-doctest.html
 
 There is an `assertDoctestExampleMatches` method in
-`brzlib.tests.TestCase` that allows you to match against doctest-style
+`breezy.tests.TestCase` that allows you to match against doctest-style
 string templates (including ``...`` to skip sections) from regular Python
 tests.
 
@@ -339,7 +339,7 @@ tests.
 Shell-like tests
 ----------------
 
-``brzlib/tests/script.py`` allows users to write tests in a syntax very
+``breezy/tests/script.py`` allows users to write tests in a syntax very
 close to a shell session, using a restricted and limited set of commands
 that should be enough to mimic most of the behaviours.
 
@@ -442,7 +442,7 @@ where ``<script>`` is the path to the file containing the shell-like script.
 The actual use of ScriptRunner within a TestCase looks something like
 this::
 
-    from brzlib.tests import script
+    from breezy.tests import script
 
     def test_unshelve_keep(self):
         # some setup here
@@ -487,7 +487,7 @@ irrelevant, the run_script() method may be passed the keyword argument
 Import tariff tests
 -------------------
 
-`brzlib.tests.test_import_tariff` has some tests that measure how many
+`breezy.tests.test_import_tariff` has some tests that measure how many
 Python modules are loaded to run some representative commands.
 
 We want to avoid loading code unnecessarily, for reasons including:
@@ -545,7 +545,7 @@ In order to test the locking behaviour of commands, it is possible to install
 a hook that is called when a write lock is: acquired, released or broken.
 (Read locks also exist, they cannot be discovered in this way.)
 
-A hook can be installed by calling brzlib.lock.Lock.hooks.install_named_hook.
+A hook can be installed by calling breezy.lock.Lock.hooks.install_named_hook.
 The three valid hooks are: `lock_acquired`, `lock_released` and `lock_broken`.
 
 Example::
@@ -572,7 +572,7 @@ To test if a lock is a write lock on a working tree, one can do the following::
 
     self.assertEndsWith(locks_acquired[0].lock_url, "/checkout/lock")
 
-See brzlib/tests/commands/test_revert.py for an example of how to use this for
+See breezy/tests/commands/test_revert.py for an example of how to use this for
 testing locks.
 
 
@@ -686,7 +686,7 @@ The old naming style for features is CamelCase, but because they're
 actually instances not classses they're now given instance-style names
 like ``apport``.
 
-Features already defined in ``brzlib.tests`` and ``brzlib.tests.features``
+Features already defined in ``breezy.tests`` and ``breezy.tests.features``
 include:
 
  - apport
@@ -707,7 +707,7 @@ Defining a new feature that tests can require
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 New features for use with ``_test_needs_features`` or ``requireFeature``
-are defined by subclassing ``brzlib.tests.Feature`` and overriding the
+are defined by subclassing ``breezy.tests.Feature`` and overriding the
 ``_probe`` and ``feature_name`` methods.  For example::
 
     class _SymlinkFeature(Feature):
@@ -723,14 +723,14 @@ are defined by subclassing ``brzlib.tests.Feature`` and overriding the
 A helper for handling running tests based on whether a python
 module is available. This can handle 3rd-party dependencies (is
 ``paramiko`` available?) as well as stdlib (``termios``) or
-extension modules (``brzlib._groupcompress_pyx``). You create a
+extension modules (``breezy._groupcompress_pyx``). You create a
 new feature instance with::
 
-    # in brzlib/tests/features.py
+    # in breezy/tests/features.py
     apport = tests.ModuleAvailableFeature('apport')
 
 
-    # then in brzlib/tests/test_apport.py
+    # then in breezy/tests/test_apport.py
     class TestApportReporting(TestCaseInTempDir):
 
         _test_needs_features = [features.apport]
@@ -764,7 +764,7 @@ during test runs.
 Typically patches that apply the ``@deprecated_function`` decorator should
 update the accompanying tests to use the ``applyDeprecated`` wrapper.
 
-``applyDeprecated`` is defined in ``brzlib.tests.TestCase``. See the API
+``applyDeprecated`` is defined in ``breezy.tests.TestCase``. See the API
 docs for more details.
 
 
@@ -830,7 +830,7 @@ In these cases we want to make sure that every implementation correctly
 fulfils the interface requirements.  For example, every Transport should
 support the ``has()`` and ``get()`` and ``clone()`` methods.  We have a
 sub-suite of tests in ``test_transport_implementations``.  (Most
-per-implementation tests are in submodules of ``brzlib.tests``, but not
+per-implementation tests are in submodules of ``breezy.tests``, but not
 the transport tests at the moment.)
 
 These tests are repeated for each registered Transport, by generating a
@@ -892,7 +892,7 @@ performance benefits.
 TestCase and its subclasses
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The ``brzlib.tests`` module defines many TestCase classes to help you
+The ``breezy.tests`` module defines many TestCase classes to help you
 write your tests.
 
 TestCase
@@ -905,7 +905,7 @@ TestCase
     interfere with your test.  All tests should use this base class
     (whether directly or via a subclass).  Note that we are trying not to
     add more assertions at this point, and instead to build up a library
-    of ``brzlib.tests.matchers``.
+    of ``breezy.tests.matchers``.
 
 TestCaseWithMemoryTransport
     Extends TestCase and adds methods like ``get_transport``,
@@ -957,7 +957,7 @@ the changes in memory, rather than on disk. Tests that are explictly
 testing how we work with disk objects should, of course, use a real
 ``WorkingTree``.
 
-Please see brzlib.branchbuilder for more details.
+Please see breezy.branchbuilder for more details.
 
 If you're going to examine the commit timestamps e.g. in a test for log
 output, you should set the timestamp on the tree, rather than using fuzzy
@@ -981,7 +981,7 @@ Usually a test will create a tree using ``make_branch_and_memory_tree`` (a
 method of ``TestCaseWithMemoryTransport``) or ``make_branch_and_tree`` (a
 method of ``TestCaseWithTransport``).
 
-Please see brzlib.treebuilder for more details.
+Please see breezy.treebuilder for more details.
 
 PreviewTree
 ~~~~~~~~~~~
@@ -1058,7 +1058,7 @@ special ``None`` value::
 If you add a new feature which depends on a new environment variable, make
 sure it behaves properly when this variable is not defined (if applicable) and
 if you need to enforce a specific default value, check the
-``TestCase._cleanEnvironment`` in ``brzlib.tests.__init__.py`` which defines a
+``TestCase._cleanEnvironment`` in ``breezy.tests.__init__.py`` which defines a
 proper set of values for all tests.
 
 Cleaning up
@@ -1070,7 +1070,7 @@ test finishes, regardless of whether it passes or fails.  If one cleanup
 fails, later cleanups are still run.
 
 (The same facility is available outside of tests through
-``brzlib.cleanup``.)
+``breezy.cleanup``.)
 
 
 Manual testing

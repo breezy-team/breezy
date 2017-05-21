@@ -68,53 +68,53 @@ warnings.filterwarnings('ignore',
     )
 
 
-# instruct brzlib/__init__.py to install lazy_regex
+# instruct breezy/__init__.py to install lazy_regex
 sys._brz_lazy_regex = True
 try:
-    import brzlib
+    import breezy
 except ImportError, e:
     sys.stderr.write("brz: ERROR: "
-        "Couldn't import brzlib and dependencies.\n"
-        "Please check the directory containing brzlib is on your PYTHONPATH.\n"
+        "Couldn't import breezy and dependencies.\n"
+        "Please check the directory containing breezy is on your PYTHONPATH.\n"
         "\n")
     raise
 
-if brzlib.version_info[:3] != _script_version:
+if breezy.version_info[:3] != _script_version:
     sys.stderr.write(
-        "brz: WARNING: brzlib version doesn't match the brz program.\n"
+        "brz: WARNING: breezy version doesn't match the brz program.\n"
         "This may indicate an installation problem.\n"
-        "brzlib is version %s from %s\n"
+        "breezy is version %s from %s\n"
         "brz is version %s from %s\n" % (
-        brzlib._format_version_tuple(brzlib.version_info),
-        brzlib.__path__[0],
-        brzlib._format_version_tuple(_script_version),
+        breezy._format_version_tuple(breezy.version_info),
+        breezy.__path__[0],
+        breezy._format_version_tuple(_script_version),
         __file__))
 
 
-import brzlib.inspect_for_copy
-brzlib.inspect_for_copy.import_copy_with_hacked_inspect()
+import breezy.inspect_for_copy
+breezy.inspect_for_copy.import_copy_with_hacked_inspect()
 
-import brzlib.breakin
-brzlib.breakin.hook_debugger_to_signal()
+import breezy.breakin
+breezy.breakin.hook_debugger_to_signal()
 
-import brzlib.decorators
+import breezy.decorators
 if ('--lsprof' in sys.argv
     or '--lsprof-file' in sys.argv
     or '--profile' in sys.argv
     or '--lsprof-timed' in sys.argv):
-    brzlib.decorators.use_pretty_decorators()
+    breezy.decorators.use_pretty_decorators()
 else:
-    brzlib.decorators.use_fast_decorators()
+    breezy.decorators.use_fast_decorators()
 
-import brzlib.commands
-import brzlib.trace
+import breezy.commands
+import breezy.trace
 
 
 if __name__ == '__main__':
-    library_state = brzlib.initialize()
+    library_state = breezy.initialize()
     library_state.__enter__()
     try:
-        exit_val = brzlib.commands.main()
+        exit_val = breezy.commands.main()
         if profiling:
             profile_imports.log_stack_info(sys.stderr)
     finally:

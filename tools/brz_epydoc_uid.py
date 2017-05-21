@@ -14,15 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Monkey patch to make epydoc work with brzlib's lazy imports."""
+"""Monkey patch to make epydoc work with breezy's lazy imports."""
 
 import epydoc.uid
 
-import brzlib.lazy_import
+import breezy.lazy_import
 
 
 _ObjectUID = epydoc.uid.ObjectUID
-_ScopeReplacer = brzlib.lazy_import.ScopeReplacer
+_ScopeReplacer = breezy.lazy_import.ScopeReplacer
 
 
 class ObjectUID(_ObjectUID):

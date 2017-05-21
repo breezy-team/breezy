@@ -15,9 +15,9 @@ AppName=Breezy
 ;     sys.path.insert(0, cwd)
 ; #/Python 2.5 compatibility code
 ;
-; import brzlib
+; import breezy
 ; try:
-;     VERSION = brzlib.__version__
+;     VERSION = breezy.__version__
 ;     AppVerName = 'Breezy %s' % VERSION
 ;     OutputBaseFilename = 'brz-%s-setup' % VERSION
 ; except:
@@ -48,9 +48,9 @@ InfoBeforeFile="..\tools\win32\info.txt"
 VersionInfoCopyright="Canonical Ltd. et al"
 VersionInfoDescription="Windows installer for Breezy"
 ; [[[cog
-; import brzlib
+; import breezy
 ; version_number = []
-; for i in brzlib.version_info[:3]:
+; for i in breezy.version_info[:3]:
 ;     try:
 ;         i = int(i)
 ;     except ValueError:
@@ -128,7 +128,7 @@ Source: "doc\*.*"; DestDir: "{app}\doc"; Flags: createallsubdirs ignoreversion r
 ; else:
 ;     supported = pycurl.version_info()[8]
 ;     if 'https' in supported:
-;         from brzlib.transport.http.ca_bundle import get_ca_path
+;         from breezy.transport.http.ca_bundle import get_ca_path
 ;         ca_path = get_ca_path()
 ;         if ca_path:
 ;             cog.outl('Source: "%s"; DestDir: "{app}"; Components: cabundle' % ca_path)
@@ -204,7 +204,7 @@ Name: Path; Description: "Add {app} directory to PATH environment variable"
 Root: HKLM; Subkey: "SOFTWARE\Breezy"; Flags: noerror uninsdeletekey
 Root: HKLM; Subkey: "SOFTWARE\Breezy"; ValueName: "InstallPath"; ValueType: string; ValueData: "{app}"; Flags: noerror
 ; Don't write stuff that can be implied
-;Root: HKLM; Subkey: "SOFTWARE\Breezy"; ValueName: "brzlibPath"; ValueType: string; ValueData: "{app}\lib\library.zip\brzlib"; Flags: noerror
+;Root: HKLM; Subkey: "SOFTWARE\Breezy"; ValueName: "breezyPath"; ValueType: string; ValueData: "{app}\lib\library.zip\breezy"; Flags: noerror
 ;Root: HKLM; Subkey: "SOFTWARE\Breezy"; ValueName: "PluginsPath"; ValueType: string; ValueData: "{app}\plugins"; Flags: noerror
 ;Root: HKLM; Subkey: "SOFTWARE\Breezy"; ValueName: "PythonPath"; ValueType: string; ValueData: "{app}\lib\library.zip"; Flags: noerror
 ; [[[cog cog.outl('Root: HKLM; Subkey: "SOFTWARE\Breezy"; ValueName: "Version"; ValueType: string; ValueData: "%s"; Flags: noerror' % VERSION) ]]]
