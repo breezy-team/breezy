@@ -6,7 +6,7 @@
 # Generated files
 CHANGELOG
 # generated documents
-bzr.1
+brz.1
 MANIFEST
 ./doc/*.html
 ./doc/*/_build/
@@ -43,7 +43,7 @@ BRANCH-INFO
 .DS_Store
 # win32 installer generated files
 ./doc/*.html
-./doc/bzr_man.txt
+./doc/brz_man.txt
 ./py2exe.log
 ./tools/win32/bzr.iss
 ./dist

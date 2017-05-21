@@ -40,14 +40,14 @@ load_plugins()
 
 def get_filename(options):
     """Provides name of manpage"""
-    return "%s.1" % (options.bzr_name)
+    return "%s.1" % (options.brz_name)
 
 
 def infogen(options, outfile):
     """Assembles a man page"""
     tt = brzlib.osutils.gmtime()
     params = \
-           { "bzrcmd": options.bzr_name,
+           { "bzrcmd": options.brz_name,
              "datestamp": time.strftime("%Y-%m-%d",tt),
              "timestamp": time.strftime("%Y-%m-%d %H:%M:%S +0000",tt),
              "version": brzlib.__version__,

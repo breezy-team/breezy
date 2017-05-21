@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""bzr postinstall helper for win32 installation
+"""brz postinstall helper for win32 installation
 Written by Alexander Belchenko
 
 Dependency: ctypes
@@ -30,7 +30,7 @@ import sys
 
 VERSION = "1.5.20070131"
 
-USAGE = """Bzr postinstall helper for win32 installation
+USAGE = """Brz postinstall helper for win32 installation
 Usage: %s [options]
 
 OPTIONS:
@@ -40,10 +40,10 @@ OPTIONS:
     -n, --dry-run               - print actions rather than execute them
     -q, --silent                - no messages for user
 
-    --start-bzr                 - update start_bzr.bat
-    --add-path                  - add bzr directory to environment PATH
-    --delete-path               - delete bzr directory to environment PATH
-    --add-shell-menu            - add shell context menu to start bzr session
+    --start-brz                 - update start_brz.bat
+    --add-path                  - add brz directory to environment PATH
+    --delete-path               - delete brz directory to environment PATH
+    --add-shell-menu            - add shell context menu to start brz session
     --delete-shell-menu         - delete context menu from shell
     --check-mfc71               - check if MFC71.DLL present in system
 """ % os.path.basename(sys.argv[0])
@@ -97,7 +97,7 @@ def main():
 
     dry_run = False
     silent = False
-    start_bzr = False
+    start_brz = False
     add_path = False
     delete_path = False
     add_shell_menu = False
@@ -109,7 +109,7 @@ def main():
                                    ["help", "version",
                                     "dry-run",
                                     "silent",
-                                    "start-bzr",
+                                    "start-brz",
                                     "add-path",
                                     "delete-path",
                                     "add-shell-menu",
@@ -130,8 +130,8 @@ def main():
             elif o in ('-q', '--silent'):
                 silent = True
 
-            elif o == "--start-bzr":
-                start_bzr = True
+            elif o == "--start-brz":
+                start_brz = True
             elif o == "--add-path":
                 add_path = True
             elif o == "--delete-path":
@@ -154,31 +154,31 @@ def main():
     MB_ICONERROR = 16
     MB_ICONEXCLAMATION = 48
 
-    bzr_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
+    brz_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
 
-    if start_bzr:
-        fname = os.path.join(bzr_dir, "start_bzr.bat")
+    if start_brz:
+        fname = os.path.join(brz_dir, "start_brz.bat")
         if os.path.isfile(fname):
             f = file(fname, "r")
             content = f.readlines()
             f.close()
         else:
-            content = ["bzr.exe help\n"]
+            content = ["brz.exe help\n"]
 
         for ix in xrange(len(content)):
             s = content[ix]
-            if re.match(r'.*(?<!\\)bzr\.exe([ "].*)?$',
+            if re.match(r'.*(?<!\\)brz\.exe([ "].*)?$',
                         s.rstrip('\r\n'),
                         re.IGNORECASE):
-                content[ix] = s.replace('bzr.exe',
-                                        '"%s"' % os.path.join(bzr_dir,
-                                                              'bzr.exe'))
-            elif s.find(r'C:\Program Files\Bazaar') != -1:
-                content[ix] = s.replace(r'C:\Program Files\Bazaar',
-                                        bzr_dir)
+                content[ix] = s.replace('brz.exe',
+                                        '"%s"' % os.path.join(brz_dir,
+                                                              'brz.exe'))
+            elif s.find(r'C:\Program Files\Breezy') != -1:
+                content[ix] = s.replace(r'C:\Program Files\Breezy',
+                                        brz_dir)
 
         if dry_run:
-            print "*** Write file: start_bzr.bat"
+            print "*** Write file: start_brz.bat"
             print "*** File content:"
             print ''.join(content)
         else:
@@ -219,16 +219,16 @@ def main():
             path_list = [i for i in path_u.split(os.pathsep) if i != '']
             f_change = False
             for ix, item in enumerate(path_list[:]):
-                if item == bzr_dir:
+                if item == brz_dir:
                     if delete_path:
                         del path_list[ix]
                         f_change = True
                     elif add_path:
-                        print "*** Bzr already in PATH"
+                        print "*** Brz already in PATH"
                     break
             else:
                 if add_path and not delete_path:
-                    path_list.append(bzr_dir.decode(user_encoding))
+                    path_list.append(brz_dir.decode(user_encoding))
                     f_change = True
 
             if f_change:
@@ -247,7 +247,7 @@ def main():
     if (add_path or delete_path) and winver == 'Windows 98':
         # mutating autoexec.bat
         # adding or delete string:
-        # SET PATH=%PATH%;C:\PROGRA~1\Bazaar
+        # SET PATH=%PATH%;C:\PROGRA~1\Breezy
         abat = 'C:\\autoexec.bat'
         abak = 'C:\\autoexec.bak'
 
@@ -261,11 +261,11 @@ def main():
 
         GetShortPathName = ctypes.windll.kernel32.GetShortPathNameA
         buf = ctypes.create_string_buffer(260)
-        if GetShortPathName(bzr_dir, buf, 260):
-            bzr_dir_8_3 = buf.value
+        if GetShortPathName(brz_dir, buf, 260):
+            brz_dir_8_3 = buf.value
         else:
-            bzr_dir_8_3 = bzr_dir
-        pattern = 'SET PATH=%PATH%;' + bzr_dir_8_3
+            brz_dir_8_3 = brz_dir
+        pattern = 'SET PATH=%PATH%;' + brz_dir_8_3
 
         # search pattern
         f = file(abat, 'r')
@@ -302,7 +302,7 @@ def main():
         hkey = None
         try:
             hkey = _winreg.CreateKey(_winreg.HKEY_CLASSES_ROOT,
-                                     r'Folder\shell\bzr')
+                                     r'Folder\shell\brz')
         except EnvironmentError:
             if not silent:
                 MessageBoxA(None,
@@ -311,25 +311,25 @@ def main():
                             MB_OK | MB_ICONERROR)
 
         if not hkey is None:
-            _winreg.SetValue(hkey, '', _winreg.REG_SZ, 'Bzr Here')
+            _winreg.SetValue(hkey, '', _winreg.REG_SZ, 'Brz Here')
             hkey2 = _winreg.CreateKey(hkey, 'command')
             _winreg.SetValue(hkey2, '', _winreg.REG_SZ,
                              '%s /K "%s"' % (
                                     os.environ.get('COMSPEC', '%COMSPEC%'),
-                                    os.path.join(bzr_dir, 'start_bzr.bat')))
+                                    os.path.join(brz_dir, 'start_brz.bat')))
             _winreg.CloseKey(hkey2)
             _winreg.CloseKey(hkey)
 
     if delete_shell_menu:
         try:
             _winreg.DeleteKey(_winreg.HKEY_CLASSES_ROOT,
-                              r'Folder\shell\bzr\command')
+                              r'Folder\shell\brz\command')
         except EnvironmentError:
             pass
 
         try:
             _winreg.DeleteKey(_winreg.HKEY_CLASSES_ROOT,
-                              r'Folder\shell\bzr')
+                              r'Folder\shell\brz')
         except EnvironmentError:
             pass
 
@@ -342,7 +342,7 @@ def main():
                          "This library needed for SFTP transport.\n"
                          "If you need to work via SFTP you should download\n"
                          "this library manually and put it to directory\n"
-                         "where Bzr installed.\n"
+                         "where Brz installed.\n"
                          "For detailed instructions see:\n"
                          "http://wiki.bazaar.canonical.com/BzrOnPureWindows"
                         ),

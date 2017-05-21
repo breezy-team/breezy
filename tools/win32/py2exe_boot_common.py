@@ -2,7 +2,7 @@
 
 # In the standard py2exe boot script, it setup stderr so that anything written
 # to it will be written to exe.log, and a message dialog is shown.
-# For Bazaar, we log most things to .bzr.log, and there are many things that
+# For Bazaar, we log most things to .brz.log, and there are many things that
 # write to stderr, that are not errors, and so we don't want the py2exe dialog
 # message, So also blackhole stderr.
 
