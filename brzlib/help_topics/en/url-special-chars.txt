@@ -7,7 +7,7 @@ Bazaar allows locations to be specified in multiple ways, either:
 
  * File system paths, relative or absolute
 
-Internally bzr treats all locations as URLs. For any file system paths
+Internally brz treats all locations as URLs. For any file system paths
 that are specified it will automatically determine the appropriate URL
 representation, and escape special characters where necessary.
 
@@ -25,16 +25,16 @@ For example, if you have a directory named '/tmp/%2False' these are all valid
 ways of accessing the content (0x2F, or 47, is the ASCII code for forward slash)::
 
   cd /tmp
-  bzr log /tmp/%2False
-  bzr log %2False
-  bzr log file:///tmp/%252False
-  bzr log file://localhost/tmp/%252False
-  bzr log file:%252False
+  brz log /tmp/%2False
+  brz log %2False
+  brz log file:///tmp/%252False
+  brz log file://localhost/tmp/%252False
+  brz log file:%252False
 
 These are valid but do not refer to the same file::
 
-  bzr log file:///tmp/%2False (refers to a file called /tmp/\/alse)
-  bzr log %252False (refers to a file called /tmp/%252False)
+  brz log file:///tmp/%2False (refers to a file called /tmp/\/alse)
+  brz log %252False (refers to a file called /tmp/%252False)
 
 Comma also has special meaning in URLs, because it denotes `segment parameters`_
 
@@ -43,6 +43,6 @@ _`segment parameters`: http://www.ietf.org/rfc/rfc3986.txt (section 3.3)
 Comma is also special in any file system paths that are specified. To use a literal
 comma in a file system path, specify a URL and URL encode the comma::
 
-  bzr log foo,branch=bla # path "foo" with the segment parameter "branch" set to "bla"
-  bzr log file:foo%2Cbranch=bla # path "foo,branch=bla"
-  bzr log file:foo,branch=bla # path "foo" with segment parameter "branch" set to "bla"
+  brz log foo,branch=bla # path "foo" with the segment parameter "branch" set to "bla"
+  brz log file:foo%2Cbranch=bla # path "foo,branch=bla"
+  brz log file:foo,branch=bla # path "foo" with segment parameter "branch" set to "bla"

@@ -158,7 +158,7 @@ class TestBranchRegistration(TestCaseWithTransport):
     def setUp(self):
         super(TestBranchRegistration, self).setUp()
         # make sure we have a reproducible standard environment
-        self.overrideEnv('BZR_LP_XMLRPC_URL', None)
+        self.overrideEnv('BRZ_LP_XMLRPC_URL', None)
 
     def test_register_help(self):
         """register-branch accepts --help"""
@@ -317,7 +317,7 @@ class TestGatherUserCredentials(tests.TestCaseInTempDir):
     def setUp(self):
         super(TestGatherUserCredentials, self).setUp()
         # make sure we have a reproducible standard environment
-        self.overrideEnv('BZR_LP_XMLRPC_URL', None)
+        self.overrideEnv('BRZ_LP_XMLRPC_URL', None)
 
     def test_gather_user_credentials_has_password(self):
         service = LaunchpadService()

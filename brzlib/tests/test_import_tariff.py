@@ -69,7 +69,7 @@ class ImportTariffTestCase(TestCaseWithTransport):
 
     def setUp(self):
         self.preserved_env_vars = {}
-        for name in ('BZR_PLUGIN_PATH', 'BZR_DISABLE_PLUGINS', 'BZR_PLUGINS_AT'
+        for name in ('BRZ_PLUGIN_PATH', 'BRZ_DISABLE_PLUGINS', 'BRZ_PLUGINS_AT'
                      ):
             self.preserved_env_vars[name] = os.environ.get(name)
         super(ImportTariffTestCase, self).setUp()

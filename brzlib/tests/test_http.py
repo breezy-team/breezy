@@ -1913,7 +1913,7 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
     def setUp(self):
         super(SmartHTTPTunnellingTest, self).setUp()
         # We use the VFS layer as part of HTTP tunnelling tests.
-        self.overrideEnv('BZR_NO_SMART_VFS', None)
+        self.overrideEnv('BRZ_NO_SMART_VFS', None)
         self.transport_readonly_server = http_utils.HTTPServerWithSmarts
         self.http_server = self.get_readonly_server()
 

@@ -45,7 +45,7 @@ documentation. Some plugins may be very specific about which files
 they filter, e.g. only files ending in ``.java`` or ``.php``.
 In other cases, the plugin may leave it in the user's hands to
 define which files are to be filtered. This is typically done
-using rule-based preferences. See ``bzr help rules`` for general
+using rule-based preferences. See ``brz help rules`` for general
 information about defining these.
 
 
@@ -53,16 +53,16 @@ Impact on commands
 ------------------
 
 Read converters are only applied to commands that read content from
-a working tree, e.g. status, diff and commit. For example, ``bzr diff``
+a working tree, e.g. status, diff and commit. For example, ``brz diff``
 will apply read converters to files in the working tree, then compare
 the results to the content last committed.
 
 Write converters are only applied by commands that **create files in a
 working tree**, e.g. branch, checkout, update. If you wish to see the
-canonical format of a file or tree, use ``bzr cat`` or ``bzr export``
+canonical format of a file or tree, use ``brz cat`` or ``brz export``
 respectively.
 
-Note: ``bzr commit`` does not implicitly apply write converters after
+Note: ``brz commit`` does not implicitly apply write converters after
 comitting files. If this makes sense for a given plugin providing
 a content filter, the plugin can usually achieve this effect by using a
 ``start_commit`` or ``post_commit`` hook say. See :doc:`hooks-help`
@@ -82,12 +82,12 @@ plugins providing it.
 Here are some general guidelines for doing this:
 
  * To reapply read converters, ``touch`` files, i.e. update their
-   timestamp. Operations like ``bzr status`` should then reapply the
+   timestamp. Operations like ``brz status`` should then reapply the
    relevant read converters and compare the end result with the
    canonical format.
 
  * To reapply write converters, ensure there are no local changes,
-   delete the relevant files and run ``bzr revert`` on those files.
+   delete the relevant files and run ``brz revert`` on those files.
 
 Note: In the future, it is likely that additional options will be added
 to commands to make this refreshing process faster and safer.

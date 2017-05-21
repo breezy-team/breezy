@@ -1731,26 +1731,26 @@ class TestSetUnsetEnv(tests.TestCase):
     def setUp(self):
         super(TestSetUnsetEnv, self).setUp()
 
-        self.assertEqual(None, os.environ.get('BZR_TEST_ENV_VAR'),
+        self.assertEqual(None, os.environ.get('BRZ_TEST_ENV_VAR'),
                          'Environment was not cleaned up properly.'
-                         ' Variable BZR_TEST_ENV_VAR should not exist.')
+                         ' Variable BRZ_TEST_ENV_VAR should not exist.')
         def cleanup():
-            if 'BZR_TEST_ENV_VAR' in os.environ:
-                del os.environ['BZR_TEST_ENV_VAR']
+            if 'BRZ_TEST_ENV_VAR' in os.environ:
+                del os.environ['BRZ_TEST_ENV_VAR']
         self.addCleanup(cleanup)
 
     def test_set(self):
         """Test that we can set an env variable"""
-        old = osutils.set_or_unset_env('BZR_TEST_ENV_VAR', 'foo')
+        old = osutils.set_or_unset_env('BRZ_TEST_ENV_VAR', 'foo')
         self.assertEqual(None, old)
-        self.assertEqual('foo', os.environ.get('BZR_TEST_ENV_VAR'))
+        self.assertEqual('foo', os.environ.get('BRZ_TEST_ENV_VAR'))
 
     def test_double_set(self):
         """Test that we get the old value out"""
-        osutils.set_or_unset_env('BZR_TEST_ENV_VAR', 'foo')
-        old = osutils.set_or_unset_env('BZR_TEST_ENV_VAR', 'bar')
+        osutils.set_or_unset_env('BRZ_TEST_ENV_VAR', 'foo')
+        old = osutils.set_or_unset_env('BRZ_TEST_ENV_VAR', 'bar')
         self.assertEqual('foo', old)
-        self.assertEqual('bar', os.environ.get('BZR_TEST_ENV_VAR'))
+        self.assertEqual('bar', os.environ.get('BRZ_TEST_ENV_VAR'))
 
     def test_unicode(self):
         """Environment can only contain plain strings
@@ -1763,16 +1763,16 @@ class TestSetUnsetEnv(tests.TestCase):
                 'Cannot find a unicode character that works in encoding %s'
                 % (osutils.get_user_encoding(),))
 
-        old = osutils.set_or_unset_env('BZR_TEST_ENV_VAR', uni_val)
-        self.assertEqual(env_val, os.environ.get('BZR_TEST_ENV_VAR'))
+        old = osutils.set_or_unset_env('BRZ_TEST_ENV_VAR', uni_val)
+        self.assertEqual(env_val, os.environ.get('BRZ_TEST_ENV_VAR'))
 
     def test_unset(self):
         """Test that passing None will remove the env var"""
-        osutils.set_or_unset_env('BZR_TEST_ENV_VAR', 'foo')
-        old = osutils.set_or_unset_env('BZR_TEST_ENV_VAR', None)
+        osutils.set_or_unset_env('BRZ_TEST_ENV_VAR', 'foo')
+        old = osutils.set_or_unset_env('BRZ_TEST_ENV_VAR', None)
         self.assertEqual('foo', old)
-        self.assertEqual(None, os.environ.get('BZR_TEST_ENV_VAR'))
-        self.assertFalse('BZR_TEST_ENV_VAR' in os.environ)
+        self.assertEqual(None, os.environ.get('BRZ_TEST_ENV_VAR'))
+        self.assertFalse('BRZ_TEST_ENV_VAR' in os.environ)
 
 
 class TestSizeShaFile(tests.TestCaseInTempDir):
@@ -2021,18 +2021,18 @@ class TestConcurrency(tests.TestCase):
         self.assertIsInstance(concurrency, int)
 
     def test_local_concurrency_environment_variable(self):
-        self.overrideEnv('BZR_CONCURRENCY', '2')
+        self.overrideEnv('BRZ_CONCURRENCY', '2')
         self.assertEqual(2, osutils.local_concurrency(use_cache=False))
-        self.overrideEnv('BZR_CONCURRENCY', '3')
+        self.overrideEnv('BRZ_CONCURRENCY', '3')
         self.assertEqual(3, osutils.local_concurrency(use_cache=False))
-        self.overrideEnv('BZR_CONCURRENCY', 'foo')
+        self.overrideEnv('BRZ_CONCURRENCY', 'foo')
         self.assertEqual(1, osutils.local_concurrency(use_cache=False))
 
     def test_option_concurrency(self):
-        self.overrideEnv('BZR_CONCURRENCY', '1')
+        self.overrideEnv('BRZ_CONCURRENCY', '1')
         self.run_bzr('rocks --concurrency 42')
         # Command line overrides environment variable
-        self.assertEqual('42', os.environ['BZR_CONCURRENCY'])
+        self.assertEqual('42', os.environ['BRZ_CONCURRENCY'])
         self.assertEqual(42, osutils.local_concurrency(use_cache=False))
 
 
@@ -2104,25 +2104,25 @@ class TestTerminalWidth(tests.TestCase):
     def test_default_values(self):
         self.assertEqual(80, osutils.default_terminal_width)
 
-    def test_defaults_to_BZR_COLUMNS(self):
-        # BZR_COLUMNS is set by the test framework
-        self.assertNotEqual('12', os.environ['BZR_COLUMNS'])
-        self.overrideEnv('BZR_COLUMNS', '12')
+    def test_defaults_to_BRZ_COLUMNS(self):
+        # BRZ_COLUMNS is set by the test framework
+        self.assertNotEqual('12', os.environ['BRZ_COLUMNS'])
+        self.overrideEnv('BRZ_COLUMNS', '12')
         self.assertEqual(12, osutils.terminal_width())
 
-    def test_BZR_COLUMNS_0_no_limit(self):
-        self.overrideEnv('BZR_COLUMNS', '0')
+    def test_BRZ_COLUMNS_0_no_limit(self):
+        self.overrideEnv('BRZ_COLUMNS', '0')
         self.assertEqual(None, osutils.terminal_width())
 
     def test_falls_back_to_COLUMNS(self):
-        self.overrideEnv('BZR_COLUMNS', None)
+        self.overrideEnv('BRZ_COLUMNS', None)
         self.assertNotEqual('42', os.environ['COLUMNS'])
         self.set_fake_tty()
         self.overrideEnv('COLUMNS', '42')
         self.assertEqual(42, osutils.terminal_width())
 
     def test_tty_default_without_columns(self):
-        self.overrideEnv('BZR_COLUMNS', None)
+        self.overrideEnv('BRZ_COLUMNS', None)
         self.overrideEnv('COLUMNS', None)
 
         def terminal_size(w, h):
@@ -2136,7 +2136,7 @@ class TestTerminalWidth(tests.TestCase):
         self.assertEqual(42, osutils.terminal_width())
 
     def test_non_tty_default_without_columns(self):
-        self.overrideEnv('BZR_COLUMNS', None)
+        self.overrideEnv('BRZ_COLUMNS', None)
         self.overrideEnv('COLUMNS', None)
         self.replace_stdout(None)
         self.assertEqual(None, osutils.terminal_width())
@@ -2153,7 +2153,7 @@ class TestTerminalWidth(tests.TestCase):
         else:
             self.overrideAttr(termios, 'TIOCGWINSZ')
             del termios.TIOCGWINSZ
-        self.overrideEnv('BZR_COLUMNS', None)
+        self.overrideEnv('BRZ_COLUMNS', None)
         self.overrideEnv('COLUMNS', None)
         # Whatever the result is, if we don't raise an exception, it's ok.
         osutils.terminal_width()
@@ -2198,29 +2198,29 @@ class TestCreationOps(tests.TestCaseInTempDir):
 class TestPathFromEnviron(tests.TestCase):
 
     def test_is_unicode(self):
-        self.overrideEnv('BZR_TEST_PATH', './anywhere at all/')
-        path = osutils.path_from_environ('BZR_TEST_PATH')
+        self.overrideEnv('BRZ_TEST_PATH', './anywhere at all/')
+        path = osutils.path_from_environ('BRZ_TEST_PATH')
         self.assertIsInstance(path, unicode)
         self.assertEqual(u'./anywhere at all/', path)
 
     def test_posix_path_env_ascii(self):
-        self.overrideEnv('BZR_TEST_PATH', '/tmp')
-        home = osutils._posix_path_from_environ('BZR_TEST_PATH')
+        self.overrideEnv('BRZ_TEST_PATH', '/tmp')
+        home = osutils._posix_path_from_environ('BRZ_TEST_PATH')
         self.assertIsInstance(home, unicode)
         self.assertEqual(u'/tmp', home)
 
     def test_posix_path_env_unicode(self):
         self.requireFeature(features.ByteStringNamedFilesystem)
-        self.overrideEnv('BZR_TEST_PATH', '/home/\xa7test')
+        self.overrideEnv('BRZ_TEST_PATH', '/home/\xa7test')
         self.overrideAttr(osutils, "_fs_enc", "iso8859-1")
         self.assertEqual(u'/home/\xa7test',
-            osutils._posix_path_from_environ('BZR_TEST_PATH'))
+            osutils._posix_path_from_environ('BRZ_TEST_PATH'))
         osutils._fs_enc = "iso8859-5"
         self.assertEqual(u'/home/\u0407test',
-            osutils._posix_path_from_environ('BZR_TEST_PATH'))
+            osutils._posix_path_from_environ('BRZ_TEST_PATH'))
         osutils._fs_enc = "utf-8"
         self.assertRaises(errors.BadFilenameEncoding,
-            osutils._posix_path_from_environ, 'BZR_TEST_PATH')
+            osutils._posix_path_from_environ, 'BRZ_TEST_PATH')
 
 
 class TestGetHomeDir(tests.TestCase):

@@ -95,7 +95,7 @@ class TestVersionUnicodeOutput(TestCaseInTempDir):
             raise TestSkipped('Cannot find a unicode character that works in'
                               ' encoding %s' % (osutils.get_user_encoding(),))
 
-        self.overrideEnv('BZR_HOME', str_val)
+        self.overrideEnv('BRZ_HOME', str_val)
         self.permit_source_tree_branch_repo()
         out = self.run_bzr("version")[0]
         self.assertTrue(len(out) > 0)
@@ -106,8 +106,8 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
 
     def test_simple(self):
         bzr_log = 'my.bzr.log'
-        self.overrideEnv('BZR_LOG', bzr_log)
-        default_log = os.path.join(os.environ['BZR_HOME'], '.bzr.log')
+        self.overrideEnv('BRZ_LOG', bzr_log)
+        default_log = os.path.join(os.environ['BRZ_HOME'], '.bzr.log')
         self.assertPathDoesNotExist([default_log, bzr_log])
         out = self.run_bzr_subprocess('version')[0]
         self.assertTrue(len(out) > 0)
@@ -122,8 +122,8 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
             bzr_log = 'NUL'
         else:
             bzr_log = '/dev/null'
-        self.overrideEnv('BZR_LOG', bzr_log)
-        default_log = os.path.join(os.environ['BZR_HOME'], '.bzr.log')
+        self.overrideEnv('BRZ_LOG', bzr_log)
+        default_log = os.path.join(os.environ['BRZ_HOME'], '.bzr.log')
         self.assertPathDoesNotExist(default_log)
         out = self.run_bzr_subprocess('version')[0]
         self.assertTrue(len(out) > 0)
@@ -138,8 +138,8 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         except UnicodeEncodeError:
             self.skip("Test string %r unrepresentable in user encoding %s" % (
                 uni_val, enc))
-        self.overrideEnv('BZR_HOME', self.test_base_dir)
-        self.overrideEnv("BZR_LOG",
+        self.overrideEnv('BRZ_HOME', self.test_base_dir)
+        self.overrideEnv("BRZ_LOG",
             os.path.join(self.test_base_dir, uni_val).encode(enc))
         out, err = self.run_bzr_subprocess("version")
         uni_out = out.decode(enc)

@@ -38,7 +38,7 @@ from brzlib.hooks import Hooks
 def _get_editor():
     """Return a sequence of possible editor binaries for the current platform"""
     try:
-        yield os.environ["BZR_EDITOR"], '$BZR_EDITOR'
+        yield os.environ["BRZ_EDITOR"], '$BRZ_EDITOR'
     except KeyError:
         pass
 
@@ -82,7 +82,7 @@ def _run_editor(filename):
         else:
             break
     raise BzrError("Could not start any editor.\nPlease specify one with:\n"
-                   " - $BZR_EDITOR\n - editor=/some/path in %s\n"
+                   " - $BRZ_EDITOR\n - editor=/some/path in %s\n"
                    " - $VISUAL\n - $EDITOR" % \
                     config.config_filename())
 

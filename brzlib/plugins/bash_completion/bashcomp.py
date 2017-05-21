@@ -34,14 +34,14 @@ import sys
 class BashCodeGen(object):
     """Generate a bash script for given completion data."""
 
-    def __init__(self, data, function_name='_bzr', debug=False):
+    def __init__(self, data, function_name='_brz', debug=False):
         self.data = data
         self.function_name = function_name
         self.debug = debug
 
     def script(self):
         return ("""\
-# Programmable completion for the Bazaar-NG bzr command under bash.
+# Programmable completion for the Breezy brz command under bash.
 # Known to work with bash 2.05a as well as bash 4.1.2, and probably
 # all versions in between as well.
 
@@ -52,15 +52,15 @@ class BashCodeGen(object):
 # Generated using the bash_completion plugin.
 # See https://launchpad.net/bzr-bash-completion for details.
 
-# Commands and options of bzr %(bzr_version)s
+# Commands and options of brz %(brz_version)s
 
 shopt -s progcomp
 %(function)s
-complete -F %(function_name)s -o default bzr
+complete -F %(function_name)s -o default brz
 """     % {
             "function_name": self.function_name,
             "function": self.function(),
-            "bzr_version": self.bzr_version(),
+            "brz_version": self.brz_version(),
         })
 
     def function(self):
@@ -125,15 +125,15 @@ complete -F %(function_name)s -o default bzr
 	if [[ ${#fixedWords[@]} -eq 0 ]] && [[ ${#optEnums[@]} -eq 0 ]] && [[ $cur != -* ]]; then
 		case $curOpt in
 			tag:|*..tag:)
-				fixedWords=( $(bzr tags 2>/dev/null | sed 's/  *[^ ]*$//; s/ /\\\\\\\\ /g;') )
+				fixedWords=( $(brz tags 2>/dev/null | sed 's/  *[^ ]*$//; s/ /\\\\\\\\ /g;') )
 				;;
 		esac
 		case $cur in
 			[\\"\\']tag:*)
-				fixedWords=( $(bzr tags 2>/dev/null | sed 's/  *[^ ]*$//; s/^/tag:/') )
+				fixedWords=( $(brz tags 2>/dev/null | sed 's/  *[^ ]*$//; s/^/tag:/') )
 				;;
 			[\\"\\']*..tag:*)
-				fixedWords=( $(bzr tags 2>/dev/null | sed 's/  *[^ ]*$//') )
+				fixedWords=( $(brz tags 2>/dev/null | sed 's/  *[^ ]*$//') )
 				fixedWords=( $(for i in "${fixedWords[@]}"; do echo "${cur%%..tag:*}..tag:${i}"; done) )
 				;;
 		esac
@@ -183,15 +183,15 @@ complete -F %(function_name)s -o default bzr
 	echo -ne '---\e[K\e[u'
 """)
 
-    def bzr_version(self):
-        bzr_version = brzlib.version_string
+    def brz_version(self):
+        brz_version = brzlib.version_string
         if not self.data.plugins:
-            bzr_version += "."
+            brz_version += "."
         else:
-            bzr_version += " and the following plugins:"
+            brz_version += " and the following plugins:"
             for name, plugin in sorted(self.data.plugins.iteritems()):
-                bzr_version += "\n# %s" % plugin
-        return bzr_version
+                brz_version += "\n# %s" % plugin
+        return brz_version
 
     def global_options(self):
         return " ".join(sorted(self.data.global_options))
@@ -395,7 +395,7 @@ class DataCollector(object):
         return self.wrap_container(optswitches, parser)
 
 
-def bash_completion_function(out, function_name="_bzr", function_only=False,
+def bash_completion_function(out, function_name="_brz", function_only=False,
                              debug=False,
                              no_plugins=False, selected_plugins=None):
     dc = DataCollector(no_plugins=no_plugins, selected_plugins=selected_plugins)
@@ -416,12 +416,12 @@ class cmd_bash_completion(commands.Command):
     the completion key (usually tab).
     
     Commonly used like this:
-        eval "`bzr bash-completion`"
+        eval "`brz bash-completion`"
     """
 
     takes_options = [
         option.Option("function-name", short_name="f", type=str, argname="name",
-               help="Name of the generated function (default: _bzr)"),
+               help="Name of the generated function (default: _brz)"),
         option.Option("function-only", short_name="o", type=None,
                help="Generate only the shell function, don't enable it"),
         option.Option("debug", type=None, hidden=True,
@@ -455,13 +455,13 @@ if __name__ == '__main__':
 
     parser = optparse.OptionParser(usage="%prog [-f NAME] [-o]")
     parser.add_option("--function-name", "-f", metavar="NAME",
-                      help="Name of the generated function (default: _bzr)")
+                      help="Name of the generated function (default: _brz)")
     parser.add_option("--function-only", "-o", action="store_true",
                       help="Generate only the shell function, don't enable it")
     parser.add_option("--debug", action="store_true",
                       help=optparse.SUPPRESS_HELP)
     parser.add_option("--no-plugins", action="store_true",
-                      help="Don't load any bzr plugins")
+                      help="Don't load any brz plugins")
     parser.add_option("--plugin", metavar="NAME", type="string",
                       dest="selected_plugins", default=[],
                       action="callback", callback=plugin_callback,

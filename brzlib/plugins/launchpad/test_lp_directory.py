@@ -456,7 +456,7 @@ class TestXMLRPCTransport(tests.TestCase):
         self.server.start_server()
         self.addCleanup(self.server.stop_server)
         # Ensure we don't clobber env
-        self.overrideEnv('BZR_LP_XMLRPC_URL', None)
+        self.overrideEnv('BRZ_LP_XMLRPC_URL', None)
         # Ensure we use the right certificates for https.
         # FIXME: There should be a better way but the only alternative I can
         # think of involves carrying the ca_certs through the lp_registration
@@ -497,7 +497,7 @@ Content-Type: text/plain; charset=UTF-8\r
                                                         path=path)
 
     def do_request(self, server_url):
-        os.environ['BZR_LP_XMLRPC_URL'] = self.server.get_url()
+        os.environ['BRZ_LP_XMLRPC_URL'] = self.server.get_url()
         service = lp_registration.LaunchpadService()
         resolve = lp_registration.ResolveLaunchpadPathRequest('bzr')
         result = resolve.submit(service)

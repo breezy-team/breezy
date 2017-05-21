@@ -194,10 +194,10 @@ def _rollover_trace_maybe(trace_fname):
 
 
 def _get_bzr_log_filename():
-    bzr_log = osutils.path_from_environ('BZR_LOG')
+    bzr_log = osutils.path_from_environ('BRZ_LOG')
     if bzr_log:
         return bzr_log
-    home = osutils.path_from_environ('BZR_HOME')
+    home = osutils.path_from_environ('BRZ_HOME')
     if home is None:
         # GZ 2012-02-01: Logging to the home dir is bad, but XDG is unclear
         #                over what would be better. On windows, bug 240550

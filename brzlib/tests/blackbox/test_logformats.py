@@ -115,10 +115,10 @@ log_format=line
                   ' long name SENTINEL')
         log, err = self.run_bzr('log --line')
         self.assertNotContainsString(log, 'SENTINEL')
-        self.overrideEnv('BZR_COLUMNS', '116')
+        self.overrideEnv('BRZ_COLUMNS', '116')
         log, err = self.run_bzr('log --line')
         self.assertContainsString(log, 'SENT...')
-        self.overrideEnv('BZR_COLUMNS', '0')
+        self.overrideEnv('BRZ_COLUMNS', '0')
         log, err = self.run_bzr('log --line')
         self.assertContainsString(log, 'SENTINEL')
 

@@ -24,11 +24,11 @@ of your urls with others).
 
 Instead of using::
 
-  bzr branch ftp://joe:secret@host.com/path/to/my/branch
+  brz branch ftp://joe:secret@host.com/path/to/my/branch
 
 you simply use::
 
-  bzr branch ftp://host.com/path/to/my/branch
+  brz branch ftp://host.com/path/to/my/branch
 
 provided you have created the following ``authentication.conf`` file::
 
@@ -43,7 +43,7 @@ Authentication definitions
 --------------------------
 
 There are two kinds of authentication used by the various schemes supported by
-bzr:
+brz:
 
 1. user and password
 
@@ -58,7 +58,7 @@ our own less secure method.
 against a host. But, by using ``.htaccess`` files, for example, it is possible
 to define several (``user, realm, password``) for a given ``host``. So what is
 really needed is (``user``, ``password``, ``host``, ``path``). The ``realm`` is
-not taken into account in the definitions, but will displayed if bzr prompts
+not taken into account in the definitions, but will displayed if brz prompts
 you for a password.
 
 ``HTTP proxy`` can be handled as ``HTTP`` (or ``HTTPS``) by explicitly
@@ -81,13 +81,13 @@ authentication definitions (``scheme``, ``host``, ``port``, ``path``, ``user``,
 
   * ``path``: can be empty (FTP or SFTP will never user it),
 
-  * ``user``: can be empty (``bzr`` will defaults to python's
+  * ``user``: can be empty (``bzr`` will default to python's
     ``getpass.get_user()``),
 
   * ``password``: can be empty if you prefer to always be prompted for your
     password.
 
-Multiple definitions can be provided and, for a given URL, bzr will select a
+Multiple definitions can be provided and, for a given URL, brz will select a
 (``user`` [, ``password``]) based on the following rules :
 
  1. the first match wins,
@@ -141,7 +141,7 @@ Personal projects hosted outside
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 All connections are done with the same ``user`` (the remote one for which the
-default bzr one is not appropriate) and the password is always prompted with
+default brz one is not appropriate) and the password is always prompted with
 some exceptions::
 
         # Pet projects on hobby.net
@@ -173,7 +173,7 @@ In the shp.net (fictitious) domain, each project has its own site::
         # The leading '.' ensures that 'shp.net' alone doesn't match
         host=.shp.net
         user=joe
-        # bzr don't support supplying a password for sftp,
+        # brz doesn't support supplying a password for sftp,
         # consider using an ssh agent if you don't want to supply
         # a password interactively. (pageant, ssh-agent, etc)
 

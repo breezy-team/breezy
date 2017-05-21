@@ -47,7 +47,7 @@ else:
 
 
 SYSTEM_HOSTKEYS = {}
-BZR_HOSTKEYS = {}
+BRZ_HOSTKEYS = {}
 
 
 _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
@@ -85,15 +85,15 @@ class SSHVendorManager(object):
         self._cached_ssh_vendor = None
 
     def _get_vendor_by_environment(self, environment=None):
-        """Return the vendor or None based on BZR_SSH environment variable.
+        """Return the vendor or None based on BRZ_SSH environment variable.
 
-        :raises UnknownSSH: if the BZR_SSH environment variable contains
+        :raises UnknownSSH: if the BRZ_SSH environment variable contains
                             unknown vendor name
         """
         if environment is None:
             environment = os.environ
-        if 'BZR_SSH' in environment:
-            vendor_name = environment['BZR_SSH']
+        if 'BRZ_SSH' in environment:
+            vendor_name = environment['BRZ_SSH']
             try:
                 vendor = self._ssh_vendors[vendor_name]
             except KeyError:
@@ -134,7 +134,7 @@ class SSHVendorManager(object):
             vendor = LSHSubprocessVendor()
         # As plink user prompts are not handled currently, don't auto-detect
         # it by inspection below, but keep this vendor detection for if a path
-        # is given in BZR_SSH. See https://bugs.launchpad.net/bugs/414743
+        # is given in BRZ_SSH. See https://bugs.launchpad.net/bugs/414743
         elif 'plink' in version and progname == 'plink':
             # Checking if "plink" was the executed argument as Windows
             # sometimes reports 'ssh -V' incorrectly with 'plink' in its
@@ -158,7 +158,7 @@ class SSHVendorManager(object):
         """Find out what version of SSH is on the system.
 
         :raises SSHVendorNotFound: if no any SSH vendor is found
-        :raises UnknownSSH: if the BZR_SSH environment variable contains
+        :raises UnknownSSH: if the BRZ_SSH environment variable contains
                             unknown vendor name
         """
         if self._cached_ssh_vendor is None:
@@ -281,7 +281,7 @@ class ParamikoVendor(SSHVendor):
         return hexlify(s).upper()
 
     def _connect(self, username, password, host, port):
-        global SYSTEM_HOSTKEYS, BZR_HOSTKEYS
+        global SYSTEM_HOSTKEYS, BRZ_HOSTKEYS
 
         load_host_keys()
 
@@ -298,17 +298,17 @@ class ParamikoVendor(SSHVendor):
         if host in SYSTEM_HOSTKEYS and keytype in SYSTEM_HOSTKEYS[host]:
             our_server_key = SYSTEM_HOSTKEYS[host][keytype]
             our_server_key_hex = self._hexify(our_server_key.get_fingerprint())
-        elif host in BZR_HOSTKEYS and keytype in BZR_HOSTKEYS[host]:
-            our_server_key = BZR_HOSTKEYS[host][keytype]
+        elif host in BRZ_HOSTKEYS and keytype in BRZ_HOSTKEYS[host]:
+            our_server_key = BRZ_HOSTKEYS[host][keytype]
             our_server_key_hex = self._hexify(our_server_key.get_fingerprint())
         else:
             trace.warning('Adding %s host key for %s: %s'
                           % (keytype, host, server_key_hex))
-            add = getattr(BZR_HOSTKEYS, 'add', None)
+            add = getattr(BRZ_HOSTKEYS, 'add', None)
             if add is not None: # paramiko >= 1.X.X
-                BZR_HOSTKEYS.add(host, keytype, server_key)
+                BRZ_HOSTKEYS.add(host, keytype, server_key)
             else:
-                BZR_HOSTKEYS.setdefault(host, {})[keytype] = server_key
+                BRZ_HOSTKEYS.setdefault(host, {})[keytype] = server_key
             our_server_key = server_key
             our_server_key_hex = self._hexify(our_server_key.get_fingerprint())
             save_host_keys()
@@ -604,7 +604,7 @@ def load_host_keys():
     Load system host keys (probably doesn't work on windows) and any
     "discovered" keys from previous sessions.
     """
-    global SYSTEM_HOSTKEYS, BZR_HOSTKEYS
+    global SYSTEM_HOSTKEYS, BRZ_HOSTKEYS
     try:
         SYSTEM_HOSTKEYS = paramiko.util.load_host_keys(
             os.path.expanduser('~/.ssh/known_hosts'))
@@ -612,7 +612,7 @@ def load_host_keys():
         trace.mutter('failed to load system host keys: ' + str(e))
     bzr_hostkey_path = osutils.pathjoin(config.config_dir(), 'ssh_host_keys')
     try:
-        BZR_HOSTKEYS = paramiko.util.load_host_keys(bzr_hostkey_path)
+        BRZ_HOSTKEYS = paramiko.util.load_host_keys(bzr_hostkey_path)
     except IOError, e:
         trace.mutter('failed to load bzr host keys: ' + str(e))
         save_host_keys()
@@ -622,14 +622,14 @@ def save_host_keys():
     """
     Save "discovered" host keys in $(config)/ssh_host_keys/.
     """
-    global SYSTEM_HOSTKEYS, BZR_HOSTKEYS
+    global SYSTEM_HOSTKEYS, BRZ_HOSTKEYS
     bzr_hostkey_path = osutils.pathjoin(config.config_dir(), 'ssh_host_keys')
     config.ensure_config_dir_exists()
 
     try:
         f = open(bzr_hostkey_path, 'w')
         f.write('# SSH host keys collected by bzr\n')
-        for hostname, keys in BZR_HOSTKEYS.iteritems():
+        for hostname, keys in BRZ_HOSTKEYS.iteritems():
             for keytype, key in keys.iteritems():
                 f.write('%s %s %s\n' % (hostname, keytype, key.get_base64()))
         f.close()

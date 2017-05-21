@@ -146,7 +146,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                 remember, create_prefix)
         except errors.DivergedBranches:
             raise errors.BzrCommandError(gettext('These branches have diverged.'
-                                    '  See "bzr help diverged-branches"'
+                                    '  See "brz help diverged-branches"'
                                     ' for more information.'))
         except errors.NoRoundtrippingSupport, e:
             raise errors.BzrCommandError(gettext("It is not possible to losslessly "
@@ -161,7 +161,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                 " directory out of the way and try again.") % location)
         if push_result.workingtree_updated == False:
             warning("This transport does not update the working " 
-                    "tree of: %s. See 'bzr help working-trees' for "
+                    "tree of: %s. See 'brz help working-trees' for "
                     "more information." % push_result.target_branch.base)
     push_result.report(to_file)
     if verbose:

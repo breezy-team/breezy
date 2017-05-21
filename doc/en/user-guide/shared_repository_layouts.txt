@@ -235,7 +235,7 @@ remove the symlink, or you don't get the clutter reduction benefit.
 Another possibility instead of a symlink is to use a ``BranchReference``. It is currently
 difficult to create these through the ``brz`` command line, but if people find them useful
 that could be changed.
-This is actually how `Launchpad`_ allows you to ``brz checkout https://launchpad.net/brz``.
+This is actually how `Launchpad`_ allows you to ``brz checkout https://launchpad.net/bzr``.
 Effectively a ``BranchReference`` is a symlink, but it allows you to reference any other URL.
 If it is extended to support relative references, it would even work over HTTP, SFTP,
 and local paths.

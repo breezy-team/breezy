@@ -32,7 +32,7 @@ from __future__ import absolute_import
 # 'unprintable'.
 
 
-# return codes from the bzr program
+# return codes from the brz program
 EXIT_OK = 0
 EXIT_ERROR = 3
 EXIT_INTERNAL_ERROR = 4
@@ -42,7 +42,7 @@ class BzrError(StandardError):
     """
     Base class for errors raised by brzlib.
 
-    :cvar internal_error: if True this was probably caused by a bzr bug and
+    :cvar internal_error: if True this was probably caused by a brz bug and
         should be displayed with a traceback; if False (or absent) this was
         probably a user or environment error and they don't need the gory
         details.  (That can be overridden by -Derror on the command line.)
@@ -269,7 +269,7 @@ class NoPublicBranch(BzrError):
 class NoHelpTopic(BzrError):
 
     _fmt = ("No help could be found for '%(topic)s'. "
-        "Please use 'bzr help topics' to obtain a list of topics.")
+        "Please use 'brz help topics' to obtain a list of topics.")
 
     def __init__(self, topic):
         self.topic = topic
@@ -465,7 +465,7 @@ class RenameFailedFilesExist(BzrError):
     """Used when renaming and both source and dest exist."""
 
     _fmt = ("Could not rename %(source)s => %(dest)s because both files exist."
-            " (Use --after to tell bzr about a rename that has already"
+            " (Use --after to tell brz about a rename that has already"
             " happened)%(extra)s")
 
     def __init__(self, source, dest, extra=None):
@@ -727,7 +727,7 @@ class ParentBranchExists(AlreadyBranchError):
 class BranchExistsWithoutWorkingTree(PathError):
 
     _fmt = 'Directory contains a branch, but no working tree \
-(use bzr checkout if you wish to build a working tree): "%(path)s"'
+(use brz checkout if you wish to build a working tree): "%(path)s"'
 
 
 class AtomicFileAlreadyClosed(PathError):
@@ -760,7 +760,7 @@ class NoRepositoryPresent(BzrError):
 
 class UnsupportedFormatError(BzrError):
 
-    _fmt = "Unsupported branch format: %(format)s\nPlease run 'bzr upgrade'"
+    _fmt = "Unsupported branch format: %(format)s\nPlease run 'brz upgrade'"
 
 
 class UnknownFormatError(BzrError):
@@ -1054,7 +1054,7 @@ class LockBreakMismatch(LockError):
 class LockCorrupt(LockError):
 
     _fmt = ("Lock is apparently held, but corrupted: %(corruption_info)s\n"
-            "Use 'bzr break-lock' to clear it")
+            "Use 'brz break-lock' to clear it")
 
     internal_error = False
 
@@ -1763,7 +1763,7 @@ class ParseConfigError(BzrError):
 class ConfigOptionValueError(BzrError):
 
     _fmt = ('Bad value "%(value)s" for option "%(name)s".\n'
-            'See ``bzr help %(name)s``')
+            'See ``brz help %(name)s``')
 
     def __init__(self, name, value):
         BzrError.__init__(self, name=name, value=value)
@@ -2067,7 +2067,7 @@ class PointlessMerge(BzrError):
 
 class UninitializableFormat(BzrError):
 
-    _fmt = "Format %(format)s cannot be initialised by this version of bzr."
+    _fmt = "Format %(format)s cannot be initialised by this version of brz."
 
     def __init__(self, format):
         BzrError.__init__(self)
@@ -2165,7 +2165,7 @@ class ImmortalPendingDeletion(BzrError):
 
 class OutOfDateTree(BzrError):
 
-    _fmt = "Working tree is out of date, please run 'bzr update'.%(more)s"
+    _fmt = "Working tree is out of date, please run 'brz update'.%(more)s"
 
     def __init__(self, tree, more=None):
         if more is None:
@@ -2214,7 +2214,7 @@ class CorruptDirstate(BzrError):
 class CorruptRepository(BzrError):
 
     _fmt = ("An error has been detected in the repository %(repo_path)s.\n"
-            "Please run bzr reconcile on this repository.")
+            "Please run brz reconcile on this repository.")
 
     def __init__(self, repo):
         BzrError.__init__(self)
@@ -2407,7 +2407,7 @@ class NoSmartMedium(InternalBzrError):
 
 class UnknownSSH(BzrError):
 
-    _fmt = "Unrecognised value for BZR_SSH environment variable: %(vendor)s"
+    _fmt = "Unrecognised value for BRZ_SSH environment variable: %(vendor)s"
 
     def __init__(self, vendor):
         BzrError.__init__(self)
@@ -2417,7 +2417,7 @@ class UnknownSSH(BzrError):
 class SSHVendorNotFound(BzrError):
 
     _fmt = ("Don't know how to handle SSH connections."
-            " Please set BZR_SSH environment variable.")
+            " Please set BRZ_SSH environment variable.")
 
 
 class GhostRevisionsHaveNoRevno(BzrError):
@@ -2575,7 +2575,7 @@ class NoSuchTag(BzrError):
 class TagsNotSupported(BzrError):
 
     _fmt = ("Tags not supported by %(branch)s;"
-            " you may be able to use bzr upgrade.")
+            " you may be able to use brz upgrade.")
 
     def __init__(self, branch):
         self.branch = branch
@@ -2592,7 +2592,7 @@ class TagAlreadyExists(BzrError):
 class MalformedBugIdentifier(BzrError):
 
     _fmt = ('Did not understand bug identifier %(bug_id)s: %(reason)s. '
-            'See "bzr help bugs" for more information on this feature.')
+            'See "brz help bugs" for more information on this feature.')
 
     def __init__(self, bug_id, reason):
         self.bug_id = bug_id
@@ -2805,7 +2805,7 @@ class BzrDirError(BzrError):
 class UnsyncedBranches(BzrDirError):
 
     _fmt = ("'%(display_url)s' is not in sync with %(target_url)s.  See"
-            " bzr help sync-for-reconfigure.")
+            " brz help sync-for-reconfigure.")
 
     def __init__(self, bzrdir, target_branch):
         BzrDirError.__init__(self, bzrdir)
@@ -2869,7 +2869,7 @@ class NoBindLocation(BzrDirError):
 class UncommittedChanges(BzrError):
 
     _fmt = ('Working tree "%(display_url)s" has uncommitted changes'
-            ' (See bzr status).%(more)s')
+            ' (See brz status).%(more)s')
 
     def __init__(self, tree, more=None):
         if more is None:
@@ -2903,7 +2903,7 @@ class StoringUncommittedNotSupported(BzrError):
 class ShelvedChanges(UncommittedChanges):
 
     _fmt = ('Working tree "%(display_url)s" has shelved changes'
-            ' (See bzr shelve --list).%(more)s')
+            ' (See brz shelve --list).%(more)s')
 
 
 class MissingTemplateVariable(BzrError):
@@ -2955,7 +2955,7 @@ class CommandAvailableInPlugin(StandardError):
 
     def __str__(self):
 
-        _fmt = ('"%s" is not a standard bzr command. \n'
+        _fmt = ('"%s" is not a standard brz command. \n'
                 'However, the following official plugin provides this command: %s\n'
                 'You can install it by going to: %s'
                 % (self.cmd_name, self.plugin_metadata['name'],
@@ -3124,7 +3124,7 @@ class ViewsNotSupported(BzrError):
     """
 
     _fmt = ("Views are not supported by %(tree)s;"
-            " use 'bzr upgrade' to change your tree to a later format.")
+            " use 'brz upgrade' to change your tree to a later format.")
 
     def __init__(self, tree):
         self.tree = tree
@@ -3209,7 +3209,7 @@ class NoWhoami(BzrError):
 
     _fmt = ('Unable to determine your name.\n'
         "Please, set your name with the 'whoami' command.\n"
-        'E.g. bzr whoami "Your Name <name@example.com>"')
+        'E.g. brz whoami "Your Name <name@example.com>"')
 
 
 class InvalidPattern(BzrError):
@@ -3223,7 +3223,7 @@ class InvalidPattern(BzrError):
 class RecursiveBind(BzrError):
 
     _fmt = ('Branch "%(branch_url)s" appears to be bound to itself. '
-        'Please use `bzr unbind` to fix.')
+        'Please use `brz unbind` to fix.')
 
     def __init__(self, branch_url):
         self.branch_url = branch_url

@@ -1,7 +1,7 @@
 Debug Flags
 ===========
 
-These flags can be passed on the bzr command line or (without the ``-D``
+These flags can be passed on the brz command line or (without the ``-D``
 prefix) put in the ``debug_flags`` variable in ``bazaar.conf``.
 
 -Dauth            Trace authentication sections used.

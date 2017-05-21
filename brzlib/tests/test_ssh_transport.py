@@ -43,7 +43,7 @@ class SSHVendorManagerTests(TestCase):
         self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
         vendor = object()
         manager.register_vendor("vendor", vendor)
-        self.assertIs(manager.get_vendor({"BZR_SSH": "vendor"}), vendor)
+        self.assertIs(manager.get_vendor({"BRZ_SSH": "vendor"}), vendor)
 
     def test_default_vendor(self):
         manager = TestSSHVendorManager()
@@ -56,10 +56,10 @@ class SSHVendorManagerTests(TestCase):
         manager = TestSSHVendorManager()
         self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
         self.assertRaises(UnknownSSH,
-            manager.get_vendor, {"BZR_SSH": "vendor"})
+            manager.get_vendor, {"BRZ_SSH": "vendor"})
         vendor = object()
         manager.register_vendor("vendor", vendor)
-        self.assertIs(manager.get_vendor({"BZR_SSH": "vendor"}), vendor)
+        self.assertIs(manager.get_vendor({"BRZ_SSH": "vendor"}), vendor)
 
     def test_get_vendor_by_inspection_openssh(self):
         manager = TestSSHVendorManager()
@@ -98,7 +98,7 @@ class SSHVendorManagerTests(TestCase):
         # Once the vendor is found the result is cached (mainly because of the
         # 'get_vendor' sometimes can be an expensive operation) and later
         # invocations of the 'get_vendor' just returns the cached value.
-        self.assertIs(manager.get_vendor({"BZR_SSH": "vendor"}), vendor)
+        self.assertIs(manager.get_vendor({"BRZ_SSH": "vendor"}), vendor)
         self.assertIs(manager.get_vendor({}), vendor)
         # The cache can be cleared by the 'clear_cache' method
         manager.clear_cache()
@@ -108,7 +108,7 @@ class SSHVendorManagerTests(TestCase):
         # The 'get_vendor' method search for SSH vendors as following:
         #
         #   1. Check previously cached value
-        #   2. Check BZR_SSH environment variable
+        #   2. Check BRZ_SSH environment variable
         #   3. Check the system for known SSH vendors
         #   4. Fall back to the default vendor if registered
         #
@@ -129,12 +129,12 @@ class SSHVendorManagerTests(TestCase):
         manager.set_ssh_version_string("OpenSSH")
         self.assertIsInstance(manager.get_vendor({}), OpenSSHSubprocessVendor)
 
-        # If the BZR_SSH environment variable is found it will be treated as
+        # If the BRZ_SSH environment variable is found it will be treated as
         # the vendor name
         manager.clear_cache()
         vendor = object()
         manager.register_vendor("vendor", vendor)
-        self.assertIs(manager.get_vendor({"BZR_SSH": "vendor"}), vendor)
+        self.assertIs(manager.get_vendor({"BRZ_SSH": "vendor"}), vendor)
 
         # Last cached value always checked first
         self.assertIs(manager.get_vendor({}), vendor)
@@ -143,7 +143,7 @@ class SSHVendorManagerTests(TestCase):
         manager = TestSSHVendorManager()
         manager.set_ssh_version_string("plink: Release 0.60")
         plink_path = "C:/Program Files/PuTTY/plink.exe"
-        vendor = manager.get_vendor({"BZR_SSH": plink_path})
+        vendor = manager.get_vendor({"BRZ_SSH": plink_path})
         self.assertIsInstance(vendor, PLinkSubprocessVendor)
         args = vendor._get_vendor_specific_argv("user", "host", 22, ["bzr"])
         self.assertEqual(args[0], plink_path)
@@ -153,7 +153,7 @@ class SSHVendorManagerTests(TestCase):
         manager.set_ssh_version_string(
             "OpenSSH_5.1p1 Debian-5, OpenSSL, 0.9.8g 19 Oct 2007")
         openssh_path = "/usr/bin/ssh"
-        vendor = manager.get_vendor({"BZR_SSH": openssh_path})
+        vendor = manager.get_vendor({"BRZ_SSH": openssh_path})
         self.assertIsInstance(vendor, OpenSSHSubprocessVendor)
         args = vendor._get_vendor_specific_argv("user", "host", 22, ["bzr"])
         self.assertEqual(args[0], openssh_path)

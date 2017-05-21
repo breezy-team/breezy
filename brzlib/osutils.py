@@ -1551,7 +1551,7 @@ def terminal_width():
     None is returned if the width can't established precisely.
 
     The rules are:
-    - if BZR_COLUMNS is set, returns its value
+    - if BRZ_COLUMNS is set, returns its value
     - if there is no controlling terminal, returns None
     - query the OS, if the queried size has changed since the last query,
       return its value,
@@ -1582,10 +1582,10 @@ def terminal_width():
     # time so we can notice if the reported size has changed, which should have
     # a similar effect.
 
-    # If BZR_COLUMNS is set, take it, user is always right
+    # If BRZ_COLUMNS is set, take it, user is always right
     # Except if they specified 0 in which case, impose no limit here
     try:
-        width = int(os.environ['BZR_COLUMNS'])
+        width = int(os.environ['BRZ_COLUMNS'])
     except (KeyError, ValueError):
         width = None
     if width is not None:
@@ -1596,7 +1596,7 @@ def terminal_width():
 
     isatty = getattr(sys.stdout, 'isatty', None)
     if isatty is None or not isatty():
-        # Don't guess, setting BZR_COLUMNS is the recommended way to override.
+        # Don't guess, setting BRZ_COLUMNS is the recommended way to override.
         return None
 
     # Query the OS
@@ -2390,7 +2390,7 @@ def local_concurrency(use_cache=True):
     if _cached_local_concurrency is not None and use_cache:
         return _cached_local_concurrency
 
-    concurrency = os.environ.get('BZR_CONCURRENCY', None)
+    concurrency = os.environ.get('BRZ_CONCURRENCY', None)
     if concurrency is None:
         try:
             import multiprocessing

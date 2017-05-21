@@ -287,7 +287,7 @@ class TestTextUIFactory(tests.TestCase):
         self.assertEqual('', ui.stdout.getvalue())
 
     def test_quietness(self):
-        self.overrideEnv('BZR_PROGRESS_BAR', 'text')
+        self.overrideEnv('BRZ_PROGRESS_BAR', 'text')
         ui_factory = _mod_ui_text.TextUIFactory(None,
             TTYStringIO(),
             TTYStringIO())
@@ -374,16 +374,16 @@ class UITests(tests.TestCase):
             (FileStringIO, 'dumb', 'text', _mod_ui_text.TextProgressView),
             ):
             self.overrideEnv('TERM', term)
-            self.overrideEnv('BZR_PROGRESS_BAR', pb)
+            self.overrideEnv('BRZ_PROGRESS_BAR', pb)
             stdin = file_class('')
             stderr = file_class()
             stdout = file_class()
             uif = _mod_ui.make_ui_for_terminal(stdin, stdout, stderr)
             self.assertIsInstance(uif, _mod_ui_text.TextUIFactory,
-                "TERM=%s BZR_PROGRESS_BAR=%s uif=%r" % (term, pb, uif,))
+                "TERM=%s BRZ_PROGRESS_BAR=%s uif=%r" % (term, pb, uif,))
             self.assertIsInstance(uif.make_progress_view(),
                 expected_pb_class,
-                "TERM=%s BZR_PROGRESS_BAR=%s uif=%r" % (term, pb, uif,))
+                "TERM=%s BRZ_PROGRESS_BAR=%s uif=%r" % (term, pb, uif,))
 
     def test_text_ui_non_terminal(self):
         """Even on non-ttys, make_ui_for_terminal gives a text ui."""

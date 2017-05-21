@@ -114,9 +114,9 @@ At the start of a series cycle
 
 To start a new series cycle:
 
-#. Create a new series ``x.y`` at <https://launchpad.net/brz/+addseries>.
+#. Create a new series ``x.y`` at <https://launchpad.net/bzr/+addseries>.
 
-#. Add milestones at <https://launchpad.net/brz/x.y/+addmilestone> to that
+#. Add milestones at <https://launchpad.net/bzr/x.y/+addmilestone> to that
    series for the beta releases and the stable series mentioning their
    expected dates. Only the milestone associated to the next release in
    this series should be left active to avoid clutter when targeting bugs.
@@ -189,8 +189,8 @@ To start a new release cycle:
 #. Update the "What's New" documents in ``doc/en/whats-new``.
 
 #. Make sure a milestone exists for your release and that it is active,
-   <https://launchpad.net/brz/x.y> lists the existing milestones,
-   <https://launchpad.net/brz/x.y/x.y.z/+edit> allows you to toggle the
+   <https://launchpad.net/bzr/x.y> lists the existing milestones,
+   <https://launchpad.net/bzr/x.y/x.y.z/+edit> allows you to toggle the
    active flag.
 
 #. Commit this and send it to PQM.
@@ -205,7 +205,7 @@ Update the source code
 #. Check that there is a milestone for the release you're doing. If there
    is no milestone it indicates a process problem - make the milestone but
    also mail the list to raise this issue in our process. Milestones are
-   found at <https://launchpad.net/brz/+milestone/x.y.z>.
+   found at <https://launchpad.net/bzr/+milestone/x.y.z>.
 
 #. Merge into your branch all previous stable series fixes that haven't been
    merged yet. For example, if you're releasing 2.6.x, make sure the fixes
@@ -421,7 +421,7 @@ Making the source tarball
 Publishing the source tarball
 -----------------------------
 
-#. Go to the relevant <https://launchpad.net/brz/x.y> series page in Launchpad.
+#. Go to the relevant <https://launchpad.net/bzr/x.y> series page in Launchpad.
 
 #. Create a release of the milestone, and upload the source tarball and
    the GPG signature.  Or, if you prefer, use the
@@ -497,7 +497,7 @@ for the new branch and inform translators.
      brz push lp:~brz-core/brz/brz-translations-export-x.y
 
 #. On the translations series synchronization settings page
-   <https://translations.launchpad.net/brz/x.y/+translations-settings>
+   <https://translations.launchpad.net/bzr/x.y/+translations-settings>
    turn on ``Import template files`` then for exports click ``Choose a
    target branch`` and point it at the branch you just pushed.
 
@@ -541,7 +541,7 @@ for binaries to be built for various platforms. Once they have been built,
 we have a releasable product.  The next step is to make it generally
 available to the world.
 
-#. Go to the release web page at <https://launchpad.net/brz/x.y/x.y.z>
+#. Go to the release web page at <https://launchpad.net/bzr/x.y/x.y.z>
 
 #. Announce on the Breezy website.
 
@@ -595,15 +595,15 @@ Now that the release is publicly available, tell people about it.
       feedback.
 
       Breezy is now available for download from
-      https://launchpad.net/brz/x.y/x.y.z/ as a source tarball; packages
+      https://launchpad.net/bzr/x.y/x.y.z/ as a source tarball; packages
       for various systems will be available soon.
 
       <<release notes from this release back to the last major release>>
 
    Feel free to tweak this to your taste.
 
-#. Make an announcement through <https://launchpad.net/brz/+announce>
-   mentioning the milestone URL <https://launchpad.net/brz/+milestone/x.y.z>
+#. Make an announcement through <https://launchpad.net/bzr/+announce>
+   mentioning the milestone URL <https://launchpad.net/bzr/+milestone/x.y.z>
    so people get an easy access to details.
 
 #. Announce on https://freecode.com/projects/bazaar-vcs
@@ -627,8 +627,8 @@ Now that the release is publicly available, tell people about it.
      can still access the releases notes via the ``Release Notes`` URL in
      the ``Links`` box in the upper right area of the page. When doing the
      first stable release in a series, delete the ``Unstable installers``
-     <https://launchpad.net/brz/x.y/x.ybn> and ``Unstable source tarball``
-     <http://launchpad.net/brz/x.y/x.ybn/+download/brz-x.ybn.tar.gz>
+     <https://launchpad.net/bzr/x.y/x.ybn> and ``Unstable source tarball``
+     <http://launchpad.net/bzr/x.y/x.ybn/+download/brz-x.ybn.tar.gz>
      links. Conversely, when creating the first beta in a development
      series, create these links again. Check all links when doing other
      kinds of release.

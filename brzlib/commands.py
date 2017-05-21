@@ -469,7 +469,7 @@ class Command(object):
             # Note: If self.gettext() translates ':Usage:\n', the section will
             # be shown after "Description" section and we don't want to
             # translate the usage string.
-            # Though, bzr export-pot don't exports :Usage: section and it must
+            # Though, brz export-pot don't exports :Usage: section and it must
             # not be translated.
             doc = self.gettext(doc)
         else:
@@ -530,7 +530,7 @@ class Command(object):
                         result += ':%s:\n%s\n' % (label, sections[label])
                 result += '\n'
         else:
-            result += (gettext("See bzr help %s for more details and examples.\n\n")
+            result += (gettext("See brz help %s for more details and examples.\n\n")
                 % self.name())
 
         # Add the aliases, source (plug-in) and see also links, if any
@@ -645,10 +645,10 @@ class Command(object):
         self._setup_outf()
 
         # Process the standard options
-        if 'help' in opts:  # e.g. bzr add --help
+        if 'help' in opts:  # e.g. brz add --help
             self.outf.write(self.get_help_text())
             return 0
-        if 'usage' in opts:  # e.g. bzr add --usage
+        if 'usage' in opts:  # e.g. brz add --usage
             self.outf.write(self.get_help_text(verbose=False))
             return 0
         trace.set_verbosity_level(option._verbosity_level)
@@ -933,7 +933,7 @@ def exception_to_return_code(the_callable, *args, **kwargs):
         # specially here, but hopefully they're handled ok by the logger now
         exc_info = sys.exc_info()
         exitcode = trace.report_exception(exc_info, sys.stderr)
-        if os.environ.get('BZR_PDB'):
+        if os.environ.get('BRZ_PDB'):
             print '**** entering debugger'
             import pdb
             pdb.post_mortem(exc_info[2])
@@ -1047,7 +1047,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         elif a == '--builtin':
             opt_builtin = True
         elif a == '--concurrency':
-            os.environ['BZR_CONCURRENCY'] = argv[i + 1]
+            os.environ['BRZ_CONCURRENCY'] = argv[i + 1]
             i += 1
         elif a == '--coverage':
             opt_coverage_dir = argv[i + 1]
@@ -1220,7 +1220,7 @@ def run_bzr_catch_errors(argv):
 
 
 def run_bzr_catch_user_errors(argv):
-    """Run bzr and report user errors, but let internal errors propagate.
+    """Run brz and report user errors, but let internal errors propagate.
 
     This is used for the test suite, and might be useful for other programs
     that want to wrap the commandline interface.

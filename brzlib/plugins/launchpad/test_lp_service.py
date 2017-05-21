@@ -32,7 +32,7 @@ class LaunchpadServiceTests(TestCase):
     def setUp(self):
         super(LaunchpadServiceTests, self).setUp()
         # make sure we have a reproducible standard environment
-        self.overrideEnv('BZR_LP_XMLRPC_URL', None)
+        self.overrideEnv('BRZ_LP_XMLRPC_URL', None)
 
     def test_default_service(self):
         service = LaunchpadService()
@@ -72,13 +72,13 @@ class LaunchpadServiceTests(TestCase):
                          str(error))
 
     def test_environment_overrides_default(self):
-        os.environ['BZR_LP_XMLRPC_URL'] = 'http://example.com/'
+        os.environ['BRZ_LP_XMLRPC_URL'] = 'http://example.com/'
         service = LaunchpadService()
         self.assertEqual('http://example.com/',
                          service.service_url)
 
     def test_environment_overrides_specified_service(self):
-        os.environ['BZR_LP_XMLRPC_URL'] = 'http://example.com/'
+        os.environ['BRZ_LP_XMLRPC_URL'] = 'http://example.com/'
         service = LaunchpadService(lp_instance='staging')
         self.assertEqual('http://example.com/',
                          service.service_url)

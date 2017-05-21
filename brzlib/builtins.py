@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""builtin bzr commands"""
+"""builtin brz commands"""
 
 from __future__ import absolute_import
 
@@ -257,7 +257,7 @@ def _get_one_revision(command_name, revisions):
         return None
     if len(revisions) != 1:
         raise errors.BzrCommandError(gettext(
-            'bzr %s --revision takes exactly one revision identifier') % (
+            'brz %s --revision takes exactly one revision identifier') % (
                 command_name,))
     return revisions[0]
 
@@ -343,12 +343,12 @@ class cmd_status(Command):
     character: '/', '@' or '*' respectively. These decorations can be
     disabled using the '--no-classify' option.
 
-    To see ignored files use 'bzr ignored'.  For details on the
-    changes to file texts, use 'bzr diff'.
+    To see ignored files use 'brz ignored'.  For details on the
+    changes to file texts, use 'brz diff'.
 
     Note that --short or -S gives status flags for each item, similar
     to Subversion's status command. To get output similar to svn -q,
-    use bzr status -SV.
+    use brz status -SV.
 
     If no arguments are specified, the status of the entire working
     directory is shown.  Otherwise, only the status of the specified
@@ -365,7 +365,7 @@ class cmd_status(Command):
 
     To see which files have changed in a specific revision, or between
     two revisions, pass a revision range to the revision argument.
-    This will produce the same results as calling 'bzr diff --summarize'.
+    This will produce the same results as calling 'brz diff --summarize'.
     """
 
     # TODO: --no-recurse/-N, --recurse options
@@ -394,7 +394,7 @@ class cmd_status(Command):
         from brzlib.status import show_tree_status
 
         if revision and len(revision) > 2:
-            raise errors.BzrCommandError(gettext('bzr status --revision takes exactly'
+            raise errors.BzrCommandError(gettext('brz status --revision takes exactly'
                                          ' one or two revision specifiers'))
 
         tree, relfile_list = WorkingTree.open_containing_paths(file_list)
@@ -563,7 +563,7 @@ class cmd_remove_tree(Command):
     Since a lightweight checkout is little more than a working tree
     this will refuse to run against one.
 
-    To re-create the working tree, use "bzr checkout".
+    To re-create the working tree, use "brz checkout".
     """
     _see_also = ['checkout', 'working-trees']
     takes_args = ['location*']
@@ -608,7 +608,7 @@ class cmd_repair_workingtree(Command):
     'known good' state. Any new modifications (adding a file, renaming, etc)
     will be lost, though modified files will still be detected as such.
 
-    Most users will want something more like "bzr revert" or "bzr update"
+    Most users will want something more like "brz revert" or "brz update"
     unless the state file has become corrupted.
 
     By default this attempts to recover the current state by looking at the
@@ -635,7 +635,7 @@ class cmd_repair_workingtree(Command):
                 # Refuse
                 raise errors.BzrCommandError(gettext(
                     'The tree does not appear to be corrupt. You probably'
-                    ' want "bzr revert" instead. Use "--force" if you are'
+                    ' want "brz revert" instead. Use "--force" if you are'
                     ' sure you want to reset the working tree.'))
         if revision is None:
             revision_ids = None
@@ -774,7 +774,7 @@ class cmd_add(Command):
     A warning will be printed when nested trees are encountered,
     unless they are explicitly ignored.
 
-    Therefore simply saying 'bzr add' will version all files that
+    Therefore simply saying 'brz add' will version all files that
     are currently unknown.
 
     Adding a file whose parent directory is not versioned will
@@ -919,7 +919,7 @@ class cmd_inventory(Command):
     type using the --kind option.  For example: --kind file.
 
     It is also possible to restrict the list of files to a specific
-    set. For example: bzr inventory --show-ids this/file
+    set. For example: brz inventory --show-ids this/file
     """
 
     hidden = True
@@ -976,9 +976,9 @@ class cmd_mv(Command):
     __doc__ = """Move or rename a file.
 
     :Usage:
-        bzr mv OLDNAME NEWNAME
+        brz mv OLDNAME NEWNAME
 
-        bzr mv SOURCE... DESTINATION
+        brz mv SOURCE... DESTINATION
 
     If the last argument is a versioned directory, all the other names
     are moved into it.  Otherwise, there must be exactly two arguments
@@ -994,7 +994,7 @@ class cmd_mv(Command):
     """
 
     takes_args = ['names*']
-    takes_options = [Option("after", help="Move only the bzr identifier"
+    takes_options = [Option("after", help="Move only the brz identifier"
         " of the file, because the file has already been moved."),
         Option('auto', help='Automatically guess renames.'),
         Option('dry-run', help='Avoid making changes when guessing renames.'),
@@ -1118,7 +1118,7 @@ class cmd_pull(Command):
     commit is one that has not been merged (directly or indirectly) into the 
     parent.
 
-    If branches have diverged, you can use 'bzr merge' to integrate the changes
+    If branches have diverged, you can use 'brz merge' to integrate the changes
     from one into the other.  Once one branch has merged, the other should
     be able to pull it again.
 
@@ -1137,7 +1137,7 @@ class cmd_pull(Command):
 
     Note: The location can be specified either in the form of a branch,
     or in the form of a path to a file containing a merge directive generated
-    with bzr send.
+    with brz send.
     """
 
     _see_also = ['push', 'update', 'status-flags', 'send']
@@ -1269,11 +1269,11 @@ class cmd_push(Command):
     considered diverged if the destination branch's most recent commit is one
     that has not been merged (directly or indirectly) by the source branch.
 
-    If branches have diverged, you can use 'bzr push --overwrite' to replace
+    If branches have diverged, you can use 'brz push --overwrite' to replace
     the other branch completely, discarding its unmerged changes.
 
     If you want to ensure you have the different changes in the other branch,
-    do a merge (see bzr help merge) from the other branch, and commit that.
+    do a merge (see brz help merge) from the other branch, and commit that.
     After that you will be able to do a push without '--overwrite'.
 
     If there is no default push location set, the first push will set it (use
@@ -1375,7 +1375,7 @@ class cmd_push(Command):
                 if parent_loc:
                     raise errors.BzrCommandError(gettext(
                         "No push location known or specified. To push to the "
-                        "parent branch (at %s), use 'bzr push :parent'." %
+                        "parent branch (at %s), use 'brz push :parent'." %
                         urlutils.unescape_for_display(parent_loc,
                             self.outf.encoding)))
                 else:
@@ -1707,17 +1707,17 @@ class cmd_update(Command):
     
     If there are any uncommitted changes in the tree, they will be carried
     across and remain as uncommitted changes after the update.  To discard
-    these changes, use 'bzr revert'.  The uncommitted changes may conflict
+    these changes, use 'brz revert'.  The uncommitted changes may conflict
     with the changes brought in by the change in basis revision.
 
-    If the tree's branch is bound to a master branch, bzr will also update
+    If the tree's branch is bound to a master branch, brz will also update
     the branch from the master.
 
     You cannot update just a single file or directory, because each Bazaar
     working tree has just a single basis revision.  If you want to restore a
-    file that has been removed locally, use 'bzr revert' instead of 'bzr
+    file that has been removed locally, use 'brz revert' instead of 'brz
     update'.  If you want to restore a file to its state in a previous
-    revision, use 'bzr revert' with a '-r' option, or use 'bzr cat' to write
+    revision, use 'brz revert' with a '-r' option, or use 'brz cat' to write
     out the old content of that file to a new location.
 
     The 'dir' argument, if given, must be the location of the root of a
@@ -1735,8 +1735,8 @@ class cmd_update(Command):
 
     def run(self, dir=None, revision=None, show_base=None):
         if revision is not None and len(revision) != 1:
-            raise errors.BzrCommandError(gettext(
-                "bzr update --revision takes exactly one revision"))
+            raise errors.brzCommandError(gettext(
+                "brz update --revision takes exactly one revision"))
         if dir is None:
             tree = WorkingTree.open_containing('.')[0]
         else:
@@ -1744,7 +1744,7 @@ class cmd_update(Command):
             if relpath:
                 # See bug 557886.
                 raise errors.BzrCommandError(gettext(
-                    "bzr update can only update a whole tree, "
+                    "brz update can only update a whole tree, "
                     "not a file or subdirectory"))
         branch = tree.branch
         possible_transports = []
@@ -1792,7 +1792,7 @@ class cmd_update(Command):
         except errors.NoSuchRevision, e:
             raise errors.BzrCommandError(gettext(
                                   "branch has no revision %s\n"
-                                  "bzr update --revision only works"
+                                  "brz update --revision only works"
                                   " for a revision in the branch history")
                                   % (e.revision))
         revno = tree.branch.revision_id_to_dotted_revno(
@@ -1802,7 +1802,7 @@ class cmd_update(Command):
         parent_ids = tree.get_parent_ids()
         if parent_ids[1:] and parent_ids[1:] != existing_pending_merges:
             note(gettext('Your local commits will now show as pending merges with '
-                 "'bzr status', and can be committed with 'bzr commit'."))
+                 "'brz status', and can be committed with 'brz commit'."))
         if conflicts != 0:
             return 1
         else:
@@ -1825,17 +1825,17 @@ class cmd_info(Command):
 
       Display information on the format and related locations:
 
-        bzr info
+        brz info
 
       Display the above together with extended format information and
       basic statistics (like the number of files in the working tree and
       number of revisions in the branch and repository):
 
-        bzr info -v
+        brz info -v
 
       Display the above together with number of committers to the branch:
 
-        bzr info -vv
+        brz info -vv
     """
     _see_also = ['revno', 'working-trees', 'repositories']
     takes_args = ['location?']
@@ -1869,7 +1869,7 @@ class cmd_remove(Command):
             'The file deletion mode to be used.',
             title='Deletion Strategy', value_switches=True, enum_switch=False,
             safe='Backup changed files (default).',
-            keep='Delete from bzr but leave the working copy.',
+            keep='Delete from brz but leave the working copy.',
             no_backup='Don\'t backup changed files.'),
         ]
     aliases = ['rm', 'del']
@@ -1952,16 +1952,16 @@ class cmd_file_path(Command):
 
 
 class cmd_reconcile(Command):
-    __doc__ = """Reconcile bzr metadata in a branch.
+    __doc__ = """Reconcile brz metadata in a branch.
 
     This can correct data mismatches that may have been caused by
-    previous ghost operations or bzr upgrades. You should only
-    need to run this command if 'bzr check' or a bzr developer
+    previous ghost operations or brz upgrades. You should only
+    need to run this command if 'brz check' or a brz developer
     advises you to run it.
 
     If a second branch is provided, cross-branch reconciliation is
     also attempted, which will check that data like the tree root
-    id which was not present in very early bzr versions is represented
+    id which was not present in very early brz versions is represented
     correctly in both branches.
 
     At the same time it is run it may recompress data resulting in
@@ -2046,15 +2046,15 @@ class cmd_init(Command):
     in the .bzr directory.
 
     If there is already a branch at the location but it has no working tree,
-    the tree can be populated with 'bzr checkout'.
+    the tree can be populated with 'brz checkout'.
 
     Recipe for importing a tree of files::
 
         cd ~/project
-        bzr init
-        bzr add .
-        bzr status
-        bzr commit -m "imported project"
+        brz init
+        brz add .
+        brz status
+        brz commit -m "imported project"
     """
 
     _see_also = ['init-repository', 'branch', 'checkout']
@@ -2170,12 +2170,12 @@ class cmd_init_repository(Command):
     :Examples:
         Create a shared repository holding just branches::
 
-            bzr init-repo --no-trees repo
-            bzr init repo/trunk
+            brz init-repo --no-trees repo
+            brz init repo/trunk
 
         Make a lightweight checkout elsewhere::
 
-            bzr checkout --lightweight repo/trunk trunk-checkout
+            brz checkout --lightweight repo/trunk trunk-checkout
             cd trunk-checkout
             (add files here)
     """
@@ -2184,7 +2184,7 @@ class cmd_init_repository(Command):
     takes_args = ["location"]
     takes_options = [RegistryOption('format',
                             help='Specify a format for this repository. See'
-                                 ' "bzr help formats" for details.',
+                                 ' "brz help formats" for details.',
                             lazy_registry=('brzlib.controldir', 'format_registry'),
                             converter=lambda name: controldir.format_registry.make_bzrdir(name),
                             value_switches=True, title='Repository format'),
@@ -2224,14 +2224,14 @@ class cmd_diff(Command):
     the first argument, if any, or the current tree if no arguments are
     given.
 
-    "bzr diff -p1" is equivalent to "bzr diff --prefix old/:new/", and
+    "brz diff -p1" is equivalent to "brz diff --prefix old/:new/", and
     produces patches suitable for "patch -p1".
 
     Note that when using the -r argument with a range of revisions, the
     differences are computed between the two specified revisions.  That
     is, the command does not show the changes introduced by the first 
     revision in the range.  This differs from the interpretation of 
-    revision ranges used by "bzr log" which includes the first revision
+    revision ranges used by "brz log" which includes the first revision
     in the range.
 
     :Exit values:
@@ -2243,62 +2243,62 @@ class cmd_diff(Command):
     :Examples:
         Shows the difference in the working tree versus the last commit::
 
-            bzr diff
+            brz diff
 
         Difference between the working tree and revision 1::
 
-            bzr diff -r1
+            brz diff -r1
 
         Difference between revision 3 and revision 1::
 
-            bzr diff -r1..3
+            brz diff -r1..3
 
         Difference between revision 3 and revision 1 for branch xxx::
 
-            bzr diff -r1..3 xxx
+            brz diff -r1..3 xxx
 
         The changes introduced by revision 2 (equivalent to -r1..2)::
 
-            bzr diff -c2
+            brz diff -c2
 
         To see the changes introduced by revision X::
         
-            bzr diff -cX
+            brz diff -cX
 
         Note that in the case of a merge, the -c option shows the changes
         compared to the left hand parent. To see the changes against
         another parent, use::
 
-            bzr diff -r<chosen_parent>..X
+            brz diff -r<chosen_parent>..X
 
         The changes between the current revision and the previous revision
         (equivalent to -c-1 and -r-2..-1)
 
-            bzr diff -r-2..
+            brz diff -r-2..
 
         Show just the differences for file NEWS::
 
-            bzr diff NEWS
+            brz diff NEWS
 
         Show the differences in working tree xxx for file NEWS::
 
-            bzr diff xxx/NEWS
+            brz diff xxx/NEWS
 
         Show the differences from branch xxx to this working tree:
 
-            bzr diff --old xxx
+            brz diff --old xxx
 
         Show the differences between two branches for file NEWS::
 
-            bzr diff --old xxx --new yyy NEWS
+            brz diff --old xxx --new yyy NEWS
 
-        Same as 'bzr diff' but prefix paths with old/ and new/::
+        Same as 'brz diff' but prefix paths with old/ and new/::
 
-            bzr diff --prefix old/:new/
+            brz diff --prefix old/:new/
             
         Show the differences using a custom diff program with options::
         
-            bzr diff --using /usr/bin/diff --diff-options -wu
+            brz diff --using /usr/bin/diff --diff-options -wu
     """
     _see_also = ['status']
     takes_args = ['file*']
@@ -2358,7 +2358,7 @@ class cmd_diff(Command):
                 ' (eg "old/:new/")'))
 
         if revision and len(revision) > 2:
-            raise errors.BzrCommandError(gettext('bzr diff --revision takes exactly'
+            raise errors.BzrCommandError(gettext('brz diff --revision takes exactly'
                                          ' one or two revision specifiers'))
 
         if using is not None and format is not None:
@@ -2492,14 +2492,14 @@ def _parse_levels(s):
 class cmd_log(Command):
     __doc__ = """Show historical log for a branch or subset of a branch.
 
-    log is bzr's default tool for exploring the history of a branch.
+    log is brz's default tool for exploring the history of a branch.
     The branch to use is taken from the first parameter. If no parameters
     are given, the branch containing the working directory is logged.
     Here are some simple examples::
 
-      bzr log                       log the current branch
-      bzr log foo.py                log a file in its branch
-      bzr log http://server/branch  log a branch on a server
+      brz log                       log the current branch
+      brz log foo.py                log a file in its branch
+      brz log http://server/branch  log a branch on a server
 
     The filtering, ordering and information shown for each revision can
     be controlled as explained below. By default, all revisions are
@@ -2512,7 +2512,7 @@ class cmd_log(Command):
 
       The log format controls how information about each revision is
       displayed. The standard log formats are called ``long``, ``short``
-      and ``line``. The default is long. See ``bzr help log-formats``
+      and ``line``. The default is long. See ``brz help log-formats``
       for more details on log formats.
 
       The following options can be used to control what information is
@@ -2549,7 +2549,7 @@ class cmd_log(Command):
         -r..Y    display up to and including revision Y
         -rX..Y   display from X to Y inclusive
 
-      See ``bzr help revisionspec`` for details on how to specify X and Y.
+      See ``brz help revisionspec`` for details on how to specify X and Y.
       Some common examples are given below::
 
         -r-1                show just the tip
@@ -2585,14 +2585,14 @@ class cmd_log(Command):
 
       In this case:
 
-      * ``bzr log guide.txt`` will log the file added in revision 1
+      * ``brz log guide.txt`` will log the file added in revision 1
 
-      * ``bzr log tutorial.txt`` will log the new file added in revision 3
+      * ``brz log tutorial.txt`` will log the new file added in revision 3
 
-      * ``bzr log -r2 -p tutorial.txt`` will show the changes made to
+      * ``brz log -r2 -p tutorial.txt`` will show the changes made to
         the original file in revision 2.
 
-      * ``bzr log -r2 -p guide.txt`` will display an error message as there
+      * ``brz log -r2 -p guide.txt`` will display an error message as there
         was no file called guide.txt in revision 2.
 
       Renames are always followed by log. By design, there is no need to
@@ -2622,19 +2622,19 @@ class cmd_log(Command):
         top = log -l10 --line
         show = log -v -p
 
-      ``bzr tip`` will then show the latest revision while ``bzr top``
+      ``brz tip`` will then show the latest revision while ``brz top``
       will show the last 10 mainline revisions. To see the details of a
-      particular revision X,  ``bzr show -rX``.
+      particular revision X,  ``brz show -rX``.
 
       If you are interested in looking deeper into a particular merge X,
-      use ``bzr log -n0 -rX``.
+      use ``brz log -n0 -rX``.
 
-      ``bzr log -v`` on a branch with lots of history is currently
+      ``brz log -v`` on a branch with lots of history is currently
       very slow. A fix for this issue is currently under development.
       With or without that fix, it is recommended that a revision range
       be given when using the -v option.
 
-      bzr has a generic full-text matching plugin, bzr-search, that can be
+      brz has a generic full-text matching plugin, brz-search, that can be
       used to find revisions matching user names, commit messages, etc.
       Among other features, this plugin can find all revisions containing
       a list of words but not others.
@@ -2912,7 +2912,7 @@ def _get_revision_range(revisionspec_list, branch, command_name):
             # show_log will use its revision_history. Having
             # different branches will lead to weird behaviors.
             raise errors.BzrCommandError(gettext(
-                "bzr %s doesn't accept two revisions in different"
+                "brz %s doesn't accept two revisions in different"
                 " branches.") % command_name)
         if start_spec.spec is None:
             # Avoid loading all the history.
@@ -2928,7 +2928,7 @@ def _get_revision_range(revisionspec_list, branch, command_name):
             rev2 = end_spec.in_history(branch)
     else:
         raise errors.BzrCommandError(gettext(
-            'bzr %s --revision takes one or two values.') % command_name)
+            'brz %s --revision takes one or two values.') % command_name)
     return rev1, rev2
 
 
@@ -2955,7 +2955,7 @@ def get_log_format(long=False, short=False, line=False, default='long'):
 class cmd_touching_revisions(Command):
     __doc__ = """Return revision-ids which affected a particular file.
 
-    A more user-friendly interface is "bzr log FILE".
+    A more user-friendly interface is "brz log FILE".
     """
 
     hidden = True
@@ -3106,7 +3106,7 @@ class cmd_unknowns(Command):
 class cmd_ignore(Command):
     __doc__ = """Ignore specified files or patterns.
 
-    See ``bzr help patterns`` for details on the syntax of patterns.
+    See ``brz help patterns`` for details on the syntax of patterns.
 
     If a .bzrignore file does not exist, the ignore command
     will create one and add the specified files or patterns to the newly
@@ -3143,45 +3143,45 @@ class cmd_ignore(Command):
     :Examples:
         Ignore the top level Makefile::
 
-            bzr ignore ./Makefile
+            brz ignore ./Makefile
 
         Ignore .class files in all directories...::
 
-            bzr ignore "*.class"
+            brz ignore "*.class"
 
         ...but do not ignore "special.class"::
 
-            bzr ignore "!special.class"
+            brz ignore "!special.class"
 
         Ignore files whose name begins with the "#" character::
 
-            bzr ignore "RE:^#"
+            brz ignore "RE:^#"
 
         Ignore .o files under the lib directory::
 
-            bzr ignore "lib/**/*.o"
+            brz ignore "lib/**/*.o"
 
         Ignore .o files under the lib directory::
 
-            bzr ignore "RE:lib/.*\.o"
+            brz ignore "RE:lib/.*\.o"
 
         Ignore everything but the "debian" toplevel directory::
 
-            bzr ignore "RE:(?!debian/).*"
+            brz ignore "RE:(?!debian/).*"
         
         Ignore everything except the "local" toplevel directory,
         but always ignore autosave files ending in ~, even under local/::
         
-            bzr ignore "*"
-            bzr ignore "!./local"
-            bzr ignore "!!*~"
+            brz ignore "*"
+            brz ignore "!./local"
+            brz ignore "!!*~"
     """
 
     _see_also = ['status', 'ignored', 'patterns']
     takes_args = ['name_pattern*']
     takes_options = ['directory',
         Option('default-rules',
-               help='Display the default ignore rules that bzr uses.')
+               help='Display the default ignore rules that brz uses.')
         ]
 
     def run(self, name_pattern_list=None, default_rules=None,
@@ -3229,7 +3229,7 @@ class cmd_ignore(Command):
             self.outf.write(gettext("Warning: the following files are version "
                   "controlled and match your ignore pattern:\n%s"
                   "\nThese files will continue to be version controlled"
-                  " unless you 'bzr remove' them.\n") % ("\n".join(matches),))
+                  " unless you 'brz remove' them.\n") % ("\n".join(matches),))
 
 
 class cmd_ignored(Command):
@@ -3240,7 +3240,7 @@ class cmd_ignored(Command):
 
     Alternatively, to list just the files::
 
-        bzr ls --ignored
+        brz ls --ignored
     """
 
     encoding_type = 'replace'
@@ -3263,7 +3263,7 @@ class cmd_lookup_revision(Command):
     __doc__ = """Lookup the revision-id from a revision-number
 
     :Examples:
-        bzr lookup-revision 33
+        brz lookup-revision 33
     """
     hidden = True
     takes_args = ['revno']
@@ -3378,7 +3378,7 @@ class cmd_cat(Command):
     def run(self, filename, revision=None, name_from_revision=False,
             filters=False, directory=None):
         if revision is not None and len(revision) != 1:
-            raise errors.BzrCommandError(gettext("bzr cat --revision takes exactly"
+            raise errors.BzrCommandError(gettext("brz cat --revision takes exactly"
                                          " one revision specifier"))
         tree, branch, relpath = \
             _open_directory_or_containing_tree_or_branch(filename, directory)
@@ -3461,7 +3461,7 @@ class cmd_commit(Command):
       For example, to commit only changes within foo, but not changes
       within foo/bar::
   
-        bzr commit foo -x foo/bar
+        brz commit foo -x foo/bar
   
       A selective commit after a merge is not yet supported.
 
@@ -3479,19 +3479,19 @@ class cmd_commit(Command):
       A common mistake is to forget to add a new file or directory before
       running the commit command. The --strict option checks for unknown
       files and aborts the commit if any are found. More advanced pre-commit
-      checks can be implemented by defining hooks. See ``bzr help hooks``
+      checks can be implemented by defining hooks. See ``brz help hooks``
       for details.
 
     :Things to note:
 
       If you accidentially commit the wrong changes or make a spelling
       mistake in the commit message say, you can use the uncommit command
-      to undo it. See ``bzr help uncommit`` for details.
+      to undo it. See ``brz help uncommit`` for details.
 
       Hooks can also be configured to run after a commit. This allows you
       to trigger updates to external systems like bug trackers. The --fixes
       option can be used to record the association between a revision and
-      one or more bugs. See ``bzr help bugs`` for details.
+      one or more bugs. See ``brz help bugs`` for details.
     """
 
     _see_also = ['add', 'bugs', 'hooks', 'uncommit']
@@ -3517,7 +3517,7 @@ class cmd_commit(Command):
                     "format, e.g. '2009-10-10 08:00:00 +0100'."),
              ListOption('fixes', type=str,
                     help="Mark a bug as being fixed by this revision "
-                         "(see \"bzr help bugs\")."),
+                         "(see \"brz help bugs\")."),
              ListOption('author', type=unicode,
                     help="Set the author's name, if it's different "
                          "from the committer."),
@@ -3552,14 +3552,14 @@ class cmd_commit(Command):
                         "No tracker specified for bug %s. Use the form "
                         "'tracker:id' or specify a default bug tracker "
                         "using the `bugtracker` option.\nSee "
-                        "\"bzr help bugs\" for more information on this "
+                        "\"brz help bugs\" for more information on this "
                         "feature. Commit refused.") % fixed_bug)
                 tag = default_bugtracker
                 bug_id = tokens[0]
             elif len(tokens) != 2:
                 raise errors.BzrCommandError(gettext(
                     "Invalid bug %s. Must be in the form of 'tracker:id'. "
-                    "See \"bzr help bugs\" for more information on this "
+                    "See \"brz help bugs\" for more information on this "
                     "feature.\nCommit refused.") % fixed_bug)
             else:
                 tag, bug_id = tokens
@@ -3687,11 +3687,11 @@ class cmd_commit(Command):
                         lossy=lossy)
         except PointlessCommit:
             raise errors.BzrCommandError(gettext("No changes to commit."
-                " Please 'bzr add' the files you want to commit, or use"
+                " Please 'brz add' the files you want to commit, or use"
                 " --unchanged to force an empty commit."))
         except ConflictsInTree:
             raise errors.BzrCommandError(gettext('Conflicts detected in working '
-                'tree.  Use "bzr conflicts" to list, "bzr resolve FILE" to'
+                'tree.  Use "brz conflicts" to list, "brz resolve FILE" to'
                 ' resolve.'))
         except StrictCommitFailed:
             raise errors.BzrCommandError(gettext("Commit refused because there are"
@@ -3708,7 +3708,7 @@ class cmd_check(Command):
     __doc__ = """Validate working tree structure, branch consistency and repository history.
 
     This command checks various invariants about branch and repository storage
-    to detect data corruption or bzr bugs.
+    to detect data corruption or brz bugs.
 
     The working tree and branch checks will only give output if a problem is
     detected. The output fields of the repository check are:
@@ -3743,15 +3743,15 @@ class cmd_check(Command):
 
         Check the tree and branch at 'foo'::
 
-            bzr check --tree --branch foo
+            brz check --tree --branch foo
 
         Check only the repository at 'bar'::
 
-            bzr check --repo bar
+            brz check --repo bar
 
         Check everything at 'baz'::
 
-            bzr check baz
+            brz check baz
     """
 
     _see_also = ['reconcile']
@@ -3811,7 +3811,7 @@ class cmd_upgrade(Command):
     takes_args = ['url?']
     takes_options = [
         RegistryOption('format',
-            help='Upgrade to a specific format.  See "bzr help'
+            help='Upgrade to a specific format.  See "brz help'
                  ' formats" for details.',
             lazy_registry=('brzlib.controldir', 'format_registry'),
             converter=lambda name: controldir.format_registry.make_bzrdir(name),
@@ -3834,16 +3834,16 @@ class cmd_upgrade(Command):
 
 
 class cmd_whoami(Command):
-    __doc__ = """Show or set bzr user id.
+    __doc__ = """Show or set brz user id.
 
     :Examples:
         Show the email of the current user::
 
-            bzr whoami --email
+            brz whoami --email
 
         Set the current user::
 
-            bzr whoami "Frank Chu <fchu@example.com>"
+            brz whoami "Frank Chu <fchu@example.com>"
     """
     takes_options = [ 'directory',
                       Option('email',
@@ -3930,19 +3930,19 @@ class cmd_alias(Command):
     :Examples:
         Show the current aliases::
 
-            bzr alias
+            brz alias
 
         Show the alias specified for 'll'::
 
-            bzr alias ll
+            brz alias ll
 
         Set an alias for 'll'::
 
-            bzr alias ll="log --line -r-10..-1"
+            brz alias ll="log --line -r-10..-1"
 
         To remove an alias for 'll'::
 
-            bzr alias --remove ll
+            brz alias --remove ll
 
     """
     takes_args = ['name?']
@@ -3965,7 +3965,7 @@ class cmd_alias(Command):
     def remove_alias(self, alias_name):
         if alias_name is None:
             raise errors.BzrCommandError(gettext(
-                'bzr alias --remove expects an alias to remove.'))
+                'brz alias --remove expects an alias to remove.'))
         # If alias is not found, print something like:
         # unalias: foo: not found
         c = _mod_config.GlobalConfig()
@@ -3976,17 +3976,17 @@ class cmd_alias(Command):
         """Print out the defined aliases in a similar format to bash."""
         aliases = _mod_config.GlobalConfig().get_aliases()
         for key, value in sorted(aliases.iteritems()):
-            self.outf.write('bzr alias %s="%s"\n' % (key, value))
+            self.outf.write('brz alias %s="%s"\n' % (key, value))
 
     @display_command
     def print_alias(self, alias_name):
         from brzlib.commands import get_alias
         alias = get_alias(alias_name)
         if alias is None:
-            self.outf.write("bzr alias: %s: not found\n" % alias_name)
+            self.outf.write("brz alias: %s: not found\n" % alias_name)
         else:
             self.outf.write(
-                'bzr alias %s="%s"\n' % (alias_name, ' '.join(alias)))
+                'brz alias %s="%s"\n' % (alias_name, ' '.join(alias)))
 
     def set_alias(self, alias_name, alias_command):
         """Save the alias in the global config."""
@@ -4028,7 +4028,7 @@ class cmd_selftest(Command):
     Tests that need working space on disk use a common temporary directory,
     typically inside $TMPDIR or /tmp.
 
-    If you set BZR_TEST_PDB=1 when running selftest, failing tests will drop
+    If you set BRZ_TEST_PDB=1 when running selftest, failing tests will drop
     into a pdb postmortem session.
 
     The --coverage=DIRNAME global option produces a report with covered code
@@ -4037,11 +4037,11 @@ class cmd_selftest(Command):
     :Examples:
         Run only tests relating to 'ignore'::
 
-            bzr selftest ignore
+            brz selftest ignore
 
         Disable plugins and list tests as they're run::
 
-            bzr --no-plugins selftest -v
+            brz --no-plugins selftest -v
     """
     # NB: this is used from the class without creating an instance, which is
     # why it does not have a self parameter.
@@ -4163,7 +4163,7 @@ class cmd_selftest(Command):
                 'suite_decorators', []).append(parallel)
         if benchmark:
             raise errors.BzrCommandError(gettext(
-                "--benchmark is no longer supported from bzr 2.2; "
+                "--benchmark is no longer supported from brz 2.2; "
                 "use bzr-usertest instead"))
         test_suite_factory = None
         if not exclude:
@@ -4210,7 +4210,7 @@ class cmd_selftest(Command):
 
 
 class cmd_version(Command):
-    __doc__ = """Show version of bzr."""
+    __doc__ = """Show version of brz."""
 
     encoding_type = 'replace'
     takes_options = [
@@ -4265,17 +4265,17 @@ class cmd_merge(Command):
 
     The source of the merge can be specified either in the form of a branch,
     or in the form of a path to a file containing a merge directive generated
-    with bzr send. If neither is specified, the default is the upstream branch
+    with brz send. If neither is specified, the default is the upstream branch
     or the branch most recently merged using --remember.  The source of the
     merge may also be specified in the form of a path to a file in another
     branch:  in this case, only the modifications to that file are merged into
     the current working tree.
 
-    When merging from a branch, by default bzr will try to merge in all new
+    When merging from a branch, by default brz will try to merge in all new
     work from the other branch, automatically determining an appropriate base
     revision.  If this fails, you may need to give an explicit base.
 
-    To pick a different ending revision, pass "--revision OTHER".  bzr will
+    To pick a different ending revision, pass "--revision OTHER".  brz will
     try to merge in all new work up to and including revision OTHER.
 
     If you specify two values, "--revision BASE..OTHER", only revisions BASE
@@ -4293,7 +4293,7 @@ class cmd_merge(Command):
     it will mark a conflict.  A conflict means that you need to fix something,
     before you can commit.
 
-    Use bzr resolve when you have fixed a problem.  See also bzr conflicts.
+    Use brz resolve when you have fixed a problem.  See also brz conflicts.
 
     If there is no default branch set, the first merge will set it (use
     --no-remember to avoid setting it). After that, you can omit the branch
@@ -4301,7 +4301,7 @@ class cmd_merge(Command):
     only be saved if the remote location can be accessed.
 
     The results of the merge are placed into the destination working
-    directory, where they can be reviewed (with bzr diff), tested, and then
+    directory, where they can be reviewed (with brz diff), tested, and then
     committed to record the result of the merge.
 
     merge refuses to run if there are any uncommitted changes, unless
@@ -4318,28 +4318,28 @@ class cmd_merge(Command):
     you to apply each diff hunk and file change, similar to "shelve".
 
     :Examples:
-        To merge all new revisions from bzr.dev::
+        To merge all new revisions from brz.dev::
 
-            bzr merge ../bzr.dev
+            brz merge ../brz.dev
 
-        To merge changes up to and including revision 82 from bzr.dev::
+        To merge changes up to and including revision 82 from brz.dev::
 
-            bzr merge -r 82 ../bzr.dev
+            brz merge -r 82 ../brz.dev
 
         To merge the changes introduced by 82, without previous changes::
 
-            bzr merge -r 81..82 ../bzr.dev
+            brz merge -r 81..82 ../brz.dev
 
         To apply a merge directive contained in /tmp/merge::
 
-            bzr merge /tmp/merge
+            brz merge /tmp/merge
 
         To create a merge revision with three parents from two branches
         feature1a and feature1b:
 
-            bzr merge ../feature1a
-            bzr merge ../feature1b --force
-            bzr commit -m 'revision with three parents'
+            brz merge ../feature1a
+            brz merge ../feature1b --force
+            brz commit -m 'revision with three parents'
     """
 
     encoding_type = 'exact'
@@ -4461,7 +4461,7 @@ class cmd_merge(Command):
         if merger.this_basis is None:
             raise errors.BzrCommandError(gettext(
                 "This branch has no commits."
-                " (perhaps you would prefer 'bzr pull')"))
+                " (perhaps you would prefer 'brz pull')"))
         if preview:
             return self._do_preview(merger)
         elif interactive:
@@ -4664,12 +4664,12 @@ class cmd_remerge(Command):
         Re-do the merge of all conflicted files, and show the base text in
         conflict regions, in addition to the usual THIS and OTHER texts::
 
-            bzr remerge --show-base
+            brz remerge --show-base
 
         Re-do the merge of "foobar", using the weave merge algorithm, with
         additional processing to reduce the size of conflict regions::
 
-            bzr remerge --merge-type weave --reprocess foobar
+            brz remerge --merge-type weave --reprocess foobar
     """
     takes_args = ['file*']
     takes_options = [
@@ -4782,12 +4782,12 @@ class cmd_revert(Command):
     not yet committed. These revisions will be included as additional parents
     of the next commit.  Normally, using revert clears that list as well as
     reverting the files.  If any files are specified, revert leaves the list
-    of uncommitted merges alone and reverts only the files.  Use ``bzr revert
+    of uncommitted merges alone and reverts only the files.  Use ``brz revert
     .`` in the tree root to revert all files but keep the recorded merges,
-    and ``bzr revert --forget-merges`` to clear the pending merge list without
+    and ``brz revert --forget-merges`` to clear the pending merge list without
     reverting any files.
 
-    Using "bzr revert --forget-merges", it is possible to apply all of the
+    Using "brz revert --forget-merges", it is possible to apply all of the
     changes from a branch in a single revision.  To do this, perform the merge
     as desired.  Then doing revert with the "--forget-merges" option will keep
     the content of the tree as it was, but it will clear the list of pending
@@ -4855,7 +4855,7 @@ class cmd_help(Command):
 class cmd_shell_complete(Command):
     __doc__ = """Show appropriate completions for context.
 
-    For a list of all available commands, say 'bzr shell-complete'.
+    For a list of all available commands, say 'brz shell-complete'.
     """
     takes_args = ['context?']
     aliases = ['s-c']
@@ -4885,21 +4885,21 @@ class cmd_missing(Command):
         Determine the missing revisions between this and the branch at the
         remembered pull location::
 
-            bzr missing
+            brz missing
 
         Determine the missing revisions between this and another branch::
 
-            bzr missing http://server/branch
+            brz missing http://server/branch
 
         Determine the missing revisions up to a specific revision on the other
         branch::
 
-            bzr missing -r ..-10
+            brz missing -r ..-10
 
         Determine the missing revisions up to a specific revision on this
         branch::
 
-            bzr missing --my-revision ..-10
+            brz missing --my-revision ..-10
     """
 
     _see_also = ['merge', 'pull']
@@ -5349,7 +5349,7 @@ class cmd_uncommit(Command):
     remove anything.
 
     If --revision is specified, uncommit revisions to leave the branch at the
-    specified revision.  For example, "bzr uncommit -r 15" will leave the
+    specified revision.  For example, "brz uncommit -r 15" will leave the
     branch at revision 15.
 
     Uncommit leaves the working tree ready for a new commit.  The only change
@@ -5407,7 +5407,7 @@ class cmd_uncommit(Command):
             revno = last_revno
             rev_id = last_rev_id
         else:
-            # 'bzr uncommit -r 10' actually means uncommit
+            # 'brz uncommit -r 10' actually means uncommit
             # so that the final tree is at revno 10.
             # but brzlib.uncommit.uncommit() actually uncommits
             # the revisions that are supplied.
@@ -5450,7 +5450,7 @@ class cmd_uncommit(Command):
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
                  revno=revno, local=local, keep_tags=keep_tags)
         self.outf.write(gettext('You can restore the old tip by running:\n'
-             '  bzr pull . -r revid:%s\n') % last_rev_id)
+             '  brz pull . -r revid:%s\n') % last_rev_id)
 
 
 class cmd_break_lock(Command):
@@ -5462,13 +5462,13 @@ class cmd_break_lock(Command):
     CAUTION: Locks should only be broken when you are sure that the process
     holding the lock has been stopped.
 
-    You can get information on what locks are open via the 'bzr info
+    You can get information on what locks are open via the 'brz info
     [location]' command.
 
     :Examples:
-        bzr break-lock
-        bzr break-lock bzr+ssh://example.com/bzr/foo
-        bzr break-lock --conf ~/.bazaar
+        brz break-lock
+        brz break-lock brz+ssh://example.com/brz/foo
+        brz break-lock --conf ~/.bazaar
     """
 
     takes_args = ['location?']
@@ -5498,7 +5498,7 @@ class cmd_break_lock(Command):
 
 
 class cmd_wait_until_signalled(Command):
-    __doc__ = """Test helper for test_start_and_stop_bzr_subprocess_send_signal.
+    __doc__ = """Test helper for test_start_and_stop_brz_subprocess_send_signal.
 
     This just prints a line to signal when it is ready, then blocks on stdin.
     """
@@ -5512,7 +5512,7 @@ class cmd_wait_until_signalled(Command):
 
 
 class cmd_serve(Command):
-    __doc__ = """Run the bzr server."""
+    __doc__ = """Run the brz server."""
 
     aliases = ['server']
 
@@ -5535,7 +5535,7 @@ class cmd_serve(Command):
         Option('allow-writes',
                help='By default the server is a readonly server.  Supplying '
                     '--allow-writes enables write access to the contents of '
-                    'the served directory and below.  Note that ``bzr serve`` '
+                    'the served directory and below.  Note that ``brz serve`` '
                     'does not perform authentication, so unless some form of '
                     'external authentication is arranged supplying this '
                     'option leads to global uncontrolled write access to your '
@@ -5565,8 +5565,8 @@ class cmd_join(Command):
     This command requires the target tree to be in a rich-root format.
 
     The TREE argument should be an independent tree, inside another tree, but
-    not part of it.  (Such trees can be produced by "bzr split", but also by
-    running "bzr branch" with the target inside a tree.)
+    not part of it.  (Such trees can be produced by "brz split", but also by
+    running "brz branch" with the target inside a tree.)
 
     The result is a combined tree, with the subtree no longer an independent
     part.  This is marked as a merge of the subtree into the containing tree,
@@ -5587,7 +5587,7 @@ class cmd_join(Command):
         if not repo.supports_rich_root():
             raise errors.BzrCommandError(gettext(
                 "Can't join trees because %s doesn't support rich root data.\n"
-                "You can use bzr upgrade on the repository.")
+                "You can use brz upgrade on the repository.")
                 % (repo,))
         if reference:
             try:
@@ -5706,7 +5706,7 @@ class cmd_merge_directive(Command):
         base_revision_id = None
         if revision is not None:
             if len(revision) > 2:
-                raise errors.BzrCommandError(gettext('bzr merge-directive takes '
+                raise errors.BzrCommandError(gettext('brz merge-directive takes '
                     'at most two one revision identifiers'))
             revision_id = revision[-1].as_revision_id(branch)
             if len(revision) == 2:
@@ -5746,7 +5746,7 @@ class cmd_send(Command):
       directly from the merge directive, without retrieving data from a
       branch.
 
-    `bzr send` creates a compact data set that, when applied using bzr
+    `brz send` creates a compact data set that, when applied using brz
     merge, has the same effect as merging from the source branch.  
     
     By default the merge directive is self-contained and can be applied to any
@@ -5771,7 +5771,7 @@ class cmd_send(Command):
     omit the location to use the default.  To change the default, use
     --remember. The value will only be saved if the location can be accessed.
 
-    In order to calculate those changes, bzr must analyse the submit branch.
+    In order to calculate those changes, brz must analyse the submit branch.
     Therefore it is most efficient for the submit branch to be a local mirror.
     If a public location is known for the submit_branch, that location is used
     in the merge directive.
@@ -5801,12 +5801,12 @@ class cmd_send(Command):
     default.  "0.9" uses revision bundle format 0.9 and merge directive
     format 1.  It is compatible with Bazaar 0.12 - 0.18.
 
-    The merge directives created by bzr send may be applied using bzr merge or
-    bzr pull by specifying a file containing a merge directive as the location.
+    The merge directives created by brz send may be applied using brz merge or
+    brz pull by specifying a file containing a merge directive as the location.
 
-    bzr send makes extensive use of public locations to map local locations into
-    URLs that can be used by other people.  See `bzr help configuration` to
-    set them, and use `bzr info` to display them.
+    brz send makes extensive use of public locations to map local locations into
+    URLs that can be used by other people.  See `brz help configuration` to
+    set them, and use `brz info` to display them.
     """
 
     encoding_type = 'exact'
@@ -5942,12 +5942,12 @@ class cmd_tag(Command):
     It is an error to give a tag name that already exists unless you pass
     --force, in which case the tag is moved to point to the new revision.
 
-    To rename a tag (change the name but keep it on the same revsion), run ``bzr
-    tag new-name -r tag:old-name`` and then ``bzr tag --delete oldname``.
+    To rename a tag (change the name but keep it on the same revsion), run ``brz
+    tag new-name -r tag:old-name`` and then ``brz tag --delete oldname``.
 
     If no tag name is specified it will be determined through the 
     'automatic_tag_name' hook. This can e.g. be used to automatically tag
-    upstream releases by reading configure.ac. See ``bzr help hooks`` for
+    upstream releases by reading configure.ac. See ``brz help hooks`` for
     details.
     """
 
@@ -6088,7 +6088,7 @@ class cmd_tags(Command):
 
 
 class cmd_reconfigure(Command):
-    __doc__ = """Reconfigure the type of a bzr directory.
+    __doc__ = """Reconfigure the type of a brz directory.
 
     A target configuration must be specified.
 
@@ -6308,43 +6308,43 @@ class cmd_view(Command):
     :Examples:
       To define the current view::
 
-        bzr view file1 dir1 ...
+        brz view file1 dir1 ...
 
       To list the current view::
 
-        bzr view
+        brz view
 
       To delete the current view::
 
-        bzr view --delete
+        brz view --delete
 
       To disable the current view without deleting it::
 
-        bzr view --switch off
+        brz view --switch off
 
       To define a named view and switch to it::
 
-        bzr view --name view-name file1 dir1 ...
+        brz view --name view-name file1 dir1 ...
 
       To list a named view::
 
-        bzr view --name view-name
+        brz view --name view-name
 
       To delete a named view::
 
-        bzr view --name view-name --delete
+        brz view --name view-name --delete
 
       To switch to a named view::
 
-        bzr view --switch view-name
+        brz view --switch view-name
 
       To list all views defined::
 
-        bzr view --all
+        brz view --all
 
       To delete all views::
 
-        bzr view --delete --all
+        brz view --delete --all
     """
 
     _see_also = []
@@ -6470,7 +6470,7 @@ class cmd_remove_branch(Command):
 
       Remove the branch at repo/trunk::
 
-        bzr remove-branch repo/trunk
+        brz remove-branch repo/trunk
 
     """
 
@@ -6623,7 +6623,7 @@ class cmd_clean_tree(Command):
     By default, only unknown files, not ignored files, are deleted.  Versioned
     files are never deleted.
 
-    Another class is 'detritus', which includes files emitted by bzr during
+    Another class is 'detritus', which includes files emitted by brz during
     normal operations and selftests.  (The value of these files decreases with
     time.)
 
@@ -6637,7 +6637,7 @@ class cmd_clean_tree(Command):
                      Option('detritus', help='Delete conflict files, merge and revert'
                             ' backups, and failed selftest dirs.'),
                      Option('unknown',
-                            help='Delete files unknown to bzr (default).'),
+                            help='Delete files unknown to brz (default).'),
                      Option('dry-run', help='Show files to delete instead of'
                             ' deleting them.'),
                      Option('force', help='Do not prompt before deleting.')]

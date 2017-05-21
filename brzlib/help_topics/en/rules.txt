@@ -24,7 +24,7 @@ Files
 -----
 
 Default rules for all branches are defined in the optional file
-``BZR_HOME/rules``. 
+``BRZ_HOME/rules``. 
 
 Rule Patterns
 -------------

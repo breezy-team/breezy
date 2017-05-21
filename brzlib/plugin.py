@@ -17,14 +17,14 @@
 """bzr python plugin support.
 
 When load_plugins() is invoked, any python module in any directory in
-$BZR_PLUGIN_PATH will be imported.  The module will be imported as
+$BRZ_PLUGIN_PATH will be imported.  The module will be imported as
 'brzlib.plugins.$BASENAME(PLUGIN)'.  In the plugin's main body, it should
 update any brzlib registries it wants to extend.
 
 See the plugin-api developer documentation for information about writing
 plugins.
 
-BZR_PLUGIN_PATH is also honoured for any plugins imported via
+BRZ_PLUGIN_PATH is also honoured for any plugins imported via
 'import brzlib.plugins.PLUGINNAME', as long as set_plugins_path has been
 called.
 """
@@ -158,13 +158,13 @@ def set_plugins_path(path=None):
     _mod_plugins.__path__ = path
     PluginImporter.reset()
     # Set up a blacklist for disabled plugins
-    disabled_plugins = os.environ.get('BZR_DISABLE_PLUGINS', None)
+    disabled_plugins = os.environ.get('BRZ_DISABLE_PLUGINS', None)
     if disabled_plugins is not None:
         for name in disabled_plugins.split(os.pathsep):
             PluginImporter.blacklist.add('brzlib.plugins.' + name)
     # Set up a the specific paths for plugins
     for plugin_name, plugin_path in _get_specific_plugin_paths(os.environ.get(
-            'BZR_PLUGINS_AT', None)):
+            'BRZ_PLUGINS_AT', None)):
             PluginImporter.specific_paths[
                 'brzlib.plugins.%s' % plugin_name] = plugin_path
     return path
@@ -234,7 +234,7 @@ def get_standard_plugins_path():
     #   so that a set of plugins is disabled as once. This can be done via
     #   -site, -core, -user.
 
-    env_paths = os.environ.get('BZR_PLUGIN_PATH', '+user').split(os.pathsep)
+    env_paths = os.environ.get('BRZ_PLUGIN_PATH', '+user').split(os.pathsep)
     defaults = ['+core', '+site']
 
     # The predefined references
@@ -273,7 +273,7 @@ def get_standard_plugins_path():
 def load_plugins(path=None):
     """Load brzlib plugins.
 
-    The environment variable BZR_PLUGIN_PATH is considered a delimited
+    The environment variable BRZ_PLUGIN_PATH is considered a delimited
     set of paths to look through. Each entry is searched for `*.py`
     files (and whatever other extensions are used in the platform,
     such as `*.pyd`).

@@ -64,7 +64,7 @@ class TestWhoami(tests.TestCaseWithTransport):
 
         # Verify that the environment variable overrides the value
         # in the file
-        self.overrideEnv('BZR_EMAIL', 'Different ID <other@environ.ment>')
+        self.overrideEnv('BRZ_EMAIL', 'Different ID <other@environ.ment>')
         self.assertWhoAmI('Different ID <other@environ.ment>')
         self.assertWhoAmI('other@environ.ment', '--email')
 
@@ -101,7 +101,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         """Ensure whoami error if username is not set and not inferred.
         """
         self.overrideEnv('EMAIL', None)
-        self.overrideEnv('BZR_EMAIL', None)
+        self.overrideEnv('BRZ_EMAIL', None)
         # Also, make sure that it's not inferred from mailname.
         self.overrideAttr(config, '_auto_user_id', lambda: (None, None))
         out, err = self.run_bzr(['whoami'], 3)
@@ -138,7 +138,7 @@ class TestWhoami(tests.TestCaseWithTransport):
                           c.get('email'))
         # Ensuring that the value does not come from the bazaar.conf file
         # itself requires some isolation setup
-        self.overrideEnv('BZR_EMAIL', None)
+        self.overrideEnv('BRZ_EMAIL', None)
         self.overrideEnv('EMAIL', None)
         self.overrideAttr(config, '_auto_user_id', lambda: (None, None))
         global_conf = config.GlobalStack()

@@ -1418,7 +1418,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # Ensure that when no username is available but a committer is
         # supplied, commit works.
         self.overrideEnv('EMAIL', None)
-        self.overrideEnv('BZR_EMAIL', None)
+        self.overrideEnv('BRZ_EMAIL', None)
         # Also, make sure that it's not inferred from mailname.
         self.overrideAttr(config, '_auto_user_id',
             lambda: (None, None))

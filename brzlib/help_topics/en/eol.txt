@@ -3,19 +3,19 @@ End of Line Conversion
 
 EOL conversion is provided as a content filter where Bazaar internally
 stores a canonical format but outputs a convenience format. See
-``bzr help content-filters`` for general information about using these.
+``brz help content-filters`` for general information about using these.
 
 Note: Content filtering is only supported in recently added formats,
 e.g. 1.14. Be sure that both the repository *and* the branch are
 in a recent format. (Just setting the format on the repository
 is not enough.) If content filtering does not appear to be working, use
-'bzr info -v' to confirm that the branch is using "Working tree format 5"
+'brz info -v' to confirm that the branch is using "Working tree format 5"
 or later.
 
 EOL conversion needs to be enabled for selected file patterns using
-rules. See ``bzr help rules`` for general information on defining rules.
-Currently, rules are only supported in $BZR_HOME/.bazaar/rules (or
-%BZR_HOME%/bazaar/2.0/rules on Windows). Branch specific rules will be
+rules. See ``brz help rules`` for general information on defining rules.
+Currently, rules are only supported in $brz_HOME/.bazaar/rules (or
+%brz_HOME%/bazaar/2.0/rules on Windows). Branch specific rules will be
 supported in a future verison of Bazaar.
 
 To configure which files to filter, set ``eol`` to one of the values below.

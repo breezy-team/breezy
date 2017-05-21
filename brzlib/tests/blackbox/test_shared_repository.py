@@ -160,7 +160,7 @@ Location:
         # is used. This test is to ensure that init-repo passes even when whoami
         # is not available.
         self.overrideEnv('EMAIL', None)
-        self.overrideEnv('BZR_EMAIL', None)
+        self.overrideEnv('BRZ_EMAIL', None)
         out, err = self.run_bzr(['init-repo', 'foo'])
         self.assertEqual(err, '')
         self.assertTrue(os.path.exists('foo'))

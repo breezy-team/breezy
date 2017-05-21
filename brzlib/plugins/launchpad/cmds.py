@@ -42,7 +42,7 @@ from brzlib.option import (
 class cmd_register_branch(Command):
     __doc__ = """Register a branch with launchpad.net.
 
-    This command lists a bzr branch in the directory of branches on
+    This command lists a brz branch in the directory of branches on
     launchpad.net.  Registration allows the branch to be associated with
     bugs or specifications.
 
@@ -53,13 +53,13 @@ class cmd_register_branch(Command):
         public_url: The publicly visible url for the branch to register.
                     This must be an http or https url (which Launchpad can read
                     from to access the branch). Local file urls, SFTP urls, and
-                    bzr+ssh urls will not work.
-                    If no public_url is provided, bzr will use the configured
+                    brz+ssh urls will not work.
+                    If no public_url is provided, brz will use the configured
                     public_url if there is one for the current branch, and
                     otherwise error.
 
     example:
-        bzr register-branch http://foo.com/bzr/fooproject.mine \\
+        brz register-branch http://foo.com/brz/fooproject.mine \\
                 --project fooproject
     """
     takes_args = ['public_url?']
@@ -111,7 +111,7 @@ class cmd_register_branch(Command):
             except NotBranchError:
                 raise BzrCommandError(gettext(
                             'register-branch requires a public '
-                            'branch url - see bzr help register-branch.'))
+                            'branch url - see brz help register-branch.'))
             public_url = b.get_public_branch()
             if public_url is None:
                 raise NoPublicBranch(b)
@@ -191,7 +191,7 @@ class cmd_launchpad_open(Command):
         trace.note(gettext('Opening %s in web browser') % web_url)
         if not dry_run:
             import webbrowser   # this import should not be lazy
-                                # otherwise bzr.exe lacks this module
+                                # otherwise brz.exe lacks this module
             webbrowser.open(web_url)
 
 
@@ -205,11 +205,11 @@ class cmd_launchpad_login(Command):
     :Examples:
       Show the Launchpad ID of the current user::
 
-          bzr launchpad-login
+          brz launchpad-login
 
       Set the Launchpad ID of the current user to 'bob'::
 
-          bzr launchpad-login bob
+          brz launchpad-login bob
     """
     aliases = ['lp-login']
     takes_args = ['name?']
@@ -282,7 +282,7 @@ class cmd_lp_propose_merge(Command):
     The parameter the launchpad account name of the desired reviewer.  This
     may optionally be followed by '=' and the review type.  For example:
 
-      bzr lp-propose-merge --review jrandom --review review-team=qa
+      brz lp-propose-merge --review jrandom --review review-team=qa
 
     This will propose a merge,  request "jrandom" to perform a review of
     unspecified type, and request "review-team" to perform a "qa" review.
@@ -343,7 +343,7 @@ class cmd_lp_find_proposal(Command):
 
     So, to find the merge proposal that reviewed line 1 of README::
 
-      bzr lp-find-proposal -r mainline:annotate:README:1
+      brz lp-find-proposal -r mainline:annotate:README:1
     """
 
     takes_options = ['revision']

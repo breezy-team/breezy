@@ -19,7 +19,7 @@
 """Configuration that affects the behaviour of Bazaar.
 
 Currently this configuration resides in ~/.bazaar/bazaar.conf
-and ~/.bazaar/locations.conf, which is written to by bzr.
+and ~/.bazaar/locations.conf, which is written to by brz.
 
 In bazaar.conf the following options may be set:
 [DEFAULT]
@@ -48,12 +48,12 @@ acceptable_keys=as above
 explanation of options
 ----------------------
 editor - this option sets the pop up editor to use during commits.
-email - this option sets the user id bzr will use when committing.
-check_signatures - this option will control whether bzr will require good gpg
+email - this option sets the user id brz will use when committing.
+check_signatures - this option will control whether brz will require good gpg
                    signatures, ignore them, or check them if they are
                    present.  Currently it is unused except that check_signatures
                    turns on create_signatures.
-create_signatures - this option controls whether bzr will always create
+create_signatures - this option controls whether brz will always create
                     gpg signatures or not on commits.  There is an unused
                     option which in future is expected to work if
                     branch settings require signatures.
@@ -334,7 +334,7 @@ class Config(object):
             value = env[name]
         else:
             # FIXME: This is a limited implementation, what we really need is a
-            # way to query the bzr config for the value of an option,
+            # way to query the brz config for the value of an option,
             # respecting the scope rules (That is, once we implement fallback
             # configs, getting the option value should restart from the top
             # config, not the current one) -- vila 20101222
@@ -512,12 +512,12 @@ class Config(object):
 
         Something similar to 'Martin Pool <mbp@sourcefrog.net>'
 
-        $BZR_EMAIL can be set to override this, then
+        $BRZ_EMAIL can be set to override this, then
         the concrete policy type is checked, and finally
         $EMAIL is examined.
         If no username can be found, errors.NoWhoami exception is raised.
         """
-        v = os.environ.get('BZR_EMAIL')
+        v = os.environ.get('BRZ_EMAIL')
         if v:
             return v.decode(osutils.get_user_encoding())
         v = self._get_user_id()
@@ -586,9 +586,9 @@ class Config(object):
 
     def get_bzr_remote_path(self):
         try:
-            return os.environ['BZR_REMOTE_PATH']
+            return os.environ['BRZ_REMOTE_PATH']
         except KeyError:
-            path = self.get_user_option("bzr_remote_path")
+            path = self.get_user_option("brz_remote_path")
             if path is None:
                 path = 'bzr'
             return path
@@ -609,8 +609,8 @@ class Config(object):
     def get_merge_tools(self):
         tools = {}
         for (oname, value, section, conf_id, parser) in self._get_options():
-            if oname.startswith('bzr.mergetool.'):
-                tool_name = oname[len('bzr.mergetool.'):]
+            if oname.startswith('brz.mergetool.'):
+                tool_name = oname[len('brz.mergetool.'):]
                 tools[tool_name] = self.get_user_option(oname, False)
         trace.mutter('loaded merge tools: %r' % tools)
         return tools
@@ -620,7 +620,7 @@ class Config(object):
         # be found in the known_merge_tools if it's not found in the config.
         # This should be done through the proposed config defaults mechanism
         # when it becomes available in the future.
-        command_line = (self.get_user_option('bzr.mergetool.%s' % name,
+        command_line = (self.get_user_option('brz.mergetool.%s' % name,
                                              expand=False)
                         or mergetools.known_merge_tools.get(name, None))
         return command_line
@@ -1493,7 +1493,7 @@ def config_dir():
 
     TODO: Global option --config-dir to override this.
     """
-    base = osutils.path_from_environ('BZR_HOME')
+    base = osutils.path_from_environ('BRZ_HOME')
     if sys.platform == 'win32':
         if base is None:
             base = win32utils.get_appdata_location()
@@ -1582,7 +1582,7 @@ def _get_default_mail_domain(mailname_file='/etc/mailname'):
 
 
 def default_email():
-    v = os.environ.get('BZR_EMAIL')
+    v = os.environ.get('BRZ_EMAIL')
     if v:
         return v.decode(osutils.get_user_encoding())
     v = os.environ.get('EMAIL')
@@ -2020,7 +2020,7 @@ class CredentialStoreRegistry(registry.Registry):
     A credential store provides access to credentials via the password_encoding
     field in authentication.conf sections.
 
-    Except for stores provided by bzr itself, most stores are expected to be
+    Except for stores provided by brz itself, most stores are expected to be
     provided by plugins that will therefore use
     register_lazy(password_encoding, module_name, member_name, help=help,
     fallback=fallback) to install themselves.
@@ -2754,7 +2754,7 @@ option_registry.register(
     Option('editor',
            help='The command called to launch an editor to enter a message.'))
 option_registry.register(
-    Option('email', override_from_env=['BZR_EMAIL'], default=default_email,
+    Option('email', override_from_env=['BRZ_EMAIL'], default=default_email,
            help='The users identity'))
 option_registry.register(
     Option('gpg_signing_command',

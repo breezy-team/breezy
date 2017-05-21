@@ -304,7 +304,7 @@ class TestControlDir(TestCaseWithControlDir):
 
     def test_clone_bzrdir_branch_and_repo_fixed_user_id(self):
         # Bug #430868 is about an email containing '.sig'
-        self.overrideEnv('BZR_EMAIL', 'murphy@host.sighup.org')
+        self.overrideEnv('BRZ_EMAIL', 'murphy@host.sighup.org')
         tree = self.make_branch_and_tree('commit_tree')
         self.build_tree(['commit_tree/foo'])
         tree.add('foo')

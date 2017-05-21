@@ -261,7 +261,7 @@ class TestBzrServe(TestBzrServeBase):
         # -Dhpss, and does drop some hpss logging to the file.
         self.make_branch('.')
         log_fname = os.getcwd() + '/server.log'
-        self.overrideEnv('BZR_LOG', log_fname)
+        self.overrideEnv('BRZ_LOG', log_fname)
         process, transport = self.start_server_inet(['-Dhpss'])
         branch = ControlDir.open_from_transport(transport).open_branch()
         self.make_read_requests(branch)

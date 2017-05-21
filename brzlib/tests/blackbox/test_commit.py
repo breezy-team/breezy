@@ -804,13 +804,13 @@ altered in u2
             f = file('fed.bat', 'w')
             f.write('@rem dummy fed')
             f.close()
-            self.overrideEnv('BZR_EDITOR', "fed.bat")
+            self.overrideEnv('BRZ_EDITOR', "fed.bat")
         else:
             f = file('fed.sh', 'wb')
             f.write('#!/bin/sh\n')
             f.close()
             os.chmod('fed.sh', 0755)
-            self.overrideEnv('BZR_EDITOR', "./fed.sh")
+            self.overrideEnv('BRZ_EDITOR', "./fed.sh")
 
     def setup_commit_with_template(self):
         self.setup_editor()
@@ -865,7 +865,7 @@ altered in u2
             f.write('hello')
         self.run_bzr(['add'], working_dir='foo')
         self.overrideEnv('EMAIL', None)
-        self.overrideEnv('BZR_EMAIL', None)
+        self.overrideEnv('BRZ_EMAIL', None)
         # Also, make sure that it's not inferred from mailname.
         self.overrideAttr(config, '_auto_user_id',
             lambda: (None, None))

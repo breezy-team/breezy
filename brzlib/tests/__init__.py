@@ -136,26 +136,26 @@ TestLoader = TestUtil.TestLoader
 # the tests should start without this variable in the environment. There are a
 # few exceptions but you shouldn't violate this rule lightly.
 isolated_environ = {
-    'BZR_HOME': None,
+    'BRZ_HOME': None,
     'HOME': None,
     'XDG_CONFIG_HOME': None,
     # bzr now uses the Win32 API and doesn't rely on APPDATA, but the
     # tests do check our impls match APPDATA
-    'BZR_EDITOR': None, # test_msgeditor manipulates this variable
+    'BRZ_EDITOR': None, # test_msgeditor manipulates this variable
     'VISUAL': None,
     'EDITOR': None,
-    'BZR_EMAIL': None,
+    'BRZ_EMAIL': None,
     'BZREMAIL': None, # may still be present in the environment
     'EMAIL': 'jrandom@example.com', # set EMAIL as bzr does not guess
-    'BZR_PROGRESS_BAR': None,
+    'BRZ_PROGRESS_BAR': None,
     # This should trap leaks to ~/.bzr.log. This occurs when tests use TestCase
     # as a base class instead of TestCaseInTempDir. Tests inheriting from
-    # TestCase should not use disk resources, BZR_LOG is one.
-    'BZR_LOG': '/you-should-use-TestCaseInTempDir-if-you-need-a-log-file',
-    'BZR_PLUGIN_PATH': None,
-    'BZR_DISABLE_PLUGINS': None,
-    'BZR_PLUGINS_AT': None,
-    'BZR_CONCURRENCY': None,
+    # TestCase should not use disk resources, BRZ_LOG is one.
+    'BRZ_LOG': '/you-should-use-TestCaseInTempDir-if-you-need-a-log-file',
+    'BRZ_PLUGIN_PATH': None,
+    'BRZ_DISABLE_PLUGINS': None,
+    'BRZ_PLUGINS_AT': None,
+    'BRZ_CONCURRENCY': None,
     # Make sure that any text ui tests are consistent regardless of
     # the environment the test case is run in; you may want tests that
     # test other combinations.  'dumb' is a reasonable guess for tests
@@ -163,7 +163,7 @@ isolated_environ = {
     'TERM': 'dumb',
     'LINES': '25',
     'COLUMNS': '80',
-    'BZR_COLUMNS': '80',
+    'BRZ_COLUMNS': '80',
     # Disable SSH Agent
     'SSH_AUTH_SOCK': None,
     # Proxies
@@ -180,7 +180,7 @@ isolated_environ = {
     # -- vila 20080401
     'ftp_proxy': None,
     'FTP_PROXY': None,
-    'BZR_REMOTE_PATH': None,
+    'BRZ_REMOTE_PATH': None,
     # Generally speaking, we don't want apport reporting on crashes in
     # the test envirnoment unless we're specifically testing apport,
     # so that it doesn't leak into the real system environment.  We
@@ -535,7 +535,7 @@ class ExtendedTestResult(testtools.TextTestResult):
 
     def _post_mortem(self, tb=None):
         """Start a PDB post mortem session."""
-        if os.environ.get('BZR_TEST_PDB', None):
+        if os.environ.get('BRZ_TEST_PDB', None):
             import pdb
             pdb.post_mortem(tb)
 
@@ -1011,7 +1011,7 @@ class TestCase(testtools.TestCase):
     def setUp(self):
         super(TestCase, self).setUp()
 
-        # At this point we're still accessing the config files in $BZR_HOME (as
+        # At this point we're still accessing the config files in $BRZ_HOME (as
         # set by the user running selftest).
         timeout = config.GlobalStack().get('selftest.timeout')
         if timeout:
@@ -2647,10 +2647,10 @@ class TestCaseWithMemoryTransport(TestCase):
             # Make sure we get a readable and accessible home for .bzr.log
             # and/or config files, and not fallback to weird defaults (see
             # http://pad.lv/825027).
-            self.assertIs(None, os.environ.get('BZR_HOME', None))
-            os.environ['BZR_HOME'] = root
+            self.assertIs(None, os.environ.get('BRZ_HOME', None))
+            os.environ['BRZ_HOME'] = root
             wt = controldir.ControlDir.create_standalone_workingtree(root)
-            del os.environ['BZR_HOME']
+            del os.environ['BRZ_HOME']
         except Exception, e:
             self.fail("Fail to initialize the safety net: %r\n" % (e,))
         # Hack for speed: remember the raw bytes of the dirstate file so that
@@ -2779,7 +2779,7 @@ class TestCaseWithMemoryTransport(TestCase):
         if isinstance(test_home_dir, unicode):
             test_home_dir = test_home_dir.encode(sys.getfilesystemencoding())
         self.overrideEnv('HOME', test_home_dir)
-        self.overrideEnv('BZR_HOME', test_home_dir)
+        self.overrideEnv('BRZ_HOME', test_home_dir)
 
     def setup_smart_server_with_call_log(self):
         """Sets up a smart server as the transport server with a call log."""
@@ -2831,7 +2831,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         super(TestCaseInTempDir, self).setUp()
         # Remove the protection set in isolated_environ, we have a proper
         # access to disk resources now.
-        self.overrideEnv('BZR_LOG', None)
+        self.overrideEnv('BRZ_LOG', None)
 
     def check_file_contents(self, filename, expect):
         self.log("check contents of file %s" % filename)

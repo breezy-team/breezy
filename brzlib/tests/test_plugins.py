@@ -667,7 +667,7 @@ class TestLoadFromPath(tests.TestCaseInTempDir):
                     self.fail('No path to global plugins')
 
     def test_get_standard_plugins_path_env(self):
-        self.overrideEnv('BZR_PLUGIN_PATH', 'foo/')
+        self.overrideEnv('BRZ_PLUGIN_PATH', 'foo/')
         path = plugin.get_standard_plugins_path()
         for directory in path:
             self.assertNotContainsRe(directory, r'\\/$')
@@ -703,7 +703,7 @@ class TestEnvPluginPath(tests.TestCase):
 
     def _set_path(self, *args):
         path = os.pathsep.join(self._list2paths(*args))
-        self.overrideEnv('BZR_PLUGIN_PATH', path)
+        self.overrideEnv('BRZ_PLUGIN_PATH', path)
 
     def check_path(self, expected_dirs, setting_dirs):
         if setting_dirs:
@@ -790,7 +790,7 @@ class TestDisablePlugin(BaseTestPlugins):
         self.addCleanup(self._unregister_plugin, 'test_foo')
 
     def test_cannot_import(self):
-        self.overrideEnv('BZR_DISABLE_PLUGINS', 'test_foo')
+        self.overrideEnv('BRZ_DISABLE_PLUGINS', 'test_foo')
         plugin.set_plugins_path(['.'])
         try:
             import brzlib.plugins.test_foo
@@ -812,7 +812,7 @@ class TestDisablePlugin(BaseTestPlugins):
         self.overrideAttr(trace, 'warning', captured_warning)
         # Reset the flag that protect against double loading
         self.overrideAttr(plugin, '_loaded', False)
-        self.overrideEnv('BZR_DISABLE_PLUGINS', 'test_foo')
+        self.overrideEnv('BRZ_DISABLE_PLUGINS', 'test_foo')
         plugin.load_plugins(['.'])
         self.assertPluginUnknown('test_foo')
         # Make sure we don't warn about the plugin ImportError since this has
@@ -874,7 +874,7 @@ class TestLoadPluginAt(BaseTestPlugins):
         self.assertTestFooLoadedFrom('standard/test_foo')
 
     def test_import(self):
-        self.overrideEnv('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
+        self.overrideEnv('BRZ_PLUGINS_AT', 'test_foo@non-standard-dir')
         plugin.set_plugins_path(['standard'])
         try:
             import brzlib.plugins.test_foo
@@ -883,12 +883,12 @@ class TestLoadPluginAt(BaseTestPlugins):
         self.assertTestFooLoadedFrom('non-standard-dir')
 
     def test_loading(self):
-        self.overrideEnv('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
+        self.overrideEnv('BRZ_PLUGINS_AT', 'test_foo@non-standard-dir')
         plugin.load_plugins(['standard'])
         self.assertTestFooLoadedFrom('non-standard-dir')
 
     def test_compiled_loaded(self):
-        self.overrideEnv('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
+        self.overrideEnv('BRZ_PLUGINS_AT', 'test_foo@non-standard-dir')
         plugin.load_plugins(['standard'])
         self.assertTestFooLoadedFrom('non-standard-dir')
         self.assertIsSameRealPath('non-standard-dir/__init__.py',
@@ -911,7 +911,7 @@ class TestLoadPluginAt(BaseTestPlugins):
         self.create_plugin_package('test_bar', dir='non-standard-dir/test_bar')
         self.addCleanup(self._unregister_plugin_submodule,
                         'test_foo', 'test_bar')
-        self.overrideEnv('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
+        self.overrideEnv('BRZ_PLUGINS_AT', 'test_foo@non-standard-dir')
         plugin.set_plugins_path(['standard'])
         import brzlib.plugins.test_foo
         self.assertEqual('brzlib.plugins.test_foo',
@@ -928,7 +928,7 @@ import test_bar
         self.create_plugin_package('test_bar', dir='another-dir/test_bar')
         self.addCleanup(self._unregister_plugin_submodule,
                         'test_foo', 'test_bar')
-        self.overrideEnv('BZR_PLUGINS_AT', 'test_foo@another-dir')
+        self.overrideEnv('BRZ_PLUGINS_AT', 'test_foo@another-dir')
         plugin.set_plugins_path(['standard'])
         import brzlib.plugins.test_foo
         self.assertEqual('brzlib.plugins.test_foo',
@@ -943,7 +943,7 @@ import test_bar
         random = 'non-standard-dir/setup.py'
         os.rename(init, random)
         self.addCleanup(os.rename, random, init)
-        self.overrideEnv('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
+        self.overrideEnv('BRZ_PLUGINS_AT', 'test_foo@non-standard-dir')
         plugin.load_plugins(['standard'])
         self.assertPluginUnknown('test_foo')
 
@@ -957,7 +957,7 @@ dir_source = '%s'
 ''' % ('test_foo', plugin_path)
         self.create_plugin('test_foo', source=source,
                            dir=plugin_dir, file_name=plugin_file_name)
-        self.overrideEnv('BZR_PLUGINS_AT', 'test_foo@%s' % plugin_path)
+        self.overrideEnv('BRZ_PLUGINS_AT', 'test_foo@%s' % plugin_path)
         plugin.load_plugins(['standard'])
         self.assertTestFooLoadedFrom(plugin_path)
 

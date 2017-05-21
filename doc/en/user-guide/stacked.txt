@@ -121,7 +121,7 @@ accessed via a network.
 If a stacked branch is in a format older than 2a, you cannot commit to it due to
 `bug 375013`_.
 
-.. _bug 375013: https://bugs.launchpad.net/brz/+bug/375013
+.. _bug 375013: https://bugs.launchpad.net/bzr/+bug/375013
 
 
 Changing branch stacking

@@ -155,7 +155,7 @@ added:
             return './' + name
 
     def test_run_editor(self):
-        self.overrideEnv('BZR_EDITOR', self.make_do_nothing_editor())
+        self.overrideEnv('BRZ_EDITOR', self.make_do_nothing_editor())
         self.assertEqual(True, msgeditor._run_editor(''),
                          'Unable to run dummy fake editor')
 
@@ -164,14 +164,14 @@ added:
 
         See <https://bugs.launchpad.net/bzr/+bug/220331>
         """
-        self.overrideEnv('BZR_EDITOR',
+        self.overrideEnv('BRZ_EDITOR',
             '"%s"' % self.make_do_nothing_editor('name with spaces'))
         self.assertEqual(True, msgeditor._run_editor('a_filename'))    
 
     def make_fake_editor(self, message='test message from fed\\n'):
         """Set up environment so that an editor will be a known script.
 
-        Sets up BZR_EDITOR so that if an editor is spawned it will run a
+        Sets up BRZ_EDITOR so that if an editor is spawned it will run a
         script that just adds a known message to the start of the file.
         """
         f = file('fed.py', 'wb')
@@ -191,18 +191,18 @@ if len(sys.argv) == 2:
 """ % (message, ))
         f.close()
         if sys.platform == "win32":
-            # [win32] make batch file and set BZR_EDITOR
+            # [win32] make batch file and set BRZ_EDITOR
             f = file('fed.bat', 'w')
             f.write("""\
 @echo off
 "%s" fed.py %%1
 """ % sys.executable)
             f.close()
-            self.overrideEnv('BZR_EDITOR', 'fed.bat')
+            self.overrideEnv('BRZ_EDITOR', 'fed.bat')
         else:
-            # [non-win32] make python script executable and set BZR_EDITOR
+            # [non-win32] make python script executable and set BRZ_EDITOR
             os.chmod('fed.py', 0755)
-            self.overrideEnv('BZR_EDITOR', './fed.py')
+            self.overrideEnv('BRZ_EDITOR', './fed.py')
 
     def test_edit_commit_message(self):
         working_tree = self.make_uncommitted_tree()
@@ -240,12 +240,12 @@ if len(sys.argv) == 2:
             editor = 'cmd.exe /c del'
         else:
             editor = 'rm'
-        self.overrideEnv('BZR_EDITOR', editor)
+        self.overrideEnv('BRZ_EDITOR', editor)
 
         self.assertRaises((IOError, OSError), msgeditor.edit_commit_message, '')
 
     def test__get_editor(self):
-        self.overrideEnv('BZR_EDITOR', 'bzr_editor')
+        self.overrideEnv('BRZ_EDITOR', 'bzr_editor')
         self.overrideEnv('VISUAL', 'visual')
         self.overrideEnv('EDITOR', 'editor')
 
@@ -267,7 +267,7 @@ if len(sys.argv) == 2:
 
     def test__run_editor_EACCES(self):
         """If running a configured editor raises EACESS, the user is warned."""
-        self.overrideEnv('BZR_EDITOR', 'eacces.py')
+        self.overrideEnv('BRZ_EDITOR', 'eacces.py')
         f = file('eacces.py', 'wb')
         f.write('# Not a real editor')
         f.close()

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: brz\n"
 "Report-Msgid-Bugs-To: <bazaar@canonical.com>\n"
-"POT-Creation-Date: 2017-05-21 13:15+0000\n"
+"POT-Creation-Date: 2017-05-21 14:44+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -64,7 +64,7 @@ msgstr ""
 
 #: brzlib/builtins.py:260
 #, python-format
-msgid "bzr %s --revision takes exactly one revision identifier"
+msgid "brz %s --revision takes exactly one revision identifier"
 msgstr ""
 
 #: brzlib/builtins.py:315
@@ -126,15 +126,15 @@ msgstr ""
 
 #: brzlib/builtins.py:346
 msgid ""
-"To see ignored files use 'bzr ignored'.  For details on the\n"
-"changes to file texts, use 'bzr diff'."
+"To see ignored files use 'brz ignored'.  For details on the\n"
+"changes to file texts, use 'brz diff'."
 msgstr ""
 
 #: brzlib/builtins.py:349
 msgid ""
 "Note that --short or -S gives status flags for each item, similar\n"
 "to Subversion's status command. To get output similar to svn -q,\n"
-"use bzr status -SV."
+"use brz status -SV."
 msgstr ""
 
 #: brzlib/builtins.py:353
@@ -163,7 +163,7 @@ msgstr ""
 msgid ""
 "To see which files have changed in a specific revision, or between\n"
 "two revisions, pass a revision range to the revision argument.\n"
-"This will produce the same results as calling 'bzr diff --summarize'."
+"This will produce the same results as calling 'brz diff --summarize'."
 msgstr ""
 
 # help of 'short' option of 'status' command
@@ -187,7 +187,7 @@ msgid "Do not mark object type using indicator."
 msgstr ""
 
 #: brzlib/builtins.py:397
-msgid "bzr status --revision takes exactly one or two revision specifiers"
+msgid "brz status --revision takes exactly one or two revision specifiers"
 msgstr ""
 
 #: brzlib/builtins.py:441 brzlib/builtins.py:5229
@@ -223,7 +223,7 @@ msgid ""
 msgstr ""
 
 #: brzlib/builtins.py:566
-msgid "To re-create the working tree, use \"bzr checkout\"."
+msgid "To re-create the working tree, use \"brz checkout\"."
 msgstr ""
 
 # help of 'force' option of 'remove-tree' command
@@ -245,7 +245,7 @@ msgstr ""
 
 #: brzlib/builtins.py:637
 msgid ""
-"The tree does not appear to be corrupt. You probably want \"bzr revert\" "
+"The tree does not appear to be corrupt. You probably want \"brz revert\" "
 "instead. Use \"--force\" if you are sure you want to reset the working tree."
 msgstr ""
 
@@ -311,7 +311,7 @@ msgstr ""
 
 #: brzlib/builtins.py:777
 msgid ""
-"Therefore simply saying 'bzr add' will version all files that\n"
+"Therefore simply saying 'brz add' will version all files that\n"
 "are currently unknown."
 msgstr ""
 
@@ -396,7 +396,7 @@ msgid "Move or rename a file."
 msgstr ""
 
 #: brzlib/builtins.py:978
-msgid "    bzr mv SOURCE... DESTINATION"
+msgid "    brz mv SOURCE... DESTINATION"
 msgstr ""
 
 #: brzlib/builtins.py:980
@@ -422,7 +422,7 @@ msgstr ""
 # help of 'after' option of 'mv' command
 #: brzlib/builtins.py:997
 msgid ""
-"Move only the bzr identifier of the file, because the file has already been "
+"Move only the brz identifier of the file, because the file has already been "
 "moved."
 msgstr ""
 
@@ -474,7 +474,7 @@ msgstr ""
 
 #: brzlib/builtins.py:1121
 msgid ""
-"If branches have diverged, you can use 'bzr merge' to integrate the changes\n"
+"If branches have diverged, you can use 'brz merge' to integrate the changes\n"
 "from one into the other.  Once one branch has merged, the other should\n"
 "be able to pull it again."
 msgstr ""
@@ -505,7 +505,7 @@ msgstr ""
 msgid ""
 "Note: The location can be specified either in the form of a branch,\n"
 "or in the form of a path to a file containing a merge directive generated\n"
-"with bzr send."
+"with brz send."
 msgstr ""
 
 # help of 'verbose' option of 'pull' command
@@ -568,14 +568,14 @@ msgstr ""
 
 #: brzlib/builtins.py:1272
 msgid ""
-"If branches have diverged, you can use 'bzr push --overwrite' to replace\n"
+"If branches have diverged, you can use 'brz push --overwrite' to replace\n"
 "the other branch completely, discarding its unmerged changes."
 msgstr ""
 
 #: brzlib/builtins.py:1275
 msgid ""
 "If you want to ensure you have the different changes in the other branch,\n"
-"do a merge (see bzr help merge) from the other branch, and commit that.\n"
+"do a merge (see brz help merge) from the other branch, and commit that.\n"
 "After that you will be able to do a push without '--overwrite'."
 msgstr ""
 
@@ -650,7 +650,7 @@ msgstr ""
 #, python-format
 msgid ""
 "No push location known or specified. To push to the parent branch (at %s), "
-"use 'bzr push :parent'."
+"use 'brz push :parent'."
 msgstr ""
 
 #: brzlib/builtins.py:1383 brzlib/foreign.py:306
@@ -863,13 +863,13 @@ msgstr ""
 msgid ""
 "If there are any uncommitted changes in the tree, they will be carried\n"
 "across and remain as uncommitted changes after the update.  To discard\n"
-"these changes, use 'bzr revert'.  The uncommitted changes may conflict\n"
+"these changes, use 'brz revert'.  The uncommitted changes may conflict\n"
 "with the changes brought in by the change in basis revision."
 msgstr ""
 
 #: brzlib/builtins.py:1713
 msgid ""
-"If the tree's branch is bound to a master branch, bzr will also update\n"
+"If the tree's branch is bound to a master branch, brz will also update\n"
 "the branch from the master."
 msgstr ""
 
@@ -877,9 +877,9 @@ msgstr ""
 msgid ""
 "You cannot update just a single file or directory, because each Bazaar\n"
 "working tree has just a single basis revision.  If you want to restore a\n"
-"file that has been removed locally, use 'bzr revert' instead of 'bzr\n"
+"file that has been removed locally, use 'brz revert' instead of 'brz\n"
 "update'.  If you want to restore a file to its state in a previous\n"
-"revision, use 'bzr revert' with a '-r' option, or use 'bzr cat' to write\n"
+"revision, use 'brz revert' with a '-r' option, or use 'brz cat' to write\n"
 "out the old content of that file to a new location."
 msgstr ""
 
@@ -891,11 +891,11 @@ msgid ""
 msgstr ""
 
 #: brzlib/builtins.py:1739
-msgid "bzr update --revision takes exactly one revision"
+msgid "brz update --revision takes exactly one revision"
 msgstr ""
 
 #: brzlib/builtins.py:1747
-msgid "bzr update can only update a whole tree, not a file or subdirectory"
+msgid "brz update can only update a whole tree, not a file or subdirectory"
 msgstr ""
 
 #: brzlib/builtins.py:1778
@@ -907,7 +907,7 @@ msgstr ""
 #, python-format
 msgid ""
 "branch has no revision %s\n"
-"bzr update --revision only works for a revision in the branch history"
+"brz update --revision only works for a revision in the branch history"
 msgstr ""
 
 #: brzlib/builtins.py:1800
@@ -917,8 +917,8 @@ msgstr ""
 
 #: brzlib/builtins.py:1804
 msgid ""
-"Your local commits will now show as pending merges with 'bzr status', and "
-"can be committed with 'bzr commit'."
+"Your local commits will now show as pending merges with 'brz status', and "
+"can be committed with 'brz commit'."
 msgstr ""
 
 #: brzlib/builtins.py:1813
@@ -952,7 +952,7 @@ msgid "  Display information on the format and related locations:"
 msgstr ""
 
 #: brzlib/builtins.py:1828
-msgid "    bzr info"
+msgid "    brz info"
 msgstr ""
 
 #: brzlib/builtins.py:1830
@@ -963,7 +963,7 @@ msgid ""
 msgstr ""
 
 #: brzlib/builtins.py:1834
-msgid "    bzr info -v"
+msgid "    brz info -v"
 msgstr ""
 
 #: brzlib/builtins.py:1836
@@ -971,7 +971,7 @@ msgid "  Display the above together with number of committers to the branch:"
 msgstr ""
 
 #: brzlib/builtins.py:1838
-msgid "    bzr info -vv"
+msgid "    brz info -vv"
 msgstr ""
 
 #: brzlib/builtins.py:1857
@@ -1009,7 +1009,7 @@ msgstr ""
 
 # help of 'file-deletion-strategy=keep' option of 'remove' command
 #: brzlib/builtins.py:1872
-msgid "Delete from bzr but leave the working copy."
+msgid "Delete from brz but leave the working copy."
 msgstr ""
 
 # help of 'file-deletion-strategy=no-backup' option of 'remove' command
@@ -1022,14 +1022,14 @@ msgid "No matching files."
 msgstr ""
 
 #: brzlib/builtins.py:1955
-msgid "Reconcile bzr metadata in a branch."
+msgid "Reconcile brz metadata in a branch."
 msgstr ""
 
 #: brzlib/builtins.py:1957
 msgid ""
 "This can correct data mismatches that may have been caused by\n"
-"previous ghost operations or bzr upgrades. You should only\n"
-"need to run this command if 'bzr check' or a bzr developer\n"
+"previous ghost operations or brz upgrades. You should only\n"
+"need to run this command if 'brz check' or a brz developer\n"
 "advises you to run it."
 msgstr ""
 
@@ -1037,7 +1037,7 @@ msgstr ""
 msgid ""
 "If a second branch is provided, cross-branch reconciliation is\n"
 "also attempted, which will check that data like the tree root\n"
-"id which was not present in very early bzr versions is represented\n"
+"id which was not present in very early brz versions is represented\n"
 "correctly in both branches."
 msgstr ""
 
@@ -1101,7 +1101,7 @@ msgstr ""
 #: brzlib/builtins.py:2048
 msgid ""
 "If there is already a branch at the location but it has no working tree,\n"
-"the tree can be populated with 'bzr checkout'."
+"the tree can be populated with 'brz checkout'."
 msgstr ""
 
 #: brzlib/builtins.py:2051
@@ -1111,10 +1111,10 @@ msgstr ""
 #: brzlib/builtins.py:2053
 msgid ""
 "    cd ~/project\n"
-"    bzr init\n"
-"    bzr add .\n"
-"    bzr status\n"
-"    bzr commit -m \"imported project\""
+"    brz init\n"
+"    brz add .\n"
+"    brz status\n"
+"    brz commit -m \"imported project\""
 msgstr ""
 
 # help of 'create-prefix' option of 'init' command
@@ -1190,8 +1190,8 @@ msgstr ""
 
 #: brzlib/builtins.py:2173
 msgid ""
-"        bzr init-repo --no-trees repo\n"
-"        bzr init repo/trunk"
+"        brz init-repo --no-trees repo\n"
+"        brz init repo/trunk"
 msgstr ""
 
 #: brzlib/builtins.py:2176
@@ -1200,7 +1200,7 @@ msgstr ""
 
 #: brzlib/builtins.py:2178
 msgid ""
-"        bzr checkout --lightweight repo/trunk trunk-checkout\n"
+"        brz checkout --lightweight repo/trunk trunk-checkout\n"
 "        cd trunk-checkout\n"
 "        (add files here)"
 msgstr ""
@@ -1208,7 +1208,7 @@ msgstr ""
 # help of 'format' option of 'init-repository' command
 #: brzlib/builtins.py:2186
 msgid ""
-"Specify a format for this repository. See \"bzr help formats\" for details."
+"Specify a format for this repository. See \"brz help formats\" for details."
 msgstr ""
 
 # title of 'format' option of 'init-repository' command
@@ -1237,7 +1237,7 @@ msgstr ""
 
 #: brzlib/builtins.py:2227
 msgid ""
-"\"bzr diff -p1\" is equivalent to \"bzr diff --prefix old/:new/\", and\n"
+"\"brz diff -p1\" is equivalent to \"brz diff --prefix old/:new/\", and\n"
 "produces patches suitable for \"patch -p1\"."
 msgstr ""
 
@@ -1247,7 +1247,7 @@ msgid ""
 "differences are computed between the two specified revisions.  That\n"
 "is, the command does not show the changes introduced by the first \n"
 "revision in the range.  This differs from the interpretation of \n"
-"revision ranges used by \"bzr log\" which includes the first revision\n"
+"revision ranges used by \"brz log\" which includes the first revision\n"
 "in the range."
 msgstr ""
 
@@ -1267,7 +1267,7 @@ msgid ""
 msgstr ""
 
 #: brzlib/builtins.py:2246
-msgid "        bzr diff"
+msgid "        brz diff"
 msgstr ""
 
 #: brzlib/builtins.py:2248
@@ -1275,7 +1275,7 @@ msgid "    Difference between the working tree and revision 1::"
 msgstr ""
 
 #: brzlib/builtins.py:2250
-msgid "        bzr diff -r1"
+msgid "        brz diff -r1"
 msgstr ""
 
 #: brzlib/builtins.py:2252
@@ -1283,7 +1283,7 @@ msgid "    Difference between revision 3 and revision 1::"
 msgstr ""
 
 #: brzlib/builtins.py:2254
-msgid "        bzr diff -r1..3"
+msgid "        brz diff -r1..3"
 msgstr ""
 
 #: brzlib/builtins.py:2256
@@ -1291,7 +1291,7 @@ msgid "    Difference between revision 3 and revision 1 for branch xxx::"
 msgstr ""
 
 #: brzlib/builtins.py:2258
-msgid "        bzr diff -r1..3 xxx"
+msgid "        brz diff -r1..3 xxx"
 msgstr ""
 
 #: brzlib/builtins.py:2260
@@ -1299,14 +1299,14 @@ msgid "    The changes introduced by revision 2 (equivalent to -r1..2)::"
 msgstr ""
 
 #: brzlib/builtins.py:2262
-msgid "        bzr diff -c2"
+msgid "        brz diff -c2"
 msgstr ""
 
 #: brzlib/builtins.py:2264
 msgid ""
 "    To see the changes introduced by revision X::\n"
 "    \n"
-"        bzr diff -cX"
+"        brz diff -cX"
 msgstr ""
 
 #: brzlib/builtins.py:2268
@@ -1317,7 +1317,7 @@ msgid ""
 msgstr ""
 
 #: brzlib/builtins.py:2272
-msgid "        bzr diff -r<chosen_parent>..X"
+msgid "        brz diff -r<chosen_parent>..X"
 msgstr ""
 
 #: brzlib/builtins.py:2274
@@ -1327,7 +1327,7 @@ msgid ""
 msgstr ""
 
 #: brzlib/builtins.py:2277
-msgid "        bzr diff -r-2.."
+msgid "        brz diff -r-2.."
 msgstr ""
 
 #: brzlib/builtins.py:2279
@@ -1335,7 +1335,7 @@ msgid "    Show just the differences for file NEWS::"
 msgstr ""
 
 #: brzlib/builtins.py:2281
-msgid "        bzr diff NEWS"
+msgid "        brz diff NEWS"
 msgstr ""
 
 #: brzlib/builtins.py:2283
@@ -1343,7 +1343,7 @@ msgid "    Show the differences in working tree xxx for file NEWS::"
 msgstr ""
 
 #: brzlib/builtins.py:2285
-msgid "        bzr diff xxx/NEWS"
+msgid "        brz diff xxx/NEWS"
 msgstr ""
 
 #: brzlib/builtins.py:2287
@@ -1351,7 +1351,7 @@ msgid "    Show the differences from branch xxx to this working tree:"
 msgstr ""
 
 #: brzlib/builtins.py:2289
-msgid "        bzr diff --old xxx"
+msgid "        brz diff --old xxx"
 msgstr ""
 
 #: brzlib/builtins.py:2291
@@ -1359,20 +1359,20 @@ msgid "    Show the differences between two branches for file NEWS::"
 msgstr ""
 
 #: brzlib/builtins.py:2293
-msgid "        bzr diff --old xxx --new yyy NEWS"
+msgid "        brz diff --old xxx --new yyy NEWS"
 msgstr ""
 
 #: brzlib/builtins.py:2295
-msgid "    Same as 'bzr diff' but prefix paths with old/ and new/::"
+msgid "    Same as 'brz diff' but prefix paths with old/ and new/::"
 msgstr ""
 
 #: brzlib/builtins.py:2297
 msgid ""
-"        bzr diff --prefix old/:new/\n"
+"        brz diff --prefix old/:new/\n"
 "        \n"
 "    Show the differences using a custom diff program with options::\n"
 "    \n"
-"        bzr diff --using /usr/bin/diff --diff-options -wu"
+"        brz diff --using /usr/bin/diff --diff-options -wu"
 msgstr ""
 
 # help of 'diff-options' option of 'diff' command
@@ -1422,7 +1422,7 @@ msgid "--prefix expects two values separated by a colon (eg \"old/:new/\")"
 msgstr ""
 
 #: brzlib/builtins.py:2361
-msgid "bzr diff --revision takes exactly one or two revision specifiers"
+msgid "brz diff --revision takes exactly one or two revision specifiers"
 msgstr ""
 
 #: brzlib/builtins.py:2366 brzlib/builtins.py:2763 brzlib/builtins.py:2776
@@ -1461,7 +1461,7 @@ msgstr ""
 
 #: brzlib/builtins.py:2495
 msgid ""
-"log is bzr's default tool for exploring the history of a branch.\n"
+"log is brz's default tool for exploring the history of a branch.\n"
 "The branch to use is taken from the first parameter. If no parameters\n"
 "are given, the branch containing the working directory is logged.\n"
 "Here are some simple examples::"
@@ -1469,9 +1469,9 @@ msgstr ""
 
 #: brzlib/builtins.py:2500
 msgid ""
-"  bzr log                       log the current branch\n"
-"  bzr log foo.py                log a file in its branch\n"
-"  bzr log http://server/branch  log a branch on a server"
+"  brz log                       log the current branch\n"
+"  brz log foo.py                log a file in its branch\n"
+"  brz log http://server/branch  log a branch on a server"
 msgstr ""
 
 #: brzlib/builtins.py:2504
@@ -1492,7 +1492,7 @@ msgstr ""
 msgid ""
 "  The log format controls how information about each revision is\n"
 "  displayed. The standard log formats are called ``long``, ``short``\n"
-"  and ``line``. The default is long. See ``bzr help log-formats``\n"
+"  and ``line``. The default is long. See ``brz help log-formats``\n"
 "  for more details on log formats."
 msgstr ""
 
@@ -1557,7 +1557,7 @@ msgstr ""
 
 #: brzlib/builtins.py:2552
 msgid ""
-"  See ``bzr help revisionspec`` for details on how to specify X and Y.\n"
+"  See ``brz help revisionspec`` for details on how to specify X and Y.\n"
 "  Some common examples are given below::"
 msgstr ""
 
@@ -1617,22 +1617,22 @@ msgid "  In this case:"
 msgstr ""
 
 #: brzlib/builtins.py:2588
-msgid "  * ``bzr log guide.txt`` will log the file added in revision 1"
+msgid "  * ``brz log guide.txt`` will log the file added in revision 1"
 msgstr ""
 
 #: brzlib/builtins.py:2590
-msgid "  * ``bzr log tutorial.txt`` will log the new file added in revision 3"
+msgid "  * ``brz log tutorial.txt`` will log the new file added in revision 3"
 msgstr ""
 
 #: brzlib/builtins.py:2592
 msgid ""
-"  * ``bzr log -r2 -p tutorial.txt`` will show the changes made to\n"
+"  * ``brz log -r2 -p tutorial.txt`` will show the changes made to\n"
 "    the original file in revision 2."
 msgstr ""
 
 #: brzlib/builtins.py:2595
 msgid ""
-"  * ``bzr log -r2 -p guide.txt`` will display an error message as there\n"
+"  * ``brz log -r2 -p guide.txt`` will display an error message as there\n"
 "    was no file called guide.txt in revision 2."
 msgstr ""
 
@@ -1664,8 +1664,8 @@ msgstr ""
 msgid ""
 "  GUI tools and IDEs are often better at exploring history than command\n"
 "  line tools: you may prefer qlog or viz from qbzr or bzr-gtk, the\n"
-"  bzr-explorer shell, or the Loggerhead web interface.  See the Plugin\n"
-"  Guide <http://doc.bazaar.canonical.com/plugins/en/> and\n"
+"  bzr-explorer shell, or the Loggerhead web interface.  See the Bazaar\n"
+"  Plugin Guide <http://doc.bazaar.canonical.com/plugins/en/> and\n"
 "  <http://wiki.bazaar.canonical.com/IDEIntegration>.  "
 msgstr ""
 
@@ -1683,20 +1683,20 @@ msgstr ""
 
 #: brzlib/builtins.py:2625
 msgid ""
-"  ``bzr tip`` will then show the latest revision while ``bzr top``\n"
+"  ``brz tip`` will then show the latest revision while ``brz top``\n"
 "  will show the last 10 mainline revisions. To see the details of a\n"
-"  particular revision X,  ``bzr show -rX``."
+"  particular revision X,  ``brz show -rX``."
 msgstr ""
 
 #: brzlib/builtins.py:2629
 msgid ""
 "  If you are interested in looking deeper into a particular merge X,\n"
-"  use ``bzr log -n0 -rX``."
+"  use ``brz log -n0 -rX``."
 msgstr ""
 
 #: brzlib/builtins.py:2632
 msgid ""
-"  ``bzr log -v`` on a branch with lots of history is currently\n"
+"  ``brz log -v`` on a branch with lots of history is currently\n"
 "  very slow. A fix for this issue is currently under development.\n"
 "  With or without that fix, it is recommended that a revision range\n"
 "  be given when using the -v option."
@@ -1704,7 +1704,7 @@ msgstr ""
 
 #: brzlib/builtins.py:2637
 msgid ""
-"  bzr has a generic full-text matching plugin, bzr-search, that can be\n"
+"  brz has a generic full-text matching plugin, brz-search, that can be\n"
 "  used to find revisions matching user names, commit messages, etc.\n"
 "  Among other features, this plugin can find all revisions containing\n"
 "  a list of words but not others."
@@ -1816,12 +1816,12 @@ msgstr ""
 
 #: brzlib/builtins.py:2915
 #, python-format
-msgid "bzr %s doesn't accept two revisions in different branches."
+msgid "brz %s doesn't accept two revisions in different branches."
 msgstr ""
 
 #: brzlib/builtins.py:2931
 #, python-format
-msgid "bzr %s --revision takes one or two values."
+msgid "brz %s --revision takes one or two values."
 msgstr ""
 
 #: brzlib/builtins.py:2976
@@ -1877,7 +1877,7 @@ msgid "Ignore specified files or patterns."
 msgstr ""
 
 #: brzlib/builtins.py:3109
-msgid "See ``bzr help patterns`` for details on the syntax of patterns."
+msgid "See ``brz help patterns`` for details on the syntax of patterns."
 msgstr ""
 
 #: brzlib/builtins.py:3111
@@ -1940,7 +1940,7 @@ msgid ""
 msgstr ""
 
 #: brzlib/builtins.py:3146
-msgid "        bzr ignore ./Makefile"
+msgid "        brz ignore ./Makefile"
 msgstr ""
 
 #: brzlib/builtins.py:3148
@@ -1948,7 +1948,7 @@ msgid "    Ignore .class files in all directories...::"
 msgstr ""
 
 #: brzlib/builtins.py:3150
-msgid "        bzr ignore \"*.class\""
+msgid "        brz ignore \"*.class\""
 msgstr ""
 
 #: brzlib/builtins.py:3152
@@ -1956,7 +1956,7 @@ msgid "    ...but do not ignore \"special.class\"::"
 msgstr ""
 
 #: brzlib/builtins.py:3154
-msgid "        bzr ignore \"!special.class\""
+msgid "        brz ignore \"!special.class\""
 msgstr ""
 
 #: brzlib/builtins.py:3156
@@ -1964,7 +1964,7 @@ msgid "    Ignore files whose name begins with the \"#\" character::"
 msgstr ""
 
 #: brzlib/builtins.py:3158
-msgid "        bzr ignore \"RE:^#\""
+msgid "        brz ignore \"RE:^#\""
 msgstr ""
 
 #: brzlib/builtins.py:3160 brzlib/builtins.py:3164
@@ -1972,11 +1972,11 @@ msgid "    Ignore .o files under the lib directory::"
 msgstr ""
 
 #: brzlib/builtins.py:3162
-msgid "        bzr ignore \"lib/**/*.o\""
+msgid "        brz ignore \"lib/**/*.o\""
 msgstr ""
 
 #: brzlib/builtins.py:3166
-msgid "        bzr ignore \"RE:lib/.*\\.o\""
+msgid "        brz ignore \"RE:lib/.*\\.o\""
 msgstr ""
 
 #: brzlib/builtins.py:3168
@@ -1985,19 +1985,19 @@ msgstr ""
 
 #: brzlib/builtins.py:3170
 msgid ""
-"        bzr ignore \"RE:(?!debian/).*\"\n"
+"        brz ignore \"RE:(?!debian/).*\"\n"
 "    \n"
 "    Ignore everything except the \"local\" toplevel directory,\n"
 "    but always ignore autosave files ending in ~, even under local/::\n"
 "    \n"
-"        bzr ignore \"*\"\n"
-"        bzr ignore \"!./local\"\n"
-"        bzr ignore \"!!*~\""
+"        brz ignore \"*\"\n"
+"        brz ignore \"!./local\"\n"
+"        brz ignore \"!!*~\""
 msgstr ""
 
 # help of 'default-rules' option of 'ignore' command
 #: brzlib/builtins.py:3184
-msgid "Display the default ignore rules that bzr uses."
+msgid "Display the default ignore rules that brz uses."
 msgstr ""
 
 #: brzlib/builtins.py:3196
@@ -2021,7 +2021,7 @@ msgid ""
 "Warning: the following files are version controlled and match your ignore "
 "pattern:\n"
 "%s\n"
-"These files will continue to be version controlled unless you 'bzr remove' "
+"These files will continue to be version controlled unless you 'brz remove' "
 "them.\n"
 msgstr ""
 
@@ -2040,7 +2040,7 @@ msgid "Alternatively, to list just the files::"
 msgstr ""
 
 #: brzlib/builtins.py:3243
-msgid "    bzr ls --ignored"
+msgid "    brz ls --ignored"
 msgstr ""
 
 #: brzlib/builtins.py:3277
@@ -2154,7 +2154,7 @@ msgid "Apply content filters to display the convenience form."
 msgstr ""
 
 #: brzlib/builtins.py:3381
-msgid "bzr cat --revision takes exactly one revision specifier"
+msgid "brz cat --revision takes exactly one revision specifier"
 msgstr ""
 
 #: brzlib/builtins.py:3406 brzlib/builtins.py:3418
@@ -2201,7 +2201,7 @@ msgid ""
 msgstr ""
 
 #: brzlib/builtins.py:3464
-msgid "    bzr commit foo -x foo/bar"
+msgid "    brz commit foo -x foo/bar"
 msgstr ""
 
 #: brzlib/builtins.py:3466
@@ -2231,7 +2231,7 @@ msgid ""
 "  A common mistake is to forget to add a new file or directory before\n"
 "  running the commit command. The --strict option checks for unknown\n"
 "  files and aborts the commit if any are found. More advanced pre-commit\n"
-"  checks can be implemented by defining hooks. See ``bzr help hooks``\n"
+"  checks can be implemented by defining hooks. See ``brz help hooks``\n"
 "  for details."
 msgstr ""
 
@@ -2243,7 +2243,7 @@ msgstr ""
 msgid ""
 "  If you accidentially commit the wrong changes or make a spelling\n"
 "  mistake in the commit message say, you can use the uncommit command\n"
-"  to undo it. See ``bzr help uncommit`` for details."
+"  to undo it. See ``brz help uncommit`` for details."
 msgstr ""
 
 #: brzlib/builtins.py:3491
@@ -2251,7 +2251,7 @@ msgid ""
 "  Hooks can also be configured to run after a commit. This allows you\n"
 "  to trigger updates to external systems like bug trackers. The --fixes\n"
 "  option can be used to record the association between a revision and\n"
-"  one or more bugs. See ``bzr help bugs`` for details."
+"  one or more bugs. See ``brz help bugs`` for details."
 msgstr ""
 
 # help of 'exclude' option of 'commit' command
@@ -2288,7 +2288,7 @@ msgstr ""
 
 # help of 'fixes' option of 'commit' command
 #: brzlib/builtins.py:3519
-msgid "Mark a bug as being fixed by this revision (see \"bzr help bugs\")."
+msgid "Mark a bug as being fixed by this revision (see \"brz help bugs\")."
 msgstr ""
 
 # help of 'author' option of 'commit' command
@@ -2322,13 +2322,13 @@ msgstr ""
 msgid ""
 "No tracker specified for bug %s. Use the form 'tracker:id' or specify a "
 "default bug tracker using the `bugtracker` option.\n"
-"See \"bzr help bugs\" for more information on this feature. Commit refused."
+"See \"brz help bugs\" for more information on this feature. Commit refused."
 msgstr ""
 
 #: brzlib/builtins.py:3561
 #, python-format
 msgid ""
-"Invalid bug %s. Must be in the form of 'tracker:id'. See \"bzr help bugs\" "
+"Invalid bug %s. Must be in the form of 'tracker:id'. See \"brz help bugs\" "
 "for more information on this feature.\n"
 "Commit refused."
 msgstr ""
@@ -2365,13 +2365,13 @@ msgstr ""
 
 #: brzlib/builtins.py:3689
 msgid ""
-"No changes to commit. Please 'bzr add' the files you want to commit, or use "
+"No changes to commit. Please 'brz add' the files you want to commit, or use "
 "--unchanged to force an empty commit."
 msgstr ""
 
 #: brzlib/builtins.py:3693
 msgid ""
-"Conflicts detected in working tree.  Use \"bzr conflicts\" to list, \"bzr "
+"Conflicts detected in working tree.  Use \"brz conflicts\" to list, \"brz "
 "resolve FILE\" to resolve."
 msgstr ""
 
@@ -2394,7 +2394,7 @@ msgstr ""
 #: brzlib/builtins.py:3710
 msgid ""
 "This command checks various invariants about branch and repository storage\n"
-"to detect data corruption or bzr bugs."
+"to detect data corruption or brz bugs."
 msgstr ""
 
 #: brzlib/builtins.py:3713
@@ -2453,7 +2453,7 @@ msgid "    Check the tree and branch at 'foo'::"
 msgstr ""
 
 #: brzlib/builtins.py:3746
-msgid "        bzr check --tree --branch foo"
+msgid "        brz check --tree --branch foo"
 msgstr ""
 
 #: brzlib/builtins.py:3748
@@ -2461,7 +2461,7 @@ msgid "    Check only the repository at 'bar'::"
 msgstr ""
 
 #: brzlib/builtins.py:3750
-msgid "        bzr check --repo bar"
+msgid "        brz check --repo bar"
 msgstr ""
 
 #: brzlib/builtins.py:3752
@@ -2469,7 +2469,7 @@ msgid "    Check everything at 'baz'::"
 msgstr ""
 
 #: brzlib/builtins.py:3754
-msgid "        bzr check baz"
+msgid "        brz check baz"
 msgstr ""
 
 # help of 'branch' option of 'check' command
@@ -2537,7 +2537,7 @@ msgstr ""
 
 # help of 'format' option of 'upgrade' command
 #: brzlib/builtins.py:3814
-msgid "Upgrade to a specific format.  See \"bzr help formats\" for details."
+msgid "Upgrade to a specific format.  See \"brz help formats\" for details."
 msgstr ""
 
 # title of 'format' option of 'init' command
@@ -2558,7 +2558,7 @@ msgid "Show what would be done, but don't actually do anything."
 msgstr ""
 
 #: brzlib/builtins.py:3837
-msgid "Show or set bzr user id."
+msgid "Show or set brz user id."
 msgstr ""
 
 #: brzlib/builtins.py:3839
@@ -2568,7 +2568,7 @@ msgid ""
 msgstr ""
 
 #: brzlib/builtins.py:3842
-msgid "        bzr whoami --email"
+msgid "        brz whoami --email"
 msgstr ""
 
 #: brzlib/builtins.py:3844
@@ -2576,7 +2576,7 @@ msgid "    Set the current user::"
 msgstr ""
 
 #: brzlib/builtins.py:3846
-msgid "        bzr whoami \"Frank Chu <fchu@example.com>\""
+msgid "        brz whoami \"Frank Chu <fchu@example.com>\""
 msgstr ""
 
 # help of 'email' option of 'whoami' command
@@ -2621,7 +2621,7 @@ msgid ""
 msgstr ""
 
 #: brzlib/builtins.py:3933
-msgid "        bzr alias"
+msgid "        brz alias"
 msgstr ""
 
 #: brzlib/builtins.py:3935
@@ -2629,7 +2629,7 @@ msgid "    Show the alias specified for 'll'::"
 msgstr ""
 
 #: brzlib/builtins.py:3937
-msgid "        bzr alias ll"
+msgid "        brz alias ll"
 msgstr ""
 
 #: brzlib/builtins.py:3939
@@ -2637,7 +2637,7 @@ msgid "    Set an alias for 'll'::"
 msgstr ""
 
 #: brzlib/builtins.py:3941
-msgid "        bzr alias ll=\"log --line -r-10..-1\""
+msgid "        brz alias ll=\"log --line -r-10..-1\""
 msgstr ""
 
 #: brzlib/builtins.py:3943
@@ -2645,7 +2645,7 @@ msgid "    To remove an alias for 'll'::"
 msgstr ""
 
 #: brzlib/builtins.py:3945
-msgid "        bzr alias --remove ll"
+msgid "        brz alias --remove ll"
 msgstr ""
 
 # help of 'remove' option of 'alias' command
@@ -2654,7 +2654,7 @@ msgid "Remove the alias."
 msgstr ""
 
 #: brzlib/builtins.py:3968
-msgid "bzr alias --remove expects an alias to remove."
+msgid "brz alias --remove expects an alias to remove."
 msgstr ""
 
 #: brzlib/builtins.py:4149
@@ -2663,11 +2663,11 @@ msgstr ""
 
 #: brzlib/builtins.py:4166
 msgid ""
-"--benchmark is no longer supported from bzr 2.2; use bzr-usertest instead"
+"--benchmark is no longer supported from brz 2.2; use bzr-usertest instead"
 msgstr ""
 
 #: brzlib/builtins.py:4213
-msgid "Show version of bzr."
+msgid "Show version of brz."
 msgstr ""
 
 # help of 'short' option of 'version' command
@@ -2692,7 +2692,7 @@ msgstr ""
 msgid ""
 "The source of the merge can be specified either in the form of a branch,\n"
 "or in the form of a path to a file containing a merge directive generated\n"
-"with bzr send. If neither is specified, the default is the upstream branch\n"
+"with brz send. If neither is specified, the default is the upstream branch\n"
 "or the branch most recently merged using --remember.  The source of the\n"
 "merge may also be specified in the form of a path to a file in another\n"
 "branch:  in this case, only the modifications to that file are merged into\n"
@@ -2701,14 +2701,14 @@ msgstr ""
 
 #: brzlib/builtins.py:4274
 msgid ""
-"When merging from a branch, by default bzr will try to merge in all new\n"
+"When merging from a branch, by default brz will try to merge in all new\n"
 "work from the other branch, automatically determining an appropriate base\n"
 "revision.  If this fails, you may need to give an explicit base."
 msgstr ""
 
 #: brzlib/builtins.py:4278
 msgid ""
-"To pick a different ending revision, pass \"--revision OTHER\".  bzr will\n"
+"To pick a different ending revision, pass \"--revision OTHER\".  brz will\n"
 "try to merge in all new work up to and including revision OTHER."
 msgstr ""
 
@@ -2736,7 +2736,7 @@ msgid ""
 msgstr ""
 
 #: brzlib/builtins.py:4296
-msgid "Use bzr resolve when you have fixed a problem.  See also bzr conflicts."
+msgid "Use brz resolve when you have fixed a problem.  See also brz conflicts."
 msgstr ""
 
 #: brzlib/builtins.py:4298
@@ -2750,7 +2750,7 @@ msgstr ""
 #: brzlib/builtins.py:4303
 msgid ""
 "The results of the merge are placed into the destination working\n"
-"directory, where they can be reviewed (with bzr diff), tested, and then\n"
+"directory, where they can be reviewed (with brz diff), tested, and then\n"
 "committed to record the result of the merge."
 msgstr ""
 
@@ -2779,19 +2779,19 @@ msgstr ""
 #: brzlib/builtins.py:4320
 msgid ""
 ":Examples:\n"
-"    To merge all new revisions from bzr.dev::"
+"    To merge all new revisions from brz.dev::"
 msgstr ""
 
 #: brzlib/builtins.py:4323
-msgid "        bzr merge ../bzr.dev"
+msgid "        brz merge ../brz.dev"
 msgstr ""
 
 #: brzlib/builtins.py:4325
-msgid "    To merge changes up to and including revision 82 from bzr.dev::"
+msgid "    To merge changes up to and including revision 82 from brz.dev::"
 msgstr ""
 
 #: brzlib/builtins.py:4327
-msgid "        bzr merge -r 82 ../bzr.dev"
+msgid "        brz merge -r 82 ../brz.dev"
 msgstr ""
 
 #: brzlib/builtins.py:4329
@@ -2799,7 +2799,7 @@ msgid "    To merge the changes introduced by 82, without previous changes::"
 msgstr ""
 
 #: brzlib/builtins.py:4331
-msgid "        bzr merge -r 81..82 ../bzr.dev"
+msgid "        brz merge -r 81..82 ../brz.dev"
 msgstr ""
 
 #: brzlib/builtins.py:4333
@@ -2807,7 +2807,7 @@ msgid "    To apply a merge directive contained in /tmp/merge::"
 msgstr ""
 
 #: brzlib/builtins.py:4335
-msgid "        bzr merge /tmp/merge"
+msgid "        brz merge /tmp/merge"
 msgstr ""
 
 #: brzlib/builtins.py:4337
@@ -2818,9 +2818,9 @@ msgstr ""
 
 #: brzlib/builtins.py:4340
 msgid ""
-"        bzr merge ../feature1a\n"
-"        bzr merge ../feature1b --force\n"
-"        bzr commit -m 'revision with three parents'"
+"        brz merge ../feature1a\n"
+"        brz merge ../feature1b --force\n"
+"        brz commit -m 'revision with three parents'"
 msgstr ""
 
 # help of 'force' option of 'merge' command
@@ -2861,7 +2861,7 @@ msgstr ""
 #: brzlib/builtins.py:4391
 msgid ""
 "Merging into empty branches not currently supported, https://bugs.launchpad."
-"net/bzr/+bug/308562"
+"net/brz/+bug/308562"
 msgstr ""
 
 #: brzlib/builtins.py:4418
@@ -2885,7 +2885,7 @@ msgid "Cannot pull individual files"
 msgstr ""
 
 #: brzlib/builtins.py:4463
-msgid "This branch has no commits. (perhaps you would prefer 'bzr pull')"
+msgid "This branch has no commits. (perhaps you would prefer 'brz pull')"
 msgstr ""
 
 #: brzlib/builtins.py:4521
@@ -2937,7 +2937,7 @@ msgid ""
 msgstr ""
 
 #: brzlib/builtins.py:4667
-msgid "        bzr remerge --show-base"
+msgid "        brz remerge --show-base"
 msgstr ""
 
 #: brzlib/builtins.py:4669
@@ -2947,7 +2947,7 @@ msgid ""
 msgstr ""
 
 #: brzlib/builtins.py:4672
-msgid "        bzr remerge --merge-type weave --reprocess foobar"
+msgid "        brz remerge --merge-type weave --reprocess foobar"
 msgstr ""
 
 # help of 'show-base' option of 'merge' command
@@ -3020,15 +3020,15 @@ msgid ""
 "not yet committed. These revisions will be included as additional parents\n"
 "of the next commit.  Normally, using revert clears that list as well as\n"
 "reverting the files.  If any files are specified, revert leaves the list\n"
-"of uncommitted merges alone and reverts only the files.  Use ``bzr revert\n"
+"of uncommitted merges alone and reverts only the files.  Use ``brz revert\n"
 ".`` in the tree root to revert all files but keep the recorded merges,\n"
-"and ``bzr revert --forget-merges`` to clear the pending merge list without\n"
+"and ``brz revert --forget-merges`` to clear the pending merge list without\n"
 "reverting any files."
 msgstr ""
 
 #: brzlib/builtins.py:4790
 msgid ""
-"Using \"bzr revert --forget-merges\", it is possible to apply all of the\n"
+"Using \"brz revert --forget-merges\", it is possible to apply all of the\n"
 "changes from a branch in a single revision.  To do this, perform the merge\n"
 "as desired.  Then doing revert with the \"--forget-merges\" option will "
 "keep\n"
@@ -3087,7 +3087,7 @@ msgid ""
 msgstr ""
 
 #: brzlib/builtins.py:4888
-msgid "        bzr missing"
+msgid "        brz missing"
 msgstr ""
 
 #: brzlib/builtins.py:4890
@@ -3095,7 +3095,7 @@ msgid "    Determine the missing revisions between this and another branch::"
 msgstr ""
 
 #: brzlib/builtins.py:4892
-msgid "        bzr missing http://server/branch"
+msgid "        brz missing http://server/branch"
 msgstr ""
 
 #: brzlib/builtins.py:4894
@@ -3105,7 +3105,7 @@ msgid ""
 msgstr ""
 
 #: brzlib/builtins.py:4897
-msgid "        bzr missing -r ..-10"
+msgid "        brz missing -r ..-10"
 msgstr ""
 
 #: brzlib/builtins.py:4899
@@ -3115,7 +3115,7 @@ msgid ""
 msgstr ""
 
 #: brzlib/builtins.py:4902
-msgid "        bzr missing --my-revision ..-10"
+msgid "        brz missing --my-revision ..-10"
 msgstr ""
 
 # help of 'reverse' option of 'missing' command
@@ -3372,7 +3372,7 @@ msgstr ""
 #: brzlib/builtins.py:5351
 msgid ""
 "If --revision is specified, uncommit revisions to leave the branch at the\n"
-"specified revision.  For example, \"bzr uncommit -r 15\" will leave the\n"
+"specified revision.  For example, \"brz uncommit -r 15\" will leave the\n"
 "branch at revision 15."
 msgstr ""
 
@@ -3427,7 +3427,7 @@ msgstr ""
 #, python-format
 msgid ""
 "You can restore the old tip by running:\n"
-"  bzr pull . -r revid:%s\n"
+"  brz pull . -r revid:%s\n"
 msgstr ""
 
 #: brzlib/builtins.py:5457
@@ -3448,16 +3448,16 @@ msgstr ""
 
 #: brzlib/builtins.py:5465
 msgid ""
-"You can get information on what locks are open via the 'bzr info\n"
+"You can get information on what locks are open via the 'brz info\n"
 "[location]' command."
 msgstr ""
 
 #: brzlib/builtins.py:5468
 msgid ""
 ":Examples:\n"
-"    bzr break-lock\n"
-"    bzr break-lock bzr+ssh://example.com/bzr/foo\n"
-"    bzr break-lock --conf ~/.bazaar"
+"    brz break-lock\n"
+"    brz break-lock brz+ssh://example.com/brz/foo\n"
+"    brz break-lock --conf ~/.bazaar"
 msgstr ""
 
 # help of 'config' option of 'break-lock' command
@@ -3476,7 +3476,7 @@ msgid "The Bazaar smart server protocol over TCP. (default port: 4155)"
 msgstr ""
 
 #: brzlib/builtins.py:5515
-msgid "Run the bzr server."
+msgid "Run the brz server."
 msgstr ""
 
 # help of 'inet' option of 'serve' command
@@ -3517,7 +3517,7 @@ msgstr ""
 msgid ""
 "By default the server is a readonly server.  Supplying --allow-writes "
 "enables write access to the contents of the served directory and below.  "
-"Note that ``bzr serve`` does not perform authentication, so unless some form "
+"Note that ``brz serve`` does not perform authentication, so unless some form "
 "of external authentication is arranged supplying this option leads to global "
 "uncontrolled write access to your file system."
 msgstr ""
@@ -3538,8 +3538,8 @@ msgstr ""
 #: brzlib/builtins.py:5567
 msgid ""
 "The TREE argument should be an independent tree, inside another tree, but\n"
-"not part of it.  (Such trees can be produced by \"bzr split\", but also by\n"
-"running \"bzr branch\" with the target inside a tree.)"
+"not part of it.  (Such trees can be produced by \"brz split\", but also by\n"
+"running \"brz branch\" with the target inside a tree.)"
 msgstr ""
 
 #: brzlib/builtins.py:5571
@@ -3553,7 +3553,7 @@ msgstr ""
 #, python-format
 msgid ""
 "Can't join trees because %s doesn't support rich root data.\n"
-"You can use bzr upgrade on the repository."
+"You can use brz upgrade on the repository."
 msgstr ""
 
 #: brzlib/builtins.py:5599 brzlib/builtins.py:5605
@@ -3588,7 +3588,7 @@ msgid "No public branch specified or known"
 msgstr ""
 
 #: brzlib/builtins.py:5709
-msgid "bzr merge-directive takes at most two one revision identifiers"
+msgid "brz merge-directive takes at most two one revision identifiers"
 msgstr ""
 
 #: brzlib/builtins.py:5718
@@ -3620,7 +3620,7 @@ msgstr ""
 
 #: brzlib/builtins.py:5749
 msgid ""
-"`bzr send` creates a compact data set that, when applied using bzr\n"
+"`brz send` creates a compact data set that, when applied using brz\n"
 "merge, has the same effect as merging from the source branch.  "
 msgstr ""
 
@@ -3660,7 +3660,7 @@ msgstr ""
 
 #: brzlib/builtins.py:5774
 msgid ""
-"In order to calculate those changes, bzr must analyse the submit branch.\n"
+"In order to calculate those changes, brz must analyse the submit branch.\n"
 "Therefore it is most efficient for the submit branch to be a local mirror.\n"
 "If a public location is known for the submit_branch, that location is used\n"
 "in the merge directive."
@@ -3711,16 +3711,16 @@ msgstr ""
 
 #: brzlib/builtins.py:5804
 msgid ""
-"The merge directives created by bzr send may be applied using bzr merge or\n"
-"bzr pull by specifying a file containing a merge directive as the location."
+"The merge directives created by brz send may be applied using brz merge or\n"
+"brz pull by specifying a file containing a merge directive as the location."
 msgstr ""
 
 #: brzlib/builtins.py:5807
 msgid ""
-"bzr send makes extensive use of public locations to map local locations "
+"brz send makes extensive use of public locations to map local locations "
 "into\n"
-"URLs that can be used by other people.  See `bzr help configuration` to\n"
-"set them, and use `bzr info` to display them."
+"URLs that can be used by other people.  See `brz help configuration` to\n"
+"set them, and use `brz info` to display them."
 msgstr ""
 
 # help of 'output' option of 'send' command
@@ -3804,15 +3804,15 @@ msgstr ""
 #: brzlib/builtins.py:5945
 msgid ""
 "To rename a tag (change the name but keep it on the same revsion), run "
-"``bzr\n"
-"tag new-name -r tag:old-name`` and then ``bzr tag --delete oldname``."
+"``brz\n"
+"tag new-name -r tag:old-name`` and then ``brz tag --delete oldname``."
 msgstr ""
 
 #: brzlib/builtins.py:5948
 msgid ""
 "If no tag name is specified it will be determined through the \n"
 "'automatic_tag_name' hook. This can e.g. be used to automatically tag\n"
-"upstream releases by reading configure.ac. See ``bzr help hooks`` for\n"
+"upstream releases by reading configure.ac. See ``brz help hooks`` for\n"
 "details."
 msgstr ""
 
@@ -3888,7 +3888,7 @@ msgid "Sorting"
 msgstr ""
 
 #: brzlib/builtins.py:6091
-msgid "Reconfigure the type of a bzr directory."
+msgid "Reconfigure the type of a brz directory."
 msgstr ""
 
 #: brzlib/builtins.py:6093
@@ -4105,7 +4105,7 @@ msgid ""
 msgstr ""
 
 #: brzlib/builtins.py:6311
-msgid "    bzr view file1 dir1 ..."
+msgid "    brz view file1 dir1 ..."
 msgstr ""
 
 #: brzlib/builtins.py:6313
@@ -4113,7 +4113,7 @@ msgid "  To list the current view::"
 msgstr ""
 
 #: brzlib/builtins.py:6315
-msgid "    bzr view"
+msgid "    brz view"
 msgstr ""
 
 #: brzlib/builtins.py:6317
@@ -4121,7 +4121,7 @@ msgid "  To delete the current view::"
 msgstr ""
 
 #: brzlib/builtins.py:6319
-msgid "    bzr view --delete"
+msgid "    brz view --delete"
 msgstr ""
 
 #: brzlib/builtins.py:6321
@@ -4129,7 +4129,7 @@ msgid "  To disable the current view without deleting it::"
 msgstr ""
 
 #: brzlib/builtins.py:6323
-msgid "    bzr view --switch off"
+msgid "    brz view --switch off"
 msgstr ""
 
 #: brzlib/builtins.py:6325
@@ -4137,7 +4137,7 @@ msgid "  To define a named view and switch to it::"
 msgstr ""
 
 #: brzlib/builtins.py:6327
-msgid "    bzr view --name view-name file1 dir1 ..."
+msgid "    brz view --name view-name file1 dir1 ..."
 msgstr ""
 
 #: brzlib/builtins.py:6329
@@ -4145,7 +4145,7 @@ msgid "  To list a named view::"
 msgstr ""
 
 #: brzlib/builtins.py:6331
-msgid "    bzr view --name view-name"
+msgid "    brz view --name view-name"
 msgstr ""
 
 #: brzlib/builtins.py:6333
@@ -4153,7 +4153,7 @@ msgid "  To delete a named view::"
 msgstr ""
 
 #: brzlib/builtins.py:6335
-msgid "    bzr view --name view-name --delete"
+msgid "    brz view --name view-name --delete"
 msgstr ""
 
 #: brzlib/builtins.py:6337
@@ -4161,7 +4161,7 @@ msgid "  To switch to a named view::"
 msgstr ""
 
 #: brzlib/builtins.py:6339
-msgid "    bzr view --switch view-name"
+msgid "    brz view --switch view-name"
 msgstr ""
 
 #: brzlib/builtins.py:6341
@@ -4169,7 +4169,7 @@ msgid "  To list all views defined::"
 msgstr ""
 
 #: brzlib/builtins.py:6343
-msgid "    bzr view --all"
+msgid "    brz view --all"
 msgstr ""
 
 #: brzlib/builtins.py:6345
@@ -4177,7 +4177,7 @@ msgid "  To delete all views::"
 msgstr ""
 
 #: brzlib/builtins.py:6347
-msgid "    bzr view --delete --all"
+msgid "    brz view --delete --all"
 msgstr ""
 
 # help of 'all' option of 'view' command
@@ -4283,7 +4283,7 @@ msgid "  Remove the branch at repo/trunk::"
 msgstr ""
 
 #: brzlib/builtins.py:6473
-msgid "    bzr remove-branch repo/trunk"
+msgid "    brz remove-branch repo/trunk"
 msgstr ""
 
 # help of 'force' option of 'remove-branch' command
@@ -4452,7 +4452,7 @@ msgstr ""
 
 #: brzlib/builtins.py:6626
 msgid ""
-"Another class is 'detritus', which includes files emitted by bzr during\n"
+"Another class is 'detritus', which includes files emitted by brz during\n"
 "normal operations and selftests.  (The value of these files decreases with\n"
 "time.)"
 msgstr ""
@@ -4480,7 +4480,7 @@ msgstr ""
 
 # help of 'unknown' option of 'clean-tree' command
 #: brzlib/builtins.py:6640
-msgid "Delete files unknown to bzr (default)."
+msgid "Delete files unknown to brz (default)."
 msgstr ""
 
 # help of 'dry-run' option of 'clean-tree' command
@@ -4780,7 +4780,7 @@ msgstr ""
 
 #: brzlib/cmd_version_info.py:61
 msgid ""
-"  bzr version-info --custom \\\n"
+"  brz version-info --custom \\\n"
 "    --template=\"#define VERSION_INFO \\\"Project 1.2.3 (r{revno})\\\"\\n\""
 msgstr ""
 
@@ -4832,7 +4832,7 @@ msgid "Template for the output."
 msgstr ""
 
 #: brzlib/cmd_version_info.py:101
-msgid "bzr version-info --revision takes exactly one revision specifier"
+msgid "brz version-info --revision takes exactly one revision specifier"
 msgstr ""
 
 #: brzlib/commands.py:229
@@ -4877,7 +4877,7 @@ msgstr ""
 #: brzlib/commands.py:533
 #, python-format
 msgid ""
-"See bzr help %s for more details and examples.\n"
+"See brz help %s for more details and examples.\n"
 "\n"
 msgstr ""
 
@@ -5107,7 +5107,7 @@ msgid ""
 msgstr ""
 
 #: brzlib/conflicts.py:61
-msgid "Use bzr resolve when you have fixed a problem."
+msgid "Use brz resolve when you have fixed a problem."
 msgstr ""
 
 # help of 'text' option of 'conflicts' command
@@ -5141,10 +5141,10 @@ msgstr ""
 
 #: brzlib/conflicts.py:111
 msgid ""
-"Once you have fixed a problem, use \"bzr resolve\" to automatically mark\n"
-"text conflicts as fixed, \"bzr resolve FILE\" to mark a specific conflict "
+"Once you have fixed a problem, use \"brz resolve\" to automatically mark\n"
+"text conflicts as fixed, \"brz resolve FILE\" to mark a specific conflict "
 "as\n"
-"resolved, or \"bzr resolve --all\" to mark all conflicts as resolved."
+"resolved, or \"brz resolve --all\" to mark all conflicts as resolved."
 msgstr ""
 
 # help of 'all' option of 'resolve' command
@@ -5224,7 +5224,7 @@ msgstr ""
 
 #: brzlib/errors.py:271
 msgid ""
-"No help could be found for '%(topic)s'. Please use 'bzr help topics' to "
+"No help could be found for '%(topic)s'. Please use 'brz help topics' to "
 "obtain a list of topics."
 msgstr ""
 
@@ -5304,7 +5304,7 @@ msgstr ""
 #: brzlib/errors.py:467
 msgid ""
 "Could not rename %(source)s => %(dest)s because both files exist. (Use --"
-"after to tell bzr about a rename that has already happened)%(extra)s"
+"after to tell brz about a rename that has already happened)%(extra)s"
 msgstr ""
 
 #: brzlib/errors.py:483
@@ -5405,7 +5405,7 @@ msgstr ""
 
 #: brzlib/errors.py:730
 msgid ""
-"Directory contains a branch, but no working tree (use bzr checkout if you "
+"Directory contains a branch, but no working tree (use brz checkout if you "
 "wish to build a working tree): \"%(path)s\""
 msgstr ""
 
@@ -5426,7 +5426,7 @@ msgstr ""
 #: brzlib/errors.py:762
 msgid ""
 "Unsupported branch format: %(format)s\n"
-"Please run 'bzr upgrade'"
+"Please run 'brz upgrade'"
 msgstr ""
 
 #: brzlib/errors.py:768
@@ -5517,7 +5517,7 @@ msgstr ""
 #: brzlib/errors.py:1055
 msgid ""
 "Lock is apparently held, but corrupted: %(corruption_info)s\n"
-"Use 'bzr break-lock' to clear it"
+"Use 'brz break-lock' to clear it"
 msgstr ""
 
 #: brzlib/errors.py:1068
@@ -5751,7 +5751,7 @@ msgstr ""
 #: brzlib/errors.py:1764
 msgid ""
 "Bad value \"%(value)s\" for option \"%(name)s\".\n"
-"See ``bzr help %(name)s``"
+"See ``brz help %(name)s``"
 msgstr ""
 
 #: brzlib/errors.py:1774
@@ -5856,7 +5856,7 @@ msgid "Nothing to merge."
 msgstr ""
 
 #: brzlib/errors.py:2070
-msgid "Format %(format)s cannot be initialised by this version of bzr."
+msgid "Format %(format)s cannot be initialised by this version of brz."
 msgstr ""
 
 #: brzlib/errors.py:2079
@@ -5916,7 +5916,7 @@ msgid ""
 msgstr ""
 
 #: brzlib/errors.py:2168
-msgid "Working tree is out of date, please run 'bzr update'.%(more)s"
+msgid "Working tree is out of date, please run 'brz update'.%(more)s"
 msgstr ""
 
 #: brzlib/errors.py:2182
@@ -5940,7 +5940,7 @@ msgstr ""
 #: brzlib/errors.py:2215
 msgid ""
 "An error has been detected in the repository %(repo_path)s.\n"
-"Please run bzr reconcile on this repository."
+"Please run brz reconcile on this repository."
 msgstr ""
 
 #: brzlib/errors.py:2226
@@ -6039,12 +6039,12 @@ msgid "This operation requires rich root data storage"
 msgstr ""
 
 #: brzlib/errors.py:2410
-msgid "Unrecognised value for BZR_SSH environment variable: %(vendor)s"
+msgid "Unrecognised value for BRZ_SSH environment variable: %(vendor)s"
 msgstr ""
 
 #: brzlib/errors.py:2419
 msgid ""
-"Don't know how to handle SSH connections. Please set BZR_SSH environment "
+"Don't know how to handle SSH connections. Please set BRZ_SSH environment "
 "variable."
 msgstr ""
 
@@ -6099,7 +6099,7 @@ msgid "No such tag: %(tag_name)s"
 msgstr ""
 
 #: brzlib/errors.py:2577
-msgid "Tags not supported by %(branch)s; you may be able to use bzr upgrade."
+msgid "Tags not supported by %(branch)s; you may be able to use brz upgrade."
 msgstr ""
 
 #: brzlib/errors.py:2586
@@ -6108,7 +6108,7 @@ msgstr ""
 
 #: brzlib/errors.py:2594
 msgid ""
-"Did not understand bug identifier %(bug_id)s: %(reason)s. See \"bzr help bugs"
+"Did not understand bug identifier %(bug_id)s: %(reason)s. See \"brz help bugs"
 "\" for more information on this feature."
 msgstr ""
 
@@ -6194,7 +6194,7 @@ msgstr ""
 
 #: brzlib/errors.py:2807
 msgid ""
-"'%(display_url)s' is not in sync with %(target_url)s.  See bzr help sync-for-"
+"'%(display_url)s' is not in sync with %(target_url)s.  See brz help sync-for-"
 "reconfigure."
 msgstr ""
 
@@ -6241,7 +6241,7 @@ msgstr ""
 
 #: brzlib/errors.py:2871
 msgid ""
-"Working tree \"%(display_url)s\" has uncommitted changes (See bzr status)."
+"Working tree \"%(display_url)s\" has uncommitted changes (See brz status)."
 "%(more)s"
 msgstr ""
 
@@ -6252,7 +6252,7 @@ msgstr ""
 
 #: brzlib/errors.py:2905
 msgid ""
-"Working tree \"%(display_url)s\" has shelved changes (See bzr shelve --list)."
+"Working tree \"%(display_url)s\" has shelved changes (See brz shelve --list)."
 "%(more)s"
 msgstr ""
 
@@ -6345,7 +6345,7 @@ msgstr ""
 
 #: brzlib/errors.py:3126
 msgid ""
-"Views are not supported by %(tree)s; use 'bzr upgrade' to change your tree "
+"Views are not supported by %(tree)s; use 'brz upgrade' to change your tree "
 "to a later format."
 msgstr ""
 
@@ -6362,7 +6362,7 @@ msgstr ""
 msgid ""
 "Unable to determine your name.\n"
 "Please, set your name with the 'whoami' command.\n"
-"E.g. bzr whoami \"Your Name <name@example.com>\""
+"E.g. brz whoami \"Your Name <name@example.com>\""
 msgstr ""
 
 #: brzlib/errors.py:3217
@@ -6371,7 +6371,7 @@ msgstr ""
 
 #: brzlib/errors.py:3225
 msgid ""
-"Branch \"%(branch_url)s\" appears to be bound to itself. Please use `bzr "
+"Branch \"%(branch_url)s\" appears to be bound to itself. Please use `brz "
 "unbind` to fix."
 msgstr ""
 
@@ -6847,12 +6847,12 @@ msgstr ""
 #: brzlib/plugins/bash_completion/bashcomp.py:418
 msgid ""
 "Commonly used like this:\n"
-"    eval \"`bzr bash-completion`\""
+"    eval \"`brz bash-completion`\""
 msgstr ""
 
 # help of 'function-name' option of 'bash-completion' command
 #: brzlib/plugins/bash_completion/bashcomp.py:424
-msgid "Name of the generated function (default: _bzr)"
+msgid "Name of the generated function (default: _brz)"
 msgstr ""
 
 # help of 'function-only' option of 'bash-completion' command
@@ -6984,7 +6984,7 @@ msgstr ""
 
 #: brzlib/plugins/launchpad/cmds.py:45
 msgid ""
-"This command lists a bzr branch in the directory of branches on\n"
+"This command lists a brz branch in the directory of branches on\n"
 "launchpad.net.  Registration allows the branch to be associated with\n"
 "bugs or specifications."
 msgstr ""
@@ -7001,8 +7001,8 @@ msgid ""
 "    public_url: The publicly visible url for the branch to register.\n"
 "                This must be an http or https url (which Launchpad can read\n"
 "                from to access the branch). Local file urls, SFTP urls, and\n"
-"                bzr+ssh urls will not work.\n"
-"                If no public_url is provided, bzr will use the configured\n"
+"                brz+ssh urls will not work.\n"
+"                If no public_url is provided, brz will use the configured\n"
 "                public_url if there is one for the current branch, and\n"
 "                otherwise error."
 msgstr ""
@@ -7010,7 +7010,7 @@ msgstr ""
 #: brzlib/plugins/launchpad/cmds.py:61
 msgid ""
 "example:\n"
-"    bzr register-branch http://foo.com/bzr/fooproject.mine \\\n"
+"    brz register-branch http://foo.com/brz/fooproject.mine \\\n"
 "            --project fooproject"
 msgstr ""
 
@@ -7053,7 +7053,7 @@ msgstr ""
 
 #: brzlib/plugins/launchpad/cmds.py:113
 msgid ""
-"register-branch requires a public branch url - see bzr help register-branch."
+"register-branch requires a public branch url - see brz help register-branch."
 msgstr ""
 
 #: brzlib/plugins/launchpad/cmds.py:121
@@ -7092,7 +7092,7 @@ msgid ""
 msgstr ""
 
 #: brzlib/plugins/launchpad/cmds.py:208
-msgid "      bzr launchpad-login"
+msgid "      brz launchpad-login"
 msgstr ""
 
 #: brzlib/plugins/launchpad/cmds.py:210
@@ -7100,7 +7100,7 @@ msgid "  Set the Launchpad ID of the current user to 'bob'::"
 msgstr ""
 
 #: brzlib/plugins/launchpad/cmds.py:212
-msgid "      bzr launchpad-login bob"
+msgid "      brz launchpad-login bob"
 msgstr ""
 
 # help of 'no-check' option of 'launchpad-login' command
@@ -7151,7 +7151,7 @@ msgid ""
 msgstr ""
 
 #: brzlib/plugins/launchpad/cmds.py:285
-msgid "  bzr lp-propose-merge --review jrandom --review review-team=qa"
+msgid "  brz lp-propose-merge --review jrandom --review review-team=qa"
 msgstr ""
 
 #: brzlib/plugins/launchpad/cmds.py:287
@@ -7209,7 +7209,7 @@ msgid "So, to find the merge proposal that reviewed line 1 of README::"
 msgstr ""
 
 #: brzlib/plugins/launchpad/cmds.py:346
-msgid "  bzr lp-find-proposal -r mainline:annotate:README:1"
+msgid "  brz lp-find-proposal -r mainline:annotate:README:1"
 msgstr ""
 
 #: brzlib/plugins/launchpad/cmds.py:365
@@ -7402,7 +7402,7 @@ msgstr ""
 
 #: brzlib/push.py:148
 msgid ""
-"These branches have diverged.  See \"bzr help diverged-branches\" for more "
+"These branches have diverged.  See \"brz help diverged-branches\" for more "
 "information."
 msgstr ""
 
@@ -7445,7 +7445,7 @@ msgid "Reconcile aborted: revision index has inconsistent parents."
 msgstr ""
 
 #: brzlib/reconcile.py:121
-msgid "Run \"bzr check\" for more details."
+msgid "Run \"brz check\" for more details."
 msgstr ""
 
 #: brzlib/reconcile.py:123
@@ -7717,7 +7717,7 @@ msgstr ""
 
 #: brzlib/smart/ping.py:34
 msgid ""
-"This command sends a 'hello' request to the given location using the bzr\n"
+"This command sends a 'hello' request to the given location using the brz\n"
 "smart protocol, and reports the response."
 msgstr ""
 
@@ -8878,7 +8878,7 @@ msgid "Instead of using::"
 msgstr ""
 
 #: en/help_topics/authentication.txt:27
-msgid "  bzr branch ftp://joe:secret@host.com/path/to/my/branch"
+msgid "  brz branch ftp://joe:secret@host.com/path/to/my/branch"
 msgstr ""
 
 #: en/help_topics/authentication.txt:29
@@ -8886,7 +8886,7 @@ msgid "you simply use::"
 msgstr ""
 
 #: en/help_topics/authentication.txt:31
-msgid "  bzr branch ftp://host.com/path/to/my/branch"
+msgid "  brz branch ftp://host.com/path/to/my/branch"
 msgstr ""
 
 #: en/help_topics/authentication.txt:33
@@ -8913,7 +8913,7 @@ msgstr ""
 msgid ""
 "There are two kinds of authentication used by the various schemes supported "
 "by\n"
-"bzr:"
+"brz:"
 msgstr ""
 
 #: en/help_topics/authentication.txt:48
@@ -8942,7 +8942,7 @@ msgid ""
 "is\n"
 "really needed is (``user``, ``password``, ``host``, ``path``). The ``realm`` "
 "is\n"
-"not taken into account in the definitions, but will displayed if bzr "
+"not taken into account in the definitions, but will displayed if brz "
 "prompts\n"
 "you for a password."
 msgstr ""
@@ -8991,7 +8991,7 @@ msgstr ""
 
 #: en/help_topics/authentication.txt:84
 msgid ""
-"  * ``user``: can be empty (``bzr`` will defaults to python's\n"
+"  * ``user``: can be empty (``bzr`` will default to python's\n"
 "    ``getpass.get_user()``),"
 msgstr ""
 
@@ -9003,7 +9003,7 @@ msgstr ""
 
 #: en/help_topics/authentication.txt:90
 msgid ""
-"Multiple definitions can be provided and, for a given URL, bzr will select "
+"Multiple definitions can be provided and, for a given URL, brz will select "
 "a\n"
 "(``user`` [, ``password``]) based on the following rules :"
 msgstr ""
@@ -9110,7 +9110,7 @@ msgstr ""
 msgid ""
 "All connections are done with the same ``user`` (the remote one for which "
 "the\n"
-"default bzr one is not appropriate) and the password is always prompted "
+"default brz one is not appropriate) and the password is always prompted "
 "with\n"
 "some exceptions::"
 msgstr ""
@@ -9155,7 +9155,7 @@ msgid ""
 "        # The leading '.' ensures that 'shp.net' alone doesn't match\n"
 "        host=.shp.net\n"
 "        user=joe\n"
-"        # bzr don't support supplying a password for sftp,\n"
+"        # brz doesn't support supplying a password for sftp,\n"
 "        # consider using an ssh agent if you don't want to supply\n"
 "        # a password interactively. (pageant, ssh-agent, etc)"
 msgstr ""
@@ -9494,8 +9494,8 @@ msgid ""
 "plugins           List the installed plugins.\n"
 "pull              Turn this branch into a mirror of another branch.\n"
 "push              Update a mirror of this branch.\n"
-"reconcile         Reconcile bzr metadata in a branch.\n"
-"reconfigure       Reconfigure the type of a bzr directory.\n"
+"reconcile         Reconcile brz metadata in a branch.\n"
+"reconfigure       Reconfigure the type of a brz directory.\n"
 "register-branch   Register a branch with launchpad.net. [launchpad]\n"
 "remerge           Redo a merge.\n"
 "remove            Remove files or directories.\n"
@@ -9508,7 +9508,7 @@ msgid ""
 "revno             Show current revision number.\n"
 "root              Show the tree root directory.\n"
 "send              Mail or create a merge-directive for submitting changes.\n"
-"serve             Run the bzr server.\n"
+"serve             Run the brz server.\n"
 "shelve            Temporarily set aside some changes from the current tree.\n"
 "sign-my-commits   Sign all commits by a given committer.\n"
 "split             Split a subdirectory of a tree into a separate tree.\n"
@@ -9524,10 +9524,10 @@ msgid ""
 "upgrade           Upgrade a repository, branch or working tree to a newer\n"
 "                  format.\n"
 "verify-signatures Verify all commit signatures.\n"
-"version           Show version of bzr.\n"
+"version           Show version of brz.\n"
 "version-info      Show version information about this tree.\n"
 "view              Manage filtered views.\n"
-"whoami            Show or set bzr user id.\n"
+"whoami            Show or set brz user id.\n"
 msgstr ""
 
 #: en/help_topics/configuration.txt:1
@@ -9550,7 +9550,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:10
 msgid ""
-"BZR_EMAIL\n"
+"BRZ_EMAIL\n"
 "~~~~~~~~~"
 msgstr ""
 
@@ -9568,7 +9568,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:19
 msgid ""
-"BZR_PROGRESS_BAR\n"
+"BRZ_PROGRESS_BAR\n"
 "~~~~~~~~~~~~~~~~"
 msgstr ""
 
@@ -9583,7 +9583,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:26
 msgid ""
-"BZR_SIGQUIT_PDB\n"
+"BRZ_SIGQUIT_PDB\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
 
@@ -9599,7 +9599,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:34
 msgid ""
-"BZR_HOME\n"
+"BRZ_HOME\n"
 "~~~~~~~~"
 msgstr ""
 
@@ -9609,7 +9609,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:39
 msgid ""
-"BZR_SSH\n"
+"BRZ_SSH\n"
 "~~~~~~~"
 msgstr ""
 
@@ -9619,7 +9619,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:44
 msgid ""
-"BZR_PDB\n"
+"BRZ_PDB\n"
 "~~~~~~~"
 msgstr ""
 
@@ -9635,7 +9635,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:52
 msgid ""
-"BZR_REMOTE_PATH\n"
+"BRZ_REMOTE_PATH\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
 
@@ -9649,7 +9649,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:59
 msgid ""
-"BZR_EDITOR\n"
+"BRZ_EDITOR\n"
 "~~~~~~~~~~"
 msgstr ""
 
@@ -9659,7 +9659,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:64
 msgid ""
-"BZR_LOG\n"
+"BRZ_LOG\n"
 "~~~~~~~"
 msgstr ""
 
@@ -9684,7 +9684,7 @@ msgstr ""
 #: en/help_topics/configuration.txt:76
 msgid ""
 "\n"
-"BZR_PLUGIN_PATH\n"
+"BRZ_PLUGIN_PATH\n"
 "~~~~~~~~~~~~~~~"
 msgstr ""
 
@@ -9795,7 +9795,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:135
 msgid ""
-"BZR_DISABLE_PLUGINS\n"
+"BRZ_DISABLE_PLUGINS\n"
 "~~~~~~~~~~~~~~~~~~~"
 msgstr ""
 
@@ -9824,7 +9824,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:151
 msgid ""
-"BZR_PLUGINS_AT\n"
+"BRZ_PLUGINS_AT\n"
 "~~~~~~~~~~~~~~"
 msgstr ""
 
@@ -9869,7 +9869,7 @@ msgstr ""
 
 #: en/help_topics/configuration.txt:178
 msgid ""
-"BZRPATH\n"
+"BRZPATH\n"
 "~~~~~~~"
 msgstr ""
 
@@ -10941,8 +10941,8 @@ msgstr ""
 
 #: en/help_topics/conflict-types.txt:8
 msgid ""
-"When conflicts are present in your working tree (as shown by ``bzr\n"
-"conflicts``), you should resolve them and then inform bzr that the "
+"When conflicts are present in your working tree (as shown by ``brz\n"
+"conflicts``), you should resolve them and then inform brz that the "
 "conflicts\n"
 "have been resolved."
 msgstr ""
@@ -10994,7 +10994,7 @@ msgstr ""
 #: en/help_topics/conflict-types.txt:34
 msgid ""
 "2. Inform Bazaar that the conflict is now solved and ask to cleanup any\n"
-"   remaining generated information (``bzr resolve <item>``)."
+"   remaining generated information (``brz resolve <item>``)."
 msgstr ""
 
 #: en/help_topics/conflict-types.txt:37
@@ -11026,7 +11026,7 @@ msgid ""
 msgstr ""
 
 #: en/help_topics/conflict-types.txt:51
-msgid "  ``bzr resolve FILE --action=done'"
+msgid "  ``brz resolve FILE --action=done'"
 msgstr ""
 
 #: en/help_topics/conflict-types.txt:53
@@ -11037,11 +11037,11 @@ msgid ""
 msgstr ""
 
 #: en/help_topics/conflict-types.txt:56
-msgid "   ``bzr resolve FILE``"
+msgid "   ``brz resolve FILE``"
 msgstr ""
 
 #: en/help_topics/conflict-types.txt:58
-msgid "See ``bzr help resolve`` for more details."
+msgid "See ``brz help resolve`` for more details."
 msgstr ""
 
 #: en/help_topics/conflict-types.txt:60
@@ -11124,7 +11124,7 @@ msgstr ""
 
 #: en/help_topics/conflict-types.txt:100
 msgid ""
-"When you have resolved text conflicts, just run ``bzr resolve --auto``, and\n"
+"When you have resolved text conflicts, just run ``brz resolve --auto``, and\n"
 "Bazaar will auto-detect which conflicts you have resolved."
 msgstr ""
 
@@ -11138,7 +11138,7 @@ msgstr ""
 #: en/help_topics/conflict-types.txt:107
 msgid ""
 "\n"
-"When you want to pick one set of changes over the other, you can use ``bzr\n"
+"When you want to pick one set of changes over the other, you can use ``brz\n"
 "resolve`` with one of the following actions:"
 msgstr ""
 
@@ -11197,13 +11197,13 @@ msgstr ""
 #: en/help_topics/conflict-types.txt:226 en/help_topics/conflict-types.txt:252
 #: en/help_topics/conflict-types.txt:291 en/help_topics/conflict-types.txt:326
 #: en/help_topics/conflict-types.txt:361
-msgid "``bzr resolve`` recognizes the following actions:"
+msgid "``brz resolve`` recognizes the following actions:"
 msgstr ""
 
 #: en/help_topics/conflict-types.txt:139
 msgid ""
-"* ``--action=take-this`` will issue ``bzr mv FILE.THIS FILE``,\n"
-"* ``--action=take-other`` will issue ``bzr mv FILE.OTHER FILE``,\n"
+"* ``--action=take-this`` will issue ``brz mv FILE.THIS FILE``,\n"
+"* ``--action=take-other`` will issue ``brz mv FILE.OTHER FILE``,\n"
 "* ``--action=done`` will just mark the conflict as resolved."
 msgstr ""
 
@@ -11247,13 +11247,13 @@ msgstr ""
 msgid ""
 "To resolve the conflict, you must apply the correct tags to either the "
 "target\n"
-"branch or the source branch as appropriate.  Use \"bzr tags --show-ids -d\n"
+"branch or the source branch as appropriate.  Use \"brz tags --show-ids -d\n"
 "SOURCE_URL\" to see the tags in the source branch.  If you want to make the\n"
 "target branch's tags match the source branch, then in the target branch do\n"
-"``bzr tag --force -r revid:REVISION_ID CONFLICTING_TAG`` for each of the\n"
+"``brz tag --force -r revid:REVISION_ID CONFLICTING_TAG`` for each of the\n"
 "CONFLICTING_TAGs, where REVISION_ID comes from the list of tags in the "
 "source\n"
-"branch.  You need not call \"bzr resolve\" after doing this.  To resolve in\n"
+"branch.  You need not call \"brz resolve\" after doing this.  To resolve in\n"
 "favor of the target branch, you need to similarly use ``tag --force`` in "
 "the\n"
 "source branch.  (Note that pulling or pushing using --overwrite will "
@@ -11279,9 +11279,9 @@ msgstr ""
 
 #: en/help_topics/conflict-types.txt:187
 msgid ""
-"* ``--action=take-this`` will issue ``bzr rm FILE ; bzr mv FILE.moved "
+"* ``--action=take-this`` will issue ``brz rm FILE ; brz mv FILE.moved "
 "FILE``,\n"
-"* ``--action=take-other`` will issue ``bzr rm FILE.moved``,\n"
+"* ``--action=take-other`` will issue ``brz rm FILE.moved``,\n"
 "* ``--action=done`` will just mark the conflict as resolved."
 msgstr ""
 
@@ -11310,7 +11310,7 @@ msgid ""
 "will version the parent directory as well.  Resolving this issue depends\n"
 "very much on the particular scenario.  You may wish to rename or delete "
 "either\n"
-"the file or the directory.  When you are satisfied, you can run \"bzr "
+"the file or the directory.  When you are satisfied, you can run \"brz "
 "resolve\n"
 "FILE\" to mark the conflict as resolved."
 msgstr ""
@@ -11343,7 +11343,7 @@ msgstr ""
 
 #: en/help_topics/conflict-types.txt:228
 msgid ""
-"* ``--action=take-this`` will issue ``bzr rm directory`` including the\n"
+"* ``--action=take-this`` will issue ``brz rm directory`` including the\n"
 "  children,\n"
 "* ``--action=take-other`` will acknowledge Bazaar choice to keep the "
 "children\n"
@@ -11378,7 +11378,7 @@ msgstr ""
 
 #: en/help_topics/conflict-types.txt:256
 msgid ""
-"* ``--action=take-other`` will issue ``bzr rm directory`` including the \n"
+"* ``--action=take-other`` will issue ``brz rm directory`` including the \n"
 "  children,"
 msgstr ""
 
@@ -11396,7 +11396,7 @@ msgstr ""
 #: en/help_topics/conflict-types.txt:265
 msgid ""
 "Handling such orphans, *before* the conflict is created, is controlled by\n"
-"setting the ``bzr.transform.orphan_policy`` configuration option."
+"setting the ``brz.transform.orphan_policy`` configuration option."
 msgstr ""
 
 #: en/help_topics/conflict-types.txt:268
@@ -11411,7 +11411,7 @@ msgstr ""
 
 #: en/help_topics/conflict-types.txt:273
 msgid ""
-"* ``move``: will move the orphans to a ``bzr-orphans`` directory at the "
+"* ``move``: will move the orphans to a ``brz-orphans`` directory at the "
 "root\n"
 "  of the working tree with names like ``<file>.~#~``."
 msgstr ""
@@ -11443,7 +11443,7 @@ msgstr ""
 #: en/help_topics/conflict-types.txt:293
 msgid ""
 "* ``--action=take-this`` will revert Bazaar choice and keep ``PATH1`` by\n"
-"  issuing ``bzr mv PATH2 PATH1``,\n"
+"  issuing ``brz mv PATH2 PATH1``,\n"
 "* ``--action=take-other`` will acknowledge Bazaar choice of keeping "
 "``PATH2``,\n"
 "* ``--action=done`` will just mark the conflict as resolved."
@@ -11469,16 +11469,16 @@ msgstr ""
 
 #: en/help_topics/conflict-types.txt:311
 msgid ""
-"  $ bzr init\n"
-"  $ bzr mkdir white\n"
-"  $ bzr mkdir black\n"
-"  $ bzr commit -m \"BASE\"\n"
-"  $ bzr branch . ../other\n"
-"  $ bzr mv white black\n"
-"  $ bzr commit -m \"THIS\"\n"
-"  $ bzr mv ../other/black ../other/white\n"
-"  $ bzr commit ../other -m \"OTHER\"\n"
-"  $ bzr merge ../other"
+"  $ brz init\n"
+"  $ brz mkdir white\n"
+"  $ brz mkdir black\n"
+"  $ brz commit -m \"BASE\"\n"
+"  $ brz branch . ../other\n"
+"  $ brz mv white black\n"
+"  $ brz commit -m \"THIS\"\n"
+"  $ brz mv ../other/black ../other/white\n"
+"  $ brz commit ../other -m \"OTHER\"\n"
+"  $ brz merge ../other"
 msgstr ""
 
 #: en/help_topics/conflict-types.txt:322
@@ -11494,7 +11494,7 @@ msgid ""
 "``white`` \n"
 "  in ``black``,\n"
 "* ``--action=take-other`` will revert Bazaar choice and move ``black`` in\n"
-"   ``white`` by issuing ``bzr mv black/white white ; bzr mv black white``,\n"
+"   ``white`` by issuing ``brz mv black/white white ; brz mv black white``,\n"
 "* ``--action=done`` will just mark the conflict as resolved."
 msgstr ""
 
@@ -11519,16 +11519,16 @@ msgstr ""
 
 #: en/help_topics/conflict-types.txt:347
 msgid ""
-"  $ bzr init\n"
-"  $ bzr mkdir foo\n"
-"  $ bzr commit -m \"BASE\"\n"
-"  $ bzr branch . ../other\n"
+"  $ brz init\n"
+"  $ brz mkdir foo\n"
+"  $ brz commit -m \"BASE\"\n"
+"  $ brz branch . ../other\n"
 "  $ rmdir foo\n"
 "  $ touch foo\n"
-"  $ bzr commit -m \"THIS\"\n"
-"  $ bzr mkdir ../other/foo/bar\n"
-"  $ bzr commit ../other -m \"OTHER\"\n"
-"  $ bzr merge ../other"
+"  $ brz commit -m \"THIS\"\n"
+"  $ brz mkdir ../other/foo/bar\n"
+"  $ brz commit ../other -m \"OTHER\"\n"
+"  $ brz merge ../other"
 msgstr ""
 
 #: en/help_topics/conflict-types.txt:358
@@ -11539,10 +11539,10 @@ msgstr ""
 
 #: en/help_topics/conflict-types.txt:363
 msgid ""
-"* ``--action=take-this`` will issue ``bzr rm --force foo.new`` and \n"
-"  ``bzr add foo``,\n"
-"* ``--action=take-other`` will issue ``bzr rm --force foo`` and \n"
-"  ``bzr mv foo.new foo``,\n"
+"* ``--action=take-this`` will issue ``brz rm --force foo.new`` and \n"
+"  ``brz add foo``,\n"
+"* ``--action=take-other`` will issue ``brz rm --force foo`` and \n"
+"  ``brz mv foo.new foo``,\n"
 "* ``--action=done`` will just mark the conflict as resolved."
 msgstr ""
 
@@ -11559,7 +11559,7 @@ msgid ""
 "was\n"
 "unable to resolve.  This usually indicates a bug.  Please let us know if "
 "you\n"
-"encounter this.  Our bug tracker is at https://launchpad.net/bzr/+bugs\n"
+"encounter this.  Our bug tracker is at https://launchpad.net/brz/+bugs\n"
 msgstr ""
 
 #: en/help_topics/content-filters.txt:1
@@ -11640,7 +11640,7 @@ msgid ""
 "they filter, e.g. only files ending in ``.java`` or ``.php``.\n"
 "In other cases, the plugin may leave it in the user's hands to\n"
 "define which files are to be filtered. This is typically done\n"
-"using rule-based preferences. See ``bzr help rules`` for general\n"
+"using rule-based preferences. See ``brz help rules`` for general\n"
 "information about defining these."
 msgstr ""
 
@@ -11654,7 +11654,7 @@ msgstr ""
 #: en/help_topics/content-filters.txt:55
 msgid ""
 "Read converters are only applied to commands that read content from\n"
-"a working tree, e.g. status, diff and commit. For example, ``bzr diff``\n"
+"a working tree, e.g. status, diff and commit. For example, ``brz diff``\n"
 "will apply read converters to files in the working tree, then compare\n"
 "the results to the content last committed."
 msgstr ""
@@ -11663,13 +11663,13 @@ msgstr ""
 msgid ""
 "Write converters are only applied by commands that **create files in a\n"
 "working tree**, e.g. branch, checkout, update. If you wish to see the\n"
-"canonical format of a file or tree, use ``bzr cat`` or ``bzr export``\n"
+"canonical format of a file or tree, use ``brz cat`` or ``brz export``\n"
 "respectively."
 msgstr ""
 
 #: en/help_topics/content-filters.txt:65
 msgid ""
-"Note: ``bzr commit`` does not implicitly apply write converters after\n"
+"Note: ``brz commit`` does not implicitly apply write converters after\n"
 "comitting files. If this makes sense for a given plugin providing\n"
 "a content filter, the plugin can usually achieve this effect by using a\n"
 "``start_commit`` or ``post_commit`` hook say. See :doc:`hooks-help`\n"
@@ -11700,7 +11700,7 @@ msgstr ""
 #: en/help_topics/content-filters.txt:84
 msgid ""
 " * To reapply read converters, ``touch`` files, i.e. update their\n"
-"   timestamp. Operations like ``bzr status`` should then reapply the\n"
+"   timestamp. Operations like ``brz status`` should then reapply the\n"
 "   relevant read converters and compare the end result with the\n"
 "   canonical format."
 msgstr ""
@@ -11708,7 +11708,7 @@ msgstr ""
 #: en/help_topics/content-filters.txt:89
 msgid ""
 " * To reapply write converters, ensure there are no local changes,\n"
-"   delete the relevant files and run ``bzr revert`` on those files."
+"   delete the relevant files and run ``brz revert`` on those files."
 msgstr ""
 
 #: en/help_topics/content-filters.txt:92
@@ -11743,7 +11743,7 @@ msgstr ""
 
 #: en/help_topics/debug-flags.txt:4
 msgid ""
-"These flags can be passed on the bzr command line or (without the ``-D``\n"
+"These flags can be passed on the brz command line or (without the ``-D``\n"
 "prefix) put in the ``debug_flags`` variable in ``bazaar.conf``."
 msgstr ""
 
@@ -11834,13 +11834,13 @@ msgstr ""
 
 #: en/help_topics/diverged-branches.txt:20
 msgid ""
-"The ``bzr missing`` command is used to find out what revisions are in "
+"The ``brz missing`` command is used to find out what revisions are in "
 "another\n"
 "branch that are not present in the current branch, and vice-versa.  It shows "
 "a\n"
 "summary of  which extra revisions exist in each branch.  If you want to see "
 "the\n"
-"precise effects of those revisions, you can use ``bzr diff --"
+"precise effects of those revisions, you can use ``brz diff --"
 "old=other_branch``\n"
 "to show the differences between other_branch and your current branch."
 msgstr ""
@@ -11854,7 +11854,7 @@ msgstr ""
 #: en/help_topics/diverged-branches.txt:29
 msgid ""
 "The solution is to merge the revisions from the mainline into your local\n"
-"branch.  To do so, use ``bzr merge`` to get the new revisions from the\n"
+"branch.  To do so, use ``brz merge`` to get the new revisions from the\n"
 "mainline.  This merge may result in conflicts if the other developer's "
 "changes\n"
 "overlap with your changes.  These conflicts should be resolved before\n"
@@ -11866,7 +11866,7 @@ msgid ""
 "resulting working tree for correctness, since the merged revisions could "
 "have\n"
 "made arbitrary changes.  After testing, you should commit the merge using\n"
-"``bzr commit``.  This clears up the diverged branches situation.  Your "
+"``brz commit``.  This clears up the diverged branches situation.  Your "
 "local\n"
 "branch can now be pushed to the mainline.\n"
 msgstr ""
@@ -11885,34 +11885,34 @@ msgid ""
 "===========================================================\n"
 "BZRPATH             Path where bzr is to look for shell plugin external\n"
 "                    commands.\n"
-"BZR_EMAIL           E-Mail address of the user. Overrides EMAIL.\n"
+"BRZ_EMAIL           E-Mail address of the user. Overrides EMAIL.\n"
 "EMAIL               E-Mail address of the user.\n"
-"BZR_EDITOR          Editor for editing commit messages. Overrides EDITOR.\n"
+"BRZ_EDITOR          Editor for editing commit messages. Overrides EDITOR.\n"
 "EDITOR              Editor for editing commit messages.\n"
-"BZR_PLUGIN_PATH     Paths where bzr should look for plugins.\n"
-"BZR_DISABLE_PLUGINS Plugins that bzr should not load.\n"
-"BZR_PLUGINS_AT      Plugins to load from a directory not in "
-"BZR_PLUGIN_PATH.\n"
-"BZR_HOME            Directory holding .bazaar config dir. Overrides HOME.\n"
-"BZR_HOME (Win32)    Directory holding bazaar config dir. Overrides APPDATA "
+"BRZ_PLUGIN_PATH     Paths where bzr should look for plugins.\n"
+"BRZ_DISABLE_PLUGINS Plugins that bzr should not load.\n"
+"BRZ_PLUGINS_AT      Plugins to load from a directory not in "
+"BRZ_PLUGIN_PATH.\n"
+"BRZ_HOME            Directory holding .bazaar config dir. Overrides HOME.\n"
+"BRZ_HOME (Win32)    Directory holding bazaar config dir. Overrides APPDATA "
 "and\n"
 "                    HOME.\n"
-"BZR_REMOTE_PATH     Full name of remote 'bzr' command (for bzr+ssh:// "
+"BRZ_REMOTE_PATH     Full name of remote 'bzr' command (for bzr+ssh:// "
 "URLs).\n"
-"BZR_SSH             Path to SSH client, or one of paramiko, openssh, "
+"BRZ_SSH             Path to SSH client, or one of paramiko, openssh, "
 "sshcorp,\n"
 "                    plink or lsh.\n"
-"BZR_LOG             Location of .bzr.log (use '/dev/null' to suppress log).\n"
-"BZR_LOG (Win32)     Location of .bzr.log (use 'NUL' to suppress log).\n"
-"BZR_COLUMNS         Override implicit terminal width.\n"
-"BZR_CONCURRENCY     Number of processes that can be run concurrently "
+"BRZ_LOG             Location of .bzr.log (use '/dev/null' to suppress log).\n"
+"BRZ_LOG (Win32)     Location of .bzr.log (use 'NUL' to suppress log).\n"
+"BRZ_COLUMNS         Override implicit terminal width.\n"
+"BRZ_CONCURRENCY     Number of processes that can be run concurrently "
 "(selftest)\n"
-"BZR_PROGRESS_BAR    Override the progress display. Values are 'none' or "
+"BRZ_PROGRESS_BAR    Override the progress display. Values are 'none' or "
 "'text'.\n"
-"BZR_PDB             Control whether to launch a debugger on error.\n"
-"BZR_SIGQUIT_PDB     Control whether SIGQUIT behaves normally or invokes a\n"
+"BRZ_PDB             Control whether to launch a debugger on error.\n"
+"BRZ_SIGQUIT_PDB     Control whether SIGQUIT behaves normally or invokes a\n"
 "                    breakin debugger.\n"
-"BZR_TEXTUI_INPUT    Force console input mode for prompts to line-based "
+"BRZ_TEXTUI_INPUT    Force console input mode for prompts to line-based "
 "(instead\n"
 "                    of char-based).\n"
 "=================== "
@@ -11929,7 +11929,7 @@ msgstr ""
 msgid ""
 "EOL conversion is provided as a content filter where Bazaar internally\n"
 "stores a canonical format but outputs a convenience format. See\n"
-"``bzr help content-filters`` for general information about using these."
+"``brz help content-filters`` for general information about using these."
 msgstr ""
 
 #: en/help_topics/eol.txt:8
@@ -11938,16 +11938,16 @@ msgid ""
 "e.g. 1.14. Be sure that both the repository *and* the branch are\n"
 "in a recent format. (Just setting the format on the repository\n"
 "is not enough.) If content filtering does not appear to be working, use\n"
-"'bzr info -v' to confirm that the branch is using \"Working tree format 5\"\n"
+"'brz info -v' to confirm that the branch is using \"Working tree format 5\"\n"
 "or later."
 msgstr ""
 
 #: en/help_topics/eol.txt:15
 msgid ""
 "EOL conversion needs to be enabled for selected file patterns using\n"
-"rules. See ``bzr help rules`` for general information on defining rules.\n"
-"Currently, rules are only supported in $BZR_HOME/.bazaar/rules (or\n"
-"%BZR_HOME%/bazaar/2.0/rules on Windows). Branch specific rules will be\n"
+"rules. See ``brz help rules`` for general information on defining rules.\n"
+"Currently, rules are only supported in $brz_HOME/.bazaar/rules (or\n"
+"%brz_HOME%/bazaar/2.0/rules on Windows). Branch specific rules will be\n"
 "supported in a future verison of Bazaar."
 msgstr ""
 
@@ -12148,7 +12148,7 @@ msgid ""
 "touching-revisions   Return revision-ids which affected a particular file.\n"
 "unknowns             List unknown files.\n"
 "wait-until-signalled Test helper for\n"
-"                     test_start_and_stop_bzr_subprocess_send_signal.\n"
+"                     test_start_and_stop_brz_subprocess_send_signal.\n"
 msgstr ""
 
 #: en/help_topics/hooks.txt:1
@@ -13562,7 +13562,7 @@ msgstr ""
 #: en/help_topics/rules.txt:26
 msgid ""
 "Default rules for all branches are defined in the optional file\n"
-"``BZR_HOME/rules``. "
+"``BRZ_HOME/rules``. "
 msgstr ""
 
 #: en/help_topics/rules.txt:29
@@ -13649,7 +13649,7 @@ msgstr ""
 
 #: en/help_topics/url-special-chars.txt:10
 msgid ""
-"Internally bzr treats all locations as URLs. For any file system paths\n"
+"Internally brz treats all locations as URLs. For any file system paths\n"
 "that are specified it will automatically determine the appropriate URL\n"
 "representation, and escape special characters where necessary."
 msgstr ""
@@ -13685,11 +13685,11 @@ msgstr ""
 #: en/help_topics/url-special-chars.txt:27
 msgid ""
 "  cd /tmp\n"
-"  bzr log /tmp/%2False\n"
-"  bzr log %2False\n"
-"  bzr log file:///tmp/%252False\n"
-"  bzr log file://localhost/tmp/%252False\n"
-"  bzr log file:%252False"
+"  brz log /tmp/%2False\n"
+"  brz log %2False\n"
+"  brz log file:///tmp/%252False\n"
+"  brz log file://localhost/tmp/%252False\n"
+"  brz log file:%252False"
 msgstr ""
 
 #: en/help_topics/url-special-chars.txt:34
@@ -13698,8 +13698,8 @@ msgstr ""
 
 #: en/help_topics/url-special-chars.txt:36
 msgid ""
-"  bzr log file:///tmp/%2False (refers to a file called /tmp/\\/alse)\n"
-"  bzr log %252False (refers to a file called /tmp/%252False)"
+"  brz log file:///tmp/%2False (refers to a file called /tmp/\\/alse)\n"
+"  brz log %252False (refers to a file called /tmp/%252False)"
 msgstr ""
 
 #: en/help_topics/url-special-chars.txt:39
@@ -13722,10 +13722,10 @@ msgstr ""
 
 #: en/help_topics/url-special-chars.txt:46
 msgid ""
-"  bzr log foo,branch=bla # path \"foo\" with the segment parameter \"branch"
+"  brz log foo,branch=bla # path \"foo\" with the segment parameter \"branch"
 "\" set to \"bla\"\n"
-"  bzr log file:foo%2Cbranch=bla # path \"foo,branch=bla\"\n"
-"  bzr log file:foo,branch=bla # path \"foo\" with segment parameter \"branch"
+"  brz log file:foo%2Cbranch=bla # path \"foo,branch=bla\"\n"
+"  brz log file:foo,branch=bla # path \"foo\" with segment parameter \"branch"
 "\" set to \"bla\"\n"
 msgstr ""
 

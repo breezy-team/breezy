@@ -578,12 +578,12 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         cwd = osutils.getcwd()
         self.assertIsSameRealPath(self.test_dir, cwd)
 
-    def test_BZR_HOME_and_HOME_are_bytestrings(self):
-        """The $BZR_HOME and $HOME environment variables should not be unicode.
+    def test_BRZ_HOME_and_HOME_are_bytestrings(self):
+        """The $BRZ_HOME and $HOME environment variables should not be unicode.
 
         See https://bugs.launchpad.net/bzr/+bug/464174
         """
-        self.assertIsInstance(os.environ['BZR_HOME'], str)
+        self.assertIsInstance(os.environ['BRZ_HOME'], str)
         self.assertIsInstance(os.environ['HOME'], str)
 
     def test_make_branch_and_memory_tree(self):
@@ -3339,14 +3339,14 @@ class TestPostMortemDebugging(tests.TestCase):
         self.assertEqual(result.postcode, Test.test_failure.func_code)
 
     def test_env_var_triggers_post_mortem(self):
-        """Check pdb.post_mortem is called iff BZR_TEST_PDB is set"""
+        """Check pdb.post_mortem is called iff BRZ_TEST_PDB is set"""
         import pdb
         result = tests.ExtendedTestResult(StringIO(), 0, 1)
         post_mortem_calls = []
         self.overrideAttr(pdb, "post_mortem", post_mortem_calls.append)
-        self.overrideEnv('BZR_TEST_PDB', None)
+        self.overrideEnv('BRZ_TEST_PDB', None)
         result._post_mortem(1)
-        self.overrideEnv('BZR_TEST_PDB', 'on')
+        self.overrideEnv('BRZ_TEST_PDB', 'on')
         result._post_mortem(2)
         self.assertEqual([2], post_mortem_calls)
 
@@ -3550,12 +3550,12 @@ class TestIsolatedEnv(tests.TestCase):
             pass
 
     def test_basics(self):
-        # Make sure we know the definition of BZR_HOME: not part of os.environ
+        # Make sure we know the definition of BRZ_HOME: not part of os.environ
         # for tests.TestCase.
-        self.assertTrue('BZR_HOME' in tests.isolated_environ)
-        self.assertEqual(None, tests.isolated_environ['BZR_HOME'])
-        # Being part of isolated_environ, BZR_HOME should not appear here
-        self.assertFalse('BZR_HOME' in os.environ)
+        self.assertTrue('BRZ_HOME' in tests.isolated_environ)
+        self.assertEqual(None, tests.isolated_environ['BRZ_HOME'])
+        # Being part of isolated_environ, BRZ_HOME should not appear here
+        self.assertFalse('BRZ_HOME' in os.environ)
         # Make sure we know the definition of LINES: part of os.environ for
         # tests.TestCase
         self.assertTrue('LINES' in tests.isolated_environ)
@@ -3563,12 +3563,12 @@ class TestIsolatedEnv(tests.TestCase):
         self.assertEqual('25', os.environ['LINES'])
 
     def test_injecting_unknown_variable(self):
-        # BZR_HOME is known to be absent from os.environ
+        # BRZ_HOME is known to be absent from os.environ
         test = self.ScratchMonkey('test_me')
-        tests.override_os_environ(test, {'BZR_HOME': 'foo'})
-        self.assertEqual('foo', os.environ['BZR_HOME'])
+        tests.override_os_environ(test, {'BRZ_HOME': 'foo'})
+        self.assertEqual('foo', os.environ['BRZ_HOME'])
         tests.restore_os_environ(test)
-        self.assertFalse('BZR_HOME' in os.environ)
+        self.assertFalse('BRZ_HOME' in os.environ)
 
     def test_injecting_known_variable(self):
         test = self.ScratchMonkey('test_me')

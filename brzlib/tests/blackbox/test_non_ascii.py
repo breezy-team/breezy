@@ -42,7 +42,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
         self.overrideAttr(osutils, '_cached_user_encoding', self.encoding)
         email = self.info['committer'] + ' <joe@foo.com>'
-        self.overrideEnv('BZR_EMAIL', email.encode(osutils.get_user_encoding()))
+        self.overrideEnv('BRZ_EMAIL', email.encode(osutils.get_user_encoding()))
         self.create_base()
 
     def run_bzr_decode(self, args, encoding=None, fail=False, retcode=None,

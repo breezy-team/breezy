@@ -34,7 +34,7 @@ from brzlib.transport.http import _urllib2_wrappers
 
 # for testing, do
 '''
-export BZR_LP_XMLRPC_URL=http://xmlrpc.staging.launchpad.net/bazaar/
+export BRZ_LP_XMLRPC_URL=http://xmlrpc.staging.launchpad.net/bazaar/
 '''
 
 class InvalidLaunchpadInstance(errors.BzrError):
@@ -122,7 +122,7 @@ class LaunchpadService(object):
 
         This does not include the username/password credentials.
         """
-        key = 'BZR_LP_XMLRPC_URL'
+        key = 'BRZ_LP_XMLRPC_URL'
         if key in os.environ:
             return os.environ[key]
         elif self._lp_instance is not None:

@@ -561,7 +561,7 @@ class TestConfigPath(tests.TestCase):
         self.overrideEnv('XDG_CACHE_HOME', '')
         if sys.platform == 'win32':
             self.overrideEnv(
-                'BZR_HOME', r'C:\Documents and Settings\bogus\Application Data')
+                'BRZ_HOME', r'C:\Documents and Settings\bogus\Application Data')
             self.bzr_home = \
                 'C:/Documents and Settings/bogus/Application Data/bazaar/2.0'
         else:
@@ -600,8 +600,8 @@ class TestXDGConfigDir(tests.TestCaseInTempDir):
                 'XDG config dir not used on this platform')
         super(TestXDGConfigDir, self).setUp()
         self.overrideEnv('HOME', self.test_home_dir)
-        # BZR_HOME overrides everything we want to test so unset it.
-        self.overrideEnv('BZR_HOME', None)
+        # BRZ_HOME overrides everything we want to test so unset it.
+        self.overrideEnv('BRZ_HOME', None)
 
     def test_xdg_config_dir_exists(self):
         """When ~/.config/bazaar exists, use it as the config dir."""
@@ -1721,7 +1721,7 @@ other_url = /other-subdir
         self.assertEqual('bzr', my_config.get_bzr_remote_path())
         my_config.set_user_option('bzr_remote_path', '/path-bzr')
         self.assertEqual('/path-bzr', my_config.get_bzr_remote_path())
-        self.overrideEnv('BZR_REMOTE_PATH', '/environ-bzr')
+        self.overrideEnv('BRZ_REMOTE_PATH', '/environ-bzr')
         self.assertEqual('/environ-bzr', my_config.get_bzr_remote_path())
 
 
@@ -1761,8 +1761,8 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
         self.assertEqual("Robert Collins <robertc@example.org>",
                         my_config.username())
 
-    def test_BZR_EMAIL_OVERRIDES(self):
-        self.overrideEnv('BZR_EMAIL', "Robert Collins <robertc@example.org>")
+    def test_BRZ_EMAIL_OVERRIDES(self):
+        self.overrideEnv('BRZ_EMAIL', "Robert Collins <robertc@example.org>")
         branch = FakeBranch()
         my_config = config.BranchConfig(branch)
         self.assertEqual("Robert Collins <robertc@example.org>",
@@ -4999,24 +4999,24 @@ class TestDefaultMailDomain(tests.TestCaseInTempDir):
 
 class EmailOptionTests(tests.TestCase):
 
-    def test_default_email_uses_BZR_EMAIL(self):
+    def test_default_email_uses_BRZ_EMAIL(self):
         conf = config.MemoryStack('email=jelmer@debian.org')
-        # BZR_EMAIL takes precedence over EMAIL
-        self.overrideEnv('BZR_EMAIL', 'jelmer@samba.org')
+        # BRZ_EMAIL takes precedence over EMAIL
+        self.overrideEnv('BRZ_EMAIL', 'jelmer@samba.org')
         self.overrideEnv('EMAIL', 'jelmer@apache.org')
         self.assertEqual('jelmer@samba.org', conf.get('email'))
 
     def test_default_email_uses_EMAIL(self):
         conf = config.MemoryStack('')
-        self.overrideEnv('BZR_EMAIL', None)
+        self.overrideEnv('BRZ_EMAIL', None)
         self.overrideEnv('EMAIL', 'jelmer@apache.org')
         self.assertEqual('jelmer@apache.org', conf.get('email'))
 
-    def test_BZR_EMAIL_overrides(self):
+    def test_BRZ_EMAIL_overrides(self):
         conf = config.MemoryStack('email=jelmer@debian.org')
-        self.overrideEnv('BZR_EMAIL', 'jelmer@apache.org')
+        self.overrideEnv('BRZ_EMAIL', 'jelmer@apache.org')
         self.assertEqual('jelmer@apache.org', conf.get('email'))
-        self.overrideEnv('BZR_EMAIL', None)
+        self.overrideEnv('BRZ_EMAIL', None)
         self.overrideEnv('EMAIL', 'jelmer@samba.org')
         self.assertEqual('jelmer@debian.org', conf.get('email'))
 

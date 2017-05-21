@@ -59,7 +59,7 @@ if os.name == "posix":
 
 
 # The python2.6 release includes some libraries that have deprecation warnings
-# against the interpreter - see https://bugs.launchpad.net/brz/+bug/387139
+# against the interpreter - see https://bugs.launchpad.net/bzr/+bug/387139
 warnings.filterwarnings('ignore',
     r"(struct integer overflow masking is deprecated|"
     r"'L' format requires 0 <= number <= 4294967295)",

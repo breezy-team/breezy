@@ -178,7 +178,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
 
     def test_annotate_edited_file(self):
         tree = self._setup_edited_file()
-        self.overrideEnv('BZR_EMAIL', 'current@host2')
+        self.overrideEnv('BRZ_EMAIL', 'current@host2')
         out, err = self.run_bzr('annotate file')
         self.assertEqual(
             '1   test@ho | foo\n'
@@ -189,7 +189,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
     def test_annotate_edited_file_no_default(self):
         # Ensure that when no username is available annotate still works.
         self.overrideEnv('EMAIL', None)
-        self.overrideEnv('BZR_EMAIL', None)
+        self.overrideEnv('BRZ_EMAIL', None)
         # Also, make sure that it's not inferred from mailname.
         self.overrideAttr(config, '_auto_user_id',
             lambda: (None, None))
@@ -203,7 +203,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
 
     def test_annotate_edited_file_show_ids(self):
         tree = self._setup_edited_file()
-        self.overrideEnv('BZR_EMAIL', 'current@host2')
+        self.overrideEnv('BRZ_EMAIL', 'current@host2')
         out, err = self.run_bzr('annotate file --show-ids')
         self.assertEqual(
             '    rev1 | foo\n'

@@ -118,7 +118,7 @@ class Reconciler(object):
             ui.ui_factory.note(gettext(
                 'Reconcile aborted: revision index has inconsistent parents.'))
             ui.ui_factory.note(gettext(
-                'Run "bzr check" for more details.'))
+                'Run "brz check" for more details.'))
         else:
             ui.ui_factory.note(gettext('Reconciliation complete.'))
 

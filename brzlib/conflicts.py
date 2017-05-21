@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-# TODO: 'bzr resolve' should accept a directory name and work from that
+# TODO: 'brz resolve' should accept a directory name and work from that
 # point down
 
 from __future__ import absolute_import
@@ -58,7 +58,7 @@ class cmd_conflicts(commands.Command):
     is supplied, the pathnames of files with text conflicts are listed,
     instead.  (This is useful for editing all files with text conflicts.)
 
-    Use bzr resolve when you have fixed a problem.
+    Use brz resolve when you have fixed a problem.
     """
     takes_options = [
             'directory',
@@ -108,9 +108,9 @@ class cmd_resolve(commands.Command):
     it will mark a conflict.  A conflict means that you need to fix something,
     before you can commit.
 
-    Once you have fixed a problem, use "bzr resolve" to automatically mark
-    text conflicts as fixed, "bzr resolve FILE" to mark a specific conflict as
-    resolved, or "bzr resolve --all" to mark all conflicts as resolved.
+    Once you have fixed a problem, use "brz resolve" to automatically mark
+    text conflicts as fixed, "brz resolve FILE" to mark a specific conflict as
+    resolved, or "brz resolve --all" to mark all conflicts as resolved.
     """
     aliases = ['resolved']
     takes_args = ['file*']
@@ -768,7 +768,7 @@ class ParentLoop(HandledPathConflict):
     format = 'Conflict moving %(path)s into %(conflict_path)s. %(action)s.'
 
     def action_take_this(self, tree):
-        # just acccept bzr proposal
+        # just acccept brz proposal
         pass
 
     def action_take_other(self, tree):
@@ -822,7 +822,7 @@ class MissingParent(HandledConflict):
         tree.remove([self.path], force=True, keep_files=False)
 
     def action_take_other(self, tree):
-        # just acccept bzr proposal
+        # just acccept brz proposal
         pass
 
 
@@ -841,7 +841,7 @@ class DeletingParent(HandledConflict):
     # MissingParent from the *user* pov.
 
     def action_take_this(self, tree):
-        # just acccept bzr proposal
+        # just acccept brz proposal
         pass
 
     def action_take_other(self, tree):

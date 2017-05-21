@@ -59,11 +59,11 @@ class _ChooseUI(object):
     def _setup_mode(self):
         """Setup input mode (line-based, char-based) and echo-back.
 
-        Line-based input is used if the BZR_TEXTUI_INPUT environment
+        Line-based input is used if the BRZ_TEXTUI_INPUT environment
         variable is set to 'line-based', or if there is no controlling
         terminal.
         """
-        if os.environ.get('BZR_TEXTUI_INPUT') != 'line-based' and \
+        if os.environ.get('BRZ_TEXTUI_INPUT') != 'line-based' and \
            self.ui.stdin == sys.stdin and self.ui.stdin.isatty():
             self.line_based = False
             self.echo_back = True
@@ -158,7 +158,7 @@ class _ChooseUI(object):
 
 opt_progress_bar = config.Option(
     'progress_bar', help='Progress bar type.',
-    default_from_env=['BZR_PROGRESS_BAR'], default=None,
+    default_from_env=['BRZ_PROGRESS_BAR'], default=None,
     invalid='error')
 
 

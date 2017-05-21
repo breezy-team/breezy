@@ -12,16 +12,16 @@ REM Change next line to set-up e-mail to identify yourself in brz
 REM SET BZREMAIL=
 
 REM Change next line to specify editor to edit commit messages
-REM SET BZR_EDITOR=
+REM SET BRZ_EDITOR=
 
 REM Change next line to tell where brz should search for plugins
-REM SET BZR_PLUGIN_PATH=
+REM SET BRZ_PLUGIN_PATH=
 
 REM Change next line to use another home directory with brz
-REM SET BZR_HOME=
+REM SET BRZ_HOME=
 
 REM Change next line to control verbosity of .brz.log
-REM SET BZR_DEBUG=30
+REM SET BRZ_DEBUG=30
 
 
 REM --------------------------------------------------------------------------

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Ping plugin for bzr."""
+"""Ping plugin for brz."""
 
 from __future__ import absolute_import
 
@@ -31,7 +31,7 @@ from brzlib.transport import get_transport
 class cmd_ping(Command):
     """Pings a Bazaar smart server.
     
-    This command sends a 'hello' request to the given location using the bzr
+    This command sends a 'hello' request to the given location using the brz
     smart protocol, and reports the response.
     """
 

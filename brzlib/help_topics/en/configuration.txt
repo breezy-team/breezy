@@ -7,7 +7,7 @@ Environment settings
 While most configuration is handled by configuration files, some options
 which may be semi-permanent can also be controlled through the environment.
 
-BZR_EMAIL
+BRZ_EMAIL
 ~~~~~~~~~
 
 Override the email id used by Bazaar.  Typical format::
@@ -16,14 +16,14 @@ Override the email id used by Bazaar.  Typical format::
 
 See also the ``email`` configuration option.
 
-BZR_PROGRESS_BAR
+BRZ_PROGRESS_BAR
 ~~~~~~~~~~~~~~~~
 
 Override the progress display.  Possible values are "none" or "text".  If
 the value is "none" then no progress bar is displayed.  The value "text" draws
 the ordinary command line progress bar.
 
-BZR_SIGQUIT_PDB
+BRZ_SIGQUIT_PDB
 ~~~~~~~~~~~~~~~
 
 Control whether SIGQUIT behaves normally or invokes a breakin debugger.
@@ -31,17 +31,17 @@ Control whether SIGQUIT behaves normally or invokes a breakin debugger.
 * 0 = Standard SIGQUIT behavior (normally, exit with a core dump)
 * 1 = Invoke breakin debugger (default)
 
-BZR_HOME
+BRZ_HOME
 ~~~~~~~~
 
 Override the home directory used by Bazaar.
 
-BZR_SSH
+BRZ_SSH
 ~~~~~~~
 
 Select a different SSH implementation.
 
-BZR_PDB
+BRZ_PDB
 ~~~~~~~
 
 Control whether to launch a debugger on error.
@@ -49,19 +49,19 @@ Control whether to launch a debugger on error.
 * 0 = Standard behavior
 * 1 = Launch debugger
 
-BZR_REMOTE_PATH
+BRZ_REMOTE_PATH
 ~~~~~~~~~~~~~~~
 
 Path to the Bazaar executable to use when using the bzr+ssh protocol.
 
 See also the ``bzr_remote_path`` configuration option.
 
-BZR_EDITOR
+BRZ_EDITOR
 ~~~~~~~~~~
 
 Path to the editor Bazaar should use for commit messages, etc.
 
-BZR_LOG
+BRZ_LOG
 ~~~~~~~
 
 Location of the Bazaar log file. You can check the current location by
@@ -74,7 +74,7 @@ Setting this to ``NUL`` on Windows or ``/dev/null`` on other platforms
 will disable logging.
 
 
-BZR_PLUGIN_PATH
+BRZ_PLUGIN_PATH
 ~~~~~~~~~~~~~~~
 
 The path to the plugins directory that Bazaar should use.
@@ -132,7 +132,7 @@ Overriding the default site plugin directory::
 
   BZR_PLUGIN_PATH='/path/to/my/site/plugins:-site':+user
 
-BZR_DISABLE_PLUGINS
+BRZ_DISABLE_PLUGINS
 ~~~~~~~~~~~~~~~~~~~
 
 Under special circumstances (mostly when trying to diagnose a
@@ -148,7 +148,7 @@ Disabling ``myplugin`` and ``yourplugin`` is achieved by::
 
   BZR_DISABLE_PLUGINS='myplugin:yourplugin'
 
-BZR_PLUGINS_AT
+BRZ_PLUGINS_AT
 ~~~~~~~~~~~~~~
 
 When adding a new feature or working on a bug in a plugin,
@@ -175,7 +175,7 @@ Example:
 Using a specific version of ``myplugin``:
 ``BZR_PLUGINS_AT='myplugin@/home/me/bugfixes/123456-myplugin``
 
-BZRPATH
+BRZPATH
 ~~~~~~~
 
 The path where Bazaar should look for shell plugin external commands.

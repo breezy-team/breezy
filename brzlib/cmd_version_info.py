@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Commands for generating snapshot information about a bzr tree."""
+"""Commands for generating snapshot information about a brz tree."""
 
 from __future__ import absolute_import
 
@@ -58,7 +58,7 @@ class cmd_version_info(Command):
 
     For example::
 
-      bzr version-info --custom \\
+      brz version-info --custom \\
         --template="#define VERSION_INFO \\"Project 1.2.3 (r{revno})\\"\\n"
 
     will produce a C header file with formatted string containing the
@@ -98,7 +98,7 @@ class cmd_version_info(Command):
 
         if revision and len(revision) > 1:
             raise errors.BzrCommandError(
-                gettext('bzr version-info --revision takes exactly'
+                gettext('brz version-info --revision takes exactly'
                         ' one revision specifier'))
 
         if location is None:

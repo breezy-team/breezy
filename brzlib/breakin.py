@@ -72,7 +72,7 @@ def hook_debugger_to_signal():
     """
 
     # when sigquit (C-\) or sigbreak (C-Pause) is received go into pdb
-    if os.environ.get('BZR_SIGQUIT_PDB', '1') == '0':
+    if os.environ.get('BRZ_SIGQUIT_PDB', '1') == '0':
         # User explicitly requested we don't support this
         return
     sig = determine_signal()

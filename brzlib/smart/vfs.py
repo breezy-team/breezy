@@ -45,11 +45,11 @@ def _deserialise_optional_mode(mode):
 def vfs_enabled():
     """Is the VFS enabled ?
 
-    the VFS is disabled when the BZR_NO_SMART_VFS environment variable is set.
+    the VFS is disabled when the BRZ_NO_SMART_VFS environment variable is set.
 
     :return: True if it is enabled.
     """
-    return not 'BZR_NO_SMART_VFS' in os.environ
+    return not 'BRZ_NO_SMART_VFS' in os.environ
 
 
 class VfsRequest(request.SmartServerRequest):

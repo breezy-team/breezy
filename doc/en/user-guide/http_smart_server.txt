@@ -292,7 +292,7 @@ If brz gives an error like this when accessing your HTTPS site::
 You can workaround it by using ``https+urllib`` rather than ``http`` in your
 URL, or by uninstalling pycurl.  See `bug 82086`_ for more details.
 
-.. _bug 82086: https://bugs.launchpad.net/brz/+bug/82086
+.. _bug 82086: https://bugs.launchpad.net/bzr/+bug/82086
 
 ..
    vim: ft=rst tw=74 et
