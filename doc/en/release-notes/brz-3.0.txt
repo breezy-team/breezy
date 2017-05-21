@@ -1,13 +1,26 @@
-brz ?.?.?
+####################
+Breezy Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+brz 3.0.0 is the first release of ``Breezy``, a fork of Bazaar. For more
+information, see our release announcement on the Bazaar mailing list and
+README.
+
+brz 3.0.0
 #########
 
-:Codename: Nirvana
-:2.x.y: NOT RELEASED YET
+:Codename: Pelican
+:3.0.1: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
 
-.. These may require users to change the way they use Breezy.
+ * The bzr command has been renamed to brz, to prevent
+   clashes with upstream Bazaar.
+   (Martin Packman, Jelmer Vernooĳ)
 
 New Features
 ************
@@ -29,13 +42,13 @@ Bug Fixes
 Documentation
 *************
 
-.. Improved or updated documentation.
+ * Various documents have been updated to explain that Breezy is a fork
+   of Bazaar.
 
 API Changes
 ***********
 
-.. Changes that may require updates in plugins or other code that uses
-   brzlib.
+ * bzrlib has been renamed to bzrlib. (Martin Packman, Jelmer Vernooĳ)
 
 Internals
 *********
@@ -51,3 +64,5 @@ Testing
    spurious test failures and changes to the way things should be tested.
 
 
+..
+   vim: tw=74 ft=rst ff=unix

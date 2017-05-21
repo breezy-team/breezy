@@ -21,7 +21,8 @@ Breezy is Free Software, and is released under the GNU General Public License,
 version 2 or later.
 
 Breezy is a friendly fork of the Bazaar (``bzr``) project, hosted on
-http://bazaar.canonical.com/.
+http://bazaar.canonical.com/. It is backwards compatibility with
+Bazaar's disk format and protocols.
 
 
 Breezy highlights
