@@ -26,7 +26,7 @@ BRANCH-INFO
 # setup.py working directory
 ./build
 ./build-win32
-./bzrlib/locale
+./brzlib/locale
 # Editor temporary/working/backup files
 *$
 .*.sw[nop]
@@ -35,7 +35,7 @@ BRANCH-INFO
 [#]*#
 .#*
 ./tags
-./bzrlib/tags
+./brzlib/tags
 ./TAGS
 # The shelf plugin uses this dir
 ./.shelf
@@ -50,24 +50,24 @@ BRANCH-INFO
 # performance history data file
 ./.perf_history
 # Pyrex
-bzrlib/_annotator_pyx.c
-bzrlib/_bencode_pyx.c
-bzrlib/_btree_serializer_pyx.c
-bzrlib/_chk_map_pyx.c
-bzrlib/_chunks_to_lines_pyx.c
-bzrlib/_dirstate_helpers_pyx.c
-bzrlib/_groupcompress_pyx.c
-bzrlib/_knit_load_data_pyx.c
-bzrlib/_known_graph_pyx.c
-bzrlib/_readdir_pyx.c
-bzrlib/_rio_pyx.c
-bzrlib/_simple_set_pyx.c
-bzrlib/_simple_set_pyx.h
-bzrlib/_simple_set_pyx_api.h
-bzrlib/_walkdirs_win32.c
+brzlib/_annotator_pyx.c
+brzlib/_bencode_pyx.c
+brzlib/_btree_serializer_pyx.c
+brzlib/_chk_map_pyx.c
+brzlib/_chunks_to_lines_pyx.c
+brzlib/_dirstate_helpers_pyx.c
+brzlib/_groupcompress_pyx.c
+brzlib/_knit_load_data_pyx.c
+brzlib/_known_graph_pyx.c
+brzlib/_readdir_pyx.c
+brzlib/_rio_pyx.c
+brzlib/_simple_set_pyx.c
+brzlib/_simple_set_pyx.h
+brzlib/_simple_set_pyx_api.h
+brzlib/_walkdirs_win32.c
 # built extension modules
-bzrlib/_*.dll
-bzrlib/_*.so
-bzrlib/_*.pyd
+brzlib/_*.dll
+brzlib/_*.so
+brzlib/_*.pyd
 ./.ccache
 .testrepository
