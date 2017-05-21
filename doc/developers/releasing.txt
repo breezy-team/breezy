@@ -27,7 +27,7 @@ Preconditions
 
 #. Download the pqm plugin and install it into your ``~/.bazaar/plugins``::
 
-     bzr branch lp:bzr-pqm ~/.bazaar/plugins/pqm
+     brz branch lp:brz-pqm ~/.bazaar/plugins/pqm
 
 #. Alternatively, you can download and install ``lp:hydrazine`` (the main
    difference is that hydrazine requires the branch to land to be hosted on
@@ -39,12 +39,12 @@ What do we release
 In this document, we're talking about source releases only, packages and
 installers are built from this but we won't talk about them here.
 
-Every release is part of a series, ``bzr-2.4.1`` is part of series ``2.4``.
+Every release is part of a series, ``brz-2.4.1`` is part of series ``2.4``.
 
 We do two different kind of releases: the betas releases and the stable
 releases for a given series.
 
-For a given series, releases will be done to deliver new versions of bzr to
+For a given series, releases will be done to deliver new versions of brz to
 different kinds of users:
 
 #. beta releases: named ``x.ybn`` where ``x.y`` is the series and ``n``
@@ -114,9 +114,9 @@ At the start of a series cycle
 
 To start a new series cycle:
 
-#. Create a new series ``x.y`` at <https://launchpad.net/bzr/+addseries>.
+#. Create a new series ``x.y`` at <https://launchpad.net/brz/+addseries>.
 
-#. Add milestones at <https://launchpad.net/bzr/x.y/+addmilestone> to that
+#. Add milestones at <https://launchpad.net/brz/x.y/+addmilestone> to that
    series for the beta releases and the stable series mentioning their
    expected dates. Only the milestone associated to the next release in
    this series should be left active to avoid clutter when targeting bugs.
@@ -129,14 +129,14 @@ To start a new series cycle:
 #. Start a new release-notes file::
 
        cd doc/en/release-notes
-       cp series-template.txt bzr-x.y.txt  # e.g. bzr-2.3.txt
-       bzr add bzr-x.y.txt
+       cp series-template.txt brz-x.y.txt  # e.g. brz-2.3.txt
+       brz add brz-x.y.txt
 
 #. Start a new whats-new file::
 
        cd doc/en/whats-new
-       cp template.txt bzr-x.y.txt  # e.g. bzr-2.6.txt
-       bzr add bzr-x.y.txt
+       cp template.txt brz-x.y.txt  # e.g. brz-2.6.txt
+       brz add brz-x.y.txt
 
 #. Update ``doc/en/index.txt`` to point to the new whats-new file.
 
@@ -153,11 +153,11 @@ To start a new release cycle:
 
 #. Make a local branch to prepare the release::
 
-        bzr branch lp:bzr/x.y x.y-dev
+        brz branch lp:brz/x.y x.y-dev
 
    If you're doing your first beta release, branch from trunk::
 
-       bzr branch lp:bzr x.y-dev
+       brz branch lp:brz x.y-dev
 
    Note that you will generally reuse the same branch for all releases in a
    given series.
@@ -166,10 +166,10 @@ To start a new release cycle:
    ``x.y`` is the series for your release). **Or use hydrazine for easier
    setup** ``~/.bazaar/locations.conf``::
 
-	[/home/mbp/bzr/x.y-dev]
+	[/home/mbp/brz/x.y-dev]
 	pqm_email = Canonical PQM <pqm@bazaar-vcs.org>
-	submit_branch = http://bazaar.launchpad.net/~bzr-pqm/bzr/x.y
-	parent_branch = http://bazaar.launchpad.net/~bzr-pqm/bzr/x.y
+	submit_branch = http://bazaar.launchpad.net/~brz-pqm/brz/x.y
+	parent_branch = http://bazaar.launchpad.net/~brz-pqm/brz/x.y
 	public_branch = http://bazaar.example.com/x.y-dev
 	submit_to = bazaar@lists.canonical.com
 	smtp_server = mail.example.com:25
@@ -177,8 +177,8 @@ To start a new release cycle:
     Please see <http://doc.bazaar.canonical.com/developers/HACKING.html#an-overview-of-pqm>
     for more details on PQM
 
-#. Update the version number in the ``bzr`` script, and the
-   ``bzrlib/__init__.py`` file::
+#. Update the version number in the ``brz`` script, and the
+   ``brzlib/__init__.py`` file::
    
        version_info = (x, y, z, 'dev', 0)
    
@@ -189,8 +189,8 @@ To start a new release cycle:
 #. Update the "What's New" documents in ``doc/en/whats-new``.
 
 #. Make sure a milestone exists for your release and that it is active,
-   <https://launchpad.net/bzr/x.y> lists the existing milestones,
-   <https://launchpad.net/bzr/x.y/x.y.z/+edit> allows you to toggle the
+   <https://launchpad.net/brz/x.y> lists the existing milestones,
+   <https://launchpad.net/brz/x.y/x.y.z/+edit> allows you to toggle the
    active flag.
 
 #. Commit this and send it to PQM.
@@ -205,13 +205,13 @@ Update the source code
 #. Check that there is a milestone for the release you're doing. If there
    is no milestone it indicates a process problem - make the milestone but
    also mail the list to raise this issue in our process. Milestones are
-   found at <https://launchpad.net/bzr/+milestone/x.y.z>.
+   found at <https://launchpad.net/brz/+milestone/x.y.z>.
 
 #. Merge into your branch all previous stable series fixes that haven't been
    merged yet. For example, if you're releasing 2.6.x, make sure the fixes
    on 2.5, 2.4, 2.3, etc have already been merged up::
 
-     bzr merge lp:bzr/2.4
+     brz merge lp:brz/2.4
 
    and commit that merge in its own commit. This should happen only if the
    devs landing changes in previous releases forgot to merge them up. Since
@@ -219,10 +219,10 @@ Update the source code
    their duties ;) If you feel unsafe resolving the conflicts or it's too
    time consuming, contact the related devs and skip this merge.
  
-#. In the release branch, update  ``version_info`` in ``./bzrlib/__init__.py``.
+#. In the release branch, update  ``version_info`` in ``./brzlib/__init__.py``.
    Make sure the corresponding milestone exists.
-   Double check that ./bzr ``_script_version`` matches ``version_info``. Check
-   the output of ``./bzr --version``.
+   Double check that ./brz ``_script_version`` matches ``version_info``. Check
+   the output of ``./brz --version``.
 
    For beta releases use::
 
@@ -242,7 +242,7 @@ Update the source code
    the right section. For example, if you're releasing 2.6b2, the following
    command should display a a single chuk diff for the 2.6b2 release::
 
-     bzr diff -rbzr-2.6b2.. doc/en/release-notes/bzr-2.6.txt
+     brz diff -rbrz-2.6b2.. doc/en/release-notes/brz-2.6.txt
 
    Fill out the date and a description of the release under the existing
    header (the diff above will help you summarizing). If there isn't one,
@@ -259,14 +259,14 @@ Update the source code
   * the date of this first release,
   * until when the series is expected to be supported.
 
-  Looking at ``bzr annotate`` for previous series should give you the right
+  Looking at ``brz annotate`` for previous series should give you the right
   hints. The ``doc/en/_templates/index.html`` file should also be updated.
 
 #. To check that all bugs mentioned in the release notes are actually
    marked as closed in Launchpad, you can run
    ``tools/check-newsbugs.py``::
 
-     ./tools/check-newsbugs.py doc/en/release-notes/bzr-x.y.txt
+     ./tools/check-newsbugs.py doc/en/release-notes/brz-x.y.txt
 
    As of 2011-07-18, all bugs mentioned in the output of the script requires
    some sort of intervention (either changing the status if it's not 'Fix
@@ -278,7 +278,7 @@ Update the source code
 
 #. For beta releases update the translation template::
 
-     BZR_PLUGIN_PATH=-site make po/bzr.pot
+     brz_PLUGIN_PATH=-site make po/brz.pot
 
    This is especially important for the final beta release which is when
    translations are frozen and translators are requested (see `The final
@@ -286,17 +286,17 @@ Update the source code
 
 #. For stable releases update the translations::
 
-     bzr merge lp:~bzr-core/bzr/bzr-translations-export-x.y
+     brz merge lp:~brz-core/brz/brz-translations-export-x.y
 
 #. Commit these changes to the release branch, using a command like::
 
-     bzr commit -m "Release 2.3.1"
+     brz commit -m "Release 2.3.1"
 
    The diff before you commit will be something like::
 
-      === modified file 'bzrlib/__init__.py'
-      --- bzrlib/__init__.py	2011-02-09 06:35:00 +0000
-      +++ bzrlib/__init__.py	2011-03-10 10:24:47 +0000
+      === modified file 'brzlib/__init__.py'
+      --- brzlib/__init__.py	2011-02-09 06:35:00 +0000
+      +++ brzlib/__init__.py	2011-03-10 10:24:47 +0000
       @@ -52,7 +52,7 @@
        # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
        # releaselevel of 'dev' for unreleased under-development code.
@@ -307,11 +307,11 @@ Update the source code
        # API compatibility version
        api_minimum_version = (2, 3, 0)
       
-      === modified file 'doc/en/release-notes/bzr-2.3.txt'
-      --- doc/en/release-notes/bzr-2.3.txt	2011-03-09 08:30:16 +0000
-      +++ doc/en/release-notes/bzr-2.3.txt	2011-03-10 10:40:47 +0000
+      === modified file 'doc/en/release-notes/brz-2.3.txt'
+      --- doc/en/release-notes/brz-2.3.txt	2011-03-09 08:30:16 +0000
+      +++ doc/en/release-notes/brz-2.3.txt	2011-03-10 10:40:47 +0000
       @@ -8,23 +8,10 @@
-       bzr 2.3.1
+       brz 2.3.1
        #########
        
       -:2.3.1: NOT RELEASED YET
@@ -362,24 +362,24 @@ Update the source code
 
 #. Tag the new release::
 
-     bzr tag bzr-2.6.0
+     brz tag brz-2.6.0
 
-#. Push those changes to a bzr branch that is public and accessible on the
+#. Push those changes to a brz branch that is public and accessible on the
    Internet. PQM will pull from this branch when it attempts to merge your
    changes. Then submit those changes to PQM for merge into the appropriate
    release branch::
 
-     bzr push
-     bzr pqm-submit -m "(vila) Release 2.6.0 (Vincent Ladeuil)"
+     brz push
+     brz pqm-submit -m "(vila) Release 2.6.0 (Vincent Ladeuil)"
 
-   Note that ``bzr push`` should mention updating one tag (which you just
+   Note that ``brz push`` should mention updating one tag (which you just
    created). If it doesn't, double-check that you created (and pushed) this
    tag.
 
    Or with hydrazine::
 
-     bzr lp-propose -m "Release 1.14" --approve lp:bzr/1.14
-     feed-pqm bzr
+     brz lp-propose -m "Release 1.14" --approve lp:brz/1.14
+     feed-pqm brz
 
 #. When PQM succeeds, pull down the master release branch.
 
@@ -400,7 +400,7 @@ Making the source tarball
    locally installed plugins. Use your own judgment to decide if you can
    release with these failures. When in doubt, disable the faulty plugins
    one by one until you get no more failures. Alternatively, you can use
-   ``BZR_DISABLE_PLUGINS`` or ``BZR_PLUGIN_PATH=-site`` to disable one or
+   ``brz_DISABLE_PLUGINS`` or ``brz_PLUGIN_PATH=-site`` to disable one or
    all plugins.
 
    Until <http://pad.lv/839461> is fixed, you may encounter issues if you
@@ -410,7 +410,7 @@ Making the source tarball
 
      export TTPATH=<local branch of lp:testtools -r 0.9.2>
      export SUPATH=<local branch of lp:subunit -r 0.0.6>
-     PYTHONPATH=$TTPATH:$SUPATH/python PATH=$SUPATH/filters:${PATH} BZR_PLUGIN_PATH=-site make check-dist-tarball PYTHON=python2.6 | subunit2pyunit
+     PYTHONPATH=$TTPATH:$SUPATH/python PATH=$SUPATH/filters:${PATH} brz_PLUGIN_PATH=-site make check-dist-tarball PYTHON=python2.6 | subunit2pyunit
 
    Remember that PQM has just tested everything too, this step is
    particularly testing that the pyrex extensions, which are updated
@@ -421,12 +421,12 @@ Making the source tarball
 Publishing the source tarball
 -----------------------------
 
-#. Go to the relevant <https://launchpad.net/bzr/x.y> series page in Launchpad.
+#. Go to the relevant <https://launchpad.net/brz/x.y> series page in Launchpad.
 
 #. Create a release of the milestone, and upload the source tarball and
    the GPG signature.  Or, if you prefer, use the
    ``tools/packaging/lp-upload-release`` script to do this. Note that
-   this changes what the download widget on the Launchpad bzr home
+   this changes what the download widget on the Launchpad brz home
    page shows, so don't stop the release process yet, or platform binary
    installers won't be made and the download list will stay very small!
    <https://bugs.launchpad.net/launchpad/+bug/586445>
@@ -443,10 +443,10 @@ your start the next cycle, nobody should land anything on this branch. If
 they do, they either targeted the wrong branch or didn't update the news
 file correctly, so the sooner the branch is opened again, the better.
 
-This matters more for ``lp:bzr`` than for ``lp:bzr/x.y``, ``lp:bzr`` should
+This matters more for ``lp:brz`` than for ``lp:brz/x.y``, ``lp:brz`` should
 always be open for landing, so you should do `At the start of a release
-cycle`_ as soon as possible (i.e. update the version number in ``bzr`` and
-``bzrlib/__init__``, create/update the news files and create/update the
+cycle`_ as soon as possible (i.e. update the version number in ``brz`` and
+``brzlib/__init__``, create/update the news files and create/update the
 milestone for the next relase).
 
 You may also need to do `At the start of a series cycle`_ if you're starting
@@ -457,51 +457,51 @@ The final beta - branching and translations
 
 A word of caution: the instructions above works well for all releases but
 there is one special case that requires a bit more care: when you release
-the *last* beta for a given ``x.y`` series (from trunk aka lp:bzr), you need
+the *last* beta for a given ``x.y`` series (from trunk aka lp:brz), you need
 to setup *two* branches for the next cycle:
 
-#. ``lp:bzr`` needs to be opened for the next *series* ``x.(y+1)``.
+#. ``lp:brz`` needs to be opened for the next *series* ``x.(y+1)``.
 
-#. ``lp:bzr/x.y`` needs to be opened for the next *release* ``x.y.0`` in the
-   series. Since this is first real use of ``lp:bzr/x.y``, this is also the
+#. ``lp:brz/x.y`` needs to be opened for the next *release* ``x.y.0`` in the
+   series. Since this is first real use of ``lp:brz/x.y``, this is also the
    deadline for the PQM branch to be created.
 
-Both are important as ``lp:bzr`` should remain open so any change can be
-landed, ``lp:bzr/x.y`` on the other hand should be ready to receive bug
+Both are important as ``lp:brz`` should remain open so any change can be
+landed, ``lp:brz/x.y`` on the other hand should be ready to receive bug
 fixes.
 
-``lp:bzr`` is generally more important as the bug fixes on ``lp:bzr/x.y``
+``lp:brz`` is generally more important as the bug fixes on ``lp:brz/x.y``
 won't be released sooner than a month from now whereas people may already
-been waiting to land on ``lp:bzr``.
+been waiting to land on ``lp:brz``.
 
 In a nutshell:
 
-#. Open ``lp:bzr`` for ``x.(y+1)``
+#. Open ``lp:brz`` for ``x.(y+1)``
 
 #. Create or update the ``x.y`` PQM branch based on whatever revision you
    want to release. Since it takes time to create the PQM branch for the new
    series you should plan to get it created a few days before you need it
    and seed it with the revision from trunk you want to base your release of
    (ask a LOSA for pulling this revision from trunk and pushing it to the
-   series branch (``lp:bzr/x.y``) when you're ready).
+   series branch (``lp:brz/x.y``) when you're ready).
 
-#. Release ``x.y.0`` from ``lp:bzr/x.y``
+#. Release ``x.y.0`` from ``lp:brz/x.y``
 
-#. Open ``lp:bzr/x.y`` for bug fixes
+#. Open ``lp:brz/x.y`` for bug fixes
 
 You also need to ensure Launchpad is set up to import/export translations
 for the new branch and inform translators.
 
 #. Push the last beta release to a new branch::
 
-     bzr push lp:~bzr-core/bzr/bzr-translations-export-x.y
+     brz push lp:~brz-core/brz/brz-translations-export-x.y
 
 #. On the translations series synchronization settings page
-   <https://translations.launchpad.net/bzr/x.y/+translations-settings>
+   <https://translations.launchpad.net/brz/x.y/+translations-settings>
    turn on ``Import template files`` then for exports click ``Choose a
    target branch`` and point it at the branch you just pushed.
 
-#. E-mail translators to announce that the forthcoming stable release of bzr
+#. E-mail translators to announce that the forthcoming stable release of brz
    is ready for translations.  Send to
    ``launchpad-translators@lists.launchpad.net`` and
    ``ubuntu-translators@lists.ubuntu.com``.
@@ -513,7 +513,7 @@ Announcing the source freeze
 ----------------------------
 
 #. Post to the ``bazaar@lists.canonical.com`` and
-   ``bzr-packagers@lists.launchpad.net`` lists, saying that the source has
+   ``brz-packagers@lists.launchpad.net`` lists, saying that the source has
    been frozen. Be extra clear that this is only a *source* release targeted
    at packagers and installer builders (see
    <https://bugs.launchpad.net/launchpad/+bug/645084>).  This is the cue for
@@ -541,26 +541,26 @@ for binaries to be built for various platforms. Once they have been built,
 we have a releasable product.  The next step is to make it generally
 available to the world.
 
-#. Go to the release web page at <https://launchpad.net/bzr/x.y/x.y.z>
+#. Go to the release web page at <https://launchpad.net/brz/x.y/x.y.z>
 
 #. Announce on the `Bazaar website <http://bazaar.canonical.com/>`_.  This
-   page is edited in ``build.py`` in the lp:bzr-website branch. (Changes
+   page is edited in ``build.py`` in the lp:brz-website branch. (Changes
    pushed to this branch are refreshed by a cron job on escudero.)
 
 #. Check that the documentation for this release is available in
    <http://doc.bazaar.canonical.com>.  It should be automatically build when
-   the branch is created, by a cron script ``update-bzr-docs`` on
+   the branch is created, by a cron script ``update-brz-docs`` on
    ``escudero``. When the first release is created in a new series, a branch
    needs to be created on ``escudero``::
 
      ssh escudero.canonical.com
-     sudo -u bzr-web -s
+     sudo -u brz-web -s
      cd /srv/doc.bazaar.canonical.com/
-     bzr branch lp:bzr/2.7 bzr/bzr.2.7
+     brz branch lp:brz/2.7 brz/brz.2.7
 
-   And the ``bzr/bin/update-bzr-docs`` script needs to refer to it.
+   And the ``brz/bin/update-brz-docs`` script needs to refer to it.
 
-   The ``lp:bzr-alldocs`` branch also needs to be updated when a new series
+   The ``lp:brz-alldocs`` branch also needs to be updated when a new series
    is introduced, see the ``README`` file there for more instructions
    (looking at the branch history is also a good way to understand what
    needs to be done and to document any policy changes).
@@ -584,10 +584,10 @@ Now that the release is publicly available, tell people about it.
 
    The announce mail will look something like this::
 
-      Subject: bzr x.y.z released!
+      Subject: brz x.y.z released!
 
       The Bazaar team is happy to announce availability of a new
-      release of the bzr adaptive version control system.
+      release of the brz adaptive version control system.
 
       Bazaar <http://bazaar.canonical.com/> is a Canonical project and part
       of the GNU project <http://gnu.org/> to produce a free operating
@@ -599,15 +599,15 @@ Now that the release is publicly available, tell people about it.
       feedback.
 
       Bazaar is now available for download from
-      https://launchpad.net/bzr/x.y/x.y.z/ as a source tarball; packages
+      https://launchpad.net/brz/x.y/x.y.z/ as a source tarball; packages
       for various systems will be available soon.
 
       <<release notes from this release back to the last major release>>
 
    Feel free to tweak this to your taste.
 
-#. Make an announcement through <https://launchpad.net/bzr/+announce>
-   mentioning the milestone URL <https://launchpad.net/bzr/+milestone/x.y.z>
+#. Make an announcement through <https://launchpad.net/brz/+announce>
+   mentioning the milestone URL <https://launchpad.net/brz/+milestone/x.y.z>
    so people get an easy access to details.
 
 #. Announce on https://freecode.com/projects/bazaar-vcs
@@ -631,8 +631,8 @@ Now that the release is publicly available, tell people about it.
      can still access the releases notes via the ``Release Notes`` URL in
      the ``Links`` box in the upper right area of the page. When doing the
      first stable release in a series, delete the ``Unstable installers``
-     <https://launchpad.net/bzr/x.y/x.ybn> and ``Unstable source tarball``
-     <http://launchpad.net/bzr/x.y/x.ybn/+download/bzr-x.ybn.tar.gz>
+     <https://launchpad.net/brz/x.y/x.ybn> and ``Unstable source tarball``
+     <http://launchpad.net/brz/x.y/x.ybn/+download/brz-x.ybn.tar.gz>
      links. Conversely, when creating the first beta in a development
      series, create these links again. Check all links when doing other
      kinds of release.
@@ -640,11 +640,11 @@ Now that the release is publicly available, tell people about it.
 #. Update `<http://en.wikipedia.org/wiki/Bazaar_(software)>`_ -- this should
    be done for the stable and beta releases.
 
-#. Update the python package index: <http://pypi.python.org/pypi/bzr>
+#. Update the python package index: <http://pypi.python.org/pypi/brz>
 
    From the tarball created and tested earlier ::
 
-     twine upload -s ../bzr-2.7.0.tar.gz
+     twine upload -s ../brz-2.7.0.tar.gz
 
    Remember to check the results afterward -- this should be done for
    stable releases but not for beta releases nor SRUs.
@@ -653,7 +653,7 @@ Now that the release is publicly available, tell people about it.
    Ubuntu.
 
    If in doubt, you can test with <https://testpypi.python.org/pypi> where
-   you can register yourself, register the bzr project and upload (and then
+   you can register yourself, register the brz project and upload (and then
    remove the upload and delete the project so a new release manager can
    enjoy the same facilities). If the project already exists, have one of
    the existing owners of the project add you to the group.
@@ -670,13 +670,13 @@ Now that the release is publicly available, tell people about it.
      password:<password on testpypi>
      repository = https://testpypi.python.org/pypi
 
-   Registering the bzr project if doesn't exist is achieved with::
+   Registering the brz project if doesn't exist is achieved with::
 
      python setup.py -r https://testpypi.python.org/pypi register
 
   Uploading is done with::
 
-    twine upload -r testpypi -s ../bzr-2.7.0.tar.gz
+    twine upload -r testpypi -s ../brz-2.7.0.tar.gz
 
    To be able to upload the release you must create an account on
    <http://pypi.python.org/pypi> and have one of the existing owners of the
@@ -691,8 +691,8 @@ Merge the release branch back into the trunk.  The ``doc/en/release-notes``
 changes should be merged into the right place because each release series
 has its own release-notes file, but double-check.
 
-If it's not already done, advance the version number in ``bzr`` and
-``bzrlib/__init__.py``.  Submit this back into pqm for bzr.dev.
+If it's not already done, advance the version number in ``brz`` and
+``brzlib/__init__.py``.  Submit this back into pqm for brz.dev.
 
 As soon as you change the version number in trunk, make sure you have
 created the corresponding milestone to ensure the continuity in bug
@@ -719,19 +719,19 @@ Getting the release into Ubuntu
 -------------------------------
 
 (Feel free to propose or add new sections here about what we should do to
-get bzr into other places.)
+get brz into other places.)
 
 For the currently-under-development release of Ubuntu, no special action
 is needed: the release should be picked by Debian and synced from there into
 Ubuntu.
 
-Releases off stable bzr branches should go in to the ``-updates`` of the
+Releases off stable brz branches should go in to the ``-updates`` of the
 Ubuntu release that originally contained that branch.  (Ubuntu Lucid had
-bzr 2.2.0, so should get every 2.2.x update.)  This means going through
+brz 2.2.0, so should get every 2.2.x update.)  This means going through
 the `SRU (Stable Release Updates)
 <https://wiki.ubuntu.com/StableReleaseUpdates>`__ process.   
 
-Since September 2010, bzr has received approval by the technical
+Since September 2010, brz has received approval by the technical
 board for the `MicroReleaseExceptions
 <https://wiki.ubuntu.com/StableReleaseUpdates/MicroReleaseExceptions>`__
 category so that whole bugfix releases can more easily be
@@ -741,16 +741,16 @@ Progress on these realeases is tracked on the `SRU wiki
 <http://wiki.bazaar.canonical.com/UbuntuStableReleaseUpdates>`_
 page.
 
-**After making a bzr stable-release release, nominate the most serious bug
+**After making a brz stable-release release, nominate the most serious bug
 for the appropriate Ubuntu release and subscribe the `ubuntu-sru` team.**
 
 This requires a couple of tricks (please reconsider and tweak as things
 evolves from one release to the other):
 
  * create a distro task with the ``Also affects distribution`` button and
-   select ``bzr (Ubuntu)``.
+   select ``brz (Ubuntu)``.
 
- * change the *URL* to point to ``ubuntu/+source/bzr`` instead of ``bzr``
+ * change the *URL* to point to ``ubuntu/+source/brz`` instead of ``brz``
    (this is needed if you create the distro task but not if it exists
    already). You should now be able to click the ``Nominate for release``
    button and select the right Ubuntu release. As of September 2010, this
@@ -775,7 +775,7 @@ evolves from one release to the other):
 See also
 --------
 
-* `Packaging into the bzr PPA <ppa.html>`_ to make and publish Ubuntu
+* `Packaging into the brz PPA <ppa.html>`_ to make and publish Ubuntu
   packages.
 * `Bazaar Developer Document Catalog <index.html>`_
 * `Development cycles <cycle.html>`_: things that happen during the cycle

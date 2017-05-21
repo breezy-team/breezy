@@ -431,22 +431,22 @@ clean-win32: clean-docs
 
 # i18n targets
 
-.PHONY: update-pot po/bzr.pot
-update-pot: po/bzr.pot
+.PHONY: update-pot po/brz.pot
+update-pot: po/brz.pot
 
 TRANSLATABLE_PYFILES:=$(shell find brzlib -name '*.py' \
 		| grep -v 'brzlib/tests/' \
 		| grep -v 'brzlib/doc' \
 		)
 
-po/bzr.pot: $(PYFILES) $(DOCFILES)
-	$(PYTHON) ./brz export-pot --include-duplicates > po/bzr.pot
+po/brz.pot: $(PYFILES) $(DOCFILES)
+	$(PYTHON) ./brz export-pot --include-duplicates > po/brz.pot
 	echo $(TRANSLATABLE_PYFILES) | xargs \
 	  xgettext --package-name "brz" \
 	  --msgid-bugs-address "<bazaar@canonical.com>" \
 	  --copyright-holder "Canonical" \
 	  --from-code ISO-8859-1 --join --sort-by-file --add-comments=i18n: \
-	  -d bzr -p po -o bzr.pot
+	  -d bzr -p po -o brz.pot
 
 
 ### Packaging Targets ###
