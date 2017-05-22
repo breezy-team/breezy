@@ -46,6 +46,9 @@ class TransportLogDecorator(decorator.TransportDecorator):
             def _hook(relpath, *args, **kw):
                 return self._log_and_call(hookname, relpath, *args, **kw)
             return _hook
+        # GZ 2017-05-21: Not all methods take relpath as first argument, for
+        # instance copy_to takes list of relpaths. Also, unclear on url vs
+        # filesystem path split. Needs tidying up.
         for methodname in (
             'append_bytes',
             'append_file',
@@ -80,7 +83,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
         else:
             kwargs_str = ''
         mutter("%s %s %s %s"
-               % (methodname, self._decorated.abspath(relpath),
+               % (methodname, relpath,
                   self._shorten(self._strip_tuple_parens(args)),
                   kwargs_str))
         return self._call_and_log_result(methodname, (relpath,) + args, kwargs)
