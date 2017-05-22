@@ -20,19 +20,21 @@
 # affects the global state of the process.  See breezy/plugins.py for more
 # comments.
 
-from cStringIO import StringIO
 import logging
 import os
 import sys
 
 import breezy
-from breezy import (
+from .. import (
     errors,
     osutils,
     plugin,
     plugins,
     tests,
     trace,
+    )
+from ..sixish import (
+    BytesIO,
     )
 
 
@@ -189,9 +191,9 @@ class TestLoadingPlugins(BaseTestPlugins):
             self.assertFalse('breezy.plugins.pluginone' in sys.modules)
             self.assertFalse('breezy.plugins.plugintwo' in sys.modules)
             breezy.plugins.__path__ = ['first', 'second']
-            exec "import breezy.plugins.pluginone"
+            exec("import breezy.plugins.pluginone")
             self.assertEqual(['first'], self.activeattributes[tempattribute])
-            exec "import breezy.plugins.plugintwo"
+            exec("import breezy.plugins.plugintwo")
             self.assertEqual(['first', 'second'],
                 self.activeattributes[tempattribute])
         finally:
@@ -244,7 +246,7 @@ class TestLoadingPlugins(BaseTestPlugins):
         :return: A string with the log from the plugin loading call.
         """
         # Capture output
-        stream = StringIO()
+        stream = BytesIO()
         try:
             handler = logging.StreamHandler(stream)
             log = logging.getLogger('brz')
@@ -536,7 +538,7 @@ class TestHelpIndex(tests.TestCase):
         index = plugin.PluginsHelpIndex()
         # make a new plugin here for this test, even if we're run with
         # --no-plugins
-        self.assertFalse(sys.modules.has_key('breezy.plugins.demo_module'))
+        self.assertFalse('breezy.plugins.demo_module' in sys.modules)
         demo_module = FakeModule('', 'breezy.plugins.demo_module')
         sys.modules['breezy.plugins.demo_module'] = demo_module
         try:
@@ -562,7 +564,7 @@ class TestHelpIndex(tests.TestCase):
     def test_get_plugin_topic_with_prefix(self):
         """Searching for plugins/demo_module returns help."""
         index = plugin.PluginsHelpIndex()
-        self.assertFalse(sys.modules.has_key('breezy.plugins.demo_module'))
+        self.assertFalse('breezy.plugins.demo_module' in sys.modules)
         demo_module = FakeModule('', 'breezy.plugins.demo_module')
         sys.modules['breezy.plugins.demo_module'] = demo_module
         try:

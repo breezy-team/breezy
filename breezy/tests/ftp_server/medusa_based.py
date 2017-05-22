@@ -30,11 +30,12 @@ import medusa
 import medusa.filesys
 import medusa.ftp_server
 
-from breezy import (
+from ... import (
+    osutils,
     tests,
     trace,
     )
-from breezy.tests import test_server
+from .. import test_server
 
 
 class test_filesystem(medusa.filesys.os_filesystem):
@@ -109,7 +110,7 @@ class ftp_channel(medusa.ftp_server.ftp_channel):
             return
         try:
             os.rename(pfrom, pto)
-        except (IOError, OSError), e:
+        except (IOError, OSError) as e:
             # TODO: jam 20060516 return custom responses based on
             #       why the command failed
             # (bialix 20070418) str(e) on Python 2.5 @ Windows
@@ -152,7 +153,7 @@ class ftp_channel(medusa.ftp_server.ftp_channel):
             try:
                 self.filesystem.mkdir (path)
                 self.respond ('257 MKD command successful.')
-            except (IOError, OSError), e:
+            except (IOError, OSError) as e:
                 # (bialix 20070418) str(e) on Python 2.5 @ Windows
                 # sometimes don't provide expected error message;
                 # so we obtain such message via os.strerror()
@@ -240,7 +241,7 @@ class FTPTestServer(test_server.TestServer):
                                                  test_server.LocalURLServer)):
             raise AssertionError(
                 "FTPServer currently assumes local transport, got %s" % vfs_server)
-        self._root = os.getcwdu()
+        self._root = osutils.getcwd()
         self._ftp_server = ftp_server(
             authorizer=test_authorizer(root=self._root),
             ip='localhost',
@@ -282,7 +283,7 @@ class FTPTestServer(test_server.TestServer):
             # testers may wonder why their test just sits there waiting for a
             # server that is already dead. Note that if the tester waits too
             # long under pdb the server will also die.
-        except select.error, e:
+        except select.error as e:
             if e.args[0] != errno.EBADF:
                 raise
 

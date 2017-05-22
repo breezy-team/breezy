@@ -28,12 +28,12 @@ from __future__ import absolute_import
 
 import os
 
-from breezy import (
+from .. import (
     errors,
     versionedfile,
     )
-from breezy.errors import BzrError, UnlistableStore
-from breezy.trace import mutter
+from ..errors import BzrError, UnlistableStore
+from ..trace import mutter
 
 ######################################################################
 # stores
@@ -175,7 +175,7 @@ class TransportStore(Store):
         raise NotImplementedError('children need to implement this function.')
 
     def _check_fileid(self, fileid):
-        if type(fileid) != str:
+        if not isinstance(fileid, str):
             raise TypeError('Fileids should be bytestrings: %s %r' % (
                 type(fileid), fileid))
         if '\\' in fileid or '/' in fileid:

@@ -18,9 +18,7 @@ from __future__ import absolute_import
 
 import breezy.bzrdir
 
-from cStringIO import StringIO
-
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
 from breezy import (
@@ -53,24 +51,27 @@ from breezy.i18n import gettext, ngettext
 # is guaranteed to be registered.
 import breezy.bzrdir
 
-from breezy import (
+from . import (
     bzrdir,
     controldir,
+    registry,
     )
-from breezy.decorators import (
+from .decorators import (
     needs_read_lock,
     needs_write_lock,
     only_raises,
     )
-from breezy.hooks import Hooks
-from breezy.inter import InterObject
-from breezy.lock import _RelockDebugMixin, LogicalLockResult
-from breezy import registry
-from breezy.symbol_versioning import (
+from .hooks import Hooks
+from .inter import InterObject
+from .lock import _RelockDebugMixin, LogicalLockResult
+from .sixish import (
+    BytesIO,
+    )
+from .symbol_versioning import (
     deprecated_in,
     deprecated_method,
     )
-from breezy.trace import mutter, mutter_callsite, note, is_quiet
+from .trace import mutter, mutter_callsite, note, is_quiet
 
 
 class Branch(controldir.ControlComponent):
@@ -303,9 +304,9 @@ class Branch(controldir.ControlComponent):
                 if master is not None:
                     # return the master branch value
                     return master.nick
-            except errors.RecursiveBind, e:
+            except errors.RecursiveBind as e:
                 raise e
-            except errors.BzrError, e:
+            except errors.BzrError as e:
                 # Silently fall back to local implicit nick if the master is
                 # unavailable
                 mutter("Could not connect to bound branch, "
@@ -1139,7 +1140,7 @@ class Branch(controldir.ControlComponent):
             parent = urlutils.local_path_to_url(parent.decode('utf8'))
         try:
             return urlutils.join(self.base[:-1], parent)
-        except errors.InvalidURLJoin, e:
+        except errors.InvalidURLJoin as e:
             raise errors.InaccessibleParent(parent, self.user_url)
 
     def _get_parent_location(self):
@@ -1538,12 +1539,12 @@ class Branch(controldir.ControlComponent):
         :returns: One of: 'a_descends_from_b', 'b_descends_from_a', 'diverged'
         """
         heads = graph.heads([revision_a, revision_b])
-        if heads == set([revision_b]):
+        if heads == {revision_b}:
             return 'b_descends_from_a'
-        elif heads == set([revision_a, revision_b]):
+        elif heads == {revision_a, revision_b}:
             # These branches have diverged
             return 'diverged'
-        elif heads == set([revision_a]):
+        elif heads == {revision_a}:
             return 'a_descends_from_b'
         else:
             raise AssertionError("invalid heads: %r" % (heads,))
@@ -1559,7 +1560,7 @@ class Branch(controldir.ControlComponent):
         """
         # For bzr native formats must_fetch is just the tip, and
         # if_present_fetch are the tags.
-        must_fetch = set([self.last_revision()])
+        must_fetch = {self.last_revision()}
         if_present_fetch = set()
         if self.get_config_stack().get('branch.fetch_tags'):
             try:
@@ -2425,7 +2426,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
             return
         if branch._transport.has('stored-transform'):
             raise errors.ChangesAlreadyStored
-        transform = StringIO()
+        transform = BytesIO()
         creator.write_shelf(transform)
         transform.seek(0)
         branch._transport.put_file('stored-transform', transform)
@@ -2612,7 +2613,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         try:
             return Branch.open(bound_loc,
                                possible_transports=possible_transports)
-        except (errors.NotBranchError, errors.ConnectionError), e:
+        except (errors.NotBranchError, errors.ConnectionError) as e:
             raise errors.BoundBranchConnectionFailure(
                     self, bound_loc, e)
 
@@ -2749,7 +2750,7 @@ class BzrBranch8(BzrBranch):
 
         :param info_dict: A dict of {file_id: (tree_path, branch_location)}
         """
-        s = StringIO()
+        s = BytesIO()
         writer = rio.RioWriter(s)
         for key, (tree_path, branch_location) in info_dict.iteritems():
             stanza = rio.Stanza(file_id=key, tree_path=tree_path,
@@ -2900,7 +2901,7 @@ class BzrBranch8(BzrBranch):
         except ValueError:
             try:
                 self._extend_partial_history(stop_revision=revision_id)
-            except errors.RevisionNotPresent, e:
+            except errors.RevisionNotPresent as e:
                 raise errors.GhostRevisionsHaveNoRevno(revision_id, e.revision_id)
             index = len(self._partial_revision_history_cache) - 1
             if index < 0:
@@ -3200,7 +3201,7 @@ class GenericInterBranch(InterBranch):
         self.source._synchronize_history(self.target, revision_id)
         try:
             parent = self.source.get_parent()
-        except errors.InaccessibleParent, e:
+        except errors.InaccessibleParent as e:
             mutter('parent was not accessible to copy: %s', e)
         else:
             if parent:

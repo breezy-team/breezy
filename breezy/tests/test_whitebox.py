@@ -17,12 +17,12 @@
 import os
 
 import breezy
-from breezy import (
+from .. import (
     errors,
     osutils,
     tests,
     )
-from breezy.osutils import relpath, pathjoin, abspath, realpath
+from ..osutils import relpath, pathjoin, abspath, realpath
 
 
 class MoreTests(tests.TestCaseWithTransport):

@@ -16,7 +16,7 @@
 
 import re
 
-from breezy import (
+from .. import (
     bzrdir,
     commands,
     controldir,
@@ -24,10 +24,10 @@ from breezy import (
     option,
     registry,
     )
-from breezy.builtins import cmd_commit
-from breezy.commands import parse_args
-from breezy.tests import TestCase
-from breezy.repofmt import knitrepo
+from ..builtins import cmd_commit
+from ..commands import parse_args
+from . import TestCase
+from ..repofmt import knitrepo
 
 
 def parse(options, args):

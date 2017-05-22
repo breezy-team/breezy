@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from breezy import (
+from .. import (
     chk_map,
     groupcompress,
     errors,
@@ -26,7 +26,7 @@ from breezy import (
     tests,
     workingtree,
     )
-from breezy.inventory import (
+from ..inventory import (
     CHKInventory,
     Inventory,
     ROOT_ID,
@@ -36,11 +36,11 @@ from breezy.inventory import (
     TreeReference,
     mutable_inventory_from_tree,
     )
-from breezy.tests import (
+from . import (
     TestCase,
     TestCaseWithTransport,
     )
-from breezy.tests.scenarios import load_tests_apply_scenarios
+from .scenarios import load_tests_apply_scenarios
 
 
 load_tests = load_tests_apply_scenarios
@@ -979,8 +979,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
         bytes = ''.join(chk_inv.to_lines())
         new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
-        fileids = list(new_inv.__iter__())
-        fileids.sort()
+        fileids = sorted(new_inv.__iter__())
         self.assertEqual([inv.root.file_id, "fileid"], fileids)
 
     def test__len__(self):

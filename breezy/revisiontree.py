@@ -18,12 +18,13 @@
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
-
-from breezy import (
+from . import (
     errors,
     revision,
     tree,
+    )
+from .sixish import (
+    BytesIO,
     )
 
 
@@ -72,7 +73,7 @@ class RevisionTree(tree.Tree):
         return ret
 
     def get_file(self, file_id, path=None):
-        return StringIO(self.get_file_text(file_id))
+        return BytesIO(self.get_file_text(file_id))
 
     def is_locked(self):
         return self._repository.is_locked()
@@ -231,7 +232,7 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
         try:
             for result in self._repository.iter_files_bytes(repo_desired_files):
                 yield result
-        except errors.RevisionNotPresent, e:
+        except errors.RevisionNotPresent as e:
             raise errors.NoSuchFile(e.file_id)
 
     def annotate_iter(self, file_id,

@@ -17,14 +17,14 @@
 
 import re
 
-from breezy import errors
-from breezy.globbing import (
+from .. import errors
+from ..globbing import (
     Globster,
     ExceptionGlobster,
     _OrderedGlobster,
     normalize_pattern
     )
-from breezy.tests import (
+from . import (
     TestCase,
     )
 

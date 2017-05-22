@@ -20,7 +20,7 @@ from __future__ import absolute_import
 from bisect import bisect
 import difflib
 
-from breezy.trace import mutter
+from .trace import mutter
 
 
 __all__ = ['PatienceSequenceMatcher', 'unified_diff', 'unified_diff_files']

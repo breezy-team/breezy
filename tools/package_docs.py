@@ -68,7 +68,7 @@ def package_docs(section, src_build, dest_html, dest_downloads):
 
 
 def build_archive(src_dir, archive_name, archive_root, format):
-    print "creating %s ..." % (archive_name,)
+    print("creating %s ..." % (archive_name,))
     tar = tarfile.open(archive_name, "w:%s" % (format,))
     for relpath in os.listdir(src_dir):
         src_path = os.path.join(src_dir, relpath)
@@ -98,7 +98,7 @@ def main(argv):
     dest_downloads = os.path.join(dest_dir, 'downloads')
     for d in [dest_dir, dest_downloads]:
         if not os.path.exists(d):
-            print "creating directory %s ..." % (d,)
+            print("creating directory %s ..." % (d,))
             os.mkdir(d)
 
     # Package and copy the files across

@@ -18,11 +18,11 @@
 
 import sys
 
-from breezy import (
+from .. import (
     symbol_versioning,
     tests,
     )
-from breezy.tests import (
+from . import (
     features,
     )
 

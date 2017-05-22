@@ -18,7 +18,7 @@ from __future__ import absolute_import
 
 import sys
 
-from breezy import (
+from . import (
     delta as _mod_delta,
     hooks as _mod_hooks,
     log,
@@ -26,8 +26,8 @@ from breezy import (
     tsort,
     revision as _mod_revision,
     )
-import breezy.errors as errors
-from breezy.trace import mutter, warning
+from . import errors as errors
+from .trace import mutter, warning
 
 # TODO: when showing single-line logs, truncate to the width of the terminal
 # if known, but only if really going to the terminal (not into a file)
@@ -144,13 +144,13 @@ def show_tree_status(wt, show_unchanged=None,
         elif len(revision) > 0:
             try:
                 old = revision[0].as_tree(wt.branch)
-            except errors.NoSuchRevision, e:
+            except errors.NoSuchRevision as e:
                 raise errors.BzrCommandError(str(e))
             if (len(revision) > 1) and (revision[1].spec is not None):
                 try:
                     new = revision[1].as_tree(wt.branch)
                     new_is_working_tree = False
-                except errors.NoSuchRevision, e:
+                except errors.NoSuchRevision as e:
                     raise errors.BzrCommandError(str(e))
             else:
                 new = wt

@@ -21,14 +21,15 @@ See ``bzr help rules`` for details.
 
 from __future__ import absolute_import
 
-from breezy import (
+import configobj
+
+from . import (
     config,
     cmdline,
     errors,
     globbing,
     osutils,
     )
-from breezy.util.configobj import configobj
 
 
 # Name of the file holding rules in a tree

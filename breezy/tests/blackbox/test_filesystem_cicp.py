@@ -19,14 +19,14 @@
 
 import os
 
-from breezy import (
+from ... import (
     osutils,
     tests,
     )
-from breezy.tests import KnownFailure
-from breezy.osutils import canonical_relpath, pathjoin
-from breezy.tests.script import run_script
-from breezy.tests.features import (
+from .. import KnownFailure
+from ...osutils import canonical_relpath, pathjoin
+from ..script import run_script
+from ..features import (
     CaseInsCasePresFilenameFeature,
     )
 
@@ -214,7 +214,7 @@ lowercaseparent/lowercase is already versioned.
             $ brz mv camelcaseparent/camelcase camelcaseparent/camelCase
             CamelCaseParent/CamelCase => CamelCaseParent/camelCase
             """)
-        self.failUnlessEqual(canonical_relpath(wt.basedir, 'camelcaseparent/camelcase'),
+        self.assertEqual(canonical_relpath(wt.basedir, 'camelcaseparent/camelcase'),
                              'CamelCaseParent/camelCase')
 
     def test_mv_newcase_after(self):
@@ -230,7 +230,7 @@ lowercaseparent/lowercase is already versioned.
             CamelCaseParent/CamelCase => CamelCaseParent/camelCase
             """)
         # brz should not have renamed the file to a different case
-        self.failUnlessEqual(canonical_relpath(wt.basedir, 'camelcaseparent/camelcase'),
+        self.assertEqual(canonical_relpath(wt.basedir, 'camelcaseparent/camelcase'),
                              'CamelCaseParent/camelCase')
 
     def test_mv_multiple(self):

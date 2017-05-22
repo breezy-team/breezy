@@ -16,20 +16,22 @@
 
 """Test Store implementations."""
 
-from cStringIO import StringIO
 import os
 import gzip
 
-import breezy.errors as errors
-from breezy.errors import BzrError
-from breezy.store import TransportStore
-from breezy.store.text import TextStore
-from breezy.store.versioned import VersionedFileStore
-from breezy.tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
-import breezy.transactions as transactions
-import breezy.transport as transport
-from breezy.transport.memory import MemoryTransport
-from breezy.weave import WeaveFile
+from .. import errors as errors
+from ..errors import BzrError
+from ..sixish import (
+    BytesIO,
+    )
+from ..store import TransportStore
+from ..store.text import TextStore
+from ..store.versioned import VersionedFileStore
+from . import TestCase, TestCaseInTempDir, TestCaseWithTransport
+from .. import transactions as transactions
+from .. import transport as transport
+from ..transport.memory import MemoryTransport
+from ..weave import WeaveFile
 
 
 class TestStores(object):
@@ -40,16 +42,16 @@ class TestStores(object):
         self.assertEqual(f.read(), value)
 
     def fill_store(self, store):
-        store.add(StringIO('hello'), 'a')
-        store.add(StringIO('other'), 'b')
-        store.add(StringIO('something'), 'c')
-        store.add(StringIO('goodbye'), '123123')
+        store.add(BytesIO(b'hello'), 'a')
+        store.add(BytesIO(b'other'), 'b')
+        store.add(BytesIO(b'something'), 'c')
+        store.add(BytesIO(b'goodbye'), '123123')
 
     def test_copy_all(self):
         """Test copying"""
         os.mkdir('a')
         store_a = self.get_store('a')
-        store_a.add(StringIO('foo'), '1')
+        store_a.add(BytesIO(b'foo'), '1')
         os.mkdir('b')
         store_b = self.get_store('b')
         store_b.copy_all_ids(store_a)
@@ -76,7 +78,7 @@ class TestStores(object):
         """Multiple add with same ID should raise a BzrError"""
         store = self.get_store()
         self.fill_store(store)
-        self.assertRaises(BzrError, store.add, StringIO('goodbye'), '123123')
+        self.assertRaises(BzrError, store.add, BytesIO(b'goodbye'), '123123')
 
 
 class TestCompressedTextStore(TestCaseInTempDir, TestStores):
@@ -88,8 +90,8 @@ class TestCompressedTextStore(TestCaseInTempDir, TestStores):
     def test_total_size(self):
         store = self.get_store(u'.')
         store.register_suffix('dsc')
-        store.add(StringIO('goodbye'), '123123')
-        store.add(StringIO('goodbye2'), '123123', 'dsc')
+        store.add(BytesIO(b'goodbye'), '123123')
+        store.add(BytesIO(b'goodbye2'), '123123', 'dsc')
         # these get gzipped - content should be stable
         self.assertEqual(store.total_size(), (2, 55))
 
@@ -107,10 +109,10 @@ class TestMemoryStore(TestCase):
 
     def test_add_and_retrieve(self):
         store = self.get_store()
-        store.add(StringIO('hello'), 'aa')
+        store.add(BytesIO(b'hello'), 'aa')
         self.assertNotEqual(store.get('aa'), None)
         self.assertEqual(store.get('aa').read(), 'hello')
-        store.add(StringIO('hello world'), 'bb')
+        store.add(BytesIO(b'hello world'), 'bb')
         self.assertNotEqual(store.get('bb'), None)
         self.assertEqual(store.get('bb').read(), 'hello world')
 
@@ -120,14 +122,14 @@ class TestMemoryStore(TestCase):
 
     def test_adding_fails_when_present(self):
         my_store = self.get_store()
-        my_store.add(StringIO('hello'), 'aa')
+        my_store.add(BytesIO(b'hello'), 'aa')
         self.assertRaises(BzrError,
-                          my_store.add, StringIO('hello'), 'aa')
+                          my_store.add, BytesIO(b'hello'), 'aa')
 
     def test_total_size(self):
         store = self.get_store()
-        store.add(StringIO('goodbye'), '123123')
-        store.add(StringIO('goodbye2'), '123123.dsc')
+        store.add(BytesIO(b'goodbye'), '123123')
+        store.add(BytesIO(b'goodbye2'), '123123.dsc')
         self.assertEqual(store.total_size(), (2, 15))
         # TODO: Switch the exception form UnlistableStore to
         #       or make Stores throw UnlistableStore if their
@@ -144,8 +146,8 @@ class TestTextStore(TestCaseInTempDir, TestStores):
 
     def test_total_size(self):
         store = self.get_store()
-        store.add(StringIO('goodbye'), '123123')
-        store.add(StringIO('goodbye2'), '123123.dsc')
+        store.add(BytesIO(b'goodbye'), '123123')
+        store.add(BytesIO(b'goodbye2'), '123123.dsc')
         self.assertEqual(store.total_size(), (2, 15))
         # TODO: Switch the exception form UnlistableStore to
         #       or make Stores throw UnlistableStore if their
@@ -163,7 +165,7 @@ class TestMixedTextStore(TestCaseInTempDir, TestStores):
     def test_get_mixed(self):
         cs = self.get_store(u'.', compressed=True)
         s = self.get_store(u'.', compressed=False)
-        cs.add(StringIO('hello there'), 'a')
+        cs.add(BytesIO(b'hello there'), 'a')
 
         self.assertPathExists('a.gz')
         self.assertFalse(os.path.lexists('a'))
@@ -175,9 +177,9 @@ class TestMixedTextStore(TestCaseInTempDir, TestStores):
         self.assertEqual(cs.get('a').read(), 'hello there')
         self.assertEqual(s.get('a').read(), 'hello there')
 
-        self.assertRaises(BzrError, s.add, StringIO('goodbye'), 'a')
+        self.assertRaises(BzrError, s.add, BytesIO(b'goodbye'), 'a')
 
-        s.add(StringIO('goodbye'), 'b')
+        s.add(BytesIO(b'goodbye'), 'b')
         self.assertPathExists('b')
         self.assertFalse(os.path.lexists('b.gz'))
         self.assertEqual(open('b').read(), 'goodbye')
@@ -187,7 +189,7 @@ class TestMixedTextStore(TestCaseInTempDir, TestStores):
         self.assertEqual(cs.get('b').read(), 'goodbye')
         self.assertEqual(s.get('b').read(), 'goodbye')
 
-        self.assertRaises(BzrError, cs.add, StringIO('again'), 'b')
+        self.assertRaises(BzrError, cs.add, BytesIO(b'again'), 'b')
 
 class MockTransport(transport.Transport):
     """A fake transport for testing with."""
@@ -280,26 +282,26 @@ class TestTransportStore(TestCase):
                          my_store._relpath('foo', ['bar', 'baz']))
 
     def test_add_simple(self):
-        stream = StringIO("content")
+        stream = BytesIO(b"content")
         my_store = InstrumentedTransportStore(MockTransport())
         my_store.add(stream, "foo")
         self.assertEqual([("_add", "foo", stream)], my_store._calls)
 
     def test_add_prefixed(self):
-        stream = StringIO("content")
+        stream = BytesIO(b"content")
         my_store = InstrumentedTransportStore(MockTransport(), True)
         my_store.add(stream, "foo")
         self.assertEqual([("_add", "45/foo", stream)], my_store._calls)
 
     def test_add_simple_suffixed(self):
-        stream = StringIO("content")
+        stream = BytesIO(b"content")
         my_store = InstrumentedTransportStore(MockTransport())
         my_store.register_suffix('dsc')
         my_store.add(stream, "foo", 'dsc')
         self.assertEqual([("_add", "foo.dsc", stream)], my_store._calls)
 
     def test_add_simple_suffixed(self):
-        stream = StringIO("content")
+        stream = BytesIO(b"content")
         my_store = InstrumentedTransportStore(MockTransport(), True)
         my_store.register_suffix('dsc')
         my_store.add(stream, "foo", 'dsc')
@@ -310,11 +312,11 @@ class TestTransportStore(TestCase):
         my_store = store_class(MemoryTransport(), prefixed,
                                compressed=compressed)
         my_store.register_suffix('sig')
-        stream = StringIO("signature")
+        stream = BytesIO(b"signature")
         my_store.add(stream, "foo", 'sig')
-        stream = StringIO("content")
+        stream = BytesIO(b"content")
         my_store.add(stream, "foo")
-        stream = StringIO("signature for missing base")
+        stream = BytesIO(b"signature for missing base")
         my_store.add(stream, "missing", 'sig')
         return my_store
 
@@ -359,22 +361,22 @@ class TestTransportStore(TestCase):
     def test___iter__no_suffix(self):
         my_store = TextStore(MemoryTransport(),
                              prefixed=False, compressed=False)
-        stream = StringIO("content")
+        stream = BytesIO(b"content")
         my_store.add(stream, "foo")
-        self.assertEqual(set(['foo']),
+        self.assertEqual({'foo'},
                          set(my_store.__iter__()))
 
     def test___iter__(self):
-        self.assertEqual(set(['foo']),
+        self.assertEqual({'foo'},
                          set(self.get_populated_store().__iter__()))
-        self.assertEqual(set(['foo']),
+        self.assertEqual({'foo'},
                          set(self.get_populated_store(True).__iter__()))
 
     def test___iter__compressed(self):
-        self.assertEqual(set(['foo']),
+        self.assertEqual({'foo'},
                          set(self.get_populated_store(
                              compressed=True).__iter__()))
-        self.assertEqual(set(['foo']),
+        self.assertEqual({'foo'},
                          set(self.get_populated_store(
                              True, compressed=True).__iter__()))
 
@@ -388,7 +390,7 @@ class TestTransportStore(TestCase):
         to_store.register_suffix('sig')
         to_store.copy_all_ids(from_store)
         self.assertEqual(1, len(to_store))
-        self.assertEqual(set(['foo']), set(to_store.__iter__()))
+        self.assertEqual({'foo'}, set(to_store.__iter__()))
         self.assertEqual('content', to_store.get('foo').read())
         self.assertEqual('signature', to_store.get('foo', 'sig').read())
         self.assertRaises(KeyError, to_store.get, 'missing', 'sig')

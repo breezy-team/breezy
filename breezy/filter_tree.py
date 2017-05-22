@@ -19,10 +19,10 @@
 
 from __future__ import absolute_import
 
-from breezy import (
+from . import (
     tree,
     )
-from breezy.filters import (
+from .filters import (
     ContentFilterContext,
     filtered_output_bytes,
     )

@@ -14,13 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from ...builtins import cmd_push
+from .. import (
+    transport_util,
+    ui_testing,
+    )
 
-from breezy import tests
-from breezy.builtins import cmd_push
-from breezy.tests.transport_util import TestCaseWithConnectionHookedTransport
 
-
-class TestPush(TestCaseWithConnectionHookedTransport):
+class TestPush(transport_util.TestCaseWithConnectionHookedTransport):
 
     def test_push(self):
         self.make_branch_and_tree('branch')
@@ -29,7 +30,7 @@ class TestPush(TestCaseWithConnectionHookedTransport):
 
         cmd = cmd_push()
         # We don't care about the ouput but 'outf' should be defined
-        cmd.outf = tests.StringIOWrapper()
+        cmd.outf = ui_testing.StringIOWithEncoding()
         cmd.run(self.get_url('remote'), directory='branch')
         self.assertEqual(1, len(self.connections))
 
@@ -40,7 +41,7 @@ class TestPush(TestCaseWithConnectionHookedTransport):
         self.start_logging_connections()
 
         cmd = cmd_push()
-        cmd.outf = tests.StringIOWrapper()
+        cmd.outf = ui_testing.StringIOWithEncoding()
         cmd.run(self.get_url('remote'), directory='source',
                 stacked_on=self.get_url('base'))
         self.assertEqual(1, len(self.connections))

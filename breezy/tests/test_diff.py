@@ -15,11 +15,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-from cStringIO import StringIO
 import subprocess
 import tempfile
 
-from breezy import (
+from .. import (
     diff,
     errors,
     osutils,
@@ -31,19 +30,22 @@ from breezy import (
     tests,
     transform,
     )
-from breezy.tests import (
+from ..sixish import (
+    BytesIO,
+    )
+from ..tests import (
     features,
     EncodingAdapter,
-)
-from breezy.tests.blackbox.test_diff import subst_dates
-from breezy.tests.scenarios import load_tests_apply_scenarios
+    )
+from ..tests.blackbox.test_diff import subst_dates
+from ..tests.scenarios import load_tests_apply_scenarios
 
 
 load_tests = load_tests_apply_scenarios
 
 
 def udiff_lines(old, new, allow_binary=False):
-    output = StringIO()
+    output = BytesIO()
     diff.internal_diff('old', old, 'new', new, output, allow_binary)
     output.seek(0, 0)
     return output.readlines()
@@ -51,8 +53,8 @@ def udiff_lines(old, new, allow_binary=False):
 
 def external_udiff_lines(old, new, use_stringio=False):
     if use_stringio:
-        # StringIO has no fileno, so it tests a different codepath
-        output = StringIO()
+        # BytesIO has no fileno, so it tests a different codepath
+        output = BytesIO()
     else:
         output = tempfile.TemporaryFile()
     try:
@@ -63,6 +65,22 @@ def external_udiff_lines(old, new, use_stringio=False):
     lines = output.readlines()
     output.close()
     return lines
+
+
+class StubO(object):
+    """Simple file-like object that allows writes with any type and records."""
+
+    def __init__(self):
+        self.write_record = []
+
+    def write(self, data):
+        self.write_record.append(data)
+
+    def check_types(self, testcase, expected_type):
+        testcase.assertFalse(
+            any(not isinstance(o, expected_type) for o in self.write_record),
+            "Not all writes of type %s: %r" % (
+                expected_type.__name__, self.write_record))
 
 
 class TestDiffOptions(tests.TestCase):
@@ -166,11 +184,11 @@ class TestDiff(tests.TestCase):
         self.overrideEnv('PATH', '')
         self.assertRaises(errors.NoDiff, diff.external_diff,
                           'old', ['boo\n'], 'new', ['goo\n'],
-                          StringIO(), diff_opts=['-u'])
+                          BytesIO(), diff_opts=['-u'])
 
     def test_internal_diff_default(self):
         # Default internal diff encoding is utf8
-        output = StringIO()
+        output = BytesIO()
         diff.internal_diff(u'old_\xb5', ['old_text\n'],
                            u'new_\xe5', ['new_text\n'], output)
         lines = output.getvalue().splitlines(True)
@@ -185,7 +203,7 @@ class TestDiff(tests.TestCase):
                           , lines)
 
     def test_internal_diff_utf8(self):
-        output = StringIO()
+        output = BytesIO()
         diff.internal_diff(u'old_\xb5', ['old_text\n'],
                            u'new_\xe5', ['new_text\n'], output,
                            path_encoding='utf8')
@@ -201,7 +219,7 @@ class TestDiff(tests.TestCase):
                           , lines)
 
     def test_internal_diff_iso_8859_1(self):
-        output = StringIO()
+        output = BytesIO()
         diff.internal_diff(u'old_\xb5', ['old_text\n'],
                            u'new_\xe5', ['new_text\n'], output,
                            path_encoding='iso-8859-1')
@@ -217,27 +235,25 @@ class TestDiff(tests.TestCase):
                           , lines)
 
     def test_internal_diff_no_content(self):
-        output = StringIO()
+        output = BytesIO()
         diff.internal_diff(u'old', [], u'new', [], output)
         self.assertEqual('', output.getvalue())
 
     def test_internal_diff_no_changes(self):
-        output = StringIO()
+        output = BytesIO()
         diff.internal_diff(u'old', ['text\n', 'contents\n'],
                            u'new', ['text\n', 'contents\n'],
                            output)
         self.assertEqual('', output.getvalue())
 
     def test_internal_diff_returns_bytes(self):
-        import StringIO
-        output = StringIO.StringIO()
+        output = StubO()
         diff.internal_diff(u'old_\xb5', ['old_text\n'],
                             u'new_\xe5', ['new_text\n'], output)
-        self.assertIsInstance(output.getvalue(), str,
-            'internal_diff should return bytestrings')
+        output.check_types(self, bytes)
 
     def test_internal_diff_default_context(self):
-        output = StringIO()
+        output = BytesIO()
         diff.internal_diff('old', ['same_text\n','same_text\n','same_text\n',
                            'same_text\n','same_text\n','old_text\n'],
                            'new', ['same_text\n','same_text\n','same_text\n',
@@ -257,7 +273,7 @@ class TestDiff(tests.TestCase):
                           , lines)
 
     def test_internal_diff_no_context(self):
-        output = StringIO()
+        output = BytesIO()
         diff.internal_diff('old', ['same_text\n','same_text\n','same_text\n',
                            'same_text\n','same_text\n','old_text\n'],
                            'new', ['same_text\n','same_text\n','same_text\n',
@@ -275,7 +291,7 @@ class TestDiff(tests.TestCase):
                           , lines)
 
     def test_internal_diff_more_context(self):
-        output = StringIO()
+        output = BytesIO()
         diff.internal_diff('old', ['same_text\n','same_text\n','same_text\n',
                            'same_text\n','same_text\n','old_text\n'],
                            'new', ['same_text\n','same_text\n','same_text\n',
@@ -318,7 +334,7 @@ class TestDiffFiles(tests.TestCaseInTempDir):
 
 
 def get_diff_as_string(tree1, tree2, specific_files=None, working_tree=None):
-    output = StringIO()
+    output = BytesIO()
     if working_tree is not None:
         extra_trees = (working_tree,)
     else:
@@ -584,8 +600,6 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         # See https://bugs.launchpad.net/bugs/110092.
         self.requireFeature(features.UnicodeFilenameFeature)
 
-        # This bug isn't triggered with cStringIO.
-        from StringIO import StringIO
         tree = self.make_branch_and_tree('tree')
         alpha, omega = u'\u03b1', u'\u03c9'
         alpha_utf8, omega_utf8 = alpha.encode('utf8'), omega.encode('utf8')
@@ -595,9 +609,10 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
               ('The %s and the %s\n' % (alpha_utf8, omega_utf8)))])
         tree.add([alpha], ['file-id'])
         tree.add([omega], ['file-id-2'])
-        diff_content = StringIO()
+        diff_content = StubO()
         diff.show_diff_trees(tree.basis_tree(), tree, diff_content)
-        d = diff_content.getvalue()
+        diff_content.check_types(self, bytes)
+        d = b''.join(diff_content.write_record)
         self.assertContainsRe(d, r"=== added file '%s'" % alpha_utf8)
         self.assertContainsRe(d, "Binary files a/%s.*and b/%s.* differ\n"
                               % (alpha_utf8, alpha_utf8))
@@ -654,7 +669,7 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
             ])
         tree.add([test_txt, u1234, directory])
 
-        sio = StringIO()
+        sio = BytesIO()
         diff.show_diff_trees(tree.basis_tree(), tree, sio,
             path_encoding='cp1251')
 
@@ -699,7 +714,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
         self.new_tree = self.make_branch_and_tree('new-tree')
         self.new_tree.lock_write()
         self.addCleanup(self.new_tree.unlock)
-        self.differ = diff.DiffTree(self.old_tree, self.new_tree, StringIO())
+        self.differ = diff.DiffTree(self.old_tree, self.new_tree, BytesIO())
 
     def test_diff_text(self):
         self.build_tree_contents([('old-tree/olddir/',),
@@ -710,7 +725,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
                                   ('new-tree/newdir/newfile', 'new\n')])
         self.new_tree.add('newdir')
         self.new_tree.add('newdir/newfile', 'file-id')
-        differ = diff.DiffText(self.old_tree, self.new_tree, StringIO())
+        differ = diff.DiffText(self.old_tree, self.new_tree, BytesIO())
         differ.diff_text('file-id', None, 'old label', 'new label')
         self.assertEqual(
             '--- old label\n+++ new label\n@@ -1,1 +0,0 @@\n-old\n\n',
@@ -745,17 +760,17 @@ class TestDiffTree(tests.TestCaseWithTransport):
         self.assertContainsRe(self.differ.to_file.getvalue(), '\+contents')
 
     def test_diff_symlink(self):
-        differ = diff.DiffSymlink(self.old_tree, self.new_tree, StringIO())
+        differ = diff.DiffSymlink(self.old_tree, self.new_tree, BytesIO())
         differ.diff_symlink('old target', None)
         self.assertEqual("=== target was 'old target'\n",
                          differ.to_file.getvalue())
 
-        differ = diff.DiffSymlink(self.old_tree, self.new_tree, StringIO())
+        differ = diff.DiffSymlink(self.old_tree, self.new_tree, BytesIO())
         differ.diff_symlink(None, 'new target')
         self.assertEqual("=== target is 'new target'\n",
                          differ.to_file.getvalue())
 
-        differ = diff.DiffSymlink(self.old_tree, self.new_tree, StringIO())
+        differ = diff.DiffSymlink(self.old_tree, self.new_tree, BytesIO())
         differ.diff_symlink('old target', 'new target')
         self.assertEqual("=== target changed 'old target' => 'new target'\n",
                          differ.to_file.getvalue())
@@ -815,7 +830,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
         diff.DiffTree.diff_factories=old_diff_factories[:]
         diff.DiffTree.diff_factories.insert(0, DiffWasIs.from_diff_tree)
         try:
-            differ = diff.DiffTree(self.old_tree, self.new_tree, StringIO())
+            differ = diff.DiffTree(self.old_tree, self.new_tree, BytesIO())
         finally:
             diff.DiffTree.diff_factories = old_diff_factories
         differ.diff('file-id', 'olddir/oldfile', 'newdir/newfile')
@@ -828,7 +843,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
 
     def test_extra_factories(self):
         self.create_old_new()
-        differ = diff.DiffTree(self.old_tree, self.new_tree, StringIO(),
+        differ = diff.DiffTree(self.old_tree, self.new_tree, BytesIO(),
                                extra_factories=[DiffWasIs.from_diff_tree])
         differ.diff('file-id', 'olddir/oldfile', 'newdir/newfile')
         self.assertNotContainsRe(
@@ -1405,7 +1420,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
                          diff_obj._get_command('old-path', 'new-path'))
 
     def test_execute(self):
-        output = StringIO()
+        output = BytesIO()
         diff_obj = diff.DiffFromTool(['python', '-c',
                                       'print "@old_path @new_path"'],
                                      None, None, output)
@@ -1424,7 +1439,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
 
     def test_prepare_files_creates_paths_readable_by_windows_tool(self):
         self.requireFeature(features.AttribFeature)
-        output = StringIO()
+        output = BytesIO()
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', 'content')])
         tree.add('file', 'file-id')
@@ -1453,7 +1468,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         self.assertContainsRe(result.replace('\r\n', '\n'), regex)
 
     def test_prepare_files(self):
-        output = StringIO()
+        output = BytesIO()
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/oldname', 'oldcontent')])
         self.build_tree_contents([('tree/oldname2', 'oldcontent2')])

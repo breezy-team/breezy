@@ -162,8 +162,6 @@ class TestSource(TestSourceHelper):
     def is_copyright_exception(self, fname):
         """Certain files are allowed to be different"""
         if not self.is_our_code(fname):
-            # We don't ask that external utilities or plugins be
-            # (C) Canonical Ltd
             return True
         for exc in COPYRIGHT_EXCEPTIONS:
             if fname.endswith(exc):
@@ -192,16 +190,16 @@ class TestSource(TestSourceHelper):
         incorrect = []
 
         copyright_re = re.compile('#\\s*copyright.*(?=\n)', re.I)
-        copyright_canonical_re = re.compile(
+        copyright_statement_re = re.compile(
             r'# Copyright \(C\) '  # Opening "# Copyright (C)"
-            r'(\d+)(, \d+)*'       # followed by a series of dates
-            r'.*Canonical Ltd')    # and containing 'Canonical Ltd'.
+            r'(\d+?)((, |-)\d+)*'  # followed by a series of dates
+            r' [^ ]*')             # and then whoever.
 
         for fname, text in self.get_source_file_contents(
                 extensions=('.py', '.pyx')):
             if self.is_copyright_exception(fname):
                 continue
-            match = copyright_canonical_re.search(text)
+            match = copyright_statement_re.search(text)
             if not match:
                 match = copyright_re.search(text)
                 if match:
@@ -223,7 +221,7 @@ class TestSource(TestSourceHelper):
                          " breezy/tests/test_source.py",
                          # this is broken to prevent a false match
                          "or add '# Copyright (C)"
-                         " 2007 Canonical Ltd' to these files:",
+                         " 2007 Bazaar hackers' to these files:",
                          "",
                         ]
             for fname, comment in incorrect:
@@ -280,9 +278,8 @@ class TestSource(TestSourceHelper):
             dict_[fname].append(line_no)
 
     def _format_message(self, dict_, message):
-        files = ["%s: %s" % (f, ', '.join([str(i + 1) for i in lines]))
-                for f, lines in dict_.items()]
-        files.sort()
+        files = sorted(["%s: %s" % (f, ', '.join([str(i + 1) for i in lines]))
+                for f, lines in dict_.items()])
         return message + '\n\n    %s' % ('\n    '.join(files))
 
     def test_coding_style(self):
@@ -383,7 +380,7 @@ class TestSource(TestSourceHelper):
             r'\s*(#\s*cannot[- _]raise)?')  # cannot raise comment
         for fname, text in self.get_source_file_contents(
                 extensions=('.pyx',)):
-            known_classes = set([m[-1] for m in class_re.findall(text)])
+            known_classes = {m[-1] for m in class_re.findall(text)}
             known_classes.update(extern_class_re.findall(text))
             cdefs = except_re.findall(text)
             for sig, func, exc_clause, no_exc_comment in cdefs:

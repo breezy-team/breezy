@@ -20,15 +20,15 @@
 # import system imports here
 
 #import breezy specific imports here
-import breezy.errors as errors
-from breezy.tests import TestCase
-import breezy.identitymap as identitymap
+from .. import errors as errors
+from . import TestCase
+from .. import identitymap as identitymap
 
 
 class TestIdentityMap(TestCase):
 
     def test_symbols(self):
-        from breezy.identitymap import IdentityMap
+        from ..identitymap import IdentityMap
 
     def test_construct(self):
         identitymap.IdentityMap()
@@ -57,7 +57,7 @@ class TestIdentityMap(TestCase):
 class TestNullIdentityMap(TestCase):
 
     def test_symbols(self):
-        from breezy.identitymap import NullIdentityMap
+        from ..identitymap import NullIdentityMap
 
     def test_construct(self):
         identitymap.NullIdentityMap()

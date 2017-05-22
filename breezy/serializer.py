@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 
-from breezy import registry
+from . import registry
 
 
 class Serializer(object):

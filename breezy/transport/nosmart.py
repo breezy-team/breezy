@@ -23,8 +23,8 @@ to never have a smart medium.
 
 from __future__ import absolute_import
 
-from breezy import errors
-from breezy.transport import decorator
+from .. import errors
+from ..transport import decorator
 
 
 class NoSmartTransportDecorator(decorator.TransportDecorator):
@@ -40,6 +40,6 @@ class NoSmartTransportDecorator(decorator.TransportDecorator):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from breezy.tests import test_server
+    from ..tests import test_server
     return [(NoSmartTransportDecorator, test_server.NoSmartTransportServer)]
 

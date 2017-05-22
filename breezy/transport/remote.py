@@ -24,9 +24,7 @@ from __future__ import absolute_import
 
 __all__ = ['RemoteTransport', 'RemoteTCPTransport', 'RemoteSSHTransport']
 
-from cStringIO import StringIO
-
-from breezy import (
+from .. import (
     config,
     debug,
     errors,
@@ -35,7 +33,10 @@ from breezy import (
     transport,
     urlutils,
     )
-from breezy.smart import client, medium
+from ..sixish import (
+    BytesIO,
+    )
+from ..smart import client, medium
 
 
 class _SmartStat(object):
@@ -179,7 +180,7 @@ class RemoteTransport(transport.ConnectedTransport):
         """Call a method on the remote server."""
         try:
             return self._client.call(method, *args)
-        except errors.ErrorFromSmartServer, err:
+        except errors.ErrorFromSmartServer as err:
             # The first argument, if present, is always a path.
             if args:
                 context = {'relpath': args[0]}
@@ -191,7 +192,7 @@ class RemoteTransport(transport.ConnectedTransport):
         """Call a method on the remote server with body bytes."""
         try:
             return self._client.call_with_body_bytes(method, args, body)
-        except errors.ErrorFromSmartServer, err:
+        except errors.ErrorFromSmartServer as err:
             # The first argument, if present, is always a path.
             if args:
                 context = {'relpath': args[0]}
@@ -217,13 +218,13 @@ class RemoteTransport(transport.ConnectedTransport):
 
         :see: Transport.get_bytes()/get_file()
         """
-        return StringIO(self.get_bytes(relpath))
+        return BytesIO(self.get_bytes(relpath))
 
     def get_bytes(self, relpath):
         remote = self._remote_path(relpath)
         try:
             resp, response_handler = self._client.call_expecting_body('get', remote)
-        except errors.ErrorFromSmartServer, err:
+        except errors.ErrorFromSmartServer as err:
             self._translate_error(err, relpath)
         if resp != ('ok', ):
             response_handler.cancel_read_body()
@@ -360,7 +361,7 @@ class RemoteTransport(transport.ConnectedTransport):
                     ('readv', self._remote_path(relpath),),
                     [(c.start, c.length) for c in cur_request])
                 resp, response_handler = result
-            except errors.ErrorFromSmartServer, err:
+            except errors.ErrorFromSmartServer as err:
                 self._translate_error(err, relpath)
 
             if resp[0] != 'readv':
@@ -599,5 +600,5 @@ def get_test_permutations():
     """Return (transport, server) permutations for testing."""
     ### We may need a little more test framework support to construct an
     ### appropriate RemoteTransport in the future.
-    from breezy.tests import test_server
+    from ..tests import test_server
     return [(RemoteTCPTransport, test_server.SmartTCPServer_for_testing)]

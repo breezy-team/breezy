@@ -16,14 +16,12 @@
 
 """Tests for branch.push behaviour."""
 
-from cStringIO import StringIO
-
 from testtools.matchers import (
     Equals,
     MatchesAny,
     )
 
-from breezy import (
+from ... import (
     branch,
     check,
     controldir,
@@ -33,15 +31,18 @@ from breezy import (
     tests,
     vf_repository,
     )
-from breezy.branch import Branch
-from breezy.controldir import ControlDir
-from breezy.memorytree import MemoryTree
-from breezy.revision import NULL_REVISION
-from breezy.smart.repository import SmartServerRepositoryGetParentMap
-from breezy.tests.per_interbranch import (
+from ...branch import Branch
+from ...controldir import ControlDir
+from ...memorytree import MemoryTree
+from ...revision import NULL_REVISION
+from ...sixish import (
+    BytesIO,
+    )
+from ...smart.repository import SmartServerRepositoryGetParentMap
+from . import (
     TestCaseWithInterBranch,
     )
-from breezy.tests import test_server
+from .. import test_server
 
 
 # These tests are based on similar tests in 
@@ -225,7 +226,7 @@ class TestPush(TestCaseWithInterBranch):
         # stack on trunk.
         self.make_bzrdir('.').get_config().set_default_stack_on('trunk')
         # Push rev-2 to a new branch "remote".  It will be stacked on "trunk".
-        output = StringIO()
+        output = BytesIO()
         push._show_push_branch(trunk, 'rev-2', self.get_url('remote'), output)
         # Push rev-3 onto "remote".  If "remote" not stacked and is missing the
         # fulltext record for f-id @ rev-1, then this will fail.

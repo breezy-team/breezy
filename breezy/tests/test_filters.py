@@ -14,9 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import StringIO
-from breezy import errors, filters
-from breezy.filters import (
+from .. import errors, filters
+from ..filters import (
     ContentFilter,
     ContentFilterContext,
     filtered_input_file,
@@ -25,8 +24,11 @@ from breezy.filters import (
     _get_registered_names,
     internal_size_sha_file_byname,
     )
-from breezy.osutils import sha_string
-from breezy.tests import TestCase, TestCaseInTempDir
+from ..osutils import sha_string
+from ..sixish import (
+    BytesIO,
+    )
+from . import TestCase, TestCaseInTempDir
 
 
 # sample filter stacks
@@ -66,14 +68,14 @@ class TestFilteredInput(TestCase):
     def test_filtered_input_file(self):
         # test an empty stack returns the same result
         external = ''.join(_sample_external)
-        f = StringIO.StringIO(external)
+        f = BytesIO(external)
         self.assertEqual(external, filtered_input_file(f, None).read())
         # test a single item filter stack
-        f = StringIO.StringIO(external)
+        f = BytesIO(external)
         expected = ''.join(_internal_1)
         self.assertEqual(expected, filtered_input_file(f, _stack_1).read())
         # test a multi item filter stack
-        f = StringIO.StringIO(external)
+        f = BytesIO(external)
         expected = ''.join(_internal_2)
         self.assertEqual(expected, filtered_input_file(f, _stack_2).read())
 

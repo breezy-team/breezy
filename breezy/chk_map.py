@@ -42,13 +42,13 @@ from __future__ import absolute_import
 import heapq
 import threading
 
-from breezy import lazy_import
+from . import lazy_import
 lazy_import.lazy_import(globals(), """
 from breezy import (
     errors,
     )
 """)
-from breezy import (
+from . import (
     errors,
     lru_cache,
     osutils,
@@ -56,7 +56,7 @@ from breezy import (
     static_tuple,
     trace,
     )
-from breezy.static_tuple import StaticTuple
+from .static_tuple import StaticTuple
 
 # approx 4MB
 # If each line is 50 bytes, and you have 255 internal pages, with 255-way fan
@@ -138,8 +138,8 @@ class CHKMap(object):
         has_deletes = False
         # Check preconditions first.
         as_st = StaticTuple.from_sequence
-        new_items = set([as_st(key) for (old, key, value) in delta
-                         if key is not None and old is None])
+        new_items = {as_st(key) for (old, key, value) in delta
+                         if key is not None and old is None}
         existing_new = list(self.iteritems(key_filter=new_items))
         if existing_new:
             raise errors.InconsistentDeltaDelta(delta,
@@ -158,7 +158,7 @@ class CHKMap(object):
 
     def _ensure_root(self):
         """Ensure that the root node is an object not a key."""
-        if type(self._root_node) is StaticTuple:
+        if isinstance(self._root_node, StaticTuple):
             # Demand-load the root
             self._root_node = self._get_node(self._root_node)
 
@@ -172,7 +172,7 @@ class CHKMap(object):
         :param node: A tuple key or node object.
         :return: A node object.
         """
-        if type(node) is StaticTuple:
+        if isinstance(node, StaticTuple):
             bytes = self._read_bytes(node)
             return _deserialise(bytes, node,
                 search_key_func=self._search_key_func)
@@ -209,7 +209,7 @@ class CHKMap(object):
                 key_str = ' None'
         result.append('%s%r %s%s' % (indent, prefix, node.__class__.__name__,
                                      key_str))
-        if type(node) is InternalNode:
+        if isinstance(node, InternalNode):
             # Trigger all child nodes to get loaded
             list(node._iter_nodes(self._store))
             for prefix, sub in sorted(node._items.iteritems()):
@@ -243,7 +243,7 @@ class CHKMap(object):
         root_key = klass._create_directly(store, initial_value,
             maximum_size=maximum_size, key_width=key_width,
             search_key_func=search_key_func)
-        if type(root_key) is not StaticTuple:
+        if not isinstance(root_key, StaticTuple):
             raise AssertionError('we got a %s instead of a StaticTuple'
                                  % (type(root_key),))
         return root_key
@@ -331,7 +331,7 @@ class CHKMap(object):
         def process_node(node, path, a_map, pending):
             # take a node and expand it
             node = a_map._get_node(node)
-            if type(node) == LeafNode:
+            if isinstance(node, LeafNode):
                 path = (node._key, path)
                 for key, value in node._items.items():
                     # For a LeafNode, the key is a serialized_key, rather than
@@ -369,12 +369,12 @@ class CHKMap(object):
             # time?
             self_node = self._get_node(self_node)
             basis_node = basis._get_node(basis_node)
-            if (type(self_node) == InternalNode
-                and type(basis_node) == InternalNode):
+            if (isinstance(self_node, InternalNode)
+                and isinstance(basis_node, InternalNode)):
                 # Matching internal nodes
                 process_common_internal_nodes(self_node, basis_node)
-            elif (type(self_node) == LeafNode
-                  and type(basis_node) == LeafNode):
+            elif (isinstance(self_node, LeafNode)
+                  and isinstance(basis_node, LeafNode)):
                 process_common_leaf_nodes(self_node, basis_node)
             else:
                 process_node(self_node, self_path, self, self_pending)
@@ -519,7 +519,7 @@ class CHKMap(object):
 
     def key(self):
         """Return the key for this map."""
-        if type(self._root_node) is StaticTuple:
+        if isinstance(self._root_node, StaticTuple):
             return self._root_node
         else:
             return self._root_node._key
@@ -550,9 +550,9 @@ class CHKMap(object):
 
     def _node_key(self, node):
         """Get the key for a node whether it's a tuple or node."""
-        if type(node) is tuple:
+        if isinstance(node, tuple):
             node = StaticTuple.from_sequence(node)
-        if type(node) is StaticTuple:
+        if isinstance(node, StaticTuple):
             return node
         else:
             return node._key
@@ -561,7 +561,7 @@ class CHKMap(object):
         """remove key from the map."""
         key = StaticTuple.from_sequence(key)
         self._ensure_root()
-        if type(self._root_node) is InternalNode:
+        if isinstance(self._root_node, InternalNode):
             unmapped = self._root_node.unmap(self._store, key,
                 check_remap=check_remap)
         else:
@@ -571,7 +571,7 @@ class CHKMap(object):
     def _check_remap(self):
         """Check if nodes can be collapsed."""
         self._ensure_root()
-        if type(self._root_node) is InternalNode:
+        if isinstance(self._root_node, InternalNode):
             self._root_node = self._root_node._check_remap(self._store)
 
     def _save(self):
@@ -579,7 +579,7 @@ class CHKMap(object):
 
         :return: The key of the root node.
         """
-        if type(self._root_node) is StaticTuple:
+        if isinstance(self._root_node, StaticTuple):
             # Already saved.
             return self._root_node
         keys = list(self._root_node.serialise(self._store))
@@ -1228,7 +1228,7 @@ class InternalNode(Node):
             # new child needed:
             child = self._new_child(search_key, LeafNode)
         old_len = len(child)
-        if type(child) is LeafNode:
+        if isinstance(child, LeafNode):
             old_size = child._current_size()
         else:
             old_size = None
@@ -1240,7 +1240,7 @@ class InternalNode(Node):
             self._items[search_key] = child
             self._key = None
             new_node = self
-            if type(child) is LeafNode:
+            if isinstance(child, LeafNode):
                 if old_size is None:
                     # The old node was an InternalNode which means it has now
                     # collapsed, so we need to check if it will chain to a
@@ -1293,7 +1293,7 @@ class InternalNode(Node):
         :return: An iterable of the keys inserted by this operation.
         """
         for node in self._items.itervalues():
-            if type(node) is StaticTuple:
+            if isinstance(node, StaticTuple):
                 # Never deserialised.
                 continue
             if node._key is not None:
@@ -1310,7 +1310,7 @@ class InternalNode(Node):
         lines.append('%s\n' % (self._search_prefix,))
         prefix_len = len(self._search_prefix)
         for prefix, node in sorted(self._items.items()):
-            if type(node) is StaticTuple:
+            if isinstance(node, StaticTuple):
                 key = node[0]
             else:
                 key = node._key[0]
@@ -1355,7 +1355,7 @@ class InternalNode(Node):
             raise AssertionError("unserialised nodes have no refs.")
         refs = []
         for value in self._items.itervalues():
-            if type(value) is StaticTuple:
+            if isinstance(value, StaticTuple):
                 refs.append(value)
             else:
                 refs.append(value.key())
@@ -1394,7 +1394,7 @@ class InternalNode(Node):
         if len(self._items) == 1:
             # this node is no longer needed:
             return self._items.values()[0]
-        if type(unmapped) is InternalNode:
+        if isinstance(unmapped, InternalNode):
             return self
         if check_remap:
             return self._check_remap(store)
@@ -1440,7 +1440,7 @@ class InternalNode(Node):
         #   c) With 255-way fan out, we don't want to read all 255 and destroy
         #      the page cache, just to determine that we really don't need it.
         for node, _ in self._iter_nodes(store, batch_size=16):
-            if type(node) is InternalNode:
+            if isinstance(node, InternalNode):
                 # Without looking at any leaf nodes, we are sure
                 return self
             for key, value in node._items.iteritems():
@@ -1525,7 +1525,7 @@ class CHKMapDifference(object):
             bytes = record.get_bytes_as('fulltext')
             node = _deserialise(bytes, record.key,
                                 search_key_func=self._search_key_func)
-            if type(node) is InternalNode:
+            if isinstance(node, InternalNode):
                 # Note we don't have to do node.refs() because we know that
                 # there are no children that have been pushed into this node
                 # Note: Using as_st() here seemed to save 1.2MB, which would
@@ -1732,7 +1732,7 @@ try:
         _deserialise_leaf_node,
         _deserialise_internal_node,
         )
-except ImportError, e:
+except ImportError as e:
     osutils.failed_to_load_extension(e)
     from breezy._chk_map_py import (
         _bytes_to_text_key,
@@ -1751,11 +1751,11 @@ def _check_key(key):
     This generally shouldn't be used in production code, but it can be helpful
     to debug problems.
     """
-    if type(key) is not StaticTuple:
+    if not isinstance(key, StaticTuple):
         raise TypeError('key %r is not StaticTuple but %s' % (key, type(key)))
     if len(key) != 1:
         raise ValueError('key %r should have length 1, not %d' % (key, len(key),))
-    if type(key[0]) is not str:
+    if not isinstance(key[0], str):
         raise TypeError('key %r should hold a str, not %r'
                         % (key, type(key[0])))
     if not key[0].startswith('sha1:'):

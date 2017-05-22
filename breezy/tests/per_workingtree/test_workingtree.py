@@ -16,11 +16,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
 import errno
 import os
 
-from breezy import (
+from ... import (
     branch,
     bzrdir,
     config,
@@ -33,27 +32,30 @@ from breezy import (
     trace,
     urlutils,
     )
-from breezy.errors import (
+from ...errors import (
     UnsupportedOperation,
     PathsNotVersionedError,
     )
-from breezy.inventory import Inventory
-from breezy.mutabletree import MutableTree
-from breezy.osutils import pathjoin, getcwd, has_symlinks
-from breezy.tests import (
+from ...inventory import Inventory
+from ...mutabletree import MutableTree
+from ...osutils import pathjoin, getcwd, has_symlinks
+from ...sixish import (
+    BytesIO,
+    )
+from .. import (
     features,
     TestSkipped,
     TestNotApplicable,
     )
-from breezy.tests.per_workingtree import TestCaseWithWorkingTree
-from breezy.workingtree import (
+from .  import TestCaseWithWorkingTree
+from ...workingtree import (
     TreeDirectory,
     TreeFile,
     TreeLink,
     InventoryWorkingTree,
     WorkingTree,
     )
-from breezy.conflicts import ConflictList, TextConflict, ContentsConflict
+from ...conflicts import ConflictList, TextConflict, ContentsConflict
 
 
 class TestWorkingTree(TestCaseWithWorkingTree):
@@ -318,8 +320,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree(['hello'])
         wt.add(['hello'])
         wt.commit(message='add hello')
-        stdout = StringIO()
-        stderr = StringIO()
+        stdout = BytesIO()
+        stderr = BytesIO()
         self.assertEqual(None, self.apply_redirected(None, stdout, stderr,
                                                      wt.remove,
                                                      ['hello'],
@@ -882,7 +884,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual(
-            set(['not-here-and-not-versioned', 'here-and-not-versioned']),
+            {'not-here-and-not-versioned', 'here-and-not-versioned'},
             tree.filter_unversioned_files(paths))
 
     def test_detect_real_kind(self):
@@ -986,7 +988,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                 self.assertFalse(tree.is_executable(tree.path2id('filename')))
             finally:
                 tree.unlock()
-            os.chmod('filename', 0755)
+            os.chmod('filename', 0o755)
             self.addCleanup(tree.lock_read().unlock)
             self.assertTrue(tree.is_executable(tree.path2id('filename')))
         else:
@@ -1000,7 +1002,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree(['tree/a', 'tree/b'])
         tree.add(['a', 'b'], ['a-id', 'b-id'])
         os.unlink('tree/a')
-        self.assertEqual(set(['a-id', 'b-id', tree.get_root_id()]),
+        self.assertEqual({'a-id', 'b-id', tree.get_root_id()},
                          tree.all_file_ids())
 
     def test_sprout_hardlink(self):

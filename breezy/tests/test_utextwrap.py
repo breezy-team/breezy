@@ -17,11 +17,11 @@
 
 """Tests of the breezy.utextwrap."""
 
-from breezy import (
+from .. import (
     tests,
     utextwrap,
     )
-from breezy.tests import features
+from . import features
 
 
 # Japanese "Good morning".

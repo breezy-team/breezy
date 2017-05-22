@@ -18,14 +18,14 @@
 
 from testtools.matchers import *
 
-from breezy.smart.client import CallHookParams
+from ..smart.client import CallHookParams
 
-from breezy.tests import (
+from . import (
     CapturedCall,
     TestCase,
     TestCaseWithTransport,
     )
-from breezy.tests.matchers import *
+from .matchers import *
 
 
 class StubTree(object):
@@ -133,8 +133,8 @@ class TestHasLayout(TestCaseWithTransport):
         mismatch = HasLayout(['a']).match(t)
         self.assertIsNot(None, mismatch)
         self.assertEqual(
-            "['a'] != [u'', u'a', u'b/', u'b/c']",
-            mismatch.describe())
+            set(("[u'', u'a', u'b/', u'b/c']", "['a']")),
+            set(mismatch.describe().split(" != ")))
 
     def test_no_dirs(self):
         # Some tree/repository formats do not support versioned directories
@@ -147,8 +147,8 @@ class TestHasLayout(TestCaseWithTransport):
         mismatch = HasLayout([u'', u'a', u'd/']).match(t)
         self.assertIsNot(None, mismatch)
         self.assertEqual(
-            "[u'', u'a'] != [u'', u'a', u'b/', u'b/c']",
-            mismatch.describe())
+            set(("[u'', u'a', u'b/', u'b/c']", "[u'', u'a']")),
+            set(mismatch.describe().split(" != ")))
 
 
 class TestContainsNoVfsCalls(TestCase):
@@ -200,5 +200,5 @@ class TestRevisionHistoryMatches(TestCaseWithTransport):
         tree.commit('msg2', rev_id='b')
         matcher = RevisionHistoryMatches(['a', 'b', 'c'])
         self.assertEqual(
-            "['a', 'b', 'c'] != ['a', 'b']",
-            matcher.match(tree.branch).describe())
+            set(("['a', 'b']", "['a', 'b', 'c']")),
+            set(matcher.match(tree.branch).describe().split(" != ")))

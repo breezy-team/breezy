@@ -16,13 +16,13 @@
 
 from __future__ import absolute_import
 
-from breezy import (
+from . import (
     cache_utf8,
     errors,
     inventory,
     xml6,
     )
-from breezy.xml_serializer import (
+from .xml_serializer import (
     encode_and_escape,
     get_utf8_or_ascii,
     unpack_inventory_entry,

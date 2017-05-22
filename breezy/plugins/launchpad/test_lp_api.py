@@ -15,12 +15,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from breezy import config, errors, osutils
-from breezy.tests import (
+from ... import config, errors, osutils
+from ...tests import (
     TestCase,
     TestCaseWithTransport,
     )
-from breezy.tests.features import (
+from ...tests.features import (
     ModuleAvailableFeature,
     )
 
@@ -35,7 +35,7 @@ class TestDependencyManagement(TestCase):
 
     def setUp(self):
         super(TestDependencyManagement, self).setUp()
-        from breezy.plugins.launchpad import lp_api
+        from . import lp_api
         self.lp_api = lp_api
 
     def patch(self, obj, name, value):
@@ -78,7 +78,7 @@ class TestCacheDirectory(TestCase):
     def test_get_cache_directory(self):
         # get_cache_directory returns the path to a directory inside the
         # Bazaar configuration directory.
-        from breezy.plugins.launchpad import lp_api
+        from . import lp_api
         expected_path = osutils.pathjoin(config.config_dir(), 'launchpad')
         self.assertEqual(expected_path, lp_api.get_cache_directory())
 

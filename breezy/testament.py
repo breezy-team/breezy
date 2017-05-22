@@ -73,12 +73,12 @@ from __future__ import absolute_import
 
 from copy import copy
 
-from breezy.osutils import (
+from .osutils import (
     contains_whitespace,
     contains_linebreaks,
     sha_strings,
     )
-from breezy.tree import Tree
+from .tree import Tree
 
 
 class Testament(object):

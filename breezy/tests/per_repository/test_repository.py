@@ -16,10 +16,9 @@
 
 """Tests for repository implementations - tests a repository format."""
 
-from cStringIO import StringIO
 import re
 
-from breezy import (
+from ... import (
     branch as _mod_branch,
     controldir,
     delta as _mod_delta,
@@ -35,14 +34,17 @@ from breezy import (
     upgrade,
     workingtree,
     )
-from breezy.repofmt import (
+from ...repofmt import (
     knitpack_repo,
     )
-from breezy.tests import (
+from ...sixish import (
+    BytesIO,
+    )
+from .. import (
     per_repository,
     test_server,
     )
-from breezy.tests.matchers import *
+from ..matchers import *
 
 
 class TestRepositoryMakeBranchAndTree(per_repository.TestCaseWithRepository):
@@ -348,7 +350,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         except errors.UpToDateFormat:
             # this is in the most current format already.
             return
-        except errors.BadConversionTarget, e:
+        except errors.BadConversionTarget as e:
             raise tests.TestSkipped(str(e))
         wt = workingtree.WorkingTree.open(wt.basedir)
         new_signature = wt.branch.repository.get_signature_text('A')
@@ -794,7 +796,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository('repo')
         try:
             repo.set_make_working_trees(True)
-        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation), e:
+        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation) as e:
             raise tests.TestNotApplicable('Format does not support this flag.')
         self.assertTrue(repo.make_working_trees())
 
@@ -802,7 +804,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository('repo')
         try:
             repo.set_make_working_trees(False)
-        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation), e:
+        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation) as e:
             raise tests.TestNotApplicable('Format does not support this flag.')
         self.assertFalse(repo.make_working_trees())
 
@@ -918,7 +920,7 @@ class TestEscaping(tests.TestCaseWithTransport):
         self.build_tree(['repo/file1'])
         wt.add('file1')
         wt.commit('file1', rev_id='rev1')
-        fileobj = StringIO()
+        fileobj = BytesIO()
         wt.branch.repository.create_bundle(
             'rev1', _mod_revision.NULL_REVISION, fileobj)
 

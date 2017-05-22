@@ -20,10 +20,9 @@ from __future__ import absolute_import
 
 import errno
 import os
-from cStringIO import StringIO
 
 import breezy
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     atomicfile,
@@ -32,6 +31,9 @@ from breezy import (
     trace,
     )
 """)
+from breezy.sixish import (
+    BytesIO,
+    )
 
 # ~/.bazaar/ignore will be filled out using
 # this ignore list, if it does not exist
@@ -92,7 +94,7 @@ def get_user_ignores():
     patterns = set(USER_DEFAULTS)
     try:
         f = open(path, 'rb')
-    except (IOError, OSError), e:
+    except (IOError, OSError) as e:
         # open() shouldn't return an IOError without errno, but just in case
         err = getattr(e, 'errno', None)
         if err not in (errno.ENOENT,):
@@ -102,7 +104,7 @@ def get_user_ignores():
         # since get_* should be a safe operation
         try:
             _set_user_ignores(USER_DEFAULTS)
-        except (IOError, OSError), e:
+        except (IOError, OSError) as e:
             if e.errno not in (errno.EPERM,):
                 raise
         return patterns
@@ -201,7 +203,7 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
             file_contents = f.read()
             # figure out what kind of line endings are used
             newline = getattr(f, 'newlines', None)
-            if type(newline) is tuple:
+            if isinstance(newline, tuple):
                 newline = newline[0]
             elif newline is None:
                 newline = os.linesep
@@ -211,7 +213,7 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
         file_contents = ""
         newline = os.linesep
     
-    sio = StringIO(file_contents)
+    sio = BytesIO(file_contents)
     try:
         ignores = parse_ignore_file(sio)
     finally:

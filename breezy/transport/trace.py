@@ -22,7 +22,7 @@ and then delegates it.
 
 from __future__ import absolute_import
 
-from breezy.transport import decorator
+from ..transport import decorator
 
 
 class TransportTraceDecorator(decorator.TransportDecorator):

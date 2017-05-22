@@ -18,13 +18,13 @@
 
 from __future__ import absolute_import
 
-from breezy import (
+from .. import (
     bencode,
     errors,
     revision as _mod_revision,
     )
-from breezy.controldir import ControlDir
-from breezy.smart.request import (
+from ..controldir import ControlDir
+from .request import (
     FailedSmartServerResponse,
     SmartServerRequest,
     SuccessfulSmartServerResponse,
@@ -261,7 +261,7 @@ class SmartServerSetTipRequest(SmartServerLockedBranchRequest):
     def do_with_locked_branch(self, branch, *args):
         try:
             return self.do_tip_change_with_locked_branch(branch, *args)
-        except errors.TipChangeRejected, e:
+        except errors.TipChangeRejected as e:
             msg = e.msg
             if isinstance(msg, unicode):
                 msg = msg.encode('utf-8')
@@ -406,7 +406,7 @@ class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
             return FailedSmartServerResponse(('TokenMismatch',))
         except errors.UnlockableTransport:
             return FailedSmartServerResponse(('UnlockableTransport',))
-        except errors.LockFailed, e:
+        except errors.LockFailed as e:
             return FailedSmartServerResponse(('LockFailed', str(e.lock), str(e.why)))
         if repo_token is None:
             repo_token = ''

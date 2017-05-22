@@ -21,9 +21,9 @@ These tests are repeated for all pack-based repository formats.
 
 from stat import S_ISDIR
 
-from breezy.btree_index import BTreeGraphIndex
-from breezy.index import GraphIndex
-from breezy import (
+from ..btree_index import BTreeGraphIndex
+from ..index import GraphIndex
+from .. import (
     controldir,
     errors,
     inventory,
@@ -34,18 +34,18 @@ from breezy import (
     transport,
     ui,
     )
-from breezy.repofmt.groupcompress_repo import RepositoryFormat2a
-from breezy.smart import (
+from ..repofmt.groupcompress_repo import RepositoryFormat2a
+from ..smart import (
     client,
     )
-from breezy.tests import (
+from . import (
     TestCaseWithTransport,
     TestNotApplicable,
     )
-from breezy.transport import (
+from ..transport import (
     memory,
     )
-from breezy.tests import test_server
+from . import test_server
 
 
 class TestPackRepository(TestCaseWithTransport):
@@ -283,8 +283,8 @@ class TestPackRepository(TestCaseWithTransport):
         """
         repo = self.make_repository('repo')
         pack_coll = repo._pack_collection
-        indices = set([pack_coll.revision_index, pack_coll.inventory_index,
-                pack_coll.text_index, pack_coll.signature_index])
+        indices = {pack_coll.revision_index, pack_coll.inventory_index,
+                pack_coll.text_index, pack_coll.signature_index}
         if pack_coll.chk_index is not None:
             indices.add(pack_coll.chk_index)
         combined_indices = set(idx.combined_index for idx in indices)
@@ -356,7 +356,7 @@ class TestPackRepository(TestCaseWithTransport):
         # revision access tends to be tip->ancestor, so ordering that way on
         # disk is a good idea.
         for _1, key, val, refs in pack.revision_index.iter_all_entries():
-            if type(format.repository_format) is RepositoryFormat2a:
+            if isinstance(format.repository_format, RepositoryFormat2a):
                 # group_start, group_len, internal_start, internal_len
                 pos = map(int, val.split())
             else:

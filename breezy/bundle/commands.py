@@ -23,9 +23,7 @@ and for applying a changeset.
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
-
-from breezy.lazy_import import lazy_import
+from ..lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     branch,
@@ -38,7 +36,10 @@ from breezy import (
 from breezy.i18n import gettext
 """)
 
-from breezy.commands import Command
+from ..commands import Command
+from ..sixish import (
+    BytesIO,
+    )
 
 
 class cmd_bundle_info(Command):
@@ -56,7 +57,7 @@ class cmd_bundle_info(Command):
         term_encoding = osutils.get_terminal_encoding()
         bundle_info = read_mergeable_from_url(location)
         if isinstance(bundle_info, merge_directive.BaseMergeDirective):
-            bundle_file = StringIO(bundle_info.get_raw_bundle())
+            bundle_file = BytesIO(bundle_info.get_raw_bundle())
             bundle_info = read_bundle(bundle_file)
         else:
             if verbose:

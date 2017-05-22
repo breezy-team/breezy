@@ -21,7 +21,7 @@ import logging
 import unittest
 import weakref
 
-from breezy import pyutils
+from .. import pyutils
 
 # Mark this python module as being part of the implementation
 # of unittest: this gives us better tracebacks where the last
@@ -63,8 +63,8 @@ def visitTests(suite, visitor):
                 visitor.visitSuite(test)
                 visitTests(test, visitor)
             else:
-                print "unvisitable non-unittest.TestCase element %r (%r)" % (
-                    test, test.__class__)
+                print("unvisitable non-unittest.TestCase element %r (%r)" % (
+                    test, test.__class__))
 
 
 class FailedCollectionCase(unittest.TestCase):
@@ -179,13 +179,10 @@ class TestLoader(unittest.TestLoader):
         >>>         result.addTests([test, test])
         >>>     return result
         """
-        if sys.version_info < (2, 7):
-            basic_tests = super(TestLoader, self).loadTestsFromModule(module)
-        else:
-            # GZ 2010-07-19: Python 2.7 unittest also uses load_tests but with
-            #                a different and incompatible signature
-            basic_tests = super(TestLoader, self).loadTestsFromModule(module,
-                use_load_tests=False)
+        # GZ 2010-07-19: Python 2.7 unittest also uses load_tests but with
+        #                a different and incompatible signature
+        basic_tests = super(TestLoader, self).loadTestsFromModule(module,
+            use_load_tests=False)
         load_tests = getattr(module, "load_tests", None)
         if load_tests is not None:
             return load_tests(basic_tests, module, self)

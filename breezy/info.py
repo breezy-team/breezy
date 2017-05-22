@@ -18,11 +18,10 @@ from __future__ import absolute_import
 
 __all__ = ['show_bzrdir_info']
 
-from cStringIO import StringIO
 import time
 import sys
 
-from breezy import (
+from . import (
     bzrdir,
     controldir,
     errors,
@@ -30,9 +29,12 @@ from breezy import (
     osutils,
     urlutils,
     )
-from breezy.errors import (NoWorkingTree, NotBranchError,
+from .errors import (NoWorkingTree, NotBranchError,
                            NoRepositoryPresent, NotLocalUrl)
-from breezy.missing import find_unmerged
+from .missing import find_unmerged
+from .sixish import (
+    BytesIO,
+    )
 
 
 def plural(n, base='', pl=None):
@@ -329,7 +331,7 @@ def _show_repository_info(repository, outfile):
 
 def _show_repository_stats(repository, stats, outfile):
     """Show statistics about a repository."""
-    f = StringIO()
+    f = BytesIO()
     if 'revisions' in stats:
         revisions = stats['revisions']
         f.write('  %8d revision%s\n' % (revisions, plural(revisions)))

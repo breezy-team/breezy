@@ -20,13 +20,16 @@ from __future__ import absolute_import
 
 import bz2
 import os
-import Queue
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 import sys
 import tempfile
 import threading
 import zlib
 
-from breezy import (
+from .. import (
     bencode,
     errors,
     estimate_compressed_size,
@@ -38,15 +41,18 @@ from breezy import (
     ui,
     vf_search,
     )
-from breezy.bzrdir import BzrDir
-from breezy.smart.request import (
+from ..bzrdir import BzrDir
+from ..sixish import (
+    reraise,
+)
+from .request import (
     FailedSmartServerResponse,
     SmartServerRequest,
     SuccessfulSmartServerResponse,
     )
-from breezy.repository import _strip_NULL_ghosts, network_format_registry
-from breezy import revision as _mod_revision
-from breezy.versionedfile import (
+from ..repository import _strip_NULL_ghosts, network_format_registry
+from .. import revision as _mod_revision
+from ..versionedfile import (
     ChunkedContentFactory,
     NetworkRecordStream,
     record_to_fulltext_bytes,
@@ -327,7 +333,7 @@ class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):
         """
         try:
             found_flag, result = repository.get_rev_id_for_revno(revno, known_pair)
-        except errors.RevisionNotPresent, err:
+        except errors.RevisionNotPresent as err:
             if err.revision_id != known_pair[1]:
                 raise AssertionError(
                     'get_rev_id_for_revno raised RevisionNotPresent for '
@@ -428,15 +434,15 @@ class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
             return FailedSmartServerResponse(('nosuchrevision', revid))
 
         body = ''
-        if stats.has_key('committers'):
+        if 'committers' in stats:
             body += 'committers: %d\n' % stats['committers']
-        if stats.has_key('firstrev'):
+        if 'firstrev' in stats:
             body += 'firstrev: %.3f %d\n' % stats['firstrev']
-        if stats.has_key('latestrev'):
+        if 'latestrev' in stats:
              body += 'latestrev: %.3f %d\n' % stats['latestrev']
-        if stats.has_key('revisions'):
+        if 'revisions' in stats:
             body += 'revisions: %d\n' % stats['revisions']
-        if stats.has_key('size'):
+        if 'size' in stats:
             body += 'size: %d\n' % stats['size']
 
         return SuccessfulSmartServerResponse(('ok', ), body)
@@ -458,7 +464,7 @@ class SmartServerRepositoryGetRevisionSignatureText(
         """
         try:
             text = repository.get_signature_text(revision_id)
-        except errors.NoSuchRevision, err:
+        except errors.NoSuchRevision as err:
             return FailedSmartServerResponse(
                 ('nosuchrevision', err.revision))
         return SuccessfulSmartServerResponse(('ok', ), text)
@@ -504,11 +510,11 @@ class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
             token = None
         try:
             token = repository.lock_write(token=token).repository_token
-        except errors.LockContention, e:
+        except errors.LockContention as e:
             return FailedSmartServerResponse(('LockContention',))
         except errors.UnlockableTransport:
             return FailedSmartServerResponse(('UnlockableTransport',))
-        except errors.LockFailed, e:
+        except errors.LockFailed as e:
             return FailedSmartServerResponse(('LockFailed',
                 str(e.lock), str(e.why)))
         if token is not None:
@@ -584,12 +590,11 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
             source = repository._get_source(self._to_format)
             stream = source.get_stream(search_result)
         except Exception:
-            exc_info = sys.exc_info()
             try:
                 # On non-error, unlocking is done by the body stream handler.
                 repository.unlock()
             finally:
-                raise exc_info[0], exc_info[1], exc_info[2]
+                raise
         return SuccessfulSmartServerResponse(('ok',),
             body_stream=self.body_stream(stream, repository))
 
@@ -598,7 +603,7 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
         try:
             for bytes in byte_stream:
                 yield bytes
-        except errors.RevisionNotPresent, e:
+        except errors.RevisionNotPresent as e:
             # This shouldn't be able to happen, but as we don't buffer
             # everything it can in theory happen.
             repository.unlock()
@@ -778,7 +783,7 @@ class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
     def do_repository_request(self, repository, token):
         try:
             repository.lock_write(token=token)
-        except errors.TokenMismatch, e:
+        except errors.TokenMismatch as e:
             return FailedSmartServerResponse(('TokenMismatch',))
         repository.dont_leave_lock_in_place()
         repository.unlock()
@@ -887,7 +892,7 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
         tokens = [token for token in resume_tokens.split(' ') if token]
         self.tokens = tokens
         self.repository = repository
-        self.queue = Queue.Queue()
+        self.queue = queue.Queue()
         self.insert_thread = threading.Thread(target=self._inserter_thread)
         self.insert_thread.start()
 
@@ -918,8 +923,10 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
         if self.insert_thread is not None:
             self.insert_thread.join()
         if not self.insert_ok:
-            exc_info = self.insert_exception
-            raise exc_info[0], exc_info[1], exc_info[2]
+            try:
+                reraise(*self.insert_exception)
+            finally:
+                del self.insert_exception
         write_group_tokens, missing_keys = self.insert_result
         if write_group_tokens or missing_keys:
             # bzip needed? missing keys should typically be a small set.
@@ -1040,7 +1047,7 @@ class SmartServerRepositoryCommitWriteGroup(SmartServerRepositoryRequest):
         try:
             try:
                 repository.resume_write_group(write_group_tokens)
-            except errors.UnresumableWriteGroup, e:
+            except errors.UnresumableWriteGroup as e:
                 return FailedSmartServerResponse(
                     ('UnresumableWriteGroup', e.write_groups, e.reason))
             try:
@@ -1067,7 +1074,7 @@ class SmartServerRepositoryAbortWriteGroup(SmartServerRepositoryRequest):
         try:
             try:
                 repository.resume_write_group(write_group_tokens)
-            except errors.UnresumableWriteGroup, e:
+            except errors.UnresumableWriteGroup as e:
                 return FailedSmartServerResponse(
                     ('UnresumableWriteGroup', e.write_groups, e.reason))
                 repository.abort_write_group()
@@ -1088,7 +1095,7 @@ class SmartServerRepositoryCheckWriteGroup(SmartServerRepositoryRequest):
         try:
             try:
                 repository.resume_write_group(write_group_tokens)
-            except errors.UnresumableWriteGroup, e:
+            except errors.UnresumableWriteGroup as e:
                 return FailedSmartServerResponse(
                     ('UnresumableWriteGroup', e.write_groups, e.reason))
             else:
@@ -1118,7 +1125,7 @@ class SmartServerRepositoryReconcile(SmartServerRepositoryRequest):
     def do_repository_request(self, repository, lock_token):
         try:
             repository.lock_write(token=lock_token)
-        except errors.TokenLockingNotSupported, e:
+        except errors.TokenLockingNotSupported as e:
             return FailedSmartServerResponse(
                 ('TokenLockingNotSupported', ))
         try:

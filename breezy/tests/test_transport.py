@@ -15,22 +15,24 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from cStringIO import StringIO
 import errno
 import os
 import subprocess
 import sys
 import threading
 
-from breezy import (
+from .. import (
     errors,
     osutils,
     tests,
     transport,
     urlutils,
     )
-from breezy.directory_service import directories
-from breezy.transport import (
+from ..directory_service import directories
+from ..sixish import (
+    BytesIO,
+    )
+from ..transport import (
     chroot,
     fakenfs,
     http,
@@ -41,7 +43,7 @@ from breezy.transport import (
     readonly,
     )
 import breezy.transport.trace
-from breezy.tests import (
+from . import (
     features,
     test_server,
     )
@@ -93,7 +95,7 @@ class TestTransport(tests.TestCase):
             'foo', 'breezy.tests.test_transport', 'BadTransportHandler')
         try:
             transport.get_transport_from_url('foo://fooserver/foo')
-        except errors.UnsupportedProtocol, e:
+        except errors.UnsupportedProtocol as e:
             e_str = str(e)
             self.assertEqual('Unsupported protocol'
                                 ' for url "foo://fooserver/foo":'
@@ -119,7 +121,7 @@ class TestTransport(tests.TestCase):
         """Transport ssh:// should raise an error pointing out bzr+ssh://"""
         try:
             transport.get_transport_from_url('ssh://fooserver/foo')
-        except errors.UnsupportedProtocol, e:
+        except errors.UnsupportedProtocol as e:
             e_str = str(e)
             self.assertEqual('Unsupported protocol'
                               ' for url "ssh://fooserver/foo":'
@@ -134,7 +136,7 @@ class TestTransport(tests.TestCase):
         a_file = transport.LateReadError('a path')
         try:
             a_file.read()
-        except errors.ReadError, error:
+        except errors.ReadError as error:
             self.assertEqual('a path', error.path)
         self.assertRaises(errors.ReadError, a_file.read, 40)
         a_file.close()
@@ -272,12 +274,12 @@ class TestMemoryTransport(tests.TestCase):
         t = memory.MemoryTransport()
         t.append_bytes('path', 'content')
         self.assertEqual(t.get('path').read(), 'content')
-        t.append_file('path', StringIO('content'))
+        t.append_file('path', BytesIO(b'content'))
         self.assertEqual(t.get('path').read(), 'contentcontent')
 
     def test_put_and_get(self):
         t = memory.MemoryTransport()
-        t.put_file('path', StringIO('content'))
+        t.put_file('path', BytesIO(b'content'))
         self.assertEqual(t.get('path').read(), 'content')
         t.put_bytes('path', 'content')
         self.assertEqual(t.get('path').read(), 'content')
@@ -290,7 +292,7 @@ class TestMemoryTransport(tests.TestCase):
     def test_put_without_dir_fails(self):
         t = memory.MemoryTransport()
         self.assertRaises(errors.NoSuchFile,
-                          t.put_file, 'dir/path', StringIO('content'))
+                          t.put_file, 'dir/path', BytesIO(b'content'))
 
     def test_get_missing(self):
         transport = memory.MemoryTransport()
@@ -342,7 +344,7 @@ class TestMemoryTransport(tests.TestCase):
         t.put_bytes('dir/bar', 'content')
         t.put_bytes('bar', 'content')
         paths = set(t.iter_files_recursive())
-        self.assertEqual(set(['dir/foo', 'dir/bar', 'bar']), paths)
+        self.assertEqual({'dir/foo', 'dir/bar', 'bar'}, paths)
 
     def test_stat(self):
         t = memory.MemoryTransport()
@@ -780,7 +782,7 @@ class TestLocalTransportMutation(tests.TestCaseInTempDir):
             raise e
         self.overrideAttr(os, 'chmod', fake_chmod)
         t.mkdir('test')
-        t.mkdir('test2', mode=0707)
+        t.mkdir('test2', mode=0o707)
         self.assertTrue(os.path.exists('test'))
         self.assertTrue(os.path.exists('test2'))
 

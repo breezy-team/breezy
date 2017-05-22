@@ -22,16 +22,16 @@ These were formats present in pre-1.0 version of Bazaar.
 from __future__ import absolute_import
 
 # Since we are a built-in plugin we share the breezy version
-from breezy import version_info
+from ... import version_info
 
-from breezy import (
+from ... import (
     branch as _mod_branch,
     controldir,
     repository as _mod_repository,
     serializer,
     workingtree as _mod_workingtree,
     )
-from breezy.bzrdir import (
+from ...bzrdir import (
     BzrProber,
     register_metadir,
     )

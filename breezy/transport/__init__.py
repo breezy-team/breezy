@@ -28,14 +28,12 @@ it.
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
+import errno
 import sys
 
-from breezy.lazy_import import lazy_import
+from ..lazy_import import lazy_import
 lazy_import(globals(), """
-import errno
 from stat import S_ISDIR
-import urlparse
 
 from breezy import (
     errors,
@@ -46,13 +44,17 @@ from breezy import (
     )
 """)
 
-from breezy.symbol_versioning import (
+from ..sixish import (
+    BytesIO,
+    string_types,
+    )
+from ..symbol_versioning import (
     DEPRECATED_PARAMETER,
     )
-from breezy.trace import (
+from ..trace import (
     mutter,
     )
-from breezy import (
+from .. import (
     hooks,
     registry,
     )
@@ -92,8 +94,7 @@ def _get_transport_modules():
     # registered for it.
     modules.add('breezy.transport.chroot')
     modules.add('breezy.transport.pathfilter')
-    result = list(modules)
-    result.sort()
+    result = sorted(modules)
     return result
 
 
@@ -130,7 +131,7 @@ def register_transport_proto(prefix, help=None, info=None,
                              register_netloc=False):
     transport_list_registry.register_transport(prefix, help)
     if register_netloc:
-        if not prefix.endswith('://'):
+        if not prefix.endswith(b'://'):
             raise ValueError(prefix)
         register_urlparse_netloc_protocol(prefix[:-3])
 
@@ -150,8 +151,8 @@ def register_transport(prefix, klass):
 
 def register_urlparse_netloc_protocol(protocol):
     """Ensure that protocol is setup to be used with urlparse netloc parsing."""
-    if protocol not in urlparse.uses_netloc:
-        urlparse.uses_netloc.append(protocol)
+    if protocol not in urlutils.urlparse.uses_netloc:
+        urlutils.urlparse.uses_netloc.append(protocol)
 
 
 def _unregister_urlparse_netloc_protocol(protocol):
@@ -160,8 +161,8 @@ def _unregister_urlparse_netloc_protocol(protocol):
     Except for tests, you should never use that function. Using it with 'http',
     for example, will break all http transports.
     """
-    if protocol in urlparse.uses_netloc:
-        urlparse.uses_netloc.remove(protocol)
+    if protocol in urlutils.urlparse.uses_netloc:
+        urlutils.urlparse.uses_netloc.remove(protocol)
 
 
 def unregister_transport(scheme, factory):
@@ -885,7 +886,7 @@ class Transport(object):
         if not isinstance(raw_bytes, str):
             raise TypeError(
                 'raw_bytes must be a plain string, not %s' % type(raw_bytes))
-        return self.put_file(relpath, StringIO(raw_bytes), mode=mode)
+        return self.put_file(relpath, BytesIO(raw_bytes), mode=mode)
 
     def put_bytes_non_atomic(self, relpath, raw_bytes, mode=None,
                              create_parent_dir=False,
@@ -908,7 +909,7 @@ class Transport(object):
         if not isinstance(raw_bytes, str):
             raise TypeError(
                 'raw_bytes must be a plain string, not %s' % type(raw_bytes))
-        self.put_file_non_atomic(relpath, StringIO(raw_bytes), mode=mode,
+        self.put_file_non_atomic(relpath, BytesIO(raw_bytes), mode=mode,
                                  create_parent_dir=create_parent_dir,
                                  dir_mode=dir_mode)
 
@@ -1022,7 +1023,7 @@ class Transport(object):
         if not isinstance(bytes, str):
             raise TypeError(
                 'bytes must be a plain string, not %s' % type(bytes))
-        return self.append_file(relpath, StringIO(bytes), mode=mode)
+        return self.append_file(relpath, BytesIO(bytes), mode=mode)
 
     def append_multi(self, files, pb=None):
         """Append the text in each file-like or string object to
@@ -1076,7 +1077,7 @@ class Transport(object):
         # create target directory with the same rwx bits as source.
         # use mask to ensure that bits other than rwx are ignored.
         stat = self.stat(from_relpath)
-        target.mkdir('.', stat.st_mode & 0777)
+        target.mkdir('.', stat.st_mode & 0o777)
         source.copy_tree_to_transport(target)
 
     def copy_tree_to_transport(self, to_transport):
@@ -1441,7 +1442,7 @@ class ConnectedTransport(Transport):
         if port is not None:
             netloc = '%s:%d' % (netloc, port)
         path = urlutils.escape(path)
-        return urlparse.urlunparse((scheme, netloc, path, None, None, None))
+        return urlutils.urlparse.urlunparse((scheme, netloc, path, None, None, None))
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path"""
@@ -1596,7 +1597,7 @@ def location_to_url(location):
     :raise InvalidURL: If the location is already a URL, but not valid.
     :return: Byte string with resulting URL
     """
-    if not isinstance(location, basestring):
+    if not isinstance(location, string_types):
         raise AssertionError("location not a byte or unicode string")
     from breezy.directory_service import directories
     location = directories.dereference(location)
@@ -1685,7 +1686,7 @@ def _try_transport_factories(base, factory_list):
     for factory in factory_list:
         try:
             return factory.get_obj()(base), None
-        except errors.DependencyNotPresent, e:
+        except errors.DependencyNotPresent as e:
             mutter("failed to instantiate transport %r for %r: %r" %
                     (factory, base, e))
             last_err = e
@@ -1717,7 +1718,7 @@ def do_catching_redirections(action, transport, redirected):
     for redirections in range(MAX_REDIRECTIONS):
         try:
             return action(transport)
-        except errors.RedirectRequested, e:
+        except errors.RedirectRequested as e:
             redirection_notice = '%s is%s redirected to %s' % (
                 e.source, e.permanently, e.target)
             transport = redirected(transport, e, redirection_notice)
@@ -1749,144 +1750,144 @@ class Server(object):
 
 
 # None is the default transport, for things with no url scheme
-register_transport_proto('file://',
+register_transport_proto(b'file://',
             help="Access using the standard filesystem (default)")
-register_lazy_transport('file://', 'breezy.transport.local', 'LocalTransport')
+register_lazy_transport(b'file://', 'breezy.transport.local', 'LocalTransport')
 
-register_transport_proto('sftp://',
+register_transport_proto(b'sftp://',
             help="Access using SFTP (most SSH servers provide SFTP).",
             register_netloc=True)
-register_lazy_transport('sftp://', 'breezy.transport.sftp', 'SFTPTransport')
+register_lazy_transport(b'sftp://', 'breezy.transport.sftp', 'SFTPTransport')
 # Decorated http transport
-register_transport_proto('http+urllib://',
+register_transport_proto(b'http+urllib://',
 #                help="Read-only access of branches exported on the web."
                          register_netloc=True)
-register_lazy_transport('http+urllib://', 'breezy.transport.http._urllib',
+register_lazy_transport(b'http+urllib://', 'breezy.transport.http._urllib',
                         'HttpTransport_urllib')
-register_transport_proto('https+urllib://',
+register_transport_proto(b'https+urllib://',
 #                help="Read-only access of branches exported on the web using SSL."
                          register_netloc=True)
-register_lazy_transport('https+urllib://', 'breezy.transport.http._urllib',
+register_lazy_transport(b'https+urllib://', 'breezy.transport.http._urllib',
                         'HttpTransport_urllib')
-register_transport_proto('http+pycurl://',
+register_transport_proto(b'http+pycurl://',
 #                help="Read-only access of branches exported on the web."
                          register_netloc=True)
-register_lazy_transport('http+pycurl://', 'breezy.transport.http._pycurl',
+register_lazy_transport(b'http+pycurl://', 'breezy.transport.http._pycurl',
                         'PyCurlTransport')
-register_transport_proto('https+pycurl://',
+register_transport_proto(b'https+pycurl://',
 #                help="Read-only access of branches exported on the web using SSL."
                          register_netloc=True)
-register_lazy_transport('https+pycurl://', 'breezy.transport.http._pycurl',
+register_lazy_transport(b'https+pycurl://', 'breezy.transport.http._pycurl',
                         'PyCurlTransport')
 # Default http transports (last declared wins (if it can be imported))
-register_transport_proto('http://',
+register_transport_proto(b'http://',
                  help="Read-only access of branches exported on the web.")
-register_transport_proto('https://',
+register_transport_proto(b'https://',
             help="Read-only access of branches exported on the web using SSL.")
 # The default http implementation is urllib
-register_lazy_transport('http://', 'breezy.transport.http._pycurl',
+register_lazy_transport(b'http://', 'breezy.transport.http._pycurl',
                         'PyCurlTransport')
-register_lazy_transport('http://', 'breezy.transport.http._urllib',
+register_lazy_transport(b'http://', 'breezy.transport.http._urllib',
                         'HttpTransport_urllib')
-register_lazy_transport('https://', 'breezy.transport.http._pycurl',
+register_lazy_transport(b'https://', 'breezy.transport.http._pycurl',
                         'PyCurlTransport')
-register_lazy_transport('https://', 'breezy.transport.http._urllib',
+register_lazy_transport(b'https://', 'breezy.transport.http._urllib',
                         'HttpTransport_urllib')
 
-register_transport_proto('ftp://', help="Access using passive FTP.")
-register_lazy_transport('ftp://', 'breezy.transport.ftp', 'FtpTransport')
-register_transport_proto('aftp://', help="Access using active FTP.")
-register_lazy_transport('aftp://', 'breezy.transport.ftp', 'FtpTransport')
-register_transport_proto('gio+', help="Access using any GIO supported protocols.")
-register_lazy_transport('gio+', 'breezy.transport.gio_transport', 'GioTransport')
+register_transport_proto(b'ftp://', help="Access using passive FTP.")
+register_lazy_transport(b'ftp://', 'breezy.transport.ftp', 'FtpTransport')
+register_transport_proto(b'aftp://', help="Access using active FTP.")
+register_lazy_transport(b'aftp://', 'breezy.transport.ftp', 'FtpTransport')
+register_transport_proto(b'gio+', help="Access using any GIO supported protocols.")
+register_lazy_transport(b'gio+', 'breezy.transport.gio_transport', 'GioTransport')
 
 
 # Default to trying GSSAPI authentication (if the kerberos module is
 # available)
-register_transport_proto('ftp+gssapi://', register_netloc=True)
-register_transport_proto('aftp+gssapi://', register_netloc=True)
-register_transport_proto('ftp+nogssapi://', register_netloc=True)
-register_transport_proto('aftp+nogssapi://', register_netloc=True)
-register_lazy_transport('ftp+gssapi://', 'breezy.transport.ftp._gssapi',
+register_transport_proto(b'ftp+gssapi://', register_netloc=True)
+register_transport_proto(b'aftp+gssapi://', register_netloc=True)
+register_transport_proto(b'ftp+nogssapi://', register_netloc=True)
+register_transport_proto(b'aftp+nogssapi://', register_netloc=True)
+register_lazy_transport(b'ftp+gssapi://', 'breezy.transport.ftp._gssapi',
                         'GSSAPIFtpTransport')
-register_lazy_transport('aftp+gssapi://', 'breezy.transport.ftp._gssapi',
+register_lazy_transport(b'aftp+gssapi://', 'breezy.transport.ftp._gssapi',
                         'GSSAPIFtpTransport')
-register_lazy_transport('ftp://', 'breezy.transport.ftp._gssapi',
+register_lazy_transport(b'ftp://', 'breezy.transport.ftp._gssapi',
                         'GSSAPIFtpTransport')
-register_lazy_transport('aftp://', 'breezy.transport.ftp._gssapi',
+register_lazy_transport(b'aftp://', 'breezy.transport.ftp._gssapi',
                         'GSSAPIFtpTransport')
-register_lazy_transport('ftp+nogssapi://', 'breezy.transport.ftp',
+register_lazy_transport(b'ftp+nogssapi://', 'breezy.transport.ftp',
                         'FtpTransport')
-register_lazy_transport('aftp+nogssapi://', 'breezy.transport.ftp',
+register_lazy_transport(b'aftp+nogssapi://', 'breezy.transport.ftp',
                         'FtpTransport')
 
-register_transport_proto('memory://')
-register_lazy_transport('memory://', 'breezy.transport.memory',
+register_transport_proto(b'memory://')
+register_lazy_transport(b'memory://', 'breezy.transport.memory',
                         'MemoryTransport')
 
-register_transport_proto('readonly+',
+register_transport_proto(b'readonly+',
 #              help="This modifier converts any transport to be readonly."
             )
-register_lazy_transport('readonly+', 'breezy.transport.readonly',
+register_lazy_transport(b'readonly+', 'breezy.transport.readonly',
                         'ReadonlyTransportDecorator')
 
-register_transport_proto('fakenfs+')
-register_lazy_transport('fakenfs+', 'breezy.transport.fakenfs',
+register_transport_proto(b'fakenfs+')
+register_lazy_transport(b'fakenfs+', 'breezy.transport.fakenfs',
                         'FakeNFSTransportDecorator')
 
-register_transport_proto('log+')
-register_lazy_transport('log+', 'breezy.transport.log', 'TransportLogDecorator')
+register_transport_proto(b'log+')
+register_lazy_transport(b'log+', 'breezy.transport.log', 'TransportLogDecorator')
 
-register_transport_proto('trace+')
-register_lazy_transport('trace+', 'breezy.transport.trace',
+register_transport_proto(b'trace+')
+register_lazy_transport(b'trace+', 'breezy.transport.trace',
                         'TransportTraceDecorator')
 
-register_transport_proto('unlistable+')
-register_lazy_transport('unlistable+', 'breezy.transport.unlistable',
+register_transport_proto(b'unlistable+')
+register_lazy_transport(b'unlistable+', 'breezy.transport.unlistable',
                         'UnlistableTransportDecorator')
 
-register_transport_proto('brokenrename+')
-register_lazy_transport('brokenrename+', 'breezy.transport.brokenrename',
+register_transport_proto(b'brokenrename+')
+register_lazy_transport(b'brokenrename+', 'breezy.transport.brokenrename',
                         'BrokenRenameTransportDecorator')
 
-register_transport_proto('vfat+')
-register_lazy_transport('vfat+',
+register_transport_proto(b'vfat+')
+register_lazy_transport(b'vfat+',
                         'breezy.transport.fakevfat',
                         'FakeVFATTransportDecorator')
 
-register_transport_proto('nosmart+')
-register_lazy_transport('nosmart+', 'breezy.transport.nosmart',
+register_transport_proto(b'nosmart+')
+register_lazy_transport(b'nosmart+', 'breezy.transport.nosmart',
                         'NoSmartTransportDecorator')
 
-register_transport_proto('bzr://',
+register_transport_proto(b'bzr://',
             help="Fast access using the Bazaar smart server.",
                          register_netloc=True)
 
-register_lazy_transport('bzr://', 'breezy.transport.remote',
+register_lazy_transport(b'bzr://', 'breezy.transport.remote',
                         'RemoteTCPTransport')
-register_transport_proto('bzr-v2://', register_netloc=True)
+register_transport_proto(b'bzr-v2://', register_netloc=True)
 
-register_lazy_transport('bzr-v2://', 'breezy.transport.remote',
+register_lazy_transport(b'bzr-v2://', 'breezy.transport.remote',
                         'RemoteTCPTransportV2Only')
-register_transport_proto('bzr+http://',
+register_transport_proto(b'bzr+http://',
 #                help="Fast access using the Bazaar smart server over HTTP."
                          register_netloc=True)
-register_lazy_transport('bzr+http://', 'breezy.transport.remote',
+register_lazy_transport(b'bzr+http://', 'breezy.transport.remote',
                         'RemoteHTTPTransport')
-register_transport_proto('bzr+https://',
+register_transport_proto(b'bzr+https://',
 #                help="Fast access using the Bazaar smart server over HTTPS."
                          register_netloc=True)
-register_lazy_transport('bzr+https://',
+register_lazy_transport(b'bzr+https://',
                         'breezy.transport.remote',
                         'RemoteHTTPTransport')
-register_transport_proto('bzr+ssh://',
+register_transport_proto(b'bzr+ssh://',
             help="Fast access using the Bazaar smart server over SSH.",
             register_netloc=True)
-register_lazy_transport('bzr+ssh://', 'breezy.transport.remote',
+register_lazy_transport(b'bzr+ssh://', 'breezy.transport.remote',
                         'RemoteSSHTransport')
 
-register_transport_proto('ssh:')
-register_lazy_transport('ssh:', 'breezy.transport.remote',
+register_transport_proto(b'ssh:')
+register_lazy_transport(b'ssh:', 'breezy.transport.remote',
                         'HintingSSHTransport')
 
 

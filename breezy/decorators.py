@@ -23,9 +23,7 @@ __all__ = ['needs_read_lock',
            ]
 
 
-import sys
-
-from breezy import trace
+from . import trace
 
 
 def _get_parameters(func):
@@ -105,15 +103,10 @@ def %(name)s_read_locked(%(params)s):
     try:
         result = unbound(%(passed_params)s)
     except:
-        import sys
-        exc_info = sys.exc_info()
         try:
             self.unlock()
         finally:
-            try:
-                raise exc_info[0], exc_info[1], exc_info[2]
-            finally:
-                del exc_info
+            raise
     else:
         self.unlock()
         return result
@@ -128,7 +121,7 @@ read_locked = %(name)s_read_locked
 
     scope = dict(defaults_dict)
     scope['unbound'] = unbound
-    exec func_def in scope
+    exec(func_def, scope)
     read_locked = scope['read_locked']
 
     read_locked.__doc__ = unbound.__doc__
@@ -154,15 +147,10 @@ def _fast_needs_read_lock(unbound):
         try:
             result = unbound(self, *args, **kwargs)
         except:
-            import sys
-            exc_info = sys.exc_info()
             try:
                 self.unlock()
             finally:
-                try:
-                    raise exc_info[0], exc_info[1], exc_info[2]
-                finally:
-                    del exc_info
+                raise
         else:
             self.unlock()
             return result
@@ -179,15 +167,10 @@ def %(name)s_write_locked(%(params)s):
     try:
         result = unbound(%(passed_params)s)
     except:
-        import sys
-        exc_info = sys.exc_info()
         try:
             self.unlock()
         finally:
-            try:
-                raise exc_info[0], exc_info[1], exc_info[2]
-            finally:
-                del exc_info
+            raise
     else:
         self.unlock()
         return result
@@ -202,7 +185,7 @@ write_locked = %(name)s_write_locked
 
     scope = dict(defaults_dict)
     scope['unbound'] = unbound
-    exec func_def in scope
+    exec(func_def, scope)
     write_locked = scope['write_locked']
 
     write_locked.__doc__ = unbound.__doc__
@@ -217,14 +200,10 @@ def _fast_needs_write_lock(unbound):
         try:
             result = unbound(self, *args, **kwargs)
         except:
-            exc_info = sys.exc_info()
             try:
                 self.unlock()
             finally:
-                try:
-                    raise exc_info[0], exc_info[1], exc_info[2]
-                finally:
-                    del exc_info
+                raise
         else:
             self.unlock()
             return result
@@ -322,7 +301,7 @@ def cachedproperty(attrname_or_fn):
     69
 
     """
-    if isinstance(attrname_or_fn, basestring):
+    if isinstance(attrname_or_fn, str):
         attrname = attrname_or_fn
         return _CachedPropertyForAttr(attrname)
     else:

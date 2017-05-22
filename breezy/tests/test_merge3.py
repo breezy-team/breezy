@@ -15,15 +15,17 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from breezy import (
+from .. import (
     merge3,
     tests,
     )
-from breezy.errors import CantReprocessAndShowBase, BinaryFile
+from ..errors import CantReprocessAndShowBase, BinaryFile
+from ..sixish import (
+    BytesIO,
+    )
 
 def split_lines(t):
-    from cStringIO import StringIO
-    return StringIO(t).readlines()
+    return BytesIO(t).readlines()
 
 ############################################################
 # test case data from the gnu diffutils manual

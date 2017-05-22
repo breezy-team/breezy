@@ -21,7 +21,7 @@ import errno
 from stat import S_ISREG, S_IEXEC
 import time
 
-from breezy import (
+from . import (
     config as _mod_config,
     errors,
     lazy_import,
@@ -46,13 +46,13 @@ from breezy import (
     )
 from breezy.i18n import gettext
 """)
-from breezy.errors import (DuplicateKey, MalformedTransform,
+from .errors import (DuplicateKey, MalformedTransform,
                            ReusingTransform, CantMoveRoot,
                            ImmortalLimbo, NoFinalPath,
                            UnableCreateSymlink)
-from breezy.filters import filtered_output_bytes, ContentFilterContext
-from breezy.mutabletree import MutableTree
-from breezy.osutils import (
+from .filters import filtered_output_bytes, ContentFilterContext
+from .mutabletree import MutableTree
+from .osutils import (
     delete_any,
     file_kind,
     has_symlinks,
@@ -60,8 +60,8 @@ from breezy.osutils import (
     sha_file,
     splitpath,
     )
-from breezy.progress import ProgressPhase
-from breezy.symbol_versioning import (
+from .progress import ProgressPhase
+from .symbol_versioning import (
     deprecated_function,
     deprecated_in,
     deprecated_method,
@@ -768,14 +768,14 @@ class TreeTransformBase(object):
             if new_executability:
                 umask = os.umask(0)
                 os.umask(umask)
-                to_mode = current_mode | (0100 & ~umask)
+                to_mode = current_mode | (0o100 & ~umask)
                 # Enable x-bit for others only if they can read it.
-                if current_mode & 0004:
-                    to_mode |= 0001 & ~umask
-                if current_mode & 0040:
-                    to_mode |= 0010 & ~umask
+                if current_mode & 0o004:
+                    to_mode |= 0o001 & ~umask
+                if current_mode & 0o040:
+                    to_mode |= 0o010 & ~umask
             else:
-                to_mode = current_mode & ~0111
+                to_mode = current_mode & ~0o111
             osutils.chmod_if_possible(abspath, to_mode)
 
     def _new_entry(self, name, parent_id, file_id):
@@ -1212,7 +1212,7 @@ class DiskTreeTransform(TreeTransformBase):
             for path in limbo_paths:
                 try:
                     delete_any(path)
-                except OSError, e:
+                except OSError as e:
                     if e.errno != errno.ENOENT:
                         raise
                     # XXX: warn? perhaps we just got interrupted at an
@@ -1350,7 +1350,7 @@ class DiskTreeTransform(TreeTransformBase):
         name = self._limbo_name(trans_id)
         try:
             os.link(path, name)
-        except OSError, e:
+        except OSError as e:
             if e.errno != errno.EPERM:
                 raise
             raise errors.HardLinkNotSupported(path)
@@ -1619,7 +1619,7 @@ class TreeTransform(DiskTreeTransform):
             return
         try:
             mode = os.stat(self._tree.abspath(old_path)).st_mode
-        except OSError, e:
+        except OSError as e:
             if e.errno in (errno.ENOENT, errno.ENOTDIR):
                 # Either old_path doesn't exist, or the parent of the
                 # target is not a directory (but will be one eventually)
@@ -1639,7 +1639,7 @@ class TreeTransform(DiskTreeTransform):
             return
         try:
             children = os.listdir(self._tree.abspath(path))
-        except OSError, e:
+        except OSError as e:
             if not (osutils._is_error_enotdir(e)
                     or e.errno in (errno.ENOENT, errno.ESRCH)):
                 raise
@@ -1836,7 +1836,7 @@ class TreeTransform(DiskTreeTransform):
                       or trans_id in self._new_parent):
                     try:
                         mover.rename(full_path, self._limbo_name(trans_id))
-                    except errors.TransformRenameFailed, e:
+                    except errors.TransformRenameFailed as e:
                         if e.errno != errno.ENOENT:
                             raise
                     else:
@@ -1867,7 +1867,7 @@ class TreeTransform(DiskTreeTransform):
                 if trans_id in self._needs_rename:
                     try:
                         mover.rename(self._limbo_name(trans_id), full_path)
-                    except errors.TransformRenameFailed, e:
+                    except errors.TransformRenameFailed as e:
                         # We may be renaming a dangling inventory id
                         if e.errno != errno.ENOENT:
                             raise
@@ -2077,8 +2077,8 @@ class _PreviewTree(tree.InventoryTree):
     def _has_id(self, file_id, fallback_check):
         if file_id in self._transform._r_new_id:
             return True
-        elif file_id in set([self._transform.tree_file_id(trans_id) for
-            trans_id in self._transform._removed_id]):
+        elif file_id in {self._transform.tree_file_id(trans_id) for
+            trans_id in self._transform._removed_id}:
             return False
         else:
             return fallback_check(file_id)
@@ -2303,7 +2303,7 @@ class _PreviewTree(tree.InventoryTree):
         except KeyError:
             try:
                 return self._transform._tree.is_executable(file_id, path)
-            except OSError, e:
+            except OSError as e:
                 if e.errno == errno.ENOENT:
                     return False
                 raise
@@ -3173,7 +3173,7 @@ class _FileMover(object):
         """Rename a file from one path to another."""
         try:
             os.rename(from_, to)
-        except OSError, e:
+        except OSError as e:
             if e.errno in (errno.EEXIST, errno.ENOTEMPTY):
                 raise errors.FileExists(to, str(e))
             # normal OSError doesn't include filenames so it's hard to see where
@@ -3196,7 +3196,7 @@ class _FileMover(object):
         for from_, to in reversed(self.past_renames):
             try:
                 os.rename(to, from_)
-            except OSError, e:
+            except OSError as e:
                 raise errors.TransformRenameFailed(to, from_, str(e), e.errno)
         # after rollback, don't reuse _FileMover
         past_renames = None

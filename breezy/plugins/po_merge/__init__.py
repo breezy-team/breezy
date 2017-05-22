@@ -53,12 +53,12 @@ merge the ``.po`` files again with::
 
 """
 
-from breezy import (
+from ... import (
     config,
     # Since we are a built-in plugin we share the breezy version
     version_info,
     )
-from breezy.hooks import install_lazy_named_hook
+from ...hooks import install_lazy_named_hook
 
 
 def register_lazy_option(key, member):
@@ -74,7 +74,7 @@ register_lazy_option('po_merge.pot_glob', 'pot_glob_option')
 
 def po_merge_hook(merger):
     """Merger.merge_file_content hook for po files."""
-    from breezy.plugins.po_merge.po_merge import PoMerger
+    from .po_merge import PoMerger
     return PoMerger(merger)
 
 

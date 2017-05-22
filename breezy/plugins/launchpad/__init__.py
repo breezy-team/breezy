@@ -42,7 +42,7 @@ from __future__ import absolute_import
 
 # see http://wiki.bazaar.canonical.com/Specs/BranchRegistrationTool
 
-from breezy import (
+from ... import (
     branch as _mod_branch,
     config as _mod_config,
     lazy_regex,
@@ -50,11 +50,11 @@ from breezy import (
     trace,
     version_info,
     )
-from breezy.commands import (
+from ...commands import (
     plugin_cmds,
     )
-from breezy.directory_service import directories
-from breezy.help_topics import topic_registry
+from ...directory_service import directories
+from ...help_topics import topic_registry
 
 for klsname, aliases in [
     ("cmd_register_branch", []),
@@ -126,7 +126,7 @@ def _check_is_up_to_date(the_branch):
                      % (the_branch.base,))
         return
     archive, series, project = info
-    from breezy.plugins.launchpad import lp_api_lite
+    from . import lp_api_lite
     latest_pub = lp_api_lite.LatestPublication(archive, series, project)
     lp_api_lite.report_freshness(the_branch, verbosity, latest_pub)
 

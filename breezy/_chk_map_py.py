@@ -21,7 +21,7 @@ from __future__ import absolute_import
 import zlib
 import struct
 
-from breezy.static_tuple import StaticTuple
+from .static_tuple import StaticTuple
 
 _LeafNode = None
 _InternalNode = None

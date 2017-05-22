@@ -20,15 +20,15 @@ import errno
 import os
 import shutil
 
-from breezy import (
+from . import (
     controldir,
     errors,
     ui,
     )
-from breezy.osutils import isdir
-from breezy.trace import note
-from breezy.workingtree import WorkingTree
-from breezy.i18n import gettext
+from .osutils import isdir
+from .trace import note
+from .workingtree import WorkingTree
+from .i18n import gettext
 
 def is_detritus(subp):
     """Return True if the supplied path is detritus, False otherwise"""
@@ -117,7 +117,7 @@ def delete_items(deletables, dry_run=False):
                 try:
                     os.unlink(path)
                     note('  ' + subp)
-                except OSError, e:
+                except OSError as e:
                     # We handle only permission error here
                     if e.errno != errno.EACCES:
                         raise e

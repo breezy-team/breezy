@@ -16,9 +16,8 @@
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
 
-from breezy.lazy_import import lazy_import
+from ..lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     errors,
@@ -29,7 +28,10 @@ from breezy.bundle import serializer as _serializer
 from breezy.merge_directive import MergeDirective
 from breezy.i18n import gettext
 """)
-from breezy.trace import note
+from ..sixish import (
+    BytesIO,
+    )
+from ..trace import note
 
 
 def read_mergeable_from_url(url, _do_directive=True, possible_transports=None):
@@ -49,7 +51,7 @@ def read_mergeable_from_url(url, _do_directive=True, possible_transports=None):
 
 def read_mergeable_from_transport(transport, filename, _do_directive=True):
     def get_bundle(transport):
-        return StringIO(transport.get_bytes(filename)), transport
+        return BytesIO(transport.get_bytes(filename)), transport
 
     def redirected_transport(transport, exception, redirection_notice):
         note(redirection_notice)
@@ -64,11 +66,11 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
             get_bundle, transport, redirected_transport)
     except errors.TooManyRedirections:
         raise errors.NotABundle(transport.clone(filename).base)
-    except (errors.ConnectionReset, errors.ConnectionError), e:
+    except (errors.ConnectionReset, errors.ConnectionError) as e:
         raise
-    except (errors.TransportError, errors.PathError), e:
+    except (errors.TransportError, errors.PathError) as e:
         raise errors.NotABundle(str(e))
-    except (IOError,), e:
+    except (IOError,) as e:
         # jam 20060707
         # Abstraction leakage, SFTPTransport.get('directory')
         # doesn't always fail at get() time. Sometimes it fails

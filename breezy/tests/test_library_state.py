@@ -16,12 +16,12 @@
 
 """Tests for BzrLibraryState."""
 
-from breezy import (
+from .. import (
     library_state,
     tests,
     ui as _mod_ui
     )
-from breezy.tests import fixtures
+from . import fixtures
 
 
 # TODO: once sufficiently cleaned up this should be able to be TestCase.

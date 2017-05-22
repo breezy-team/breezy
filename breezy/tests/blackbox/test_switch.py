@@ -206,7 +206,7 @@ class TestSwitch(TestCaseWithTransport):
         revid2 = tree.commit('rev2')
         self.run_bzr(['switch', '-b', 'anotherbranch'])
         self.assertEqual(
-            set(['', 'anotherbranch']),
+            {'', 'anotherbranch'},
             set(tree.branch.bzrdir.get_branches().keys()))
 
     def test_switch_into_unrelated_colocated(self):
@@ -254,8 +254,8 @@ class TestSwitch(TestCaseWithTransport):
         self.run_bzr(['switch', '-b', 'anotherbranch'], working_dir='branch-1')
         bzrdir = ControlDir.open("branch-1")
         self.assertEqual(
-            set([b.name for b in bzrdir.list_branches()]),
-            set(["foo", "anotherbranch"]))
+            {b.name for b in bzrdir.list_branches()},
+            {"foo", "anotherbranch"})
         self.assertEqual(bzrdir.open_branch().name, "anotherbranch")
         self.assertEqual(bzrdir.open_branch().last_revision(), revid1)
 
@@ -273,8 +273,8 @@ class TestSwitch(TestCaseWithTransport):
         self.run_bzr(['switch', '-b', u'branch\xe9'], working_dir='branch-1')
         bzrdir = ControlDir.open("branch-1")
         self.assertEqual(
-            set([b.name for b in bzrdir.list_branches()]),
-            set(["foo", u"branch\xe9"]))
+            {b.name for b in bzrdir.list_branches()},
+            {"foo", u"branch\xe9"})
         self.assertEqual(bzrdir.open_branch().name, u"branch\xe9")
         self.assertEqual(bzrdir.open_branch().last_revision(), revid1)
 

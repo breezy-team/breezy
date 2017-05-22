@@ -213,7 +213,7 @@ class TestStaticTuple(tests.TestCase):
         self.assertRaises(TypeError, self.module.StaticTuple, subint(2))
 
     def test_holds_long(self):
-        k1 = self.module.StaticTuple(2L**65)
+        k1 = self.module.StaticTuple(2**65)
         class sublong(long):
             pass
         # But not a subclass

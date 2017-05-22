@@ -18,17 +18,17 @@
 
 from __future__ import absolute_import
 
-from breezy import (
+from . import (
     controldir,
     errors,
     revision as _mod_revision,
     transport,
     )
-from breezy.trace import (
+from .trace import (
     note,
     warning,
     )
-from breezy.i18n import gettext
+from .i18n import gettext
 
 
 class PushResult(object):
@@ -92,11 +92,11 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                 revision_id=revision_id, stacked_on=stacked_on,
                 create_prefix=create_prefix, use_existing_dir=use_existing_dir,
                 no_tree=no_tree)
-        except errors.AlreadyControlDirError, err:
+        except errors.AlreadyControlDirError as err:
             raise errors.BzrCommandError(gettext(
                 "Target directory %s already contains a .bzr directory, "
                 "but it is not valid.") % (location,))
-        except errors.FileExists, err:
+        except errors.FileExists as err:
             if not use_existing_dir:
                 raise errors.BzrCommandError(gettext("Target directory %s"
                      " already exists, but does not have a .bzr"
@@ -148,7 +148,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             raise errors.BzrCommandError(gettext('These branches have diverged.'
                                     '  See "brz help diverged-branches"'
                                     ' for more information.'))
-        except errors.NoRoundtrippingSupport, e:
+        except errors.NoRoundtrippingSupport as e:
             raise errors.BzrCommandError(gettext("It is not possible to losslessly "
                 "push to %s. You may want to use dpush instead.") % 
                     e.target_branch.mapping.vcs.abbreviation)
@@ -168,7 +168,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         br_to = push_result.target_branch
         br_to.lock_read()
         try:
-            from breezy.log import show_branch_change
+            from .log import show_branch_change
             show_branch_change(br_to, to_file, push_result.old_revno, 
                                push_result.old_revid)
         finally:

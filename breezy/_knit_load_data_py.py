@@ -16,7 +16,7 @@
 
 from __future__ import absolute_import
 
-from breezy import errors
+from . import errors
 
 
 def _load_data_py(kndx, fp):
@@ -52,7 +52,7 @@ def _load_data_py(kndx, fp):
                 else:
                     parent_id = history[int(value)]
                 parents.append(parent_id)
-        except (IndexError, ValueError), e:
+        except (IndexError, ValueError) as e:
             # The parent could not be decoded to get its parent row. This
             # at a minimum will cause this row to have wrong parents, or
             # even to apply a delta to the wrong base and decode
@@ -67,13 +67,13 @@ def _load_data_py(kndx, fp):
         version_id = version_id
         try:
             pos = int(pos)
-        except ValueError, e:
+        except ValueError as e:
             raise errors.KnitCorrupt(kndx._filename,
                                      "invalid position on line %r: %s"
                                      % (rec, e))
         try:
             size = int(size)
-        except ValueError, e:
+        except ValueError as e:
             raise errors.KnitCorrupt(kndx._filename,
                                      "invalid size on line %r: %s"
                                      % (rec, e))

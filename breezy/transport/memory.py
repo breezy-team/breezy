@@ -25,19 +25,21 @@ from __future__ import absolute_import
 import os
 import errno
 from stat import S_IFREG, S_IFDIR
-from cStringIO import StringIO
 
-from breezy import (
+from .. import (
     transport,
     urlutils,
     )
-from breezy.errors import (
+from ..errors import (
     FileExists,
     LockError,
     InProcessTransport,
     NoSuchFile,
     )
-from breezy.transport import (
+from ..sixish import (
+    BytesIO,
+    )
+from ..transport import (
     AppendBasedFileStream,
     _file_streams,
     LateReadError,
@@ -51,11 +53,11 @@ class MemoryStat(object):
         self.st_size = size
         if not is_dir:
             if perms is None:
-                perms = 0644
+                perms = 0o644
             self.st_mode = S_IFREG | perms
         else:
             if perms is None:
-                perms = 0755
+                perms = 0o755
             self.st_mode = S_IFDIR | perms
 
 
@@ -142,7 +144,7 @@ class MemoryTransport(transport.Transport):
                 return LateReadError(relpath)
             else:
                 raise NoSuchFile(relpath)
-        return StringIO(self._files[_abspath][0])
+        return BytesIO(self._files[_abspath][0])
 
     def put_file(self, relpath, f, mode=None):
         """See Transport.put_file()."""
@@ -295,7 +297,7 @@ class MemoryServer(transport.Server):
         self._locks = {}
         self._scheme = "memory+%s:///" % id(self)
         def memory_factory(url):
-            from breezy.transport import memory
+            from . import memory
             result = memory.MemoryTransport(url)
             result._dirs = self._dirs
             result._files = self._files

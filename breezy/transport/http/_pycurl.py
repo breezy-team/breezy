@@ -33,16 +33,18 @@ from __future__ import absolute_import
 # from _curl_perform.  Not done because we may deprecate pycurl in the
 # future -- vila 20070212
 
-from cStringIO import StringIO
 import httplib
 
 import breezy
-from breezy import (
+from ... import (
     debug,
     errors,
     trace,
     )
-from breezy.transport.http import (
+from ...sixish import (
+    BytesIO,
+    )
+from ...transport.http import (
     ca_bundle,
     HttpTransportBase,
     response,
@@ -51,7 +53,7 @@ from breezy.transport.http import (
 
 try:
     import pycurl
-except ImportError, e:
+except ImportError as e:
     trace.mutter("failed to import pycurl: %s", e)
     raise errors.DependencyNotPresent('pycurl', e)
 
@@ -66,7 +68,7 @@ try:
     #
     # reported by Alexander Belchenko, 2006-04-26
     pycurl.Curl()
-except pycurl.error, e:
+except pycurl.error as e:
     trace.mutter("failed to initialize pycurl: %s", e)
     raise errors.DependencyNotPresent('pycurl', e)
 
@@ -152,12 +154,12 @@ class PyCurlTransport(HttpTransportBase):
         # This means "NO BODY" not 'nobody'
         curl.setopt(pycurl.NOBODY, 1)
         # But we need headers to handle redirections
-        header = StringIO()
+        header = BytesIO()
         curl.setopt(pycurl.HEADERFUNCTION, header.write)
         # In some erroneous cases, pycurl will emit text on
         # stdout if we don't catch it (see InvalidStatus tests
         # for one such occurrence).
-        blackhole = StringIO()
+        blackhole = BytesIO()
         curl.setopt(pycurl.WRITEFUNCTION, blackhole.write)
         self._curl_perform(curl, header)
         code = curl.getinfo(pycurl.HTTP_CODE)
@@ -197,8 +199,8 @@ class PyCurlTransport(HttpTransportBase):
         curl.setopt(pycurl.URL, abspath)
         self._set_curl_options(curl)
 
-        data = StringIO()
-        header = StringIO()
+        data = BytesIO()
+        header = BytesIO()
         curl.setopt(pycurl.WRITEFUNCTION, data.write)
         curl.setopt(pycurl.HEADERFUNCTION, header.write)
 
@@ -267,7 +269,7 @@ class PyCurlTransport(HttpTransportBase):
         curl = self._get_curl()
         abspath, data, header = self._setup_request(curl, '.bzr/smart')
         curl.setopt(pycurl.POST, 1)
-        fake_file = StringIO(body_bytes)
+        fake_file = BytesIO(body_bytes)
         curl.setopt(pycurl.POSTFIELDSIZE, len(body_bytes))
         curl.setopt(pycurl.READFUNCTION, fake_file.read)
         # We override the Expect: header so that pycurl will send the POST
@@ -276,7 +278,7 @@ class PyCurlTransport(HttpTransportBase):
             self._curl_perform(curl, header,
                                ['Expect: ',
                                 'Content-Type: application/octet-stream'])
-        except pycurl.error, e:
+        except pycurl.error as e:
             if e[0] == CURLE_SEND_ERROR:
                 # When talking to an HTTP/1.0 server, getting a 400+ error code
                 # triggers a bug in some combinations of curl/kernel in rare
@@ -393,7 +395,7 @@ class PyCurlTransport(HttpTransportBase):
                        'Connection: Keep-Alive']
             curl.setopt(pycurl.HTTPHEADER, headers + more_headers)
             curl.perform()
-        except pycurl.error, e:
+        except pycurl.error as e:
             url = curl.getinfo(pycurl.EFFECTIVE_URL)
             trace.mutter('got pycurl error: %s, %s, %s, url: %s ',
                          e[0], e[1], e, url)
@@ -431,11 +433,11 @@ class PyCurlTransport(HttpTransportBase):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from breezy.tests import features
-    from breezy.tests import http_server
+    from ...tests import features
+    from ...tests import http_server
     permutations = [(PyCurlTransport, http_server.HttpServer_PyCurl),]
     if features.HTTPSServerFeature.available():
-        from breezy.tests import (
+        from ...tests import (
             https_server,
             ssl_certs,
             )

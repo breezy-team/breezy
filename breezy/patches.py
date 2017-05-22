@@ -17,7 +17,7 @@
 
 from __future__ import absolute_import
 
-from breezy.errors import (
+from .errors import (
     BinaryFiles,
     MalformedHunkHeader,
     MalformedLine,
@@ -81,14 +81,14 @@ def hunk_from_header(line):
         raise MalformedHunkHeader("Does not match format.", line)
     try:
         (orig, mod) = matches.group(1).split(" ")
-    except (ValueError, IndexError), e:
+    except (ValueError, IndexError) as e:
         raise MalformedHunkHeader(str(e), line)
     if not orig.startswith('-') or not mod.startswith('+'):
         raise MalformedHunkHeader("Positions don't start with + or -.", line)
     try:
         (orig_pos, orig_range) = parse_range(orig[1:])
         (mod_pos, mod_range) = parse_range(mod[1:])
-    except (ValueError, IndexError), e:
+    except (ValueError, IndexError) as e:
         raise MalformedHunkHeader(str(e), line)
     if mod_range < 0 or orig_range < 0:
         raise MalformedHunkHeader("Hunk range is negative", line)
@@ -327,7 +327,7 @@ def parse_patch(iter_lines, allow_dirty=False):
     iter_lines = iter_lines_handle_nl(iter_lines)
     try:
         (orig_name, mod_name) = get_patch_names(iter_lines)
-    except BinaryFiles, e:
+    except BinaryFiles as e:
         return BinaryPatch(e.orig_name, e.mod_name)
     else:
         patch = Patch(orig_name, mod_name)

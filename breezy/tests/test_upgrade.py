@@ -22,7 +22,7 @@ and then upgraded to the new format."""
 # TODO queue for upgrade:
 # test the error message when upgrading an unknown BzrDir format.
 
-from breezy import (
+from .. import (
     branch,
     controldir,
     tests,

@@ -16,7 +16,7 @@
 
 from __future__ import absolute_import
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
 import time
@@ -39,17 +39,17 @@ from breezy.bundle import serializer
 from breezy.i18n import gettext
 """)
 
-from breezy import (
+from . import (
     bzrdir,
     errors,
     registry,
     symbol_versioning,
     ui,
     )
-from breezy.decorators import needs_read_lock, needs_write_lock, only_raises
-from breezy.inter import InterObject
-from breezy.lock import _RelockDebugMixin, LogicalLockResult
-from breezy.trace import (
+from .decorators import needs_read_lock, needs_write_lock, only_raises
+from .inter import InterObject
+from .lock import _RelockDebugMixin, LogicalLockResult
+from .trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
 
 
@@ -280,7 +280,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                 (self._write_group, self.get_transaction()))
         try:
             self._abort_write_group()
-        except Exception, exc:
+        except Exception as exc:
             self._write_group = None
             if not suppress_errors:
                 raise
@@ -964,7 +964,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         try:
             _iter_for_revno(
                 self, partial_history, stop_index=distance_from_known)
-        except errors.RevisionNotPresent, err:
+        except errors.RevisionNotPresent as err:
             if err.revision_id == known_revid:
                 # The start revision (known_revid) wasn't found.
                 raise
@@ -988,7 +988,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
     @needs_write_lock
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
-        from breezy.reconcile import RepoReconciler
+        from .reconcile import RepoReconciler
         reconciler = RepoReconciler(self, thorough=thorough)
         reconciler.reconcile()
         return reconciler
@@ -1449,7 +1449,7 @@ class RepositoryFormat(controldir.ControlComponentFormat):
         raise NotImplementedError(self.open)
 
     def _run_post_repo_init_hooks(self, repository, controldir, shared):
-        from breezy.controldir import ControlDir, RepoInitHookParams
+        from .controldir import ControlDir, RepoInitHookParams
         hooks = ControlDir.hooks['post_repo_init']
         if not hooks:
             return
@@ -1694,7 +1694,7 @@ class InterRepository(InterObject):
         try:
             InterRepository._assert_same_model(source, target)
             return True
-        except errors.IncompatibleRepositories, e:
+        except errors.IncompatibleRepositories as e:
             return False
 
     @staticmethod

@@ -25,7 +25,7 @@ This is similar to the interface provided by
 """
 
 
-from breezy.tests import (
+from . import (
     iter_suite_tests,
     multiply_scenarios,
     multiply_tests,

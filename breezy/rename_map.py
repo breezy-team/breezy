@@ -16,15 +16,17 @@
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
 
-from breezy import (
+from . import (
     osutils,
     progress,
     trace,
-)
-from breezy.ui import ui_factory
-from breezy.i18n import gettext
+    )
+from .i18n import gettext
+from .sixish import (
+    BytesIO,
+    )
+from .ui import ui_factory
 
 class RenameMap(object):
     """Determine a mapping of renames."""
@@ -67,7 +69,7 @@ class RenameMap(object):
             for num, (file_id, contents) in enumerate(
                 tree.iter_files_bytes(desired_files)):
                 task.update(gettext('Calculating hashes'), num, len(file_ids))
-                s = StringIO()
+                s = BytesIO()
                 s.writelines(contents)
                 s.seek(0)
                 self.add_edge_hashes(s.readlines(), file_id)

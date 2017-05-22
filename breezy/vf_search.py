@@ -18,13 +18,13 @@
 
 from __future__ import absolute_import
 
-from breezy import (
+from . import (
     debug,
     revision,
     trace,
     )
 
-from breezy.graph import (
+from .graph import (
     DictParentsProvider,
     Graph,
     invert_parent_map,
@@ -293,7 +293,7 @@ class EverythingResult(AbstractSearchResult):
 
     def get_keys(self):
         if 'evil' in debug.debug_flags:
-            from breezy import remote
+            from . import remote
             if isinstance(self._repo, remote.RemoteRepository):
                 # warn developers (not users) not to do this
                 trace.mutter_callsite(

@@ -16,10 +16,9 @@
 
 """Tests for branch.push behaviour."""
 
-from cStringIO import StringIO
 import os
 
-from breezy import (
+from ... import (
     branch,
     builtins,
     controldir,
@@ -32,10 +31,13 @@ from breezy import (
     tests,
     transport,
     )
-from breezy.smart import (
+from ...sixish import (
+    BytesIO,
+    )
+from ...smart import (
     client,
     )
-from breezy.tests import (
+from .. import (
     per_branch,
     test_server,
     )
@@ -287,7 +289,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         # stack on trunk.
         self.make_bzrdir('.').get_config().set_default_stack_on('trunk')
         # Push rev-2 to a new branch "remote".  It will be stacked on "trunk".
-        output = StringIO()
+        output = BytesIO()
         push._show_push_branch(trunk, 'rev-2', self.get_url('remote'), output)
         # Push rev-3 onto "remote".  If "remote" not stacked and is missing the
         # fulltext record for f-id @ rev-1, then this will fail.
@@ -438,7 +440,7 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
         """The 'bzr push' command should make a limited number of HPSS calls.
         """
         cmd = builtins.cmd_push()
-        cmd.outf = tests.StringIOWrapper()
+        cmd.outf = BytesIO()
         cmd.run(
             directory=self.get_url('empty'),
             location=self.smart_server.get_url() + 'target')

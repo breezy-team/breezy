@@ -19,11 +19,11 @@
 import os
 import sys
 
-from breezy.tests import (
+from . import (
     TestCaseInTempDir,
     TestSkipped,
     )
-from breezy.transport.http import ca_bundle
+from ..transport.http import ca_bundle
 
 
 class TestGetCAPath(TestCaseInTempDir):
@@ -51,7 +51,7 @@ class TestGetCAPath(TestCaseInTempDir):
         if sys.platform != 'win32':
             raise TestSkipped('Searching in PATH implemented only for win32')
         os.mkdir('foo')
-        in_dir = os.path.join(os.getcwd(), 'foo')
+        in_dir = os.path.join(self.test_dir, 'foo')
         self._make_file(in_dir=in_dir)
         self.overrideEnv('PATH', in_dir)
         shouldbe = os.path.join(in_dir, 'curl-ca-bundle.crt')

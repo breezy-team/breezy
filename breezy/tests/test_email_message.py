@@ -17,11 +17,11 @@
 import sys
 from email.Header import decode_header
 
-from breezy import __version__ as _breezy_version
-from breezy.email_message import EmailMessage
-from breezy.errors import BzrBadParameterNotUnicode
-from breezy.smtp_connection import SMTPConnection
-from breezy import tests
+from .. import __version__ as _breezy_version
+from ..email_message import EmailMessage
+from ..errors import BzrBadParameterNotUnicode
+from ..smtp_connection import SMTPConnection
+from .. import tests
 
 EMPTY_MESSAGE = '''\
 From: from@from.com

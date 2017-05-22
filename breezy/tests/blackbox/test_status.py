@@ -22,13 +22,11 @@ tests are not using self.capture. If we add tests for the programmatic
 interface later, they will be non blackbox tests.
 """
 
-from cStringIO import StringIO
 import codecs
 from os import mkdir, chdir, rmdir, unlink
 import sys
-from tempfile import TemporaryFile
 
-from breezy import (
+from ... import (
     bzrdir,
     conflicts,
     errors,
@@ -36,11 +34,14 @@ from breezy import (
     status,
     )
 import breezy.branch
-from breezy.osutils import pathjoin
-from breezy.revisionspec import RevisionSpec
-from breezy.status import show_tree_status
-from breezy.tests import TestCaseWithTransport, TestSkipped
-from breezy.workingtree import WorkingTree
+from ...osutils import pathjoin
+from ...revisionspec import RevisionSpec
+from ...sixish import (
+    BytesIO,
+    )
+from ...status import show_tree_status
+from .. import TestCaseWithTransport, TestSkipped
+from ...workingtree import WorkingTree
 
 
 class BranchStatus(TestCaseWithTransport):
@@ -66,14 +67,11 @@ class BranchStatus(TestCaseWithTransport):
 
     def status_string(self, wt, specific_files=None, revision=None,
         short=False, pending=True, verbose=False):
-        # use a real file rather than StringIO because it doesn't handle
-        # Unicode very well.
-        tof = codecs.getwriter('utf-8')(TemporaryFile())
-        show_tree_status(wt, specific_files=specific_files, to_file=tof,
+        uio = self.make_utf8_encoded_stringio()
+        show_tree_status(wt, specific_files=specific_files, to_file=uio,
                 revision=revision, short=short, show_pending=pending,
                 verbose=verbose)
-        tof.seek(0)
-        return tof.read().decode('utf-8')
+        return uio.getvalue().decode('utf-8')
 
     def test_branch_status(self):
         """Test basic branch status"""
@@ -239,52 +237,52 @@ class BranchStatus(TestCaseWithTransport):
                 ],
                 wt, short=True)
 
-        tof = StringIO()
+        tof = BytesIO()
         self.assertRaises(errors.PathsDoNotExist,
                           show_tree_status,
                           wt, specific_files=['bye.c','test.c','absent.c'],
                           to_file=tof)
 
-        tof = StringIO()
+        tof = BytesIO()
         show_tree_status(wt, specific_files=['directory'], to_file=tof)
         tof.seek(0)
         self.assertEqual(tof.readlines(),
                           ['unknown:\n',
                            '  directory/hello.c\n'
                            ])
-        tof = StringIO()
+        tof = BytesIO()
         show_tree_status(wt, specific_files=['directory'], to_file=tof,
                          short=True)
         tof.seek(0)
         self.assertEqual(tof.readlines(), ['?   directory/hello.c\n'])
 
-        tof = StringIO()
+        tof = BytesIO()
         show_tree_status(wt, specific_files=['dir2'], to_file=tof)
         tof.seek(0)
         self.assertEqual(tof.readlines(),
                           ['unknown:\n',
                            '  dir2/\n'
                            ])
-        tof = StringIO()
+        tof = BytesIO()
         show_tree_status(wt, specific_files=['dir2'], to_file=tof, short=True)
         tof.seek(0)
         self.assertEqual(tof.readlines(), ['?   dir2/\n'])
 
-        tof = StringIO()
+        tof = BytesIO()
         revs = [RevisionSpec.from_string('0'), RevisionSpec.from_string('1')]
         show_tree_status(wt, specific_files=['test.c'], to_file=tof,
                          short=True, revision=revs)
         tof.seek(0)
         self.assertEqual(tof.readlines(), ['+N  test.c\n'])
 
-        tof = StringIO()
+        tof = BytesIO()
         show_tree_status(wt, specific_files=['missing.c'], to_file=tof)
         tof.seek(0)
         self.assertEqual(tof.readlines(),
                           ['missing:\n',
                            '  missing.c\n'])
 
-        tof = StringIO()
+        tof = BytesIO()
         show_tree_status(wt, specific_files=['missing.c'], to_file=tof,
                          short=True)
         tof.seek(0)
@@ -298,19 +296,19 @@ class BranchStatus(TestCaseWithTransport):
         tree.commit('added dir2')
         tree.set_conflicts(conflicts.ConflictList(
             [conflicts.ContentsConflict('foo')]))
-        tof = StringIO()
+        tof = BytesIO()
         show_tree_status(tree, specific_files=['dir2'], to_file=tof)
         self.assertEqualDiff('', tof.getvalue())
         tree.set_conflicts(conflicts.ConflictList(
             [conflicts.ContentsConflict('dir2')]))
-        tof = StringIO()
+        tof = BytesIO()
         show_tree_status(tree, specific_files=['dir2'], to_file=tof)
         self.assertEqualDiff('conflicts:\n  Contents conflict in dir2\n',
                              tof.getvalue())
 
         tree.set_conflicts(conflicts.ConflictList(
             [conflicts.ContentsConflict('dir2/file1')]))
-        tof = StringIO()
+        tof = BytesIO()
         show_tree_status(tree, specific_files=['dir2'], to_file=tof)
         self.assertEqualDiff('conflicts:\n  Contents conflict in dir2/file1\n',
                              tof.getvalue())
@@ -470,15 +468,14 @@ class BranchStatus(TestCaseWithTransport):
         self.assertContainsRe(err,
                               r'.*ERROR: Path\(s\) do not exist: '
                               'NONEXISTENT.*')
-        expected = [
+        expected = sorted([
           '+N  FILE_Q\n',
           '?   UNVERSIONED_BUT_EXISTING\n',
           ' D  FILE_E\n',
           ' M  FILE_C\n',
           ' M  FILE_B\n',
           'X   NONEXISTENT\n',
-          ]
-        expected.sort()
+          ])
         out, err = self.run_bzr('status --short NONEXISTENT '
                                 'FILE_A FILE_B UNVERSIONED_BUT_EXISTING '
                                 'FILE_C FILE_D FILE_E FILE_Q', retcode=3)

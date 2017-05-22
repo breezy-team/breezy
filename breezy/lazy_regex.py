@@ -28,7 +28,7 @@ from __future__ import absolute_import
 
 import re
 
-from breezy import errors
+from . import errors
 
 
 class LazyRegex(object):
@@ -68,7 +68,7 @@ class LazyRegex(object):
         """Thunk over to the original re.compile"""
         try:
             return _real_re_compile(*args, **kwargs)
-        except re.error, e:
+        except re.error as e:
             # raise InvalidPattern instead of re.error as this gives a
             # cleaner message to the user.
             raise errors.InvalidPattern('"' + args[0] + '" ' +str(e))

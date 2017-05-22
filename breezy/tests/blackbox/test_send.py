@@ -16,20 +16,21 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from cStringIO import StringIO
-
-from breezy import (
+from ... import (
     branch,
     merge_directive,
     tests,
     )
-from breezy.controldir import ControlDir
-from breezy.bundle import serializer
-from breezy.transport import memory
-from breezy.tests import (
+from ...controldir import ControlDir
+from ...bundle import serializer
+from ...sixish import (
+    BytesIO,
+    )
+from ...transport import memory
+from .. import (
     scenarios,
     )
-from breezy.tests.matchers import ContainsNoVfsCalls
+from ..matchers import ContainsNoVfsCalls
 
 
 load_tests = scenarios.load_tests_apply_scenarios
@@ -49,12 +50,12 @@ class TestSendMixin(object):
                             error_regexes=err_re)
 
     def get_MD(self, args, cmd=None, wd='branch'):
-        out = StringIO(self.run_send(args, cmd=cmd, wd=wd)[0])
+        out = BytesIO(self.run_send(args, cmd=cmd, wd=wd)[0])
         return merge_directive.MergeDirective.from_lines(out)
 
     def assertBundleContains(self, revs, args, cmd=None, wd='branch'):
         md = self.get_MD(args, cmd=cmd, wd=wd)
-        br = serializer.read_bundle(StringIO(md.get_raw_bundle()))
+        br = serializer.read_bundle(BytesIO(md.get_raw_bundle()))
         self.assertEqual(set(revs), set(r.revision_id for r in br.revisions))
 
 
@@ -317,9 +318,9 @@ class TestSendStrictMixin(TestSendMixin):
             self.assertEndsWith(err, bundling_revs)
         else:
             self.assertEqual(bundling_revs, err)
-        md = merge_directive.MergeDirective.from_lines(StringIO(out))
+        md = merge_directive.MergeDirective.from_lines(BytesIO(out))
         self.assertEqual('parent', md.base_revision_id)
-        br = serializer.read_bundle(StringIO(md.get_raw_bundle()))
+        br = serializer.read_bundle(BytesIO(md.get_raw_bundle()))
         self.assertEqual(set(revs), set(r.revision_id for r in br.revisions))
 
 

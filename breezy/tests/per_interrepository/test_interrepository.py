@@ -93,8 +93,8 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         # check the test will be valid
         self.assertFalse(repo_b.has_revision('rev2'))
         result = repo_b.search_missing_revision_ids(repo_a)
-        self.assertEqual(set(['rev2']), result.get_keys())
-        self.assertEqual(('search', set(['rev2']), set(['rev1']), 1),
+        self.assertEqual({'rev2'}, result.get_keys())
+        self.assertEqual(('search', {'rev2'}, {'rev1'}, 1),
             result.get_recipe())
 
     def test_search_missing_revision_ids_absent_requested_raises(self):
@@ -127,8 +127,8 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         repo_a = self.bzrdir.open_repository()
         result = repo_b.search_missing_revision_ids(
             repo_a, revision_ids=['rev1'])
-        self.assertEqual(set(['rev1']), result.get_keys())
-        self.assertEqual(('search', set(['rev1']), set([NULL_REVISION]), 1),
+        self.assertEqual({'rev1'}, result.get_keys())
+        self.assertEqual(('search', {'rev1'}, {NULL_REVISION}, 1),
             result.get_recipe())
 
     def test_search_missing_revision_ids_limit(self):
@@ -139,7 +139,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         # check the test will be valid
         self.assertFalse(repo_b.has_revision('rev2'))
         result = repo_b.search_missing_revision_ids(repo_a, limit=1)
-        self.assertEqual(('search', set(['rev1']), set(['null:']), 1),
+        self.assertEqual(('search', {'rev1'}, {'null:'}, 1),
             result.get_recipe())
 
     def test_fetch_fetches_signatures_too(self):

@@ -17,6 +17,9 @@
 
 from __future__ import absolute_import
 
+import sys
+
+
 class BDecoder(object):
 
     def __init__(self, yield_tuples=False):
@@ -45,10 +48,7 @@ class BDecoder(object):
     def decode_int(self, x, f):
         f += 1
         newf = x.index('e', f)
-        try:
-            n = int(x[f:newf])
-        except (OverflowError, ValueError):
-            n = long(x[f:newf])
+        n = int(x[f:newf])
         if x[f] == '-':
             if x[f + 1] == '0':
                 raise ValueError
@@ -58,10 +58,7 @@ class BDecoder(object):
 
     def decode_string(self, x, f):
         colon = x.index(':', f)
-        try:
-            n = int(x[f:colon])
-        except (OverflowError, ValueError):
-            n = long(x[f:colon])
+        n = int(x[f:colon])
         if x[f] == '0' and colon != f+1:
             raise ValueError
         colon += 1
@@ -88,13 +85,12 @@ class BDecoder(object):
         return (r, f + 1)
 
     def bdecode(self, x):
-        if type(x) != str:
+        if not isinstance(x, bytes):
             raise TypeError
         try:
             r, l = self.decode_func[x[0]](x, 0)
-        except (IndexError, KeyError, OverflowError), e:
-            import sys
-            raise ValueError, ValueError(str(e)), sys.exc_info()[2]
+        except (IndexError, KeyError, OverflowError) as e:
+            raise ValueError(str(e))
         if l != len(x):
             raise ValueError
         return r
@@ -107,8 +103,6 @@ _tuple_decoder = BDecoder(True)
 bdecode_as_tuple = _tuple_decoder.bdecode
 
 
-from types import StringType, IntType, LongType, DictType, ListType, TupleType
-
 class Bencached(object):
     __slots__ = ['bencoded']
 
@@ -117,6 +111,9 @@ class Bencached(object):
 
 def encode_bencached(x,r):
     r.append(x.bencoded)
+
+def encode_bool(x,r):
+    encode_int(int(x), r)
 
 def encode_int(x, r):
     r.extend(('i', str(x), 'e'))
@@ -132,8 +129,7 @@ def encode_list(x, r):
 
 def encode_dict(x,r):
     r.append('d')
-    ilist = x.items()
-    ilist.sort()
+    ilist = sorted(x.items())
     for k, v in ilist:
         r.extend((str(len(k)), ':', k))
         encode_func[type(v)](v, r)
@@ -141,21 +137,14 @@ def encode_dict(x,r):
 
 encode_func = {}
 encode_func[type(Bencached(0))] = encode_bencached
-encode_func[IntType] = encode_int
-encode_func[LongType] = encode_int
-encode_func[StringType] = encode_string
-encode_func[ListType] = encode_list
-encode_func[TupleType] = encode_list
-encode_func[DictType] = encode_dict
-
-try:
-    from types import BooleanType
-except ImportError:
-    pass
-else:
-    def encode_bool(x,r):
-        encode_int(int(x), r)
-    encode_func[BooleanType] = encode_bool
+encode_func[int] = encode_int
+if sys.version_info < (3,):
+    encode_func[long] = encode_int
+encode_func[bytes] = encode_string
+encode_func[list] = encode_list
+encode_func[tuple] = encode_list
+encode_func[dict] = encode_dict
+encode_func[bool] = encode_bool
 
 from breezy._static_tuple_py import StaticTuple
 encode_func[StaticTuple] = encode_list

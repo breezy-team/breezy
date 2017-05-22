@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 
-from breezy.errors import NoCompatibleInter
+from .errors import NoCompatibleInter
 
 
 class InterObject(object):

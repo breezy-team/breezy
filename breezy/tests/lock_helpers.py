@@ -16,8 +16,8 @@
 
 """Helper functions/classes for testing locking"""
 
-from breezy import errors
-from breezy.decorators import only_raises
+from .. import errors
+from ..decorators import only_raises
 
 
 class TestPreventLocking(errors.LockError):
@@ -47,7 +47,7 @@ class LockWrapper(object):
 
     def __eq__(self, other):
         # Branch objects look for controlfiles == repo.controlfiles.
-        if type(other) is LockWrapper:
+        if isinstance(other, LockWrapper):
             return self._other == other._other
         return False
 

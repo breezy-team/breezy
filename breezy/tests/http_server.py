@@ -24,8 +24,11 @@ import SimpleHTTPServer
 import socket
 import urlparse
 
-from breezy import urlutils
-from breezy.tests import test_server
+from .. import (
+    osutils,
+    urlutils,
+)
+from . import test_server
 
 
 class BadWebserverPath(ValueError):
@@ -80,7 +83,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         """
         try:
             self._handle_one_request()
-        except socket.error, e:
+        except socket.error as e:
             # Any socket error should close the connection, but some errors are
             # due to the client closing early and we don't want to pollute test
             # results, so we raise only the others.
@@ -472,7 +475,7 @@ class HttpServer(test_server.TestingTCPServerInAThread):
             raise AssertionError(
                 "HTTPServer currently assumes local transport, got %s" %
                 backing_transport_server)
-        self._home_dir = os.getcwdu()
+        self._home_dir = osutils.getcwd()
         self._local_path_parts = self._home_dir.split(os.path.sep)
         self.logs = []
 

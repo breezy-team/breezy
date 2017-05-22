@@ -18,7 +18,7 @@
 
 import zlib
 
-from breezy import (
+from .. import (
     btree_index,
     config,
     groupcompress,
@@ -29,9 +29,9 @@ from breezy import (
     trace,
     versionedfile,
     )
-from breezy.osutils import sha_string
-from breezy.tests.test__groupcompress import compiled_groupcompress_feature
-from breezy.tests.scenarios import load_tests_apply_scenarios
+from ..osutils import sha_string
+from .test__groupcompress import compiled_groupcompress_feature
+from .scenarios import load_tests_apply_scenarios
 
 
 def group_compress_implementation_scenarios():

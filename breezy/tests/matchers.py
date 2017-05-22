@@ -34,11 +34,11 @@ __all__ = [
     'RevisionHistoryMatches',
     ]
 
-from breezy import (
+from .. import (
     osutils,
     revision as _mod_revision,
     )
-from breezy import lazy_import
+from .. import lazy_import
 lazy_import.lazy_import(globals(),
 """
 from breezy.smart.request import request_handlers as smart_request_handlers

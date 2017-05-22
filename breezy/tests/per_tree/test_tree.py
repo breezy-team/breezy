@@ -137,7 +137,7 @@ class TestFileIds(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual(tree.all_file_ids(),
-                         set(['b-id', 'root-id', 'c-id', 'a-id']))
+                         {'b-id', 'root-id', 'c-id', 'a-id'})
 
 
 class TestStoredKind(TestCaseWithTree):
@@ -258,10 +258,10 @@ class TestIterChildEntries(TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         output = [e.name for e in
             tree.iter_child_entries(tree.get_root_id())]
-        self.assertEqual(set(['a', 'f']), set(output))
+        self.assertEqual({'a', 'f'}, set(output))
         output = [e.name for e in
             tree.iter_child_entries(tree.path2id('a'))]
-        self.assertEqual(set(['b', 'd']), set(output))
+        self.assertEqual({'b', 'd'}, set(output))
 
     def test_does_not_exist(self):
         work_tree = self.make_branch_and_tree('.')

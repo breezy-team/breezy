@@ -21,16 +21,16 @@
 import os
 import sys
 
-from breezy import (
+from .. import (
     config,
     trace,
 )
-from breezy.errors import (
+from ..errors import (
     ConfigOptionValueError,
 )
-from breezy import tests
-from breezy.transport.http import _urllib2_wrappers
-from breezy.transport.http._urllib2_wrappers import ssl
+from .. import tests
+from ..transport.http import _urllib2_wrappers
+from ..transport.http._urllib2_wrappers import ssl
 
 
 class CaCertsConfigTests(tests.TestCaseInTempDir):

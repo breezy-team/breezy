@@ -14,21 +14,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from StringIO import StringIO
 
-from breezy.errors import BinaryFile
-from breezy.tests import TestCase, TestCaseInTempDir
-from breezy.textfile import text_file, check_text_lines, check_text_path
+from ..errors import BinaryFile
+from ..sixish import (
+    BytesIO,
+    )
+from . import TestCase, TestCaseInTempDir
+from ..textfile import text_file, check_text_lines, check_text_path
 
 
 class TextFile(TestCase):
 
     def test_text_file(self):
-        s = StringIO('ab' * 2048)
+        s = BytesIO(b'ab' * 2048)
         self.assertEqual(text_file(s).read(), s.getvalue())
-        s = StringIO('a' * 1023 + '\x00')
+        s = BytesIO(b'a' * 1023 + b'\x00')
         self.assertRaises(BinaryFile, text_file, s)
-        s = StringIO('a' * 1024 + '\x00')
+        s = BytesIO(b'a' * 1024 + b'\x00')
         self.assertEqual(text_file(s).read(), s.getvalue())
 
     def test_check_text_lines(self):

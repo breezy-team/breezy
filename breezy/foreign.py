@@ -19,13 +19,13 @@
 from __future__ import absolute_import
 
 
-from breezy.branch import (
+from .branch import (
     Branch,
     )
-from breezy.commands import Command, Option
-from breezy.repository import Repository
-from breezy.revision import Revision
-from breezy.lazy_import import lazy_import
+from .commands import Command, Option
+from .repository import Repository
+from .revision import Revision
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     errors,

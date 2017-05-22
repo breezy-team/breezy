@@ -14,19 +14,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from breezy import (
+from .. import (
     bzrdir,
     errors,
     osutils,
     revision as _mod_revision,
     versionedfile,
     )
-from breezy.branch import Branch
-from breezy.repofmt import knitrepo
-from breezy.tests import TestCaseWithTransport
-from breezy.tests.test_revision import make_branches
-from breezy.upgrade import Convert
-from breezy.workingtree import WorkingTree
+from ..branch import Branch
+from ..repofmt import knitrepo
+from . import TestCaseWithTransport
+from .test_revision import make_branches
+from ..upgrade import Convert
+from ..workingtree import WorkingTree
 
 # These tests are a bit old; please instead add new tests into
 # per_interrepository/ so they'll run on all relevant

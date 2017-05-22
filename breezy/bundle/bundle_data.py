@@ -19,31 +19,33 @@
 from __future__ import absolute_import
 
 import base64
-from cStringIO import StringIO
 import os
 import pprint
 
-from breezy import (
+from .. import (
     osutils,
     timestamp,
     )
-from breezy.bundle import apply_bundle
-from breezy.errors import (
+from . import apply_bundle
+from ..errors import (
     TestamentMismatch,
     BzrError,
     )
-from breezy.inventory import (
+from ..inventory import (
     Inventory,
     InventoryDirectory,
     InventoryFile,
     InventoryLink,
     )
-from breezy.osutils import sha_string, pathjoin
-from breezy.revision import Revision, NULL_REVISION
-from breezy.testament import StrictTestament
-from breezy.trace import mutter, warning
-from breezy.tree import Tree
-from breezy.xml5 import serializer_v5
+from ..osutils import sha_string, pathjoin
+from ..revision import Revision, NULL_REVISION
+from ..sixish import (
+    BytesIO,
+    )
+from ..testament import StrictTestament
+from ..trace import mutter, warning
+from ..tree import Tree
+from ..xml5 import serializer_v5
 
 
 class RevisionInfo(object):
@@ -633,7 +635,7 @@ class BundleTree(Tree):
         if file_patch is None:
             if (patch_original is None and
                 self.kind(file_id) == 'directory'):
-                return StringIO()
+                return BytesIO()
             if patch_original is None:
                 raise AssertionError("None: %s" % file_id)
             return patch_original
@@ -749,8 +751,7 @@ class BundleTree(Tree):
     root_inventory = property(_get_inventory)
 
     def all_file_ids(self):
-        return set(
-            [entry.file_id for path, entry in self.inventory.iter_entries()])
+        return {entry.file_id for path, entry in self.inventory.iter_entries()}
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         # The only files returned by this are those from the version
@@ -791,4 +792,4 @@ def patched_file(file_patch, original):
     # string.splitlines(True) also splits on '\r', but the iter_patched code
     # only expects to iterate over '\n' style lines
     return IterableFile(iter_patched(original,
-                StringIO(file_patch).readlines()))
+                BytesIO(file_patch).readlines()))

@@ -21,8 +21,8 @@ from __future__ import absolute_import
 import errno
 import os
 
-from breezy import errors, osutils
-from breezy.export import _export_iter_entries
+from .. import errors, osutils
+from ..export import _export_iter_entries
 
 
 def dir_exporter_generator(tree, dest, root, subdir=None,
@@ -39,7 +39,7 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
     """
     try:
         os.mkdir(dest)
-    except OSError, e:
+    except OSError as e:
         if e.errno == errno.EEXIST:
             # check if directory empty
             if os.listdir(dest) != []:
@@ -64,7 +64,7 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
             try:
                 symlink_target = tree.get_symlink_target(ie.file_id, tp)
                 os.symlink(symlink_target, fullpath)
-            except OSError, e:
+            except OSError as e:
                 raise errors.BzrError(
                     "Failed to create symlink %r -> %r, error: %s"
                     % (fullpath, symlink_target, e))
@@ -79,9 +79,9 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
     for (relpath, treepath, file_id), chunks in tree.iter_files_bytes(to_fetch):
         fullpath = osutils.pathjoin(dest, relpath)
         # We set the mode and let the umask sort out the file info
-        mode = 0666
+        mode = 0o666
         if tree.is_executable(file_id, treepath):
-            mode = 0777
+            mode = 0o777
         out = os.fdopen(os.open(fullpath, flags, mode), 'wb')
         try:
             out.writelines(chunks)

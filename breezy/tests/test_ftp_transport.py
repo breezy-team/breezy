@@ -17,7 +17,7 @@
 import ftplib
 import getpass
 
-from breezy import (
+from .. import (
     config,
     errors,
     tests,
@@ -26,9 +26,9 @@ from breezy import (
     urlutils,
     )
 
-from breezy.transport import ftp
+from ..transport import ftp
 
-from breezy.tests import ftp_server
+from . import ftp_server
 
 
 class TestCaseWithFTPServer(tests.TestCaseWithTransport):
@@ -146,6 +146,6 @@ class TestFTPErrorTranslation(tests.TestCase):
 
         try:
             raise ftplib.error_temp("Rename/move failure: Directory not empty")
-        except Exception, e:
+        except Exception as e:
             e = self.assertRaises(errors.DirectoryNotEmpty,
                 t._translate_ftp_error, e, "/path")

@@ -18,7 +18,7 @@ import os
 import sys
 import tempfile
 
-from breezy import (
+from .. import (
     mergetools,
     tests
 )

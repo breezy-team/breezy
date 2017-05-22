@@ -16,8 +16,8 @@
 
 from __future__ import absolute_import
 
-from breezy.errors import BzrError
-from breezy.inventory import Inventory
+from .errors import BzrError
+from .inventory import Inventory
 
 
 START_MARK = "# bzr inventory format 3\n"

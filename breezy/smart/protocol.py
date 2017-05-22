@@ -21,21 +21,27 @@ client and server.
 from __future__ import absolute_import
 
 import collections
-from cStringIO import StringIO
 import struct
 import sys
-import thread
+try:
+    import _thread
+except ImportError:
+    import thread as _thread
 import time
 
 import breezy
-from breezy import (
+from .. import (
     debug,
     errors,
     osutils,
     )
-from breezy.smart import message, request
-from breezy.trace import log_exception_quietly, mutter
-from breezy.bencode import bdecode_as_tuple, bencode
+from ..sixish import (
+    BytesIO,
+    reraise,
+)
+from . import message, request
+from ..trace import log_exception_quietly, mutter
+from ..bencode import bdecode_as_tuple, bencode
 
 
 # Protocol version strings.  These are sent as prefixes of bzr requests and
@@ -64,7 +70,7 @@ def _decode_tuple(req_line):
 def _encode_tuple(args):
     """Encode the tuple args to a bytestream."""
     joined = '\x01'.join(args) + '\n'
-    if type(joined) is unicode:
+    if isinstance(joined, unicode):
         # XXX: We should fix things so this never happens!  -AJB, 20100304
         mutter('response args contain unicode, should be only bytes: %r',
                joined)
@@ -168,14 +174,14 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                     self._send_response(self.request.response)
             except KeyboardInterrupt:
                 raise
-            except errors.UnknownSmartMethod, err:
+            except errors.UnknownSmartMethod as err:
                 protocol_error = errors.SmartProtocolError(
                     "bad request %r" % (err.verb,))
                 failure = request.FailedSmartServerResponse(
                     ('error', str(protocol_error)))
                 self._send_response(failure)
                 return
-            except Exception, exception:
+            except Exception as exception:
                 # everything else: pass to client, flush, and quit
                 log_exception_quietly()
                 self._send_response(request.FailedSmartServerResponse(
@@ -409,7 +415,7 @@ class _StatefulDecoder(object):
                 #     _NeedMoreBytes).
                 current_state = self.state_accept
                 self.state_accept()
-        except _NeedMoreBytes, e:
+        except _NeedMoreBytes as e:
             self._number_needed_bytes = e.count
 
 
@@ -776,7 +782,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
                     "Connection lost while reading response body.")
             _body_decoder.accept_bytes(bytes)
         self._request.finished_reading()
-        self._body_buffer = StringIO(_body_decoder.read_pending_data())
+        self._body_buffer = BytesIO(_body_decoder.read_pending_data())
         # XXX: TODO check the trailer result.
         if 'hpss' in debug.debug_flags:
             mutter('              %d body bytes read',
@@ -865,7 +871,7 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
                     "Connection lost while reading streamed body.")
             _body_decoder.accept_bytes(bytes)
             for body_bytes in iter(_body_decoder.read_next_chunk, None):
-                if 'hpss' in debug.debug_flags and type(body_bytes) is str:
+                if 'hpss' in debug.debug_flags and isinstance(body_bytes, str):
                     mutter('              %d byte chunk read',
                            len(body_bytes))
                 yield body_bytes
@@ -908,7 +914,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             _StatefulDecoder.accept_bytes(self, bytes)
         except KeyboardInterrupt:
             raise
-        except errors.SmartMessageHandlerError, exception:
+        except errors.SmartMessageHandlerError as exception:
             # We do *not* set self.decoding_failed here.  The message handler
             # has raised an error, but the decoder is still able to parse bytes
             # and determine when this message ends.
@@ -919,7 +925,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             # exception has interrupted the loop that runs the state machine.
             # So we call accept_bytes again to restart it.
             self.accept_bytes('')
-        except Exception, exception:
+        except Exception as exception:
             # The decoder itself has raised an exception.  We cannot continue
             # decoding.
             self.decoding_failed = True
@@ -993,7 +999,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
 
     def _state_accept_expecting_headers(self):
         decoded = self._extract_prefixed_bencoded_data()
-        if type(decoded) is not dict:
+        if not isinstance(decoded, dict):
             raise errors.SmartProtocolError(
                 'Header object %r is not a dict' % (decoded,))
         self.state_accept = self._state_accept_expecting_message_part
@@ -1120,7 +1126,7 @@ class _ProtocolThreeEncoder(object):
         self._write_func('s')
         utf8_args = []
         for arg in args:
-            if type(arg) is unicode:
+            if isinstance(arg, unicode):
                 utf8_args.append(arg.encode('utf8'))
             else:
                 utf8_args.append(arg)
@@ -1152,7 +1158,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         self.response_sent = False
         self._headers = {'Software version': breezy.__version__}
         if 'hpss' in debug.debug_flags:
-            self._thread_id = thread.get_ident()
+            self._thread_id = _thread.get_ident()
             self._response_start_time = None
 
     def _trace(self, action, message, extra_bytes=None, include_time=False):
@@ -1376,7 +1382,10 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
                 self._write_structure(('error',))
                 self._write_end()
                 self._medium_request.finished_writing()
-                raise exc_info[0], exc_info[1], exc_info[2]
+                try:
+                    reraise(*exc_info)
+                finally:
+                    del exc_info
             else:
                 self._write_prefixed_body(part)
                 self.flush()

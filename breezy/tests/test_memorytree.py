@@ -17,10 +17,10 @@
 
 """Tests for the MemoryTree class."""
 
-from breezy import errors
-from breezy.memorytree import MemoryTree
-from breezy.tests import TestCaseWithTransport
-from breezy.treebuilder import TreeBuilder
+from .. import errors
+from ..memorytree import MemoryTree
+from . import TestCaseWithTransport
+from ..treebuilder import TreeBuilder
 
 
 class TestMemoryTree(TestCaseWithTransport):

@@ -30,8 +30,8 @@ etc.
 import os
 import stat
 
-from breezy.trace import warning
-from breezy.osutils import pathjoin
+from ..trace import warning
+from ..osutils import pathjoin
 
 def build_tree_contents(template):
     """Reconstitute some files from a text description.

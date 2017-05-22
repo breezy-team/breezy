@@ -14,12 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
 import os
-import SocketServer
+try:
+    import socketserver
+except ImportError:
+    import SocketServer as socketserver
 import sys
 
-from breezy import (
+from .. import (
     bzrdir,
     diff,
     errors,
@@ -30,22 +32,25 @@ from breezy import (
     tests,
     treebuilder,
     )
-from breezy.bundle import read_mergeable_from_url
-from breezy.bundle.apply_bundle import install_bundle, merge_bundle
-from breezy.bundle.bundle_data import BundleTree
-from breezy.directory_service import directories
-from breezy.bundle.serializer import write_bundle, read_bundle, v09, v4
-from breezy.bundle.serializer.v08 import BundleSerializerV08
-from breezy.bundle.serializer.v09 import BundleSerializerV09
-from breezy.bundle.serializer.v4 import BundleSerializerV4
-from breezy.repofmt import knitrepo
-from breezy.tests import (
+from ..bundle import read_mergeable_from_url
+from ..bundle.apply_bundle import install_bundle, merge_bundle
+from ..bundle.bundle_data import BundleTree
+from ..directory_service import directories
+from ..bundle.serializer import write_bundle, read_bundle, v09, v4
+from ..bundle.serializer.v08 import BundleSerializerV08
+from ..bundle.serializer.v09 import BundleSerializerV09
+from ..bundle.serializer.v4 import BundleSerializerV4
+from ..repofmt import knitrepo
+from ..sixish import (
+    BytesIO,
+    )
+from . import (
     features,
     test_commit,
     test_read_bundle,
     test_server,
     )
-from breezy.transform import TreeTransform
+from ..transform import TreeTransform
 
 
 def get_text(vf, key):
@@ -67,7 +72,7 @@ def get_inventory_text(repo, revision_id):
 class MockTree(object):
 
     def __init__(self):
-        from breezy.inventory import InventoryDirectory, ROOT_ID
+        from ..inventory import InventoryDirectory, ROOT_ID
         object.__init__(self)
         self.paths = {ROOT_ID: ""}
         self.ids = {"": ROOT_ID}
@@ -111,7 +116,7 @@ class MockTree(object):
         return kind
 
     def make_entry(self, file_id, path):
-        from breezy.inventory import (InventoryFile , InventoryDirectory,
+        from ..inventory import (InventoryFile , InventoryDirectory,
             InventoryLink)
         name = os.path.basename(path)
         kind = self.kind(file_id)
@@ -147,7 +152,7 @@ class MockTree(object):
         return self.id2path(file_id) is not None
 
     def get_file(self, file_id):
-        result = StringIO()
+        result = BytesIO()
         result.write(self.contents[file_id])
         result.seek(0,0)
         return result
@@ -251,7 +256,7 @@ class BTreeTester(tests.TestCase):
         self.assertTrue(btree.path2id("grandparent/parent/file") is None)
 
     def unified_diff(self, old, new):
-        out = StringIO()
+        out = BytesIO()
         diff.internal_diff("old", old, "new", new, out)
         out.seek(0,0)
         return out.read()
@@ -329,8 +334,7 @@ class BTreeTester(tests.TestCase):
         self.assertTrue(btree.path2id("grandparent/parent/file") is None)
 
     def sorted_ids(self, tree):
-        ids = list(tree.all_file_ids())
-        ids.sort()
+        ids = sorted(tree.all_file_ids())
         return ids
 
     def test_iteration(self):
@@ -354,7 +358,7 @@ class BundleTester1(tests.TestCaseWithTransport):
         serializer = BundleSerializerV08('0.8')
         b = self.make_branch('.', format=format)
         self.assertRaises(errors.IncompatibleBundleFormat, serializer.write,
-                          b.repository, [], {}, StringIO())
+                          b.repository, [], {}, BytesIO())
 
     def test_matched_bundle(self):
         """Don't raise IncompatibleBundleFormat for knit2 and bundle0.9"""
@@ -362,7 +366,7 @@ class BundleTester1(tests.TestCaseWithTransport):
         format.repository_format = knitrepo.RepositoryFormatKnit3()
         serializer = BundleSerializerV09('0.9')
         b = self.make_branch('.', format=format)
-        serializer.write(b.repository, [], {}, StringIO())
+        serializer.write(b.repository, [], {}, BytesIO())
 
     def test_mismatched_model(self):
         """Try copying a bundle from knit2 to knit1"""
@@ -371,7 +375,7 @@ class BundleTester1(tests.TestCaseWithTransport):
         source = self.make_branch_and_tree('source', format=format)
         source.commit('one', rev_id='one-id')
         source.commit('two', rev_id='two-id')
-        text = StringIO()
+        text = BytesIO()
         write_bundle(source.branch.repository, 'two-id', 'null:', text,
                      format='0.9')
         text.seek(0)
@@ -402,7 +406,7 @@ class BundleTester(object):
         return tests.TestCaseWithTransport.make_branch(self, path, format)
 
     def create_bundle_text(self, base_rev_id, rev_id):
-        bundle_txt = StringIO()
+        bundle_txt = BytesIO()
         rev_ids = write_bundle(self.b1.repository, rev_id, base_rev_id,
                                bundle_txt, format=self.format)
         bundle_txt.seek(0)
@@ -457,22 +461,22 @@ class BundleTester(object):
         bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
         new_text = bundle_txt.getvalue().replace('executable:no',
                                                'executable:yes')
-        bundle_txt = StringIO(new_text)
+        bundle_txt = BytesIO(new_text)
         bundle = read_bundle(bundle_txt)
         self.valid_apply_bundle(base_rev_id, bundle)
         return bundle
 
     def test_non_bundle(self):
         self.assertRaises(errors.NotABundle,
-                          read_bundle, StringIO('#!/bin/sh\n'))
+                          read_bundle, BytesIO(b'#!/bin/sh\n'))
 
     def test_malformed(self):
         self.assertRaises(errors.BadBundle, read_bundle,
-                          StringIO('# Bazaar revision bundle v'))
+                          BytesIO(b'# Bazaar revision bundle v'))
 
     def test_crlf_bundle(self):
         try:
-            read_bundle(StringIO('# Bazaar revision bundle v0.8\r\n'))
+            read_bundle(BytesIO(b'# Bazaar revision bundle v0.8\r\n'))
         except errors.BadBundle:
             # It is currently permitted for bundles with crlf line endings to
             # make read_bundle raise a BadBundle, but this should be fixed.
@@ -489,7 +493,7 @@ class BundleTester(object):
             if not os.path.exists(checkout_dir):
                 os.mkdir(checkout_dir)
         tree = self.make_branch_and_tree(checkout_dir)
-        s = StringIO()
+        s = BytesIO()
         ancestors = write_bundle(self.b1.repository, rev_id, 'null:', s,
                                  format=self.format)
         s.seek(0)
@@ -828,7 +832,7 @@ class BundleTester(object):
         self.tree1.commit('modify', rev_id='a@cset-0-2')
         with open('b1/one', 'wb') as f: f.write('three\n')
         self.tree1.commit('modify', rev_id='a@cset-0-3')
-        bundle_file = StringIO()
+        bundle_file = BytesIO()
         rev_ids = write_bundle(self.tree1.branch.repository, 'a@cset-0-3',
                                'a@cset-0-1', bundle_file, format=self.format)
         self.assertNotContainsRe(bundle_file.getvalue(), '\btwo\b')
@@ -839,7 +843,7 @@ class BundleTester(object):
         """Ensure using the basis as the target doesn't cause an error"""
         self.tree1 = self.make_branch_and_tree('b1')
         self.tree1.commit('add file', rev_id='a@cset-0-1')
-        bundle_file = StringIO()
+        bundle_file = BytesIO()
         rev_ids = write_bundle(self.tree1.branch.repository, 'a@cset-0-1',
                                'a@cset-0-1', bundle_file)
 
@@ -1214,7 +1218,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
         txt = bundle_sio.getvalue()
         loc = txt.find('#   empty: ') + len('#   empty:')
         # Create a new bundle, which strips the trailing space after empty
-        bundle_sio = StringIO(txt[:loc] + txt[loc+1:])
+        bundle_sio = BytesIO(txt[:loc] + txt[loc+1:])
 
         self.assertContainsRe(bundle_sio.getvalue(),
                               '# properties:\n'
@@ -1335,7 +1339,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
             self.assertEqual(len(branch_rev.parent_ids),
                              len(bundle_rev.parent_ids))
         self.assertEqual(set(rev_ids),
-                         set([r.revision_id for r in bundle.real_revisions]))
+                         {r.revision_id for r in bundle.real_revisions})
         self.valid_apply_bundle(base_rev_id, bundle,
                                    checkout_dir=checkout_dir)
 
@@ -1347,13 +1351,13 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
 
         :return: The in-memory bundle
         """
-        from breezy.bundle import serializer
+        from ..bundle import serializer
         bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
-        new_text = self.get_raw(StringIO(''.join(bundle_txt)))
+        new_text = self.get_raw(BytesIO(b''.join(bundle_txt)))
         new_text = new_text.replace('<file file_id="exe-1"',
                                     '<file executable="y" file_id="exe-1"')
         new_text = new_text.replace('B260', 'B275')
-        bundle_txt = StringIO()
+        bundle_txt = BytesIO()
         bundle_txt.write(serializer._get_bundle_header('4'))
         bundle_txt.write('\n')
         bundle_txt.write(new_text.encode('bz2'))
@@ -1363,7 +1367,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         return bundle
 
     def create_bundle_text(self, base_rev_id, rev_id):
-        bundle_txt = StringIO()
+        bundle_txt = BytesIO()
         rev_ids = write_bundle(self.b1.repository, rev_id, base_rev_id,
                                bundle_txt, format=self.format)
         bundle_txt.seek(0)
@@ -1386,7 +1390,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree.commit('added file', rev_id='rev1')
         self.build_tree_contents([('tree/file', 'contents2\nstatic\n')])
         tree.commit('changed file', rev_id='rev2')
-        s = StringIO()
+        s = BytesIO()
         serializer = BundleSerializerV4('1.0')
         serializer.write(tree.branch.repository, ['rev1', 'rev2'], {}, s)
         s.seek(0)
@@ -1430,7 +1434,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree_a.commit("base", allow_pointless=True, rev_id='A')
         self.assertFalse(branch.repository.has_signature_for_revision_id('A'))
         try:
-            from breezy.testament import Testament
+            from ..testament import Testament
             # monkey patch gpg signing mechanism
             breezy.gpg.GPGStrategy = breezy.gpg.LoopbackGPGStrategy
             new_config = test_commit.MustSignConfig()
@@ -1445,7 +1449,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
             breezy.gpg.GPGStrategy = oldstrategy
         tree_b = self.make_branch_and_tree('tree_b')
         repo_b = tree_b.branch.repository
-        s = StringIO()
+        s = BytesIO()
         serializer = BundleSerializerV4('4')
         serializer.write(tree_a.branch.repository, ['A', 'B'], {}, s)
         s.seek(0)
@@ -1469,16 +1473,16 @@ class V4_2aBundleTester(V4BundleTester):
 
         :return: The in-memory bundle
         """
-        from breezy.bundle import serializer
+        from ..bundle import serializer
         bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
-        new_text = self.get_raw(StringIO(''.join(bundle_txt)))
+        new_text = self.get_raw(BytesIO(b''.join(bundle_txt)))
         # We are going to be replacing some text to set the executable bit on a
         # file. Make sure the text replacement actually works correctly.
         self.assertContainsRe(new_text, '(?m)B244\n\ni 1\n<inventory')
         new_text = new_text.replace('<file file_id="exe-1"',
                                     '<file executable="y" file_id="exe-1"')
         new_text = new_text.replace('B244', 'B259')
-        bundle_txt = StringIO()
+        bundle_txt = BytesIO()
         bundle_txt.write(serializer._get_bundle_header('4'))
         bundle_txt.write('\n')
         bundle_txt.write(new_text.encode('bz2'))
@@ -1511,7 +1515,7 @@ class V4_2aBundleTester(V4BundleTester):
     def make_bundle_just_inventories(self, base_revision_id,
                                      target_revision_id,
                                      revision_ids):
-        sio = StringIO()
+        sio = BytesIO()
         writer = v4.BundleWriteOperation(base_revision_id, target_revision_id,
                                          self.b1.repository, sio)
         writer.bundle.begin()
@@ -1665,10 +1669,10 @@ class MungedBundleTester(object):
         wt.commit('add two', rev_id='a@cset-0-2',
                   revprops={'branch-nick':'test'})
 
-        bundle_txt = StringIO()
+        bundle_txt = BytesIO()
         rev_ids = write_bundle(wt.branch.repository, 'a@cset-0-2',
                                'a@cset-0-1', bundle_txt, self.format)
-        self.assertEqual(set(['a@cset-0-2']), set(rev_ids))
+        self.assertEqual({'a@cset-0-2'}, set(rev_ids))
         bundle_txt.seek(0, 0)
         return bundle_txt
 
@@ -1718,7 +1722,7 @@ class MungedBundleTesterV09(tests.TestCaseWithTransport, MungedBundleTester):
         # creates a blank line at the end, and fails if that
         # line is stripped
         self.assertEqual('\n\n', raw[-2:])
-        bundle_txt = StringIO(raw[:-1])
+        bundle_txt = BytesIO(raw[:-1])
 
         bundle = read_bundle(bundle_txt)
         self.check_valid(bundle)
@@ -1726,8 +1730,8 @@ class MungedBundleTesterV09(tests.TestCaseWithTransport, MungedBundleTester):
     def test_opening_text(self):
         bundle_txt = self.build_test_bundle()
 
-        bundle_txt = StringIO("Some random\nemail comments\n"
-                              + bundle_txt.getvalue())
+        bundle_txt = BytesIO(
+            b"Some random\nemail comments\n" + bundle_txt.getvalue())
 
         bundle = read_bundle(bundle_txt)
         self.check_valid(bundle)
@@ -1735,8 +1739,8 @@ class MungedBundleTesterV09(tests.TestCaseWithTransport, MungedBundleTester):
     def test_trailing_text(self):
         bundle_txt = self.build_test_bundle()
 
-        bundle_txt = StringIO(bundle_txt.getvalue() +
-                              "Some trailing\nrandom\ntext\n")
+        bundle_txt = BytesIO(
+            bundle_txt.getvalue() + b"Some trailing\nrandom\ntext\n")
 
         bundle = read_bundle(bundle_txt)
         self.check_valid(bundle)
@@ -1750,7 +1754,7 @@ class MungedBundleTesterV4(tests.TestCaseWithTransport, MungedBundleTester):
 class TestBundleWriterReader(tests.TestCase):
 
     def test_roundtrip_record(self):
-        fileobj = StringIO()
+        fileobj = BytesIO()
         writer = v4.BundleWriter(fileobj)
         writer.begin()
         writer.add_info_record(foo='bar')
@@ -1769,7 +1773,7 @@ class TestBundleWriterReader(tests.TestCase):
                           record)
 
     def test_roundtrip_record_memory_hungry(self):
-        fileobj = StringIO()
+        fileobj = BytesIO()
         writer = v4.BundleWriter(fileobj)
         writer.begin()
         writer.add_info_record(foo='bar')
@@ -1804,7 +1808,7 @@ class TestBundleWriterReader(tests.TestCase):
                          v4.BundleReader.decode_name('info'))
 
     def test_too_many_names(self):
-        fileobj = StringIO()
+        fileobj = BytesIO()
         writer = v4.BundleWriter(fileobj)
         writer.begin()
         writer.add_info_record(foo='bar')
@@ -1838,7 +1842,7 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
     def test_infinite_redirects_are_not_a_bundle(self):
         """If a URL causes TooManyRedirections then NotABundle is raised.
         """
-        from breezy.tests.blackbox.test_push import RedirectingMemoryServer
+        from .blackbox.test_push import RedirectingMemoryServer
         server = RedirectingMemoryServer()
         self.start_server(server)
         url = server.get_url() + 'infinite-loop'
@@ -1857,7 +1861,7 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
         self.assertRaises(errors.ConnectionReset, read_mergeable_from_url, url)
 
 
-class DisconnectingHandler(SocketServer.BaseRequestHandler):
+class DisconnectingHandler(socketserver.BaseRequestHandler):
     """A request handler that immediately closes any connection made to it."""
 
     def handle(self):

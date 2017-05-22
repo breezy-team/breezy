@@ -15,9 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-from StringIO import StringIO
 
-from breezy import (
+from .. import (
     branch as _mod_branch,
     cleanup,
     conflicts,
@@ -32,17 +31,17 @@ from breezy import (
     transform,
     versionedfile,
     )
-from breezy.conflicts import ConflictList, TextConflict
-from breezy.errors import UnrelatedBranches, NoCommits
-from breezy.merge import transform_tree, merge_inner, _PlanMerge
-from breezy.osutils import basename, pathjoin, file_kind
-from breezy.tests import (
+from ..conflicts import ConflictList, TextConflict
+from ..errors import UnrelatedBranches, NoCommits
+from ..merge import transform_tree, merge_inner, _PlanMerge
+from ..osutils import basename, pathjoin, file_kind
+from . import (
     features,
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
     test_merge_core,
     )
-from breezy.workingtree import WorkingTree
+from ..workingtree import WorkingTree
 
 
 class TestMerge(TestCaseWithTransport):
@@ -182,7 +181,6 @@ class TestMerge(TestCaseWithTransport):
         tree_b.lock_write()
         self.addCleanup(tree_b.unlock)
         tree_a.commit(message="hello again")
-        log = StringIO()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(),
                     this_tree=tree_b, ignore_zero=True)
         self.assertTrue('All changes applied successfully.\n' not in
@@ -520,7 +518,7 @@ class TestMerge(TestCaseWithTransport):
         merger.merge_type = _mod_merge.Merge3Merger
         conflict_count = merger.do_merge()
         self.assertEqual(0, conflict_count)
-        self.assertEqual(set([old_root_id]), tree.all_file_ids())
+        self.assertEqual({old_root_id}, tree.all_file_ids())
         tree.set_parent_ids([])
 
     def test_merge_add_into_deleted_root(self):

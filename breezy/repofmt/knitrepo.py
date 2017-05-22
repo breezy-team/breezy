@@ -16,7 +16,7 @@
 
 from __future__ import absolute_import
 
-from breezy.lazy_import import lazy_import
+from ..lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
 
@@ -36,20 +36,20 @@ from breezy import (
     xml7,
     )
 """)
-from breezy.decorators import needs_read_lock, needs_write_lock
-from breezy.repository import (
+from ..decorators import needs_read_lock, needs_write_lock
+from ..repository import (
     InterRepository,
     IsInWriteGroupError,
     RepositoryFormatMetaDir,
     )
-from breezy.vf_repository import (
+from ..vf_repository import (
     InterSameDataRepository,
     MetaDirVersionedFileRepository,
     MetaDirVersionedFileRepositoryFormat,
     VersionedFileCommitBuilder,
     VersionedFileRootCommitBuilder,
     )
-from breezy import symbol_versioning
+from .. import symbol_versioning
 
 
 class _KnitParentsProvider(object):

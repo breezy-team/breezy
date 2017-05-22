@@ -21,19 +21,19 @@ import os
 
 from testtools import content
 
-from breezy import (
+from .. import (
     plugins as _mod_plugins,
     trace,
     )
-from breezy.controldir import ControlDir
-from breezy.smart import medium
-from breezy.transport import remote
+from ..controldir import ControlDir
+from ..smart import medium
+from ..transport import remote
 
-from breezy.plugin import (
+from ..plugin import (
     are_plugins_disabled,
     )
 
-from breezy.tests import (
+from . import (
     TestCaseWithTransport,
     )
 

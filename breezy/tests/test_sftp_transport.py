@@ -302,7 +302,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         t = _mod_transport.get_transport_from_url(self.bogus_url)
         try:
             self.assertRaises(errors.ConnectionError, t.get, 'foobar')
-        except NameError, e:
+        except NameError as e:
             if "global name 'SSHException'" in str(e):
                 self.knownFailure('Known NameError bug in paramiko 1.6.1')
             raise
@@ -491,10 +491,9 @@ class TestUsesAuthConfig(TestCaseWithSFTPServer):
         self.assertIs(None, t._get_credentials()[0])
 
     def test_sftp_doesnt_prompt_username(self):
-        stdout = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n', stdout=stdout)
+        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n')
         t = self.get_transport_for_connection(set_config=False)
         self.assertIs(None, t._get_credentials()[0])
         # No prompts should've been printed, stdin shouldn't have been read
-        self.assertEqual("", stdout.getvalue())
+        self.assertEqual("", ui.ui_factory.stdout.getvalue())
         self.assertEqual(0, ui.ui_factory.stdin.tell())

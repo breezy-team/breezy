@@ -21,17 +21,17 @@ from __future__ import absolute_import
 from urlparse import urlsplit
 import xmlrpclib
 
-from breezy import (
+from ... import (
     debug,
     errors,
     trace,
     transport,
     )
-from breezy.i18n import gettext
+from ...i18n import gettext
 
-from breezy.plugins.launchpad.lp_registration import (
+from .lp_registration import (
     LaunchpadService, ResolveLaunchpadPathRequest)
-from breezy.plugins.launchpad.account import get_lp_login
+from .account import get_lp_login
 
 
 # As breezy.transport.remote may not be loaded yet, make sure bzr+ssh
@@ -98,7 +98,7 @@ class LaunchpadDirectory(object):
         resolve = _request_factory(path)
         try:
             result = resolve.submit(service)
-        except xmlrpclib.Fault, fault:
+        except xmlrpclib.Fault as fault:
             raise errors.InvalidURL(
                 path=url, extra=fault.faultString)
         return result

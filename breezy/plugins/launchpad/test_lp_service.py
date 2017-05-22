@@ -19,11 +19,11 @@
 import os
 import xmlrpclib
 
-from breezy import errors
-from breezy.plugins.launchpad.lp_registration import (
+from ... import errors
+from .lp_registration import (
     InvalidLaunchpadInstance, LaunchpadService, NotLaunchpadBranch)
-from breezy.plugins.launchpad.test_lp_directory import FakeResolveFactory
-from breezy.tests import TestCase
+from .test_lp_directory import FakeResolveFactory
+from ...tests import TestCase
 
 
 class LaunchpadServiceTests(TestCase):

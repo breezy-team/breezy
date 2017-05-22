@@ -20,12 +20,12 @@ This contains functionality for installing bundles into repositories
 
 from __future__ import absolute_import
 
-from breezy import ui
-from breezy.i18n import gettext
-from breezy.merge import Merger
-from breezy.progress import ProgressPhase
-from breezy.trace import note
-from breezy.vf_repository import install_revision
+from .. import ui
+from ..i18n import gettext
+from ..merge import Merger
+from ..progress import ProgressPhase
+from ..trace import note
+from ..vf_repository import install_revision
 
 
 def install_bundle(repository, bundle_reader):

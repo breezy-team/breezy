@@ -188,13 +188,13 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         self.assertEqual(set(),
                 repo.inventories.get_missing_compression_parent_keys())
         self.assertEqual(
-            set([('inventories', 'rev-1')]),
+            {('inventories', 'rev-1')},
             repo.get_missing_parent_inventories())
         # Resuming the write group does not affect
         # get_missing_parent_inventories.
         reopened_repo = self.reopen_repo_and_resume_write_group(repo)
         self.assertEqual(
-            set([('inventories', 'rev-1')]),
+            {('inventories', 'rev-1')},
             reopened_repo.get_missing_parent_inventories())
         # Adding the parent inventory satisfies get_missing_parent_inventories.
         reopened_repo.inventories.insert_record_stream(
@@ -229,7 +229,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
                           b.repository.get_inventory('A-id'))
         get_missing = repo.get_missing_parent_inventories
         if repo._format.supports_external_lookups:
-            self.assertEqual(set([('inventories', 'ghost-parent-id')]),
+            self.assertEqual({('inventories', 'ghost-parent-id')},
                 get_missing(check_for_missing_texts=False))
             self.assertEqual(set(), get_missing(check_for_missing_texts=True))
             self.assertEqual(set(), get_missing())
@@ -392,14 +392,13 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         try:
             new_wg_tokens = same_repo.suspend_write_group()
         except:
-            e = sys.exc_info()
             same_repo.abort_write_group(suppress_errors=True)
-            raise e[0], e[1], e[2]
+            raise
         self.assertEqual(2, len(new_wg_tokens))
         self.assertSubset(wg_tokens, new_wg_tokens)
         same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(new_wg_tokens)
-        both_keys = set([first_key, second_key])
+        both_keys = {first_key, second_key}
         self.assertEqual(both_keys, same_repo.texts.keys())
         same_repo.abort_write_group()
 
@@ -519,7 +518,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         same_repo.texts.add_lines(second_key, (first_key,), ['more lines'])
         same_repo.commit_write_group()
         self.assertEqual(
-            set([first_key, second_key]), set(same_repo.texts.keys()))
+            {first_key, second_key}, set(same_repo.texts.keys()))
         self.assertEqual(
             'lines', same_repo.texts.get_record_stream([first_key],
                 'unordered', True).next().get_bytes_as('fulltext'))

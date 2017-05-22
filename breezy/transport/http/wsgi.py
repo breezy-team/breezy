@@ -22,11 +22,12 @@ For more information about WSGI, see PEP 333:
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
-
-from breezy.smart import medium
-from breezy.transport import chroot, get_transport
-from breezy.urlutils import local_path_to_url
+from ...sixish import (
+    BytesIO,
+    )
+from ...smart import medium
+from ...transport import chroot, get_transport
+from ...urlutils import local_path_to_url
 
 
 def make_app(root, prefix, path_var='REQUEST_URI', readonly=True,
@@ -43,7 +44,7 @@ def make_app(root, prefix, path_var='REQUEST_URI', readonly=True,
     else:
         base_transport = get_transport(local_url)
     if load_plugins:
-        from breezy.plugin import load_plugins
+        from ...plugin import load_plugins
         load_plugins()
     if enable_logging:
         import breezy.trace
@@ -157,7 +158,7 @@ class SmartWSGIApp(object):
             raise AssertionError(adjusted_relpath)
 
         transport = self.backing_transport.clone(adjusted_relpath)
-        out_buffer = StringIO()
+        out_buffer = BytesIO()
         request_data_length = int(environ['CONTENT_LENGTH'])
         request_data_bytes = environ['wsgi.input'].read(request_data_length)
         smart_protocol_request = self.make_request(

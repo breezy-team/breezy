@@ -14,17 +14,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
 import re
 
-from breezy.cleanup import (
+from ..cleanup import (
     _do_with_cleanups,
     _run_cleanup,
     ObjectWithCleanups,
     OperationWithCleanups,
     )
-from breezy.tests import TestCase
-from breezy import (
+from ..sixish import (
+    BytesIO,
+    )
+from . import TestCase
+from .. import (
     debug,
     trace,
     )
@@ -81,7 +83,7 @@ class TestRunCleanup(CleanupsTestCase):
         """The -Dcleanup debug flag causes cleanup errors to be reported to the
         user.
         """
-        log = StringIO()
+        log = BytesIO()
         trace.push_log_file(log)
         debug.debug_flags.add('cleanup')
         self.assertFalse(_run_cleanup(self.failing_cleanup))
@@ -194,7 +196,7 @@ class TestDoWithCleanups(CleanupsTestCase):
         return [(raise_a, (), {}), (raise_b, (), {})]
 
     def test_multiple_cleanup_failures_debug_flag(self):
-        log = StringIO()
+        log = BytesIO()
         trace.push_log_file(log)
         debug.debug_flags.add('cleanup')
         cleanups = self.make_two_failing_cleanup_funcs()
@@ -206,7 +208,7 @@ class TestDoWithCleanups(CleanupsTestCase):
                 log.getvalue())
 
     def test_func_and_cleanup_errors_debug_flag(self):
-        log = StringIO()
+        log = BytesIO()
         trace.push_log_file(log)
         debug.debug_flags.add('cleanup')
         cleanups = self.make_two_failing_cleanup_funcs()
@@ -239,7 +241,7 @@ class TestDoWithCleanups(CleanupsTestCase):
         """The -Dcleanup debug flag causes cleanup errors to be reported to the
         user.
         """
-        log = StringIO()
+        log = BytesIO()
         trace.push_log_file(log)
         debug.debug_flags.add('cleanup')
         self.assertRaises(ZeroDivisionError, _do_with_cleanups,

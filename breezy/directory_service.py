@@ -22,11 +22,11 @@ to true URLs.  Examples include lp:urls and per-user location aliases.
 
 from __future__ import absolute_import
 
-from breezy import (
+from . import (
     errors,
     registry,
     )
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     branch as _mod_branch,

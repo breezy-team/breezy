@@ -1,4 +1,4 @@
-# Copyright (C) 2007,2009 Canonical Ltd
+# Copyright (C) 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,10 +18,10 @@
 
 from __future__ import absolute_import
 
-from breezy import osutils
+from . import osutils
 
 try:
-    from breezy._bencode_pyx import bdecode, bdecode_as_tuple, bencode, Bencached
-except ImportError, e:
+    from ._bencode_pyx import bdecode, bdecode_as_tuple, bencode, Bencached
+except ImportError as e:
     osutils.failed_to_load_extension(e)
-    from breezy.util._bencode_py import bdecode, bdecode_as_tuple, bencode, Bencached
+    from .util._bencode_py import bdecode, bdecode_as_tuple, bencode, Bencached

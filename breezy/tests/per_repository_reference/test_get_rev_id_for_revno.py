@@ -35,9 +35,9 @@ class TestGetRevIdForRevno(TestCaseWithExternalReferenceRepository):
             stacked_on=tree.branch.base)
         repo = branch.repository
         # Sanity check: now repo has 'revid3', and base has 'revid' + 'revid2'
-        self.assertEqual(set([revid3]),
+        self.assertEqual({revid3},
                 set(repo.bzrdir.open_repository().all_revision_ids()))
-        self.assertEqual(set([revid2, revid]),
+        self.assertEqual({revid2, revid},
                 set(base.bzrdir.open_repository().all_revision_ids()))
         # get_rev_id_for_revno will find revno 1 == 'revid', even though
         # that revision can only be found in the fallback.

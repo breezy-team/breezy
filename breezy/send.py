@@ -19,18 +19,18 @@ from __future__ import absolute_import
 import os
 import time
 
-from breezy import (
+from . import (
     controldir,
     errors,
     osutils,
     registry,
     trace,
     )
-from breezy.i18n import gettext
-from breezy.branch import (
+from .i18n import gettext
+from .branch import (
     Branch,
     )
-from breezy.revision import (
+from .revision import (
     NULL_REVISION,
     )
 
@@ -140,7 +140,7 @@ def send(target_branch, revision, public_branch, remember,
                     raise errors.BzrCommandError(gettext('- not supported for '
                         'merge directives that use more than one output file.'))
                 if not os.path.exists(output):
-                    os.mkdir(output, 0755)
+                    os.mkdir(output, 0o755)
                 for (filename, lines) in directive.to_files():
                     path = os.path.join(output, filename)
                     outfile = open(path, 'wb')

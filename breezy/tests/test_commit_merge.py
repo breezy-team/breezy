@@ -17,18 +17,18 @@
 
 import os
 
-from breezy import (
+from .. import (
     check,
     osutils,
     )
-from breezy.errors import PointlessCommit
-from breezy.tests import (
+from ..errors import PointlessCommit
+from . import (
     TestCaseWithTransport,
     )
-from breezy.tests.features import (
+from .features import (
     SymlinkFeature,
     )
-from breezy.tests.matchers import RevisionHistoryMatches
+from .matchers import RevisionHistoryMatches
 
 
 class TestCommitMerge(TestCaseWithTransport):

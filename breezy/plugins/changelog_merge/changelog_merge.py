@@ -20,13 +20,13 @@ from __future__ import absolute_import
 
 import difflib
 
-from breezy import (
+from ... import (
     debug,
     merge,
     urlutils,
     )
-from breezy.merge3 import Merge3
-from breezy.trace import mutter
+from ...merge3 import Merge3
+from ...trace import mutter
 
 
 def changelog_entries(lines):

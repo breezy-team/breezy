@@ -21,13 +21,11 @@ from __future__ import absolute_import
 # see also the transportstats plugin, which gives you some summary information
 # in a machine-readable dump
 
-import StringIO
-import cStringIO
 import time
 import types
 
-from breezy.trace import mutter
-from breezy.transport import decorator
+from ..trace import mutter
+from ..transport import decorator
 
 
 class TransportLogDecorator(decorator.TransportDecorator):
@@ -91,7 +89,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
         before = time.time()
         try:
             result = getattr(self._decorated, methodname)(*args, **kwargs)
-        except Exception, e:
+        except Exception as e:
             mutter("  --> %s" % e)
             mutter("      %.03fs" % (time.time() - before))
             raise
@@ -109,8 +107,10 @@ class TransportLogDecorator(decorator.TransportDecorator):
             return_result = iter(result)
         else:
             return_result = result
-        if isinstance(result, (cStringIO.OutputType, StringIO.StringIO)):
-            val = repr(result.getvalue())
+        # Is this an io object with a getvalue() method?
+        getvalue = getattr(result, 'getvalue', None)
+        if getvalue is not None:
+            val = repr(getvalue())
             result_len = len(val)
             shown_result = "%s(%s) (%d bytes)" % (result.__class__.__name__,
                 self._shorten(val), result_len)
@@ -151,5 +151,5 @@ class TransportLogDecorator(decorator.TransportDecorator):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from breezy.tests import test_server
+    from ..tests import test_server
     return [(TransportLogDecorator, test_server.LogDecoratorServer)]

@@ -23,7 +23,7 @@ import platform
 import sys
 
 import breezy
-from breezy import (
+from . import (
     config,
     controldir,
     errors,

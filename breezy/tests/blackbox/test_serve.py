@@ -23,7 +23,7 @@ import sys
 import thread
 import threading
 
-from breezy import (
+from ... import (
     builtins,
     config,
     errors,
@@ -33,18 +33,18 @@ from breezy import (
     transport,
     urlutils,
     )
-from breezy.branch import Branch
-from breezy.controldir import ControlDir
-from breezy.smart import client, medium
-from breezy.smart.server import (
+from ...branch import Branch
+from ...controldir import ControlDir
+from ...smart import client, medium
+from ...smart.server import (
     BzrServerFactory,
     SmartTCPServer,
     )
-from breezy.tests import (
+from .. import (
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
     )
-from breezy.transport import remote
+from ...transport import remote
 
 
 class TestBzrServeBase(TestCaseWithTransport):
@@ -70,7 +70,7 @@ class TestBzrServeBase(TestCaseWithTransport):
                 if func is not None:
                     try:
                         func(*func_args, **func_kwargs)
-                    except Exception, e:
+                    except Exception as e:
                         # Log errors to make some test failures a little less
                         # mysterious.
                         trace.mutter('func broke: %r', e)
@@ -96,8 +96,9 @@ class TestBzrServeBase(TestCaseWithTransport):
         try:
             out, err = self.run_bzr(['serve'] + list(serve_args),
                                     retcode=retcode)
-        except KeyboardInterrupt, e:
-            out, err = e.args
+        except KeyboardInterrupt as e:
+            return (self._last_cmd_stdout.getvalue(),
+                self._last_cmd_stderr.getvalue())
         return out, err
 
 
@@ -260,7 +261,7 @@ class TestBzrServe(TestBzrServeBase):
         # This is a smoke test that the server doesn't crash when run with
         # -Dhpss, and does drop some hpss logging to the file.
         self.make_branch('.')
-        log_fname = os.getcwd() + '/server.log'
+        log_fname = self.test_dir + '/server.log'
         self.overrideEnv('BRZ_LOG', log_fname)
         process, transport = self.start_server_inet(['-Dhpss'])
         branch = ControlDir.open_from_transport(transport).open_branch()
@@ -373,7 +374,7 @@ class TestCmdServeChrooting(TestBzrServeBase):
         resp = smart_client.call('BzrDirFormat.initialize', 'foo/')
         try:
             resp = smart_client.call('BzrDir.find_repositoryV3', 'foo/')
-        except errors.ErrorFromSmartServer, e:
+        except errors.ErrorFromSmartServer as e:
             resp = e.error_tuple
         self.client_resp = resp
         client_medium.disconnect()

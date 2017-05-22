@@ -19,15 +19,17 @@
 from __future__ import absolute_import
 
 import os
-import StringIO
 import sys
 import tarfile
 
-from breezy import (
+from .. import (
     errors,
     osutils,
     )
-from breezy.export import _export_iter_entries
+from ..export import _export_iter_entries
+from ..sixish import (
+    BytesIO,
+    )
 
 
 def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=None):
@@ -51,26 +53,26 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
     if entry.kind == "file":
         item.type = tarfile.REGTYPE
         if tree.is_executable(entry.file_id, tree_path):
-            item.mode = 0755
+            item.mode = 0o755
         else:
-            item.mode = 0644
+            item.mode = 0o644
         # This brings the whole file into memory, but that's almost needed for
         # the tarfile contract, which wants the size of the file up front.  We
         # want to make sure it doesn't change, and we need to read it in one
         # go for content filtering.
         content = tree.get_file_text(entry.file_id, tree_path)
         item.size = len(content)
-        fileobj = StringIO.StringIO(content)
+        fileobj = BytesIO(content)
     elif entry.kind == "directory":
         item.type = tarfile.DIRTYPE
         item.name += '/'
         item.size = 0
-        item.mode = 0755
+        item.mode = 0o755
         fileobj = None
     elif entry.kind == "symlink":
         item.type = tarfile.SYMTYPE
         item.size = 0
-        item.mode = 0755
+        item.mode = 0o755
         item.linkname = tree.get_symlink_target(entry.file_id, tree_path)
         fileobj = None
     else:
@@ -218,7 +220,7 @@ def tar_lzma_exporter_generator(tree, dest, root, subdir,
             "Writing to fileobject not supported for .tar.lzma")
     try:
         import lzma
-    except ImportError, e:
+    except ImportError as e:
         raise errors.DependencyNotPresent('lzma', e)
 
     stream = lzma.LZMAFile(dest.encode(osutils._fs_enc), 'w',

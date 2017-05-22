@@ -14,13 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from ...builtins import cmd_init
+from .. import (
+    transport_util,
+    ui_testing,
+    )
 
-from breezy import tests
-from breezy.builtins import cmd_init
-from breezy.tests.transport_util import TestCaseWithConnectionHookedTransport
 
-
-class TestInit(TestCaseWithConnectionHookedTransport):
+class TestInit(transport_util.TestCaseWithConnectionHookedTransport):
 
     def setUp(self):
         super(TestInit, self).setUp()
@@ -29,7 +30,7 @@ class TestInit(TestCaseWithConnectionHookedTransport):
     def test_init(self):
         cmd = cmd_init()
         # We don't care about the ouput but 'outf' should be defined
-        cmd.outf = tests.StringIOWrapper()
+        cmd.outf = ui_testing.StringIOWithEncoding()
         cmd.run(self.get_url())
         self.assertEqual(1, len(self.connections))
 

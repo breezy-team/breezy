@@ -20,7 +20,7 @@
 import os
 import sys
 
-from breezy import (
+from .. import (
     commit,
     config,
     errors,
@@ -28,11 +28,11 @@ from breezy import (
     osutils,
     trace,
     )
-from breezy.msgeditor import (
+from ..msgeditor import (
     make_commit_message_template_encoded,
     edit_commit_message_encoded
 )
-from breezy.tests import (
+from . import (
     features,
     TestCaseInTempDir,
     TestCaseWithTransport,
@@ -42,8 +42,8 @@ from breezy.tests import (
     probe_bad_non_ascii,
     split_suite_by_re,
     )
-from breezy.tests.EncodingAdapter import encoding_scenarios
-from breezy.trace import mutter
+from .EncodingAdapter import encoding_scenarios
+from ..trace import mutter
 
 
 def load_tests(standard_tests, module, loader):
@@ -151,7 +151,7 @@ added:
             f = file(name, 'wb')
             f.write('#!/bin/sh\n')
             f.close()
-            os.chmod(name, 0755)
+            os.chmod(name, 0o755)
             return './' + name
 
     def test_run_editor(self):
@@ -201,7 +201,7 @@ if len(sys.argv) == 2:
             self.overrideEnv('BRZ_EDITOR', 'fed.bat')
         else:
             # [non-win32] make python script executable and set BRZ_EDITOR
-            os.chmod('fed.py', 0755)
+            os.chmod('fed.py', 0o755)
             self.overrideEnv('BRZ_EDITOR', './fed.py')
 
     def test_edit_commit_message(self):

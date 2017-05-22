@@ -20,9 +20,9 @@ import os
 import sys
 from unicodedata import normalize
 
-from breezy import osutils
-from breezy.osutils import pathjoin
-from breezy.tests import TestCase, TestCaseWithTransport, TestSkipped
+from .. import osutils
+from ..osutils import pathjoin
+from . import TestCase, TestCaseWithTransport, TestSkipped
 
 
 class NonAsciiTest(TestCaseWithTransport):

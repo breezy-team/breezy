@@ -50,30 +50,31 @@ from __future__ import absolute_import
 # TODO: Change the parameter 'rev_id' to 'revision_id' to be consistent with
 # the rest of the code; add a deprecation of the old name.
 
-from breezy import (
+from . import (
     debug,
     errors,
     trace,
     tree,
     ui,
     )
-from breezy.branch import Branch
-from breezy.cleanup import OperationWithCleanups
+from .branch import Branch
+from .cleanup import OperationWithCleanups
 import breezy.config
-from breezy.errors import (BzrError, PointlessCommit,
-                           ConflictsInTree,
-                           StrictCommitFailed
-                           )
-from breezy.osutils import (get_user_encoding,
-                            is_inside_any,
-                            minimum_path_selection,
-                            splitpath,
-                            )
-from breezy.trace import mutter, note, is_quiet
-from breezy.inventory import Inventory, InventoryEntry, make_entry
-from breezy import symbol_versioning
-from breezy.urlutils import unescape_for_display
-from breezy.i18n import gettext
+from .errors import (BzrError, PointlessCommit,
+                     ConflictsInTree,
+                     StrictCommitFailed
+                     )
+from .osutils import (get_user_encoding,
+                      is_inside_any,
+                      minimum_path_selection,
+                      splitpath,
+                      )
+from .trace import mutter, note, is_quiet
+from .inventory import Inventory, InventoryEntry, make_entry
+from . import symbol_versioning
+from .urlutils import unescape_for_display
+from .i18n import gettext
+
 
 class NullCommitReporter(object):
     """I report on progress of a commit."""
@@ -446,7 +447,7 @@ class Commit(object):
             # Add revision data to the local branch
             self.rev_id = self.builder.commit(self.message)
 
-        except Exception, e:
+        except Exception as e:
             mutter("aborting commit write group because of exception:")
             trace.log_exception_quietly()
             self.builder.abort()
@@ -792,9 +793,8 @@ class Commit(object):
             deleted_ids = set(self.basis_inv) - set(self.builder.new_inventory)
         if deleted_ids:
             self.any_entries_deleted = True
-            deleted = [(self.basis_tree.id2path(file_id), file_id)
-                for file_id in deleted_ids]
-            deleted.sort()
+            deleted = sorted([(self.basis_tree.id2path(file_id), file_id)
+                for file_id in deleted_ids])
             # XXX: this is not quite directory-order sorting
             for path, file_id in deleted:
                 self.builder.record_delete(path, file_id)

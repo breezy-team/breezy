@@ -57,7 +57,7 @@ class TestStrace(tests.TestCaseWithTransport):
         """Run strace, but cope if it's not allowed"""
         try:
             return strace_detailed(*args, **kwargs)
-        except strace.StraceError, e:
+        except strace.StraceError as e:
             if e.err_messages.startswith(
                     "attach: ptrace(PTRACE_ATTACH, ...): Operation not permitted"):
                 raise tests.TestSkipped("ptrace not permitted")

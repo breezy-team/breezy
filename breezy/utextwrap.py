@@ -29,7 +29,7 @@ import sys
 import textwrap
 from unicodedata import east_asian_width as _eawidth
 
-from breezy import osutils
+from . import osutils
 
 __all__ = ["UTextWrapper", "fill", "wrap"]
 
@@ -70,11 +70,6 @@ class UTextWrapper(textwrap.TextWrapper):
         else:
             raise ValueError("ambiguous_width should be 1 or 2")
 
-        # No drop_whitespace param before Python 2.6 it was always dropped
-        if sys.version_info < (2, 6):
-            self.drop_whitespace = kwargs.pop("drop_whitespace", True)
-            if not self.drop_whitespace:
-                raise ValueError("TextWrapper version must drop whitespace")
         textwrap.TextWrapper.__init__(self, width, **kwargs)
 
     def _unicode_char_width(self, uc):

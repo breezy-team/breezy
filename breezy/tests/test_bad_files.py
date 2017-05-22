@@ -17,22 +17,24 @@
 
 """Tests being able to ignore bad filetypes."""
 
-from cStringIO import StringIO
 import os
 
-from breezy import (
+from .. import (
     errors,
     )
-from breezy.status import show_tree_status
-from breezy.tests import TestCaseWithTransport
-from breezy.tests.features import (
+from ..sixish import (
+    BytesIO,
+    )
+from ..status import show_tree_status
+from . import TestCaseWithTransport
+from .features import (
     OsFifoFeature,
     )
 
 
 def verify_status(tester, tree, value):
     """Verify the output of show_tree_status"""
-    tof = StringIO()
+    tof = BytesIO()
     show_tree_status(tree, to_file=tof)
     tof.seek(0)
     tester.assertEqual(value, tof.readlines())

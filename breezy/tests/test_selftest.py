@@ -16,7 +16,6 @@
 
 """Tests for the test framework."""
 
-from cStringIO import StringIO
 import gc
 import doctest
 import os
@@ -40,7 +39,7 @@ from testtools.matchers import (
 import testtools.testresult.doubles
 
 import breezy
-from breezy import (
+from .. import (
     branchbuilder,
     bzrdir,
     controldir,
@@ -58,22 +57,25 @@ from breezy import (
     workingtree_3,
     workingtree_4,
     )
-from breezy.repofmt import (
+from ..repofmt import (
     groupcompress_repo,
     )
-from breezy.symbol_versioning import (
+from ..sixish import (
+    BytesIO,
+    )
+from ..symbol_versioning import (
     deprecated_function,
     deprecated_in,
     deprecated_method,
     )
-from breezy.tests import (
+from . import (
     features,
     test_lsprof,
     test_server,
     TestUtil,
     )
-from breezy.trace import note, mutter
-from breezy.transport import memory
+from ..trace import note, mutter
+from ..transport import memory
 
 
 def _test_ids(test_suite):
@@ -109,13 +111,13 @@ class TestClassesAvailable(tests.TestCase):
     """As a convenience we expose Test* classes from breezy.tests"""
 
     def test_test_case(self):
-        from breezy.tests import TestCase
+        from . import TestCase
 
     def test_test_loader(self):
-        from breezy.tests import TestLoader
+        from . import TestLoader
 
     def test_test_suite(self):
-        from breezy.tests import TestSuite
+        from . import TestSuite
 
 
 class TestTransportScenarios(tests.TestCase):
@@ -135,7 +137,7 @@ class TestTransportScenarios(tests.TestCase):
             def get_test_permutations(self):
                 return sample_permutation
         sample_permutation = [(1,2), (3,4)]
-        from breezy.tests.per_transport import get_transport_test_permutations
+        from .per_transport import get_transport_test_permutations
         self.assertEqual(sample_permutation,
                          get_transport_test_permutations(MockModule()))
 
@@ -144,8 +146,8 @@ class TestTransportScenarios(tests.TestCase):
         # as there are in all the registered transport modules - we assume if
         # this matches its probably doing the right thing especially in
         # combination with the tests for setting the right classes below.
-        from breezy.tests.per_transport import transport_test_permutations
-        from breezy.transport import _get_transport_modules
+        from .per_transport import transport_test_permutations
+        from ..transport import _get_transport_modules
         modules = _get_transport_modules()
         permutation_count = 0
         for module in modules:
@@ -162,7 +164,7 @@ class TestTransportScenarios(tests.TestCase):
         # This test used to know about all the possible transports and the
         # order they were returned but that seems overly brittle (mbp
         # 20060307)
-        from breezy.tests.per_transport import transport_test_permutations
+        from .per_transport import transport_test_permutations
         scenarios = transport_test_permutations()
         # there are at least that many builtin transports
         self.assertTrue(len(scenarios) > 6)
@@ -179,7 +181,7 @@ class TestBranchScenarios(tests.TestCase):
     def test_scenarios(self):
         # check that constructor parameters are passed through to the adapted
         # test.
-        from breezy.tests.per_branch import make_scenarios
+        from .per_branch import make_scenarios
         server1 = "a"
         server2 = "b"
         formats = [("c", "C"), ("d", "D")]
@@ -204,7 +206,7 @@ class TestBzrDirScenarios(tests.TestCase):
     def test_scenarios(self):
         # check that constructor parameters are passed through to the adapted
         # test.
-        from breezy.tests.per_controldir import make_scenarios
+        from .per_controldir import make_scenarios
         vfs_factory = "v"
         server1 = "a"
         server2 = "b"
@@ -227,7 +229,7 @@ class TestBzrDirScenarios(tests.TestCase):
 class TestRepositoryScenarios(tests.TestCase):
 
     def test_formats_to_scenarios(self):
-        from breezy.tests.per_repository import formats_to_scenarios
+        from .per_repository import formats_to_scenarios
         formats = [("(c)", remote.RemoteRepositoryFormat()),
                    ("(d)", repository.format_registry.get(
                     'Bazaar repository format 2a (needs bzr 1.16 or later)\n'))]
@@ -305,7 +307,7 @@ class TestInterRepositoryScenarios(tests.TestCase):
     def test_scenarios(self):
         # check that constructor parameters are passed through to the adapted
         # test.
-        from breezy.tests.per_interrepository import make_scenarios
+        from .per_interrepository import make_scenarios
         server1 = "a"
         server2 = "b"
         formats = [("C0", "C1", "C2", "C3"), ("D0", "D1", "D2", "D3")]
@@ -331,7 +333,7 @@ class TestWorkingTreeScenarios(tests.TestCase):
     def test_scenarios(self):
         # check that constructor parameters are passed through to the adapted
         # test.
-        from breezy.tests.per_workingtree import make_scenarios
+        from .per_workingtree import make_scenarios
         server1 = "a"
         server2 = "b"
         formats = [workingtree_4.WorkingTreeFormat4(),
@@ -378,7 +380,7 @@ class TestTreeScenarios(tests.TestCase):
         # 'return_parameter' and the revision one set to
         # revision_tree_from_workingtree.
 
-        from breezy.tests.per_tree import (
+        from .per_tree import (
             _dirstate_tree_from_workingtree,
             make_scenarios,
             preview_tree_pre,
@@ -473,14 +475,14 @@ class TestInterTreeScenarios(tests.TestCase):
         # unlike the TestProviderAdapter we dont want to automatically add a
         # parameterized one for WorkingTree - the optimisers will tell us what
         # ones to add.
-        from breezy.tests.per_tree import (
+        from .per_tree import (
             return_parameter,
             )
-        from breezy.tests.per_intertree import (
+        from .per_intertree import (
             make_scenarios,
             )
-        from breezy.workingtree_3 import WorkingTreeFormat3
-        from breezy.workingtree_4 import WorkingTreeFormat4
+        from ..workingtree_3 import WorkingTreeFormat3
+        from ..workingtree_4 import WorkingTreeFormat4
         input_test = TestInterTreeScenarios(
             "test_scenarios")
         server1 = "a"
@@ -525,7 +527,7 @@ class TestTestCaseInTempDir(tests.TestCaseInTempDir):
         self.assertIsSameRealPath(self.test_home_dir, os.environ['HOME'])
 
     def test_assertEqualStat_equal(self):
-        from breezy.tests.test_dirstate import _FakeStat
+        from .test_dirstate import _FakeStat
         self.build_tree(["foo"])
         real = os.lstat("foo")
         fake = _FakeStat(real.st_size, real.st_mtime, real.st_ctime,
@@ -669,7 +671,7 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
     """Tests for the convenience functions TestCaseWithTransport introduces."""
 
     def test_get_readonly_url_none(self):
-        from breezy.transport.readonly import ReadonlyTransportDecorator
+        from ..transport.readonly import ReadonlyTransportDecorator
         self.vfs_transport_factory = memory.MemoryServer
         self.transport_readonly_server = None
         # calling get_readonly_transport() constructs a decorator on the url
@@ -683,8 +685,8 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
 
     def test_get_readonly_url_http(self):
-        from breezy.tests.http_server import HttpServer
-        from breezy.transport.http import HttpTransportBase
+        from ..http_server import HttpServer
+        from ..transport.http import HttpTransportBase
         self.transport_server = test_server.LocalURLServer
         self.transport_readonly_server = HttpServer
         # calling get_readonly_transport() gives us a HTTP server instance.
@@ -806,7 +808,7 @@ class TestTestResult(tests.TestCase):
     def test_lsprofiling(self):
         """Verbose test result prints lsprof statistics from test cases."""
         self.requireFeature(features.lsprof_feature)
-        result_stream = StringIO()
+        result_stream = BytesIO()
         result = breezy.tests.VerboseTestResult(
             result_stream,
             descriptions=0,
@@ -851,7 +853,7 @@ class TestTestResult(tests.TestCase):
                 self.time(datetime.datetime.utcfromtimestamp(51.147))
                 super(TimeAddedVerboseTestResult, self).addSuccess(test)
             def report_tests_starting(self): pass
-        sio = StringIO()
+        sio = BytesIO()
         self.get_passing_test().run(TimeAddedVerboseTestResult(sio, 0, 2))
         self.assertEndsWith(sio.getvalue(), "OK    50002ms\n")
 
@@ -881,7 +883,7 @@ class TestTestResult(tests.TestCase):
 
     def test_verbose_report_known_failure(self):
         # verbose test output formatting
-        result_stream = StringIO()
+        result_stream = BytesIO()
         result = breezy.tests.VerboseTestResult(
             result_stream,
             descriptions=0,
@@ -928,7 +930,7 @@ class TestTestResult(tests.TestCase):
 
     def test_verbose_report_unsupported(self):
         # verbose test output formatting
-        result_stream = StringIO()
+        result_stream = BytesIO()
         result = breezy.tests.VerboseTestResult(
             result_stream,
             descriptions=0,
@@ -1051,7 +1053,7 @@ class TestRunner(tests.TestCase):
         def failing_test():
             raise AssertionError('foo')
         test.addTest(unittest.FunctionTestCase(failing_test))
-        stream = StringIO()
+        stream = BytesIO()
         runner = tests.TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)
         lines = stream.getvalue().splitlines()
@@ -1077,7 +1079,7 @@ class TestRunner(tests.TestCase):
             def known_failure_test(self):
                 self.knownFailure("Never works...")
         test = Test("known_failure_test")
-        stream = StringIO()
+        stream = BytesIO()
         runner = tests.TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)
         self.assertContainsRe(stream.getvalue(),
@@ -1091,7 +1093,7 @@ class TestRunner(tests.TestCase):
         class Test(tests.TestCase):
             def test_truth(self):
                 self.expectFailure("No absolute truth", self.assertTrue, True)
-        runner = tests.TextTestRunner(stream=StringIO())
+        runner = tests.TextTestRunner(stream=BytesIO())
         result = self.run_test_runner(runner, Test("test_truth"))
         self.assertContainsRe(runner.stream.getvalue(),
             "=+\n"
@@ -1116,7 +1118,7 @@ class TestRunner(tests.TestCase):
                 ExtendedToOriginalDecorator.startTest(self, test)
                 calls.append('start')
         test = unittest.FunctionTestCase(lambda:None)
-        stream = StringIO()
+        stream = BytesIO()
         runner = tests.TextTestRunner(stream=stream,
             result_decorators=[LoggingDecorator])
         result = self.run_test_runner(runner, test)
@@ -1183,7 +1185,7 @@ class TestRunner(tests.TestCase):
         class Test(tests.TestCase):
             def not_applicable_test(self):
                 raise tests.TestNotApplicable('this test never runs')
-        out = StringIO()
+        out = BytesIO()
         runner = tests.TextTestRunner(stream=out, verbosity=2)
         test = Test("not_applicable_test")
         result = self.run_test_runner(runner, test)
@@ -1209,7 +1211,7 @@ class TestRunner(tests.TestCase):
         test = unittest.TestSuite()
         test.addTest(test1)
         test.addTest(test2)
-        stream = StringIO()
+        stream = BytesIO()
         runner = tests.TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)
         lines = stream.getvalue().splitlines()
@@ -1226,7 +1228,7 @@ class TestRunner(tests.TestCase):
             unittest.FunctionTestCase(lambda:None),
             unittest.FunctionTestCase(lambda:None)])
         self.assertEqual(suite.countTestCases(), 2)
-        stream = StringIO()
+        stream = BytesIO()
         runner = tests.TextTestRunner(stream=stream, verbosity=2)
         # Need to use the CountingDecorator as that's what sets num_tests
         result = self.run_test_runner(runner, tests.CountingDecorator(suite))
@@ -1240,7 +1242,7 @@ class TestRunner(tests.TestCase):
                 ExtendedToOriginalDecorator.startTestRun(self)
                 calls.append('startTestRun')
         test = unittest.FunctionTestCase(lambda:None)
-        stream = StringIO()
+        stream = BytesIO()
         runner = tests.TextTestRunner(stream=stream,
             result_decorators=[LoggingDecorator])
         result = self.run_test_runner(runner, test)
@@ -1254,7 +1256,7 @@ class TestRunner(tests.TestCase):
                 ExtendedToOriginalDecorator.stopTestRun(self)
                 calls.append('stopTestRun')
         test = unittest.FunctionTestCase(lambda:None)
-        stream = StringIO()
+        stream = BytesIO()
         runner = tests.TextTestRunner(stream=stream,
             result_decorators=[LoggingDecorator])
         result = self.run_test_runner(runner, test)
@@ -1266,7 +1268,7 @@ class TestRunner(tests.TestCase):
             def test_log_unicode(self):
                 self.log(u"\u2606")
                 self.fail("Now print that log!")
-        out = StringIO()
+        out = BytesIO()
         self.overrideAttr(osutils, "get_terminal_encoding",
             lambda trace=False: "ascii")
         result = self.run_test_runner(tests.TextTestRunner(stream=out),
@@ -1353,14 +1355,14 @@ class TestTestCase(tests.TestCase):
         """The -Eallow_debug flag prevents breezy.debug.debug_flags from being
         sanitised (i.e. cleared) before running a test.
         """
-        self.change_selftest_debug_flags(set(['allow_debug']))
-        breezy.debug.debug_flags = set(['a-flag'])
+        self.change_selftest_debug_flags({'allow_debug'})
+        breezy.debug.debug_flags = {'a-flag'}
         class TestThatRecordsFlags(tests.TestCase):
             def test_foo(nested_self):
                 self.flags = set(breezy.debug.debug_flags)
         test = TestThatRecordsFlags('test_foo')
         test.run(self.make_test_result())
-        flags = set(['a-flag'])
+        flags = {'a-flag'}
         if 'disable_lock_checks' not in tests.selftest_debug_flags:
             flags.add('strict_locks')
         self.assertEqual(flags, self.flags)
@@ -1377,9 +1379,9 @@ class TestTestCase(tests.TestCase):
         # By default we do strict lock checking and thorough lock/unlock
         # tracking.
         self.assertTrue(self.test_lock_check_thorough)
-        self.assertEqual(set(['strict_locks']), self.flags)
+        self.assertEqual({'strict_locks'}, self.flags)
         # Now set the disable_lock_checks flag, and show that this changed.
-        self.change_selftest_debug_flags(set(['disable_lock_checks']))
+        self.change_selftest_debug_flags({'disable_lock_checks'})
         test = TestThatRecordsFlags('test_foo')
         test.run(self.make_test_result())
         self.assertFalse(self.test_lock_check_thorough)
@@ -1395,22 +1397,22 @@ class TestTestCase(tests.TestCase):
         self.change_selftest_debug_flags(set())
         test = TestThatRecordsFlags('test_foo')
         test.run(self.make_test_result())
-        self.assertEqual(set(['strict_locks']), self.flags1)
+        self.assertEqual({'strict_locks'}, self.flags1)
         self.assertEqual(set(), self.flags2)
 
     def test_debug_flags_restored(self):
         """The breezy debug flags should be restored to their original state
         after the test was run, even if allow_debug is set.
         """
-        self.change_selftest_debug_flags(set(['allow_debug']))
+        self.change_selftest_debug_flags({'allow_debug'})
         # Now run a test that modifies debug.debug_flags.
-        breezy.debug.debug_flags = set(['original-state'])
+        breezy.debug.debug_flags = {'original-state'}
         class TestThatModifiesFlags(tests.TestCase):
             def test_foo(self):
-                breezy.debug.debug_flags = set(['modified'])
+                breezy.debug.debug_flags = {'modified'}
         test = TestThatModifiesFlags('test_foo')
         test.run(self.make_test_result())
-        self.assertEqual(set(['original-state']), breezy.debug.debug_flags)
+        self.assertEqual({'original-state'}, breezy.debug.debug_flags)
 
     def make_test_result(self):
         """Get a test result that writes to the test log file."""
@@ -1455,7 +1457,7 @@ class TestTestCase(tests.TestCase):
     def test_time_creates_benchmark_in_result(self):
         """Test that the TestCase.time() method accumulates a benchmark time."""
         sample_test = TestTestCase("method_that_times_a_bit_twice")
-        output_stream = StringIO()
+        output_stream = BytesIO()
         result = breezy.tests.VerboseTestResult(
             output_stream,
             descriptions=0,
@@ -2038,7 +2040,7 @@ class SelfTestHelper(object):
 
     def run_selftest(self, **kwargs):
         """Run selftest returning its output."""
-        output = StringIO()
+        output = BytesIO()
         old_transport = breezy.tests.default_transport
         old_root = tests.TestCaseWithMemoryTransport.TEST_ROOT
         tests.TestCaseWithMemoryTransport.TEST_ROOT = None
@@ -2059,8 +2061,8 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         def factory():
             factory_called.append(True)
             return TestUtil.TestSuite()
-        out = StringIO()
-        err = StringIO()
+        out = BytesIO()
+        err = BytesIO()
         self.apply_redirected(out, err, None, breezy.tests.selftest,
             test_suite_factory=factory)
         self.assertEqual([True], factory_called)
@@ -2257,7 +2259,7 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         # GZ 2011-05-18: Old versions of subunit treat unexpected success as a
         #                success, if a min version check is added remove this
         from subunit import TestProtocolClient as _Client
-        if _Client.addUnexpectedSuccess.im_func is _Client.addSuccess.im_func:
+        if _Client.addUnexpectedSuccess.__func__ is _Client.addSuccess.__func__:
             self.expectFailure('subunit treats "unexpectedSuccess"'
                                ' as a plain success',
                 self.assertEqual, 1, len(result.unexpectedSuccesses))
@@ -2384,7 +2386,7 @@ class TestRunBzrCaptured(tests.TestCaseWithTransport):
 
     def test_stdin(self):
         # test that the stdin keyword to _run_bzr_core is passed through to
-        # apply_redirected as a StringIO. We do this by overriding
+        # apply_redirected as a BytesIO. We do this by overriding
         # apply_redirected in this class, and then calling _run_bzr_core,
         # which calls apply_redirected.
         self.run_bzr(['foo', 'bar'], stdin='gam')
@@ -3052,7 +3054,7 @@ class TestTestSuite(tests.TestCase):
                 'breezy.timestamp.format_highres_date',
                 ])
         suite = tests.test_suite()
-        self.assertEqual(set(["testmod_names", "modules_to_doctest"]),
+        self.assertEqual({"testmod_names", "modules_to_doctest"},
             set(calls))
         self.assertSubset(expected_test_list, _test_ids(suite))
 
@@ -3200,7 +3202,7 @@ class TestThreadLeakDetection(tests.TestCase):
 
     class LeakRecordingResult(tests.ExtendedTestResult):
         def __init__(self):
-            tests.ExtendedTestResult.__init__(self, StringIO(), 0, 1)
+            tests.ExtendedTestResult.__init__(self, BytesIO(), 0, 1)
             self.leaks = []
         def _report_thread_leak(self, test, leaks, alive):
             self.leaks.append((test, leaks))
@@ -3240,7 +3242,7 @@ class TestThreadLeakDetection(tests.TestCase):
         result.stopTestRun()
         self.assertEqual(result._tests_leaking_threads_count, 1)
         self.assertEqual(result._first_thread_leaker_id, test.id())
-        self.assertEqual(result.leaks, [(test, set([thread]))])
+        self.assertEqual(result.leaks, [(test, {thread})])
         self.assertContainsString(result.stream.getvalue(), "leaking threads")
 
     def test_multiple_leaks(self):
@@ -3276,8 +3278,8 @@ class TestThreadLeakDetection(tests.TestCase):
         self.assertEqual(result._tests_leaking_threads_count, 2)
         self.assertEqual(result._first_thread_leaker_id, first_test.id())
         self.assertEqual(result.leaks, [
-            (first_test, set([thread_b])),
-            (third_test, set([thread_a, thread_c]))])
+            (first_test, {thread_b}),
+            (third_test, {thread_a, thread_c})])
         self.assertContainsString(result.stream.getvalue(), "leaking threads")
 
 
@@ -3286,7 +3288,7 @@ class TestPostMortemDebugging(tests.TestCase):
 
     class TracebackRecordingResult(tests.ExtendedTestResult):
         def __init__(self):
-            tests.ExtendedTestResult.__init__(self, StringIO(), 0, 1)
+            tests.ExtendedTestResult.__init__(self, BytesIO(), 0, 1)
             self.postcode = None
         def _post_mortem(self, tb=None):
             """Record the code object at the end of the current traceback"""
@@ -3309,7 +3311,7 @@ class TestPostMortemDebugging(tests.TestCase):
                 raise RuntimeError
         result = self.TracebackRecordingResult()
         Test().run(result)
-        self.assertEqual(result.postcode, Test.runTest.func_code)
+        self.assertEqual(result.postcode, Test.runTest.__code__)
 
     def test_location_unittest_failure(self):
         """Needs right post mortem traceback with failing unittest case"""
@@ -3318,7 +3320,7 @@ class TestPostMortemDebugging(tests.TestCase):
                 raise self.failureException
         result = self.TracebackRecordingResult()
         Test().run(result)
-        self.assertEqual(result.postcode, Test.runTest.func_code)
+        self.assertEqual(result.postcode, Test.runTest.__code__)
 
     def test_location_bt_error(self):
         """Needs right post mortem traceback with erroring breezy.tests case"""
@@ -3327,7 +3329,7 @@ class TestPostMortemDebugging(tests.TestCase):
                 raise RuntimeError
         result = self.TracebackRecordingResult()
         Test("test_error").run(result)
-        self.assertEqual(result.postcode, Test.test_error.func_code)
+        self.assertEqual(result.postcode, Test.test_error.__code__)
 
     def test_location_bt_failure(self):
         """Needs right post mortem traceback with failing breezy.tests case"""
@@ -3336,12 +3338,12 @@ class TestPostMortemDebugging(tests.TestCase):
                 raise self.failureException
         result = self.TracebackRecordingResult()
         Test("test_failure").run(result)
-        self.assertEqual(result.postcode, Test.test_failure.func_code)
+        self.assertEqual(result.postcode, Test.test_failure.__code__)
 
     def test_env_var_triggers_post_mortem(self):
         """Check pdb.post_mortem is called iff BRZ_TEST_PDB is set"""
         import pdb
-        result = tests.ExtendedTestResult(StringIO(), 0, 1)
+        result = tests.ExtendedTestResult(BytesIO(), 0, 1)
         post_mortem_calls = []
         self.overrideAttr(pdb, "post_mortem", post_mortem_calls.append)
         self.overrideEnv('BRZ_TEST_PDB', None)
@@ -3365,7 +3367,7 @@ class TestRunSuite(tests.TestCase):
                 calls.append(test)
                 return tests.ExtendedTestResult(self.stream, self.descriptions,
                                                 self.verbosity)
-        tests.run_suite(suite, runner_class=MyRunner, stream=StringIO())
+        tests.run_suite(suite, runner_class=MyRunner, stream=BytesIO())
         self.assertLength(1, calls)
 
 
@@ -3376,7 +3378,7 @@ class _Selftest(object):
         """To be overridden by subclasses that run tests out of process"""
 
     def _run_selftest(self, **kwargs):
-        sio = StringIO()
+        sio = BytesIO()
         self._inject_stream_into_subunit(sio)
         tests.selftest(stream=sio, stop_on_failure=False, **kwargs)
         return sio.getvalue()
@@ -3443,7 +3445,7 @@ class TestUncollectedWarnings(_Selftest, tests.TestCase):
         def test_self_ref(self):
             self.also_self = self.test_self_ref
         def test_skip(self):
-            self.skip("Don't need")
+            self.skipTest("Don't need")
 
     def _get_suite(self):
         return TestUtil.TestSuite([
@@ -3525,7 +3527,7 @@ class TestEnvironHandling(tests.TestCase):
                 # Make sure we can call it twice
                 self.overrideEnv('MYVAR', None)
                 self.assertEqual(None, os.environ.get('MYVAR'))
-        output = StringIO()
+        output = BytesIO()
         result = tests.TextTestResult(output, 0, 1)
         Test('test_me').run(result)
         if not result.wasStrictlySuccessful():
@@ -3613,7 +3615,7 @@ class TestDocTestSuiteIsolation(tests.TestCase):
 
     def run_doctest_suite_for_string(self, klass, string):
         suite = self.get_doctest_suite_for_string(klass, string)
-        output = StringIO()
+        output = BytesIO()
         result = tests.TextTestResult(output, 0, 1)
         suite.run(result)
         return result, output
@@ -3717,7 +3719,7 @@ class TestCounterHooks(tests.TestCase, SelfTestHelper):
         result = unittest.TestResult()
         test.run(result)
         self.assertTrue(hasattr(test, '_counters'))
-        self.assertTrue(test._counters.has_key('myhook'))
+        self.assertTrue('myhook' in test._counters)
         self.assertEqual(expected_calls, test._counters['myhook'])
 
     def test_no_hook(self):

@@ -16,12 +16,11 @@
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
 import shutil
 import sys
 import tempfile
 
-from breezy import (
+from . import (
     builtins,
     delta,
     diff,
@@ -35,7 +34,11 @@ from breezy import (
     ui,
     workingtree,
 )
-from breezy.i18n import gettext
+from .i18n import gettext
+from .sixish import (
+    BytesIO,
+    )
+
 
 class UseEditor(Exception):
     """Use an editor instead of selecting hunks."""
@@ -237,7 +240,7 @@ class Shelver(object):
             as removals, removals displayed as insertions).
         :return: A patches.Patch.
         """
-        diff_file = StringIO()
+        diff_file = BytesIO()
         if invert:
             old_tree = self.work_tree
             new_tree = self.target_tree

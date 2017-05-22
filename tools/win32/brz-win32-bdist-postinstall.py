@@ -49,11 +49,11 @@ if "-install" in sys.argv[1:]:
 
     ##
     # XXX change message for something more appropriate
-    print """Breezy %s
+    print("""Breezy %s
 
 Congratulation! Brz successfully installed.
 
-""" % ver
+""" % ver)
 
     batch_path = "brz.bat"
     prefix = sys.exec_prefix
@@ -85,10 +85,10 @@ Congratulation! Brz successfully installed.
                                         # auto-deinstallation procedure
         ##
         # inform user where batch launcher is.
-        print "Created:", batch_path
-        print "Use this batch file to run brz"
-    except Exception, e:
-        print "ERROR: Unable to create %s: %s" % (batch_path, e)
+        print("Created:", batch_path)
+        print("Use this batch file to run brz")
+    except Exception as e:
+        print("ERROR: Unable to create %s: %s" % (batch_path, e))
 
     ## this hunk borrowed from pywin32_postinstall.py
     # use bdist_wininst builtins to create a shortcut.
@@ -115,7 +115,7 @@ Congratulation! Brz successfully installed.
     dst = os.path.join(fldr, 'Documentation.lnk')
     create_shortcut(docs, 'Breezy Documentation', dst)
     file_created(dst)
-    print 'Documentation for Breezy: Start => Programs => Breezy'
+    print('Documentation for Breezy: Start => Programs => Breezy')
 
     # brz in cmd shell
     if os.name == 'nt':

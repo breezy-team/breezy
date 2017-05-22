@@ -24,7 +24,7 @@ from __future__ import absolute_import
 
 import os
 
-from breezy import (
+from . import (
     commands,
     option,
     )

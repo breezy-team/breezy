@@ -20,7 +20,7 @@
 import os
 import time
 
-from breezy import (
+from .. import (
     bzrdir,
     dirstate,
     errors,
@@ -28,9 +28,9 @@ from breezy import (
     osutils,
     workingtree_4,
     )
-from breezy.lockdir import LockDir
-from breezy.tests import TestCaseWithTransport, TestSkipped, features
-from breezy.tree import InterTree
+from ..lockdir import LockDir
+from . import TestCaseWithTransport, TestSkipped, features
+from ..tree import InterTree
 
 
 class TestWorkingTreeFormat4(TestCaseWithTransport):

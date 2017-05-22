@@ -16,7 +16,10 @@
 
 import errno
 import socket
-import SocketServer
+try:
+    import socketserver
+except ImportError:
+    import SocketServer as socketserver
 import sys
 import threading
 import traceback
@@ -53,7 +56,7 @@ class TestServer(transport.Server):
     The TestServer interface provides a server for a given transport. We use
     these servers as loopback testing tools. For any given transport the
     Servers it provides must either allow writing, or serve the contents
-    of os.getcwdu() at the time start_server is called.
+    of osutils.getcwd() at the time start_server is called.
 
     Note that these are real servers - they must implement all the things
     that we want bzr transports to take advantage of.
@@ -66,7 +69,7 @@ class TestServer(transport.Server):
         a database like svn, or a memory only transport, it should return
         a connection to a newly established resource for this Server.
         Otherwise it should return a url that will provide access to the path
-        that was os.getcwdu() when start_server() was called.
+        that was osutils.getcwd() when start_server() was called.
 
         Subsequent calls will return the same resource.
         """
@@ -268,7 +271,7 @@ class TestThread(cethread.CatchingExceptionThread):
 
 
 class TestingTCPServerMixin(object):
-    """Mixin to support running SocketServer.TCPServer in a thread.
+    """Mixin to support running socketserver.TCPServer in a thread.
 
     Tests are connecting from the main thread, the server has to be run in a
     separate thread.
@@ -334,10 +337,10 @@ class TestingTCPServerMixin(object):
         # The following can be used for debugging purposes, it will display the
         # exception and the traceback just when it occurs instead of waiting
         # for the thread to be joined.
-        # SocketServer.BaseServer.handle_error(self, request, client_address)
+        # socketserver.BaseServer.handle_error(self, request, client_address)
 
         # We call close_request manually, because we are going to raise an
-        # exception. The SocketServer implementation calls:
+        # exception. The socketserver implementation calls:
         #   handle_error(...)
         #   close_request(...)
         # But because we raise the exception, close_request will never be
@@ -381,7 +384,7 @@ class TestingTCPServerMixin(object):
         try:
             sock.shutdown(socket.SHUT_RDWR)
             sock.close()
-        except Exception, e:
+        except Exception as e:
             if self.ignored_exceptions(e):
                 pass
             else:
@@ -401,11 +404,11 @@ class TestingTCPServerMixin(object):
         thread.pending_exception()
 
 
-class TestingTCPServer(TestingTCPServerMixin, SocketServer.TCPServer):
+class TestingTCPServer(TestingTCPServerMixin, socketserver.TCPServer):
 
     def __init__(self, server_address, request_handler_class):
         TestingTCPServerMixin.__init__(self)
-        SocketServer.TCPServer.__init__(self, server_address,
+        socketserver.TCPServer.__init__(self, server_address,
                                         request_handler_class)
 
     def get_request(self):
@@ -422,11 +425,11 @@ class TestingTCPServer(TestingTCPServerMixin, SocketServer.TCPServer):
 
 
 class TestingThreadingTCPServer(TestingTCPServerMixin,
-                                SocketServer.ThreadingTCPServer):
+                                socketserver.ThreadingTCPServer):
 
     def __init__(self, server_address, request_handler_class):
         TestingTCPServerMixin.__init__(self)
-        SocketServer.ThreadingTCPServer.__init__(self, server_address,
+        socketserver.ThreadingTCPServer.__init__(self, server_address,
                                                  request_handler_class)
 
     def get_request(self):
@@ -441,7 +444,7 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
         started.set()
         # We will be on our own once the server tells us we're detached
         detached.wait()
-        SocketServer.ThreadingTCPServer.process_request_thread(
+        socketserver.ThreadingTCPServer.process_request_thread(
             self, request, client_address)
         self.close_request(request)
         stopped.set()
@@ -559,7 +562,7 @@ class TestingTCPServerInAThread(transport.Server):
             last_conn = None
             try:
                 last_conn = osutils.connect_socket((self.host, self.port))
-            except socket.error, e:
+            except socket.error as e:
                 # But ignore connection errors as the point is to unblock the
                 # server thread, it may happen that it's not blocked or even
                 # not started.
@@ -578,7 +581,7 @@ class TestingTCPServerInAThread(transport.Server):
             # thread
             try:
                 self._server_thread.join()
-            except Exception, e:
+            except Exception as e:
                 if self.server.ignored_exceptions(e):
                     pass
                 else:
@@ -599,7 +602,7 @@ class TestingTCPServerInAThread(transport.Server):
         self.server._pending_exception(self._server_thread)
 
 
-class TestingSmartConnectionHandler(SocketServer.BaseRequestHandler,
+class TestingSmartConnectionHandler(socketserver.BaseRequestHandler,
                                     medium.SmartServerSocketStreamMedium):
 
     def __init__(self, request, client_address, server):
@@ -608,7 +611,7 @@ class TestingSmartConnectionHandler(SocketServer.BaseRequestHandler,
             server.root_client_path,
             timeout=_DEFAULT_TESTING_CLIENT_TIMEOUT)
         request.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        SocketServer.BaseRequestHandler.__init__(self, request, client_address,
+        socketserver.BaseRequestHandler.__init__(self, request, client_address,
                                                  server)
 
     def handle(self):

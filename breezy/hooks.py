@@ -18,11 +18,11 @@
 
 from __future__ import absolute_import
 
-from breezy import (
+from . import (
     registry,
     symbol_versioning,
     )
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 import textwrap
 
@@ -57,7 +57,7 @@ class KnownHooksRegistry(registry.Registry):
         for key in self.keys():
             yield key, self.key_to_parent_and_attribute(key)
 
-    def key_to_parent_and_attribute(self, (module_name, member_name)):
+    def key_to_parent_and_attribute(self, key):
         """Convert a known_hooks key to a (parent_obj, attr) pair.
 
         :param key: A tuple (module_name, member_name) as found in the keys of
@@ -65,8 +65,7 @@ class KnownHooksRegistry(registry.Registry):
         :return: The parent_object of the hook and the name of the attribute on
             that parent object where the hook is kept.
         """
-        parent_mod, parent_member, attr = pyutils.calc_parent_name(module_name,
-            member_name)
+        parent_mod, parent_member, attr = pyutils.calc_parent_name(*key)
         return pyutils.get_named_object(parent_mod, parent_member), attr
 
 
@@ -96,14 +95,14 @@ for (_hook_module, _hook_attribute, _hook_class) in _builtin_known_hooks:
 del _builtin_known_hooks, _hook_module, _hook_attribute, _hook_class
 
 
-def known_hooks_key_to_object((module_name, member_name)):
+def known_hooks_key_to_object(key):
     """Convert a known_hooks key to a object.
 
     :param key: A tuple (module_name, member_name) as found in the keys of
         the known_hooks registry.
     :return: The object this specifies.
     """
-    return pyutils.get_named_object(module_name, member_name)
+    return pyutils.get_named_object(*key)
 
 
 class Hooks(dict):
@@ -321,7 +320,7 @@ class HookPoint(object):
         return '\n'.join(strings)
 
     def __eq__(self, other):
-        return (type(other) == type(self) and other.__dict__ == self.__dict__)
+        return (isinstance(other, type(self)) and other.__dict__ == self.__dict__)
 
     def hook_lazy(self, callback_module, callback_member, callback_label):
         """Lazily register a callback to be called when this HookPoint fires.

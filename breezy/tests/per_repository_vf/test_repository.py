@@ -69,7 +69,7 @@ class TestRepository(TestCaseWithRepository):
         rev_id = (tree.commit('a'),)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual(set([rev_id]), set(repo.inventories.keys()))
+        self.assertEqual({rev_id}, set(repo.inventories.keys()))
 
     def test_attribute_revision_store(self):
         """Test the existence of the revisions attribute."""
@@ -86,7 +86,7 @@ class TestRepository(TestCaseWithRepository):
         try:
             self.assertEqual(set(), set(repo.revisions.keys()))
             revid = (tree.commit("foo"),)
-            self.assertEqual(set([revid]), set(repo.revisions.keys()))
+            self.assertEqual({revid}, set(repo.revisions.keys()))
             self.assertEqual({revid:()},
                 repo.revisions.get_parent_map([revid]))
         finally:
@@ -99,7 +99,7 @@ class TestRepository(TestCaseWithRepository):
         merge_id = (tree.commit('merged'),)
         repo.lock_read()
         self.addCleanup(repo.unlock)
-        self.assertEqual(set([revid, left_id, right_id, merge_id]),
+        self.assertEqual({revid, left_id, right_id, merge_id},
             set(repo.revisions.keys()))
         self.assertEqual({revid:(), left_id:(revid,), right_id:(revid,),
              merge_id:(right_id, left_id)},
@@ -279,7 +279,7 @@ class TestRepository(TestCaseWithRepository):
                     ' platform for this repo format' % (file_id,))
             if repo._format.rich_root_data:
                 root_commit = (tree.get_root_id(),) + rev_key
-                keys = set([root_commit])
+                keys = {root_commit}
                 parents = {root_commit:()}
             else:
                 keys = set()
@@ -380,7 +380,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
 
     def test_all_revision_ids(self):
         # all_revision_ids -> all revisions
-        self.assertEqual(set(['rev1', 'rev2', 'rev3', 'rev4']),
+        self.assertEqual({'rev1', 'rev2', 'rev3', 'rev4'},
             set(self.bzrdir.open_repository().all_revision_ids()))
 
     def test_reserved_id(self):

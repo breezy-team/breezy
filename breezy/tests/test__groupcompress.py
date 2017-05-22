@@ -16,14 +16,14 @@
 
 """Tests for the python and pyrex extensions of groupcompress"""
 
-from breezy import (
+from .. import (
     _groupcompress_py,
     tests,
     )
-from breezy.tests.scenarios import (
+from .scenarios import (
     load_tests_apply_scenarios,
     )
-from breezy.tests import (
+from . import (
     features,
     )
 

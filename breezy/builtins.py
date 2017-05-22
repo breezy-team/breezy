@@ -18,15 +18,14 @@
 
 from __future__ import absolute_import
 
+import errno
 import os
+import sys
 
 import breezy.bzrdir
 
-from breezy import lazy_import
+from . import lazy_import
 lazy_import.lazy_import(globals(), """
-import cStringIO
-import errno
-import sys
 import time
 
 import breezy
@@ -65,20 +64,24 @@ from breezy.workingtree import WorkingTree
 from breezy.i18n import gettext, ngettext
 """)
 
-from breezy.commands import (
+from .commands import (
     Command,
     builtin_command_registry,
     display_command,
     )
-from breezy.option import (
+from .option import (
     ListOption,
     Option,
     RegistryOption,
     custom_help,
     _parse_revision_str,
     )
-from breezy.trace import mutter, note, warning, is_quiet, get_verbosity_level
-from breezy import (
+from .sixish import (
+    BytesIO,
+    text_type,
+)
+from .trace import mutter, note, warning, is_quiet, get_verbosity_level
+from . import (
     symbol_versioning,
     )
 
@@ -391,7 +394,7 @@ class cmd_status(Command):
     def run(self, show_ids=False, file_list=None, revision=None, short=False,
             versioned=False, no_pending=False, verbose=False,
             no_classify=False):
-        from breezy.status import show_tree_status
+        from .status import show_tree_status
 
         if revision and len(revision) > 2:
             raise errors.BzrCommandError(gettext('brz status --revision takes exactly'
@@ -507,7 +510,7 @@ class cmd_dump_btree(Command):
         """Create a BTreeGraphIndex and raw bytes."""
         bt = btree_index.BTreeGraphIndex(trans, basename, None)
         bytes = trans.get_bytes(basename)
-        bt._file = cStringIO.StringIO(bytes)
+        bt._file = BytesIO(bytes)
         bt._size = len(bytes)
         return bt, bytes
 
@@ -643,7 +646,7 @@ class cmd_repair_workingtree(Command):
             revision_ids = [r.as_revision_id(tree.branch) for r in revision]
         try:
             tree.reset_state(revision_ids)
-        except errors.BzrError, e:
+        except errors.BzrError as e:
             if revision_ids is None:
                 extra = (gettext(', the header appears corrupt, try passing -r -1'
                          ' to set the state to the last commit'))
@@ -809,7 +812,7 @@ class cmd_add(Command):
                help="Show what would be done, but don't actually do anything."),
         'verbose',
         Option('file-ids-from',
-               type=unicode,
+               type=text_type,
                help='Lookup file ids from this tree.'),
         ]
     encoding_type = 'replace'
@@ -887,7 +890,7 @@ class cmd_mkdir(Command):
             if parents:
                 try:
                     os.makedirs(dir)
-                except OSError, e:
+                except OSError as e:
                     if e.errno != errno.EEXIST:
                         raise
             else:
@@ -929,7 +932,7 @@ class cmd_inventory(Command):
         'show-ids',
         Option('kind',
                help='List entries of a particular kind: file, directory, symlink.',
-               type=unicode),
+               type=text_type),
         ]
     takes_args = ['file*']
 
@@ -1306,7 +1309,7 @@ class cmd_push(Command):
             help='Create a stacked branch that refers to another branch '
                 'for the commit history. Only the work not present in the '
                 'referenced branch is included in the branch created.',
-            type=unicode),
+            type=text_type),
         Option('strict',
                help='Refuse to push if there are uncommitted changes in'
                ' the working tree, --no-strict disables the check.'),
@@ -1324,7 +1327,7 @@ class cmd_push(Command):
         use_existing_dir=False, directory=None, stacked_on=None,
         stacked=False, strict=None, no_tree=False,
         overwrite_tags=False):
-        from breezy.push import _show_push_branch
+        from .push import _show_push_branch
 
         if overwrite:
             overwrite = ["history", "tags"]
@@ -1441,7 +1444,7 @@ class cmd_branch(Command):
             use_existing_dir=False, switch=False, bind=False,
             files_from=None):
         from breezy import switch as _mod_switch
-        from breezy.tag import _merge_tags_if_possible
+        from .tag import _merge_tags_if_possible
         if self.invoked_as in ['get', 'clone']:
             ui.ui_factory.show_user_warning(
                 'deprecated_command',
@@ -1528,7 +1531,7 @@ class cmd_branch(Command):
             note(gettext('Created new stacked branch referring to %s.') %
                 branch.get_stacked_on_url())
         except (errors.NotStacked, errors.UnstackableBranchFormat,
-            errors.UnstackableRepositoryFormat), e:
+            errors.UnstackableRepositoryFormat) as e:
             note(ngettext('Branched %d revision.', 'Branched %d revisions.', branch.revno()) % branch.revno())
         if bind:
             # Bind to the parent
@@ -1789,7 +1792,7 @@ class cmd_update(Command):
                 revision=revision_id,
                 old_tip=old_tip,
                 show_base=show_base)
-        except errors.NoSuchRevision, e:
+        except errors.NoSuchRevision as e:
             raise errors.BzrCommandError(gettext(
                                   "branch has no revision %s\n"
                                   "brz update --revision only works"
@@ -1848,7 +1851,7 @@ class cmd_info(Command):
             noise_level = get_verbosity_level()
         else:
             noise_level = 0
-        from breezy.info import show_bzrdir_info
+        from .info import show_bzrdir_info
         show_bzrdir_info(controldir.ControlDir.open_containing(location)[0],
                          verbose=noise_level, outfile=self.outf)
 
@@ -1980,7 +1983,7 @@ class cmd_reconcile(Command):
         ]
 
     def run(self, branch=".", canonicalize_chks=False):
-        from breezy.reconcile import reconcile
+        from .reconcile import reconcile
         dir = controldir.ControlDir.open(branch)
         reconcile(dir, canonicalize_chks=canonicalize_chks)
 
@@ -2116,7 +2119,7 @@ class cmd_init(Command):
                                    force_new_tree=force_new_tree)
             a_bzrdir = branch.bzrdir
         else:
-            from breezy.transport.local import LocalTransport
+            from .transport.local import LocalTransport
             if a_bzrdir.has_branch():
                 if (isinstance(to_transport, LocalTransport)
                     and not a_bzrdir.has_workingtree()):
@@ -2132,7 +2135,7 @@ class cmd_init(Command):
                 raise errors.BzrCommandError(gettext('This branch format cannot be set'
                     ' to append-revisions-only.  Try --default.'))
         if not is_quiet():
-            from breezy.info import describe_layout, describe_format
+            from .info import describe_layout, describe_format
             try:
                 tree = a_bzrdir.open_workingtree(recommend_upgrade=False)
             except (errors.NoWorkingTree, errors.NotLocalUrl):
@@ -2210,7 +2213,7 @@ class cmd_init_repository(Command):
             use_existing_dir=True,
             repo_format_name=format.repository_format.get_format_string()))
         if not is_quiet():
-            from breezy.info import show_bzrdir_info
+            from .info import show_bzrdir_info
             show_bzrdir_info(newdir, verbose=0, outfile=self.outf)
 
 
@@ -2311,17 +2314,17 @@ class cmd_diff(Command):
                     'two values separated by a colon. (eg "old/:new/").'),
         Option('old',
             help='Branch/tree to compare from.',
-            type=unicode,
+            type=text_type,
             ),
         Option('new',
             help='Branch/tree to compare to.',
-            type=unicode,
+            type=text_type,
             ),
         'revision',
         'change',
         Option('using',
             help='Use this command to compare files.',
-            type=unicode,
+            type=text_type,
             ),
         RegistryOption('format',
             short_name='F',
@@ -2340,7 +2343,7 @@ class cmd_diff(Command):
     def run(self, revision=None, file_list=None, diff_options=None,
             prefix=None, old=None, new=None, using=None, format=None, 
             context=None):
-        from breezy.diff import (get_trees_and_branches_to_diff_locked,
+        from .diff import (get_trees_and_branches_to_diff_locked,
             show_diff_trees)
 
         if (prefix is None) or (prefix == '0'):
@@ -2743,7 +2746,7 @@ class cmd_log(Command):
             omit_merges=False,
             include_merges=symbol_versioning.DEPRECATED_PARAMETER,
             ):
-        from breezy.log import (
+        from .log import (
             Logger,
             make_log_request_dict,
             _get_info_for_log_files,
@@ -2993,7 +2996,7 @@ class cmd_ls(Command):
                 help='Print ignored files.'),
             Option('kind', short_name='k',
                    help='List entries of a particular kind: file, directory, symlink.',
-                   type=unicode),
+                   type=text_type),
             'null',
             'show-ids',
             'directory',
@@ -3313,7 +3316,7 @@ class cmd_export(Command):
     takes_options = ['directory',
         Option('format',
                help="Type of file to export to.",
-               type=unicode),
+               type=text_type),
         'revision',
         Option('filters', help='Apply content filters to export the '
                 'convenient form.'),
@@ -3330,7 +3333,7 @@ class cmd_export(Command):
     def run(self, dest, branch_or_subdir=None, revision=None, format=None,
         root=None, filters=False, per_file_timestamps=False, uncommitted=False,
         directory=u'.'):
-        from breezy.export import export
+        from .export import export
 
         if branch_or_subdir is None:
             branch_or_subdir = directory
@@ -3350,7 +3353,7 @@ class cmd_export(Command):
         try:
             export(export_tree, dest, format, root, subdir, filtered=filters,
                    per_file_timestamps=per_file_timestamps)
-        except errors.NoSuchExportFormat, e:
+        except errors.NoSuchExportFormat as e:
             raise errors.BzrCommandError(
                 gettext('Unsupported export format: %s') % e.format)
 
@@ -3418,7 +3421,7 @@ class cmd_cat(Command):
                     "{0!r} is not present in revision {1}").format(
                         filename, rev_tree.get_revision_id()))
         if filtered:
-            from breezy.filter_tree import ContentFilterTree
+            from .filter_tree import ContentFilterTree
             filter_tree = ContentFilterTree(rev_tree,
                 rev_tree._content_filter_stack)
             content = filter_tree.get_file_text(actual_file_id)
@@ -3499,7 +3502,7 @@ class cmd_commit(Command):
     takes_options = [
             ListOption('exclude', type=str, short_name='x',
                 help="Do not consider changes made to a given path."),
-            Option('message', type=unicode,
+            Option('message', type=text_type,
                    short_name='m',
                    help="Description of the new revision."),
             'verbose',
@@ -3518,7 +3521,7 @@ class cmd_commit(Command):
              ListOption('fixes', type=str,
                     help="Mark a bug as being fixed by this revision "
                          "(see \"brz help bugs\")."),
-             ListOption('author', type=unicode,
+             ListOption('author', type=text_type,
                     help="Set the author's name, if it's different "
                          "from the committer."),
              Option('local',
@@ -3568,7 +3571,7 @@ class cmd_commit(Command):
             except errors.UnknownBugTrackerAbbreviation:
                 raise errors.BzrCommandError(gettext(
                     'Unrecognized bug %s. Commit refused.') % fixed_bug)
-            except errors.MalformedBugIdentifier, e:
+            except errors.MalformedBugIdentifier as e:
                 raise errors.BzrCommandError(gettext(
                     "%s\nCommit refused.") % (str(e),))
 
@@ -3576,12 +3579,12 @@ class cmd_commit(Command):
             unchanged=False, strict=False, local=False, fixes=None,
             author=None, show_diff=False, exclude=None, commit_time=None,
             lossy=False):
-        from breezy.errors import (
+        from .errors import (
             PointlessCommit,
             ConflictsInTree,
             StrictCommitFailed
         )
-        from breezy.msgeditor import (
+        from .msgeditor import (
             edit_commit_message_encoded,
             generate_commit_message_template,
             make_commit_message_template_encoded,
@@ -3592,7 +3595,7 @@ class cmd_commit(Command):
         if commit_time is not None:
             try:
                 commit_stamp, offset = timestamp.parse_patch_date(commit_time)
-            except ValueError, e:
+            except ValueError as e:
                 raise errors.BzrCommandError(gettext(
                     "Could not parse --commit-time: " + str(e)))
 
@@ -3696,7 +3699,7 @@ class cmd_commit(Command):
         except StrictCommitFailed:
             raise errors.BzrCommandError(gettext("Commit refused because there are"
                               " unknown files in the working tree."))
-        except errors.BoundBranchOutOfDate, e:
+        except errors.BoundBranchOutOfDate as e:
             e.extra_help = (gettext("\n"
                 'To commit to master branch, run update and then commit.\n'
                 'You can also pass --local to commit to continue working '
@@ -3766,7 +3769,7 @@ class cmd_check(Command):
 
     def run(self, path=None, verbose=False, branch=False, repo=False,
             tree=False):
-        from breezy.check import check_dwim
+        from .check import check_dwim
         if path is None:
             path = '.'
         if not branch and not repo and not tree:
@@ -3823,7 +3826,7 @@ class cmd_upgrade(Command):
     ]
 
     def run(self, url='.', format=None, clean=False, dry_run=False):
-        from breezy.upgrade import upgrade
+        from .upgrade import upgrade
         exceptions = upgrade(url, format, clean_up=clean, dry_run=dry_run)
         if exceptions:
             if len(exceptions) == 1:
@@ -3881,7 +3884,7 @@ class cmd_whoami(Command):
         # display a warning if an email address isn't included in the given name.
         try:
             _mod_config.extract_email_address(name)
-        except errors.NoEmailInUsername, e:
+        except errors.NoEmailInUsername as e:
             warning('"%s" does not seem to contain an email address.  '
                     'This is allowed, but not recommended.', name)
 
@@ -3980,7 +3983,7 @@ class cmd_alias(Command):
 
     @display_command
     def print_alias(self, alias_name):
-        from breezy.commands import get_alias
+        from .commands import get_alias
         alias = get_alias(alias_name)
         if alias is None:
             self.outf.write("brz alias: %s: not found\n" % alias_name)
@@ -4048,13 +4051,13 @@ class cmd_selftest(Command):
     def get_transport_type(typestring):
         """Parse and return a transport specifier."""
         if typestring == "sftp":
-            from breezy.tests import stub_sftp
+            from .tests import stub_sftp
             return stub_sftp.SFTPAbsoluteServer
         elif typestring == "memory":
-            from breezy.tests import test_server
+            from .tests import test_server
             return memory.MemoryServer
         elif typestring == "fakenfs":
-            from breezy.tests import test_server
+            from .tests import test_server
             return test_server.FakeNFSServer
         msg = "No known transport type %s. Supported types are: sftp\n" %\
             (typestring)
@@ -4136,7 +4139,7 @@ class cmd_selftest(Command):
         # backtraces.
         lazy_import.disallow_proxying()
 
-        from breezy import tests
+        from . import tests
 
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
@@ -4144,7 +4147,7 @@ class cmd_selftest(Command):
             pattern = ".*"
         if subunit:
             try:
-                from breezy.tests import SubUnitBzrRunner
+                from .tests import SubUnitBzrRunner
             except ImportError:
                 raise errors.BzrCommandError(gettext("subunit not available. subunit "
                     "needs to be installed to use --subunit."))
@@ -4219,7 +4222,7 @@ class cmd_version(Command):
 
     @display_command
     def run(self, short=False):
-        from breezy.version import show_version
+        from .version import show_version
         if short:
             self.outf.write(breezy.version_string + '\n')
         else:
@@ -4245,7 +4248,7 @@ class cmd_find_merge_base(Command):
 
     @display_command
     def run(self, branch, other):
-        from breezy.revision import ensure_null
+        from .revision import ensure_null
 
         branch1 = Branch.open_containing(branch)[0]
         branch2 = Branch.open_containing(other)[0]
@@ -4478,7 +4481,7 @@ class cmd_merge(Command):
         return result_tree
 
     def _do_preview(self, merger):
-        from breezy.diff import show_diff_trees
+        from .diff import show_diff_trees
         result_tree = self._get_preview(merger)
         path_encoding = osutils.get_diff_header_encoding()
         show_diff_trees(merger.this_tree, result_tree, self.outf,
@@ -4504,7 +4507,7 @@ class cmd_merge(Command):
         Shelver to selectively remove the differences between the working tree
         and the preview tree.
         """
-        from breezy import shelf_ui
+        from . import shelf_ui
         result_tree = self._get_preview(merger)
         writer = breezy.option.diff_writer_registry.get()
         shelver = shelf_ui.Shelver(merger.this_tree, result_tree, destroy=True,
@@ -4537,7 +4540,7 @@ class cmd_merge(Command):
     def _get_merger_from_branch(self, tree, location, revision, remember,
                                 possible_transports, pb):
         """Produce a merger from a location, assuming it refers to a branch."""
-        from breezy.tag import _merge_tags_if_possible
+        from .tag import _merge_tags_if_possible
         # find the branch locations
         other_loc, user_location = self._select_branch_location(tree, location,
             revision, -1)
@@ -4681,7 +4684,7 @@ class cmd_remerge(Command):
 
     def run(self, file_list=None, merge_type=None, show_base=False,
             reprocess=False):
-        from breezy.conflicts import restore
+        from .conflicts import restore
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
         tree, file_list = WorkingTree.open_containing_paths(file_list)
@@ -4863,7 +4866,7 @@ class cmd_shell_complete(Command):
 
     @display_command
     def run(self, context=None):
-        from breezy import shellcomplete
+        from . import shellcomplete
         shellcomplete.shellcomplete(context)
 
 
@@ -5126,7 +5129,7 @@ class cmd_plugins(Command):
 
     @display_command
     def run(self, verbose=False):
-        from breezy import plugin
+        from . import plugin
         # Don't give writelines a generator as some codecs don't like that
         self.outf.writelines(
             list(plugin.describe_plugins(show_paths=verbose)))
@@ -5143,7 +5146,7 @@ class cmd_testament(Command):
     encoding_type = 'exact'
     @display_command
     def run(self, branch=u'.', revision=None, long=False, strict=False):
-        from breezy.testament import Testament, StrictTestament
+        from .testament import Testament, StrictTestament
         if strict is True:
             testament_class = StrictTestament
         else:
@@ -5189,7 +5192,7 @@ class cmd_annotate(Command):
     @display_command
     def run(self, filename, all=False, long=False, revision=None,
             show_ids=False, directory=None):
-        from breezy.annotate import (
+        from .annotate import (
             annotate_file_tree,
             )
         wt, branch, relpath = \
@@ -5234,7 +5237,7 @@ class cmd_re_sign(Command):
         return self._run(b, revision_id_list, revision)
 
     def _run(self, b, revision_id_list, revision):
-        import breezy.gpg as gpg
+        from . import gpg
         gpg_strategy = gpg.GPGStrategy(b.get_config_stack())
         if revision_id_list is not None:
             b.repository.start_write_group()
@@ -5397,8 +5400,8 @@ class cmd_uncommit(Command):
 
     def _run(self, b, tree, dry_run, verbose, revision, force, local,
              keep_tags):
-        from breezy.log import log_formatter, show_log
-        from breezy.uncommit import uncommit
+        from .log import log_formatter, show_log
+        from .uncommit import uncommit
 
         last_revno, last_rev_id = b.last_revision_info()
 
@@ -5547,9 +5550,9 @@ class cmd_serve(Command):
 
     def run(self, listen=None, port=None, inet=False, directory=None,
             allow_writes=False, protocol=None, client_timeout=None):
-        from breezy import transport
+        from . import transport
         if directory is None:
-            directory = os.getcwd()
+            directory = osutils.getcwd()
         if protocol is None:
             protocol = transport.transport_server_registry.get()
         url = transport.location_to_url(directory)
@@ -5592,7 +5595,7 @@ class cmd_join(Command):
         if reference:
             try:
                 containing_tree.add_reference(sub_tree)
-            except errors.BadReferenceTarget, e:
+            except errors.BadReferenceTarget as e:
                 # XXX: Would be better to just raise a nicely printable
                 # exception from the real origin.  Also below.  mbp 20070306
                 raise errors.BzrCommandError(
@@ -5600,7 +5603,7 @@ class cmd_join(Command):
         else:
             try:
                 containing_tree.subsume(sub_tree)
-            except errors.BadSubsumeSource, e:
+            except errors.BadSubsumeSource as e:
                 raise errors.BzrCommandError(
                        gettext("Cannot join {0}.  {1}").format(tree, e.reason))
 
@@ -5676,7 +5679,7 @@ class cmd_merge_directive(Command):
     def run(self, submit_branch=None, public_branch=None, patch_type='bundle',
             sign=False, revision=None, mail_to=None, message=None,
             directory=u'.'):
-        from breezy.revision import ensure_null, NULL_REVISION
+        from .revision import ensure_null, NULL_REVISION
         include_patch, include_bundle = {
             'plain': (False, False),
             'diff': (True, False),
@@ -5826,19 +5829,19 @@ class cmd_send(Command):
                help='Branch to generate the submission from, '
                'rather than the one containing the working directory.',
                short_name='f',
-               type=unicode),
+               type=text_type),
         Option('output', short_name='o',
                help='Write merge directive to this file or directory; '
                     'use - for stdout.',
-               type=unicode),
+               type=text_type),
         Option('strict',
                help='Refuse to send if there are uncommitted changes in'
                ' the working tree, --no-strict disables the check.'),
         Option('mail-to', help='Mail the request to this address.',
-               type=unicode),
+               type=text_type),
         'revision',
         'message',
-        Option('body', help='Body for the email.', type=unicode),
+        Option('body', help='Body for the email.', type=text_type),
         RegistryOption('format',
                        help='Use the specified output format.',
                        lazy_registry=('breezy.send', 'format_registry')),
@@ -5848,7 +5851,7 @@ class cmd_send(Command):
             no_patch=False, revision=None, remember=None, output=None,
             format=None, mail_to=None, message=None, body=None,
             strict=None, **kwargs):
-        from breezy.send import send
+        from .send import send
         return send(submit_branch, revision, public_branch, remember,
                     format, no_bundle, no_patch, output,
                     kwargs.get('from', '.'), mail_to, message, body,
@@ -5900,9 +5903,9 @@ class cmd_bundle_revisions(cmd_send):
                help='Branch to generate the submission from, '
                'rather than the one containing the working directory.',
                short_name='f',
-               type=unicode),
+               type=text_type),
         Option('output', short_name='o', help='Write directive to this file.',
-               type=unicode),
+               type=text_type),
         Option('strict',
                help='Refuse to bundle revisions if there are uncommitted'
                ' changes in the working tree, --no-strict disables the check.'),
@@ -5922,7 +5925,7 @@ class cmd_bundle_revisions(cmd_send):
             format=None, strict=None, **kwargs):
         if output is None:
             output = '-'
-        from breezy.send import send
+        from .send import send
         return send(submit_branch, revision, public_branch, remember,
                          format, no_bundle, no_patch, output,
                          kwargs.get('from', '.'), None, None, None,
@@ -6028,7 +6031,7 @@ class cmd_tags(Command):
 
     @display_command
     def run(self, directory='.', sort=None, show_ids=False, revision=None):
-        from breezy.tag import tag_sort_methods
+        from .tag import tag_sort_methods
         branch, relpath = Branch.open_containing(directory)
 
         tags = branch.tags.get_tag_dict().items()
@@ -6140,7 +6143,7 @@ class cmd_reconfigure(Command):
             ' will be lost.'),
         Option('stacked-on',
             help='Reconfigure a branch to be stacked on another branch.',
-            type=unicode,
+            type=text_type,
             ),
         Option('unstacked',
             help='Reconfigure a branch to be unstacked.  This '
@@ -6239,7 +6242,7 @@ class cmd_switch(Command):
 
     def run(self, to_location=None, force=False, create_branch=False,
             revision=None, directory=u'.', store=False):
-        from breezy import switch
+        from . import switch
         tree_location = directory
         revision = _get_one_revision('switch', revision)
         possible_transports = []
@@ -6358,11 +6361,11 @@ class cmd_view(Command):
             ),
         Option('name',
             help='Name of the view to define, list or delete.',
-            type=unicode,
+            type=text_type,
             ),
         Option('switch',
             help='Name of the view to switch to.',
-            type=unicode,
+            type=text_type,
             ),
         ]
 
@@ -6553,7 +6556,7 @@ class cmd_shelve(Command):
             writer=None, list=False, destroy=False, directory=None):
         if list:
             return self.run_for_list(directory=directory)
-        from breezy.shelf_ui import Shelver
+        from .shelf_ui import Shelver
         if writer is None:
             writer = breezy.option.diff_writer_registry.get()
         try:
@@ -6609,7 +6612,7 @@ class cmd_unshelve(Command):
     _see_also = ['shelve']
 
     def run(self, shelf_id=None, action='apply', directory=u'.'):
-        from breezy.shelf_ui import Unshelver
+        from .shelf_ui import Unshelver
         unshelver = Unshelver.from_args(shelf_id, action, directory=directory)
         try:
             unshelver.run()
@@ -6643,7 +6646,7 @@ class cmd_clean_tree(Command):
                      Option('force', help='Do not prompt before deleting.')]
     def run(self, unknown=False, ignored=False, detritus=False, dry_run=False,
             force=False, directory=u'.'):
-        from breezy.clean_tree import clean_tree
+        from .clean_tree import clean_tree
         if not (unknown or ignored or detritus):
             unknown = True
         if dry_run:
@@ -6713,7 +6716,7 @@ class cmd_export_pot(Command):
                             ]
 
     def run(self, plugin=None, include_duplicates=False):
-        from breezy.export_pot import export_pot
+        from .export_pot import export_pot
         export_pot(self.outf, plugin, include_duplicates)
 
 

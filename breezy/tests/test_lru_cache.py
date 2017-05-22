@@ -16,7 +16,7 @@
 
 """Tests for the lru_cache module."""
 
-from breezy import (
+from .. import (
     lru_cache,
     symbol_versioning,
     tests,

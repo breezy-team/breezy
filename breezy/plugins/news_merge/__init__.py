@@ -34,13 +34,13 @@ Limitations:
 """
 
 # Since we are a built-in plugin we share the breezy version
-from breezy import version_info
-from breezy.hooks import install_lazy_named_hook
+from ... import version_info
+from ...hooks import install_lazy_named_hook
 
 
 def news_merge_hook(merger):
     """Merger.merge_file_content hook for bzr-format NEWS files."""
-    from breezy.plugins.news_merge.news_merge import NewsMerger
+    from .news_merge import NewsMerger
     return NewsMerger(merger)
 
 

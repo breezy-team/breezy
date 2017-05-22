@@ -26,7 +26,7 @@ from __future__ import absolute_import
 
 import re
 
-from breezy import (
+from . import (
     errors,
     osutils,
     )
@@ -180,7 +180,7 @@ class PathBasedViews(_Views):
             try:
                 try:
                     view_content = self.tree._transport.get_bytes('views')
-                except errors.NoSuchFile, e:
+                except errors.NoSuchFile as e:
                     self._current, self._views = None, {}
                 else:
                     keywords, self._views = \
@@ -238,7 +238,7 @@ class PathBasedViews(_Views):
                     raise ValueError("failed to deserialize views line %s",
                         text)
             return keywords, views
-        except ValueError, e:
+        except ValueError as e:
             raise ValueError("failed to deserialize views content %r: %s"
                 % (view_content, e))
 

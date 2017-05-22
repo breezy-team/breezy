@@ -23,7 +23,7 @@ from __future__ import absolute_import
 
 import os
 
-from breezy.commands import Command
+from .commands import Command
 
 
 class ExternalCommand(Command):

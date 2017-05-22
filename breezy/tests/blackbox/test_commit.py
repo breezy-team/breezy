@@ -24,19 +24,19 @@ import sys
 
 from testtools.matchers import DocTestMatches
 
-from breezy import (
+from ... import (
     config,
     osutils,
     ignores,
     msgeditor,
     )
-from breezy.controldir import ControlDir
-from breezy.tests import (
+from ...controldir import ControlDir
+from .. import (
     test_foreign,
     features,
     )
-from breezy.tests import TestCaseWithTransport
-from breezy.tests.matchers import ContainsNoVfsCalls
+from .. import TestCaseWithTransport
+from ..matchers import ContainsNoVfsCalls
 
 
 class TestCommit(TestCaseWithTransport):
@@ -214,13 +214,13 @@ brz: ERROR: No changes to commit.\
         wt.rename_one('hello.txt', 'subdir/hello.txt')
         out, err = self.run_bzr('commit -m renamed')
         self.assertEqual('', out)
-        self.assertEqual(set([
+        self.assertEqual({
             'Committing to: %s/' % osutils.getcwd(),
             'added subdir',
             'renamed hello.txt => subdir/hello.txt',
             'Committed revision 2.',
             '',
-            ]), set(err.split('\n')))
+            }, set(err.split('\n')))
 
     def test_verbose_commit_with_unknown(self):
         """Unknown files should not be listed by default in verbose output"""
@@ -330,7 +330,7 @@ brz: ERROR: No changes to commit.\
         this_tree.merge_from_branch(other_tree.branch)
         out, err = self.run_bzr('commit -m added', working_dir='this')
         self.assertEqual('', out)
-        self.assertEqual(set([
+        self.assertEqual({
             'Committing to: %s/' % osutils.pathjoin(osutils.getcwd(), 'this'),
             'modified filetomodify',
             'added newdir',
@@ -343,7 +343,7 @@ brz: ERROR: No changes to commit.\
             'deleted filetoremove',
             'Committed revision 2.',
             ''
-            ]), set(err.split('\n')))
+            }, set(err.split('\n')))
 
     def test_empty_commit_message(self):
         tree = self.make_branch_and_tree('.')
@@ -809,7 +809,7 @@ altered in u2
             f = file('fed.sh', 'wb')
             f.write('#!/bin/sh\n')
             f.close()
-            os.chmod('fed.sh', 0755)
+            os.chmod('fed.sh', 0o755)
             self.overrideEnv('BRZ_EDITOR', "./fed.sh")
 
     def setup_commit_with_template(self):

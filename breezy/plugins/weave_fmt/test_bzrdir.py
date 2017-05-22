@@ -24,7 +24,7 @@ from __future__ import absolute_import
 import os
 import sys
 
-from breezy import (
+from ... import (
     branch,
     bzrdir,
     controldir,
@@ -34,19 +34,19 @@ from breezy import (
     urlutils,
     workingtree,
     )
-from breezy.osutils import (
+from ...osutils import (
     getcwd,
     )
-from breezy.tests.test_bundle import V4BundleTester
-from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer
-from breezy.tests import (
+from ...tests.test_bundle import V4BundleTester
+from ...tests.test_sftp_transport import TestCaseWithSFTPServer
+from ...tests import (
     TestCaseWithTransport,
     )
 
-from breezy.plugins.weave_fmt.branch import (
+from .branch import (
     BzrBranchFormat4,
     )
-from breezy.plugins.weave_fmt.bzrdir import (
+from .bzrdir import (
     BzrDirFormat5,
     BzrDirFormat6,
     )

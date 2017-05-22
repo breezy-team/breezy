@@ -18,7 +18,7 @@ from __future__ import absolute_import
 
 import warnings
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     branch as _mod_branch,
@@ -42,13 +42,13 @@ from breezy import (
     )
 from breezy.i18n import gettext
 """)
-from breezy import (
+from . import (
     decorators,
     errors,
     hooks,
     registry,
     )
-from breezy.symbol_versioning import (
+from .symbol_versioning import (
     deprecated_in,
     deprecated_method,
     )
@@ -2199,7 +2199,7 @@ class _PlanMerge(_PlanMergeBase):
         while True:
             next_lcas = self.graph.find_lca(*cur_ancestors)
             # Map a plain NULL_REVISION to a simple no-ancestors
-            if next_lcas == set([_mod_revision.NULL_REVISION]):
+            if next_lcas == {_mod_revision.NULL_REVISION}:
                 next_lcas = ()
             # Order the lca's based on when they were merged into the tip
             # While the actual merge portion of weave merge uses a set() of

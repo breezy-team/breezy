@@ -18,22 +18,24 @@
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
-
-from breezy import lazy_import
+from . import lazy_import
 lazy_import.lazy_import(globals(),
 """
 from breezy import (
     xml_serializer,
     )
 """)
-from breezy import (
+from . import (
     bencode,
     cache_utf8,
     errors,
     revision as _mod_revision,
     serializer,
     )
+from .sixish import (
+    BytesIO,
+    )
+
 
 
 def _validate_properties(props, _decode=cache_utf8._utf8_decode):
@@ -147,7 +149,7 @@ class CHKSerializer(serializer.Serializer):
     format_num = '9'
     revision_format_num = None
     support_altered_by_hack = False
-    supported_kinds = set(['file', 'directory', 'symlink', 'tree-reference'])
+    supported_kinds = {'file', 'directory', 'symlink', 'tree-reference'}
 
     def __init__(self, node_size, search_key_name):
         self.maximum_size = node_size
@@ -181,7 +183,7 @@ class CHKSerializer(serializer.Serializer):
                 xml_serializer.fromstring(xml_string), revision_id,
                 entry_cache=entry_cache,
                 return_from_cache=return_from_cache)
-        except xml_serializer.ParseError, e:
+        except xml_serializer.ParseError as e:
             raise errors.UnexpectedInventoryFormat(e)
 
     def read_inventory(self, f, revision_id=None):
@@ -192,7 +194,7 @@ class CHKSerializer(serializer.Serializer):
                     revision_id=None)
             finally:
                 f.close()
-        except xml_serializer.ParseError, e:
+        except xml_serializer.ParseError as e:
             raise errors.UnexpectedInventoryFormat(e)
 
     def write_inventory_to_lines(self, inv):
@@ -200,12 +202,12 @@ class CHKSerializer(serializer.Serializer):
         return self.write_inventory(inv, None)
 
     def write_inventory_to_string(self, inv, working=False):
-        """Just call write_inventory with a StringIO and return the value.
+        """Just call write_inventory with a BytesIO and return the value.
 
         :param working: If True skip history data - text_sha1, text_size,
             reference_revision, symlink_target.
         """
-        sio = StringIO()
+        sio = BytesIO()
         self.write_inventory(inv, sio, working)
         return sio.getvalue()
 

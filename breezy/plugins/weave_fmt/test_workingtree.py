@@ -21,16 +21,16 @@ from __future__ import absolute_import
 
 import os
 
-from breezy import (
+from ... import (
     conflicts,
     errors,
     )
 
-from breezy.tests import (
+from ...tests import (
     TestCaseWithTransport,
     )
 
-from breezy.plugins.weave_fmt.bzrdir import BzrDirFormat6
+from .bzrdir import BzrDirFormat6
 
 
 class TestFormat2WorkingTree(TestCaseWithTransport):

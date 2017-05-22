@@ -34,9 +34,9 @@ from __future__ import absolute_import
 import os
 import sys
 
-from breezy import osutils
+from . import osutils
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 import imp
 import re
@@ -243,7 +243,7 @@ def get_standard_plugins_path():
                 user=get_user_plugin_path())
 
     # Unset paths that should be removed
-    for k,v in refs.iteritems():
+    for k,v in refs.items():
         removed = '-%s' % k
         # defaults can never mention removing paths as that will make it
         # impossible for the user to revoke these removals.
@@ -308,7 +308,7 @@ def load_from_path(dirs):
     The python module path for breezy.plugins will be modified to be 'dirs'.
     """
     # Explicitly load the plugins with a specific path
-    for fullname, path in PluginImporter.specific_paths.iteritems():
+    for fullname, path in PluginImporter.specific_paths.items():
         name = fullname[len('breezy.plugins.'):]
         _load_plugin_module(name, path)
 
@@ -379,17 +379,17 @@ def _load_plugin_module(name, dir):
     if ('breezy.plugins.%s' % name) in PluginImporter.blacklist:
         return
     try:
-        exec "import breezy.plugins.%s" % name in {}
+        exec("import breezy.plugins.%s" % name, {})
     except KeyboardInterrupt:
         raise
-    except errors.IncompatibleAPI, e:
+    except errors.IncompatibleAPI as e:
         warning_message = (
             "Unable to load plugin %r. It requested API version "
             "%s of module %s but the minimum exported version is %s, and "
             "the maximum is %s" %
             (name, e.wanted, e.api, e.minimum, e.current))
         record_plugin_warning(name, warning_message)
-    except Exception, e:
+    except Exception as e:
         trace.warning("%s" % e)
         if re.search('\.|-| ', name):
             sanitised_name = re.sub('[-. ]', '_', name)
@@ -508,7 +508,7 @@ class ModuleHelpTopic(object):
             result = self.module.__doc__
         if result[-1] != '\n':
             result += '\n'
-        from breezy import help_topics
+        from . import help_topics
         result += help_topics._format_see_also(additional_see_also)
         return result
 
@@ -577,7 +577,7 @@ class PlugIn(object):
                     version_info = version_info.split('.')
                 elif len(version_info) == 3:
                     version_info = tuple(version_info) + ('final', 0)
-            except TypeError, e:
+            except TypeError as e:
                 # The given version_info isn't even iteratible
                 trace.log_exception_quietly()
                 version_info = (version_info,)
@@ -589,7 +589,7 @@ class PlugIn(object):
             return "unknown"
         try:
             version_string = _format_version_tuple(version_info)
-        except (ValueError, TypeError, IndexError), e:
+        except (ValueError, TypeError, IndexError) as e:
             trace.log_exception_quietly()
             # try to return something usefull for bad plugins, in stead of
             # stack tracing.

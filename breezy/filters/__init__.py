@@ -40,8 +40,7 @@ Note that context is currently only supported for write converters.
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
-from breezy.lazy_import import lazy_import
+from ..lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     config,
@@ -50,7 +49,10 @@ from breezy import (
     registry,
     )
 """)
-from breezy.symbol_versioning import (
+from ..sixish import (
+    BytesIO,
+    )
+from ..symbol_versioning import (
     deprecated_function,
     deprecated_in,
     )
@@ -143,7 +145,7 @@ def filtered_input_file(f, filters):
         for filter in filters:
             if filter.reader is not None:
                 chunks = filter.reader(chunks)
-        return StringIO(''.join(chunks))
+        return BytesIO(b''.join(chunks))
     else:
         return f
 

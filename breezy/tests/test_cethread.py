@@ -16,7 +16,7 @@
 
 import threading
 
-from breezy import (
+from .. import (
     cethread,
     tests,
     )

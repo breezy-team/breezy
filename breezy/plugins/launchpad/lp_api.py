@@ -28,7 +28,7 @@ import os
 import re
 import urlparse
 
-from breezy import (
+from ... import (
     branch,
     config,
     errors,
@@ -36,14 +36,14 @@ from breezy import (
     trace,
     transport,
     )
-from breezy.i18n import gettext
-from breezy.plugins.launchpad.lp_registration import (
+from ...i18n import gettext
+from .lp_registration import (
     InvalidLaunchpadInstance,
     )
 
 try:
     import launchpadlib
-except ImportError, e:
+except ImportError as e:
     raise errors.DependencyNotPresent('launchpadlib', e)
 
 from launchpadlib.launchpad import (
@@ -127,7 +127,7 @@ def login(service, timeout=None, proxy_info=None,
         proxy_info=proxy_info, version=version)
     # XXX: Work-around a minor security bug in launchpadlib < 1.6.3, which
     # would create this directory with default umask.
-    osutils.chmod_if_possible(cache_directory, 0700)
+    osutils.chmod_if_possible(cache_directory, 0o700)
     return launchpad
 
 

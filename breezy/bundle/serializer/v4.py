@@ -16,11 +16,11 @@
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
 import bz2
 import re
 
-from breezy import (
+from ... import (
+    bencode,
     errors,
     iterablefile,
     lru_cache,
@@ -33,9 +33,11 @@ from breezy import (
     ui,
     versionedfile as _mod_versionedfile,
     )
-from breezy.bundle import bundle_data, serializer as bundle_serializer
-from breezy.i18n import ngettext
-from breezy import bencode
+from ...bundle import bundle_data, serializer as bundle_serializer
+from ...i18n import ngettext
+from ...sixish import (
+    BytesIO,
+    )
 
 
 class _MPDiffInventoryGenerator(_mod_versionedfile._MPDiffGenerator):
@@ -204,7 +206,7 @@ class BundleReader(object):
         if stream_input:
             source_file = iterablefile.IterableFile(self.iter_decode(fileobj))
         else:
-            source_file = StringIO(bz2.decompress(fileobj.read()))
+            source_file = BytesIO(bz2.decompress(fileobj.read()))
         self._container_file = source_file
 
     @staticmethod
@@ -320,7 +322,7 @@ class BundleWriteOperation(object):
             # Strip ghosts
             parents = graph.get_parent_map(revision_ids)
             self.revision_ids = [r for r in revision_ids if r in parents]
-        self.revision_keys = set([(revid,) for revid in self.revision_ids])
+        self.revision_keys = {(revid,) for revid in self.revision_ids}
 
     def do_write(self):
         """Write all data to the bundle"""

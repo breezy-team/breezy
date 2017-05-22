@@ -189,7 +189,7 @@ def main():
         error("Path to repository not readable.", EXIT_REPO_NOREAD)
     
     # Extract the repository path from the command passed to ssh.
-    if not os.environ.has_key("SSH_ORIGINAL_COMMAND"):
+    if "SSH_ORIGINAL_COMMAND" not in os.environ:
         error("Environment variable SSH_ORIGINAL_COMMAND missing.", EXIT_BADENV)
     directory = get_directory(os.environ["SSH_ORIGINAL_COMMAND"])
     if len(directory) == 0:

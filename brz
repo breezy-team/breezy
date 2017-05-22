@@ -46,10 +46,10 @@ if os.name == "posix":
     import locale
     try:
         locale.setlocale(locale.LC_ALL, '')
-    except locale.Error, e:
+    except locale.Error as e:
         sys.stderr.write('brz: warning: %s\n'
-            '  brz could not set the application locale.\n'
-            '  Although this should be no problem for brz itself, it might\n'
+            '  bzr could not set the application locale.\n'
+            '  Although this should be no problem for bzr itself, it might\n'
             '  cause problems with some plugins. To investigate the issue,\n'
             '  look at the output of the locale(1p) tool.\n' % e)
     # Use better default than ascii with posix filesystems that deal in bytes
@@ -72,7 +72,7 @@ warnings.filterwarnings('ignore',
 sys._brz_lazy_regex = True
 try:
     import breezy
-except ImportError, e:
+except ImportError as e:
     sys.stderr.write("brz: ERROR: "
         "Couldn't import breezy and dependencies.\n"
         "Please check the directory containing breezy is on your PYTHONPATH.\n"
@@ -90,9 +90,6 @@ if breezy.version_info[:3] != _script_version:
         breezy._format_version_tuple(_script_version),
         __file__))
 
-
-import breezy.inspect_for_copy
-breezy.inspect_for_copy.import_copy_with_hacked_inspect()
 
 import breezy.breakin
 breezy.breakin.hook_debugger_to_signal()
@@ -127,7 +124,9 @@ if __name__ == '__main__':
     # are just about to be discarded anyhow.  This does mean that atexit hooks
     # won't run but we don't use them.  Also file buffers won't be flushed,
     # but our policy is to always close files from a finally block. -- mbp 20070215
-    sys.exitfunc()
+    exitfunc = getattr(sys, "exitfunc", None)
+    if exitfunc is not None:
+        exitfunc()
     os._exit(exit_val)
 else:
     raise ImportError("The brz script cannot be imported.")

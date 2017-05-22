@@ -16,7 +16,7 @@
 
 from unittest import TestCase
 
-from breezy import (
+from .. import (
     multiparent,
     patiencediff,
     tests,

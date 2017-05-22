@@ -19,13 +19,13 @@
 For interface contract tests, see tests/per_control_dir.
 """
 
-from breezy import (
+from .. import (
     controldir,
     errors,
     tests,
     ui,
     )
-from breezy.tests.scenarios import load_tests_apply_scenarios
+from .scenarios import load_tests_apply_scenarios
 
 
 load_tests = load_tests_apply_scenarios
@@ -67,7 +67,7 @@ class TestMetaComponentFormatRegistry(tests.TestCase):
         self.assertEqual(set(), self.registry._get_all_modules())
         self.registry.register(format)
         self.assertEqual(
-            set(["breezy.tests.test_controldir"]),
+            {"breezy.tests.test_controldir"},
             self.registry._get_all_modules())
 
     def test_register_extra(self):
@@ -148,7 +148,7 @@ class NotBzrDirProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
-        return set([NotBzrDirFormat()])
+        return {NotBzrDirFormat()}
 
 
 class TestNotBzrDir(tests.TestCaseWithTransport):
@@ -214,24 +214,22 @@ class DefaultControlComponentFormatTests(tests.TestCase):
             allow_unsupported=True)
 
     def test_recommend_upgrade_current_format(self):
-        stderr = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stderr=stderr)
+        ui.ui_factory = tests.TestUIFactory()
         format = controldir.ControlComponentFormat()
         format.check_support_status(allow_unsupported=False,
             recommend_upgrade=True)
-        self.assertEqual("", stderr.getvalue())
+        self.assertEqual("", ui.ui_factory.stderr.getvalue())
 
     def test_recommend_upgrade_old_format(self):
-        stderr = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stderr=stderr)
+        ui.ui_factory = tests.TestUIFactory()
         format = OldControlComponentFormat()
         format.check_support_status(allow_unsupported=False,
             recommend_upgrade=False)
-        self.assertEqual("", stderr.getvalue())
+        self.assertEqual("", ui.ui_factory.stderr.getvalue())
         format.check_support_status(allow_unsupported=False,
             recommend_upgrade=True, basedir='apath')
         self.assertEqual(
             'An old format that is slow is deprecated and a better format '
             'is available.\nIt is recommended that you upgrade by running '
             'the command\n  brz upgrade apath\n',
-            stderr.getvalue())
+            ui.ui_factory.stderr.getvalue())

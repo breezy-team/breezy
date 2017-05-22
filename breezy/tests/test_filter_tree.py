@@ -19,15 +19,15 @@
 import tarfile
 import zipfile
 
-from breezy import (
+from .. import (
     export,
     filter_tree,
     tests,
     )
-from breezy.tests import (
+from . import (
     fixtures,
     )
-from breezy.tests.test_filters import _stack_1
+from .test_filters import _stack_1
 
 
 class TestFilterTree(tests.TestCaseWithTransport):

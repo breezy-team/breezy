@@ -28,9 +28,9 @@ from __future__ import absolute_import
 
 import os
 
-from breezy import errors
-from breezy import urlutils
-from breezy.smart import request
+from .. import errors
+from .. import urlutils
+from . import request
 
 
 def _deserialise_optional_mode(mode):

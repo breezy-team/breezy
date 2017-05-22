@@ -49,16 +49,16 @@ check_refs are tuples (kind, value). Currently defined kinds are:
 
 from __future__ import absolute_import
 
-from breezy import (
+from . import (
     errors,
     ui,
     )
-from breezy.branch import Branch
-from breezy.controldir import ControlDir
-from breezy.revision import NULL_REVISION
-from breezy.trace import note
-from breezy.workingtree import WorkingTree
-from breezy.i18n import gettext
+from .branch import Branch
+from .controldir import ControlDir
+from .revision import NULL_REVISION
+from .trace import note
+from .workingtree import WorkingTree
+from .i18n import gettext
 
 class Check(object):
     """Check a repository"""

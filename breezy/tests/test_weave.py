@@ -23,13 +23,16 @@
 
 from pprint import pformat
 
-from breezy import (
+from .. import (
     errors,
     )
-from breezy.osutils import sha_string
-from breezy.tests import TestCase, TestCaseInTempDir
-from breezy.weave import Weave, WeaveFormatError
-from breezy.weavefile import write_weave, read_weave
+from ..osutils import sha_string
+from ..sixish import (
+    BytesIO,
+    )
+from . import TestCase, TestCaseInTempDir
+from ..weave import Weave, WeaveFormatError
+from ..weavefile import write_weave, read_weave
 
 
 # texts for use in testing
@@ -671,13 +674,12 @@ class JoinWeavesTests(TestBase):
         # Make sure that we can detect if a weave file has
         # been corrupted. This doesn't test all forms of corruption,
         # but it at least helps verify the data you get, is what you want.
-        from cStringIO import StringIO
 
         w = Weave()
         w.add_lines('v1', [], ['hello\n'])
         w.add_lines('v2', ['v1'], ['hello\n', 'there\n'])
 
-        tmpf = StringIO()
+        tmpf = BytesIO()
         write_weave(w, tmpf)
 
         # Because we are corrupting, we need to make sure we have the exact text
@@ -688,10 +690,10 @@ class JoinWeavesTests(TestBase):
                           tmpf.getvalue())
 
         # Change a single letter
-        tmpf = StringIO('# bzr weave file v5\n'
-                        'i\n1 f572d396fae9206628714fb2ce00f72e94f2258f\nn v1\n\n'
-                        'i 0\n1 90f265c6e75f1c8f9ab76dcf85528352c5f215ef\nn v2\n\n'
-                        'w\n{ 0\n. hello\n}\n{ 1\n. There\n}\nW\n')
+        tmpf = BytesIO(b'# bzr weave file v5\n'
+                       b'i\n1 f572d396fae9206628714fb2ce00f72e94f2258f\nn v1\n\n'
+                       b'i 0\n1 90f265c6e75f1c8f9ab76dcf85528352c5f215ef\nn v2\n\n'
+                       b'w\n{ 0\n. hello\n}\n{ 1\n. There\n}\nW\n')
 
         w = read_weave(tmpf)
 
@@ -701,10 +703,10 @@ class JoinWeavesTests(TestBase):
         self.assertRaises(errors.WeaveInvalidChecksum, w.check)
 
         # Change the sha checksum
-        tmpf = StringIO('# bzr weave file v5\n'
-                        'i\n1 f572d396fae9206628714fb2ce00f72e94f2258f\nn v1\n\n'
-                        'i 0\n1 f0f265c6e75f1c8f9ab76dcf85528352c5f215ef\nn v2\n\n'
-                        'w\n{ 0\n. hello\n}\n{ 1\n. there\n}\nW\n')
+        tmpf = BytesIO(b'# bzr weave file v5\n'
+                       b'i\n1 f572d396fae9206628714fb2ce00f72e94f2258f\nn v1\n\n'
+                       b'i 0\n1 f0f265c6e75f1c8f9ab76dcf85528352c5f215ef\nn v2\n\n'
+                       b'w\n{ 0\n. hello\n}\n{ 1\n. there\n}\nW\n')
 
         w = read_weave(tmpf)
 
@@ -746,17 +748,17 @@ class TestNeedsReweave(TestCase):
 
     def test_compatible_parents(self):
         w1 = Weave('a')
-        my_parents = set([1, 2, 3])
+        my_parents = {1, 2, 3}
         # subsets are ok
-        self.assertTrue(w1._compatible_parents(my_parents, set([3])))
+        self.assertTrue(w1._compatible_parents(my_parents, {3}))
         # same sets
         self.assertTrue(w1._compatible_parents(my_parents, set(my_parents)))
         # same empty corner case
         self.assertTrue(w1._compatible_parents(set(), set()))
         # other cannot contain stuff my_parents does not
-        self.assertFalse(w1._compatible_parents(set(), set([1])))
-        self.assertFalse(w1._compatible_parents(my_parents, set([1, 2, 3, 4])))
-        self.assertFalse(w1._compatible_parents(my_parents, set([4])))
+        self.assertFalse(w1._compatible_parents(set(), {1}))
+        self.assertFalse(w1._compatible_parents(my_parents, {1, 2, 3, 4}))
+        self.assertFalse(w1._compatible_parents(my_parents, {4}))
 
 
 class TestWeaveFile(TestCaseInTempDir):

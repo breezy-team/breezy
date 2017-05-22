@@ -20,10 +20,10 @@ import os
 import re
 import unicodedata as ud
 
-from breezy import tests, osutils
-from breezy._termcolor import color_string, FG
+from ... import tests, osutils
+from ..._termcolor import color_string, FG
 
-from breezy.tests.features import (
+from ...tests.features import (
     ColorFeature,
     UnicodeFilenameFeature,
     )

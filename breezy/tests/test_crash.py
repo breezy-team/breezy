@@ -17,18 +17,19 @@
 
 import doctest
 import os
-from StringIO import StringIO
 import sys
 
-from breezy import (
+from .. import (
     config,
     crash,
     osutils,
     plugin,
     tests,
     )
-
-from breezy.tests import features
+from ..sixish import (
+    BytesIO,
+    )
+from . import features
 
 
 class TestApportReporting(tests.TestCaseInTempDir):
@@ -46,11 +47,11 @@ class TestApportReporting(tests.TestCaseInTempDir):
             'plugin_warnings',
             {'example': ['Failed to load plugin foo']})
 
-        stderr = StringIO()
+        stderr = BytesIO()
 
         try:
             raise AssertionError("my error")
-        except AssertionError, e:
+        except AssertionError as e:
             pass
 
         crash_filename = crash.report_bug_to_apport(sys.exc_info(),
@@ -95,10 +96,10 @@ class TestNonApportReporting(tests.TestCase):
 
     def test_report_bug_legacy(self):
         self.setup_fake_plugins()
-        err_file = StringIO()
+        err_file = BytesIO()
         try:
             raise AssertionError("my error")
-        except AssertionError, e:
+        except AssertionError as e:
             pass
         crash.report_bug_legacy(sys.exc_info(), err_file)
         report = err_file.getvalue()

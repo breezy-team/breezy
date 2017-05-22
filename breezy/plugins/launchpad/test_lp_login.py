@@ -16,8 +16,8 @@
 
 """Tests for the launchpad-login command."""
 
-from breezy.plugins.launchpad import account
-from breezy.tests import TestCaseWithTransport
+from . import account
+from ...tests import TestCaseWithTransport
 
 
 class TestLaunchpadLogin(TestCaseWithTransport):

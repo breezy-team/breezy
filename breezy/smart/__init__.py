@@ -1,4 +1,4 @@
-# Copyright (C) 2006,2011 Canonical Ltd
+# Copyright (C) 2006, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -50,6 +50,6 @@ from __future__ import absolute_import
 #
 
 # Promote some attributes from submodules into this namespace
-from breezy.smart.request import SmartServerRequestHandler
+from .request import SmartServerRequestHandler
 
 

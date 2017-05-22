@@ -20,22 +20,22 @@ import bisect
 import os
 import time
 
-from breezy import (
+from .. import (
     dirstate,
     errors,
     osutils,
     tests,
     _dirstate_helpers_py,
     )
-from breezy.tests import (
+from . import (
     test_dirstate,
     )
-from breezy.tests.test_osutils import dir_reader_scenarios
-from breezy.tests.scenarios import (
+from .test_osutils import dir_reader_scenarios
+from .scenarios import (
     load_tests_apply_scenarios,
     multiply_scenarios,
     )
-from breezy.tests import (
+from . import (
     features,
     )
 

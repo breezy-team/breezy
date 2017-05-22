@@ -81,8 +81,8 @@ def deprecation_string(a_callable, deprecation_version):
         symbol = "%s.%s" % (a_callable.__module__,
                             a_callable.__name__)
     else:
-        symbol = "%s.%s.%s" % (a_callable.im_class.__module__,
-                               a_callable.im_class.__name__,
+        symbol = "%s.%s.%s" % (a_callable.__self__.__class__.__module__,
+                               a_callable.__self__.__class__.__name__,
                                a_callable.__name__
                                )
     return deprecation_version % symbol
@@ -96,7 +96,7 @@ def deprecated_function(deprecation_version):
 
         def decorated_function(*args, **kwargs):
             """This is the decorated function."""
-            from breezy import trace
+            from . import trace
             trace.mutter_callsite(4, "Deprecated function called")
             warn(deprecation_string(callable, deprecation_version),
                 DeprecationWarning, stacklevel=2)
@@ -124,7 +124,7 @@ def deprecated_method(deprecation_version):
 
         def decorated_method(self, *args, **kwargs):
             """This is the decorated method."""
-            from breezy import trace
+            from . import trace
             if callable.__name__ == '__init__':
                 symbol = "%s.%s" % (self.__class__.__module__,
                                     self.__class__.__name__,

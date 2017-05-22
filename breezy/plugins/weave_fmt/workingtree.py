@@ -18,9 +18,7 @@
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
-
-from breezy import (
+from ... import (
     conflicts as _mod_conflicts,
     errors,
     inventory,
@@ -29,13 +27,16 @@ from breezy import (
     transform,
     xml5,
     )
-from breezy.decorators import needs_read_lock
-from breezy.mutabletree import MutableTree
-from breezy.transport.local import LocalTransport
-from breezy.workingtree import (
+from ...decorators import needs_read_lock
+from ...mutabletree import MutableTree
+from ...sixish import (
+    BytesIO,
+    )
+from ...transport.local import LocalTransport
+from ...workingtree import (
     WorkingTreeFormat,
     )
-from breezy.workingtree_3 import (
+from ...workingtree_3 import (
     PreDirStateWorkingTree,
     )
 
@@ -73,7 +74,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         since BzrDirFormat6 and BzrDirFormat5 cannot represent dirs with
         no working tree.  (See bug #43064).
         """
-        sio = StringIO()
+        sio = BytesIO()
         inv = inventory.Inventory()
         xml5.serializer_v5.write_inventory(inv, sio, working=True)
         sio.seek(0)

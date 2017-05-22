@@ -27,11 +27,10 @@ __all__ = [
     ]
 
 from bisect import bisect_right
-from cStringIO import StringIO
 import re
 import sys
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     bisect_multi,
@@ -39,11 +38,14 @@ from breezy import (
     trace,
     )
 """)
-from breezy import (
+from . import (
     debug,
     errors,
     )
-from breezy.static_tuple import StaticTuple
+from .sixish import (
+    BytesIO,
+    )
+from .static_tuple import StaticTuple
 
 _HEADER_READV = (0, 200)
 _OPTION_KEY_ELEMENTS = "key_elements="
@@ -249,7 +251,7 @@ class GraphIndexBuilder(object):
     def finish(self):
         """Finish the index.
 
-        :returns: cStringIO holding the full context of the index as it 
+        :returns: cBytesIO holding the full context of the index as it 
         should be written to disk.
         """
         lines = [_SIGNATURE]
@@ -331,7 +333,7 @@ class GraphIndexBuilder(object):
             lines.append("%s\x00%s\x00%s\x00%s\n" % (string_key, absent,
                 '\t'.join(flattened_references), value))
         lines.append('\n')
-        result = StringIO(''.join(lines))
+        result = BytesIO(''.join(lines))
         if expected_bytes and len(result.getvalue()) != expected_bytes:
             raise errors.BzrError('Failed index creation. Internal error:'
                 ' mismatched output length and expected length: %d %d' %
@@ -432,7 +434,7 @@ class GraphIndex(object):
     def __eq__(self, other):
         """Equal when self and other were created with the same parameters."""
         return (
-            type(self) == type(other) and
+            isinstance(self, type(other)) and
             self._transport == other._transport and
             self._name == other._name and
             self._size == other._size)
@@ -460,7 +462,7 @@ class GraphIndex(object):
             if self._base_offset != 0:
                 # This is wasteful, but it is better than dealing with
                 # adjusting all the offsets, etc.
-                stream = StringIO(stream.read()[self._base_offset:])
+                stream = BytesIO(stream.read()[self._base_offset:])
         self._read_prefix(stream)
         self._expected_elements = 3 + self._key_length
         line_count = 0
@@ -749,7 +751,7 @@ class GraphIndex(object):
                     key_dict = dicts.pop(-1)
                     # can't be empty or would not exist
                     item, value = key_dict.iteritems().next()
-                    if type(value) == dict:
+                    if isinstance(value, dict):
                         # push keys
                         dicts.extend(key_dict.itervalues())
                     else:
@@ -1228,7 +1230,7 @@ class GraphIndex(object):
                 # We read the whole range, most likely because the
                 # Transport upcast our readv ranges into one long request
                 # for enough total data to grab the whole index.
-                self._buffer_all(StringIO(data))
+                self._buffer_all(BytesIO(data))
                 return
             if self._bisect_nodes is None:
                 # this must be the start
@@ -1310,7 +1312,7 @@ class CombinedGraphIndex(object):
             found_parents[key] = parents
         return found_parents
 
-    has_key = _has_key_from_parent_map
+    __contains__ = _has_key_from_parent_map
 
     def insert_index(self, pos, index, name=None):
         """Insert a new index in the list of indices to query.
@@ -1343,8 +1345,9 @@ class CombinedGraphIndex(object):
                             yield node
                             seen_keys.add(node[1])
                 return
-            except errors.NoSuchFile:
-                self._reload_or_raise()
+            except errors.NoSuchFile as e:
+                if not self._try_reload(e):
+                    raise
 
     def iter_entries(self, keys):
         """Iterate over keys within the index.
@@ -1372,8 +1375,9 @@ class CombinedGraphIndex(object):
                     if index_hit:
                         hit_indices.append(index)
                 break
-            except errors.NoSuchFile:
-                self._reload_or_raise()
+            except errors.NoSuchFile as e:
+                if not self._try_reload(e):
+                    raise
         self._move_to_front(hit_indices)
 
     def iter_entries_prefix(self, keys):
@@ -1414,8 +1418,9 @@ class CombinedGraphIndex(object):
                     if index_hit:
                         hit_indices.append(index)
                 break
-            except errors.NoSuchFile:
-                self._reload_or_raise()
+            except errors.NoSuchFile as e:
+                if not self._try_reload(e):
+                    raise
         self._move_to_front(hit_indices)
 
     def _move_to_front(self, hit_indices):
@@ -1559,27 +1564,27 @@ class CombinedGraphIndex(object):
         while True:
             try:
                 return sum((index.key_count() for index in self._indices), 0)
-            except errors.NoSuchFile:
-                self._reload_or_raise()
+            except errors.NoSuchFile as e:
+                if not self._try_reload(e):
+                    raise
 
     missing_keys = _missing_keys_from_parent_map
 
-    def _reload_or_raise(self):
+    def _try_reload(self, error):
         """We just got a NoSuchFile exception.
 
         Try to reload the indices, if it fails, just raise the current
         exception.
         """
         if self._reload_func is None:
-            raise
-        exc_type, exc_value, exc_traceback = sys.exc_info()
-        trace.mutter('Trying to reload after getting exception: %s',
-                     exc_value)
+            return False
+        trace.mutter('Trying to reload after getting exception: %s', error)
         if not self._reload_func():
             # We tried to reload, but nothing changed, so we fail anyway
             trace.mutter('_reload_func indicated nothing has changed.'
                          ' Raising original exception.')
-            raise exc_type, exc_value, exc_traceback
+            return False
+        return True
 
     def set_sibling_indices(self, sibling_combined_graph_indices):
         """Set the CombinedGraphIndex objects to reorder after reordering self.
@@ -1593,8 +1598,9 @@ class CombinedGraphIndex(object):
                 for index in self._indices:
                     index.validate()
                 return
-            except errors.NoSuchFile:
-                self._reload_or_raise()
+            except errors.NoSuchFile as e:
+                if not self._try_reload(e):
+                    raise
 
 
 class InMemoryGraphIndex(GraphIndexBuilder):
@@ -1720,7 +1726,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
                     key_dict = dicts.pop(-1)
                     # can't be empty or would not exist
                     item, value = key_dict.iteritems().next()
-                    if type(value) == dict:
+                    if isinstance(value, dict):
                         # push keys
                         dicts.extend(key_dict.itervalues())
                     else:

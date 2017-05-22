@@ -23,13 +23,13 @@ from urlparse import urlsplit, urlunsplit
 import urllib
 import xmlrpclib
 
-from breezy import (
+from ... import (
     config,
     errors,
     urlutils,
     __version__ as _breezy_version,
     )
-from breezy.transport.http import _urllib2_wrappers
+from ...transport.http import _urllib2_wrappers
 
 
 # for testing, do
@@ -193,7 +193,7 @@ class LaunchpadService(object):
         method = getattr(proxy, method_name)
         try:
             result = method(*method_params)
-        except xmlrpclib.ProtocolError, e:
+        except xmlrpclib.ProtocolError as e:
             if e.errcode == 301:
                 # TODO: This can give a ProtocolError representing a 301 error, whose
                 # e.headers['location'] tells where to go and e.errcode==301; should
@@ -206,7 +206,7 @@ class LaunchpadService(object):
                 # TODO: print more headers to help in tracking down failures
                 raise errors.BzrError("xmlrpc protocol error connecting to %s: %s %s"
                         % (self.service_url, e.errcode, e.errmsg))
-        except socket.gaierror, e:
+        except socket.gaierror as e:
             raise errors.ConnectionError(
                 "Could not resolve '%s'" % self.domain,
                 orig_error=e)
@@ -228,7 +228,7 @@ class LaunchpadService(object):
             resolve = _request_factory(path)
             try:
                 result = resolve.submit(self)
-            except xmlrpclib.Fault, fault:
+            except xmlrpclib.Fault as fault:
                 raise errors.InvalidURL(branch_url, str(fault))
             branch_url = result['urls'][0]
             path = urlsplit(branch_url)[2]

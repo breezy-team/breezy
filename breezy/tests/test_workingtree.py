@@ -15,7 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from breezy import (
+from .. import (
     bzrdir,
     conflicts,
     errors,
@@ -24,11 +24,11 @@ from breezy import (
     workingtree_3,
     workingtree_4,
     )
-from breezy.lock import write_locked
-from breezy.lockdir import LockDir
-from breezy.mutabletree import needs_tree_write_lock
-from breezy.tests import TestCase, TestCaseWithTransport, TestSkipped
-from breezy.workingtree import (
+from ..lock import write_locked
+from ..lockdir import LockDir
+from ..mutabletree import needs_tree_write_lock
+from . import TestCase, TestCaseWithTransport, TestSkipped
+from ..workingtree import (
     TreeEntry,
     TreeDirectory,
     TreeFile,

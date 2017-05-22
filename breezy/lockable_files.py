@@ -16,7 +16,7 @@
 
 from __future__ import absolute_import
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 import warnings
 
@@ -30,7 +30,7 @@ from breezy import (
     )
 """)
 
-from breezy.decorators import (
+from .decorators import (
     only_raises,
     )
 
@@ -119,16 +119,16 @@ class LockableFiles(object):
         try:
             st = self._transport.stat('.')
         except errors.TransportNotPossible:
-            self._dir_mode = 0755
-            self._file_mode = 0644
+            self._dir_mode = 0o755
+            self._file_mode = 0o644
         else:
             # Check the directory mode, but also make sure the created
             # directories and files are read-write for this user. This is
             # mostly a workaround for filesystems which lie about being able to
             # write to a directory (cygwin & win32)
-            self._dir_mode = (st.st_mode & 07777) | 00700
+            self._dir_mode = (st.st_mode & 0o7777) | 0o0700
             # Remove the sticky and execute bits for files
-            self._file_mode = self._dir_mode & ~07111
+            self._file_mode = self._dir_mode & ~0o7111
 
     def leave_in_place(self):
         """Set this LockableFiles to not clear the physical lock on unlock."""

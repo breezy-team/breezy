@@ -18,9 +18,9 @@
 """Black-box tests for brz cat.
 """
 
-from breezy import tests
-from breezy.tests.matchers import ContainsNoVfsCalls
-from breezy.transport import memory
+from ... import tests
+from ..matchers import ContainsNoVfsCalls
+from ...transport import memory
 
 
 class TestCat(tests.TestCaseWithTransport):
@@ -161,11 +161,8 @@ class TestCat(tests.TestCaseWithTransport):
         # subprocess because we really need to patch in a plugin that
         # registers the filters. Instead, we patch in a custom
         # filter_stack and use run_bzr() ...
-        from cStringIO import StringIO
-        from breezy.commands import run_bzr
-        from breezy.tests.test_filters import _stack_2
-        from breezy.trace import mutter
-        from breezy.tree import Tree
+        from ..test_filters import _stack_2
+        from ...tree import Tree
         wt = self.make_branch_and_tree('.')
         self.build_tree_contents([
             ('README', "junk\nline 1 of README\nline 2 of README\n"),

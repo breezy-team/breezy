@@ -56,15 +56,14 @@ from __future__ import absolute_import
 # increased cost of logging.py is not so bad, and we could standardize on
 # that.
 
+import errno
 import logging
 import os
 import sys
 import time
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
-from cStringIO import StringIO
-import errno
 import locale
 import tempfile
 import traceback
@@ -80,6 +79,11 @@ from breezy import (
     ui,
     )
 """)
+
+from .sixish import (
+    BytesIO,
+    text_type,
+    )
 
 
 # global verbosity for breezy; controls the log level for stderr; 0=normal; <0
@@ -140,7 +144,7 @@ def mutter(fmt, *args):
     if (getattr(_trace_file, 'closed', None) is not None) and _trace_file.closed:
         return
 
-    if isinstance(fmt, unicode):
+    if isinstance(fmt, text_type):
         fmt = fmt.encode('utf8')
 
     if len(args) > 0:
@@ -149,15 +153,14 @@ def mutter(fmt, *args):
         # is a unicode string
         real_args = []
         for arg in args:
-            if isinstance(arg, unicode):
+            if isinstance(arg, text_type):
                 arg = arg.encode('utf8')
             real_args.append(arg)
         out = fmt % tuple(real_args)
     else:
         out = fmt
     now = time.time()
-    timestamp = '%0.3f  ' % (now - _brz_log_start_time,)
-    out = timestamp + out + '\n'
+    out = b'%0.3f  %s\n' % (now - _brz_log_start_time, out)
     _trace_file.write(out)
     # there's no explicit flushing; the file is typically line buffered.
 
@@ -170,7 +173,7 @@ def mutter_callsite(stacklevel, fmt, *args):
     :param fmt: The format string to pass to mutter.
     :param args: A list of substitution variables.
     """
-    outf = StringIO()
+    outf = BytesIO()
     if stacklevel is None:
         limit = None
     else:
@@ -229,24 +232,25 @@ def _open_brz_log():
             try:
                 fd = os.open(filename, flags)
                 break
-            except OSError, e:
+            except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
             try:
-                fd = os.open(filename, flags | os.O_CREAT | os.O_EXCL, 0666)
-            except OSError, e:
+                fd = os.open(filename, flags | os.O_CREAT | os.O_EXCL, 0o666)
+            except OSError as e:
                 if e.errno != errno.EEXIST:
                     raise
             else:
                 osutils.copy_ownership_from_path(filename)
                 break
-        return os.fdopen(fd, 'at', 0)  # unbuffered
+        return os.fdopen(fd, 'ab', 0) # unbuffered
+
 
     _brz_log_filename = _get_brz_log_filename()
     _rollover_trace_maybe(_brz_log_filename)
     try:
         brz_log_file = _open_or_create_log_file(_brz_log_filename)
-        brz_log_file.write('\n')
+        brz_log_file.write(b'\n')
         if brz_log_file.tell() <= 2:
             brz_log_file.write("this is a debug log for diagnosing/reporting problems in brz\n")
             brz_log_file.write("you can delete or truncate this file, or include sections in\n")
@@ -254,7 +258,7 @@ def _open_brz_log():
 
         return brz_log_file
 
-    except EnvironmentError, e:
+    except EnvironmentError as e:
         # If we are failing to open the log, then most likely logging has not
         # been set up yet. So we just write to stderr rather than using
         # 'warning()'. If we using warning(), users get the unhelpful 'no
@@ -284,7 +288,7 @@ def enable_default_logging():
                                            timezone='local')
     brz_log_file = _open_brz_log()
     if brz_log_file is not None:
-        brz_log_file.write(start_time.encode('utf-8') + '\n')
+        brz_log_file.write(start_time.encode('utf-8') + b'\n')
     memento = push_log_file(brz_log_file,
         r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
         r'%Y-%m-%d %H:%M:%S')
@@ -331,13 +335,14 @@ def push_log_file(to_file, log_format=None, date_format=None):
     return ('log_memento', old_handlers, new_handler, old_trace_file, to_file)
 
 
-def pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_file)):
+def pop_log_file(entry):
     """Undo changes to logging/tracing done by _push_log_file.
 
     This flushes, but does not close the trace file (so that anything that was
     in it is output.
 
     Takes the memento returned from _push_log_file."""
+    (magic, old_handlers, new_handler, old_trace_file, new_trace_file) = entry
     global _trace_file
     _trace_file = old_trace_file
     brz_logger = logging.getLogger('brz')
@@ -548,11 +553,11 @@ def _flush_stdout_stderr():
     try:
         sys.stdout.flush()
         sys.stderr.flush()
-    except ValueError, e:
+    except ValueError as e:
         # On Windows, I get ValueError calling stdout.flush() on a closed
         # handle
         pass
-    except IOError, e:
+    except IOError as e:
         import errno
         if e.errno in [errno.EINVAL, errno.EPIPE]:
             pass
@@ -593,9 +598,9 @@ class EncodedStreamHandler(logging.Handler):
     def emit(self, record):
         try:
             line = self.format(record)
-            if not isinstance(line, unicode):
+            if not isinstance(line, text_type):
                 line = line.decode("utf-8")
-            self.stream.write(line.encode(self.encoding, self.errors) + "\n")
+            self.stream.write(line.encode(self.encoding, self.errors) + b"\n")
         except Exception:
             log_exception_quietly()
             # Try saving the details that would have been logged in some form

@@ -73,13 +73,14 @@ up=pull
 """
 
 from __future__ import absolute_import
-from cStringIO import StringIO
 import os
 import sys
 
+import configobj
+
 import breezy
-from breezy.decorators import needs_write_lock
-from breezy.lazy_import import lazy_import
+from .decorators import needs_write_lock
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 import base64
 import fnmatch
@@ -104,15 +105,20 @@ from breezy import (
     win32utils,
     )
 from breezy.i18n import gettext
-from breezy.util.configobj import configobj
 """)
-from breezy import (
+from . import (
     commands,
     hooks,
     lazy_regex,
     registry,
     )
-from breezy.symbol_versioning import (
+from .sixish import (
+    binary_type,
+    BytesIO,
+    text_type,
+    string_types,
+    )
+from .symbol_versioning import (
     deprecated_in,
     deprecated_method,
     )
@@ -176,6 +182,28 @@ def signing_policy_from_unicode(signature_string):
                      % signature_string)
 
 
+def _has_decode_bug():
+    """True if configobj will fail to decode to unicode on Python 2."""
+    if sys.version_info > (3,):
+        return False
+    conf = configobj.ConfigObj()
+    decode = getattr(conf, "_decode", None)
+    if decode:
+        result = decode(b"\xc2\xa7", "utf-8")
+        if isinstance(result[0], str):
+            return True
+    return False
+
+
+def _has_triplequote_bug():
+    """True if triple quote logic is reversed, see lp:710410."""
+    conf = configobj.ConfigObj()
+    quote = getattr(conf, "_get_triple_quote", None)
+    if quote and quote('"""') != "'''":
+        return True
+    return False
+
+
 class ConfigObj(configobj.ConfigObj):
 
     def __init__(self, infile=None, **kwargs):
@@ -183,6 +211,19 @@ class ConfigObj(configobj.ConfigObj):
         super(ConfigObj, self).__init__(infile=infile,
                                         interpolation=False,
                                         **kwargs)
+
+    if _has_decode_bug():
+        def _decode(self, infile, encoding):
+            if isinstance(infile, str) and encoding:
+                return infile.decode(encoding).splitlines(True)
+            return super(ConfigObj, self)._decode(infile, encoding)
+
+    if _has_triplequote_bug():
+        def _get_triple_quote(self, value):
+            quot = super(ConfigObj, self)._get_triple_quote(value)
+            if quot == configobj.tdquot:
+                return configobj.tsquot
+            return configobj.tdquot
 
     def get_bool(self, section, key):
         return self[section].as_bool(key)
@@ -398,7 +439,7 @@ class Config(object):
             otherwise.
         """
         l = self.get_user_option(option_name, expand=expand)
-        if isinstance(l, (str, unicode)):
+        if isinstance(l, string_types):
             # A single value, most probably the user forgot (or didn't care to
             # add) the final ','
             l = [l]
@@ -736,7 +777,7 @@ class IniBasedConfig(Config):
         return conf
 
     def _create_from_string(self, str_or_unicode, save):
-        self._content = StringIO(str_or_unicode.encode('utf-8'))
+        self._content = BytesIO(str_or_unicode.encode('utf-8'))
         # Some tests use in-memory configs, some other always need the config
         # file to exist on disk.
         if save:
@@ -759,7 +800,7 @@ class IniBasedConfig(Config):
             co_input = self.file_name
         try:
             self._parser = ConfigObj(co_input, encoding='utf-8')
-        except configobj.ConfigObjError, e:
+        except configobj.ConfigObjError as e:
             raise errors.ParseConfigError(e.errors, e.config.filename)
         except UnicodeDecodeError:
             raise errors.ConfigContentError(self.file_name)
@@ -1195,11 +1236,10 @@ class LocationConfig(LockableConfig):
 
     def _get_matching_sections(self):
         """Return an ordered list of section names matching this location."""
-        matches = list(_iter_for_location_by_parts(self._get_parser(),
-                                                   self.location))
         # put the longest (aka more specific) locations first
-        matches.sort(
-            key=lambda (section, extra_path, length): (length, section),
+        matches = sorted(
+            _iter_for_location_by_parts(self._get_parser(), self.location),
+            key=lambda match: (match[2], match[0]),
             reverse=True)
         for (section, extra_path, length) in matches:
             yield section, extra_path
@@ -1605,7 +1645,7 @@ def _get_default_mail_domain(mailname_file='/etc/mailname'):
         return None
     try:
         f = open(mailname_file)
-    except (IOError, OSError), e:
+    except (IOError, OSError) as e:
         return None
     try:
         domain = f.readline().strip()
@@ -1672,12 +1712,12 @@ def _auto_user_id():
         try:
             encoding = osutils.get_user_encoding()
             gecos = w.pw_gecos.decode(encoding)
-        except UnicodeError, e:
+        except UnicodeError as e:
             trace.mutter("cannot decode passwd entry %s" % w)
             return None, None
     try:
         username = w.pw_name.decode(encoding)
-    except UnicodeError, e:
+    except UnicodeError as e:
         trace.mutter("cannot decode passwd entry %s" % w)
         return None, None
 
@@ -1784,7 +1824,7 @@ class AuthenticationConfig(object):
             # Note: the encoding below declares that the file itself is utf-8
             # encoded, but the values in the ConfigObj are always Unicode.
             self._config = ConfigObj(self._input, encoding='utf-8')
-        except configobj.ConfigObjError, e:
+        except configobj.ConfigObjError as e:
             raise errors.ParseConfigError(e.errors, e.config.filename)
         except UnicodeError:
             raise errors.ConfigContentError(self._filename)
@@ -1843,7 +1883,7 @@ class AuthenticationConfig(object):
         """
         credentials = None
         for auth_def_name, auth_def in self._get_config().items():
-            if type(auth_def) is not configobj.Section:
+            if not isinstance(auth_def, configobj.Section):
                 raise ValueError("%s defined outside a section" % auth_def_name)
 
             a_scheme, a_host, a_user, a_path = map(
@@ -2276,17 +2316,17 @@ class TransportConfig(object):
 
     def _get_config_file(self):
         try:
-            f = StringIO(self._transport.get_bytes(self._filename))
+            f = BytesIO(self._transport.get_bytes(self._filename))
             for hook in OldConfigHooks['load']:
                 hook(self)
             return f
         except errors.NoSuchFile:
-            return StringIO()
-        except errors.PermissionDenied, e:
+            return BytesIO()
+        except errors.PermissionDenied as e:
             trace.warning("Permission denied while trying to open "
                 "configuration file %s.", urlutils.unescape_for_display(
                 urlutils.join(self._transport.base, self._filename), "utf-8"))
-            return StringIO()
+            return BytesIO()
 
     def _external_url(self):
         return urlutils.join(self._transport.external_url(), self._filename)
@@ -2296,7 +2336,7 @@ class TransportConfig(object):
         try:
             try:
                 conf = ConfigObj(f, encoding='utf-8')
-            except configobj.ConfigObjError, e:
+            except configobj.ConfigObjError as e:
                 raise errors.ParseConfigError(e.errors, self._external_url())
             except UnicodeDecodeError:
                 raise errors.ConfigContentError(self._external_url())
@@ -2305,7 +2345,7 @@ class TransportConfig(object):
         return conf
 
     def _set_configobj(self, configobj):
-        out_file = StringIO()
+        out_file = BytesIO()
         configobj.write(out_file)
         out_file.seek(0)
         self._transport.put_file(self._filename, out_file)
@@ -2377,7 +2417,7 @@ class Option(object):
                 raise AssertionError(
                     'Only empty lists are supported as default values')
             self.default = u','
-        elif isinstance(default, (str, unicode, bool, int, float)):
+        elif isinstance(default, (binary_type, text_type, bool, int, float)):
             # Rely on python to convert strings, booleans and integers
             self.default = u'%s' % (default,)
         elif callable(default):
@@ -2442,7 +2482,7 @@ class Option(object):
             # Otherwise, fallback to the value defined at registration
             if callable(self.default):
                 value = self.default()
-                if not isinstance(value, unicode):
+                if not isinstance(value, text_type):
                     raise AssertionError(
                         "Callable default value for '%s' should be unicode"
                         % (self.name))
@@ -2525,7 +2565,7 @@ class ListOption(Option):
             invalid=invalid, unquote=False)
 
     def from_unicode(self, unicode_str):
-        if not isinstance(unicode_str, basestring):
+        if not isinstance(unicode_str, string_types):
             raise TypeError
         # Now inject our string directly as unicode. All callers got their
         # value from configobj, so values that need to be quoted are already
@@ -2533,7 +2573,7 @@ class ListOption(Option):
         _list_converter_config.reset()
         _list_converter_config._parse([u"list=%s" % (unicode_str,)])
         maybe_list = _list_converter_config['list']
-        if isinstance(maybe_list, basestring):
+        if isinstance(maybe_list, string_types):
             if maybe_list:
                 # A single value, most probably the user forgot (or didn't care
                 # to add) the final ','
@@ -2565,7 +2605,7 @@ class RegistryOption(Option):
         self.registry = registry
 
     def from_unicode(self, unicode_str):
-        if not isinstance(unicode_str, basestring):
+        if not isinstance(unicode_str, string_types):
             raise TypeError
         try:
             return self.registry.get(unicode_str)
@@ -3255,12 +3295,12 @@ class IniFileStore(Store):
         """
         if self.is_loaded():
             raise AssertionError('Already loaded: %r' % (self._config_obj,))
-        co_input = StringIO(bytes)
+        co_input = BytesIO(bytes)
         try:
             # The config files are always stored utf8-encoded
             self._config_obj = ConfigObj(co_input, encoding='utf-8',
                                          list_values=False)
-        except configobj.ConfigObjError, e:
+        except configobj.ConfigObjError as e:
             self._config_obj = None
             raise errors.ParseConfigError(e.errors, self.external_url())
         except UnicodeDecodeError:
@@ -3282,7 +3322,7 @@ class IniFileStore(Store):
         if not self.is_loaded():
             # Nothing to save
             return
-        out = StringIO()
+        out = BytesIO()
         self._config_obj.write(out)
         self._save_content(out.getvalue())
         for hook in ConfigHooks['save']:
@@ -3335,7 +3375,7 @@ class IniFileStore(Store):
             self._config_obj.list_values = False
 
     def unquote(self, value):
-        if value and isinstance(value, basestring):
+        if value and isinstance(value, string_types):
             # _unquote doesn't handle None nor empty strings nor anything that
             # is not a string, really.
             value = self._config_obj._unquote(value)
@@ -3384,7 +3424,7 @@ class TransportIniFileStore(IniFileStore):
         # The following will do in the interim but maybe we don't want to
         # expose a path here but rather a config ID and its associated
         # object </hand wawe>.
-        return urlutils.join(self.transport.external_url(), self.file_name)
+        return urlutils.join(self.transport.external_url(), self.file_name.encode("ascii"))
 
 
 # Note that LockableConfigObjStore inherits from ConfigObjStore because we need
@@ -3662,10 +3702,9 @@ class LocationMatcher(SectionMatcher):
 
     def get_sections(self):
         # Override the default implementation as we want to change the order
-        matching_sections = self._get_matching_sections()
         # We want the longest (aka more specific) locations first
-        sections = sorted(matching_sections,
-                          key=lambda (length, section): (length, section.id),
+        sections = sorted(self._get_matching_sections(),
+                          key=lambda match: (match[0], match[1].id),
                           reverse=True)
         # Sections mentioning 'ignore_parents' restrict the selection
         for _, section in sections:
@@ -3749,7 +3788,7 @@ class Stack(object):
             # None or ends up being None during expansion or conversion.
             if val is not None:
                 if expand:
-                    if isinstance(val, basestring):
+                    if isinstance(val, string_types):
                         val = self._expand_options_in_string(val)
                     else:
                         trace.warning('Cannot expand "%s":'
@@ -3901,7 +3940,7 @@ class Stack(object):
             global _shared_stores_at_exit_installed
             stores = _shared_stores
             def save_config_changes():
-                for k, store in stores.iteritems():
+                for k, store in stores.items():
                     store.save_changes()
             if not _shared_stores_at_exit_installed:
                 # FIXME: Ugly hack waiting for library_state to always be
@@ -4154,7 +4193,7 @@ class cmd_config(commands.Command):
         # http://pad.lv/788991 -- vila 20101115
         commands.Option('scope', help='Reduce the scope to the specified'
                         ' configuration file.',
-                        type=unicode),
+                        type=text_type),
         commands.Option('all',
             help='Display all the defined values for the matching options.',
             ),

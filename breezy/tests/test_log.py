@@ -15,9 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-from cStringIO import StringIO
 
-from breezy import (
+from .. import (
     branchbuilder,
     errors,
     log,
@@ -27,6 +26,9 @@ from breezy import (
     tests,
     gpg,
     trace,
+    )
+from ..sixish import (
+    BytesIO,
     )
 
 
@@ -692,12 +694,12 @@ message:
         sio = self.make_utf8_encoded_stringio()
         formatter = log.LongLogFormatter(to_file=sio)
         def trivial_custom_prop_handler(revision):
-            raise StandardError("a test error")
+            raise Exception("a test error")
 
         log.properties_handler_registry.register(
             'trivial_custom_prop_handler',
             trivial_custom_prop_handler)
-        self.assertRaises(StandardError, log.show_log, wt.branch, formatter,)
+        self.assertRaises(Exception, log.show_log, wt.branch, formatter,)
 
     def test_properties_handler_bad_argument(self):
         wt = self.make_standard_commit('bad_argument',
@@ -1192,7 +1194,7 @@ class TestHistoryChange(tests.TestCaseWithTransport):
 
     def test_show_branch_change(self):
         tree = self.setup_ab_tree()
-        s = StringIO()
+        s = BytesIO()
         log.show_branch_change(tree.branch, s, 3, '3a')
         self.assertContainsRe(s.getvalue(),
             '[*]{60}\nRemoved Revisions:\n(.|\n)*2a(.|\n)*3a(.|\n)*'
@@ -1200,14 +1202,14 @@ class TestHistoryChange(tests.TestCaseWithTransport):
 
     def test_show_branch_change_no_change(self):
         tree = self.setup_ab_tree()
-        s = StringIO()
+        s = BytesIO()
         log.show_branch_change(tree.branch, s, 3, '3b')
         self.assertEqual(s.getvalue(),
             'Nothing seems to have changed\n')
 
     def test_show_branch_change_no_old(self):
         tree = self.setup_ab_tree()
-        s = StringIO()
+        s = BytesIO()
         log.show_branch_change(tree.branch, s, 2, '2b')
         self.assertContainsRe(s.getvalue(), 'Added Revisions:')
         self.assertNotContainsRe(s.getvalue(), 'Removed Revisions:')
@@ -1215,7 +1217,7 @@ class TestHistoryChange(tests.TestCaseWithTransport):
     def test_show_branch_change_no_new(self):
         tree = self.setup_ab_tree()
         tree.branch.set_last_revision_info(2, '2b')
-        s = StringIO()
+        s = BytesIO()
         log.show_branch_change(tree.branch, s, 3, '3b')
         self.assertContainsRe(s.getvalue(), 'Removed Revisions:')
         self.assertNotContainsRe(s.getvalue(), 'Added Revisions:')

@@ -23,7 +23,7 @@ import sys
 import tempfile
 
 import breezy
-from breezy import (
+from . import (
     config as _mod_config,
     email_message,
     errors,
@@ -184,7 +184,7 @@ class BodyExternalMailClient(MailClient):
                                                          **kwargs))
             try:
                 subprocess.call(cmdline)
-            except OSError, e:
+            except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
             else:
@@ -529,11 +529,11 @@ class MAPIClient(BodyExternalMailClient):
 
         This implementation uses MAPI via the simplemapi ctypes wrapper
         """
-        from breezy.util import simplemapi
+        from .util import simplemapi
         try:
             simplemapi.SendMail(to or '', subject or '', body or '',
                                 attach_path)
-        except simplemapi.MAPIError, e:
+        except simplemapi.MAPIError as e:
             if e.code != simplemapi.MAPI_USER_ABORT:
                 raise errors.MailClientNotFound(['MAPI supported mail client'
                                                  ' (error %d)' % (e.code,)])

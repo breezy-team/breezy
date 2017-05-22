@@ -21,13 +21,13 @@ import re
 import socket
 import sys
 
-from breezy import (
+from .. import (
     controldir,
     errors,
     osutils,
     urlutils,
     )
-from breezy.tests import (
+from . import (
     TestCase,
     TestCaseWithTransport,
     TestSkipped,
@@ -356,7 +356,7 @@ class TestErrors(TestCaseWithTransport):
         # perhaps no more is needed.)
         try:
             raise errors.BzrError('this is my errors; %d is not expanded')
-        except errors.BzrError, e:
+        except errors.BzrError as e:
             self.assertEqual('this is my errors; %d is not expanded', str(e))
 
     def test_reading_completed(self):

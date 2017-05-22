@@ -16,11 +16,17 @@
 
 """Tests for branch implementations - test check() functionality"""
 
-from StringIO import StringIO
 
-from breezy import errors, tests, ui
-from breezy.symbol_versioning import deprecated_in
-from breezy.tests.per_branch import TestCaseWithBranch
+from ... import (
+    errors,
+    tests,
+    ui,
+)
+from ...sixish import (
+    BytesIO,
+    )
+from ...symbol_versioning import deprecated_in
+from . import TestCaseWithBranch
 
 
 class TestBranchCheck(TestCaseWithBranch):
@@ -53,7 +59,7 @@ class TestBranchCheck(TestCaseWithBranch):
         self.addCleanup(tree.unlock)
         refs = self.make_refs(tree.branch)
         result = tree.branch.check(refs)
-        ui.ui_factory = tests.TestUIFactory(stdout=StringIO())
+        ui.ui_factory = tests.TestUIFactory(stdout=BytesIO())
         result.report_results(True)
         self.assertContainsRe('revno does not match len',
             ui.ui_factory.stdout.getvalue())
@@ -72,7 +78,7 @@ class TestBranchCheck(TestCaseWithBranch):
         tree = self.make_branch_and_tree('.')
         revid = tree.commit('foo')
         self.assertEqual(
-            set([('revision-existence', revid), ('lefthand-distance', revid)]),
+            {('revision-existence', revid), ('lefthand-distance', revid)},
             set(tree.branch._get_check_refs()))
 
     def make_refs(self, branch):

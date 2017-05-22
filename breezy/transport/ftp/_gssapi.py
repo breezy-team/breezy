@@ -23,19 +23,19 @@ from __future__ import absolute_import
 
 import base64, ftplib
 
-from breezy import (
+from ... import (
     errors,
     )
-from breezy.i18n import gettext
-from breezy.trace import (
+from ...i18n import gettext
+from ...trace import (
     mutter,
     note,
     )
-from breezy.transport.ftp import FtpTransport
+from ..ftp import FtpTransport
 
 try:
     import kerberos
-except ImportError, e:
+except ImportError as e:
     mutter('failed to import kerberos lib: %s', e)
     raise errors.DependencyNotPresent('kerberos', e)
 
@@ -84,7 +84,7 @@ class GSSAPIFtp(ftplib.FTP):
                         rc = kerberos.authGSSClientStep(self.vc, resp[9:])
                         if not ((resp.startswith('235 ') and rc == 1) or
                                 (resp.startswith('335 ') and rc == 0)):
-                            raise ftplib.error_reply, resp
+                            raise ftplib.error_reply(resp)
             note(gettext("Authenticated as %s") %
                  kerberos.authGSSClientUserName(self.vc))
 
@@ -114,14 +114,14 @@ class GSSAPIFtpTransport(FtpTransport):
         """
         try:
             connection.gssapi_login(user=user)
-        except ftplib.error_perm, e:
+        except ftplib.error_perm as e:
             super(GSSAPIFtpTransport, self)._login(connection, auth,
                                                    user, password)
 
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from breezy.tests import ftp_server
+    from ...tests import ftp_server
     if ftp_server.FTPServerFeature.available():
         return [(GSSAPIFtpTransport, ftp_server.FTPTestServer)]
     else:

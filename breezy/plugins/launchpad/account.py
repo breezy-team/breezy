@@ -22,13 +22,13 @@ than once for each place that needs to take it into account.
 
 from __future__ import absolute_import
 
-from breezy import (
+from ... import (
     errors,
     trace,
     transport,
     )
-from breezy.config import AuthenticationConfig, GlobalStack
-from breezy.i18n import gettext
+from ...config import AuthenticationConfig, GlobalStack
+from ...i18n import gettext
 
 LAUNCHPAD_BASE = 'https://launchpad.net/'
 

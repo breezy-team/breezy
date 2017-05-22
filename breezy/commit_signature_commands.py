@@ -19,15 +19,15 @@
 
 from __future__ import absolute_import
 
-from breezy import (
+from . import (
     controldir,
     errors,
     gpg,
     revision as _mod_revision,
     )
-from breezy.commands import Command
-from breezy.option import Option
-from breezy.i18n import gettext, ngettext
+from .commands import Command
+from .option import Option
+from .i18n import gettext, ngettext
 
 
 class cmd_sign_my_commits(Command):

@@ -19,7 +19,7 @@
 import ssl
 import sys
 
-from breezy.tests import (
+from . import (
     http_server,
     ssl_certs,
     test_server,
@@ -51,7 +51,7 @@ class TestingHTTPSServerMixin:
         if serving:
             try:
                 request.do_handshake()
-            except ssl.SSLError, e:
+            except ssl.SSLError as e:
                 # FIXME: We proabaly want more tests to capture which ssl
                 # errors are worth reporting but mostly our tests want an https
                 # server that works -- vila 2012-01-19

@@ -35,12 +35,15 @@ import os
 import stat
 import time
 
-from breezy import (
+from . import (
     atomicfile,
     errors,
     filters as _mod_filters,
     osutils,
     trace,
+    )
+from .sixish import (
+    text_type,
     )
 
 
@@ -95,8 +98,9 @@ class HashCache(object):
             parameters and returns a stack of ContentFilters.
             If None, no content filtering is performed.
         """
-        self.root = osutils.safe_unicode(root)
-        self.root_utf8 = self.root.encode('utf8') # where is the filesystem encoding ?
+        if not isinstance(root, text_type):
+            raise ValueError("Base dir for hashcache must be text")
+        self.root = root
         self.hit_count = 0
         self.miss_count = 0
         self.stat_count = 0
@@ -105,7 +109,7 @@ class HashCache(object):
         self.update_count = 0
         self._cache = {}
         self._mode = mode
-        self._cache_file_name = osutils.safe_unicode(cache_file_name)
+        self._cache_file_name = cache_file_name
         self._filter_provider = content_filter_stack_provider
 
     def cache_file_name(self):
@@ -125,12 +129,10 @@ class HashCache(object):
         Obsolete entries are those where the file has been modified or deleted
         since the entry was inserted.
         """
-        # FIXME optimisation opportunity, on linux [and check other oses]:
-        # rather than iteritems order, stat in inode order.
-        prep = [(ce[1][3], path, ce) for (path, ce) in self._cache.iteritems()]
-        prep.sort()
-
-        for inum, path, cache_entry in prep:
+        # Stat in inode order as optimisation for at least linux.
+        def inode_order(path_and_cache):
+            return path_and_cache[1][1][3]
+        for inum, path, cache_entry in sorted(self._cache, key=inode_order):
             abspath = osutils.pathjoin(self.root, path)
             fp = self._fingerprint(abspath)
             self.stat_count += 1
@@ -146,10 +148,7 @@ class HashCache(object):
     def get_sha1(self, path, stat_value=None):
         """Return the sha1 of a file.
         """
-        if path.__class__ is str:
-            abspath = osutils.pathjoin(self.root_utf8, path)
-        else:
-            abspath = osutils.pathjoin(self.root, path)
+        abspath = osutils.pathjoin(self.root, path)
         self.stat_count += 1
         file_fp = self._fingerprint(abspath, stat_value)
 
@@ -182,7 +181,7 @@ class HashCache(object):
                 filters = self._filter_provider(path=path, file_id=None)
             digest = self._really_sha1_file(abspath, filters)
         elif stat.S_ISLNK(mode):
-            target = osutils.readlink(osutils.safe_unicode(abspath))
+            target = osutils.readlink(abspath)
             digest = osutils.sha_string(target.encode('UTF-8'))
         else:
             raise errors.BzrError("file %r: unknown file stat mode: %o"
@@ -256,7 +255,7 @@ class HashCache(object):
         fn = self.cache_file_name()
         try:
             inf = file(fn, 'rb', buffering=65000)
-        except IOError, e:
+        except IOError as e:
             trace.mutter("failed to open %s: %s", fn, e)
             # better write it now so it is valid
             self.needs_write = True
@@ -287,7 +286,7 @@ class HashCache(object):
                 trace.warning("bad sha1 in hashcache: %r" % sha1)
                 continue
 
-            fp = tuple(map(long, fields[1:]))
+            fp = tuple(map(int, fields[1:]))
 
             self._cache[path] = (sha1, fp)
 
@@ -315,6 +314,6 @@ class HashCache(object):
             return None
         # we discard any high precision because it's not reliable; perhaps we
         # could do better on some systems?
-        return (stat_value.st_size, long(stat_value.st_mtime),
-                long(stat_value.st_ctime), stat_value.st_ino,
+        return (stat_value.st_size, int(stat_value.st_mtime),
+                int(stat_value.st_ctime), stat_value.st_ino,
                 stat_value.st_dev, stat_value.st_mode)

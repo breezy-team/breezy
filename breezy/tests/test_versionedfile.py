@@ -16,7 +16,7 @@
 
 """Tests for VersionedFile classes"""
 
-from breezy import (
+from .. import (
     errors,
     groupcompress,
     multiparent,

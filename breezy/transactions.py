@@ -40,9 +40,9 @@ from __future__ import absolute_import
 
 import sys
 
-import breezy.errors as errors
-from breezy.identitymap import IdentityMap, NullIdentityMap
-from breezy.trace import mutter
+from . import errors as errors
+from .identitymap import IdentityMap, NullIdentityMap
+from .trace import mutter
 
 
 class ReadOnlyTransaction(object):

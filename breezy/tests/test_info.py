@@ -16,7 +16,7 @@
 
 import sys
 
-from breezy import (
+from .. import (
     branch as _mod_branch,
     controldir,
     info,

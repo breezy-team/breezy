@@ -16,7 +16,6 @@
 
 """Tests for the osutils wrapper."""
 
-from cStringIO import StringIO
 import errno
 import os
 import re
@@ -26,7 +25,7 @@ import sys
 import tempfile
 import time
 
-from breezy import (
+from .. import (
     errors,
     lazy_regex,
     osutils,
@@ -35,19 +34,22 @@ from breezy import (
     trace,
     win32utils,
     )
-from breezy.tests import (
+from ..sixish import (
+    BytesIO,
+    )
+from . import (
     features,
     file_utils,
     test__walkdirs_win32,
     )
-from breezy.tests.scenarios import load_tests_apply_scenarios
+from .scenarios import load_tests_apply_scenarios
 
 
 class _UTF8DirReaderFeature(features.Feature):
 
     def _probe(self):
         try:
-            from breezy import _readdir_pyx
+            from .. import _readdir_pyx
             self.reader = _readdir_pyx.UTF8DirReader
             return True
         except ImportError:
@@ -82,14 +84,14 @@ def dir_reader_scenarios():
     # Some DirReaders are platform specific and even there they may not be
     # available.
     if UTF8DirReaderFeature.available():
-        from breezy import _readdir_pyx
+        from .. import _readdir_pyx
         scenarios.append(('utf8',
                           dict(_dir_reader_class=_readdir_pyx.UTF8DirReader,
                                _native_to_unicode=_utf8_to_unicode)))
 
     if test__walkdirs_win32.win32_readdir_feature.available():
         try:
-            from breezy import _walkdirs_win32
+            from .. import _walkdirs_win32
             scenarios.append(
                 ('win32',
                  dict(_dir_reader_class=_walkdirs_win32.Win32ReadDir,
@@ -185,7 +187,7 @@ class TestRename(tests.TestCaseInTempDir):
     def test_rename_exception(self):
         try:
             osutils.rename('nonexistent_path', 'different_nonexistent_path')
-        except OSError, e:
+        except OSError as e:
             self.assertEqual(e.old_filename, 'nonexistent_path')
             self.assertEqual(e.new_filename, 'different_nonexistent_path')
             self.assertTrue('nonexistent_path' in e.strerror)
@@ -307,7 +309,7 @@ class TestKind(tests.TestCaseInTempDir):
         # TODO: jam 20060529 Test a block device
         try:
             os.lstat('/dev/null')
-        except OSError, e:
+        except OSError as e:
             if e.errno not in (errno.ENOENT,):
                 raise
         else:
@@ -351,14 +353,14 @@ class TestUmask(tests.TestCaseInTempDir):
 
         orig_umask = osutils.get_umask()
         self.addCleanup(os.umask, orig_umask)
-        os.umask(0222)
-        self.assertEqual(0222, osutils.get_umask())
-        os.umask(0022)
-        self.assertEqual(0022, osutils.get_umask())
-        os.umask(0002)
-        self.assertEqual(0002, osutils.get_umask())
-        os.umask(0027)
-        self.assertEqual(0027, osutils.get_umask())
+        os.umask(0o222)
+        self.assertEqual(0o222, osutils.get_umask())
+        os.umask(0o022)
+        self.assertEqual(0o022, osutils.get_umask())
+        os.umask(0o002)
+        self.assertEqual(0o002, osutils.get_umask())
+        os.umask(0o027)
+        self.assertEqual(0o027, osutils.get_umask())
 
 
 class TestDateTime(tests.TestCase):
@@ -517,12 +519,12 @@ class TestLinks(tests.TestCaseInTempDir):
         # Make a file readonly
         osutils.make_readonly('file')
         mode = os.lstat('file').st_mode
-        self.assertEqual(mode, mode & 0777555)
+        self.assertEqual(mode, mode & 0o777555)
 
         # Make a file writable
         osutils.make_writable('file')
         mode = os.lstat('file').st_mode
-        self.assertEqual(mode, mode | 0200)
+        self.assertEqual(mode, mode | 0o200)
 
         if osutils.has_symlinks():
             # should not error when handed a symlink
@@ -612,7 +614,7 @@ class TestPumpFile(tests.TestCase):
         self.assertTrue(self.test_data_len > self.block_size)
 
         from_file = file_utils.FakeReadFile(self.test_data)
-        to_file = StringIO()
+        to_file = BytesIO()
 
         # read (max / 2) bytes and verify read size wasn't affected
         num_bytes_to_read = self.block_size / 2
@@ -653,7 +655,7 @@ class TestPumpFile(tests.TestCase):
 
         # retrieve data in blocks
         from_file = file_utils.FakeReadFile(self.test_data)
-        to_file = StringIO()
+        to_file = BytesIO()
         osutils.pumpfile(from_file, to_file, self.test_data_len,
                          self.block_size)
 
@@ -677,7 +679,7 @@ class TestPumpFile(tests.TestCase):
 
         # retrieve data to EOF
         from_file = file_utils.FakeReadFile(self.test_data)
-        to_file = StringIO()
+        to_file = BytesIO()
         osutils.pumpfile(from_file, to_file, -1, self.block_size)
 
         # verify read size was equal to the maximum read size
@@ -697,7 +699,7 @@ class TestPumpFile(tests.TestCase):
         with this new version."""
         # retrieve data using default (old) pumpfile method
         from_file = file_utils.FakeReadFile(self.test_data)
-        to_file = StringIO()
+        to_file = BytesIO()
         osutils.pumpfile(from_file, to_file)
 
         # report error if the data wasn't equal (we only report the size due
@@ -711,15 +713,15 @@ class TestPumpFile(tests.TestCase):
         activity = []
         def log_activity(length, direction):
             activity.append((length, direction))
-        from_file = StringIO(self.test_data)
-        to_file = StringIO()
+        from_file = BytesIO(self.test_data)
+        to_file = BytesIO()
         osutils.pumpfile(from_file, to_file, buff_size=500,
                          report_activity=log_activity, direction='read')
         self.assertEqual([(500, 'read'), (500, 'read'), (500, 'read'),
                           (36, 'read')], activity)
 
-        from_file = StringIO(self.test_data)
-        to_file = StringIO()
+        from_file = BytesIO(self.test_data)
+        to_file = BytesIO()
         del activity[:]
         osutils.pumpfile(from_file, to_file, buff_size=500,
                          report_activity=log_activity, direction='write')
@@ -727,8 +729,8 @@ class TestPumpFile(tests.TestCase):
                           (36, 'write')], activity)
 
         # And with a limited amount of data
-        from_file = StringIO(self.test_data)
-        to_file = StringIO()
+        from_file = BytesIO(self.test_data)
+        to_file = BytesIO()
         del activity[:]
         osutils.pumpfile(from_file, to_file, buff_size=500, read_length=1028,
                          report_activity=log_activity, direction='read')
@@ -739,22 +741,22 @@ class TestPumpFile(tests.TestCase):
 class TestPumpStringFile(tests.TestCase):
 
     def test_empty(self):
-        output = StringIO()
+        output = BytesIO()
         osutils.pump_string_file("", output)
         self.assertEqual("", output.getvalue())
 
     def test_more_than_segment_size(self):
-        output = StringIO()
+        output = BytesIO()
         osutils.pump_string_file("123456789", output, 2)
         self.assertEqual("123456789", output.getvalue())
 
     def test_segment_size(self):
-        output = StringIO()
+        output = BytesIO()
         osutils.pump_string_file("12", output, 2)
         self.assertEqual("12", output.getvalue())
 
     def test_segment_size_multiple(self):
-        output = StringIO()
+        output = BytesIO()
         osutils.pump_string_file("1234", output, 2)
         self.assertEqual("1234", output.getvalue())
 
@@ -963,7 +965,7 @@ class TestWin32Funcs(tests.TestCase):
 
     def test_getcwd(self):
         cwd = osutils._win32_getcwd()
-        os_cwd = os.getcwdu()
+        os_cwd = osutils._getcwd()
         self.assertEqual(os_cwd[1:].replace('\\', '/'), cwd[1:])
         # win32 is inconsistent whether it returns lower or upper case
         # and even if it was consistent the user might type the other
@@ -1011,15 +1013,15 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
     def test_minimum_path_selection(self):
         self.assertEqual(set(),
             osutils.minimum_path_selection([]))
-        self.assertEqual(set(['a']),
+        self.assertEqual({'a'},
             osutils.minimum_path_selection(['a']))
-        self.assertEqual(set(['a', 'b']),
+        self.assertEqual({'a', 'b'},
             osutils.minimum_path_selection(['a', 'b']))
-        self.assertEqual(set(['a/', 'b']),
+        self.assertEqual({'a/', 'b'},
             osutils.minimum_path_selection(['a/', 'b']))
-        self.assertEqual(set(['a/', 'b']),
+        self.assertEqual({'a/', 'b'},
             osutils.minimum_path_selection(['a/c', 'a/', 'b']))
-        self.assertEqual(set(['a-b', 'a', 'a0b']),
+        self.assertEqual({'a-b', 'a', 'a0b'},
             osutils.minimum_path_selection(['a-b', 'a/b', 'a0b', 'a']))
 
     def test_mkdtemp(self):
@@ -1046,7 +1048,7 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
 
         try:
             osutils._win32_rename('b', 'a')
-        except (IOError, OSError), e:
+        except (IOError, OSError) as e:
             self.assertEqual(errno.ENOENT, e.errno)
         self.assertFileEqual('foo\n', 'a')
 
@@ -1054,7 +1056,7 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         os.mkdir('a')
         try:
             osutils._win32_rename('b', 'a')
-        except (IOError, OSError), e:
+        except (IOError, OSError) as e:
             self.assertEqual(errno.ENOENT, e.errno)
 
     def test_rename_current_dir(self):
@@ -1066,7 +1068,7 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         # doesn't exist.
         try:
             osutils._win32_rename('b', '.')
-        except (IOError, OSError), e:
+        except (IOError, OSError) as e:
             self.assertEqual(errno.ENOENT, e.errno)
 
     def test_splitpath(self):
@@ -1117,11 +1119,11 @@ class TestChunksToLines(tests.TestCase):
                          osutils.chunks_to_lines(['foo\n', 'bar\n', 'baz\n']))
 
     def test_osutils_binding(self):
-        from breezy.tests import test__chunks_to_lines
+        from . import test__chunks_to_lines
         if test__chunks_to_lines.compiled_chunkstolines_feature.available():
-            from breezy._chunks_to_lines_pyx import chunks_to_lines
+            from .._chunks_to_lines_pyx import chunks_to_lines
         else:
-            from breezy._chunks_to_lines_py import chunks_to_lines
+            from .._chunks_to_lines_py import chunks_to_lines
         self.assertIs(chunks_to_lines, osutils.chunks_to_lines)
 
 
@@ -1200,7 +1202,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         os.mkdir("test-unreadable")
         os.chmod("test-unreadable", 0000)
         # must chmod it back so that it can be removed
-        self.addCleanup(os.chmod, "test-unreadable", 0700)
+        self.addCleanup(os.chmod, "test-unreadable", 0o700)
         # The error is not raised until the generator is actually evaluated.
         # (It would be ok if it happened earlier but at the moment it
         # doesn't.)
@@ -1233,7 +1235,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # rename the 1file to a latin-1 filename
         os.rename("./1file", "\xe8file")
         if "\xe8file" not in os.listdir("."):
-            self.skip("Lack filesystem that preserves arbitrary bytes")
+            self.skipTest("Lack filesystem that preserves arbitrary bytes")
 
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
@@ -1340,7 +1342,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self._save_platform_info()
         win32utils.winver = 'Windows NT'
-        from breezy._walkdirs_win32 import Win32ReadDir
+        from .._walkdirs_win32 import Win32ReadDir
         self.assertDirReaderIs(Win32ReadDir)
 
     def test_force_walkdirs_utf8_98(self):
@@ -1503,7 +1505,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
     def test__walkdirs_utf8_win32readdir(self):
         self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self.requireFeature(features.UnicodeFilenameFeature)
-        from breezy._walkdirs_win32 import Win32ReadDir
+        from .._walkdirs_win32 import Win32ReadDir
         self._save_platform_info()
         osutils._selected_dir_reader = Win32ReadDir()
         name0u = u'0file-\xb6'
@@ -1560,7 +1562,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         """make sure our Stat values are valid"""
         self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self.requireFeature(features.UnicodeFilenameFeature)
-        from breezy._walkdirs_win32 import Win32ReadDir
+        from .._walkdirs_win32 import Win32ReadDir
         name0u = u'0file-\xb6'
         name0 = name0u.encode('utf8')
         self.build_tree([name0u])
@@ -1584,7 +1586,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         """make sure our Stat values are valid"""
         self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self.requireFeature(features.UnicodeFilenameFeature)
-        from breezy._walkdirs_win32 import Win32ReadDir
+        from .._walkdirs_win32 import Win32ReadDir
         name0u = u'0dir-\u062c\u0648'
         name0 = name0u.encode('utf8')
         self.build_tree([name0u + '/'])
@@ -2041,7 +2043,7 @@ class TestFailedToLoadExtension(tests.TestCase):
     def _try_loading(self):
         try:
             import breezy._fictional_extension_py
-        except ImportError, e:
+        except ImportError as e:
             osutils.failed_to_load_extension(e)
             return True
 
@@ -2062,7 +2064,7 @@ class TestFailedToLoadExtension(tests.TestCase):
         self.assertLength(0, warnings)
 
     def test_report_extension_load_failures_message(self):
-        log = StringIO()
+        log = BytesIO()
         trace.push_log_file(log)
         self.assertTrue(self._try_loading())
         osutils.report_extension_load_failures()

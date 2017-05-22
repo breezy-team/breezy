@@ -17,7 +17,7 @@
 """Test uncommit."""
 
 
-from breezy import (
+from .. import (
     errors,
     tests,
     uncommit,

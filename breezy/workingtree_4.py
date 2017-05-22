@@ -24,11 +24,10 @@ WorkingTree.open(dir).
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
 import os
 import sys
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
 import stat
@@ -36,6 +35,7 @@ import stat
 from breezy import (
     bzrdir,
     cache_utf8,
+    cleanup,
     config,
     conflicts as _mod_conflicts,
     controldir,
@@ -53,32 +53,35 @@ from breezy import (
     )
 """)
 
-from breezy.decorators import needs_read_lock, needs_write_lock
-from breezy.inventory import Inventory, ROOT_ID, entry_factory
-from breezy.lock import LogicalLockResult
-from breezy.lockable_files import LockableFiles
-from breezy.lockdir import LockDir
-from breezy.mutabletree import (
+from .decorators import needs_read_lock, needs_write_lock
+from .inventory import Inventory, ROOT_ID, entry_factory
+from .lock import LogicalLockResult
+from .lockable_files import LockableFiles
+from .lockdir import LockDir
+from .mutabletree import (
     MutableTree,
     needs_tree_write_lock,
     )
-from breezy.osutils import (
+from .osutils import (
     file_kind,
     isdir,
     pathjoin,
     realpath,
     safe_unicode,
     )
-from breezy.symbol_versioning import (
+from .sixish import (
+    BytesIO,
+    )
+from .symbol_versioning import (
     deprecated_in,
     deprecated_method,
     )
-from breezy.transport.local import LocalTransport
-from breezy.tree import (
+from .transport.local import LocalTransport
+from .tree import (
     InterTree,
     InventoryTree,
     )
-from breezy.workingtree import (
+from .workingtree import (
     InventoryWorkingTree,
     WorkingTree,
     WorkingTreeFormatMetaDir,
@@ -399,7 +402,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         if stat_value is None:
             try:
                 stat_value = osutils.lstat(file_abspath)
-            except OSError, e:
+            except OSError as e:
                 if e.errno == errno.ENOENT:
                     return None
                 else:
@@ -556,11 +559,11 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 # path is missing on disk.
                 continue
 
-    def _observed_sha1(self, file_id, path, (sha1, statvalue)):
+    def _observed_sha1(self, file_id, path, sha_and_stat):
         """See MutableTree._observed_sha1."""
         state = self.current_dirstate()
         entry = self._get_entry(file_id=file_id, path=path)
-        state._observed_sha1(entry, sha1, statvalue)
+        state._observed_sha1(entry, *sha_and_stat)
 
     def kind(self, file_id):
         """Return the kind of a file.
@@ -698,20 +701,23 @@ class DirStateWorkingTree(InventoryWorkingTree):
         else:
             update_inventory = False
 
-        rollbacks = []
+        # GZ 2017-03-28: The rollbacks variable was shadowed in the loop below
+        # missing those added here, but there's also no test coverage for this.
+        rollbacks = cleanup.ObjectWithCleanups()
         def move_one(old_entry, from_path_utf8, minikind, executable,
                      fingerprint, packed_stat, size,
                      to_block, to_key, to_path_utf8):
             state._make_absent(old_entry)
             from_key = old_entry[0]
-            rollbacks.append(
-                lambda:state.update_minimal(from_key,
-                    minikind,
-                    executable=executable,
-                    fingerprint=fingerprint,
-                    packed_stat=packed_stat,
-                    size=size,
-                    path_utf8=from_path_utf8))
+            rollbacks.add_cleanup(
+                state.update_minimal,
+                from_key,
+                minikind,
+                executable=executable,
+                fingerprint=fingerprint,
+                packed_stat=packed_stat,
+                size=size,
+                path_utf8=from_path_utf8)
             state.update_minimal(to_key,
                     minikind,
                     executable=executable,
@@ -721,7 +727,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     path_utf8=to_path_utf8)
             added_entry_index, _ = state._find_entry_index(to_key, to_block[1])
             new_entry = to_block[1][added_entry_index]
-            rollbacks.append(lambda:state._make_absent(new_entry))
+            rollbacks.add_cleanup(state._make_absent, new_entry)
 
         for from_rel in from_paths:
             # from_rel is 'pathinroot/foo/bar'
@@ -766,32 +772,15 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 elif not after:
                     raise errors.RenameFailedFilesExist(from_rel, to_rel)
 
-            rollbacks = []
-            def rollback_rename():
-                """A single rename has failed, roll it back."""
-                # roll back everything, even if we encounter trouble doing one
-                # of them.
-                #
-                # TODO: at least log the other exceptions rather than just
-                # losing them mbp 20070307
-                exc_info = None
-                for rollback in reversed(rollbacks):
-                    try:
-                        rollback()
-                    except Exception, e:
-                        exc_info = sys.exc_info()
-                if exc_info:
-                    raise exc_info[0], exc_info[1], exc_info[2]
-
             # perform the disk move first - its the most likely failure point.
             if move_file:
                 from_rel_abs = self.abspath(from_rel)
                 to_rel_abs = self.abspath(to_rel)
                 try:
                     osutils.rename(from_rel_abs, to_rel_abs)
-                except OSError, e:
+                except OSError as e:
                     raise errors.BzrMoveFailedError(from_rel, to_rel, e[1])
-                rollbacks.append(lambda: osutils.rename(to_rel_abs, from_rel_abs))
+                rollbacks.add_cleanup(osutils.rename, to_rel_abs, from_rel_abs)
             try:
                 # perform the rename in the inventory next if needed: its easy
                 # to rollback
@@ -800,8 +789,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     from_entry = inv[from_id]
                     current_parent = from_entry.parent_id
                     inv.rename(from_id, to_dir_id, from_tail)
-                    rollbacks.append(
-                        lambda: inv.rename(from_id, current_parent, from_tail))
+                    rollbacks.add_cleanup(
+                        inv.rename, from_id, current_parent, from_tail)
                 # finally do the rename in the dirstate, which is a little
                 # tricky to rollback, but least likely to need it.
                 old_block_index, old_entry_index, dir_present, file_present = \
@@ -875,7 +864,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                                                 to_path_utf8)
                     update_dirblock(from_rel_utf8, to_key, to_rel_utf8)
             except:
-                rollback_rename()
+                rollbacks.cleanup_now()
                 raise
             result.append((from_rel, to_rel))
             state._mark_modified()
@@ -1899,7 +1888,7 @@ class DirStateRevisionTree(InventoryTree):
         return inv[inv_file_id].revision
 
     def get_file(self, file_id, path=None):
-        return StringIO(self.get_file_text(file_id))
+        return BytesIO(self.get_file_text(file_id))
 
     def get_file_size(self, file_id):
         """See Tree.get_file_size"""
@@ -2123,7 +2112,7 @@ class InterDirStateTree(InterTree):
     def __init__(self, source, target):
         super(InterDirStateTree, self).__init__(source, target)
         if not InterDirStateTree.is_compatible(source, target):
-            raise Exception, "invalid source %r and target %r" % (source, target)
+            raise Exception("invalid source %r and target %r" % (source, target))
 
     @staticmethod
     def make_source_parent_tree(source, target):
@@ -2142,10 +2131,10 @@ class InterDirStateTree(InterTree):
     @classmethod
     def make_source_parent_tree_compiled_dirstate(klass, test_case, source,
                                                   target):
-        from breezy.tests.test__dirstate_helpers import \
+        from .tests.test__dirstate_helpers import \
             compiled_dirstate_helpers_feature
         test_case.requireFeature(compiled_dirstate_helpers_feature)
-        from breezy._dirstate_helpers_pyx import ProcessEntryC
+        from ._dirstate_helpers_pyx import ProcessEntryC
         result = klass.make_source_parent_tree(source, target)
         result[1]._iter_changes = ProcessEntryC
         return result
@@ -2214,7 +2203,7 @@ class InterDirStateTree(InterTree):
                 specific_files_utf8.add(path.encode('utf8'))
             specific_files = specific_files_utf8
         else:
-            specific_files = set([''])
+            specific_files = {''}
         # -- specific_files is now a utf8 path set --
 
         # -- get the state object and prepare it.

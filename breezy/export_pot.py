@@ -31,7 +31,7 @@ from __future__ import absolute_import
 import inspect
 import os
 
-from breezy import (
+from . import (
     commands as _mod_commands,
     errors,
     help_topics,
@@ -39,11 +39,11 @@ from breezy import (
     plugin,
     help,
     )
-from breezy.trace import (
+from .trace import (
     mutter,
     note,
     )
-from breezy.i18n import gettext
+from .i18n import gettext
 
 
 def _escape(s):

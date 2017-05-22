@@ -21,7 +21,7 @@ from __future__ import absolute_import
 
 import os
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 import collections
 
@@ -40,9 +40,9 @@ from breezy import (
 from breezy.i18n import gettext
 """)
 
-from breezy.decorators import needs_read_lock
-from breezy.inter import InterObject
-from breezy.symbol_versioning import (
+from .decorators import needs_read_lock
+from .inter import InterObject
+from .symbol_versioning import (
     deprecated_in,
     deprecated_method,
     )
@@ -837,8 +837,7 @@ class InventoryTree(Tree):
         return inventory.has_id(file_id)
 
     def all_file_ids(self):
-        return set(
-            [entry.file_id for path, entry in self.iter_entries_by_dir()])
+        return {entry.file_id for path, entry in self.iter_entries_by_dir()}
 
     @deprecated_method(deprecated_in((2, 4, 0)))
     def __iter__(self):

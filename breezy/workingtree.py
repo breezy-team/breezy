@@ -31,19 +31,20 @@ WorkingTree.open(dir).
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
+import errno
 import os
+import re
 import sys
 
-from breezy.lazy_import import lazy_import
+import breezy
+
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 from bisect import bisect_left
 import collections
-import errno
 import itertools
 import operator
 import stat
-import re
 
 from breezy import (
     branch,
@@ -72,18 +73,17 @@ from breezy import (
 
 # Explicitly import breezy.bzrdir so that the BzrProber
 # is guaranteed to be registered.
-from breezy import (
+from . import (
     bzrdir,
+    osutils,
     symbol_versioning,
     )
-
-from breezy.decorators import needs_read_lock, needs_write_lock
-from breezy.i18n import gettext
-from breezy.lock import LogicalLockResult
-import breezy.mutabletree
-from breezy.mutabletree import needs_tree_write_lock
-from breezy import osutils
-from breezy.osutils import (
+from .decorators import needs_read_lock, needs_write_lock
+from .i18n import gettext
+from .lock import LogicalLockResult
+from . import mutabletree
+from .mutabletree import needs_tree_write_lock
+from .osutils import (
     file_kind,
     isdir,
     normpath,
@@ -92,9 +92,12 @@ from breezy.osutils import (
     safe_unicode,
     splitpath,
     )
-from breezy.trace import mutter, note
-from breezy.revision import CURRENT_REVISION
-from breezy.symbol_versioning import (
+from .revision import CURRENT_REVISION
+from .sixish import (
+    BytesIO,
+    )
+from .trace import mutter, note
+from .symbol_versioning import (
     deprecated_passed,
     DEPRECATED_PARAMETER,
     )
@@ -164,7 +167,7 @@ class TreeLink(TreeEntry):
         return ''
 
 
-class WorkingTree(breezy.mutabletree.MutableTree,
+class WorkingTree(mutabletree.MutableTree,
     controldir.ControlComponent):
     """Working copy tree.
 
@@ -584,7 +587,7 @@ class WorkingTree(breezy.mutabletree.MutableTree,
         # canonical size
         try:
             return os.path.getsize(self.id2abspath(file_id))
-        except OSError, e:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
             else:
@@ -598,7 +601,7 @@ class WorkingTree(breezy.mutabletree.MutableTree,
                 fullpath = normpath(self.abspath(f))
                 try:
                     kinds[pos] = file_kind(fullpath)
-                except OSError, e:
+                except OSError as e:
                     if e.errno == errno.ENOENT:
                         raise errors.NoSuchFile(fullpath)
 
@@ -660,7 +663,7 @@ class WorkingTree(breezy.mutabletree.MutableTree,
         abspath = self.abspath(path)
         try:
             stat_result = _lstat(abspath)
-        except OSError, e:
+        except OSError as e:
             if getattr(e, 'errno', None) == errno.ENOENT:
                 # no file.
                 return ('missing', None, None, None)
@@ -784,7 +787,7 @@ class WorkingTree(breezy.mutabletree.MutableTree,
             of the branch when it is supplied. If None, to_revision defaults to
             branch.last_revision().
         """
-        from breezy.merge import Merger, Merge3Merger
+        from .merge import Merger, Merge3Merger
         merger = Merger(self.branch, this_tree=self)
         # check that there are no local alterations
         if not force and self.has_changes():
@@ -1123,7 +1126,7 @@ class WorkingTree(breezy.mutabletree.MutableTree,
         abspath = self.abspath(path)
         try:
             stat_value = os.lstat(abspath)
-        except OSError, e:
+        except OSError as e:
             if getattr(e, 'errno', None) == errno.ENOENT:
                 stat_value = None
                 kind = None
@@ -1330,7 +1333,7 @@ class WorkingTree(breezy.mutabletree.MutableTree,
     @needs_tree_write_lock
     def revert(self, filenames=None, old_tree=None, backups=True,
                pb=None, report_changes=False):
-        from breezy.conflicts import resolve
+        from .conflicts import resolve
         if old_tree is None:
             basis_tree = self.basis_tree()
             basis_tree.lock_read()
@@ -1593,7 +1596,7 @@ class WorkingTree(breezy.mutabletree.MutableTree,
         try:
             current_disk = disk_iterator.next()
             disk_finished = False
-        except OSError, e:
+        except OSError as e:
             if not (e.errno == errno.ENOENT or
                 (sys.platform == 'win32' and e.errno == ERROR_PATH_NOT_FOUND)):
                 raise
@@ -1768,12 +1771,12 @@ class WorkingTree(breezy.mutabletree.MutableTree,
 
     def get_shelf_manager(self):
         """Return the ShelfManager for this WorkingTree."""
-        from breezy.shelf import ShelfManager
+        from .shelf import ShelfManager
         return ShelfManager(self, self._transport)
 
 
 class InventoryWorkingTree(WorkingTree,
-        breezy.mutabletree.MutableInventoryTree):
+        mutabletree.MutableInventoryTree):
     """Base class for working trees that are inventory-oriented.
 
     The inventory is held in the `Branch` working-inventory, and the
@@ -1921,10 +1924,11 @@ class InventoryWorkingTree(WorkingTree,
     # new Inventory object.
     @needs_tree_write_lock
     def set_inventory(self, new_inventory_list):
-        from breezy.inventory import (Inventory,
-                                      InventoryDirectory,
-                                      InventoryFile,
-                                      InventoryLink)
+        from .inventory import (
+            Inventory,
+            InventoryDirectory,
+            InventoryFile,
+            InventoryLink)
         inv = Inventory(self.get_root_id())
         for path, file_id, parent, kind in new_inventory_list:
             name = os.path.basename(path)
@@ -1944,7 +1948,7 @@ class InventoryWorkingTree(WorkingTree,
     def _write_basis_inventory(self, xml):
         """Write the basis inventory XML to the basis-inventory file"""
         path = self._basis_inventory_name()
-        sio = StringIO(xml)
+        sio = BytesIO(xml)
         self._transport.put_file(path, sio,
             mode=self.bzrdir._get_file_mode())
 
@@ -2202,7 +2206,7 @@ class InventoryWorkingTree(WorkingTree,
         # TODO: Maybe this should only write on dirty ?
         if self._control_files._lock_mode != 'w':
             raise errors.NotWriteLocked(self)
-        sio = StringIO()
+        sio = BytesIO()
         self._serialize(self._inventory, sio)
         sio.seek(0)
         self._transport.put_file('inventory', sio,
@@ -2215,7 +2219,7 @@ class InventoryWorkingTree(WorkingTree,
             path = self.id2path(file_id)
         try:
             return os.lstat(self.abspath(path)).st_mtime
-        except OSError, e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 raise errors.FileTimestampUnavailable(path)
             raise
@@ -2513,8 +2517,7 @@ class InventoryWorkingTree(WorkingTree,
             inv = self.root_inventory
             from_dir_id = inv.root.file_id
             from_dir_abspath = self.basedir
-        children = os.listdir(from_dir_abspath)
-        children.sort()
+        children = sorted(os.listdir(from_dir_abspath))
         # jam 20060527 The kernel sized tree seems equivalent whether we
         # use a deque and popleft to keep them sorted, or if we use a plain
         # list and just reverse() them.
@@ -2590,8 +2593,7 @@ class InventoryWorkingTree(WorkingTree,
 
                 # But do this child first if recursing down
                 if recursive:
-                    new_children = os.listdir(fap)
-                    new_children.sort()
+                    new_children = sorted(os.listdir(fap))
                     new_children = collections.deque(new_children)
                     stack.append((f_ie.file_id, fp, fap, new_children))
                     # Break out of inner loop,
@@ -2878,7 +2880,7 @@ class InventoryWorkingTree(WorkingTree,
                     entry.to_tail, entry.to_parent_id, entry.from_rel,
                     entry.from_tail, entry.from_parent_id,
                     entry.only_change_inv))
-            except errors.BzrMoveFailedError, e:
+            except errors.BzrMoveFailedError as e:
                 raise errors.BzrMoveFailedError( '', '', "Rollback failed."
                         " The working tree is in an inconsistent state."
                         " Please consider doing a 'bzr revert'."
@@ -2895,7 +2897,7 @@ class InventoryWorkingTree(WorkingTree,
         if not entry.only_change_inv:
             try:
                 osutils.rename(from_rel_abs, to_rel_abs)
-            except OSError, e:
+            except OSError as e:
                 raise errors.BzrMoveFailedError(entry.from_rel,
                     entry.to_rel, e[1])
         if entry.change_id:

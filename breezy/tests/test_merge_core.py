@@ -18,28 +18,28 @@ import os
 import sys
 
 import breezy
-from breezy import (
+from .. import (
     controldir,
     errors,
     generate_ids,
     merge_directive,
     osutils,
     )
-from breezy.conflicts import (
+from ..conflicts import (
     ContentsConflict,
     TextConflict,
     PathConflict,
     )
-from breezy.merge import (
+from ..merge import (
     Merge3Merger,
     Diff3Merger,
     WeaveMerger,
     Merger,
     )
-from breezy.osutils import getcwd, pathjoin
-from breezy.transform import TreeTransform
-from breezy.tests import TestCaseWithTransport, TestSkipped
-from breezy.workingtree import WorkingTree
+from ..osutils import getcwd, pathjoin
+from ..transform import TreeTransform
+from . import TestCaseWithTransport, TestSkipped
+from ..workingtree import WorkingTree
 
 
 class MergeBuilder(object):
@@ -186,7 +186,7 @@ class MergeBuilder(object):
             try:
                 parent_dir = os.path.dirname(orig_inventory[file_id])
             except:
-                print file_id
+                print(file_id)
                 raise
             if parent_dir == "":
                 return None
@@ -596,7 +596,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         a_wt.commit('r0')
         self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
-        os.chmod('b/file', 0755)
+        os.chmod('b/file', 0o755)
         os.remove('a/file')
         a_wt.commit('removed a')
         self.assertEqual(a_wt.branch.revno(), 2)

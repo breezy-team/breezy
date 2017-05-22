@@ -24,8 +24,8 @@ from __future__ import absolute_import
 
 import re, sys
 
-from breezy.errors import BzrError
-from breezy.filters import ContentFilter
+from ..errors import BzrError
+from ..filters import ContentFilter
 
 
 # Real Unix newline - \n without \r before it

@@ -20,10 +20,10 @@
 import doctest
 import socket
 
-from breezy import tests
-from breezy.tests import features
-from breezy.plugins import launchpad
-from breezy.plugins.launchpad import lp_api_lite
+from ... import tests
+from ...tests import features
+from .. import launchpad
+from . import lp_api_lite
 from testtools.matchers import DocTestMatches
 
 

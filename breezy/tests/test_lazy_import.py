@@ -21,12 +21,12 @@ import os
 import re
 import sys
 
-from breezy import (
+from .. import (
     errors,
     lazy_import,
     osutils,
     )
-from breezy.tests import (
+from . import (
     TestCase,
     TestCaseInTempDir,
     )
@@ -206,7 +206,7 @@ class TestScopeReplacer(TestCase):
 
         final_globals = set(globals().keys())
 
-        self.assertEqual(set(['test_scope1']), new_globals - orig_globals)
+        self.assertEqual({'test_scope1'}, new_globals - orig_globals)
         self.assertEqual(set(), orig_globals - new_globals)
         self.assertEqual(set(), final_globals - new_globals)
         self.assertEqual(set(), new_globals - final_globals)

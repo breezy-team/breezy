@@ -41,14 +41,14 @@ import os
 import sys
 import warnings
 
-from breezy import (
+from . import (
     debug,
     errors,
     osutils,
     trace,
     )
-from breezy.hooks import Hooks
-from breezy.i18n import gettext
+from .hooks import Hooks
+from .i18n import gettext
 
 class LockHooks(Hooks):
 
@@ -155,7 +155,7 @@ class _OSLock(object):
         try:
             self.f = open(self.filename, filemode)
             return self.f
-        except IOError, e:
+        except IOError as e:
             if e.errno in (errno.EACCES, errno.EPERM):
                 raise errors.LockFailed(self.filename, str(e))
             if e.errno != errno.ENOENT:
@@ -217,7 +217,7 @@ if have_fcntl:
                 # LOCK_NB will cause IOError to be raised if we can't grab a
                 # lock right away.
                 fcntl.lockf(self.f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except IOError, e:
+            except IOError as e:
                 if e.errno in (errno.EAGAIN, errno.EACCES):
                     # We couldn't grab the lock
                     self.unlock()
@@ -252,7 +252,7 @@ if have_fcntl:
                 # LOCK_NB will cause IOError to be raised if we can't grab a
                 # lock right away.
                 fcntl.lockf(self.f, fcntl.LOCK_SH | fcntl.LOCK_NB)
-            except IOError, e:
+            except IOError as e:
                 # we should be more precise about whats a locking
                 # error and whats a random-other error
                 raise errors.LockContention(self.filename, e)
@@ -313,7 +313,7 @@ if have_fcntl:
             # done by _fcntl_ReadLock
             try:
                 new_f = open(self.filename, 'rb+')
-            except IOError, e:
+            except IOError as e:
                 if e.errno in (errno.EACCES, errno.EPERM):
                     raise errors.LockFailed(self.filename, str(e))
                 raise
@@ -321,7 +321,7 @@ if have_fcntl:
                 # LOCK_NB will cause IOError to be raised if we can't grab a
                 # lock right away.
                 fcntl.lockf(new_f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except IOError, e:
+            except IOError as e:
                 # TODO: Raise a more specific error based on the type of error
                 raise errors.LockContention(self.filename, e)
             _fcntl_WriteLock._open_locks.add(self.filename)
@@ -360,7 +360,7 @@ if have_pywin32 and sys.platform == 'win32':
                 self._handle = win32file_CreateFile(filename, access, share,
                     None, win32file.OPEN_ALWAYS,
                     win32file.FILE_ATTRIBUTE_NORMAL, None)
-            except pywintypes.error, e:
+            except pywintypes.error as e:
                 if e.args[0] == winerror.ERROR_ACCESS_DENIED:
                     raise errors.LockFailed(filename, e)
                 if e.args[0] == winerror.ERROR_SHARING_VIOLATION:

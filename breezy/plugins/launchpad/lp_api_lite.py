@@ -39,7 +39,7 @@ import time
 import urllib
 import urllib2
 
-from breezy import (
+from ... import (
     revision,
     trace,
     )
@@ -125,7 +125,7 @@ class LatestPublication(object):
             response = urllib2.urlopen(req)
             json_info = response.read()
         # TODO: We haven't tested the HTTPError
-        except (urllib2.URLError, urllib2.HTTPError), e:
+        except (urllib2.URLError, urllib2.HTTPError) as e:
             trace.mutter('failed to place query to %r' % (query_URL,))
             trace.log_exception_quietly()
             return None

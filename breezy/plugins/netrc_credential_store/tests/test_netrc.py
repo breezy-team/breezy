@@ -14,16 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
-
-from breezy import (
+from ... import (
     config,
     errors,
     osutils,
     tests,
     )
+from ...sixish import (
+    BytesIO,
+    )
 
-from breezy.plugins import netrc_credential_store
+from .. import netrc_credential_store
 
 
 class TestNetrcCSNoNetrc(tests.TestCaseInTempDir):
@@ -48,7 +49,7 @@ default login anonymous password joe@home
             f.write(netrc_content)
         # python's netrc will complain about access permissions starting with
         # 2.7.5-8 so we restrict the access unconditionally
-        osutils.chmod_if_possible(netrc_path, 0600)
+        osutils.chmod_if_possible(netrc_path, 0o600)
 
     def _get_netrc_cs(self):
         return  config.credential_store_registry.get_credential_store('netrc')
@@ -81,7 +82,7 @@ host = host
 user = joe
 password_encoding = netrc
 """
-        conf = config.AuthenticationConfig(_file=StringIO(ac_content))
+        conf = config.AuthenticationConfig(_file=BytesIO(ac_content))
         credentials = conf.get_credentials('scheme', 'host', user='joe')
         self.assertIsNot(None, credentials)
         self.assertEqual('secret', credentials.get('password', None))

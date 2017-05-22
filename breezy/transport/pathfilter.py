@@ -18,9 +18,9 @@
 
 from __future__ import absolute_import
 
-from breezy import urlutils
+from .. import urlutils
 
-from breezy.transport import (
+from . import (
     register_transport,
     Server,
     Transport,
@@ -178,5 +178,5 @@ class PathFilteringTransport(Transport):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from breezy.tests import test_server
+    from ..tests import test_server
     return [(PathFilteringTransport, test_server.TestingPathFilteringServer)]

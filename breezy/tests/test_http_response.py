@@ -37,18 +37,20 @@ Some properties are common to all kinds:
   InvalidHttpResponse.
 """
 
-from cStringIO import StringIO
 import httplib
 
-from breezy import (
+from .. import (
     errors,
     tests,
     )
-from breezy.transport.http import (
+from ..sixish import (
+    BytesIO,
+    )
+from ..transport.http import (
     response,
     _urllib2_wrappers,
     )
-from breezy.tests.file_utils import (
+from .file_utils import (
     FakeReadFile,
     )
 
@@ -57,7 +59,7 @@ class ReadSocket(object):
     """A socket-like object that can be given a predefined content."""
 
     def __init__(self, data):
-        self.readfile = StringIO(data)
+        self.readfile = BytesIO(data)
 
     def makefile(self, mode='r', bufsize=None):
         return self.readfile
@@ -78,11 +80,11 @@ class FakeHTTPConnection(_urllib2_wrappers.HTTPConnection):
 class TestResponseFileIter(tests.TestCase):
 
     def test_iter_empty(self):
-        f = response.ResponseFile('empty', StringIO())
+        f = response.ResponseFile('empty', BytesIO())
         self.assertEqual([], list(f))
 
     def test_iter_many(self):
-        f = response.ResponseFile('many', StringIO('0\n1\nboo!\n'))
+        f = response.ResponseFile('many', BytesIO(b'0\n1\nboo!\n'))
         self.assertEqual(['0\n', '1\n', 'boo!\n'], list(f))
 
 
@@ -216,7 +218,7 @@ class TestRangeFileSizeUnknown(tests.TestCase, TestRangeFileMixin):
     def setUp(self):
         super(TestRangeFileSizeUnknown, self).setUp()
         self._file = response.RangeFile('Whole_file_size_known',
-                                        StringIO(self.alpha))
+                                        BytesIO(self.alpha))
         # We define no range, relying on RangeFile to provide default values
         self.first_range_start = 0 # It's the whole file
 
@@ -241,7 +243,7 @@ class TestRangeFileSizeKnown(tests.TestCase, TestRangeFileMixin):
     def setUp(self):
         super(TestRangeFileSizeKnown, self).setUp()
         self._file = response.RangeFile('Whole_file_size_known',
-                                        StringIO(self.alpha))
+                                        BytesIO(self.alpha))
         self._file.set_range(0, len(self.alpha))
         self.first_range_start = 0 # It's the whole file
 
@@ -252,7 +254,7 @@ class TestRangeFileSingleRange(tests.TestCase, TestRangeFileMixin):
     def setUp(self):
         super(TestRangeFileSingleRange, self).setUp()
         self._file = response.RangeFile('Single_range_file',
-                                        StringIO(self.alpha))
+                                        BytesIO(self.alpha))
         self.first_range_start = 15
         self._file.set_range(self.first_range_start, len(self.alpha))
 
@@ -301,7 +303,7 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
         content += self._boundary_line()
 
         self._file = response.RangeFile('Multiple_ranges_file',
-                                        StringIO(content))
+                                        BytesIO(content))
         self.set_file_boundary()
 
     def _boundary_line(self):
@@ -443,7 +445,7 @@ class TestRangeFileVarious(tests.TestCase):
 
     def test_seek_whence(self):
         """Test the seek whence parameter values."""
-        f = response.RangeFile('foo', StringIO('abc'))
+        f = response.RangeFile('foo', BytesIO(b'abc'))
         f.set_range(0, 3)
         f.seek(0)
         f.seek(1, 1)
@@ -453,7 +455,7 @@ class TestRangeFileVarious(tests.TestCase):
     def test_range_syntax(self):
         """Test the Content-Range scanning."""
 
-        f = response.RangeFile('foo', StringIO())
+        f = response.RangeFile('foo', BytesIO())
 
         def ok(expected, header_value):
             f.set_range_from_header(header_value)
@@ -709,7 +711,7 @@ line
 class TestHandleResponse(tests.TestCase):
 
     def _build_HTTPMessage(self, raw_headers):
-        status_and_headers = StringIO(raw_headers)
+        status_and_headers = BytesIO(raw_headers)
         # Get rid of the status line
         status_and_headers.readline()
         msg = httplib.HTTPMessage(status_and_headers)
@@ -720,11 +722,11 @@ class TestHandleResponse(tests.TestCase):
         code, raw_headers, body = a_response
         msg = self._build_HTTPMessage(raw_headers)
         return response.handle_response('http://foo', code, msg,
-                                        StringIO(a_response[2]))
+                                        BytesIO(a_response[2]))
 
     def test_full_text(self):
         out = self.get_response(_full_text_response)
-        # It is a StringIO from the original data
+        # It is a BytesIO from the original data
         self.assertEqual(_full_text_response[2], out.read())
 
     def test_single_range(self):
@@ -772,13 +774,13 @@ class TestHandleResponse(tests.TestCase):
         # We should not require Content-Type for a full response
         code, raw_headers, body = _full_text_response_no_content_type
         msg = self._build_HTTPMessage(raw_headers)
-        out = response.handle_response('http://foo', code, msg, StringIO(body))
+        out = response.handle_response('http://foo', code, msg, BytesIO(body))
         self.assertEqual(body, out.read())
 
     def test_full_text_no_content_length(self):
         code, raw_headers, body = _full_text_response_no_content_length
         msg = self._build_HTTPMessage(raw_headers)
-        out = response.handle_response('http://foo', code, msg, StringIO(body))
+        out = response.handle_response('http://foo', code, msg, BytesIO(body))
         self.assertEqual(body, out.read())
 
     def test_missing_content_range(self):
@@ -786,14 +788,14 @@ class TestHandleResponse(tests.TestCase):
         msg = self._build_HTTPMessage(raw_headers)
         self.assertRaises(errors.InvalidHttpResponse,
                           response.handle_response,
-                          'http://bogus', code, msg, StringIO(body))
+                          'http://bogus', code, msg, BytesIO(body))
 
     def test_multipart_no_content_range(self):
         code, raw_headers, body = _multipart_no_content_range
         msg = self._build_HTTPMessage(raw_headers)
         self.assertRaises(errors.InvalidHttpResponse,
                           response.handle_response,
-                          'http://bogus', code, msg, StringIO(body))
+                          'http://bogus', code, msg, BytesIO(body))
 
     def test_multipart_no_boundary(self):
         out = self.get_response(_multipart_no_boundary)

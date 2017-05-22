@@ -24,7 +24,7 @@ import sys
 import time
 import codecs
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 from datetime import datetime
 from datetime import timedelta
@@ -55,7 +55,11 @@ from breezy import (
 from breezy.i18n import gettext
 """)
 
-from breezy.symbol_versioning import (
+from .sixish import (
+    PY3,
+    text_type,
+    )
+from .symbol_versioning import (
     DEPRECATED_PARAMETER,
     deprecated_function,
     deprecated_in,
@@ -70,7 +74,7 @@ from hashlib import (
 
 
 import breezy
-from breezy import symbol_versioning, _fs_enc
+from . import symbol_versioning, _fs_enc
 
 
 # Cross platform wall-clock time functionality with decent resolution.
@@ -94,6 +98,8 @@ O_NOINHERIT = getattr(os, 'O_NOINHERIT', 0)
 
 
 def get_unicode_argv():
+    if PY3:
+        return sys.argv[1:]
     try:
         user_encoding = get_user_encoding()
         return [a.decode(user_encoding) for a in sys.argv[1:]]
@@ -106,14 +112,14 @@ def make_readonly(filename):
     """Make a filename read-only."""
     mod = os.lstat(filename).st_mode
     if not stat.S_ISLNK(mod):
-        mod = mod & 0777555
+        mod = mod & 0o777555
         chmod_if_possible(filename, mod)
 
 
 def make_writable(filename):
     mod = os.lstat(filename).st_mode
     if not stat.S_ISLNK(mod):
-        mod = mod | 0200
+        mod = mod | 0o200
         chmod_if_possible(filename, mod)
 
 
@@ -125,7 +131,7 @@ def chmod_if_possible(filename, mode):
         # It is probably faster to just do the chmod, rather than
         # doing a stat, and then trying to compare
         os.chmod(filename, mode)
-    except (IOError, OSError),e:
+    except (IOError, OSError) as e:
         # Permission/access denied seems to commonly happen on smbfs; there's
         # probably no point warning about it.
         # <https://bugs.launchpad.net/bzr/+bug/606537>
@@ -214,7 +220,7 @@ if lexists is None:
             stat = getattr(os, 'lstat', os.stat)
             stat(f)
             return True
-        except OSError, e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 return False;
             else:
@@ -248,39 +254,38 @@ def fancy_rename(old, new, rename_func, unlink_func):
     file_existed = False
     try:
         rename_func(new, tmp_name)
-    except (errors.NoSuchFile,), e:
+    except (errors.NoSuchFile,) as e:
         pass
-    except IOError, e:
+    except IOError as e:
         # RBC 20060103 abstraction leakage: the paramiko SFTP clients rename
         # function raises an IOError with errno is None when a rename fails.
         # This then gets caught here.
         if e.errno not in (None, errno.ENOENT, errno.ENOTDIR):
             raise
-    except Exception, e:
+    except Exception as e:
         if (getattr(e, 'errno', None) is None
             or e.errno not in (errno.ENOENT, errno.ENOTDIR)):
             raise
     else:
         file_existed = True
 
-    failure_exc = None
     success = False
     try:
-        try:
-            # This may throw an exception, in which case success will
-            # not be set.
-            rename_func(old, new)
-            success = True
-        except (IOError, OSError), e:
-            # source and target may be aliases of each other (e.g. on a
-            # case-insensitive filesystem), so we may have accidentally renamed
-            # source by when we tried to rename target
-            failure_exc = sys.exc_info()
-            if (file_existed and e.errno in (None, errno.ENOENT)
-                and old.lower() == new.lower()):
-                # source and target are the same file on a case-insensitive
-                # filesystem, so we don't generate an exception
-                failure_exc = None
+        # This may throw an exception, in which case success will
+        # not be set.
+        rename_func(old, new)
+        success = True
+    except (IOError, OSError) as e:
+        # source and target may be aliases of each other (e.g. on a
+        # case-insensitive filesystem), so we may have accidentally renamed
+        # source by when we tried to rename target
+        if (file_existed and e.errno in (None, errno.ENOENT)
+            and old.lower() == new.lower()):
+            # source and target are the same file on a case-insensitive
+            # filesystem, so we don't generate an exception
+            pass
+        else:
+            raise
     finally:
         if file_existed:
             # If the file used to exist, rename it back into place
@@ -289,11 +294,6 @@ def fancy_rename(old, new, rename_func, unlink_func):
                 unlink_func(tmp_name)
             else:
                 rename_func(tmp_name, new)
-    if failure_exc is not None:
-        try:
-            raise failure_exc[0], failure_exc[1], failure_exc[2]
-        finally:
-            del failure_exc
 
 
 # In Python 2.4.2 and older, os.path.abspath and os.path.realpath
@@ -348,6 +348,8 @@ def _posix_get_home_dir():
     path = posixpath.expanduser("~")
     try:
         return path.decode(_fs_enc)
+    except AttributeError:
+        return path
     except UnicodeDecodeError:
         raise errors.BadFilenameEncoding(path, _fs_enc)
 
@@ -397,7 +399,7 @@ def _win98_abspath(path):
     # check for absolute path
     drive = ntpath.splitdrive(path)[0]
     if drive == '' and path[:2] not in('//','\\\\'):
-        cwd = os.getcwdu()
+        cwd = _getcwd()
         # we cannot simply os.path.join cwd and path
         # because os.path.join('C:','/path') produce '/path'
         # and this is incorrect
@@ -422,7 +424,7 @@ def _win32_normpath(path):
 
 
 def _win32_getcwd():
-    return _win32_fixdrive(os.getcwdu().replace('\\', '/'))
+    return _win32_fixdrive(_getcwd().replace('\\', '/'))
 
 
 def _win32_mkdtemp(*args, **kwargs):
@@ -437,7 +439,7 @@ def _win32_rename(old, new):
     """
     try:
         fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
-    except OSError, e:
+    except OSError as e:
         if e.errno in (errno.EPERM, errno.EACCES, errno.EBUSY, errno.EINVAL):
             # If we try to rename a non-existant file onto cwd, we get
             # EPERM or EACCES instead of ENOENT, this will raise ENOENT
@@ -448,7 +450,7 @@ def _win32_rename(old, new):
 
 
 def _mac_getcwd():
-    return unicodedata.normalize('NFC', os.getcwdu())
+    return unicodedata.normalize('NFC', _getcwd())
 
 
 def _rename_wrap_exception(rename_func):
@@ -461,7 +463,7 @@ def _rename_wrap_exception(rename_func):
     def _rename_wrapper(old, new):
         try:
             rename_func(old, new)
-        except OSError, e:
+        except OSError as e:
             detailed_error = OSError(e.errno, e.strerror +
                                 " [occurred when renaming '%s' to '%s']" %
                                 (old, new))
@@ -470,6 +472,13 @@ def _rename_wrap_exception(rename_func):
             raise detailed_error
 
     return _rename_wrapper
+
+
+if sys.version_info > (3,):
+    _getcwd = os.getcwd
+else:
+    _getcwd = os.getcwdu
+
 
 # Default rename wraps os.rename()
 rename = _rename_wrap_exception(os.rename)
@@ -483,7 +492,7 @@ normpath = _posix_normpath
 path_from_environ = _posix_path_from_environ
 _get_home_dir = _posix_get_home_dir
 getuser_unicode = _posix_getuser_unicode
-getcwd = os.getcwdu
+getcwd = _getcwd
 dirname = os.path.dirname
 basename = os.path.basename
 split = os.path.split
@@ -513,7 +522,7 @@ if sys.platform == 'win32':
     mkdtemp = _win32_mkdtemp
     rename = _rename_wrap_exception(_win32_rename)
     try:
-        from breezy import _walkdirs_win32
+        from . import _walkdirs_win32
     except ImportError:
         pass
     else:
@@ -566,7 +575,7 @@ def get_terminal_encoding(trace=False):
 
     :param trace: If True trace the selected encoding via mutter().
     """
-    from breezy.trace import mutter
+    from .trace import mutter
     output_encoding = getattr(sys.stdout, 'encoding', None)
     if not output_encoding:
         input_encoding = getattr(sys.stdin, 'encoding', None)
@@ -908,7 +917,7 @@ def format_local_date(t, offset=0, timezone='original', date_fmt=None,
     (date_fmt, tt, offset_str) = \
                _format_date(t, offset, timezone, date_fmt, show_offset)
     date_str = time.strftime(date_fmt, tt)
-    if not isinstance(date_str, unicode):
+    if not isinstance(date_str, text_type):
         date_str = date_str.decode(get_user_encoding(), 'replace')
     return date_str + offset_str
 
@@ -1102,7 +1111,7 @@ def report_extension_load_failures():
     if config.GlobalStack().get('ignore_missing_extensions'):
         return
     # the warnings framework should by default show this only once
-    from breezy.trace import warning
+    from .trace import warning
     warning(
         "brz: warning: some compiled extensions could not be loaded; "
         "see <https://answers.launchpad.net/bzr/+faq/703>")
@@ -1112,10 +1121,10 @@ def report_extension_load_failures():
 
 
 try:
-    from breezy._chunks_to_lines_pyx import chunks_to_lines
-except ImportError, e:
+    from ._chunks_to_lines_pyx import chunks_to_lines
+except ImportError as e:
     failed_to_load_extension(e)
-    from breezy._chunks_to_lines_py import chunks_to_lines
+    from ._chunks_to_lines_py import chunks_to_lines
 
 
 def split_lines(s):
@@ -1152,7 +1161,7 @@ def link_or_copy(src, dest):
         return
     try:
         os.link(src, dest)
-    except (OSError, IOError), e:
+    except (OSError, IOError) as e:
         if e.errno != errno.EXDEV:
             raise
         shutil.copyfile(src, dest)
@@ -1165,7 +1174,7 @@ def delete_any(path):
     """
     try:
        _delete_file_or_dir(path)
-    except (OSError, IOError), e:
+    except (OSError, IOError) as e:
         if e.errno in (errno.EPERM, errno.EACCES):
             # make writable and try again
             try:
@@ -1363,7 +1372,7 @@ def decode_filename(filename):
     Otherwise it is decoded from the the filesystem's encoding. If decoding
     fails, a errors.BadFilenameEncoding exception is raised.
     """
-    if type(filename) is unicode:
+    if isinstance(filename, text_type):
         return filename
     try:
         return filename.decode(_fs_enc)
@@ -1378,7 +1387,7 @@ def safe_unicode(unicode_or_utf8_string):
     Otherwise it is decoded from utf-8. If decoding fails, the exception is
     wrapped in a BzrBadParameterNotUnicode exception.
     """
-    if isinstance(unicode_or_utf8_string, unicode):
+    if isinstance(unicode_or_utf8_string, text_type):
         return unicode_or_utf8_string
     try:
         return unicode_or_utf8_string.decode('utf8')
@@ -1690,7 +1699,7 @@ def set_or_unset_env(env_variable, value):
         if orig_val is not None:
             del os.environ[env_variable]
     else:
-        if isinstance(value, unicode):
+        if not PY3 and isinstance(value, text_type):
             value = value.encode(get_user_encoding())
         os.environ[env_variable] = value
     return orig_val
@@ -1789,7 +1798,7 @@ def walkdirs(top, prefix=""):
         append = dirblock.append
         try:
             names = sorted(map(decode_filename, _listdir(top)))
-        except OSError, e:
+        except OSError as e:
             if not _is_error_enotdir(e):
                 raise
         else:
@@ -1855,15 +1864,15 @@ def _walkdirs_utf8(top, prefix=""):
             #       but that gets a bit tricky, and requires custom compiling
             #       for win98 anyway.
             try:
-                from breezy._walkdirs_win32 import Win32ReadDir
+                from ._walkdirs_win32 import Win32ReadDir
                 _selected_dir_reader = Win32ReadDir()
             except ImportError:
                 pass
         elif _fs_enc in ('utf-8', 'ascii'):
             try:
-                from breezy._readdir_pyx import UTF8DirReader
+                from ._readdir_pyx import UTF8DirReader
                 _selected_dir_reader = UTF8DirReader()
-            except ImportError, e:
+            except ImportError as e:
                 failed_to_load_extension(e)
                 pass
 
@@ -1999,7 +2008,7 @@ def copy_ownership_from_path(dst, src=None):
     try:
         s = os.stat(src)
         chown(dst, s.st_uid, s.st_gid)
-    except OSError, e:
+    except OSError as e:
         trace.warning(
             'Unable to copy ownership from "%s" to "%s". '
             'You may want to set it manually.', src, dst)
@@ -2113,10 +2122,10 @@ def read_bytes_from_socket(sock, report_activity=None,
     empty string rather than raise an error), and repeats the recv if
     interrupted by a signal.
     """
-    while 1:
+    while True:
         try:
             bytes = sock.recv(max_read_size)
-        except socket.error, e:
+        except socket.error as e:
             eno = e.args[0]
             if eno in _end_of_stream_errors:
                 # The connection was closed by the other side.  Callers expect
@@ -2169,7 +2178,7 @@ def send_all(sock, bytes, report_activity=None):
     while sent_total < byte_count:
         try:
             sent = sock.send(buffer(bytes, sent_total, MAX_SOCKET_CHUNK))
-        except (socket.error, IOError), e:
+        except (socket.error, IOError) as e:
             if e.args[0] in _end_of_stream_errors:
                 raise errors.ConnectionReset(
                     "Error trying to write to socket", e)
@@ -2200,7 +2209,7 @@ def connect_socket(address):
             sock.connect(sa)
             return sock
 
-        except socket.error, err:
+        except socket.error as err:
             # 'err' is now the most recent error
             if sock is not None:
                 sock.close()
@@ -2261,12 +2270,12 @@ def file_kind_from_stat_mode_thunk(mode):
     global file_kind_from_stat_mode
     if file_kind_from_stat_mode is file_kind_from_stat_mode_thunk:
         try:
-            from breezy._readdir_pyx import UTF8DirReader
+            from ._readdir_pyx import UTF8DirReader
             file_kind_from_stat_mode = UTF8DirReader().kind_from_mode
-        except ImportError, e:
+        except ImportError as e:
             # This is one time where we won't warn that an extension failed to
             # load. The extension is never available on Windows anyway.
-            from breezy._readdir_py import (
+            from ._readdir_py import (
                 _kind_from_mode as file_kind_from_stat_mode
                 )
     return file_kind_from_stat_mode(mode)
@@ -2276,7 +2285,7 @@ def file_stat(f, _lstat=os.lstat):
     try:
         # XXX cache?
         return _lstat(f)
-    except OSError, e:
+    except OSError as e:
         if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
             raise errors.NoSuchFile(f)
         raise
@@ -2302,7 +2311,7 @@ def until_no_eintr(f, *a, **kw):
     while True:
         try:
             return f(*a, **kw)
-        except (IOError, OSError), e:
+        except (IOError, OSError) as e:
             if e.errno == errno.EINTR:
                 continue
             raise
@@ -2324,7 +2333,7 @@ def re_compile_checked(re_string, flags=0, where=""):
         re_obj = re.compile(re_string, flags)
         re_obj.search("")
         return re_obj
-    except errors.InvalidPattern, e:
+    except errors.InvalidPattern as e:
         if where:
             where = ' in ' + where
         # despite the name 'error' is a type
@@ -2420,7 +2429,7 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
         self.encode = encode
 
     def write(self, object):
-        if type(object) is str:
+        if isinstance(object, str):
             self.stream.write(object)
         else:
             data, _ = self.encode(object, self.errors)
@@ -2544,7 +2553,7 @@ def _posix_is_local_pid_dead(pid):
     try:
         # Special meaning of unix kill: just check if it's there.
         os.kill(pid, 0)
-    except OSError, e:
+    except OSError as e:
         if e.errno == errno.ESRCH:
             # On this machine, and really not found: as sure as we can be
             # that it's dead.
@@ -2580,7 +2589,7 @@ def fdatasync(fileno):
     if fn is not None:
         try:
             fn(fileno)
-        except IOError, e:
+        except IOError as e:
             # See bug #1075108, on some platforms fdatasync exists, but can
             # raise ENOTSUP. However, we are calling fdatasync to be helpful
             # and reduce the chance of corruption-on-powerloss situations. It
@@ -2598,7 +2607,7 @@ def ensure_empty_directory_exists(path, exception_class):
     """
     try:
         os.mkdir(path)
-    except OSError, e:
+    except OSError as e:
         if e.errno != errno.EEXIST:
             raise
         if os.listdir(path) != []:

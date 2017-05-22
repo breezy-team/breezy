@@ -18,11 +18,11 @@
 
 import errno
 
-from breezy import (
+from .. import (
     osutils,
     tests,
     )
-from breezy.tests import (
+from . import (
     features,
     )
 
@@ -36,7 +36,7 @@ class TestWin32Finder(tests.TestCaseInTempDir):
 
     def setUp(self):
         super(TestWin32Finder, self).setUp()
-        from breezy._walkdirs_win32 import (
+        from ._walkdirs_win32 import (
             Win32ReadDir,
             )
         self.reader = Win32ReadDir()
@@ -104,7 +104,7 @@ class Test_Win32Stat(tests.TestCaseInTempDir):
 
     def setUp(self):
         super(Test_Win32Stat, self).setUp()
-        from breezy._walkdirs_win32 import lstat
+        from ._walkdirs_win32 import lstat
         self.win32_lstat = lstat
 
     def test_zero_members_present(self):

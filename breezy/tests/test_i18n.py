@@ -16,7 +16,9 @@
 
 """Tests for breezy.i18n"""
 
-from breezy import (
+import io
+
+from .. import (
     i18n,
     tests,
     errors,
@@ -141,16 +143,15 @@ class TestTranslate(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         try:
             workingtree.WorkingTree.open('./foo')
-        except errors.NotBranchError,e:
+        except errors.NotBranchError as e:
             err = str(e)
         self.assertContainsRe(err, 
                               u"zz\xe5{{Not a branch: .*}}".encode("utf-8"))
 
     def test_topic_help_translation(self):
         """does topic help get translated?"""
-        from breezy import help
-        from StringIO import StringIO
-        out = StringIO()
+        from .. import help
+        out = io.StringIO()
         help.help("authentication", out)
         self.assertContainsRe(out.getvalue(), "zz\xe5{{Authentication Settings")
 

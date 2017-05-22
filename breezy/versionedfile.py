@@ -19,12 +19,11 @@
 from __future__ import absolute_import
 
 from copy import copy
-from cStringIO import StringIO
 import os
 import struct
 from zlib import adler32
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     annotate,
@@ -41,8 +40,11 @@ from breezy import (
     urlutils,
     )
 """)
-from breezy.registry import Registry
-from breezy.textmerge import TextMerge
+from .registry import Registry
+from .sixish import (
+    BytesIO,
+    )
+from .textmerge import TextMerge
 
 
 adapter_registry = Registry()
@@ -584,7 +586,7 @@ class VersionedFile(object):
         raise NotImplementedError(self.get_lines)
 
     def _get_lf_split_line_list(self, version_ids):
-        return [StringIO(t).readlines() for t in self.get_texts(version_ids)]
+        return [BytesIO(t).readlines() for t in self.get_texts(version_ids)]
 
     def get_ancestry(self, version_ids, topo_sorted=True):
         """Return a list of all ancestors of given version(s). This
@@ -1129,7 +1131,7 @@ class VersionedFiles(object):
         """
         raise NotImplementedError(self.get_sha1s)
 
-    has_key = index._has_key_from_parent_map
+    __contains__ = index._has_key_from_parent_map
 
     def get_missing_compression_parent_keys(self):
         """Return an iterable of keys of missing compression parents.
@@ -1319,7 +1321,7 @@ class ThunkedVersionedFiles(VersionedFiles):
     def _get_all_prefixes(self):
         # Identify all key prefixes.
         # XXX: A bit hacky, needs polish.
-        if type(self._mapper) == ConstantMapper:
+        if isinstance(self._mapper, ConstantMapper):
             paths = [self._mapper.map(())]
             prefixes = [()]
         else:
@@ -1480,7 +1482,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
 
     def plan_merge(self, ver_a, ver_b, base=None):
         """See VersionedFile.plan_merge"""
-        from breezy.merge import _PlanMerge
+        from .merge import _PlanMerge
         if base is None:
             return _PlanMerge(ver_a, ver_b, self, (self._file_id,)).plan_merge()
         old_plan = list(_PlanMerge(ver_a, base, self, (self._file_id,)).plan_merge())
@@ -1488,7 +1490,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
         return _PlanMerge._subtract_plans(old_plan, new_plan)
 
     def plan_lca_merge(self, ver_a, ver_b, base=None):
-        from breezy.merge import _PlanLCAMerge
+        from .merge import _PlanLCAMerge
         graph = _mod_graph.Graph(self)
         new_plan = _PlanLCAMerge(ver_a, ver_b, self, (self._file_id,), graph).plan_merge()
         if base is None:
@@ -1502,7 +1504,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
         Lines are added locally, not to fallback versionedfiles.  Also, ghosts
         are permitted.  Only reserved ids are permitted.
         """
-        if type(key) is not tuple:
+        if not isinstance(key, tuple):
             raise TypeError(key)
         if not revision.is_reserved_id(key[-1]):
             raise ValueError('Only reserved ids may be used')

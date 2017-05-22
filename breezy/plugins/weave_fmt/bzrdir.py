@@ -18,17 +18,17 @@
 
 from __future__ import absolute_import
 
-from breezy.bzrdir import (
+from ...bzrdir import (
     BzrDir,
     BzrDirFormat,
     BzrDirMetaFormat1,
     )
-from breezy.controldir import (
+from ...controldir import (
     ControlDir,
     Converter,
     format_registry,
     )
-from breezy.lazy_import import lazy_import
+from ...lazy_import import lazy_import
 lazy_import(globals(), """
 import os
 import warnings
@@ -105,7 +105,7 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
     _lock_class = lockable_files.TransportLock
 
     def __eq__(self, other):
-        return type(self) == type(other)
+        return isinstance(self, type(other))
 
     @classmethod
     def get_format_string(cls):
@@ -113,7 +113,7 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
         return "Bazaar-NG branch, format 5\n"
 
     def get_branch_format(self):
-        from breezy.plugins.weave_fmt.branch import BzrBranchFormat4
+        from .branch import BzrBranchFormat4
         return BzrBranchFormat4()
 
     def get_format_description(self):
@@ -133,8 +133,8 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
 
         Except when they are being cloned.
         """
-        from breezy.plugins.weave_fmt.branch import BzrBranchFormat4
-        from breezy.plugins.weave_fmt.repository import RepositoryFormat5
+        from .branch import BzrBranchFormat4
+        from .repository import RepositoryFormat5
         result = (super(BzrDirFormat5, self).initialize_on_transport(transport))
         RepositoryFormat5().initialize(result, _internal=True)
         if not _cloning:
@@ -151,7 +151,7 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
 
     def __return_repository_format(self):
         """Circular import protection."""
-        from breezy.plugins.weave_fmt.repository import RepositoryFormat5
+        from .repository import RepositoryFormat5
         return RepositoryFormat5()
     repository_format = property(__return_repository_format)
 
@@ -169,7 +169,7 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
     _lock_class = lockable_files.TransportLock
 
     def __eq__(self, other):
-        return type(self) == type(other)
+        return isinstance(self, type(other))
 
     @classmethod
     def get_format_string(cls):
@@ -181,7 +181,7 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
         return "All-in-one format 6"
 
     def get_branch_format(self):
-        from breezy.plugins.weave_fmt.branch import BzrBranchFormat4
+        from .branch import BzrBranchFormat4
         return BzrBranchFormat4()
 
     def get_converter(self, format=None):
@@ -197,8 +197,8 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
 
         Except when they are being cloned.
         """
-        from breezy.plugins.weave_fmt.branch import BzrBranchFormat4
-        from breezy.plugins.weave_fmt.repository import RepositoryFormat6
+        from .branch import BzrBranchFormat4
+        from .repository import RepositoryFormat6
         result = super(BzrDirFormat6, self).initialize_on_transport(transport)
         RepositoryFormat6().initialize(result, _internal=True)
         if not _cloning:
@@ -215,7 +215,7 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
 
     def __return_repository_format(self):
         """Circular import protection."""
-        from breezy.plugins.weave_fmt.repository import RepositoryFormat6
+        from .repository import RepositoryFormat6
         return RepositoryFormat6()
     repository_format = property(__return_repository_format)
 
@@ -338,8 +338,8 @@ class ConvertBzrDir4To5(Converter):
         self.bzrdir.transport.mkdir('revision-store')
         revision_transport = self.bzrdir.transport.clone('revision-store')
         # TODO permissions
-        from breezy.xml5 import serializer_v5
-        from breezy.plugins.weave_fmt.repository import RevisionTextStore
+        from ...xml5 import serializer_v5
+        from .repository import RevisionTextStore
         revision_store = RevisionTextStore(revision_transport,
             serializer_v5, False, versionedfile.PrefixMapper(),
             lambda:True, lambda:True)
@@ -511,7 +511,7 @@ class ConvertBzrDir5To6(Converter):
             pb.finished()
 
     def _convert_to_prefixed(self):
-        from breezy.store import TransportStore
+        from ...store import TransportStore
         self.bzrdir.transport.delete('branch-format')
         for store_name in ["weaves", "revision-store"]:
             ui.ui_factory.note(gettext("adding prefixes to %s") % store_name)
@@ -544,8 +544,8 @@ class ConvertBzrDir6ToMeta(Converter):
 
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
-        from breezy.plugins.weave_fmt.repository import RepositoryFormat7
-        from breezy.branchfmt.fullhistory import BzrBranchFormat5
+        from .repository import RepositoryFormat7
+        from ...branchfmt.fullhistory import BzrBranchFormat5
         self.bzrdir = to_convert
         self.pb = ui.ui_factory.nested_progress_bar()
         self.count = 0
@@ -616,7 +616,7 @@ class ConvertBzrDir6ToMeta(Converter):
                 if name in bzrcontents:
                     self.bzrdir.transport.delete(name)
         else:
-            from breezy.workingtree_3 import WorkingTreeFormat3
+            from ...workingtree_3 import WorkingTreeFormat3
             self.step(gettext('Upgrading working tree'))
             self.bzrdir.transport.mkdir('checkout', mode=self.dir_mode)
             self.make_lock('checkout')
@@ -678,7 +678,7 @@ class BzrDirFormat4(BzrDirFormat):
     _lock_class = lockable_files.TransportLock
 
     def __eq__(self, other):
-        return type(self) == type(other)
+        return isinstance(self, type(other))
 
     @classmethod
     def get_format_string(cls):
@@ -716,7 +716,7 @@ class BzrDirFormat4(BzrDirFormat):
 
     def __return_repository_format(self):
         """Circular import protection."""
-        from breezy.plugins.weave_fmt.repository import RepositoryFormat4
+        from .repository import RepositoryFormat4
         return RepositoryFormat4()
     repository_format = property(__return_repository_format)
 
@@ -824,7 +824,7 @@ class BzrDirPreSplitOut(BzrDir):
         return result
 
     def _init_workingtree(self):
-        from breezy.plugins.weave_fmt.workingtree import WorkingTreeFormat2
+        from .workingtree import WorkingTreeFormat2
         try:
             return WorkingTreeFormat2().initialize(self)
         except errors.NotLocalUrl:
@@ -887,7 +887,7 @@ class BzrDirPreSplitOut(BzrDir):
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False, possible_transports=None):
         """See ControlDir.open_branch."""
-        from breezy.plugins.weave_fmt.branch import BzrBranchFormat4
+        from .branch import BzrBranchFormat4
         format = BzrBranchFormat4()
         format.check_support_status(unsupported)
         return format.open(self, name, _found=True,
@@ -910,7 +910,7 @@ class BzrDirPreSplitOut(BzrDir):
         if not create_tree_if_local:
             raise errors.MustHaveWorkingTree(
                 self._format, self.root_transport.base)
-        from breezy.plugins.weave_fmt.workingtree import WorkingTreeFormat2
+        from .workingtree import WorkingTreeFormat2
         self._make_tail(url)
         result = self._format._initialize_for_clone(url)
         try:
@@ -929,7 +929,7 @@ class BzrDirPreSplitOut(BzrDir):
         return result
 
     def set_branch_reference(self, target_branch, name=None):
-        from breezy.branch import BranchReferenceFormat
+        from ...branch import BranchReferenceFormat
         if name is not None:
             raise errors.NoColocatedBranchSupport(self)
         raise errors.IncompatibleFormat(BranchReferenceFormat, self._format)
@@ -954,7 +954,7 @@ class BzrDir4(BzrDirPreSplitOut):
 
     def open_repository(self):
         """See ControlDir.open_repository."""
-        from breezy.plugins.weave_fmt.repository import RepositoryFormat4
+        from .repository import RepositoryFormat4
         return RepositoryFormat4().open(self, _found=True)
 
 
@@ -970,13 +970,13 @@ class BzrDir5(BzrDirPreSplitOut):
     
     def open_repository(self):
         """See ControlDir.open_repository."""
-        from breezy.plugins.weave_fmt.repository import RepositoryFormat5
+        from .repository import RepositoryFormat5
         return RepositoryFormat5().open(self, _found=True)
 
     def open_workingtree(self, unsupported=False,
             recommend_upgrade=True):
         """See ControlDir.create_workingtree."""
-        from breezy.plugins.weave_fmt.workingtree import WorkingTreeFormat2
+        from .workingtree import WorkingTreeFormat2
         wt_format = WorkingTreeFormat2()
         # we don't warn here about upgrades; that ought to be handled for the
         # bzrdir as a whole
@@ -995,12 +995,12 @@ class BzrDir6(BzrDirPreSplitOut):
 
     def open_repository(self):
         """See ControlDir.open_repository."""
-        from breezy.plugins.weave_fmt.repository import RepositoryFormat6
+        from .repository import RepositoryFormat6
         return RepositoryFormat6().open(self, _found=True)
 
     def open_workingtree(self, unsupported=False, recommend_upgrade=True):
         """See ControlDir.create_workingtree."""
         # we don't warn here about upgrades; that ought to be handled for the
         # bzrdir as a whole
-        from breezy.plugins.weave_fmt.workingtree import WorkingTreeFormat2
+        from .workingtree import WorkingTreeFormat2
         return WorkingTreeFormat2().open(self, _found=True)

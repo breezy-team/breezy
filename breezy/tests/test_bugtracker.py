@@ -15,8 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from breezy import bugtracker, errors, urlutils
-from breezy.tests import TestCase, TestCaseWithMemoryTransport
+from .. import bugtracker, errors, urlutils
+from . import TestCase, TestCaseWithMemoryTransport
 
 
 class TestGetBugURL(TestCaseWithMemoryTransport):

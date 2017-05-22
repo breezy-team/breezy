@@ -16,14 +16,14 @@
 
 from __future__ import absolute_import
 
-from breezy import (
+from ... import (
     errors,
     trace,
     )
-from breezy.transport import http
+from .. import http
 # TODO: handle_response should be integrated into the http/__init__.py
-from breezy.transport.http.response import handle_response
-from breezy.transport.http._urllib2_wrappers import (
+from .response import handle_response
+from ._urllib2_wrappers import (
     Opener,
     Request,
     )
@@ -71,8 +71,8 @@ class HttpTransport_urllib(http.HttpTransportBase):
         request.proxy_auth = proxy_auth
 
         if self._debuglevel > 0:
-            print 'perform: %s base: %s, url: %s' % (request.method, self.base,
-                                                     request.get_full_url())
+            print('perform: %s base: %s, url: %s' % (request.method, self.base,
+                                                     request.get_full_url()))
         response = self._opener.open(request)
         if self._get_connection() is not request.connection:
             # First connection or reconnection

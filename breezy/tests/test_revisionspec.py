@@ -76,7 +76,7 @@ class TestRevisionSpec(TestCaseWithTransport):
                       invalid_as_revision_id=True):
         try:
             self.get_in_history(revision_spec)
-        except errors.InvalidRevisionSpec, e:
+        except errors.InvalidRevisionSpec as e:
             self.assertEqual(revision_spec, e.spec)
             self.assertEqual(extra, e.extra)
         else:
@@ -86,7 +86,7 @@ class TestRevisionSpec(TestCaseWithTransport):
             try:
                 spec = RevisionSpec.from_string(revision_spec)
                 spec.as_revision_id(self.tree.branch)
-            except errors.InvalidRevisionSpec, e:
+            except errors.InvalidRevisionSpec as e:
                 self.assertEqual(revision_spec, e.spec)
                 self.assertEqual(extra, e.extra)
             else:
@@ -257,7 +257,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         # Get the right exception text
         try:
             int('X')
-        except ValueError, e:
+        except ValueError as e:
             pass
         self.assertInvalid('revno:X', extra='\n' + str(e))
 
@@ -268,7 +268,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
     def test_invalid_number_with_branch(self):
         try:
             int('X')
-        except ValueError, e:
+        except ValueError as e:
             pass
         self.assertInvalid('revno:X:tree2', extra='\n' + str(e))
 
@@ -442,7 +442,7 @@ class TestRevisionSpec_last(TestRevisionSpec):
     def test_not_a_number(self):
         try:
             int('Y')
-        except ValueError, e:
+        except ValueError as e:
             pass
         self.assertInvalid('last:Y', extra='\n' + str(e))
 

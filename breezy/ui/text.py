@@ -14,35 +14,34 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
-"""Text UI, write output to the console.
-"""
+"""Text UI, write output to the console."""
 
 from __future__ import absolute_import
 
+import codecs
 import os
 import sys
-import time
-
-from breezy.lazy_import import lazy_import
-lazy_import(globals(), """
-import codecs
-import getpass
 import warnings
 
+from ..lazy_import import lazy_import
+lazy_import(globals(), """
+import getpass
+import time
+
 from breezy import (
-    config,
     debug,
     progress,
+    )
+""")
+
+from .. import (
+    config,
     osutils,
     trace,
     )
-
-""")
-
-from breezy.ui import (
-    UIFactory,
+from . import (
     NullProgressView,
+    UIFactory,
     )
 
 
@@ -124,7 +123,7 @@ class _ChooseUI(object):
             raise KeyboardInterrupt
         if char == chr(4): # EOF (^d, C-d)
             raise EOFError
-        return char
+        return char.decode("ascii", "replace")
 
     def interact(self):
         """Keep asking the user until a valid choice is made.
@@ -141,18 +140,18 @@ class _ChooseUI(object):
             try:
                 choice = getchoice()
             except EOFError:
-                self.ui.stderr.write('\n')
+                self.ui.stderr.write(u'\n')
                 return None
             except KeyboardInterrupt:
-                self.ui.stderr.write('\n')
-                raise KeyboardInterrupt
+                self.ui.stderr.write(u'\n')
+                raise
             choice = choice.lower()
             if choice not in self.alternatives:
                 # Not a valid choice, keep on asking.
                 continue
             name, index = self.alternatives[choice]
             if self.echo_back:
-                self.ui.stderr.write(name + '\n')
+                self.ui.stderr.write(name + u'\n')
             return index
 
 
@@ -165,15 +164,9 @@ opt_progress_bar = config.Option(
 class TextUIFactory(UIFactory):
     """A UI factory for Text user interfaces."""
 
-    def __init__(self,
-                 stdin=None,
-                 stdout=None,
-                 stderr=None):
-        """Create a TextUIFactory.
-        """
+    def __init__(self, stdin, stdout, stderr):
+        """Create a TextUIFactory."""
         super(TextUIFactory, self).__init__()
-        # TODO: there's no good reason not to pass all three streams, maybe we
-        # should deprecate the default values...
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
@@ -239,8 +232,6 @@ class TextUIFactory(UIFactory):
             if not password:
                 password = None
             else:
-                password = password.decode(self.stdin.encoding)
-
                 if password[-1] == '\n':
                     password = password[:-1]
         return password
@@ -277,7 +268,6 @@ class TextUIFactory(UIFactory):
         if not username:
             username = None
         else:
-            username = username.decode(self.stdin.encoding)
             if username[-1] == '\n':
                 username = username[:-1]
         return username
@@ -301,24 +291,7 @@ class TextUIFactory(UIFactory):
         return NullProgressView()
 
     def _make_output_stream_explicit(self, encoding, encoding_type):
-        if encoding_type == 'exact':
-            # force sys.stdout to be binary stream on win32; 
-            # NB: this leaves the file set in that mode; may cause problems if
-            # one process tries to do binary and then text output
-            if sys.platform == 'win32':
-                fileno = getattr(self.stdout, 'fileno', None)
-                if fileno:
-                    import msvcrt
-                    msvcrt.setmode(fileno(), os.O_BINARY)
-            return TextUIOutputStream(self, self.stdout)
-        else:
-            encoded_stdout = codecs.getwriter(encoding)(self.stdout,
-                errors=encoding_type)
-            # For whatever reason codecs.getwriter() does not advertise its encoding
-            # it just returns the encoding of the wrapped file, which is completely
-            # bogus. So set the attribute, so we can find the correct encoding later.
-            encoded_stdout.encoding = encoding
-            return TextUIOutputStream(self, encoded_stdout)
+        return TextUIOutputStream(self, self.stdout, encoding, encoding_type)
 
     def note(self, msg):
         """Write an already-formatted message, clearing the progress bar if necessary."""
@@ -327,22 +300,15 @@ class TextUIFactory(UIFactory):
 
     def prompt(self, prompt, **kwargs):
         """Emit prompt on the CLI.
-        
+
         :param kwargs: Dictionary of arguments to insert into the prompt,
             to allow UIs to reformat the prompt.
         """
-        if type(prompt) != unicode:
+        if not isinstance(prompt, unicode):
             raise ValueError("prompt %r not a unicode string" % prompt)
         if kwargs:
             # See <https://launchpad.net/bugs/365891>
             prompt = prompt % kwargs
-        try:
-            prompt = prompt.encode(self.stderr.encoding)
-        except (UnicodeError, AttributeError):
-            # If stderr has no encoding attribute or can't properly encode,
-            # fallback to terminal encoding for robustness (better display
-            # something to the user than aborting with a traceback).
-            prompt = prompt.encode(osutils.get_terminal_encoding(), 'replace')
         self.clear_term()
         self.stdout.flush()
         self.stderr.write(prompt)
@@ -371,9 +337,6 @@ class TextUIFactory(UIFactory):
 
     def show_warning(self, msg):
         self.clear_term()
-        if isinstance(msg, unicode):
-            te = osutils.get_terminal_encoding()
-            msg = msg.encode(te, 'replace')
         self.stderr.write("bzr: warning: %s\n" % msg)
 
     def _progress_updated(self, task):
@@ -403,15 +366,25 @@ class TextUIFactory(UIFactory):
         # be easier to test; that has a lot of test fallout so for now just
         # new code can call this
         if warning_id not in self.suppressed_warnings:
-            self.stderr.write(self.format_user_warning(warning_id, message_args) +
-                '\n')
+            warning = self.format_user_warning(warning_id, message_args)
+            self.stderr.write(warning + '\n')
+
+
+def pad_to_width(line, width, encoding_hint='ascii'):
+    """Truncate or pad unicode line to width.
+
+    This is best-effort for now, and strings containing control codes or
+    non-ascii text may be cut and padded incorrectly.
+    """
+    s = line.encode(encoding_hint, 'replace')
+    return (b'%-*.*s' % (width, width, s)).decode(encoding_hint)
 
 
 class TextProgressView(object):
     """Display of progress bar and other information on a tty.
 
-    This shows one line of text, including possibly a network indicator, spinner,
-    progress bar, message, etc.
+    This shows one line of text, including possibly a network indicator,
+    spinner, progress bar, message, etc.
 
     One instance of this is created and held by the UI, and fed updates when a
     task wants to be painted.
@@ -422,13 +395,12 @@ class TextProgressView(object):
     this only prints the stack from the nominated current task up to the root.
     """
 
-    def __init__(self, term_file, encoding=None, errors="replace"):
+    def __init__(self, term_file, encoding=None, errors=None):
         self._term_file = term_file
         if encoding is None:
             self._encoding = getattr(term_file, "encoding", None) or "ascii"
         else:
             self._encoding = encoding
-        self._encoding_errors = errors
         # true when there's output on the screen we may need to clear
         self._have_output = False
         self._last_transport_msg = ''
@@ -443,26 +415,23 @@ class TextProgressView(object):
         self._bytes_by_direction = {'unknown': 0, 'read': 0, 'write': 0}
         self._first_byte_time = None
         self._fraction = 0
-        # force the progress bar to be off, as at the moment it doesn't 
+        # force the progress bar to be off, as at the moment it doesn't
         # correspond reliably to overall command progress
         self.enable_bar = False
 
     def _avail_width(self):
         # we need one extra space for terminals that wrap on last char
-        w = osutils.terminal_width() 
+        w = osutils.terminal_width()
         if w is None:
             return None
         else:
             return w - 1
 
     def _show_line(self, u):
-        s = u.encode(self._encoding, self._encoding_errors)
         width = self._avail_width()
         if width is not None:
-            # GZ 2012-03-28: Counting bytes is wrong for calculating width of
-            #                text but better than counting codepoints.
-            s = '%-*.*s' % (width, width, s)
-        self._term_file.write('\r' + s + '\r')
+            u = pad_to_width(u, width, encoding_hint=self._encoding)
+        self._term_file.write('\r' + u + '\r')
 
     def clear(self):
         if self._have_output:
@@ -489,7 +458,7 @@ class TextProgressView(object):
                     self._last_task._overall_completion_fraction() or 0
             if (completion_fraction < self._fraction and 'progress' in
                 debug.debug_flags):
-                import pdb;pdb.set_trace()
+                debug.set_trace()
             self._fraction = completion_fraction
             markers = int(round(float(cols) * completion_fraction)) - 1
             bar_str = '[' + ('#' * markers + spin_str).ljust(cols) + '] '
@@ -545,6 +514,7 @@ class TextProgressView(object):
         if avail_width is not None:
             # if terminal avail_width is unknown, don't truncate
             current_len = len(bar_string) + len(trans) + len(task_part) + len(counter_part)
+            # GZ 2017-04-22: Should measure and truncate task_part properly
             gap = current_len - avail_width
             if gap > 0:
                 task_part = task_part[:-gap-2] + '..'
@@ -563,8 +533,8 @@ class TextProgressView(object):
 
     def show_progress(self, task):
         """Called by the task object when it has changed.
-        
-        :param task: The top task object; its parents are also included 
+
+        :param task: The top task object; its parents are also included
             by following links.
         """
         must_update = task is not self._last_task
@@ -657,26 +627,77 @@ class TextProgressView(object):
             self._term_file.write(msg + '\n')
 
 
+def _get_stream_encoding(stream):
+    encoding = config.GlobalStack().get('output_encoding')
+    if encoding is None:
+        encoding = getattr(stream, "encoding", None)
+    if encoding is None:
+        encoding = osutils.get_terminal_encoding(trace=True)
+    return encoding
+
+
+def _unwrap_stream(stream):
+    inner = getattr(stream, "buffer", None)
+    if inner is None:
+        inner = getattr(stream, "stream", None)
+    return inner
+
+
+def _wrap_in_stream(stream, encoding=None, errors='replace'):
+    if encoding is None:
+        encoding = _get_stream_encoding(stream)
+    encoded_stream = codecs.getreader(encoding)(stream, errors=errors)
+    encoded_stream.encoding = encoding
+    return encoded_stream
+
+
+def _wrap_out_stream(stream, encoding=None, errors='replace'):
+    if encoding is None:
+        encoding = _get_stream_encoding(stream)
+    encoded_stream = codecs.getwriter(encoding)(stream, errors=errors)
+    encoded_stream.encoding = encoding
+    return encoded_stream
+
+
 class TextUIOutputStream(object):
-    """Decorates an output stream so that the terminal is cleared before writing.
+    """Decorates stream to interact better with progress and change encoding.
 
-    This is supposed to ensure that the progress bar does not conflict with bulk
-    text output.
+    Before writing to the wrapped stream, progress is cleared. Callers must
+    ensure bulk output is terminated with a newline so progress won't overwrite
+    partial lines.
+
+    Additionally, the encoding and errors behaviour of the underlying stream
+    can be changed at this point. If errors is set to 'exact' raw bytes may be
+    written to the underlying stream.
     """
-    # XXX: this does not handle the case of writing part of a line, then doing
-    # progress bar output: the progress bar will probably write over it.
-    # one option is just to buffer that text until we have a full line;
-    # another is to save and restore it
 
-    # XXX: might need to wrap more methods
-
-    def __init__(self, ui_factory, wrapped_stream):
+    def __init__(self, ui_factory, stream, encoding=None, errors='strict'):
         self.ui_factory = ui_factory
-        self.wrapped_stream = wrapped_stream
-        # this does no transcoding, but it must expose the underlying encoding
-        # because some callers need to know what can be written - see for
-        # example unescape_for_display.
-        self.encoding = getattr(wrapped_stream, 'encoding', None)
+        # GZ 2017-05-21: Clean up semantics when callers are made saner.
+        inner = _unwrap_stream(stream)
+        self.raw_stream = None
+        if errors == "exact":
+            errors = "strict"
+            self.raw_stream = inner
+        if inner is None:
+            self.wrapped_stream = stream
+            if encoding is None:
+                encoding = _get_stream_encoding(stream)
+        else:
+            self.wrapped_stream = _wrap_out_stream(inner, encoding, errors)
+            if encoding is None:
+                encoding = self.wrapped_stream.encoding
+        self.encoding = encoding
+        self.errors = errors
+
+    def _write(self, to_write):
+        if isinstance(to_write, bytes):
+            try:
+                to_write = to_write.decode(self.encoding, self.errors)
+            except UnicodeDecodeError:
+                self.raw_stream.write(to_write)
+                return
+        self.wrapped_stream.write(to_write)
 
     def flush(self):
         self.ui_factory.clear_term()
@@ -684,8 +705,9 @@ class TextUIOutputStream(object):
 
     def write(self, to_write):
         self.ui_factory.clear_term()
-        self.wrapped_stream.write(to_write)
+        self._write(to_write)
 
     def writelines(self, lines):
         self.ui_factory.clear_term()
-        self.wrapped_stream.writelines(lines)
+        for line in lines:
+            self._write(line)

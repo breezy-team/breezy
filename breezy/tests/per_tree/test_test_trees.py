@@ -47,7 +47,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         self.assertEqual(
-            set(['root-id', 'a-id', 'b-id', 'c-id']),
+            {'root-id', 'a-id', 'b-id', 'c-id'},
             set(tree.all_file_ids()))
         self.assertEqual(
             [('', 'root-id'), ('a', 'a-id'), ('b', 'b-id'), ('b/c', 'c-id')],
@@ -65,7 +65,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         self.assertEqual(
-            set(['root-id', 'a-id', 'b-id', 'c-id']),
+            {'root-id', 'a-id', 'b-id', 'c-id'},
             set(tree.all_file_ids()))
         self.assertEqual(
             [('', 'root-id'), ('a', 'a-id'), ('b', 'b-id'), ('b/c', 'c-id')],
@@ -83,7 +83,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         self.assertEqual(
-            set(['root-id', 'a-id', 'b-id', 'c-id']),
+            {'root-id', 'a-id', 'b-id', 'c-id'},
             set(tree.all_file_ids()))
         self.assertEqual(
             [('', 'root-id'), ('a', 'a-id'), ('b', 'b-id'), ('b/c', 'c-id')],
@@ -101,7 +101,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         self.assertEqual(
-            set(['root-id', 'a-id', 'b-id', 'c-id']),
+            {'root-id', 'a-id', 'b-id', 'c-id'},
             set(tree.all_file_ids()))
         self.assertEqual(
             [('', 'root-id'), ('b', 'b-id'), ('d', 'a-id'), ('b/c', 'c-id')],
@@ -119,7 +119,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         self.assertEqual(
-            set(['root-id', 'a-id', 'b-id', 'c-id']),
+            {'root-id', 'a-id', 'b-id', 'c-id'},
             set(tree.all_file_ids()))
         self.assertEqual(
             [('', 'root-id'), ('b', 'b-id'), ('d', 'a-id'), ('b/c', 'c-id')],
@@ -137,7 +137,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         self.assertEqual(
-            set(['root-id', 'a-id', 'b-id', 'c-id']),
+            {'root-id', 'a-id', 'b-id', 'c-id'},
             set(tree.all_file_ids()))
         self.assertEqual(
             [('', 'root-id'), ('a', 'a-id'), ('b', 'b-id'), ('e', 'c-id')],
@@ -159,14 +159,14 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         # __iter__ has no strongly defined order
         tree_root = tree.path2id('')
         self.assertEqual(
-            set([tree_root,
+            {tree_root,
                 '2file',
                 '1top-dir',
                 '1file-in-1topdir',
                 '0dir-in-1topdir',
                  u'0utf\u1234file'.encode('utf8'),
                 'symlink',
-                 ]),
+                 },
             set(tree.all_file_ids()))
         # note that the order of the paths and fileids is deliberately
         # mismatched to ensure that the result order is path based.
@@ -193,13 +193,13 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         # __iter__ has no strongly defined order
         tree_root = tree.path2id('')
         self.assertEqual(
-            set([tree_root,
+            {tree_root,
                 '2file',
                 '1top-dir',
                 '1file-in-1topdir',
                 '0dir-in-1topdir',
                  u'0utf\u1234file'.encode('utf8'),
-                 ]),
+                 },
             set(tree.all_file_ids()))
         # note that the order of the paths and fileids is deliberately
         # mismatched to ensure that the result order is path based.

@@ -16,9 +16,9 @@
 
 """Tests for Launchpad user ID management functions."""
 
-from breezy import config
-from breezy.tests import TestCaseInTempDir, TestCaseWithMemoryTransport
-from breezy.plugins.launchpad import account
+from ... import config
+from ...tests import TestCaseInTempDir, TestCaseWithMemoryTransport
+from . import account
 
 
 class LaunchpadAccountTests(TestCaseInTempDir):

@@ -16,7 +16,7 @@
 
 """Tests for Annotators."""
 
-from breezy import (
+from .. import (
     annotate,
     errors,
     knit,

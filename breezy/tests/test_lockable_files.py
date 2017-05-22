@@ -15,23 +15,23 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import breezy
-from breezy import (
+from .. import (
     errors,
     lockdir,
     osutils,
     transport,
     )
-from breezy.lockable_files import LockableFiles, TransportLock
-from breezy.tests import (
+from ..lockable_files import LockableFiles, TransportLock
+from . import (
     TestCaseInTempDir,
     TestNotApplicable,
     )
-from breezy.tests.test_smart import TestCaseWithSmartMedium
-from breezy.tests.test_transactions import DummyWeave
-from breezy.transactions import (PassThroughTransaction,
-                                 ReadOnlyTransaction,
-                                 WriteTransaction,
-                                 )
+from .test_smart import TestCaseWithSmartMedium
+from .test_transactions import DummyWeave
+from ..transactions import (PassThroughTransaction,
+                            ReadOnlyTransaction,
+                            WriteTransaction,
+                            )
 
 
 # these tests are applied in each parameterized suite for LockableFiles
@@ -323,9 +323,9 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
         lockable = LockableFiles(self.transport.clone('readonly'), 'test-lock',
                                  lockdir.LockDir)
         # The directory mode should be read-write-execute for the current user
-        self.assertEqual(00700, lockable._dir_mode & 00700)
+        self.assertEqual(0o0700, lockable._dir_mode & 0o0700)
         # Files should be read-write for the current user
-        self.assertEqual(00600, lockable._file_mode & 00700)
+        self.assertEqual(0o0600, lockable._file_mode & 0o0700)
 
 
 class TestLockableFiles_RemoteLockDir(TestCaseWithSmartMedium,

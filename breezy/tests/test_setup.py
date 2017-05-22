@@ -22,7 +22,7 @@ import sys
 import subprocess
 
 import breezy
-from breezy import tests
+from .. import tests
 
 # TODO: Run bzr from the installed copy to see if it works.  Really we need to
 # run something that exercises every module, just starting it may not detect
@@ -42,18 +42,18 @@ class TestSetup(tests.TestCaseInTempDir):
         # are not necessarily invoked from there
         self.source_dir = os.path.dirname(os.path.dirname(breezy.__file__))
         if not os.path.isfile(os.path.join(self.source_dir, 'setup.py')):
-            self.skip(
+            self.skipTest(
                 'There is no setup.py file adjacent to the breezy directory')
         try:
             import distutils.sysconfig
             makefile_path = distutils.sysconfig.get_makefile_filename()
             if not os.path.exists(makefile_path):
-                self.skip(
+                self.skipTest(
                     'You must have the python Makefile installed to run this'
                     ' test. Usually this can be found by installing'
                     ' "python-dev"')
         except ImportError:
-            self.skip(
+            self.skipTest(
                 'You must have distutils installed to run this test.'
                 ' Usually this can be found by installing "python-dev"')
         self.log('test_build running from %s' % self.source_dir)

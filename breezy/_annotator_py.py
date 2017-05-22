@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     annotate, # Must be lazy to avoid circular importing
@@ -26,7 +26,7 @@ from breezy import (
     patiencediff,
     )
 """)
-from breezy import (
+from . import (
     errors,
     osutils,
     ui,
@@ -70,7 +70,7 @@ class Annotator(object):
         self._num_needed_children[key] = 1
         vf_keys_needed = set()
         ann_keys_needed = set()
-        needed_keys = set([key])
+        needed_keys = {key}
         while needed_keys:
             parent_lookup = []
             next_parent_map = {}

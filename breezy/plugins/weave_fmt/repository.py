@@ -24,9 +24,8 @@ from __future__ import absolute_import
 
 import gzip
 import os
-from cStringIO import StringIO
 
-from breezy.lazy_import import lazy_import
+from ...lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
 
@@ -36,7 +35,7 @@ from breezy import (
     ui,
     )
 """)
-from breezy import (
+from ... import (
     debug,
     errors,
     lockable_files,
@@ -50,18 +49,21 @@ from breezy import (
     weave,
     weavefile,
     )
-from breezy.decorators import needs_read_lock, needs_write_lock
-from breezy.repository import (
+from ...decorators import needs_read_lock, needs_write_lock
+from ...repository import (
     InterRepository,
     RepositoryFormatMetaDir,
     )
-from breezy.store.text import TextStore
-from breezy.versionedfile import (
+from ...sixish import (
+    BytesIO,
+    )
+from ...store.text import TextStore
+from ...versionedfile import (
     AbsentContentFactory,
     FulltextContentFactory,
     VersionedFiles,
     )
-from breezy.vf_repository import (
+from ...vf_repository import (
     InterSameDataRepository,
     VersionedFileCommitBuilder,
     VersionedFileRepository,
@@ -70,7 +72,7 @@ from breezy.vf_repository import (
     MetaDirVersionedFileRepositoryFormat,
     )
 
-from breezy.plugins.weave_fmt import bzrdir as weave_bzrdir
+from . import bzrdir as weave_bzrdir
 
 
 class AllInOneRepository(VersionedFileRepository):
@@ -292,7 +294,7 @@ class PreSplitOutRepositoryFormat(VersionedFileRepositoryFormat):
             return self.open(a_bzrdir, _found=True)
 
         # Create an empty weave
-        sio = StringIO()
+        sio = BytesIO()
         weavefile.write_weave_v5(weave.Weave(), sio)
         empty_weave = sio.getvalue()
 
@@ -373,7 +375,7 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
         return None
 
     def _get_revisions(self, repo_transport, repo):
-        from breezy.plugins.weave_fmt.xml4 import serializer_v4
+        from .xml4 import serializer_v4
         return RevisionTextStore(repo_transport.clone('revision-store'),
             serializer_v4, True, versionedfile.PrefixMapper(),
             repo.is_locked, repo.is_write_locked)
@@ -542,13 +544,13 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
                        repository.
         """
         # Create an empty weave
-        sio = StringIO()
+        sio = BytesIO()
         weavefile.write_weave_v5(weave.Weave(), sio)
         empty_weave = sio.getvalue()
 
         trace.mutter('creating repository in %s.', a_bzrdir.transport.base)
         dirs = ['revision-store', 'weaves']
-        files = [('inventory.weave', StringIO(empty_weave)),
+        files = [('inventory.weave', BytesIO(empty_weave)),
                  ]
         utf8_files = [('format', self.get_format_string())]
 
@@ -656,7 +658,7 @@ class TextVersionedFiles(VersionedFiles):
             else:
                 return None
         if compressed:
-            text = gzip.GzipFile(mode='rb', fileobj=StringIO(text)).read()
+            text = gzip.GzipFile(mode='rb', fileobj=BytesIO(text)).read()
         return text
 
     def _map(self, key):
@@ -716,7 +718,7 @@ class RevisionTextStore(TextVersionedFiles):
             if not relpath.endswith('.sig'):
                 relpaths.add(relpath)
         paths = list(relpaths)
-        return set([self._mapper.unmap(path) for path in paths])
+        return {self._mapper.unmap(path) for path in paths}
 
 
 class SignatureTextStore(TextVersionedFiles):
@@ -757,7 +759,7 @@ class SignatureTextStore(TextVersionedFiles):
                 continue
             relpaths.add(relpath[:-4])
         paths = list(relpaths)
-        return set([self._mapper.unmap(path) for path in paths])
+        return {self._mapper.unmap(path) for path in paths}
 
 
 class InterWeaveRepo(InterSameDataRepository):
@@ -878,6 +880,6 @@ InterRepository.register_optimiser(InterWeaveRepo)
 
 
 def get_extra_interrepo_test_combinations():
-    from breezy.repofmt import knitrepo
+    from ...repofmt import knitrepo
     return [(InterRepository, RepositoryFormat5(),
         knitrepo.RepositoryFormatKnit3())]

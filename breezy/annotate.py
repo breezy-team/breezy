@@ -30,20 +30,20 @@ from __future__ import absolute_import
 import sys
 import time
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     patiencediff,
     tsort,
     )
 """)
-from breezy import (
+from . import (
     errors,
     osutils,
     )
-from breezy.config import extract_email_address
-from breezy.repository import _strip_NULL_ghosts
-from breezy.revision import (
+from .config import extract_email_address
+from .repository import _strip_NULL_ghosts
+from .revision import (
     CURRENT_REVISION,
     Revision,
     )
@@ -114,8 +114,6 @@ def _print_annotations(annotation, verbose, to_file, full):
 
     # Output the annotations
     prevanno = ''
-    encoding = getattr(to_file, 'encoding', None) or \
-            osutils.get_terminal_encoding()
     for (revno_str, author, date_str, line_rev_id, text) in annotation:
         if verbose:
             anno = '%-*s %-*s %8s ' % (max_revno_len, revno_str,
@@ -126,16 +124,9 @@ def _print_annotations(annotation, verbose, to_file, full):
             anno = "%-*s %-7s " % (max_revno_len, revno_str, author[:7])
         if anno.lstrip() == "" and full:
             anno = prevanno
-        try:
-            to_file.write(anno)
-        except UnicodeEncodeError:
-            # cmd_annotate should be passing in an 'exact' object, which means
-            # we have a direct handle to sys.stdout or equivalent. It may not
-            # be able to handle the exact Unicode characters, but 'annotate' is
-            # a user function (non-scripting), so shouldn't die because of
-            # unrepresentable annotation characters. So encode using 'replace',
-            # and write them again.
-            to_file.write(anno.encode(encoding, 'replace'))
+        # GZ 2017-05-21: Writing both unicode annotation and bytes from file
+        # which the given to_file must cope with.
+        to_file.write(anno)
         to_file.write('| %s\n' % (text,))
         prevanno = anno
 
@@ -440,6 +431,6 @@ def _reannotate_annotated(right_parent_lines, new_lines, new_revision_id,
 
 try:
     from breezy._annotator_pyx import Annotator
-except ImportError, e:
+except ImportError as e:
     osutils.failed_to_load_extension(e)
     from breezy._annotator_py import Annotator

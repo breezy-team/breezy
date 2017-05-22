@@ -20,10 +20,12 @@ This test checks that generation will be successful
 and produce non-empty output.
 """
 
-from cStringIO import StringIO
 
 import breezy.commands
-from breezy.tests import TestCase
+from ..sixish import (
+    BytesIO,
+    )
+from . import TestCase
 
 
 class Options:
@@ -35,7 +37,7 @@ class TestGenerateDocs(TestCase):
 
     def setUp(self):
         super(TestGenerateDocs, self).setUp()
-        self.sio = StringIO()
+        self.sio = BytesIO()
         self.options = Options()
         self.options.brz_name = 'brz'
         breezy.commands.install_bzr_command_hooks()

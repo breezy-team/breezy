@@ -18,7 +18,7 @@
 
 import sys
 
-from breezy import tests
+from .. import tests
 
 def load_tests(standard_tests, module, loader):
     suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
@@ -45,8 +45,8 @@ class TestBencodeDecode(tests.TestCase):
         self._check(int('1' * 1000), 'i' + ('1' * 1000) + 'e')
 
     def test_long(self):
-        self._check(12345678901234567890L, 'i12345678901234567890e')
-        self._check(-12345678901234567890L, 'i-12345678901234567890e')
+        self._check(12345678901234567890, 'i12345678901234567890e')
+        self._check(-12345678901234567890, 'i-12345678901234567890e')
 
     def test_malformed_int(self):
         self._run_check_error(ValueError, 'ie')
@@ -163,8 +163,8 @@ class TestBencodeEncode(tests.TestCase):
         self._check('i-10e', -10)
 
     def test_long(self):
-        self._check('i12345678901234567890e', 12345678901234567890L)
-        self._check('i-12345678901234567890e', -12345678901234567890L)
+        self._check('i12345678901234567890e', 12345678901234567890)
+        self._check('i-12345678901234567890e', -12345678901234567890)
 
     def test_string(self):
         self._check('0:', '')

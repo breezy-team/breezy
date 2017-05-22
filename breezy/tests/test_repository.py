@@ -714,8 +714,8 @@ class Test2a(tests.TestCaseWithMemoryTransport):
 
         # On a regular pass, getting the inventories and chk pages for rev-2
         # would only get the newly created chk pages
-        search = vf_search.SearchResult(set(['rev-2']), set(['rev-1']), 1,
-                                    set(['rev-2']))
+        search = vf_search.SearchResult({'rev-2'}, {'rev-1'}, 1,
+                                    {'rev-2'})
         simple_chk_records = []
         for vf_name, substream in source.get_stream(search):
             if vf_name == 'chk_bytes':
@@ -1021,7 +1021,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         obsolete_pack_trans.put_bytes('a-pack.iix', 'content\n')
         obsolete_pack_trans.put_bytes('another-pack.pack', 'foo\n')
         obsolete_pack_trans.put_bytes('not-a-pack.rix', 'foo\n')
-        res = packs._clear_obsolete_packs(preserve=set(['a-pack']))
+        res = packs._clear_obsolete_packs(preserve={'a-pack'})
         self.assertEqual(['a-pack', 'another-pack'], sorted(res))
         self.assertEqual(['a-pack.iix', 'a-pack.pack', 'a-pack.rix'],
                          sorted(obsolete_pack_trans.list_dir('.')))
@@ -1075,8 +1075,8 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
                          sorted(packs._pack_transport.list_dir('.')))
         # names[0] should not be present in the index anymore
         self.assertEqual(names[1:],
-            sorted(set([osutils.splitext(n)[0] for n in
-                        packs._index_transport.list_dir('.')])))
+            sorted({osutils.splitext(n)[0] for n in
+                        packs._index_transport.list_dir('.')}))
 
     def test__obsolete_packs_missing_directory(self):
         tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
@@ -1092,8 +1092,8 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
                          sorted(packs._pack_transport.list_dir('.')))
         # names[0] should not be present in the index anymore
         self.assertEqual(names[1:],
-            sorted(set([osutils.splitext(n)[0] for n in
-                        packs._index_transport.list_dir('.')])))
+            sorted({osutils.splitext(n)[0] for n in
+                        packs._index_transport.list_dir('.')}))
 
     def test_pack_distribution_zero(self):
         packs = self.get_packs()
@@ -1289,10 +1289,10 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         packs._remove_pack_from_memory(removed_pack)
         names = packs.names()
         all_nodes, deleted_nodes, new_nodes, _ = packs._diff_pack_names()
-        new_names = set([x[0][0] for x in new_nodes])
+        new_names = {x[0][0] for x in new_nodes}
         self.assertEqual(names, sorted([x[0][0] for x in all_nodes]))
         self.assertEqual(set(names) - set(orig_names), new_names)
-        self.assertEqual(set([new_pack.name]), new_names)
+        self.assertEqual({new_pack.name}, new_names)
         self.assertEqual([to_remove_name],
                          sorted([x[0][0] for x in deleted_nodes]))
         packs.reload_pack_names()
@@ -1300,10 +1300,10 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual(orig_at_load, packs._packs_at_load)
         self.assertEqual(names, reloaded_names)
         all_nodes, deleted_nodes, new_nodes, _ = packs._diff_pack_names()
-        new_names = set([x[0][0] for x in new_nodes])
+        new_names = {x[0][0] for x in new_nodes}
         self.assertEqual(names, sorted([x[0][0] for x in all_nodes]))
         self.assertEqual(set(names) - set(orig_names), new_names)
-        self.assertEqual(set([new_pack.name]), new_names)
+        self.assertEqual({new_pack.name}, new_names)
         self.assertEqual([to_remove_name],
                          sorted([x[0][0] for x in deleted_nodes]))
 
@@ -1349,7 +1349,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual([n + '.pack' for n in names[1:]], sorted(cur_packs))
         # obsolete_packs will also have stuff like .rix and .iix present.
         obsolete_packs = packs.transport.list_dir('obsolete_packs')
-        obsolete_names = set([osutils.splitext(n)[0] for n in obsolete_packs])
+        obsolete_names = {osutils.splitext(n)[0] for n in obsolete_packs}
         self.assertEqual([pack.name], sorted(obsolete_names))
 
     def test__save_pack_names_already_obsoleted(self):
@@ -1367,7 +1367,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         # Note that while we set clear_obsolete_packs=True, it should not
         # delete a pack file that we have also scheduled for obsoletion.
         obsolete_packs = packs.transport.list_dir('obsolete_packs')
-        obsolete_names = set([osutils.splitext(n)[0] for n in obsolete_packs])
+        obsolete_names = {osutils.splitext(n)[0] for n in obsolete_packs}
         self.assertEqual([pack.name], sorted(obsolete_names))
 
     def test_pack_no_obsolete_packs_directory(self):

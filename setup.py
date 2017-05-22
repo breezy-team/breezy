@@ -12,8 +12,8 @@ import sys
 import copy
 import glob
 
-if sys.version_info < (2, 6):
-    sys.stderr.write("[ERROR] Not a supported Python version. Need 2.6+\n")
+if sys.version_info < (2, 7):
+    sys.stderr.write("[ERROR] Not a supported Python version. Need 2.7+\n")
     sys.exit(1)
 
 # NOTE: The directory containing setup.py, whether run by 'python setup.py' or
@@ -134,10 +134,10 @@ class my_install_scripts(install_scripts):
                 f = file(batch_path, "w")
                 f.write(batch_str)
                 f.close()
-                print("Created: %s" % batch_path)
+                print(("Created: %s" % batch_path))
             except Exception:
                 e = sys.exc_info()[1]
-                print("ERROR: Unable to create %s: %s" % (batch_path, e))
+                print(("ERROR: Unable to create %s: %s" % (batch_path, e)))
 
     def _quoted_path(self, path):
         if ' ' in path:
@@ -309,8 +309,8 @@ else:
         # <https://bugs.launchpad.net/bzr/+bug/449372>
         # <https://bugs.launchpad.net/bzr/+bug/276868>
         print('Cannot build extension "breezy._dirstate_helpers_pyx" using')
-        print('your version of pyrex "%s". Please upgrade your pyrex'
-              % (pyrex_version,))
+        print(('your version of pyrex "%s". Please upgrade your pyrex'
+              % (pyrex_version,)))
         print('install. For now, the non-compiled (python) version will')
         print('be used instead.')
     else:
@@ -321,8 +321,8 @@ ext_modules.append(Extension('breezy._patiencediff_c',
                              ['breezy/_patiencediff_c.c']))
 if have_pyrex and pyrex_version_info < LooseVersion("0.9.6.3"):
     print("")
-    print('Your Pyrex/Cython version %s is too old to build the simple_set' % (
-        pyrex_version))
+    print(('Your Pyrex/Cython version %s is too old to build the simple_set' % (
+        pyrex_version)))
     print('and static_tuple extensions.')
     print('Please upgrade to at least Pyrex 0.9.6.3')
     print("")
@@ -338,7 +338,7 @@ add_pyrex_extension('breezy._btree_serializer_pyx')
 
 if unavailable_files:
     print('C extension(s) not found:')
-    print('   %s' % ('\n  '.join(unavailable_files),))
+    print(('   %s' % ('\n  '.join(unavailable_files),)))
     print('The python versions will be used instead.')
     print("")
 

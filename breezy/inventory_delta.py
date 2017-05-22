@@ -26,10 +26,10 @@ from __future__ import absolute_import
 
 __all__ = ['InventoryDeltaSerializer']
 
-from breezy import errors
-from breezy.osutils import basename
-from breezy import inventory
-from breezy.revision import NULL_REVISION
+from . import errors
+from .osutils import basename
+from . import inventory
+from .revision import NULL_REVISION
 
 FORMAT_1 = 'bzr inventory delta v1 (bzr 1.14)'
 
@@ -172,9 +172,9 @@ class InventoryDeltaSerializer(object):
             takes.
         :return: The serialized delta as lines.
         """
-        if type(old_name) is not str:
+        if not isinstance(old_name, str):
             raise TypeError('old_name should be str, got %r' % (old_name,))
-        if type(new_name) is not str:
+        if not isinstance(new_name, str):
             raise TypeError('new_name should be str, got %r' % (new_name,))
         lines = ['', '', '', '', '']
         to_line = self._delta_item_to_line

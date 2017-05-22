@@ -24,13 +24,14 @@ transport implementation, http protocol versions and authentication schemes.
 # TODO: What about renaming to breezy.tests.transport.http ?
 
 import httplib
+import io
 import SimpleHTTPServer
 import socket
 import sys
 import threading
 
 import breezy
-from breezy import (
+from .. import (
     config,
     controldir,
     debug,
@@ -42,28 +43,28 @@ from breezy import (
     transport,
     ui,
     )
-from breezy.tests import (
+from . import (
     features,
     http_server,
     http_utils,
     test_server,
     )
-from breezy.tests.scenarios import (
+from .scenarios import (
     load_tests_apply_scenarios,
     multiply_scenarios,
     )
-from breezy.transport import (
+from ..transport import (
     http,
     remote,
     )
-from breezy.transport.http import (
+from ..transport.http import (
     _urllib,
     _urllib2_wrappers,
     )
 
 
 if features.pycurl.available():
-    from breezy.transport.http._pycurl import PyCurlTransport
+    from ..transport.http._pycurl import PyCurlTransport
 
 
 load_tests = load_tests_apply_scenarios
@@ -136,7 +137,7 @@ def vary_by_http_activity():
         # (like allowing them in a test specific authentication.conf for
         # example), we need some specialized pycurl/urllib transport for tests.
         # -- vila 2012-01-20
-        from breezy.tests import (
+        from . import (
             ssl_certs,
             )
         class HTTPS_urllib_transport(_urllib.HttpTransport_urllib):
@@ -1216,13 +1217,13 @@ class TestHttpProxyWhiteBox(tests.TestCase):
     def test_empty_user(self):
         self.overrideEnv('http_proxy', 'http://bar.com')
         request = self._proxied_request()
-        self.assertFalse(request.headers.has_key('Proxy-authorization'))
+        self.assertFalse('Proxy-authorization' in request.headers)
 
     def test_user_with_at(self):
         self.overrideEnv('http_proxy',
                          'http://username@domain:password@proxy_host:1234')
         request = self._proxied_request()
-        self.assertFalse(request.headers.has_key('Proxy-authorization'))
+        self.assertFalse('Proxy-authorization' in request.headers)
 
     def test_invalid_proxy(self):
         """A proxy env variable without scheme"""
@@ -1701,10 +1702,8 @@ class TestAuth(http_utils.TestCaseWithWebserver):
 
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport(None, None)
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n',
-                                            stdout=stdout, stderr=stderr)
+        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n')
+        stdout, stderr = ui.ui_factory.stdout, ui.ui_factory.stderr
         self.assertEqual('contents of a\n',t.get('a').read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
@@ -1723,10 +1722,8 @@ class TestAuth(http_utils.TestCaseWithWebserver):
 
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport('joe', None)
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stdin='foo\n',
-                                            stdout=stdout, stderr=stderr)
+        ui.ui_factory = tests.TestUIFactory(stdin='foo\n')
+        stdout, stderr = ui.ui_factory.stdout, ui.ui_factory.stderr
         self.assertEqual('contents of a\n', t.get('a').read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
@@ -1767,8 +1764,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         stdin_content = 'bar\n'  # Not the right password
         self.server.add_user(user, password)
         t = self.get_user_transport(user, None)
-        ui.ui_factory = tests.TestUIFactory(stdin=stdin_content,
-                                            stderr=tests.StringIOWrapper())
+        ui.ui_factory = tests.TestUIFactory(stdin=stdin_content)
         # Create a minimal config file with the right password
         _setup_authentication_config(scheme='http', port=self.server.port,
                                      user=user, password=password)
@@ -1816,7 +1812,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.assertEqual(1, self.server.auth_required_errors)
 
     def test_no_credential_leaks_in_log(self):
-        self.overrideAttr(debug, 'debug_flags', set(['http']))
+        self.overrideAttr(debug, 'debug_flags', {'http'})
         user = 'joe'
         password = 'very-sensitive-password'
         self.server.add_user(user, password)
@@ -1880,6 +1876,12 @@ class TestProxyAuth(TestAuth):
         super(TestProxyAuth, self).test_empty_pass()
 
 
+class NonClosingBytesIO(io.BytesIO):
+
+    def close(self):
+        """Ignore and leave file open."""
+
+
 class SampleSocket(object):
     """A socket-like object for use in testing the HTTP request handler."""
 
@@ -1888,13 +1890,11 @@ class SampleSocket(object):
 
         :param socket_read_content: a byte sequence
         """
-        # Use plain python StringIO so we can monkey-patch the close method to
-        # not discard the contents.
-        from StringIO import StringIO
-        self.readfile = StringIO(socket_read_content)
-        self.writefile = StringIO()
-        self.writefile.close = lambda: None
-        self.close = lambda: None
+        self.readfile = io.BytesIO(socket_read_content)
+        self.writefile = NonClosingBytesIO()
+
+    def close(self):
+        """Ignore and leave files alone."""
 
     def makefile(self, mode='r', bufsize=None):
         if 'r' in mode:
@@ -2122,7 +2122,7 @@ class ActivityHTTPServer(ActivityServerMixin, http_server.HttpServer):
 
 
 if features.HTTPSServerFeature.available():
-    from breezy.tests import https_server
+    from . import https_server
     class ActivityHTTPSServer(ActivityServerMixin, https_server.HTTPSServer):
         pass
 
@@ -2343,10 +2343,7 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
             self.addCleanup(redirected_t.disconnect)
             return redirected_t
 
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n',
-                                            stdout=stdout, stderr=stderr)
+        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n')
         self.assertEqual('redirected once',
                          transport.do_catching_redirections(
                 self.get_a, self.old_transport, redirected).read())
@@ -2354,14 +2351,11 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
         # stdout should be empty, stderr will contains the prompts
-        self.assertEqual('', stdout.getvalue())
+        self.assertEqual('', ui.ui_factory.stdout.getvalue())
 
     def test_auth_on_redirected_via_following_redirections(self):
         self.new_server.add_user('joe', 'foo')
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n',
-                                            stdout=stdout, stderr=stderr)
+        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n')
         t = self.old_transport
         req = RedirectedRequest('GET', t.abspath('a'))
         new_prefix = 'http://%s:%s' % (self.new_server.host,
@@ -2372,5 +2366,5 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
         # stdout should be empty, stderr will contains the prompts
-        self.assertEqual('', stdout.getvalue())
+        self.assertEqual('', ui.ui_factory.stdout.getvalue())
 

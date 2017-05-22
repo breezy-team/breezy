@@ -20,7 +20,7 @@ from __future__ import absolute_import
 
 import time
 
-from breezy import (
+from .. import (
     controldir,
     chk_map,
     chk_serializer,
@@ -35,16 +35,16 @@ from breezy import (
     ui,
     versionedfile,
     )
-from breezy.btree_index import (
+from ..btree_index import (
     BTreeGraphIndex,
     BTreeBuilder,
     )
-from breezy.decorators import needs_write_lock
-from breezy.groupcompress import (
+from ..decorators import needs_write_lock
+from ..groupcompress import (
     _GCGraphIndex,
     GroupCompressVersionedFiles,
     )
-from breezy.repofmt.pack_repo import (
+from .pack_repo import (
     _DirectPackAccess,
     Pack,
     NewPack,
@@ -55,10 +55,10 @@ from breezy.repofmt.pack_repo import (
     ResumedPack,
     Packer,
     )
-from breezy.vf_repository import (
+from ..vf_repository import (
     StreamSource,
     )
-from breezy.static_tuple import StaticTuple
+from ..static_tuple import StaticTuple
 
 
 class GCPack(NewPack):
@@ -778,7 +778,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             for record in _filter_text_keys(chk_diff, text_keys,
                                             chk_map._bytes_to_text_key):
                 pass
-        except errors.NoSuchRevision, e:
+        except errors.NoSuchRevision as e:
             # XXX: It would be nice if we could give a more precise error here.
             problems.append("missing chk node(s) for id_to_entry maps")
         chk_diff = chk_map.iter_interesting_nodes(
@@ -787,7 +787,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         try:
             for interesting_rec, interesting_map in chk_diff:
                 pass
-        except errors.NoSuchRevision, e:
+        except errors.NoSuchRevision as e:
             problems.append(
                 "missing chk node(s) for parent_id_basename_to_file_id maps")
         present_text_keys = no_fallback_texts_index.get_parent_map(text_keys)
@@ -1030,8 +1030,7 @@ class CHKInventoryRepository(PackRepository):
             #       inventories, not missing inventories for revision_ids
             present_parent_inv_keys = self._find_present_inventory_keys(
                                         parent_keys)
-            present_parent_inv_ids = set(
-                [k[-1] for k in present_parent_inv_keys])
+            present_parent_inv_ids = {k[-1] for k in present_parent_inv_keys}
             inventories_to_read = set(revision_ids)
             inventories_to_read.update(present_parent_inv_ids)
             root_key_info = _build_interesting_key_sets(
@@ -1053,7 +1052,7 @@ class CHKInventoryRepository(PackRepository):
                     try:
                         file_id_revisions[file_id].add(revision_id)
                     except KeyError:
-                        file_id_revisions[file_id] = set([revision_id])
+                        file_id_revisions[file_id] = {revision_id}
         finally:
             pb.finished()
         return file_id_revisions

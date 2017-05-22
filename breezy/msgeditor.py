@@ -23,7 +23,7 @@ import os
 from subprocess import call
 import sys
 
-from breezy import (
+from . import (
     cmdline,
     config,
     osutils,
@@ -31,8 +31,11 @@ from breezy import (
     transport,
     ui,
     )
-from breezy.errors import BzrError, BadCommitMessageEncoding
-from breezy.hooks import Hooks
+from .errors import BzrError, BadCommitMessageEncoding
+from .hooks import Hooks
+from .sixish import (
+    StringIO,
+    )
 
 
 def _get_editor():
@@ -65,7 +68,7 @@ def _run_editor(filename):
         try:
             ## mutter("trying editor: %r", (edargs +[filename]))
             x = call(edargs + [filename])
-        except OSError, e:
+        except OSError as e:
             if candidate_source is not None:
                 # We tried this editor because some user configuration (an
                 # environment variable or config file) said to try it.  Let
@@ -203,7 +206,7 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         if msgfilename is not None:
             try:
                 os.unlink(msgfilename)
-            except IOError, e:
+            except IOError as e:
                 trace.warning(
                     "failed to unlink %s: %s; ignored", msgfilename, e)
 
@@ -255,8 +258,7 @@ def make_commit_message_template(working_tree, specific_files):
     # TODO: Rather than running the status command, should prepare a draft of
     # the revision to be committed, then pause and ask the user to
     # confirm/write a message.
-    from StringIO import StringIO       # must be unicode-safe
-    from breezy.status import show_tree_status
+    from .status import show_tree_status
     status_tmp = StringIO()
     show_tree_status(working_tree, specific_files=specific_files,
                      to_file=status_tmp, verbose=True)
@@ -274,8 +276,7 @@ def make_commit_message_template_encoded(working_tree, specific_files,
     # TODO: Rather than running the status command, should prepare a draft of
     # the revision to be committed, then pause and ask the user to
     # confirm/write a message.
-    from StringIO import StringIO       # must be unicode-safe
-    from breezy.diff import show_diff_trees
+    from .diff import show_diff_trees
 
     template = make_commit_message_template(working_tree, specific_files)
     template = template.encode(output_encoding, "replace")

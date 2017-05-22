@@ -14,22 +14,24 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
 import re
 import urllib2
 
 
-from breezy import (
+from .. import (
     errors,
     osutils,
     tests,
     transport,
     )
-from breezy.smart import (
+from ..sixish import (
+    BytesIO,
+    )
+from ..smart import (
     medium,
     )
-from breezy.tests import http_server
-from breezy.transport import chroot
+from . import http_server
+from ..transport import chroot
 
 
 class HTTPServerWithSmarts(http_server.HttpServer):
@@ -81,7 +83,7 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
         request_bytes = self.rfile.read(data_length)
         protocol_factory, unused_bytes = medium._get_protocol_factory_for_bytes(
             request_bytes)
-        out_buffer = StringIO()
+        out_buffer = BytesIO()
         smart_protocol_request = protocol_factory(t, out_buffer.write, '/')
         # Perhaps there should be a SmartServerHTTPMedium that takes care of
         # feeding the bytes in the http request to the smart_protocol_request,
@@ -446,7 +448,7 @@ class DigestAuthServer(AuthServer):
         if realm != self.auth_realm:
             return False
         user = auth['username']
-        if not self.password_of.has_key(user):
+        if user not in self.password_of:
             return False
         algorithm= auth['algorithm']
         if algorithm != 'MD5':

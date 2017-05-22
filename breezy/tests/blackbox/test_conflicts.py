@@ -120,7 +120,7 @@ class TestUnicodePathsOnAsciiTerminal(TestUnicodePaths):
     encoding = "ascii"
 
     def setUp(self):
-        self.skip("Need to decide if replacing is the desired behaviour")
+        self.skipTest("Need to decide if replacing is the desired behaviour")
 
     def _as_output(self, text):
         return text.encode(self.encoding, "replace")

@@ -18,7 +18,6 @@
 
 """Tests for trace library"""
 
-from cStringIO import StringIO
 import errno
 import logging
 import os
@@ -26,13 +25,16 @@ import re
 import sys
 import tempfile
 
-from breezy import (
+from .. import (
     debug,
     errors,
     trace,
     )
-from breezy.tests import features, TestCaseInTempDir, TestCase
-from breezy.trace import (
+from ..sixish import (
+    BytesIO,
+    )
+from . import features, TestCaseInTempDir, TestCase
+from ..trace import (
     mutter, mutter_callsite, report_exception,
     set_verbosity_level, get_verbosity_level, is_quiet, is_verbose, be_quiet,
     pop_log_file,
@@ -44,7 +46,7 @@ from breezy.trace import (
 
 def _format_exception():
     """Format an exception as it would normally be displayed to the user"""
-    buf = StringIO()
+    buf = BytesIO()
     report_exception(sys.exc_info(), buf)
     return buf.getvalue()
 
@@ -57,7 +59,7 @@ class TestTrace(TestCase):
         # depending on whether apport is available or not.  See test_crash for
         # more.
         try:
-            raise NotImplementedError, "time travel"
+            raise NotImplementedError("time travel")
         except NotImplementedError:
             pass
         err = _format_exception()
@@ -99,7 +101,7 @@ class TestTrace(TestCase):
     def test_format_os_error(self):
         try:
             os.rmdir('nosuchfile22222')
-        except OSError, e:
+        except OSError as e:
             e_str = str(e)
         msg = _format_exception()
         # Linux seems to give "No such file" but Windows gives "The system
@@ -164,7 +166,7 @@ class TestTrace(TestCase):
         """Short friendly message for missing system modules."""
         try:
             import ImaginaryModule
-        except ImportError, e:
+        except ImportError as e:
             pass
         else:
             self.fail("somehow succeeded in importing %r" % ImaginaryModule)
@@ -176,7 +178,7 @@ class TestTrace(TestCase):
     def test_report_import_syntax_error(self):
         try:
             raise ImportError("syntax error")
-        except ImportError, e:
+        except ImportError as e:
             pass
         msg = _format_exception()
         self.assertContainsRe(msg,
@@ -313,14 +315,15 @@ class TestTrace(TestCase):
         # If _open_brz_log cannot open the file, then we should write the
         # warning to stderr. Since this is normally happening before logging is
         # set up.
-        self.overrideAttr(sys, 'stderr', StringIO())
+        self.overrideAttr(sys, 'stderr', BytesIO())
         # Set the log file to something that cannot exist
-        self.overrideEnv('BRZ_LOG', os.getcwd() + '/no-dir/brz.log')
+        self.overrideEnv('BRZ_LOG', '/no-such-dir/brz.log')
         self.overrideAttr(trace, '_brz_log_filename')
         logf = trace._open_brz_log()
         self.assertIs(None, logf)
-        self.assertContainsRe(sys.stderr.getvalue(),
-                              'failed to open trace file: .*/no-dir/brz.log')
+        self.assertContainsRe(
+            sys.stderr.getvalue(),
+            "failed to open trace file: .* '/no-such-dir/brz.log'$")
 
 
 class TestVerbosityLevel(TestCase):

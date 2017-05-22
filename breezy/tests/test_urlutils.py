@@ -19,14 +19,14 @@
 import os
 import sys
 
-from breezy import osutils, urlutils, win32utils
-from breezy.errors import (
+from .. import osutils, urlutils, win32utils
+from ..errors import (
     InvalidURL,
     InvalidURLJoin,
     InvalidRebaseURLs,
     PathNotChild,
     )
-from breezy.tests import features, TestCaseInTempDir, TestCase, TestSkipped
+from . import features, TestCaseInTempDir, TestCase, TestSkipped
 
 
 class TestUrlToPath(TestCase):

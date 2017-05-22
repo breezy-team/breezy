@@ -24,10 +24,9 @@ These tests correspond to tests.test_smart, which exercises the server side.
 """
 
 import bz2
-from cStringIO import StringIO
 import zlib
 
-from breezy import (
+from .. import (
     bencode,
     branch,
     bzrdir,
@@ -44,14 +43,14 @@ from breezy import (
     versionedfile,
     vf_search,
     )
-from breezy.branch import Branch
-from breezy.bzrdir import (
+from ..branch import Branch
+from ..bzrdir import (
     BzrDir,
     BzrDirFormat,
     RemoteBzrProber,
     )
-from breezy.chk_serializer import chk_bencode_serializer
-from breezy.remote import (
+from ..chk_serializer import chk_bencode_serializer
+from ..remote import (
     RemoteBranch,
     RemoteBranchFormat,
     RemoteBzrDir,
@@ -59,25 +58,28 @@ from breezy.remote import (
     RemoteRepository,
     RemoteRepositoryFormat,
     )
-from breezy.repofmt import groupcompress_repo, knitpack_repo
-from breezy.revision import (
+from ..repofmt import groupcompress_repo, knitpack_repo
+from ..revision import (
     NULL_REVISION,
     Revision,
     )
-from breezy.smart import medium, request
-from breezy.smart.client import _SmartClient
-from breezy.smart.repository import (
+from ..sixish import (
+    BytesIO,
+    )
+from ..smart import medium, request
+from ..smart.client import _SmartClient
+from ..smart.repository import (
     SmartServerRepositoryGetParentMap,
     SmartServerRepositoryGetStream_1_19,
     _stream_to_byte_stream,
     )
-from breezy.symbol_versioning import deprecated_in
-from breezy.tests import (
+from ..symbol_versioning import deprecated_in
+from . import (
     test_server,
     )
-from breezy.tests.scenarios import load_tests_apply_scenarios
-from breezy.transport.memory import MemoryTransport
-from breezy.transport.remote import (
+from .scenarios import load_tests_apply_scenarios
+from ..transport.memory import MemoryTransport
+from ..transport.remote import (
     RemoteTransport,
     RemoteSSHTransport,
     RemoteTCPTransport,
@@ -191,7 +193,7 @@ class FakeProtocol(object):
 
     def read_body_bytes(self, count=-1):
         if self._body_buffer is None:
-            self._body_buffer = StringIO(self.body)
+            self._body_buffer = BytesIO(self.body)
         bytes = self._body_buffer.read(count)
         if self._body_buffer.tell() == len(self._body_buffer.getvalue()):
             self._fake_client.expecting_body = False
@@ -248,7 +250,7 @@ class FakeClient(_SmartClient):
     def _get_next_response(self):
         try:
             response_tuple = self.responses.pop(0)
-        except IndexError, e:
+        except IndexError as e:
             raise AssertionError("%r didn't expect any more calls"
                 % (self,))
         if response_tuple[0] == 'unknown':
@@ -556,7 +558,7 @@ class TestBzrDirGetBranches(TestRemote):
         a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         result = a_bzrdir.get_branches()
-        self.assertEqual(set(["", "foo"]), set(result.keys()))
+        self.assertEqual({"", "foo"}, set(result.keys()))
         self.assertEqual(
             [('call_expecting_body', 'BzrDir.get_branches', ('quack/',)),
              ('call', 'BzrDir.find_repositoryV3', ('quack/', )),
@@ -1080,8 +1082,8 @@ class OldSmartClient(object):
     """
 
     def get_request(self):
-        input_file = StringIO('ok\x011\n')
-        output_file = StringIO()
+        input_file = BytesIO(b'ok\x011\n')
+        output_file = BytesIO()
         client_medium = medium.SmartSimplePipesClientMedium(
             input_file, output_file)
         return medium.SmartClientStreamMediumRequest(client_medium)
@@ -1387,7 +1389,7 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         branch = self.make_remote_branch(transport, client)
         result = branch.heads_to_fetch()
         self.assertFinished(client)
-        self.assertEqual((set(['rev-tip']), set()), result)
+        self.assertEqual(({'rev-tip'}, set()), result)
 
     def test_uses_last_revision_info_and_tags_when_set(self):
         transport = MemoryTransport()
@@ -1412,7 +1414,7 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         result = branch.heads_to_fetch()
         self.assertFinished(client)
         self.assertEqual(
-            (set(['rev-tip']), set(['rev-foo', 'rev-bar'])), result)
+            ({'rev-tip'}, {'rev-foo', 'rev-bar'}), result)
 
     def test_uses_rpc_for_formats_with_non_default_heads_to_fetch(self):
         transport = MemoryTransport()
@@ -1429,7 +1431,7 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         branch._format._use_default_local_heads_to_fetch = lambda: False
         result = branch.heads_to_fetch()
         self.assertFinished(client)
-        self.assertEqual((set(['tip']), set(['tagged-1', 'tagged-2'])), result)
+        self.assertEqual(({'tip'}, {'tagged-1', 'tagged-2'}), result)
 
     def make_branch_with_tags(self):
         self.setup_smart_server_with_call_log()
@@ -1454,7 +1456,7 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         self.disable_verb(verb)
         self.reset_smart_call_log()
         result = br.heads_to_fetch()
-        self.assertEqual((set(['tip']), set(['rev-1', 'rev-2'])), result)
+        self.assertEqual(({'tip'}, {'rev-1', 'rev-2'}), result)
         self.assertEqual(
             ['Branch.last_revision_info', 'Branch.get_tags_bytes'],
             [call.call.method for call in self.hpss_calls])
@@ -1468,7 +1470,7 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         self.disable_verb(verb)
         self.reset_smart_call_log()
         result = br.heads_to_fetch()
-        self.assertEqual((set(['tip']), set()), result)
+        self.assertEqual(({'tip'}, set()), result)
         self.assertEqual(
             ['Branch.last_revision_info'],
             [call.call.method for call in self.hpss_calls])
@@ -3628,7 +3630,7 @@ class TestErrorTranslationBase(tests.TestCaseWithMemoryTransport):
         """
         try:
             raise error_object
-        except errors.ErrorFromSmartServer, server_error:
+        except errors.ErrorFromSmartServer as server_error:
             translated_error = self.assertRaises(
                 errors.BzrError, remote._translate_error, server_error,
                 **context)

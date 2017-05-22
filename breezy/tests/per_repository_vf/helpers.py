@@ -16,16 +16,14 @@
 
 """Helper classes for repository implementation tests."""
 
-from cStringIO import StringIO
-
-from breezy import (
+from ... import (
     inventory,
     osutils,
     revision as _mod_revision,
     )
-from breezy.repofmt.knitrepo import RepositoryFormatKnit
-from breezy.tests.per_repository import TestCaseWithRepository
-from breezy.tests import TestNotApplicable
+from ...repofmt.knitrepo import RepositoryFormatKnit
+from ..per_repository import TestCaseWithRepository
+from .. import TestNotApplicable
 
 
 class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):

@@ -14,13 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from breezy.chk_serializer import (
+from ..chk_serializer import (
     chk_bencode_serializer,
     )
-from breezy.revision import (
+from ..revision import (
     Revision,
     )
-from breezy.tests import TestCase
+from . import TestCase
 
 _working_revision_bencode1 = ('l'
     'l6:formati10ee'

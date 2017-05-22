@@ -24,7 +24,7 @@ examples.
 from __future__ import absolute_import
 
 import breezy
-from breezy.errors import IncompatibleAPI
+from .errors import IncompatibleAPI
 
 
 def get_current_api_version(object_with_api):

@@ -16,8 +16,8 @@
 
 """Tests for bisect_multi."""
 
-from breezy.bisect_multi import bisect_multi_bytes
-from breezy.tests import TestCase
+from ..bisect_multi import bisect_multi_bytes
+from . import TestCase
 
 
 class TestBisectMultiBytes(TestCase):

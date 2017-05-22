@@ -18,13 +18,13 @@
 
 from __future__ import absolute_import
 
-from breezy import version_info
-from breezy.commands import plugin_cmds
+from ... import version_info
+from ...commands import plugin_cmds
 
 plugin_cmds.register_lazy("cmd_grep", [], "breezy.plugins.grep.cmds")
 
 def test_suite():
-    from breezy.tests import TestUtil
+    from ...tests import TestUtil
 
     suite = TestUtil.TestSuite()
     loader = TestUtil.TestLoader()

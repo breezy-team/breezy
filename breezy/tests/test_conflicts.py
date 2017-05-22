@@ -17,14 +17,14 @@
 
 import os
 
-from breezy import (
+from .. import (
     conflicts,
     errors,
     option,
     osutils,
     tests,
     )
-from breezy.tests import (
+from . import (
     script,
     scenarios,
     )

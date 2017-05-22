@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 
-from breezy import (
+from ... import (
     cmdline,
     commands,
     config,
@@ -296,8 +296,8 @@ class DataCollector(object):
         elif selected_plugins is None:
             self.selected_plugins = None
         else:
-            self.selected_plugins = set([x.replace('-', '_')
-                                         for x in selected_plugins])
+            self.selected_plugins = {x.replace('-', '_')
+                                         for x in selected_plugins}
 
     def collect(self):
         self.global_options()
@@ -373,7 +373,7 @@ class DataCollector(object):
             if enum_data:
                 try:
                     enum_data.registry_keys = opt.registry.keys()
-                except ImportError, e:
+                except ImportError as e:
                     enum_data.error_messages.append(
                         "ERROR getting registry keys for '--%s': %s"
                         % (opt.name, str(e).split('\n')[0]))

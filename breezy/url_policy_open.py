@@ -20,12 +20,12 @@ from __future__ import absolute_import
 
 import threading
 
-from breezy import (
+from . import (
     errors,
     urlutils,
     )
-from breezy.branch import Branch
-from breezy.controldir import (
+from .branch import Branch
+from .controldir import (
     ControlDir,
     )
 
@@ -290,7 +290,7 @@ class BranchOpener(object):
         What is acceptable means is defined by the policy's `follow_reference` and
         `check_one_url` methods.
         """
-        if type(url) != str:
+        if not isinstance(url, str):
             raise TypeError
 
         url = self.check_and_follow_branch_reference(url)

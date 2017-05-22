@@ -16,20 +16,20 @@
 
 """Tests for maps built on a CHK versionedfiles facility."""
 
-from breezy import (
+from .. import (
     chk_map,
     errors,
     groupcompress,
     osutils,
     tests,
     )
-from breezy.chk_map import (
+from ..chk_map import (
     CHKMap,
     InternalNode,
     LeafNode,
     Node,
     )
-from breezy.static_tuple import StaticTuple
+from ..static_tuple import StaticTuple
 
 
 class TestNode(tests.TestCase):
@@ -1584,8 +1584,8 @@ class TestLeafNode(TestCaseWithStore):
         prefix, result = list(node.map(None, ("blue",), "red"))
         self.assertEqual("", prefix)
         self.assertEqual(2, len(result))
-        split_chars = set([result[0][0], result[1][0]])
-        self.assertEqual(set(["f", "b"]), split_chars)
+        split_chars = {result[0][0], result[1][0]}
+        self.assertEqual({"f", "b"}, split_chars)
         nodes = dict(result)
         node = nodes["f"]
         self.assertEqual({("foo bar",): "baz quux"}, self.to_dict(node, None))
@@ -1919,7 +1919,7 @@ class TestInternalNode(TestCaseWithStore):
         # Ensure test validity: nothing paged in below the root.
         self.assertEqual(2,
             len([value for value in node._items.values()
-                if type(value) is StaticTuple]))
+                if isinstance(value, StaticTuple)]))
         # now, mapping to k3 should add a k3 leaf
         prefix, nodes = node.map(None, ('k3',), 'quux')
         self.assertEqual("k", prefix)
@@ -1958,7 +1958,7 @@ class TestInternalNode(TestCaseWithStore):
         # Ensure test validity: nothing paged in below the root.
         self.assertEqual(2,
             len([value for value in node._items.values()
-                if type(value) is StaticTuple]))
+                if isinstance(value, StaticTuple)]))
         # now, mapping to k23 causes k22 ('k2' in node) to split into k22 and
         # k23, which for simplicity in the current implementation generates
         # a new internal node between node, and k22/k23.
@@ -2141,7 +2141,7 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
         c_map.map(('aaa',), 'new aaa content')
         key2 = c_map._save()
         diff = self.get_difference([key2], [key1])
-        self.assertEqual(set([key1]), diff._all_old_chks)
+        self.assertEqual({key1}, diff._all_old_chks)
         self.assertEqual([], diff._old_queue)
         self.assertEqual([], diff._new_queue)
 

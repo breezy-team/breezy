@@ -23,7 +23,7 @@ import os
 import subprocess
 import sys
 
-from breezy import (
+from .. import (
     branch,
     bzrdir,
     config,
@@ -42,32 +42,32 @@ from breezy import (
     workingtree_4,
     )
 import breezy.branch
-from breezy.branchfmt.fullhistory import BzrBranchFormat5
-from breezy.errors import (
+from ..branchfmt.fullhistory import BzrBranchFormat5
+from ..errors import (
     NotBranchError,
     NoColocatedBranchSupport,
     UnknownFormatError,
     UnsupportedFormatError,
     )
-from breezy.tests import (
+from . import (
     TestCase,
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
     TestSkipped,
     )
-from breezy.tests import(
+from . import(
     http_server,
     http_utils,
     )
-from breezy.tests.test_http import TestWithTransport_pycurl
-from breezy.transport import (
+from .test_http import TestWithTransport_pycurl
+from ..transport import (
     memory,
     pathfilter,
     )
-from breezy.transport.http._urllib import HttpTransport_urllib
-from breezy.transport.nosmart import NoSmartTransportDecorator
-from breezy.transport.readonly import ReadonlyTransportDecorator
-from breezy.repofmt import knitrepo, knitpack_repo
+from ..transport.http._urllib import HttpTransport_urllib
+from ..transport.nosmart import NoSmartTransportDecorator
+from ..transport.readonly import ReadonlyTransportDecorator
+from ..repofmt import knitrepo, knitpack_repo
 
 
 class TestDefaultFormat(TestCase):
@@ -1371,7 +1371,7 @@ class TestBzrDirHooks(TestCaseWithMemoryTransport):
         self.assertEqual('fail', err._preformatted_string)
 
     def test_post_repo_init(self):
-        from breezy.controldir import RepoInitHookParams
+        from ..controldir import RepoInitHookParams
         calls = []
         bzrdir.BzrDir.hooks.install_named_hook('post_repo_init',
             calls.append, None)

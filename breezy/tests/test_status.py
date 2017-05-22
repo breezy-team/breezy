@@ -15,15 +15,17 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from StringIO import StringIO
 
-from breezy import (
+from .. import (
     config,
     status as _mod_status,
     )
-from breezy.revisionspec import RevisionSpec
-from breezy.status import show_pending_merges, show_tree_status
-from breezy.tests import TestCaseWithTransport
+from ..revisionspec import RevisionSpec
+from ..sixish import (
+    BytesIO,
+    )
+from ..status import show_pending_merges, show_tree_status
+from . import TestCaseWithTransport
 
 
 class TestStatus(TestCaseWithTransport):
@@ -37,7 +39,7 @@ class TestStatus(TestCaseWithTransport):
         tree2.add_parent_tree_id('some-ghost', allow_leftmost_as_ghost=True)
         # do a merge
         tree2.merge_from_branch(tree.branch)
-        output = StringIO()
+        output = BytesIO()
         tree2.lock_read()
         try:
             show_pending_merges(tree2, output)
@@ -61,7 +63,7 @@ class TestStatus(TestCaseWithTransport):
 
     def test_multiple_pending(self):
         tree = self.make_multiple_pending_tree()
-        output = StringIO()
+        output = BytesIO()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         show_pending_merges(tree, output)
@@ -74,7 +76,7 @@ class TestStatus(TestCaseWithTransport):
 
     def test_multiple_pending_verbose(self):
         tree = self.make_multiple_pending_tree()
-        output = StringIO()
+        output = BytesIO()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         show_pending_merges(tree, output, verbose=True)
@@ -93,7 +95,7 @@ class TestStatus(TestCaseWithTransport):
         tree.add_parent_tree_id('a-ghost-revision')
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        output = StringIO()
+        output = BytesIO()
         show_pending_merges(tree, output)
         self.assertEqualDiff(
             'pending merge tips: (use -v to see all merge revisions)\n'
@@ -113,7 +115,7 @@ class TestStatus(TestCaseWithTransport):
         tree.merge_from_branch(tree2.branch)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        output = StringIO()
+        output = BytesIO()
         show_pending_merges(tree, output, verbose=True)
         self.assertEqualDiff('pending merges:\n'
                              '  Joe Foo 2007-12-04 another non-ghost\n'
@@ -128,7 +130,7 @@ class TestStatus(TestCaseWithTransport):
         r1_id = tree.commit('one', allow_pointless=True)
         r2_id = tree.commit('two', allow_pointless=True)
         r2_tree = tree.branch.repository.revision_tree(r2_id)
-        output = StringIO()
+        output = BytesIO()
         show_tree_status(tree, to_file=output,
                      revision=[RevisionSpec.from_string("revid:%s" % r1_id),
                                RevisionSpec.from_string("revid:%s" % r2_id)])
@@ -161,7 +163,7 @@ class TestHooks(TestCaseWithTransport):
         r1_id = tree.commit('one', allow_pointless=True)
         r2_id = tree.commit('two', allow_pointless=True)
         r2_tree = tree.branch.repository.revision_tree(r2_id)
-        output = StringIO()
+        output = BytesIO()
         show_tree_status(tree, to_file=output,
             revision=[RevisionSpec.from_string("revid:%s" % r1_id),
                 RevisionSpec.from_string("revid:%s" % r2_id)])
@@ -184,7 +186,7 @@ class TestHooks(TestCaseWithTransport):
         r1_id = tree.commit('one', allow_pointless=True)
         r2_id = tree.commit('two', allow_pointless=True)
         r2_tree = tree.branch.repository.revision_tree(r2_id)
-        output = StringIO()
+        output = BytesIO()
         show_tree_status(tree, to_file=output,
             revision=[RevisionSpec.from_string("revid:%s" % r1_id),
                 RevisionSpec.from_string("revid:%s" % r2_id)])

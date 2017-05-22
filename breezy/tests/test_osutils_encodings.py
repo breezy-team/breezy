@@ -20,13 +20,13 @@ import codecs
 import locale
 import sys
 
-from breezy import (
+from .. import (
     osutils,
     )
-from breezy.tests import (
-        StringIOWrapper,
-        TestCase,
-        )
+from . import (
+    TestCase,
+    )
+from .ui_testing import BytesIOWithEncoding
 
 
 class FakeCodec(object):
@@ -84,11 +84,11 @@ class TestTerminalEncoding(TestCase):
                              stdin_encoding,
                              user_encoding='user_encoding',
                              enable_fake_encodings=True):
-        sys.stdout = StringIOWrapper()
+        sys.stdout = BytesIOWithEncoding()
         sys.stdout.encoding = stdout_encoding
-        sys.stderr = StringIOWrapper()
+        sys.stderr = BytesIOWithEncoding()
         sys.stderr.encoding = stderr_encoding
-        sys.stdin = StringIOWrapper()
+        sys.stdin = BytesIOWithEncoding()
         sys.stdin.encoding = stdin_encoding
         osutils._cached_user_encoding = user_encoding
         if enable_fake_encodings:
@@ -171,7 +171,7 @@ class TestUserEncoding(TestCase):
         self.overrideAttr(osutils, '_cached_user_encoding', None)
         self.overrideAttr(locale, 'getpreferredencoding', self.get_encoding)
         self.overrideAttr(locale, 'CODESET', None)
-        self.overrideAttr(sys, 'stderr', StringIOWrapper())
+        self.overrideAttr(sys, 'stderr', BytesIOWithEncoding())
 
     def get_encoding(self, do_setlocale=True):
         return self._encoding

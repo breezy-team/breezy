@@ -22,6 +22,8 @@ strings.
 
 from __future__ import absolute_import
 
+import sys
+
 
 class StaticTuple(tuple):
     """A static type, similar to a tuple of strings."""
@@ -40,10 +42,9 @@ class StaticTuple(tuple):
         if num_keys < 0 or num_keys > 255:
             raise TypeError('StaticTuple(...) takes from 0 to 255 items')
         for bit in args:
-            if type(bit) not in (str, StaticTuple, unicode, int, long, float,
-                                 None.__class__, bool):
+            if type(bit) not in _valid_types:
                 raise TypeError('StaticTuple can only point to'
-                    ' StaticTuple, str, unicode, int, long, float, bool, or'
+                    ' StaticTuple, str, unicode, int, float, bool, or'
                     ' None not %s' % (type(bit),))
         # We don't need to pass args to tuple.__init__, because that was
         # already handled in __new__.
@@ -73,6 +74,10 @@ class StaticTuple(tuple):
             return seq
         return StaticTuple(*seq)
 
+
+_valid_types = (bytes, str, StaticTuple, int, float, None.__class__, bool)
+if sys.version_info < (3,):
+    _valid_types += (long, unicode)
 
 
 # Have to set it to None first, so that __new__ can determine whether

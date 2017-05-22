@@ -19,9 +19,9 @@ from __future__ import absolute_import
 __doc__ = """Use ~/.netrc as a credential store for authentication.conf."""
 
 # Since we are a built-in plugin we share the breezy version
-from breezy import version_info
+from ... import version_info
 
-from breezy import (
+from ... import (
     config,
     lazy_import,
     )
@@ -42,7 +42,7 @@ class NetrcCredentialStore(config.CredentialStore):
         super(NetrcCredentialStore, self).__init__()
         try:
             self._netrc = netrc.netrc()
-        except IOError, e:
+        except IOError as e:
             if e.args[0] == errno.ENOENT:
                 raise errors.NoSuchFile(e.filename)
             else:

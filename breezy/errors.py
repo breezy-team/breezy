@@ -38,7 +38,7 @@ EXIT_ERROR = 3
 EXIT_INTERNAL_ERROR = 4
 
 
-class BzrError(StandardError):
+class BzrError(Exception):
     """
     Base class for errors raised by breezy.
 
@@ -72,7 +72,7 @@ class BzrError(StandardError):
            not subject to expansion. 'msg' is used instead of 'message' because
            python evolved and, in 2.6, forbids the use of 'message'.
         """
-        StandardError.__init__(self)
+        Exception.__init__(self)
         if msg is not None:
             # I was going to deprecate this, but it actually turns out to be
             # quite handy - mbp 20061103.
@@ -95,7 +95,7 @@ class BzrError(StandardError):
                 # __str__() should always return a 'str' object
                 # never a 'unicode' object.
                 return s
-        except Exception, e:
+        except Exception as e:
             pass # just bind to 'e' for formatting below
         else:
             e = None
@@ -2943,7 +2943,7 @@ class UnsupportedTimezoneFormat(BzrError):
         self.timezone = timezone
 
 
-class CommandAvailableInPlugin(StandardError):
+class CommandAvailableInPlugin(Exception):
 
     internal_error = False
 

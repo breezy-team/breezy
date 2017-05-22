@@ -16,18 +16,19 @@
 
 """Test read_bundle works properly across various transports."""
 
-import cStringIO
-
 import breezy.bundle
-from breezy.bundle.serializer import write_bundle
+from ..bundle.serializer import write_bundle
 import breezy.bzrdir
-import breezy.errors as errors
-from breezy import tests
-from breezy.tests.test_transport import TestTransportImplementation
-from breezy.tests.per_transport import transport_test_permutations
+from .. import errors
+from ..sixish import (
+    BytesIO,
+    )
+from .. import tests
+from .test_transport import TestTransportImplementation
+from .per_transport import transport_test_permutations
 import breezy.transport
 import breezy.urlutils
-from breezy.tests.scenarios import load_tests_apply_scenarios
+from .scenarios import load_tests_apply_scenarios
 
 
 load_tests = load_tests_apply_scenarios
@@ -46,7 +47,7 @@ def create_bundle_file(test_case):
     wt.add(['a', 'subdir/'])
     wt.commit('new project', rev_id='commit-1')
 
-    out = cStringIO.StringIO()
+    out = BytesIO()
     rev_ids = write_bundle(wt.branch.repository,
                            wt.get_parent_ids()[0], 'null:', out)
     out.seek(0)

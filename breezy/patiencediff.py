@@ -17,7 +17,7 @@
 
 from __future__ import absolute_import
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 import os
 import sys
@@ -129,13 +129,13 @@ def unified_diff_files(a, b, sequencematcher=None):
 
 
 try:
-    from breezy._patiencediff_c import (
+    from ._patiencediff_c import (
         unique_lcs_c as unique_lcs,
         recurse_matches_c as recurse_matches,
         PatienceSequenceMatcher_c as PatienceSequenceMatcher
         )
 except ImportError:
-    from breezy._patiencediff_py import (
+    from ._patiencediff_py import (
         unique_lcs_py as unique_lcs,
         recurse_matches_py as recurse_matches,
         PatienceSequenceMatcher_py as PatienceSequenceMatcher
@@ -157,7 +157,7 @@ def main(args):
     matcher = algorithms[opts.matcher]
 
     if len(args) != 2:
-        print 'You must supply 2 filenames to diff'
+        print('You must supply 2 filenames to diff')
         return -1
 
     for line in unified_diff_files(args[0], args[1], sequencematcher=matcher):

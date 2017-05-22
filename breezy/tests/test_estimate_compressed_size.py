@@ -19,7 +19,7 @@
 import zlib
 import hashlib
 
-from breezy import (
+from .. import (
     estimate_compressed_size,
     tests,
     )

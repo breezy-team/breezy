@@ -42,7 +42,7 @@ from __future__ import absolute_import
 
 import re
 
-from breezy.transport import decorator
+from . import decorator
 
 
 # TODO: It might be nice if these hooks were available in a more general way
@@ -88,7 +88,7 @@ class FakeVFATTransportDecorator(decorator.TransportDecorator):
         return self._decorated.get(self._squash_name(relpath))
 
     def mkdir(self, relpath, mode=None):
-        return self._decorated.mkdir(self._squash_name(relpath), 0755)
+        return self._decorated.mkdir(self._squash_name(relpath), 0o755)
 
     def has(self, relpath):
         return self._decorated.has(self._squash_name(relpath))

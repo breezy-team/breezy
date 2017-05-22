@@ -26,7 +26,6 @@ from __future__ import absolute_import
 import atexit
 import codecs
 import copy
-from cStringIO import StringIO
 import difflib
 import doctest
 import errno
@@ -59,7 +58,7 @@ if _testtools_version < (0, 9, 5):
 from testtools import content
 
 import breezy
-from breezy import (
+from .. import (
     branchbuilder,
     controldir,
     chk_map,
@@ -88,24 +87,33 @@ try:
 except ImportError:
     # lsprof not available
     pass
-from breezy.smart import client, request
-from breezy.transport import (
+from ..sixish import (
+    BytesIO,
+    string_types,
+    text_type,
+    )
+from ..smart import client, request
+from ..symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    deprecated_method,
+    )
+from ..transport import (
     memory,
     pathfilter,
     )
-from breezy.symbol_versioning import (
+from ..symbol_versioning import (
     deprecated_function,
     deprecated_in,
     )
-from breezy.tests import (
+from ..tests import (
     fixtures,
     test_server,
     TestUtil,
     treeshape,
+    ui_testing,
     )
-from breezy.ui import NullProgressView
-from breezy.ui.text import TextUIFactory
-from breezy.tests.features import _CompatabilityThunkFeature
+from ..tests.features import _CompatabilityThunkFeature
 
 # Mark this python module as being part of the implementation
 # of unittest: this gives us better tracebacks where the last
@@ -159,7 +167,7 @@ isolated_environ = {
     # Make sure that any text ui tests are consistent regardless of
     # the environment the test case is run in; you may want tests that
     # test other combinations.  'dumb' is a reasonable guess for tests
-    # going to a pipe or a StringIO.
+    # going to a pipe or a BytesIO.
     'TERM': 'dumb',
     'LINES': '25',
     'COLUMNS': '80',
@@ -198,10 +206,9 @@ def override_os_environ(test, env=None):
     """
     if env is None:
         env = isolated_environ
-    test._original_os_environ = dict([(var, value)
-                                      for var, value in os.environ.iteritems()])
-    for var, value in env.iteritems():
-        osutils.set_or_unset_env(var, value)
+    test._original_os_environ = dict(**os.environ)
+    for var in env:
+        osutils.set_or_unset_env(var, env[var])
         if var not in test._original_os_environ:
             # The var is new, add it with a value of None, so
             # restore_os_environ will delete it
@@ -213,7 +220,7 @@ def restore_os_environ(test):
 
     :param test: A test instance previously passed to override_os_environ.
     """
-    for var, value in test._original_os_environ.iteritems():
+    for var, value in test._original_os_environ.items():
         # Restore the original value (or delete it if the value has been set to
         # None in override_os_environ).
         osutils.set_or_unset_env(var, value)
@@ -792,7 +799,7 @@ class TextTestRunner(object):
         # to encode using ascii.
         new_encoding = osutils.get_terminal_encoding()
         codec = codecs.lookup(new_encoding)
-        if type(codec) is tuple:
+        if isinstance(codec, tuple):
             # Python 2.4
             encode = codec[0]
         else:
@@ -890,78 +897,25 @@ class UnavailableFeature(Exception):
     """
 
 
-class StringIOWrapper(object):
-    """A wrapper around cStringIO which just adds an encoding attribute.
+class StringIOWrapper(ui_testing.BytesIOWithEncoding):
 
-    Internally we can check sys.stdout to see what the output encoding
-    should be. However, cStringIO has no encoding attribute that we can
-    set. So we wrap it instead.
-    """
-    encoding='ascii'
-    _cstring = None
-
+    @deprecated_method(deprecated_in((3, 0)))
     def __init__(self, s=None):
-        if s is not None:
-            self.__dict__['_cstring'] = StringIO(s)
-        else:
-            self.__dict__['_cstring'] = StringIO()
-
-    def __getattr__(self, name, getattr=getattr):
-        return getattr(self.__dict__['_cstring'], name)
-
-    def __setattr__(self, name, val):
-        if name == 'encoding':
-            self.__dict__['encoding'] = val
-        else:
-            return setattr(self._cstring, name, val)
+        super(StringIOWrapper, self).__init__(s)
 
 
-class TestUIFactory(TextUIFactory):
-    """A UI Factory for testing.
-
-    Hide the progress bar but emit note()s.
-    Redirect stdin.
-    Allows get_password to be tested without real tty attached.
-
-    See also CannedInputUIFactory which lets you provide programmatic input in
-    a structured way.
-    """
-    # TODO: Capture progress events at the model level and allow them to be
-    # observed by tests that care.
-    #
-    # XXX: Should probably unify more with CannedInputUIFactory or a
-    # particular configuration of TextUIFactory, or otherwise have a clearer
-    # idea of how they're supposed to be different.
-    # See https://bugs.launchpad.net/bzr/+bug/408213
-
-    def __init__(self, stdout=None, stderr=None, stdin=None):
-        if stdin is not None:
-            # We use a StringIOWrapper to be able to test various
-            # encodings, but the user is still responsible to
-            # encode the string and to set the encoding attribute
-            # of StringIOWrapper.
-            stdin = StringIOWrapper(stdin)
-        super(TestUIFactory, self).__init__(stdin, stdout, stderr)
-
-    def get_non_echoed_password(self):
-        """Get password from stdin without trying to handle the echo mode"""
-        password = self.stdin.readline()
-        if not password:
-            raise EOFError
-        if password[-1] == '\n':
-            password = password[:-1]
-        return password
-
-    def make_progress_view(self):
-        return NullProgressView()
+TestUIFactory = ui_testing.TestUIFactory
 
 
 def isolated_doctest_setUp(test):
     override_os_environ(test)
+    test._orig_ui_factory = ui.ui_factory
+    ui.ui_factory = ui.SilentUIFactory()
 
 
 def isolated_doctest_tearDown(test):
     restore_os_environ(test)
+    ui.ui_factory = test._orig_ui_factory
 
 
 def IsolatedDocTestSuite(*args, **kwargs):
@@ -1087,7 +1041,7 @@ class TestCase(testtools.TestCase):
         _counters = self._counters # Avoid closing over self
         if counter_name is None:
             counter_name = name
-        if _counters.has_key(counter_name):
+        if counter_name in _counters:
             raise AssertionError('%s is already used as a counter name'
                                   % (counter_name,))
         _counters[counter_name] = 0
@@ -1184,7 +1138,7 @@ class TestCase(testtools.TestCase):
                 (acquired_locks, released_locks, broken_locks))
             if not self._lock_check_thorough:
                 # Rather than fail, just warn
-                print "Broken test %s: %s" % (self, message)
+                print("Broken test %s: %s" % (self, message))
                 return
             self.fail(message)
 
@@ -1359,7 +1313,7 @@ class TestCase(testtools.TestCase):
         try:
             if a == b:
                 return
-        except UnicodeError, e:
+        except UnicodeError as e:
             # If we can't compare without getting a UnicodeError, then
             # obviously they are different
             trace.mutter('UnicodeError: %s', e)
@@ -1508,14 +1462,14 @@ class TestCase(testtools.TestCase):
         """
         try:
             list(func(*args, **kwargs))
-        except excClass, e:
+        except excClass as e:
             return e
         else:
             if getattr(excClass,'__name__', None) is not None:
                 excName = excClass.__name__
             else:
                 excName = str(excClass)
-            raise self.failureException, "%s not raised" % excName
+            raise self.failureException("%s not raised" % excName)
 
     def assertRaises(self, excClass, callableObj, *args, **kwargs):
         """Assert that a callable raises a particular exception.
@@ -1529,7 +1483,7 @@ class TestCase(testtools.TestCase):
         """
         try:
             callableObj(*args, **kwargs)
-        except excClass, e:
+        except excClass as e:
             return e
         else:
             if getattr(excClass,'__name__', None) is not None:
@@ -1537,7 +1491,7 @@ class TestCase(testtools.TestCase):
             else:
                 # probably a tuple
                 excName = str(excClass)
-            raise self.failureException, "%s not raised" % excName
+            raise self.failureException("%s not raised" % excName)
 
     def assertIs(self, left, right, message=None):
         if not (left is right):
@@ -1743,8 +1697,8 @@ class TestCase(testtools.TestCase):
         return result
 
     def _startLogFile(self):
-        """Setup a in-memory target for brz and testcase log messages"""
-        pseudo_log_file = StringIO()
+        """Setup a in-memory target for bzr and testcase log messages"""
+        pseudo_log_file = BytesIO()
         def _get_log_contents_for_weird_testtools_api():
             return [pseudo_log_file.getvalue().decode(
                 "utf-8", "replace").encode("utf-8")]
@@ -1840,7 +1794,7 @@ class TestCase(testtools.TestCase):
         return calls
 
     def _cleanEnvironment(self):
-        for name, value in isolated_environ.iteritems():
+        for name, value in isolated_environ.items():
             self.overrideEnv(name, value)
 
     def _restoreHooks(self):
@@ -1987,10 +1941,8 @@ class TestCase(testtools.TestCase):
     def _run_bzr_autosplit(self, args, retcode, encoding, stdin,
             working_dir):
         """Run bazaar command line, splitting up a string command line."""
-        if isinstance(args, basestring):
-            # shlex don't understand unicode strings,
-            # so args should be plain string (bialix 20070906)
-            args = list(shlex.split(str(args)))
+        if isinstance(args, string_types):
+            args = shlex.split(args)
         return self._run_bzr_core(args, retcode=retcode,
                 encoding=encoding, stdin=stdin, working_dir=working_dir,
                 )
@@ -2002,19 +1954,27 @@ class TestCase(testtools.TestCase):
         chk_map.clear_cache()
         if encoding is None:
             encoding = osutils.get_user_encoding()
-        stdout = StringIOWrapper()
-        stderr = StringIOWrapper()
-        stdout.encoding = encoding
-        stderr.encoding = encoding
 
         self.log('run brz: %r', args)
+
+        stdout = ui_testing.BytesIOWithEncoding()
+        stderr = ui_testing.BytesIOWithEncoding()
+        stdout.encoding = stderr.encoding = encoding
+
         # FIXME: don't call into logging here
-        handler = trace.EncodedStreamHandler(stderr, errors="replace",
-            level=logging.INFO)
+        handler = trace.EncodedStreamHandler(
+            stderr, errors="replace", level=logging.INFO)
         logger = logging.getLogger('')
         logger.addHandler(handler)
+
+        self._last_cmd_stdout = codecs.getwriter(encoding)(stdout)
+        self._last_cmd_stderr = codecs.getwriter(encoding)(stderr)
+
         old_ui_factory = ui.ui_factory
-        ui.ui_factory = TestUIFactory(stdin=stdin, stdout=stdout, stderr=stderr)
+        ui.ui_factory = ui_testing.TestUIFactory(
+            stdin=stdin,
+            stdout=self._last_cmd_stdout,
+            stderr=self._last_cmd_stderr)
 
         cwd = None
         if working_dir is not None:
@@ -2022,23 +1982,11 @@ class TestCase(testtools.TestCase):
             os.chdir(working_dir)
 
         try:
-            try:
-                result = self.apply_redirected(
-                    ui.ui_factory.stdin,
-                    stdout, stderr,
-                    _mod_commands.run_bzr_catch_user_errors,
-                    args)
-            except KeyboardInterrupt:
-                # Reraise KeyboardInterrupt with contents of redirected stdout
-                # and stderr as arguments, for tests which are interested in
-                # stdout and stderr and are expecting the exception.
-                out = stdout.getvalue()
-                err = stderr.getvalue()
-                if out:
-                    self.log('output:\n%r', out)
-                if err:
-                    self.log('errors:\n%r', err)
-                raise KeyboardInterrupt(out, err)
+            result = self.apply_redirected(
+                ui.ui_factory.stdin,
+                stdout, stderr,
+                _mod_commands.run_bzr_catch_user_errors,
+                args)
         finally:
             logger.removeHandler(handler)
             ui.ui_factory = old_ui_factory
@@ -2056,8 +2004,8 @@ class TestCase(testtools.TestCase):
                               message='Unexpected return code')
         return result, out, err
 
-    def run_bzr(self, args, retcode=0, encoding=None, stdin=None,
-                working_dir=None, error_regexes=[], output_encoding=None):
+    def run_bzr(self, args, retcode=0, stdin=None, encoding=None,
+                working_dir=None, error_regexes=[]):
         """Invoke brz, as if it were run from the command line.
 
         The argument list should not include the brz program name - the
@@ -2212,11 +2160,11 @@ class TestCase(testtools.TestCase):
         old_env = {}
 
         def cleanup_environment():
-            for env_var, value in env_changes.iteritems():
+            for env_var, value in env_changes.items():
                 old_env[env_var] = osutils.set_or_unset_env(env_var, value)
 
         def restore_environment():
-            for env_var, value in old_env.iteritems():
+            for env_var, value in old_env.items():
                 osutils.set_or_unset_env(env_var, value)
 
         bzr_path = self.get_brz_path()
@@ -2356,17 +2304,17 @@ class TestCase(testtools.TestCase):
         if not callable(a_callable):
             raise ValueError("a_callable must be callable.")
         if stdin is None:
-            stdin = StringIO("")
+            stdin = BytesIO("")
         if stdout is None:
             if getattr(self, "_log_file", None) is not None:
                 stdout = self._log_file
             else:
-                stdout = StringIO()
+                stdout = BytesIO()
         if stderr is None:
             if getattr(self, "_log_file", None is not None):
                 stderr = self._log_file
             else:
-                stderr = StringIO()
+                stderr = BytesIO()
         real_stdin = sys.stdin
         real_stdout = sys.stdout
         real_stderr = sys.stderr
@@ -2389,14 +2337,12 @@ class TestCase(testtools.TestCase):
         self.overrideAttr(lockdir, '_DEFAULT_TIMEOUT_SECONDS', 0)
 
     def make_utf8_encoded_stringio(self, encoding_type=None):
-        """Return a StringIOWrapper instance, that will encode Unicode
-        input to UTF-8.
-        """
+        """Return a wrapped BytesIO, that will encode text input to UTF-8."""
         if encoding_type is None:
             encoding_type = 'strict'
-        sio = StringIO()
+        bio = BytesIO()
         output_encoding = 'utf-8'
-        sio = codecs.getwriter(output_encoding)(sio, errors=encoding_type)
+        sio = codecs.getwriter(output_encoding)(bio, errors=encoding_type)
         sio.encoding = output_encoding
         return sio
 
@@ -2409,6 +2355,9 @@ class TestCase(testtools.TestCase):
         request_handlers.remove(verb)
         self.addCleanup(request_handlers.register, verb, orig_method,
             info=orig_info)
+
+    def __hash__(self):
+        return id(self)
 
 
 class CapturedCall(object):
@@ -2484,7 +2433,7 @@ class TestCaseWithMemoryTransport(TestCase):
             _add_disconnect_cleanup, None)
 
         self._make_test_root()
-        self.addCleanup(os.chdir, os.getcwdu())
+        self.addCleanup(os.chdir, osutils.getcwd())
         self.makeAndChdirToTestDir()
         self.overrideEnvironmentForTesting()
         self.__readonly_server = None
@@ -2651,7 +2600,7 @@ class TestCaseWithMemoryTransport(TestCase):
             os.environ['BRZ_HOME'] = root
             wt = controldir.ControlDir.create_standalone_workingtree(root)
             del os.environ['BRZ_HOME']
-        except Exception, e:
+        except Exception as e:
             self.fail("Fail to initialize the safety net: %r\n" % (e,))
         # Hack for speed: remember the raw bytes of the dirstate file so that
         # we don't need to re-open the wt to check it hasn't changed.
@@ -2776,7 +2725,7 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def overrideEnvironmentForTesting(self):
         test_home_dir = self.test_home_dir
-        if isinstance(test_home_dir, unicode):
+        if isinstance(test_home_dir, text_type):
             test_home_dir = test_home_dir.encode(sys.getfilesystemencoding())
         self.overrideEnv('HOME', test_home_dir)
         self.overrideEnv('BRZ_HOME', test_home_dir)
@@ -3399,8 +3348,8 @@ def filter_tests(pattern):
 
 def random_order(random_seed, runner):
     """Return a test suite decorator factory for randomising tests order.
-    
-    :param random_seed: now, a string which casts to a long, or a long.
+
+    :param random_seed: now, a string which casts to an integer, or an integer.
     :param runner: A test runner with a stream attribute to report on.
     """
     if random_seed is None:
@@ -3478,13 +3427,13 @@ class RandomDecorator(TestDecorator):
     @staticmethod
     def actual_seed(seed):
         if seed == "now":
-            # We convert the seed to a long to make it reuseable across
+            # We convert the seed to an integer to make it reuseable across
             # invocations (because the user can reenter it).
-            return long(time.time())
+            return int(time.time())
         else:
-            # Convert the seed to a long if we can
+            # Convert the seed to an integer if we can
             try:
-                return long(seed)
+                return int(seed)
             except (TypeError, ValueError):
                 pass
         return seed
@@ -3783,7 +3732,7 @@ def load_test_id_list(file_name):
     test_list = []
     try:
         ftest = open(file_name, 'rt')
-    except IOError, e:
+    except IOError as e:
         if e.errno != errno.ENOENT:
             raise
         else:
@@ -3868,10 +3817,10 @@ class TestIdList(object):
 
     def refers_to(self, module_name):
         """Is there tests for the module or one of its sub modules."""
-        return self.modules.has_key(module_name)
+        return module_name in self.modules
 
     def includes(self, test_id):
-        return self.tests.has_key(test_id)
+        return test_id in self.tests
 
 
 class TestPrefixAliasRegistry(registry.Registry):
@@ -4223,8 +4172,8 @@ def test_suite(keep_only=None, starting_with=None):
             # still runs the rest of the examples
             doc_suite = IsolatedDocTestSuite(
                 mod, optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
-        except ValueError, e:
-            print '**failed to get doctest for: %s\n%s' % (mod, e)
+        except ValueError as e:
+            print('**failed to get doctest for: %s\n%s' % (mod, e))
             raise
         if len(doc_suite._tests) == 0:
             raise errors.BzrError("no doctests found in %s" % (mod,))
@@ -4413,7 +4362,7 @@ def permute_tests_for_extension(standard_tests, loader, py_module_name,
         the module is available.
     """
 
-    from breezy.tests.features import ModuleAvailableFeature
+    from .features import ModuleAvailableFeature
     py_module = pyutils.get_named_object(py_module_name)
     scenarios = [
         ('python', {'module': py_module}),
@@ -4441,12 +4390,12 @@ def _rmtree_temp_dir(dirname, test_id=None):
     # (they are either ascii or mbcs)
     if sys.platform == 'win32':
         # make sure we are using the unicode win32 api
-        dirname = unicode(dirname)
+        dirname = text_type(dirname)
     else:
         dirname = dirname.encode(sys.getfilesystemencoding())
     try:
         osutils.rmtree(dirname)
-    except OSError, e:
+    except OSError as e:
         # We don't want to fail here because some useful display will be lost
         # otherwise. Polluting the tmp dir is bad, but not giving all the
         # possible info to the test runner is even worse.

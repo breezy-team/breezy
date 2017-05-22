@@ -72,7 +72,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
             format = tree_a.branch.repository._format
             format.check_conversion_target(f.repository_format)
             # if we cannot convert data to knit3, skip the test.
-        except errors.BadConversionTarget, e:
+        except errors.BadConversionTarget as e:
             raise TestSkipped(str(e))
         self.get_transport().mkdir('b')
         b_bzrdir = f.initialize(self.get_url('b'))

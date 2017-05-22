@@ -23,16 +23,16 @@ from __future__ import absolute_import
 
 import os
 
-from breezy import (
+from . import (
     errors,
     mutabletree,
     revision as _mod_revision,
     )
-from breezy.decorators import needs_read_lock
-from breezy.inventory import Inventory
-from breezy.osutils import sha_file
-from breezy.mutabletree import needs_tree_write_lock
-from breezy.transport.memory import MemoryTransport
+from .decorators import needs_read_lock
+from .inventory import Inventory
+from .osutils import sha_file
+from .mutabletree import needs_tree_write_lock
+from .transport.memory import MemoryTransport
 
 
 class MemoryTree(mutabletree.MutableInventoryTree):

@@ -15,11 +15,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from breezy import (
+from .. import (
     cmdline,
     tests,
     )
-from breezy.tests.features import backslashdir_feature
+from .features import backslashdir_feature
 
 class TestSplitter(tests.TestCase):
 

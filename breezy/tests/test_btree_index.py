@@ -20,7 +20,7 @@
 import pprint
 import zlib
 
-from breezy import (
+from .. import (
     btree_index,
     errors,
     fifo_cache,
@@ -29,11 +29,11 @@ from breezy import (
     tests,
     transport,
     )
-from breezy.tests import (
+from ..tests import (
     TestCaseWithTransport,
     scenarios,
     )
-from breezy.tests import (
+from ..tests import (
     features,
     )
 
@@ -402,10 +402,10 @@ class TestBTreeBuilder(BTreeTestCase):
         self.assertEqual([(builder,) + node for node in sorted(nodes[:13])],
             list(builder.iter_all_entries()))
         # Two nodes - one memory one disk
-        self.assertEqual(set([(builder,) + node for node in nodes[11:13]]),
+        self.assertEqual({(builder,) + node for node in nodes[11:13]},
             set(builder.iter_entries([nodes[12][0], nodes[11][0]])))
         self.assertEqual(13, builder.key_count())
-        self.assertEqual(set([(builder,) + node for node in nodes[11:13]]),
+        self.assertEqual({(builder,) + node for node in nodes[11:13]},
             set(builder.iter_entries_prefix([nodes[12][0], nodes[11][0]])))
         builder.add_node(*nodes[13])
         self.assertEqual(3, len(builder._backing_indices))
@@ -476,10 +476,10 @@ class TestBTreeBuilder(BTreeTestCase):
         self.assertEqual([(builder,) + node for node in sorted(nodes[:13])],
             list(builder.iter_all_entries()))
         # Two nodes - one memory one disk
-        self.assertEqual(set([(builder,) + node for node in nodes[11:13]]),
+        self.assertEqual({(builder,) + node for node in nodes[11:13]},
             set(builder.iter_entries([nodes[12][0], nodes[11][0]])))
         self.assertEqual(13, builder.key_count())
-        self.assertEqual(set([(builder,) + node for node in nodes[11:13]]),
+        self.assertEqual({(builder,) + node for node in nodes[11:13]},
             set(builder.iter_entries_prefix([nodes[12][0], nodes[11][0]])))
         builder.add_node(*nodes[13])
         builder.add_node(*nodes[14])
@@ -576,10 +576,10 @@ class TestBTreeBuilder(BTreeTestCase):
         self.assertEqual([(builder,) + node for node in sorted(nodes[:13])],
             list(builder.iter_all_entries()))
         # Two nodes - one memory one disk
-        self.assertEqual(set([(builder,) + node for node in nodes[11:13]]),
+        self.assertEqual({(builder,) + node for node in nodes[11:13]},
             set(builder.iter_entries([nodes[12][0], nodes[11][0]])))
         self.assertEqual(13, builder.key_count())
-        self.assertEqual(set([(builder,) + node for node in nodes[11:13]]),
+        self.assertEqual({(builder,) + node for node in nodes[11:13]},
             set(builder.iter_entries_prefix([nodes[12][0], nodes[11][0]])))
         builder.add_node(*nodes[13])
         self.assertEqual(3, len(builder._backing_indices))
@@ -910,8 +910,8 @@ class TestBTreeIndex(BTreeTestCase):
         index = self.make_index(1, nodes=[
             (('name', ), 'data', ([('ref', ), ('ref', )], )),
             (('ref', ), 'refdata', ([], ))])
-        self.assertEqual(set([(index, ('name', ), 'data', ((('ref',),('ref',)),)),
-            (index, ('ref', ), 'refdata', ((), ))]),
+        self.assertEqual({(index, ('name', ), 'data', ((('ref',),('ref',)),)),
+            (index, ('ref', ), 'refdata', ((), ))},
             set(index.iter_entries([('name',), ('ref',)])))
 
     def test_iter_entries_references_2_refs_resolved(self):
@@ -962,16 +962,16 @@ class TestBTreeIndex(BTreeTestCase):
         index = self.make_index( nodes=[
             (('name', ), 'data', ()),
             (('ref', ), 'refdata', ())])
-        self.assertEqual(set([(index, ('name', ), 'data'),
-            (index, ('ref', ), 'refdata')]),
+        self.assertEqual({(index, ('name', ), 'data'),
+            (index, ('ref', ), 'refdata')},
             set(index.iter_entries_prefix([('name', ), ('ref', )])))
 
     def test_iter_key_prefix_1_key_element_refs(self):
         index = self.make_index(1, nodes=[
             (('name', ), 'data', ([('ref', )], )),
             (('ref', ), 'refdata', ([], ))])
-        self.assertEqual(set([(index, ('name', ), 'data', ((('ref',),),)),
-            (index, ('ref', ), 'refdata', ((), ))]),
+        self.assertEqual({(index, ('name', ), 'data', ((('ref',),),)),
+            (index, ('ref', ), 'refdata', ((), ))},
             set(index.iter_entries_prefix([('name', ), ('ref', )])))
 
     def test_iter_key_prefix_2_key_element_no_refs(self):
@@ -979,11 +979,11 @@ class TestBTreeIndex(BTreeTestCase):
             (('name', 'fin1'), 'data', ()),
             (('name', 'fin2'), 'beta', ()),
             (('ref', 'erence'), 'refdata', ())])
-        self.assertEqual(set([(index, ('name', 'fin1'), 'data'),
-            (index, ('ref', 'erence'), 'refdata')]),
+        self.assertEqual({(index, ('name', 'fin1'), 'data'),
+            (index, ('ref', 'erence'), 'refdata')},
             set(index.iter_entries_prefix([('name', 'fin1'), ('ref', 'erence')])))
-        self.assertEqual(set([(index, ('name', 'fin1'), 'data'),
-            (index, ('name', 'fin2'), 'beta')]),
+        self.assertEqual({(index, ('name', 'fin1'), 'data'),
+            (index, ('name', 'fin2'), 'beta')},
             set(index.iter_entries_prefix([('name', None)])))
 
     def test_iter_key_prefix_2_key_element_refs(self):
@@ -991,11 +991,11 @@ class TestBTreeIndex(BTreeTestCase):
             (('name', 'fin1'), 'data', ([('ref', 'erence')], )),
             (('name', 'fin2'), 'beta', ([], )),
             (('ref', 'erence'), 'refdata', ([], ))])
-        self.assertEqual(set([(index, ('name', 'fin1'), 'data', ((('ref', 'erence'),),)),
-            (index, ('ref', 'erence'), 'refdata', ((), ))]),
+        self.assertEqual({(index, ('name', 'fin1'), 'data', ((('ref', 'erence'),),)),
+            (index, ('ref', 'erence'), 'refdata', ((), ))},
             set(index.iter_entries_prefix([('name', 'fin1'), ('ref', 'erence')])))
-        self.assertEqual(set([(index, ('name', 'fin1'), 'data', ((('ref', 'erence'),),)),
-            (index, ('name', 'fin2'), 'beta', ((), ))]),
+        self.assertEqual({(index, ('name', 'fin1'), 'data', ((('ref', 'erence'),),)),
+            (index, ('name', 'fin2'), 'beta', ((), ))},
             set(index.iter_entries_prefix([('name', None)])))
 
     # XXX: external_references tests are duplicated in test_index.  We
@@ -1013,14 +1013,14 @@ class TestBTreeIndex(BTreeTestCase):
         missing_key = ('missing',)
         index = self.make_index(ref_lists=1, nodes=[
             (('key',), 'value', ([missing_key],))])
-        self.assertEqual(set([missing_key]), index.external_references(0))
+        self.assertEqual({missing_key}, index.external_references(0))
 
     def test_external_references_multiple_ref_lists(self):
         missing_key = ('missing',)
         index = self.make_index(ref_lists=2, nodes=[
             (('key',), 'value', ([], [missing_key]))])
         self.assertEqual(set([]), index.external_references(0))
-        self.assertEqual(set([missing_key]), index.external_references(1))
+        self.assertEqual({missing_key}, index.external_references(1))
 
     def test_external_references_two_records(self):
         index = self.make_index(ref_lists=1, nodes=[
@@ -1058,7 +1058,7 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual({key2: ()}, parent_map)
         # we know that key3 is missing because we read the page that it would
         # otherwise be on
-        self.assertEqual(set([key3]), missing_keys)
+        self.assertEqual({key3}, missing_keys)
         self.assertEqual(set(), search_keys)
 
     def test__find_ancestors_one_parent_missing(self):
@@ -1078,12 +1078,12 @@ class TestBTreeIndex(BTreeTestCase):
         # all we know is that key3 wasn't present on the page we were reading
         # but if you look, the last key is key2 which comes before key3, so we
         # don't know whether key3 would land on this page or not.
-        self.assertEqual(set([key3]), search_keys)
+        self.assertEqual({key3}, search_keys)
         search_keys = index._find_ancestors(search_keys, 0, parent_map,
                                             missing_keys)
         # passing it back in, we are sure it is 'missing'
         self.assertEqual({key1: (key2,), key2: (key3,)}, parent_map)
-        self.assertEqual(set([key3]), missing_keys)
+        self.assertEqual({key3}, missing_keys)
         self.assertEqual(set([]), search_keys)
 
     def test__find_ancestors_dont_search_known(self):
@@ -1145,7 +1145,7 @@ class TestBTreeIndex(BTreeTestCase):
                                             missing_keys)
         self.assertEqual([min_l2_key, next_key], sorted(parent_map))
         self.assertEqual(set(), missing_keys)
-        self.assertEqual(set([max_l1_key]), search_keys)
+        self.assertEqual({max_l1_key}, search_keys)
         parent_map = {}
         search_keys = index._find_ancestors([max_l1_key], 0, parent_map,
                                             missing_keys)
@@ -1161,7 +1161,7 @@ class TestBTreeIndex(BTreeTestCase):
                                             missing_keys)
         self.assertEqual(set(), search_keys)
         self.assertEqual({}, parent_map)
-        self.assertEqual(set([('one',), ('two',)]), missing_keys)
+        self.assertEqual({('one',), ('two',)}, missing_keys)
 
     def test_supports_unlimited_cache(self):
         builder = btree_index.BTreeBuilder(reference_lists=0, key_elements=1)

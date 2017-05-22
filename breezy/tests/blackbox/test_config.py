@@ -17,15 +17,15 @@
 
 """Black-box tests for brz config."""
 
-from breezy import (
+from ... import (
     config,
     tests,
     )
-from breezy.tests import (
+from .. import (
     script,
     test_config as _t_config,
     )
-from breezy.tests.matchers import ContainsNoVfsCalls
+from ..matchers import ContainsNoVfsCalls
 
 
 class TestWithoutConfig(tests.TestCaseWithTransport):

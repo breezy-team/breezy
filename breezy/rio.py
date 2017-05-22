@@ -34,8 +34,8 @@ from __future__ import absolute_import
 
 import re
 
-from breezy import osutils
-from breezy.iterablefile import IterableFile
+from . import osutils
+from .iterablefile import IterableFile
 
 # XXX: some redundancy is allowing to write stanzas in isolation as well as
 # through a writer object.
@@ -375,14 +375,14 @@ def read_patch_stanza(line_iter):
 
 
 try:
-    from breezy._rio_pyx import (
+    from ._rio_pyx import (
         _read_stanza_utf8,
         _read_stanza_unicode,
         _valid_tag,
         )
-except ImportError, e:
+except ImportError as e:
     osutils.failed_to_load_extension(e)
-    from breezy._rio_py import (
+    from ._rio_py import (
        _read_stanza_utf8,
        _read_stanza_unicode,
        _valid_tag,

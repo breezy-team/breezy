@@ -18,14 +18,14 @@
 
 from __future__ import absolute_import
 
-from breezy import debug
+from . import debug
 
 try:
-    from breezy._static_tuple_c import StaticTuple
-except ImportError, e:
-    from breezy import osutils
+    from ._static_tuple_c import StaticTuple
+except ImportError as e:
+    from . import osutils
     osutils.failed_to_load_extension(e)
-    from breezy._static_tuple_py import StaticTuple
+    from ._static_tuple_py import StaticTuple
 
 
 def expect_static_tuple(obj):
@@ -39,7 +39,7 @@ def expect_static_tuple(obj):
     """
     if 'static_tuple' not in debug.debug_flags:
         return StaticTuple.from_sequence(obj)
-    if type(obj) is not StaticTuple:
+    if not isinstance(obj, StaticTuple):
         raise TypeError('We expected a StaticTuple not a %s' % (type(obj),))
     return obj
 

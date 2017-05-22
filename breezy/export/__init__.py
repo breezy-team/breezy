@@ -23,7 +23,7 @@ import os
 import time
 import warnings
 
-from breezy import (
+from .. import (
     errors,
     pyutils,
     trace,

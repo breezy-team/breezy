@@ -21,7 +21,7 @@ from __future__ import absolute_import
 import time
 import zlib
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     annotate,
@@ -40,9 +40,9 @@ from breezy.repofmt import pack_repo
 from breezy.i18n import gettext
 """)
 
-from breezy.btree_index import BTreeBuilder
-from breezy.lru_cache import LRUSizeCache
-from breezy.versionedfile import (
+from .btree_index import BTreeBuilder
+from .lru_cache import LRUSizeCache
+from .versionedfile import (
     _KeyRefs,
     adapter_registry,
     AbsentContentFactory,
@@ -1457,7 +1457,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                     remaining_keys.discard(content_factory.key)
                     yield content_factory
                 return
-            except errors.RetryWithNewPacks, e:
+            except errors.RetryWithNewPacks as e:
                 self._access.reload_or_raise(e)
 
     def _find_from_fallback(self, missing):
@@ -1653,7 +1653,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             if val is not None:
                 try:
                     val = int(val)
-                except ValueError, e:
+                except ValueError as e:
                     trace.warning('Value for '
                                   '"bzr.groupcompress.max_bytes_to_index"'
                                   ' %r is not an integer'
@@ -2205,7 +2205,7 @@ try:
         decode_base128_int,
         )
     GroupCompressor = PyrexGroupCompressor
-except ImportError, e:
+except ImportError as e:
     osutils.failed_to_load_extension(e)
     GroupCompressor = PythonGroupCompressor
 

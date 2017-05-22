@@ -16,25 +16,27 @@
 
 """Tests of the parent related functions of WorkingTrees."""
 
-from cStringIO import StringIO
 import os
 
-from breezy import (
+from ... import (
     errors,
     revision as _mod_revision,
     )
-from breezy.inventory import (
+from ...inventory import (
     Inventory,
     InventoryFile,
     InventoryDirectory,
     InventoryLink,
     )
-from breezy.revisiontree import InventoryRevisionTree
-from breezy.tests.per_workingtree import TestCaseWithWorkingTree
-from breezy.tests import (
+from ...revisiontree import InventoryRevisionTree
+from ...sixish import (
+    BytesIO,
+    )
+from ..per_workingtree import TestCaseWithWorkingTree
+from .. import (
     features,
     )
-from breezy.uncommit import uncommit
+from ...uncommit import uncommit
 
 
 class TestParents(TestCaseWithWorkingTree):
@@ -400,7 +402,7 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
                 return 'a' * ie.text_size
 
             def get_file(self, file_id, path=None):
-                return StringIO(self.get_file_text(file_id))
+                return BytesIO(self.get_file_text(file_id))
 
         tree.lock_write()
         try:

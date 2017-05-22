@@ -16,12 +16,12 @@
 
 """Tests for the BranchBuilder class."""
 
-from breezy import (
+from .. import (
     branch as _mod_branch,
     revision as _mod_revision,
     tests,
     )
-from breezy.branchbuilder import BranchBuilder
+from ..branchbuilder import BranchBuilder
 
 
 class TestBranchBuilder(tests.TestCaseWithMemoryTransport):

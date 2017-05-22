@@ -18,13 +18,13 @@ from __future__ import absolute_import
 
 """Server-side pack repository related request implmentations."""
 
-from breezy.smart.request import (
+from .request import (
     FailedSmartServerResponse,
     SuccessfulSmartServerResponse,
     )
 
 
-from breezy.smart.repository import (
+from .repository import (
     SmartServerRepositoryRequest,
     )
 

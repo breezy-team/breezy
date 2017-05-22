@@ -23,8 +23,8 @@ relevant test modules.
 
 import breezy
 import breezy.api
-from breezy.errors import IncompatibleAPI
-from breezy.tests import TestCase
+from ..errors import IncompatibleAPI
+from . import TestCase
 
 class APITests(TestCase):
 

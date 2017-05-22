@@ -50,18 +50,14 @@ all the changes since the previous revision that touched hello.c.
 from __future__ import absolute_import
 
 import codecs
-from cStringIO import StringIO
-from itertools import (
-    chain,
-    izip,
-    )
+import itertools
 import re
 import sys
 from warnings import (
     warn,
     )
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 
 from breezy import (
@@ -78,17 +74,27 @@ from breezy import (
 from breezy.i18n import gettext, ngettext
 """)
 
-from breezy import (
+from . import (
     lazy_regex,
     registry,
     )
-from breezy.osutils import (
+from .osutils import (
     format_date,
     format_date_with_offset_in_original_timezone,
     get_diff_header_encoding,
     get_terminal_encoding,
     terminal_width,
     )
+from breezy.sixish import (
+    BytesIO,
+    PY3,
+    )
+
+
+if PY3:
+    izip = zip
+else:
+    izip = itertools.izip
 
 
 def find_touching_revisions(branch, file_id):
@@ -484,7 +490,7 @@ class _DefaultLogGenerator(LogGenerator):
             specific_files = [tree_2.id2path(id) for id in file_ids]
         else:
             specific_files = None
-        s = StringIO()
+        s = BytesIO()
         path_encoding = get_diff_header_encoding()
         diff.show_diff_trees(tree_1, tree_2, s, specific_files, old_label='',
             new_label='', path_encoding=path_encoding)
@@ -661,7 +667,7 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
     # shown naturally, i.e. just like it is for linear logging. We can easily
     # make forward the exact opposite display, but showing the merge revisions
     # indented at the end seems slightly nicer in that case.
-    view_revisions = chain(iter(initial_revisions),
+    view_revisions = itertools.chain(iter(initial_revisions),
         _graph_view_revisions(branch, start_rev_id, end_rev_id,
                               rebase_initial_depths=(direction == 'reverse'),
                               exclude_common_ancestry=exclude_common_ancestry))
@@ -824,7 +830,7 @@ def make_log_rev_iterator(branch, view_revisions, generate_delta, search,
     """
     # Convert view_revisions into (view, None, None) groups to fit with
     # the standard interface here.
-    if type(view_revisions) == list:
+    if isinstance(view_revisions, list):
         # A single batch conversion is faster than many incremental ones.
         # As we have all the data, do a batch conversion.
         nones = [None] * len(view_revisions)
@@ -2104,7 +2110,7 @@ properties_handler_registry = registry.Registry()
 
 # Use the properties handlers to print out bug information if available
 def _bugs_properties_handler(revision):
-    if revision.properties.has_key('bugs'):
+    if 'bugs' in revision.properties:
         bug_lines = revision.properties['bugs'].split('\n')
         bug_rows = [line.split(' ', 1) for line in bug_lines]
         fixed_bug_urls = [row[0] for row in bug_rows if

@@ -16,15 +16,16 @@
 
 from __future__ import absolute_import
 
-import cStringIO
-
-from breezy import (
+from . import (
     cache_utf8,
     lazy_regex,
     revision as _mod_revision,
     trace,
     )
-from breezy.xml_serializer import (
+from .sixish import (
+    BytesIO,
+    )
+from .xml_serializer import (
     Element,
     SubElement,
     XMLSerializer,
@@ -35,8 +36,8 @@ from breezy.xml_serializer import (
     unpack_inventory_entry,
     unpack_inventory_flat,
     )
-from breezy.revision import Revision
-from breezy.errors import BzrError
+from .revision import Revision
+from .errors import BzrError
 
 
 _xml_unescape_map = {
@@ -78,7 +79,7 @@ class Serializer_v8(XMLSerializer):
     # This format supports the altered-by hack that reads file ids directly out
     # of the versionedfile, without doing XML parsing.
 
-    supported_kinds = set(['file', 'directory', 'symlink'])
+    supported_kinds = {'file', 'directory', 'symlink'}
     format_num = '8'
     revision_format_num = None
 
@@ -133,12 +134,12 @@ class Serializer_v8(XMLSerializer):
         return self.write_inventory(inv, None)
 
     def write_inventory_to_string(self, inv, working=False):
-        """Just call write_inventory with a StringIO and return the value.
+        """Just call write_inventory with a BytesIO and return the value.
 
         :param working: If True skip history data - text_sha1, text_size,
             reference_revision, symlink_target.
         """
-        sio = cStringIO.StringIO()
+        sio = BytesIO()
         self.write_inventory(inv, sio, working)
         return sio.getvalue()
 

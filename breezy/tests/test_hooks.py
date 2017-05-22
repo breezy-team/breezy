@@ -16,21 +16,21 @@
 
 """Tests for the core Hooks logic."""
 
-from breezy import (
+from .. import (
     branch,
     errors,
     hooks as _mod_hooks,
     pyutils,
     tests,
     )
-from breezy.hooks import (
+from ..hooks import (
     HookPoint,
     Hooks,
     install_lazy_named_hook,
     known_hooks,
     known_hooks_key_to_object,
     )
-from breezy.symbol_versioning import (
+from ..symbol_versioning import (
     deprecated_in,
     )
 

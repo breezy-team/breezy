@@ -17,7 +17,7 @@
 from __future__ import absolute_import
 
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 import bisect
 import datetime
@@ -32,7 +32,7 @@ from breezy import (
 from breezy.i18n import gettext
 """)
 
-from breezy import (
+from . import (
     errors,
     lazy_regex,
     registry,
@@ -76,13 +76,15 @@ class RevisionInfo(object):
             self._has_revno = True
         return self._revno
 
-    def __nonzero__(self):
+    def __bool__(self):
         if self.rev_id is None:
             return False
         # TODO: otherwise, it should depend on how I was built -
         # if it's in_history(branch), then check revision_history(),
         # if it's in_store(branch), do the check below
         return self.branch.repository.has_revision(self.rev_id)
+
+    __nonzero__ = __bool__
 
     def __len__(self):
         return 2
@@ -98,7 +100,7 @@ class RevisionInfo(object):
     def __eq__(self, other):
         if type(other) not in (tuple, list, type(self)):
             return False
-        if type(other) is type(self) and self.branch is not other.branch:
+        if isinstance(other, type(self)) and self.branch is not other.branch:
             return False
         return tuple(self) == tuple(other)
 
@@ -422,7 +424,7 @@ class RevisionSpec_revno(RevisionSpec):
                 # right now - RBC 20060928
                 try:
                     match_revno = tuple((int(number) for number in revno_spec.split('.')))
-                except ValueError, e:
+                except ValueError as e:
                     raise errors.InvalidRevisionSpec(self.user_spec, branch, e)
 
                 dotted = True
@@ -533,7 +535,7 @@ class RevisionSpec_last(RevisionSpec):
 
         try:
             offset = int(self.spec)
-        except ValueError, e:
+        except ValueError as e:
             raise errors.InvalidRevisionSpec(self.user_spec, context_branch, e)
 
         if offset <= 0:
@@ -786,7 +788,7 @@ class RevisionSpec_ancestor(RevisionSpec):
 
     @staticmethod
     def _find_revision_id(branch, other_location):
-        from breezy.branch import Branch
+        from .branch import Branch
 
         branch.lock_read()
         try:
@@ -829,7 +831,7 @@ class RevisionSpec_branch(RevisionSpec):
     dwim_catchable_exceptions = (errors.NotBranchError,)
 
     def _match_on(self, branch, revs):
-        from breezy.branch import Branch
+        from .branch import Branch
         other_branch = Branch.open(self.spec)
         revision_b = other_branch.last_revision()
         if revision_b in (None, revision.NULL_REVISION):
@@ -845,7 +847,7 @@ class RevisionSpec_branch(RevisionSpec):
         return RevisionInfo(branch, None, revision_b)
 
     def _as_revision_id(self, context_branch):
-        from breezy.branch import Branch
+        from .branch import Branch
         other_branch = Branch.open(self.spec)
         last_revision = other_branch.last_revision()
         last_revision = revision.ensure_null(last_revision)
@@ -855,7 +857,7 @@ class RevisionSpec_branch(RevisionSpec):
         return last_revision
 
     def _as_tree(self, context_branch):
-        from breezy.branch import Branch
+        from .branch import Branch
         other_branch = Branch.open(self.spec)
         last_revision = other_branch.last_revision()
         last_revision = revision.ensure_null(last_revision)

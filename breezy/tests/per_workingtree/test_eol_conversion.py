@@ -17,12 +17,14 @@
 """Tests for eol conversion."""
 
 import sys
-from cStringIO import StringIO
 
-from breezy import rules, status
-from breezy.tests import TestSkipped
-from breezy.tests.per_workingtree import TestCaseWithWorkingTree
-from breezy.workingtree import WorkingTree
+from ... import rules, status
+from ...sixish import (
+    BytesIO,
+    )
+from .. import TestSkipped
+from . import TestCaseWithWorkingTree
+from ...workingtree import WorkingTree
 
 
 # Sample files
@@ -97,7 +99,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
             self.assertEqual(expected_unix, content)
         # Confirm that status thinks nothing has changed if the text roundtrips
         if roundtrip:
-            status_io = StringIO()
+            status_io = BytesIO()
             status.show_tree_status(wt2, to_file=status_io)
             self.assertEqual('', status_io.getvalue())
 

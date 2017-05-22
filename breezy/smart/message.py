@@ -17,13 +17,15 @@
 from __future__ import absolute_import
 
 import collections
-from cStringIO import StringIO
 
-from breezy import (
+from .. import (
     debug,
     errors,
     )
-from breezy.trace import mutter
+from ..sixish import (
+    BytesIO,
+    )
+from ..trace import mutter
 
 
 class MessageHandler(object):
@@ -245,7 +247,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         self._bytes_parts.append(bytes)
 
     def structure_part_received(self, structure):
-        if type(structure) is not tuple:
+        if not isinstance(structure, tuple):
             raise errors.SmartProtocolError(
                 'Args structure is not a sequence: %r' % (structure,))
         if not self._body_started:
@@ -324,7 +326,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
             body_bytes = ''.join(self._bytes_parts)
             if 'hpss' in debug.debug_flags:
                 mutter('              %d body bytes read', len(body_bytes))
-            self._body = StringIO(body_bytes)
+            self._body = BytesIO(body_bytes)
             self._bytes_parts = None
         return self._body.read(count)
 

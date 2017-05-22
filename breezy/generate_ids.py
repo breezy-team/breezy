@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 import time
 
@@ -29,7 +29,7 @@ from breezy import (
     )
 """)
 
-from breezy import (
+from . import (
     lazy_regex,
     )
 

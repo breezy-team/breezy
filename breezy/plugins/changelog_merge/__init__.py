@@ -56,14 +56,14 @@ strange results if there is a criss-cross merge.
 """
 
 # Since we are a built-in plugin we share the breezy version
-from breezy import version_info
-from breezy.hooks import install_lazy_named_hook
+from ... import version_info
+from ...hooks import install_lazy_named_hook
 
 # Put most of the code in a separate module that we lazy-import to keep the
 # overhead of this plugin as minimal as possible.
 def changelog_merge_hook(merger):
     """Merger.merge_file_content hook for GNU-format ChangeLog files."""
-    from breezy.plugins.changelog_merge.changelog_merge import ChangeLogMerger
+    from ...plugins.changelog_merge.changelog_merge import ChangeLogMerger
     return ChangeLogMerger(merger)
 
 install_lazy_named_hook("breezy.merge", "Merger.hooks", "merge_file_content",

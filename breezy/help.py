@@ -25,7 +25,7 @@ from __future__ import absolute_import
 
 import sys
 
-from breezy import (
+from . import (
     commands as _mod_commands,
     errors,
     help_topics,

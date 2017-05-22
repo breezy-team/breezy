@@ -21,7 +21,7 @@ See MutableTree for more details.
 
 from __future__ import absolute_import
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 import operator
 import os
@@ -41,7 +41,7 @@ from breezy import (
     )
 """)
 
-from breezy.decorators import needs_read_lock, needs_write_lock
+from .decorators import needs_read_lock, needs_write_lock
 
 
 def needs_tree_write_lock(unbound):
@@ -327,7 +327,7 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self.mkdir)
 
-    def _observed_sha1(self, file_id, path, (sha1, stat_value)):
+    def _observed_sha1(self, file_id, path, sha_and_stat):
         """Tell the tree we have observed a paths sha1.
 
         The intent of this function is to allow trees that have a hashcache to
@@ -339,8 +339,7 @@ class MutableTree(tree.Tree):
 
         :param file_id: The file id
         :param path: The file path
-        :param sha1: The sha 1 that was observed.
-        :param stat_value: A stat result for the file the sha1 was read from.
+        :param sha_and_stat: The sha 1 and stat result observed.
         :return: None
         """
 

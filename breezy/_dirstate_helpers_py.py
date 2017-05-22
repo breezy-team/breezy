@@ -25,7 +25,7 @@ import struct
 # We cannot import the dirstate module, because it loads this module
 # All we really need is the IN_MEMORY_MODIFIED constant
 from breezy import errors
-from breezy.dirstate import DirState
+from .dirstate import DirState
 
 
 def pack_stat(st, _b64=binascii.b2a_base64, _pack=struct.Struct('>6L').pack):

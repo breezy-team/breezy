@@ -18,11 +18,11 @@
 
 from __future__ import absolute_import
 
-from breezy import (
+from . import (
     log,
     symbol_versioning,
     )
-import breezy.revision as _mod_revision
+from . import revision as _mod_revision
 
 
 def iter_log_revisions(revisions, revision_source, verbose, rev_tag_dict=None):
@@ -223,6 +223,5 @@ def _find_unmerged(local_branch, remote_branch, restrict,
 
 
 def sorted_revisions(revisions, history_map):
-    revisions = [(history_map[r],r) for r in revisions]
-    revisions.sort()
+    revisions = sorted([(history_map[r],r) for r in revisions])
     return revisions

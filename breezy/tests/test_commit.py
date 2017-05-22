@@ -18,28 +18,28 @@
 import os
 
 import breezy
-from breezy import (
+from .. import (
     config,
     controldir,
     errors,
     )
-from breezy.branch import Branch
-from breezy.bzrdir import BzrDirMetaFormat1
-from breezy.commit import Commit, NullCommitReporter
-from breezy.errors import (
+from ..branch import Branch
+from ..bzrdir import BzrDirMetaFormat1
+from ..commit import Commit, NullCommitReporter
+from ..errors import (
     PointlessCommit,
     BzrError,
     SigningFailed,
     LockContention,
     )
-from breezy.tests import (
+from . import (
     TestCaseWithTransport,
     test_foreign,
     )
-from breezy.tests.features import (
+from .features import (
     SymlinkFeature,
     )
-from breezy.tests.matchers import MatchesAncestry
+from .matchers import MatchesAncestry
 
 
 # TODO: Test commit with some added, and added-but-missing files
@@ -377,7 +377,7 @@ class TestCommit(TestCaseWithTransport):
 
     def test_strict_commit(self):
         """Try and commit with unknown files and strict = True, should fail."""
-        from breezy.errors import StrictCommitFailed
+        from ..errors import StrictCommitFailed
         wt = self.make_branch_and_tree('.')
         b = wt.branch
         with file('hello', 'w') as f: f.write('hello world')
@@ -422,7 +422,7 @@ class TestCommit(TestCaseWithTransport):
         wt.commit("base", allow_pointless=True, rev_id='A')
         self.assertFalse(branch.repository.has_signature_for_revision_id('A'))
         try:
-            from breezy.testament import Testament
+            from ..testament import Testament
             # monkey patch gpg signing mechanism
             breezy.gpg.GPGStrategy = breezy.gpg.LoopbackGPGStrategy
             conf = config.MemoryStack('''
@@ -589,7 +589,7 @@ create_signatures=always
         this_tree.merge_from_branch(other_tree.branch)
         reporter = CapturingReporter()
         this_tree.commit('do the commit', reporter=reporter)
-        expected = set([
+        expected = {
             ('change', 'modified', 'filetomodify'),
             ('change', 'added', 'newdir'),
             ('change', 'added', 'newfile'),
@@ -599,7 +599,7 @@ create_signatures=always
             ('renamed', 'renamed', 'filetoreparent', 'renameddir/reparentedfile'),
             ('deleted', 'dirtoremove'),
             ('deleted', 'filetoremove'),
-            ])
+            }
         result = set(reporter.calls)
         missing = expected - result
         new = result - expected
@@ -720,7 +720,7 @@ create_signatures=always
         tree = self.make_branch_and_tree('.')
         try:
             tree.commit()
-        except Exception, e:
+        except Exception as e:
             self.assertTrue(isinstance(e, BzrError))
             self.assertEqual('The message or message_callback keyword'
                              ' parameter is required for commit().', str(e))

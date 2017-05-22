@@ -21,11 +21,11 @@ from __future__ import absolute_import
 import sys
 import os
 
-from breezy import (
+from . import (
     osutils,
-    ui, 
+    ui,
     )
-from breezy.i18n import gettext
+from .i18n import gettext
 
 class AddAction(object):
     """A class which defines what action to take when adding a file."""

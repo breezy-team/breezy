@@ -20,8 +20,8 @@ import errno
 import os
 from subprocess import Popen, PIPE
 
-from breezy.errors import NoDiff3
-from breezy.textfile import check_text_path
+from .errors import NoDiff3
+from .textfile import check_text_path
 
 """Diff and patch functionality"""
 
@@ -89,7 +89,7 @@ def diff3(out_file, mine_path, older_path, yours_path):
     args.extend((mine_path, older_path, yours_path))
     try:
         output, stderr, status = write_to_cmd(args)
-    except OSError, e:
+    except OSError as e:
         if e.errno == errno.ENOENT:
             raise NoDiff3
         else:

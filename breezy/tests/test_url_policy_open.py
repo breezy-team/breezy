@@ -16,20 +16,20 @@
 
 """Tests for the branch open with specific URL policy code."""
 
-from breezy import urlutils
-from breezy.branch import (
+from .. import urlutils
+from ..branch import (
     Branch,
     BranchReferenceFormat,
     )
-from breezy.bzrdir import (
+from ..bzrdir import (
     BzrProber,
     )
-from breezy.controldir import (
+from ..controldir import (
     ControlDir,
     ControlDirFormat,
     )
-from breezy.errors import NotBranchError
-from breezy.url_policy_open import (
+from ..errors import NotBranchError
+from ..url_policy_open import (
     BadUrl,
     _BlacklistPolicy,
     BranchLoopError,
@@ -38,11 +38,11 @@ from breezy.url_policy_open import (
     BranchOpener,
     WhitelistPolicy,
     )
-from breezy.tests import (
+from . import (
     TestCase,
     TestCaseWithTransport,
     )
-from breezy.transport import chroot
+from ..transport import chroot
 
 
 class TestBranchOpenerCheckAndFollowBranchReference(TestCase):
@@ -81,7 +81,7 @@ class TestBranchOpenerCheckAndFollowBranchReference(TestCase):
     def test_check_initial_url(self):
         # check_and_follow_branch_reference rejects all URLs that are not
         # allowed.
-        opener = self.make_branch_opener(None, [], set(['a']))
+        opener = self.make_branch_opener(None, [], {'a'})
         self.assertRaises(
             BadUrl, opener.check_and_follow_branch_reference, 'a')
 
@@ -288,7 +288,7 @@ class TestBranchOpenerStacking(TestCaseWithTransport):
             [a.base, b.base], probers=[TrackingProber])
         opener.open(b.base)
         self.assertEqual(
-            set(TrackingProber.seen_urls), set([b.base, a.base]))
+            set(TrackingProber.seen_urls), {b.base, a.base})
 
     def test_custom_opener_with_branch_reference(self):
         # A custom function for opening a control dir can be specified.
@@ -300,7 +300,7 @@ class TestBranchOpenerStacking(TestCaseWithTransport):
             [a.base, b.base], probers=[TrackingProber])
         opener.open(b.base)
         self.assertEqual(
-            set(TrackingProber.seen_urls), set([b.base, a.base]))
+            set(TrackingProber.seen_urls), {b.base, a.base})
 
 
 class TestOpenOnlyScheme(TestCaseWithTransport):

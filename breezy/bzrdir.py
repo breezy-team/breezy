@@ -29,7 +29,7 @@ from __future__ import absolute_import
 
 import sys
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 import breezy
 from breezy import (
@@ -62,17 +62,17 @@ from breezy.transport import (
 from breezy.i18n import gettext
 """)
 
-from breezy.trace import (
+from .trace import (
     mutter,
     note,
     )
 
-from breezy import (
+from . import (
     config,
     controldir,
     registry,
     )
-from breezy.symbol_versioning import (
+from .symbol_versioning import (
     deprecated_in,
     deprecated_method,
     )
@@ -592,14 +592,14 @@ class BzrDir(controldir.ControlDir):
             # directories and files are read-write for this user. This is
             # mostly a workaround for filesystems which lie about being able to
             # write to a directory (cygwin & win32)
-            if (st.st_mode & 07777 == 00000):
+            if (st.st_mode & 0o7777 == 00000):
                 # FTP allows stat but does not return dir/file modes
                 self._dir_mode = None
                 self._file_mode = None
             else:
-                self._dir_mode = (st.st_mode & 07777) | 00700
+                self._dir_mode = (st.st_mode & 0o7777) | 0o0700
                 # Remove the sticky and execute bits for files
-                self._file_mode = self._dir_mode & ~07111
+                self._file_mode = self._dir_mode & ~0o7111
 
     def _get_file_mode(self):
         """Return Unix mode for newly created files, or None.
@@ -925,7 +925,7 @@ class BzrDirMeta1(BzrDir):
 
         This might be a synthetic object for e.g. RemoteBranch and SVN.
         """
-        from breezy.branch import BranchFormatMetadir
+        from .branch import BranchFormatMetadir
         return BranchFormatMetadir.find_format(self, name=name)
 
     def _get_mkdir_mode(self):
@@ -936,7 +936,7 @@ class BzrDirMeta1(BzrDir):
 
     def get_branch_reference(self, name=None):
         """See BzrDir.get_branch_reference()."""
-        from breezy.branch import BranchFormatMetadir
+        from .branch import BranchFormatMetadir
         format = BranchFormatMetadir.find_format(self, name=name)
         return format.get_reference(self, name=name)
 
@@ -1031,7 +1031,7 @@ class BzrDirMeta1(BzrDir):
         Note: if you're going to open the working tree, you should just go
         ahead and try, and not ask permission first.
         """
-        from breezy.workingtree import WorkingTreeFormatMetaDir
+        from .workingtree import WorkingTreeFormatMetaDir
         try:
             WorkingTreeFormatMetaDir.find_format_string(self)
         except errors.NoWorkingTree:
@@ -1080,7 +1080,7 @@ class BzrDirMeta1(BzrDir):
 
     def open_repository(self, unsupported=False):
         """See BzrDir.open_repository."""
-        from breezy.repository import RepositoryFormatMetaDir
+        from .repository import RepositoryFormatMetaDir
         format = RepositoryFormatMetaDir.find_format(self)
         format.check_support_status(unsupported)
         return format.open(self, _found=True)
@@ -1088,7 +1088,7 @@ class BzrDirMeta1(BzrDir):
     def open_workingtree(self, unsupported=False,
             recommend_upgrade=True):
         """See BzrDir.open_workingtree."""
-        from breezy.workingtree import WorkingTreeFormatMetaDir
+        from .workingtree import WorkingTreeFormatMetaDir
         format = WorkingTreeFormatMetaDir.find_format(self)
         format.check_support_status(unsupported, recommend_upgrade,
             basedir=self.root_transport.base)
@@ -1285,13 +1285,13 @@ class RemoteBzrProber(controldir.Prober):
                     raise errors.NotBranchError(path=transport.base)
                 if server_version != '2':
                     raise errors.NotBranchError(path=transport.base)
-            from breezy.remote import RemoteBzrDirFormat
+            from .remote import RemoteBzrDirFormat
             return RemoteBzrDirFormat()
 
     @classmethod
     def known_formats(cls):
-        from breezy.remote import RemoteBzrDirFormat
-        return set([RemoteBzrDirFormat()])
+        from .remote import RemoteBzrDirFormat
+        return {RemoteBzrDirFormat()}
 
 
 class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
@@ -1323,9 +1323,9 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
             # Current RPC's only know how to create bzr metadir1 instances, so
             # we still delegate to vfs methods if the requested format is not a
             # metadir1
-            if type(self) != BzrDirMetaFormat1:
+            if not isinstance(self, BzrDirMetaFormat1):
                 return self._initialize_on_transport_vfs(transport)
-            from breezy.remote import RemoteBzrDirFormat
+            from .remote import RemoteBzrDirFormat
             remote_format = RemoteBzrDirFormat()
             self._supply_sub_formats_to(remote_format)
             return remote_format.initialize_on_transport(transport)
@@ -1369,7 +1369,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
             except errors.NoSmartMedium:
                 pass
             else:
-                from breezy.remote import RemoteBzrDirFormat
+                from .remote import RemoteBzrDirFormat
                 # TODO: lookup the local format from a server hint.
                 remote_dir_format = RemoteBzrDirFormat()
                 remote_dir_format._network_name = self.network_name()
@@ -1560,7 +1560,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     def get_branch_format(self):
         if self._branch_format is None:
-            from breezy.branch import format_registry as branch_format_registry
+            from .branch import format_registry as branch_format_registry
             self._branch_format = branch_format_registry.get_default()
         return self._branch_format
 
@@ -1647,7 +1647,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
             if target_branch is None:
                 if do_upgrade:
                     # TODO: bad monkey, hard-coded formats...
-                    from breezy.branch import BzrBranchFormat7
+                    from .branch import BzrBranchFormat7
                     new_branch_format = BzrBranchFormat7()
             else:
                 new_branch_format = target_branch._format
@@ -1664,11 +1664,11 @@ class BzrDirMetaFormat1(BzrDirFormat):
         """See BzrDirFormat.get_converter()."""
         if format is None:
             format = BzrDirFormat.get_default_format()
-        if (type(self) is BzrDirMetaFormat1 and
-            type(format) is BzrDirMetaFormat1Colo):
+        if (isinstance(self, BzrDirMetaFormat1) and
+            isinstance(format, BzrDirMetaFormat1Colo)):
             return ConvertMetaToColo(format)
-        if (type(self) is BzrDirMetaFormat1Colo and
-            type(format) is BzrDirMetaFormat1):
+        if (isinstance(self, BzrDirMetaFormat1Colo) and
+            isinstance(format, BzrDirMetaFormat1)):
             return ConvertMetaToColo(format)
         if not isinstance(self, format.__class__):
             # converting away from metadir is not implemented
@@ -1697,7 +1697,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
         """Circular import protection."""
         if self._repository_format:
             return self._repository_format
-        from breezy.repository import format_registry
+        from .repository import format_registry
         return format_registry.get_default()
 
     def _set_repository_format(self, value):
@@ -1728,7 +1728,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     def __get_workingtree_format(self):
         if self._workingtree_format is None:
-            from breezy.workingtree import (
+            from .workingtree import (
                 format_registry as wt_format_registry,
                 )
             self._workingtree_format = wt_format_registry.get_default()
@@ -1801,7 +1801,7 @@ class ConvertMetaToMeta(controldir.Converter):
             pass
         else:
             if not isinstance(repo._format, self.target_format.repository_format.__class__):
-                from breezy.repository import CopyConverter
+                from .repository import CopyConverter
                 ui.ui_factory.note(gettext('starting repository conversion'))
                 converter = CopyConverter(self.target_format.repository_format)
                 converter.convert(repo, pb)
@@ -2092,7 +2092,7 @@ def register_metadir(registry, key,
         mod_name, factory_name = full_name.rsplit('.', 1)
         try:
             factory = pyutils.get_named_object(mod_name, factory_name)
-        except ImportError, e:
+        except ImportError as e:
             raise ImportError('failed to load %s: %s' % (full_name, e))
         except AttributeError:
             raise AttributeError('no factory %s in module %r'

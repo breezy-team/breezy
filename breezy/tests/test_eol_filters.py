@@ -17,15 +17,15 @@
 """Tests for eol conversion."""
 
 
-from breezy import (
+from .. import (
     errors,
     )
-from breezy.filters import _get_filter_stack_for
-from breezy.filters.eol import (
+from ..filters import _get_filter_stack_for
+from ..filters.eol import (
     _to_crlf_converter,
     _to_lf_converter,
     )
-from breezy.tests import TestCase
+from . import TestCase
 
 
 # Sample files

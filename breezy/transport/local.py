@@ -25,7 +25,7 @@ import os
 from stat import ST_MODE, S_ISDIR, S_IMODE
 import sys
 
-from breezy.lazy_import import lazy_import
+from ..lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
 import shutil
@@ -39,7 +39,7 @@ from breezy import (
 from breezy.transport import LateReadError
 """)
 
-from breezy import transport
+from .. import transport
 
 
 _append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY | osutils.O_NOINHERIT
@@ -51,15 +51,15 @@ class LocalTransport(transport.Transport):
 
     def __init__(self, base):
         """Set the base path where files will be stored."""
-        if not base.startswith('file://'):
+        if not base.startswith(b'file://'):
             raise AssertionError("not a file:// url: %r" % base)
-        if base[-1] != '/':
-            base = base + '/'
+        if base[-1] != b'/':
+            base = base + b'/'
 
         # Special case : windows has no "root", but does have
         # multiple lettered drives inside it. #240910
-        if sys.platform == 'win32' and base == 'file:///':
-            base = ''
+        if sys.platform == 'win32' and base == b'file:///':
+            base = b''
             self._local_base = ''
             super(LocalTransport, self).__init__(base)
             return
@@ -156,7 +156,7 @@ class LocalTransport(transport.Transport):
         try:
             path = self._abspath(relpath)
             return osutils.open_file(path, 'rb')
-        except (IOError, OSError),e:
+        except (IOError, OSError) as e:
             if e.errno == errno.EISDIR:
                 return LateReadError(relpath)
             self._translate_error(e, path)
@@ -175,7 +175,7 @@ class LocalTransport(transport.Transport):
             path = self._abspath(relpath)
             osutils.check_legal_path(path)
             fp = atomicfile.AtomicFile(path, 'wb', new_mode=mode)
-        except (IOError, OSError),e:
+        except (IOError, OSError) as e:
             self._translate_error(e, path)
         try:
             length = self._pump(f, fp)
@@ -198,7 +198,7 @@ class LocalTransport(transport.Transport):
             path = self._abspath(relpath)
             osutils.check_legal_path(path)
             fp = atomicfile.AtomicFile(path, 'wb', new_mode=mode)
-        except (IOError, OSError),e:
+        except (IOError, OSError) as e:
             self._translate_error(e, path)
         try:
             if bytes:
@@ -225,12 +225,12 @@ class LocalTransport(transport.Transport):
         abspath = self._abspath(relpath)
         if mode is None:
             # os.open() will automatically use the umask
-            local_mode = 0666
+            local_mode = 0o666
         else:
             local_mode = mode
         try:
             fd = os.open(abspath, _put_non_atomic_flags, local_mode)
-        except (IOError, OSError),e:
+        except (IOError, OSError) as e:
             # We couldn't create the file, maybe we need to create
             # the parent directory, and try again
             if (not create_parent_dir
@@ -244,7 +244,7 @@ class LocalTransport(transport.Transport):
             # file again
             try:
                 fd = os.open(abspath, _put_non_atomic_flags, local_mode)
-            except (IOError, OSError), e:
+            except (IOError, OSError) as e:
                 self._translate_error(e, relpath)
         try:
             st = os.fstat(fd)
@@ -305,17 +305,17 @@ class LocalTransport(transport.Transport):
         """Create a real directory, filtering through mode"""
         if mode is None:
             # os.mkdir() will filter through umask
-            local_mode = 0777
+            local_mode = 0o777
         else:
             local_mode = mode
         try:
             os.mkdir(abspath, local_mode)
-        except (IOError, OSError),e:
+        except (IOError, OSError) as e:
             self._translate_error(e, abspath)
         if mode is not None:
             try:
                 osutils.chmod_if_possible(abspath, mode)
-            except (IOError, OSError), e:
+            except (IOError, OSError) as e:
                 self._translate_error(e, abspath)
 
     def mkdir(self, relpath, mode=None):
@@ -327,7 +327,7 @@ class LocalTransport(transport.Transport):
         abspath = self._abspath(relpath)
         try:
             handle = osutils.open_file(abspath, 'wb')
-        except (IOError, OSError),e:
+        except (IOError, OSError) as e:
             self._translate_error(e, abspath)
         handle.truncate()
         if mode is not None:
@@ -340,12 +340,12 @@ class LocalTransport(transport.Transport):
         file_abspath = self._abspath(relpath)
         if mode is None:
             # os.open() will automatically use the umask
-            local_mode = 0666
+            local_mode = 0o666
         else:
             local_mode = mode
         try:
             return file_abspath, os.open(file_abspath, _append_flags, local_mode)
-        except (IOError, OSError),e:
+        except (IOError, OSError) as e:
             self._translate_error(e, relpath)
 
     def _check_mode_and_size(self, file_abspath, fd, mode=None):
@@ -393,7 +393,7 @@ class LocalTransport(transport.Transport):
         path_to = self._abspath(rel_to)
         try:
             shutil.copy(path_from, path_to)
-        except (IOError, OSError),e:
+        except (IOError, OSError) as e:
             # TODO: What about path_to?
             self._translate_error(e, path_from)
 
@@ -405,7 +405,7 @@ class LocalTransport(transport.Transport):
             # detect conflicting names on rename, and osutils.rename tries to
             # mask cross-platform differences there
             os.rename(path_from, path_to)
-        except (IOError, OSError),e:
+        except (IOError, OSError) as e:
             # TODO: What about path_to?
             self._translate_error(e, path_from)
 
@@ -417,7 +417,7 @@ class LocalTransport(transport.Transport):
         try:
             # this version will delete the destination if necessary
             osutils.rename(path_from, path_to)
-        except (IOError, OSError),e:
+        except (IOError, OSError) as e:
             # TODO: What about path_to?
             self._translate_error(e, path_from)
 
@@ -427,7 +427,7 @@ class LocalTransport(transport.Transport):
         try:
             path = self._abspath(relpath)
             os.remove(path)
-        except (IOError, OSError),e:
+        except (IOError, OSError) as e:
             self._translate_error(e, path)
 
     def external_url(self):
@@ -454,7 +454,7 @@ class LocalTransport(transport.Transport):
                     shutil.copy(mypath, otherpath)
                     if mode is not None:
                         osutils.chmod_if_possible(otherpath, mode)
-                except (IOError, OSError),e:
+                except (IOError, OSError) as e:
                     self._translate_error(e, path)
                 count += 1
             return count
@@ -473,7 +473,7 @@ class LocalTransport(transport.Transport):
         path = self._abspath(relpath)
         try:
             entries = os.listdir(path)
-        except (IOError, OSError), e:
+        except (IOError, OSError) as e:
             self._translate_error(e, path)
         return [urlutils.escape(entry) for entry in entries]
 
@@ -484,7 +484,7 @@ class LocalTransport(transport.Transport):
         try:
             path = self._abspath(relpath)
             return os.lstat(path)
-        except (IOError, OSError),e:
+        except (IOError, OSError) as e:
             self._translate_error(e, path)
 
     def lock_read(self, relpath):
@@ -496,7 +496,7 @@ class LocalTransport(transport.Transport):
         try:
             path = self._abspath(relpath)
             return ReadLock(path)
-        except (IOError, OSError), e:
+        except (IOError, OSError) as e:
             self._translate_error(e, path)
 
     def lock_write(self, relpath):
@@ -514,7 +514,7 @@ class LocalTransport(transport.Transport):
         try:
             path = self._abspath(relpath)
             os.rmdir(path)
-        except (IOError, OSError),e:
+        except (IOError, OSError) as e:
             self._translate_error(e, path)
 
     if osutils.host_os_dereferences_symlinks():
@@ -527,7 +527,7 @@ class LocalTransport(transport.Transport):
             """See Transport.link."""
             try:
                 os.link(self._abspath(source), self._abspath(link_name))
-            except (IOError, OSError), e:
+            except (IOError, OSError) as e:
                 self._translate_error(e, source)
 
     if osutils.has_symlinks():
@@ -539,7 +539,7 @@ class LocalTransport(transport.Transport):
 
             try:
                 os.symlink(source_rel, self._abspath(link_name))
-            except (IOError, OSError), e:
+            except (IOError, OSError) as e:
                 self._translate_error(e, source_rel)
 
     def _can_roundtrip_unix_modebits(self):
@@ -583,5 +583,5 @@ class EmulatedWin32LocalTransport(LocalTransport):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from breezy.tests import test_server
+    from ..tests import test_server
     return [(LocalTransport, test_server.LocalURLServer),]

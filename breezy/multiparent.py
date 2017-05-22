@@ -16,14 +16,14 @@
 
 from __future__ import absolute_import
 
-from breezy.lazy_import import lazy_import
+import errno
+import os
+
+from .lazy_import import lazy_import
 
 lazy_import(globals(), """
-import errno
 import gzip
 import itertools
-import os
-from StringIO import StringIO
 
 from breezy import (
     bencode,
@@ -32,6 +32,9 @@ from breezy import (
     ui,
     )
 """)
+from .sixish import (
+    BytesIO,
+    )
 
 
 def topo_iter_keys(vf, keys=None):
@@ -165,15 +168,15 @@ class MultiParent(object):
         """Contruct a fulltext from this diff and its parents"""
         mpvf = MultiMemoryVersionedFile()
         for num, parent in enumerate(parents):
-            mpvf.add_version(StringIO(parent).readlines(), num, [])
+            mpvf.add_version(BytesIO(parent).readlines(), num, [])
         mpvf.add_diff(self, 'a', range(len(parents)))
         return mpvf.get_line_list(['a'])[0]
 
     @classmethod
     def from_texts(cls, text, parents=()):
         """Produce a MultiParent from a text and list of parent text"""
-        return cls.from_lines(StringIO(text).readlines(),
-                              [StringIO(p).readlines() for p in parents])
+        return cls.from_lines(BytesIO(text).readlines(),
+                              [BytesIO(p).readlines() for p in parents])
 
     def to_patch(self):
         """Yield text lines for a patch"""
@@ -190,7 +193,7 @@ class MultiParent(object):
     @classmethod
     def from_patch(cls, text):
         """Create a MultiParent from its string form"""
-        return cls._from_patch(StringIO(text))
+        return cls._from_patch(BytesIO(text))
 
     @staticmethod
     def _from_patch(lines):
@@ -559,7 +562,7 @@ class MultiVersionedFile(BaseVersionedFile):
         infile = open(self._filename + '.mpknit', 'rb')
         try:
             infile.seek(start)
-            sio = StringIO(infile.read(count))
+            sio = BytesIO(infile.read(count))
         finally:
             infile.close()
         zip_file = gzip.GzipFile(None, mode='rb', fileobj=sio)
@@ -592,12 +595,12 @@ class MultiVersionedFile(BaseVersionedFile):
     def destroy(self):
         try:
             os.unlink(self._filename + '.mpknit')
-        except OSError, e:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
         try:
             os.unlink(self._filename + '.mpidx')
-        except OSError, e:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
 
@@ -674,7 +677,7 @@ class _Reconstructor(object):
 
 
 def gzip_string(lines):
-    sio = StringIO()
+    sio = BytesIO()
     data_file = gzip.GzipFile(None, mode='wb', fileobj=sio)
     data_file.writelines(lines)
     data_file.close()

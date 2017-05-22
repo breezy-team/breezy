@@ -24,7 +24,7 @@ import signal
 import subprocess
 import tempfile
 
-from breezy import errors
+from . import errors
 
 
 def strace(function, *args, **kwargs):

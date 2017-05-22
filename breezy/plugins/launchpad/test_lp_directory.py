@@ -20,28 +20,28 @@ import os
 import xmlrpclib
 
 import breezy
-from breezy import (
+from ... import (
     debug,
     errors,
     tests,
     transport,
     )
-from breezy.branch import Branch
-from breezy.directory_service import directories
-from breezy.tests import (
+from ...branch import Branch
+from ...directory_service import directories
+from ...tests import (
     features,
     ssl_certs,
     TestCaseInTempDir,
     TestCaseWithMemoryTransport
 )
-from breezy.plugins.launchpad import (
+from . import (
     _register_directory,
     lp_registration,
     )
-from breezy.plugins.launchpad.lp_directory import (
+from .lp_directory import (
     LaunchpadDirectory)
-from breezy.plugins.launchpad.account import get_lp_login, set_lp_login
-from breezy.tests import http_server
+from .account import get_lp_login, set_lp_login
+from ...tests import http_server
 
 
 def load_tests(standard_tests, module, loader):
@@ -440,7 +440,7 @@ class PreCannedHTTPServer(PreCannedServerMixin, http_server.HttpServer):
 
 
 if features.HTTPSServerFeature.available():
-    from breezy.tests import https_server
+    from ...tests import https_server
     class PreCannedHTTPSServer(PreCannedServerMixin, https_server.HTTPSServer):
         pass
 

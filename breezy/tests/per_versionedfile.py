@@ -23,9 +23,8 @@
 
 from gzip import GzipFile
 from itertools import chain, izip
-from StringIO import StringIO
 
-from breezy import (
+from .. import (
     errors,
     graph as _mod_graph,
     groupcompress,
@@ -35,34 +34,37 @@ from breezy import (
     transport,
     ui,
     )
-from breezy.errors import (
+from ..errors import (
                            RevisionNotPresent,
                            RevisionAlreadyPresent,
                            )
-from breezy.knit import (
+from ..knit import (
     cleanup_pack_knit,
     make_file_factory,
     make_pack_factory,
     )
-from breezy.tests import (
+from ..sixish import (
+    BytesIO,
+    )
+from . import (
     TestCase,
     TestCaseWithMemoryTransport,
     TestNotApplicable,
     TestSkipped,
     )
-from breezy.tests.http_utils import TestCaseWithWebserver
-from breezy.transport.memory import MemoryTransport
-import breezy.versionedfile as versionedfile
-from breezy.versionedfile import (
+from .http_utils import TestCaseWithWebserver
+from ..transport.memory import MemoryTransport
+from .. import versionedfile as versionedfile
+from ..versionedfile import (
     ConstantMapper,
     HashEscapedPrefixMapper,
     PrefixMapper,
     VirtualVersionedFiles,
     make_versioned_files_factory,
     )
-from breezy.weave import WeaveFile
-from breezy.weavefile import write_weave
-from breezy.tests.scenarios import load_tests_apply_scenarios
+from ..weave import WeaveFile
+from ..weavefile import write_weave
+from .scenarios import load_tests_apply_scenarios
 
 
 load_tests = load_tests_apply_scenarios
@@ -753,7 +755,7 @@ class VersionedFileTestMixIn(object):
     def test_readonly_mode(self):
         t = self.get_transport()
         factory = self.get_factory()
-        vf = factory('id', t, 0777, create=True, access_mode='w')
+        vf = factory('id', t, 0o777, create=True, access_mode='w')
         vf = factory('id', t, access_mode='r')
         self.assertRaises(errors.ReadOnlyError, vf.add_lines, 'base', [], [])
         self.assertRaises(errors.ReadOnlyError,
@@ -936,7 +938,6 @@ class TestWeaveHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
 class MergeCasesMixin(object):
 
     def doMerge(self, base, a, b, mp):
-        from cStringIO import StringIO
         from textwrap import dedent
 
         def addcrlf(x):
@@ -956,7 +957,7 @@ class MergeCasesMixin(object):
                 self.log('%12s | %s' % (state, line[:-1]))
 
         self.log('merge:')
-        mt = StringIO()
+        mt = BytesIO()
         mt.writelines(w.weave_merge(p))
         mt.seek(0)
         self.log(mt.getvalue())
@@ -1182,7 +1183,7 @@ class TestWeaveMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
     def log_contents(self, w):
         self.log('weave is:')
-        tmpf = StringIO()
+        tmpf = BytesIO()
         write_weave(w, tmpf)
         self.log(tmpf.getvalue())
 
@@ -1243,11 +1244,11 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
             'version origin 1 b284f94827db1fa2970d9e2014f080413b547a7e\n'
             'origin\n'
             'end origin\n',
-            GzipFile(mode='rb', fileobj=StringIO(ft_data)).read())
+            GzipFile(mode='rb', fileobj=BytesIO(ft_data)).read())
         self.assertEqual(
             'version merged 4 32c2e79763b3f90e8ccde37f9710b6629c25a796\n'
             '1,2,3\nleft\nright\nmerged\nend merged\n',
-            GzipFile(mode='rb', fileobj=StringIO(delta_data)).read())
+            GzipFile(mode='rb', fileobj=BytesIO(delta_data)).read())
 
     def test_deannotation(self):
         """Test converting annotated knits to unannotated knits."""
@@ -1261,11 +1262,11 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
             'version origin 1 00e364d235126be43292ab09cb4686cf703ddc17\n'
             'origin\n'
             'end origin\n',
-            GzipFile(mode='rb', fileobj=StringIO(ft_data)).read())
+            GzipFile(mode='rb', fileobj=BytesIO(ft_data)).read())
         self.assertEqual(
             'version merged 3 ed8bce375198ea62444dc71952b22cfc2b09226d\n'
             '2,2,2\nright\nmerged\nend merged\n',
-            GzipFile(mode='rb', fileobj=StringIO(delta_data)).read())
+            GzipFile(mode='rb', fileobj=BytesIO(delta_data)).read())
 
     def test_annotated_to_fulltext_no_eol(self):
         """Test adapting annotated knits to full texts (for -> weaves)."""
@@ -1693,13 +1694,13 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 ('ed8bce375198ea62444dc71952b22cfc2b09226d', 23)],
                 results)
             # Check the added items got CHK keys.
-            self.assertEqual(set([
+            self.assertEqual({
                 ('sha1:00e364d235126be43292ab09cb4686cf703ddc17',),
                 ('sha1:51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44',),
                 ('sha1:9ef09dfa9d86780bdec9219a22560c6ece8e0ef1',),
                 ('sha1:a8478686da38e370e32e42e8a0c220e33ee9132f',),
                 ('sha1:ed8bce375198ea62444dc71952b22cfc2b09226d',),
-                ]),
+                },
                 files.keys())
         elif self.key_length == 2:
             self.assertEqual([
@@ -1715,7 +1716,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 ('ed8bce375198ea62444dc71952b22cfc2b09226d', 23)],
                 results)
             # Check the added items got CHK keys.
-            self.assertEqual(set([
+            self.assertEqual({
                 ('FileA', 'sha1:00e364d235126be43292ab09cb4686cf703ddc17'),
                 ('FileA', 'sha1:51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44'),
                 ('FileA', 'sha1:9ef09dfa9d86780bdec9219a22560c6ece8e0ef1'),
@@ -1726,7 +1727,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 ('FileB', 'sha1:9ef09dfa9d86780bdec9219a22560c6ece8e0ef1'),
                 ('FileB', 'sha1:a8478686da38e370e32e42e8a0c220e33ee9132f'),
                 ('FileB', 'sha1:ed8bce375198ea62444dc71952b22cfc2b09226d'),
-                ]),
+                },
                 files.keys())
 
     def test_empty_lines(self):
@@ -2515,7 +2516,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 list(files.get_missing_compression_parent_keys()))
             files.insert_record_stream(entries)
             missing_bases = files.get_missing_compression_parent_keys()
-            self.assertEqual(set([self.get_simple_key('left')]),
+            self.assertEqual({self.get_simple_key('left')},
                 set(missing_bases))
             self.assertEqual(set(keys), set(files.get_parent_map(keys)))
         else:
@@ -2539,7 +2540,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         files = self.get_versionedfiles()
         files.insert_record_stream(entries)
         missing_bases = files.get_missing_compression_parent_keys()
-        self.assertEqual(set([self.get_simple_key('left')]),
+        self.assertEqual({self.get_simple_key('left')},
             set(missing_bases))
         # 'merged' is inserted (although a commit of a write group involving
         # this versionedfiles would fail).
@@ -2732,7 +2733,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         else:
             key = ('foo', 'bar',)
         files.add_lines(key, (), [])
-        self.assertEqual(set([key]), set(files.keys()))
+        self.assertEqual({key}, set(files.keys()))
 
 
 class VirtualVersionedFilesTests(TestCase):

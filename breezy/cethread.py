@@ -19,6 +19,10 @@ from __future__ import absolute_import
 import sys
 import threading
 
+from .sixish import (
+    reraise,
+)
+
 
 class CatchingExceptionThread(threading.Thread):
     """A thread that keeps track of exceptions.
@@ -42,10 +46,6 @@ class CatchingExceptionThread(threading.Thread):
         self.exception = None
         self.ignored_exceptions = None # see set_ignored_exceptions
         self.lock = threading.Lock()
-
-    # compatibility thunk for python-2.4 and python-2.5...
-    if sys.version_info < (2, 6):
-        name = property(threading.Thread.getName, threading.Thread.setName)
 
     def set_sync_event(self, event):
         """Set the ``sync_event`` event used to synchronize exception catching.
@@ -146,7 +146,7 @@ class CatchingExceptionThread(threading.Thread):
             if (self.ignored_exceptions is None
                 or not self.ignored_exceptions(exc_value)):
                 # Raise non ignored exceptions
-                raise exc_class, exc_value, exc_tb
+                reraise(exc_class, exc_value, exc_tb)
 
     def pending_exception(self):
         """Raise the caught exception.

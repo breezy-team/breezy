@@ -22,10 +22,12 @@ doc/developers/container-format.txt.
 
 from __future__ import absolute_import
 
-from cStringIO import StringIO
 import re
 
-from breezy import errors
+from . import errors
+from .sixish import (
+    BytesIO,
+    )
 
 
 FORMAT_ONE = "Bazaar pack format 1 (introduced in 0.18)"
@@ -57,7 +59,7 @@ def _check_name_encoding(name):
     """
     try:
         name.decode('utf-8')
-    except UnicodeDecodeError, e:
+    except UnicodeDecodeError as e:
         raise errors.InvalidRecordError(str(e))
 
 
@@ -194,7 +196,7 @@ class ReadVFile(object):
             self._string.tell() == self._string_length):
             offset, data = self.readv_result.next()
             self._string_length = len(data)
-            self._string = StringIO(data)
+            self._string = BytesIO(data)
 
     def read(self, length):
         self._next()

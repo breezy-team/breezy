@@ -20,15 +20,15 @@ from __future__ import absolute_import
 # perhaps show them in log -v and allow them as options to the commit command.
 
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import bugtracker
 """)
-from breezy import (
+from . import (
     errors,
     symbol_versioning,
     )
-from breezy.osutils import contains_whitespace
+from .osutils import contains_whitespace
 
 NULL_REVISION="null:"
 CURRENT_REVISION="current:"
@@ -164,7 +164,7 @@ def iter_ancestors(revision_id, revision_source, only_present=False):
                 yield ancestor, distance
             try:
                 revision = revision_source.get_revision(ancestor)
-            except errors.NoSuchRevision, e:
+            except errors.NoSuchRevision as e:
                 if e.revision == revision_id:
                     raise
                 else:

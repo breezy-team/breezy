@@ -89,7 +89,7 @@ def write_weave_v5(weave, f):
 
 def read_weave(f):
     # FIXME: detect the weave type and dispatch
-    from breezy.weave import Weave
+    from .weave import Weave
     w = Weave(getattr(f, 'name', None))
     _read_weave_v5(f, w)
     return w
@@ -114,7 +114,7 @@ def _read_weave_v5(f, w):
     # +59363 0    311.8780    311.8780   +<method 'append' of 'list' objects>
     # +200   0     30.2500     30.2500   +<method 'readlines' of 'file' objects>
 
-    from breezy.weave import WeaveFormatError
+    from .weave import WeaveFormatError
 
     try:
         lines = iter(f.readlines())

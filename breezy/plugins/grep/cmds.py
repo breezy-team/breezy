@@ -18,10 +18,10 @@
 
 from __future__ import absolute_import
 
-from breezy import errors
-from breezy.commands import Command, display_command
-from breezy.option import Option, ListOption
-from breezy.config import GlobalConfig
+from ... import errors
+from ...commands import Command, display_command
+from ...option import Option, ListOption
+from ...config import GlobalConfig
 
 # FIXME: _parse_levels should be shared with breezy.builtins. this is a copy
 # to avoid the error

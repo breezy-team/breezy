@@ -148,7 +148,7 @@ class FTPTestServer(test_server.TestServer):
             raise AssertionError(
                 "FTPServer currently assumes local transport, got %s"
                 % vfs_server)
-        self._root = os.getcwdu()
+        self._root = osutils.getcwd()
 
         address = ('localhost', 0) # bind to a random port
         authorizer = AnonymousWithWriteAccessAuthorizer()
@@ -197,7 +197,7 @@ class FTPTestServer(test_server.TestServer):
         while self._ftpd_running:
             try:
                 self._ftp_server.serve_forever(timeout=0.1, count=1)
-            except select.error, e:
+            except select.error as e:
                 if e.args[0] != errno.EBADF:
                     raise
         self._ftp_server.close_all(ignore_all=True)

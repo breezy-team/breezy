@@ -23,7 +23,7 @@ constructing a class or using a factory method on Reconfigure.
 from __future__ import absolute_import
 
 
-from breezy import (
+from . import (
     branch,
     controldir,
     errors,
@@ -31,7 +31,7 @@ from breezy import (
     ui,
     urlutils,
     )
-from breezy.i18n import gettext
+from .i18n import gettext
 
 # TODO: common base class for all reconfigure operations, making no
 # assumptions about what kind of change will be done.

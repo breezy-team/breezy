@@ -16,13 +16,14 @@
 
 """Tests for handling of ignore files"""
 
-from cStringIO import StringIO
-
-from breezy import (
+from .. import (
     config,
     ignores,
     )
-from breezy.tests import (
+from ..sixish import (
+    BytesIO,
+    )
+from . import (
     TestCase,
     TestCaseInTempDir,
     TestCaseWithTransport,
@@ -32,7 +33,7 @@ from breezy.tests import (
 class TestParseIgnoreFile(TestCase):
 
     def test_parse_fancy(self):
-        ignored = ignores.parse_ignore_file(StringIO(
+        ignored = ignores.parse_ignore_file(BytesIO(
                 './rootdir\n'
                 'randomfile*\n'
                 'path/from/ro?t\n'
@@ -44,7 +45,7 @@ class TestParseIgnoreFile(TestCase):
                 '!RE:^\.z.*\n'
                 '!!./.zcompdump\n'
                 ))
-        self.assertEqual(set(['./rootdir',
+        self.assertEqual({'./rootdir',
                           'randomfile*',
                           'path/from/ro?t',
                           u'unicode\xb5',
@@ -52,23 +53,23 @@ class TestParseIgnoreFile(TestCase):
                           ' xx ',
                           '!RE:^\.z.*',
                           '!!./.zcompdump',
-                         ]), ignored)
+                         }, ignored)
 
     def test_parse_empty(self):
-        ignored = ignores.parse_ignore_file(StringIO(''))
+        ignored = ignores.parse_ignore_file(BytesIO(b''))
         self.assertEqual(set([]), ignored)
         
     def test_parse_non_utf8(self):
         """Lines with non utf 8 characters should be discarded."""
-        ignored = ignores.parse_ignore_file(StringIO(
+        ignored = ignores.parse_ignore_file(BytesIO(
                 'utf8filename_a\n'
                 'invalid utf8\x80\n'
                 'utf8filename_b\n'
                 ))
-        self.assertEqual(set([
+        self.assertEqual({
                         'utf8filename_a',
                         'utf8filename_b',
-                       ]), ignored)
+                       }, ignored)
 
 
 class TestUserIgnores(TestCaseInTempDir):
@@ -141,8 +142,8 @@ class TestUserIgnores(TestCaseInTempDir):
         added = ignores.add_unique_user_ignores(
             ['xxx', './bar', 'xxx', 'dir1/', 'dir2/', 'dir3\\'])
         self.assertEqual(['xxx', 'dir2'], added)
-        self.assertEqual(set(['foo', './bar', u'b\xe5z',
-                              'xxx', 'dir1', 'dir2', 'dir3']),
+        self.assertEqual({'foo', './bar', u'b\xe5z',
+                              'xxx', 'dir1', 'dir2', 'dir3'},
                          ignores.get_user_ignores())
 
 
@@ -160,15 +161,15 @@ class TestRuntimeIgnores(TestCase):
         self.assertEqual(set(), ignores.get_runtime_ignores())
 
         ignores.add_runtime_ignores(['foo'])
-        self.assertEqual(set(['foo']), ignores.get_runtime_ignores())
+        self.assertEqual({'foo'}, ignores.get_runtime_ignores())
 
     def test_add_duplicate(self):
         """Adding the same ignore twice shouldn't add a new entry."""
         ignores.add_runtime_ignores(['foo', 'bar'])
-        self.assertEqual(set(['foo', 'bar']), ignores.get_runtime_ignores())
+        self.assertEqual({'foo', 'bar'}, ignores.get_runtime_ignores())
 
         ignores.add_runtime_ignores(['bar'])
-        self.assertEqual(set(['foo', 'bar']), ignores.get_runtime_ignores())
+        self.assertEqual({'foo', 'bar'}, ignores.get_runtime_ignores())
 
 
 class TestTreeIgnores(TestCaseWithTransport):

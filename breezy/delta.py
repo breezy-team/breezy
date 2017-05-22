@@ -19,7 +19,10 @@ from __future__ import absolute_import
 from breezy import (
     osutils,
     )
-from breezy.trace import is_quiet
+from .sixish import (
+    StringIO,
+    )
+from .trace import is_quiet
 
 
 class TreeDelta(object):
@@ -109,8 +112,7 @@ class TreeDelta(object):
 
     def get_changes_as_text(self, show_ids=False, show_unchanged=False,
                             short_status=False):
-        import StringIO
-        output = StringIO.StringIO()
+        output = StringIO()
         report_delta(output, self, short_status, show_ids, show_unchanged)
         return output.getvalue()
 
@@ -201,7 +203,7 @@ class _ChangeReporter(object):
                 output_file.write((fmt % args) + '\n')
         self.output = output
         if self.output is None:
-            from breezy import trace
+            from . import trace
             self.output = trace.note
         self.suppress_root_add = suppress_root_add
         self.modified_map = {'kind changed': 'K',

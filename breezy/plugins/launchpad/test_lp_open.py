@@ -16,7 +16,7 @@
 
 """Tests for the launchpad-open command."""
 
-from breezy.tests import TestCaseWithTransport
+from ...tests import TestCaseWithTransport
 
 
 class TestLaunchpadOpen(TestCaseWithTransport):

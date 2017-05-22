@@ -20,7 +20,7 @@ from __future__ import absolute_import
 
 import os
 import sys
-from breezy.trace import mutter
+from ...trace import mutter
 
 
 _ca_path = None

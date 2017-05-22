@@ -19,7 +19,7 @@ from __future__ import absolute_import
 import errno
 import re
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     bencode,
@@ -404,10 +404,10 @@ class ShelfManager(object):
         filename = self.get_shelf_filename(shelf_id)
         try:
             return open(self.transport.local_abspath(filename), 'rb')
-        except IOError, e:
+        except IOError as e:
             if e.errno != errno.ENOENT:
                 raise
-            from breezy import errors
+            from . import errors
             raise errors.NoSuchShelfId(shelf_id)
 
     def get_unshelver(self, shelf_id):
@@ -440,8 +440,7 @@ class ShelfManager(object):
 
     def active_shelves(self):
         """Return a list of shelved changes."""
-        active = self.get_shelf_ids(self.transport.list_dir('.'))
-        active.sort()
+        active = sorted(self.get_shelf_ids(self.transport.list_dir('.')))
         return active
 
     def last_shelf(self):

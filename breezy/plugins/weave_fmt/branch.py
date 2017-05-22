@@ -18,24 +18,24 @@
 
 from __future__ import absolute_import
 
-from breezy import (
+from ... import (
     errors,
     lockable_files,
     )
 
-from breezy.decorators import (
+from ...decorators import (
     needs_read_lock,
     needs_write_lock,
     only_raises,
     )
-from breezy.lock import LogicalLockResult
-from breezy.trace import mutter
+from ...lock import LogicalLockResult
+from ...trace import mutter
 
-from breezy.branch import (
+from ...branch import (
     BranchFormat,
     BranchWriteLockResult,
     )
-from breezy.branchfmt.fullhistory import (
+from ...branchfmt.fullhistory import (
     FullHistoryBzrBranch,
     )
 
@@ -95,8 +95,8 @@ class BzrBranch4(FullHistoryBzrBranch):
     def _get_checkout_format(self, lightweight=False):
         """Return the most suitable metadir for a checkout of this branch.
         """
-        from breezy.plugins.weave_fmt.repository import RepositoryFormat7
-        from breezy.bzrdir import BzrDirMetaFormat1
+        from .repository import RepositoryFormat7
+        from ...bzrdir import BzrDirMetaFormat1
         format = BzrDirMetaFormat1()
         if lightweight:
             format.set_branch_format(self._format)
@@ -179,7 +179,7 @@ class BzrBranchFormat4(BranchFormat):
 
     def __init__(self):
         super(BzrBranchFormat4, self).__init__()
-        from breezy.plugins.weave_fmt.bzrdir import (
+        from .bzrdir import (
             BzrDirFormat4, BzrDirFormat5, BzrDirFormat6,
             )
         self._matchingbzrdir = BzrDirFormat6()

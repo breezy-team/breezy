@@ -14,13 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
-from breezy import (
+from ... import (
     branch,
     builtins,
-    tests,
     )
-from breezy.tests import transport_util
+from .. import (
+    transport_util,
+    ui_testing,
+    )
 
 
 class TestPull(transport_util.TestCaseWithConnectionHookedTransport):
@@ -34,7 +35,7 @@ class TestPull(transport_util.TestCaseWithConnectionHookedTransport):
 
         cmd = builtins.cmd_pull()
         # We don't care about the ouput but 'outf' should be defined
-        cmd.outf = tests.StringIOWrapper()
+        cmd.outf = ui_testing.StringIOWithEncoding()
         cmd.run(self.get_url('branch1'), directory='branch2')
         self.assertEqual(1, len(self.connections))
 
@@ -52,7 +53,7 @@ class TestPull(transport_util.TestCaseWithConnectionHookedTransport):
 
         pull = builtins.cmd_pull()
         # We don't care about the ouput but 'outf' should be defined
-        pull.outf = tests.StringIOWrapper()
+        pull.outf = ui_testing.StringIOWithEncoding()
         pull.run(self.get_url('remote'), directory='local')
         self.assertEqual(2, len(self.connections))
 

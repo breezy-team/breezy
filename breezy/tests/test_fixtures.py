@@ -18,10 +18,10 @@
 
 import codecs
 
-from breezy import (
+from .. import (
     tests,
     )
-from breezy.tests import (
+from . import (
     fixtures,
     )
 

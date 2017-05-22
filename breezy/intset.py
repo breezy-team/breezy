@@ -66,7 +66,7 @@ class IntSet(Exception):
     """
     __slots__ = ['_val']
 
-    def __init__(self, values=None, bitmask=0L):
+    def __init__(self, values=None, bitmask=0):
         """Create a new intset.
 
         values
@@ -77,7 +77,7 @@ class IntSet(Exception):
             self.update(values)
 
 
-    def __nonzero__(self):
+    def __bool__(self):
         """IntSets are false if empty, otherwise True.
 
         >>> bool(IntSet())
@@ -87,6 +87,8 @@ class IntSet(Exception):
         True
         """
         return bool(self._val)
+
+    __nonzero__ = __bool__
 
 
     def __len__(self):
@@ -151,7 +153,7 @@ class IntSet(Exception):
 
 
     def __contains__(self, i):
-        return self._val & (1L << i)
+        return self._val & (1 << i)
 
 
     def __iter__(self):
@@ -178,11 +180,11 @@ class IntSet(Exception):
             self._val |= to_add._val
         else:
             for i in to_add:
-                self._val |= (1L << i)
+                self._val |= (1 << i)
 
 
     def add(self, to_add):
-        self._val |= (1L << to_add)
+        self._val |= (1 << to_add)
 
 
     def remove(self, to_remove):
@@ -202,7 +204,7 @@ class IntSet(Exception):
         >>> not a
         True
         """
-        m = 1L << to_remove
+        m = 1 << to_remove
         if not self._val & m:
             raise KeyError(to_remove)
         self._val ^= m

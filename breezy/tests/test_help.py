@@ -18,7 +18,7 @@
 
 import textwrap
 
-from breezy import (
+from .. import (
     builtins,
     commands,
     config,
@@ -30,7 +30,7 @@ from breezy import (
     tests,
     )
 
-from breezy.tests.test_i18n import ZzzTranslations
+from .test_i18n import ZzzTranslations
 import re
 
 

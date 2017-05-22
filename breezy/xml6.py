@@ -16,7 +16,7 @@
 
 from __future__ import absolute_import
 
-from breezy import xml8
+from . import xml8
 
 
 class Serializer_v6(xml8.Serializer_v8):

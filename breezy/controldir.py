@@ -24,7 +24,7 @@ see breezy.bzrdir.BzrDir.
 
 from __future__ import absolute_import
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 import textwrap
 
@@ -45,7 +45,7 @@ from breezy.push import (
 from breezy.i18n import gettext
 """)
 
-from breezy import registry
+from . import registry
 
 
 class ControlComponent(object):
@@ -754,7 +754,7 @@ class ControlDir(ControlComponent):
             try:
                 result = klass.open_from_transport(a_transport)
                 return result, urlutils.unescape(a_transport.relpath(url))
-            except errors.NotBranchError, e:
+            except errors.NotBranchError as e:
                 pass
             except errors.PermissionDenied:
                 pass

@@ -16,7 +16,7 @@
 
 """Tests for the fifo_cache module."""
 
-from breezy import (
+from .. import (
     fifo_cache,
     tests,
     )

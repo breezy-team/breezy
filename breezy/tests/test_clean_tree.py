@@ -20,18 +20,18 @@ import os
 import shutil
 import sys
 
-from breezy import tests, ui
-from breezy.controldir import (
+from .. import tests, ui
+from ..controldir import (
     ControlDir,
     )
-from breezy.clean_tree import (
+from ..clean_tree import (
     clean_tree,
     iter_deletables,
     )
-from breezy.osutils import (
+from ..osutils import (
     has_symlinks,
     )
-from breezy.tests import (
+from . import (
     TestCaseInTempDir,
     )
 
@@ -103,7 +103,7 @@ class TestCleanTree(TestCaseInTempDir):
             # proper excinfo that needs to be passed to onerror
             try:
                 raise OSError
-            except OSError, e:
+            except OSError as e:
                 e.errno = errno.EACCES
                 excinfo = sys.exc_info()
                 function = os.remove
@@ -117,9 +117,8 @@ class TestCleanTree(TestCaseInTempDir):
 
         self.overrideAttr(os, 'unlink', _dummy_unlink)
         self.overrideAttr(shutil, 'rmtree', _dummy_rmtree)
-        stdout = tests.StringIOWrapper()
-        stderr = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stdout=stdout, stderr=stderr)
+        ui.ui_factory = tests.TestUIFactory()
+        stderr = ui.ui_factory.stderr
 
         ControlDir.create_standalone_workingtree('.')
         self.build_tree(['0foo', '1bar', '2baz', 'subdir0/'])

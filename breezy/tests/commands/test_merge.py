@@ -14,13 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from ...builtins import cmd_merge
+from .. import (
+    transport_util,
+    ui_testing,
+    )
 
-from breezy.builtins import cmd_merge
-from breezy.tests import StringIOWrapper
-from breezy.tests.transport_util import TestCaseWithConnectionHookedTransport
 
-
-class TestMerge(TestCaseWithConnectionHookedTransport):
+class TestMerge(transport_util.TestCaseWithConnectionHookedTransport):
 
     def test_merge(self):
         wt1 = self.make_branch_and_tree('branch1')
@@ -32,7 +33,6 @@ class TestMerge(TestCaseWithConnectionHookedTransport):
         self.start_logging_connections()
 
         cmd = cmd_merge()
-        # We don't care about the ouput but 'outf' should be defined
-        cmd.outf = StringIOWrapper()
+        cmd.outf = ui_testing.StringIOWithEncoding()
         cmd.run(self.get_url('branch1'), directory='branch2')
         self.assertEqual(1, len(self.connections))

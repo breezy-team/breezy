@@ -19,8 +19,8 @@
 
 import zlib
 
-from breezy import chunk_writer
-from breezy.tests import TestCaseWithTransport
+from .. import chunk_writer
+from . import TestCaseWithTransport
 
 
 class TestWriter(TestCaseWithTransport):

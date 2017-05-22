@@ -1710,7 +1710,7 @@ class TestTransportConfig(TestCaseWithControlDir):
         config = my_dir.get_config()
         try:
             config.set_default_stack_on('http://example.com')
-        except errors.BzrError, e:
+        except errors.BzrError as e:
             if 'Cannot set config' in str(e):
                 self.assertFalse(
                     isinstance(my_dir, (_mod_bzrdir.BzrDirMeta1, RemoteBzrDir)),

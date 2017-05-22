@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 
-from breezy.lazy_import import lazy_import
+from ..lazy_import import lazy_import
 lazy_import(globals(), """
 from itertools import izip
 import time
@@ -45,19 +45,19 @@ from breezy.knit import (
     )
 """)
 
-from breezy import (
+from .. import (
     btree_index,
     )
-from breezy.index import (
+from ..index import (
     CombinedGraphIndex,
     GraphIndex,
     GraphIndexPrefixAdapter,
     InMemoryGraphIndex,
     )
-from breezy.repofmt.knitrepo import (
+from .knitrepo import (
     KnitRepository,
     )
-from breezy.repofmt.pack_repo import (
+from .pack_repo import (
     _DirectPackAccess,
     NewPack,
     RepositoryFormatPack,
@@ -68,7 +68,7 @@ from breezy.repofmt.pack_repo import (
     PackRootCommitBuilder,
     RepositoryPackCollection,
     )
-from breezy.vf_repository import (
+from ..vf_repository import (
     StreamSource,
     )
 

@@ -67,35 +67,37 @@ from __future__ import absolute_import
 # FIXME: the conflict markers should be *7* characters
 
 from copy import copy
-from cStringIO import StringIO
 import os
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import tsort
 """)
-from breezy import (
+from . import (
     errors,
     osutils,
     )
-from breezy.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
+from .errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
         RevisionAlreadyPresent,
         RevisionNotPresent,
         UnavailableRepresentation,
         )
-from breezy.osutils import dirname, sha, sha_strings, split_lines
-import breezy.patiencediff
-from breezy.revision import NULL_REVISION
-from breezy.symbol_versioning import *
-from breezy.trace import mutter
-from breezy.versionedfile import (
+from .osutils import dirname, sha, sha_strings, split_lines
+from . import patiencediff
+from .revision import NULL_REVISION
+from .sixish import (
+    BytesIO,
+    )
+from .symbol_versioning import *
+from .trace import mutter
+from .versionedfile import (
     AbsentContentFactory,
     adapter_registry,
     ContentFactory,
     sort_groupcompress,
     VersionedFile,
     )
-from breezy.weavefile import _read_weave_v5, write_weave_v5
+from .weavefile import _read_weave_v5, write_weave_v5
 
 
 class WeaveContentFactory(ContentFactory):
@@ -231,7 +233,7 @@ class Weave(VersionedFile):
         self._name_map = {}
         self._weave_name = weave_name
         if matcher is None:
-            self._matcher = breezy.patiencediff.PatienceSequenceMatcher
+            self._matcher = patiencediff.PatienceSequenceMatcher
         else:
             self._matcher = matcher
         if get_scope is None:
@@ -750,7 +752,9 @@ class Weave(VersionedFile):
 
         NOT FOR PUBLIC USE.
         """
-        if isinstance(name_or_index, (int, long)):
+        # GZ 2017-04-01: This used to check for long as well, but I don't think
+        # there are python implementations with sys.maxsize > sys.maxint
+        if isinstance(name_or_index, int):
             return name_or_index
         else:
             return self._lookup(name_or_index)
@@ -805,7 +809,7 @@ class Weave(VersionedFile):
             name = self._idx_to_name(i)
             sha1s[name] = sha()
             texts[name] = []
-            new_inc = set([name])
+            new_inc = {name}
             for p in self._parents[i]:
                 new_inc.update(inclusions[self._idx_to_name(p)])
 
@@ -878,8 +882,8 @@ class Weave(VersionedFile):
                 raise errors.WeaveTextDiffers(name, self, other)
             self_parents = self._parents[this_idx]
             other_parents = other._parents[other_idx]
-            n1 = set([self._names[i] for i in self_parents])
-            n2 = set([other._names[i] for i in other_parents])
+            n1 = {self._names[i] for i in self_parents}
+            n2 = {other._names[i] for i in other_parents}
             if not self._compatible_parents(n1, n2):
                 raise WeaveParentMismatch("inconsistent parents "
                     "for version {%s}: %s vs %s" % (name, n1, n2))
@@ -921,7 +925,7 @@ class WeaveFile(Weave):
         self._filemode = filemode
         try:
             f = self._transport.get(name + WeaveFile.WEAVE_SUFFIX)
-            _read_weave_v5(StringIO(f.read()), self)
+            _read_weave_v5(BytesIO(f.read()), self)
         except errors.NoSuchFile:
             if not create:
                 raise
@@ -941,7 +945,7 @@ class WeaveFile(Weave):
     def copy_to(self, name, transport):
         """See VersionedFile.copy_to()."""
         # as we are all in memory always, just serialise to the new place.
-        sio = StringIO()
+        sio = BytesIO()
         write_weave_v5(self, sio)
         sio.seek(0)
         transport.put_file(name + WeaveFile.WEAVE_SUFFIX, sio, self._filemode)
@@ -949,7 +953,7 @@ class WeaveFile(Weave):
     def _save(self):
         """Save the weave."""
         self._check_write_ok()
-        sio = StringIO()
+        sio = BytesIO()
         write_weave_v5(self, sio)
         sio.seek(0)
         bytes = sio.getvalue()

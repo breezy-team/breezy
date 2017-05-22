@@ -22,10 +22,10 @@ stub functions to allow other decorators to be written easily.
 
 from __future__ import absolute_import
 
-from breezy import transport
+from . import (Transport, get_transport)
 
 
-class TransportDecorator(transport.Transport):
+class TransportDecorator(Transport):
     """A no-change decorator for Transports.
 
     Subclasses of this are new transports that are based on an
@@ -52,8 +52,7 @@ class TransportDecorator(transport.Transport):
                              (url, prefix))
         not_decorated_url = url[len(prefix):]
         if _decorated is None:
-            self._decorated = transport.get_transport(
-                not_decorated_url)
+            self._decorated = get_transport(not_decorated_url)
         else:
             self._decorated = _decorated
         super(TransportDecorator, self).__init__(prefix + self._decorated.base)

@@ -17,14 +17,14 @@
 
 """Tests for upgrades of various stacking situations."""
 
-from breezy import (
+from .. import (
     controldir,
     check,
     errors,
     tests,
     )
-from breezy.upgrade import upgrade
-from breezy.tests.scenarios import load_tests_apply_scenarios
+from ..upgrade import upgrade
+from .scenarios import load_tests_apply_scenarios
 
 
 def upgrade_scenarios():

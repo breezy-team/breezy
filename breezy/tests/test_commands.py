@@ -18,7 +18,7 @@ import errno
 import inspect
 import sys
 
-from breezy import (
+from .. import (
     builtins,
     commands,
     config,
@@ -27,8 +27,8 @@ from breezy import (
     tests,
     trace,
     )
-from breezy.commands import display_command
-from breezy.tests import TestSkipped
+from ..commands import display_command
+from . import TestSkipped
 
 
 class TestCommands(tests.TestCase):
@@ -373,7 +373,7 @@ class TestListCommandHook(tests.TestCase):
         self.assertSubset(['foo', 'bar'], cmds)
 
 class TestPreAndPostCommandHooks(tests.TestCase):
-    class TestError(StandardError):
+    class TestError(Exception):
         __doc__ = """A test exception."""
 
     def test_pre_and_post_hooks(self):

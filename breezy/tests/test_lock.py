@@ -17,13 +17,13 @@
 """Tests for OS Locks."""
 
 
-from breezy import (
+from .. import (
     debug,
     errors,
     lock,
     tests,
     )
-from breezy.tests.scenarios import load_tests_apply_scenarios
+from .scenarios import load_tests_apply_scenarios
 
 
 load_tests = load_tests_apply_scenarios

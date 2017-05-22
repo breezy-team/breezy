@@ -19,9 +19,7 @@
 
 from __future__ import absolute_import
 
-import cStringIO
-
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 import bisect
 import math
@@ -29,7 +27,7 @@ import tempfile
 import zlib
 """)
 
-from breezy import (
+from . import (
     chunk_writer,
     debug,
     errors,
@@ -41,7 +39,10 @@ from breezy import (
     trace,
     transport,
     )
-from breezy.index import _OPTION_NODE_REFS, _OPTION_KEY_ELEMENTS, _OPTION_LEN
+from .index import _OPTION_NODE_REFS, _OPTION_KEY_ELEMENTS, _OPTION_LEN
+from .sixish import (
+    BytesIO,
+    )
 
 
 _BTSIGNATURE = "B+Tree Graph Index 2\n"
@@ -74,7 +75,7 @@ class _BuilderRow(object):
     def finish_node(self, pad=True):
         byte_lines, _, padding = self.writer.finish()
         if self.nodes == 0:
-            self.spool = cStringIO.StringIO()
+            self.spool = BytesIO()
             # padded note:
             self.spool.write("\x00" * _RESERVED_HEADER_BYTES)
         elif self.nodes == 1:
@@ -397,7 +398,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
                                     self.reference_lists)
             self._add_key(string_key, line, rows, allow_optimize=allow_optimize)
         for row in reversed(rows):
-            pad = (type(row) != _LeafBuilderRow)
+            pad = (not isinstance(row, _LeafBuilderRow))
             row.finish_node(pad=pad)
         lines = [_BTSIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
@@ -408,7 +409,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         if row_lengths and row_lengths[-1] > 1:
             result = tempfile.NamedTemporaryFile(prefix='bzr-index-')
         else:
-            result = cStringIO.StringIO()
+            result = BytesIO()
         result.writelines(lines)
         position = sum(map(len, lines))
         root_row = True
@@ -430,7 +431,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             position = 0 # Only the root row actually has an offset
             copied_len = osutils.pumpfile(row.spool, result)
             if copied_len != (row.nodes - 1) * _PAGE_SIZE:
-                if type(row) != _LeafBuilderRow:
+                if not isinstance(row, _LeafBuilderRow):
                     raise AssertionError("Incorrect amount of data copied"
                         " expected: %d, got: %d"
                         % ((row.nodes - 1) * _PAGE_SIZE,
@@ -575,7 +576,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
                     key_dict = dicts.pop(-1)
                     # can't be empty or would not exist
                     item, value = key_dict.iteritems().next()
-                    if type(value) == dict:
+                    if isinstance(value, dict):
                         # push keys
                         dicts.extend(key_dict.itervalues())
                     else:
@@ -635,14 +636,12 @@ class _LeafNode(dict):
 
     def all_items(self):
         """Return a sorted list of (key, (value, refs)) items"""
-        items = self.items()
-        items.sort()
+        items = sorted(self.items())
         return items
 
     def all_keys(self):
         """Return a sorted list of all keys."""
-        keys = self.keys()
-        keys.sort()
+        keys = sorted(self.keys())
         return keys
 
 
@@ -717,7 +716,7 @@ class BTreeGraphIndex(object):
     def __eq__(self, other):
         """Equal when self and other were created with the same parameters."""
         return (
-            type(self) == type(other) and
+            isinstance(self, type(other)) and
             self._transport == other._transport and
             self._name == other._name and
             self._size == other._size)
@@ -1429,7 +1428,7 @@ class BTreeGraphIndex(object):
                     key_dict = dicts.pop(-1)
                     # can't be empty or would not exist
                     item, value = key_dict.iteritems().next()
-                    if type(value) == dict:
+                    if isinstance(value, dict):
                         # push keys
                         dicts.extend(key_dict.itervalues())
                     else:
@@ -1603,6 +1602,6 @@ _gcchk_factory = _LeafNode
 try:
     from breezy import _btree_serializer_pyx as _btree_serializer
     _gcchk_factory = _btree_serializer._parse_into_chk
-except ImportError, e:
+except ImportError as e:
     osutils.failed_to_load_extension(e)
     from breezy import _btree_serializer_py as _btree_serializer

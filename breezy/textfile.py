@@ -20,9 +20,9 @@ from __future__ import absolute_import
 
 from itertools import chain
 
-from breezy.errors import BinaryFile
-from breezy.iterablefile import IterableFile
-from breezy.osutils import file_iterator
+from .errors import BinaryFile
+from .iterablefile import IterableFile
+from .osutils import file_iterator
 
 
 def text_file(input):

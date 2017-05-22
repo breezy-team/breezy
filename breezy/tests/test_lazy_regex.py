@@ -19,8 +19,8 @@
 import pickle
 import re
 
-from breezy import errors
-from breezy import (
+from .. import errors
+from .. import (
     lazy_regex,
     tests,
     )

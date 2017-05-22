@@ -18,18 +18,18 @@ from __future__ import absolute_import
 
 # Original author: David Allouche
 
-from breezy import (
+from . import (
     errors,
     lock,
     merge,
     revision
     )
-from breezy.branch import Branch
-from breezy.i18n import gettext
-from breezy.trace import note
+from .branch import Branch
+from .i18n import gettext
+from .trace import note
 
 def _run_post_switch_hooks(control_dir, to_branch, force, revision_id):
-    from breezy.branch import SwitchHookParams
+    from .branch import SwitchHookParams
     hooks = Branch.hooks['post_switch']
     if not hooks:
         return
@@ -72,7 +72,7 @@ def _check_pending_merges(control, force=False):
     """
     try:
         tree = control.open_workingtree()
-    except errors.NotBranchError, ex:
+    except errors.NotBranchError as ex:
         # Lightweight checkout and branch is no longer there
         if force:
             return
@@ -111,7 +111,7 @@ def _set_branch_location(control, to_branch, force=False):
                         'Cannot switch as local commits found in the checkout. '
                         'Commit these to the bound branch or use --force to '
                         'throw them away.'))
-            except errors.BoundBranchConnectionFailure, e:
+            except errors.BoundBranchConnectionFailure as e:
                 raise errors.BzrCommandError(gettext(
                         'Unable to connect to current master branch %(target)s: '
                         '%(error)s To switch anyway, use --force.') %

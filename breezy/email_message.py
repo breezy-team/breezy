@@ -26,9 +26,9 @@ from email import (
     Utils,
     )
 
-from breezy import __version__ as _breezy_version
-from breezy.osutils import safe_unicode
-from breezy.smtp_connection import SMTPConnection
+from . import __version__ as _breezy_version
+from .osutils import safe_unicode
+from .smtp_connection import SMTPConnection
 
 
 class EmailMessage(object):

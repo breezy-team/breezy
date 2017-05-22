@@ -20,7 +20,7 @@ root.
 
 from __future__ import absolute_import
 
-from breezy.transport import (
+from . import (
     pathfilter,
     register_transport,
     )

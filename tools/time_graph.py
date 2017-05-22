@@ -38,7 +38,7 @@ finally:
     b.unlock()
 end = time.clock()
 
-print 'Found %d nodes, loaded in %.3fs' % (len(parent_map), end - begin)
+print('Found %d nodes, loaded in %.3fs' % (len(parent_map), end - begin))
 
 def all_heads_comp(g, combinations):
     h = []
@@ -72,7 +72,7 @@ for revision_id, parent_ids in parent_map.iteritems():
 if opts.max_combinations > 0 and len(combinations) > opts.max_combinations:
     combinations = random.sample(combinations, opts.max_combinations)
 
-print '      %d combinations' % (len(combinations),)
+print('      %d combinations' % (len(combinations),))
 
 def combi_graph(graph_klass, comb):
     # DEBUG
@@ -89,13 +89,13 @@ def combi_graph(graph_klass, comb):
     return dict(elapsed=(end - begin), graph=g, heads=heads)
 
 def report(name, g):
-    print '%s: %.3fs' % (name, g['elapsed'])
+    print('%s: %.3fs' % (name, g['elapsed']))
     counters_used = False
     for c in graph._counters:
         if c:
             counters_used = True
     if counters_used:
-        print '  %s' % (graph._counters,)
+        print('  %s' % (graph._counters,))
 
 known_python = combi_graph(_known_graph_py.KnownGraph, combinations)
 report('Known', known_python)
@@ -109,8 +109,8 @@ def _simple_graph(parent_map):
 if opts.quick:
     if known_python['heads'] != known_pyrex['heads']:
         import pdb; pdb.set_trace()
-    print 'ratio: %.1f:1 faster' % (
-        known_python['elapsed'] / known_pyrex['elapsed'],)
+    print('ratio: %.1f:1 faster' % (
+        known_python['elapsed'] / known_pyrex['elapsed'],))
 else:
     orig = combi_graph(_simple_graph, combinations)
     report('Orig', orig)
@@ -118,5 +118,5 @@ else:
     if orig['heads'] != known_pyrex['heads']:
         import pdb; pdb.set_trace()
 
-    print 'ratio: %.1f:1 faster' % (
-        orig['elapsed'] / known_pyrex['elapsed'],)
+    print('ratio: %.1f:1 faster' % (
+        orig['elapsed'] / known_pyrex['elapsed'],))

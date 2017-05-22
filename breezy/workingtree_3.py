@@ -22,7 +22,7 @@ from __future__ import absolute_import
 
 import errno
 
-from breezy import (
+from . import (
     bzrdir,
     errors,
     hashcache,
@@ -31,14 +31,14 @@ from breezy import (
     trace,
     transform,
     )
-from breezy.decorators import (
+from .decorators import (
     needs_read_lock,
     )
-from breezy.lockable_files import LockableFiles
-from breezy.lockdir import LockDir
-from breezy.mutabletree import MutableTree
-from breezy.transport.local import LocalTransport
-from breezy.workingtree import (
+from .lockable_files import LockableFiles
+from .lockdir import LockDir
+from .mutabletree import MutableTree
+from .transport.local import LocalTransport
+from .workingtree import (
     InventoryWorkingTree,
     WorkingTreeFormatMetaDir,
     )
@@ -73,7 +73,7 @@ class PreDirStateWorkingTree(InventoryWorkingTree):
         if self._hashcache.needs_write:
             try:
                 self._hashcache.write()
-            except OSError, e:
+            except OSError as e:
                 if e.errno not in (errno.EPERM, errno.EACCES):
                     raise
                 # TODO: jam 20061219 Should this be a warning? A single line

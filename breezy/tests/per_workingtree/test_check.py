@@ -29,7 +29,7 @@ class TestCheck(TestCaseWithWorkingTree):
         if not isinstance(tree, InventoryWorkingTree):
             raise TestNotApplicable(
                 "_get_check_refs only relevant for inventory working trees")
-        self.assertEqual(set([('trees', 'null:')]),
+        self.assertEqual({('trees', 'null:')},
             set(tree._get_check_refs()))
 
     def test__get_check_refs_basis(self):
@@ -40,7 +40,7 @@ class TestCheck(TestCaseWithWorkingTree):
             raise TestNotApplicable(
                 "_get_check_refs only relevant for inventory working trees")
         revid = tree.commit('first post')
-        self.assertEqual(set([('trees', revid)]),
+        self.assertEqual({('trees', revid)},
             set(tree._get_check_refs()))
 
     def test__check_with_refs(self):

@@ -16,14 +16,14 @@
 
 """Tests for breezy.counted_lock"""
 
-from breezy.counted_lock import CountedLock
-from breezy.errors import (
+from ..counted_lock import CountedLock
+from ..errors import (
     LockError,
     LockNotHeld,
     ReadOnlyError,
     TokenMismatch,
     )
-from breezy.tests import TestCase
+from . import TestCase
 
 
 class DummyLock(object):

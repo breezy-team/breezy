@@ -16,17 +16,17 @@
 
 """Test directory service implementation"""
 
-from breezy import (
+from .. import (
     errors,
     transport,
     urlutils,
     )
-from breezy.directory_service import (
+from ..directory_service import (
     AliasDirectory,
     DirectoryServiceRegistry,
     directories,
     )
-from breezy.tests import TestCase, TestCaseWithTransport
+from . import TestCase, TestCaseWithTransport
 
 
 class FooService(object):

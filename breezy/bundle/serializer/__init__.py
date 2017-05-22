@@ -20,17 +20,19 @@
 from __future__ import absolute_import
 
 import base64
-from StringIO import StringIO
 import re
 
-from breezy import (
+from ... import (
     errors,
     pyutils,
     )
-from breezy.diff import internal_diff
-from breezy.revision import NULL_REVISION
+from ...diff import internal_diff
+from ...revision import NULL_REVISION
+from ...sixish import (
+    BytesIO,
+    )
 # For backwards-compatibility
-from breezy.timestamp import unpack_highres_date, format_highres_date
+from ...timestamp import unpack_highres_date, format_highres_date
 
 
 # New bundles should try to use this header format
@@ -201,7 +203,7 @@ def register_lazy(version, module, classname, overwrite=False):
 
 
 def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
-    temp = StringIO()
+    temp = BytesIO()
     internal_diff(old_filename, old_lines, new_filename, new_lines, temp,
                   allow_binary=True)
     temp.seek(0)

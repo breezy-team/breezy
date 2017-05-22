@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 
 lazy_import(globals(), """
 from breezy import (
@@ -30,8 +30,8 @@ from breezy import (
 from breezy.i18n import gettext
 """)
 
-from breezy.commands import Command
-from breezy.option import Option, RegistryOption
+from .commands import Command
+from .option import Option, RegistryOption
 
 
 def _parse_version_info_format(format):

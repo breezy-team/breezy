@@ -38,7 +38,6 @@ This script provides options for building any individual files or two options
 to build the certificate authority files (--ca) or the server files (--server).
 """
 
-from cStringIO import StringIO
 import optparse
 import os
 from subprocess import (
@@ -62,7 +61,7 @@ from breezy.tests import (
     )
 
 def error(s):
-    print s
+    print(s)
     exit(1)
 
 def needs(request, *paths):

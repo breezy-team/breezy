@@ -16,8 +16,8 @@
 
 """Tests for the Command.encoding_type interface."""
 
-from breezy.tests import TestCase
-from breezy.commands import Command, register_command, plugin_cmds
+from .. import TestCaseWithMemoryTransport
+from ...commands import Command, register_command, plugin_cmds
 
 
 class cmd_echo_exact(Command):
@@ -45,10 +45,11 @@ class cmd_echo_replace(cmd_echo_exact):
     encoding_type = 'replace'
 
 
-class TestCommandEncoding(TestCase):
+class TestCommandEncoding(TestCaseWithMemoryTransport):
 
     def test_exact(self):
         def bzr(*args, **kwargs):
+            kwargs['encoding'] = 'ascii'
             return self.run_bzr(*args, **kwargs)[0]
 
         register_command(cmd_echo_exact)

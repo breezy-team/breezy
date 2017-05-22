@@ -16,20 +16,22 @@
 
 """Tests for breezy.export."""
 
-from cStringIO import StringIO
 import os
 import tarfile
 import time
 import zipfile
 
-from breezy import (
+from .. import (
     errors,
     export,
     tests,
     )
-from breezy.export import get_root_name
-from breezy.export.tar_exporter import export_tarball_generator
-from breezy.tests import features
+from ..export import get_root_name
+from ..export.tar_exporter import export_tarball_generator
+from ..sixish import (
+    BytesIO,
+    )
+from . import features
 
 
 class TestDirExport(tests.TestCaseWithTransport):
@@ -131,7 +133,7 @@ class TestDirExport(tests.TestCaseWithTransport):
         builder.start_series()
         # Earliest allowable date on FAT32 filesystems is 1980-01-01
         a_time = time.mktime((1999, 12, 12, 0, 0, 0, 0, 0, 0))
-        b_time = time.mktime((1980, 01, 01, 0, 0, 0, 0, 0, 0))
+        b_time = time.mktime((1980, 0o1, 0o1, 0, 0, 0, 0, 0, 0))
         builder.build_snapshot(None, None, [
             ('add', ('', 'root-id', 'directory', '')),
             ('add', ('a', 'a-id', 'file', 'content\n'))],
@@ -247,7 +249,7 @@ class TarExporterTests(tests.TestCaseWithTransport):
         self.build_tree(['a'])
         wt.add(["a"])
         wt.commit("1", timestamp=42)
-        target = StringIO()
+        target = BytesIO()
         ball = tarfile.open(None, "w|", target)
         wt.lock_read()
         try:

@@ -16,11 +16,10 @@
 
 import errno
 import os
-from StringIO import StringIO
 import sys
 import time
 
-from breezy import (
+from .. import (
     bencode,
     errors,
     filters,
@@ -34,7 +33,7 @@ from breezy import (
     transform,
     urlutils,
     )
-from breezy.conflicts import (
+from ..conflicts import (
     DeletingParent,
     DuplicateEntry,
     DuplicateID,
@@ -43,9 +42,9 @@ from breezy.conflicts import (
     ParentLoop,
     UnversionedParent,
 )
-from breezy.controldir import ControlDir
-from breezy.diff import show_diff_trees
-from breezy.errors import (
+from ..controldir import ControlDir
+from ..diff import show_diff_trees
+from ..errors import (
     DuplicateKey,
     ExistingLimbo,
     ExistingPendingDeletion,
@@ -55,22 +54,25 @@ from breezy.errors import (
     MalformedTransform,
     ReusingTransform,
 )
-from breezy.osutils import (
+from ..osutils import (
     file_kind,
     pathjoin,
 )
-from breezy.merge import Merge3Merger, Merger
-from breezy.mutabletree import MutableTree
-from breezy.tests import (
+from ..merge import Merge3Merger, Merger
+from ..mutabletree import MutableTree
+from ..sixish import (
+    BytesIO,
+    )
+from . import (
     features,
     TestCaseInTempDir,
     TestSkipped,
     )
-from breezy.tests.features import (
+from .features import (
     HardlinkFeature,
     SymlinkFeature,
     )
-from breezy.transform import (
+from ..transform import (
     build_tree,
     create_from_tree,
     cook_conflicts,
@@ -913,8 +915,8 @@ class TestTreeTransform(tests.TestCaseWithTransport):
     def test_resolve_conflicts_wrong_existing_parent_kind(self):
         tt = self.prepare_wrong_parent_kind()
         raw_conflicts = resolve_conflicts(tt)
-        self.assertEqual(set([('non-directory parent', 'Created directory',
-                         'new-3')]), raw_conflicts)
+        self.assertEqual({('non-directory parent', 'Created directory',
+                         'new-3')}, raw_conflicts)
         cooked_conflicts = cook_conflicts(raw_conflicts, tt)
         self.assertEqual([NonDirectoryParent('Created directory', 'parent.new',
         'parent-id')], cooked_conflicts)
@@ -932,8 +934,8 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         tt.delete_contents(parent_id)
         tt.create_file('contents', parent_id)
         raw_conflicts = resolve_conflicts(tt)
-        self.assertEqual(set([('non-directory parent', 'Created directory',
-                         'new-3')]), raw_conflicts)
+        self.assertEqual({('non-directory parent', 'Created directory',
+                         'new-3')}, raw_conflicts)
         tt.apply()
         self.assertEqual(None, self.wt.path2id('parent'))
         self.assertEqual('parent-id', self.wt.path2id('parent.new'))
@@ -1020,7 +1022,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             # windows filesystems fail on renaming open files
             self.addCleanup(file(self.wt.abspath('myfile')).close)
         else:
-            self.skip("Don't know how to force a permissions error on rename")
+            self.skipTest("Can't force a permissions error on rename")
         # now transform to rename
         rename_transform, root_id = self.get_transform()
         file_trans_id = rename_transform.trans_id_file_id('myfile-id')
@@ -2455,7 +2457,7 @@ class TestFileMover(tests.TestCaseWithTransport):
         mover.rename('c/e', 'c/d')
         try:
             mover.rename('a', 'c')
-        except errors.FileExists, e:
+        except errors.FileExists as e:
             mover.rollback()
         self.assertPathExists('a')
         self.assertPathExists('c/d')
@@ -2536,11 +2538,11 @@ class TestFinalizeRobustness(tests.TestCaseWithTransport):
     def _override_globals_in_method(self, instance, method_name, globals):
         """Replace method on instance with one with updated globals"""
         import types
-        func = getattr(instance, method_name).im_func
-        new_globals = dict(func.func_globals)
+        func = getattr(instance, method_name).__func__
+        new_globals = dict(func.__globals__)
         new_globals.update(globals)
-        new_func = types.FunctionType(func.func_code, new_globals,
-            func.func_name, func.func_defaults)
+        new_func = types.FunctionType(func.__code__, new_globals,
+            func.__name__, func.__defaults__)
         setattr(instance, method_name,
             types.MethodType(new_func, instance, instance.__class__))
         self.addCleanup(delattr, instance, method_name)
@@ -2740,7 +2742,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.addCleanup(preview.finalize)
         preview.new_file('file2', preview.root, 'content B\n', 'file2-id')
         preview_tree = preview.get_preview_tree()
-        out = StringIO()
+        out = BytesIO()
         show_diff_trees(revision_tree, preview_tree, out)
         lines = out.getvalue().splitlines()
         self.assertEqual(lines[0], "=== added file 'file2'")
@@ -2882,7 +2884,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview.unversion_file(c_trans_id)
         preview.version_file('c-id', c_trans_id)
         preview_tree = preview.get_preview_tree()
-        self.assertEqual(set(['a-id', 'c-id', tree.get_root_id()]),
+        self.assertEqual({'a-id', 'c-id', tree.get_root_id()},
                          preview_tree.all_file_ids())
 
     def test_path2id_deleted_unchanged(self):
@@ -3208,7 +3210,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
                          'new-versioned-id')
         tree = preview.get_preview_tree()
         preview.unversion_file(preview.trans_id_tree_path('removed-file'))
-        self.assertEqual(set(['new-file', 'removed-file', 'existing-file']),
+        self.assertEqual({'new-file', 'removed-file', 'existing-file'},
                          set(tree.extras()))
 
     def test_merge_into_preview(self):
@@ -3468,8 +3470,8 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         self.assertEqual({'new-1': u'foo\u1234',
                           'new-2': 'bar',
                           tt.root: ''}, tt._tree_id_paths)
-        self.assertEqual(set(['new-1']), tt._removed_id)
-        self.assertEqual(set(['new-2']), tt._removed_contents)
+        self.assertEqual({'new-1'}, tt._removed_id)
+        self.assertEqual({'new-2'}, tt._removed_contents)
 
     def missing_records(self):
         attribs = self.default_attribs()

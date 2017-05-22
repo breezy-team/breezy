@@ -17,8 +17,8 @@
 
 """Tests for chunks_to_lines."""
 
-from breezy import tests
-from breezy.tests import (
+from .. import tests
+from . import (
     features,
     )
 

@@ -16,8 +16,8 @@
 
 from __future__ import absolute_import
 
-from breezy import registry
-from breezy.lazy_import import lazy_import
+from . import registry
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import errors, urlutils
 """)
@@ -314,7 +314,7 @@ tracker_registry.register('generic', GenericBugTracker())
 
 FIXED = 'fixed'
 
-ALLOWED_BUG_STATUSES = set([FIXED])
+ALLOWED_BUG_STATUSES = {FIXED}
 
 
 def encode_fixes_bug_urls(bug_urls):

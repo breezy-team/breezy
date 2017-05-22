@@ -16,26 +16,16 @@
 
 import sys
 
-from breezy.builtins import cmd_cat
-from breezy.tests import StringIOWrapper
-from breezy.tests.transport_util import TestCaseWithConnectionHookedTransport
+from ...builtins import cmd_cat
+from ...tests import (
+    ui_testing,
+    )
+from ...tests.transport_util import TestCaseWithConnectionHookedTransport
 
 
 class TestCat(TestCaseWithConnectionHookedTransport):
 
-    def setUp(self):
-        super(TestCat, self).setUp()
-        # Redirect sys.stdout as this is what cat uses
-        self.outf = StringIOWrapper()
-        self.overrideAttr(sys, 'stdout', self.outf)
-
     def test_cat(self):
-        # FIXME: sftp raises ReadError instead of NoSuchFile when probing for
-        # branch/foo/.bzr/branch-format when used with the paramiko test
-        # server.
-        from breezy.tests import TestSkipped
-        raise TestSkipped('SFTPTransport raises incorrect exception'
-                          ' when reading from paramiko server')
         wt1 = self.make_branch_and_tree('branch')
         self.build_tree_contents([('branch/foo', 'foo')])
         wt1.add('foo')
@@ -44,7 +34,8 @@ class TestCat(TestCaseWithConnectionHookedTransport):
         self.start_logging_connections()
 
         cmd = cmd_cat()
+        cmd.outf = ui_testing.StringIOWithEncoding()
         cmd.run(self.get_url('branch/foo'))
         self.assertEqual(1, len(self.connections))
-        self.assertEqual('foo', self.outf.getvalue())
+        self.assertEqual('foo', cmd.outf.getvalue())
 

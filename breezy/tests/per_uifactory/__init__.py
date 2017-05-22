@@ -33,14 +33,17 @@
 # Plugins that add new UIFactorys can create their own subclasses.
 
 
-from cStringIO import StringIO
 import unittest
 
-
-from breezy import (
+from ... import (
     tests,
     transport,
     ui,
+    )
+
+from ..ui_testing import (
+    StringIOWithEncoding,
+    StringIOAsTTY,
     )
 
 
@@ -121,9 +124,9 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
 
     def setUp(self):
         super(TestTextUIFactory, self).setUp()
-        self.stdin = StringIO()
-        self.stdout = StringIO()
-        self.stderr = StringIO()
+        self.stdin = StringIOWithEncoding()
+        self.stdout = StringIOWithEncoding()
+        self.stderr = StringIOWithEncoding()
         self.factory = ui.text.TextUIFactory(self.stdin, self.stdout,
             self.stderr)
 
@@ -172,26 +175,11 @@ class TestTTYTextUIFactory(TestTextUIFactory):
     def setUp(self):
         super(TestTTYTextUIFactory, self).setUp()
 
-        class TTYStringIO(object):
-            """Thunk over to StringIO() for everything but 'isatty'"""
-
-            def __init__(self):
-                self.__dict__['_sio'] = StringIO()
-
-            def isatty(self):
-                return True
-
-            def __getattr__(self, name):
-                return getattr(self._sio, name)
-
-            def __setattr__(self, name, value):
-                return setattr(self._sio, name, value)
-
         # Remove 'TERM' == 'dumb' which causes us to *not* treat output as a
         # real terminal, even though isatty returns True
         self.overrideEnv('TERM', None)
-        self.stderr = TTYStringIO()
-        self.stdout = TTYStringIO()
+        self.stderr = StringIOAsTTY()
+        self.stdout = StringIOAsTTY()
         self.factory = ui.text.TextUIFactory(self.stdin, self.stdout,
             self.stderr)
 

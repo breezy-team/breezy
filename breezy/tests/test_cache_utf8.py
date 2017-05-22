@@ -16,10 +16,10 @@
 
 """Tests for utf8 caching."""
 
-from breezy import (
+from .. import (
     cache_utf8,
     )
-from breezy.tests import TestCase
+from . import TestCase
 
 
 class TestEncodeCache(TestCase):

@@ -18,22 +18,22 @@
 
 from __future__ import absolute_import
 
-from breezy import (
+from ... import (
     branch as _mod_branch,
     controldir,
     trace,
     )
-from breezy.commands import (
+from ...commands import (
     Command,
     )
-from breezy.errors import (
+from ...errors import (
     BzrCommandError,
     InvalidURL,
     NoPublicBranch,
     NotBranchError,
     )
-from breezy.i18n import gettext
-from breezy.option import (
+from ...i18n import gettext
+from ...option import (
     Option,
     ListOption,
     )
@@ -102,7 +102,7 @@ class cmd_register_branch(Command):
             author='',
             link_bug=None,
             dry_run=False):
-        from breezy.plugins.launchpad.lp_registration import (
+        from .lp_registration import (
             BranchRegistrationRequest, BranchBugLinkRequest,
             DryRunLaunchpadService, LaunchpadService)
         if public_url is None:
@@ -173,7 +173,7 @@ class cmd_launchpad_open(Command):
             yield branch_url
 
     def _get_web_url(self, service, location):
-        from breezy.plugins.launchpad.lp_registration import (
+        from .lp_registration import (
             NotLaunchpadBranch)
         for branch_url in self._possible_locations(location):
             try:
@@ -183,7 +183,7 @@ class cmd_launchpad_open(Command):
         raise NotLaunchpadBranch(branch_url)
 
     def run(self, location=None, dry_run=False):
-        from breezy.plugins.launchpad.lp_registration import (
+        from .lp_registration import (
             LaunchpadService)
         if location is None:
             location = u'.'
@@ -221,7 +221,7 @@ class cmd_launchpad_login(Command):
 
     def run(self, name=None, no_check=False, verbose=False):
         # This is totally separate from any launchpadlib login system.
-        from breezy.plugins.launchpad import account
+        from . import account
         check_account = not no_check
 
         if name is None:
@@ -257,8 +257,8 @@ class cmd_launchpad_mirror(Command):
     takes_args = ['location?']
 
     def run(self, location='.'):
-        from breezy.plugins.launchpad import lp_api
-        from breezy.plugins.launchpad.lp_registration import LaunchpadService
+        from . import lp_api
+        from .lp_registration import LaunchpadService
         branch, _ = _mod_branch.Branch.open_containing(location)
         service = LaunchpadService()
         launchpad = lp_api.login(service)
@@ -305,7 +305,7 @@ class cmd_lp_propose_merge(Command):
 
     def run(self, submit_branch=None, review=None, staging=False,
             message=None, approve=False, fixes=None):
-        from breezy.plugins.launchpad import lp_propose
+        from . import lp_propose
         tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
             '.')
         if review is None:
@@ -349,8 +349,8 @@ class cmd_lp_find_proposal(Command):
     takes_options = ['revision']
 
     def run(self, revision=None):
-        from breezy import ui
-        from breezy.plugins.launchpad import lp_api
+        from ... import ui
+        from . import lp_api
         import webbrowser
         b = _mod_branch.Branch.open_containing('.')[0]
         pb = ui.ui_factory.nested_progress_bar()
@@ -371,7 +371,7 @@ class cmd_lp_find_proposal(Command):
             pb.finished()
 
     def _find_proposals(self, revision_id, pb):
-        from breezy.plugins.launchpad import (lp_api, lp_registration)
+        from . import (lp_api, lp_registration)
         # "devel" because branches.getMergeProposals is not part of 1.0 API.
         launchpad = lp_api.login(lp_registration.LaunchpadService(),
                                  version='devel')

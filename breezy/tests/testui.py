@@ -18,7 +18,7 @@
 """
 
 
-from breezy import (
+from .. import (
     progress,
     ui,
     )

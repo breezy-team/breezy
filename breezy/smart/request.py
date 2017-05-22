@@ -35,7 +35,7 @@ from __future__ import absolute_import
 
 import threading
 
-from breezy import (
+from .. import (
     debug,
     errors,
     osutils,
@@ -44,7 +44,7 @@ from breezy import (
     trace,
     urlutils,
     )
-from breezy.lazy_import import lazy_import
+from ..lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import bzrdir
 from breezy.bundle import serializer
@@ -360,7 +360,7 @@ class SmartServerRequestHandler(object):
                 self._command.teardown_jail()
         except (KeyboardInterrupt, SystemExit):
             raise
-        except Exception, err:
+        except Exception as err:
             err_struct = _translate_error(err)
             return FailedSmartServerResponse(err_struct)
 
@@ -380,7 +380,7 @@ class SmartServerRequestHandler(object):
                             cmd, repr(args)[1:-1])
             raise errors.UnknownSmartMethod(cmd)
         if 'hpss' in debug.debug_flags:
-            from breezy.smart import vfs
+            from . import vfs
             if issubclass(command, vfs.VfsRequest):
                 action = 'hpss vfs req'
             else:

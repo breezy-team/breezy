@@ -38,7 +38,10 @@ def gettext(message):
     :returns: translated message as unicode.
     """
     install()
-    return _translations.ugettext(message)
+    try:
+        return _translations.ugettext(message)
+    except AttributeError:
+        return _translations.gettext(message)
 
 
 def ngettext(singular, plural, number):
@@ -51,7 +54,10 @@ def ngettext(singular, plural, number):
     :returns: translated message as unicode.
     """
     install()
-    return _translations.ungettext(singular, plural, number)
+    try:
+        return _translations.ungettext(singular, plural, number)
+    except AttributeError:
+        return _translations.ngettext(singular, plural, number)
 
 
 def N_(msg):
@@ -66,10 +72,9 @@ def gettext_per_paragraph(message):
     """
     install()
     paragraphs = message.split(u'\n\n')
-    ugettext = _translations.ugettext
     # Be careful not to translate the empty string -- it holds the
     # meta data of the .po file.
-    return u'\n\n'.join(ugettext(p) if p else u'' for p in paragraphs)
+    return u'\n\n'.join(gettext(p) if p else u'' for p in paragraphs)
 
 
 def disable_i18n():
@@ -136,18 +141,23 @@ def _get_locale_dir(base):
 
     :param base: plugins can specify their own local directory
     """
-    fs_enc = sys.getfilesystemencoding()
+    if sys.version_info > (3,):
+        decode_path = str
+    else:
+        fs_enc = sys.getfilesystemencoding()
+        def decode_path(path):
+            return path.decode(fs_enc)
     if getattr(sys, 'frozen', False):
         if base is None:
-            base = os.path.dirname(unicode(sys.executable, fs_enc))
+            base = os.path.dirname(decode_path(sys.executable))
         return os.path.join(base, u'locale')
     else:
         if base is None:
-            base = os.path.dirname(unicode(__file__, fs_enc))
+            base = os.path.dirname(decode_path(__file__))
         dirpath = os.path.realpath(os.path.join(base, u'locale'))
         if os.path.exists(dirpath):
             return dirpath
-    return os.path.join(unicode(sys.prefix, fs_enc), u"share", u"locale")
+    return os.path.join(decode_path(sys.prefix), u"share", u"locale")
 
 
 def _check_win32_locale():
@@ -179,7 +189,7 @@ def _check_win32_locale():
 
 def _get_current_locale():
     if not os.environ.get('LANGUAGE'):
-        from breezy import config
+        from . import config
         lang = config.GlobalStack().get('language')
         if lang:
             os.environ['LANGUAGE'] = lang

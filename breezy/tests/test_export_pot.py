@@ -14,18 +14,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
+import re
 import textwrap
 
-from breezy import (
+from .. import (
     commands,
     export_pot,
     option,
     registry,
     tests,
     )
-
-import re
+from ..sixish import (
+    BytesIO,
+    )
 
 
 class TestEscape(tests.TestCase):
@@ -227,7 +228,7 @@ class TestWriteOption(tests.TestCase):
     """Tests for writing texts extracted from options in pot format"""
 
     def pot_from_option(self, opt, context=None, note="test"):
-        sio = StringIO()
+        sio = BytesIO()
         exporter = export_pot._PotExporter(sio)
         if context is None:
             context = export_pot._ModuleContext("nowhere", 0)
@@ -327,7 +328,7 @@ class TestPotExporter(tests.TestCase):
 
     # This test duplicates test_duplicates below
     def test_duplicates(self):
-        exporter = export_pot._PotExporter(StringIO())
+        exporter = export_pot._PotExporter(BytesIO())
         context = export_pot._ModuleContext("mod.py", 1)
         exporter.poentry_in_context(context, "Common line.")
         context.lineno = 3
@@ -335,7 +336,7 @@ class TestPotExporter(tests.TestCase):
         self.assertEqual(1, exporter.outf.getvalue().count("Common line."))
     
     def test_duplicates_included(self):
-        exporter = export_pot._PotExporter(StringIO(), True)
+        exporter = export_pot._PotExporter(BytesIO(), True)
         context = export_pot._ModuleContext("mod.py", 1)
         exporter.poentry_in_context(context, "Common line.")
         context.lineno = 3
@@ -347,7 +348,7 @@ class PoEntryTestCase(tests.TestCase):
 
     def setUp(self):
         super(PoEntryTestCase, self).setUp()
-        self.exporter = export_pot._PotExporter(StringIO())
+        self.exporter = export_pot._PotExporter(BytesIO())
 
     def check_output(self, expected):
         self.assertEqual(

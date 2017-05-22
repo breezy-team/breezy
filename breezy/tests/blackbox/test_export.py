@@ -18,7 +18,6 @@
 """Black-box tests for brz export.
 """
 
-from StringIO import StringIO
 import os
 import stat
 import tarfile
@@ -26,14 +25,17 @@ import time
 import zipfile
 
 
-from breezy import (
+from ... import (
     export,
     )
-from breezy.tests import (
+from ...sixish import (
+    BytesIO,
+    )
+from .. import (
     features,
     TestCaseWithTransport,
     )
-from breezy.tests.matchers import ContainsNoVfsCalls
+from ..matchers import ContainsNoVfsCalls
 
 
 class TestExport(TestCaseWithTransport):
@@ -151,7 +153,7 @@ class TestExport(TestCaseWithTransport):
     def test_zip_export_stdout(self):
         tree = self.make_basic_tree()
         contents = self.run_bzr('export -d tree --format=zip -')[0]
-        self.assertZipANameAndContent(zipfile.ZipFile(StringIO(contents)))
+        self.assertZipANameAndContent(zipfile.ZipFile(BytesIO(contents)))
 
     def test_zip_export_file(self):
         tree = self.make_basic_tree()
@@ -180,7 +182,7 @@ class TestExport(TestCaseWithTransport):
         ball = tarfile.open(fname, mode=mode)
         self.assertTarANameAndContent(ball, root='test/')
         content = self.run_bzr('export -d tree --format=%s -' % (extension,))[0]
-        ball = tarfile.open(mode=mode, fileobj=StringIO(content))
+        ball = tarfile.open(mode=mode, fileobj=BytesIO(content))
         self.assertTarANameAndContent(ball, root='')
 
     def test_tar_export(self):

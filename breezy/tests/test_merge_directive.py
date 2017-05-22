@@ -16,7 +16,7 @@
 
 import re
 
-from breezy import (
+from .. import (
     errors,
     gpg,
     mail_client,

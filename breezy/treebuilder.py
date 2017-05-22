@@ -22,7 +22,7 @@ can be extremely useful in testing for instance.
 
 from __future__ import absolute_import
 
-from breezy import errors
+from . import errors
 
 
 class TreeBuilder(object):

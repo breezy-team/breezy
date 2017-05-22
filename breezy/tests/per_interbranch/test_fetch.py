@@ -61,7 +61,7 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         self.assertEqual(NULL_REVISION, b2.last_revision())
 
         self.assertEqual(
-            set(['revision-1']),
+            {'revision-1'},
             b2.repository.has_revisions(
                 ['revision-1', 'revision-2', 'revision-3']))
 
@@ -77,7 +77,7 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         b2.fetch(b1, limit=1)
 
         self.assertEqual(
-            set(['revision-1']),
+            {'revision-1'},
             b2.repository.has_revisions(
                 ['revision-1', 'revision-2', 'revision-3']))
 
@@ -90,6 +90,6 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         self.assertEqual(NULL_REVISION, b2.last_revision())
 
         self.assertEqual(
-            set(['revision-1', 'revision-2']),
+            {'revision-1', 'revision-2'},
             b2.repository.has_revisions(
                 ['revision-1', 'revision-2', 'revision-3']))

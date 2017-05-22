@@ -18,17 +18,17 @@
 
 import os
 
-from breezy.conflicts import TextConflict
-from breezy import (
+from ..conflicts import TextConflict
+from .. import (
     errors,
     merge as _mod_merge,
     )
-from breezy.tests import (
+from . import (
     multiply_tests,
     TestCaseWithTransport,
     )
-from breezy.tests.test_merge_core import MergeBuilder
-from breezy.transform import TreeTransform
+from .test_merge_core import MergeBuilder
+from ..transform import TreeTransform
 
 
 

@@ -20,7 +20,7 @@ import calendar
 import time
 import re
 
-from breezy import osutils
+from . import osutils
 
 
 def format_highres_date(t, offset=0):

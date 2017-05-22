@@ -26,7 +26,7 @@ from __future__ import absolute_import
 
 import operator
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     tsort,
@@ -34,13 +34,13 @@ from breezy import (
     vf_search,
     )
 """)
-from breezy import (
+from . import (
     errors,
     ui,
     )
-from breezy.i18n import gettext
-from breezy.revision import NULL_REVISION
-from breezy.trace import mutter
+from .i18n import gettext
+from .revision import NULL_REVISION
+from .trace import mutter
 
 
 class RepoFetcher(object):

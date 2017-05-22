@@ -17,10 +17,8 @@
 """UI tests for brz ignore."""
 
 
-from cStringIO import StringIO
 import os
 import re
-import sys
 
 from breezy import (
     ignores,

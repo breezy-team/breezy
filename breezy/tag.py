@@ -27,8 +27,8 @@ from __future__ import absolute_import
 # NOTE: I was going to call this tags.py, but vim seems to think all files
 # called tags* are ctags files... mbp 20070220.
 
-from breezy.registry import Registry
-from breezy.lazy_import import lazy_import
+from .registry import Registry
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
 import re
@@ -107,7 +107,7 @@ class _Tags(object):
         raise NotImplementedError(self.rename_revisions)
 
     def has_tag(self, tag_name):
-        return self.get_tag_dict().has_key(tag_name)
+        return tag_name in self.get_tag_dict()
 
 
 class DisabledTags(_Tags):
@@ -172,7 +172,7 @@ class BasicTags(_Tags):
         try:
             try:
                 tag_content = self.branch._get_tags_bytes()
-            except errors.NoSuchFile, e:
+            except errors.NoSuchFile as e:
                 # ugly, but only abentley should see this :)
                 trace.warning('No branch/tags file in %s.  '
                      'This branch was probably created by bzr 0.15pre.  '
@@ -241,7 +241,7 @@ class BasicTags(_Tags):
             for k, v in bencode.bdecode(tag_content).items():
                 r[k.decode('utf-8')] = v
             return r
-        except ValueError, e:
+        except ValueError as e:
             raise ValueError("failed to deserialize tag dictionary %r: %s"
                 % (tag_content, e))
 
@@ -414,7 +414,7 @@ def sort_time(branch, tags):
         try:
             revobj = branch.repository.get_revision(revid)
         except errors.NoSuchRevision:
-            timestamp = sys.maxint # place them at the end
+            timestamp = sys.maxsize # place them at the end
         else:
             timestamp = revobj.timestamp
         timestamps[revid] = timestamp

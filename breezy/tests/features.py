@@ -23,7 +23,7 @@ import stat
 import sys
 import tempfile
 
-from breezy import (
+from .. import (
     osutils,
     symbol_versioning,
     )
@@ -425,7 +425,7 @@ class _PosixPermissionsFeature(Feature):
             os.close(fd)
             osutils.chmod_if_possible(name, write_perms)
 
-            read_perms = os.stat(name).st_mode & 0777
+            read_perms = os.stat(name).st_mode & 0o777
             os.unlink(name)
             return (write_perms == read_perms)
 
@@ -447,7 +447,7 @@ class _StraceFeature(Feature):
                 stdout=subprocess.PIPE)
             proc.communicate()
             return True
-        except OSError, e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 # strace is not installed
                 return False
@@ -468,7 +468,7 @@ class _AttribFeature(Feature):
             return False
         try:
             proc = subprocess.Popen(['attrib', '.'], stdout=subprocess.PIPE)
-        except OSError, e:
+        except OSError as e:
             return False
         return (0 == proc.wait())
 

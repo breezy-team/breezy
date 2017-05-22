@@ -68,4 +68,4 @@ if __name__ == '__main__':
     import sys
     content = open(sys.argv[1], 'rb').read()
     for result in simple_parse(content):
-        print result
+        print(result)

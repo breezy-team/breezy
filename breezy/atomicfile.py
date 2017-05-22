@@ -18,7 +18,7 @@ from __future__ import absolute_import
 
 import os
 
-from breezy.lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 import stat
 import warnings
@@ -68,7 +68,7 @@ class AtomicFile(object):
         if new_mode is not None:
             local_mode = new_mode
         else:
-            local_mode = 0666
+            local_mode = 0o666
 
         # Use a low level fd operation to avoid chmodding later.
         # This may not succeed, but it should help most of the time

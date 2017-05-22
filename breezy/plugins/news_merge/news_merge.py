@@ -19,8 +19,8 @@
 from __future__ import absolute_import
 
 
-from breezy.plugins.news_merge.parser import simple_parse_lines
-from breezy import merge, merge3
+from .parser import simple_parse_lines
+from ... import merge, merge3
 
 
 class NewsMerger(merge.ConfigurableFileMerger):

@@ -16,13 +16,12 @@
 
 from __future__ import absolute_import
 
+import re
 import sys
 
-from breezy.lazy_import import lazy_import
+from ...lazy_import import lazy_import
 lazy_import(globals(), """
 from fnmatch import fnmatch
-import re
-from cStringIO import StringIO
 
 from breezy._termcolor import color_string, re_color_string, FG
 
@@ -36,11 +35,16 @@ from breezy import (
     diff,
     errors,
     lazy_regex,
-    osutils,
     revision as _mod_revision,
-    trace,
     )
 """)
+from breezy import (
+    osutils,
+    trace,
+    )
+from breezy.sixish import (
+    BytesIO,
+    )
 
 _user_encoding = osutils.get_user_encoding()
 
@@ -122,7 +126,7 @@ def compile_pattern(pattern, flags=0):
         # use python's re.compile as we need to catch re.error in case of bad pattern
         lazy_regex.reset_compile()
         patternc = re.compile(pattern, flags)
-    except re.error, e:
+    except re.error as e:
         raise errors.BzrError("Invalid pattern: '%s'" % pattern)
     return patternc
 
@@ -277,7 +281,7 @@ def grep_diff(opts):
             else:
                 ancestor_id = new_rev.parent_ids[0]
             old_tree = repo.revision_tree(ancestor_id)
-            s = StringIO()
+            s = BytesIO()
             diff.show_diff_trees(old_tree, new_tree, s,
                 old_label='', new_label='')
             display_revno = True
@@ -674,19 +678,14 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
             writeline()
     elif opts.fixed_string:
         # Fast path for no match, search through the entire file at once rather
-        # than a line at a time. However, we don't want this without Python 2.5
-        # as the quick string search algorithm wasn't implemented till then:
-        # <http://effbot.org/zone/stringlib.htm>
-        if sys.version_info > (2, 5):
-            i = file_text.find(pattern)
-            if i == -1:
-                return
-            b = file_text.rfind("\n", 0, i) + 1
-            if opts.line_number:
-                start = file_text.count("\n", 0, b) + 1
-            file_text = file_text[b:]
-        else:
-            start = 1
+        # than a line at a time. <http://effbot.org/zone/stringlib.htm>
+        i = file_text.find(pattern)
+        if i == -1:
+            return
+        b = file_text.rfind("\n", 0, i) + 1
+        if opts.line_number:
+            start = file_text.count("\n", 0, b) + 1
+        file_text = file_text[b:]
         if opts.line_number:
             for index, line in enumerate(file_text.splitlines()):
                 if pattern in line:

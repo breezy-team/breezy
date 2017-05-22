@@ -20,9 +20,9 @@
 import binascii
 import bisect
 
-from breezy import tests
+from .. import tests
 
-from breezy.tests.test_btree_index import compiled_btreeparser_feature
+from .test_btree_index import compiled_btreeparser_feature
 
 
 class TestBtreeSerializer(tests.TestCase):
