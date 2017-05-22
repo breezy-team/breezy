@@ -284,12 +284,16 @@ class ImportProcessor(object):
                 module_path = as_hunks[0].strip().split('.')
                 if name in self.imports:
                     raise errors.ImportNameCollision(name)
+                if not module_path[0]:
+                    raise ImportError(path)
                 # No children available in 'import foo as bar'
                 self.imports[name] = (module_path, None, {})
             else:
                 # Now we need to handle
                 module_path = path.split('.')
                 name = module_path[0]
+                if not name:
+                    raise ImportError(path)
                 if name not in self.imports:
                     # This is a new import that we haven't seen before
                     module_def = ([name], None, {})
@@ -320,6 +324,9 @@ class ImportProcessor(object):
         from_module, import_list = from_str.split(' import ')
 
         from_module_path = from_module.split('.')
+
+        if not from_module_path[0]:
+            raise ImportError(from_module)
 
         for path in import_list.split(','):
             path = path.strip()

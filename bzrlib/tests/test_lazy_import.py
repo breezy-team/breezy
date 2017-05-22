@@ -1053,6 +1053,15 @@ class TestImportProcessor(TestCase):
         self.assertRaises(errors.ImportNameCollision,
                           proc._build_map, 'from bar import foo')
 
+    def test_relative_imports(self):
+        proc = lazy_import.ImportProcessor()
+        self.assertRaises(ImportError,
+                          proc._build_map, 'import .bar as foo')
+        self.assertRaises(ImportError,
+                          proc._build_map, 'from .foo import bar as foo')
+        self.assertRaises(ImportError,
+                          proc._build_map, 'from .bar import foo')
+
 
 class TestLazyImportProcessor(ImportReplacerHelper):
 
