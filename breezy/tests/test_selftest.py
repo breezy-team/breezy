@@ -685,7 +685,7 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
 
     def test_get_readonly_url_http(self):
-        from ..http_server import HttpServer
+        from .http_server import HttpServer
         from ..transport.http import HttpTransportBase
         self.transport_server = test_server.LocalURLServer
         self.transport_readonly_server = HttpServer
