@@ -137,19 +137,6 @@ class BisectHarnessTests(BisectTestCase):
         assert test_content == "one dot three"
 
 
-class BisectMetaTests(BisectTestCase):
-    """Test the metadata provided by the package."""
-
-    def testVersionPresent(self):
-        """Check if version_info is available for the plugin."""
-        assert bisect.version_info
-
-    def testBzrVersioning(self):
-        """Check if API is of right version."""
-        assert bisect.bzr_minimum_api <= breezy.api_minimum_version
-        assert bisect.bzr_minimum_api <= breezy.version_info[:3]
-
-
 class BisectCurrentUnitTests(BisectTestCase):
     """Test the BisectCurrent class."""
 

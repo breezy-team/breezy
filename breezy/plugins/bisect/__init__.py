@@ -18,6 +18,8 @@
 
 from __future__ import absolute_import
 
+# Since we are a built-in plugin we share the breezy version
+from ... import version_info
 from ...commands import plugin_cmds
 
 plugin_cmds.register_lazy('cmd_bisect', [], 'breezy.plugins.bisect.cmds')
