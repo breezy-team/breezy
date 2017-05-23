@@ -108,7 +108,7 @@ class TestCaseWithRepository(TestCaseWithControlDir):
         return repo
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     prefix = 'breezy.tests.per_repository.'
     test_repository_modules = [
         'test_add_fallback_repository',

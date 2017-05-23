@@ -32,7 +32,7 @@ commands.plugin_cmds.register_lazy('cmd_bash_completion', [],
                                    'breezy.plugins.bash_completion.bashcomp')
 
 
-def load_tests(basic_tests, module, loader):
+def load_tests(loader, basic_tests, pattern):
     testmod_names = [
         'tests',
         ]

@@ -49,7 +49,7 @@ class TestCaseWithRepositoryCHK(TestCaseWithRepository):
         return repository.Repository.open(self.get_transport(path).base)
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     supported_scenarios = []
     unsupported_scenarios = []
     for test_name, scenario_info in all_repository_format_scenarios():

@@ -36,7 +36,7 @@ from breezy.tests.per_controldir import (
 from breezy.transport import memory
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     colo_supported_formats = []
     colo_unsupported_formats = []
     # This will always add scenarios using the smart server.

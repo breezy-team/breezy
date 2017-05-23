@@ -71,7 +71,7 @@ class TestCaseWithControlDir(TestCaseWithTransport):
         return self.bzrdir_format
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     test_per_controldir = [
         'breezy.tests.per_controldir.test_controldir',
         'breezy.tests.per_controldir.test_format',

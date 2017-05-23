@@ -44,7 +44,7 @@ from .account import get_lp_login, set_lp_login
 from ...tests import http_server
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     result = loader.suiteClass()
     t_tests, remaining_tests = tests.split_suite_by_condition(
         standard_tests, tests.condition_isinstance((

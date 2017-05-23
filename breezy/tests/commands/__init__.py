@@ -24,7 +24,7 @@ test the usage of the commands).
 # FIXME: If the separation described above from the blackbox tests is not worth
 # it, all the tests defined below should be moved to blackbox instead.
 
-def load_tests(basic_tests, module, loader):
+def load_tests(loader, basic_tests, pattern):
     suite = loader.suiteClass()
     # add the tests for this module
     suite.addTests(basic_tests)

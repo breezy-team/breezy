@@ -23,7 +23,7 @@ for man page generation.
 from __future__ import absolute_import
 
 
-def load_tests(basic_tests, module, loader):
+def load_tests(loader, basic_tests, pattern):
     suite = loader.suiteClass()
     # add the tests for this module (obviously none so far)
     suite.addTests(basic_tests)

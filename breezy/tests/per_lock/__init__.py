@@ -39,7 +39,7 @@ def make_scenarios(lock_classes):
     return result
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     submod_tests = loader.loadTestsFromModuleNames([
         'breezy.tests.per_lock.test_lock',
         'breezy.tests.per_lock.test_temporary_write_lock',

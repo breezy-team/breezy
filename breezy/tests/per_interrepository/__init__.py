@@ -196,7 +196,7 @@ class TestCaseWithInterRepository(TestCaseWithControlDir):
         return self.repository_format_to.initialize(made_control)
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     submod_tests = loader.loadTestsFromModuleNames([
         'breezy.tests.per_interrepository.test_fetch',
         'breezy.tests.per_interrepository.test_interrepository',

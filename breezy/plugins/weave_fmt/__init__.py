@@ -117,7 +117,7 @@ _mod_workingtree.format_registry.register_extra_lazy(
 serializer.format_registry.register_lazy('4', 'breezy.plugins.weave_fmt.xml4',
     'serializer_v4')
 
-def load_tests(basic_tests, module, loader):
+def load_tests(loader, basic_tests, pattern):
     testmod_names = [
         'test_bzrdir',
         'test_repository',

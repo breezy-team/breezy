@@ -66,7 +66,7 @@ config.credential_store_registry.register_lazy(
     'netrc', __name__, 'NetrcCredentialStore', help=__doc__)
 
 
-def load_tests(basic_tests, module, loader):
+def load_tests(loader, basic_tests, pattern):
     testmod_names = [
         'tests',
         ]

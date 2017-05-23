@@ -21,7 +21,7 @@ from breezy import (
     tests,
     )
 
-def load_tests(basic_tests, module, loader):
+def load_tests(loader, basic_tests, pattern):
     """Generate suite containing all parameterized tests"""
     modules_to_test = [
         'breezy.tests.per_inventory.basics',

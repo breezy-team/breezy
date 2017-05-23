@@ -48,7 +48,7 @@ install_lazy_named_hook("breezy.merge", "Merger.hooks", "merge_file_content",
     news_merge_hook, "NEWS file merge")
 
 
-def load_tests(basic_tests, module, loader):
+def load_tests(loader, basic_tests, pattern):
     testmod_names = [
         'tests',
         ]

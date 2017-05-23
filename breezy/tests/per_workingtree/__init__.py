@@ -115,7 +115,7 @@ class TestCaseWithWorkingTree(per_controldir.TestCaseWithControlDir):
         return builder
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     test_names = [
         'add_reference',
         'add',

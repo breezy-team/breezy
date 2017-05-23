@@ -179,7 +179,7 @@ class StubMatchingInter(object):
             (self, 'copy_content_into', args, kwargs))
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     submod_tests = loader.loadTestsFromModuleNames([
         'breezy.tests.per_interbranch.test_fetch',
         'breezy.tests.per_interbranch.test_get',
