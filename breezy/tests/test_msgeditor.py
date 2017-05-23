@@ -46,7 +46,7 @@ from .EncodingAdapter import encoding_scenarios
 from ..trace import mutter
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     """Parameterize the test for tempfile creation with different encodings."""
     to_adapt, result = split_suite_by_re(standard_tests,
         "test__create_temp_file_with_commit_template_in_unicode_dir")

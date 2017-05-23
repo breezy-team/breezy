@@ -25,7 +25,7 @@ from .. import (
     )
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     """Parameterize tests for all versions of groupcompress."""
     suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
         'breezy._annotator_py', 'breezy._annotator_pyx')

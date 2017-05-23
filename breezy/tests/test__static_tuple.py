@@ -31,7 +31,7 @@ from breezy.tests import (
     )
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     """Parameterize tests for all versions of groupcompress."""
     global compiled_static_tuple_feature
     suite, compiled_static_tuple_feature = tests.permute_tests_for_extension(

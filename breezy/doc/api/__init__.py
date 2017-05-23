@@ -37,7 +37,7 @@ def make_new_test_id(test):
     return lambda: new_id
 
 
-def load_tests(basic_tests, module, loader):
+def load_tests(loader, basic_tests, pattern):
     """This module creates its own test suite with DocFileSuite."""
 
     dir_ = os.path.dirname(__file__)

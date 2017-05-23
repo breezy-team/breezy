@@ -56,7 +56,7 @@ from breezy.transport import (
     )
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     """Multiply tests version and protocol consistency."""
     # FindRepository tests.
     scenarios = [

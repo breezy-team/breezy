@@ -50,6 +50,9 @@ API Changes
 
  * bzrlib has been renamed to bzrlib. (Martin Packman, Jelmer Vernooĳ)
 
+ * Signature of ``load_tests`` used by ``TestLoader`` changed to be
+   compatible with standard libarary unittest.  (Martin Packman)
+
 Internals
 *********
 

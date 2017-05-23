@@ -37,7 +37,7 @@ def vcs_scenarios():
     return scenarios
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     result = loader.suiteClass()
     per_vcs_mod_names = [
         'branch',

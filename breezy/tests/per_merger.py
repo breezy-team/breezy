@@ -32,7 +32,7 @@ from ..transform import TreeTransform
 
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     """Multiply tests for tranport implementations."""
     result = loader.suiteClass()
     scenarios = [

@@ -118,7 +118,7 @@ def mutable_trees_to_revision_trees(test_case, source, target):
         revision_tree_from_workingtree(test_case, target))
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     default_tree_format = WorkingTreeFormat3()
     submod_tests = loader.loadTestsFromModuleNames([
         'breezy.tests.per_intertree.test_compare',

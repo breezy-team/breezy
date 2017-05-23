@@ -24,7 +24,7 @@ from ...commands import plugin_cmds
 
 plugin_cmds.register_lazy('cmd_bisect', [], 'breezy.plugins.bisect.cmds')
 
-def load_tests(basic_tests, module, loader):
+def load_tests(loader, basic_tests, pattern):
     testmod_names = [
         'tests',
         ]

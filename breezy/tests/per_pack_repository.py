@@ -1120,7 +1120,7 @@ class TestSmartServerAutopack(TestCaseWithTransport):
             self.assertEqual(2, streaming_calls)
 
 
-def load_tests(basic_tests, module, loader):
+def load_tests(loader, basic_tests, pattern):
     # these give the bzrdir canned format name, and the repository on-disk
     # format string
     scenarios_params = [
