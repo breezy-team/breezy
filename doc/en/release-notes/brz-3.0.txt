@@ -25,7 +25,7 @@ External Compatibility Breaks
 New Features
 ************
 
-.. New commands, options, etc that users may wish to try out.
+* The 'bisect' plugin is now shipped with bzr. (Jelmer Vernooĳ)
 
 Improvements
 ************
