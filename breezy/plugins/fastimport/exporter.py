@@ -41,6 +41,8 @@
 
 """Core engine for the fast-export command."""
 
+from __future__ import absolute_import
+
 # TODO: if a new_git_branch below gets merged repeatedly, the tip of the branch
 # is not updated (because the parent of commit is already merged, so we don't
 # set new_git_branch to the previously used name)
@@ -48,9 +50,9 @@
 from email.Utils import parseaddr
 import sys, time, re
 
-import bzrlib.branch
-import bzrlib.revision
-from bzrlib import (
+import breezy.branch
+import breezy.revision
+from ... import (
     builtins,
     errors as bazErrors,
     osutils,
@@ -58,13 +60,13 @@ from bzrlib import (
     trace,
     )
 
-from bzrlib.plugins.fastimport import (
+from . import (
     helpers,
     marks_file,
     )
 
 from fastimport import commands
-from bzrlib.plugins.fastimport.helpers import (
+from .helpers import (
     binary_stream,
     single_plural,
     )
@@ -174,7 +176,7 @@ class BzrFastExporter(object):
         self.rewrite_tags = rewrite_tags
         self.no_tags = no_tags
         self.baseline = baseline
-        self._multi_author_api_available = hasattr(bzrlib.revision.Revision,
+        self._multi_author_api_available = hasattr(breezy.revision.Revision,
             'get_apparent_authors')
         self.properties_to_exclude = ['authors', 'author']
 
@@ -318,7 +320,7 @@ class BzrFastExporter(object):
         revobj = self.branch.repository.get_revision(revid)
         mark = 1
         self.revid_to_mark[revid] = mark
-        file_cmds = self._get_filecommands(bzrlib.revision.NULL_REVISION, revid)
+        file_cmds = self._get_filecommands(breezy.revision.NULL_REVISION, revid)
         self.print_cmd(self._get_commit_command(ref, mark, revobj, file_cmds))
 
     def emit_commit(self, revid, ref):
@@ -347,7 +349,7 @@ class BzrFastExporter(object):
                 # otherwise git-fast-import will assume the previous commit
                 # was this one's parent
                 ref = self._next_tmp_ref()
-            parent = bzrlib.revision.NULL_REVISION
+            parent = breezy.revision.NULL_REVISION
         else:
             parent = revobj.parent_ids[0]
 

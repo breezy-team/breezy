@@ -15,9 +15,11 @@
 
 """An abstraction of a repository providing just the bits importing needs."""
 
+from __future__ import absolute_import
+
 import cStringIO
 
-from bzrlib import (
+from ... import (
     errors,
     graph as _mod_graph,
     inventory,
@@ -190,7 +192,7 @@ class AbstractRevisionStore(object):
 
     def _init_chk_inventory(self, revision_id, root_id):
         """Generate a CHKInventory for a parentless revision."""
-        from bzrlib import chk_map
+        from ... import chk_map
         # Get the creation parameters
         chk_store = self.repo.chk_bytes
         serializer = self.repo._format._serializer
@@ -319,7 +321,7 @@ class AbstractRevisionStore(object):
                 including an empty inventory for the missing revisions
             If None, a default implementation is provided.
         """
-        # NOTE: This is bzrlib.repository._install_revision refactored to
+        # NOTE: This is breezy.repository._install_revision refactored to
         # to provide more flexibility in how previous revisions are cached,
         # data is feed in, etc.
 
@@ -401,7 +403,7 @@ class AbstractRevisionStore(object):
             # So far, we don't *do* anything with the result
             pass
         builder.finish_inventory()
-        # TODO: This is working around a bug in the bzrlib code base.
+        # TODO: This is working around a bug in the breezy code base.
         # 'builder.finish_inventory()' ends up doing:
         # self.inv_sha1 = self.repository.add_inventory_by_delta(...)
         # However, add_inventory_by_delta returns (sha1, inv)
@@ -529,7 +531,7 @@ class AbstractRevisionStore(object):
 
 
 class RevisionStore1(AbstractRevisionStore):
-    """A RevisionStore that uses the old bzrlib Repository API.
+    """A RevisionStore that uses the old breezy Repository API.
     
     The old API was present until bzr.dev rev 3510.
     """
@@ -570,7 +572,7 @@ class RevisionStore1(AbstractRevisionStore):
 
 
 class RevisionStore2(AbstractRevisionStore):
-    """A RevisionStore that uses the new bzrlib Repository API."""
+    """A RevisionStore that uses the new breezy Repository API."""
 
     def _load_texts(self, revision_id, entries, text_provider, parents_provider):
         """See RevisionStore._load_texts()."""
@@ -640,7 +642,7 @@ class ImportRevisionStore1(RevisionStore1):
 
     def _add_inventory(self, revision_id, inv, parents, parent_invs):
         """See RevisionStore._add_inventory."""
-        # Code taken from bzrlib.repository.add_inventory
+        # Code taken from breezy.repository.add_inventory
         assert self.repo.is_in_write_group()
         _mod_revision.check_not_reserved_id(revision_id)
         assert inv.revision_id is None or inv.revision_id == revision_id, \
@@ -667,11 +669,11 @@ class ImportRevisionStore1(RevisionStore1):
         random_id = self.random_ids
         check_content = False
 
-        # bzrlib.knit.add_lines() but error checking optimised
+        # breezy.knit.add_lines() but error checking optimised
         inv_vf._check_add(version_id, lines, random_id, check_content)
 
         ####################################################################
-        # bzrlib.knit._add() but skip checking if fulltext better than delta
+        # breezy.knit._add() but skip checking if fulltext better than delta
         ####################################################################
 
         line_bytes = ''.join(lines)

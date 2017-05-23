@@ -15,8 +15,9 @@
 
 """Routines for reading/writing a marks file."""
 
+from __future__ import absolute_import
 
-from bzrlib.trace import warning
+from ...trace import warning
 
 
 def import_marks(filename):

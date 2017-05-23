@@ -15,8 +15,9 @@
 
 """CommitHandlers that build and save revisions & their inventories."""
 
+from __future__ import absolute_import
 
-from bzrlib import (
+from ... import (
     debug,
     errors,
     generate_ids,
@@ -25,7 +26,7 @@ from bzrlib import (
     revision,
     serializer,
     )
-from bzrlib.trace import (
+from ...trace import (
     mutter,
     note,
     warning,
@@ -35,7 +36,7 @@ from fastimport import (
     processor,
     )
 
-from bzrlib.plugins.fastimport.helpers import (
+from .helpers import (
     mode_to_kind,
     )
 

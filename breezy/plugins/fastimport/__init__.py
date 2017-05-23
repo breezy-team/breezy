@@ -59,11 +59,7 @@ page on Launchpad, https://launchpad.net/bzr-fastimport.
 
 from __future__ import absolute_import
 
-from bzrlib.plugins.fastimport.info import (
-    bzr_plugin_version as version_info,
-    )
-
-from bzrlib.commands import plugin_cmds
+from ...commands import plugin_cmds
 
 
 def load_fastimport():
@@ -71,13 +67,13 @@ def load_fastimport():
     try:
         import fastimport
     except ImportError, e:
-        from bzrlib.errors import DependencyNotPresent
+        from ...errors import DependencyNotPresent
         raise DependencyNotPresent("fastimport",
-            "bzr-fastimport requires the fastimport python module")
+            "fastimport requires the fastimport python module")
 
 
 def test_suite():
-    from bzrlib.plugins.fastimport import tests
+    from . import tests
     return tests.test_suite()
 
 
@@ -88,4 +84,4 @@ for name in [
         "fast_import_query",
         "fast_export",
         ]:
-    plugin_cmds.register_lazy("cmd_%s" % name, [], "bzrlib.plugins.fastimport.cmds")
+    plugin_cmds.register_lazy("cmd_%s" % name, [], "breezy.plugins.fastimport.cmds")

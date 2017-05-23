@@ -15,12 +15,14 @@
 
 """An object that updates a bunch of branches based on data imported."""
 
+from __future__ import absolute_import
+
 from operator import itemgetter
 
-from bzrlib import bzrdir, errors, osutils, transport
-from bzrlib.trace import show_error, note
+from ... import bzrdir, errors, osutils, transport
+from ...trace import show_error, note
 
-from bzrlib.plugins.fastimport.helpers import (
+from .helpers import (
     best_format_for_objects_in_a_repository,
     single_plural,
     )

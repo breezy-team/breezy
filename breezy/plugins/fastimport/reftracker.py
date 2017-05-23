@@ -16,6 +16,8 @@
 
 """Tracker of refs."""
 
+from __future__ import absolute_import
+
 
 class RefTracker(object):
 

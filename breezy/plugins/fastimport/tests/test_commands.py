@@ -15,19 +15,21 @@
 
 """Test the command implementations."""
 
+from __future__ import absolute_import
+
 import os
 import re
 import tempfile
 import gzip
 
-from bzrlib import tests
-from bzrlib.tests.blackbox import ExternalBase
+from .... import tests
+from ....tests.blackbox import ExternalBase
 
-from bzrlib.plugins.fastimport.cmds import (
+from ..cmds import (
     _get_source_stream,
     )
 
-from bzrlib.plugins.fastimport.tests import (
+from . import (
     FastimportFeature,
     )
 

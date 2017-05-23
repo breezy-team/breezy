@@ -15,20 +15,22 @@
 
 """A manager of caches."""
 
+from __future__ import absolute_import
+
 import atexit
 import os
 import shutil
 import tempfile
 import weakref
 
-from bzrlib import lru_cache, trace
-from bzrlib.plugins.fastimport import (
+from ... import lru_cache, trace
+from . import (
     branch_mapper,
     )
-from bzrlib.plugins.fastimport.reftracker import (
+from .reftracker import (
     RefTracker,
     )
-from bzrlib.plugins.fastimport.helpers import (
+from .helpers import (
     single_plural,
     )
 

@@ -15,13 +15,15 @@
 
 """Test the BranchMapper methods."""
 
-from bzrlib import tests
+from __future__ import absolute_import
 
-from bzrlib.plugins.fastimport import (
+from .... import tests
+
+from .. import (
     branch_mapper,
     )
 
-from bzrlib.plugins.fastimport.tests import (
+from . import (
     FastimportFeature,
     )
 

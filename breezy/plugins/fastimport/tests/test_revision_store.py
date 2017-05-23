@@ -15,7 +15,9 @@
 
 """Direct tests of the revision_store classes."""
 
-from bzrlib import (
+from __future__ import absolute_import
+
+from .... import (
     branch,
     errors,
     inventory,
@@ -23,10 +25,10 @@ from bzrlib import (
     tests,
     )
 
-from bzrlib.plugins.fastimport import (
+from .. import (
     revision_store,
     )
-from bzrlib.plugins.fastimport.tests import (
+from . import (
     FastimportFeature,
     )
 

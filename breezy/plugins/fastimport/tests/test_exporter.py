@@ -15,19 +15,21 @@
 
 """Test the exporter."""
 
+from __future__ import absolute_import
+
 import os
 import tempfile
 import gzip
 
-from bzrlib import tests
+from .... import tests
 
-from bzrlib.plugins.fastimport.exporter import (
+from ..exporter import (
     _get_output_stream,
     check_ref_format,
     sanitize_ref_name_for_git
     )
 
-from bzrlib.plugins.fastimport.tests import (
+from . import (
     FastimportFeature,
     )
 

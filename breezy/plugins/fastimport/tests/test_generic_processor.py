@@ -13,15 +13,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import absolute_import
+
 import time
 
-from bzrlib import (
+from .... import (
     tests,
     )
-from bzrlib.plugins.fastimport.helpers import (
+from ..helpers import (
     kind_to_mode,
     )
-from bzrlib.plugins.fastimport.tests import (
+from . import (
     FastimportFeature,
     )
 
@@ -38,7 +40,7 @@ def load_tests(standard_tests, module, loader):
         ('1.9-rich-root', {'branch_format': '1.9-rich-root'}),
     ]
     try:
-        from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
+        from ....repofmt.groupcompress_repo import RepositoryFormat2a
         scenarios.append(('2a', {'branch_format': '2a'}))
     except ImportError:
         pass
@@ -54,7 +56,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
     branch_format = "pack-0.92"
 
     def get_handler(self):
-        from bzrlib.plugins.fastimport.processors import (
+        from ..processors import (
             generic_processor,
             )
         branch = self.make_branch('.', format=self.branch_format)

@@ -15,6 +15,8 @@
 
 """Routines for saving and loading the id-map file."""
 
+from __future__ import absolute_import
+
 import os
 
 

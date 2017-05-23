@@ -16,14 +16,12 @@
 
 """Tests for bzr-fastimport."""
 
+from __future__ import absolute_import
 
-from bzrlib import errors as bzr_errors
-from bzrlib.tests import TestLoader
-try:
-    from bzrlib.tests.features import Feature
-except ImportError: # bzr < 2.5
-    from bzrlib.tests import Feature
-from bzrlib.plugins.fastimport import load_fastimport
+from .... import errors as bzr_errors
+from ....tests import TestLoader
+from ....tests.features import Feature
+from .. import load_fastimport
 
 
 class _FastimportFeature(Feature):

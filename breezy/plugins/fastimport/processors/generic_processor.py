@@ -15,29 +15,25 @@
 
 """Import processor that supports all Bazaar repository formats."""
 
+from __future__ import absolute_import
+
 
 import time
-from bzrlib import (
+from .... import (
     debug,
     delta,
     errors,
     osutils,
     progress,
     )
-try:
-    from bzrlib.repofmt.knitpack_repo import KnitPackRepository
-except ImportError:
-    from bzrlib.repofmt.pack_repo import KnitPackRepository
-from bzrlib.trace import (
+from ....repofmt.knitpack_repo import KnitPackRepository
+from ....trace import (
     mutter,
     note,
     warning,
     )
-try:
-    import bzrlib.util.configobj.configobj as configobj
-except ImportError:
-    import configobj
-from bzrlib.plugins.fastimport import (
+import configobj
+from .. import (
     branch_updater,
     cache_manager,
     helpers,
@@ -189,7 +185,7 @@ class GenericProcessor(processor.ImportProcessor):
         # We want to repack at the end anyhow when more information
         # is available to do a better job of saving space.
         try:
-            from bzrlib import groupcompress
+            from .... import groupcompress
             groupcompress._FAST = True
         except ImportError:
             pass
@@ -199,7 +195,7 @@ class GenericProcessor(processor.ImportProcessor):
         self.repo.start_write_group()
 
     def _load_info_and_params(self):
-        from bzrlib.plugins.fastimport import bzr_commit_handler
+        from .. import bzr_commit_handler
         self._mode = bool(self.params.get('mode', 'default'))
         self._experimental = self._mode == 'experimental'
 
@@ -418,7 +414,7 @@ class GenericProcessor(processor.ImportProcessor):
         import gc
         if final:
             try:
-                from bzrlib import groupcompress
+                from .... import groupcompress
             except ImportError:
                 pass
             else:

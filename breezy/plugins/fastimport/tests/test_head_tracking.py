@@ -15,6 +15,8 @@
 
 """Test tracking of heads"""
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 
 from fastimport import (
@@ -24,7 +26,7 @@ from fastimport import (
 
 import testtools
 
-from bzrlib.plugins.fastimport.reftracker import (
+from .reftracker import (
     RefTracker,
     )
 

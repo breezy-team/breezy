@@ -15,13 +15,15 @@
 
 """Miscellaneous useful stuff."""
 
+from __future__ import absolute_import
+
 import stat
 
 
 def escape_commit_message(message):
     """Replace xml-incompatible control characters."""
-    # This really ought to be provided by bzrlib.
-    # Code copied from bzrlib.commit.
+    # This really ought to be provided by breezy.
+    # Code copied from breezy.commit.
 
     # Python strings can include characters that can't be
     # represented in well-formed XML; escape characters that
@@ -46,8 +48,8 @@ def best_format_for_objects_in_a_repository(repo):
 
     :return: the BzrDirFormat or None if no matches were found.
     """
-    # Based on code from bzrlib/info.py ...
-    from bzrlib import bzrdir
+    # Based on code from breezy/info.py ...
+    from ... import bzrdir
     repo_format = repo._format
     candidates  = []
     non_aliases = set(bzrdir.format_registry.keys())
@@ -79,7 +81,7 @@ def open_destination_directory(location, format=None, verbose=True):
     :return: BzrDir for the destination
     """
     import os
-    from bzrlib import bzrdir, errors, trace, transport
+    from ... import bzrdir, errors, trace, transport
     try:
         control, relpath = bzrdir.BzrDir.open_containing(location)
         # XXX: Check the relpath is None here?
@@ -109,7 +111,7 @@ def open_destination_directory(location, format=None, verbose=True):
     control = format.initialize_on_transport(to_transport)
     repo = control.create_repository(shared=True)
     if verbose:
-        from bzrlib.info import show_bzrdir_info
+        from ...info import show_bzrdir_info
         show_bzrdir_info(repo.bzrdir, verbose=0)
     return control
 

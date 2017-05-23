@@ -16,6 +16,7 @@
 """An object that maps git ref names to bzr branch names.  Note that it is not
 used to map git ref names to bzr tag names."""
 
+from __future__ import absolute_import
 
 import re
 

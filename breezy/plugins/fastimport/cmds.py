@@ -15,11 +15,13 @@
 
 """Fastimport/fastexport commands."""
 
-from bzrlib import bzrdir
-from bzrlib.commands import Command
-from bzrlib.option import Option, ListOption, RegistryOption
+from __future__ import absolute_import
 
-from bzrlib.plugins.fastimport import (
+from ... import bzrdir
+from ...commands import Command
+from ...option import Option, ListOption, RegistryOption
+
+from . import (
     helpers,
     load_fastimport,
     )
@@ -35,7 +37,7 @@ def _run(source, processor_factory, verbose=False, user_map=None, **kwargs):
     :param user_map: if not None, the file containing the user map.
     """
     from fastimport.errors import ParsingError
-    from bzrlib.errors import BzrCommandError
+    from ...errors import BzrCommandError
     from fastimport import parser
     stream = _get_source_stream(source)
     user_mapper = _get_user_mapper(user_map)
@@ -60,7 +62,7 @@ def _get_source_stream(source):
 
 
 def _get_user_mapper(filename):
-    import user_mapper
+    from . import user_mapper
     if filename is None:
         return None
     f = open(filename)
@@ -275,7 +277,7 @@ class cmd_fast_import(Command):
                     RegistryOption('format',
                             help='Specify a format for the created repository. See'
                                  ' "bzr help formats" for details.',
-                            lazy_registry=('bzrlib.bzrdir', 'format_registry'),
+                            lazy_registry=('breezy.bzrdir', 'format_registry'),
                             converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
                             value_switches=False, title='Repository format'),
                      ]
@@ -284,8 +286,8 @@ class cmd_fast_import(Command):
         mode=None, import_marks=None, export_marks=None, format=None,
         user_map=None):
         load_fastimport()
-        from bzrlib.plugins.fastimport.processors import generic_processor
-        from bzrlib.plugins.fastimport.helpers import (
+        from .processors import generic_processor
+        from .helpers import (
             open_destination_directory,
             )
         control = open_destination_directory(destination, format=format)
@@ -317,8 +319,8 @@ class cmd_fast_import(Command):
         from cStringIO import StringIO
         from fastimport import parser
         from fastimport.errors import ParsingError
-        from bzrlib.errors import BzrCommandError
-        from bzrlib.plugins.fastimport.processors import info_processor
+        from ...errors import BzrCommandError
+        from .processors import info_processor
         stream = _get_source_stream(source)
         output = StringIO()
         try:
@@ -437,7 +439,7 @@ class cmd_fast_import_filter(Command):
     encoding_type = 'exact'
     def run(self, source=None, verbose=False, include_paths=None,
         exclude_paths=None, user_map=None, dont_squash_empty_commits=False):
-        from bzrlib.errors import BzrCommandError
+        from ...errors import BzrCommandError
         load_fastimport()
         from fastimport.processors import filter_processor
         params = {
@@ -495,7 +497,7 @@ class cmd_fast_import_info(Command):
     takes_options = ['verbose']
     def run(self, source, verbose=False):
         load_fastimport()
-        from bzrlib.plugins.fastimport.processors import info_processor
+        from .processors import info_processor
         return _run(source, info_processor.InfoProcessor, verbose=verbose)
 
 
@@ -551,7 +553,7 @@ class cmd_fast_import_query(Command):
     def run(self, source, verbose=False, commands=None, commit_mark=None):
         load_fastimport()
         from fastimport.processors import query_processor
-        from bzrlib.plugins.fastimport import helpers
+        from . import helpers
         params = helpers.defines_to_dict(commands) or {}
         if commit_mark:
             params['commit-mark'] = commit_mark
@@ -701,8 +703,8 @@ class cmd_fast_export(Command):
         import_marks=None, export_marks=None, revision=None,
         plain=True, rewrite_tag_names=False, no_tags=False, baseline=False):
         load_fastimport()
-        from bzrlib.branch import Branch
-        from bzrlib.plugins.fastimport import exporter
+        from ...branch import Branch
+        from . import exporter
 
         if marks:
             import_marks = export_marks = marks

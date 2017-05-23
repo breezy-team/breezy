@@ -15,10 +15,12 @@
 
 """Import processor that dump stats about the input (and doesn't import)."""
 
-from bzrlib.plugins.fastimport import (
+from __future__ import absolute_import
+
+from .. import (
     reftracker,
     )
-from bzrlib.plugins.fastimport.helpers import (
+from ..helpers import (
     invert_dict,
     invert_dictset,
     )
