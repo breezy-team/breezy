@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2012 Canonical Ltd
+# Copyright (C) 2006-2017 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,7 +29,6 @@ from bzrlib.commands import (
 from bzrlib.errors import (
     BzrCommandError,
     InvalidURL,
-    NoPublicBranch,
     NotBranchError,
     )
 from bzrlib.i18n import gettext
@@ -37,114 +36,6 @@ from bzrlib.option import (
     Option,
     ListOption,
     )
-
-
-class cmd_register_branch(Command):
-    __doc__ = """Register a branch with launchpad.net.
-
-    This command lists a bzr branch in the directory of branches on
-    launchpad.net.  Registration allows the branch to be associated with
-    bugs or specifications.
-
-    Before using this command you must register the project to which the
-    branch belongs, and create an account for yourself on launchpad.net.
-
-    arguments:
-        public_url: The publicly visible url for the branch to register.
-                    This must be an http or https url (which Launchpad can read
-                    from to access the branch). Local file urls, SFTP urls, and
-                    bzr+ssh urls will not work.
-                    If no public_url is provided, bzr will use the configured
-                    public_url if there is one for the current branch, and
-                    otherwise error.
-
-    example:
-        bzr register-branch http://foo.com/bzr/fooproject.mine \\
-                --project fooproject
-    """
-    takes_args = ['public_url?']
-    takes_options = [
-         Option('project',
-                'Launchpad project short name to associate with the branch.',
-                unicode),
-         Option('product',
-                'Launchpad product short name to associate with the branch.',
-                unicode,
-                hidden=True),
-         Option('branch-name',
-                'Short name for the branch; '
-                'by default taken from the last component of the url.',
-                unicode),
-         Option('branch-title',
-                'One-sentence description of the branch.',
-                unicode),
-         Option('branch-description',
-                'Longer description of the purpose or contents of the branch.',
-                unicode),
-         Option('author',
-                "Branch author's email address, if not yourself.",
-                unicode),
-         Option('link-bug',
-                'The bug this branch fixes.',
-                int),
-         Option('dry-run',
-                'Prepare the request but don\'t actually send it.')
-        ]
-
-
-    def run(self,
-            public_url=None,
-            project='',
-            product=None,
-            branch_name='',
-            branch_title='',
-            branch_description='',
-            author='',
-            link_bug=None,
-            dry_run=False):
-        from bzrlib.plugins.launchpad.lp_registration import (
-            BranchRegistrationRequest, BranchBugLinkRequest,
-            DryRunLaunchpadService, LaunchpadService)
-        if public_url is None:
-            try:
-                b = _mod_branch.Branch.open_containing('.')[0]
-            except NotBranchError:
-                raise BzrCommandError(gettext(
-                            'register-branch requires a public '
-                            'branch url - see bzr help register-branch.'))
-            public_url = b.get_public_branch()
-            if public_url is None:
-                raise NoPublicBranch(b)
-        if product is not None:
-            project = product
-            trace.note(gettext(
-                '--product is deprecated; please use --project.'))
-
-
-        rego = BranchRegistrationRequest(branch_url=public_url,
-                                         branch_name=branch_name,
-                                         branch_title=branch_title,
-                                         branch_description=branch_description,
-                                         product_name=project,
-                                         author_email=author,
-                                         )
-        linko = BranchBugLinkRequest(branch_url=public_url,
-                                     bug_id=link_bug)
-        if not dry_run:
-            service = LaunchpadService()
-            # This gives back the xmlrpc url that can be used for future
-            # operations on the branch.  It's not so useful to print to the
-            # user since they can't do anything with it from a web browser; it
-            # might be nice for the server to tell us about an html url as
-            # well.
-        else:
-            # Run on service entirely in memory
-            service = DryRunLaunchpadService()
-        service.gather_user_credentials()
-        rego.submit(service)
-        if link_bug:
-            linko.submit(service)
-        self.outf.write('Branch registered.\n')
 
 
 class cmd_launchpad_open(Command):

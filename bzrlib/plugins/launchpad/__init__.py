@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2017 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,7 +30,6 @@ The plugin also provides the following commands:
     launchpad-login: Show or set the Launchpad user ID
     launchpad-open: Open a Launchpad branch page in your web browser
     lp-propose-merge: Propose merging a branch on Launchpad
-    register-branch: Register a branch with launchpad.net
     launchpad-mirror: Ask Launchpad to mirror a branch now
 
 """
@@ -57,7 +56,6 @@ from bzrlib.directory_service import directories
 from bzrlib.help_topics import topic_registry
 
 for klsname, aliases in [
-    ("cmd_register_branch", []),
     ("cmd_launchpad_open", ["lp-open"]),
     ("cmd_launchpad_login", ["lp-login"]),
     ("cmd_launchpad_mirror", ["lp-mirror"]),
@@ -176,11 +174,6 @@ features to communicate with Launchpad:
       will record a revision property that marks that revision as fixing
       Launchpad bug 12345. When you push that branch to Launchpad it will
       automatically be linked to the bug report.
-
-    * The register-branch command tells Launchpad about the url of a
-      public branch.  Launchpad will then mirror the branch, display
-      its contents and allow it to be attached to bugs and other
-      objects.
 
 For more information see http://help.launchpad.net/
 """
