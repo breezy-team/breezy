@@ -25,7 +25,8 @@ External Compatibility Breaks
 New Features
 ************
 
-.. New commands, options, etc that users may wish to try out.
+ * The 'fastimport' plugin is now bundled with Bazaar.
+   (Jelmer Vernooĳ)
 
 Improvements
 ************
