@@ -16,6 +16,8 @@
 
 """bisect command implementations."""
 
+from __future__ import absolute_import
+
 import sys
 import os
 from ...bzrdir import BzrDir

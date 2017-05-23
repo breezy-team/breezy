@@ -16,9 +16,9 @@
 
 """Support for git-style bisection."""
 
-from ...commands import plugin_cmds
+from __future__ import absolute_import
 
-from .meta import *
+from ...commands import plugin_cmds
 
 plugin_cmds.register_lazy('cmd_bisect', [], 'breezy.plugins.bisect.cmds')
 

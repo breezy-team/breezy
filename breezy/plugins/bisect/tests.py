@@ -16,6 +16,8 @@
 
 "Test suite for the bzr bisect plugin."
 
+from __future__ import absolute_import
+
 from cStringIO import StringIO
 import os
 import stat
