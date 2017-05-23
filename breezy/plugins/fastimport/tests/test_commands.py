@@ -248,7 +248,7 @@ committer
 data 15
 """)])
         self.make_branch_and_tree("br")
-        self.run_bzr_error(['bzr: ERROR: 4: Parse error: line 4: Command commit is missing section committer\n'], "fast-import empty.fi br")
+        self.run_bzr_error(['brz: ERROR: 4: Parse error: line 4: Command commit is missing section committer\n'], "fast-import empty.fi br")
 
 
 class TestFastImportFilter(ExternalBase):
