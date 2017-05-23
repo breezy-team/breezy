@@ -55,6 +55,7 @@ import breezy.revision
 from ... import (
     builtins,
     errors as bazErrors,
+    lazy_import,
     osutils,
     progress,
     trace,
@@ -65,16 +66,15 @@ from . import (
     marks_file,
     )
 
+lazy_import.lazy_import(globals(),
+"""
 from fastimport import commands
-from .helpers import (
-    binary_stream,
-    single_plural,
-    )
+""")
 
 
 def _get_output_stream(destination):
     if destination is None or destination == '-':
-        return binary_stream(sys.stdout)
+        return helpers.binary_stream(sys.stdout)
     elif destination.endswith('gz'):
         import gzip
         return gzip.open(destination, 'wb')
@@ -282,7 +282,7 @@ class BzrFastExporter(object):
         time_required = progress.str_tdelta(time.time() - self._start_time)
         rc = len(self.revid_to_mark)
         self.note("Exported %d %s in %s",
-            rc, single_plural(rc, "revision", "revisions"),
+            rc, helpers.single_plural(rc, "revision", "revisions"),
             time_required)
 
     def print_cmd(self, cmd):

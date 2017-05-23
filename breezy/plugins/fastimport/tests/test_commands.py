@@ -97,6 +97,8 @@ test 6
 
 class TestFastExport(ExternalBase):
 
+    _test_needs_features = [FastimportFeature]
+
     def test_empty(self):
         self.make_branch_and_tree("br")
         self.assertEquals("", self.run_bzr("fast-export br")[0])
@@ -196,6 +198,8 @@ initial
 
 class TestFastImportInfo(ExternalBase):
 
+    _test_needs_features = [FastimportFeature]
+
     def test_simple(self):
         self.build_tree_contents([('simple.fi', simple_fast_import_stream)])
         output = self.run_bzr("fast-import-info simple.fi")[0]
@@ -229,6 +233,8 @@ Merges:
 
 class TestFastImport(ExternalBase):
 
+    _test_needs_features = [FastimportFeature]
+
     def test_empty(self):
         self.build_tree_contents([('empty.fi', "")])
         self.make_branch_and_tree("br")
@@ -252,6 +258,8 @@ data 15
 
 
 class TestFastImportFilter(ExternalBase):
+
+    _test_needs_features = [FastimportFeature]
 
     def test_empty(self):
         self.build_tree_contents([('empty.fi', "")])
