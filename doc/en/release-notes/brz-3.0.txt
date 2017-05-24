@@ -25,7 +25,9 @@ External Compatibility Breaks
 New Features
 ************
 
-* The 'bisect' plugin is now shipped with bzr. (Jelmer Vernooĳ)
+ * The 'bisect' plugin is now shipped with bzr. (Jelmer Vernooĳ)
+ * The 'fastimport' plugin is now bundled with Bazaar.
+   (Jelmer Vernooĳ)
 
 Improvements
 ************
