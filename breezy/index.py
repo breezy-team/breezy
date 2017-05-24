@@ -1449,6 +1449,7 @@ class CombinedGraphIndex(object):
         """
         indices_info = zip(self._index_names, self._indices)
         if 'index' in debug.debug_flags:
+            indices_info = list(indices_info)
             trace.mutter('CombinedGraphIndex reordering: currently %r, '
                          'promoting %r', indices_info, hit_indices)
         hit_names = []

@@ -1353,8 +1353,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 _mod_revision.NULL_REVISION)
             trees = []
         else:
-            trees = zip(revision_ids,
-                        self.branch.repository.revision_trees(revision_ids))
+            trees = list(zip(revision_ids,
+                        self.branch.repository.revision_trees(revision_ids)))
             base_tree = trees[0][1]
         state = self.current_dirstate()
         # We don't support ghosts yet

@@ -471,7 +471,7 @@ class AnnotatedKnitContent(KnitContent):
 
     def __init__(self, lines):
         KnitContent.__init__(self)
-        self._lines = lines
+        self._lines = list(lines)
 
     def annotate(self):
         """Return a list of (origin, text) for each content line."""
@@ -504,7 +504,7 @@ class AnnotatedKnitContent(KnitContent):
         return lines
 
     def copy(self):
-        return AnnotatedKnitContent(self._lines[:])
+        return AnnotatedKnitContent(self._lines)
 
 
 class PlainKnitContent(KnitContent):
@@ -599,7 +599,7 @@ class KnitAnnotateFactory(_KnitFactory):
         #       but the code itself doesn't really depend on that.
         #       Figure out a way to not require the overhead of turning the
         #       list back into tuples.
-        lines = [tuple(line.split(' ', 1)) for line in content]
+        lines = (tuple(line.split(' ', 1)) for line in content)
         return AnnotatedKnitContent(lines)
 
     def parse_line_delta_iter(self, lines):
