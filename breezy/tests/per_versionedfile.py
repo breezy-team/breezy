@@ -22,7 +22,7 @@
 # considered typical and check that it can be detected/corrected.
 
 from gzip import GzipFile
-from itertools import chain, izip
+import itertools
 
 from .. import (
     errors,
@@ -45,6 +45,7 @@ from ..knit import (
     )
 from ..sixish import (
     BytesIO,
+    zip,
     )
 from . import (
     TestCase,
@@ -2028,8 +2029,8 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         :param records: A list to collect the seen records.
         :return: A generator of the records in stream.
         """
-        # We make assertions during copying to catch things early for
-        # easier debugging.
+        # We make assertions during copying to catch things early for easier
+        # debugging. This must use the iterating zip() from the future.
         for record, ref_record in zip(stream, expected):
             records.append(record)
             self.assertEqual(ref_record.key, record.key)
@@ -2444,7 +2445,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         origin_entries = source.get_record_stream(origin_keys, 'unordered', False)
         end_entries = source.get_record_stream(end_keys, 'topological', False)
         start_entries = source.get_record_stream(start_keys, 'topological', False)
-        entries = chain(origin_entries, end_entries, start_entries)
+        entries = itertools.chain(origin_entries, end_entries, start_entries)
         try:
             files.insert_record_stream(entries)
         except RevisionNotPresent:
@@ -2476,7 +2477,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         streams = []
         for key in reversed(keys):
             streams.append(source.get_record_stream([key], 'unordered', False))
-        deltas = chain(*streams[:-1])
+        deltas = itertools.chain.from_iterable(streams[:-1])
         files = self.get_versionedfiles()
         try:
             files.insert_record_stream(deltas)

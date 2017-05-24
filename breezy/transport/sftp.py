@@ -27,7 +27,6 @@ from __future__ import absolute_import
 
 import bisect
 import errno
-from future_builtins import zip
 import itertools
 import os
 import random
@@ -50,6 +49,9 @@ from ..errors import (FileExists,
                            ParamikoNotPresent,
                            )
 from ..osutils import fancy_rename
+from ..sixish import (
+    zip,
+    )
 from ..trace import mutter, warning
 from ..transport import (
     FileFileStream,
