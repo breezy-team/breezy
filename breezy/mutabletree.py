@@ -667,7 +667,7 @@ class _SmartAddHelper(object):
         # filename alone
         # only expanding if symlinks are supported avoids windows path bugs
         if osutils.has_symlinks():
-            file_list = map(osutils.normalizepath, file_list)
+            file_list = list(map(osutils.normalizepath, file_list))
 
         user_dirs = {}
         # validate user file paths and convert all paths to tree

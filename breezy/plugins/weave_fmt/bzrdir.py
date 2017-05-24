@@ -415,7 +415,7 @@ class ConvertBzrDir4To5(Converter):
         Also upgrade the inventory to refer to the text revision ids."""
         rev_id = rev.revision_id
         trace.mutter('converting texts of revision {%s}', rev_id)
-        parent_invs = map(self._load_updated_inventory, present_parents)
+        parent_invs = list(map(self._load_updated_inventory, present_parents))
         entries = inv.iter_entries()
         entries.next()
         for path, ie in entries:

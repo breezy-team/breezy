@@ -266,7 +266,7 @@ def get_standard_plugins_path():
 
     # Get rid of trailing slashes, since Python can't handle them when
     # it tries to import modules.
-    paths = map(_strip_trailing_sep, paths)
+    paths = list(map(_strip_trailing_sep, paths))
     return paths
 
 
@@ -317,7 +317,7 @@ def load_from_path(dirs):
     # this function, and since it sets plugins.__path__, it should set it to
     # something that will be valid for Python to use (in case people try to
     # run "import breezy.plugins.PLUGINNAME" after calling this function).
-    _mod_plugins.__path__ = map(_strip_trailing_sep, dirs)
+    _mod_plugins.__path__ = list(map(_strip_trailing_sep, dirs))
     for d in dirs:
         if not d:
             continue

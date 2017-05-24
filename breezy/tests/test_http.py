@@ -1391,8 +1391,8 @@ class TestRanges(http_utils.TestCaseWithWebserver):
 
     def test_range_header(self):
         # Valid ranges
-        map(self.assertEqual,['0', '234'],
-            list(self._file_contents('a', [(0,0), (2,4)])),)
+        self.assertEqual(
+            ['0', '234'], list(self._file_contents('a', [(0,0), (2,4)])))
 
     def test_range_header_tail(self):
         self.assertEqual('789', self._file_tail('a', 3))

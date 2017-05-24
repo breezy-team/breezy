@@ -358,7 +358,7 @@ class TestPackRepository(TestCaseWithTransport):
         for _1, key, val, refs in pack.revision_index.iter_all_entries():
             if isinstance(format.repository_format, RepositoryFormat2a):
                 # group_start, group_len, internal_start, internal_len
-                pos = map(int, val.split())
+                pos = list(map(int, val.split()))
             else:
                 # eol_flag, start, len
                 pos = int(val[1:].split()[0])

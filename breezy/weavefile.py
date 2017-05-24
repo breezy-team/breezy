@@ -135,7 +135,7 @@ def _read_weave_v5(f, w):
         l = lines.next()
         if l[0] == 'i':
             if len(l) > 2:
-                w._parents.append(map(int, l[2:].split(' ')))
+                w._parents.append(list(map(int, l[2:].split(' '))))
             else:
                 w._parents.append([])
             l = lines.next()[:-1]

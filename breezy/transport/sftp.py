@@ -280,7 +280,7 @@ class _SFTPReadvHelper(object):
         if data_chunks:
             if 'sftp' in debug.debug_flags:
                 mutter('SFTP readv left with %d out-of-order bytes',
-                    sum(map(lambda x: len(x[1]), data_chunks)))
+                    sum(len(x[1]) for x in data_chunks))
             # We've processed all the readv data, at this point, anything we
             # couldn't process is in data_chunks. This doesn't happen often, so
             # this code path isn't optimized

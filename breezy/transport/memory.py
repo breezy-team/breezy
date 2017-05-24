@@ -193,8 +193,8 @@ class MemoryTransport(transport.Transport):
                 if path.startswith(_abspath):
                     trailing = path[len(_abspath):]
                     if trailing and '/' not in trailing:
-                        result.append(trailing)
-        return map(urlutils.escape, result)
+                        result.append(urlutils.escape(trailing))
+        return result
 
     def rename(self, rel_from, rel_to):
         """Rename a file or directory; fail if the destination exists"""
