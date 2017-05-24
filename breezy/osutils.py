@@ -746,11 +746,11 @@ def pump_string_file(bytes, file_handle, segment_size=None):
     # drives).
     if not segment_size:
         segment_size = 5242880 # 5MB
-    segments = range(len(bytes) / segment_size + 1)
+    offsets = range(0, len(bytes), segment_size)
+    view = memoryview(bytes)
     write = file_handle.write
-    for segment_index in segments:
-        segment = buffer(bytes, segment_index * segment_size, segment_size)
-        write(segment)
+    for offset in offsets:
+        write(view[offset:offset+segment_size])
 
 
 def file_iterator(input_file, readsize=32768):
@@ -2175,9 +2175,10 @@ def send_all(sock, bytes, report_activity=None):
     """
     sent_total = 0
     byte_count = len(bytes)
+    view = memoryview(bytes)
     while sent_total < byte_count:
         try:
-            sent = sock.send(buffer(bytes, sent_total, MAX_SOCKET_CHUNK))
+            sent = sock.send(view[sent_total:sent_total+MAX_SOCKET_CHUNK])
         except (socket.error, IOError) as e:
             if e.args[0] in _end_of_stream_errors:
                 raise errors.ConnectionReset(
