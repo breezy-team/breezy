@@ -49,6 +49,9 @@ from ..errors import (FileExists,
                            ParamikoNotPresent,
                            )
 from ..osutils import fancy_rename
+from ..sixish import (
+    zip,
+    )
 from ..trace import mutter, warning
 from ..transport import (
     FileFileStream,
@@ -202,7 +205,7 @@ class _SFTPReadvHelper(object):
         # short readv.
         data_stream = itertools.chain(fp.readv(requests),
                                       itertools.repeat(None))
-        for (start, length), data in itertools.izip(requests, data_stream):
+        for (start, length), data in zip(requests, data_stream):
             if data is None:
                 if cur_coalesced is not None:
                     raise errors.ShortReadvError(self.relpath,

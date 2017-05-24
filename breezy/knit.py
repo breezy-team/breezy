@@ -53,8 +53,6 @@ in the deltas to provide line annotation
 
 from __future__ import absolute_import
 
-
-from itertools import izip
 import operator
 import os
 
@@ -471,7 +469,7 @@ class AnnotatedKnitContent(KnitContent):
 
     def __init__(self, lines):
         KnitContent.__init__(self)
-        self._lines = lines
+        self._lines = list(lines)
 
     def annotate(self):
         """Return a list of (origin, text) for each content line."""
@@ -504,7 +502,7 @@ class AnnotatedKnitContent(KnitContent):
         return lines
 
     def copy(self):
-        return AnnotatedKnitContent(self._lines[:])
+        return AnnotatedKnitContent(self._lines)
 
 
 class PlainKnitContent(KnitContent):
@@ -599,7 +597,7 @@ class KnitAnnotateFactory(_KnitFactory):
         #       but the code itself doesn't really depend on that.
         #       Figure out a way to not require the overhead of turning the
         #       list back into tuples.
-        lines = [tuple(line.split(' ', 1)) for line in content]
+        lines = (tuple(line.split(' ', 1)) for line in content)
         return AnnotatedKnitContent(lines)
 
     def parse_line_delta_iter(self, lines):
@@ -1933,8 +1931,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         raw_data = self._access.get_raw_records(
             [index_memo for key, index_memo in needed_records])
 
-        for (key, index_memo), data in \
-                izip(iter(needed_records), raw_data):
+        for (key, index_memo), data in zip(needed_records, raw_data):
             content, digest = self._parse_record(key[-1], data)
             yield key, content, digest
 

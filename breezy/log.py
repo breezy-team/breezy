@@ -51,6 +51,7 @@ from __future__ import absolute_import
 
 import codecs
 import itertools
+from future_builtins import zip
 import re
 import sys
 from warnings import (
@@ -89,12 +90,6 @@ from breezy.sixish import (
     BytesIO,
     PY3,
     )
-
-
-if PY3:
-    izip = zip
-else:
-    izip = itertools.izip
 
 
 def find_touching_revisions(branch, file_id):
@@ -834,7 +829,7 @@ def make_log_rev_iterator(branch, view_revisions, generate_delta, search,
         # A single batch conversion is faster than many incremental ones.
         # As we have all the data, do a batch conversion.
         nones = [None] * len(view_revisions)
-        log_rev_iterator = iter([zip(view_revisions, nones, nones)])
+        log_rev_iterator = iter([list(zip(view_revisions, nones, nones))])
     else:
         def _convert():
             for view in view_revisions:
@@ -945,11 +940,11 @@ def _generate_deltas(repository, log_rev_iterator, delta_type, fileids,
         new_revs = []
         if delta_type == 'full' and not check_fileids:
             deltas = repository.get_deltas_for_revisions(revisions)
-            for rev, delta in izip(revs, deltas):
+            for rev, delta in zip(revs, deltas):
                 new_revs.append((rev[0], rev[1], delta))
         else:
             deltas = repository.get_deltas_for_revisions(revisions, fileid_set)
-            for rev, delta in izip(revs, deltas):
+            for rev, delta in zip(revs, deltas):
                 if check_fileids:
                     if delta is None or not delta.has_changed():
                         continue
@@ -1005,7 +1000,7 @@ def _make_revision_objects(branch, generate_delta, search, log_rev_iterator):
         revision_ids = [view[0] for view, _, _ in revs]
         revisions = repository.get_revisions(revision_ids)
         revs = [(rev[0], revision, rev[2]) for rev, revision in
-            izip(revs, revisions)]
+            zip(revs, revisions)]
         yield revs
 
 
