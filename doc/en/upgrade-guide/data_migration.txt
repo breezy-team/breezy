@@ -32,9 +32,9 @@ There are 3 important commands to be aware of when migrating data.
 **reconcile** is rarely needed but it's good practice to run **check**
 before and after running **upgrade**.
 
-For detailed help on these commands, see the `Bazaar User Reference`_.
+For detailed help on these commands, see the `Breezy User Reference`_.
 
-.. _Bazaar User Reference: ../user-reference/index.html
+.. _Breezy User Reference: ../user-reference/index.html
 
 
 Communicating with your community
@@ -50,7 +50,7 @@ To enable a smooth transition to the new format, you should:
    in advance.
 
 This advance warning should be long enough for users to have time
-to upgrade Bazaar and any required plugins before the migration date.
+to upgrade Breezy and any required plugins before the migration date.
 
 For larger projects, allow some time for the migration itself.
 You should have a good idea of how long the migration will take
@@ -69,16 +69,16 @@ Migrating a standalone branch
 
 The steps are:
 
-1. Run **bzr check**.
+1. Run **brz check**.
 
-2. If there are errors, try using **bzr reconcile** to fix them.
+2. If there are errors, try using **brz reconcile** to fix them.
    If that fails, file a bug so we can help you resolve the issue
    and get your trunk clean. If it works, take a backup copy of
    your now clean trunk.
 
-2. Run **bzr upgrade --format** where *format* is 2a or later.
+2. Run **brz upgrade --format** where *format* is 2a or later.
 
-3. Run **bzr check** to confirm the final result is good.
+3. Run **brz check** to confirm the final result is good.
 
 
 Migrating branches in a shared repository
@@ -208,7 +208,7 @@ old branch, not your new trunk. If you use this method, you'll probably update
 the ``parent_location`` configuration variable in the ``branch.conf`` file
 with::
 
-    bzr config parent_location=XXX
+    brz config parent_location=XXX
 
 ``XXX`` being the URL to your new trunk.
 

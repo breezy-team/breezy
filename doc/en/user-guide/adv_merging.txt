@@ -18,28 +18,28 @@ useful:
 To merge only the changes made by revision X in branch ``foo``,
 the command is::
 
-  bzr merge -c X foo
+  brz merge -c X foo
 
 To merge only the changes up to revision X in branch ``foo``,
 the command is::
 
-  bzr merge -r X foo
+  brz merge -r X foo
 
 To merge only the changes since revision X in branch ``foo``,
 the command is::
 
-  bzr merge -r X.. foo
+  brz merge -r X.. foo
 
 To merge only the changes from revision X to revision Y in branch ``foo``,
 the command is::
 
-  bzr merge -r X..Y foo
+  brz merge -r X..Y foo
 
 Like a normal merge, you must explicitly commit a cherrypick. You may wish
-to see the changes made using ``bzr diff``, and run your test suite if any,
+to see the changes made using ``brz diff``, and run your test suite if any,
 before doing this.
 
-Unlike a normal merge, Bazaar does not currently track cherrypicks.
+Unlike a normal merge, Breezy does not currently track cherrypicks.
 In particular, the changes look like a normal commit and the (internal)
 revision history of the changes from the other branch is lost.
 In many cases where they are useful (see above), this is not a major
@@ -56,7 +56,7 @@ forget about the parent revisions before committing.  This has the effect of
 making all of the changes that would have been in the merge happen in a single
 commit.  After the merge and before the corresponding commit, you can do::
 
-  bzr revert --forget-merges
+  brz revert --forget-merges
 
 to keep the changes in the working tree, but remove the record of the
 revisions where the changes originated.  The next commit would then record
@@ -64,7 +64,7 @@ all of those changes without any record of the merged revisions.
 
 This is desired by some users to make their history "cleaner", but you should
 be careful that the loss of history does not outweigh the value of cleanliness,
-particularly given Bazaar's capabilities for progressively disclosing merged
+particularly given Breezy's capabilities for progressively disclosing merged
 revisions.  In particular, because this will include the changes from the
 source branch, but without attribution to that branch, it can lead to
 additional conflicts on later merges that involve the same source and
@@ -78,7 +78,7 @@ Cherrypicking can be used to reverse a set of changes made by giving an
 upper bound in the revision range which is *below* the lower bound.
 For example, to back-out changes made in revision 10, the command is::
 
-  bzr merge -r 10..9
+  brz merge -r 10..9
 
 If you want to take most changes, but not all, from somewhere else, you
 may wish to do a normal merge followed by a few reverse cherrypicks.
@@ -92,10 +92,10 @@ wrong one, here are the steps to take to correct this. Assuming you began
 working in branch ``foo`` when you meant to work in branch ``bar``:
 
 1. Change into branch ``bar``.
-2. Run ``bzr merge --uncommitted foo``
-3. Check the changes came across (``bzr diff``)
+2. Run ``brz merge --uncommitted foo``
+3. Check the changes came across (``brz diff``)
 4. Change into branch ``foo``
-5. Run ``bzr revert``.
+5. Run ``brz revert``.
 
 .. TODO Selective file merging?
 
@@ -105,7 +105,7 @@ Rebasing
 
 Another option to normal merging is *rebasing*, i.e. making it look like
 the current branch originated from a different point than it did.
-Rebasing is supported in Bazaar by the ``rebase`` command provided by
+Rebasing is supported in Breezy by the ``rebase`` command provided by
 the ``rebase`` plugin.
 
 The ``rebase`` command takes the location of another branch on which
@@ -121,16 +121,16 @@ your current branch was branched off the current last revision of the target.
 
 Each revision that is replayed may cause conflicts in the tree. If this
 happens the command will stop and allow you to fix them up. Resolve the
-commits as you would for a ``merge``, and then run ``bzr resolve`` to
+commits as you would for a ``merge``, and then run ``brz resolve`` to
 marked them as resolved. Once you have resolved all the conflicts, you
-should run ``bzr rebase-continue`` to continue the rebase operation.
+should run ``brz rebase-continue`` to continue the rebase operation.
 If conflicts are encountered and you decide not to continue,
-you can run ``bzr rebase-abort``. You can also use ``rebase-todo`` to
+you can run ``brz rebase-abort``. You can also use ``rebase-todo`` to
 show the list of commits still to be replayed.
 
 Note: Some users coming from central VCS tools with poor merge tracking
 like rebasing because it's similar to how they are use to working in older
 tools, or because "perfectly clean" history seems important. Before rebasing
-in Bazaar, think about whether a normal merge is a better choice. In
+in Breezy, think about whether a normal merge is a better choice. In
 particular, rebasing a private branch before sharing it is OK but
 rebasing after sharing a branch with someone else is **strongly** discouraged.

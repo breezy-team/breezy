@@ -1,8 +1,8 @@
 Advanced shared repository layouts
 ==================================
 
-Bazaar is designed to give you flexibility in how you layout branches inside a shared repository.
-This flexibility allows users to tailor Bazaar to their workflow,
+Breezy is designed to give you flexibility in how you layout branches inside a shared repository.
+This flexibility allows users to tailor Breezy to their workflow,
 but it also leads to questions about what is a "good" layout.
 We present some alternatives and give some discussion about the benefits of each.
 
@@ -27,7 +27,7 @@ Which is to layout the repository as::
        +- release-X # A branch specific to mark a given release version
           ...
 
-With Bazaar, that is a perfectly reasonable layout.
+With Breezy, that is a perfectly reasonable layout.
 It has the benefit of being familiar to people coming from SVN,
 and making it clear where the development focus is.
 
@@ -52,12 +52,12 @@ The preferred method for SVN seems to be to give each project a top level direct
        +- branches/      # Container for project2 branches
 
 
-This also works with Bazaar.
-However, with Bazaar repositories are cheap to create
-(a simple ``bzr init-repo`` away), and their primary benefit is when the
+This also works with Breezy.
+However, with Breezy repositories are cheap to create
+(a simple ``brz init-repo`` away), and their primary benefit is when the
 branches share a common ancestry.
 
-So the preferred way for Bazaar would be::
+So the preferred way for Breezy would be::
 
     project1/          # A repository for project1
      +- trunk/         # The mainline of development of project1
@@ -103,22 +103,22 @@ A slight variant is::
 I believe the reason for this in SVN, is so that someone
 can checkout all of "``trunk/``" and get the all the mainlines for all projects.
 
-This layout can be used for Bazaar, but it is not generally recommended.
+This layout can be used for Breezy, but it is not generally recommended.
 
- 1) ``bzr branch/checkout/get`` is a single branch at a time.
+ 1) ``brz branch/checkout/get`` is a single branch at a time.
     So you don't get the benefit of getting all mainlines with a single command. [1]_
 
  2) It is less obvious of whether ``repository/trunk/foo`` is the ``trunk`` of project
     ``foo`` or it is just the ``foo`` directory in the ``trunk`` branch.
     Some of this confusion is due to SVN, because it uses the same "namespace"
     for files in a project that it uses for branches of a project.
-    In Bazaar, there is a clear distinction of what files make up a project, versus
-    the location of the Branch. (After all, there is only one ``.bzr/`` directory per branch,
+    In Breezy, there is a clear distinction of what files make up a project, versus
+    the location of the Branch. (After all, there is only one ``.brz/`` directory per branch,
     versus many ``.svn/`` directories in the checkout).
 
 .. [1] Note: `NestedTreeSupport`_ can provide a way to create "meta-projects" which
     aggregate multiple projects regardless of the repository layout.
-    Letting you ``bzr checkout`` one project, and have it grab all the necessary
+    Letting you ``brz checkout`` one project, and have it grab all the necessary
     sub-projects.
 
 .. _NestedTreeSupport: http://wiki.bazaar.canonical.com/NestedTrees
@@ -127,9 +127,9 @@ This layout can be used for Bazaar, but it is not generally recommended.
 Nested Style (``project/branch/sub-branch/``)
 ---------------------------------------------
 
-Another style with Bazaar, which is not generally possible in SVN
+Another style with Breezy, which is not generally possible in SVN
 is to have branches nested within each-other.
-This is possible because Bazaar supports (and recommends) creating repositories
+This is possible because Breezy supports (and recommends) creating repositories
 with no working trees (``--no-trees``).
 With a ``--no-trees`` repository, because the working files are not intermixed with
 your branch locations, you are free to put a branch in whatever namespace you want.
@@ -159,11 +159,11 @@ branch name.
 
 For example compare::
 
-  bzr branch http://host/repository/project/branches/joe-feature-foo-bugfix-10/
+  brz branch http://host/repository/project/branches/joe-feature-foo-bugfix-10/
 
 Versus::
 
-  bzr branch http://host/project/joe/foo/bugfix-10
+  brz branch http://host/project/joe/foo/bugfix-10
 
 
 Also, if you list the ``repository/project/branches/`` directory you might see something like::
@@ -188,9 +188,9 @@ However, each individual branch is less discoverable.
 
 One other small advantage is that you can do something like::
 
-   bzr branch http://host/project/release/1/1/1
+   brz branch http://host/project/release/1/1/1
   or
-   bzr branch http://host/project/release/1/1/2
+   brz branch http://host/project/release/1/1/2
 
 To indicate release 1.1.1 and 1.1.2. This again depends on how many releases you have
 and whether the gain of splitting things up outweighs the ability to see more at a glance.
@@ -222,10 +222,10 @@ such that the more likely you are to want a branch the easier it is to find.
 
 The biggest disadvantage with this layout, is that branches move around.
 Which means that if someone is following the ``project/dev/new-feature`` branch,
-when it gets merged into ``trunk/`` suddenly ``bzr pull`` doesn't mirror the branch
+when it gets merged into ``trunk/`` suddenly ``brz pull`` doesn't mirror the branch
 for them anymore because the branch is now at ``project/merged/new-feature``.
 There are a couple ways around this. One is to use HTTP redirects to point people
-requesting the old branch to the new branch. ``bzr`` >= 0.15 will let users know
+requesting the old branch to the new branch. ``brz`` >= 0.15 will let users know
 that ``http://old/path redirects to http://new/path``. However, this doesn't help
 if people are accessing a branch through methods other than HTTP (SFTP, local filesystem, etc).
 
@@ -233,9 +233,9 @@ It would also be possible to use a symlink for temporary redirecting (as long as
 is within the repository it should cause little trouble). However eventually you want to
 remove the symlink, or you don't get the clutter reduction benefit.
 Another possibility instead of a symlink is to use a ``BranchReference``. It is currently
-difficult to create these through the ``bzr`` command line, but if people find them useful
+difficult to create these through the ``brz`` command line, but if people find them useful
 that could be changed.
-This is actually how `Launchpad`_ allows you to ``bzr checkout https://launchpad.net/bzr``.
+This is actually how `Launchpad`_ allows you to ``brz checkout https://launchpad.net/bzr``.
 Effectively a ``BranchReference`` is a symlink, but it allows you to reference any other URL.
 If it is extended to support relative references, it would even work over HTTP, SFTP,
 and local paths.

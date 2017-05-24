@@ -36,6 +36,9 @@ Bug Fixes
    doc/en/user-reference only contains English documentation.
    (Jelmer Vernooij, #1565503)
 
+ * Fix for Windows and 32-bit platforms buggy gmtime().
+   (Florent Gallaire, #1669178, #1670243)
+
 Documentation
 *************
 
@@ -56,10 +59,9 @@ Internals
 Testing
 *******
 
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
-
+* POSIX mandates diff to exit with status 1 (was 2 previously), bzr didn't
+  rely on that feature but one of the tests did.
+  (Vincent Ladeuil, #1622039)
 
 ..
    vim: tw=74 ft=rst ff=unix

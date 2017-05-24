@@ -4,10 +4,10 @@ Bazaar supports semi-automatic bug reporting through Apport
 If apport is not installed, an exception is printed to stderr in the usual way.
 
 For this to work properly it's suggested that two files be installed when a
-package of bzr is installed:
+package of brz is installed:
 
-``bzr.conf``
+``brz.conf``
     into ``/etc/apport/crashdb.conf.d``
 
-``source_bzr.py`` 
+``source_brz.py`` 
     into ``/usr/share/apport/package-hooks``

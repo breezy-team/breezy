@@ -9,7 +9,7 @@ while other tools (e.g. back-end services) are focused on making teams
 or whole companies more productive. Version control tools have
 traditionally been in the latter camp.
 
-One of the cool things about Bazaar is that it is so easy to setup
+One of the cool things about Breezy is that it is so easy to setup
 that version control can now be treated as a personal productivity tool.
 If you wish to record changes to files for the purposes of checkpointing
 good known states or tracking history, it is now easy to do so. This
