@@ -90,7 +90,7 @@ def transport_test_permutations():
     return result
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     """Multiply tests for tranport implementations."""
     result = loader.suiteClass()
     scenarios = transport_test_permutations()

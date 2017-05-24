@@ -373,7 +373,7 @@ class TestPlugins(BaseTestPlugins):
 
     def test_load_plugin_tests_gives_load_plugin_tests_result(self):
         source = """
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     return 'foo'"""
         self.setup_plugin(source)
         loader = tests.TestUtil.TestLoader()

@@ -20,7 +20,7 @@ import sys
 
 from .. import tests
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
         'breezy.util._bencode_py', 'breezy._bencode_pyx')
     return suite

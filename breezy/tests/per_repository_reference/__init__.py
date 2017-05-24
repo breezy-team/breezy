@@ -113,7 +113,7 @@ def external_reference_test_scenarios():
     return result
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     module_list = [
         'breezy.tests.per_repository_reference.test_add_inventory',
         'breezy.tests.per_repository_reference.test_add_revision',

@@ -138,7 +138,7 @@ def _register_hooks():
 
 _register_hooks()
 
-def load_tests(basic_tests, module, loader):
+def load_tests(loader, basic_tests, pattern):
     testmod_names = [
         'test_account',
         'test_register',

@@ -30,7 +30,7 @@ from breezy.symbol_versioning import (
 from breezy import tests
 
 
-def load_tests(basic_tests, module, loader):
+def load_tests(loader, basic_tests, pattern):
     suite = loader.suiteClass()
     # add the tests for this module
     suite.addTests(basic_tests)

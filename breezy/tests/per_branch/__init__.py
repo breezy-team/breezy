@@ -147,7 +147,7 @@ def branch_scenarios():
     return scenarios
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     per_branch_mod_names = [
         'branch',
         'break_lock',

@@ -388,7 +388,7 @@ def create_tree_scenario(transport_server, transport_readonly_server,
     return scenario_options
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     per_tree_mod_names = [
         'annotate_iter',
         'export',

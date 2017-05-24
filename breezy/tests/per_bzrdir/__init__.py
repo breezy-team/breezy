@@ -53,7 +53,7 @@ class TestCaseWithBzrDir(TestCaseWithTransport):
         return self.bzrdir_format
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     test_per_bzrdir = [
         'breezy.tests.per_bzrdir.test_bzrdir',
         ]

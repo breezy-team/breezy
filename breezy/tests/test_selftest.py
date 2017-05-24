@@ -2882,6 +2882,7 @@ class TestTestLoader(tests.TestCase):
             pass
         MyModule.a_class = Stub
         module = MyModule()
+        module.__name__ = 'fake_module'
         return loader, module
 
     def test_module_no_load_tests_attribute_loads_classes(self):
@@ -2890,16 +2891,16 @@ class TestTestLoader(tests.TestCase):
 
     def test_module_load_tests_attribute_gets_called(self):
         loader, module = self._get_loader_and_module()
-        # 'self' is here because we're faking the module with a class. Regular
-        # load_tests do not need that :)
-        def load_tests(self, standard_tests, module, loader):
+        def load_tests(loader, standard_tests, pattern):
             result = loader.suiteClass()
             for test in tests.iter_suite_tests(standard_tests):
                 result.addTests([test, test])
             return result
         # add a load_tests() method which multiplies the tests from the module.
-        module.__class__.load_tests = load_tests
-        self.assertEqual(2, loader.loadTestsFromModule(module).countTestCases())
+        module.__class__.load_tests = staticmethod(load_tests)
+        self.assertEqual(
+            2 * [str(module.a_class('test_foo'))],
+            list(map(str, loader.loadTestsFromModule(module))))
 
     def test_load_tests_from_module_name_smoke_test(self):
         loader = TestUtil.TestLoader()
