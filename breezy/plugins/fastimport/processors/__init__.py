@@ -14,3 +14,5 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """Actual import processors."""
+
+from __future__ import absolute_import
