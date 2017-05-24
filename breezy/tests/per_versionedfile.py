@@ -2030,7 +2030,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         """
         # We make assertions during copying to catch things early for
         # easier debugging.
-        for record, ref_record in izip(stream, expected):
+        for record, ref_record in zip(stream, expected):
             records.append(record)
             self.assertEqual(ref_record.key, record.key)
             self.assertEqual(ref_record.storage_kind, record.storage_kind)

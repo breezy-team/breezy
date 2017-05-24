@@ -20,7 +20,7 @@ Transport implementations tested here are supplied by
 TransportTestProviderAdapter.
 """
 
-import itertools
+from future_builtins import zip
 import os
 import stat
 import sys
@@ -191,15 +191,15 @@ class TransportTests(TestTransportImplementation):
         self.build_tree(files, transport=t, line_endings='binary')
         self.check_transport_contents('contents of a\n', t, 'a')
         content_f = t.get_multi(files)
-        # Use itertools.izip() instead of use zip() or map(), since they fully
+        # Use future iter zip instead of use zip() or map(), since they fully
         # evaluate their inputs, the transport requests should be issued and
         # handled sequentially (we don't want to force transport to buffer).
-        for content, f in itertools.izip(contents, content_f):
+        for content, f in zip(contents, content_f):
             self.assertEqual(content, f.read())
 
         content_f = t.get_multi(iter(files))
-        # Use itertools.izip() for the same reason
-        for content, f in itertools.izip(contents, content_f):
+        # Again need iter version of zip for the same reason
+        for content, f in zip(contents, content_f):
             self.assertEqual(content, f.read())
 
     def test_get_unknown_file(self):

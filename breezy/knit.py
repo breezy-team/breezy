@@ -53,8 +53,6 @@ in the deltas to provide line annotation
 
 from __future__ import absolute_import
 
-
-from itertools import izip
 import operator
 import os
 
@@ -1933,8 +1931,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         raw_data = self._access.get_raw_records(
             [index_memo for key, index_memo in needed_records])
 
-        for (key, index_memo), data in \
-                izip(iter(needed_records), raw_data):
+        for (key, index_memo), data in zip(needed_records, raw_data):
             content, digest = self._parse_record(key[-1], data)
             yield key, content, digest
 

@@ -27,6 +27,7 @@ from __future__ import absolute_import
 
 import bisect
 import errno
+from future_builtins import zip
 import itertools
 import os
 import random
@@ -202,7 +203,7 @@ class _SFTPReadvHelper(object):
         # short readv.
         data_stream = itertools.chain(fp.readv(requests),
                                       itertools.repeat(None))
-        for (start, length), data in itertools.izip(requests, data_stream):
+        for (start, length), data in zip(requests, data_stream):
             if data is None:
                 if cur_coalesced is not None:
                     raise errors.ShortReadvError(self.relpath,
