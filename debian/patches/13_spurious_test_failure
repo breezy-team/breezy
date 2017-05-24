@@ -5,11 +5,11 @@ Author: Vincent Ladeuil <v.ladeuil+lp@free.fr>
 
 ---
 
-Index: unstable/bzrlib/tests/test_smart_transport.py
+Index: unstable/breezy/tests/test_smart_transport.py
 ===================================================================
---- unstable.orig/bzrlib/tests/test_smart_transport.py
-+++ unstable/bzrlib/tests/test_smart_transport.py
-@@ -1462,7 +1462,6 @@ class TestSmartTCPServer(tests.TestCase)
+--- unstable.orig/breezy/tests/test_smart_transport.py
++++ unstable/breezy/tests/test_smart_transport.py
+@@ -1464,7 +1464,6 @@ class TestSmartTCPServer(tests.TestCase)
          self.assertThat(log, DocTestMatches("""\
      INFO  Requested to stop gracefully
  ... Stopping SmartServerSocketStreamMedium(client=('127.0.0.1', ...

@@ -3,14 +3,14 @@ Author: Richard Wilbur <richard.wilbur@gmail.com>
 Bug: https://launchpad.net/bugs/1537319
 Last-Update: 2016-02-01
 Applied-Upstream: no
-X-Bzr-Revision-Id: richard.wilbur@gmail.com-20160201164730-dd9q6yofj43et741
+X-brz-Revision-Id: richard.wilbur@gmail.com-20160201164730-dd9q6yofj43et741
 
 === modified file 'Makefile'
 Index: unstable/Makefile
 ===================================================================
 --- unstable.orig/Makefile
 +++ unstable/Makefile
-@@ -28,6 +28,10 @@ BZR_TARGET=release
+@@ -28,6 +28,10 @@ BRZ_TARGET=release
  PLUGIN_TARGET=plugin-release
  PYTHON_BUILDFLAGS=
  
@@ -24,23 +24,23 @@ Index: unstable/Makefile
 @@ -106,10 +110,10 @@ html-docs: html-plain
  ### Man-page Documentation ###
  
- MAN_DEPENDENCIES = bzrlib/builtins.py \
--	$(wildcard bzrlib/*.py) \
--	$(wildcard bzrlib/*/*.py) \
-+	$(call sw,bzrlib/*.py) \
-+	$(call sw,bzrlib/*/*.py) \
+ MAN_DEPENDENCIES = breezy/builtins.py \
+-	$(wildcard breezy/*.py) \
+-	$(wildcard breezy/*/*.py) \
++	$(call sw,breezy/*.py) \
++	$(call sw,breezy/*/*.py) \
  	tools/generate_docs.py \
--	$(wildcard $(addsuffix /*.txt, bzrlib/help_topics/en)) 
-+	$(call sw,$(addsuffix /*.txt, bzrlib/help_topics/en)) 
+-	$(wildcard $(addsuffix /*.txt, breezy/help_topics/en)) 
++	$(call sw,$(addsuffix /*.txt, breezy/help_topics/en)) 
  
- MAN_PAGES = man1/bzr.1
- man1/bzr.1: $(MAN_DEPENDENCIES)
+ MAN_PAGES = man1/brz.1
+ man1/brz.1: $(MAN_DEPENDENCIES)
 @@ -145,7 +149,7 @@ SPHINX_DEPENDENCIES = \
  	doc/developers/Makefile \
  	doc/developers/make.bat
  
--NEWS_FILES = $(wildcard doc/en/release-notes/bzr-*.txt)
-+NEWS_FILES = $(call sw,doc/en/release-notes/bzr-*.txt)
+-NEWS_FILES = $(wildcard doc/en/release-notes/brz-*.txt)
++NEWS_FILES = $(call sw,doc/en/release-notes/brz-*.txt)
  
  doc/en/user-reference/index.txt: $(MAN_DEPENDENCIES)
  	LANGUAGE=C $(PYTHON) tools/generate_docs.py -o $@ rstx
@@ -74,9 +74,9 @@ Index: unstable/Makefile
  
  non_txt_files = \
         doc/default.css \
--       $(wildcard doc/*/bzr-en-quick-reference.svg) \
--       $(wildcard doc/*/bzr-en-quick-reference.png) \
--       $(wildcard doc/*/bzr-en-quick-reference.pdf) \
+-       $(wildcard doc/*/brz-en-quick-reference.svg) \
+-       $(wildcard doc/*/brz-en-quick-reference.png) \
+-       $(wildcard doc/*/brz-en-quick-reference.pdf) \
 -       $(wildcard doc/*/bzr-es-quick-reference.svg) \
 -       $(wildcard doc/*/bzr-es-quick-reference.png) \
 -       $(wildcard doc/*/bzr-es-quick-reference.pdf) \
@@ -84,9 +84,9 @@ Index: unstable/Makefile
 -       $(wildcard doc/*/bzr-ru-quick-reference.png) \
 -       $(wildcard doc/*/bzr-ru-quick-reference.pdf) \
 -       $(wildcard doc/*/user-guide/images/*.png)
-+       $(call sw,doc/*/bzr-en-quick-reference.svg) \
-+       $(call sw,doc/*/bzr-en-quick-reference.png) \
-+       $(call sw,doc/*/bzr-en-quick-reference.pdf) \
++       $(call sw,doc/*/brz-en-quick-reference.svg) \
++       $(call sw,doc/*/brz-en-quick-reference.png) \
++       $(call sw,doc/*/brz-en-quick-reference.pdf) \
 +       $(call sw,doc/*/bzr-es-quick-reference.svg) \
 +       $(call sw,doc/*/bzr-es-quick-reference.png) \
 +       $(call sw,doc/*/bzr-es-quick-reference.pdf) \

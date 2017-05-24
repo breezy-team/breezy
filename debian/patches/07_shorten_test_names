@@ -2,13 +2,13 @@ Author: Jelmer Vernooij <jelmer@debian.org>
 Description: Shorten test names, since otherwise paths exceed 256 characters on ci.debian.net
 Status: not forwarded upstream
 
-=== modified file 'bzrlib/tests/per_interrepository/test_interrepository.py'
-Index: unstable/bzrlib/tests/per_interrepository/test_interrepository.py
+=== modified file 'breezy/tests/per_interrepository/test_interrepository.py'
+Index: unstable/breezy/tests/per_interrepository/test_interrepository.py
 ===================================================================
---- unstable.orig/bzrlib/tests/per_interrepository/test_interrepository.py
-+++ unstable/bzrlib/tests/per_interrepository/test_interrepository.py
+--- unstable.orig/breezy/tests/per_interrepository/test_interrepository.py
++++ unstable/breezy/tests/per_interrepository/test_interrepository.py
 @@ -97,7 +97,7 @@ class TestCaseWithComplexRepository(Test
-         self.assertEqual(('search', set(['rev2']), set(['rev1']), 1),
+         self.assertEqual(('search', {'rev2'}, {'rev1'}, 1),
              result.get_recipe())
  
 -    def test_search_missing_revision_ids_absent_requested_raises(self):
