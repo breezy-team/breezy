@@ -1,0 +1,5 @@
+doc/developers/_build/html/*    usr/share/doc/brz/html/developers
+doc/en/_build/html/*    usr/share/doc/brz/html/en
+doc/es/_build/html/*    usr/share/doc/brz/html/es
+doc/ja/_build/html/*    usr/share/doc/brz/html/ja
+doc/ru/_build/html/*    usr/share/doc/brz/html/ru

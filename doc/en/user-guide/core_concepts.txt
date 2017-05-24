@@ -4,7 +4,7 @@ Core concepts
 A simple user model
 -------------------
 
-To use Bazaar you need to understand four core concepts:
+To use Breezy you need to understand four core concepts:
 
 * **Revision** - a snapshot of the files you're working with.
 
@@ -52,7 +52,7 @@ in the branch.
 
 See `Specifying revisions <specifying_revisions.html>`_ in the appendices
 for a closer look at the numerous ways that revisions and ranges of
-revisions can be specified in Bazaar, and `Understanding Revision Numbers
+revisions can be specified in Breezy, and `Understanding Revision Numbers
 <zen.html#understanding-revision-numbers>`_ for a more detailed
 description of revision numbering.
 
@@ -104,8 +104,8 @@ branches to share a repository in order to optimize disk usage.
 Putting the concepts together
 -----------------------------
 
-Once you have grasped the concepts above, the various ways of using Bazaar
-should become easier to understand. The simplest way of using Bazaar is
+Once you have grasped the concepts above, the various ways of using Breezy
+should become easier to understand. The simplest way of using Breezy is
 to use a *standalone tree*, which has a working tree, branch, and repository
 all in a single location. Other common scenarios include:
 
@@ -119,5 +119,5 @@ all in a single location. Other common scenarios include:
 * `Lightweight checkouts <using_checkouts.html#getting-a-lightweight-checkout>`_
   - branch is stored in a different location to the working tree.
 
-The best way to use Bazaar, however, depends on your needs. Let's take a
+The best way to use Breezy, however, depends on your needs. Let's take a
 look at some common workflows next.

@@ -1,3 +1,12 @@
-include bzr README setup.py
+include bzr README setup.py COPYING.txt
+# FIXME: Not needed, remove after 2.7.0 -- vila 2016-02-07
+include BRANCH.TODO INSTALL Makefile MANIFEST.in NEWS profile_imports.py README_BDIST_RPM .rsyncexclude .testr.conf TODO tools/bzr_epydoc tools/packaging/lp-upload-release tools/subunit-sum bzrlib/plugins/news_merge/README bzrlib/plugins/po_merge/README bzrlib/tests/ssl_certs/ca.key bzrlib/tests/ssl_certs/server.csr bzrlib/plugins/grep/.bzrignore bzrlib/plugins/grep/NEWS
+# bzr export still create some empty dirs that need to be removed
+# bzrlib/plugins/weave_fmt/tests/ bzrlib/store/revision/ doc/ja/_templates/ man1/ man1
+recursive-include tools/win32 *
 recursive-include bzrlib *.py *.pyx *.pxd *.txt *.c *.h
 recursive-include tools *.py *.sh
+recursive-include apport *
+recursive-include contrib *
+recursive-include doc *
+recursive-include po *

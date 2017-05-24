@@ -1,18 +1,18 @@
 Workflows
 =========
 
-Bazaar is just a tool
+Breezy is just a tool
 ---------------------
 
-Bazaar supports many different ways of working together.
+Breezy supports many different ways of working together.
 This means that you can
 start with one workflow and adapt it over time as circumstances
 change. There is no "one true way" that always makes sense and
 there never will be. This section provides a brief overview of
-some popular workflows supported by Bazaar.
+some popular workflows supported by Breezy.
 
 Keep in mind that these workflow are just *some* examples of how
-Bazaar can be used. You may want to use a workflow not listed here,
+Breezy can be used. You may want to use a workflow not listed here,
 perhaps building on the ideas below.
 
 Solo
@@ -30,7 +30,7 @@ Advantages of this workflow over not using version control at all include:
  * rollback to an earlier state
  * tracking of history.
 
-The key features of Bazaar appropriate for this workflow are low administration
+The key features of Breezy appropriate for this workflow are low administration
 (no server setup) and ease of use.
 
 
@@ -51,7 +51,7 @@ Advantages over *Solo* are:
  * each line of each text file can be attributed to a particular change
    including who changed it, when and why.
 
-When implementing this workflow, Bazaar's advantages over CVS and Subversion include:
+When implementing this workflow, Breezy's advantages over CVS and Subversion include:
 
  * no server to setup
  * intelligent merging means merging multiple times isn't painful.
@@ -62,13 +62,13 @@ Centralized
 
 Also known as *lock-step*, this is essentially the same as the workflow
 encouraged/enforced by CVS and Subversion. All developers work on the same
-branch (or branches). They run ``bzr update`` to get their checkout up-to-date,
-then ``bzr commit`` to publish their changes to the central location.
+branch (or branches). They run ``brz update`` to get their checkout up-to-date,
+then ``brz commit`` to publish their changes to the central location.
 
 .. image:: images/workflows_centralized.png
 
 Subversion and CVS are good choices for implementing this workflow because they
-make it easy. Bazaar directly supports it as well while providing some
+make it easy. Breezy directly supports it as well while providing some
 important advantages over CVS and Subversion:
 
  * better branching and merging
@@ -91,7 +91,7 @@ Advantages over *Centralized*:
  * Less chance for a bad commit to interfere with everyone else's work
 
 Subversion and CVS do not support this model. Other distributed VCS tools can
-support it but do so less directly than Bazaar does.
+support it but do so less directly than Breezy does.
 
 
 Decentralized with shared mainline
@@ -109,7 +109,7 @@ Advantage over *Centralized with local commits*:
  * Developers can merge one another's personal branches when working on something together.
 
 Subversion and CVS do not support this model. Other distributed VCS
-tools support it. Many features of Bazaar are good for this workflow
+tools support it. Many features of Breezy are good for this workflow
 including ease of use, shared repositories, integrated merging and
 rich metadata (including directory rename tracking).
 
@@ -130,7 +130,7 @@ Advantage over *Decentralized with shared mainline*:
  * Code is always reviewed before it enters the mainline
  * Tighter control over when changes get incorporated into the mainline.
 
-A companion tool of Bazaar's called Bundle Buggy can be very useful for
+A companion tool of Breezy's called Bundle Buggy can be very useful for
 tracking what changes are up for review, their status and reviewer comments.
 
 
@@ -158,7 +158,7 @@ Advantages over *Decentralized with human gatekeeper*:
    mainline is higher)
  * Scales better as teams grow.
 
-A companion tool of Bazaar's called Patch Queue Manager (PQM) can provide the
+A companion tool of Breezy's called Patch Queue Manager (PQM) can provide the
 automated gatekeeper capability.
 
 

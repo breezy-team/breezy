@@ -1,3 +1,9 @@
+brz (3.0.0~bzr6631-1) UNRELEASED; urgency=medium
+
+  * New upstream snapshot.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 24 May 2017 01:13:04 +0000
+
 bzr (2.7.0+bzr6619-8) unstable; urgency=high
 
   * Update 23_ssl_host: Actually pass server_hostname to

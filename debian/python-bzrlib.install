@@ -1,9 +1,0 @@
-usr/lib/python*/*-packages/*/*[!_][!_].so
-usr/lib/python*/*-packages/bzrlib/*.py
-usr/lib/python*/*-packages/bzrlib/*/*.py
-usr/lib/python*/*-packages/bzrlib/*/*/*.py
-usr/lib/python*/*-packages/bzrlib/*/*/*/*.py
-usr/lib/python*/*-packages/bzrlib/_*_c.so
-usr/lib/python*/*-packages/bzrlib/doc/api/*.txt
-usr/lib/python*/*-packages/bzrlib/help_topics/en/*.txt
-usr/lib/python*/dist-packages/bzr-*.egg-info

@@ -1,0 +1,377 @@
+Conflict Types
+==============
+
+Some operations, like merge, revert and pull, modify the contents of your
+working tree.  These modifications are programmatically generated, and so they
+may conflict with the current state of your working tree. 
+
+When conflicts are present in your working tree (as shown by ``brz
+conflicts``), you should resolve them and then inform brz that the conflicts
+have been resolved.
+
+Resolving conflicts is sometimes not obvious. Either because the user that
+should resolve them is not the one responsible for their occurrence, as is the
+case when merging other people's work or because some conflicts are presented
+in a way that is not easy to understand.
+
+Bazaar tries to avoid conflicts ; its aim is to ask you to resolve the
+conflict if and only if there's an actual conceptual conflict in the source
+tree.  Because Bazaar doesn't understand the real meaning of the files being
+versioned, it can, when faced with ambiguities, fall short in either direction
+trying to resolve the conflict itself. Many kinds of changes can be combined
+programmatically, but sometimes only a human can determine the right thing to
+do.
+
+When Bazaar generates a conflict, it adds information into the working tree to
+present the conflicting versions, and it's up to you to find the correct
+resolution.
+
+Whatever the conflict is, resolving it is roughly done in two steps:
+
+1. Modify the working tree content so that the conflicted item is now in the
+   state you want to keep, then
+
+2. Inform Bazaar that the conflict is now solved and ask to cleanup any
+   remaining generated information (``brz resolve <item>``).
+
+For most conflict types, there are some obvious ways to modify the working
+tree and put it into the desired state. For some types of conflicts, Bazaar
+itself already made a choice, when possible.
+
+Yet, whether Bazaar makes a choice or not, there are some other simple but
+different ways to resolve the conflict.
+
+Each type of conflict is explained below, and the action which must be done to
+resolve the conflict is outlined.
+
+Various actions are available depending on the kind of conflict, for some of
+these actions, Bazaar can provide some help. In the end you should at least
+inform Bazaar that you're done with the conflict with::
+
+  ``brz resolve FILE --action=done'
+
+Note that this is the default action when a single file is involved so you can
+simply use::
+
+   ``brz resolve FILE``
+
+See ``brz help resolve`` for more details.
+
+Text conflicts
+--------------
+
+Typical message::
+
+  Text conflict in FILE
+
+These are produced when a text merge cannot completely reconcile two sets of
+text changes.  Bazaar will emit files for each version with the extensions
+THIS, OTHER, and BASE.  THIS is the version of the file from the target tree,
+i.e. the tree that you are merging changes into.  OTHER is the version that you
+are merging into the target.  BASE is an older version that is used as a basis
+for comparison.
+
+In the main copy of the file, Bazaar will include all the changes that it
+could reconcile, and any un-reconciled conflicts are surrounded by
+"herringbone" markers like ``<<<<<<<``.
+
+Say the initial text is "The project leader released it.", and THIS modifies it
+to "Martin Pool released it.", while OTHER modifies it to "The project leader
+released Bazaar."  A conflict would look like this::
+
+  <<<<<<< TREE
+  Martin Pool released it.
+  =======
+  The project leader released Bazaar.
+  >>>>>>> MERGE-SOURCE
+
+The correct resolution would be "Martin Pool released Bazaar."
+
+You can handle text conflicts either by editing the main copy of the file,
+or by invoking external tools on the THIS, OTHER and BASE versions.  It's
+worth mentioning that resolving text conflicts rarely involves picking one
+set of changes over the other (but see below when you encounter these
+cases).  More often, the two sets of changes must be intelligently combined.
+
+If you edit the main copy, be sure to remove the herringbone markers.  When
+you are done editing, the file should look like it never had a conflict, and be
+ready to commit.
+
+When you have resolved text conflicts, just run ``brz resolve --auto``, and
+Bazaar will auto-detect which conflicts you have resolved.
+
+When the conflict is resolved, Bazaar deletes the previously generated
+``.BASE``, ``.THIS`` and ``.OTHER`` files if they are still present in the
+working tree.
+
+
+When you want to pick one set of changes over the other, you can use ``brz
+resolve`` with one of the following actions:
+
+* ``--action=take-this`` will issue ``mv FILE.THIS FILE``,
+* ``--action=take-other`` will issue ``mv FILE.OTHER FILE``.
+
+Note that if you have modified ``FILE.THIS`` or ``FILE.OTHER``, these
+modifications will be taken into account.
+
+Content conflicts
+-----------------
+
+Typical message::
+
+  Contents conflict in FILE
+
+This conflict happens when there are conflicting changes in the working tree
+and the merge source, but the conflicted items are not text files.  They may
+be binary files, or symlinks, or directories.  It can even happen with files
+that are deleted on one side, and modified on the other.
+
+Like text conflicts, Bazaar will emit THIS, OTHER and BASE files.  (They may be
+regular files, symlinks or directories).  But it will not include a "main copy"
+of the file with herringbone conflict markers.  It will appear that the "main
+copy" has been renamed to THIS or OTHER.
+
+To resolve that kind of conflict, you should rebuild FILE from either version
+or a combination of both.
+
+``brz resolve`` recognizes the following actions:
+
+* ``--action=take-this`` will issue ``brz mv FILE.THIS FILE``,
+* ``--action=take-other`` will issue ``brz mv FILE.OTHER FILE``,
+* ``--action=done`` will just mark the conflict as resolved.
+
+Any action will also delete the previously generated ``.BASE``, ``.THIS`` and
+``.OTHER`` files if they are still present in the working tree.
+
+Bazaar cannot auto-detect when conflicts of this kind have been resolved.
+
+Tag conflicts
+-------------
+
+Typical message::
+
+  Conflicting tags:
+      version-0.1
+
+When pulling from or pushing to another branch, Bazaar informs you about tags
+that conflict between the two branches; that is the same tag points to two
+different revisions.  You need not resolve these conflicts, but subsequent
+uses of pull or push will result in the same message.
+
+To resolve the conflict, you must apply the correct tags to either the target
+branch or the source branch as appropriate.  Use "brz tags --show-ids -d
+SOURCE_URL" to see the tags in the source branch.  If you want to make the
+target branch's tags match the source branch, then in the target branch do
+``brz tag --force -r revid:REVISION_ID CONFLICTING_TAG`` for each of the
+CONFLICTING_TAGs, where REVISION_ID comes from the list of tags in the source
+branch.  You need not call "brz resolve" after doing this.  To resolve in
+favor of the target branch, you need to similarly use ``tag --force`` in the
+source branch.  (Note that pulling or pushing using --overwrite will overwrite
+all tags as well.)
+
+Duplicate paths
+---------------
+
+Typical message::
+
+  Conflict adding file FILE.  Moved existing file to FILE.moved.
+
+Sometimes Bazaar will attempt to create a file using a pathname that has
+already been used.  The existing file will be renamed to "FILE.moved".  
+
+To resolve that kind of conflict, you should rebuild FILE from either version
+or a combination of both.
+
+``brz resolve`` recognizes the following actions:
+
+* ``--action=take-this`` will issue ``brz rm FILE ; brz mv FILE.moved FILE``,
+* ``--action=take-other`` will issue ``brz rm FILE.moved``,
+* ``--action=done`` will just mark the conflict as resolved.
+
+Note that you must get rid of FILE.moved before using ``--action=done``.
+
+Bazaar cannot auto-detect when conflicts of this kind have been resolved.
+
+Unversioned parent
+------------------
+
+Typical message::
+
+    Conflict because FILE is not versioned, but has versioned children.
+
+Sometimes Bazaar will attempt to create a file whose parent directory is not
+versioned.  This happens when the directory has been deleted in the target,
+but has a new child in the source, or vice versa.  In this situation, Bazaar
+will version the parent directory as well.  Resolving this issue depends
+very much on the particular scenario.  You may wish to rename or delete either
+the file or the directory.  When you are satisfied, you can run "brz resolve
+FILE" to mark the conflict as resolved.
+
+Missing parent
+--------------
+
+Typical message::
+
+  Conflict adding files to FILE.  Created directory.
+
+This happens when a directory has been deleted in the target, but has new
+children in the source.  This is similar to the "unversioned parent" conflict,
+except that the parent directory does not *exist*, instead of just being
+unversioned.  In this situation, Bazaar will create the missing parent.
+Resolving this issue depends very much on the particular scenario.
+
+To resolve that kind of conflict, you should either remove or rename the
+children or the directory or a combination of both.
+
+``brz resolve`` recognizes the following actions:
+
+* ``--action=take-this`` will issue ``brz rm directory`` including the
+  children,
+* ``--action=take-other`` will acknowledge Bazaar choice to keep the children
+  and restoring the directory,
+* ``--action=done`` will just mark the conflict as resolved.
+
+Bazaar cannot auto-detect when conflicts of this kind have been resolved.
+
+Deleting parent
+---------------
+
+Typical message::
+
+  Conflict: can't delete DIR because it is not empty.  Not deleting.
+
+This is the opposite of "missing parent".  A directory is deleted in the
+source, but has new children in the target (either because a directory
+deletion is merged or because the merge introduce new children).  Bazaar
+will retain the directory.  Resolving this issue depends very much on the
+particular scenario.
+
+To resolve that kind of conflict, you should either remove or rename the
+children or the directory or a combination of both.
+
+``brz resolve`` recognizes the following actions:
+
+* ``--action=take-this`` will acknowledge Bazaar choice to keep the directory,
+
+* ``--action=take-other`` will issue ``brz rm directory`` including the 
+  children,
+
+* ``--action=done`` will just mark the conflict as resolved.
+
+Note that when merging a directory deletion, if unversioned files are
+present, they become potential orphans has they don't have a directory
+parent anymore.
+
+Handling such orphans, *before* the conflict is created, is controlled by
+setting the ``brz.transform.orphan_policy`` configuration option.
+
+There are two possible values for this option:
+
+* ``conflict`` (the default): will leave the orphans in place and
+  generate a conflicts,
+
+* ``move``: will move the orphans to a ``brz-orphans`` directory at the root
+  of the working tree with names like ``<file>.~#~``.
+
+Bazaar cannot auto-detect when conflicts of this kind have been resolved.
+
+Path conflict
+-------------
+
+Typical message::
+
+  Path conflict: PATH1 / PATH2
+
+This happens when the source and target have each modified the name or parent
+directory of a file.  Bazaar will use the path elements from the source.
+
+To resolve that kind of conflict, you just have to decide what name should be
+retained for the file involved.
+
+``brz resolve`` recognizes the following actions:
+
+* ``--action=take-this`` will revert Bazaar choice and keep ``PATH1`` by
+  issuing ``brz mv PATH2 PATH1``,
+* ``--action=take-other`` will acknowledge Bazaar choice of keeping ``PATH2``,
+* ``--action=done`` will just mark the conflict as resolved.
+
+Bazaar cannot auto-detect when conflicts of this kind have been resolved.
+
+Parent loop
+-----------
+
+Typical message::
+
+  Conflict moving FILE into DIRECTORY.  Cancelled move.
+
+This happens when the source and the target have each moved directories, so
+that, if the change could be applied, a directory would be contained by itself.
+For example::
+
+  $ brz init
+  $ brz mkdir white
+  $ brz mkdir black
+  $ brz commit -m "BASE"
+  $ brz branch . ../other
+  $ brz mv white black
+  $ brz commit -m "THIS"
+  $ brz mv ../other/black ../other/white
+  $ brz commit ../other -m "OTHER"
+  $ brz merge ../other
+
+In this situation, Bazaar will cancel the move, and leave ``white`` in
+``black``.  To resolve that kind of conflict, you just have to decide what
+name should be retained for the directories involved.
+
+``brz resolve`` recognizes the following actions:
+
+* ``--action=take-this`` will acknowledge Bazaar choice of leaving ``white`` 
+  in ``black``,
+* ``--action=take-other`` will revert Bazaar choice and move ``black`` in
+   ``white`` by issuing ``brz mv black/white white ; brz mv black white``,
+* ``--action=done`` will just mark the conflict as resolved.
+
+Bazaar cannot auto-detect when conflicts of this kind have been resolved.
+
+Non-directory parent
+--------------------
+
+Typical message::
+
+  Conflict: foo.new is not a directory, but has files in it.
+  Created directory.
+
+This happens when one side has added files to a directory, and the other side
+has changed the directory into a file or symlink.  For example::
+
+  $ brz init
+  $ brz mkdir foo
+  $ brz commit -m "BASE"
+  $ brz branch . ../other
+  $ rmdir foo
+  $ touch foo
+  $ brz commit -m "THIS"
+  $ brz mkdir ../other/foo/bar
+  $ brz commit ../other -m "OTHER"
+  $ brz merge ../other
+
+To resolve that kind of conflict, you have to decide what name should be
+retained for the file, directory or symlink involved.
+
+``brz resolve`` recognizes the following actions:
+
+* ``--action=take-this`` will issue ``brz rm --force foo.new`` and 
+  ``brz add foo``,
+* ``--action=take-other`` will issue ``brz rm --force foo`` and 
+  ``brz mv foo.new foo``,
+* ``--action=done`` will just mark the conflict as resolved.
+
+Bazaar cannot auto-detect when conflicts of this kind have been resolved.
+
+MalformedTransform
+------------------
+
+It is possible (though very rare) for Bazaar to raise a MalformedTransform
+exception.  This means that Bazaar encountered a filesystem conflict that it was
+unable to resolve.  This usually indicates a bug.  Please let us know if you
+encounter this.  Our bug tracker is at https://launchpad.net/bzr/+bugs

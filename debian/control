@@ -1,7 +1,7 @@
-Source: bzr
+Source: brz
 Section: vcs
 Priority: optional
-Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
+Maintainer: Debian Breezy Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
 Uploaders: Wouter van Heyst <larstiq@larstiq.dyndns.org>,
            Andrew Starr-Bochicchio <asb@debian.org>,
            Jelmer Vernooĳ <jelmer@debian.org>,
@@ -26,48 +26,48 @@ Build-Depends: bash-completion,
                python-testtools (>= 0.9.5~)
 Standards-Version: 3.9.8
 X-Python-Version: >= 2.6
-Vcs-Bzr: http://anonscm.debian.org/bzr/pkg-bazaar/bzr/2.7
-Vcs-Browser: http://bzr.debian.org/loggerhead/pkg-bazaar/bzr/2.7
+Vcs-brz: http://anonscm.debian.org/brz/pkg-bazaar/brz/3.0
+Vcs-Browser: http://brz.debian.org/loggerhead/pkg-bazaar/brz/2.7
 Homepage: http://bazaar-vcs.org
 XS-Testsuite: autopkgtest
 
-Package: bzr
+Package: brz
 Recommends: python-gpgme
 Architecture: all
-Depends: python-bzrlib (<= ${source:Version}.1~),
-         python-bzrlib (>= ${source:Version}),
+Depends: python-breezy (<= ${source:Version}.1~),
+         python-breezy (>= ${source:Version}),
          ${misc:Depends},
          ${python:Depends}
-Breaks: bzr-pqm (<< 1.4.0~bzr80),
-        bzr-xmloutput (<< 0.8.8+bzr160),
-        python-bzrlib (<< 2.4.0~beta3~)
-Suggests: bzr-doc,
-          bzrtools,
-          python-bzrlib.tests
+Breaks: brz-pqm (<< 1.4.0~brz80),
+        brz-xmloutput (<< 0.8.8+brz160),
+        python-breezy (<< 2.4.0~beta3~)
+Suggests: brz-doc,
+          brztools,
+          python-breezy.tests
 Description: easy to use distributed version control system
- Bazaar is a distributed version control system designed to be easy to
+ Breezy is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and
  easily extendable.
  .
  Publishing of branches can be done over plain HTTP, that is, no special
- software is needed on the server to host Bazaar branches. Branches can
+ software is needed on the server to host Breezy branches. Branches can
  be pushed to the server via sftp (which most SSH installations come
- with), FTP, or over a custom and faster protocol if bzr is installed in
+ with), FTP, or over a custom and faster protocol if brz is installed in
  the remote end.
  .
- Merging in Bazaar is easy, as the implementation is able to avoid many
+ Merging in Breezy is easy, as the implementation is able to avoid many
  spurious conflicts, deals well with repeated merges between branches,
  and is able to handle modifications to renamed files correctly.
  .
- Bazaar is written in Python, and has a flexible plugin interface which
+ Breezy is written in Python, and has a flexible plugin interface which
  can be used to extend its functionality. Many plugins exist, providing
- useful commands (bzrtools), graphical interfaces (qbzr), or native
- interaction with Subversion branches (bzr-svn).
+ useful commands (brztools), graphical interfaces (qbrz), or native
+ interaction with Subversion branches (brz-svn).
  .
  Install python-paramiko if you are going to push branches to remote
  hosts with sftp.
 
-Package: python-bzrlib
+Package: python-breezy
 Architecture: any
 Section: python
 Depends: python-configobj,
@@ -78,33 +78,33 @@ Recommends: ca-certificates,
             python-launchpadlib,
             ssh-client | python-paramiko
 Conflicts: python-paramiko (<< 1.14.1)
-Suggests: python-bzrlib-dbg,
-          python-bzrlib.tests,
+Suggests: python-breezy-dbg,
+          python-breezy.tests,
           python-gpgme,
           python-kerberos (>= 1.0+svn2455-1),
           python-paramiko,
           python-pycurl,
           xdg-utils
-Breaks: bzr (<< 2.3.0-2),
-        bzr-grep
-Provides: bzr-grep,
+Breaks: brz (<< 2.3.0-2),
+        brz-grep
+Provides: brz-grep,
           ${python:Provides}
-Replaces: bzr (<< 2.3.0-2),
-          bzr-grep
+Replaces: brz (<< 2.3.0-2),
+          brz-grep
 Description: distributed version control system - python library
- Bazaar is a distributed version control system designed to be easy to
+ Breezy is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and
  easily extendable.
  .
- This package contains the Bazaar Python library.
+ This package contains the Breezy Python library.
  .
  Install python-paramiko for sftp transport support.
 
-Package: python-bzrlib-dbg
+Package: python-breezy-dbg
 Architecture: any
 Priority: extra
 Section: debug
-Depends: python-bzrlib (= ${binary:Version}),
+Depends: python-breezy (= ${binary:Version}),
          ${misc:Depends},
          ${python:Depends},
          ${shlibs:Depends}
@@ -114,59 +114,59 @@ Suggests: python-gpgme-dbg,
           python-lzma-dbg,
           python-meliae-dbg
 Description: distributed version control system - debug extension
- Bazaar is a distributed version control system designed to be easy to
+ Breezy is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and
  easily extendable.
  .
- This package contains the debug extension for the Bazaar Python library.
+ This package contains the debug extension for the Breezy Python library.
 
-Package: python-bzrlib.tests
+Package: python-breezy.tests
 Architecture: all
 Section: python
-Depends: python-bzrlib (<= ${source:Version}.1~),
-         python-bzrlib (>= ${source:Version}),
+Depends: python-breezy (<= ${source:Version}.1~),
+         python-breezy (>= ${source:Version}),
          python-testtools (>= 0.9.5~),
          ${misc:Depends},
          ${python:Depends}
 Suggests: python-subunit
-Breaks: python-bzrlib (<< 2.4.0~beta1-2)
+Breaks: python-breezy (<< 2.4.0~beta1-2)
 Provides: ${python:Provides}
-Replaces: python-bzrlib (<< 2.4.0~beta1-2)
+Replaces: python-breezy (<< 2.4.0~beta1-2)
 Description: distributed version control system - testsuite
- Bazaar is a distributed version control system designed to be easy to
+ Breezy is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and
  easily extendable.
  .
- This package contains the bzrlib test infrastructure and testsuite,
- which is required to run the 'bzr selftest' command and to run
+ This package contains the breezy test infrastructure and testsuite,
+ which is required to run the 'brz selftest' command and to run
  plugin tests.
 
-Package: bzr-doc
+Package: brz-doc
 Architecture: all
 Section: doc
 Depends: ${misc:Depends},
          ${sphinxdoc:Depends}
-Suggests: bzr
-Replaces: bzr (<< 2.0.1)
-Breaks: bzr (<< 2.0.1)
+Suggests: brz
+Replaces: brz (<< 2.0.1)
+Breaks: brz (<< 2.0.1)
 Description: easy to use distributed version control system (documentation)
- Bazaar is a distributed version control system designed to be easy to
+ Breezy is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and
  easily extendable.
  .
  Publishing of branches can be done over plain HTTP, that is, no special
- software is needed on the server to host Bazaar branches. Branches can
+ software is needed on the server to host Breezy branches. Branches can
  be pushed to the server via sftp (which most SSH installations come
- with), FTP, or over a custom and faster protocol if bzr is installed in
+ with), FTP, or over a custom and faster protocol if brz is installed in
  the remote end.
  .
- Merging in Bazaar is easy, as the implementation is able to avoid many
+ Merging in Breezy is easy, as the implementation is able to avoid many
  spurious conflicts, deals well with repeated merges between branches,
  and is able to handle modifications to renamed files correctly.
  .
- Bazaar is written in Python, and has a flexible plugin interface which
+ Breezy is written in Python, and has a flexible plugin interface which
  can be used to extend its functionality. Many plugins exist, providing
- useful commands (bzrtools), graphical interfaces (qbzr), or native
- interaction with Subversion branches (bzr-svn).
+ useful commands (brztools), graphical interfaces (qbrz), or native
+ interaction with Subversion branches (brz-svn).
  .
  This package provides the documentation.

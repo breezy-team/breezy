@@ -1,5 +1,5 @@
 ####################
-Bazaar Upgrade Guide
+Breezy Upgrade Guide
 ####################
 
 .. Please mark sections in included files as following:

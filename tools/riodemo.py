@@ -41,7 +41,7 @@ def write_inventory(writer, inventory):
 
 def read_inventory(inv_file):
     """Read inventory object from rio formatted inventory file"""
-    from bzrlib.inventory import Inventory, InventoryFile
+    from breezy.inventory import Inventory, InventoryFile
     s = read_stanza(inv_file)
     assert s['inventory_version'] == 7
     inv = Inventory()

@@ -16,9 +16,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""%(prog)s - generate information from built-in bzr help
+"""%(prog)s - generate information from built-in brz help
 
-%(prog)s creates a file with information on bzr in one of
+%(prog)s creates a file with information on brz in one of
 several different output formats:
 
     man              man page
@@ -38,8 +38,8 @@ from optparse import OptionParser
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-import bzrlib
-from bzrlib import (
+import breezy
+from breezy import (
     commands,
     # Don't remove the following import, it triggers a format registration that
     # avoid http://pad.lv/956860
@@ -64,9 +64,9 @@ Available OUTPUT_FORMAT:
     parser.add_option("-o", "--output", dest="filename", metavar="FILE",
                       help="write output to FILE")
 
-    parser.add_option("-b", "--bzr-name",
-                      dest="bzr_name", default="bzr", metavar="EXEC_NAME",
-                      help="name of bzr executable")
+    parser.add_option("-b", "--brz-name",
+                      dest="brz_name", default="brz", metavar="EXEC_NAME",
+                      help="name of brz executable")
 
     parser.add_option("-e", "--examples",
                       action="callback", callback=print_extended_help,
@@ -79,7 +79,7 @@ Available OUTPUT_FORMAT:
         parser.print_help()
         sys.exit(1)
 
-    with bzrlib.initialize():
+    with breezy.initialize():
         commands.install_bzr_command_hooks()
         infogen_type = args[1]
         infogen_mod = doc_generate.get_module(infogen_type)
