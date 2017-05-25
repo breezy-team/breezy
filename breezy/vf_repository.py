@@ -1516,8 +1516,8 @@ class VersionedFileRepository(Repository):
             revision_keys
         """
         parent_map = self.revisions.get_parent_map(revision_keys)
-        parent_keys = set()
-        map(parent_keys.update, parent_map.itervalues())
+        parent_keys = set(itertools.chain.from_iterable(
+            parent_map.itervalues()))
         parent_keys.difference_update(revision_keys)
         parent_keys.discard(_mod_revision.NULL_REVISION)
         return parent_keys

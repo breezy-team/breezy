@@ -924,8 +924,8 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
             not part of revision_ids themselves
         """
         parent_map = self.get_parent_map(revision_ids)
-        parent_ids = set()
-        map(parent_ids.update, parent_map.itervalues())
+        parent_ids = set(itertools.chain.from_iterable(
+            parent_map.itervalues()))
         parent_ids.difference_update(revision_ids)
         parent_ids.discard(_mod_revision.NULL_REVISION)
         return parent_ids

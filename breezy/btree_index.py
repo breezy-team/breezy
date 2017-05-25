@@ -19,6 +19,8 @@
 
 from __future__ import absolute_import
 
+from future_builtins import map
+
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import bisect
@@ -662,7 +664,9 @@ class _InternalNode(object):
         for line in lines[2:]:
             if line == '':
                 break
-            nodes.append(as_st(map(intern, line.split('\0'))).intern())
+            # GZ 2017-05-24: Used to intern() each chunk of line as well, need
+            # to recheck performance and perhaps adapt StaticTuple to adjust.
+            nodes.append(as_st(line.split(b'\0')).intern())
         return nodes
 
 
@@ -1497,9 +1501,9 @@ class BTreeGraphIndex(object):
         if not options_line.startswith(_OPTION_ROW_LENGTHS):
             raise errors.BadIndexOptions(self)
         try:
-            self._row_lengths = map(int, [length for length in
+            self._row_lengths = [int(length) for length in
                 options_line[len(_OPTION_ROW_LENGTHS):].split(',')
-                if len(length)])
+                if length]
         except ValueError:
             raise errors.BadIndexOptions(self)
         self._compute_row_offsets()

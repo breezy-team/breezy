@@ -18,6 +18,7 @@
 
 from __future__ import absolute_import
 
+from future_builtins import map
 import time
 import zlib
 
@@ -300,7 +301,7 @@ class GroupCompressBlock(object):
         compressor = zlib.compressobj(zlib.Z_DEFAULT_COMPRESSION)
         # Peak in this point is 1 fulltext, 1 compressed text, + zlib overhead
         # (measured peak is maybe 30MB over the above...)
-        compressed_chunks = map(compressor.compress, chunks)
+        compressed_chunks = list(map(compressor.compress, chunks))
         compressed_chunks.append(compressor.flush())
         # Ignore empty chunks
         self._z_content_chunks = [c for c in compressed_chunks if c]

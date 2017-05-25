@@ -20,6 +20,7 @@ from __future__ import absolute_import
 
 from copy import copy
 from future_builtins import zip
+import itertools
 import os
 import struct
 from zlib import adler32
@@ -1093,9 +1094,9 @@ class VersionedFiles(object):
         while pending:
             this_parent_map = self.get_parent_map(pending)
             parent_map.update(this_parent_map)
-            pending = set()
-            map(pending.update, this_parent_map.itervalues())
-            pending = pending.difference(parent_map)
+            pending = set(itertools.chain.from_iterable(
+                this_parent_map.itervalues()))
+            pending.difference_update(parent_map)
         kg = _mod_graph.KnownGraph(parent_map)
         return kg
 

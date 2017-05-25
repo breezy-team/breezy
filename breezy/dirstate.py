@@ -1953,7 +1953,7 @@ class DirState(object):
         lines = []
         lines.append(self._get_parents_line(self.get_parent_ids()))
         lines.append(self._get_ghosts_line(self._ghosts))
-        lines.extend(self._get_entry_lines())
+        lines.extend(self._iter_entry_lines())
         return self._get_output_lines(lines)
 
     def _get_ghosts_line(self, ghost_ids):
@@ -1964,7 +1964,7 @@ class DirState(object):
         """Create a line for the state file for parents information."""
         return '\0'.join([str(len(parent_ids))] + parent_ids)
 
-    def _get_entry_lines(self):
+    def _iter_entry_lines(self):
         """Create lines for entries."""
         return map(self._entry_to_line, self._iter_entries())
 

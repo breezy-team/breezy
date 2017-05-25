@@ -811,7 +811,8 @@ def sha_file_by_name(fname):
 def sha_strings(strings, _factory=sha):
     """Return the sha-1 of concatenation of strings"""
     s = _factory()
-    map(s.update, strings)
+    for string in strings:
+        s.update(string)
     return s.hexdigest()
 
 

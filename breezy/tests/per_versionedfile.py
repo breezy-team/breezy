@@ -945,9 +945,9 @@ class MergeCasesMixin(object):
             return x + '\n'
 
         w = self.get_file()
-        w.add_lines('text0', [], map(addcrlf, base))
-        w.add_lines('text1', ['text0'], map(addcrlf, a))
-        w.add_lines('text2', ['text0'], map(addcrlf, b))
+        w.add_lines('text0', [], list(map(addcrlf, base)))
+        w.add_lines('text1', ['text0'], list(map(addcrlf, a)))
+        w.add_lines('text2', ['text0'], list(map(addcrlf, b)))
 
         self.log_contents(w)
 
@@ -963,7 +963,7 @@ class MergeCasesMixin(object):
         mt.seek(0)
         self.log(mt.getvalue())
 
-        mp = map(addcrlf, mp)
+        mp = list(map(addcrlf, mp))
         self.assertEqual(mt.readlines(), mp)
 
 
