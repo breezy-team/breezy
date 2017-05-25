@@ -18,8 +18,6 @@
 
 from __future__ import absolute_import
 
-from future_builtins import zip
-
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
 import time
@@ -68,6 +66,9 @@ from .pack_repo import (
     PackRepository,
     PackRootCommitBuilder,
     RepositoryPackCollection,
+    )
+from ..sixish import (
+    zip
     )
 from ..vf_repository import (
     StreamSource,

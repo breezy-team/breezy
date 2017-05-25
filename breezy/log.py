@@ -51,7 +51,6 @@ from __future__ import absolute_import
 
 import codecs
 import itertools
-from future_builtins import zip
 import re
 import sys
 from warnings import (
@@ -88,7 +87,7 @@ from .osutils import (
     )
 from breezy.sixish import (
     BytesIO,
-    PY3,
+    zip,
     )
 
 

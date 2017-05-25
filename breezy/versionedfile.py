@@ -19,7 +19,6 @@
 from __future__ import absolute_import
 
 from copy import copy
-from future_builtins import zip
 import itertools
 import os
 import struct
@@ -45,6 +44,7 @@ from breezy import (
 from .registry import Registry
 from .sixish import (
     BytesIO,
+    zip,
     )
 from .textmerge import TextMerge
 

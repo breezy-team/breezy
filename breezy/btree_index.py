@@ -19,8 +19,6 @@
 
 from __future__ import absolute_import
 
-from future_builtins import map
-
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import bisect
@@ -44,6 +42,7 @@ from . import (
 from .index import _OPTION_NODE_REFS, _OPTION_KEY_ELEMENTS, _OPTION_LEN
 from .sixish import (
     BytesIO,
+    map,
     )
 
 
