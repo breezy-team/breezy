@@ -55,6 +55,9 @@ API Changes
  * Signature of ``load_tests`` used by ``TestLoader`` changed to be
    compatible with standard libarary unittest.  (Martin Packman)
 
+ * Renamed ``breezy.delta.report_delta`` parameter ``filter=`` to
+   ``predicate=``. (Martin Packman)
+
 Internals
 *********
 

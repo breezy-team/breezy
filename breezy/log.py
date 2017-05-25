@@ -889,7 +889,7 @@ def _match_filter(searchRE, rev):
     return True
 
 def _match_any_filter(strings, res):
-    return any([filter(None, map(re.search, strings)) for re in res])
+    return any(re.search(s) for re in res for s in strings)
 
 def _make_delta_filter(branch, generate_delta, search, log_rev_iterator,
     fileids=None, direction='reverse'):
