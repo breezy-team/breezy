@@ -703,7 +703,7 @@ class Transport(object):
 
         # turn the list of offsets into a stack
         offset_stack = iter(offsets)
-        cur_offset_and_size = offset_stack.next()
+        cur_offset_and_size = next(offset_stack)
         coalesced = self._coalesce_offsets(sorted_offsets,
                                limit=self._max_readv_combine,
                                fudge_factor=self._bytes_to_read_before_seek)
@@ -729,7 +729,7 @@ class Transport(object):
                     this_data = data_map.pop(cur_offset_and_size)
                     this_offset = cur_offset_and_size[0]
                     try:
-                        cur_offset_and_size = offset_stack.next()
+                        cur_offset_and_size = next(offset_stack)
                     except StopIteration:
                         fp.close()
                         cur_offset_and_size = None

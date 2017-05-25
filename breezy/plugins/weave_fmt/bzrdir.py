@@ -417,7 +417,7 @@ class ConvertBzrDir4To5(Converter):
         trace.mutter('converting texts of revision {%s}', rev_id)
         parent_invs = list(map(self._load_updated_inventory, present_parents))
         entries = inv.iter_entries()
-        entries.next()
+        next(entries)
         for path, ie in entries:
             self._convert_file_version(rev, ie, parent_invs)
 

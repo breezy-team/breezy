@@ -56,7 +56,7 @@ from ..transform import TreeTransform
 def get_text(vf, key):
     """Get the fulltext for a given revision id that is present in the vf"""
     stream = vf.get_record_stream([key], 'unordered', True)
-    record = stream.next()
+    record = next(stream)
     return record.get_bytes_as('fulltext')
 
 
@@ -1764,10 +1764,10 @@ class TestBundleWriterReader(tests.TestCase):
         fileobj.seek(0)
         reader = v4.BundleReader(fileobj, stream_input=True)
         record_iter = reader.iter_records()
-        record = record_iter.next()
+        record = next(record_iter)
         self.assertEqual((None, {'foo': 'bar', 'storage_kind': 'header'},
             'info', None, None), record)
-        record = record_iter.next()
+        record = next(record_iter)
         self.assertEqual(("Record body", {'storage_kind': 'fulltext',
                           'parents': ['1', '3']}, 'file', 'revid', 'fileid'),
                           record)
@@ -1783,10 +1783,10 @@ class TestBundleWriterReader(tests.TestCase):
         fileobj.seek(0)
         reader = v4.BundleReader(fileobj, stream_input=False)
         record_iter = reader.iter_records()
-        record = record_iter.next()
+        record = next(record_iter)
         self.assertEqual((None, {'foo': 'bar', 'storage_kind': 'header'},
             'info', None, None), record)
-        record = record_iter.next()
+        record = next(record_iter)
         self.assertEqual(("Record body", {'storage_kind': 'fulltext',
                           'parents': ['1', '3']}, 'file', 'revid', 'fileid'),
                           record)
@@ -1816,10 +1816,10 @@ class TestBundleWriterReader(tests.TestCase):
         writer.end()
         fileobj.seek(0)
         record_iter = v4.BundleReader(fileobj).iter_records()
-        record = record_iter.next()
+        record = next(record_iter)
         self.assertEqual((None, {'foo': 'bar', 'storage_kind': 'header'},
             'info', None, None), record)
-        self.assertRaises(errors.BadBundle, record_iter.next)
+        self.assertRaises(errors.BadBundle, next, record_iter)
 
 
 class TestReadMergeableFromUrl(tests.TestCaseWithTransport):

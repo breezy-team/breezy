@@ -281,7 +281,7 @@ class Annotator(object):
             # Backwards compatibility, break up the heads into pairs and
             # resolve the result
             next_head = iter(the_heads)
-            head = next_head.next()
+            head = next(next_head)
             for possible_head in next_head:
                 annotated_lines = ((head, line), (possible_head, line))
                 head = tiebreaker(annotated_lines)[0]

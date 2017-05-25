@@ -234,10 +234,10 @@ class MutableTree(tree.Tree):
             _from_tree = self.basis_tree()
         changes = self.iter_changes(_from_tree)
         try:
-            change = changes.next()
+            change = next(changes)
             # Exclude root (talk about black magic... --vila 20090629)
             if change[4] == (None, None):
-                change = changes.next()
+                change = next(changes)
             return True
         except StopIteration:
             # No changes

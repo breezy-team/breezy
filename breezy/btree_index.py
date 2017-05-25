@@ -266,7 +266,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         current_values = []
         for iterator in iterators_to_combine:
             try:
-                current_values.append(iterator.next())
+                current_values.append(next(iterator))
             except StopIteration:
                 current_values.append(None)
         last = None
@@ -286,7 +286,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             yield (self,) + selected[1][1:]
             pos = selected[0]
             try:
-                current_values[pos] = iterators_to_combine[pos].next()
+                current_values[pos] = next(iterators_to_combine[pos])
             except StopIteration:
                 current_values[pos] = None
 
@@ -577,7 +577,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 while dicts:
                     key_dict = dicts.pop(-1)
                     # can't be empty or would not exist
-                    item, value = key_dict.iteritems().next()
+                    item, value = next(key_dict.iteritems())
                     if isinstance(value, dict):
                         # push keys
                         dicts.extend(key_dict.itervalues())
@@ -1072,8 +1072,8 @@ class BTreeGraphIndex(object):
         #     return [(o, offsets[o]) for o in sorted(offsets)]
         in_keys_iter = iter(in_keys)
         fixed_keys_iter = enumerate(fixed_keys)
-        cur_in_key = in_keys_iter.next()
-        cur_fixed_offset, cur_fixed_key = fixed_keys_iter.next()
+        cur_in_key = next(in_keys_iter)
+        cur_fixed_offset, cur_fixed_key = next(fixed_keys_iter)
 
         class InputDone(Exception): pass
         class FixedDone(Exception): pass
@@ -1095,7 +1095,7 @@ class BTreeGraphIndex(object):
                     while cur_in_key < cur_fixed_key:
                         cur_keys.append(cur_in_key)
                         try:
-                            cur_in_key = in_keys_iter.next()
+                            cur_in_key = next(in_keys_iter)
                         except StopIteration:
                             raise InputDone
                     # At this point cur_in_key must be >= cur_fixed_key
@@ -1103,7 +1103,7 @@ class BTreeGraphIndex(object):
                 # the end
                 while cur_in_key >= cur_fixed_key:
                     try:
-                        cur_fixed_offset, cur_fixed_key = fixed_keys_iter.next()
+                        cur_fixed_offset, cur_fixed_key = next(fixed_keys_iter)
                     except StopIteration:
                         raise FixedDone
         except InputDone:
@@ -1431,7 +1431,7 @@ class BTreeGraphIndex(object):
                 while dicts:
                     key_dict = dicts.pop(-1)
                     # can't be empty or would not exist
-                    item, value = key_dict.iteritems().next()
+                    item, value = next(key_dict.iteritems())
                     if isinstance(value, dict):
                         # push keys
                         dicts.extend(key_dict.itervalues())

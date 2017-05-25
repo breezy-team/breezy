@@ -360,7 +360,7 @@ class BundleReader(object):
         return BundleInfo08()
 
     def _read(self):
-        self._next().next()
+        next(self._next())
         while self._next_line is not None:
             if not self._read_revision_header():
                 break
@@ -537,7 +537,7 @@ class BundleReader(object):
                 break
             if not self._next_line.startswith('#'):
                 # Consume the trailing \n and stop processing
-                self._next().next()
+                next(self._next())
                 break
 
 class BundleInfo08(BundleInfo):

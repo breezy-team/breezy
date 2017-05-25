@@ -79,5 +79,5 @@ class TestNestedSupport(TestCaseWithWorkingTree):
 
     def test_iter_entries_by_dir_autodetects_subtree(self):
         tree = self.prepare_with_subtree()
-        path, ie = tree.iter_entries_by_dir(['subtree-id']).next()
+        path, ie = next(tree.iter_entries_by_dir(['subtree-id']))
         self.assertEqual('tree-reference', ie.kind)

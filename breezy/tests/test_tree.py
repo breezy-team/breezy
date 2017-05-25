@@ -192,7 +192,7 @@ class TestMultiWalker(TestCaseWithTransport):
         :param exp_other_paths: A list of other_path values.
         :param iterator: The iterator to step
         """
-        path, file_id, master_ie, other_values = iterator.next()
+        path, file_id, master_ie, other_values = next(iterator)
         self.assertEqual((exp_path, exp_file_id), (path, file_id),
                          'Master entry did not match')
         if master_has_node:
@@ -244,7 +244,7 @@ class TestMultiWalker(TestCaseWithTransport):
         self.assertWalkerNext(u'a', 'a-id', True, [u'a'], iterator)
         self.assertWalkerNext(u'b', 'b-id', True, [u'b'], iterator)
         self.assertWalkerNext(u'b/c', 'c-id', True, [u'b/c'], iterator)
-        self.assertRaises(StopIteration, iterator.next)
+        self.assertRaises(StopIteration, next, iterator)
 
     def test_master_has_extra(self):
         tree = self.make_branch_and_tree('tree')
@@ -263,7 +263,7 @@ class TestMultiWalker(TestCaseWithTransport):
         self.assertWalkerNext(u'b', 'b-id', True, [u'b'], iterator)
         self.assertWalkerNext(u'c', 'c-id', True, [None], iterator)
         self.assertWalkerNext(u'd', 'd-id', True, [u'd'], iterator)
-        self.assertRaises(StopIteration, iterator.next)
+        self.assertRaises(StopIteration, next, iterator)
 
     def test_master_renamed_to_earlier(self):
         """The record is still present, it just shows up early."""
@@ -281,7 +281,7 @@ class TestMultiWalker(TestCaseWithTransport):
         self.assertWalkerNext(u'a', 'a-id', True, [u'a'], iterator)
         self.assertWalkerNext(u'b', 'd-id', True, [u'd'], iterator)
         self.assertWalkerNext(u'c', 'c-id', True, [u'c'], iterator)
-        self.assertRaises(StopIteration, iterator.next)
+        self.assertRaises(StopIteration, next, iterator)
 
     def test_master_renamed_to_later(self):
         tree = self.make_branch_and_tree('tree')
@@ -298,7 +298,7 @@ class TestMultiWalker(TestCaseWithTransport):
         self.assertWalkerNext(u'a', 'a-id', True, [u'a'], iterator)
         self.assertWalkerNext(u'd', 'd-id', True, [u'd'], iterator)
         self.assertWalkerNext(u'e', 'b-id', True, [u'b'], iterator)
-        self.assertRaises(StopIteration, iterator.next)
+        self.assertRaises(StopIteration, next, iterator)
 
     def test_other_extra_in_middle(self):
         tree = self.make_branch_and_tree('tree')
@@ -314,7 +314,7 @@ class TestMultiWalker(TestCaseWithTransport):
         self.assertWalkerNext(u'a', 'a-id', True, [u'a'], iterator)
         self.assertWalkerNext(u'd', 'd-id', True, [u'd'], iterator)
         self.assertWalkerNext(u'b', 'b-id', False, [u'b'], iterator)
-        self.assertRaises(StopIteration, iterator.next)
+        self.assertRaises(StopIteration, next, iterator)
 
     def test_other_extra_at_end(self):
         tree = self.make_branch_and_tree('tree')
@@ -330,7 +330,7 @@ class TestMultiWalker(TestCaseWithTransport):
         self.assertWalkerNext(u'a', 'a-id', True, [u'a'], iterator)
         self.assertWalkerNext(u'b', 'b-id', True, [u'b'], iterator)
         self.assertWalkerNext(u'd', 'd-id', False, [u'd'], iterator)
-        self.assertRaises(StopIteration, iterator.next)
+        self.assertRaises(StopIteration, next, iterator)
 
     def test_others_extra_at_end(self):
         tree = self.make_branch_and_tree('tree')
@@ -356,7 +356,7 @@ class TestMultiWalker(TestCaseWithTransport):
         self.assertWalkerNext(u'c', 'c-id', False, [u'c', u'c', u'c'], iterator)
         self.assertWalkerNext(u'd', 'd-id', False, [None, u'd', u'd'], iterator)
         self.assertWalkerNext(u'e', 'e-id', False, [None, u'e', None], iterator)
-        self.assertRaises(StopIteration, iterator.next)
+        self.assertRaises(StopIteration, next, iterator)
 
     def test_different_file_id_in_others(self):
         tree = self.make_branch_and_tree('tree')
@@ -384,7 +384,7 @@ class TestMultiWalker(TestCaseWithTransport):
         self.assertWalkerNext(u'c', 'c-id', True, [u'c', u'c'], iterator)
         self.assertWalkerNext(u'c/d', 'b-id', True, [u'c/d', u'b'], iterator)
         self.assertWalkerNext(u'c/e', 'a-id', True, [u'a', u'a'], iterator)
-        self.assertRaises(StopIteration, iterator.next)
+        self.assertRaises(StopIteration, next, iterator)
 
     def assertCmpByDirblock(self, cmp_val, path1, path2):
         self.assertEqual(cmp_val,

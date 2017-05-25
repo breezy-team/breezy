@@ -191,8 +191,8 @@ class DeltaAnnotatedToFullText(KnitAdapter):
         delta = self._annotate_factory.parse_line_delta(contents, rec[1],
             plain=True)
         compression_parent = factory.parents[0]
-        basis_entry = self._basis_vf.get_record_stream(
-            [compression_parent], 'unordered', True).next()
+        basis_entry = next(self._basis_vf.get_record_stream(
+            [compression_parent], 'unordered', True))
         if basis_entry.storage_kind == 'absent':
             raise errors.RevisionNotPresent(compression_parent, self._basis_vf)
         basis_chunks = basis_entry.get_bytes_as('chunked')
@@ -227,8 +227,8 @@ class DeltaPlainToFullText(KnitAdapter):
         delta = self._plain_factory.parse_line_delta(contents, rec[1])
         compression_parent = factory.parents[0]
         # XXX: string splitting overhead.
-        basis_entry = self._basis_vf.get_record_stream(
-            [compression_parent], 'unordered', True).next()
+        basis_entry = next(self._basis_vf.get_record_stream(
+            [compression_parent], 'unordered', True))
         if basis_entry.storage_kind == 'absent':
             raise errors.RevisionNotPresent(compression_parent, self._basis_vf)
         basis_chunks = basis_entry.get_bytes_as('chunked')
@@ -619,7 +619,6 @@ class KnitAnnotateFactory(_KnitFactory):
         """
         result = []
         lines = iter(lines)
-        next = lines.next
 
         cache = {}
         def cache_and_return(line):
@@ -632,12 +631,13 @@ class KnitAnnotateFactory(_KnitFactory):
         if plain:
             for header in lines:
                 start, end, count = [int(n) for n in header.split(',')]
-                contents = [next().split(' ', 1)[1] for i in xrange(count)]
+                contents = [next(lines).split(' ', 1)[1] for _ in range(count)]
                 result.append((start, end, count, contents))
         else:
             for header in lines:
                 start, end, count = [int(n) for n in header.split(',')]
-                contents = [tuple(next().split(' ', 1)) for i in xrange(count)]
+                contents = [tuple(next(lines).split(' ', 1))
+                    for _ in range(count)]
                 result.append((start, end, count, contents))
         return result
 
@@ -652,12 +652,11 @@ class KnitAnnotateFactory(_KnitFactory):
         Only the actual content lines.
         """
         lines = iter(lines)
-        next = lines.next
         for header in lines:
             header = header.split(',')
             count = int(header[2])
             for i in xrange(count):
-                origin, text = next().split(' ', 1)
+                origin, text = next(lines).split(' ', 1)
                 yield text
 
     def lower_fulltext(self, content):
@@ -738,12 +737,11 @@ class KnitPlainFactory(_KnitFactory):
         Only the actual content lines.
         """
         lines = iter(lines)
-        next = lines.next
         for header in lines:
             header = header.split(',')
             count = int(header[2])
             for i in xrange(count):
-                yield next()
+                yield next(lines)
 
     def lower_fulltext(self, content):
         return content.text()
@@ -1967,7 +1965,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             raw_records = self._access.get_raw_records(needed_offsets)
 
         for key, index_memo in records:
-            data = raw_records.next()
+            data = next(raw_records)
             yield key, data
 
     def _record_to_data(self, key, digest, lines, dense_lines=None):
@@ -2024,7 +2022,7 @@ class _ContentMapGenerator(object):
         # Note that _get_content is only called when the _ContentMapGenerator
         # has been constructed with just one key requested for reconstruction.
         if key in self.nonlocal_keys:
-            record = self.get_record_stream().next()
+            record = next(self.get_record_stream())
             # Create a content object on the fly
             lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
             return PlainKnitContent(lines, record.key)

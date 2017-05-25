@@ -3691,7 +3691,7 @@ class LocationMatcher(SectionMatcher):
             # sections are part of 'all_sections' and will always be found
             # there.
             while True:
-                section = iter_all_sections.next()
+                section = next(iter_all_sections)
                 if section_id == section.id:
                     section = LocationSection(section, extra_path,
                                               self.branch_name)

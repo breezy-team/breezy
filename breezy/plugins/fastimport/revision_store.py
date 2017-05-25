@@ -436,7 +436,7 @@ class AbstractRevisionStore(object):
             path_entries = inv.iter_entries()
             # Backwards compatibility hack: skip the root id.
             if not self.repo.supports_rich_root():
-                path, root = path_entries.next()
+                path, root = next(path_entries)
                 if root.revision != revision_id:
                     raise errors.IncompatibleRevision(repr(self.repo))
             entries = iter([ie for path, ie in path_entries])
@@ -602,8 +602,8 @@ class RevisionStore2(AbstractRevisionStore):
             self.repo.texts.add_lines(text_key, text_parents, lines)
 
     def get_file_lines(self, revision_id, file_id):
-        record = self.repo.texts.get_record_stream([(file_id, revision_id)],
-            'unordered', True).next()
+        record = next(self.repo.texts.get_record_stream([(file_id, revision_id)],
+            'unordered', True))
         if record.storage_kind == 'absent':
             raise errors.RevisionNotPresent(record.key, self.repo)
         return osutils.split_lines(record.get_bytes_as('fulltext'))

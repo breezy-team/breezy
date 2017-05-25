@@ -227,12 +227,12 @@ class PatchesTester(TestCase):
         for hunk in patch.hunks:
             for line in hunk.lines:
                 if isinstance(line, RemoveLine):
-                    next = rem_iter.next()
+                    next = next(rem_iter)
                     if line.contents != next:
                         sys.stdout.write(" orig:%spatch:%s" % (next,
                                          line.contents))
                     self.assertEqual(line.contents, next)
-        self.assertRaises(StopIteration, rem_iter.next)
+        self.assertRaises(StopIteration, next, rem_iter)
 
     def testPatching(self):
         """Test a few patch files, and make sure they work."""
