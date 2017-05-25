@@ -18,8 +18,6 @@
 
 from __future__ import absolute_import
 
-from future_builtins import map
-
 import difflib
 
 from ... import (

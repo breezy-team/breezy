@@ -18,7 +18,6 @@
 
 from __future__ import absolute_import
 
-from future_builtins import map
 import time
 import zlib
 
@@ -43,6 +42,9 @@ from breezy.i18n import gettext
 
 from .btree_index import BTreeBuilder
 from .lru_cache import LRUSizeCache
+from .sixish import (
+    map,
+    )
 from .versionedfile import (
     _KeyRefs,
     adapter_registry,
