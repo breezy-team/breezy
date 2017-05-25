@@ -82,11 +82,6 @@ else:
     from paramiko.sftp_file import SFTPFile
 
 
-_paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
-# don't use prefetch unless paramiko version >= 1.5.5 (there were bugs earlier)
-_default_do_prefetch = (_paramiko_version >= (1, 5, 5))
-
-
 class SFTPLock(object):
     """This fakes a lock in a remote location.
 
@@ -314,7 +309,6 @@ class _SFTPReadvHelper(object):
 class SFTPTransport(ConnectedTransport):
     """Transport implementation for SFTP access."""
 
-    _do_prefetch = _default_do_prefetch
     # TODO: jam 20060717 Conceivably these could be configurable, either
     #       by auto-tuning at run-time, or by a configuration (per host??)
     #       but the performance curve is pretty flat, so just going with
@@ -411,7 +405,7 @@ class SFTPTransport(ConnectedTransport):
             path = self._remote_path(relpath)
             f = self._get_sftp().file(path, mode='rb')
             size = f.stat().st_size
-            if self._do_prefetch and (getattr(f, 'prefetch', None) is not None):
+            if getattr(f, 'prefetch', None) is not None:
                 f.prefetch(size)
             return f
         except (IOError, paramiko.SSHException) as e:
