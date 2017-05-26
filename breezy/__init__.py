@@ -149,6 +149,8 @@ def _patch_filesystem_default_encoding(new_enc):
         import ctypes
         old_ptr = ctypes.c_void_p.in_dll(ctypes.pythonapi,
             "Py_FileSystemDefaultEncoding")
+        has_int = ctypes.c_int.in_dll(ctypes.pythonapi,
+            "Py_HasFileSystemDefaultEncoding")
         if sys.version_info > (3,):
             as_utf8 = ctypes.PYFUNCTYPE(
                 ctypes.POINTER(ctypes.c_char), ctypes.py_object)(
@@ -158,6 +160,7 @@ def _patch_filesystem_default_encoding(new_enc):
             enc_ptr = ctypes.c_char_p(intern(new_enc))
     except (ImportError, ValueError):
         return # No ctypes or not CPython implementation, do nothing
+    has_int.value = 1
     old_ptr.value = ctypes.cast(enc_ptr, ctypes.c_void_p).value
     if sys.getfilesystemencoding() != new_enc:
         raise RuntimeError("Failed to change the filesystem default encoding")
