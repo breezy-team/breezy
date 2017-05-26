@@ -303,7 +303,7 @@ class InventoryDeltaDeserializer(object):
         seen_ids = set()
         line_iter = iter(lines)
         for i in range(5):
-            line_iter.next()
+            next(line_iter)
         for line in line_iter:
             (oldpath_utf8, newpath_utf8, file_id, parent_id, last_modified,
                 content) = line.split('\x00', 5)

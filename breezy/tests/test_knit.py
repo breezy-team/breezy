@@ -205,8 +205,8 @@ class TestPlainKnitContent(TestCase, KnitContentTestsMixin):
         content1 = self._make_content([("", "a"), ("", "b")])
         content2 = self._make_content([("", "a"), ("", "a"), ("", "c")])
         it = content1.line_delta_iter(content2)
-        self.assertEqual(it.next(), (1, 2, 2, ["a", "c"]))
-        self.assertRaises(StopIteration, it.next)
+        self.assertEqual(next(it), (1, 2, 2, ["a", "c"]))
+        self.assertRaises(StopIteration, next, it)
 
 
 class TestAnnotatedKnitContent(TestCase, KnitContentTestsMixin):
@@ -232,8 +232,8 @@ class TestAnnotatedKnitContent(TestCase, KnitContentTestsMixin):
         content1 = self._make_content([("", "a"), ("", "b")])
         content2 = self._make_content([("", "a"), ("", "a"), ("", "c")])
         it = content1.line_delta_iter(content2)
-        self.assertEqual(it.next(), (1, 2, 2, [("", "a"), ("", "c")]))
-        self.assertRaises(StopIteration, it.next)
+        self.assertEqual(next(it), (1, 2, 2, [("", "a"), ("", "c")]))
+        self.assertRaises(StopIteration, next, it)
 
 
 class MockTransport(object):
@@ -648,13 +648,13 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         vf, reload_counter = self.make_vf_for_retrying()
         keys = [('rev-1',), ('rev-2',), ('rev-3',)]
         record_stream = vf.get_record_stream(keys, 'topological', False)
-        record = record_stream.next()
+        record = next(record_stream)
         self.assertEqual(('rev-1',), record.key)
         self.assertEqual([0, 0, 0], reload_counter)
-        record = record_stream.next()
+        record = next(record_stream)
         self.assertEqual(('rev-2',), record.key)
         self.assertEqual([1, 1, 0], reload_counter)
-        record = record_stream.next()
+        record = next(record_stream)
         self.assertEqual(('rev-3',), record.key)
         self.assertEqual([1, 1, 0], reload_counter)
         # Now delete all pack files, and see that we raise the right error
@@ -2338,8 +2338,8 @@ class TestStacking(KnitTests):
                 source = test
             else:
                 source = basis
-            record = source.get_record_stream([result[0]], 'unordered',
-                True).next()
+            record = next(source.get_record_stream([result[0]], 'unordered',
+                True))
             self.assertEqual(record.key, result[0])
             self.assertEqual(record.sha1, result[1])
             # We used to check that the storage kind matched, but actually it
@@ -2425,8 +2425,8 @@ class TestStacking(KnitTests):
                 source = test
             else:
                 source = basis
-            record = source.get_record_stream([result[0]], 'unordered',
-                False).next()
+            record = next(source.get_record_stream([result[0]], 'unordered',
+                False))
             self.assertEqual(record.key, result[0])
             self.assertEqual(record.sha1, result[1])
             self.assertEqual(record.storage_kind, result[2])

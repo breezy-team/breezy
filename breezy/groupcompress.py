@@ -1170,7 +1170,7 @@ class _BatchingBlockFetcher(object):
                 if memos_to_get_stack and memos_to_get_stack[-1] == read_memo:
                     # The next block from _get_blocks will be the block we
                     # need.
-                    block_read_memo, block = blocks.next()
+                    block_read_memo, block = next(blocks)
                     if block_read_memo != read_memo:
                         raise AssertionError(
                             "block_read_memo out of sync with read_memo"
@@ -1412,7 +1412,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 yield read_memo, cached[read_memo]
             except KeyError:
                 # Read the block, and cache it.
-                zdata = raw_records.next()
+                zdata = next(raw_records)
                 block = GroupCompressBlock.from_bytes(zdata)
                 self._group_cache[read_memo] = block
                 cached[read_memo] = block

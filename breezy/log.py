@@ -1923,7 +1923,7 @@ def get_history_change(old_revision_id, new_revision_id, repository):
     while do_new or do_old:
         if do_new:
             try:
-                new_revision = new_iter.next()
+                new_revision = next(new_iter)
             except StopIteration:
                 do_new = False
             else:
@@ -1934,7 +1934,7 @@ def get_history_change(old_revision_id, new_revision_id, repository):
                     break
         if do_old:
             try:
-                old_revision = old_iter.next()
+                old_revision = next(old_iter)
             except StopIteration:
                 do_old = False
             else:

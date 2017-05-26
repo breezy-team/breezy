@@ -117,7 +117,7 @@ class MultiParent(object):
         diff = MultiParent([])
         def next_block(p):
             try:
-                return block_iter[p].next()
+                return next(block_iter[p])
             except StopIteration:
                 return None
         cur_block = [next_block(p) for p, i in enumerate(block_iter)]
@@ -203,12 +203,12 @@ class MultiParent(object):
         cur_line = None
         while(True):
             try:
-                cur_line = line_iter.next()
+                cur_line = next(line_iter)
             except StopIteration:
                 break
             if cur_line[0] == 'i':
                 num_lines = int(cur_line.split(' ')[1])
-                hunk_lines = [line_iter.next() for x in xrange(num_lines)]
+                hunk_lines = [next(line_iter) for x in xrange(num_lines)]
                 hunk_lines[-1] = hunk_lines[-1][:-1]
                 hunks.append(NewText(hunk_lines))
             elif cur_line[0] == '\n':
@@ -646,14 +646,14 @@ class _Reconstructor(object):
                 start, end, kind, data, iterator = self.cursor[req_version_id]
             except KeyError:
                 iterator = self.diffs.get_diff(req_version_id).range_iterator()
-                start, end, kind, data = iterator.next()
+                start, end, kind, data = next(iterator)
             if start > req_start:
                 iterator = self.diffs.get_diff(req_version_id).range_iterator()
-                start, end, kind, data = iterator.next()
+                start, end, kind, data = next(iterator)
 
             # find the first hunk relevant to the request
             while end <= req_start:
-                start, end, kind, data = iterator.next()
+                start, end, kind, data = next(iterator)
             self.cursor[req_version_id] = start, end, kind, data, iterator
             # if the hunk can't satisfy the whole request, split it in two,
             # and leave the second half for later.

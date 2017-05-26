@@ -33,7 +33,7 @@ binary_files_re = 'Binary files (.*) and (.*) differ\n'
 
 
 def get_patch_names(iter_lines):
-    line = iter_lines.next()
+    line = next(iter_lines)
     try:
         match = re.match(binary_files_re, line)
         if match is not None:
@@ -45,7 +45,7 @@ def get_patch_names(iter_lines):
     except StopIteration:
         raise MalformedPatchHeader("No orig line", "")
     try:
-        line = iter_lines.next()
+        line = next(iter_lines)
         if not line.startswith("+++ "):
             raise PatchSyntax("No mod name")
         else:
@@ -244,7 +244,7 @@ def iter_hunks(iter_lines, allow_dirty=False):
         orig_size = 0
         mod_size = 0
         while orig_size < hunk.orig_range or mod_size < hunk.mod_range:
-            hunk_line = parse_line(iter_lines.next())
+            hunk_line = parse_line(next(iter_lines))
             hunk.lines.append(hunk_line)
             if isinstance(hunk_line, (RemoveLine, ContextLine)):
                 orig_size += 1
@@ -483,7 +483,7 @@ def iter_patched_from_hunks(orig_lines, hunks):
         orig_lines = iter(orig_lines)
     for hunk in hunks:
         while line_no < hunk.orig_pos:
-            orig_line = orig_lines.next()
+            orig_line = next(orig_lines)
             yield orig_line
             line_no += 1
         for hunk_line in hunk.lines:
@@ -491,7 +491,7 @@ def iter_patched_from_hunks(orig_lines, hunks):
             if isinstance(hunk_line, InsertLine):
                 yield hunk_line.contents
             elif isinstance(hunk_line, (ContextLine, RemoveLine)):
-                orig_line = orig_lines.next()
+                orig_line = next(orig_lines)
                 if orig_line != hunk_line.contents:
                     raise PatchConflict(line_no, orig_line, "".join(seen_patch))
                 if isinstance(hunk_line, ContextLine):

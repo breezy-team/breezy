@@ -515,7 +515,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     @staticmethod
     def get_path_entry(tree, file_id):
         iterator = tree.iter_entries_by_dir(specific_file_ids=[file_id])
-        return iterator.next()
+        return next(iterator)
 
     def content_changed(self, tree, file_id):
         path, entry = self.get_path_entry(tree, file_id)

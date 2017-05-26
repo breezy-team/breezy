@@ -188,7 +188,7 @@ class _SFTPReadvHelper(object):
         """
         requests = self._get_requests()
         offset_iter = iter(self.original_offsets)
-        cur_offset, cur_size = offset_iter.next()
+        cur_offset, cur_size = next(offset_iter)
         # paramiko .readv() yields strings that are in the order of the requests
         # So we track the current request to know where the next data is
         # being returned from.
@@ -262,7 +262,7 @@ class _SFTPReadvHelper(object):
                     input_start += cur_size
                     # Yield the requested data
                     yield cur_offset, cur_data
-                    cur_offset, cur_size = offset_iter.next()
+                    cur_offset, cur_size = next(offset_iter)
                 # at this point, we've consumed as much of buffered as we can,
                 # so break off the portion that we consumed
                 if buffered_offset == len(buffered_data):
@@ -311,7 +311,7 @@ class _SFTPReadvHelper(object):
                         ' We expected %d bytes, but only found %d'
                         % (cur_size, len(data)))
                 yield cur_offset, data
-                cur_offset, cur_size = offset_iter.next()
+                cur_offset, cur_size = next(offset_iter)
 
 
 class SFTPTransport(ConnectedTransport):

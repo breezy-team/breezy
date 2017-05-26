@@ -890,8 +890,8 @@ class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
     def test_get_record_stream(self):
         self.setup_abcde()
         def get_record(suffix):
-            return self.plan_merge_vf.get_record_stream(
-                [('root', suffix)], 'unordered', True).next()
+            return next(self.plan_merge_vf.get_record_stream(
+                [('root', suffix)], 'unordered', True))
         self.assertEqual('a', get_record('A').get_bytes_as('fulltext'))
         self.assertEqual('c', get_record('C').get_bytes_as('fulltext'))
         self.assertEqual('e', get_record('E:').get_bytes_as('fulltext'))
@@ -1225,11 +1225,11 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         """Grab the interested adapted texts for tests."""
         # origin is a fulltext
         entries = f.get_record_stream([('origin',)], 'unordered', False)
-        base = entries.next()
+        base = next(entries)
         ft_data = ft_adapter.get_bytes(base)
         # merged is both a delta and multiple parents.
         entries = f.get_record_stream([('merged',)], 'unordered', False)
-        merged = entries.next()
+        merged = next(entries)
         delta_data = delta_adapter.get_bytes(merged)
         return ft_data, delta_data
 
@@ -1637,7 +1637,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 vf._add_text, new_key, [], ''.join(lines),
                 nostore_sha=sha)
             # and no new version should have been added.
-            record = vf.get_record_stream([new_key], 'unordered', True).next()
+            record = next(vf.get_record_stream([new_key], 'unordered', True))
             self.assertEqual('absent', record.storage_kind)
 
     def test_add_lines_nostoresha(self):
@@ -2002,7 +2002,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         key = self.get_simple_key('foo')
         files.add_lines(key, (), ['my text\n', 'content'])
         stream = files.get_record_stream([key], 'unordered', False)
-        record = stream.next()
+        record = next(stream)
         if record.storage_kind in ('chunked', 'fulltext'):
             # chunked and fulltext representations are for direct use not wire
             # serialisation: check they are able to be used directly. To send
@@ -2785,14 +2785,14 @@ class VirtualVersionedFilesTests(TestCase):
     def test_get_record_stream(self):
         self._lines["A"] = ["FOO", "BAR"]
         it = self.texts.get_record_stream([("A",)], "unordered", True)
-        record = it.next()
+        record = next(it)
         self.assertEqual("chunked", record.storage_kind)
         self.assertEqual("FOOBAR", record.get_bytes_as("fulltext"))
         self.assertEqual(["FOO", "BAR"], record.get_bytes_as("chunked"))
 
     def test_get_record_stream_absent(self):
         it = self.texts.get_record_stream([("A",)], "unordered", True)
-        record = it.next()
+        record = next(it)
         self.assertEqual("absent", record.storage_kind)
 
     def test_iter_lines_added_or_present_in_keys(self):

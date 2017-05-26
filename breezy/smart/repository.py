@@ -127,7 +127,7 @@ class SmartServerRepositoryRequest(SmartServerRequest):
                 start_keys)
             while True:
                 try:
-                    next_revs = search.next()
+                    next_revs = next(search)
                 except StopIteration:
                     break
                 search.stop_searching_any(exclude_keys.intersection(next_revs))

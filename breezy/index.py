@@ -750,7 +750,7 @@ class GraphIndex(object):
                 while dicts:
                     key_dict = dicts.pop(-1)
                     # can't be empty or would not exist
-                    item, value = key_dict.iteritems().next()
+                    item, value = next(key_dict.iteritems())
                     if isinstance(value, dict):
                         # push keys
                         dicts.extend(key_dict.itervalues())
@@ -1726,7 +1726,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
                 while dicts:
                     key_dict = dicts.pop(-1)
                     # can't be empty or would not exist
-                    item, value = key_dict.iteritems().next()
+                    item, value = next(key_dict.iteritems())
                     if isinstance(value, dict):
                         # push keys
                         dicts.extend(key_dict.itervalues())

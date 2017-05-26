@@ -122,7 +122,7 @@ def _read_weave_v5(f, w):
         f.close()
 
     try:
-        l = lines.next()
+        l = next(lines)
     except StopIteration:
         raise WeaveFormatError('invalid weave file: no header')
 
@@ -132,7 +132,7 @@ def _read_weave_v5(f, w):
     ver = 0
     # read weave header.
     while True:
-        l = lines.next()
+        l = next(lines)
         if l[0] == 'i':
             if len(l) > 2:
                 w._parents.append(list(map(int, l[2:].split(' '))))
@@ -140,11 +140,11 @@ def _read_weave_v5(f, w):
                 w._parents.append([])
             l = lines.next()[:-1]
             w._sha1s.append(l[2:])
-            l = lines.next()
+            l = next(lines)
             name = l[2:-1]
             w._names.append(name)
             w._name_map[name] = ver
-            l = lines.next()
+            l = next(lines)
             ver += 1
         elif l == 'w\n':
             break
@@ -153,7 +153,7 @@ def _read_weave_v5(f, w):
 
     # read weave body
     while True:
-        l = lines.next()
+        l = next(lines)
         if l == 'W\n':
             break
         elif '. ' == l[0:2]:

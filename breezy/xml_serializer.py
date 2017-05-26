@@ -367,7 +367,7 @@ def serialize_inventory_flat(inv, append, root_id, supported_kinds, working):
     """
     entries = inv.iter_entries()
     # Skip the root
-    root_path, root_ie = entries.next()
+    root_path, root_ie = next(entries)
     for path, ie in entries:
         if ie.parent_id != root_id:
             parent_str = ' parent_id="'
