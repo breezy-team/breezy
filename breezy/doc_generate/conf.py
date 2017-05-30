@@ -36,7 +36,7 @@ source_suffix = '.txt'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Bazaar'
+project = u'Breezy'
 copyright = u'2009-2011 Canonical Ltd'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -215,4 +215,4 @@ latex_documents = []
 # -- Bazaar-specific configuration ---------------------------------------------
 
 # Authors of the documents
-brz_team = u'Bazaar Developers'
+brz_team = u'Breezy Developers'
