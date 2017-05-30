@@ -24,13 +24,14 @@ import stat
 import tarfile
 import zipfile
 
-from . import generate_ids
+from . import generate_ids, urlutils
 from .bzrdir import BzrDir
 from .errors import (BzrError, NoSuchFile, BzrCommandError, NotBranchError)
 from .osutils import (pathjoin, isdir, file_iterator, basename,
                       file_kind, splitpath)
 from .trace import warning
 from .transform import TreeTransform, resolve_conflicts, cook_conflicts
+from .transport import get_transport
 from .workingtree import WorkingTree
 
 
@@ -315,7 +316,7 @@ def do_import(source, tree_directory=None):
 
         try:
             archive, external_compressor = get_archive_type(source)
-        except errors.NotArchiveType:
+        except NotArchiveType:
             if file_kind(source) == 'directory':
                 s = StringIO(source)
                 s.seek(0)
@@ -354,7 +355,7 @@ def get_archive_type(path):
     """
     matches = re.match(r'.*\.(zip|tgz|tar(.(gz|bz2|lzma|xz))?)$', path)
     if not matches:
-        raise errors.NotArchiveType(path)
+        raise NotArchiveType(path)
     external_compressor = None
     if matches.group(3) is not None:
         archive = 'tar'

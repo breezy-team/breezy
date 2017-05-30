@@ -70,6 +70,7 @@ def load_tests(loader, basic_tests, pattern):
                      'test_find_merge_base',
                      'test_help',
                      'test_hooks',
+                     'test_import',
                      'test_ignore',
                      'test_ignored',
                      'test_info',

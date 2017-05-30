@@ -4076,6 +4076,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_uncommit',
         'breezy.tests.test_upgrade',
         'breezy.tests.test_upgrade_stacked',
+        'breezy.tests.test_upstream_import',
         'breezy.tests.test_urlutils',
         'breezy.tests.test_utextwrap',
         'breezy.tests.test_version',
