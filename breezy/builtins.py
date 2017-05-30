@@ -6720,6 +6720,27 @@ class cmd_export_pot(Command):
         export_pot(self.outf, plugin, include_duplicates)
 
 
+class cmd_import(Command):
+    __doc__ = """Import sources from a directory, tarball or zip file
+
+    This command will import a directory, tarball or zip file into a bzr
+    tree, replacing any versioned files already present.  If a directory is
+    specified, it is used as the target.  If the directory does not exist, or
+    is not versioned, it is created.
+
+    Tarballs may be gzip or bzip2 compressed.  This is autodetected.
+
+    If the tarball or zip has a single root directory, that directory is
+    stripped when extracting the tarball.  This is not done for directories.
+    """
+
+    takes_args = ['source', 'tree?']
+
+    def run(self, source, tree=None):
+        from .upstream_import import do_import
+        do_import(source, tree)
+
+
 def _register_lazy_builtins():
     # register lazy builtins from other modules; called at startup and should
     # be only called once.

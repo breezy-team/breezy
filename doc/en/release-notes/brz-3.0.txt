@@ -26,8 +26,12 @@ New Features
 ************
 
  * The 'bisect' plugin is now shipped with bzr. (Jelmer Vernooĳ)
+
  * The 'fastimport' plugin is now bundled with Bazaar.
    (Jelmer Vernooĳ)
+
+ * The 'import' command is now bundled with brz.
+   Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ, #773241)
 
 Improvements
 ************
