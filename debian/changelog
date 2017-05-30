@@ -1,6 +1,7 @@
 brz (3.0.0~bzr6638-1) UNRELEASED; urgency=medium
 
   * New upstream snapshot.
+  * Rename package to breezy and explain fork. Closes: #863744
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 30 May 2017 21:26:35 +0000
 
