@@ -38,7 +38,6 @@ from breezy import (
     bencode,
     cleanup,
     errors,
-    symbol_versioning,
     trace,
     )
 """)
@@ -354,31 +353,6 @@ class BasicTags(_Tags):
             else:
                 conflicts.append((name, target, result[name]))
         return result, updates, conflicts
-
-
-def _merge_tags_if_possible(from_branch, to_branch, ignore_master=False):
-    # Try hard to support merge_to implementations that don't expect
-    # 'ignore_master' (new in bzr 2.3).  First, if the flag isn't set then we
-    # can safely avoid passing ignore_master at all.
-    if not ignore_master:
-        from_branch.tags.merge_to(to_branch.tags)
-        return
-    # If the flag is set, try to pass it, but be ready to catch TypeError.
-    try:
-        from_branch.tags.merge_to(to_branch.tags, ignore_master=ignore_master)
-    except TypeError:
-        # Probably this implementation of 'merge_to' is from a plugin that
-        # doesn't expect the 'ignore_master' keyword argument (e.g. bzr-svn
-        # 1.0.4).  There's a small risk that the TypeError is actually caused
-        # by a completely different problem (which is why we don't catch it for
-        # the ignore_master=False case), but even then there's probably no harm
-        # in calling a second time.
-        symbol_versioning.warn(
-            symbol_versioning.deprecated_in((2,3)) % (
-                "Tags.merge_to (of %r) that doesn't accept ignore_master kwarg"
-                % (from_branch.tags,),),
-            DeprecationWarning)
-        from_branch.tags.merge_to(to_branch.tags)
 
 
 def sort_natural(branch, tags):

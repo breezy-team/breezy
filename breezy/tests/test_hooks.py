@@ -30,9 +30,6 @@ from ..hooks import (
     known_hooks,
     known_hooks_key_to_object,
     )
-from ..symbol_versioning import (
-    deprecated_in,
-    )
 
 
 class TestHooks(tests.TestCase):

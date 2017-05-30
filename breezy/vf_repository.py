@@ -37,7 +37,6 @@ from breezy import (
     revision as _mod_revision,
     serializer as _mod_serializer,
     static_tuple,
-    symbol_versioning,
     tsort,
     ui,
     versionedfile,
@@ -2643,13 +2642,10 @@ class InterVersionedFileRepository(InterRepository):
 
     @needs_read_lock
     def search_missing_revision_ids(self,
-            revision_id=symbol_versioning.DEPRECATED_PARAMETER,
             find_ghosts=True, revision_ids=None, if_present_ids=None,
             limit=None):
         """Return the revision ids that source has that target does not.
 
-        :param revision_id: only return revision ids included by this
-            revision_id.
         :param revision_ids: return revision ids included by these
             revision_ids.  NoSuchRevision will be raised if any of these
             revisions are not present.
@@ -2661,17 +2657,6 @@ class InterVersionedFileRepository(InterRepository):
             rather than just finding the surface difference.
         :return: A breezy.graph.SearchResult.
         """
-        if symbol_versioning.deprecated_passed(revision_id):
-            symbol_versioning.warn(
-                'search_missing_revision_ids(revision_id=...) was '
-                'deprecated in 2.4.  Use revision_ids=[...] instead.',
-                DeprecationWarning, stacklevel=2)
-            if revision_ids is not None:
-                raise AssertionError(
-                    'revision_ids is mutually exclusive with revision_id')
-            if revision_id is not None:
-                revision_ids = [revision_id]
-        del revision_id
         # stop searching at found target revisions.
         if not find_ghosts and (revision_ids is not None or if_present_ids is
                 not None):

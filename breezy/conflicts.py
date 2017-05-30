@@ -37,6 +37,7 @@ from breezy import (
 from breezy.i18n import gettext, ngettext
 """)
 from . import (
+    cache_utf8,
     commands,
     option,
     registry,
@@ -368,9 +369,11 @@ class Conflict(object):
 
     def __init__(self, path, file_id=None):
         self.path = path
-        # warn turned off, because the factory blindly transfers the Stanza
-        # values to __init__ and Stanza is purely a Unicode api.
-        self.file_id = osutils.safe_file_id(file_id, warn=False)
+        # the factory blindly transfers the Stanza values to __init__ and
+        # Stanza is purely a Unicode api.
+        if isinstance(file_id, unicode):
+            file_id = cache_utf8.encode(file_id)
+        self.file_id = osutils.safe_file_id(file_id)
 
     def as_stanza(self):
         s = rio.Stanza(type=self.typestring, path=self.path)
@@ -711,10 +714,11 @@ class HandledPathConflict(HandledConflict):
                  conflict_file_id=None):
         HandledConflict.__init__(self, action, path, file_id)
         self.conflict_path = conflict_path
-        # warn turned off, because the factory blindly transfers the Stanza
-        # values to __init__.
-        self.conflict_file_id = osutils.safe_file_id(conflict_file_id,
-                                                     warn=False)
+        # the factory blindly transfers the Stanza values to __init__,
+        # so they can be unicode.
+        if isinstance(conflict_file_id, unicode):
+            conflict_file_id = cache_utf8.encode(conflict_file_id)
+        self.conflict_file_id = osutils.safe_file_id(conflict_file_id)
 
     def _cmp_list(self):
         return HandledConflict._cmp_list(self) + [self.conflict_path,

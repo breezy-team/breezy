@@ -27,7 +27,6 @@ from ... import (
     controldir,
     errors,
     push,
-    symbol_versioning,
     tests,
     vf_repository,
     )

@@ -72,10 +72,6 @@ from . import (
     controldir,
     registry,
     )
-from .symbol_versioning import (
-    deprecated_in,
-    deprecated_method,
-    )
 
 
 class BzrDir(controldir.ControlDir):

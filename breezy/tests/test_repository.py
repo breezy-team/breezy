@@ -31,7 +31,6 @@ from breezy.errors import (
     )
 from breezy import (
     btree_index,
-    symbol_versioning,
     tests,
     transport,
     vf_search,

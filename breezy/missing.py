@@ -20,7 +20,6 @@ from __future__ import absolute_import
 
 from . import (
     log,
-    symbol_versioning,
     )
 from . import revision as _mod_revision
 
@@ -50,8 +49,7 @@ def iter_log_revisions(revisions, revision_source, verbose, rev_tag_dict=None):
 
 def find_unmerged(local_branch, remote_branch, restrict='all',
                   include_merged=None, backward=False,
-                  local_revid_range=None, remote_revid_range=None,
-                  include_merges=symbol_versioning.DEPRECATED_PARAMETER):
+                  local_revid_range=None, remote_revid_range=None):
     """Find revisions from each side that have not been merged.
 
     :param local_branch: Compare the history of local_branch
@@ -69,18 +67,10 @@ def find_unmerged(local_branch, remote_branch, restrict='all',
         revisions (lower bound, upper bound)
     :param remote_revid_range: Revision-id range for filtering remote_branch
         revisions (lower bound, upper bound)
-    :param include_merges: Deprecated historical alias for include_merged
 
     :return: A list of [(revno, revision_id)] for the mainline revisions on
         each side.
     """
-    if symbol_versioning.deprecated_passed(include_merges):
-        symbol_versioning.warn(
-            'include_merges was deprecated in 2.5.'
-            ' Use include_merged instead.',
-            DeprecationWarning, stacklevel=2)
-        if include_merged is None:
-            include_merged = include_merges
     if include_merged is None:
         include_merged = False
     local_branch.lock_read()

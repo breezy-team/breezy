@@ -27,7 +27,6 @@ from ... import (
     memorytree,
     push,
     revision,
-    symbol_versioning,
     tests,
     transport,
     )

@@ -24,9 +24,6 @@ from breezy import (
     )
 from breezy.tests import TestSkipped
 from breezy.tests.per_tree import TestCaseWithTree
-from breezy.symbol_versioning import (
-    deprecated_in,
-    )
 
 
 class TestAnnotate(TestCaseWithTree):
@@ -283,22 +280,6 @@ class TestHasId(TestCaseWithTree):
         self.addCleanup(tree.unlock)
         self.assertTrue(tree.has_id('file-id'))
         self.assertFalse(tree.has_id('dir-id'))
-
-    def test___contains__(self):
-        work_tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/file'])
-        work_tree.add('file', 'file-id')
-        tree = self._convert_tree(work_tree)
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
-        self.assertTrue(
-            self.applyDeprecated(
-                deprecated_in((2, 4, 0)),
-                tree.__contains__, 'file-id'))
-        self.assertFalse(
-            self.applyDeprecated(
-                deprecated_in((2, 4, 0)),
-                tree.__contains__, 'dir-id'))
 
 
 class TestExtras(TestCaseWithTree):

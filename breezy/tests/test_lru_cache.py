@@ -18,7 +18,6 @@
 
 from .. import (
     lru_cache,
-    symbol_versioning,
     tests,
     )
 
@@ -127,13 +126,6 @@ class TestLRUCache(tests.TestCase):
         cache['nub'] = 'in'
 
         self.assertFalse('foo' in cache)
-
-    def test_cleanup_function_deprecated(self):
-        """Test that per-node cleanup functions are no longer allowed"""
-        cache = lru_cache.LRUCache()
-        self.assertRaises(ValueError, self.applyDeprecated,
-            symbol_versioning.deprecated_in((2, 5, 0)),
-            cache.add, "key", 1, cleanup=lambda: None)
 
     def test_len(self):
         cache = lru_cache.LRUCache(max_cache=10, after_cleanup_count=10)

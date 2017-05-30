@@ -55,24 +55,24 @@ htmlhelp_basename = 'bzr-%s' % (bzr_locale,)
 bzr_documents = [
   # Manuals
   #('user-guide/index', 'bzr-%s-user-guide' % (bzr_locale,),
-  #  bzr_title(u'Bazaar User Guide'), bzr_team, 'manual'),
+  #  bzr_title(u'Bazaar User Guide'), brz_team, 'manual'),
   #('user-reference/bzr_man', 'bzr-%s-user-reference' % (bzr_locale,),
-  #  bzr_title(u'Bazaar User Reference'), bzr_team, 'manual'),
+  #  bzr_title(u'Bazaar User Reference'), brz_team, 'manual'),
   #('release-notes/NEWS', 'bzr-%s-release-notes' % (bzr_locale,),
-  #  bzr_title(u'Bazaar Release Notes'), bzr_team, 'manual'),
+  #  bzr_title(u'Bazaar Release Notes'), brz_team, 'manual'),
   #('upgrade-guide/index', 'bzr-%s-upgrade-guide' % (bzr_locale,),
-  #  bzr_title(u'Bazaar Upgrade Guide'), bzr_team, 'manual'),
+  #  bzr_title(u'Bazaar Upgrade Guide'), brz_team, 'manual'),
   # Tutorials
   ('mini-tutorial/index', 'bzr-%s-tutorial-mini' % (bzr_locale,),
-    bzr_title(u'Bazaar in five minutes'), bzr_team, 'howto'),
+    bzr_title(u'Bazaar in five minutes'), brz_team, 'howto'),
   ('tutorials/tutorial', 'bzr-%s-tutorial' % (bzr_locale,),
-    bzr_title(u'Bazaar Tutorial'), bzr_team, 'howto'),
+    bzr_title(u'Bazaar Tutorial'), brz_team, 'howto'),
   #('tutorials/using_bazaar_with_launchpad',
   #  'bzr-%s-tutorial-with-launchpad' % (bzr_locale,),
-  #  bzr_title(u'Using Bazaar With Launchpad'), bzr_team, 'howto'),
+  #  bzr_title(u'Using Bazaar With Launchpad'), brz_team, 'howto'),
   #('tutorials/centralized_workflow',
   #  'bzr-%s-tutorial-centralized' % (bzr_locale,),
-  #  bzr_title(u'Centralized Workflow Tutorial'), bzr_team, 'howto'),
+  #  bzr_title(u'Centralized Workflow Tutorial'), brz_team, 'howto'),
 ]
 
 latex_documents = [
