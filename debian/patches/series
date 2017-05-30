@@ -1,8 +1,6 @@
 01_selftest_package
 03_spurious_test_failure
-07_shorten_test_names
 13_spurious_test_failure
-15_autodoc_source_epoch
 17_reproducible_makefile
 #21_pycurl_proxy_url
 22_test_copy_to
