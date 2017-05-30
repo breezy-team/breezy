@@ -27,7 +27,6 @@ from breezy import (
     vf_repository,
     )
 
-from breezy.symbol_versioning import deprecated_in
 from breezy.tests.matchers import MatchesAncestry
 from breezy.tests.per_repository_vf import (
     TestCaseWithRepository,

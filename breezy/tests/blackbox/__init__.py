@@ -23,10 +23,6 @@ rather starts again from the run_brz function.
 """
 
 
-from breezy.symbol_versioning import (
-    deprecated_in,
-    deprecated_method,
-    )
 from breezy import tests
 
 
@@ -70,6 +66,7 @@ def load_tests(loader, basic_tests, pattern):
                      'test_find_merge_base',
                      'test_help',
                      'test_hooks',
+                     'test_import',
                      'test_ignore',
                      'test_ignored',
                      'test_info',
@@ -144,11 +141,3 @@ def load_tests(loader, basic_tests, pattern):
 class ExternalBase(tests.TestCaseWithTransport):
     """Don't use this class anymore, use TestCaseWithTransport or similar"""
 
-    @deprecated_method(deprecated_in((2, 2, 0)))
-    def check_output(self, output, *args):
-        """Verify that the expected output matches what brz says.
-
-        The output is supplied first, so that you can supply a variable
-        number of arguments to bzr.
-        """
-        self.assertEqual(self.run_bzr(*args)[0], output)

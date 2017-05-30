@@ -97,7 +97,6 @@ from breezy import (
     lockdir,
     mergetools,
     osutils,
-    symbol_versioning,
     trace,
     transport,
     ui,
@@ -117,10 +116,6 @@ from .sixish import (
     BytesIO,
     text_type,
     string_types,
-    )
-from .symbol_versioning import (
-    deprecated_in,
-    deprecated_method,
     )
 
 
@@ -445,65 +440,6 @@ class Config(object):
             l = [l]
         return l
 
-    @deprecated_method(deprecated_in((2, 5, 0)))
-    def get_user_option_as_int_from_SI(self, option_name, default=None):
-        """Get a generic option from a human readable size in SI units, e.g 10MB
-
-        Accepted suffixes are K,M,G. It is case-insensitive and may be followed
-        by a trailing b (i.e. Kb, MB). This is intended to be practical and not
-        pedantic.
-
-        :return Integer, expanded to its base-10 value if a proper SI unit is 
-            found. If the option doesn't exist, or isn't a value in 
-            SI units, return default (which defaults to None)
-        """
-        val = self.get_user_option(option_name)
-        if isinstance(val, list):
-            val = val[0]
-        if val is None:
-            val = default
-        else:
-            p = re.compile("^(\d+)([kmg])*b*$", re.IGNORECASE)
-            try:
-                m = p.match(val)
-                if m is not None:
-                    val = int(m.group(1))
-                    if m.group(2) is not None:
-                        if m.group(2).lower() == 'k':
-                            val *= 10**3
-                        elif m.group(2).lower() == 'm':
-                            val *= 10**6
-                        elif m.group(2).lower() == 'g':
-                            val *= 10**9
-                else:
-                    ui.ui_factory.show_warning(gettext('Invalid config value for "{0}" '
-                                               ' value {1!r} is not an SI unit.').format(
-                                                option_name, val))
-                    val = default
-            except TypeError:
-                val = default
-        return val
-
-    @deprecated_method(deprecated_in((2, 5, 0)))
-    def gpg_signing_command(self):
-        """What program should be used to sign signatures?"""
-        result = self._gpg_signing_command()
-        if result is None:
-            result = "gpg"
-        return result
-
-    def _gpg_signing_command(self):
-        """See gpg_signing_command()."""
-        return None
-
-    @deprecated_method(deprecated_in((2, 5, 0)))
-    def log_format(self):
-        """What log format should be used"""
-        result = self._log_format()
-        if result is None:
-            result = "long"
-        return result
-
     def _log_format(self):
         """See log_format()."""
         return None
@@ -520,25 +456,6 @@ class Config(object):
     def _validate_signatures_in_log(self):
         """See validate_signatures_in_log()."""
         return None
-
-    @deprecated_method(deprecated_in((2, 5, 0)))
-    def acceptable_keys(self):
-        """Comma separated list of key patterns acceptable to 
-        verify-signatures command"""
-        result = self._acceptable_keys()
-        return result
-
-    def _acceptable_keys(self):
-        """See acceptable_keys()."""
-        return None
-
-    @deprecated_method(deprecated_in((2, 5, 0)))
-    def post_commit(self):
-        """An ordered list of python functions to call.
-
-        Each function takes branch, rev_id as parameters.
-        """
-        return self._post_commit()
 
     def _post_commit(self):
         """See Config.post_commit."""
@@ -572,46 +489,6 @@ class Config(object):
         This method relies on the username() function raising the error.
         """
         self.username()
-
-    @deprecated_method(deprecated_in((2, 5, 0)))
-    def signature_checking(self):
-        """What is the current policy for signature checking?."""
-        policy = self._get_signature_checking()
-        if policy is not None:
-            return policy
-        return CHECK_IF_POSSIBLE
-
-    @deprecated_method(deprecated_in((2, 5, 0)))
-    def signing_policy(self):
-        """What is the current policy for signature checking?."""
-        policy = self._get_signing_policy()
-        if policy is not None:
-            return policy
-        return SIGN_WHEN_REQUIRED
-
-    @deprecated_method(deprecated_in((2, 5, 0)))
-    def signature_needed(self):
-        """Is a signature needed when committing ?."""
-        policy = self._get_signing_policy()
-        if policy is None:
-            policy = self._get_signature_checking()
-            if policy is not None:
-                #this warning should go away once check_signatures is
-                #implemented (if not before)
-                trace.warning("Please use create_signatures,"
-                              " not check_signatures to set signing policy.")
-        elif policy == SIGN_ALWAYS:
-            return True
-        return False
-
-    @deprecated_method(deprecated_in((2, 5, 0)))
-    def gpg_signing_key(self):
-        """GPG user-id to sign commits"""
-        key = self.get_user_option('gpg_signing_key')
-        if key == "default" or key == None:
-            return self.user_email()
-        else:
-            return key
 
     def get_alias(self, value):
         return self._get_alias(value)
@@ -740,24 +617,14 @@ OldConfigHooks = _OldConfigHooks()
 class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
 
-    def __init__(self, get_filename=symbol_versioning.DEPRECATED_PARAMETER,
-                 file_name=None):
+    def __init__(self, file_name=None):
         """Base class for configuration files using an ini-like syntax.
 
         :param file_name: The configuration file path.
         """
         super(IniBasedConfig, self).__init__()
         self.file_name = file_name
-        if symbol_versioning.deprecated_passed(get_filename):
-            symbol_versioning.warn(
-                'IniBasedConfig.__init__(get_filename) was deprecated in 2.3.'
-                ' Use file_name instead.',
-                DeprecationWarning,
-                stacklevel=2)
-            if get_filename is not None:
-                self.file_name = get_filename()
-        else:
-            self.file_name = file_name
+        self.file_name = file_name
         self._content = None
         self._parser = None
 
@@ -783,15 +650,9 @@ class IniBasedConfig(Config):
         if save:
             self._write_config_file()
 
-    def _get_parser(self, file=symbol_versioning.DEPRECATED_PARAMETER):
+    def _get_parser(self):
         if self._parser is not None:
             return self._parser
-        if symbol_versioning.deprecated_passed(file):
-            symbol_versioning.warn(
-                'IniBasedConfig._get_parser(file=xxx) was deprecated in 2.3.'
-                ' Use IniBasedConfig(_content=xxx) instead.',
-                DeprecationWarning,
-                stacklevel=2)
         if self._content is not None:
             co_input = self._content
         elif self.file_name is None:
@@ -1277,26 +1138,6 @@ class LocationConfig(LockableConfig):
 
     def _set_option_policy(self, section, option_name, option_policy):
         """Set the policy for the given option name in the given section."""
-        # The old recurse=False option affects all options in the
-        # section.  To handle multiple policies in the section, we
-        # need to convert it to a policy_norecurse key.
-        try:
-            recurse = self._get_parser()[section].as_bool('recurse')
-        except KeyError:
-            pass
-        else:
-            symbol_versioning.warn(
-                'The recurse option is deprecated as of 0.14.  '
-                'The section "%s" has been converted to use policies.'
-                % section,
-                DeprecationWarning)
-            del self._get_parser()[section]['recurse']
-            if not recurse:
-                for key in self._get_parser()[section].keys():
-                    if not key.endswith(':policy'):
-                        self._get_parser()[section][key +
-                                                    ':policy'] = 'norecurse'
-
         policy_key = option_name + ':policy'
         policy_name = _policy_name[option_policy]
         if policy_name is not None:

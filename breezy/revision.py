@@ -26,7 +26,6 @@ from breezy import bugtracker
 """)
 from . import (
     errors,
-    symbol_versioning,
     )
 from .osutils import contains_whitespace
 
@@ -218,17 +217,14 @@ def check_not_reserved_id(revision_id):
 def ensure_null(revision_id):
     """Ensure only NULL_REVISION is used to represent the null revision"""
     if revision_id is None:
-        symbol_versioning.warn('NULL_REVISION should be used for the null'
-            ' revision instead of None, as of bzr 0.91.',
-            DeprecationWarning, stacklevel=2)
-        return NULL_REVISION
-    else:
-        return revision_id
+        raise ValueError(
+            'NULL_REVISION should be used for the null'
+            ' revision instead of None.')
+    return revision_id
 
 
 def is_null(revision_id):
     if revision_id is None:
-        symbol_versioning.warn('NULL_REVISION should be used for the null'
-            ' revision instead of None, as of bzr 0.90.',
-            DeprecationWarning, stacklevel=2)
-    return revision_id in (None, NULL_REVISION)
+        raise ValueError('NULL_REVISION should be used for the null'
+                         ' revision instead of None.')
+    return (revision_id == NULL_REVISION)

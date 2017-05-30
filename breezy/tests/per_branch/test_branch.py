@@ -33,7 +33,6 @@ from breezy import (
     repository,
     revision,
     shelf,
-    symbol_versioning,
     tests,
     )
 from breezy.tests import (
@@ -106,24 +105,6 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual(tree.get_file_text('foo-id'), 'hello')
-
-    def test_get_revision_delta(self):
-        tree_a = self.make_branch_and_tree('a')
-        self.build_tree(['a/foo'])
-        tree_a.add('foo', 'file1')
-        tree_a.commit('rev1', rev_id='rev1')
-        self.build_tree(['a/vla'])
-        tree_a.add('vla', 'file2')
-        tree_a.commit('rev2', rev_id='rev2')
-
-        delta = self.applyDeprecated(symbol_versioning.deprecated_in(
-            (2, 5, 0)), tree_a.branch.get_revision_delta, 1)
-        self.assertIsInstance(delta, _mod_delta.TreeDelta)
-        self.assertEqual([('foo', 'file1', 'file')], delta.added)
-        delta = self.applyDeprecated(symbol_versioning.deprecated_in(
-            (2, 5, 0)), tree_a.branch.get_revision_delta, 2)
-        self.assertIsInstance(delta, _mod_delta.TreeDelta)
-        self.assertEqual([('vla', 'file2', 'file')], delta.added)
 
     def get_unbalanced_tree_pair(self):
         """Return two branches, a and b, with one file in a."""

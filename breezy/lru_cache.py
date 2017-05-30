@@ -19,7 +19,6 @@
 from __future__ import absolute_import
 
 from . import (
-    symbol_versioning,
     trace,
     )
 
@@ -93,13 +92,6 @@ class LRUCache(object):
     def __len__(self):
         return len(self._cache)
 
-    @symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((2, 5, 0)))
-    def add(self, key, value, cleanup=None):
-        if cleanup is not None:
-            raise ValueError("Per-node cleanup functions no longer supported")
-        return self.__setitem__(key, value)
-
     def __setitem__(self, key, value):
         """Add a new value to the cache"""
         if key is _null_key:
@@ -142,9 +134,6 @@ class LRUCache(object):
     def as_dict(self):
         """Get a new dict with the same key:value pairs as the cache"""
         return dict((k, n.value) for k, n in self._cache.iteritems())
-
-    items = symbol_versioning.deprecated_method(
-        symbol_versioning.deprecated_in((2, 5, 0)))(as_dict)
 
     def cleanup(self):
         """Clear the cache until it shrinks to the requested size.

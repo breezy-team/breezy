@@ -44,12 +44,6 @@ from ... import (
 from ...sixish import (
     BytesIO,
     )
-from ...symbol_versioning import (
-    DEPRECATED_PARAMETER,
-    deprecated_in,
-    deprecated_passed,
-    warn,
-    )
 from ...trace import mutter, warning
 from ...transport import (
     AppendBasedFileStream,

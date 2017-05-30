@@ -16,6 +16,9 @@
 
 from __future__ import absolute_import
 
+import datetime
+import os
+
 
 def get_module(target):
     mod_name = "breezy.doc_generate.autodoc_%s" % (target)
@@ -25,3 +28,14 @@ def get_module(target):
         mod = getattr(mod, comp)
     return mod
 
+
+def get_autodoc_datetime():
+    """Obtain the datetime to use for timestamps embedded in generated docs.
+
+    :return: A `datetime` object
+    """
+    try:
+        return datetime.datetime.utcfromtimestamp(
+            int(os.environ['SOURCE_DATE_EPOCH']))
+    except (KeyError, ValueError):
+        return datetime.datetime.utcnow()

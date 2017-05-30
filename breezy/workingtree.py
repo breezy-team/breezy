@@ -48,6 +48,7 @@ import stat
 
 from breezy import (
     branch,
+    cache_utf8,
     conflicts as _mod_conflicts,
     controldir,
     errors,
@@ -76,7 +77,6 @@ from breezy import (
 from . import (
     bzrdir,
     osutils,
-    symbol_versioning,
     )
 from .decorators import needs_read_lock, needs_write_lock
 from .i18n import gettext
@@ -97,10 +97,6 @@ from .sixish import (
     BytesIO,
     )
 from .trace import mutter, note
-from .symbol_versioning import (
-    deprecated_passed,
-    DEPRECATED_PARAMETER,
-    )
 
 
 MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
@@ -180,7 +176,7 @@ class WorkingTree(mutabletree.MutableTree,
         return views.DisabledViews(self)
 
     def __init__(self, basedir='.',
-                 branch=DEPRECATED_PARAMETER,
+                 branch=None,
                  _internal=False,
                  _transport=None,
                  _format=None,
@@ -196,7 +192,7 @@ class WorkingTree(mutabletree.MutableTree,
                 "WorkingTree.open() to obtain a WorkingTree.")
         basedir = safe_unicode(basedir)
         mutter("opening working tree %r", basedir)
-        if deprecated_passed(branch):
+        if branch is not None:
             self._branch = branch
         else:
             self._branch = self.bzrdir.open_branch()
@@ -1787,7 +1783,7 @@ class InventoryWorkingTree(WorkingTree,
     """
 
     def __init__(self, basedir='.',
-                 branch=DEPRECATED_PARAMETER,
+                 branch=None,
                  _inventory=None,
                  _control_files=None,
                  _internal=False,
@@ -2376,7 +2372,7 @@ class InventoryWorkingTree(WorkingTree,
                 raise errors.MergeModifiedFormatError()
             for s in _mod_rio.RioReader(hashfile):
                 # RioReader reads in Unicode, so convert file_ids back to utf8
-                file_id = osutils.safe_file_id(s.get("file_id"), warn=False)
+                file_id = cache_utf8.encode(s.get("file_id"))
                 if not self.has_id(file_id):
                     continue
                 text_hash = s.get("hash")

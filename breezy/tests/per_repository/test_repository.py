@@ -258,14 +258,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
                              list(tree.list_files(include_root=True)))
         finally:
             tree.unlock()
-        tree = self.callDeprecated(['NULL_REVISION should be used for the null'
-            ' revision instead of None, as of bzr 0.91.'],
-            wt.branch.repository.revision_tree, None)
-        tree.lock_read()
-        try:
-            self.assertEqual([], list(tree.list_files(include_root=True)))
-        finally:
-            tree.unlock()
+        self.assertRaises(ValueError, wt.branch.repository.revision_tree, None)
         tree = wt.branch.repository.revision_tree(_mod_revision.NULL_REVISION)
         tree.lock_read()
         try:

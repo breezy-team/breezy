@@ -36,7 +36,7 @@ source_suffix = '.txt'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Bazaar'
+project = u'Breezy'
 copyright = u'2009-2011 Canonical Ltd'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -179,7 +179,7 @@ html_show_sourcelink = True
 #html_file_suffix = ''
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'bzr-docs'
+htmlhelp_basename = 'brz-docs'
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -196,7 +196,7 @@ latex_documents = []
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
-latex_logo = '../Bazaar-Logo-For-Manuals.png'
+# latex_logo = '../Bazaar-Logo-For-Manuals.png'
 
 # For "manual" documents, if this is true, then toplevel headings are parts,
 # not chapters.
@@ -215,4 +215,4 @@ latex_logo = '../Bazaar-Logo-For-Manuals.png'
 # -- Bazaar-specific configuration ---------------------------------------------
 
 # Authors of the documents
-bzr_team = u'Bazaar Developers'
+brz_team = u'Breezy Developers'

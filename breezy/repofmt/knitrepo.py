@@ -49,7 +49,6 @@ from ..vf_repository import (
     VersionedFileCommitBuilder,
     VersionedFileRootCommitBuilder,
     )
-from .. import symbol_versioning
 
 
 class _KnitParentsProvider(object):

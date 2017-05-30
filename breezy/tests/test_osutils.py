@@ -829,17 +829,12 @@ class TestSafeRevisionId(tests.TestCase):
         self.assertEqual('foobar', osutils.safe_revision_id('foobar'))
 
     def test_from_unicode_string_ascii_contents(self):
-        self.assertEqual('bargam',
-                         osutils.safe_revision_id(u'bargam', warn=False))
-
-    def test_from_unicode_deprecated(self):
-        self.assertEqual('bargam',
-            self.callDeprecated([osutils._revision_id_warning],
-                                osutils.safe_revision_id, u'bargam'))
+        self.assertRaises(TypeError,
+                          osutils.safe_revision_id, u'bargam')
 
     def test_from_unicode_string_unicode_contents(self):
-        self.assertEqual('bargam\xc2\xae',
-                         osutils.safe_revision_id(u'bargam\xae', warn=False))
+        self.assertRaises(TypeError,
+                         osutils.safe_revision_id, u'bargam\xae')
 
     def test_from_utf8_string(self):
         self.assertEqual('foo\xc2\xae',
@@ -856,16 +851,11 @@ class TestSafeFileId(tests.TestCase):
         self.assertEqual('foobar', osutils.safe_file_id('foobar'))
 
     def test_from_unicode_string_ascii_contents(self):
-        self.assertEqual('bargam', osutils.safe_file_id(u'bargam', warn=False))
-
-    def test_from_unicode_deprecated(self):
-        self.assertEqual('bargam',
-            self.callDeprecated([osutils._file_id_warning],
-                                osutils.safe_file_id, u'bargam'))
+        self.assertRaises(TypeError, osutils.safe_file_id, u'bargam')
 
     def test_from_unicode_string_unicode_contents(self):
-        self.assertEqual('bargam\xc2\xae',
-                         osutils.safe_file_id(u'bargam\xae', warn=False))
+        self.assertRaises(TypeError,
+                          osutils.safe_file_id, u'bargam\xae')
 
     def test_from_utf8_string(self):
         self.assertEqual('foo\xc2\xae',
@@ -1829,32 +1819,6 @@ class TestResourceLoading(tests.TestCaseInTempDir):
             'yyy.xx')
         # test unknown resource
         self.assertRaises(IOError, osutils.resource_string, 'breezy', 'yyy.xx')
-
-
-class TestReCompile(tests.TestCase):
-
-    def _deprecated_re_compile_checked(self, *args, **kwargs):
-        return self.applyDeprecated(symbol_versioning.deprecated_in((2, 2, 0)),
-            osutils.re_compile_checked, *args, **kwargs)
-
-    def test_re_compile_checked(self):
-        r = self._deprecated_re_compile_checked(r'A*', re.IGNORECASE)
-        self.assertTrue(r.match('aaaa'))
-        self.assertTrue(r.match('aAaA'))
-
-    def test_re_compile_checked_error(self):
-        # like https://bugs.launchpad.net/bzr/+bug/251352
-
-        # Due to possible test isolation error, re.compile is not lazy at
-        # this point. We re-install lazy compile.
-        lazy_regex.install_lazy_compile()
-        err = self.assertRaises(
-            errors.BzrCommandError,
-            self._deprecated_re_compile_checked, '*', re.IGNORECASE, 'test case')
-        self.assertEqual(
-            'Invalid regular expression in test case: '
-            '"*" nothing to repeat',
-            str(err))
 
 
 class TestDirReader(tests.TestCaseInTempDir):

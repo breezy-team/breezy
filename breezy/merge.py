@@ -48,10 +48,6 @@ from . import (
     hooks,
     registry,
     )
-from .symbol_versioning import (
-    deprecated_in,
-    deprecated_method,
-    )
 # TODO: Report back as changes are merged in
 
 

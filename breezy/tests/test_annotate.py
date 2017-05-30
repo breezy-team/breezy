@@ -20,7 +20,6 @@ import codecs
 
 from .. import (
     annotate,
-    symbol_versioning,
     tests,
     )
 from ..sixish import (

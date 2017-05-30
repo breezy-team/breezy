@@ -539,19 +539,6 @@ class TestTestCaseInTempDir(tests.TestCaseInTempDir):
         self.assertRaises(AssertionError, self.assertEqualStat,
             os.lstat("foo"), os.lstat("longname"))
 
-    def test_failUnlessExists(self):
-        """Deprecated failUnlessExists and failIfExists"""
-        self.applyDeprecated(
-            deprecated_in((2, 4)),
-            self.failUnlessExists, '.')
-        self.build_tree(['foo/', 'foo/bar'])
-        self.applyDeprecated(
-            deprecated_in((2, 4)),
-            self.failUnlessExists, 'foo/bar')
-        self.applyDeprecated(
-            deprecated_in((2, 4)),
-            self.failIfExists, 'foo/foo')
-
     def test_assertPathExists(self):
         self.assertPathExists('.')
         self.build_tree(['foo/', 'foo/bar'])

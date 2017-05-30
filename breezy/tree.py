@@ -42,10 +42,6 @@ from breezy.i18n import gettext
 
 from .decorators import needs_read_lock
 from .inter import InterObject
-from .symbol_versioning import (
-    deprecated_in,
-    deprecated_method,
-    )
 
 
 class Tree(object):
@@ -137,10 +133,6 @@ class Tree(object):
 
     def has_id(self, file_id):
         raise NotImplementedError(self.has_id)
-
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def __contains__(self, file_id):
-        return self.has_id(file_id)
 
     def has_or_had_id(self, file_id):
         raise NotImplementedError(self.has_or_had_id)
@@ -781,13 +773,6 @@ class InventoryTree(Tree):
             yield cur_path
         # all done.
 
-    @deprecated_method(deprecated_in((2, 5, 0)))
-    def _get_inventory(self):
-        return self._inventory
-
-    inventory = property(_get_inventory,
-                         doc="Inventory of this Tree")
-
     def _get_root_inventory(self):
         return self._inventory
 
@@ -839,10 +824,6 @@ class InventoryTree(Tree):
     def all_file_ids(self):
         return {entry.file_id for path, entry in self.iter_entries_by_dir()}
 
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    def __iter__(self):
-        return iter(self.all_file_ids())
-
     def filter_unversioned_files(self, paths):
         """Filter out paths that are versioned.
 
@@ -884,10 +865,6 @@ class InventoryTree(Tree):
     def iter_child_entries(self, file_id, path=None):
         inv, inv_file_id = self._unpack_file_id(file_id)
         return inv[inv_file_id].children.itervalues()
-
-    @deprecated_method(deprecated_in((2, 5, 0)))
-    def get_file_by_path(self, path):
-        return self.get_file(self.path2id(path), path)
 
     def iter_children(self, file_id, path=None):
         """See Tree.iter_children."""

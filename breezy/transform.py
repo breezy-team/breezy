@@ -61,11 +61,6 @@ from .osutils import (
     splitpath,
     )
 from .progress import ProgressPhase
-from .symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
-    deprecated_method,
-    )
 
 
 ROOT_PARENT = "root-parent"
@@ -2049,12 +2044,6 @@ class _PreviewTree(tree.InventoryTree):
 
     def unlock(self):
         pass
-
-    @property
-    @deprecated_method(deprecated_in((2, 5, 0)))
-    def inventory(self):
-        """This Tree does not use inventory as its backing data."""
-        raise NotImplementedError(_PreviewTree.inventory)
 
     @property
     def root_inventory(self):
