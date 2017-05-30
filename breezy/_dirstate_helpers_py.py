@@ -262,7 +262,11 @@ def _read_dirblocks(state):
         # them. Grab an straight iterator over the fields. (We use an
         # iterator because we don't want to do a lot of additions, nor
         # do we want to do a lot of slicing)
-        next = iter(fields).next
+        _iter = iter(fields)
+        # Get a local reference to the compatible next method
+        next = getattr(_iter, '__next__', None)
+        if next is None:
+            next = _iter.next
         # Move the iterator to the current position
         for x in xrange(cur):
             next()

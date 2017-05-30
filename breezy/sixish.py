@@ -24,7 +24,6 @@ from __future__ import absolute_import
 
 from six import (
     binary_type,
-    PY2,
     PY3,
     reraise,
     string_types,
@@ -40,6 +39,8 @@ if PY3:
     import io as _io
     BytesIO = _io.BytesIO
     StringIO = _io.StringIO
+    from builtins import zip, map
 else:
     from cStringIO import StringIO as BytesIO
     from StringIO import StringIO
+    from future_builtins import zip, map

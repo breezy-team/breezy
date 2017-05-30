@@ -233,10 +233,9 @@ def SendMail(recipient, subject="", body="", attachfiles=""):
 
     attach = []
     AttachWork = attachfiles.split(';')
-    for file in AttachWork:
-        if os.path.exists(file):
-            attach.append(file)
-    attach = map(os.path.abspath, attach)
+    for f in AttachWork:
+        if os.path.exists(f):
+            attach.append(os.path.abspath(f))
 
     restore = os.getcwd()
     try:

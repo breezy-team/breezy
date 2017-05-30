@@ -934,8 +934,8 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertRaises(StopIteration, search.next_with_ghosts)
         # next includes them
         search = graph._make_breadth_first_searcher(['a-ghost'])
-        self.assertEqual({'a-ghost'}, search.next())
-        self.assertRaises(StopIteration, search.next)
+        self.assertEqual({'a-ghost'}, next(search))
+        self.assertRaises(StopIteration, next, search)
 
     def test_breadth_first_search_deep_ghosts(self):
         graph = self.make_graph({
@@ -952,11 +952,11 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertRaises(StopIteration, search.next_with_ghosts)
         # next includes them
         search = graph._make_breadth_first_searcher(['head'])
-        self.assertEqual({'head'}, search.next())
-        self.assertEqual({'present'}, search.next())
+        self.assertEqual({'head'}, next(search))
+        self.assertEqual({'present'}, next(search))
         self.assertEqual({'child', 'ghost'},
-            search.next())
-        self.assertRaises(StopIteration, search.next)
+            next(search))
+        self.assertRaises(StopIteration, next, search)
 
     def test_breadth_first_search_change_next_to_next_with_ghosts(self):
         # To make the API robust, we allow calling both next() and
@@ -969,16 +969,16 @@ class TestGraph(TestCaseWithMemoryTransport):
         # start with next_with_ghosts
         search = graph._make_breadth_first_searcher(['head'])
         self.assertEqual(({'head'}, set()), search.next_with_ghosts())
-        self.assertEqual({'present'}, search.next())
+        self.assertEqual({'present'}, next(search))
         self.assertEqual(({'child'}, {'ghost'}),
             search.next_with_ghosts())
-        self.assertRaises(StopIteration, search.next)
+        self.assertRaises(StopIteration, next, search)
         # start with next
         search = graph._make_breadth_first_searcher(['head'])
-        self.assertEqual({'head'}, search.next())
+        self.assertEqual({'head'}, next(search))
         self.assertEqual(({'present'}, set()), search.next_with_ghosts())
         self.assertEqual({'child', 'ghost'},
-            search.next())
+            next(search))
         self.assertRaises(StopIteration, search.next_with_ghosts)
 
     def test_breadth_first_change_search(self):
@@ -1000,13 +1000,13 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertRaises(StopIteration, search.next_with_ghosts)
         # next includes them
         search = graph._make_breadth_first_searcher(['head'])
-        self.assertEqual({'head'}, search.next())
-        self.assertEqual({'present'}, search.next())
+        self.assertEqual({'head'}, next(search))
+        self.assertEqual({'present'}, next(search))
         self.assertEqual({'present'},
             search.stop_searching_any(['present']))
         search.start_searching(['other', 'other_ghost'])
-        self.assertEqual({'other_2'}, search.next())
-        self.assertRaises(StopIteration, search.next)
+        self.assertEqual({'other_2'}, next(search))
+        self.assertRaises(StopIteration, next, search)
 
     def assertSeenAndResult(self, instructions, search, next):
         """Check the results of .seen and get_result() for a seach.
@@ -1054,7 +1054,7 @@ class TestGraph(TestCaseWithMemoryTransport):
             ({'head', 'child', NULL_REVISION}, ({'head'}, set(), 3),
              ['head', 'child', NULL_REVISION], None, None),
             ]
-        self.assertSeenAndResult(expected, search, search.next)
+        self.assertSeenAndResult(expected, search, search.__next__)
         # using next_with_ghosts:
         search = graph._make_breadth_first_searcher(['head'])
         self.assertSeenAndResult(expected, search, search.next_with_ghosts)
@@ -1092,7 +1092,7 @@ class TestGraph(TestCaseWithMemoryTransport):
              ({'head', 'otherhead'}, {'child', 'excluded'}, 3),
              ['head', 'otherhead', 'otherchild'], None, ['excluded']),
             ]
-        self.assertSeenAndResult(expected, search, search.next)
+        self.assertSeenAndResult(expected, search, search.__next__)
         # using next_with_ghosts:
         search = graph._make_breadth_first_searcher([])
         search.start_searching(['head'])
@@ -1118,7 +1118,7 @@ class TestGraph(TestCaseWithMemoryTransport):
              ({'head'}, {'ghost1', NULL_REVISION}, 2),
              ['head', 'child'], None, [NULL_REVISION, 'ghost1']),
             ]
-        self.assertSeenAndResult(expected, search, search.next)
+        self.assertSeenAndResult(expected, search, search.__next__)
         # using next_with_ghosts:
         search = graph._make_breadth_first_searcher(['head'])
         self.assertSeenAndResult(expected, search, search.next_with_ghosts)
@@ -1145,7 +1145,7 @@ class TestGraph(TestCaseWithMemoryTransport):
              ({'head'}, {'middle', 'child'}, 1),
              ['head'], None, ['middle', 'child']),
             ]
-        self.assertSeenAndResult(expected, search, search.next)
+        self.assertSeenAndResult(expected, search, search.__next__)
         # using next_with_ghosts:
         search = graph._make_breadth_first_searcher(['head'])
         self.assertSeenAndResult(expected, search, search.next_with_ghosts)
@@ -1166,7 +1166,7 @@ class TestGraph(TestCaseWithMemoryTransport):
              ({'head'}, {NULL_REVISION, 'ghost'}, 2),
              ['head', 'child'], None, None),
             ]
-        self.assertSeenAndResult(expected, search, search.next)
+        self.assertSeenAndResult(expected, search, search.__next__)
         # using next_with_ghosts:
         search = graph._make_breadth_first_searcher(['head'])
         self.assertSeenAndResult(expected, search, search.next_with_ghosts)
@@ -1187,7 +1187,7 @@ class TestGraph(TestCaseWithMemoryTransport):
              ({'head', 'ghost'}, {NULL_REVISION, 'ghost'}, 2),
              ['head', 'child'], None, None),
             ]
-        self.assertSeenAndResult(expected, search, search.next)
+        self.assertSeenAndResult(expected, search, search.__next__)
         # using next_with_ghosts:
         search = graph._make_breadth_first_searcher(['head'])
         self.assertSeenAndResult(expected, search, search.next_with_ghosts)
@@ -1207,7 +1207,7 @@ class TestGraph(TestCaseWithMemoryTransport):
              ({'head'}, set([]), 2),
              ['head', NULL_REVISION], None, None),
             ]
-        self.assertSeenAndResult(expected, search, search.next)
+        self.assertSeenAndResult(expected, search, search.__next__)
         # using next_with_ghosts:
         search = graph._make_breadth_first_searcher(['head'])
         self.assertSeenAndResult(expected, search, search.next_with_ghosts)
@@ -1228,8 +1228,8 @@ class TestGraph(TestCaseWithMemoryTransport):
              ({'head', 'ghost'}, {'ghost'}, 2),
              ['head', NULL_REVISION], ['ghost'], None),
             ]
-        self.assertSeenAndResult(expected, search, search.next)
-        self.assertRaises(StopIteration, search.next)
+        self.assertSeenAndResult(expected, search, search.__next__)
+        self.assertRaises(StopIteration, next, search)
         self.assertEqual({'head', 'ghost', NULL_REVISION}, search.seen)
         state = search.get_state()
         self.assertEqual(
@@ -1239,7 +1239,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         # using next_with_ghosts:
         search = graph._make_breadth_first_searcher(['head'])
         self.assertSeenAndResult(expected, search, search.next_with_ghosts)
-        self.assertRaises(StopIteration, search.next)
+        self.assertRaises(StopIteration, next, search)
         self.assertEqual({'head', 'ghost', NULL_REVISION}, search.seen)
         state = search.get_state()
         self.assertEqual(

@@ -1288,7 +1288,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 ids_to_unversion.remove(entry[0][2])
             block_index += 1
         if ids_to_unversion:
-            raise errors.NoSuchId(self, iter(ids_to_unversion).next())
+            raise errors.NoSuchId(self, next(iter(ids_to_unversion)))
         self._make_dirty(reset_inventory=False)
         # have to change the legacy inventory too.
         if self._inventory is not None:
@@ -1353,8 +1353,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 _mod_revision.NULL_REVISION)
             trees = []
         else:
-            trees = zip(revision_ids,
-                        self.branch.repository.revision_trees(revision_ids))
+            trees = list(zip(revision_ids,
+                        self.branch.repository.revision_trees(revision_ids)))
             base_tree = trees[0][1]
         state = self.current_dirstate()
         # We don't support ghosts yet
@@ -2014,7 +2014,7 @@ class DirStateRevisionTree(InventoryTree):
         # FIXME: Support nested trees
         entries = inv.iter_entries(from_dir=from_dir_id, recursive=recursive)
         if inv.root is not None and not include_root and from_dir is None:
-            entries.next()
+            next(entries)
         for path, entry in entries:
             yield path, 'V', entry.kind, entry.file_id, entry
 

@@ -1191,8 +1191,7 @@ def _iter_for_location_by_parts(sections, location):
         else:
             # Rely on zip truncating in length to the length of the shortest
             # argument sequence.
-            names = zip(location_parts, section_parts)
-            for name in names:
+            for name in zip(location_parts, section_parts):
                 if not fnmatch.fnmatch(name[0], name[1]):
                     matched = False
                     break
@@ -3692,7 +3691,7 @@ class LocationMatcher(SectionMatcher):
             # sections are part of 'all_sections' and will always be found
             # there.
             while True:
-                section = iter_all_sections.next()
+                section = next(iter_all_sections)
                 if section_id == section.id:
                     section = LocationSection(section, extra_path,
                                               self.branch_name)

@@ -2703,7 +2703,7 @@ class TestSmartProtocolTwoSpecificsMixin(object):
         smart_protocol.call('foo')
         smart_protocol.read_response_tuple(True)
         stream = smart_protocol.read_streamed_body()
-        self.assertRaises(errors.ConnectionReset, stream.next)
+        self.assertRaises(errors.ConnectionReset, next, stream)
 
     def test_client_read_response_tuple_sets_response_status(self):
         server_bytes = protocol.RESPONSE_VERSION_TWO + "success\nok\n"
@@ -2917,9 +2917,9 @@ class TestConventionalResponseHandlerBodyStream(tests.TestCase):
     def test_interrupted_by_error(self):
         response_handler = self.make_response_handler(interrupted_body_stream)
         stream = response_handler.read_streamed_body()
-        self.assertEqual('aaa', stream.next())
-        self.assertEqual('bbb', stream.next())
-        exc = self.assertRaises(errors.ErrorFromSmartServer, stream.next)
+        self.assertEqual('aaa', next(stream))
+        self.assertEqual('bbb', next(stream))
+        exc = self.assertRaises(errors.ErrorFromSmartServer, next, stream)
         self.assertEqual(('error', 'Exception', 'Boom!'), exc.error_tuple)
 
     def test_interrupted_by_connection_lost(self):
@@ -2929,7 +2929,7 @@ class TestConventionalResponseHandlerBodyStream(tests.TestCase):
             'b\0\0\xff\xffincomplete chunk')
         response_handler = self.make_response_handler(interrupted_body_stream)
         stream = response_handler.read_streamed_body()
-        self.assertRaises(errors.ConnectionReset, stream.next)
+        self.assertRaises(errors.ConnectionReset, next, stream)
 
     def test_read_body_bytes_interrupted_by_connection_lost(self):
         interrupted_body_stream = (

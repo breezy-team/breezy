@@ -641,7 +641,7 @@ class Tree(object):
             return []
         if path is None:
             path = self.id2path(file_id)
-        prefs = self.iter_search_rules([path], filter_pref_names).next()
+        prefs = next(self.iter_search_rules([path], filter_pref_names))
         stk = filters._get_filter_stack_for(prefs)
         if 'filters' in debug.debug_flags:
             trace.note(gettext("*** {0} content-filter: {1} => {2!r}").format(path,prefs,stk))
@@ -731,7 +731,7 @@ class InventoryTree(Tree):
         :return: The input path adjusted to account for existing elements
         that match case insensitively.
         """
-        return self._yield_canonical_inventory_paths([path]).next()
+        return next(self._yield_canonical_inventory_paths([path]))
 
     def _yield_canonical_inventory_paths(self, paths):
         for path in paths:
@@ -1439,7 +1439,7 @@ class MultiWalker(object):
             If has_more is False, path and ie will be None.
         """
         try:
-            path, ie = iterator.next()
+            path, ie = next(iterator)
         except StopIteration:
             return False, None, None
         else:

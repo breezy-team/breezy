@@ -85,7 +85,7 @@ class TestCaseWithStore(tests.TestCaseWithMemoryTransport):
 
     def read_bytes(self, chk_bytes, key):
         stream = chk_bytes.get_record_stream([key], 'unordered', True)
-        record = stream.next()
+        record = next(stream)
         if record.storage_kind == 'absent':
             self.fail('Store does not contain the key %s' % (key,))
         return record.get_bytes_as("fulltext")

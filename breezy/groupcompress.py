@@ -42,6 +42,9 @@ from breezy.i18n import gettext
 
 from .btree_index import BTreeBuilder
 from .lru_cache import LRUSizeCache
+from .sixish import (
+    map,
+    )
 from .versionedfile import (
     _KeyRefs,
     adapter_registry,
@@ -300,7 +303,7 @@ class GroupCompressBlock(object):
         compressor = zlib.compressobj(zlib.Z_DEFAULT_COMPRESSION)
         # Peak in this point is 1 fulltext, 1 compressed text, + zlib overhead
         # (measured peak is maybe 30MB over the above...)
-        compressed_chunks = map(compressor.compress, chunks)
+        compressed_chunks = list(map(compressor.compress, chunks))
         compressed_chunks.append(compressor.flush())
         # Ignore empty chunks
         self._z_content_chunks = [c for c in compressed_chunks if c]
@@ -1167,7 +1170,7 @@ class _BatchingBlockFetcher(object):
                 if memos_to_get_stack and memos_to_get_stack[-1] == read_memo:
                     # The next block from _get_blocks will be the block we
                     # need.
-                    block_read_memo, block = blocks.next()
+                    block_read_memo, block = next(blocks)
                     if block_read_memo != read_memo:
                         raise AssertionError(
                             "block_read_memo out of sync with read_memo"
@@ -1409,7 +1412,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 yield read_memo, cached[read_memo]
             except KeyError:
                 # Read the block, and cache it.
-                zdata = raw_records.next()
+                zdata = next(raw_records)
                 block = GroupCompressBlock.from_bytes(zdata)
                 self._group_cache[read_memo] = block
                 cached[read_memo] = block

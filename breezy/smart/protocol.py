@@ -1278,7 +1278,7 @@ def _iter_with_errors(iterable):
     iterator = iter(iterable)
     while True:
         try:
-            yield None, iterator.next()
+            yield None, next(iterator)
         except StopIteration:
             return
         except (KeyboardInterrupt, SystemExit):

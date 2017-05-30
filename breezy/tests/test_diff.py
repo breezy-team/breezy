@@ -1194,8 +1194,8 @@ pynff pzq_zxqve(Pbzznaq):
                           ]
                           , list(unified_diff(txt_a, txt_b,
                                  sequencematcher=psm)))
-        txt_a = map(lambda x: x+'\n', 'abcdefghijklmnop')
-        txt_b = map(lambda x: x+'\n', 'abcdefxydefghijklmnop')
+        txt_a = [x+'\n' for x in 'abcdefghijklmnop']
+        txt_b = [x+'\n' for x in 'abcdefxydefghijklmnop']
         # This is the result with LongestCommonSubstring matching
         self.assertEqual(['--- \n',
                            '+++ \n',
@@ -1307,8 +1307,8 @@ class TestPatienceDiffLibFiles(tests.TestCaseInTempDir):
                           , list(unified_diff_files('a1', 'b1',
                                  sequencematcher=psm)))
 
-        txt_a = map(lambda x: x+'\n', 'abcdefghijklmnop')
-        txt_b = map(lambda x: x+'\n', 'abcdefxydefghijklmnop')
+        txt_a = [x+'\n' for x in 'abcdefghijklmnop']
+        txt_b = [x+'\n' for x in 'abcdefxydefghijklmnop']
         with open('a2', 'wb') as f: f.writelines(txt_a)
         with open('b2', 'wb') as f: f.writelines(txt_b)
 

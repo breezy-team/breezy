@@ -33,11 +33,13 @@ class _PushbackSequence(object):
         self._iter = iter(orig)
         self._pushback_buffer = []
 
-    def next(self):
+    def __next__(self):
         if len(self._pushback_buffer) > 0:
             return self._pushback_buffer.pop()
         else:
-            return self._iter.next()
+            return next(self._iter)
+
+    next = __next__
 
     def pushback(self, char):
         self._pushback_buffer.append(char)
@@ -140,11 +142,13 @@ class Splitter(object):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         quoted, token = self._get_token()
         if token is None:
             raise StopIteration
         return quoted, token
+
+    next = __next__
 
     def _get_token(self):
         self.quoted = False

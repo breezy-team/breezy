@@ -33,7 +33,7 @@ except ImportError:
     commands = object()
 
 
-def load_tests(standard_tests, module, loader):
+def load_tests(loader, standard_tests, pattern):
     """Parameterize tests for all versions of groupcompress."""
     scenarios = [
         ('pack-0.92', {'branch_format': 'pack-0.92'}),

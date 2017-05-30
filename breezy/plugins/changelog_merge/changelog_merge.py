@@ -48,7 +48,7 @@ def changelog_entries(lines):
                 entries.append([])
                 entry = entries[-1]
             entry.append(line)
-    return map(tuple, entries)
+    return list(map(tuple, entries))
 
 
 def entries_to_lines(entries):
@@ -106,8 +106,8 @@ def default_guess_edits(new_entries, deleted_entries, entry_as_str=''.join):
     This algorithm does O(N^2 * logN) SequenceMatcher.ratio() calls, which is
     pretty bad, but it shouldn't be used very often.
     """
-    deleted_entries_as_strs = map(entry_as_str, deleted_entries)
-    new_entries_as_strs = map(entry_as_str, new_entries)
+    deleted_entries_as_strs = list(map(entry_as_str, deleted_entries))
+    new_entries_as_strs = list(map(entry_as_str, new_entries))
     result_new = list(new_entries)
     result_deleted = list(deleted_entries)
     result_edits = []

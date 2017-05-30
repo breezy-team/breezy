@@ -49,6 +49,9 @@ from ..errors import (FileExists,
                            ParamikoNotPresent,
                            )
 from ..osutils import fancy_rename
+from ..sixish import (
+    zip,
+    )
 from ..trace import mutter, warning
 from ..transport import (
     FileFileStream,
@@ -82,9 +85,41 @@ else:
     from paramiko.sftp_file import SFTPFile
 
 
-_paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
-# don't use prefetch unless paramiko version >= 1.5.5 (there were bugs earlier)
-_default_do_prefetch = (_paramiko_version >= (1, 5, 5))
+# GZ 2017-05-25: Some dark hackery to monkeypatch out issues with paramiko's
+# Python 3 compatibility code. Replace broken b() and asbytes() code.
+try:
+    from paramiko.py3compat import b as _bad
+    from paramiko.common import asbytes as _bad_asbytes
+except ImportError:
+    pass
+else:
+    def _b_for_broken_paramiko(s, encoding='utf8'):
+        """Hacked b() that does not raise TypeError."""
+        # https://github.com/paramiko/paramiko/issues/967
+        if not isinstance(s, bytes):
+            encode = getattr(s, 'encode', None)
+            if encode is not None:
+                return encode(encoding)
+            # Would like to pass buffer objects along, but have to realise.
+            tobytes = getattr(s, 'tobytes', None)
+            if tobytes is not None:
+                return tobytes()
+        return s
+
+    def _asbytes_for_broken_paramiko(s):
+        """Hacked asbytes() that does not raise Exception."""
+        # https://github.com/paramiko/paramiko/issues/968
+        if not isinstance(s, bytes):
+            encode = getattr(s, 'encode', None)
+            if encode is not None:
+                return encode('utf8')
+            asbytes = getattr(s, 'asbytes', None)
+            if asbytes is not None:
+                return asbytes()
+        return s
+
+    _bad.func_code = _b_for_broken_paramiko.func_code
+    _bad_asbytes.func_code = _asbytes_for_broken_paramiko.func_code
 
 
 class SFTPLock(object):
@@ -185,7 +220,7 @@ class _SFTPReadvHelper(object):
         """
         requests = self._get_requests()
         offset_iter = iter(self.original_offsets)
-        cur_offset, cur_size = offset_iter.next()
+        cur_offset, cur_size = next(offset_iter)
         # paramiko .readv() yields strings that are in the order of the requests
         # So we track the current request to know where the next data is
         # being returned from.
@@ -202,7 +237,7 @@ class _SFTPReadvHelper(object):
         # short readv.
         data_stream = itertools.chain(fp.readv(requests),
                                       itertools.repeat(None))
-        for (start, length), data in itertools.izip(requests, data_stream):
+        for (start, length), data in zip(requests, data_stream):
             if data is None:
                 if cur_coalesced is not None:
                     raise errors.ShortReadvError(self.relpath,
@@ -259,7 +294,7 @@ class _SFTPReadvHelper(object):
                     input_start += cur_size
                     # Yield the requested data
                     yield cur_offset, cur_data
-                    cur_offset, cur_size = offset_iter.next()
+                    cur_offset, cur_size = next(offset_iter)
                 # at this point, we've consumed as much of buffered as we can,
                 # so break off the portion that we consumed
                 if buffered_offset == len(buffered_data):
@@ -279,7 +314,7 @@ class _SFTPReadvHelper(object):
         if data_chunks:
             if 'sftp' in debug.debug_flags:
                 mutter('SFTP readv left with %d out-of-order bytes',
-                    sum(map(lambda x: len(x[1]), data_chunks)))
+                    sum(len(x[1]) for x in data_chunks))
             # We've processed all the readv data, at this point, anything we
             # couldn't process is in data_chunks. This doesn't happen often, so
             # this code path isn't optimized
@@ -308,13 +343,12 @@ class _SFTPReadvHelper(object):
                         ' We expected %d bytes, but only found %d'
                         % (cur_size, len(data)))
                 yield cur_offset, data
-                cur_offset, cur_size = offset_iter.next()
+                cur_offset, cur_size = next(offset_iter)
 
 
 class SFTPTransport(ConnectedTransport):
     """Transport implementation for SFTP access."""
 
-    _do_prefetch = _default_do_prefetch
     # TODO: jam 20060717 Conceivably these could be configurable, either
     #       by auto-tuning at run-time, or by a configuration (per host??)
     #       but the performance curve is pretty flat, so just going with
@@ -411,7 +445,7 @@ class SFTPTransport(ConnectedTransport):
             path = self._remote_path(relpath)
             f = self._get_sftp().file(path, mode='rb')
             size = f.stat().st_size
-            if self._do_prefetch and (getattr(f, 'prefetch', None) is not None):
+            if getattr(f, 'prefetch', None) is not None:
                 f.prefetch(size)
             return f
         except (IOError, paramiko.SSHException) as e:
