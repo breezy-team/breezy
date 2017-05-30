@@ -21,8 +21,6 @@ initial tests are for the specific cases being refactored from
 find_ids_across_trees.
 """
 
-from operator import attrgetter
-
 from breezy import errors
 from breezy.tests import features
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
@@ -47,10 +45,12 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
         """Run paths2ids for tree, and check the result."""
         tree.lock_read()
         if trees:
-            map(apply, map(attrgetter('lock_read'), trees))
+            for t in trees:
+                t.lock_read()
             result = tree.paths2ids(paths, trees,
                 require_versioned=require_versioned)
-            map(apply, map(attrgetter('unlock'), trees))
+            for t in trees:
+                t.unlock()
         else:
             result = tree.paths2ids(paths,
                 require_versioned=require_versioned)

@@ -20,7 +20,6 @@ from __future__ import absolute_import
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
-from itertools import izip
 import time
 
 from breezy import (
@@ -67,6 +66,9 @@ from .pack_repo import (
     PackRepository,
     PackRootCommitBuilder,
     RepositoryPackCollection,
+    )
+from ..sixish import (
+    zip
     )
 from ..vf_repository import (
     StreamSource,
@@ -659,8 +661,8 @@ class KnitPacker(Packer):
                 if self._reload_func is not None:
                     self._reload_func()
                 raise
-            for (names, read_func), (_1, _2, (key, eol_flag)) in \
-                izip(reader.iter_records(), pack_readv_requests):
+            for (names, read_func), (_1, _2, (key, eol_flag)) in zip(
+                    reader.iter_records(), pack_readv_requests):
                 raw_data = read_func(None)
                 # check the header only
                 if output_lines is not None:
@@ -711,8 +713,8 @@ class KnitPacker(Packer):
                 if self._reload_func is not None:
                     self._reload_func()
                 raise
-            for (names, read_func), (key, eol_flag, references) in \
-                izip(reader.iter_records(), node_vector):
+            for (names, read_func), (key, eol_flag, references) in zip(
+                    reader.iter_records(), node_vector):
                 raw_data = read_func(None)
                 if output_lines:
                     # read the entire thing

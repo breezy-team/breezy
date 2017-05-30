@@ -17,7 +17,6 @@
 
 """Black-box tests for brz log."""
 
-from itertools import izip
 import os
 
 from breezy import (
@@ -693,8 +692,8 @@ class TestLogDiff(TestLogWithLogCatcher):
                            for r in self.get_captured_revisions()])
         # Now check the diffs, adding the revno  in case of failure
         fmt = 'In revno %s\n%s'
-        for expected_rev, actual_rev in izip(expected,
-                                             self.get_captured_revisions()):
+        for expected_rev, actual_rev in zip(expected,
+                                            self.get_captured_revisions()):
             revno, depth, expected_diff = expected_rev
             actual_diff = actual_rev.diff
             self.assertEqualDiff(fmt % (revno, expected_diff),

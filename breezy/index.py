@@ -750,7 +750,7 @@ class GraphIndex(object):
                 while dicts:
                     key_dict = dicts.pop(-1)
                     # can't be empty or would not exist
-                    item, value = key_dict.iteritems().next()
+                    item, value = next(key_dict.iteritems())
                     if isinstance(value, dict):
                         # push keys
                         dicts.extend(key_dict.itervalues())
@@ -1449,6 +1449,7 @@ class CombinedGraphIndex(object):
         """
         indices_info = zip(self._index_names, self._indices)
         if 'index' in debug.debug_flags:
+            indices_info = list(indices_info)
             trace.mutter('CombinedGraphIndex reordering: currently %r, '
                          'promoting %r', indices_info, hit_indices)
         hit_names = []
@@ -1725,7 +1726,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
                 while dicts:
                     key_dict = dicts.pop(-1)
                     # can't be empty or would not exist
-                    item, value = key_dict.iteritems().next()
+                    item, value = next(key_dict.iteritems())
                     if isinstance(value, dict):
                         # push keys
                         dicts.extend(key_dict.itervalues())

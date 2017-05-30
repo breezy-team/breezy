@@ -1953,7 +1953,7 @@ class DirState(object):
         lines = []
         lines.append(self._get_parents_line(self.get_parent_ids()))
         lines.append(self._get_ghosts_line(self._ghosts))
-        lines.extend(self._get_entry_lines())
+        lines.extend(self._iter_entry_lines())
         return self._get_output_lines(lines)
 
     def _get_ghosts_line(self, ghost_ids):
@@ -1964,7 +1964,7 @@ class DirState(object):
         """Create a line for the state file for parents information."""
         return '\0'.join([str(len(parent_ids))] + parent_ids)
 
-    def _get_entry_lines(self):
+    def _iter_entry_lines(self):
         """Create lines for entries."""
         return map(self._entry_to_line, self._iter_entries())
 
@@ -2703,7 +2703,7 @@ class DirState(object):
                             new_details.append(DirState.NULL_PARENT_DETAILS)
                         else:
                             # grab any one entry, use it to find the right path.
-                            a_key = iter(entry_keys).next()
+                            a_key = next(iter(entry_keys))
                             if by_path[a_key][lookup_index][0] in ('r', 'a'):
                                 # its a pointer or missing statement, use it as
                                 # is.
@@ -2783,11 +2783,11 @@ class DirState(object):
         # underlying dirstate.
         old_iterator = iter(list(self._iter_entries()))
         # both must have roots so this is safe:
-        current_new = new_iterator.next()
-        current_old = old_iterator.next()
+        current_new = next(new_iterator)
+        current_old = next(old_iterator)
         def advance(iterator):
             try:
-                return iterator.next()
+                return next(iterator)
             except StopIteration:
                 return None
         while current_new or current_old:
@@ -3906,7 +3906,7 @@ class ProcessEntryPython(object):
             else:
                 dir_iterator = osutils._walkdirs_utf8(root_abspath, prefix=current_root)
                 try:
-                    current_dir_info = dir_iterator.next()
+                    current_dir_info = next(dir_iterator)
                 except OSError as e:
                     # on win32, python2.4 has e.errno == ERROR_DIRECTORY, but
                     # python 2.5 has e.errno == EINVAL,
@@ -3982,7 +3982,7 @@ class ProcessEntryPython(object):
 
                         # This dir info has been handled, go to the next
                         try:
-                            current_dir_info = dir_iterator.next()
+                            current_dir_info = next(dir_iterator)
                         except StopIteration:
                             current_dir_info = None
                     else:
@@ -4134,7 +4134,7 @@ class ProcessEntryPython(object):
                         current_block = None
                 if current_dir_info is not None:
                     try:
-                        current_dir_info = dir_iterator.next()
+                        current_dir_info = next(dir_iterator)
                     except StopIteration:
                         current_dir_info = None
         for result in self._iter_specific_file_parents():

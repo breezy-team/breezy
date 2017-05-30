@@ -19,6 +19,7 @@
 from __future__ import absolute_import
 
 from copy import copy
+import itertools
 import os
 import struct
 from zlib import adler32
@@ -43,6 +44,7 @@ from breezy import (
 from .registry import Registry
 from .sixish import (
     BytesIO,
+    zip,
     )
 from .textmerge import TextMerge
 
@@ -535,10 +537,10 @@ class VersionedFile(object):
                                   if not mpvf.has_version(p))
         present_parents = set(self.get_parent_map(needed_parents).keys())
         for parent_id, lines in zip(present_parents,
-                                 self._get_lf_split_line_list(present_parents)):
+                self._get_lf_split_line_list(present_parents)):
             mpvf.add_version(lines, parent_id, [])
-        for (version, parent_ids, expected_sha1, mpdiff), lines in\
-            zip(records, mpvf.get_line_list(versions)):
+        for (version, parent_ids, expected_sha1, mpdiff), lines in zip(
+                records, mpvf.get_line_list(versions)):
             if len(parent_ids) == 1:
                 left_matching_blocks = list(mpdiff.get_matching_blocks(0,
                     mpvf.get_diff(parent_ids[0]).num_lines()))
@@ -1027,8 +1029,8 @@ class VersionedFiles(object):
                 continue
             mpvf.add_version(chunks_to_lines(record.get_bytes_as('chunked')),
                 record.key, [])
-        for (key, parent_keys, expected_sha1, mpdiff), lines in\
-            zip(records, mpvf.get_line_list(versions)):
+        for (key, parent_keys, expected_sha1, mpdiff), lines in zip(
+                records, mpvf.get_line_list(versions)):
             if len(parent_keys) == 1:
                 left_matching_blocks = list(mpdiff.get_matching_blocks(0,
                     mpvf.get_diff(parent_keys[0]).num_lines()))
@@ -1092,9 +1094,9 @@ class VersionedFiles(object):
         while pending:
             this_parent_map = self.get_parent_map(pending)
             parent_map.update(this_parent_map)
-            pending = set()
-            map(pending.update, this_parent_map.itervalues())
-            pending = pending.difference(parent_map)
+            pending = set(itertools.chain.from_iterable(
+                this_parent_map.itervalues()))
+            pending.difference_update(parent_map)
         kg = _mod_graph.KnownGraph(parent_map)
         return kg
 
@@ -1318,7 +1320,7 @@ class ThunkedVersionedFiles(VersionedFiles):
             prefix_keys.append(key[-1])
         return result
 
-    def _get_all_prefixes(self):
+    def _iter_all_prefixes(self):
         # Identify all key prefixes.
         # XXX: A bit hacky, needs polish.
         if isinstance(self._mapper, ConstantMapper):
@@ -1413,7 +1415,7 @@ class ThunkedVersionedFiles(VersionedFiles):
                 yield line, prefix + (version,)
 
     def _iter_all_components(self):
-        for path, prefix in self._get_all_prefixes():
+        for path, prefix in self._iter_all_prefixes():
             yield prefix, self._get_vf(path)
 
     def keys(self):

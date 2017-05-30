@@ -88,7 +88,7 @@ class Test_MPDiffGenerator(tests.TestCaseWithMemoryTransport):
         self.assertEqual(sorted([('one',), ('two',), ('three',)]),
                          sorted(gen.needed_keys))
         stream = vf.get_record_stream(gen.needed_keys, 'topological', True)
-        record = stream.next()
+        record = next(stream)
         self.assertEqual(('one',), record.key)
         # one is not needed in the output, but it is needed by children. As
         # such, it should end up in the various caches
@@ -99,7 +99,7 @@ class Test_MPDiffGenerator(tests.TestCaseWithMemoryTransport):
         self.assertEqual([], gen.diffs.keys())
         # Next we get 'two', which is something we output, but also needed for
         # three
-        record = stream.next()
+        record = next(stream)
         self.assertEqual(('two',), record.key)
         gen._process_one_record(record.key, record.get_bytes_as('chunked'))
         # Both are now cached, and the diff for two has been extracted, and
@@ -113,7 +113,7 @@ class Test_MPDiffGenerator(tests.TestCaseWithMemoryTransport):
                          gen.parent_map)
         # Finally 'three', which allows us to remove all parents from the
         # caches
-        record = stream.next()
+        record = next(stream)
         self.assertEqual(('three',), record.key)
         gen._process_one_record(record.key, record.get_bytes_as('chunked'))
         # Both are now cached, and the diff for two has been extracted, and

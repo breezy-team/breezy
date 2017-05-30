@@ -16,8 +16,6 @@
 
 """Tests for control directory implementations - tests a controldir format."""
 
-from itertools import izip
-
 import breezy.branch
 from breezy import (
     bzrdir as _mod_bzrdir,
@@ -1560,7 +1558,7 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertPathExists(old_path)
         self.assertPathExists(new_path)
         for (((dir_relpath1, _), entries1),
-             ((dir_relpath2, _), entries2)) in izip(
+             ((dir_relpath2, _), entries2)) in zip(
                 osutils.walkdirs(old_path),
                 osutils.walkdirs(new_path)):
             self.assertEqual(dir_relpath1, dir_relpath2)

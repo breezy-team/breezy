@@ -227,7 +227,7 @@ derived_txt_files = \
 	doc/en/release-notes/NEWS.txt
 txt_all = \
 	doc/en/tutorials/tutorial.txt \
-	doc/en/tutorials/using_bazaar_with_launchpad.txt \
+	doc/en/tutorials/using_breezy_with_launchpad.txt \
 	doc/en/tutorials/centralized_workflow.txt \
         $(wildcard doc/es/tutorials/*.txt) \
 		$(wildcard doc/ru/tutorials/*.txt) \

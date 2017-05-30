@@ -368,15 +368,15 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         # Ensure that we stored a delta
         source.lock_read()
         self.addCleanup(source.unlock)
-        record = source.revisions.get_record_stream([('rev-two',)],
-            'unordered', False).next()
+        record = next(source.revisions.get_record_stream([('rev-two',)],
+            'unordered', False))
         self.assertEqual('knit-delta-gz', record.storage_kind)
         target.fetch(tree.branch.repository, revision_id='rev-two')
         # The record should get expanded back to a fulltext
         target.lock_read()
         self.addCleanup(target.unlock)
-        record = target.revisions.get_record_stream([('rev-two',)],
-            'unordered', False).next()
+        record = next(target.revisions.get_record_stream([('rev-two',)],
+            'unordered', False))
         self.assertEqual('knit-ft-gz', record.storage_kind)
 
     def test_fetch_with_fallback_and_merge(self):

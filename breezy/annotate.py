@@ -367,7 +367,7 @@ def _find_matching_unannotated_lines(output_lines, plain_child_lines,
                 else:
                     heads = heads_provider.heads((left[0], right[0]))
                     if len(heads) == 1:
-                        output_append((iter(heads).next(), left[1]))
+                        output_append((next(iter(heads)), left[1]))
                     else:
                         # Both claim different origins, get a stable result.
                         # If the result is not stable, there is a risk a

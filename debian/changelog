@@ -1,8 +1,8 @@
-brz (3.0.0~bzr6631-1) UNRELEASED; urgency=medium
+brz (3.0.0~bzr6638-1) UNRELEASED; urgency=medium
 
   * New upstream snapshot.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 24 May 2017 01:13:04 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 30 May 2017 21:26:35 +0000
 
 bzr (2.7.0+bzr6619-8) unstable; urgency=high
 

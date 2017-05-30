@@ -889,7 +889,7 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         # Don't collapse readv results into a list so that we leave unread
         # bytes on the socket
         ireadv = iter(t.readv('a', ((0, 1), (1, 1), (2, 4), (6, 4))))
-        self.assertEqual((0, '0'), ireadv.next())
+        self.assertEqual((0, '0'), next(ireadv))
         # The server should have issued one request so far
         self.assertEqual(1, server.GET_request_nb)
         self.assertEqual('0123456789', t.get_bytes('a'))
@@ -1045,14 +1045,14 @@ class TestTruncatedMultipleRangeServer(TestSpecificRequestHandler):
         # Force separate ranges for each offset
         t._bytes_to_read_before_seek = 0
         ireadv = iter(t.readv('a', ((0, 1), (2, 1), (4, 2), (9, 1))))
-        self.assertEqual((0, '0'), ireadv.next())
-        self.assertEqual((2, '2'), ireadv.next())
+        self.assertEqual((0, '0'), next(ireadv))
+        self.assertEqual((2, '2'), next(ireadv))
         if not self._testing_pycurl():
             # Only one request have been issued so far (except for pycurl that
             # try to read the whole response at once)
             self.assertEqual(1, server.GET_request_nb)
-        self.assertEqual((4, '45'), ireadv.next())
-        self.assertEqual((9, '9'), ireadv.next())
+        self.assertEqual((4, '45'), next(ireadv))
+        self.assertEqual((9, '9'), next(ireadv))
         # Both implementations issue 3 requests but:
         # - urllib does two multiple (4 ranges, then 2 ranges) then a single
         #   range,
@@ -1123,10 +1123,10 @@ class TestTruncatedBeforeBoundary(TestSpecificRequestHandler):
         # Force separate ranges for each offset
         t._bytes_to_read_before_seek = 0
         ireadv = iter(t.readv('a', ((0, 1), (2, 1), (4, 2), (9, 1))))
-        self.assertEqual((0, '0'), ireadv.next())
-        self.assertEqual((2, '2'), ireadv.next())
-        self.assertEqual((4, '45'), ireadv.next())
-        self.assertEqual((9, '9'), ireadv.next())
+        self.assertEqual((0, '0'), next(ireadv))
+        self.assertEqual((2, '2'), next(ireadv))
+        self.assertEqual((4, '45'), next(ireadv))
+        self.assertEqual((9, '9'), next(ireadv))
 
 
 class LimitedRangeRequestHandler(http_server.TestingHTTPRequestHandler):
@@ -1391,8 +1391,8 @@ class TestRanges(http_utils.TestCaseWithWebserver):
 
     def test_range_header(self):
         # Valid ranges
-        map(self.assertEqual,['0', '234'],
-            list(self._file_contents('a', [(0,0), (2,4)])),)
+        self.assertEqual(
+            ['0', '234'], list(self._file_contents('a', [(0,0), (2,4)])))
 
     def test_range_header_tail(self):
         self.assertEqual('789', self._file_tail('a', 3))

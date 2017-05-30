@@ -130,8 +130,8 @@ committer: Martin Pool <mbp@test.sourcefrog.net>
             s.add(k, v)
         s2 = read_stanza(s.to_lines())
         self.assertEqual(s, s2)
-        self.assertEqual(s.get_all('a'), map(str, [10, 100, 1000]))
-        self.assertEqual(s.get_all('b'), map(str, [20, 200, 2000]))
+        self.assertEqual(s.get_all('a'), ['10', '100', '1000'])
+        self.assertEqual(s.get_all('b'), ['20', '200', '2000'])
 
     def test_backslash(self):
         s = Stanza(q='\\')

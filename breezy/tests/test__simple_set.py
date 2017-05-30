@@ -373,13 +373,13 @@ class TestSimpleSet(tests.TestCase):
             all.add(key)
         self.assertEqual(sorted([k1, k2, k3]), sorted(all))
         iterator = iter(obj)
-        iterator.next()
+        next(iterator)
         obj.add(('foo',))
         # Set changed size
-        self.assertRaises(RuntimeError, iterator.next)
+        self.assertRaises(RuntimeError, next, iterator)
         # And even removing an item still causes it to fail
         obj.discard(k2)
-        self.assertRaises(RuntimeError, iterator.next)
+        self.assertRaises(RuntimeError, next, iterator)
 
     def test__sizeof__(self):
         # SimpleSet needs a custom sizeof implementation, because it allocates

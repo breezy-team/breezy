@@ -87,14 +87,8 @@ from .osutils import (
     )
 from breezy.sixish import (
     BytesIO,
-    PY3,
+    zip,
     )
-
-
-if PY3:
-    izip = zip
-else:
-    izip = itertools.izip
 
 
 def find_touching_revisions(branch, file_id):
@@ -834,7 +828,7 @@ def make_log_rev_iterator(branch, view_revisions, generate_delta, search,
         # A single batch conversion is faster than many incremental ones.
         # As we have all the data, do a batch conversion.
         nones = [None] * len(view_revisions)
-        log_rev_iterator = iter([zip(view_revisions, nones, nones)])
+        log_rev_iterator = iter([list(zip(view_revisions, nones, nones))])
     else:
         def _convert():
             for view in view_revisions:
@@ -894,7 +888,7 @@ def _match_filter(searchRE, rev):
     return True
 
 def _match_any_filter(strings, res):
-    return any([filter(None, map(re.search, strings)) for re in res])
+    return any(re.search(s) for re in res for s in strings)
 
 def _make_delta_filter(branch, generate_delta, search, log_rev_iterator,
     fileids=None, direction='reverse'):
@@ -945,11 +939,11 @@ def _generate_deltas(repository, log_rev_iterator, delta_type, fileids,
         new_revs = []
         if delta_type == 'full' and not check_fileids:
             deltas = repository.get_deltas_for_revisions(revisions)
-            for rev, delta in izip(revs, deltas):
+            for rev, delta in zip(revs, deltas):
                 new_revs.append((rev[0], rev[1], delta))
         else:
             deltas = repository.get_deltas_for_revisions(revisions, fileid_set)
-            for rev, delta in izip(revs, deltas):
+            for rev, delta in zip(revs, deltas):
                 if check_fileids:
                     if delta is None or not delta.has_changed():
                         continue
@@ -1005,7 +999,7 @@ def _make_revision_objects(branch, generate_delta, search, log_rev_iterator):
         revision_ids = [view[0] for view, _, _ in revs]
         revisions = repository.get_revisions(revision_ids)
         revs = [(rev[0], revision, rev[2]) for rev, revision in
-            izip(revs, revisions)]
+            zip(revs, revisions)]
         yield revs
 
 
@@ -1929,7 +1923,7 @@ def get_history_change(old_revision_id, new_revision_id, repository):
     while do_new or do_old:
         if do_new:
             try:
-                new_revision = new_iter.next()
+                new_revision = next(new_iter)
             except StopIteration:
                 do_new = False
             else:
@@ -1940,7 +1934,7 @@ def get_history_change(old_revision_id, new_revision_id, repository):
                     break
         if do_old:
             try:
-                old_revision = old_iter.next()
+                old_revision = next(old_iter)
             except StopIteration:
                 do_old = False
             else:

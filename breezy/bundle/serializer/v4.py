@@ -258,7 +258,7 @@ class BundleReader(object):
             if metadata['storage_kind'] == 'header':
                 bytes = None
             else:
-                _unused, bytes = iterator.next()
+                _unused, bytes = next(iterator)
             yield (bytes, metadata) + self.decode_name(names[0][0])
 
 

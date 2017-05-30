@@ -342,9 +342,8 @@ Message: %(message)s.
         path = posixpath.normpath(urlutils.unquote(path))
         path = path.decode('utf-8')
         words = path.split('/')
-        words = filter(None, words)
         path = self._cwd
-        for num, word in enumerate(words):
+        for num, word in enumerate(w for w in words if w):
             if num == 0:
                 drive, word = os.path.splitdrive(word)
             head, word = os.path.split(word)
