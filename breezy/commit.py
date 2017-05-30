@@ -114,7 +114,7 @@ class ReportCommitToLog(NullCommitReporter):
             return
         self._note("%s %s", change, path)
 
-    def started(self, revno, rev_id, location=None):
+    def started(self, revno, rev_id, location):
         self._note(
             gettext('Committing to: %s'),
             unescape_for_display(location, 'utf-8'))
