@@ -97,7 +97,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         self.assertEqual(('search', {'rev2'}, {'rev1'}, 1),
             result.get_recipe())
 
-    def test_search_missing_revision_ids_absent_requested_raises(self):
+    def test_absent_requested_raises(self):
         # Asking for missing revisions with a tip that is itself absent in the
         # source raises NoSuchRevision.
         repo_b = self.make_to_repository('target')
@@ -113,7 +113,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
             repo_b.search_missing_revision_ids, repo_a, revision_ids=['pizza'],
             find_ghosts=False)
 
-    def test_search_missing_revision_ids_revision_limited(self):
+    def test_search_missing_rev_limited(self):
         # revision ids in repository A that are not referenced by the
         # requested revision are not returned.
         # make a repository to compare against that is empty
