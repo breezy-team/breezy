@@ -349,8 +349,9 @@ def report_changes(change_iterator, reporter):
         reporter.report(file_id, path, versioned_change, renamed, modified,
                         exe_change, kind)
 
-def report_delta(to_file, delta, short_status=False, show_ids=False, 
-         show_unchanged=False, indent='', filter=None, classify=True):
+
+def report_delta(to_file, delta, short_status=False, show_ids=False,
+        show_unchanged=False, indent='', predicate=None, classify=True):
     """Output this delta in status-like form to to_file.
 
     :param to_file: A file-like object where the output is displayed.
@@ -366,7 +367,7 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
     :param indent: Added at the beginning of all output lines (for merged
         revisions).
 
-    :param filter: A callable receiving a path and a file id and
+    :param predicate: A callable receiving a path and a file id and
         returning True if the path should be displayed.
 
     :param classify: Add special symbols to indicate file kind.
@@ -417,7 +418,7 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
 
             for item in files:
                 path, file_id, kind = item[:3]
-                if (filter is not None and not filter(path, file_id)):
+                if (predicate is not None and not predicate(path, file_id)):
                     continue
                 if not header_shown and not short_status:
                     to_file.write(indent + long_status_name + ':\n')

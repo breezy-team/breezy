@@ -1590,7 +1590,7 @@ class WorkingTree(mutabletree.MutableTree,
         inventory_iterator = self._walkdirs(prefix)
         disk_iterator = osutils.walkdirs(disk_top, prefix)
         try:
-            current_disk = disk_iterator.next()
+            current_disk = next(disk_iterator)
             disk_finished = False
         except OSError as e:
             if not (e.errno == errno.ENOENT or
@@ -1599,7 +1599,7 @@ class WorkingTree(mutabletree.MutableTree,
             current_disk = None
             disk_finished = True
         try:
-            current_inv = inventory_iterator.next()
+            current_inv = next(inventory_iterator)
             inv_finished = False
         except StopIteration:
             current_inv = None
@@ -1640,7 +1640,7 @@ class WorkingTree(mutabletree.MutableTree,
                     cur_disk_dir_content]
                 yield (cur_disk_dir_relpath, None), dirblock
                 try:
-                    current_disk = disk_iterator.next()
+                    current_disk = next(disk_iterator)
                 except StopIteration:
                     disk_finished = True
             elif direction < 0:
@@ -1650,7 +1650,7 @@ class WorkingTree(mutabletree.MutableTree,
                     current_inv[1]]
                 yield (current_inv[0][0], current_inv[0][1]), dirblock
                 try:
-                    current_inv = inventory_iterator.next()
+                    current_inv = next(inventory_iterator)
                 except StopIteration:
                     inv_finished = True
             else:
@@ -1682,11 +1682,11 @@ class WorkingTree(mutabletree.MutableTree,
                         raise NotImplementedError('unreachable code')
                 yield current_inv[0], dirblock
                 try:
-                    current_inv = inventory_iterator.next()
+                    current_inv = next(inventory_iterator)
                 except StopIteration:
                     inv_finished = True
                 try:
-                    current_disk = disk_iterator.next()
+                    current_disk = next(disk_iterator)
                 except StopIteration:
                     disk_finished = True
 
@@ -2069,7 +2069,7 @@ class InventoryWorkingTree(WorkingTree,
             return _mod_conflicts.ConflictList()
         try:
             try:
-                if confile.next() != CONFLICT_HEADER_1 + '\n':
+                if next(confile) != CONFLICT_HEADER_1 + '\n':
                     raise errors.ConflictFormatError()
             except StopIteration:
                 raise errors.ConflictFormatError()
@@ -2366,7 +2366,7 @@ class InventoryWorkingTree(WorkingTree,
         try:
             merge_hashes = {}
             try:
-                if hashfile.next() != MERGE_MODIFIED_HEADER_1 + '\n':
+                if next(hashfile) != MERGE_MODIFIED_HEADER_1 + '\n':
                     raise errors.MergeModifiedFormatError()
             except StopIteration:
                 raise errors.MergeModifiedFormatError()

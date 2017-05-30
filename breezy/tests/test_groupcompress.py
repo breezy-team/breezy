@@ -557,7 +557,7 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         vf = self.make_test_vf(True, dir='source')
         vf.add_lines(('a',), (), ['lines\n'])
         vf.writer.end()
-        record = vf.get_record_stream([('a',)], 'unordered', True).next()
+        record = next(vf.get_record_stream([('a',)], 'unordered', True))
         self.assertEqual(vf._DEFAULT_COMPRESSOR_SETTINGS,
                          record._manager._get_compressor_settings())
 
@@ -566,7 +566,7 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         vf.add_lines(('a',), (), ['lines\n'])
         vf.writer.end()
         vf._max_bytes_to_index = 1234
-        record = vf.get_record_stream([('a',)], 'unordered', True).next()
+        record = next(vf.get_record_stream([('a',)], 'unordered', True))
         self.assertEqual(dict(max_bytes_to_index=1234),
                          record._manager._get_compressor_settings())
 

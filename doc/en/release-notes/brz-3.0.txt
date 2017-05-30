@@ -25,7 +25,9 @@ External Compatibility Breaks
 New Features
 ************
 
-* The 'bisect' plugin is now shipped with bzr. (Jelmer Vernooĳ)
+ * The 'bisect' plugin is now shipped with bzr. (Jelmer Vernooĳ)
+ * The 'fastimport' plugin is now bundled with Bazaar.
+   (Jelmer Vernooĳ)
 
 Improvements
 ************
@@ -55,6 +57,9 @@ API Changes
 
  * All previously deprecated functionality has been removed.
    (Jelmer Vernooĳ)
+
+ * Renamed ``breezy.delta.report_delta`` parameter ``filter=`` to
+   ``predicate=``. (Martin Packman)
 
 Internals
 *********

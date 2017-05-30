@@ -137,7 +137,7 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
         annotation, lines = self.ann.annotate(key)
         self.assertEqual(expected_annotation, annotation)
         if exp_text is None:
-            record = self.vf.get_record_stream([key], 'unordered', True).next()
+            record = next(self.vf.get_record_stream([key], 'unordered', True))
             exp_text = record.get_bytes_as('fulltext')
         self.assertEqualDiff(exp_text, ''.join(lines))
 

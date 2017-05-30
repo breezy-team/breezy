@@ -431,7 +431,7 @@ class cmd_cat_revision(Command):
 
     def print_revision(self, revisions, revid):
         stream = revisions.get_record_stream([(revid,)], 'unordered', True)
-        record = stream.next()
+        record = next(stream)
         if record.storage_kind == 'absent':
             raise errors.NoSuchRevision(revisions, revid)
         revtext = record.get_bytes_as('fulltext')

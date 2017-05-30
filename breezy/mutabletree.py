@@ -232,10 +232,10 @@ class MutableTree(tree.Tree):
             _from_tree = self.basis_tree()
         changes = self.iter_changes(_from_tree)
         try:
-            change = changes.next()
+            change = next(changes)
             # Exclude root (talk about black magic... --vila 20090629)
             if change[4] == (None, None):
-                change = changes.next()
+                change = next(changes)
             return True
         except StopIteration:
             # No changes
@@ -665,7 +665,7 @@ class _SmartAddHelper(object):
         # filename alone
         # only expanding if symlinks are supported avoids windows path bugs
         if osutils.has_symlinks():
-            file_list = map(osutils.normalizepath, file_list)
+            file_list = list(map(osutils.normalizepath, file_list))
 
         user_dirs = {}
         # validate user file paths and convert all paths to tree

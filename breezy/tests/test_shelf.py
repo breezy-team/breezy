@@ -190,7 +190,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
 
     def check_shelve_creation(self, creator, tree):
         self.assertRaises(StopIteration,
-                          tree.iter_entries_by_dir(['foo-id']).next)
+                          next, tree.iter_entries_by_dir(['foo-id']))
         s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')
         self.assertEqual('foo-id',
                          creator.shelf_transform.final_file_id(s_trans_id))
@@ -308,7 +308,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         creator.shelve_creation('foo-id')
         creator.transform()
         self.assertRaises(StopIteration,
-                          tree.iter_entries_by_dir(['foo-id']).next)
+                          next, tree.iter_entries_by_dir(['foo-id']))
         self.assertShelvedFileEqual('', creator, 'foo-id')
         s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')
         self.assertEqual('foo-id',
@@ -465,7 +465,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.addCleanup(tt.finalize)
         records = iter(parser.read_pending_records())
         #skip revision-id
-        records.next()
+        next(records)
         tt.deserialize(records)
 
     def test_shelve_unversioned(self):

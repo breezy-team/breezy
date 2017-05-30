@@ -20,7 +20,6 @@ Transport implementations tested here are supplied by
 TransportTestProviderAdapter.
 """
 
-import itertools
 import os
 import stat
 import sys
@@ -43,6 +42,7 @@ from ..errors import (ConnectionError,
 from ..osutils import getcwd
 from ..sixish import (
     BytesIO,
+    zip,
     )
 from ..smart import medium
 from . import (
@@ -191,15 +191,15 @@ class TransportTests(TestTransportImplementation):
         self.build_tree(files, transport=t, line_endings='binary')
         self.check_transport_contents('contents of a\n', t, 'a')
         content_f = t.get_multi(files)
-        # Use itertools.izip() instead of use zip() or map(), since they fully
-        # evaluate their inputs, the transport requests should be issued and
+        # Must use iter zip() from future not old version which will fully
+        # evaluate its inputs, the transport requests should be issued and
         # handled sequentially (we don't want to force transport to buffer).
-        for content, f in itertools.izip(contents, content_f):
+        for content, f in zip(contents, content_f):
             self.assertEqual(content, f.read())
 
         content_f = t.get_multi(iter(files))
-        # Use itertools.izip() for the same reason
-        for content, f in itertools.izip(contents, content_f):
+        # Again this zip() must come from the future
+        for content, f in zip(contents, content_f):
             self.assertEqual(content, f.read())
 
     def test_get_unknown_file(self):

@@ -39,7 +39,7 @@ from .testui import (
 class TestUIConfiguration(tests.TestCase):
 
     def test_output_encoding_configuration(self):
-        enc = fixtures.generate_unicode_encodings().next()
+        enc = next(fixtures.generate_unicode_encodings())
         config.GlobalStack().set('output_encoding', enc)
         IO = ui_testing.BytesIOWithEncoding
         ui = _mod_ui.make_ui_for_terminal(IO(), IO(), IO())

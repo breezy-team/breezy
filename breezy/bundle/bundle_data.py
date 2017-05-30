@@ -766,7 +766,7 @@ class BundleTree(Tree):
         entries = inv.iter_entries(from_dir=from_dir_id, recursive=recursive)
         if inv.root is not None and not include_root and from_dir is None:
             # skip the root for compatability with the current apis.
-            entries.next()
+            next(entries)
         for path, entry in entries:
             yield path, 'V', entry.kind, entry.file_id, entry
 

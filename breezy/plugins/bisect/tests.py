@@ -315,12 +315,12 @@ class BisectFuncTests(BisectTestCase):
         test_file.close()
 
         out, err = self.run_bzr(['bisect', 'reset'], retcode=3)
-        self.assert_("No bisection in progress." in err)
+        self.assertIn("No bisection in progress.", err)
 
         test_file = open("test_file")
         content = test_file.read().strip()
         test_file.close()
-        self.failUnless(content == "keep me")
+        self.assertEqual(content, "keep me")
 
     def testLog(self):
         """Test saving the current bisection state, and re-loading it."""

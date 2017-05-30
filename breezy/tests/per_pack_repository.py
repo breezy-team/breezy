@@ -328,7 +328,7 @@ class TestPackRepository(TestCaseWithTransport):
         repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.fetch(b.repository, revision_id='B-id')
-        inv = b.repository.iter_inventories(['C-id']).next()
+        inv = next(b.repository.iter_inventories(['C-id']))
         repo.start_write_group()
         repo.add_inventory('C-id', inv, ['B-id'])
         repo.commit_write_group()
@@ -338,7 +338,7 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertEqual([('A-id',), ('B-id',), ('C-id',)],
                          sorted(repo.inventories.keys()))
         # Content should be preserved as well
-        self.assertEqual(inv, repo.iter_inventories(['C-id']).next())
+        self.assertEqual(inv, next(repo.iter_inventories(['C-id'])))
 
     def test_pack_layout(self):
         # Test that the ordering of revisions in pack repositories is
@@ -358,7 +358,7 @@ class TestPackRepository(TestCaseWithTransport):
         for _1, key, val, refs in pack.revision_index.iter_all_entries():
             if isinstance(format.repository_format, RepositoryFormat2a):
                 # group_start, group_len, internal_start, internal_len
-                pos = map(int, val.split())
+                pos = list(map(int, val.split()))
             else:
                 # eol_flag, start, len
                 pos = int(val[1:].split()[0])

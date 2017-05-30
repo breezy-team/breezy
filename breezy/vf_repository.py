@@ -1515,8 +1515,8 @@ class VersionedFileRepository(Repository):
             revision_keys
         """
         parent_map = self.revisions.get_parent_map(revision_keys)
-        parent_keys = set()
-        map(parent_keys.update, parent_map.itervalues())
+        parent_keys = set(itertools.chain.from_iterable(
+            parent_map.itervalues()))
         parent_keys.difference_update(revision_keys)
         parent_keys.discard(_mod_revision.NULL_REVISION)
         return parent_keys
@@ -1727,7 +1727,7 @@ class VersionedFileRepository(Repository):
     @needs_read_lock
     def get_inventory(self, revision_id):
         """Get Inventory object by revision id."""
-        return self.iter_inventories([revision_id]).next()
+        return next(self.iter_inventories([revision_id]))
 
     def iter_inventories(self, revision_ids, ordering=None):
         """Get many inventories by revision_ids.
@@ -1770,7 +1770,7 @@ class VersionedFileRepository(Repository):
             return
         if order_as_requested:
             key_iter = iter(keys)
-            next_key = key_iter.next()
+            next_key = next(key_iter)
         stream = self.inventories.get_record_stream(keys, ordering, True)
         text_chunks = {}
         for record in stream:
@@ -1788,7 +1788,7 @@ class VersionedFileRepository(Repository):
                     chunks = text_chunks.pop(next_key)
                     yield ''.join(chunks), next_key[-1]
                     try:
-                        next_key = key_iter.next()
+                        next_key = next(key_iter)
                     except StopIteration:
                         # We still want to fully consume the get_record_stream,
                         # just in case it is not actually finished at this point
@@ -1816,7 +1816,7 @@ class VersionedFileRepository(Repository):
     def _get_inventory_xml(self, revision_id):
         """Get serialized inventory as a string."""
         texts = self._iter_inventory_xmls([revision_id], 'unordered')
-        text, revision_id = texts.next()
+        text, revision_id = next(texts)
         if text is None:
             raise errors.NoSuchRevision(self, revision_id)
         return text
@@ -1942,7 +1942,7 @@ class VersionedFileRepository(Repository):
         """Return the text for a signature."""
         stream = self.signatures.get_record_stream([(revision_id,)],
             'unordered', True)
-        record = stream.next()
+        record = next(stream)
         if record.storage_kind == 'absent':
             raise errors.NoSuchRevision(self, revision_id)
         return record.get_bytes_as('fulltext')
@@ -3134,7 +3134,7 @@ def _install_revision(repository, rev, revision_tree, signature,
     entries = inv.iter_entries()
     # backwards compatibility hack: skip the root id.
     if not repository.supports_rich_root():
-        path, root = entries.next()
+        path, root = next(entries)
         if root.revision != rev.revision_id:
             raise errors.IncompatibleRevision(repr(repository))
     text_keys = {}

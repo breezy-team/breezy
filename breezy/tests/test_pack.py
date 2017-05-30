@@ -265,7 +265,7 @@ class TestContainerReader(tests.TestCase):
             "Bazaar pack format 1 (introduced in 0.18)\n")
         iterator = reader.iter_records()
         self.assertRaises(
-            errors.UnexpectedEndOfContainerError, iterator.next)
+            errors.UnexpectedEndOfContainerError, next, iterator)
 
     def test_unknown_record_type(self):
         """Unknown record types cause UnknownRecordTypeError to be raised."""
@@ -273,7 +273,7 @@ class TestContainerReader(tests.TestCase):
             "Bazaar pack format 1 (introduced in 0.18)\nX")
         iterator = reader.iter_records()
         self.assertRaises(
-            errors.UnknownRecordTypeError, iterator.next)
+            errors.UnknownRecordTypeError, next, iterator)
 
     def test_container_with_one_unnamed_record(self):
         """Read a container with one Bytes record.

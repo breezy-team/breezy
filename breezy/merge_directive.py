@@ -516,7 +516,7 @@ class MergeDirective2(BaseMergeDirective):
         patch = None
         bundle = None
         try:
-            start = line_iter.next()
+            start = next(line_iter)
         except StopIteration:
             pass
         else:

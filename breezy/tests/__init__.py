@@ -3440,7 +3440,7 @@ def partition_tests(suite, count):
     # than the fastest.
     partitions = [list() for i in range(count)]
     tests = iter_suite_tests(suite)
-    for partition, test in itertools.izip(itertools.cycle(partitions), tests):
+    for partition, test in zip(itertools.cycle(partitions), tests):
         partition.append(test)
     return partitions
 

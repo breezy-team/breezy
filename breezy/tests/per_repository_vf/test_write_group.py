@@ -563,8 +563,8 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         else:
             same_repo = self.reopen_repo(repo)
             same_repo.lock_read()
-            record = same_repo.texts.get_record_stream([key_delta],
-                                                       'unordered', True).next()
+            record = next(same_repo.texts.get_record_stream([key_delta],
+                                                       'unordered', True))
             self.assertEqual('more\nlines\n', record.get_bytes_as('fulltext'))
             return
         # Merely suspending and resuming doesn't make it commitable either.
@@ -607,8 +607,8 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
             # insert_record_stream already gave it a fulltext.
             same_repo = self.reopen_repo(repo)
             same_repo.lock_read()
-            record = same_repo.texts.get_record_stream([key_delta],
-                                                       'unordered', True).next()
+            record = next(same_repo.texts.get_record_stream([key_delta],
+                                                       'unordered', True))
             self.assertEqual('more\nlines\n', record.get_bytes_as('fulltext'))
             return
         same_repo.abort_write_group()

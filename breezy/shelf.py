@@ -314,7 +314,7 @@ class Unshelver(object):
 
     @staticmethod
     def parse_metadata(records):
-        names, metadata_bytes = records.next()
+        names, metadata_bytes = next(records)
         if names[0] != ('metadata',):
             raise errors.ShelfCorrupt
         metadata = bencode.bdecode(metadata_bytes)

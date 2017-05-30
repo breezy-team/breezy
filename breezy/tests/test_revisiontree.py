@@ -74,7 +74,7 @@ class TestTreeWithCommits(TestCaseWithTransport):
             tree.get_file_revision(tree.path2id('a')))
 
     def test_get_file_mtime_ghost(self):
-        file_id = iter(self.rev_tree.all_file_ids()).next()
+        file_id = next(iter(self.rev_tree.all_file_ids()))
         self.rev_tree.root_inventory[file_id].revision = 'ghostrev'
         self.assertRaises(errors.FileTimestampUnavailable, 
             self.rev_tree.get_file_mtime, file_id)

@@ -392,7 +392,7 @@ class Weave(VersionedFile):
     def _add_lines(self, version_id, parents, lines, parent_texts,
        left_matching_blocks, nostore_sha, random_id, check_content):
         """See VersionedFile.add_lines."""
-        idx = self._add(version_id, lines, map(self._lookup, parents),
+        idx = self._add(version_id, lines, list(map(self._lookup, parents)),
             nostore_sha=nostore_sha)
         return sha_strings(lines), sum(map(len, lines)), idx
 

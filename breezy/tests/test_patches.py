@@ -211,7 +211,6 @@ class PatchesTester(TestCase):
         self.compare_parsed(patchtext)
 
     def testLineLookup(self):
-        import sys
         """Make sure we can accurately look up mod line from orig"""
         patch = parse_patch(self.datafile("diff"))
         orig = list(self.datafile("orig"))
@@ -227,12 +226,8 @@ class PatchesTester(TestCase):
         for hunk in patch.hunks:
             for line in hunk.lines:
                 if isinstance(line, RemoveLine):
-                    next = rem_iter.next()
-                    if line.contents != next:
-                        sys.stdout.write(" orig:%spatch:%s" % (next,
-                                         line.contents))
-                    self.assertEqual(line.contents, next)
-        self.assertRaises(StopIteration, rem_iter.next)
+                    self.assertEqual(line.contents, next(rem_iter))
+        self.assertRaises(StopIteration, next, rem_iter)
 
     def testPatching(self):
         """Test a few patch files, and make sure they work."""

@@ -481,7 +481,7 @@ class Graph(object):
         unique_searcher = self._make_breadth_first_searcher(unique_revisions)
         # we know that unique_revisions aren't in common_revisions, so skip
         # past them.
-        unique_searcher.next()
+        next(unique_searcher)
         common_searcher = self._make_breadth_first_searcher(common_revisions)
 
         # As long as we are still finding unique nodes, keep searching
@@ -836,7 +836,7 @@ class Graph(object):
         active_searchers = dict(searchers)
         # skip over the actual candidate for each searcher
         for searcher in active_searchers.itervalues():
-            searcher.next()
+            next(searcher)
         # The common walker finds nodes that are common to two or more of the
         # input keys, so that we don't access all history when a currently
         # uncommon search point actually meets up with something behind a
@@ -848,7 +848,7 @@ class Graph(object):
             ancestors = set()
             # advance searches
             try:
-                common_walker.next()
+                next(common_walker)
             except StopIteration:
                 # No common points being searched at this time.
                 pass
@@ -861,7 +861,7 @@ class Graph(object):
                     # a descendant of another candidate.
                     continue
                 try:
-                    ancestors.update(searcher.next())
+                    ancestors.update(next(searcher))
                 except StopIteration:
                     del active_searchers[candidate]
                     continue
@@ -1384,11 +1384,11 @@ class _BreadthFirstSearcher(object):
 
     def step(self):
         try:
-            return self.next()
+            return next(self)
         except StopIteration:
             return ()
 
-    def next(self):
+    def __next__(self):
         """Return the next ancestors of this revision.
 
         Ancestors are returned in the order they are seen in a breadth-first
@@ -1413,6 +1413,8 @@ class _BreadthFirstSearcher(object):
         # the query, not the results.
         self.seen.update(self._next_query)
         return self._next_query
+
+    next = __next__
 
     def next_with_ghosts(self):
         """Return the next found ancestors, with ghosts split out.

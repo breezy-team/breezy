@@ -19,6 +19,7 @@
 from __future__ import absolute_import
 
 import bz2
+import itertools
 import os
 try:
     import queue
@@ -126,7 +127,7 @@ class SmartServerRepositoryRequest(SmartServerRequest):
                 start_keys)
             while True:
                 try:
-                    next_revs = search.next()
+                    next_revs = next(search)
                 except StopIteration:
                     break
                 search.stop_searching_any(exclude_keys.intersection(next_revs))
@@ -307,8 +308,7 @@ class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryReadLocked):
         else:
             search_ids = repository.all_revision_ids()
         search = graph._make_breadth_first_searcher(search_ids)
-        transitive_ids = set()
-        map(transitive_ids.update, list(search))
+        transitive_ids = set(itertools.chain.from_iterable(search))
         parent_map = graph.get_parent_map(transitive_ids)
         revision_graph = _strip_NULL_ghosts(parent_map)
         if revision_id and revision_id not in revision_graph:

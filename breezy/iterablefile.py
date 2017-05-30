@@ -67,7 +67,7 @@ class IterableFileBase(object):
         result = self._buffer
         while result_length(result) is None:
             try:
-                result += self._iter.next()
+                result += next(self._iter)
             except StopIteration:
                 self.done = True
                 self._buffer = ""
@@ -142,27 +142,29 @@ class IterableFile(object):
         """
         self._check_closed()
 
-    def next(self):
+    def __next__(self):
         """Implementation of the iterator protocol's next()
 
         >>> f = IterableFile(['This \\n', 'is ', 'a ', 'test.'])
-        >>> f.next()
+        >>> next(f)
         'This \\n'
         >>> f.close()
-        >>> f.next()
+        >>> next(f)
         Traceback (most recent call last):
         ValueError: File is closed.
         >>> f = IterableFile(['This \\n', 'is ', 'a ', 'test.\\n'])
-        >>> f.next()
+        >>> next(f)
         'This \\n'
-        >>> f.next()
+        >>> next(f)
         'is a test.\\n'
-        >>> f.next()
+        >>> next(f)
         Traceback (most recent call last):
         StopIteration
         """
         self._check_closed()
-        return self._iter.next()
+        return next(self._iter)
+
+    next = __next__
 
     def __iter__(self):
         """

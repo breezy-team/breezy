@@ -354,7 +354,7 @@ class RemoteTransport(transport.ConnectedTransport):
         # turn the list of offsets into a single stack to iterate
         offset_stack = iter(offsets)
         # using a list so it can be modified when passing down and coming back
-        next_offset = [offset_stack.next()]
+        next_offset = [next(offset_stack)]
         for cur_request in requests:
             try:
                 result = self._client.call_with_body_readv_array(
@@ -398,7 +398,7 @@ class RemoteTransport(transport.ConnectedTransport):
                 #       not have a real string.
                 if key == cur_offset_and_size:
                     yield cur_offset_and_size[0], this_data
-                    cur_offset_and_size = next_offset[0] = offset_stack.next()
+                    cur_offset_and_size = next_offset[0] = next(offset_stack)
                 else:
                     data_map[key] = this_data
             data_offset += c_offset.length
@@ -407,7 +407,7 @@ class RemoteTransport(transport.ConnectedTransport):
             while cur_offset_and_size in data_map:
                 this_data = data_map.pop(cur_offset_and_size)
                 yield cur_offset_and_size[0], this_data
-                cur_offset_and_size = next_offset[0] = offset_stack.next()
+                cur_offset_and_size = next_offset[0] = next(offset_stack)
 
     def rename(self, rel_from, rel_to):
         self._call('rename',

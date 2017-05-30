@@ -417,7 +417,7 @@ def _run_search(parent_map, heads, exclude_keys):
     found_heads = set()
     while True:
         try:
-            next_revs = s.next()
+            next_revs = next(s)
         except StopIteration:
             break
         for parents in s._current_parents.itervalues():

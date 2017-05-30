@@ -912,8 +912,8 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
             not part of revision_ids themselves
         """
         parent_map = self.get_parent_map(revision_ids)
-        parent_ids = set()
-        map(parent_ids.update, parent_map.itervalues())
+        parent_ids = set(itertools.chain.from_iterable(
+            parent_map.itervalues()))
         parent_ids.difference_update(revision_ids)
         parent_ids.discard(_mod_revision.NULL_REVISION)
         return parent_ids
@@ -1773,14 +1773,14 @@ def _iter_for_revno(repo, partial_history_cache, stop_index=None,
         (_mod_revision.NULL_REVISION,))
     try:
         # skip the last revision in the list
-        iterator.next()
+        next(iterator)
         while True:
             if (stop_index is not None and
                 len(partial_history_cache) > stop_index):
                 break
             if partial_history_cache[-1] == stop_revision:
                 break
-            revision_id = iterator.next()
+            revision_id = next(iterator)
             partial_history_cache.append(revision_id)
     except StopIteration:
         # No more history

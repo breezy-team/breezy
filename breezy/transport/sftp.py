@@ -49,6 +49,9 @@ from ..errors import (FileExists,
                            ParamikoNotPresent,
                            )
 from ..osutils import fancy_rename
+from ..sixish import (
+    zip,
+    )
 from ..trace import mutter, warning
 from ..transport import (
     FileFileStream,
@@ -185,7 +188,7 @@ class _SFTPReadvHelper(object):
         """
         requests = self._get_requests()
         offset_iter = iter(self.original_offsets)
-        cur_offset, cur_size = offset_iter.next()
+        cur_offset, cur_size = next(offset_iter)
         # paramiko .readv() yields strings that are in the order of the requests
         # So we track the current request to know where the next data is
         # being returned from.
@@ -202,7 +205,7 @@ class _SFTPReadvHelper(object):
         # short readv.
         data_stream = itertools.chain(fp.readv(requests),
                                       itertools.repeat(None))
-        for (start, length), data in itertools.izip(requests, data_stream):
+        for (start, length), data in zip(requests, data_stream):
             if data is None:
                 if cur_coalesced is not None:
                     raise errors.ShortReadvError(self.relpath,
@@ -259,7 +262,7 @@ class _SFTPReadvHelper(object):
                     input_start += cur_size
                     # Yield the requested data
                     yield cur_offset, cur_data
-                    cur_offset, cur_size = offset_iter.next()
+                    cur_offset, cur_size = next(offset_iter)
                 # at this point, we've consumed as much of buffered as we can,
                 # so break off the portion that we consumed
                 if buffered_offset == len(buffered_data):
@@ -279,7 +282,7 @@ class _SFTPReadvHelper(object):
         if data_chunks:
             if 'sftp' in debug.debug_flags:
                 mutter('SFTP readv left with %d out-of-order bytes',
-                    sum(map(lambda x: len(x[1]), data_chunks)))
+                    sum(len(x[1]) for x in data_chunks))
             # We've processed all the readv data, at this point, anything we
             # couldn't process is in data_chunks. This doesn't happen often, so
             # this code path isn't optimized
@@ -308,7 +311,7 @@ class _SFTPReadvHelper(object):
                         ' We expected %d bytes, but only found %d'
                         % (cur_size, len(data)))
                 yield cur_offset, data
-                cur_offset, cur_size = offset_iter.next()
+                cur_offset, cur_size = next(offset_iter)
 
 
 class SFTPTransport(ConnectedTransport):

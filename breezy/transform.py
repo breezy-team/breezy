@@ -300,7 +300,7 @@ class TreeTransformBase(object):
             return self._r_new_id[file_id]
         else:
             try:
-                self._tree.iter_entries_by_dir([file_id]).next()
+                next(self._tree.iter_entries_by_dir([file_id]))
             except StopIteration:
                 if file_id in self._non_present_ids:
                     return self._non_present_ids[file_id]
@@ -1133,7 +1133,7 @@ class TreeTransformBase(object):
         :param records: An iterable of (names, content) tuples, as per
             pack.ContainerPushParser.
         """
-        names, content = records.next()
+        names, content = next(records)
         attribs = bencode.bdecode(content)
         self._id_number = attribs['_id_number']
         self._new_name = dict((k, v.decode('utf-8'))
@@ -2664,7 +2664,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                      in iter if not (c or e[0] != e[1])]
         if accelerator_tree.supports_content_filtering():
             unchanged = [(f, p) for (f, p) in unchanged
-                         if not accelerator_tree.iter_search_rules([p]).next()]
+                         if not next(accelerator_tree.iter_search_rules([p]))]
         unchanged = dict(unchanged)
         new_desired_files = []
         count = 0
@@ -3080,8 +3080,8 @@ def conflict_pass(tt, conflicts, path_tree=None):
                         file_id = tt.final_file_id(trans_id)
                         if file_id is None:
                             file_id = tt.inactive_file_id(trans_id)
-                        _, entry = path_tree.iter_entries_by_dir(
-                            [file_id]).next()
+                        _, entry = next(path_tree.iter_entries_by_dir(
+                            [file_id]))
                         # special-case the other tree root (move its
                         # children to current root)
                         if entry.parent_id is None:

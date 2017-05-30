@@ -334,7 +334,7 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
         rev_id_iterator = _get_sorted_revisions(merge, merge_extra,
                             branch.repository.get_parent_map(merge_extra))
         # Skip the first node
-        num, first, depth, eom = rev_id_iterator.next()
+        num, first, depth, eom = next(rev_id_iterator)
         if first != merge:
             raise AssertionError('Somehow we misunderstood how'
                 ' iter_topo_order works %s != %s' % (first, merge))

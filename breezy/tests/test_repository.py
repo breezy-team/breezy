@@ -967,8 +967,8 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             return
         empty_repo.lock_read()
         self.addCleanup(empty_repo.unlock)
-        text = empty_repo.texts.get_record_stream(
-            [('file2-id', 'rev3')], 'topological', True).next()
+        text = next(empty_repo.texts.get_record_stream(
+            [('file2-id', 'rev3')], 'topological', True))
         self.assertEqual('line\n', text.get_bytes_as('fulltext'))
 
 
@@ -1274,7 +1274,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         # and remove another pack (via _remove_pack_from_memory)
         orig_names = packs.names()
         orig_at_load = packs._packs_at_load
-        to_remove_name = iter(orig_names).next()
+        to_remove_name = next(iter(orig_names))
         r.start_write_group()
         self.addCleanup(r.abort_write_group)
         r.texts.insert_record_stream([versionedfile.FulltextContentFactory(

@@ -414,7 +414,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         revision_ids = ['a-rev', 'b-rev', 'c-rev']
         revisions = repo.get_revisions(revision_ids)
         self.assertEqual(len(revisions), 3)
-        zipped = zip(revisions, revision_ids)
+        zipped = list(zip(revisions, revision_ids))
         self.assertEqual(len(zipped), 3)
         for revision, revision_id in zipped:
             self.assertEqual(revision.revision_id, revision_id)

@@ -22,7 +22,7 @@ from .. import (
     tests,
     )
 from ..sixish import (
-    BytesIO,
+    StringIO,
     )
 
 
@@ -227,7 +227,7 @@ class TestReportChanges(tests.TestCase):
 class TestChangesFrom(tests.TestCaseWithTransport):
 
     def show_string(self, delta, *args,  **kwargs):
-        to_file = BytesIO()
+        to_file = StringIO()
         _mod_delta.report_delta(to_file, delta, *args, **kwargs)
         return to_file.getvalue()
 
@@ -319,47 +319,47 @@ A  f4
         d = wt.changes_from(repo.revision_tree(_mod_revision.NULL_REVISION))
         return d, long_status, short_status
 
-    def test_delta_show_short_status_no_filter(self):
+    def test_short_status(self):
         d, long_status, short_status = self._get_delta()
-        out = BytesIO()
+        out = StringIO()
         _mod_delta.report_delta(out, d, short_status=True)
         self.assertEqual(short_status, out.getvalue())
 
-    def test_delta_show_long_status_no_filter(self):
+    def test_long_status(self):
         d, long_status, short_status = self._get_delta()
-        out = BytesIO()
+        out = StringIO()
         _mod_delta.report_delta(out, d, short_status=False)
         self.assertEqual(long_status, out.getvalue())
 
-    def test_delta_show_no_filter(self):
+    def test_predicate_always(self):
         d, long_status, short_status = self._get_delta()
-        out = BytesIO()
-        def not_a_filter(path, file_id):
+        out = StringIO()
+        def always(path, file_id):
             return True
-        _mod_delta.report_delta(out, d, short_status=True, filter=not_a_filter)
+        _mod_delta.report_delta(out, d, short_status=True, predicate=always)
         self.assertEqual(short_status, out.getvalue())
 
-    def test_delta_show_short_status_single_file_filter(self):
+    def test_short_status_path_predicate(self):
         d, long_status, short_status = self._get_delta()
-        out = BytesIO()
+        out = StringIO()
         def only_f2(path, file_id):
             return path == 'f2'
-        _mod_delta.report_delta(out, d, short_status=True, filter=only_f2)
+        _mod_delta.report_delta(out, d, short_status=True, predicate=only_f2)
         self.assertEqual("A  f2\n", out.getvalue())
 
-    def test_delta_show_long_status_single_file_filter(self):
+    def test_long_status_path_predicate(self):
         d, long_status, short_status = self._get_delta()
-        out = BytesIO()
+        out = StringIO()
         def only_f2(path, file_id):
             return path == 'f2'
-        _mod_delta.report_delta(out, d, short_status=False, filter=only_f2)
+        _mod_delta.report_delta(out, d, short_status=False, predicate=only_f2)
         self.assertEqual("added:\n  f2\n", out.getvalue())
 
-    def test_delta_show_short_status_single_file_id_filter(self):
+    def test_long_status_id_predicate(self):
         d, long_status, short_status = self._get_delta()
-        out = BytesIO()
+        out = StringIO()
         def only_f2_id(path, file_id):
             return file_id == 'f2-id'
-        _mod_delta.report_delta(out, d, short_status=True, filter=only_f2_id)
-        self.assertEqual("A  f2\n", out.getvalue())
+        _mod_delta.report_delta(out, d, predicate=only_f2_id)
+        self.assertEqual("added:\n  f2\n", out.getvalue())
 

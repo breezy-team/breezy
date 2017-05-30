@@ -65,9 +65,8 @@ def _normalize(s):
         if not lines[-1]:
             del lines[-1]
             lines[-1] = lines[-1] + '\n'
-        lines = map(_escape, lines)
         lineterm = '\\n"\n"'
-        s = '""\n"' + lineterm.join(lines) + '"'
+        s = '""\n"' + lineterm.join(map(_escape, lines)) + '"'
     return s
 
 

@@ -1947,7 +1947,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         prev_inv = Inventory(root_id=None,
             revision_id=_mod_revision.NULL_REVISION)
         # there should be just one substream, with inventory deltas
-        substream_kind, substream = stream.next()
+        substream_kind, substream = next(stream)
         if substream_kind != "inventory-deltas":
             raise AssertionError(
                  "Unexpected stream %r received" % substream_kind)
@@ -2178,7 +2178,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             yield decompressor.decompress(start)
             while decompressor.unused_data == "":
                 try:
-                    data = byte_stream.next()
+                    data = next(byte_stream)
                 except StopIteration:
                     break
                 yield decompressor.decompress(data)
@@ -2187,7 +2187,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         unused = ""
         while True:
             while not "\n" in unused:
-                unused += byte_stream.next()
+                unused += next(byte_stream)
             header, rest = unused.split("\n", 1)
             args = header.split("\0")
             if args[0] == "absent":

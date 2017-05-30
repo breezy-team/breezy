@@ -1,0 +1,93 @@
+=======================
+Notes on bzr-fastimport
+=======================
+
+..contents::
+
+Features
+========
+
+fast-import
+-----------
+
+Things that ought to work:
+
+* add & deletes of files and symlinks
+
+* automatic creation of directories (but not deletion)
+
+* executable permission
+
+* branches created based on where the import is run:
+
+  * import into a shared repository outside a branch - branches
+    are created as subdirectories of the current directory
+  
+  * import into a branch inside a shared repository - current
+    branch becomes the trunk and other branches are created
+    as sister directories
+
+  * import into a standalone tree - warnings are given
+    for branches (heads) found but not imported
+  
+* merge tracking
+
+Things that probably work (more testing needed):
+
+* separate author to committer
+
+* lightweight tags
+
+
+Known Limitations
+=================
+
+Parsing
+-------
+
+Things not supported yet:
+
+* renaming a path that contains a space in the old name
+
+* copying a path that contains a space in the source name
+
+* delimited data sections (all data must be length prefixed currently)
+
+* rfc2822 dates.
+
+fast-import
+-----------
+
+Things not supported yet:
+
+* deterministic revision-ids as an option
+
+* 'reset' handling
+
+* 'filedeleteall' handling
+
+Things not recorded in Bazaar:
+
+* tagger and message for (non-lightweight) tags
+
+* copy semantics
+
+
+Custom Enhancements
+===================
+
+General
+-------
+
+The date format is auto-detected.
+
+Parsing
+-------
+
+These enhancements over the specification are provided in order
+to read data produced by some verisons of git-fast-export:
+
+* A person's name may be empty
+
+* Long file modes with an extra leading 0, i.e. 0000644,
+  0000755 and 0120000 are legal.
