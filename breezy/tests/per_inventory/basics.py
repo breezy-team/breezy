@@ -35,10 +35,6 @@ from breezy.inventory import (
 
 from breezy.tests.per_inventory import TestCaseWithInventory
 
-from breezy.symbol_versioning import (
-    deprecated_in,
-    )
-
 
 class TestInventory(TestCaseWithInventory):
 

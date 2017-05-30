@@ -112,12 +112,6 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         self.assertRaises(errors.NoSuchRevision,
             repo_b.search_missing_revision_ids, repo_a, revision_ids=['pizza'],
             find_ghosts=False)
-        self.callDeprecated(
-            ['search_missing_revision_ids(revision_id=...) was deprecated in '
-             '2.4.  Use revision_ids=[...] instead.'],
-            self.assertRaises, errors.NoSuchRevision,
-            repo_b.search_missing_revision_ids, repo_a, revision_id='pizza',
-            find_ghosts=False)
 
     def test_search_missing_revision_ids_revision_limited(self):
         # revision ids in repository A that are not referenced by the

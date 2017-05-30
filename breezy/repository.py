@@ -43,7 +43,6 @@ from . import (
     bzrdir,
     errors,
     registry,
-    symbol_versioning,
     ui,
     )
 from .decorators import needs_read_lock, needs_write_lock, only_raises
@@ -577,25 +576,14 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
 
     @needs_read_lock
     def search_missing_revision_ids(self, other,
-            revision_id=symbol_versioning.DEPRECATED_PARAMETER,
             find_ghosts=True, revision_ids=None, if_present_ids=None,
             limit=None):
         """Return the revision ids that other has that this does not.
 
         These are returned in topological order.
 
-        revision_id: only return revision ids included by revision_id.
+        revision_ids: only return revision ids included by revision_id.
         """
-        if symbol_versioning.deprecated_passed(revision_id):
-            symbol_versioning.warn(
-                'search_missing_revision_ids(revision_id=...) was '
-                'deprecated in 2.4.  Use revision_ids=[...] instead.',
-                DeprecationWarning, stacklevel=3)
-            if revision_ids is not None:
-                raise AssertionError(
-                    'revision_ids is mutually exclusive with revision_id')
-            if revision_id is not None:
-                revision_ids = [revision_id]
         return InterRepository.get(other, self).search_missing_revision_ids(
             find_ghosts=find_ghosts, revision_ids=revision_ids,
             if_present_ids=if_present_ids, limit=limit)
@@ -1662,13 +1650,10 @@ class InterRepository(InterObject):
 
     @needs_read_lock
     def search_missing_revision_ids(self,
-            revision_id=symbol_versioning.DEPRECATED_PARAMETER,
             find_ghosts=True, revision_ids=None, if_present_ids=None,
             limit=None):
         """Return the revision ids that source has that target does not.
 
-        :param revision_id: only return revision ids included by this
-            revision_id.
         :param revision_ids: return revision ids included by these
             revision_ids.  NoSuchRevision will be raised if any of these
             revisions are not present.

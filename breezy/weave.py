@@ -88,7 +88,6 @@ from .revision import NULL_REVISION
 from .sixish import (
     BytesIO,
     )
-from .symbol_versioning import *
 from .trace import mutter
 from .versionedfile import (
     AbsentContentFactory,

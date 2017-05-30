@@ -46,7 +46,6 @@ from tempfile import mkdtemp
 import unicodedata
 
 from breezy import (
-    cache_utf8,
     config,
     errors,
     trace,
@@ -59,13 +58,6 @@ from .sixish import (
     PY3,
     text_type,
     )
-from .symbol_versioning import (
-    DEPRECATED_PARAMETER,
-    deprecated_function,
-    deprecated_in,
-    deprecated_passed,
-    warn as warn_deprecated,
-    )
 
 from hashlib import (
     md5,
@@ -74,7 +66,7 @@ from hashlib import (
 
 
 import breezy
-from . import symbol_versioning, _fs_enc
+from . import _fs_enc
 
 
 # Cross platform wall-clock time functionality with decent resolution.
@@ -1414,33 +1406,22 @@ def safe_utf8(unicode_or_utf8_string):
     return unicode_or_utf8_string.encode('utf-8')
 
 
-_revision_id_warning = ('Unicode revision ids were deprecated in bzr 0.15.'
-                        ' Revision id generators should be creating utf8'
-                        ' revision ids.')
-
-
-def safe_revision_id(unicode_or_utf8_string, warn=True):
+def safe_revision_id(unicode_or_utf8_string):
     """Revision ids should now be utf8, but at one point they were unicode.
 
     :param unicode_or_utf8_string: A possibly Unicode revision_id. (can also be
         utf8 or None).
-    :param warn: Functions that are sanitizing user data can set warn=False
     :return: None or a utf8 revision id.
     """
     if (unicode_or_utf8_string is None
         or unicode_or_utf8_string.__class__ == str):
         return unicode_or_utf8_string
-    if warn:
-        symbol_versioning.warn(_revision_id_warning, DeprecationWarning,
-                               stacklevel=2)
-    return cache_utf8.encode(unicode_or_utf8_string)
+    raise TypeError('Unicode revision ids are no longer supported. '
+                    'Revision id generators should be creating utf8 revision '
+                    'ids.')
 
 
-_file_id_warning = ('Unicode file ids were deprecated in bzr 0.15. File id'
-                    ' generators should be creating utf8 file ids.')
-
-
-def safe_file_id(unicode_or_utf8_string, warn=True):
+def safe_file_id(unicode_or_utf8_string):
     """File ids should now be utf8, but at one point they were unicode.
 
     This is the same as safe_utf8, except it uses the cached encode functions
@@ -1448,16 +1429,13 @@ def safe_file_id(unicode_or_utf8_string, warn=True):
 
     :param unicode_or_utf8_string: A possibly Unicode file_id. (can also be
         utf8 or None).
-    :param warn: Functions that are sanitizing user data can set warn=False
     :return: None or a utf8 file id.
     """
     if (unicode_or_utf8_string is None
         or unicode_or_utf8_string.__class__ == str):
         return unicode_or_utf8_string
-    if warn:
-        symbol_versioning.warn(_file_id_warning, DeprecationWarning,
-                               stacklevel=2)
-    return cache_utf8.encode(unicode_or_utf8_string)
+    raise TypeError('Unicode file ids are no longer supported. '
+                    'File id generators should be creating utf8 file ids.')
 
 
 _platform_normalizes_filenames = False
@@ -2033,7 +2011,7 @@ def compare_paths_prefix_order(path_a, path_b):
 _cached_user_encoding = None
 
 
-def get_user_encoding(use_cache=DEPRECATED_PARAMETER):
+def get_user_encoding():
     """Find out what the preferred user encoding is.
 
     This is generally the encoding that is used for command line parameters
@@ -2043,9 +2021,6 @@ def get_user_encoding(use_cache=DEPRECATED_PARAMETER):
     :return: A string defining the preferred user encoding
     """
     global _cached_user_encoding
-    if deprecated_passed(use_cache):
-        warn_deprecated("use_cache should only have been used for tests",
-            DeprecationWarning, stacklevel=2) 
     if _cached_user_encoding is not None:
         return _cached_user_encoding
 
@@ -2315,30 +2290,6 @@ def until_no_eintr(f, *a, **kw):
             if e.errno == errno.EINTR:
                 continue
             raise
-
-
-@deprecated_function(deprecated_in((2, 2, 0)))
-def re_compile_checked(re_string, flags=0, where=""):
-    """Return a compiled re, or raise a sensible error.
-
-    This should only be used when compiling user-supplied REs.
-
-    :param re_string: Text form of regular expression.
-    :param flags: eg re.IGNORECASE
-    :param where: Message explaining to the user the context where
-        it occurred, eg 'log search filter'.
-    """
-    # from https://bugs.launchpad.net/bzr/+bug/251352
-    try:
-        re_obj = re.compile(re_string, flags)
-        re_obj.search("")
-        return re_obj
-    except errors.InvalidPattern as e:
-        if where:
-            where = ' in ' + where
-        # despite the name 'error' is a type
-        raise errors.BzrCommandError('Invalid regular expression%s: %s'
-            % (where, e.msg))
 
 
 if sys.platform == "win32":

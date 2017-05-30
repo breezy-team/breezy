@@ -67,10 +67,6 @@ from .lock import _RelockDebugMixin, LogicalLockResult
 from .sixish import (
     BytesIO,
     )
-from .symbol_versioning import (
-    deprecated_in,
-    deprecated_method,
-    )
 from .trace import mutter, mutter_callsite, note, is_quiet
 
 
@@ -758,19 +754,6 @@ class Branch(controldir.ControlComponent):
         :return: Either a Branch, or None
         """
         return None
-
-    @deprecated_method(deprecated_in((2, 5, 0)))
-    def get_revision_delta(self, revno):
-        """Return the delta for one revision.
-
-        The delta is relative to its mainline predecessor, or the
-        empty tree for revision 1.
-        """
-        try:
-            revid = self.get_rev_id(revno)
-        except errors.NoSuchRevision:
-            raise errors.InvalidRevisionNumber(revno)
-        return self.repository.get_revision_delta(revid)
 
     def get_stacked_on_url(self):
         """Get the URL this branch is stacked against.

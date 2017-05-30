@@ -37,7 +37,6 @@ from . import (
     repository as _mod_repository,
     revision as _mod_revision,
     static_tuple,
-    symbol_versioning,
     testament as _mod_testament,
     urlutils,
     vf_repository,
@@ -2101,7 +2100,6 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
     @needs_read_lock
     def search_missing_revision_ids(self, other,
-            revision_id=symbol_versioning.DEPRECATED_PARAMETER,
             find_ghosts=True, revision_ids=None, if_present_ids=None,
             limit=None):
         """Return the revision ids that other has that this does not.
@@ -2110,16 +2108,6 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
         revision_id: only return revision ids included by revision_id.
         """
-        if symbol_versioning.deprecated_passed(revision_id):
-            symbol_versioning.warn(
-                'search_missing_revision_ids(revision_id=...) was '
-                'deprecated in 2.4.  Use revision_ids=[...] instead.',
-                DeprecationWarning, stacklevel=2)
-            if revision_ids is not None:
-                raise AssertionError(
-                    'revision_ids is mutually exclusive with revision_id')
-            if revision_id is not None:
-                revision_ids = [revision_id]
         inter_repo = _mod_repository.InterRepository.get(other, self)
         return inter_repo.search_missing_revision_ids(
             find_ghosts=find_ghosts, revision_ids=revision_ids,

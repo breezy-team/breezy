@@ -189,8 +189,7 @@ class MutableTree(tree.Tree):
         raise NotImplementedError(self.apply_inventory_delta)
 
     @needs_write_lock
-    def commit(self, message=None, revprops=None, *args,
-               **kwargs):
+    def commit(self, message=None, revprops=None, *args, **kwargs):
         # avoid circular imports
         from breezy import commit
         possible_master_transports=[]
@@ -198,7 +197,6 @@ class MutableTree(tree.Tree):
                 revprops,
                 self.branch,
                 kwargs.pop('authors', None),
-                kwargs.pop('author', None),
                 kwargs.get('local', False),
                 possible_master_transports)
         # args for wt.commit start at message from the Commit.commit method,

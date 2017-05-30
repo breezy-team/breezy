@@ -41,7 +41,6 @@ from ... import (
     lockable_files,
     lockdir,
     osutils,
-    symbol_versioning,
     trace,
     tuned_gzip,
     urlutils,
@@ -822,7 +821,6 @@ class InterWeaveRepo(InterSameDataRepository):
 
     @needs_read_lock
     def search_missing_revision_ids(self,
-            revision_id=symbol_versioning.DEPRECATED_PARAMETER,
             find_ghosts=True, revision_ids=None, if_present_ids=None,
             limit=None):
         """See InterRepository.search_missing_revision_ids()."""
@@ -837,17 +835,6 @@ class InterWeaveRepo(InterSameDataRepository):
         # disk format scales terribly for push anyway due to rewriting
         # inventory.weave, this is considered acceptable.
         # - RBC 20060209
-        if symbol_versioning.deprecated_passed(revision_id):
-            symbol_versioning.warn(
-                'search_missing_revision_ids(revision_id=...) was '
-                'deprecated in 2.4.  Use revision_ids=[...] instead.',
-                DeprecationWarning, stacklevel=2)
-            if revision_ids is not None:
-                raise AssertionError(
-                    'revision_ids is mutually exclusive with revision_id')
-            if revision_id is not None:
-                revision_ids = [revision_id]
-        del revision_id
         source_ids_set = self._present_source_revisions_for(
             revision_ids, if_present_ids)
         # source_ids is the worst possible case we may need to pull.

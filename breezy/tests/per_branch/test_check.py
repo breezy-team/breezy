@@ -25,7 +25,6 @@ from ... import (
 from ...sixish import (
     BytesIO,
     )
-from ...symbol_versioning import deprecated_in
 from . import TestCaseWithBranch
 
 

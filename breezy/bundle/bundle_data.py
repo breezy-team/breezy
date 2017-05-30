@@ -23,6 +23,7 @@ import os
 import pprint
 
 from .. import (
+    cache_utf8,
     osutils,
     timestamp,
     )
@@ -323,8 +324,7 @@ class BundleInfo(object):
             if last_changed is not None:
                 # last_changed will be a Unicode string because of how it was
                 # read. Convert it back to utf8.
-                changed_revision_id = osutils.safe_revision_id(last_changed,
-                                                               warn=False)
+                changed_revision_id = cache_utf8.encode(last_changed)
             else:
                 changed_revision_id = revision_id
             bundle_tree.note_last_changed(path, changed_revision_id)
@@ -399,7 +399,7 @@ class BundleInfo(object):
                         ': %r' % extra)
             # This will be Unicode because of how the stream is read. Turn it
             # back into a utf8 file_id
-            file_id = osutils.safe_file_id(info[1][8:], warn=False)
+            file_id = cache_utf8.encode(info[1][8:])
 
             bundle_tree.note_id(file_id, path, kind)
             # this will be overridden in extra_info if executable is specified.

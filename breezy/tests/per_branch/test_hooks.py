@@ -23,7 +23,6 @@ from breezy import (
     revision,
     tests,
     )
-from breezy.symbol_versioning import deprecated_in
 from breezy.tests import test_server
 
 class ChangeBranchTipTestCase(tests.TestCaseWithMemoryTransport):

@@ -71,7 +71,6 @@ from .osutils import (get_user_encoding,
                       )
 from .trace import mutter, note, is_quiet
 from .inventory import Inventory, InventoryEntry, make_entry
-from . import symbol_versioning
 from .urlutils import unescape_for_display
 from .i18n import gettext
 
@@ -79,11 +78,7 @@ from .i18n import gettext
 class NullCommitReporter(object):
     """I report on progress of a commit."""
 
-    def started(self, revno, revid, location=None):
-        if location is None:
-            symbol_versioning.warn("As of bzr 1.0 you must pass a location "
-                                   "to started.", DeprecationWarning,
-                                   stacklevel=2)
+    def started(self, revno, revid, location):
         pass
 
     def snapshot_change(self, change, path):
@@ -120,16 +115,9 @@ class ReportCommitToLog(NullCommitReporter):
         self._note("%s %s", change, path)
 
     def started(self, revno, rev_id, location=None):
-        if location is not None:
-            location = ' to: ' + unescape_for_display(location, 'utf-8')
-        else:
-            # When started was added, location was only made optional by
-            # accident.  Matt Nordhoff 20071129
-            symbol_versioning.warn("As of bzr 1.0 you must pass a location "
-                                   "to started.", DeprecationWarning,
-                                   stacklevel=2)
-            location = ''
-        self._note(gettext('Committing%s'), location)
+        self._note(
+            gettext('Committing to: %s'),
+            unescape_for_display(location, 'utf-8'))
 
     def completed(self, revno, rev_id):
         self._note(gettext('Committed revision %d.'), revno)
@@ -176,7 +164,7 @@ class Commit(object):
         self.config_stack = config_stack
 
     @staticmethod
-    def update_revprops(revprops, branch, authors=None, author=None,
+    def update_revprops(revprops, branch, authors=None,
                         local=False, possible_master_transports=None):
         if revprops is None:
             revprops = {}
@@ -187,9 +175,6 @@ class Commit(object):
                 local,
                 possible_master_transports)
         if authors is not None:
-            if author is not None:
-                raise AssertionError('Specifying both author and authors '
-                        'is not allowed. Specify just authors instead')
             if 'author' in revprops or 'authors' in revprops:
                 # XXX: maybe we should just accept one of them?
                 raise AssertionError('author property given twice')
@@ -199,17 +184,6 @@ class Commit(object):
                         raise AssertionError('\\n is not a valid character '
                                 'in an author identity')
                 revprops['authors'] = '\n'.join(authors)
-        if author is not None:
-            symbol_versioning.warn('The parameter author was deprecated'
-                   ' in version 1.13. Use authors instead',
-                   DeprecationWarning)
-            if 'author' in revprops or 'authors' in revprops:
-                # XXX: maybe we should just accept one of them?
-                raise AssertionError('author property given twice')
-            if '\n' in author:
-                raise AssertionError('\\n is not a valid character '
-                        'in an author identity')
-            revprops['authors'] = author
         return revprops
 
     def commit(self,

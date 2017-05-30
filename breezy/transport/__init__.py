@@ -38,7 +38,6 @@ from stat import S_ISDIR
 from breezy import (
     errors,
     osutils,
-    symbol_versioning,
     ui,
     urlutils,
     )
@@ -47,9 +46,6 @@ from breezy import (
 from ..sixish import (
     BytesIO,
     string_types,
-    )
-from ..symbol_versioning import (
-    DEPRECATED_PARAMETER,
     )
 from ..trace import (
     mutter,
@@ -922,15 +918,7 @@ class Transport(object):
                      None means just use the default.
         :return: The length of the file that was written.
         """
-        # We would like to mark this as NotImplemented, but most likely
-        # transports have defined it in terms of the old api.
-        symbol_versioning.warn('Transport %s should implement put_file,'
-                               ' rather than implementing put() as of'
-                               ' version 0.11.'
-                               % (self.__class__.__name__,),
-                               DeprecationWarning)
-        return self.put(relpath, f, mode=mode)
-        #raise NotImplementedError(self.put_file)
+        raise NotImplementedError(self.put_file)
 
     def put_file_non_atomic(self, relpath, f, mode=None,
                             create_parent_dir=False,
@@ -1001,12 +989,7 @@ class Transport(object):
 
         :returns: the length of relpath before the content was written to it.
         """
-        symbol_versioning.warn('Transport %s should implement append_file,'
-                               ' rather than implementing append() as of'
-                               ' version 0.11.'
-                               % (self.__class__.__name__,),
-                               DeprecationWarning)
-        return self.append(relpath, f, mode=mode)
+        raise NotImplementedError(self.append_file)
 
     def append_bytes(self, relpath, bytes, mode=None):
         """Append bytes to a file at relpath.

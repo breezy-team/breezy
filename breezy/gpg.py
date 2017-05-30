@@ -42,10 +42,6 @@ from breezy.i18n import (
 from .sixish import (
     BytesIO,
     )
-from .symbol_versioning import (
-    deprecated_in,
-    deprecated_method,
-    )
 
 #verification results
 SIGNATURE_VALID = 0
@@ -143,30 +139,6 @@ class LoopbackGPGStrategy(object):
                     pass
                 else:
                     self.acceptable_keys.append(pattern)
-
-    @deprecated_method(deprecated_in((2, 6, 0)))
-    def do_verifications(self, revisions, repository):
-        return bulk_verify_signatures(repository, revisions, self)
-
-    @deprecated_method(deprecated_in((2, 6, 0)))
-    def valid_commits_message(self, count):
-        return valid_commits_message(count)
-
-    @deprecated_method(deprecated_in((2, 6, 0)))
-    def unknown_key_message(self, count):
-        return unknown_key_message(count)
-
-    @deprecated_method(deprecated_in((2, 6, 0)))
-    def commit_not_valid_message(self, count):
-        return commit_not_valid_message(count)
-
-    @deprecated_method(deprecated_in((2, 6, 0)))
-    def commit_not_signed_message(self, count):
-        return commit_not_signed_message(count)
-
-    @deprecated_method(deprecated_in((2, 6, 0)))
-    def expired_commit_message(self, count):
-        return expired_commit_message(count)
 
 
 def _set_gpg_tty():
@@ -359,73 +331,6 @@ class GPGStrategy(object):
                     trace.note(gettext(
                             "No GnuPG key results for pattern: {0}"
                                 ).format(pattern))
-
-    @deprecated_method(deprecated_in((2, 6, 0)))
-    def do_verifications(self, revisions, repository,
-                            process_events_callback=None):
-        """do verifications on a set of revisions
-
-        :param revisions: list of revision ids to verify
-        :param repository: repository object
-        :param process_events_callback: method to call for GUI frontends that
-            want to keep their UI refreshed
-
-        :return: count dictionary of results of each type,
-                 result list for each revision,
-                 boolean True if all results are verified successfully
-        """
-        return bulk_verify_signatures(repository, revisions, self,
-            process_events_callback)
-
-    @deprecated_method(deprecated_in((2, 6, 0)))
-    def verbose_valid_message(self, result):
-        """takes a verify result and returns list of signed commits strings"""
-        return verbose_valid_message(result)
-
-    @deprecated_method(deprecated_in((2, 6, 0)))
-    def verbose_not_valid_message(self, result, repo):
-        """takes a verify result and returns list of not valid commit info"""
-        return verbose_not_valid_message(result, repo)
-
-    @deprecated_method(deprecated_in((2, 6, 0)))
-    def verbose_not_signed_message(self, result, repo):
-        """takes a verify result and returns list of not signed commit info"""
-        return verbose_not_valid_message(result, repo)
-
-    @deprecated_method(deprecated_in((2, 6, 0)))
-    def verbose_missing_key_message(self, result):
-        """takes a verify result and returns list of missing key info"""
-        return verbose_missing_key_message(result)
-
-    @deprecated_method(deprecated_in((2, 6, 0)))
-    def verbose_expired_key_message(self, result, repo):
-        """takes a verify result and returns list of expired key info"""
-        return verbose_expired_key_message(result, repo)
-
-    @deprecated_method(deprecated_in((2, 6, 0)))
-    def valid_commits_message(self, count):
-        """returns message for number of commits"""
-        return valid_commits_message(count)
-
-    @deprecated_method(deprecated_in((2, 6, 0)))
-    def unknown_key_message(self, count):
-        """returns message for number of commits"""
-        return unknown_key_message(count)
-
-    @deprecated_method(deprecated_in((2, 6, 0)))
-    def commit_not_valid_message(self, count):
-        """returns message for number of commits"""
-        return commit_not_valid_message(count)
-
-    @deprecated_method(deprecated_in((2, 6, 0)))
-    def commit_not_signed_message(self, count):
-        """returns message for number of commits"""
-        return commit_not_signed_message(count)
-
-    @deprecated_method(deprecated_in((2, 6, 0)))
-    def expired_commit_message(self, count):
-        """returns message for number of commits"""
-        return expired_commit_message(count)
 
 
 def valid_commits_message(count):

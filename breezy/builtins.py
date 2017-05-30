@@ -33,6 +33,7 @@ from breezy import (
     bugtracker,
     bundle,
     btree_index,
+    cache_utf8,
     controldir,
     directory_service,
     delta,
@@ -48,6 +49,7 @@ from breezy import (
     rename_map,
     revision as _mod_revision,
     static_tuple,
+    symbol_versioning,
     timestamp,
     transport,
     ui,
@@ -81,9 +83,6 @@ from .sixish import (
     text_type,
 )
 from .trace import mutter, note, warning, is_quiet, get_verbosity_level
-from . import (
-    symbol_versioning,
-    )
 
 
 def _get_branch_location(control_dir, possible_transports=None):
@@ -458,7 +457,7 @@ class cmd_cat_revision(Command):
         try:
             # TODO: jam 20060112 should cat-revision always output utf-8?
             if revision_id is not None:
-                revision_id = osutils.safe_revision_id(revision_id, warn=False)
+                revision_id = cache_utf8.encode(revision_id)
                 try:
                     self.print_revision(revisions, revision_id)
                 except errors.NoSuchRevision:
@@ -1444,7 +1443,6 @@ class cmd_branch(Command):
             use_existing_dir=False, switch=False, bind=False,
             files_from=None):
         from breezy import switch as _mod_switch
-        from .tag import _merge_tags_if_possible
         if self.invoked_as in ['get', 'clone']:
             ui.ui_factory.show_user_warning(
                 'deprecated_command',
@@ -1523,7 +1521,8 @@ class cmd_branch(Command):
                 to_repo = to_dir.create_repository()
             to_repo.fetch(br_from.repository, revision_id=revision_id)
             branch = br_from.sprout(to_dir, revision_id=revision_id)
-        _merge_tags_if_possible(br_from, branch)
+        br_from.tags.merge_to(branch.tags)
+
         # If the source branch is stacked, the new branch may
         # be stacked whether we asked for that explicitly or not.
         # We therefore need a try/except here and not just 'if stacked:'
@@ -2744,7 +2743,6 @@ class cmd_log(Command):
             match_author=None,
             match_bugs=None,
             omit_merges=False,
-            include_merges=symbol_versioning.DEPRECATED_PARAMETER,
             ):
         from .log import (
             Logger,
@@ -2752,19 +2750,6 @@ class cmd_log(Command):
             _get_info_for_log_files,
             )
         direction = (forward and 'forward') or 'reverse'
-        if symbol_versioning.deprecated_passed(include_merges):
-            ui.ui_factory.show_user_warning(
-                'deprecated_command_option',
-                deprecated_name='--include-merges',
-                recommended_name='--include-merged',
-                deprecated_in_version='2.5',
-                command=self.invoked_as)
-            if include_merged is None:
-                include_merged = include_merges
-            else:
-                raise errors.BzrCommandError(gettext(
-                    '{0} and {1} are mutually exclusive').format(
-                    '--include-merges', '--include-merged'))
         if include_merged is None:
             include_merged = False
         if (exclude_common_ancestry
@@ -4540,7 +4525,6 @@ class cmd_merge(Command):
     def _get_merger_from_branch(self, tree, location, revision, remember,
                                 possible_transports, pb):
         """Produce a merger from a location, assuming it refers to a branch."""
-        from .tag import _merge_tags_if_possible
         # find the branch locations
         other_loc, user_location = self._select_branch_location(tree, location,
             revision, -1)
@@ -4580,7 +4564,7 @@ class cmd_merge(Command):
             tree.branch.set_submit_branch(other_branch.base)
         # Merge tags (but don't set them in the master branch yet, the user
         # might revert this merge).  Commit will propagate them.
-        _merge_tags_if_possible(other_branch, tree.branch, ignore_master=True)
+        other_branch.tags.merge_to(tree.branch.tags, ignore_master=True)
         merger = _mod_merge.Merger.from_revision_ids(pb, tree,
             other_revision_id, base_revision_id, other_branch, base_branch)
         if other_path != '':
@@ -4939,26 +4923,12 @@ class cmd_missing(Command):
             log_format=None, long=False, short=False, line=False,
             show_ids=False, verbose=False, this=False, other=False,
             include_merged=None, revision=None, my_revision=None,
-            directory=u'.',
-            include_merges=symbol_versioning.DEPRECATED_PARAMETER):
+            directory=u'.'):
         from breezy.missing import find_unmerged, iter_log_revisions
         def message(s):
             if not is_quiet():
                 self.outf.write(s)
 
-        if symbol_versioning.deprecated_passed(include_merges):
-            ui.ui_factory.show_user_warning(
-                'deprecated_command_option',
-                deprecated_name='--include-merges',
-                recommended_name='--include-merged',
-                deprecated_in_version='2.5',
-                command=self.invoked_as)
-            if include_merged is None:
-                include_merged = include_merges
-            else:
-                raise errors.BzrCommandError(gettext(
-                    '{0} and {1} are mutually exclusive').format(
-                    '--include-merges', '--include-merged'))
         if include_merged is None:
             include_merged = False
         if this:
