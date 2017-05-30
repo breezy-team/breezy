@@ -16,7 +16,6 @@
 
 """Tests for Branch.get_revision_id_to_revno_map()"""
 
-from breezy.symbol_versioning import deprecated_in
 from breezy.tests.per_branch import TestCaseWithBranch
 
 

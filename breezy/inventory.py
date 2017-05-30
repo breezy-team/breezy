@@ -50,10 +50,6 @@ from . import (
     )
 
 from .static_tuple import StaticTuple
-from .symbol_versioning import (
-    deprecated_in,
-    deprecated_method,
-    )
 
 
 class InventoryEntry(object):

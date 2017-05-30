@@ -93,18 +93,9 @@ from ..sixish import (
     text_type,
     )
 from ..smart import client, request
-from ..symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
-    deprecated_method,
-    )
 from ..transport import (
     memory,
     pathfilter,
-    )
-from ..symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
     )
 from ..tests import (
     fixtures,
@@ -899,7 +890,8 @@ class UnavailableFeature(Exception):
 
 class StringIOWrapper(ui_testing.BytesIOWithEncoding):
 
-    @deprecated_method(deprecated_in((3, 0)))
+    @symbol_versioning.deprecated_method(
+        symbol_versioning.deprecated_in((3, 0)))
     def __init__(self, s=None):
         super(StringIOWrapper, self).__init__(s)
 
@@ -1556,10 +1548,6 @@ class TestCase(testtools.TestCase):
         else:
             self.assertEqual(expected_docstring, obj.__doc__)
 
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4)))
-    def failUnlessExists(self, path):
-        return self.assertPathExists(path)
-
     def assertPathExists(self, path):
         """Fail unless path or paths, which may be abs or relative, exist."""
         if not isinstance(path, basestring):
@@ -1568,10 +1556,6 @@ class TestCase(testtools.TestCase):
         else:
             self.assertTrue(osutils.lexists(path),
                 path + " does not exist")
-
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4)))
-    def failIfExists(self, path):
-        return self.assertPathDoesNotExist(path)
 
     def assertPathDoesNotExist(self, path):
         """Fail if path or paths, which may be abs or relative, exist."""
@@ -4468,30 +4452,3 @@ try:
             return result
 except ImportError:
     pass
-
-
-# API compatibility for old plugins; see bug 892622.
-for name in [
-    'Feature',
-    'HTTPServerFeature', 
-    'ModuleAvailableFeature',
-    'HTTPSServerFeature', 'SymlinkFeature', 'HardlinkFeature',
-    'OsFifoFeature', 'UnicodeFilenameFeature',
-    'ByteStringNamedFilesystem', 'UTF8Filesystem',
-    'BreakinFeature', 'CaseInsCasePresFilenameFeature',
-    'CaseInsensitiveFilesystemFeature', 'case_sensitive_filesystem_feature',
-    'posix_permissions_feature',
-    ]:
-    globals()[name] = _CompatabilityThunkFeature(
-        symbol_versioning.deprecated_in((2, 5, 0)),
-        'breezy.tests', name,
-        name, 'breezy.tests.features')
-
-
-for (old_name, new_name) in [
-    ('UnicodeFilename', 'UnicodeFilenameFeature'),
-    ]:
-    globals()[name] = _CompatabilityThunkFeature(
-        symbol_versioning.deprecated_in((2, 5, 0)),
-        'breezy.tests', old_name,
-        new_name, 'breezy.tests.features')

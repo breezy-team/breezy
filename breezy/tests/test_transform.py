@@ -27,7 +27,6 @@ from .. import (
     osutils,
     revision as _mod_revision,
     rules,
-    symbol_versioning,
     tests,
     trace,
     transform,

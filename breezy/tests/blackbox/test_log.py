@@ -562,24 +562,6 @@ class TestLogMerges(TestLogWithLogCatcher):
         self.assertLogRevnos(['-n0'], ['2', '1.1.2', '1.2.1', '1.1.1', '1'],
                              working_dir='level0')
 
-    def test_include_merges(self):
-        # Confirm --include-merges gives the same output as -n0
-        msg = ("The option '--include-merges' to 'brz log' "
-               "has been deprecated in brz 2.5. "
-               "Please use '--include-merged' instead.\n")
-        self.assertLogRevnos(['--include-merges'],
-                             ['2', '1.1.2', '1.2.1', '1.1.1', '1'],
-                             working_dir='level0', err=msg)
-        self.assertLogRevnos(['--include-merges'],
-                             ['2', '1.1.2', '1.2.1', '1.1.1', '1'],
-                             working_dir='level0', err=msg)
-        out_im, err_im = self.run_bzr('log --include-merges',
-                                      working_dir='level0')
-        out_n0, err_n0 = self.run_bzr('log -n0', working_dir='level0')
-        self.assertEqual(msg, err_im)
-        self.assertEqual('', err_n0)
-        self.assertEqual(out_im, out_n0)
-
     def test_include_merged(self):
         # Confirm --include-merged gives the same output as -n0
         expected = ['2', '1.1.2', '1.2.1', '1.1.1', '1']

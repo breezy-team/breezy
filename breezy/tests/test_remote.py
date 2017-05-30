@@ -73,7 +73,6 @@ from ..smart.repository import (
     SmartServerRepositoryGetStream_1_19,
     _stream_to_byte_stream,
     )
-from ..symbol_versioning import deprecated_in
 from . import (
     test_server,
     )

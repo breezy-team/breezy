@@ -72,10 +72,6 @@ from .osutils import (
 from .sixish import (
     BytesIO,
     )
-from .symbol_versioning import (
-    deprecated_in,
-    deprecated_method,
-    )
 from .transport.local import LocalTransport
 from .tree import (
     InterTree,
@@ -432,13 +428,6 @@ class DirStateWorkingTree(InventoryWorkingTree):
         self._must_be_locked()
         self._generate_inventory()
         return self._inventory
-
-    @deprecated_method(deprecated_in((2, 5, 0)))
-    def _get_inventory(self):
-        return self.root_inventory
-
-    inventory = property(_get_inventory,
-                         doc="Inventory of this Tree")
 
     root_inventory = property(_get_root_inventory,
         "Root inventory of this tree")
@@ -1949,13 +1938,6 @@ class DirStateRevisionTree(InventoryTree):
         return self._inventory
 
     root_inventory = property(_get_root_inventory,
-                         doc="Inventory of this Tree")
-
-    @deprecated_method(deprecated_in((2, 5, 0)))
-    def _get_inventory(self):
-        return self.root_inventory
-
-    inventory = property(_get_inventory,
                          doc="Inventory of this Tree")
 
     def get_parent_ids(self):

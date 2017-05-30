@@ -34,7 +34,6 @@ from breezy import (
     atomicfile,
     osutils,
     urlutils,
-    symbol_versioning,
     )
 from breezy.transport import LateReadError
 """)

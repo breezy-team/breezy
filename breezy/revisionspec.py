@@ -24,9 +24,9 @@ import datetime
 
 from breezy import (
     branch as _mod_branch,
+    cache_utf8,
     osutils,
     revision,
-    symbol_versioning,
     workingtree,
     )
 from breezy.i18n import gettext
@@ -109,16 +109,11 @@ class RevisionInfo(object):
             self.revno, self.rev_id, self.branch)
 
     @staticmethod
-    def from_revision_id(branch, revision_id, revs=symbol_versioning.DEPRECATED_PARAMETER):
+    def from_revision_id(branch, revision_id):
         """Construct a RevisionInfo given just the id.
 
         Use this if you don't know or care what the revno is.
         """
-        if symbol_versioning.deprecated_passed(revs):
-            symbol_versioning.warn(
-                'RevisionInfo.from_revision_id(revs) was deprecated in 2.5.',
-                DeprecationWarning,
-                stacklevel=2)
         return RevisionInfo(branch, revno=None, rev_id=revision_id)
 
 
@@ -142,8 +137,6 @@ class RevisionSpec(object):
     """
 
     prefix = None
-    # wants_revision_history has been deprecated in 2.5.
-    wants_revision_history = False
     dwim_catchable_exceptions = (errors.InvalidRevisionSpec,)
     """Exceptions that RevisionSpec_dwim._match_on will catch.
 
@@ -185,11 +178,9 @@ class RevisionSpec(object):
             called directly. Only from RevisionSpec.from_string()
         """
         if not _internal:
-            symbol_versioning.warn('Creating a RevisionSpec directly has'
-                                   ' been deprecated in version 0.11. Use'
-                                   ' RevisionSpec.from_string()'
-                                   ' instead.',
-                                   DeprecationWarning, stacklevel=2)
+            raise AssertionError(
+                'Creating a RevisionSpec directly is not supported. '
+                'Use RevisionSpec.from_string() instead.')
         self.user_spec = spec
         if self.prefix and spec.startswith(self.prefix):
             spec = spec[len(self.prefix):]
@@ -212,27 +203,7 @@ class RevisionSpec(object):
             raise errors.InvalidRevisionSpec(self.spec, branch)
 
     def in_history(self, branch):
-        if branch:
-            if self.wants_revision_history:
-                symbol_versioning.warn(
-                    "RevisionSpec.wants_revision_history was "
-                    "deprecated in 2.5 (%s)." % self.__class__.__name__,
-                    DeprecationWarning)
-                branch.lock_read()
-                try:
-                    graph = branch.repository.get_graph()
-                    revs = list(graph.iter_lefthand_ancestry(
-                        branch.last_revision(), [revision.NULL_REVISION]))
-                finally:
-                    branch.unlock()
-                revs.reverse()
-            else:
-                revs = None
-        else:
-            # this should never trigger.
-            # TODO: make it a deprecated code path. RBC 20060928
-            revs = None
-        return self._match_on_and_check(branch, revs)
+        return self._match_on_and_check(branch, revs=None)
 
         # FIXME: in_history is somewhat broken,
         # it will return non-history revisions in many
@@ -336,13 +307,6 @@ class RevisionSpec_dwim(RevisionSpec):
         # Next see what has been registered
         for objgetter in self._possible_revspecs:
             rs_class = objgetter.get_obj()
-            try:
-                return self._try_spectype(rs_class, branch)
-            except rs_class.dwim_catchable_exceptions:
-                pass
-
-        # Try the old (deprecated) dwim list:
-        for rs_class in dwim_revspecs:
             try:
                 return self._try_spectype(rs_class, branch)
             except rs_class.dwim_catchable_exceptions:
@@ -502,7 +466,9 @@ class RevisionSpec_revid(RevisionIDSpec):
         # self.spec comes straight from parsing the command line arguments,
         # so we expect it to be a Unicode string. Switch it to the internal
         # representation.
-        return osutils.safe_revision_id(self.spec, warn=False)
+        if isinstance(self.spec, unicode):
+            return cache_utf8.encode(self.spec)
+        return self.spec
 
 
 
@@ -986,9 +952,6 @@ class RevisionSpec_mainline(RevisionIDSpec):
 # The order in which we want to DWIM a revision spec without any prefix.
 # revno is always tried first and isn't listed here, this is used by
 # RevisionSpec_dwim._match_on
-dwim_revspecs = symbol_versioning.deprecated_list(
-    symbol_versioning.deprecated_in((2, 4, 0)), "dwim_revspecs", [])
-
 RevisionSpec_dwim.append_possible_revspec(RevisionSpec_tag)
 RevisionSpec_dwim.append_possible_revspec(RevisionSpec_revid)
 RevisionSpec_dwim.append_possible_revspec(RevisionSpec_date)

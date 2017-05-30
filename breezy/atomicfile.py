@@ -26,7 +26,6 @@ import warnings
 from breezy import (
     errors,
     osutils,
-    symbol_versioning,
     )
 """)
 

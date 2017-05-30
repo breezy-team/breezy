@@ -24,7 +24,6 @@ from .. import (
     atomicfile,
     errors,
     osutils,
-    symbol_versioning,
     )
 from . import TestCaseInTempDir, TestSkipped
 

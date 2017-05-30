@@ -16,6 +16,7 @@
 
 from .. import (
     add,
+    cache_utf8,
     inventory,
     osutils,
     tests,
@@ -30,9 +31,7 @@ class AddCustomIDAction(add.AddAction):
     def __call__(self, inv, parent_ie, path, kind):
         # The first part just logs if appropriate
         # Now generate a custom id
-        file_id = osutils.safe_file_id(kind + '-'
-                                       + path.replace('/', '%'),
-                                       warn=False)
+        file_id = cache_utf8.encode(kind + '-' + path.replace('/', '%'))
         if self.should_print:
             self._to_file.write('added %s with id %s\n'
                                 % (path, file_id))

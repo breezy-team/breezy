@@ -20,7 +20,6 @@ from __future__ import absolute_import
 
 from . import (
     registry,
-    symbol_versioning,
     )
 from .lazy_import import lazy_import
 lazy_import(globals(), """

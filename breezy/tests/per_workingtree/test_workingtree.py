@@ -27,7 +27,6 @@ from ... import (
     errors,
     osutils,
     revision as _mod_revision,
-    symbol_versioning,
     tests,
     trace,
     urlutils,

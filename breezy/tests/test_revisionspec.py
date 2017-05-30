@@ -20,7 +20,6 @@ import time
 from breezy import (
     errors,
     revision as _mod_revision,
-    symbol_versioning,
     )
 from breezy.tests import TestCaseWithTransport
 from breezy.revisionspec import (
@@ -114,18 +113,6 @@ class RevisionSpecMatchOnTrap(RevisionSpec):
 
 
 class TestRevisionSpecBase(TestRevisionSpec):
-
-    def test_wants_revision_history(self):
-        # If wants_revision_history = True, then _match_on should get the
-        # branch revision history
-        spec = RevisionSpecMatchOnTrap('foo', _internal=True)
-        spec.wants_revision_history = True
-        self.callDeprecated(['RevisionSpec.wants_revision_history was '
-            'deprecated in 2.5 (RevisionSpecMatchOnTrap).'],
-            spec.in_history, self.tree.branch)
-
-        self.assertEqual((self.tree.branch, ['r1' ,'r2']),
-                         spec.last_call)
 
     def test_wants_no_revision_history(self):
         # If wants_revision_history = False, then _match_on should get None for

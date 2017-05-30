@@ -52,10 +52,6 @@ from breezy import (
 from ..sixish import (
     BytesIO,
     )
-from ..symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
-    )
 
 
 class ContentFilter(object):
@@ -188,33 +184,6 @@ filter_stacks_registry = registry.Registry()
 # Cache of preferences -> stack
 # TODO: make this per branch (say) rather than global
 _stack_cache = {}
-
-
-# XXX: This function doesn't have any tests. JRV 2012-03-29
-@deprecated_function(deprecated_in((2, 6, 0)))
-def register_filter_stack_map(name, stack_map_lookup):
-    """Register the filter stacks to use for various preference values.
-
-    :param name: the preference/filter-stack name
-    :param stack_map_lookup: a callable where
-      the parameter is the preference value to match and
-      the result is the matching stack of filters to use,
-      or None if none.
-    """
-    filter_stacks_registry.register(name, stack_map_lookup)
-
-
-# XXX: This function doesn't have any tests. JRV 2012-03-29
-@deprecated_function(deprecated_in((2, 6, 0)))
-def lazy_register_filter_stack_map(name, module_name, member_name):
-    """Lazily register the filter stacks to use for various preference values.
-
-    :param name: the preference/filter-stack name
-    :param module_name: The python path to the module of the filter stack map.
-    :param member_name: The name of the stack_map_lookup callable
-      in the module.
-    """
-    filter_stacks_registry.register_lazy(name, module_name, member_name)
 
 
 def _get_registered_names():
