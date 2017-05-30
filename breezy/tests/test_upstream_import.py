@@ -19,6 +19,7 @@ from StringIO import StringIO
 from shutil import rmtree, copy2, copytree
 import tarfile
 import tempfile
+import warnings
 
 from .. import (
     osutils,
@@ -243,8 +244,10 @@ class TestImport(TestCaseInTempDir):
             f.write('I like food\n')
             f.close()
 
-            archive_file = self.make_archive2(builder, subdir)
-            importer(tree, archive_file)
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                archive_file = self.make_archive2(builder, subdir)
+                importer(tree, archive_file)
             self.assertTrue(tree.path2id('README') is not None)
             # Ensure the second version of the file is used.
             self.assertEqual(tree.get_file_text(tree.path2id('README')),
