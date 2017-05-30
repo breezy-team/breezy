@@ -19,7 +19,7 @@
 import errno
 import os
 import re
-from StringIO import StringIO
+from io import BytesIO
 import stat
 import tarfile
 import zipfile
@@ -63,7 +63,7 @@ class ZipFileWrapper(object):
             yield ZipInfoWrapper(self.zipfile, info)
 
     def extractfile(self, infowrapper):
-        return StringIO(self.zipfile.read(infowrapper.name))
+        return BytesIO(self.zipfile.read(infowrapper.name))
 
     def add(self, filename):
         if isdir(filename):
@@ -318,7 +318,7 @@ def do_import(source, tree_directory=None):
             archive, external_compressor = get_archive_type(source)
         except NotArchiveType:
             if file_kind(source) == 'directory':
-                s = StringIO(source)
+                s = BytesIO(source)
                 s.seek(0)
                 import_dir(tree, s)
             else:
@@ -331,10 +331,10 @@ def do_import(source, tree_directory=None):
                     tar_input = open_from_url(source)
                     if external_compressor == 'bz2':
                         import bz2
-                        tar_input = StringIO(bz2.decompress(tar_input.read()))
+                        tar_input = BytesIO(bz2.decompress(tar_input.read()))
                     elif external_compressor == 'lzma':
                         import lzma
-                        tar_input = StringIO(lzma.decompress(tar_input.read()))
+                        tar_input = BytesIO(lzma.decompress(tar_input.read()))
                 except IOError, e:
                     if e.errno == errno.ENOENT:
                         raise NoSuchFile(source)
