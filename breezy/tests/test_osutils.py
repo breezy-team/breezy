@@ -16,6 +16,8 @@
 
 """Tests for the osutils wrapper."""
 
+from __future__ import absolute_import, division
+
 import errno
 import os
 import re
@@ -603,8 +605,8 @@ class TestPumpFile(tests.TestCase):
         super(TestPumpFile, self).setUp()
         # create a test datablock
         self.block_size = 512
-        pattern = '0123456789ABCDEF'
-        self.test_data = pattern * (3 * self.block_size / len(pattern))
+        pattern = b'0123456789ABCDEF'
+        self.test_data = pattern * (3 * self.block_size // len(pattern))
         self.test_data_len = len(self.test_data)
 
     def test_bracket_block_size(self):
@@ -616,8 +618,8 @@ class TestPumpFile(tests.TestCase):
         from_file = file_utils.FakeReadFile(self.test_data)
         to_file = BytesIO()
 
-        # read (max / 2) bytes and verify read size wasn't affected
-        num_bytes_to_read = self.block_size / 2
+        # read (max // 2) bytes and verify read size wasn't affected
+        num_bytes_to_read = self.block_size // 2
         osutils.pumpfile(from_file, to_file, num_bytes_to_read, self.block_size)
         self.assertEqual(from_file.get_max_read_size(), num_bytes_to_read)
         self.assertEqual(from_file.get_read_count(), 1)
@@ -742,23 +744,23 @@ class TestPumpStringFile(tests.TestCase):
 
     def test_empty(self):
         output = BytesIO()
-        osutils.pump_string_file("", output)
-        self.assertEqual("", output.getvalue())
+        osutils.pump_string_file(b"", output)
+        self.assertEqual(b"", output.getvalue())
 
     def test_more_than_segment_size(self):
         output = BytesIO()
-        osutils.pump_string_file("123456789", output, 2)
-        self.assertEqual("123456789", output.getvalue())
+        osutils.pump_string_file(b"123456789", output, 2)
+        self.assertEqual(b"123456789", output.getvalue())
 
     def test_segment_size(self):
         output = BytesIO()
-        osutils.pump_string_file("12", output, 2)
-        self.assertEqual("12", output.getvalue())
+        osutils.pump_string_file(b"12", output, 2)
+        self.assertEqual(b"12", output.getvalue())
 
     def test_segment_size_multiple(self):
         output = BytesIO()
-        osutils.pump_string_file("1234", output, 2)
-        self.assertEqual("1234", output.getvalue())
+        osutils.pump_string_file(b"1234", output, 2)
+        self.assertEqual(b"1234", output.getvalue())
 
 
 class TestRelpath(tests.TestCase):
@@ -882,7 +884,7 @@ class TestSendAll(tests.TestCase):
         for err in errs:
             sock = DisconnectedSocket(err)
             self.assertRaises(errors.ConnectionReset,
-                osutils.send_all, sock, 'some more content')
+                osutils.send_all, sock, b'some more content')
 
     def test_send_with_no_progress(self):
         # See https://bugs.launchpad.net/bzr/+bug/1047309
@@ -899,7 +901,7 @@ class TestSendAll(tests.TestCase):
                 return 0
         sock = NoSendingSocket()
         self.assertRaises(errors.ConnectionReset,
-                          osutils.send_all, sock, 'content')
+                          osutils.send_all, sock, b'content')
         self.assertEqual(1, sock.call_count)
 
 

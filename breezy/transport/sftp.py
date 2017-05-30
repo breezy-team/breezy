@@ -85,9 +85,41 @@ else:
     from paramiko.sftp_file import SFTPFile
 
 
-_paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
-# don't use prefetch unless paramiko version >= 1.5.5 (there were bugs earlier)
-_default_do_prefetch = (_paramiko_version >= (1, 5, 5))
+# GZ 2017-05-25: Some dark hackery to monkeypatch out issues with paramiko's
+# Python 3 compatibility code. Replace broken b() and asbytes() code.
+try:
+    from paramiko.py3compat import b as _bad
+    from paramiko.common import asbytes as _bad_asbytes
+except ImportError:
+    pass
+else:
+    def _b_for_broken_paramiko(s, encoding='utf8'):
+        """Hacked b() that does not raise TypeError."""
+        # https://github.com/paramiko/paramiko/issues/967
+        if not isinstance(s, bytes):
+            encode = getattr(s, 'encode', None)
+            if encode is not None:
+                return encode(encoding)
+            # Would like to pass buffer objects along, but have to realise.
+            tobytes = getattr(s, 'tobytes', None)
+            if tobytes is not None:
+                return tobytes()
+        return s
+
+    def _asbytes_for_broken_paramiko(s):
+        """Hacked asbytes() that does not raise Exception."""
+        # https://github.com/paramiko/paramiko/issues/968
+        if not isinstance(s, bytes):
+            encode = getattr(s, 'encode', None)
+            if encode is not None:
+                return encode('utf8')
+            asbytes = getattr(s, 'asbytes', None)
+            if asbytes is not None:
+                return asbytes()
+        return s
+
+    _bad.func_code = _b_for_broken_paramiko.func_code
+    _bad_asbytes.func_code = _asbytes_for_broken_paramiko.func_code
 
 
 class SFTPLock(object):
@@ -317,7 +349,6 @@ class _SFTPReadvHelper(object):
 class SFTPTransport(ConnectedTransport):
     """Transport implementation for SFTP access."""
 
-    _do_prefetch = _default_do_prefetch
     # TODO: jam 20060717 Conceivably these could be configurable, either
     #       by auto-tuning at run-time, or by a configuration (per host??)
     #       but the performance curve is pretty flat, so just going with
@@ -414,7 +445,7 @@ class SFTPTransport(ConnectedTransport):
             path = self._remote_path(relpath)
             f = self._get_sftp().file(path, mode='rb')
             size = f.stat().st_size
-            if self._do_prefetch and (getattr(f, 'prefetch', None) is not None):
+            if getattr(f, 'prefetch', None) is not None:
                 f.prefetch(size)
             return f
         except (IOError, paramiko.SSHException) as e:

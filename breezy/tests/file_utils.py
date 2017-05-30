@@ -33,7 +33,7 @@ class FakeReadFile(object):
         """Reads size characters from the input (or the rest of the string if
         size is -1)."""
         data = self.data.read(size)
-        self.max_read_size = max(self.max_read_size, len(data))
+        self.max_read_size = max(self.max_read_size or 0, len(data))
         self.read_count += 1
         return data
 
