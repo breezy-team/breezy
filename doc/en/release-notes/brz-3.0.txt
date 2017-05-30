@@ -32,8 +32,9 @@ New Features
 Improvements
 ************
 
-.. Improvements to existing commands, especially improved performance 
-   or memory usage, or better results.
+ * Doc generators now support the SOURCE_DATE_EPOCH environment
+   variable (https://reproducible-builds.org/specs/source-date-epoch/).
+   (Jelmer Vernooĳ)
 
 Bug Fixes
 *********
