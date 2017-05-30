@@ -427,7 +427,7 @@ class AbstractRevisionStore(object):
             raise AssertionError('signatures not guaranteed yet')
             self.repo.add_signature_text(rev.revision_id, signature)
         # self._add_revision(rev, inv)
-        return builder.revision_tree().inventory
+        return builder.revision_tree().root_inventory
 
     def _non_root_entries_iter(self, inv, revision_id):
         if hasattr(inv, 'iter_non_root_entries'):
@@ -526,7 +526,7 @@ class AbstractRevisionStore(object):
                 rev_tree = self.repo.revision_tree(revision_id)
             else:
                 rev_tree = self.repo.revision_tree(None)
-            inventories.append(rev_tree.inventory)
+            inventories.append(rev_tree.root_inventory)
         return present, inventories
 
 
