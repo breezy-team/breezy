@@ -13,24 +13,24 @@ pythonpath_dbg = $$(ls -d $(CURDIR)/build/lib_d.*-$(1) 2>/dev/null || ls -d $(CU
 	dh $* --with python2,sphinxdoc,bash_completion  --buildsystem=python_distutils
 
 ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
-CONCURRENCY = BZR_CONCURRENCY=$(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+CONCURRENCY = BRZ_CONCURRENCY=$(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
 endif
 
 override_dh_auto_test:
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
-	[ -d debian/bzrhome ] || mkdir debian/bzrhome
+	[ -d debian/brzhome ] || mkdir debian/brzhome
 	$(CONCURRENCY) \
-	BZR_HOME=debian/bzrhome \
-	BZR_PLUGIN_PATH=-site:-user \
-	BZR_DISABLE_PLUGINS=launchpad \
+	BRZ_HOME=debian/brzhome \
+	BRZ_PLUGIN_PATH=-site:-user \
+	BRZ_DISABLE_PLUGINS=launchpad \
 	PYTHONPATH=$(wildcard $(CURDIR)/build/lib.*-$(PYVERSION)) \
-	$(CURDIR)/build/scripts-$(PYVERSION)/bzr -Derror selftest -v --parallel=fork
+	$(CURDIR)/build/scripts-$(PYVERSION)/brz -Derror selftest -v --parallel=fork
 endif
 
 override_dh_auto_clean:
 	dh_auto_clean
-	rm -rf debian/bzrhome
-	rm -f bzrlib/*_pyx.c
+	rm -rf debian/brzhome
+	rm -f brzlib/*_pyx.c
 	# 'make clean-sphinx' calls Makefiles in sub-directories that are
 	# created only after calling 'make docs-sphinx'. Check for them first.
 	if [ -f doc/es/Makefile ]; then $(MAKE) clean-sphinx; fi
@@ -50,23 +50,23 @@ override_dh_auto_clean:
 override_dh_install:
 	find debian/tmp/ -name "*.pyc" | xargs rm -f
 	find debian/tmp/ -name "*.pyo" | xargs rm -f
-	mkdir -p debian/python-bzrlib.tests/usr/lib \
-		debian/python-bzrlib.tests/usr/share/pyshared/bzrlib
+	mkdir -p debian/python-breezy.tests/usr/lib \
+		debian/python-breezy.tests/usr/share/pyshared/breezy
 	for py in $(shell pyversions -r); do \
-		mkdir -p debian/python-bzrlib.tests/usr/lib/$$py/dist-packages/bzrlib; \
-		mv debian/tmp/usr/lib/$$py/dist-packages/bzrlib/tests \
-			debian/python-bzrlib.tests/usr/lib/$$py/dist-packages/bzrlib/tests; \
+		mkdir -p debian/python-breezy.tests/usr/lib/$$py/dist-packages/breezy; \
+		mv debian/tmp/usr/lib/$$py/dist-packages/breezy/tests \
+			debian/python-breezy.tests/usr/lib/$$py/dist-packages/breezy/tests; \
 	done
 	if [ -d debian/tmp/usr/share/locale ]; then \
-		mkdir -p debian/python-bzrlib/usr/share; \
-		mv debian/tmp/usr/share/locale debian/python-bzrlib/usr/share/locale; \
+		mkdir -p debian/python-breezy/usr/share; \
+		mv debian/tmp/usr/share/locale debian/python-breezy/usr/share/locale; \
 	fi;
 	dh_install --list-missing --fail-missing
 	# Install the documentation; since html and txt and intermixed
-	# under doc/, this is handier than trying to do it from bzr-doc.install.
+	# under doc/, this is handier than trying to do it from brz-doc.install.
 	( cd doc && find -name "*.txt" -not -wholename "*/_build/*" -print0 ) | \
 		xargs -r0 -i'{}' -n1 install -D -m 644 'doc/{}' \
-		"debian/bzr-doc/usr/share/doc/bzr/txt/{}"
+		"debian/brz-doc/usr/share/doc/brz/txt/{}"
 
 override_dh_auto_build:
 	dh_auto_build
@@ -76,11 +76,11 @@ override_dh_compress:
 	dh_compress -X.xvg -X.pdf
 
 override_dh_strip:
-	dh_strip -ppython-bzrlib --dbg-package=python-bzrlib-dbg
+	dh_strip -ppython-breezy --dbg-package=python-breezy-dbg
 
 override_dh_link:
 	# symlink identical resources.
-	( cd debian/bzr-doc/usr/share/doc && fdupes -o name -r1q . | while read s; do \
+	( cd debian/brz-doc/usr/share/doc && fdupes -o name -r1q . | while read s; do \
 	      set -- $$(echo $$s | tr ' ' '\n' | sort); \
 	      f=$$1; shift; \
 	      for d; do \
@@ -94,4 +94,4 @@ ifneq "$(shell dh_listpackages | grep -- -doc)" ""
 	dh_sphinxdoc -X searchtools.js
 endif
 	# dh_sphinxdoc chokes if we delete the extra licence files before it runs.
-	find debian/bzr-doc/usr/share/doc/bzr -name "licence.txt" -print | xargs rm -f
+	find debian/brz-doc/usr/share/doc/brz -name "licence.txt" -print | xargs rm -f
