@@ -2,6 +2,4 @@
 03_spurious_test_failure
 13_spurious_test_failure
 17_reproducible_makefile
-#21_pycurl_proxy_url
 22_test_copy_to
-23_ssl_host
