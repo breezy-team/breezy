@@ -16,6 +16,7 @@ Build-Depends: bash-completion,
                python-all-dev (>= 2.6.6-3),
                python-configobj (>= 4.7.2+ds-2),
                python-docutils,
+               python-fastimport,
                python-lzma-dbg [!m68k !powerpcspe !sh4],
                python-medusa,
                python-meliae-dbg,
@@ -42,8 +43,8 @@ Breaks: brz-pqm (<< 1.4.0~brz80),
         brz-xmloutput (<< 0.8.8+brz160),
         python-breezy (<< 2.4.0~beta3~)
 Suggests: brz-doc,
-          brztools,
-          python-breezy.tests
+          python-breezy.tests,
+          python-fastimport
 Description: easy to use distributed version control system
  Breezy is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and
@@ -80,6 +81,7 @@ Recommends: ca-certificates,
 Conflicts: python-paramiko (<< 1.14.1)
 Suggests: python-breezy-dbg,
           python-breezy.tests,
+          python-fastimport,
           python-gpgme,
           python-kerberos (>= 1.0+svn2455-1),
           python-paramiko,
