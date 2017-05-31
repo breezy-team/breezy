@@ -1,9 +1,9 @@
-brz (3.0.0~bzr6643-1) UNRELEASED; urgency=medium
+brz (3.0.0~bzr6644-1) UNRELEASED; urgency=medium
 
   * Rename package to breezy and explain fork. Closes: #863744
   * New upstream snapshot.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 30 May 2017 23:22:58 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 31 May 2017 01:08:44 +0000
 
 bzr (2.7.0+bzr6619-8) unstable; urgency=high
 
