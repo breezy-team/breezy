@@ -24,12 +24,12 @@ things in particular to confirm:
 After changing into the root of a branch, the commands
 to check these things respectively are::
 
-  bzr status
-  bzr shelve --list
-  bzr missing --mine-only
+  brz status
+  brz shelve --list
+  brz missing --mine-only
 
 If your branches are stored in a shared repository locally,
-you may find the *Local Changes* tab in Bazaar Explorer's
+you may find the *Local Changes* tab in Breezy Explorer's
 repository view helpful here (revision 159 or later) as it
 shows a summary of these things, excluding the shelve information
 currently, for each branch as you select it.

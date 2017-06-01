@@ -14,9 +14,9 @@ To create a mirror branch, set-up a shared repository
 (or ``checkout``) command to create the mirror.
 For example::
 
-  bzr init-repo PROJECT
+  brz init-repo PROJECT
   cd PROJECT
-  bzr branch bzr+ssh://centralhost/srv/bzr/PROJECT/trunk
+  brz branch bzr+ssh://centralhost/srv/brz/PROJECT/trunk
 
 Task branches
 -------------
@@ -28,7 +28,7 @@ These branches are referred to as *feature branches* or
 To create a task branch, use the ``branch`` command
 against your mirror branch. For example::
 
-  bzr branch trunk fix-123
+  brz branch trunk fix-123
   cd fix-123
   (hack, hack, hack)
 
@@ -52,7 +52,7 @@ Refreshing a mirror branch
 Use the ``pull`` command to do this::
 
   cd trunk
-  bzr pull
+  brz pull
 
 Merging the latest trunk into a feature branch
 ----------------------------------------------
@@ -60,9 +60,9 @@ Merging the latest trunk into a feature branch
 Use the ``merge`` command to do this::
 
   cd fix-123
-  bzr merge
+  brz merge
   (resolve any conflicts)
-  bzr commit -m "merged trunk"
+  brz commit -m "merged trunk"
 
 Merging a feature into the trunk
 --------------------------------
@@ -74,19 +74,19 @@ the main trunk are shown below.
 If your mirror is a checkout::
 
   cd trunk
-  bzr update
-  bzr merge ../fix-123
+  brz update
+  brz merge ../fix-123
   (resolve any conflicts)
-  bzr commit -m "Fixed bug #123"
+  brz commit -m "Fixed bug #123"
 
 If your mirror is a branch::
 
   cd trunk
-  bzr pull
-  bzr merge ../fix-123
+  brz pull
+  brz merge ../fix-123
   (resolve any conflicts)
-  bzr commit -m "Fixed bug #123"
-  bzr push
+  brz commit -m "Fixed bug #123"
+  brz push
 
 Backing up task branches
 ------------------------

@@ -39,6 +39,9 @@ Bug Fixes
    doc/en/user-reference only contains English documentation.
    (Jelmer Vernooij, #1565503)
 
+ * Fix for Windows and 32-bit platforms buggy gmtime().
+   (Florent Gallaire, #1669178, #1670243)
+
 Documentation
 *************
 

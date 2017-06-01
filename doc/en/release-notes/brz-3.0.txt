@@ -1,0 +1,84 @@
+####################
+Breezy Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+brz 3.0.0 is the first release of ``Breezy``, a fork of Bazaar. For more
+information, see our release announcement on the Bazaar mailing list and
+README.
+
+brz 3.0.0
+#########
+
+:Codename: Pelican
+:3.0.1: NOT RELEASED YET
+
+External Compatibility Breaks
+*****************************
+
+ * The bzr command has been renamed to brz, to prevent
+   clashes with upstream Bazaar.
+   (Martin Packman, Jelmer Vernooĳ)
+
+New Features
+************
+
+ * The 'bisect' plugin is now shipped with bzr. (Jelmer Vernooĳ)
+
+ * The 'fastimport' plugin is now bundled with Bazaar.
+   (Jelmer Vernooĳ)
+
+ * The 'import' command is now bundled with brz.
+   Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ, #773241)
+
+Improvements
+************
+
+ * Doc generators now support the SOURCE_DATE_EPOCH environment
+   variable (https://reproducible-builds.org/specs/source-date-epoch/).
+   (Jelmer Vernooĳ)
+
+Bug Fixes
+*********
+
+.. Fixes for situations where brz would previously crash or give incorrect
+   or undesirable results.
+
+Documentation
+*************
+
+ * Various documents have been updated to explain that Breezy is a fork
+   of Bazaar.
+
+API Changes
+***********
+
+ * bzrlib has been renamed to bzrlib. (Martin Packman, Jelmer Vernooĳ)
+
+ * Signature of ``load_tests`` used by ``TestLoader`` changed to be
+   compatible with standard libarary unittest.  (Martin Packman)
+
+ * All previously deprecated functionality has been removed.
+   (Jelmer Vernooĳ)
+
+ * Renamed ``breezy.delta.report_delta`` parameter ``filter=`` to
+   ``predicate=``. (Martin Packman)
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for brz developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to brz's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
+..
+   vim: tw=74 ft=rst ff=unix

@@ -31,7 +31,7 @@ Add a new option
 ----------------
 
 You add a new ``Option`` to the ``option_registry``, either inside
-``bzrlib/config.py`` or during initialization of your plugin (use
+``breezy/config.py`` or during initialization of your plugin (use
 ``register_lazy`` in this case). New plugins should have systematic
 hierarchical names so that related values are grouped together::
 
@@ -55,7 +55,7 @@ Modify an option value or delete an option
 
 Just reading an option is what is needed most of the time, modifying option
 values or removing options is usually something that is not automated but
-left to the user (with ``bzr config``).
+left to the user (with ``brz config``).
 
 Nevertheless, if you need to save a modified option value, use
 ``.set(option_name, value)`` and ``.remove(option_name)`` to delete the
@@ -135,18 +135,18 @@ achieved with ``Store`` and ``SectionMatcher`` objects.
 Adding a new store
 ------------------
 
-The following stores are used by ``bzr`` in ways that illustrate various
+The following stores are used by ``brz`` in ways that illustrate various
 uses of sections.
 
 bazaar.conf
 ===========
 
-``bzr`` itself defines two sections here:
+``brz`` itself defines two sections here:
 
 * ``DEFAULT`` where global options are defined,
 
 * ``ALIASES`` where command aliases are defined. This section is *not*
-  available via ``GlobalStack``, instead, the ``bzr alias`` command uses it
+  available via ``GlobalStack``, instead, the ``brz alias`` command uses it
   for its own purposes.
 
 Plugins can define either additional options in the ``DEFAULT`` section or
@@ -171,7 +171,7 @@ after the package followed by the no-name section.
 location.conf
 =============
 
-``bzr`` defines sections corresponding to URLs there and includes the
+``brz`` defines sections corresponding to URLs there and includes the
 relevant sections in ``LocationStack`` and ``BranchStack``. No no-name
 section is recognized in this file.
 
@@ -209,7 +209,7 @@ The Option object is used to define its properties:
   summary and can be followed by a blank line and a more detailed
   explanation. This will be displayed to the user with::
 
-    bzr help <option name>
+    brz help <option name>
 
 * invalid: the action to be taken when an invalid value is encountered in a
   store (during a Stack.get()).
@@ -273,7 +273,7 @@ A ``Store`` defines how option values are stored, this includes:
 
 * defining how the values are quoted/unquoted for storage purposes. Stacks
   use the unquoted values internally (default value handling and option
-  expansion are simpler this way) and ``bzr config`` quote them when they
+  expansion are simpler this way) and ``brz config`` quote them when they
   need to be displayed.
 
 
@@ -310,7 +310,7 @@ inside the section that defines them.
 Specific section matchers can be implemented by overriding ``get_sections``
 or just ``match``.
 
-``bzrlib`` provides:
+``breezy`` provides:
 
 * ``NameMatcher(store, unique_id)``: To select a single section matching
   ``unique_id``.
@@ -326,7 +326,7 @@ Stacks
 
 An option can take different values depending on the context it is
 used. This can involve configuration files, options from the command line,
-default values in bzrlib and then some.
+default values in breezy and then some.
 
 Such a context is implemented by creating a list of ``Section`` stacked upon
 each other. A ``Stack`` can then be asked for an option value and returns the
@@ -361,6 +361,6 @@ Also note that ``MemoryStack`` can be used without any disk resources which
 allows for simpler and faster tests. A common pattern is to accept a
 ``config`` parameter related to a given feature and test it with predefined
 configurations without involving the whole
-stack. ``bzrlib.tests.test_commit``, ``bzrlib.tests.test_gpg`` and
-``bzrlib.tests.test_smtp_connection`` are good examples.
+stack. ``breezy.tests.test_commit``, ``breezy.tests.test_gpg`` and
+``breezy.tests.test_smtp_connection`` are good examples.
 

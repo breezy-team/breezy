@@ -4,25 +4,25 @@ Specifying revisions
 Revision identifiers and ranges
 -------------------------------
 
-Bazaar has a very expressive way to specify a revision or a range of revisions.
+Breezy has a very expressive way to specify a revision or a range of revisions.
 To specify a range of revisions, the upper and lower bounds are separated by the
 ``..`` symbol. For example::
 
-    $ bzr log -r 1..4
+    $ brz log -r 1..4
 
 You can omit one bound like::
 
-    $ bzr log -r 1..
-    $ bzr log -r ..4
+    $ brz log -r 1..
+    $ brz log -r ..4
 
 Some commands take only one revision, not a range. For example::
 
-    $ bzr cat -r 42 foo.c
+    $ brz cat -r 42 foo.c
 
 In other cases, a range is required but you want the length of the range to
 be one. For commands where this is relevant, the ``-c`` option is used like this::
 
-    $ bzr diff -c 42
+    $ brz diff -c 42
 
 
 Available revision identifiers
@@ -63,7 +63,7 @@ different format specifications as shown below.
 
 A brief introduction to some of these formats is given below.
 For complete details, see `Revision Identifiers`_ in the
-Bazaar User Reference.
+Breezy User Reference.
 
 .. _Revision Identifiers: ../user-reference/index.html#revision-identifiers
 
@@ -71,27 +71,27 @@ Numbers
 ~~~~~~~
 
 Positive numbers denote revision numbers in the current branch. Revision
-numbers are labelled as "revno" in the output of ``bzr log``.  To display
+numbers are labelled as "revno" in the output of ``brz log``.  To display
 the log for the first ten revisions::
 
-    $ bzr log -r ..10
+    $ brz log -r ..10
 
 Negative numbers count from the latest revision, -1 is the last committed
 revision.
 
 To display the log for the last ten revisions::
 
-    $ bzr log -r -10..
+    $ brz log -r -10..
 
 revid
 ~~~~~
 
-**revid** allows specifying an internal revision ID, as shown by ``bzr
+**revid** allows specifying an internal revision ID, as shown by ``brz
 log --show-ids`` and some other commands.
 
 For example::
 
-    $ bzr log -r revid:Matthieu.Moy@imag.fr-20051026185030-93c7cad63ee570df
+    $ brz log -r revid:Matthieu.Moy@imag.fr-20051026185030-93c7cad63ee570df
 
 before
 ~~~~~~
@@ -105,7 +105,7 @@ before
 
 For example::
 
-    $ bzr log -r before:before:4
+    $ brz log -r before:before:4
     ...
     revno: 2
     ...
@@ -128,7 +128,7 @@ Legal values are:
 
 The proper way of saying "give me all the log entries for today" is::
 
-    $ bzr log -r date:yesterday..date:today
+    $ brz log -r date:yesterday..date:today
 
 Ancestor
 ~~~~~~~~
@@ -143,7 +143,7 @@ Ancestor
 For example, to see what changes were made on a branch since it was forked
 off ``../parent``::
 
-    $ bzr diff -r ancestor:../parent
+    $ brz diff -r ancestor:../parent
 
 Branch
 ~~~~~~
@@ -155,5 +155,5 @@ branch
 
 For example, to get the differences between this and another branch::
 
-    $ bzr diff -r branch:http://example.com/bzr/foo.dev
+    $ brz diff -r branch:http://example.com/brz/foo.dev
 
