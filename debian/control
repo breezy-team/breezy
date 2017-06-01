@@ -1,4 +1,4 @@
-Source: brz
+Source: breezy
 Section: vcs
 Priority: optional
 Maintainer: Debian Breezy Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
@@ -27,8 +27,8 @@ Build-Depends: bash-completion,
                python-testtools (>= 0.9.5~)
 Standards-Version: 3.9.8
 X-Python-Version: >= 2.6
-Vcs-Bzr: http://anonscm.debian.org/brz/pkg-bazaar/breezy/3.0
-Vcs-Browser: http://brz.debian.org/loggerhead/pkg-bazaar/breezy/3.0
+Vcs-Bzr: http://anonscm.debian.org/bzr/pkg-bazaar/breezy/3.0
+Vcs-Browser: http://bzr.debian.org/loggerhead/pkg-bazaar/breezy/3.0
 Homepage: https://launchpad.net/brz
 XS-Testsuite: autopkgtest
 
@@ -59,11 +59,6 @@ Description: easy to use distributed version control system
  Merging in Breezy is easy, as the implementation is able to avoid many
  spurious conflicts, deals well with repeated merges between branches,
  and is able to handle modifications to renamed files correctly.
- .
- Breezy is written in Python, and has a flexible plugin interface which
- can be used to extend its functionality. Many plugins exist, providing
- useful commands (brztools), graphical interfaces (qbrz), or native
- interaction with Subversion branches (brz-svn).
  .
  Install python-paramiko if you are going to push branches to remote
  hosts with sftp.
@@ -165,10 +160,5 @@ Description: easy to use distributed version control system (documentation)
  Merging in Breezy is easy, as the implementation is able to avoid many
  spurious conflicts, deals well with repeated merges between branches,
  and is able to handle modifications to renamed files correctly.
- .
- Breezy is written in Python, and has a flexible plugin interface which
- can be used to extend its functionality. Many plugins exist, providing
- useful commands (brztools), graphical interfaces (qbrz), or native
- interaction with Subversion branches (brz-svn).
  .
  This package provides the documentation.
