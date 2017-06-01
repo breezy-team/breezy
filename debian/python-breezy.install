@@ -6,4 +6,4 @@ usr/lib/python*/*-packages/breezy/*/*/*/*.py
 usr/lib/python*/*-packages/breezy/_*_c.so
 usr/lib/python*/*-packages/breezy/doc/api/*.txt
 usr/lib/python*/*-packages/breezy/help_topics/en/*.txt
-usr/lib/python*/dist-packages/bzr-*.egg-info
+usr/lib/python*/dist-packages/brz-*.egg-info

@@ -1,12 +1,12 @@
-Document: bzr
-Title: Bazaar documentation
-Abstract: Documentation for Bazaar in text and HTML form.
+Document: brz
+Title: Breezy documentation
+Abstract: Documentation for Breezy in text and HTML form.
 Section: Programming
 
 Format: Text
-Files: /usr/share/doc/bzr/txt/index.txt
+Files: /usr/share/doc/brz/txt/index.txt
 
 Format: HTML
-Index: /usr/share/doc/bzr/html/en/index.html
-Files: /usr/share/doc/bzr/html/en/*.html
-       /usr/share/doc/bzr/html/en/*/*.html
+Index: /usr/share/doc/brz/html/en/index.html
+Files: /usr/share/doc/brz/html/en/*.html
+       /usr/share/doc/brz/html/en/*/*.html
