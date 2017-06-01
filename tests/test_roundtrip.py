@@ -19,9 +19,9 @@
 """Tests for roundtripping text parsing."""
 
 
-from bzrlib.tests import TestCase
+from ....tests import TestCase
 
-from bzrlib.plugins.git.roundtrip import (
+from ..roundtrip import (
     CommitSupplement,
     deserialize_fileid_map,
     extract_bzr_metadata,

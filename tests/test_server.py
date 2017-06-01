@@ -20,13 +20,13 @@ from dulwich.client import TCPGitClient
 from dulwich.repo import Repo
 import threading
 
-from bzrlib.transport import transport_server_registry
-from bzrlib.tests import (
+from ....transport import transport_server_registry
+from ....tests import (
     TestCase,
     TestCaseWithTransport,
     )
 
-from bzrlib.plugins.git.server import (
+from ..server import (
     BzrBackend,
     BzrTCPGitServer,
     )

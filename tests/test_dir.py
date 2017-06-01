@@ -19,14 +19,14 @@
 from dulwich.repo import Repo as GitRepo
 import os
 
-from bzrlib import (
+from .... import (
     bzrdir,
     errors,
     urlutils,
     )
-from bzrlib.tests import TestSkipped
+from ....tests import TestSkipped
 
-from bzrlib.plugins.git import (
+from .. import (
     dir,
     tests,
     workingtree,

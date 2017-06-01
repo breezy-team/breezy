@@ -22,16 +22,16 @@ from dulwich.repo import (
 
 import os
 
-from bzrlib import (
+from .... import (
     version_info as bzrlib_version,
     )
-from bzrlib.bzrdir import (
+from ....bzrdir import (
     BzrDir,
     )
 
-from bzrlib.tests.blackbox import ExternalBase
+from ....tests.blackbox import ExternalBase
 
-from bzrlib.plugins.git import (
+from .. import (
     tests,
     )
 

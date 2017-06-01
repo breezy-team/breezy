@@ -21,9 +21,9 @@ from dulwich.objects import Blob
 from dulwich.tests.test_object_store import PackBasedObjectStoreTests
 from dulwich.tests.utils import make_object
 
-from bzrlib.tests import TestCaseWithTransport
+from ....tests import TestCaseWithTransport
 
-from bzrlib.plugins.git.transportgit import TransportObjectStore
+from ..transportgit import TransportObjectStore
 
 
 class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport):

@@ -17,22 +17,22 @@
 
 """Tests for pushing revisions from Bazaar into Git."""
 
-from bzrlib.bzrdir import (
+from ....bzrdir import (
     format_registry,
     )
-from bzrlib.repository import (
+from ....repository import (
     InterRepository,
     )
-from bzrlib.tests import (
+from ....tests import (
     TestCaseWithTransport,
     )
 
-from bzrlib.plugins.git.mapping import (
+from ..mapping import (
     BzrGitMappingExperimental,
     BzrGitMappingv1,
     )
-from bzrlib.plugins.git.errors import NoPushSupport
-from bzrlib.plugins.git.push import (
+from ..errors import NoPushSupport
+from ..push import (
     InterToGitRepository,
     )
 

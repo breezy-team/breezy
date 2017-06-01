@@ -20,25 +20,25 @@ from dulwich.objects import (
     Blob,
     )
 
-from bzrlib.branchbuilder import (
+from ....branchbuilder import (
     BranchBuilder,
     )
-from bzrlib.errors import (
+from ....errors import (
     NoSuchRevision,
     )
-from bzrlib.graph import (
+from ....graph import (
     DictParentsProvider,
     Graph,
     )
-from bzrlib.tests import (
+from ....tests import (
     TestCase,
     TestCaseWithTransport,
     )
 
-from bzrlib.plugins.git.cache import (
+from ..cache import (
     DictGitShaMap,
     )
-from bzrlib.plugins.git.object_store import (
+from ..object_store import (
     BazaarObjectStore,
     LRUTreeCache,
     _check_expected_sha,

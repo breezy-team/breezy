@@ -18,11 +18,11 @@
 
 from cStringIO import StringIO
 
-from bzrlib.tests import (
+from ....tests import (
     TestCaseWithTransport,
     )
 
-from bzrlib.plugins.git.unpeel_map import (
+from ..unpeel_map import (
     UnpeelMap,
     )
 

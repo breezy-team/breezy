@@ -20,15 +20,15 @@ from cStringIO import StringIO
 
 import time
 
-from bzrlib import (
+from .... import (
     errors as bzr_errors,
     tests,
     )
 try:
-    from bzrlib.tests.features import Feature
+    from ....tests.features import Feature
 except ImportError: # bzr < 2.5
-    from bzrlib.tests import Feature
-from bzrlib.plugins.git import (
+    from ....tests import Feature
+from .. import (
     import_dulwich,
     )
 from fastimport import (

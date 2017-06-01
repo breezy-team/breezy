@@ -16,14 +16,14 @@
 
 """Test the smart client."""
 
-from bzrlib.errors import (
+from ....errors import (
     BzrError,
     NotBranchError,
     )
 
-from bzrlib.tests import TestCase
+from ....tests import TestCase
 
-from bzrlib.plugins.git.remote import (
+from ..remote import (
     split_git_url,
     parse_git_error,
     )

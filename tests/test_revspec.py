@@ -16,9 +16,9 @@
 
 """Test the git revision specifiers."""
 
-from bzrlib.tests import TestCase
+from ....tests import TestCase
 
-from bzrlib.plugins.git.revspec import (
+from ..revspec import (
     valid_git_sha1,
     )
 

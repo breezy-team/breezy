@@ -22,13 +22,13 @@ import os
 
 from dulwich.repo import Repo
 
-from bzrlib.tests import (
+from ....tests import (
     TestCaseWithTransport,
     TestSkipped,
     )
 
-from bzrlib.plugins.git.object_store import get_object_store
-from bzrlib.plugins.git.git_remote_helper import (
+from ..object_store import get_object_store
+from ..git_remote_helper import (
     RemoteHelper,
     open_local_dir,
     fastexporter,

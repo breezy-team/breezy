@@ -28,37 +28,37 @@ import os
 import stat
 import time
 
-from bzrlib import (
+from .... import (
     knit,
     osutils,
     versionedfile,
     )
-from bzrlib.branch import (
+from ....branch import (
     Branch,
     )
-from bzrlib.bzrdir import (
+from ....bzrdir import (
     BzrDir,
     )
-from bzrlib.inventory import (
+from ....inventory import (
     Inventory,
     )
-from bzrlib.repository import (
+from ....repository import (
     Repository,
     )
-from bzrlib.tests import (
+from ....tests import (
     TestCaseWithTransport,
     )
 
-from bzrlib.plugins.git.fetch import (
+from ..fetch import (
     import_git_blob,
     import_git_tree,
     import_git_submodule,
     )
-from bzrlib.plugins.git.mapping import (
+from ..mapping import (
     BzrGitMappingv1,
     DEFAULT_FILE_MODE,
     )
-from bzrlib.plugins.git.tests import (
+from . import (
     GitBranchBuilder,
     )
 

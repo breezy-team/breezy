@@ -20,7 +20,7 @@ from cStringIO import StringIO
 
 from dulwich.repo import Repo as GitRepo
 
-from bzrlib.plugins.git import tests
+from .. import tests
 
 
 class TestGitBranchBuilder(tests.TestCase):

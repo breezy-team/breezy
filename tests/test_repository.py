@@ -22,27 +22,27 @@ from dulwich.repo import (
     )
 import os
 
-from bzrlib import (
+from .... import (
     errors,
     revision,
     )
-from bzrlib.repository import (
+from ....repository import (
     InterRepository,
     Repository,
     )
 
-from bzrlib.plugins.git import (
+from .. import (
     dir,
     repository,
     tests,
     )
-from bzrlib.plugins.git.mapping import (
+from ..mapping import (
     default_mapping,
     )
-from bzrlib.plugins.git.object_store import (
+from ..object_store import (
     BazaarObjectStore,
     )
-from bzrlib.plugins.git.push import (
+from ..push import (
     MissingObjectsIterator,
     )
 

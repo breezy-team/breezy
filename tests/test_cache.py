@@ -25,28 +25,28 @@ from dulwich.objects import (
 import os
 import stat
 
-from bzrlib import osutils
+from .... import osutils
 
-from bzrlib.inventory import (
+from ....inventory import (
     InventoryFile,
     InventoryDirectory,
     ROOT_ID,
     )
 
-from bzrlib.revision import (
+from ....revision import (
     Revision,
     )
 
-from bzrlib.tests import (
+from ....tests import (
     TestCase,
     TestCaseInTempDir,
     UnavailableFeature,
     )
-from bzrlib.transport import (
+from ....transport import (
     get_transport,
     )
 
-from bzrlib.plugins.git.cache import (
+from ..cache import (
     DictBzrGitCache,
     IndexBzrGitCache,
     IndexGitCacheFormat,

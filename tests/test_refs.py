@@ -18,9 +18,9 @@
 
 """Tests for ref handling."""
 
-from bzrlib import tests
+from .... import tests
 
-from bzrlib.plugins.git import refs
+from ...git import refs
 
 
 class BranchNameRefConversionTests(tests.TestCase):

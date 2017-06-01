@@ -17,10 +17,10 @@
 
 """Tests for Git working trees."""
 
-from bzrlib import (
+from .... import (
     conflicts as _mod_conflicts,
     )
-from bzrlib.tests import TestCaseWithTransport
+from ....tests import TestCaseWithTransport
 
 
 class GitWorkingTreeTests(TestCaseWithTransport):

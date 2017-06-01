@@ -30,30 +30,30 @@ from dulwich.repo import (
 import os
 import urllib
 
-from bzrlib import (
+from .... import (
     errors,
     revision,
     urlutils,
     )
-from bzrlib.branch import (
+from ....branch import (
     Branch,
     InterBranch,
     )
-from bzrlib.bzrdir import (
+from ....bzrdir import (
     BzrDir,
     )
-from bzrlib.repository import (
+from ....repository import (
     Repository,
     )
 
-from bzrlib.plugins.git import (
+from .. import (
     branch,
     tests,
     )
-from bzrlib.plugins.git.dir import (
+from ..dir import (
     LocalGitControlDirFormat,
     )
-from bzrlib.plugins.git.mapping import (
+from ..mapping import (
     default_mapping,
     )
 

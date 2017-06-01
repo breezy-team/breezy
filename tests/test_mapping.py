@@ -15,11 +15,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.inventory import (
+from ....inventory import (
     InventoryDirectory,
     InventoryFile,
     )
-from bzrlib.revision import (
+from ....revision import (
     Revision,
     )
 
@@ -30,9 +30,9 @@ from dulwich.objects import (
     parse_timezone,
     )
 
-from bzrlib.plugins.git import tests
-from bzrlib.plugins.git.errors import UnknownCommitExtra
-from bzrlib.plugins.git.mapping import (
+from .. import tests
+from ..errors import UnknownCommitExtra
+from ..mapping import (
     BzrGitMappingv1,
     directory_to_tree,
     escape_file_id,

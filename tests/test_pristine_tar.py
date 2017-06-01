@@ -18,15 +18,15 @@
 
 from base64 import standard_b64encode
 
-from bzrlib.plugins.git.pristine_tar import (
+from ..pristine_tar import (
     get_pristine_tar_tree,
     revision_pristine_tar_data,
     read_git_pristine_tar_data,
     store_git_pristine_tar_data,
     )
 
-from bzrlib.revision import Revision
-from bzrlib.tests import TestCase
+from ....revision import Revision
+from ....tests import TestCase
 
 from dulwich.objects import (
     Blob,
