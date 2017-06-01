@@ -57,10 +57,10 @@ from dulwich.repo import (
     write_packed_refs,
     )
 
-from bzrlib import (
+from ... import (
     transport as _mod_transport,
     )
-from bzrlib.errors import (
+from ...errors import (
     FileExists,
     NoSuchFile,
     TransportNotPossible,

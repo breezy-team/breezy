@@ -23,33 +23,33 @@ from __future__ import absolute_import
 import base64
 import stat
 
-from bzrlib import (
+from ... import (
     bencode,
     errors,
     foreign,
     trace,
     )
-from bzrlib.inventory import (
+from ...inventory import (
     ROOT_ID,
     )
-from bzrlib.foreign import (
+from ...foreign import (
     ForeignVcs,
     VcsMappingRegistry,
     ForeignRevision,
     )
-from bzrlib.revision import (
+from ...revision import (
     NULL_REVISION,
     )
-from bzrlib.plugins.git.errors import (
+from .errors import (
     NoPushSupport,
     UnknownCommitExtra,
     UnknownMercurialCommitExtra,
     )
-from bzrlib.plugins.git.hg import (
+from .hg import (
     format_hg_metadata,
     extract_hg_metadata,
     )
-from bzrlib.plugins.git.roundtrip import (
+from .roundtrip import (
     extract_bzr_metadata,
     inject_bzr_metadata,
     CommitSupplement,
@@ -489,12 +489,12 @@ class ForeignGit(ForeignVcs):
 
     @property
     def branch_format(self):
-        from bzrlib.plugins.git.branch import GitBranchFormat
+        from .branch import GitBranchFormat
         return GitBranchFormat()
 
     @property
     def repository_format(self):
-        from bzrlib.plugins.git.repository import GitRepositoryFormat
+        from .repository import GitRepositoryFormat
         return GitRepositoryFormat()
 
     def __init__(self):

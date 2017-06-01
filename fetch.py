@@ -39,57 +39,57 @@ import posixpath
 import re
 import stat
 
-from bzrlib import (
+from ... import (
     debug,
     errors,
     osutils,
     trace,
     ui,
     )
-from bzrlib.errors import (
+from ...errors import (
     BzrError,
     )
-from bzrlib.inventory import (
+from ...inventory import (
     InventoryDirectory,
     InventoryFile,
     InventoryLink,
     TreeReference,
     )
-from bzrlib.repository import (
+from ...repository import (
     InterRepository,
     )
-from bzrlib.revision import (
+from ...revision import (
     NULL_REVISION,
     )
-from bzrlib.revisiontree import InventoryRevisionTree
-from bzrlib.testament import (
+from ...revisiontree import InventoryRevisionTree
+from ...testament import (
     StrictTestament3,
     )
-from bzrlib.tsort import (
+from ...tsort import (
     topo_sort,
     )
-from bzrlib.versionedfile import (
+from ...versionedfile import (
     ChunkedContentFactory,
     )
 
-from bzrlib.plugins.git.mapping import (
+from .mapping import (
     DEFAULT_FILE_MODE,
     mode_is_executable,
     mode_kind,
     warn_unusual_mode,
     )
-from bzrlib.plugins.git.object_store import (
+from .object_store import (
     BazaarObjectStore,
     LRUTreeCache,
     _tree_to_objects,
     )
-from bzrlib.plugins.git.refs import (
+from .refs import (
     is_tag,
     )
-from bzrlib.plugins.git.remote import (
+from .remote import (
     RemoteGitRepository,
     )
-from bzrlib.plugins.git.repository import (
+from .repository import (
     GitRepository,
     GitRepositoryFormat,
     LocalGitRepository,

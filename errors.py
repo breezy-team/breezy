@@ -21,7 +21,7 @@ from __future__ import absolute_import
 
 from dulwich import errors as git_errors
 
-from bzrlib import errors as bzr_errors
+from ... import errors as bzr_errors
 
 
 class BzrGitError(bzr_errors.BzrError):

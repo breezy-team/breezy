@@ -20,15 +20,15 @@ from __future__ import absolute_import
 # Please note that imports are delayed as much as possible here since
 # if DWIM revspecs are supported this module is imported by __init__.py.
 
-from bzrlib import version_info as bzrlib_version
-from bzrlib.errors import (
+from ... import version_info as bzrlib_version
+from ...errors import (
     InvalidRevisionId,
     InvalidRevisionSpec,
     )
-from bzrlib.revision import (
+from ...revision import (
     NULL_REVISION,
 )
-from bzrlib.revisionspec import (
+from ...revisionspec import (
     RevisionInfo,
     RevisionSpec,
     )
@@ -59,10 +59,10 @@ class RevisionSpec_git(RevisionSpec):
     wants_revision_history = False
 
     def _lookup_git_sha1(self, branch, sha1):
-        from bzrlib.plugins.git.errors import (
+        from .errors import (
             GitSmartRemoteNotSupported,
             )
-        from bzrlib.plugins.git.mapping import (
+        from .mapping import (
             default_mapping,
             )
 
@@ -84,7 +84,7 @@ class RevisionSpec_git(RevisionSpec):
         return True
 
     def _find_short_git_sha1(self, branch, sha1):
-        from bzrlib.plugins.git.mapping import (
+        from .mapping import (
             ForeignGit,
             mapping_registry,
             )
@@ -113,7 +113,7 @@ class RevisionSpec_git(RevisionSpec):
         git_sha1 = self.spec[loc+1:].encode("utf-8")
         if len(git_sha1) > 40 or not valid_git_sha1(git_sha1):
             raise InvalidRevisionSpec(self.user_spec, branch)
-        from bzrlib.plugins.git import (
+        from . import (
             lazy_check_versions,
             )
         lazy_check_versions()

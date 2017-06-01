@@ -26,32 +26,32 @@ CAPABILITIES = ["fetch", "option", "push"]
 
 import os
 
-from bzrlib.controldir import ControlDir
-from bzrlib.errors import NotBranchError, NoRepositoryPresent
-from bzrlib.repository import InterRepository
-from bzrlib.transport import get_transport_from_path
+from ...controldir import ControlDir
+from ...errors import NotBranchError, NoRepositoryPresent
+from ...repository import InterRepository
+from ...transport import get_transport_from_path
 
-from bzrlib.plugins.git import (
+from . import (
     LocalGitProber,
     )
-from bzrlib.plugins.git.dir import (
+from .dir import (
     BareLocalGitControlDirFormat,
     LocalGitControlDirFormat,
     )
 
-from bzrlib.plugins.git.object_store import (
+from .object_store import (
     get_object_store,
     )
-from bzrlib.plugins.git.refs import (
+from .refs import (
     get_refs_container,
     ref_to_branch_name,
     )
-from bzrlib.plugins.git.repository import (
+from .repository import (
     GitRepository,
     )
 
 try:
-    from bzrlib.plugins.fastimport import exporter as fastexporter
+    from ..fastimport import exporter as fastexporter
 except ImportError:
     fastexporter = None
 else:

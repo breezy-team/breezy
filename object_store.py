@@ -30,32 +30,32 @@ from dulwich.object_store import (
     BaseObjectStore,
     )
 
-from bzrlib import (
+from ... import (
     errors,
     lru_cache,
     trace,
     ui,
     urlutils,
     )
-from bzrlib.lock import LogicalLockResult
-from bzrlib.revision import (
+from ...lock import LogicalLockResult
+from ...revision import (
     NULL_REVISION,
     )
-from bzrlib.testament import(
+from ...testament import(
     StrictTestament3,
     )
 
-from bzrlib.plugins.git.cache import (
+from .cache import (
     from_repository as cache_from_repository,
     )
-from bzrlib.plugins.git.mapping import (
+from .mapping import (
     default_mapping,
     directory_to_tree,
     extract_unusual_modes,
     mapping_registry,
     symlink_to_blob,
     )
-from bzrlib.plugins.git.unpeel_map import (
+from .unpeel_map import (
     UnpeelMap,
     )
 
@@ -755,7 +755,7 @@ class BazaarObjectStore(BaseObjectStore):
         f = os.fdopen(fd, 'wb')
         def commit():
             from dulwich.pack import PackData, Pack
-            from bzrlib.plugins.git.fetch import import_git_objects
+            from .fetch import import_git_objects
             os.fsync(fd)
             f.close()
             if os.path.getsize(path) == 0:

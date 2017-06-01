@@ -20,7 +20,7 @@
 from __future__ import absolute_import
 
 from __future__ import absolute_import
-from bzrlib import transport
+from ... import transport
 
 transport.register_urlparse_netloc_protocol('github')
 

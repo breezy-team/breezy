@@ -45,7 +45,7 @@ import posixpath
 import stat
 import sys
 
-from bzrlib import (
+from ... import (
     errors,
     conflicts as _mod_conflicts,
     ignores,
@@ -56,20 +56,20 @@ from bzrlib import (
     tree,
     workingtree,
     )
-from bzrlib.decorators import (
+from ...decorators import (
     needs_read_lock,
     )
-from bzrlib.mutabletree import needs_tree_write_lock
+from ...mutabletree import needs_tree_write_lock
 
 
-from bzrlib.plugins.git.dir import (
+from .dir import (
     LocalGitDir,
     )
-from bzrlib.plugins.git.tree import (
+from .tree import (
     changes_from_git_changes,
     tree_delta_from_git_changes,
     )
-from bzrlib.plugins.git.mapping import (
+from .mapping import (
     GitFileIdMap,
     mode_kind,
     )
@@ -832,7 +832,7 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 
     @property
     def _matchingbzrdir(self):
-        from bzrlib.plugins.git.dir import LocalGitControlDirFormat
+        from .dir import LocalGitControlDirFormat
         return LocalGitControlDirFormat()
 
     def get_format_description(self):
@@ -858,7 +858,7 @@ class InterIndexGitTree(tree.InterTree):
 
     @classmethod
     def is_compatible(cls, source, target):
-        from bzrlib.plugins.git.repository import GitRevisionTree
+        from .repository import GitRevisionTree
         return (isinstance(source, GitRevisionTree) and
                 isinstance(target, GitWorkingTree))
 

@@ -22,22 +22,22 @@ from dulwich.server import TCPGitServer
 
 import sys
 
-from bzrlib import (
+from ... import (
     errors,
     trace,
     )
 
-from bzrlib.bzrdir import (
+from ...bzrdir import (
     BzrDir,
     )
 
-from bzrlib.plugins.git.mapping import (
+from .mapping import (
     default_mapping,
     )
-from bzrlib.plugins.git.object_store import (
+from .object_store import (
     get_object_store,
     )
-from bzrlib.plugins.git.refs import (
+from .refs import (
     get_refs_container,
     )
 

@@ -22,11 +22,11 @@
 
 from __future__ import absolute_import
 
-from bzrlib.commands import (
+from ...commands import (
     Command,
     display_command,
     )
-from bzrlib.option import (
+from ...option import (
     Option,
     )
 

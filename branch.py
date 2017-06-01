@@ -27,7 +27,7 @@ from dulwich.objects import (
     )
 from dulwich.repo import check_ref_format
 
-from bzrlib import (
+from ... import (
     branch,
     bzrdir,
     config,
@@ -38,37 +38,37 @@ from bzrlib import (
     transport,
     urlutils,
     )
-from bzrlib.decorators import (
+from ...decorators import (
     needs_read_lock,
     )
-from bzrlib.revision import (
+from ...revision import (
     NULL_REVISION,
     )
-from bzrlib.trace import (
+from ...trace import (
     is_quiet,
     mutter,
     warning,
     )
 
-from bzrlib.plugins.git.config import (
+from .config import (
     GitBranchConfig,
     GitBranchStack,
     )
-from bzrlib.plugins.git.errors import (
+from .errors import (
     NoPushSupport,
     NoSuchRef,
     )
-from bzrlib.plugins.git.refs import (
+from .refs import (
     is_tag,
     ref_to_branch_name,
     ref_to_tag_name,
     tag_name_to_ref,
     )
-from bzrlib.plugins.git.unpeel_map import (
+from .unpeel_map import (
     UnpeelMap,
     )
 
-from bzrlib.foreign import ForeignBranch
+from ...foreign import ForeignBranch
 
 
 class GitPullResult(branch.PullResult):

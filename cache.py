@@ -29,16 +29,16 @@ from dulwich.objects import (
     ShaFile,
     )
 
-import bzrlib
-from bzrlib import (
+from ... import (
     btree_index as _mod_btree_index,
+    errors as bzr_errors,
     index as _mod_index,
     osutils,
     registry,
     trace,
     versionedfile,
     )
-from bzrlib.transport import (
+from ...transport import (
     get_transport,
     )
 
@@ -47,7 +47,7 @@ def get_cache_dir():
     try:
         from xdg.BaseDirectory import xdg_cache_home
     except ImportError:
-        from bzrlib.config import config_dir
+        from ...config import config_dir
         ret = os.path.join(config_dir(), "git")
     else:
         ret = os.path.join(xdg_cache_home, "bazaar", "git")
@@ -78,19 +78,19 @@ def check_pysqlite_version(sqlite3):
             (sqlite3.sqlite_version_info[0] == 3 and
              sqlite3.sqlite_version_info[1] < 3)):
         trace.warning('Needs at least sqlite 3.3.x')
-        raise bzrlib.errors.BzrError("incompatible sqlite library")
+        raise bzr_errors.BzrError("incompatible sqlite library")
 
 try:
     try:
         import sqlite3
         check_pysqlite_version(sqlite3)
-    except (ImportError, bzrlib.errors.BzrError), e:
+    except (ImportError, bzr_errors.BzrError), e:
         from pysqlite2 import dbapi2 as sqlite3
         check_pysqlite_version(sqlite3)
 except:
     trace.warning('Needs at least Python2.5 or Python2.4 with the pysqlite2 '
             'module')
-    raise bzrlib.errors.BzrError("missing sqlite library")
+    raise bzr_errors.BzrError("missing sqlite library")
 
 
 _mapdbs = threading.local()
@@ -201,7 +201,7 @@ class BzrGitCacheFormat(object):
         try:
             format_name = transport.get_bytes('format')
             format = formats.get(format_name)
-        except bzrlib.errors.NoSuchFile:
+        except bzr_errors.NoSuchFile:
             format = formats.get('default')
             format.initialize(transport)
         return format.open(transport)
@@ -217,7 +217,7 @@ class BzrGitCacheFormat(object):
         :param repository: Repository to open the cache for
         :return: A `BzrGitCache`
         """
-        from bzrlib.transport.local import LocalTransport
+        from ...transport.local import LocalTransport
         repo_transport = getattr(repository, "_transport", None)
         if (repo_transport is not None and
             isinstance(repo_transport, LocalTransport)):
@@ -225,12 +225,12 @@ class BzrGitCacheFormat(object):
             # to update its cache.
             try:
                 repo_transport = remove_readonly_transport_decorator(repo_transport)
-            except bzrlib.errors.ReadOnlyError:
+            except bzr_errors.ReadOnlyError:
                 transport = None
             else:
                 try:
                     repo_transport.mkdir('git')
-                except bzrlib.errors.FileExists:
+                except bzr_errors.FileExists:
                     pass
                 transport = repo_transport.clone('git')
         else:
@@ -392,7 +392,7 @@ class SqliteGitCacheFormat(BzrGitCacheFormat):
     def open(self, transport):
         try:
             basepath = transport.local_abspath(".")
-        except bzrlib.errors.NotLocalUrl:
+        except bzr_errors.NotLocalUrl:
             basepath = get_cache_dir()
         return SqliteBzrGitCache(os.path.join(basepath, "idmap.db"))
 
@@ -568,7 +568,7 @@ class TdbGitCacheFormat(BzrGitCacheFormat):
     def open(self, transport):
         try:
             basepath = transport.local_abspath(".").encode(osutils._fs_enc)
-        except bzrlib.errors.NotLocalUrl:
+        except bzr_errors.NotLocalUrl:
             basepath = get_cache_dir()
         assert isinstance(basepath, str)
         try:
@@ -756,7 +756,7 @@ class IndexBzrGitCache(BzrGitCache):
         shamap = IndexGitShaMap(transport.clone('index'))
         #trees_store = knit.make_file_factory(True, mapper)(transport)
         #content_cache = VersionedFilesContentCache(trees_store)
-        from bzrlib.plugins.git.transportgit import TransportObjectStore
+        from .transportgit import TransportObjectStore
         store = TransportObjectStore(transport.clone('objects'))
         content_cache = GitObjectStoreContentCache(store)
         super(IndexBzrGitCache, self).__init__(shamap, content_cache,
@@ -772,7 +772,7 @@ class IndexGitCacheFormat(BzrGitCacheFormat):
         super(IndexGitCacheFormat, self).initialize(transport)
         transport.mkdir('index')
         transport.mkdir('objects')
-        from bzrlib.plugins.git.transportgit import TransportObjectStore
+        from .transportgit import TransportObjectStore
         TransportObjectStore.init(transport.clone('objects'))
 
     def open(self, transport):
@@ -812,10 +812,10 @@ class IndexGitShaMap(GitShaMap):
         if transport is not None:
             try:
                 transport.mkdir('git')
-            except bzrlib.errors.FileExists:
+            except bzr_errors.FileExists:
                 pass
             return cls(transport.clone('git'))
-        from bzrlib.transport import get_transport
+        from ...transport import get_transport
         return cls(get_transport(get_cache_dir()))
 
     def __repr__(self):
@@ -861,7 +861,7 @@ class IndexGitShaMap(GitShaMap):
     def _add_node(self, key, value):
         try:
             self._builder.add_node(key, value)
-        except bzrlib.errors.BadIndexDuplicateKey:
+        except bzr_errors.BadIndexDuplicateKey:
             # Multiple bzr objects can have the same contents
             return True
         else:
@@ -974,7 +974,7 @@ def migrate_ancient_formats(repo_transport):
         return
     try:
         repo_transport.mkdir("git")
-    except bzrlib.errors.FileExists:
+    except bzr_errors.FileExists:
         return
     # Prefer migrating git.db over git.tdb, since the latter may not 
     # be openable on some platforms.
@@ -991,7 +991,7 @@ def remove_readonly_transport_decorator(transport):
         try:
             return transport._decorated
         except AttributeError:
-            raise bzrlib.errors.ReadOnlyError(transport)
+            raise bzr_errors.ReadOnlyError(transport)
     return transport
 
 
@@ -1008,6 +1008,6 @@ def from_repository(repository):
     if repo_transport is not None:
         try:
             migrate_ancient_formats(repo_transport)
-        except bzrlib.errors.ReadOnlyError:
+        except bzr_errors.ReadOnlyError:
             pass # Not much we can do
     return BzrGitCacheFormat.from_repository(repository)

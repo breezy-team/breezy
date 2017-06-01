@@ -21,8 +21,8 @@
 """Support in "bzr send" for git-am style patches."""
 
 import time
-import bzrlib
-from bzrlib import (
+from ... import __version__ as bzr_version
+from ... import (
     branch as _mod_branch,
     diff as _mod_diff,
     errors,
@@ -30,15 +30,15 @@ from bzrlib import (
     revision as _mod_revision,
     )
 
-from bzrlib.merge_directive import BaseMergeDirective
+from ...merge_directive import BaseMergeDirective
 
-from bzrlib.plugins.git import (
+from . import (
     version_info as bzr_git_version_info,
     )
-from bzrlib.plugins.git.mapping import (
+from .mapping import (
     object_mode,
     )
-from bzrlib.plugins.git.object_store import (
+from .object_store import (
     get_object_store,
     )
 
@@ -52,7 +52,7 @@ from dulwich.objects import (
 
 
 version_tail = "bzr %s, bzr-git %d.%d.%d, dulwich %d.%d.%d" % (
-    (bzrlib.__version__, ) + bzr_git_version_info[:3] + dulwich_version[:3])
+    (bzr_version, ) + bzr_git_version_info[:3] + dulwich_version[:3])
 
 
 class GitDiffTree(_mod_diff.DiffTree):

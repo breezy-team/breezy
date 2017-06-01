@@ -21,32 +21,32 @@ from __future__ import absolute_import
 from dulwich.objects import ZERO_SHA
 from dulwich.walk import Walker
 
-from bzrlib import (
+from ... import (
     errors,
     ui,
     )
-from bzrlib.repository import (
+from ...repository import (
     InterRepository,
     )
-from bzrlib.revision import (
+from ...revision import (
     NULL_REVISION,
     )
 
-from bzrlib.plugins.git.errors import (
+from .errors import (
     NoPushSupport,
     )
-from bzrlib.plugins.git.object_store import (
+from .object_store import (
     get_object_store,
     )
-from bzrlib.plugins.git.repository import (
+from .repository import (
     GitRepository,
     LocalGitRepository,
     GitRepositoryFormat,
     )
-from bzrlib.plugins.git.remote import (
+from .remote import (
     RemoteGitRepository,
     )
-from bzrlib.plugins.git.unpeel_map import (
+from .unpeel_map import (
     UnpeelMap,
     )
 

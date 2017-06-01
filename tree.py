@@ -23,7 +23,7 @@ from dulwich.object_store import tree_lookup_path
 import stat
 import posixpath
 
-from bzrlib import (
+from ... import (
     delta,
     errors,
     inventory,
@@ -32,7 +32,7 @@ from bzrlib import (
     tree,
     )
 
-from bzrlib.plugins.git.mapping import (
+from .mapping import (
     mode_is_executable,
     mode_kind,
     )

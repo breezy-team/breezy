@@ -25,7 +25,7 @@ from dulwich.object_store import (
     tree_lookup_path,
     )
 
-from bzrlib.revision import (
+from ...revision import (
     NULL_REVISION,
     )
 

@@ -19,7 +19,7 @@
 
 from __future__ import absolute_import
 
-from bzrlib import (
+from ... import (
     check,
     errors,
     graph as _mod_graph,
@@ -30,25 +30,25 @@ from bzrlib import (
     ui,
     version_info as bzrlib_version,
     )
-from bzrlib.decorators import only_raises
-from bzrlib.revisiontree import InventoryRevisionTree
-from bzrlib.foreign import (
+from ...decorators import only_raises
+from ...revisiontree import InventoryRevisionTree
+from ...foreign import (
     ForeignRepository,
     )
 
-from bzrlib.plugins.git.commit import (
+from .commit import (
     GitCommitBuilder,
     )
-from bzrlib.plugins.git.filegraph import (
+from .filegraph import (
     GitFileLastChangeScanner,
     GitFileParentProvider,
     )
-from bzrlib.plugins.git.mapping import (
+from .mapping import (
     default_mapping,
     foreign_vcs_git,
     mapping_registry,
     )
-from bzrlib.plugins.git.tree import (
+from .tree import (
     GitRevisionTree,
     )
 
@@ -112,7 +112,7 @@ def lazy_load_optimisers():
     global _optimisers_loaded
     if _optimisers_loaded:
         return
-    from bzrlib.plugins.git import fetch, push
+    from . import fetch, push
     for optimiser in [fetch.InterRemoteGitNonGitRepository,
                       fetch.InterLocalGitNonGitRepository,
                       fetch.InterGitGitRepository,
@@ -560,14 +560,14 @@ class GitRepositoryFormat(repository.RepositoryFormat):
 
     @property
     def _matchingbzrdir(self):
-        from bzrlib.plugins.git.dir import LocalGitControlDirFormat
+        from .dir import LocalGitControlDirFormat
         return LocalGitControlDirFormat()
 
     def get_format_description(self):
         return "Git Repository"
 
     def initialize(self, controldir, shared=False, _internal=False):
-        from bzrlib.plugins.git.dir import GitDir
+        from .dir import GitDir
         if not isinstance(controldir, GitDir):
             raise errors.UninitializableFormat(self)
         return controldir.open_repository()
@@ -576,7 +576,7 @@ class GitRepositoryFormat(repository.RepositoryFormat):
         return target_repo_format.rich_root_data
 
     def get_foreign_tests_repository_factory(self):
-        from bzrlib.plugins.git.tests.test_repository import (
+        from ...tests.test_repository import (
             ForeignTestsRepositoryFactory,
             )
         return ForeignTestsRepositoryFactory()

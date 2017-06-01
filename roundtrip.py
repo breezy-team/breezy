@@ -47,7 +47,7 @@ This extra metadata is stored in so-called "supplements":
 
 from __future__ import absolute_import
 
-from bzrlib import osutils
+from ... import osutils
 
 from cStringIO import StringIO
 

@@ -25,13 +25,13 @@ from dulwich.index import (
 import os
 import stat
 
-from bzrlib import (
+from ... import (
     revision as _mod_revision,
     )
-from bzrlib.errors import (
+from ...errors import (
     RootMissing,
     )
-from bzrlib.repository import (
+from ...repository import (
     CommitBuilder,
     )
 
@@ -43,10 +43,10 @@ from dulwich.objects import (
 from dulwich.repo import Repo
 
 
-from bzrlib.plugins.git.mapping import (
+from .mapping import (
     entry_mode,
     )
-from bzrlib.plugins.git.roundtrip import (
+from .roundtrip import (
     CommitSupplement,
     inject_bzr_metadata,
     )

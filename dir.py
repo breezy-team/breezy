@@ -21,17 +21,17 @@ from __future__ import absolute_import
 
 import urllib
 
-from bzrlib import (
+from ... import (
     errors as bzr_errors,
     trace,
     osutils,
     revision as _mod_revision,
     urlutils,
     )
-from bzrlib.bzrdir import CreateRepository
-from bzrlib.transport import do_catching_redirections
+from ...bzrdir import CreateRepository
+from ...transport import do_catching_redirections
 
-from bzrlib.controldir import (
+from ...controldir import (
     ControlDir,
     ControlDirFormat,
     format_registry,

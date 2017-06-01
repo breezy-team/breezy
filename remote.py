@@ -16,14 +16,14 @@
 
 from __future__ import absolute_import
 
-from bzrlib import (
+from ... import (
     config,
     debug,
     trace,
     ui,
     urlutils,
     )
-from bzrlib.errors import (
+from ...errors import (
     BzrError,
     InProcessTransport,
     InvalidRevisionId,
@@ -33,34 +33,34 @@ from bzrlib.errors import (
     NotLocalUrl,
     UninitializableFormat,
     )
-from bzrlib.transport import (
+from ...transport import (
     Transport,
     )
 
-from bzrlib.plugins.git import (
+from . import (
     lazy_check_versions,
     )
 lazy_check_versions()
 
-from bzrlib.plugins.git.branch import (
+from .branch import (
     GitBranch,
     GitTags,
     )
-from bzrlib.plugins.git.dir import (
+from .dir import (
     GitControlDirFormat,
     GitDir,
     )
-from bzrlib.plugins.git.errors import (
+from .errors import (
     GitSmartRemoteNotSupported,
     NoSuchRef,
     )
-from bzrlib.plugins.git.mapping import (
+from .mapping import (
     mapping_registry,
     )
-from bzrlib.plugins.git.repository import (
+from .repository import (
     GitRepository,
     )
-from bzrlib.plugins.git.refs import (
+from .refs import (
     branch_name_to_ref,
     is_peeled,
     )
@@ -202,7 +202,7 @@ class SSHSocketWrapper(object):
 class DulwichSSHVendor(dulwich.client.SSHVendor):
 
     def __init__(self):
-        from bzrlib.transport import ssh
+        from ...transport import ssh
         self.bzr_ssh_vendor = ssh._get_ssh_vendor()
 
     def run_command(self, host, command, username=None, port=None):

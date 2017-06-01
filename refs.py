@@ -22,7 +22,7 @@ from dulwich.repo import (
     RefsContainer,
     )
 
-from bzrlib import (
+from ... import (
     errors,
     osutils,
     )

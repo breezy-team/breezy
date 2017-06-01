@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 
-from bzrlib import (
+from ... import (
     config,
     )
 

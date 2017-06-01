@@ -29,7 +29,7 @@ import sys
 import bzrlib
 import bzrlib.api
 
-from bzrlib.plugins.git.info import (
+from .info import (
     bzr_compatible_versions,
     bzr_plugin_version as version_info,
     dulwich_minimum_version,
@@ -44,31 +44,31 @@ __version__ = version_string
 bzrlib.api.require_any_api(bzrlib, bzr_compatible_versions)
 
 try:
-    from bzrlib.i18n import load_plugin_translations
+    from ...i18n import load_plugin_translations
 except ImportError: # No translations for bzr < 2.5
     gettext = lambda x: x
 else:
     translation = load_plugin_translations("bzr-git")
     gettext = translation.gettext
 
-from bzrlib import (
+from ... import (
     errors as bzr_errors,
     trace,
     )
 
-from bzrlib.controldir import (
+from ...controldir import (
     ControlDirFormat,
     Prober,
     format_registry,
     network_format_registry as controldir_network_format_registry,
     )
 
-from bzrlib.transport import (
+from ...transport import (
     register_lazy_transport,
     register_transport_proto,
     transport_server_registry,
     )
-from bzrlib.commands import (
+from ...commands import (
     plugin_cmds,
     )
 
@@ -111,7 +111,7 @@ format_registry.register_lazy('git-bare',
     experimental=False,
     )
 
-from bzrlib.revisionspec import (RevisionSpec_dwim, revspec_registry)
+from ...revisionspec import (RevisionSpec_dwim, revspec_registry)
 revspec_registry.register_lazy("git:", "bzrlib.plugins.git.revspec",
     "RevisionSpec_git")
 RevisionSpec_dwim.append_possible_lazy_revspec(
@@ -129,13 +129,13 @@ class LocalGitProber(Prober):
             external_url.startswith("https:")):
             # Already handled by RemoteGitProber
             raise bzr_errors.NotBranchError(path=transport.base)
-        from bzrlib import urlutils
+        from ... import urlutils
         if urlutils.split(transport.base)[1] == ".git":
             raise bzr_errors.NotBranchError(path=transport.base)
         if not transport.has_any(['objects', '.git/objects']):
             raise bzr_errors.NotBranchError(path=transport.base)
         lazy_check_versions()
-        from bzrlib.plugins.git.dir import (
+        from .dir import (
             BareLocalGitControlDirFormat,
             LocalGitControlDirFormat,
             )
@@ -147,7 +147,7 @@ class LocalGitProber(Prober):
 
     @classmethod
     def known_formats(cls):
-        from bzrlib.plugins.git.dir import (
+        from .dir import (
             BareLocalGitControlDirFormat,
             LocalGitControlDirFormat,
             )
@@ -157,10 +157,10 @@ class LocalGitProber(Prober):
 class RemoteGitProber(Prober):
 
     def probe_http_transport(self, transport):
-        from bzrlib import urlutils
+        from ... import urlutils
         base_url, _ = urlutils.split_segment_parameters(transport.external_url())
         url = urlutils.join(base_url, "info/refs") + "?service=git-upload-pack"
-        from bzrlib.transport.http._urllib import HttpTransport_urllib, Request
+        from ...transport.http._urllib import HttpTransport_urllib, Request
         if isinstance(transport, HttpTransport_urllib):
             req = Request('GET', url, accepted_errors=[200, 403, 404, 405],
                           headers={"Content-Type": "application/x-git-upload-pack-request"})
@@ -172,7 +172,7 @@ class RemoteGitProber(Prober):
             refs_text = resp.read()
         else:
             try:
-                from bzrlib.transport.http._pycurl import PyCurlTransport
+                from ...transport.http._pycurl import PyCurlTransport
             except bzr_errors.DependencyNotPresent:
                 raise bzr_errors.NotBranchError(transport.base)
             else:
@@ -204,10 +204,10 @@ class RemoteGitProber(Prober):
         if ct is None:
             raise bzr_errors.NotBranchError(transport.base)
         if ct.startswith("application/x-git"):
-            from bzrlib.plugins.git.remote import RemoteGitControlDirFormat
+            from .remote import RemoteGitControlDirFormat
             return RemoteGitControlDirFormat()
         else:
-            from bzrlib.plugins.git.dir import (
+            from .dir import (
                 BareLocalGitControlDirFormat,
                 )
             ret = BareLocalGitControlDirFormat()
@@ -229,7 +229,7 @@ class RemoteGitProber(Prober):
             raise bzr_errors.NotBranchError(transport.base)
 
         # little ugly, but works
-        from bzrlib.plugins.git.remote import (
+        from .remote import (
             GitSmartTransport,
             RemoteGitControlDirFormat,
             )
@@ -239,7 +239,7 @@ class RemoteGitProber(Prober):
 
     @classmethod
     def known_formats(cls):
-        from bzrlib.plugins.git.remote import RemoteGitControlDirFormat
+        from .remote import RemoteGitControlDirFormat
         return set([RemoteGitControlDirFormat()])
 
 
@@ -270,12 +270,12 @@ def extract_git_foreign_revid(rev):
     try:
         foreign_revid = rev.foreign_revid
     except AttributeError:
-        from bzrlib.plugins.git.mapping import mapping_registry
+        from .mapping import mapping_registry
         foreign_revid, mapping = \
             mapping_registry.parse_revision_id(rev.revision_id)
         return foreign_revid
     else:
-        from bzrlib.plugins.git.mapping import foreign_vcs_git
+        from .mapping import foreign_vcs_git
         if rev.mapping.vcs == foreign_vcs_git:
             return foreign_revid
         else:
@@ -291,7 +291,7 @@ def update_stanza(rev, stanza):
     else:
         stanza.add("git-commit", git_commit)
 
-from bzrlib.hooks import install_lazy_named_hook
+from ...hooks import install_lazy_named_hook
 install_lazy_named_hook("bzrlib.version_info_formats.format_rio",
     "RioVersionInfoBuilder.hooks", "revision", update_stanza,
     "git commits")
@@ -311,7 +311,7 @@ transport_server_registry.register_lazy('git-upload-pack',
     'serve_git_upload_pack',
     help='Git Smart server upload pack command. (inetd mode only)')
 
-from bzrlib.repository import (
+from ...repository import (
     format_registry as repository_format_registry,
     network_format_registry as repository_network_format_registry,
     )
@@ -323,13 +323,13 @@ register_extra_lazy_repository_format = getattr(repository_format_registry,
 register_extra_lazy_repository_format('bzrlib.plugins.git.repository',
     'GitRepositoryFormat')
 
-from bzrlib.branch import (
+from ...branch import (
     network_format_registry as branch_network_format_registry,
     )
 branch_network_format_registry.register_lazy('git',
     'bzrlib.plugins.git.branch', 'GitBranchFormat')
 
-from bzrlib.branch import (
+from ...branch import (
     format_registry as branch_format_registry,
     )
 branch_format_registry.register_extra_lazy(
@@ -337,7 +337,7 @@ branch_format_registry.register_extra_lazy(
     'GitBranchFormat',
     )
 
-from bzrlib.workingtree import (
+from ...workingtree import (
     format_registry as workingtree_format_registry,
     )
 workingtree_format_registry.register_extra_lazy(
@@ -350,19 +350,19 @@ controldir_network_format_registry.register_lazy('git',
 
 
 try:
-    from bzrlib.registry import register_lazy
+    from ...registry import register_lazy
 except ImportError:
-    from bzrlib.diff import format_registry as diff_format_registry
+    from ...diff import format_registry as diff_format_registry
     diff_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
         'GitDiffTree', 'Git am-style diff format')
 
-    from bzrlib.send import (
+    from ...send import (
         format_registry as send_format_registry,
         )
     send_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
                                        'send_git', 'Git am-style diff format')
 
-    from bzrlib.directory_service import directories
+    from ...directory_service import directories
     directories.register_lazy('github:', 'bzrlib.plugins.git.directory',
                               'GitHubDirectory',
                               'GitHub directory.')
@@ -370,13 +370,13 @@ except ImportError:
                               'GitHubDirectory',
                               'GitHub directory.')
 
-    from bzrlib.help_topics import (
+    from ...help_topics import (
         topic_registry,
         )
     topic_registry.register_lazy('git', 'bzrlib.plugins.git.help', 'help_git',
         'Using Bazaar with Git')
 
-    from bzrlib.foreign import (
+    from ...foreign import (
         foreign_vcs_registry,
         )
     foreign_vcs_registry.register_lazy("git",
@@ -414,7 +414,7 @@ def update_git_cache(repository, revid):
         trace.mutter("not updating git map for %r: %s",
             repository, e)
 
-    from bzrlib.plugins.git.object_store import BazaarObjectStore
+    from .object_store import BazaarObjectStore
     store = BazaarObjectStore(repository)
     store.lock_write()
     try:
@@ -443,7 +443,7 @@ def loggerhead_git_hook(branch_app, environ):
     config_stack = branch.get_config_stack()
     if config_stack.get('http_git'):
         return None
-    from bzrlib.plugins.git.server import git_http_hook
+    from .server import git_http_hook
     return git_http_hook(branch, environ['REQUEST_METHOD'],
         environ['PATH_INFO'])
 
@@ -455,7 +455,7 @@ install_lazy_named_hook("bzrlib.plugins.loggerhead.apps.branch",
     loggerhead_git_hook, "git support")
 
 
-from bzrlib.config import (
+from ...config import (
     option_registry,
     Option,
     bool_from_store,
@@ -471,5 +471,5 @@ This enables support for fetching Git packs over HTTP in Loggerhead.
 '''))
 
 def test_suite():
-    from bzrlib.plugins.git import tests
+    from . import tests
     return tests.test_suite()
