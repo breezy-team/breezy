@@ -43,8 +43,9 @@ Improvements
 Bug Fixes
 *********
 
-.. Fixes for situations where brz would previously crash or give incorrect
-   or undesirable results.
+* Support Server Name Indication (SNI) when talking to https servers.
+  Cherry-picked from lp:~vila/bzr/1089352-sni-support
+  (Vincent Ladeuil, #1089352)
 
 Documentation
 *************
