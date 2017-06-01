@@ -2,6 +2,9 @@
 
  BUG FIXES
 
+  * Fix compatibility with newer versions of Dulwich, which
+    now require Repo._determine_file_mode. (Jelmer Vernooĳ)
+
   * "Support" empty repositories; print an appropriate error.
     (Jelmer Vernooij, #1219424)
 
@@ -9,6 +12,8 @@
 
   * Correctly handle all moves when converting bzr trees to git.
     (William Grant, #818318)
+
+  * Fix compatibility with dulwich 0.14. (Jelmer Vernooij)
 
  FEATURES
 

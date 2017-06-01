@@ -377,8 +377,8 @@ class LocalGitDir(GitDir):
         repo = self.open_repository()
         from bzrlib.plugins.git.branch import LocalGitBranch
         ref = self._get_selected_ref(name, ref)
-        ref, sha = self._git.refs._follow(ref)
-        if not ref in self._git.refs:
+        ref_chain, sha = self._git.refs.follow(ref)
+        if sha is None:
             raise bzr_errors.NotBranchError(self.root_transport.base,
                     bzrdir=self)
         return LocalGitBranch(self, repo, ref)

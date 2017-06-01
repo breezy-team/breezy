@@ -21,6 +21,7 @@ from __future__ import absolute_import
 from cStringIO import StringIO
 
 import os
+import sys
 import urllib
 
 from dulwich.errors import (
@@ -241,8 +242,9 @@ class TransportRefsContainer(RefsContainer):
         :return: True if the set was successful, False otherwise.
         """
         try:
-            realname, _ = self._follow(name)
-        except KeyError:
+            realnames, _ = self.follow(name)
+            realname = realnames[-1]
+        except (KeyError, IndexError):
             realname = name
         self._ensure_dir_exists(realname)
         self.transport.put_bytes(realname, new_ref+"\n")
@@ -259,10 +261,11 @@ class TransportRefsContainer(RefsContainer):
         :return: True if the add was successful, False otherwise.
         """
         try:
-            realname, contents = self._follow(name)
+            realnames, contents = self.follow(name)
             if contents is not None:
                 return False
-        except KeyError:
+            realname = realnames[-1]
+        except (KeyError, IndexError):
             realname = name
         self._check_refname(realname)
         self._ensure_dir_exists(realname)
@@ -320,6 +323,12 @@ class TransportRepo(BaseRepo):
             refs_container = TransportRefsContainer(self._controltransport)
         super(TransportRepo, self).__init__(object_store,
                 refs_container)
+
+    def _determine_file_mode(self):
+        # Be consistent with bzr
+        if sys.platform == 'win32':
+            return False
+        return True
 
     def get_named_file(self, path):
         """Get a file from the control dir with a specific name.
