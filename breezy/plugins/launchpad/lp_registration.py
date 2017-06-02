@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2011 Canonical Ltd
+# Copyright (C) 2006-2017 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -145,51 +145,13 @@ class LaunchpadService(object):
             raise errors.InvalidURL(path=url)
         return cls(lp_instance=lp_instance, **kwargs)
 
-    def get_proxy(self, authenticated):
+    def get_proxy(self):
         """Return the proxy for XMLRPC requests."""
-        if authenticated:
-            # auth info must be in url
-            # TODO: if there's no registrant email perhaps we should
-            # just connect anonymously?
-            scheme, hostinfo, path = urlsplit(self.service_url)[:3]
-            if '@' in hostinfo:
-                raise AssertionError(hostinfo)
-            if self.registrant_email is None:
-                raise AssertionError()
-            if self.registrant_password is None:
-                raise AssertionError()
-            # TODO: perhaps fully quote the password to make it very slightly
-            # obscured
-            # TODO: can we perhaps add extra Authorization headers
-            # directly to the request, rather than putting this into
-            # the url?  perhaps a bit more secure against accidentally
-            # revealing it.  std66 s3.2.1 discourages putting the
-            # password in the url.
-            hostinfo = '%s:%s@%s' % (urlutils.quote(self.registrant_email),
-                                     urlutils.quote(self.registrant_password),
-                                     hostinfo)
-            url = urlunsplit((scheme, hostinfo, path, '', ''))
-        else:
-            url = self.service_url
+        url = self.service_url
         return xmlrpclib.ServerProxy(url, transport=self.transport)
 
-    def gather_user_credentials(self):
-        """Get the password from the user."""
-        the_config = config.GlobalConfig()
-        self.registrant_email = the_config.user_email()
-        if self.registrant_password is None:
-            auth = config.AuthenticationConfig()
-            scheme, hostinfo = urlsplit(self.service_url)[:2]
-            prompt = 'launchpad.net password for %s: ' % \
-                    self.registrant_email
-            # We will reuse http[s] credentials if we can, prompt user
-            # otherwise
-            self.registrant_password = auth.get_password(scheme, hostinfo,
-                                                         self.registrant_email,
-                                                         prompt=prompt)
-
-    def send_request(self, method_name, method_params, authenticated):
-        proxy = self.get_proxy(authenticated)
+    def send_request(self, method_name, method_params):
+        proxy = self.get_proxy()
         method = getattr(proxy, method_name)
         try:
             result = method(*method_params)
@@ -256,7 +218,6 @@ class BaseRequest(object):
 
     # Set this to the XMLRPC method name.
     _methodname = None
-    _authenticated = True
 
     def _request_params(self):
         """Return the arguments to pass to the method"""
@@ -265,88 +226,22 @@ class BaseRequest(object):
     def submit(self, service):
         """Submit request to Launchpad XMLRPC server.
 
-        :param service: LaunchpadService indicating where to send
-            the request and the authentication credentials.
+        :param service: LaunchpadService indicating where to send the request.
         """
-        return service.send_request(self._methodname, self._request_params(),
-                                    self._authenticated)
+        return service.send_request(self._methodname, self._request_params())
 
 
 class DryRunLaunchpadService(LaunchpadService):
-    """Service that just absorbs requests without sending to server.
+    """Service that just absorbs requests without sending to server."""
 
-    The dummy service does not need authentication.
-    """
-
-    def send_request(self, method_name, method_params, authenticated):
+    def send_request(self, method_name, method_params):
         pass
-
-    def gather_user_credentials(self):
-        pass
-
-
-class BranchRegistrationRequest(BaseRequest):
-    """Request to tell Launchpad about a brz branch."""
-
-    _methodname = 'register_branch'
-
-    def __init__(self, branch_url,
-                 branch_name='',
-                 branch_title='',
-                 branch_description='',
-                 author_email='',
-                 product_name='',
-                 ):
-        if not branch_url:
-            raise errors.InvalidURL(branch_url, "You need to specify a non-empty branch URL.")
-        self.branch_url = branch_url
-        if branch_name:
-            self.branch_name = branch_name
-        else:
-            self.branch_name = self._find_default_branch_name(self.branch_url)
-        self.branch_title = branch_title
-        self.branch_description = branch_description
-        self.author_email = author_email
-        self.product_name = product_name
-
-    def _request_params(self):
-        """Return xmlrpc request parameters"""
-        # This must match the parameter tuple expected by Launchpad for this
-        # method
-        return (self.branch_url,
-                self.branch_name,
-                self.branch_title,
-                self.branch_description,
-                self.author_email,
-                self.product_name,
-               )
-
-    def _find_default_branch_name(self, branch_url):
-        i = branch_url.rfind('/')
-        return branch_url[i+1:]
-
-
-class BranchBugLinkRequest(BaseRequest):
-    """Request to link a brz branch in Launchpad to a bug."""
-
-    _methodname = 'link_branch_to_bug'
-
-    def __init__(self, branch_url, bug_id):
-        self.bug_id = bug_id
-        self.branch_url = branch_url
-
-    def _request_params(self):
-        """Return xmlrpc request parameters"""
-        # This must match the parameter tuple expected by Launchpad for this
-        # method
-        return (self.branch_url, self.bug_id, '')
 
 
 class ResolveLaunchpadPathRequest(BaseRequest):
     """Request to resolve the path component of an lp: URL."""
 
     _methodname = 'resolve_lp_path'
-    _authenticated = False
 
     def __init__(self, path):
         if not path:
