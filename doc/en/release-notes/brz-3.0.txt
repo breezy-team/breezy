@@ -22,6 +22,9 @@ External Compatibility Breaks
    clashes with upstream Bazaar.
    (Martin Packman, Jelmer Vernooĳ)
 
+ * The --prefix/-p argument for ``bzr diff`` now defaults to -p1 rather
+   than -p0. (Jelmer Vernooĳ, #1695126)
+
  * The ``brz register-branch`` command from the Launchpad plugin has been
    removed, because it has not worked for at least five years: it relies on
    password authentication rather than SSO, the relevant systems no longer
