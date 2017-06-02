@@ -2297,9 +2297,9 @@ class cmd_diff(Command):
         Same as 'brz diff' but prefix paths with old/ and new/::
 
             brz diff --prefix old/:new/
-            
+
         Show the differences using a custom diff program with options::
-        
+
             brz diff --using /usr/bin/diff --diff-options -wu
     """
     _see_also = ['status']
@@ -2340,16 +2340,16 @@ class cmd_diff(Command):
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
-            prefix=None, old=None, new=None, using=None, format=None, 
+            prefix=None, old=None, new=None, using=None, format=None,
             context=None):
         from .diff import (get_trees_and_branches_to_diff_locked,
             show_diff_trees)
 
-        if (prefix is None) or (prefix == '0'):
+        if prefix == '0':
             # diff -p0 format
             old_label = ''
             new_label = ''
-        elif prefix == '1':
+        elif prefix == '1' or prefix is None:
             old_label = 'old/'
             new_label = 'new/'
         elif ':' in prefix:

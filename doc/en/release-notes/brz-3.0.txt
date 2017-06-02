@@ -22,6 +22,9 @@ External Compatibility Breaks
    clashes with upstream Bazaar.
    (Martin Packman, Jelmer Vernooĳ)
 
+ * The --prefix/-p argument for ``bzr diff`` now defaults to -p1 rather
+   than -p0. (Jelmer Vernooĳ, #1695126)
+
 New Features
 ************
 
