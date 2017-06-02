@@ -3942,6 +3942,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_extract',
         'breezy.tests.test_features',
         'breezy.tests.test_fetch',
+        'breezy.tests.test_fetch_ghosts',
         'breezy.tests.test_fixtures',
         'breezy.tests.test_fifo_cache',
         'breezy.tests.test_filters',

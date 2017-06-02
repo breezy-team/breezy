@@ -6711,6 +6711,21 @@ class cmd_import(Command):
         do_import(source, tree)
 
 
+class cmd_fetch_ghosts(Command):
+    __doc__ = """Attempt to retrieve ghosts from another branch.
+    If the other branch is not supplied, the last-pulled branch is used.
+    """
+
+    hidden = True
+    aliases = ['fetch-missing']
+    takes_args = ['branch?']
+    takes_options = [Option('no-fix', help="Skip additional synchonization.")]
+
+    def run(self, branch=None, no_fix=False):
+        from .fetch_ghosts import fetch_ghosts
+        fetch_ghosts(branch, do_reconcile=not no_fix)
+
+
 def _register_lazy_builtins():
     # register lazy builtins from other modules; called at startup and should
     # be only called once.

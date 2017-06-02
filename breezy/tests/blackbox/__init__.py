@@ -61,6 +61,7 @@ def load_tests(loader, basic_tests, pattern):
                      'test_exceptions',
                      'test_export',
                      'test_export_pot',
+                     'test_fetch_ghosts',
                      'test_filesystem_cicp',
                      'test_filtered_view_ops',
                      'test_find_merge_base',
