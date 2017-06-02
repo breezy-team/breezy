@@ -127,7 +127,7 @@ A version of it was merged into the bzr source tree in May 2010.
 References
 ----------
 
-Breezyhomepage
+Breezy homepage
   | https://www.breezy-vcs.org/
 
 
