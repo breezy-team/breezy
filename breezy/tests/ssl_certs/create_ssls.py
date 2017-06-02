@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009, 2017 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -44,25 +44,23 @@ from subprocess import (
     CalledProcessError,
     Popen,
     PIPE,
-    )
+)
 import sys
 
 # We want to use the right breezy: the one we are part of
-# FIXME: The fllowing is correct but looks a bit ugly 
+# FIXME: The following is correct but looks a bit ugly
 _dir = os.path.dirname
 our_bzr = _dir(_dir(_dir(_dir(os.path.realpath(__file__)))))
 sys.path.insert(0, our_bzr)
 
-from breezy import (
-    osutils,
-    )
-from breezy.tests import (
-    ssl_certs,
-    )
+from ... import osutils
+from .. import ssl_certs
+
 
 def error(s):
     print(s)
     exit(1)
+
 
 def needs(request, *paths):
     """Errors out if the specified path does not exists"""
@@ -78,6 +76,7 @@ def rm_f(path):
     except:
         pass
 
+
 def _openssl(args, input=None):
     """Execute a command in a subproces feeding stdin with the provided input.
 
@@ -92,7 +91,7 @@ def _openssl(args, input=None):
     return proc.returncode, stdout, stderr
 
 
-ssl_params=dict(
+ssl_params = dict(
     # Passwords
     server_pass='I will protect the communications',
     server_challenge_pass='Challenge for the CA',
@@ -111,17 +110,18 @@ ssl_params=dict(
     server_locality='LocalHost',
     server_organization='Testing Ltd',
     server_section='https server',
-    server_name='127.0.0.1', # Always accessed under that name
-    server_email='https_server@locahost',
+    server_name='127.0.0.1',  # Always accessed under that name
+    server_email='https_server@localhost',
     server_optional_company_name='',
-    )
+)
 
 
 def build_ca_key():
     """Generate an ssl certificate authority private key."""
     key_path = ssl_certs.build_path('ca.key')
     rm_f(key_path)
-    _openssl(['genrsa', '-passout', 'stdin', '-des3', '-out', key_path, '4096'],
+    _openssl(['genrsa', '-passout', 'stdin', '-des3', '-out',
+              key_path, '4096'],
              input='%(ca_pass)s\n%(ca_pass)s\n' % ssl_params)
 
 
@@ -150,17 +150,18 @@ def build_server_key():
     """Generate an ssl server private key.
 
     We generates a key with a password and then copy it without password so
-    that as server can user it without prompting.
+    that a server can use it without prompting.
     """
     key_path = ssl_certs.build_path('server_with_pass.key')
     rm_f(key_path)
-    _openssl(['genrsa', '-passout', 'stdin', '-des3', '-out', key_path, '4096'],
+    _openssl(['genrsa', '-passout', 'stdin', '-des3', '-out',
+              key_path, '4096'],
              input='%(server_pass)s\n%(server_pass)s\n' % ssl_params)
 
     key_nopass_path = ssl_certs.build_path('server_without_pass.key')
     rm_f(key_nopass_path)
     _openssl(['rsa', '-passin', 'stdin', '-in', key_path,
-              '-out', key_nopass_path,],
+              '-out', key_nopass_path],
              input='%(server_pass)s\n' % ssl_params)
 
 
@@ -199,7 +200,7 @@ def sign_server_certificate():
               '-in', server_csr_path,
               '-CA', ca_cert_path, '-CAkey', ca_key_path,
               '-set_serial', '01',
-              '-out', server_cert_path,],
+              '-out', server_cert_path],
              input='%(ca_pass)s\n' % ssl_params)
 
 
@@ -231,7 +232,7 @@ opt_parser.add_option(
 opt_parser.add_option(
     "-r", "--sign-request", dest="signing_requests", action="append",
     metavar="REQUEST",
-    help="generate a new signing REQUEST (several -r options can be specified)")
+    help="generate a new signing REQUEST (can be repeated)")
 opt_parser.add_option(
     "-s", "--sign", dest="signings", action="append",
     metavar="SIGNING",
@@ -247,8 +248,8 @@ signing_builders = dict(server=sign_server_certificate,)
 if __name__ == '__main__':
     (Options, args) = opt_parser.parse_args()
     if (Options.ca or Options.server):
-        if (Options.keys or Options.certificates or Options.signing_requests
-            or Options.signings):
+        if ((Options.keys or Options.certificates or Options.signing_requests
+             or Options.signings)):
             error("--ca and --server can't be used with other options")
         # Handles --ca before --server so that both can be used in the same run
         # to generate all the files needed by the https test server
