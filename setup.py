@@ -40,10 +40,10 @@ META_INFO = {
     'author':       'Canonical Ltd',
     'author_email': 'bazaar@lists.canonical.com',
     'maintainer':   'Breezy Developers',
-    'url':          'http://bazaar.canonical.com/',
+    'url':          'https://www.breezy-vcs.org/',
     'description':  'Friendly distributed version control system',
     'license':      'GNU GPL v2',
-    'download_url': 'https://launchpad.net/bzr/+download',
+    'download_url': 'https://launchpad.net/brz/+download',
     'long_description': get_long_description(),
     'classifiers': [
         'Development Status :: 6 - Mature',
