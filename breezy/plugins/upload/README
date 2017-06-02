@@ -1,0 +1,21 @@
+Bazaar Upload
+=============
+
+Overview
+--------
+
+bzr-upload is a plugin for Bazaar which lets you upload your working tree to
+a remote location using ftp/sftp.
+
+The main target audience is web developers who keep their web pages version
+controlled with bzr.
+
+Please report any bugs to: http://bugs.launchpad.net/bzr-upload/
+
+Our home page is located at: https://launchpad.net/bzr-upload/
+The original authors are:
+
+Vincent Ladeuil <v.ladeuil+lp@free.fr>
+Martin Albisetti <argentina@gmail.com>
+
+Use bzr help plugins/upload to get more info.
