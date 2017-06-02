@@ -15,15 +15,6 @@ External Compatibility Breaks
 
 .. These may require users to change the way they use Bazaar.
 
- * The ``bzr register-branch`` command from the Launchpad plugin has been
-   removed, because it has not worked for at least five years: it relies on
-   password authentication rather than SSO, the relevant systems no longer
-   have firewall-level access to the outside world, and in general the
-   Mirrored branch type is deprecated.  Either just push the branch to
-   Launchpad or use code imports instead
-   (https://help.launchpad.net/VcsImports).
-   (Colin Watson, #254567, #483689)
-
 New Features
 ************
 
