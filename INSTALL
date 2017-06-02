@@ -1,25 +1,25 @@
-bzr install instructions
+brz install instructions
 ************************
 
 Dependencies
 ------------
 
-bzr requires Python 2.6 or newer.
+brz requires Python 2.7 or newer, or Python 3.4 or newer.
 
 If you wish to access branches over sftp, you will need paramiko and
 pycrypto:
 
   http://www.lag.net/paramiko/
 
-bzr can optionally use compiled versions of some parts of the code
-for increased speed. When installing bzr you need the ability to
+brz can optionally use compiled versions of some parts of the code
+for increased speed. When installing brz you need the ability to
 build C extensions. Some GNU/Linux distributions package the necessary
 headers separately from the main Python package. This package is
 probably named something like python-dev or python-devel. FreeBSD,
 Windows, source-based GNU/Linux distributions, and possibly other operating
 systems, have the required files installed by default.
 
-If you are installing bzr from a bzr branch rather than a release tarball,
+If you are installing brz from a brz branch rather than a release tarball,
 then you should also have the Pyrex package installed. This is not necessary
 for release tarballs as they already contain the C files that Pyrex is needed
 to create.
@@ -32,7 +32,7 @@ Installation
 When upgrading using setup.py, it is recommended that you first delete the
 bzrlib directory from the install target.
 
-To install bzr as a user, run
+To install brz as a user, run
 
   python setup.py install --home ~ 
 
@@ -41,6 +41,7 @@ To install system-wide, run (as root)
   python setup.py install
 
 For more information on installation, see
-<http://wiki.bazaar.canonical.com/InstallationFaq>
-or write to bazaar@lists.canonical.com, or ask a question at
-<https://answers.launchpad.net/bzr/>.
+<http://wiki.bazaar.canonical.com/InstallationFaq> for the Bazaar installation FAQ
+(that also applies to Breezy)
+or write to bazaar@lists.canonical.com mentioning you use Breezy, or ask a
+question at <https://answers.launchpad.net/brz/>.

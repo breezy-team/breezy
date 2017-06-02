@@ -1,22 +1,22 @@
-Introducing Bazaar
+Introducing Breezy
 ==================
 
-What is Bazaar?
+What is Breezy?
 ---------------
 
-Bazaar is a tool for helping people collaborate. It tracks the changes
+Breezy is a tool for helping people collaborate. It tracks the changes
 that you and other people make to a group of files - such as software
 source code - to give you snapshots of each stage of their evolution.
-Using that information, Bazaar can effortlessly merge your work with
+Using that information, Breezy can effortlessly merge your work with
 other people's.
 
-Tools like Bazaar are called version control systems (VCS) and have
-long been popular with software developers. Bazaar's ease of use,
+Tools like Breezy are called version control systems (VCS) and have
+long been popular with software developers. Breezy's ease of use,
 flexibility and simple setup make it ideal not only for software
 developers but also for other groups who work together on files and
 documents, such as technical writers, web designers and translators.
 
-This guide takes you through installing Bazaar and how to use it,
+This guide takes you through installing Breezy and how to use it,
 whether on your own or with a team of other people. If you're already
 familiar with distributed version control and want to dive straight in,
 you may wish to skim this section and jump straight to
@@ -31,10 +31,10 @@ simple terms, there have been 4 generations of tools:
  1. file versioning tools, e.g. SCCS, RCS
  2. tree versioning tools - central style, e.g. CVS
  3. tree versioning tools - central style, take two, e.g. Subversion
- 4. tree versioning tools - distributed style, e.g. Bazaar.
+ 4. tree versioning tools - distributed style, e.g. Breezy.
 
-The design and implementation of Bazaar builds on the lessons learned
-from all the previous generations of tools. In particular, Bazaar
+The design and implementation of Breezy builds on the lessons learned
+from all the previous generations of tools. In particular, Breezy
 cleanly supports both the central and the distributed version
 control models so you can change models as it makes sense, without
 needing to change tools.
@@ -59,7 +59,7 @@ of **publishing** those changes. This can be good in some circumstances but
 it has a negative influence on quality in others.
 
 Distributed VCS tools let users and teams have multiple repositories
-rather than just a single central one. In Bazaar's case, the history is
+rather than just a single central one. In Breezy's case, the history is
 normally kept in the same place as the code that is being version controlled.
 This allows the user to commit their changes whenever it makes sense, even
 when offline. Network access is only required when publishing changes or
@@ -92,16 +92,16 @@ For a detailed look at the advantages of distributed VCS tools over
 centralized VCS tools, see http://wiki.bazaar.canonical.com/BzrWhy.
 
 
-Key features of Bazaar
+Key features of Breezy
 ----------------------
 
-While Bazaar is not the only distributed VCS tool around, it does have some
+While Breezy is not the only distributed VCS tool around, it does have some
 notable features that make it an excellent choice for many teams and
 communities. A summary of these and comparisons with other VCS tools
-can be found on the Bazaar Wiki, http://wiki.bazaar.canonical.com.
+can be found on the Breezy Wiki, http://wiki.bazaar.canonical.com.
 
 Of the many features, one in particular is worth highlighting:
-Bazaar is completely free software written in Python. As a result,
+Breezy is completely free software written in Python. As a result,
 it is easy to contribute improvements. If you wish to get involved,
 please see http://wiki.bazaar.canonical.com/BzrSupport.
 
@@ -109,34 +109,34 @@ please see http://wiki.bazaar.canonical.com/BzrSupport.
 Learning more
 -------------
 
-This manual provides an easy to read introduction to Bazaar and how to use
+This manual provides an easy to read introduction to Breezy and how to use
 it effectively.  It is recommended that all users read at least the rest of
 this chapter as it:
 
  * explains the core concepts users need to know
- * introduces some popular ways of using Bazaar to collaborate.
+ * introduces some popular ways of using Breezy to collaborate.
 
-Chapters 2-6 provide a closer look at how to use Bazaar to complete
+Chapters 2-6 provide a closer look at how to use Breezy to complete
 various tasks. It is recommended that most users read these in first-to-last
-order shortly after starting to use Bazaar. Chapter 7 and beyond provide
-additional information that helps you make the most of Bazaar once the core
+order shortly after starting to use Breezy. Chapter 7 and beyond provide
+additional information that helps you make the most of Breezy once the core
 functionality is understood. This material can be read when required and in
 any order.
 
 If you are already familiar with other version control tools,
 you may wish to get started quickly by reading the following documents:
 
- * `Bazaar in five minutes`_ - a mini-tutorial
+ * `Breezy in five minutes`_ - a mini-tutorial
 
- * `Bazaar Quick Start Card`_ - a one page summary of commonly used commands.
+ * `Breezy Quick Start Card`_ - a one page summary of commonly used commands.
 
-In addition, the online help and `Bazaar User Reference`_ provide all the
+In addition, the online help and `Breezy User Reference`_ provide all the
 details on the commands and options available.
 
-.. _Bazaar in five minutes: ../mini-tutorial/index.html
-.. _Bazaar Quick Start Card: ../quick-reference/index.html
-.. _Bazaar User Reference: ../user-reference/index.html
+.. _Breezy in five minutes: ../mini-tutorial/index.html
+.. _Breezy Quick Start Card: ../quick-reference/index.html
+.. _Breezy User Reference: ../user-reference/index.html
 
 We hope you find this manual useful. If you have suggestions on how it
-or the rest of Bazaar's documentation can be improved, please contact
+or the rest of Breezy's documentation can be improved, please contact
 us on the mailing list, bazaar@lists.canonical.com.

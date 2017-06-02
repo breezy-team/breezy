@@ -1,14 +1,14 @@
 Using plugins
 =============
 
-.. Information on how to use plugins in Bazaar.
+.. Information on how to use plugins in Breezy.
 
 What is a plugin?
 -----------------
 
-A plugin is an external component for Bazaar that is typically made by
-third parties. A plugin is capable of augmenting Bazaar by adding new
-functionality.  A plugin can also change current Bazaar behavior by
+A plugin is an external component for Breezy that is typically made by
+third parties. A plugin is capable of augmenting Breezy by adding new
+functionality.  A plugin can also change current Breezy behavior by
 replacing current functionality. Sample applications of plugins are:
 
 * overriding commands
@@ -18,12 +18,12 @@ replacing current functionality. Sample applications of plugins are:
 
 The sky is the limit for the customization that can be done through plugins.
 In fact, plugins often work as a way for developers to test new features for
-Bazaar prior to inclusion in the official codebase. Plugins are helpful
+Breezy prior to inclusion in the official codebase. Plugins are helpful
 at feature retirement time as well, e.g. deprecated file formats may one
-day be removed from the Bazaar core and be made available as a plugin instead.
+day be removed from the Breezy core and be made available as a plugin instead.
 
 Plugins are good for users, good for external developers and good for
-Bazaar itself.
+Breezy itself.
 
 Where to find plugins
 ---------------------
@@ -34,23 +34,23 @@ How to install a plugin
 -----------------------
 
 Installing a plugin is very easy! If not already created, create a
-``plugins`` directory under your Bazaar configuration directory,
+``plugins`` directory under your Breezy configuration directory,
 ``~/.bazaar/`` on Unix and
-``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0\``
+``C:\Documents and Settings\<username>\Application Data\Breezy\2.0\``
 on Windows. Within this directory (referred to as $BZR_HOME below),
 each plugin is placed in its own subdirectory.
 
-Plugins work particularly well with Bazaar branches. For example, to
-install the bzrtools plugins for your main user account on GNU/Linux,
+Plugins work particularly well with Breezy branches. For example, to
+install the brztools plugins for your main user account on GNU/Linux,
 one can perform the following::
 
-    bzr branch http://panoramicfeedback.com/opensource/bzr/bzrtools
-    ~/.bazaar/plugins/bzrtools
+    brz branch http://panoramicfeedback.com/opensource/brz/brztools
+    ~/.bazaar/plugins/brztools
 
 When installing plugins, the directories that you install them in must
 be valid python identifiers. This means that they can only contain
 certain characters, notably they cannot contain hyphens (``-``). Rather
-than installing ``bzr-gtk`` to ``$BZR_HOME/plugins/bzr-gtk``, install it
+than installing ``brz-gtk`` to ``$BZR_HOME/plugins/brz-gtk``, install it
 to ``$BZR_HOME/plugins/gtk``.
 
 Alternative plugin locations
@@ -59,7 +59,7 @@ Alternative plugin locations
 If you have the necessary permissions, plugins can also be installed on a
 system-wide basis.  One can additionally override the personal plugins
 location by setting the environment variable ``BZR_PLUGIN_PATH`` (see `User
-Reference <../user-reference/configuration-help.html#bzr-plugin-path>`_ 
+Reference <../user-reference/configuration-help.html#brz-plugin-path>`_ 
 for a detailed explanation).
 
 Listing the installed plugins
@@ -67,11 +67,11 @@ Listing the installed plugins
 
 To do this, use the plugins command like this::
 
-    bzr plugins
+    brz plugins
 
 The name, location and version of each plugin installed will be displayed.
 
-New commands added by plugins can be seen by running ``bzr help commands``.
+New commands added by plugins can be seen by running ``brz help commands``.
 The commands provided by a plugin are shown followed by the name of the
 plugin in brackets.
 
@@ -84,12 +84,12 @@ Here is a sample of some of the more popular plugins.
   Category         Name              Description
   ================ ================= ==================================
   GUI              QBzr              Qt-based GUI tools
-  GUI              bzr-gtk           GTK-based GUI tools
-  GUI              bzr-eclipse       Eclipse integration
-  General          bzrtools          misc. enhancements including shelf
+  GUI              brz-gtk           GTK-based GUI tools
+  GUI              brz-eclipse       Eclipse integration
+  General          brztools          misc. enhancements including shelf
   General          difftools         external diff tool helper
   General          extmerge          external merge tool helper
-  Integration      bzr-svn           use Subversion as a repository
+  Integration      brz-svn           use Subversion as a repository
   Migration        cvsps             migrate CVS patch-sets
   ================ ================= ==================================
 

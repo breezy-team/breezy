@@ -4,11 +4,11 @@ GnuPG Signatures
 Reasons to Sign Your Repository
 --------------------------------
 
-Bazaar can sign revisions using GnuPG, a Free Software implementation of the
+Breezy can sign revisions using GnuPG, a Free Software implementation of the
 OpenPGP digital signature format.  By signing commits a person wanting to
 make use of a branch can be confident where the code came from, assuming the
 GnuPG keys used can be verified.  This could for example prevent worry about
-compromised code in the case where a server hosting Bazaar branches has been
+compromised code in the case where a server hosting Breezy branches has been
 hacked into.  It could also be used to verify that all code is written by a
 select group of people, such as if contributor agreements are needed.
 
@@ -39,21 +39,21 @@ installed.
 To sign previous commits to a branch use ``sign-my-commits``.  This will go
 through all revisions in the branch and sign any which match your
 commit name.  You can also pass the name of a contributor to ``sign-my-commits``
-to sign someone else's commits or if your GnuPG key does not match your Bazaar
+to sign someone else's commits or if your GnuPG key does not match your Breezy
 name and e-mail::
 
-  bzr sign-my-commits . "Amy Pond <amy@example.com>"
+  brz sign-my-commits . "Amy Pond <amy@example.com>"
 
 It will not sign commits which already have a signature.
 
 To sign a single commit or a range of commits use the (hidden) command
 ``re-sign``::
 
-  bzr re-sign -r 24
+  brz re-sign -r 24
 
 ``re-sign`` is also useful to change an existing signature.
 
-By default Bazaar will tell GnuPG to use a key with the same user
+By default Breezy will tell GnuPG to use a key with the same user
 identity as the one set with ``whoami``.  To override this set
 ``gpg_signing_key`` in bazaar.conf or locations.conf.
 
@@ -64,7 +64,7 @@ identity as the one set with ``whoami``.  To override this set
 Verifying Commits
 -----------------
 
-Signatures can be verified with the ``bzr verify-signatures`` command.  By
+Signatures can be verified with the ``brz verify-signatures`` command.  By
 default this will check all commits in the branch and notify that all commits
 are signed by known trusted signatures.  If not all commits have trusted
 signatures it will give a summary of the number of commits which are invalid,
@@ -75,7 +75,7 @@ patters to specify a list of acceptable keys.  It can also take a range of
 commits to verify in the current branch.  Finally using the verbose option will
 list each key that is valid or authors for commits which failed::
 
-  $bzr verify-signatures -kamy -v -r 1..5
+  $brz verify-signatures -kamy -v -r 1..5
   1 commit with valid signature
     Amy Pond <amy@example.com> signed 4 commits
   0 commits with unknown keys
@@ -87,5 +87,5 @@ Work in Progress
 ----------------
 
 There is still a number of digital signature related features which
-are hoped to be added to Bazaar soon.  These include bzr explorer
+are hoped to be added to Breezy soon.  These include brz explorer
 integration and setting branches to require signatures.

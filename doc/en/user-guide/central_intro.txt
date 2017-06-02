@@ -17,7 +17,7 @@ uses their (Internet connected) home computer to complete office
 work out of hours.
 
 If centralized development works well for your team already, that's
-great. Many teams begin using Bazaar this way and experiment with
+great. Many teams begin using Breezy this way and experiment with
 alternative workflows later.
 
 Centralized workflow
