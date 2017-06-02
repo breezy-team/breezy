@@ -25,12 +25,24 @@ External Compatibility Breaks
  * The --prefix/-p argument for ``bzr diff`` now defaults to -p1 rather
    than -p0. (Jelmer Vernooĳ, #1695126)
 
+ * The ``brz register-branch`` command from the Launchpad plugin has been
+   removed, because it has not worked for at least five years: it relies on
+   password authentication rather than SSO, the relevant systems no longer
+   have firewall-level access to the outside world, and in general the
+   Mirrored branch type is deprecated.  Either just push the branch to
+   Launchpad or use code imports instead
+   (https://help.launchpad.net/VcsImports).
+   (Colin Watson, #254567, #483689)
+
 New Features
 ************
 
  * The 'bisect' plugin is now shipped with bzr. (Jelmer Vernooĳ)
 
  * The 'fastimport' plugin is now bundled with Bazaar.
+   (Jelmer Vernooĳ)
+
+ * The 'stats' plugin is now bundled with Bazaar.
    (Jelmer Vernooĳ)
 
  * The 'import' command is now bundled with brz.
@@ -46,8 +58,9 @@ Improvements
 Bug Fixes
 *********
 
-.. Fixes for situations where brz would previously crash or give incorrect
-   or undesirable results.
+* Support Server Name Indication (SNI) when talking to https servers.
+  Cherry-picked from lp:~vila/bzr/1089352-sni-support
+  (Vincent Ladeuil, #1089352)
 
 Documentation
 *************

@@ -455,9 +455,9 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
                     "'bzr help ssl.ca_certs' for more information on setting "
                     "trusted CAs.")
         try:
-            ssl_sock = ssl.wrap_socket(
-                self.sock, self.key_file, self.cert_file,
-                cert_reqs=cert_reqs, ca_certs=ca_certs)
+            ssl_sock = ssl.SSLSocket(self.sock, self.key_file, self.cert_file,
+                                     cert_reqs=cert_reqs, ca_certs=ca_certs,
+                                     server_hostname=self.host)
         except ssl.SSLError:
             trace.note(
                 "\n"
@@ -466,12 +466,12 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
                 "Pass -Ossl.cert_reqs=none to disable certificate "
                 "verification entirely.\n")
             raise
+        # Wrap the ssl socket before anybody use it
+        self._wrap_socket_for_reporting(ssl_sock)
+
         if cert_reqs == ssl.CERT_REQUIRED:
             peer_cert = ssl_sock.getpeercert()
             ssl.match_hostname(peer_cert, host)
-
-        # Wrap the ssl socket before anybody use it
-        self._wrap_socket_for_reporting(ssl_sock)
 
 
 class Request(urllib2.Request):
