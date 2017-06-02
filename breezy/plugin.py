@@ -28,6 +28,7 @@ The interfaces this module exports include:
 - load_plugins: Load all plugins that can be found in configuration.
 - describe_plugins: Generate text for each loaded (or failed) plugin.
 - extend_path: Mechanism by which the plugins package path is set.
+- plugin_name: Gives unprefixed name of a plugin module.
 
 See the plugin-api developer documentation for information about writing
 plugins.
@@ -103,6 +104,15 @@ def load_plugins(path=None, state=None):
     state.plugin_warnings = {}
     _load_plugins(state, path)
     state.plugins = plugins()
+
+
+def plugin_name(module_name):
+    """Gives unprefixed name from module_name or None."""
+    if module_name.startswith(_MODULE_PREFIX):
+        parts = module_name.split(".")
+        if len(parts) > 2:
+            return parts[2]
+    return None
 
 
 def extend_path(path, name):
