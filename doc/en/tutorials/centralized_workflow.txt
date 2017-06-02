@@ -21,7 +21,7 @@ codebase, with several people working on this codebase, keeping their work
 in sync.  This workflow is also applicable to a single developer working
 on several different machines.
 
-.. _Breezy: http://bazaar.canonical.com
+.. _Breezy: https://www.breezy-vcs.org/
 
 
 Initial Setup

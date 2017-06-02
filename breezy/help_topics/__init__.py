@@ -281,7 +281,7 @@ See :doc:`location-alias-help` and :doc:`url-special-chars-help`.
 
 _basic_help = \
 """Breezy %s -- a free distributed version-control tool
-http://bazaar.canonical.com/
+https://www.breezy-vcs.org/
 
 Basic commands:
   brz init           makes this directory a versioned branch
