@@ -426,7 +426,6 @@ class Weave(VersionedFile):
             return self._check_repeated_add(version_id, parents, lines, sha1)
 
         self._check_versions(parents)
-        ## self._check_lines(lines)
         new_version = len(self._parents)
 
         # if we abort after here the (in-memory) weave will be corrupt because only
@@ -526,8 +525,6 @@ class Weave(VersionedFile):
                 # include all its parents
                 i.update(self._parents[v])
         return i
-        ## except IndexError:
-        ##     raise ValueError("version %d not present in weave" % v)
 
     def get_ancestry(self, version_ids, topo_sorted=True):
         """See VersionedFile.get_ancestry."""
@@ -989,9 +986,6 @@ def _reweave(wa, wb, pb=None, msg=None):
     :param msg: An optional message for the progress
     """
     wr = Weave()
-    ia = ib = 0
-    queue_a = range(wa.num_versions())
-    queue_b = range(wb.num_versions())
     # first determine combined parents of all versions
     # map from version name -> all parent names
     combined_parents = _reweave_parent_graphs(wa, wb)
