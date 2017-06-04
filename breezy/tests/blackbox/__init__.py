@@ -73,6 +73,7 @@ def load_tests(loader, basic_tests, pattern):
                      'test_init',
                      'test_inventory',
                      'test_join',
+                     'test_link_tree',
                      'test_locale',
                      'test_log',
                      'test_logformats',
