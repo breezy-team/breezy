@@ -98,6 +98,7 @@ from .osutils import (
     )
 from .sixish import (
     BytesIO,
+    range,
     )
 from .versionedfile import (
     _KeyRefs,
@@ -655,7 +656,7 @@ class KnitAnnotateFactory(_KnitFactory):
         for header in lines:
             header = header.split(',')
             count = int(header[2])
-            for i in xrange(count):
+            for _ in range(count):
                 origin, text = next(lines).split(' ', 1)
                 yield text
 
@@ -740,7 +741,7 @@ class KnitPlainFactory(_KnitFactory):
         for header in lines:
             header = header.split(',')
             count = int(header[2])
-            for i in xrange(count):
+            for _ in range(count):
                 yield next(lines)
 
     def lower_fulltext(self, content):
@@ -1117,7 +1118,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         """
         delta_size = 0
         fulltext_size = None
-        for count in xrange(self._max_delta_chain):
+        for count in range(self._max_delta_chain):
             try:
                 # Note that this only looks in the index of this particular
                 # KnitVersionedFiles, not in the fallbacks.  This ensures that

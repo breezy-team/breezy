@@ -242,6 +242,9 @@ from breezy import (
     trace,
     urlutils,
     )
+from .sixish import (
+    range,
+    )
 
 
 # This is the Windows equivalent of ENOTDIR
@@ -734,7 +737,7 @@ class DirState(object):
                     # careful if we should append rather than overwrite
                     if last_entry_num != first_entry_num:
                         paths.setdefault(last_path, []).append(last_fields)
-                    for num in xrange(first_entry_num+1, last_entry_num):
+                    for num in range(first_entry_num+1, last_entry_num):
                         # TODO: jam 20070223 We are already splitting here, so
                         #       shouldn't we just split the whole thing rather
                         #       than doing the split again in add_one_record?
@@ -920,7 +923,7 @@ class DirState(object):
                     # careful if we should append rather than overwrite
                     if last_entry_num != first_entry_num:
                         paths.setdefault(last_dir, []).append(last_fields)
-                    for num in xrange(first_entry_num+1, last_entry_num):
+                    for num in range(first_entry_num+1, last_entry_num):
                         # TODO: jam 20070223 We are already splitting here, so
                         #       shouldn't we just split the whole thing rather
                         #       than doing the split again in add_one_record?
@@ -2045,7 +2048,7 @@ class DirState(object):
                           _int(fields[cur+2]),        # size
                           fields[cur+3] == 'y',       # executable
                           fields[cur+4],              # stat or revision_id
-                         ) for cur in xrange(3, len(fields)-1, 5)]
+                         ) for cur in range(3, len(fields)-1, 5)]
                 return path_name_file_id_key, trees
             return fields_to_entry_n_parents
 
@@ -2695,7 +2698,7 @@ class DirState(object):
                     # mapping from path,id. We need to look up the correct path
                     # for the indexes from 0 to tree_index -1
                     new_details = []
-                    for lookup_index in xrange(tree_index):
+                    for lookup_index in range(tree_index):
                         # boundary case: this is the first occurence of file_id
                         # so there are no id_indexes, possibly take this out of
                         # the loop?
@@ -3058,7 +3061,7 @@ class DirState(object):
                     # TODO: This re-evaluates the existing_keys set, do we need
                     #       to do that ourselves?
                     other_key = list(existing_keys)[0]
-                for lookup_index in xrange(1, num_present_parents + 1):
+                for lookup_index in range(1, num_present_parents + 1):
                     # grab any one entry, use it to find the right path.
                     # TODO: optimise this to reduce memory use in highly
                     # fragmented situations by reusing the relocation
@@ -3229,7 +3232,7 @@ class DirState(object):
         # We check this with a dict per tree pointing either to the present
         # name, or None if absent.
         tree_count = self._num_present_parents() + 1
-        id_path_maps = [dict() for i in range(tree_count)]
+        id_path_maps = [{} for _ in range(tree_count)]
         # Make sure that all renamed entries point to the correct location.
         for entry in self._iter_entries():
             file_id = entry[0][2]

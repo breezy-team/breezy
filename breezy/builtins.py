@@ -520,8 +520,8 @@ class cmd_dump_btree(Command):
         # This is because the first page of every row starts with an
         # uncompressed header.
         bt, bytes = self._get_index_and_bytes(trans, basename)
-        for page_idx, page_start in enumerate(xrange(0, len(bytes),
-                                                     btree_index._PAGE_SIZE)):
+        for page_idx, page_start in enumerate(range(0, len(bytes),
+                                                    btree_index._PAGE_SIZE)):
             page_end = min(page_start + btree_index._PAGE_SIZE, len(bytes))
             page_bytes = bytes[page_start:page_end]
             if page_idx == 0:

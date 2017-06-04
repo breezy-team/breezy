@@ -43,8 +43,7 @@ def unique_lcs_py(a, b):
     # set index[line in a] = position of line in a unless
     # a is a duplicate, in which case it's set to None
     index = {}
-    for i in xrange(len(a)):
-        line = a[i]
+    for i, line in enumerate(a):
         if line in index:
             index[line] = None
         else:
@@ -162,7 +161,7 @@ def recurse_matches_py(a, b, alo, blo, ahi, bhi, answer, maxrecursion):
             nbhi -= 1
         recurse_matches_py(a, b, last_a_pos+1, last_b_pos+1,
                            nahi, nbhi, answer, maxrecursion - 1)
-        for i in xrange(ahi - nahi):
+        for i in range(ahi - nahi):
             answer.append((nahi + i, nbhi + i))
 
 

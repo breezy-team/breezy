@@ -520,7 +520,7 @@ class Weave(VersionedFile):
         if not len(versions):
             return []
         i = set(versions)
-        for v in xrange(max(versions), 0, -1):
+        for v in range(max(versions), 0, -1):
             if v in i:
                 # include all its parents
                 i.update(self._parents[v])
