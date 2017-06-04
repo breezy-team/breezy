@@ -22,7 +22,7 @@ from .errors import NoSuchRevision, BzrCommandError
 class GhostFetcher(object):
 
     @classmethod
-    def from_cmdline(klass, other):
+    def from_cmdline(cls, other):
         this_branch = Branch.open_containing('.')[0]
         if other is None:
             other = this_branch.get_parent()
@@ -32,7 +32,7 @@ class GhostFetcher(object):
             else:
                 note("Using saved location %s.", other)
         other_branch = Branch.open_containing(other)[0]
-        return klass(this_branch, other_branch)
+        return cls(this_branch, other_branch)
 
     def __init__(self, this_branch, other_branch):
         self.this_branch = this_branch
@@ -88,19 +88,3 @@ class GhostFetcher(object):
             except NoSuchRevision:
                 failed.append(revision)
         return installed, failed
-
-
-def fetch_ghosts(branch, do_reconcile):
-    """Install ghosts from copies in another branch."""
-    installed, failed = GhostFetcher.from_cmdline(branch).run()
-    if len(installed) > 0:
-        print("Installed:")
-        for rev in installed:
-            print rev
-    if len(failed) > 0:
-        print("Still missing:")
-        for rev in failed:
-            print(rev)
-    if do_reconcile and len(installed) > 0:
-        from .builtins import cmd_reconcile
-        cmd_reconcile().run(".")

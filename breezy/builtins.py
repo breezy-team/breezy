@@ -6713,6 +6713,7 @@ class cmd_import(Command):
 
 class cmd_fetch_ghosts(Command):
     __doc__ = """Attempt to retrieve ghosts from another branch.
+
     If the other branch is not supplied, the last-pulled branch is used.
     """
 
@@ -6722,8 +6723,18 @@ class cmd_fetch_ghosts(Command):
     takes_options = [Option('no-fix', help="Skip additional synchonization.")]
 
     def run(self, branch=None, no_fix=False):
-        from .fetch_ghosts import fetch_ghosts
-        fetch_ghosts(branch, do_reconcile=not no_fix)
+        from .fetch_ghosts import GhostFetcher
+        installed, failed = GhostFetcher.from_cmdline(branch).run()
+        if len(installed) > 0:
+            self.outf.write("Installed:\n")
+            for rev in installed:
+                self.outf.write(rev + "\n")
+        if len(failed) > 0:
+            self.outf.write("Still missing:\n")
+            for rev in failed:
+                self.outf.write(rev + "\n")
+        if not no_fix and len(installed) > 0:
+            cmd_reconcile().run(".")
 
 
 def _register_lazy_builtins():
