@@ -93,5 +93,4 @@ class CVSProber(Prober):
 
 
 ControlDirFormat.register_prober(CVSProber)
-if not getattr(Prober, "known_formats", False):
-    ControlDirFormat.register_format(CVSDirFormat())
+ControlDirFormat.register_format(CVSDirFormat())
