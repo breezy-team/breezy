@@ -48,7 +48,7 @@ New Features
  * The 'upload' plugin is now bundled with Bazaar.
    (Jelmer Vernooĳ)
 
- * The 'cvs' plugin is now bundled with Bazaar.
+ * The 'cvs' and 'mtn' plugins are now bundled with Bazaar.
    (Jelmer Vernooĳ)
 
  * The 'import' command is now bundled with brz.

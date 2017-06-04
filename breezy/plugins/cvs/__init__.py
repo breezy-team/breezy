@@ -19,6 +19,8 @@
 Currently limited to telling you you want to run CVS commands.
 """
 
+from __future__ import absolute_import
+
 from ... import version_info
 from ...controldir import (
     ControlDirFormat,
