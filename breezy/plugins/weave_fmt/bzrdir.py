@@ -925,7 +925,7 @@ class BzrDirPreSplitOut(BzrDir):
         return result
 
     def set_branch_reference(self, target_branch, name=None):
-        from ...branch import BranchReferenceFormat
+        from ...bzrbranch import BranchReferenceFormat
         if name is not None:
             raise errors.NoColocatedBranchSupport(self)
         raise errors.IncompatibleFormat(BranchReferenceFormat, self._format)

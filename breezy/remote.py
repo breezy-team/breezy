@@ -22,6 +22,7 @@ import zlib
 from . import (
     bencode,
     branch,
+    bzrbranch,
     bzrdir as _mod_bzrdir,
     config as _mod_config,
     controldir,
@@ -42,7 +43,8 @@ from . import (
     vf_repository,
     vf_search,
     )
-from .branch import BranchReferenceFormat, BranchWriteLockResult
+from .bzrbranch import BranchReferenceFormat
+from .branch import BranchWriteLockResult
 from .decorators import needs_read_lock, needs_write_lock, only_raises
 from .errors import (
     NoSuchRevision,
@@ -3224,7 +3226,7 @@ class RemoteBranchFormat(branch.BranchFormat):
         # usually cheaper in terms of net round trips, as the last-revision and
         # tags info fetched is cached and would be fetched anyway.
         self._ensure_real()
-        if isinstance(self._custom_format, branch.BranchFormatMetadir):
+        if isinstance(self._custom_format, bzrbranch.BranchFormatMetadir):
             branch_class = self._custom_format._branch_class()
             heads_to_fetch_impl = branch_class.heads_to_fetch.__func__
             if heads_to_fetch_impl is branch.Branch.heads_to_fetch.__func__:

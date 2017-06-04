@@ -24,6 +24,7 @@ also see this file.
 
 from .. import (
     branch as _mod_branch,
+    bzrbranch as _mod_bzrbranch,
     bzrdir,
     config,
     controldir,
@@ -106,7 +107,7 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
     # recursive section - that is, it appends the branch name.
 
 
-class SampleBranchFormat(_mod_branch.BranchFormatMetadir):
+class SampleBranchFormat(_mod_bzrbranch.BranchFormatMetadir):
     """A sample format
 
     this format is initializable, unsupported to aid in testing the
@@ -138,7 +139,7 @@ class SampleBranchFormat(_mod_branch.BranchFormatMetadir):
 SampleSupportedBranchFormatString = "Sample supported branch format."
 
 # And the format class can then reference the constant to avoid skew.
-class SampleSupportedBranchFormat(_mod_branch.BranchFormatMetadir):
+class SampleSupportedBranchFormat(_mod_bzrbranch.BranchFormatMetadir):
     """A sample supported format."""
 
     @classmethod
@@ -187,14 +188,14 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
             dir = format._matchingbzrdir.initialize(url)
             dir.create_repository()
             format.initialize(dir)
-            found_format = _mod_branch.BranchFormatMetadir.find_format(dir)
+            found_format = _mod_bzrbranch.BranchFormatMetadir.find_format(dir)
             self.assertIsInstance(found_format, format.__class__)
         check_format(BzrBranchFormat5(), "bar")
 
     def test_find_format_factory(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         SampleSupportedBranchFormat().initialize(dir)
-        factory = _mod_branch.MetaDirBranchFormatFactory(
+        factory = _mod_bzrbranch.MetaDirBranchFormatFactory(
             SampleSupportedBranchFormatString,
             "breezy.tests.test_branch", "SampleSupportedBranchFormat")
         _mod_branch.format_registry.register(factory)
