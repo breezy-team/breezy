@@ -20,6 +20,7 @@ import re
 
 from ... import (
     branch as _mod_branch,
+    bzrbranch as _mod_bzrbranch,
     controldir,
     delta as _mod_delta,
     errors,
@@ -671,7 +672,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         transport = self.get_transport('repo/branch')
         transport.mkdir('.')
         target_bzrdir = bzrdir_format.initialize_on_transport(transport)
-        branch = _mod_branch.BzrBranchFormat6().initialize(target_bzrdir)
+        branch = _mod_bzrbranch.BzrBranchFormat6().initialize(target_bzrdir)
         # Ensure that stack_on will be stackable and match the serializer of
         # repo.
         if isinstance(repo, remote.RemoteRepository):

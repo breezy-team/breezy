@@ -22,6 +22,7 @@ The tags are actually in the Branch.tags namespace, but these are
 
 from breezy import (
     branch,
+    bzrbranch,
     controldir,
     errors,
     tests,
@@ -461,7 +462,7 @@ class AutomaticTagNameTests(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         super(AutomaticTagNameTests, self).setUp()
-        if isinstance(self.branch_format, branch.BranchReferenceFormat):
+        if isinstance(self.branch_format, bzrbranch.BranchReferenceFormat):
             # This test could in principle apply to BranchReferenceFormat, but
             # make_branch_builder doesn't support it.
             raise tests.TestSkipped(

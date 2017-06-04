@@ -60,7 +60,8 @@ class TestDefaultFormat(tests.TestCase):
     def test_get_set_default_format(self):
         # set the format and then set it back again
         old_format = _mod_branch.format_registry.get_default()
-        _mod_branch.format_registry.set_default(SampleBranchFormat())
+        _mod_branch.format_registry.set_default_key(
+            SampleBranchFormat.get_format_string())
         try:
             # the default branch format is used by the meta dir format
             # which is not the default bzrdir format at this point
@@ -68,7 +69,8 @@ class TestDefaultFormat(tests.TestCase):
             result = dir.create_branch()
             self.assertEqual(result, 'A branch')
         finally:
-            _mod_branch.format_registry.set_default(old_format)
+            _mod_branch.format_registry.set_default(
+                old_format.get_format_string())
         self.assertEqual(old_format,
                          _mod_branch.format_registry.get_default())
 
@@ -213,21 +215,21 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
     def test_find_format_not_branch(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         self.assertRaises(errors.NotBranchError,
-                          _mod_branch.BranchFormatMetadir.find_format,
+                          _mod_bzrbranch.BranchFormatMetadir.find_format,
                           dir)
 
     def test_find_format_unknown_format(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         SampleBranchFormat().initialize(dir)
         self.assertRaises(errors.UnknownFormatError,
-                          _mod_branch.BranchFormatMetadir.find_format,
+                          _mod_bzrbranch.BranchFormatMetadir.find_format,
                           dir)
 
     def test_find_format_with_features(self):
         tree = self.make_branch_and_tree('.', format='2a')
         tree.branch.update_feature_flags({"name": "optional"})
-        found_format = _mod_branch.BranchFormatMetadir.find_format(tree.bzrdir)
-        self.assertIsInstance(found_format, _mod_branch.BranchFormatMetadir)
+        found_format = _mod_bzrbranch.BranchFormatMetadir.find_format(tree.bzrdir)
+        self.assertIsInstance(found_format, _mod_bzrbranch.BranchFormatMetadir)
         self.assertEqual(found_format.features.get("name"), "optional")
         tree.branch.update_feature_flags({"name": None})
         branch = _mod_branch.Branch.open('.')
@@ -534,7 +536,7 @@ class TestBranchReference(tests.TestCaseWithTransport):
         target_branch = dir.create_branch()
         t.mkdir('branch')
         branch_dir = bzrdirformat.initialize(self.get_url('branch'))
-        made_branch = _mod_branch.BranchReferenceFormat().initialize(
+        made_branch = _mod_bzrbranch.BranchReferenceFormat().initialize(
             branch_dir, target_branch=target_branch)
         self.assertEqual(made_branch.base, target_branch.base)
         opened_branch = branch_dir.open_branch()
@@ -549,7 +551,7 @@ class TestBranchReference(tests.TestCaseWithTransport):
         # then this file read will fail.
         self.assertFileEqual(reference_url, 'checkout/.bzr/branch/location')
         self.assertEqual(reference_url,
-            _mod_branch.BranchReferenceFormat().get_reference(checkout.bzrdir))
+            _mod_bzrbranch.BranchReferenceFormat().get_reference(checkout.bzrdir))
 
 
 class TestHooks(tests.TestCaseWithTransport):

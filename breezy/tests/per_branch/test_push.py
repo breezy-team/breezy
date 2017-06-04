@@ -20,6 +20,7 @@ import os
 
 from ... import (
     branch,
+    bzrbranch,
     builtins,
     controldir,
     check,
@@ -261,7 +262,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         """
         if self.bzrdir_format.fixed_components:
             raise tests.TestNotApplicable('Not a metadir format.')
-        if isinstance(self.branch_format, branch.BranchReferenceFormat):
+        if isinstance(self.branch_format, bzrbranch.BranchReferenceFormat):
             # This test could in principle apply to BranchReferenceFormat, but
             # make_branch_builder doesn't support it.
             raise tests.TestSkipped(
