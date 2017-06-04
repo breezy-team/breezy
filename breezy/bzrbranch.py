@@ -17,18 +17,24 @@
 
 from __future__ import absolute_import
 
-from . import (
-    bzrdir,
+from .lazy_import import lazy_import
+lazy_import(globals(), """
+from breezy import (
     cache_utf8,
     config as _mod_config,
-    controldir,
-    errors,
     lockable_files,
     lockdir,
-    revision as _mod_revision,
     rio,
     shelf,
     tag as _mod_tag,
+    )
+""")
+
+from . import (
+    bzrdir,
+    controldir,
+    errors,
+    revision as _mod_revision,
     urlutils,
     )
 from .branch import (
