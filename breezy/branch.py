@@ -1683,34 +1683,6 @@ class BranchFormat(controldir.ControlComponentFormat):
         return True
 
 
-class MetaDirBranchFormatFactory(registry._LazyObjectGetter):
-    """A factory for a BranchFormat object, permitting simple lazy registration.
-    
-    While none of the built in BranchFormats are lazy registered yet,
-    breezy.tests.test_branch.TestMetaDirBranchFormatFactory demonstrates how to
-    use it, and the bzr-loom plugin uses it as well (see
-    breezy.plugins.loom.formats).
-    """
-
-    def __init__(self, format_string, module_name, member_name):
-        """Create a MetaDirBranchFormatFactory.
-
-        :param format_string: The format string the format has.
-        :param module_name: Module to load the format class from.
-        :param member_name: Attribute name within the module for the format class.
-        """
-        registry._LazyObjectGetter.__init__(self, module_name, member_name)
-        self._format_string = format_string
-
-    def get_format_string(self):
-        """See BranchFormat.get_format_string."""
-        return self._format_string
-
-    def __call__(self):
-        """Used for network_format_registry support."""
-        return self.get_obj()()
-
-
 class BranchHooks(Hooks):
     """A dictionary mapping hook name to a list of callables for branch hooks.
 

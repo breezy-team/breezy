@@ -194,17 +194,6 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
             self.assertIsInstance(found_format, format.__class__)
         check_format(BzrBranchFormat5(), "bar")
 
-    def test_find_format_factory(self):
-        dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        SampleSupportedBranchFormat().initialize(dir)
-        factory = _mod_bzrbranch.MetaDirBranchFormatFactory(
-            SampleSupportedBranchFormatString,
-            "breezy.tests.test_branch", "SampleSupportedBranchFormat")
-        _mod_branch.format_registry.register(factory)
-        self.addCleanup(_mod_branch.format_registry.remove, factory)
-        b = _mod_branch.Branch.open(self.get_url())
-        self.assertEqual(b, "opened supported branch.")
-
     def test_from_string(self):
         self.assertIsInstance(
             SampleBranchFormat.from_string("Sample branch format."),
@@ -276,34 +265,6 @@ class TestBranchFormatRegistry(tests.TestCase):
         formats = self.registry._get_all()
         self.assertEqual(1, len(formats))
         self.assertIsInstance(formats[0], SampleExtraBranchFormat)
-
-
-#Used by TestMetaDirBranchFormatFactory 
-FakeLazyFormat = None
-
-
-class TestMetaDirBranchFormatFactory(tests.TestCase):
-
-    def test_get_format_string_does_not_load(self):
-        """Formats have a static format string."""
-        factory = _mod_branch.MetaDirBranchFormatFactory("yo", None, None)
-        self.assertEqual("yo", factory.get_format_string())
-
-    def test_call_loads(self):
-        # __call__ is used by the network_format_registry interface to get a
-        # Format.
-        global FakeLazyFormat
-        del FakeLazyFormat
-        factory = _mod_branch.MetaDirBranchFormatFactory(None,
-            "breezy.tests.test_branch", "FakeLazyFormat")
-        self.assertRaises(AttributeError, factory)
-
-    def test_call_returns_call_of_referenced_object(self):
-        global FakeLazyFormat
-        FakeLazyFormat = lambda:'called'
-        factory = _mod_branch.MetaDirBranchFormatFactory(None,
-            "breezy.tests.test_branch", "FakeLazyFormat")
-        self.assertEqual('called', factory())
 
 
 class TestBranch67(object):

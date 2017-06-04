@@ -88,6 +88,10 @@ API Changes
  * ``BzrBranch`` and the various bzr branch format implementations
    have been moved to ``breezy.bzr``. (Jelmer Vernooĳ)
 
+ * ``MetaDirBranchFormatFactory`` has been removed.
+   Use lazy registration on ``breezy.branch.format_registry``
+   instead. (Jelmer Vernooĳ)
+
 Internals
 *********
 
