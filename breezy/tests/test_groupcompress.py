@@ -406,7 +406,7 @@ class TestGroupCompressBlock(tests.TestCase):
         # partial decompression to work with. Most auto-generated data
         # compresses a bit too well, we want a combination, so we combine a sha
         # hash with compressible data.
-        for i in xrange(2048):
+        for i in range(2048):
             next_content = '%d\nThis is a bit of duplicate text\n' % (i,)
             content_chunks.append(next_content)
             next_sha1 = osutils.sha_string(next_content)
@@ -451,7 +451,7 @@ class TestGroupCompressBlock(tests.TestCase):
         # partial decompression to work with. Most auto-generated data
         # compresses a bit too well, we want a combination, so we combine a sha
         # hash with compressible data.
-        for i in xrange(2048):
+        for i in range(2048):
             next_content = '%d\nThis is a bit of duplicate text\n' % (i,)
             content_chunks.append(next_content)
             next_sha1 = osutils.sha_string(next_content)

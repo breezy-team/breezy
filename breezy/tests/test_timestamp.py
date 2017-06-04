@@ -123,7 +123,7 @@ class UnpackHighresDateTests(tests.TestCase):
         self.assertEqual(o, o2)
         t -= 24*3600*365*2 # Start 2 years ago
         o = -12*3600
-        for count in xrange(500):
+        for count in range(500):
             t += random.random()*24*3600*30
             o = ((o/3600 + 13) % 25 - 12)*3600 # Add 1 wrap around from [-12, 12]
             date = timestamp.format_highres_date(t, o)

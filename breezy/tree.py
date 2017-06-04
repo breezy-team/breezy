@@ -1512,7 +1512,7 @@ class MultiWalker(object):
                          for other in self._other_trees]
         other_entries = [self._step_one(walker) for walker in other_walkers]
         # Track extra nodes in the other trees
-        others_extra = [{} for i in xrange(len(self._other_trees))]
+        others_extra = [{} for _ in range(len(self._other_trees))]
 
         master_has_more = True
         step_one = self._step_one
@@ -1600,7 +1600,7 @@ class MultiWalker(object):
                 # the lookup_by_file_id will be removing anything processed
                 # from the extras cache
                 other_extra.pop(file_id)
-                other_values = [(None, None) for i in xrange(idx)]
+                other_values = [(None, None)] * idx
                 other_values.append((other_path, other_ie))
                 for alt_idx, alt_extra in enumerate(self._others_extra[idx+1:]):
                     alt_idx = alt_idx + idx + 1

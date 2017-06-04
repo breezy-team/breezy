@@ -39,8 +39,9 @@ if PY3:
     import io as _io
     BytesIO = _io.BytesIO
     StringIO = _io.StringIO
-    from builtins import zip, map
+    from builtins import range, map, zip
 else:
     from cStringIO import StringIO as BytesIO
     from StringIO import StringIO
     from future_builtins import zip, map
+    range = xrange

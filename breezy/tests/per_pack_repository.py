@@ -553,7 +553,7 @@ class TestPackRepository(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         tree.lock_write()
         try:
-            for i in xrange(9):
+            for i in range(9):
                 tree.commit('rev %d' % (i,))
             r2 = repository.Repository.open('tree')
             r2.lock_write()

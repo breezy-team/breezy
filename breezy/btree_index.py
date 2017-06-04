@@ -43,6 +43,7 @@ from .index import _OPTION_NODE_REFS, _OPTION_KEY_ELEMENTS, _OPTION_LEN
 from .sixish import (
     BytesIO,
     map,
+    range,
     )
 
 
@@ -817,10 +818,10 @@ class BTreeGraphIndex(object):
         if total_pages - len(cached_offsets) <= self._recommended_pages:
             # Read whatever is left
             if cached_offsets:
-                expanded = [x for x in xrange(total_pages)
+                expanded = [x for x in range(total_pages)
                                if x not in cached_offsets]
             else:
-                expanded = range(total_pages)
+                expanded = list(range(total_pages))
             if 'index' in debug.debug_flags:
                 trace.mutter('  reading all unread pages: %s', expanded)
             return expanded
@@ -1017,7 +1018,7 @@ class BTreeGraphIndex(object):
             return
         start_of_leaves = self._row_offsets[-2]
         end_of_leaves = self._row_offsets[-1]
-        needed_offsets = range(start_of_leaves, end_of_leaves)
+        needed_offsets = list(range(start_of_leaves, end_of_leaves))
         if needed_offsets == [0]:
             # Special case when we only have a root node, as we have already
             # read everything
@@ -1543,7 +1544,7 @@ class BTreeGraphIndex(object):
                     self._size = num_bytes - base_offset
                     # the whole thing should be parsed out of 'bytes'
                     ranges = [(start, min(_PAGE_SIZE, num_bytes - start))
-                        for start in xrange(base_offset, num_bytes, _PAGE_SIZE)]
+                        for start in range(base_offset, num_bytes, _PAGE_SIZE)]
                     break
             else:
                 if offset > self._size:
@@ -1596,7 +1597,7 @@ class BTreeGraphIndex(object):
             # We shouldn't be reading anything anyway
             start_node = 1
         node_end = self._row_offsets[-1]
-        for node in self._read_nodes(range(start_node, node_end)):
+        for node in self._read_nodes(list(range(start_node, node_end))):
             pass
 
 

@@ -4418,7 +4418,7 @@ def probe_bad_non_ascii(encoding):
     Return None if all non-ascii characters is valid
     for given encoding.
     """
-    for i in xrange(128, 256):
+    for i in range(128, 256):
         char = chr(i)
         try:
             char.decode(encoding)

@@ -401,7 +401,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         # well and the deltas get bigger.
         to_add = [
             ('add', ('', 'TREE_ROOT', 'directory', None))]
-        for i in xrange(10):
+        for i in range(10):
             fname = 'file%03d' % (i,)
             fileid = '%s-%s' % (fname, osutils.rand_chars(64))
             to_add.append(('add', (fname, fileid, 'file', 'content\n')))
