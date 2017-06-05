@@ -3904,6 +3904,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_api',
         'breezy.tests.test_atomicfile',
         'breezy.tests.test_bad_files',
+        'breezy.tests.test_bisect',
         'breezy.tests.test_bisect_multi',
         'breezy.tests.test_branch',
         'breezy.tests.test_branchbuilder',

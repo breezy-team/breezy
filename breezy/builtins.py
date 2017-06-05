@@ -6741,6 +6741,7 @@ def _register_lazy_builtins():
     # register lazy builtins from other modules; called at startup and should
     # be only called once.
     for (name, aliases, module_name) in [
+        ('cmd_bisect', [], 'breezy.bisect'),
         ('cmd_bundle_info', [], 'breezy.bundle.commands'),
         ('cmd_config', [], 'breezy.config'),
         ('cmd_dpush', [], 'breezy.foreign'),
