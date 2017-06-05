@@ -48,7 +48,10 @@ from . import (
     lazy_regex,
     trace,
     )
-
+from .sixish import (
+    viewitems,
+    viewvalues,
+    )
 from .static_tuple import StaticTuple
 
 
@@ -227,9 +230,6 @@ class InventoryEntry(object):
 
     known_kinds = ('file', 'directory', 'symlink')
 
-    def sorted_children(self):
-        return sorted(self.children.items())
-
     @staticmethod
     def versionable_kind(kind):
         return (kind in ('file', 'directory', 'symlink', 'tree-reference'))
@@ -401,6 +401,9 @@ class InventoryDirectory(InventoryEntry):
     def __init__(self, file_id, name, parent_id):
         super(InventoryDirectory, self).__init__(file_id, name, parent_id)
         self.children = {}
+
+    def sorted_children(self):
+        return sorted(viewitems(self.children))
 
     def kind_character(self):
         """See InventoryEntry.kind_character."""
@@ -665,7 +668,7 @@ class CommonInventory(object):
 
         # unrolling the recursive called changed the time from
         # 440ms/663ms (inline/total) to 116ms/116ms
-        children = sorted(from_dir.children.items())
+        children = sorted(viewitems(from_dir.children))
         if not recursive:
             for name, ie in children:
                 yield name, ie
@@ -690,7 +693,7 @@ class CommonInventory(object):
                     continue
 
                 # But do this child first
-                new_children = sorted(ie.children.items())
+                new_children = sorted(viewitems(ie.children))
                 new_children = collections.deque(new_children)
                 stack.append((path, new_children))
                 # Break out of inner loop, so that we start outer loop with child
@@ -771,7 +774,7 @@ class CommonInventory(object):
             cur_relpath, cur_dir = stack.pop()
 
             child_dirs = []
-            for child_name, child_ie in sorted(cur_dir.children.iteritems()):
+            for child_name, child_ie in sorted(viewitems(cur_dir.children)):
 
                 child_relpath = cur_relpath + child_name
 
@@ -814,7 +817,7 @@ class CommonInventory(object):
         """
         accum = []
         def descend(dir_ie, dir_path):
-            kids = sorted(dir_ie.children.items())
+            kids = sorted(viewitems(dir_ie.children))
             for name, ie in kids:
                 child_path = osutils.pathjoin(dir_path, name)
                 accum.append((child_path, ie))
@@ -1102,9 +1105,8 @@ class Inventory(CommonInventory):
         XXX: We may not want to merge this into bzr.dev.
         """
         if self.root is None:
-            return
-        for _, ie in self._byid.iteritems():
-            yield ie
+            return ()
+        return iter(viewvalues(self._byid))
 
     def __len__(self):
         """Returns number of entries."""
@@ -1138,8 +1140,10 @@ class Inventory(CommonInventory):
                 "inventory already contains entry with id {%s}" %
                 entry.file_id)
         self._byid[entry.file_id] = entry
-        for child in getattr(entry, 'children', {}).itervalues():
-            self._add_child(child)
+        children = getattr(entry, 'children', {})
+        if children is not None:
+            for child in viewvalues(children):
+                self._add_child(child)
         return entry
 
     def add(self, entry):
@@ -1288,7 +1292,7 @@ class Inventory(CommonInventory):
             ie = to_find_delete.pop()
             to_delete.append(ie.file_id)
             if ie.kind == 'directory':
-                to_find_delete.extend(ie.children.values())
+                to_find_delete.extend(viewvalues(ie.children))
         for file_id in reversed(to_delete):
             ie = self[file_id]
             del self._byid[file_id]
@@ -1589,7 +1593,7 @@ class CHKInventory(CommonInventory):
         result = CHKInventory(self._search_key_name)
         if propagate_caches:
             # Just propagate the path-to-fileid cache for now
-            result._path_to_fileid_cache = dict(self._path_to_fileid_cache.iteritems())
+            result._path_to_fileid_cache = self._path_to_fileid_cache.copy()
         search_key_func = chk_map.search_key_registry.get(self._search_key_name)
         self.id_to_entry._ensure_root()
         maximum_size = self.id_to_entry._root_node.maximum_size
@@ -1708,7 +1712,7 @@ class CHKInventory(CommonInventory):
                 continue
             # This loop could potentially be better by using the id_basename
             # map to just get the child file ids.
-            for child in entry.children.values():
+            for child in viewvalues(entry.children):
                 if child.file_id not in altered:
                     raise errors.InconsistentDelta(self.id2path(child.file_id),
                         child.file_id, "Child not deleted or reparented when "
@@ -1720,7 +1724,7 @@ class CHKInventory(CommonInventory):
             # re-keying, but its simpler to just output that as a delete+add
             # to spend less time calculating the delta.
             delta_list = []
-            for key, (old_key, value) in parent_id_basename_delta.iteritems():
+            for key, (old_key, value) in viewitems(parent_id_basename_delta):
                 if value is not None:
                     delta_list.append((old_key, key, value))
                 else:

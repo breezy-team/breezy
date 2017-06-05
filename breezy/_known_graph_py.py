@@ -24,6 +24,10 @@ from . import (
     errors,
     revision,
     )
+from .sixish import (
+    viewitems,
+    viewvalues,
+    )
 
 
 class _KnownGraphNode(object):
@@ -81,7 +85,7 @@ class KnownGraph(object):
           child_keys,
         """
         nodes = self._nodes
-        for key, parent_keys in parent_map.iteritems():
+        for key, parent_keys in viewitems(parent_map):
             if key in nodes:
                 node = nodes[key]
                 node.parent_keys = parent_keys
@@ -97,11 +101,11 @@ class KnownGraph(object):
                 parent_node.child_keys.append(key)
 
     def _find_tails(self):
-        return [node for node in self._nodes.itervalues()
+        return [node for node in viewvalues(self._nodes)
                 if not node.parent_keys]
 
     def _find_tips(self):
-        return [node for node in self._nodes.itervalues()
+        return [node for node in viewvalues(self._nodes)
                       if not node.child_keys]
 
     def _find_gdfo(self):
@@ -234,7 +238,7 @@ class KnownGraph(object):
         seen = set()
         pending = []
         min_gdfo = None
-        for node in candidate_nodes.values():
+        for node in viewvalues(candidate_nodes):
             if node.parent_keys:
                 pending.extend(node.parent_keys)
             if min_gdfo is None or node.gdfo < min_gdfo:
@@ -261,7 +265,7 @@ class KnownGraph(object):
 
         All parents must occur before all children.
         """
-        for node in self._nodes.itervalues():
+        for node in viewvalues(self._nodes):
             if node.gdfo is None:
                 raise errors.GraphCycleError(self._nodes)
         pending = self._find_tails()
@@ -339,7 +343,7 @@ class KnownGraph(object):
         """Compute the merge sorted graph output."""
         from breezy import tsort
         as_parent_map = dict((node.key, node.parent_keys)
-                             for node in self._nodes.itervalues()
+                             for node in viewvalues(self._nodes)
                               if node.parent_keys is not None)
         # We intentionally always generate revnos and never force the
         # mainline_revisions

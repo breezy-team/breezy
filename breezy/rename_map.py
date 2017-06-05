@@ -25,6 +25,7 @@ from . import (
 from .i18n import gettext
 from .sixish import (
     BytesIO,
+    viewitems,
     )
 from .ui import ui_factory
 
@@ -109,7 +110,7 @@ class RenameMap(object):
                 task.update(gettext('Determining hash hits'), num, len(paths))
                 hits = self.hitcounts(self.tree.get_file_lines(None,
                                                                path=path))
-                all_hits.extend((v, path, k) for k, v in hits.items())
+                all_hits.extend((v, path, k) for k, v in viewitems(hits))
         finally:
             task.finished()
         return all_hits
@@ -150,7 +151,7 @@ class RenameMap(object):
                     break
                 required_parents.setdefault(path, []).append(child)
         require_ids = {}
-        for parent, children in required_parents.iteritems():
+        for parent, children in viewitems(required_parents):
             child_file_ids = set()
             for child in children:
                 file_id = matches.get(child)
@@ -167,8 +168,8 @@ class RenameMap(object):
         parent directories.
         """
         all_hits = []
-        for file_id, file_id_children in missing_parents.iteritems():
-            for path, path_children in required_parents.iteritems():
+        for file_id, file_id_children in viewitems(missing_parents):
+            for path, path_children in viewitems(required_parents):
                 hits = len(path_children.intersection(file_id_children))
                 if hits > 0:
                     all_hits.append((hits, path, file_id))
@@ -250,8 +251,8 @@ class RenameMap(object):
 
     def _make_inventory_delta(self, matches):
         delta = []
-        file_id_matches = dict((f, p) for p, f in matches.items())
-        for old_path, entry in self.tree.iter_entries_by_dir(matches.values()):
+        file_id_matches = dict((f, p) for p, f in viewitems(matches))
+        for old_path, entry in self.tree.iter_entries_by_dir(file_id_matches):
             new_path = file_id_matches[entry.file_id]
             parent_path, new_name = osutils.split(new_path)
             parent_id = matches.get(parent_path)

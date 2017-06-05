@@ -158,8 +158,8 @@ class FIFOCache(dict):
         if len(args) == 1:
             arg = args[0]
             if isinstance(arg, dict):
-                for key, val in arg.iteritems():
-                    self.add(key, val)
+                for key in arg:
+                    self.add(key, arg[key])
             else:
                 for key, val in args[0]:
                     self.add(key, val)
@@ -167,8 +167,8 @@ class FIFOCache(dict):
             raise TypeError('update expected at most 1 argument, got %d'
                             % len(args))
         if kwargs:
-            for key, val in kwargs.iteritems():
-                self.add(key, val)
+            for key in kwargs:
+                self.add(key, kwargs[key])
 
 
 class FIFOSizeCache(FIFOCache):

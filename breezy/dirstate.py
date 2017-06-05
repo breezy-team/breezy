@@ -244,6 +244,8 @@ from breezy import (
     )
 from .sixish import (
     range,
+    viewitems,
+    viewvalues,
     )
 
 
@@ -975,7 +977,7 @@ class DirState(object):
             # Directories that need to be read
             pending_dirs = set()
             paths_to_search = set()
-            for entry_list in newly_found.itervalues():
+            for entry_list in viewvalues(newly_found):
                 for dir_name_id, trees_info in entry_list:
                     found[dir_name_id] = trees_info
                     found_dir_names.add(dir_name_id[:2])
@@ -1386,8 +1388,8 @@ class DirState(object):
                                                fingerprint, new_child_path)
         self._check_delta_ids_absent(new_ids, delta, 0)
         try:
-            self._apply_removals(removals.iteritems())
-            self._apply_insertions(insertions.values())
+            self._apply_removals(viewitems(removals))
+            self._apply_insertions(viewvalues(insertions))
             # Validate parents
             self._after_delta_check_parents(parents, 0)
         except errors.BzrError as e:
@@ -2723,7 +2725,7 @@ class DirState(object):
         # --- end generation of full tree mappings
 
         # sort and output all the entries
-        new_entries = self._sort_entries(by_path.items())
+        new_entries = self._sort_entries(viewitems(by_path))
         self._entries_to_current_state(new_entries)
         self._parents = [rev_id for rev_id, tree in trees]
         self._ghosts = list(ghosts)
@@ -3288,7 +3290,7 @@ class DirState(object):
                 raise AssertionError(
                     "entry %r has no data for any tree." % (entry,))
         if self._id_index is not None:
-            for file_id, entry_keys in self._id_index.iteritems():
+            for file_id, entry_keys in viewitems(self._id_index):
                 for entry_key in entry_keys:
                     # Check that the entry in the map is pointing to the same
                     # file_id

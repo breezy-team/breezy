@@ -44,6 +44,8 @@ from . import (
     )
 from .sixish import (
     BytesIO,
+    viewvalues,
+    viewitems,
     )
 from .static_tuple import StaticTuple
 
@@ -143,7 +145,7 @@ class GraphIndexBuilder(object):
         if self._nodes_by_key is None:
             nodes_by_key = {}
             if self.reference_lists:
-                for key, (absent, references, value) in self._nodes.iteritems():
+                for key, (absent, references, value) in viewitems(self._nodes):
                     if absent:
                         continue
                     key_dict = nodes_by_key
@@ -151,7 +153,7 @@ class GraphIndexBuilder(object):
                         key_dict = key_dict.setdefault(subkey, {})
                     key_dict[key[-1]] = key, value, references
             else:
-                for key, (absent, references, value) in self._nodes.iteritems():
+                for key, (absent, references, value) in viewitems(self._nodes):
                     if absent:
                         continue
                     key_dict = nodes_by_key
@@ -275,7 +277,7 @@ class GraphIndexBuilder(object):
         # forward sorted by key. In future we may consider topological sorting,
         # at the cost of table scans for direct lookup, or a second index for
         # direct lookup
-        nodes = sorted(self._nodes.items())
+        nodes = sorted(viewitems(self._nodes))
         # if we do not prepass, we don't know how long it will be up front.
         expected_bytes = None
         # we only need to pre-pass if we have reference lists at all.
@@ -478,7 +480,7 @@ class GraphIndex(object):
         stream.close()
         del lines[-1]
         _, _, _, trailers = self._parse_lines(lines, pos)
-        for key, absent, references, value in self._keys_by_offset.itervalues():
+        for key, absent, references, value in viewvalues(self._keys_by_offset):
             if absent:
                 continue
             # resolve references:
@@ -509,7 +511,7 @@ class GraphIndex(object):
                 % (ref_list_num, self.node_ref_lists))
         refs = set()
         nodes = self._nodes
-        for key, (value, ref_lists) in nodes.iteritems():
+        for key, (value, ref_lists) in viewitems(nodes):
             ref_list = ref_lists[ref_list_num]
             refs.update([ref for ref in ref_list if ref not in nodes])
         return refs
@@ -518,13 +520,13 @@ class GraphIndex(object):
         if self._nodes_by_key is None:
             nodes_by_key = {}
             if self.node_ref_lists:
-                for key, (value, references) in self._nodes.iteritems():
+                for key, (value, references) in viewitems(self._nodes):
                     key_dict = nodes_by_key
                     for subkey in key[:-1]:
                         key_dict = key_dict.setdefault(subkey, {})
                     key_dict[key[-1]] = key, value, references
             else:
-                for key, value in self._nodes.iteritems():
+                for key, value in viewitems(self._nodes):
                     key_dict = nodes_by_key
                     for subkey in key[:-1]:
                         key_dict = key_dict.setdefault(subkey, {})
@@ -547,10 +549,10 @@ class GraphIndex(object):
         if self._nodes is None:
             self._buffer_all()
         if self.node_ref_lists:
-            for key, (value, node_ref_lists) in self._nodes.iteritems():
+            for key, (value, node_ref_lists) in viewitems(self._nodes):
                 yield self, key, value, node_ref_lists
         else:
-            for key, value in self._nodes.iteritems():
+            for key, value in viewitems(self._nodes):
                 yield self, key, value
 
     def _read_prefix(self, stream):
@@ -716,11 +718,7 @@ class GraphIndex(object):
             self._buffer_all()
         if self._key_length == 1:
             for key in keys:
-                # sanity check
-                if key[0] is None:
-                    raise errors.BadIndexKey(key)
-                if len(key) != self._key_length:
-                    raise errors.BadIndexKey(key)
+                _sanity_check_key(self, key)
                 if self.node_ref_lists:
                     value, node_refs = self._nodes[key]
                     yield self, key, value, node_refs
@@ -728,41 +726,8 @@ class GraphIndex(object):
                     yield self, key, self._nodes[key]
             return
         nodes_by_key = self._get_nodes_by_key()
-        for key in keys:
-            # sanity check
-            if key[0] is None:
-                raise errors.BadIndexKey(key)
-            if len(key) != self._key_length:
-                raise errors.BadIndexKey(key)
-            # find what it refers to:
-            key_dict = nodes_by_key
-            elements = list(key)
-            # find the subdict whose contents should be returned.
-            try:
-                while len(elements) and elements[0] is not None:
-                    key_dict = key_dict[elements[0]]
-                    elements.pop(0)
-            except KeyError:
-                # a non-existant lookup.
-                continue
-            if len(elements):
-                dicts = [key_dict]
-                while dicts:
-                    key_dict = dicts.pop(-1)
-                    # can't be empty or would not exist
-                    item, value = next(key_dict.iteritems())
-                    if isinstance(value, dict):
-                        # push keys
-                        dicts.extend(key_dict.itervalues())
-                    else:
-                        # yield keys
-                        for value in key_dict.itervalues():
-                            # each value is the key:value:node refs tuple
-                            # ready to yield.
-                            yield (self, ) + value
-            else:
-                # the last thing looked up was a terminal element
-                yield (self, ) + key_dict
+        for entry in _iter_entries_prefix(self, nodes_by_key, keys):
+            yield entry
 
     def _find_ancestors(self, keys, ref_list_num, parent_map, missing_keys):
         """See BTreeIndex._find_ancestors."""
@@ -1635,11 +1600,11 @@ class InMemoryGraphIndex(GraphIndexBuilder):
             trace.mutter_callsite(3,
                 "iter_all_entries scales with size of history.")
         if self.reference_lists:
-            for key, (absent, references, value) in self._nodes.iteritems():
+            for key, (absent, references, value) in viewitems(self._nodes):
                 if not absent:
                     yield self, key, value, references
         else:
-            for key, (absent, references, value) in self._nodes.iteritems():
+            for key, (absent, references, value) in viewitems(self._nodes):
                 if not absent:
                     yield self, key, value
 
@@ -1683,18 +1648,12 @@ class InMemoryGraphIndex(GraphIndexBuilder):
             will be returned, and every match that is in the index will be
             returned.
         """
-        # XXX: To much duplication with the GraphIndex class; consider finding
-        # a good place to pull out the actual common logic.
         keys = set(keys)
         if not keys:
             return
         if self._key_length == 1:
             for key in keys:
-                # sanity check
-                if key[0] is None:
-                    raise errors.BadIndexKey(key)
-                if len(key) != self._key_length:
-                    raise errors.BadIndexKey(key)
+                _sanity_check_key(self, key)
                 node = self._nodes[key]
                 if node[0]:
                     continue
@@ -1704,38 +1663,8 @@ class InMemoryGraphIndex(GraphIndexBuilder):
                     yield self, key, node[2]
             return
         nodes_by_key = self._get_nodes_by_key()
-        for key in keys:
-            # sanity check
-            if key[0] is None:
-                raise errors.BadIndexKey(key)
-            if len(key) != self._key_length:
-                raise errors.BadIndexKey(key)
-            # find what it refers to:
-            key_dict = nodes_by_key
-            elements = list(key)
-            # find the subdict to return
-            try:
-                while len(elements) and elements[0] is not None:
-                    key_dict = key_dict[elements[0]]
-                    elements.pop(0)
-            except KeyError:
-                # a non-existant lookup.
-                continue
-            if len(elements):
-                dicts = [key_dict]
-                while dicts:
-                    key_dict = dicts.pop(-1)
-                    # can't be empty or would not exist
-                    item, value = next(key_dict.iteritems())
-                    if isinstance(value, dict):
-                        # push keys
-                        dicts.extend(key_dict.itervalues())
-                    else:
-                        # yield keys
-                        for value in key_dict.itervalues():
-                            yield (self, ) + value
-            else:
-                yield (self, ) + key_dict
+        for entry in _iter_entries_prefix(self, nodes_by_key, keys):
+            yield entry
 
     def key_count(self):
         """Return an estimate of the number of keys in this index.
@@ -1873,3 +1802,46 @@ class GraphIndexPrefixAdapter(object):
     def validate(self):
         """Call the adapted's validate."""
         self.adapted.validate()
+
+
+def _sanity_check_key(index_or_builder, key):
+    """Raise BadIndexKey if key cannot be used for prefix matching."""
+    if key[0] is None:
+        raise errors.BadIndexKey(key)
+    if len(key) != index_or_builder._key_length:
+        raise errors.BadIndexKey(key)
+
+
+def _iter_entries_prefix(index_or_builder, nodes_by_key, keys):
+    """Helper for implementing prefix matching iterators."""
+    for key in keys:
+        _sanity_check_key(index_or_builder, key)
+        # find what it refers to:
+        key_dict = nodes_by_key
+        elements = list(key)
+        # find the subdict whose contents should be returned.
+        try:
+            while len(elements) and elements[0] is not None:
+                key_dict = key_dict[elements[0]]
+                elements.pop(0)
+        except KeyError:
+            # a non-existant lookup.
+            continue
+        if len(elements):
+            dicts = [key_dict]
+            while dicts:
+                values_view = viewvalues(dicts.pop())
+                # can't be empty or would not exist
+                value = next(iter(values_view))
+                if isinstance(value, dict):
+                    # still descending, push values
+                    dicts.extend(values_view)
+                else:
+                    # at leaf tuples, yield values
+                    for value in values_view:
+                        # each value is the key:value:node refs tuple
+                        # ready to yield.
+                        yield (index_or_builder, ) + value
+        else:
+            # the last thing looked up was a terminal element
+            yield (index_or_builder, ) + key_dict

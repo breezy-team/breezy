@@ -253,10 +253,11 @@ class TestPackRepository(TestCaseWithTransport):
                     repo.abort_write_group()
                     raise
                 else:
-                    old_names = repo._pack_collection._names.keys()
+                    old_names = set(repo._pack_collection._names)
                     result = repo.commit_write_group()
-                    cur_names = repo._pack_collection._names.keys()
-                    new_names = list(set(cur_names) - set(old_names))
+                    cur_names = set(repo._pack_collection._names)
+                    # In this test, len(result) is always 1, so unordered is ok
+                    new_names = list(cur_names - old_names)
                     self.assertEqual(new_names, result)
         finally:
             repo.unlock()
