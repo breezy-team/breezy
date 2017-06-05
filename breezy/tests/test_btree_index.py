@@ -643,7 +643,7 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual(1, len(list(index.iter_entries([nodes[30][0]]))))
         self.assertEqual([1, 4], index._row_lengths)
         self.assertIsNot(None, index._root_node)
-        internal_node_pre_clear = index._internal_node_cache.keys()
+        internal_node_pre_clear = set(index._internal_node_cache)
         self.assertTrue(len(index._leaf_node_cache) > 0)
         index.clear_cache()
         # We don't touch _root_node or _internal_node_cache, both should be
@@ -655,7 +655,7 @@ class TestBTreeIndex(BTreeTestCase):
         #       becuase without a 3-level index, we don't have any internal
         #       nodes cached.
         self.assertEqual(internal_node_pre_clear,
-                         index._internal_node_cache.keys())
+                         set(index._internal_node_cache))
         self.assertEqual(0, len(index._leaf_node_cache))
 
     def test_trivial_constructor(self):
@@ -737,7 +737,7 @@ class TestBTreeIndex(BTreeTestCase):
         index = btree_index.BTreeGraphIndex(trans, 'index', None)
         del trans._activity[:]
         nodes = dict(index._read_nodes([0]))
-        self.assertEqual([0], nodes.keys())
+        self.assertEqual({0}, set(nodes))
         node = nodes[0]
         self.assertEqual([('key',)], node.all_keys())
         self.assertEqual([('get', 'index')], trans._activity)

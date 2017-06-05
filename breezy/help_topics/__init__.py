@@ -233,7 +233,7 @@ def _help_on_transport(name):
 
     protl = []
     decl = []
-    protos = transport_list_registry.keys( )
+    protos = transport_list_registry.keys()
     protos.sort(sort_func)
     for proto in protos:
         shorthelp = transport_list_registry.get_help(proto)

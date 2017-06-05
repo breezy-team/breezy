@@ -430,7 +430,7 @@ class KnitReconciler(RepoReconciler):
             # NB: This is really not needed, reconcile != pack.
             per_id_bad_parents[key[0]] = {}
         # Generate per-knit/weave data.
-        for key, details in bad_parents.iteritems():
+        for key, details in bad_parents.items():
             file_id = key[0]
             rev_id = key[1]
             knit_parents = tuple([parent[-1] for parent in details[0]])

@@ -42,6 +42,9 @@ from breezy import (
 """)
 
 from .decorators import needs_read_lock, needs_write_lock
+from .sixish import (
+    viewvalues,
+    )
 
 
 def needs_tree_write_lock(unbound):
@@ -551,7 +554,9 @@ class _SmartAddHelper(object):
     """Helper for MutableTree.smart_add."""
 
     def get_inventory_delta(self):
-        return self._invdelta.values()
+        # GZ 2016-06-05: Returning view would probably be fine but currently
+        # Inventory.apply_delta is documented as requiring a list of changes.
+        return list(viewvalues(self._invdelta))
 
     def _get_ie(self, inv_path):
         """Retrieve the most up to date inventory entry for a path.
@@ -633,12 +638,12 @@ class _SmartAddHelper(object):
         prev_dir = None
 
         is_inside = osutils.is_inside_or_parent_of_any
-        for path, (inv_path, this_ie) in sorted(
-                user_dirs.iteritems(), key=operator.itemgetter(0)):
+        for path in sorted(user_dirs):
             if (prev_dir is None or not is_inside([prev_dir], path)):
+                inv_path, this_ie = user_dirs[path]
                 yield (path, inv_path, this_ie, None)
             prev_dir = path
-        
+
     def __init__(self, tree, action, conflicts_related=None):
         self.tree = tree
         if action is None:

@@ -2343,9 +2343,9 @@ class InventoryWorkingTree(WorkingTree,
     @needs_tree_write_lock
     def set_merge_modified(self, modified_hashes):
         def iter_stanzas():
-            for file_id, hash in modified_hashes.iteritems():
+            for file_id in modified_hashes:
                 yield _mod_rio.Stanza(file_id=file_id.decode('utf8'),
-                    hash=hash)
+                    hash=modified_hashes[file_id])
         self._put_rio('merge-hashes', iter_stanzas(), MERGE_MODIFIED_HEADER_1)
 
     @needs_read_lock

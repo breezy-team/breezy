@@ -33,6 +33,7 @@ from . import (
     )
 from .sixish import (
     range,
+    viewitems,
     )
 
 
@@ -92,7 +93,7 @@ class Annotator(object):
                     vf_keys_needed.add(key)
             needed_keys = set()
             next_parent_map.update(self._vf.get_parent_map(parent_lookup))
-            for key, parent_keys in next_parent_map.iteritems():
+            for key, parent_keys in viewitems(next_parent_map):
                 if parent_keys is None: # No graph versionedfile
                     parent_keys = ()
                     next_parent_map[key] = ()

@@ -105,7 +105,7 @@ class MockTree(object):
         return self.ids[parent_dir]
 
     def iter_entries(self):
-        for path, file_id in self.ids.iteritems():
+        for path, file_id in self.ids.items():
             yield path, self[file_id]
 
     def kind(self, file_id):
