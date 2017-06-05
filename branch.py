@@ -298,11 +298,11 @@ class GitBranchFormat(branch.BranchFormat):
 
     @property
     def _matchingbzrdir(self):
-        from bzrlib.plugins.git.dir import LocalGitControlDirFormat
+        from .dir import LocalGitControlDirFormat
         return LocalGitControlDirFormat()
 
     def get_foreign_tests_branch_factory(self):
-        from bzrlib.plugins.git.tests.test_branch import ForeignTestsBranchFactory
+        from .tests.test_branch import ForeignTestsBranchFactory
         return ForeignTestsBranchFactory()
 
     def make_tags(self, branch):
@@ -311,14 +311,14 @@ class GitBranchFormat(branch.BranchFormat):
         except AttributeError:
             pass
         if getattr(branch.repository, "_git", None) is None:
-            from bzrlib.plugins.git.remote import RemoteGitTagDict
+            from .remote import RemoteGitTagDict
             return RemoteGitTagDict(branch)
         else:
             return LocalGitTagDict(branch)
 
     def initialize(self, a_bzrdir, name=None, repository=None,
                    append_revisions_only=None):
-        from bzrlib.plugins.git.dir import LocalGitDir
+        from .dir import LocalGitDir
         if not isinstance(a_bzrdir, LocalGitDir):
             raise errors.IncompatibleFormat(self, a_bzrdir._format)
         return a_bzrdir.create_branch(repository=repository, name=name,
@@ -881,7 +881,7 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
 
     @classmethod
     def is_compatible(self, source, target):
-        from bzrlib.plugins.git.remote import RemoteGitBranch
+        from .remote import RemoteGitBranch
         return (isinstance(source, LocalGitBranch) and
                 isinstance(target, RemoteGitBranch))
 

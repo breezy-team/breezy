@@ -43,15 +43,15 @@ class cmd_git_import(Command):
                      ]
 
     def _get_colocated_branch(self, target_bzrdir, name):
-        from bzrlib.errors import NotBranchError
+        from ...errors import NotBranchError
         try:
             return target_bzrdir.open_branch(name=name)
         except NotBranchError:
             return target_bzrdir.create_branch(name=name)
 
     def _get_nested_branch(self, dest_transport, dest_format, name):
-        from bzrlib.bzrdir import BzrDir
-        from bzrlib.errors import NotBranchError
+        from ...bzrdir import BzrDir
+        from ...errors import NotBranchError
         head_transport = dest_transport.clone(name)
         try:
             head_bzrdir = BzrDir.open_from_transport(head_transport)
@@ -66,33 +66,33 @@ class cmd_git_import(Command):
     def run(self, src_location, dest_location=None, colocated=False):
         import os
         import urllib
-        from bzrlib import (
+        from ... import (
             controldir,
             trace,
             ui,
             urlutils,
             )
-        from bzrlib.bzrdir import (
+        from ...bzrdir import (
             BzrDir,
             )
-        from bzrlib.errors import (
+        from ...errors import (
             BzrCommandError,
             NoRepositoryPresent,
             NotBranchError,
             )
-        from bzrlib.plugins.git import gettext
-        from bzrlib.repository import (
+        from . import gettext
+        from ...repository import (
             InterRepository,
             Repository,
             )
-        from bzrlib.transport import get_transport
-        from bzrlib.plugins.git.branch import (
+        from ...transport import get_transport
+        from .branch import (
             GitBranch,
             )
-        from bzrlib.plugins.git.refs import (
+        from .refs import (
             ref_to_branch_name,
             )
-        from bzrlib.plugins.git.repository import GitRepository
+        from .repository import GitRepository
 
         dest_format = controldir.ControlDirFormat.get_default_format()
 
@@ -173,16 +173,16 @@ class cmd_git_object(Command):
 
     @display_command
     def run(self, sha1=None, directory=".", pretty=False):
-        from bzrlib.errors import (
+        from ...errors import (
             BzrCommandError,
             )
-        from bzrlib.bzrdir import (
+        from ...bzrdir import (
             BzrDir,
             )
-        from bzrlib.plugins.git.object_store import (
+        from .object_store import (
             get_object_store,
             )
-        from bzrlib.plugins.git import gettext
+        from . import gettext
         bzrdir, _ = BzrDir.open_containing(directory)
         repo = bzrdir.find_repository()
         object_store = get_object_store(repo)
@@ -216,13 +216,13 @@ class cmd_git_refs(Command):
 
     @display_command
     def run(self, location="."):
-        from bzrlib.bzrdir import (
+        from ...bzrdir import (
             BzrDir,
             )
-        from bzrlib.plugins.git.refs import (
+        from .refs import (
             get_refs_container,
             )
-        from bzrlib.plugins.git.object_store import (
+        from .object_store import (
             get_object_store,
             )
         bzrdir, _ = BzrDir.open_containing(location)
@@ -258,8 +258,8 @@ class cmd_git_apply(Command):
         :param f: Patch file to read.
         :param signoff: Add Signed-Off-By flag.
         """
-        from bzrlib.plugins.git import gettext
-        from bzrlib.errors import BzrCommandError
+        from . import gettext
+        from ...errors import BzrCommandError
         from dulwich.patch import git_am_patch_split
         import subprocess
         (c, diff, version) = git_am_patch_split(f)
@@ -278,8 +278,8 @@ class cmd_git_apply(Command):
         wt.commit(authors=[c.author], message=message)
 
     def run(self, patches_list=None, signoff=False, force=False):
-        from bzrlib.errors import UncommittedChanges
-        from bzrlib.workingtree import WorkingTree
+        from ...errors import UncommittedChanges
+        from ...workingtree import WorkingTree
         if patches_list is None:
             patches_list = []
 
@@ -307,15 +307,15 @@ class cmd_git_push_pristine_tar_deltas(Command):
     takes_args = ['target', 'package']
 
     def run(self, target, package, directory='.'):
-        from bzrlib.branch import Branch
-        from bzrlib.errors import (
+        from ...branch import Branch
+        from ...errors import (
             BzrCommandError,
             NoSuchRevision,
             )
-        from bzrlib.trace import warning
-        from bzrlib.repository import Repository
-        from bzrlib.plugins.git.object_store import get_object_store
-        from bzrlib.plugins.git.pristine_tar import (
+        from ...trace import warning
+        from ...repository import Repository
+        from .object_store import get_object_store
+        from .pristine_tar import (
             revision_pristine_tar_data,
             store_git_pristine_tar_data,
             )

@@ -96,7 +96,7 @@ class GitDir(ControlDir):
         if branch is None and getattr(self, "_get_selected_branch", False):
             branch = self._get_selected_branch()
         if branch is not None:
-            from bzrlib.plugins.git.refs import branch_name_to_ref
+            from .refs import branch_name_to_ref
             return branch_name_to_ref(branch)
         return self._get_default_ref()
 
@@ -110,9 +110,9 @@ class GitDir(ControlDir):
                recurse='down', possible_transports=None,
                accelerator_tree=None, hardlink=False, stacked=False,
                source_branch=None, create_tree_if_local=True):
-        from bzrlib.repository import InterRepository
-        from bzrlib.transport.local import LocalTransport
-        from bzrlib.transport import get_transport
+        from ...repository import InterRepository
+        from ...transport.local import LocalTransport
+        from ...transport import get_transport
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
         cloning_format = self.cloning_metadir()
@@ -160,8 +160,8 @@ class GitDir(ControlDir):
         force_new_repo=False, preserve_stacking=False, stacked_on=None,
         create_prefix=False, use_existing_dir=True, no_tree=False):
         """See ControlDir.clone_on_transport."""
-        from bzrlib.repository import InterRepository
-        from bzrlib.plugins.git.mapping import default_mapping
+        from ...repository import InterRepository
+        from .mapping import default_mapping
         if no_tree:
             format = BareLocalGitControlDirFormat()
         else:
@@ -207,18 +207,18 @@ class LocalGitControlDirFormat(GitControlDirFormat):
 
     @property
     def repository_format(self):
-        from bzrlib.plugins.git.repository import GitRepositoryFormat
+        from .repository import GitRepositoryFormat
         return GitRepositoryFormat()
 
     def get_branch_format(self):
-        from bzrlib.plugins.git.branch import GitBranchFormat
+        from .branch import GitBranchFormat
         return GitBranchFormat()
 
     def open(self, transport, _found=None):
         """Open this directory.
 
         """
-        from bzrlib.plugins.git.transportgit import TransportRepo
+        from .transportgit import TransportRepo
         gitrepo = TransportRepo(transport, self.bare,
                 refs_text=getattr(self, "_refs_text", None))
         return LocalGitDir(transport, gitrepo, self)
@@ -227,7 +227,7 @@ class LocalGitControlDirFormat(GitControlDirFormat):
         return "Local Git Repository"
 
     def initialize_on_transport(self, transport):
-        from bzrlib.plugins.git.transportgit import TransportRepo
+        from .transportgit import TransportRepo
         repo = TransportRepo.init(transport, bare=self.bare)
         del repo.refs["HEAD"]
         return self.open(transport)
@@ -283,7 +283,7 @@ class LocalGitDir(GitDir):
     """An adapter to the '.git' dir used by git."""
 
     def _get_gitrepository_class(self):
-        from bzrlib.plugins.git.repository import LocalGitRepository
+        from .repository import LocalGitRepository
         return LocalGitRepository
 
     def __repr__(self):
@@ -340,7 +340,7 @@ class LocalGitDir(GitDir):
         return None
 
     def find_branch_format(self, name=None):
-        from bzrlib.plugins.git.branch import (
+        from .branch import (
             GitBranchFormat,
             GitSymrefBranchFormat,
             )
@@ -375,7 +375,7 @@ class LocalGitDir(GitDir):
             ref=None, possible_transports=None):
         """'create' a branch for this dir."""
         repo = self.open_repository()
-        from bzrlib.plugins.git.branch import LocalGitBranch
+        from .branch import LocalGitBranch
         ref = self._get_selected_ref(name, ref)
         ref_chain, sha = self._git.refs.follow(ref)
         if sha is None:
@@ -414,7 +414,7 @@ class LocalGitDir(GitDir):
         return self.get_branches().values()
 
     def get_branches(self):
-        from bzrlib.plugins.git.refs import ref_to_branch_name
+        from .refs import ref_to_branch_name
         ret = {}
         for ref in self._git.refs.keys():
             try:
@@ -440,7 +440,7 @@ class LocalGitDir(GitDir):
             except NoIndexPresent:
                 pass
             else:
-                from bzrlib.plugins.git.workingtree import GitWorkingTree
+                from .workingtree import GitWorkingTree
                 try:
                     branch = self.open_branch()
                 except bzr_errors.NotBranchError:
@@ -451,7 +451,7 @@ class LocalGitDir(GitDir):
         raise bzr_errors.NoWorkingTree(loc)
 
     def create_repository(self, shared=False):
-        from bzrlib.plugins.git.repository import GitRepositoryFormat
+        from .repository import GitRepositoryFormat
         if shared:
             raise bzr_errors.IncompatibleFormat(GitRepositoryFormat(), self._format)
         return self.open_repository()
