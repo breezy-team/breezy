@@ -227,7 +227,8 @@ class TestEmailerWithLocal(tests.TestCaseWithTransport):
         master_tree.add(['c'])
         revision_id = master_tree.commit('c')
 
-        self.failIf(child_tree.branch.repository.has_revision(revision_id))
+        self.assertFalse(
+            child_tree.branch.repository.has_revision(revision_id))
         sender = EmailSender(master_tree.branch, revision_id,
                              master_tree.branch.get_config(),
                              local_branch=child_tree.branch)
