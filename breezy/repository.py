@@ -44,7 +44,7 @@ from . import (
     )
 from .decorators import needs_read_lock, needs_write_lock, only_raises
 from .inter import InterObject
-from .lock import LogicalLockResult
+from .lock import _RelockDebugMixin, LogicalLockResult
 from .trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
 
@@ -244,7 +244,7 @@ class RepositoryWriteLockResult(LogicalLockResult):
 # Repositories
 
 
-class Repository(controldir.ControlComponent):
+class Repository(controldir.ControlComponent, _RelockDebugMixin):
     """Repository holding history for one or more branches.
 
     The repository holds and retrieves historical information including

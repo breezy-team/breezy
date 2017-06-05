@@ -16,14 +16,16 @@
 
 from __future__ import absolute_import
 
+import itertools
+
 from . import (
     bzrdir,
     errors,
     lockdir,
     lockable_files,
+    revision as _mod_revision,
     )
 from .decorators import needs_read_lock, needs_write_lock, only_raises
-from .lock import _RelockDebugMixin
 from .repository import (
     format_registry,
     Repository,
@@ -31,7 +33,7 @@ from .repository import (
     )
 
 
-class MetaDirRepository(Repository, _RelockDebugMixin):
+class MetaDirRepository(Repository):
     """Repositories in the new meta-dir layout.
 
     :ivar _transport: Transport for access to repository control files,

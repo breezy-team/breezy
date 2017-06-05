@@ -139,14 +139,14 @@ class TestRepositoryFormat(TestCaseWithTransport):
             dir = format._matchingbzrdir.initialize(url)
             format.initialize(dir)
             t = transport.get_transport_from_path(url)
-            found_format = repository.RepositoryFormatMetaDir.find_format(dir)
+            found_format = bzrrepository.RepositoryFormatMetaDir.find_format(dir)
             self.assertIsInstance(found_format, format.__class__)
         check_format(repository.format_registry.get_default(), "bar")
 
     def test_find_format_no_repository(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         self.assertRaises(errors.NoRepositoryPresent,
-                          repository.RepositoryFormatMetaDir.find_format,
+                          bzrrepository.RepositoryFormatMetaDir.find_format,
                           dir)
 
     def test_from_string(self):
@@ -162,20 +162,20 @@ class TestRepositoryFormat(TestCaseWithTransport):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         SampleRepositoryFormat().initialize(dir)
         self.assertRaises(UnknownFormatError,
-                          repository.RepositoryFormatMetaDir.find_format,
+                          bzrrepository.RepositoryFormatMetaDir.find_format,
                           dir)
 
     def test_find_format_with_features(self):
         tree = self.make_branch_and_tree('.', format='2a')
         tree.branch.repository.update_feature_flags({"name": "necessity"})
-        found_format = repository.RepositoryFormatMetaDir.find_format(tree.bzrdir)
-        self.assertIsInstance(found_format, repository.RepositoryFormatMetaDir)
+        found_format = bzrrepository.RepositoryFormatMetaDir.find_format(tree.bzrdir)
+        self.assertIsInstance(found_format, bzrrepository.RepositoryFormatMetaDir)
         self.assertEqual(found_format.features.get("name"), "necessity")
         self.assertRaises(errors.MissingFeature, found_format.check_support_status,
             True)
-        self.addCleanup(repository.RepositoryFormatMetaDir.unregister_feature,
+        self.addCleanup(bzrrepository.RepositoryFormatMetaDir.unregister_feature,
             "name")
-        repository.RepositoryFormatMetaDir.register_feature("name")
+        bzrrepository.RepositoryFormatMetaDir.register_feature("name")
         found_format.check_support_status(True)
 
 
@@ -1705,9 +1705,9 @@ class TestFeatures(tests.TestCaseWithTransport):
 
     def test_open_with_present_feature(self):
         self.addCleanup(
-            repository.RepositoryFormatMetaDir.unregister_feature,
+            bzrrepository.RepositoryFormatMetaDir.unregister_feature,
             "makes-cheese-sandwich")
-        repository.RepositoryFormatMetaDir.register_feature(
+        bzrrepository.RepositoryFormatMetaDir.register_feature(
             "makes-cheese-sandwich")
         repo = self.make_repository('.')
         repo.lock_write()
