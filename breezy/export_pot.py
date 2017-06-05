@@ -31,12 +31,12 @@ from __future__ import absolute_import
 import inspect
 import os
 
+import breezy
 from . import (
     commands as _mod_commands,
     errors,
     help_topics,
     option,
-    plugin,
     help,
     )
 from .trace import (
@@ -202,7 +202,7 @@ def _write_option(exporter, context, opt, note):
 def _standard_options(exporter):
     OPTIONS = option.Option.OPTIONS
     context = exporter.get_context(option)
-    for name in sorted(OPTIONS.keys()):
+    for name in sorted(OPTIONS):
         opt = OPTIONS[name]
         _write_option(exporter, context.from_string(name), opt, "option")
 
@@ -238,7 +238,6 @@ def _command_helps(exporter, plugin_name=None):
     This respects the Bazaar cmdtable/table convention and will
     only extract docstrings from functions mentioned in these tables.
     """
-    from glob import glob
 
     # builtin commands
     for cmd_name in _mod_commands.builtin_command_names():
@@ -251,10 +250,9 @@ def _command_helps(exporter, plugin_name=None):
         note(gettext("Exporting messages from builtin command: %s"), cmd_name)
         _write_command_help(exporter, command)
 
-    plugin_path = plugin.get_core_plugin_path()
-    core_plugins = glob(plugin_path + '/*/__init__.py')
-    core_plugins = [os.path.basename(os.path.dirname(p))
-                        for p in core_plugins]
+    plugins = breezy.global_state.plugins
+    core_plugins = set(name for name in plugins
+        if plugins[name].path().startswith(breezy.__path__[0]))
     # plugins
     for cmd_name in _mod_commands.plugin_command_names():
         command = _mod_commands.get_cmd_object(cmd_name, False)

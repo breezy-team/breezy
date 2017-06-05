@@ -81,6 +81,8 @@ from .option import (
 from .sixish import (
     BytesIO,
     text_type,
+    viewitems,
+    viewvalues,
 )
 from .trace import mutter, note, warning, is_quiet, get_verbosity_level
 
@@ -201,7 +203,7 @@ def iter_sibling_branches(control_dir, possible_transports=None):
         reference = control_dir.get_branch_reference()
     except errors.NotBranchError:
         # There is no active branch, just return the colocated branches.
-        for name, branch in control_dir.get_branches().iteritems():
+        for name, branch in viewitems(control_dir.get_branches()):
             yield name, branch
         return
     if reference is not None:
@@ -212,7 +214,7 @@ def iter_sibling_branches(control_dir, possible_transports=None):
     if ref_branch is None or ref_branch.name:
         if ref_branch is not None:
             control_dir = ref_branch.bzrdir
-        for name, branch in control_dir.get_branches().iteritems():
+        for name, branch in viewitems(control_dir.get_branches()):
             yield name, branch
     else:
         repo = ref_branch.bzrdir.find_repository()
@@ -845,7 +847,7 @@ class cmd_add(Command):
         self.cleanup_now()
         if len(ignored) > 0:
             if verbose:
-                for glob in sorted(ignored.keys()):
+                for glob in sorted(ignored):
                     for path in ignored[glob]:
                         self.outf.write(
                          gettext("ignored {0} matching \"{1}\"\n").format(
@@ -1583,9 +1585,9 @@ class cmd_branches(Command):
                 names[name] = active
             # Only mention the current branch explicitly if it's not
             # one of the colocated branches
-            if not any(names.values()) and active_branch is not None:
+            if not any(viewvalues(names)) and active_branch is not None:
                 self.outf.write("* %s\n" % gettext("(default)"))
-            for name in sorted(names.keys()):
+            for name in sorted(names):
                 active = names[name]
                 if active:
                     prefix = "*"
@@ -3963,7 +3965,7 @@ class cmd_alias(Command):
     def print_aliases(self):
         """Print out the defined aliases in a similar format to bash."""
         aliases = _mod_config.GlobalConfig().get_aliases()
-        for key, value in sorted(aliases.iteritems()):
+        for key, value in sorted(viewitems(aliases)):
             self.outf.write('brz alias %s="%s"\n' % (key, value))
 
     @display_command
@@ -6004,7 +6006,7 @@ class cmd_tags(Command):
         from .tag import tag_sort_methods
         branch, relpath = Branch.open_containing(directory)
 
-        tags = branch.tags.get_tag_dict().items()
+        tags = list(viewitems(branch.tags.get_tag_dict()))
         if not tags:
             return
 
@@ -6648,7 +6650,7 @@ class cmd_reference(Command):
         if tree is None:
             tree = branch.basis_tree()
         if path is None:
-            info = branch._get_all_reference_info().iteritems()
+            info = viewitems(branch._get_all_reference_info())
             self._display_reference_info(tree, branch, info)
         else:
             file_id = tree.path2id(path)
@@ -6709,6 +6711,32 @@ class cmd_import(Command):
     def run(self, source, tree=None):
         from .upstream_import import do_import
         do_import(source, tree)
+
+
+class cmd_fetch_ghosts(Command):
+    __doc__ = """Attempt to retrieve ghosts from another branch.
+
+    If the other branch is not supplied, the last-pulled branch is used.
+    """
+
+    hidden = True
+    aliases = ['fetch-missing']
+    takes_args = ['branch?']
+    takes_options = [Option('no-fix', help="Skip additional synchonization.")]
+
+    def run(self, branch=None, no_fix=False):
+        from .fetch_ghosts import GhostFetcher
+        installed, failed = GhostFetcher.from_cmdline(branch).run()
+        if len(installed) > 0:
+            self.outf.write("Installed:\n")
+            for rev in installed:
+                self.outf.write(rev + "\n")
+        if len(failed) > 0:
+            self.outf.write("Still missing:\n")
+            for rev in failed:
+                self.outf.write(rev + "\n")
+        if not no_fix and len(installed) > 0:
+            cmd_reconcile().run(".")
 
 
 def _register_lazy_builtins():

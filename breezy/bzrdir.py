@@ -1140,7 +1140,7 @@ class BzrFormat(object):
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
             basedir=None):
-        for name, necessity in self.features.iteritems():
+        for name, necessity in self.features.items():
             if name in self._present_features:
                 continue
             if necessity == "optional":
@@ -1179,7 +1179,7 @@ class BzrFormat(object):
         """
         lines = [self.get_format_string()]
         lines.extend([("%s %s\n" % (item[1], item[0])) for item in
-            self.features.iteritems()])
+            self.features.items()])
         return "".join(lines)
 
     @classmethod
@@ -1210,7 +1210,7 @@ class BzrFormat(object):
 
         :param updated_flags: Updated feature flags
         """
-        for name, necessity in updated_flags.iteritems():
+        for name, necessity in updated_flags.items():
             if necessity is None:
                 try:
                     del self.features[name]
@@ -1246,7 +1246,7 @@ class BzrProber(controldir.Prober):
     @classmethod
     def known_formats(cls):
         result = set()
-        for name, format in cls.formats.iteritems():
+        for name, format in cls.formats.items():
             if callable(format):
                 format = format()
             result.add(format)

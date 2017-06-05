@@ -151,7 +151,7 @@ isolated_environ = {
     # as a base class instead of TestCaseInTempDir. Tests inheriting from
     # TestCase should not use disk resources, BRZ_LOG is one.
     'BRZ_LOG': '/you-should-use-TestCaseInTempDir-if-you-need-a-log-file',
-    'BRZ_PLUGIN_PATH': None,
+    'BRZ_PLUGIN_PATH': '-site',
     'BRZ_DISABLE_PLUGINS': None,
     'BRZ_PLUGINS_AT': None,
     'BRZ_CONCURRENCY': None,
@@ -3942,6 +3942,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_extract',
         'breezy.tests.test_features',
         'breezy.tests.test_fetch',
+        'breezy.tests.test_fetch_ghosts',
         'breezy.tests.test_fixtures',
         'breezy.tests.test_fifo_cache',
         'breezy.tests.test_filters',

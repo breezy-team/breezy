@@ -87,9 +87,8 @@ class MetaDirRepository(Repository):
         :return: set of revisions that are parents of revision_ids which are
             not part of revision_ids themselves
         """
-        parent_map = self.get_parent_map(revision_ids)
-        parent_ids = set(itertools.chain.from_iterable(
-            parent_map.itervalues()))
+        parent_ids = set(itertools.chain.from_iterable(viewvalues(
+                self.get_parent_map(revision_ids))))
         parent_ids.difference_update(revision_ids)
         parent_ids.discard(_mod_revision.NULL_REVISION)
         return parent_ids

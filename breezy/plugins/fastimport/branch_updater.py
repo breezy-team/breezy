@@ -77,7 +77,7 @@ class BranchUpdater(object):
         """
         branch_tips = []
         lost_heads = []
-        ref_names = self.heads_by_ref.keys()
+        ref_names = list(self.heads_by_ref)
         if self.branch is not None:
             trunk = self.select_trunk(ref_names)
             default_tip = self.heads_by_ref[trunk][0]

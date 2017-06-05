@@ -44,6 +44,7 @@ from . import (
     )
 from .sixish import (
     text_type,
+    viewitems,
     )
 
 
@@ -132,14 +133,12 @@ class HashCache(object):
         # Stat in inode order as optimisation for at least linux.
         def inode_order(path_and_cache):
             return path_and_cache[1][1][3]
-        for inum, path, cache_entry in sorted(self._cache, key=inode_order):
+        for path, cache_val in sorted(viewitems(self._cache), key=inode_order):
             abspath = osutils.pathjoin(self.root, path)
             fp = self._fingerprint(abspath)
             self.stat_count += 1
 
-            cache_fp = cache_entry[1]
-
-            if (not fp) or (cache_fp != fp):
+            if not fp or cache_val[1] != fp:
                 # not here or not a regular file anymore
                 self.removed_count += 1
                 self.needs_write = True
@@ -229,7 +228,7 @@ class HashCache(object):
         try:
             outf.write(CACHE_HEADER)
 
-            for path, c  in self._cache.iteritems():
+            for path, c  in viewitems(self._cache):
                 line_info = [path.encode('utf-8'), '// ', c[0], ' ']
                 line_info.append(' '.join([str(fld) for fld in c[1]]))
                 line_info.append('\n')
