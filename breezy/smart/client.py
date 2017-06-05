@@ -339,7 +339,7 @@ class CallHookParams(object):
         self.medium = medium
 
     def __repr__(self):
-        attrs = dict((k, v) for (k, v) in self.__dict__.iteritems()
+        attrs = dict((k, v) for k, v in self.__dict__.items()
                      if v is not None)
         return '<%s %r>' % (self.__class__.__name__, attrs)
 

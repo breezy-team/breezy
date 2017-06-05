@@ -21,6 +21,11 @@ from __future__ import absolute_import
 from . import (
     trace,
     )
+from .sixish import (
+    viewitems,
+    viewkeys,
+    )
+
 
 _null_key = object()
 
@@ -129,11 +134,12 @@ class LRUCache(object):
 
         :return: An unordered list of keys that are currently cached.
         """
-        return self._cache.keys()
+        # GZ 2016-06-04: Maybe just make this return the view?
+        return list(viewkeys(self._cache))
 
     def as_dict(self):
         """Get a new dict with the same key:value pairs as the cache"""
-        return dict((k, n.value) for k, n in self._cache.iteritems())
+        return dict((k, n.value) for k, n in viewitems(self._cache))
 
     def cleanup(self):
         """Clear the cache until it shrinks to the requested size.

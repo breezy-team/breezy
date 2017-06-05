@@ -44,6 +44,9 @@ from .sixish import (
     BytesIO,
     map,
     range,
+    viewitems,
+    viewkeys,
+    viewvalues,
     )
 
 
@@ -529,8 +532,6 @@ class BTreeBuilder(index.GraphIndexBuilder):
             will be returned, and every match that is in the index will be
             returned.
         """
-        # XXX: To much duplication with the GraphIndex class; consider finding
-        # a good place to pull out the actual common logic.
         keys = set(keys)
         if not keys:
             return
@@ -541,11 +542,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 yield (self,) + node[1:]
         if self._key_length == 1:
             for key in keys:
-                # sanity check
-                if key[0] is None:
-                    raise errors.BadIndexKey(key)
-                if len(key) != self._key_length:
-                    raise errors.BadIndexKey(key)
+                index._sanity_check_key(self, key)
                 try:
                     node = self._nodes[key]
                 except KeyError:
@@ -555,50 +552,21 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 else:
                     yield self, key, node[1]
             return
-        for key in keys:
-            # sanity check
-            if key[0] is None:
-                raise errors.BadIndexKey(key)
-            if len(key) != self._key_length:
-                raise errors.BadIndexKey(key)
-            # find what it refers to:
-            key_dict = self._get_nodes_by_key()
-            elements = list(key)
-            # find the subdict to return
-            try:
-                while len(elements) and elements[0] is not None:
-                    key_dict = key_dict[elements[0]]
-                    elements.pop(0)
-            except KeyError:
-                # a non-existant lookup.
-                continue
-            if len(elements):
-                dicts = [key_dict]
-                while dicts:
-                    key_dict = dicts.pop(-1)
-                    # can't be empty or would not exist
-                    item, value = next(key_dict.iteritems())
-                    if isinstance(value, dict):
-                        # push keys
-                        dicts.extend(key_dict.itervalues())
-                    else:
-                        # yield keys
-                        for value in key_dict.itervalues():
-                            yield (self, ) + tuple(value)
-            else:
-                yield (self, ) + key_dict
+        nodes_by_key = self._get_nodes_by_key()
+        for entry in index._iter_entries_prefix(self, nodes_by_key, keys):
+            yield entry
 
     def _get_nodes_by_key(self):
         if self._nodes_by_key is None:
             nodes_by_key = {}
             if self.reference_lists:
-                for key, (references, value) in self._nodes.iteritems():
+                for key, (references, value) in viewitems(self._nodes):
                     key_dict = nodes_by_key
                     for subkey in key[:-1]:
                         key_dict = key_dict.setdefault(subkey, {})
                     key_dict[key[-1]] = key, value, references
             else:
-                for key, (references, value) in self._nodes.iteritems():
+                for key, (references, value) in viewitems(self._nodes):
                     key_dict = nodes_by_key
                     for subkey in key[:-1]:
                         key_dict = key_dict.setdefault(subkey, {})
@@ -940,7 +908,8 @@ class BTreeGraphIndex(object):
 
     def _get_offsets_to_cached_pages(self):
         """Determine what nodes we already have cached."""
-        cached_offsets = set(self._internal_node_cache.keys())
+        cached_offsets = set(self._internal_node_cache)
+        # cache may be dict or LRUCache, keys() is the common method
         cached_offsets.update(self._leaf_node_cache.keys())
         if self._root_node is not None:
             cached_offsets.add(0)
@@ -979,7 +948,7 @@ class BTreeGraphIndex(object):
     def _cache_leaf_values(self, nodes):
         """Cache directly from key => value, skipping the btree."""
         if self._leaf_value_cache is not None:
-            for node in nodes.itervalues():
+            for node in viewvalues(nodes):
                 for key, value in node.all_items():
                     if key in self._leaf_value_cache:
                         # Don't add the rest of the keys, we've seen this node
@@ -1395,11 +1364,7 @@ class BTreeGraphIndex(object):
                     key_dict[key[-1]] = key_value
         if self._key_length == 1:
             for key in keys:
-                # sanity check
-                if key[0] is None:
-                    raise errors.BadIndexKey(key)
-                if len(key) != self._key_length:
-                    raise errors.BadIndexKey(key)
+                index._sanity_check_key(self, key)
                 try:
                     if self.node_ref_lists:
                         value, node_refs = nodes[key]
@@ -1409,41 +1374,8 @@ class BTreeGraphIndex(object):
                 except KeyError:
                     pass
             return
-        for key in keys:
-            # sanity check
-            if key[0] is None:
-                raise errors.BadIndexKey(key)
-            if len(key) != self._key_length:
-                raise errors.BadIndexKey(key)
-            # find what it refers to:
-            key_dict = nodes_by_key
-            elements = list(key)
-            # find the subdict whose contents should be returned.
-            try:
-                while len(elements) and elements[0] is not None:
-                    key_dict = key_dict[elements[0]]
-                    elements.pop(0)
-            except KeyError:
-                # a non-existant lookup.
-                continue
-            if len(elements):
-                dicts = [key_dict]
-                while dicts:
-                    key_dict = dicts.pop(-1)
-                    # can't be empty or would not exist
-                    item, value = next(key_dict.iteritems())
-                    if isinstance(value, dict):
-                        # push keys
-                        dicts.extend(key_dict.itervalues())
-                    else:
-                        # yield keys
-                        for value in key_dict.itervalues():
-                            # each value is the key:value:node refs tuple
-                            # ready to yield.
-                            yield (self, ) + value
-            else:
-                # the last thing looked up was a terminal element
-                yield (self, ) + key_dict
+        for entry in index._iter_entries_prefix(self, nodes_by_key, keys):
+            yield entry
 
     def key_count(self):
         """Return an estimate of the number of keys in this index.

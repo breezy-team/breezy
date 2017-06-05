@@ -51,6 +51,7 @@ from .decorators import (
 from .lock import _RelockDebugMixin, LogicalLockResult
 from .sixish import (
     BytesIO,
+    viewitems,
     )
 from .trace import (
     mutter,
@@ -468,7 +469,7 @@ class BzrBranch8(BzrBranch):
         """
         s = BytesIO()
         writer = rio.RioWriter(s)
-        for key, (tree_path, branch_location) in info_dict.iteritems():
+        for key, (tree_path, branch_location) in viewitems(info_dict):
             stanza = rio.Stanza(file_id=key, tree_path=tree_path,
                                 branch_location=branch_location)
             writer.write_stanza(stanza)

@@ -48,6 +48,10 @@ from . import (
 from .decorators import needs_read_lock, needs_write_lock, only_raises
 from .inter import InterObject
 from .lock import _RelockDebugMixin, LogicalLockResult
+from .sixish import (
+    viewitems,
+    viewvalues,
+    )
 from .trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
 
@@ -141,7 +145,7 @@ class CommitBuilder(object):
             raise ValueError('Invalid value for %s: %r' % (context, text))
 
     def _validate_revprops(self, revprops):
-        for key, value in revprops.iteritems():
+        for key, value in viewitems(revprops):
             # We know that the XML serializers do not round trip '\r'
             # correctly, so refuse to accept them
             if not isinstance(value, basestring):
@@ -911,9 +915,8 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         :return: set of revisions that are parents of revision_ids which are
             not part of revision_ids themselves
         """
-        parent_map = self.get_parent_map(revision_ids)
-        parent_ids = set(itertools.chain.from_iterable(
-            parent_map.itervalues()))
+        parent_ids = set(itertools.chain.from_iterable(viewvalues(
+                self.get_parent_map(revision_ids))))
         parent_ids.difference_update(revision_ids)
         parent_ids.discard(_mod_revision.NULL_REVISION)
         return parent_ids
@@ -1053,8 +1056,8 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
             else:
                 query_keys.append((revision_id ,))
         vf = self.revisions.without_fallbacks()
-        for ((revision_id,), parent_keys) in \
-                vf.get_parent_map(query_keys).iteritems():
+        for (revision_id,), parent_keys in viewitems(
+                vf.get_parent_map(query_keys)):
             if parent_keys:
                 result[revision_id] = tuple([parent_revid
                     for (parent_revid,) in parent_keys])
@@ -1747,7 +1750,7 @@ def _strip_NULL_ghosts(revision_graph):
     # Filter ghosts, and null:
     if _mod_revision.NULL_REVISION in revision_graph:
         del revision_graph[_mod_revision.NULL_REVISION]
-    for key, parents in revision_graph.items():
+    for key, parents in viewitems(revision_graph):
         revision_graph[key] = tuple(parent for parent in parents if parent
             in revision_graph)
     return revision_graph

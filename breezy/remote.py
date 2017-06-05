@@ -53,6 +53,10 @@ from .errors import (
 from .i18n import gettext
 from .inventory import Inventory
 from .lockable_files import LockableFiles
+from .sixish import (
+    viewitems,
+    viewvalues,
+    )
 from .smart import client, vfs, repository as smart_repo
 from .smart.client import _SmartClient
 from .revision import NULL_REVISION
@@ -700,7 +704,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             raise errors.UnexpectedSmartServerResponse(response)
         body = bencode.bdecode(handler.read_body_bytes())
         ret = {}
-        for (name, value) in body.iteritems():
+        for name, value in viewitems(body):
             ret[name] = self._open_branch(name, value[0], value[1],
                 possible_transports=possible_transports,
                 ignore_fallbacks=ignore_fallbacks)
@@ -2090,8 +2094,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
     def revision_ids_to_search_result(self, result_set):
         """Convert a set of revision ids to a graph SearchResult."""
         result_parents = set()
-        for parents in self.get_graph().get_parent_map(
-            result_set).itervalues():
+        for parents in viewvalues(self.get_graph().get_parent_map(result_set)):
             result_parents.update(parents)
         included_keys = result_set.intersection(result_parents)
         start_keys = result_set.difference(included_keys)
@@ -2216,15 +2219,15 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             for fallback in self._fallback_repositories:
                 if not absent:
                     break
-                desired_files = [(key[0], key[1], identifier) for
-                    (identifier, key) in absent.iteritems()]
+                desired_files = [(key[0], key[1], identifier)
+                    for identifier, key in viewitems(absent)]
                 for (identifier, bytes_iterator) in fallback.iter_files_bytes(desired_files):
                     del absent[identifier]
                     yield identifier, bytes_iterator
             if absent:
                 # There may be more missing items, but raise an exception
                 # for just one.
-                missing_identifier = absent.keys()[0]
+                missing_identifier = next(iter(absent))
                 missing_key = absent[missing_identifier]
                 raise errors.RevisionNotPresent(revision_id=missing_key[1],
                     file_id=missing_key[0])
@@ -2264,7 +2267,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             # There is one other "bug" which is that ghosts in
             # get_revision_graph() are not returned at all. But we won't worry
             # about that for now.
-            for node_id, parent_ids in rg.iteritems():
+            for node_id, parent_ids in viewitems(rg):
                 if parent_ids == ():
                     rg[node_id] = (NULL_REVISION,)
             rg[NULL_REVISION] = ()

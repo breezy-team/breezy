@@ -91,7 +91,7 @@ class InfoProcessor(processor.ImportProcessor):
                 if i in self.parent_counts:
                     count = self.parent_counts[i]
                     p_items.append(("parents-%d" % i, count))
-            merges_count = len(self.merges.keys())
+            merges_count = len(self.merges)
             p_items.append(('total revisions merged', merges_count))
             flags = {
                 'separate authors found': self.separate_authors_found,
@@ -100,21 +100,21 @@ class InfoProcessor(processor.ImportProcessor):
                 'blobs referenced by SHA': self.sha_blob_references,
                 }
             self._dump_stats_group("Parent counts", p_items, str)
-            self._dump_stats_group("Commit analysis", flags.iteritems(), _found)
+            self._dump_stats_group("Commit analysis", flags.items(), _found)
             heads = invert_dictset(self.reftracker.heads)
-            self._dump_stats_group("Head analysis", heads.iteritems(), None,
+            self._dump_stats_group("Head analysis", heads.items(), None,
                                     _iterable_as_config_list)
             # note("\t%d\t%s" % (len(self.committers), 'unique committers'))
-            self._dump_stats_group("Merges", self.merges.iteritems(), None)
+            self._dump_stats_group("Merges", self.merges.items(), None)
             # We only show the rename old path and copy source paths when -vv
             # (verbose=2) is specified. The output here for mysql's data can't
             # be parsed currently so this bit of code needs more work anyhow ..
             if self.verbose >= 2:
                 self._dump_stats_group("Rename old paths",
-                    self.rename_old_paths.iteritems(), len,
+                    self.rename_old_paths.items(), len,
                     _iterable_as_config_list)
                 self._dump_stats_group("Copy source paths",
-                    self.copy_source_paths.iteritems(), len,
+                    self.copy_source_paths.items(), len,
                     _iterable_as_config_list)
 
         # Blob stats
@@ -123,11 +123,10 @@ class InfoProcessor(processor.ImportProcessor):
             if self.verbose:
                 del self.blobs['used']
             self._dump_stats_group("Blob usage tracking",
-                self.blobs.iteritems(), len, _iterable_as_config_list)
+                self.blobs.items(), len, _iterable_as_config_list)
         if self.blob_ref_counts:
             blobs_by_count = invert_dict(self.blob_ref_counts)
-            blob_items = blobs_by_count.items()
-            blob_items.sort()
+            blob_items = sorted(blobs_by_count.items())
             self._dump_stats_group("Blob reference counts",
                 blob_items, len, _iterable_as_config_list)
 
@@ -136,7 +135,7 @@ class InfoProcessor(processor.ImportProcessor):
             reset_stats = {
                 'lightweight tags': self.lightweight_tags,
                 }
-            self._dump_stats_group("Reset analysis", reset_stats.iteritems())
+            self._dump_stats_group("Reset analysis", reset_stats.items())
 
     def _dump_stats_group(self, title, items, normal_formatter=None,
         verbose_formatter=None):

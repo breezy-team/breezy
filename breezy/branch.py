@@ -50,6 +50,10 @@ from .decorators import (
 from .hooks import Hooks
 from .inter import InterObject
 from .lock import LogicalLockResult
+from .sixish import (
+    BytesIO,
+    viewitems,
+    )
 from .trace import mutter, mutter_callsite, note, is_quiet
 
 
@@ -380,7 +384,7 @@ class Branch(controldir.ControlComponent):
             return self.get_rev_id(revno[0])
         revision_id_to_revno = self.get_revision_id_to_revno_map()
         revision_ids = [revision_id for revision_id, this_revno
-                        in revision_id_to_revno.iteritems()
+                        in viewitems(revision_id_to_revno)
                         if revno == this_revno]
         if len(revision_ids) == 1:
             return revision_ids[0]
@@ -1313,8 +1317,7 @@ class Branch(controldir.ControlComponent):
         old_base = self.base
         new_base = target.base
         target_reference_dict = target._get_all_reference_info()
-        for file_id, (tree_path, branch_location) in (
-            reference_dict.items()):
+        for file_id, (tree_path, branch_location) in viewitems(reference_dict):
             branch_location = urlutils.rebase_url(branch_location,
                                                   old_base, new_base)
             target_reference_dict.setdefault(
