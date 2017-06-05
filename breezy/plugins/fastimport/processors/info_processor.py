@@ -87,7 +87,7 @@ class InfoProcessor(processor.ImportProcessor):
         # Commit stats
         if self.cmd_counts['commit']:
             p_items = []
-            for _ in range(self.max_parent_count + 1):
+            for i in range(self.max_parent_count + 1):
                 if i in self.parent_counts:
                     count = self.parent_counts[i]
                     p_items.append(("parents-%d" % i, count))
