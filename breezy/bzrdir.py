@@ -1027,7 +1027,7 @@ class BzrDirMeta1(BzrDir):
         Note: if you're going to open the working tree, you should just go
         ahead and try, and not ask permission first.
         """
-        from .workingtree import WorkingTreeFormatMetaDir
+        from .bzrworkingtree import WorkingTreeFormatMetaDir
         try:
             WorkingTreeFormatMetaDir.find_format_string(self)
         except errors.NoWorkingTree:
@@ -1084,7 +1084,7 @@ class BzrDirMeta1(BzrDir):
     def open_workingtree(self, unsupported=False,
             recommend_upgrade=True):
         """See BzrDir.open_workingtree."""
-        from .workingtree import WorkingTreeFormatMetaDir
+        from .bzrworkingtree import WorkingTreeFormatMetaDir
         format = WorkingTreeFormatMetaDir.find_format(self)
         format.check_support_status(unsupported, recommend_upgrade,
             basedir=self.root_transport.base)

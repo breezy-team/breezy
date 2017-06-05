@@ -78,8 +78,10 @@ from .tree import (
     InventoryTree,
     )
 from .workingtree import (
-    InventoryWorkingTree,
     WorkingTree,
+    )
+from .bzrworkingtree import (
+    InventoryWorkingTree,
     WorkingTreeFormatMetaDir,
     )
 

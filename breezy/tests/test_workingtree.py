@@ -17,6 +17,7 @@
 
 from .. import (
     bzrdir,
+    bzrworkingtree,
     conflicts,
     errors,
     transport,
@@ -127,7 +128,7 @@ class TestDefaultFormat(TestCaseWithTransport):
         self.assertEqual('subdir', relpath)
 
 
-class SampleTreeFormat(workingtree.WorkingTreeFormatMetaDir):
+class SampleTreeFormat(bzrworkingtree.WorkingTreeFormatMetaDir):
     """A sample format
 
     this format is initializable, unsupported to aid in testing the
