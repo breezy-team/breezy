@@ -1893,13 +1893,25 @@ class BranchFormatRegistry(controldir.ControlComponentFormatRegistry):
 
     def __init__(self, other_registry=None):
         super(BranchFormatRegistry, self).__init__(other_registry)
+        self._default_format = None
         self._default_format_key = None
 
-    def set_default_key(self, format_key):
-        self._default_format_key = format_key
-
     def get_default(self):
-        return self.get(self._default_format_key)
+        """Return the current default format."""
+        if (self._default_format_key is not None and
+            self._default_format is None):
+            self._default_format = self.get(self._default_format_key)
+        return self._default_format
+
+    def set_default(self, format):
+        """Set the default format."""
+        self._default_format = format
+        self._default_format_key = None
+
+    def set_default_key(self, format_string):
+        """Set the default format by its format string."""
+        self._default_format_key = format_string
+        self._default_format = None
 
 
 network_format_registry = registry.FormatRegistry()

@@ -60,8 +60,8 @@ class TestDefaultFormat(tests.TestCase):
     def test_get_set_default_format(self):
         # set the format and then set it back again
         old_format = _mod_branch.format_registry.get_default()
-        _mod_branch.format_registry.set_default_key(
-            SampleBranchFormat.get_format_string())
+        _mod_branch.format_registry.set_default(
+            SampleBranchFormat())
         try:
             # the default branch format is used by the meta dir format
             # which is not the default bzrdir format at this point
@@ -69,8 +69,7 @@ class TestDefaultFormat(tests.TestCase):
             result = dir.create_branch()
             self.assertEqual(result, 'A branch')
         finally:
-            _mod_branch.format_registry.set_default(
-                old_format.get_format_string())
+            _mod_branch.format_registry.set_default(old_format)
         self.assertEqual(old_format,
                          _mod_branch.format_registry.get_default())
 
