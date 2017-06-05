@@ -1570,7 +1570,7 @@ class CHKMapDifference(object):
         # handled the interesting ones
         for prefix, ref in old_chks_to_enqueue:
             not_interesting = True
-            for i in xrange(len(prefix), 0, -1):
+            for i in range(len(prefix), 0, -1):
                 if prefix[:i] in new_prefixes:
                     not_interesting = False
                     break
@@ -1630,7 +1630,7 @@ class CHKMapDifference(object):
         # 'ab', then we also need to include 'a'.) So expand the
         # new_prefixes to include all shorter prefixes
         for prefix in list(new_prefixes):
-            new_prefixes.update([prefix[:i] for i in xrange(1, len(prefix))])
+            new_prefixes.update([prefix[:i] for i in range(1, len(prefix))])
         self._enqueue_old(new_prefixes, old_chks_to_enqueue)
 
     def _flush_new_queue(self):

@@ -29,10 +29,6 @@ from ..controldir import ControlDir
 from ..smart import medium
 from ..transport import remote
 
-from ..plugin import (
-    are_plugins_disabled,
-    )
-
 from . import (
     TestCaseWithTransport,
     )
@@ -88,8 +84,7 @@ class ImportTariffTestCase(TestCaseWithTransport):
         # bzr is frozen and python is not explicitly specified. -- mbp 20100208
         env_changes = dict(PYTHONVERBOSE='1', **self.preserved_env_vars)
         trace.mutter('Setting env for bzr subprocess: %r', env_changes)
-        kwargs = dict(env_changes=env_changes,
-                      allow_plugins=(not are_plugins_disabled()))
+        kwargs = dict(env_changes=env_changes, allow_plugins=False)
         if stderr_file:
             # We don't want to update the whole call chain so we insert stderr
             # *iff* we need to

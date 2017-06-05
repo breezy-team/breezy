@@ -31,6 +31,9 @@ from . import (
     osutils,
     ui,
     )
+from .sixish import (
+    range,
+    )
 
 
 class Annotator(object):
@@ -183,7 +186,7 @@ class Annotator(object):
             par_sub = parent_annotations[parent_idx:parent_idx + match_len]
             if ann_sub == par_sub:
                 continue
-            for idx in xrange(match_len):
+            for idx in range(match_len):
                 ann = ann_sub[idx]
                 par_ann = par_sub[idx]
                 ann_idx = lines_idx + idx

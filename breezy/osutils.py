@@ -326,7 +326,7 @@ def _posix_path_from_environ(key):
     so a path that raises BadFilenameEncoding here may still be accessible.
     """
     val = os.environ.get(key, None)
-    if val is None:
+    if PY3 or val is None:
         return val
     try:
         return val.decode(_fs_enc)

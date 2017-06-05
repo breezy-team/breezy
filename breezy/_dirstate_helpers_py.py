@@ -26,6 +26,9 @@ import struct
 # All we really need is the IN_MEMORY_MODIFIED constant
 from breezy import errors
 from .dirstate import DirState
+from .sixish import (
+    range,
+    )
 
 
 def pack_stat(st, _b64=binascii.b2a_base64, _pack=struct.Struct('>6L').pack):
@@ -268,7 +271,7 @@ def _read_dirblocks(state):
         if next is None:
             next = _iter.next
         # Move the iterator to the current position
-        for x in xrange(cur):
+        for x in range(cur):
             next()
         # The two blocks here are deliberate: the root block and the
         # contents-of-root block.
@@ -276,7 +279,7 @@ def _read_dirblocks(state):
         current_block = state._dirblocks[0][1]
         current_dirname = ''
         append_entry = current_block.append
-        for count in xrange(state._num_entries):
+        for count in range(state._num_entries):
             dirname = next()
             name = next()
             file_id = next()
@@ -313,7 +316,7 @@ def _read_dirblocks(state):
     else:
         fields_to_entry = state._get_fields_to_entry()
         entries = [fields_to_entry(fields[pos:pos+entry_size])
-                   for pos in xrange(cur, field_count, entry_size)]
+                   for pos in range(cur, field_count, entry_size)]
         state._entries_to_current_state(entries)
     # To convert from format 2  => format 3
     # state._dirblocks = sorted(state._dirblocks,

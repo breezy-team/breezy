@@ -73,6 +73,10 @@ from .repository import (
     RepositoryFormat,
     )
 
+from .sixish import (
+    range,
+    )
+
 from .trace import (
     mutter
     )
@@ -1619,7 +1623,7 @@ class VersionedFileRepository(Repository):
         batch_count = len(revision_order) / batch_size + 1
         processed_texts = 0
         pb.update(gettext("Calculating text parents"), processed_texts, text_count)
-        for offset in xrange(batch_count):
+        for offset in range(batch_count):
             to_query = revision_order[offset * batch_size:(offset + 1) *
                 batch_size]
             if not to_query:

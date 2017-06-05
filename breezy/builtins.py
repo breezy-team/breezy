@@ -520,8 +520,8 @@ class cmd_dump_btree(Command):
         # This is because the first page of every row starts with an
         # uncompressed header.
         bt, bytes = self._get_index_and_bytes(trans, basename)
-        for page_idx, page_start in enumerate(xrange(0, len(bytes),
-                                                     btree_index._PAGE_SIZE)):
+        for page_idx, page_start in enumerate(range(0, len(bytes),
+                                                    btree_index._PAGE_SIZE)):
             page_end = min(page_start + btree_index._PAGE_SIZE, len(bytes))
             page_bytes = bytes[page_start:page_end]
             if page_idx == 0:
@@ -2297,9 +2297,9 @@ class cmd_diff(Command):
         Same as 'brz diff' but prefix paths with old/ and new/::
 
             brz diff --prefix old/:new/
-            
+
         Show the differences using a custom diff program with options::
-        
+
             brz diff --using /usr/bin/diff --diff-options -wu
     """
     _see_also = ['status']
@@ -2340,16 +2340,16 @@ class cmd_diff(Command):
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
-            prefix=None, old=None, new=None, using=None, format=None, 
+            prefix=None, old=None, new=None, using=None, format=None,
             context=None):
         from .diff import (get_trees_and_branches_to_diff_locked,
             show_diff_trees)
 
-        if (prefix is None) or (prefix == '0'):
+        if prefix == '0':
             # diff -p0 format
             old_label = ''
             new_label = ''
-        elif prefix == '1':
+        elif prefix == '1' or prefix is None:
             old_label = 'old/'
             new_label = 'new/'
         elif ':' in prefix:
@@ -6709,6 +6709,32 @@ class cmd_import(Command):
     def run(self, source, tree=None):
         from .upstream_import import do_import
         do_import(source, tree)
+
+
+class cmd_fetch_ghosts(Command):
+    __doc__ = """Attempt to retrieve ghosts from another branch.
+
+    If the other branch is not supplied, the last-pulled branch is used.
+    """
+
+    hidden = True
+    aliases = ['fetch-missing']
+    takes_args = ['branch?']
+    takes_options = [Option('no-fix', help="Skip additional synchonization.")]
+
+    def run(self, branch=None, no_fix=False):
+        from .fetch_ghosts import GhostFetcher
+        installed, failed = GhostFetcher.from_cmdline(branch).run()
+        if len(installed) > 0:
+            self.outf.write("Installed:\n")
+            for rev in installed:
+                self.outf.write(rev + "\n")
+        if len(failed) > 0:
+            self.outf.write("Still missing:\n")
+            for rev in failed:
+                self.outf.write(rev + "\n")
+        if not no_fix and len(installed) > 0:
+            cmd_reconcile().run(".")
 
 
 def _register_lazy_builtins():

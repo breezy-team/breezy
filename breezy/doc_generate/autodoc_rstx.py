@@ -176,7 +176,7 @@ the online help system, try the following commands.
 
 The following web sites provide further information on Bazaar:
 
-:Home page:                     http://bazaar.canonical.com/
+:Home page:                     http://www.breezy-vcs.org/
 :Bazaar docs:                   http://doc.bazaar.canonical.com/
 :Launchpad:                     https://launchpad.net/brz/
 """

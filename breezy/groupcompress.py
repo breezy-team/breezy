@@ -44,6 +44,7 @@ from .btree_index import BTreeBuilder
 from .lru_cache import LRUSizeCache
 from .sixish import (
     map,
+    range,
     )
 from .versionedfile import (
     _KeyRefs,
@@ -767,7 +768,7 @@ class _LazyGroupContentManager(object):
         block = GroupCompressBlock.from_bytes(block_bytes)
         del block_bytes
         result = cls(block)
-        for start in xrange(0, len(header_lines), 4):
+        for start in range(0, len(header_lines), 4):
             # intern()?
             key = tuple(header_lines[start].split('\x00'))
             parents_line = header_lines[start+1]

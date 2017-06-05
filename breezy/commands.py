@@ -50,7 +50,7 @@ from .hooks import Hooks
 from .i18n import gettext
 # Compatibility - Option used to be in commands.
 from .option import Option
-from .plugin import disable_plugins, load_plugins
+from .plugin import disable_plugins, load_plugins, plugin_name
 from . import registry
 from .sixish import (
     string_types,
@@ -755,11 +755,7 @@ class Command(object):
 
         :return: The name of the plugin or None if the command is builtin.
         """
-        mod_parts = self.__module__.split('.')
-        if len(mod_parts) >= 3 and mod_parts[1] == 'plugins':
-            return mod_parts[2]
-        else:
-            return None
+        return plugin_name(self.__module__)
 
 
 class CommandHooks(Hooks):

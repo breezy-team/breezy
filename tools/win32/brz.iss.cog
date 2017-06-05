@@ -72,7 +72,7 @@ VersionInfoDescription="Windows installer for Breezy"
 
 AppComments="Breezy: Friendly distributed version control system"
 AppPublisher="Breezy Developers"
-AppPublisherURL="http://bazaar.canonical.com"
+AppPublisherURL="https://www.breezy-vcs.org/"
 AppSupportURL="http://wiki.bazaar.canonical.com/BzrSupport"
 AppUpdatesURL="http://wiki.bazaar.canonical.com/WindowsDownloads"
 ; [[[cog cog.outl('AppVersion=%s' % VERSION) ]]]
@@ -178,7 +178,7 @@ Name: "{app}\plugins"; Flags: uninsalwaysuninstall
 
 [Icons]
 Name: "{group}\Documentation index"; Filename: "{app}\doc\index.html"; WorkingDir: "{app}\doc";
-Name: "{group}\Bazaar Home Page"; Filename: "{app}\bazaar.url"; Comment: "http://bazaar.canonical.com";
+Name: "{group}\Breezy Home Page"; Filename: "{app}\breezy.url"; Comment: "https://www.breezy-vcs.org/";
 Name: "{group}\Start Bzr in cmd shell"; Filename: "{cmd}"; Parameters: "/K start_bzr.bat"; WorkingDir: "{app}"; IconFilename: "{app}\bzr.exe"; Comment: "Open new Bzr session";
 ; NOTE: Intent is to change the log file location - the line below will need to change to reflect that.
 Name: "{group}\Open Bzr log file"; Filename: "notepad.exe"; Parameters: "{userdocs}\.bzr.log"; Comment: "Launch notepad to view the bzr log file";

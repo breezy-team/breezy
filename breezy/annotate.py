@@ -350,7 +350,7 @@ def _find_matching_unannotated_lines(output_lines, plain_child_lines,
         if child_idx > last_child_idx:
             output_extend(child_lines[start_child + last_child_idx
                                       :start_child + child_idx])
-        for offset in xrange(match_len):
+        for offset in range(match_len):
             left = child_lines[start_child+child_idx+offset]
             right = right_lines[start_right+right_idx+offset]
             if left[0] == right[0]:

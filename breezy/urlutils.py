@@ -402,7 +402,7 @@ def normalize_url(url):
     # We have a unicode (hybrid) url
     path_chars = list(path)
 
-    for i in xrange(len(path_chars)):
+    for i in range(len(path_chars)):
         if path_chars[i] not in _url_safe_characters:
             chars = path_chars[i].encode('utf-8')
             path_chars[i] = ''.join(
@@ -723,9 +723,9 @@ def unescape_for_display(url, encoding):
 
     # Split into sections to try to decode utf-8
     res = url.split('/')
-    for i in xrange(1, len(res)):
+    for i in range(1, len(res)):
         escaped_chunks = res[i].split('%')
-        for j in xrange(1, len(escaped_chunks)):
+        for j in range(1, len(escaped_chunks)):
             item = escaped_chunks[j]
             try:
                 escaped_chunks[j] = _hex_display_map[item[:2]] + item[2:]
