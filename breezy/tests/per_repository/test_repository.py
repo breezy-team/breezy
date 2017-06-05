@@ -20,6 +20,7 @@ import re
 
 from ... import (
     branch as _mod_branch,
+    bzrrepository,
     controldir,
     delta as _mod_delta,
     errors,
@@ -181,7 +182,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         except NotImplementedError:
             return
         self.assertEqual(self.repository_format,
-             repository.RepositoryFormatMetaDir.find_format(opened_control))
+             bzrrepository.RepositoryFormatMetaDir.find_format(opened_control))
 
     def test_format_matchingbzrdir(self):
         self.assertEqual(self.repository_format,

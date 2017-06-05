@@ -27,12 +27,9 @@ from breezy import (
     debug,
     generate_ids,
     graph,
-    lockable_files,
-    lockdir,
     osutils,
     revision as _mod_revision,
     testament as _mod_testament,
-    tsort,
     gpg,
     )
 from breezy.bundle import serializer
@@ -47,7 +44,7 @@ from . import (
     )
 from .decorators import needs_read_lock, needs_write_lock, only_raises
 from .inter import InterObject
-from .lock import _RelockDebugMixin, LogicalLockResult
+from .lock import LogicalLockResult
 from .trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
 
@@ -247,7 +244,7 @@ class RepositoryWriteLockResult(LogicalLockResult):
 # Repositories
 
 
-class Repository(_RelockDebugMixin, controldir.ControlComponent):
+class Repository(controldir.ControlComponent):
     """Repository holding history for one or more branches.
 
     The repository holds and retrieves historical information including
@@ -905,19 +902,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         """
         raise NotImplementedError(self.add_signature_text)
 
-    def _find_parent_ids_of_revisions(self, revision_ids):
-        """Find all parent ids that are mentioned in the revision graph.
-
-        :return: set of revisions that are parents of revision_ids which are
-            not part of revision_ids themselves
-        """
-        parent_map = self.get_parent_map(revision_ids)
-        parent_ids = set(itertools.chain.from_iterable(
-            parent_map.itervalues()))
-        parent_ids.difference_update(revision_ids)
-        parent_ids.discard(_mod_revision.NULL_REVISION)
-        return parent_ids
-
     def iter_files_bytes(self, desired_files):
         """Iterate through file versions.
 
@@ -1210,55 +1194,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                     raise errors.NonAsciiRevisionId(method, self)
 
 
-class MetaDirRepository(Repository):
-    """Repositories in the new meta-dir layout.
-
-    :ivar _transport: Transport for access to repository control files,
-        typically pointing to .bzr/repository.
-    """
-
-    def __init__(self, _format, a_bzrdir, control_files):
-        super(MetaDirRepository, self).__init__(_format, a_bzrdir, control_files)
-        self._transport = control_files._transport
-
-    def is_shared(self):
-        """Return True if this repository is flagged as a shared repository."""
-        return self._transport.has('shared-storage')
-
-    @needs_write_lock
-    def set_make_working_trees(self, new_value):
-        """Set the policy flag for making working trees when creating branches.
-
-        This only applies to branches that use this repository.
-
-        The default is 'True'.
-        :param new_value: True to restore the default, False to disable making
-                          working trees.
-        """
-        if new_value:
-            try:
-                self._transport.delete('no-working-trees')
-            except errors.NoSuchFile:
-                pass
-        else:
-            self._transport.put_bytes('no-working-trees', '',
-                mode=self.bzrdir._get_file_mode())
-
-    def make_working_trees(self):
-        """Returns the policy for making working trees on new branches."""
-        return not self._transport.has('no-working-trees')
-
-    @needs_write_lock
-    def update_feature_flags(self, updated_flags):
-        """Update the feature flags for this branch.
-
-        :param updated_flags: Dictionary mapping feature names to necessities
-            A necessity can be None to indicate the feature should be removed
-        """
-        self._format._update_feature_flags(updated_flags)
-        self.control_transport.put_bytes('format', self._format.as_string())
-
-
 class RepositoryFormatRegistry(controldir.ControlComponentFormatRegistry):
     """Repository format registry."""
 
@@ -1446,77 +1381,6 @@ class RepositoryFormat(controldir.ControlComponentFormat):
             hook(params)
 
 
-class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
-    """Common base class for the new repositories using the metadir layout."""
-
-    rich_root_data = False
-    supports_tree_reference = False
-    supports_external_lookups = False
-    supports_leaving_lock = True
-    supports_nesting_repositories = True
-
-    @property
-    def _matchingbzrdir(self):
-        matching = bzrdir.BzrDirMetaFormat1()
-        matching.repository_format = self
-        return matching
-
-    def __init__(self):
-        RepositoryFormat.__init__(self)
-        bzrdir.BzrFormat.__init__(self)
-
-    def _create_control_files(self, a_bzrdir):
-        """Create the required files and the initial control_files object."""
-        # FIXME: RBC 20060125 don't peek under the covers
-        # NB: no need to escape relative paths that are url safe.
-        repository_transport = a_bzrdir.get_repository_transport(self)
-        control_files = lockable_files.LockableFiles(repository_transport,
-                                'lock', lockdir.LockDir)
-        control_files.create_lock()
-        return control_files
-
-    def _upload_blank_content(self, a_bzrdir, dirs, files, utf8_files, shared):
-        """Upload the initial blank content."""
-        control_files = self._create_control_files(a_bzrdir)
-        control_files.lock_write()
-        transport = control_files._transport
-        if shared == True:
-            utf8_files += [('shared-storage', '')]
-        try:
-            transport.mkdir_multi(dirs, mode=a_bzrdir._get_dir_mode())
-            for (filename, content_stream) in files:
-                transport.put_file(filename, content_stream,
-                    mode=a_bzrdir._get_file_mode())
-            for (filename, content_bytes) in utf8_files:
-                transport.put_bytes_non_atomic(filename, content_bytes,
-                    mode=a_bzrdir._get_file_mode())
-        finally:
-            control_files.unlock()
-
-    @classmethod
-    def find_format(klass, a_bzrdir):
-        """Return the format for the repository object in a_bzrdir.
-
-        This is used by brz native formats that have a "format" file in
-        the repository.  Other methods may be used by different types of
-        control directory.
-        """
-        try:
-            transport = a_bzrdir.get_repository_transport(None)
-            format_string = transport.get_bytes("format")
-        except errors.NoSuchFile:
-            raise errors.NoRepositoryPresent(a_bzrdir)
-        return klass._find_format(format_registry, 'repository', format_string)
-
-    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-            basedir=None):
-        RepositoryFormat.check_support_status(self,
-            allow_unsupported=allow_unsupported, recommend_upgrade=recommend_upgrade,
-            basedir=basedir)
-        bzrdir.BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
-            recommend_upgrade=recommend_upgrade, basedir=basedir)
-
-
 # formats which have no format string are not discoverable or independently
 # creatable on disk, so are not registered in format_registry.  They're
 # all in breezy.repofmt.knitreponow.  When an instance of one of these is
@@ -1631,7 +1495,8 @@ class InterRepository(InterObject):
                             revision_id and its parents.
         """
         try:
-            self.target.set_make_working_trees(self.source.make_working_trees())
+            self.target.set_make_working_trees(
+                self.source.make_working_trees())
         except NotImplementedError:
             pass
         self.target.fetch(self.source, revision_id=revision_id)
@@ -1649,8 +1514,8 @@ class InterRepository(InterObject):
         raise NotImplementedError(self.fetch)
 
     @needs_read_lock
-    def search_missing_revision_ids(self,
-            find_ghosts=True, revision_ids=None, if_present_ids=None,
+    def search_missing_revision_ids(
+            self, find_ghosts=True, revision_ids=None, if_present_ids=None,
             limit=None):
         """Return the revision ids that source has that target does not.
 
@@ -1792,7 +1657,7 @@ class _LazyListJoin(object):
 
     Each iterator made from this will reflect the current contents of the lists
     at the time the iterator is made.
-    
+
     This is used by Repository's _make_parents_provider implementation so that
     it is safe to do::
 

@@ -1076,7 +1076,7 @@ class BzrDirMeta1(BzrDir):
 
     def open_repository(self, unsupported=False):
         """See BzrDir.open_repository."""
-        from .repository import RepositoryFormatMetaDir
+        from .bzrrepository import RepositoryFormatMetaDir
         format = RepositoryFormatMetaDir.find_format(self)
         format.check_support_status(unsupported)
         return format.open(self, _found=True)

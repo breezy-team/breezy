@@ -44,6 +44,7 @@ from breezy.tests import (
     )
 from breezy import (
     bzrdir,
+    bzrrepository,
     controldir,
     errors,
     inventory,
@@ -92,7 +93,7 @@ class TestDefaultFormat(TestCase):
                               old_format.__class__)
 
 
-class SampleRepositoryFormat(repository.RepositoryFormatMetaDir):
+class SampleRepositoryFormat(bzrrepository.RepositoryFormatMetaDir):
     """A sample format
 
     this format is initializable, unsupported to aid in testing the

@@ -67,10 +67,12 @@ from .inventory import (
 from .repository import (
     CommitBuilder,
     InterRepository,
-    MetaDirRepository,
-    RepositoryFormatMetaDir,
     Repository,
     RepositoryFormat,
+    )
+from .bzrrepository import (
+    MetaDirRepository,
+    RepositoryFormatMetaDir,
     )
 
 from .sixish import (
