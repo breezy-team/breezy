@@ -398,7 +398,7 @@ def find_credits(repository, revid):
         repository.unlock()
     def sort_class(name):
         return [author
-            for author, _  in sorted(ret[name].items(), key=classify_key))
+            for author, _  in sorted(ret[name].items(), key=classify_key)]
     return (sort_class("code"), sort_class("documentation"), sort_class("art"), sort_class("translation"))
 
 
