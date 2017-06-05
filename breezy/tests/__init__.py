@@ -151,7 +151,7 @@ isolated_environ = {
     # as a base class instead of TestCaseInTempDir. Tests inheriting from
     # TestCase should not use disk resources, BRZ_LOG is one.
     'BRZ_LOG': '/you-should-use-TestCaseInTempDir-if-you-need-a-log-file',
-    'BRZ_PLUGIN_PATH': None,
+    'BRZ_PLUGIN_PATH': '-site',
     'BRZ_DISABLE_PLUGINS': None,
     'BRZ_PLUGINS_AT': None,
     'BRZ_CONCURRENCY': None,

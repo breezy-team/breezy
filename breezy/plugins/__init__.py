@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2017 Breezy developers
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,6 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Null placeholder plugin"""
+"""Pseudo-namespace package for breezy plugins."""
+
 from __future__ import absolute_import
 
+from breezy.plugin import extend_path
+
+__path__ = extend_path(__path__, __name__)
