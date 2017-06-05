@@ -202,7 +202,7 @@ def _write_option(exporter, context, opt, note):
 def _standard_options(exporter):
     OPTIONS = option.Option.OPTIONS
     context = exporter.get_context(option)
-    for name in sorted(OPTIONS.keys()):
+    for name in sorted(OPTIONS):
         opt = OPTIONS[name]
         _write_option(exporter, context.from_string(name), opt, "option")
 

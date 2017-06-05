@@ -99,6 +99,8 @@ from .osutils import (
 from .sixish import (
     BytesIO,
     range,
+    viewitems,
+    viewvalues,
     )
 from .versionedfile import (
     _KeyRefs,
@@ -843,8 +845,8 @@ def _get_total_build_size(self, keys, positions):
             if compression_parent not in all_build_index_memos:
                 next_keys.add(compression_parent)
         build_keys = next_keys
-    return sum([index_memo[2] for index_memo
-                in all_build_index_memos.itervalues()])
+    return sum(index_memo[2]
+               for index_memo in viewvalues(all_build_index_memos))
 
 
 class KnitVersionedFiles(VersionedFilesWithFallbacks):
@@ -1173,7 +1175,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             build_details = self._index.get_build_details(pending_components)
             current_components = set(pending_components)
             pending_components = set()
-            for key, details in build_details.iteritems():
+            for key, details in viewitems(build_details):
                 (index_memo, compression_parent, parents,
                  record_details) = details
                 method = record_details[0]
@@ -1280,7 +1282,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 # key = component_id, r = record_details, i_m = index_memo,
                 # n = next
                 records = [(key, i_m) for key, (r, i_m, n)
-                                       in position_map.iteritems()]
+                                       in viewitems(position_map)]
                 # Sort by the index memo, so that we request records from the
                 # same pack file together, and in forward-sorted order
                 records.sort(key=operator.itemgetter(1))
@@ -1411,7 +1413,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             # map from key to
             # (record_details, access_memo, compression_parent_key)
             positions = dict((key, self._build_details_to_components(details))
-                for key, details in build_details.iteritems())
+                for key, details in viewitems(build_details))
         absent_keys = keys.difference(set(positions))
         # There may be more absent keys : if we're missing the basis component
         # and are trying to include the delta closure.
@@ -1525,7 +1527,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         missing = set(keys)
         record_map = self._get_record_map(missing, allow_missing=True)
         result = {}
-        for key, details in record_map.iteritems():
+        for key, details in viewitems(record_map):
             if key not in missing:
                 continue
             # record entry 2 is the 'digest'.
@@ -1757,7 +1759,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 # we need key, position, length
                 key_records = []
                 build_details = self._index.get_build_details(keys)
-                for key, details in build_details.iteritems():
+                for key, details in viewitems(build_details):
                     if key in keys:
                         key_records.append((key, details[0]))
                 records_iter = enumerate(self._read_records_iter(key_records))
@@ -2165,8 +2167,8 @@ class _ContentMapGenerator(object):
         # one line with next ('' for None)
         # one line with byte count of the record bytes
         # the record bytes
-        for key, (record_bytes, (method, noeol), next) in \
-            self._raw_record_map.iteritems():
+        for key, (record_bytes, (method, noeol), next) in viewitems(
+                self._raw_record_map):
             key_bytes = '\x00'.join(key)
             parents = self.global_map.get(key, None)
             if parents is None:
@@ -2890,10 +2892,10 @@ class _KnitGraphIndex(object):
                 del keys[key]
         result = []
         if self._parents:
-            for key, (value, node_refs) in keys.iteritems():
+            for key, (value, node_refs) in viewitems(keys):
                 result.append((key, value, node_refs))
         else:
-            for key, (value, node_refs) in keys.iteritems():
+            for key, (value, node_refs) in viewitems(keys):
                 result.append((key, value))
         self._add_callback(result)
         if missing_compression_parents:
@@ -3269,7 +3271,7 @@ class _KnitAnnotator(annotate.Annotator):
             self._all_build_details.update(build_details)
             # new_nodes = self._vf._index._get_entries(this_iteration)
             pending = set()
-            for key, details in build_details.iteritems():
+            for key, details in viewitems(build_details):
                 (index_memo, compression_parent, parent_keys,
                  record_details) = details
                 self._parent_map[key] = parent_keys
@@ -3290,7 +3292,7 @@ class _KnitAnnotator(annotate.Annotator):
                     else:
                         self._num_compression_children[compression_parent] = 1
 
-            missing_versions = this_iteration.difference(build_details.keys())
+            missing_versions = this_iteration.difference(build_details)
             if missing_versions:
                 for key in missing_versions:
                     if key in self._parent_map and key in self._text_cache:

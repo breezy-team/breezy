@@ -44,6 +44,9 @@ from .sixish import (
     BytesIO,
     map,
     range,
+    viewitems,
+    viewkeys,
+    viewvalues,
     )
 
 
@@ -557,13 +560,13 @@ class BTreeBuilder(index.GraphIndexBuilder):
         if self._nodes_by_key is None:
             nodes_by_key = {}
             if self.reference_lists:
-                for key, (references, value) in self._nodes.iteritems():
+                for key, (references, value) in viewitems(self._nodes):
                     key_dict = nodes_by_key
                     for subkey in key[:-1]:
                         key_dict = key_dict.setdefault(subkey, {})
                     key_dict[key[-1]] = key, value, references
             else:
-                for key, (references, value) in self._nodes.iteritems():
+                for key, (references, value) in viewitems(self._nodes):
                     key_dict = nodes_by_key
                     for subkey in key[:-1]:
                         key_dict = key_dict.setdefault(subkey, {})
@@ -905,7 +908,8 @@ class BTreeGraphIndex(object):
 
     def _get_offsets_to_cached_pages(self):
         """Determine what nodes we already have cached."""
-        cached_offsets = set(self._internal_node_cache.keys())
+        cached_offsets = set(self._internal_node_cache)
+        # cache may be dict or LRUCache, keys() is the common method
         cached_offsets.update(self._leaf_node_cache.keys())
         if self._root_node is not None:
             cached_offsets.add(0)
@@ -944,7 +948,7 @@ class BTreeGraphIndex(object):
     def _cache_leaf_values(self, nodes):
         """Cache directly from key => value, skipping the btree."""
         if self._leaf_value_cache is not None:
-            for node in nodes.itervalues():
+            for node in viewvalues(nodes):
                 for key, value in node.all_items():
                     if key in self._leaf_value_cache:
                         # Don't add the rest of the keys, we've seen this node

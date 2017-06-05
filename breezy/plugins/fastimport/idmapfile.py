@@ -29,13 +29,9 @@ def save_id_map(filename, revision_ids):
     :param filename: name of the file to save the data to
     :param revision_ids: a dictionary of commit ids to revision ids.
     """
-    f = open(filename, 'wb')
-    try:
-        for commit_id, rev_id in revision_ids.iteritems():
-            f.write("%s %s\n" % (commit_id, rev_id))
-        f.flush()
-    finally:
-        f.close()
+    with open(filename, 'wb') as f:
+        for commit_id in revision_ids:
+            f.write("%s %s\n" % (commit_id, revision_ids[commit_id]))
 
 
 def load_id_map(filename):

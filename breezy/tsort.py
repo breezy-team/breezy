@@ -363,7 +363,7 @@ class MergeSorter(object):
         # we need to do a check late in the process to detect end-of-merges
         # which requires the parents to be accessible: its easier for now
         # to just keep the original graph around.
-        self._original_graph = dict(self._graph.items())
+        self._original_graph = self._graph.copy()
         # we need to know the revision numbers of revisions to determine
         # the revision numbers of their descendants
         # this is a graph from node to [revno_tuple, first_child]

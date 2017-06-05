@@ -40,7 +40,7 @@ def remove_tags(branch, graph, old_tip, parents):
     reverse_tags = branch.tags.get_reverse_tag_dict()
     ancestors = graph.find_unique_ancestors(old_tip, parents)
     removed_tags = []
-    for revid, tags in reverse_tags.iteritems():
+    for revid, tags in reverse_tags.items():
         if not revid in ancestors:
             continue
         for tag in tags:

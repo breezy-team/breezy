@@ -71,6 +71,7 @@ from .osutils import (
     )
 from .sixish import (
     BytesIO,
+    viewitems,
     )
 from .transport.local import LocalTransport
 from .tree import (
@@ -1018,7 +1019,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     raise errors.PathsNotVersionedError(
                         [p.decode('utf-8') for p in paths])
 
-        for dir_name_id, trees_info in found.iteritems():
+        for dir_name_id, trees_info in viewitems(found):
             for index in search_indexes:
                 if trees_info[index][0] not in ('r', 'a'):
                     found_ids.add(dir_name_id[2])

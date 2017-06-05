@@ -94,7 +94,7 @@ class LaunchpadService(object):
     # NB: these should always end in a slash to avoid xmlrpclib appending
     # '/RPC2'
     LAUNCHPAD_INSTANCE = {}
-    for instance, domain in LAUNCHPAD_DOMAINS.iteritems():
+    for instance, domain in LAUNCHPAD_DOMAINS.items():
         LAUNCHPAD_INSTANCE[instance] = 'https://xmlrpc.%s/bazaar/' % domain
 
     # We use production as the default because edge has been deprecated circa
@@ -197,7 +197,7 @@ class LaunchpadService(object):
         else:
             domains = (
                 'bazaar.%s' % domain
-                for domain in self.LAUNCHPAD_DOMAINS.itervalues())
+                for domain in self.LAUNCHPAD_DOMAINS.values())
             if hostinfo not in domains:
                 raise NotLaunchpadBranch(branch_url)
         return path.lstrip('/')

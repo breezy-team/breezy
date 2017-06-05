@@ -864,7 +864,7 @@ def _make_search_filter(branch, generate_delta, match, log_rev_iterator):
     if match is None:
         return log_rev_iterator
     searchRE = [(k, [re.compile(x, re.IGNORECASE) for x in v])
-                for (k,v) in match.iteritems()]
+                for k, v in match.items()]
     return _filter_re(searchRE, log_rev_iterator)
 
 
@@ -881,7 +881,7 @@ def _match_filter(searchRE, rev):
                'author': (rev.get_apparent_authors()),
                'bugs': list(rev.iter_bugs())
                }
-    strings[''] = [item for inner_list in strings.itervalues()
+    strings[''] = [item for inner_list in strings.values()
                    for item in inner_list]
     for (k,v) in searchRE:
         if k in strings and not _match_any_filter(strings[k], v):
