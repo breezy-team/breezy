@@ -16,6 +16,8 @@
 
 """Compiled extensions for doing compression."""
 
+from __future__ import absolute_import
+
 #python2.4 support
 cdef extern from "python-compat.h":
     pass

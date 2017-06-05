@@ -16,6 +16,8 @@
 
 """Pyrex implementation of _read_stanza_*."""
 
+from __future__ import absolute_import
+
 #python2.4 support
 cdef extern from "python-compat.h":
     pass
@@ -47,7 +49,7 @@ cdef extern from "Python.h":
 cdef extern from "string.h":
     void *memcpy(void *, void *, int)
 
-from breezy.rio import Stanza
+from .rio import Stanza
 
 cdef int _valid_tag_char(char c): # cannot_raise
     return (c == c'_' or c == c'-' or 

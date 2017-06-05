@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import absolute_import
+
 
 #python2.4 support
 cdef extern from "python-compat.h":
@@ -48,7 +50,7 @@ cdef extern from "Python.h":
     object PyString_FromStringAndSize(char*, Py_ssize_t)
 
 # cimport all of the definitions we will need to access
-from _static_tuple_c cimport StaticTuple,\
+from ._static_tuple_c cimport StaticTuple,\
     import_static_tuple_c, StaticTuple_New, \
     StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact, \
     StaticTuple_GET_SIZE
@@ -179,7 +181,7 @@ cdef _import_globals():
     """Set the global attributes. Done lazy to avoid recursive import loops."""
     global _LeafNode, _InternalNode, _unknown
 
-    from breezy import chk_map
+    from . import chk_map
     _LeafNode = chk_map.LeafNode
     _InternalNode = chk_map.InternalNode
     _unknown = chk_map._unknown
