@@ -21,6 +21,7 @@ import sys
 from .... import (
     bzrdir,
     config,
+    controldir,
     errors,
     osutils,
     revisionspec,
@@ -120,7 +121,7 @@ class UploadUtilsMixin(object):
         t.ensure_base()
         branch = bzrdir.BzrDir.create_branch_convenience(
             t.base,
-            format=bzrdir.format_registry.make_bzrdir('default'),
+            format=controldir.format_registry.make_bzrdir('default'),
             force_new_tree=False)
         self.tree = branch.bzrdir.create_workingtree()
         self.tree.commit('initial empty tree')

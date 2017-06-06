@@ -48,6 +48,9 @@ from . import (
     hooks,
     registry,
     )
+from .sixish import (
+    viewitems,
+    )
 # TODO: Report back as changes are merged in
 
 
@@ -2289,7 +2292,7 @@ class _PlanMerge(_PlanMergeBase):
         filtered_parent_map = {}
         child_map = {}
         tails = []
-        for key, parent_keys in parent_map.iteritems():
+        for key, parent_keys in viewitems(parent_map):
             culled_parent_keys = [p for p in parent_keys if p in parent_map]
             if not culled_parent_keys:
                 tails.append(key)

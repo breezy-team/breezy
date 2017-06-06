@@ -29,6 +29,7 @@ import copy
 import difflib
 import doctest
 import errno
+import functools
 import itertools
 import logging
 import math
@@ -151,7 +152,7 @@ isolated_environ = {
     # as a base class instead of TestCaseInTempDir. Tests inheriting from
     # TestCase should not use disk resources, BRZ_LOG is one.
     'BRZ_LOG': '/you-should-use-TestCaseInTempDir-if-you-need-a-log-file',
-    'BRZ_PLUGIN_PATH': None,
+    'BRZ_PLUGIN_PATH': '-site',
     'BRZ_DISABLE_PLUGINS': None,
     'BRZ_PLUGINS_AT': None,
     'BRZ_CONCURRENCY': None,
@@ -3942,6 +3943,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_extract',
         'breezy.tests.test_features',
         'breezy.tests.test_fetch',
+        'breezy.tests.test_fetch_ghosts',
         'breezy.tests.test_fixtures',
         'breezy.tests.test_fifo_cache',
         'breezy.tests.test_filters',
@@ -4210,11 +4212,11 @@ def multiply_scenarios(*scenarios):
 
     It is safe to pass scenario generators or iterators.
 
-    :returns: A list of compound scenarios: the cross-product of all 
+    :returns: A list of compound scenarios: the cross-product of all
         scenarios, with the names concatenated and the parameters
         merged together.
     """
-    return reduce(_multiply_two_scenarios, map(list, scenarios))
+    return functools.reduce(_multiply_two_scenarios, map(list, scenarios))
 
 
 def _multiply_two_scenarios(scenarios_left, scenarios_right):
@@ -4226,7 +4228,7 @@ def _multiply_two_scenarios(scenarios_left, scenarios_right):
     """
     return [
         ('%s,%s' % (left_name, right_name),
-         dict(left_dict.items() + right_dict.items()))
+         dict(left_dict, **right_dict))
         for left_name, left_dict in scenarios_left
         for right_name, right_dict in scenarios_right]
 

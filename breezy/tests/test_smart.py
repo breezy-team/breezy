@@ -30,6 +30,7 @@ import zlib
 from breezy import (
     bencode,
     branch as _mod_branch,
+    bzrbranch as _mod_bzrbranch,
     controldir,
     errors,
     gpg,
@@ -214,9 +215,9 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         referenced_branch = self.make_branch('referenced')
         dir = self.make_bzrdir('.')
         local_result = dir.cloning_metadir()
-        reference = _mod_branch.BranchReferenceFormat().initialize(
+        reference = _mod_bzrbranch.BranchReferenceFormat().initialize(
             dir, target_branch=referenced_branch)
-        reference_url = _mod_branch.BranchReferenceFormat().get_reference(dir)
+        reference_url = _mod_bzrbranch.BranchReferenceFormat().get_reference(dir)
         # The server shouldn't try to follow the branch reference, so it's fine
         # if the referenced branch isn't reachable.
         backing.rename('referenced', 'moved')
@@ -650,7 +651,7 @@ class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):
         request = smart_dir.SmartServerRequestOpenBranch(backing)
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('reference',lightweight=True)
-        reference_url = _mod_branch.BranchReferenceFormat().get_reference(
+        reference_url = _mod_bzrbranch.BranchReferenceFormat().get_reference(
             checkout.bzrdir)
         self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
         self.assertEqual(smart_req.SmartServerResponse(('ok', reference_url)),
@@ -691,7 +692,7 @@ class TestSmartServerRequestOpenBranchV2(TestCaseWithChrootedTransport):
         request = smart_dir.SmartServerRequestOpenBranchV2(backing)
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('reference',lightweight=True)
-        reference_url = _mod_branch.BranchReferenceFormat().get_reference(
+        reference_url = _mod_bzrbranch.BranchReferenceFormat().get_reference(
             checkout.bzrdir)
         self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(
@@ -754,7 +755,7 @@ class TestSmartServerRequestOpenBranchV3(TestCaseWithChrootedTransport):
         request = smart_dir.SmartServerRequestOpenBranchV3(backing)
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('reference',lightweight=True)
-        reference_url = _mod_branch.BranchReferenceFormat().get_reference(
+        reference_url = _mod_bzrbranch.BranchReferenceFormat().get_reference(
             checkout.bzrdir)
         self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(

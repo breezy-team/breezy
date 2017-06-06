@@ -18,6 +18,8 @@
 
 from __future__ import absolute_import
 
+import itertools
+
 from . import (
     debug,
     revision,
@@ -29,11 +31,14 @@ from .graph import (
     Graph,
     invert_parent_map,
     )
+from .sixish import (
+    viewvalues,
+    )
 
 
 class AbstractSearchResult(object):
     """The result of a search, describing a set of keys.
-    
+
     Search results are typically used as the 'fetch_spec' parameter when
     fetching revisions.
 
@@ -380,9 +385,7 @@ def search_result_from_parent_map(parent_map, missing_keys):
     # start_set is all the keys in the cache
     start_set = set(parent_map)
     # result set is all the references to keys in the cache
-    result_parents = set()
-    for parents in parent_map.itervalues():
-        result_parents.update(parents)
+    result_parents = set(itertools.chain.from_iterable(viewvalues(parent_map)))
     stop_keys = result_parents.difference(start_set)
     # We don't need to send ghosts back to the server as a position to
     # stop either.
@@ -420,14 +423,14 @@ def _run_search(parent_map, heads, exclude_keys):
             next_revs = next(s)
         except StopIteration:
             break
-        for parents in s._current_parents.itervalues():
+        for parents in viewvalues(s._current_parents):
             f_heads = heads.intersection(parents)
             if f_heads:
                 found_heads.update(f_heads)
         stop_keys = exclude_keys.intersection(next_revs)
         if stop_keys:
             s.stop_searching_any(stop_keys)
-    for parents in s._current_parents.itervalues():
+    for parents in viewvalues(s._current_parents):
         f_heads = heads.intersection(parents)
         if f_heads:
             found_heads.update(f_heads)

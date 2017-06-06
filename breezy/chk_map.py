@@ -56,6 +56,10 @@ from . import (
     static_tuple,
     trace,
     )
+from .sixish import (
+    viewitems,
+    viewvalues,
+    )
 from .static_tuple import StaticTuple
 
 # approx 4MB
@@ -212,11 +216,11 @@ class CHKMap(object):
         if isinstance(node, InternalNode):
             # Trigger all child nodes to get loaded
             list(node._iter_nodes(self._store))
-            for prefix, sub in sorted(node._items.iteritems()):
+            for prefix, sub in sorted(viewitems(node._items)):
                 result.extend(self._dump_tree_node(sub, prefix, indent + '  ',
                                                    include_keys=include_keys))
         else:
-            for key, value in sorted(node._items.iteritems()):
+            for key, value in sorted(viewitems(node._items)):
                 # Don't use prefix nor indent here to line up when used in
                 # tests in conjunction with assertEqualDiff
                 result.append('      %r %r' % (tuple(key), value))
@@ -255,7 +259,7 @@ class CHKMap(object):
         result._root_node.set_maximum_size(maximum_size)
         result._root_node._key_width = key_width
         delta = []
-        for key, value in initial_value.items():
+        for key, value in viewitems(initial_value):
             delta.append((None, key, value))
         root_key = result.apply_delta(delta)
         return root_key
@@ -267,10 +271,10 @@ class CHKMap(object):
         node.set_maximum_size(maximum_size)
         node._key_width = key_width
         as_st = StaticTuple.from_sequence
-        node._items = dict([(as_st(key), val) for key, val
-                                               in initial_value.iteritems()])
-        node._raw_size = sum([node._key_value_len(key, value)
-                              for key,value in node._items.iteritems()])
+        node._items = dict((as_st(key), val)
+            for key, val in viewitems(initial_value))
+        node._raw_size = sum(node._key_value_len(key, value)
+            for key, value in viewitems(node._items))
         node._len = len(node._items)
         node._compute_search_prefix()
         node._compute_serialised_prefix()
@@ -333,7 +337,7 @@ class CHKMap(object):
             node = a_map._get_node(node)
             if isinstance(node, LeafNode):
                 path = (node._key, path)
-                for key, value in node._items.items():
+                for key, value in viewitems(node._items):
                     # For a LeafNode, the key is a serialized_key, rather than
                     # a search_key, but the heap is using search_keys
                     search_key = node._search_key_func(key)
@@ -341,11 +345,11 @@ class CHKMap(object):
             else:
                 # type(node) == InternalNode
                 path = (node._key, path)
-                for prefix, child in node._items.items():
+                for prefix, child in viewitems(node._items):
                     heapq.heappush(pending, (prefix, None, child, path))
         def process_common_internal_nodes(self_node, basis_node):
-            self_items = set(self_node._items.items())
-            basis_items = set(basis_node._items.items())
+            self_items = set(viewitems(self_node._items))
+            basis_items = set(viewitems(basis_node._items))
             path = (self_node._key, None)
             for prefix, child in self_items - basis_items:
                 heapq.heappush(self_pending, (prefix, None, child, path))
@@ -353,8 +357,8 @@ class CHKMap(object):
             for prefix, child in basis_items - self_items:
                 heapq.heappush(basis_pending, (prefix, None, child, path))
         def process_common_leaf_nodes(self_node, basis_node):
-            self_items = set(self_node._items.items())
-            basis_items = set(basis_node._items.items())
+            self_items = set(viewitems(self_node._items))
+            basis_items = set(viewitems(basis_node._items))
             path = (self_node._key, None)
             for key, value in self_items - basis_items:
                 prefix = self._search_key_func(key)
@@ -766,17 +770,16 @@ class LeafNode(Node):
                         pass
                 else:
                     # Short items, we need to match based on a prefix
-                    length_filter = filters.setdefault(len(key), set())
-                    length_filter.add(key)
+                    filters.setdefault(len(key), set()).add(key)
             if filters:
-                filters = filters.items()
-                for item in self._items.iteritems():
-                    for length, length_filter in filters:
+                filters_itemview = viewitems(filters)
+                for item in viewitems(self._items):
+                    for length, length_filter in filters_itemview:
                         if item[0][:length] in length_filter:
                             yield item
                             break
         else:
-            for item in self._items.iteritems():
+            for item in viewitems(self._items):
                 yield item
 
     def _key_value_len(self, key, value):
@@ -838,7 +841,7 @@ class LeafNode(Node):
         common_prefix = self._search_prefix
         split_at = len(common_prefix) + 1
         result = {}
-        for key, value in self._items.iteritems():
+        for key, value in viewitems(self._items):
             search_key = self._search_key(key)
             prefix = search_key[:split_at]
             # TODO: Generally only 1 key can be exactly the right length,
@@ -871,7 +874,7 @@ class LeafNode(Node):
                 for split, node in node_details:
                     new_node.add_node(split, node)
                 result[prefix] = new_node
-        return common_prefix, result.items()
+        return common_prefix, list(viewitems(result))
 
     def map(self, store, key, value):
         """Map key to value."""
@@ -906,7 +909,7 @@ class LeafNode(Node):
         else:
             lines.append('%s\n' % (self._common_serialised_prefix,))
             prefix_len = len(self._common_serialised_prefix)
-        for key, value in sorted(self._items.items()):
+        for key, value in sorted(viewitems(self._items)):
             # Always add a final newline
             value_lines = osutils.chunks_to_lines([value + '\n'])
             serialized = "%s\x00%s\n" % (self._serialise_key(key),
@@ -1071,7 +1074,7 @@ class InternalNode(Node):
             # yielding all nodes, yield whatever we have, and queue up a read
             # for whatever we are missing
             shortcut = True
-            for prefix, node in self._items.iteritems():
+            for prefix, node in viewitems(self._items):
                 if node.__class__ is StaticTuple:
                     keys[node] = (prefix, None)
                 else:
@@ -1147,10 +1150,10 @@ class InternalNode(Node):
             else:
                 # The slow way. We walk every item in self._items, and check to
                 # see if there are any matches
-                length_filters = length_filters.items()
-                for prefix, node in self._items.iteritems():
+                length_filters_itemview = viewitems(length_filters)
+                for prefix, node in viewitems(self._items):
                     node_key_filter = []
-                    for length, length_filter in length_filters:
+                    for length, length_filter in length_filters_itemview:
                         sub_prefix = prefix[:length]
                         if sub_prefix in length_filter:
                             node_key_filter.extend(prefix_to_keys[sub_prefix])
@@ -1292,7 +1295,7 @@ class InternalNode(Node):
         :param store: A VersionedFiles honouring the CHK extensions.
         :return: An iterable of the keys inserted by this operation.
         """
-        for node in self._items.itervalues():
+        for node in viewvalues(self._items):
             if isinstance(node, StaticTuple):
                 # Never deserialised.
                 continue
@@ -1309,7 +1312,7 @@ class InternalNode(Node):
             raise AssertionError("_search_prefix should not be None")
         lines.append('%s\n' % (self._search_prefix,))
         prefix_len = len(self._search_prefix)
-        for prefix, node in sorted(self._items.items()):
+        for prefix, node in sorted(viewitems(self._items)):
             if isinstance(node, StaticTuple):
                 key = node[0]
             else:
@@ -1342,19 +1345,16 @@ class InternalNode(Node):
             prefix for reaching node.
         """
         if offset >= self._node_width:
-            for node in self._items.values():
+            for node in valueview(self._items):
                 for result in node._split(offset):
                     yield result
-            return
-        for key, node in self._items.items():
-            pass
 
     def refs(self):
         """Return the references to other CHK's held by this node."""
         if self._key is None:
             raise AssertionError("unserialised nodes have no refs.")
         refs = []
-        for value in self._items.itervalues():
+        for value in viewvalues(self._items):
             if isinstance(value, StaticTuple):
                 refs.append(value)
             else:
@@ -1393,7 +1393,7 @@ class InternalNode(Node):
             self._items[search_key] = unmapped
         if len(self._items) == 1:
             # this node is no longer needed:
-            return self._items.values()[0]
+            return list(viewvalues(self._items))[0]
         if isinstance(unmapped, InternalNode):
             return self
         if check_remap:
@@ -1443,7 +1443,7 @@ class InternalNode(Node):
             if isinstance(node, InternalNode):
                 # Without looking at any leaf nodes, we are sure
                 return self
-            for key, value in node._items.iteritems():
+            for key, value in viewitems(node._items):
                 if new_leaf._map_no_split(key, value):
                     return self
         trace.mutter("remap generated a new LeafNode")
@@ -1532,15 +1532,14 @@ class CHKMapDifference(object):
                 #       indicate that we keep 100k prefix_refs around while
                 #       processing. They *should* be shorter lived than that...
                 #       It does cost us ~10s of processing time
-                #prefix_refs = [as_st(item) for item in node._items.iteritems()]
-                prefix_refs = node._items.items()
+                prefix_refs = list(viewitems(node._items))
                 items = []
             else:
                 prefix_refs = []
                 # Note: We don't use a StaticTuple here. Profiling showed a
                 #       minor memory improvement (0.8MB out of 335MB peak 0.2%)
                 #       But a significant slowdown (15s / 145s, or 10%)
-                items = node._items.items()
+                items = list(viewitems(node._items))
             yield record, node, prefix_refs, items
 
     def _read_old_roots(self):

@@ -497,7 +497,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         """
         pending = [NULL_REVISION]
         descendants = {}
-        for descendant, parents in ancestors.iteritems():
+        for descendant, parents in ancestors.items():
             for parent in parents:
                 descendants.setdefault(parent, []).append(descendant)
         while len(pending) > 0:

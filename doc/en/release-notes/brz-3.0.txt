@@ -48,8 +48,14 @@ New Features
  * The 'upload' plugin is now bundled with Bazaar.
    (Jelmer Vernooĳ)
 
+ * The 'email' plugin is now bundled with Bazaar.
+   (Jelmer Vernooĳ)
+
  * The 'import' command is now bundled with brz.
    Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ, #773241)
+
+ * The 'fetch-ghosts' command is now bundled with brz.
+   Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ)
 
 Improvements
 ************
@@ -84,6 +90,17 @@ API Changes
 
  * Renamed ``breezy.delta.report_delta`` parameter ``filter=`` to
    ``predicate=``. (Martin Packman)
+
+ * ``BzrBranch`` and the various bzr branch format implementations
+   have been moved to ``breezy.bzr``. (Jelmer Vernooĳ)
+
+ * ``MetaDirBranchFormatFactory`` has been removed.
+   Use lazy registration on ``breezy.branch.format_registry``
+   instead. (Jelmer Vernooĳ)
+
+ * ``breezy.bzrdir.format_registry`` has been removed; use
+   ``breezy.controldir.format_registry`` instead.
+   (Jelmer Vernooij)
 
 Internals
 *********

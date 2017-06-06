@@ -190,7 +190,7 @@ class addinfourl(urllib2.addinfourl):
     def getheaders(self):
         if self.headers is None:
             raise httplib.ResponseNotReady()
-        return self.headers.items()
+        return list(self.headers.items())
 
 
 class _ReportingFileSocket(object):
@@ -761,7 +761,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
         # before sending the request. And not all versions of python 2.5 do
         # that. Since we replace urllib2.AbstractHTTPHandler.do_open we do it
         # ourself below.
-        headers = dict((name.title(), val) for name, val in headers.iteritems())
+        headers = dict((name.title(), val) for name, val in headers.items())
 
         try:
             method = request.get_method()
@@ -774,7 +774,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
             if 'http' in debug.debug_flags:
                 trace.mutter('> %s %s' % (method, url))
                 hdrs = []
-                for k,v in headers.iteritems():
+                for k,v in headers.items():
                     # People are often told to paste -Dhttp output to help
                     # debug. Don't compromise credentials.
                     if k in ('Authorization', 'Proxy-Authorization'):

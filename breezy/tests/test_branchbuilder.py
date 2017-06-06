@@ -18,6 +18,7 @@
 
 from .. import (
     branch as _mod_branch,
+    bzrbranch as _mod_bzrbranch,
     revision as _mod_revision,
     tests,
     )
@@ -46,7 +47,7 @@ class TestBranchBuilder(tests.TestCaseWithMemoryTransport):
         """Making a BranchBuilder with a format option sets the branch type."""
         builder = BranchBuilder(self.get_transport(), format='dirstate-tags')
         branch = builder.get_branch()
-        self.assertIsInstance(branch, _mod_branch.BzrBranch6)
+        self.assertIsInstance(branch, _mod_bzrbranch.BzrBranch6)
 
     def test_build_one_commit(self):
         """doing build_commit causes a commit to happen."""

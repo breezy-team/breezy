@@ -348,7 +348,7 @@ class TestingSFTPConnectionHandler(socketserver.BaseRequestHandler):
         ptrans = paramiko.Transport(self.request)
         self.paramiko_transport = ptrans
         # Set it to a channel under 'bzr' so that we get debug info
-        ptrans.set_log_channel('bzr.paramiko.transport')
+        ptrans.set_log_channel('brz.paramiko.transport')
         ptrans.add_server_key(tcs.get_host_key())
         ptrans.set_subsystem_handler('sftp', paramiko.SFTPServer,
                                      StubSFTPServer, root=tcs._root,
@@ -384,7 +384,7 @@ class TestingSFTPWithoutSSHConnectionHandler(TestingSFTPConnectionHandler):
             def get_transport(self):
                 return self
             def get_log_channel(self):
-                return 'bzr.paramiko'
+                return 'brz.paramiko'
             def get_name(self):
                 return '1'
             def get_hexdump(self):

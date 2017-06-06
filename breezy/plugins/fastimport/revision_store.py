@@ -269,7 +269,7 @@ class AbstractRevisionStore(object):
         # repository.CommitBuilder.record_entry_contents().
         parent_candidate_entries = ie.parent_candidates(self._rev_parent_invs)
         head_set = self._commit_builder._heads(ie.file_id,
-            parent_candidate_entries.keys())
+            list(parent_candidate_entries))
         heads = []
         for inv in self._rev_parent_invs:
             if inv.has_id(ie.file_id):

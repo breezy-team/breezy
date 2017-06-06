@@ -19,6 +19,8 @@
 from .. import urlutils
 from ..branch import (
     Branch,
+    )
+from ..bzrbranch import (
     BranchReferenceFormat,
     )
 from ..bzrdir import (

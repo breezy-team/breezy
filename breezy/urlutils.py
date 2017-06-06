@@ -578,7 +578,7 @@ def join_segment_parameters(url, parameters):
     (base, existing_parameters) = split_segment_parameters(url)
     new_parameters = {}
     new_parameters.update(existing_parameters)
-    for key, value in parameters.iteritems():
+    for key, value in parameters.items():
         if not isinstance(key, str):
             raise TypeError("parameter key %r is not a bytestring" % key)
         if not isinstance(value, str):

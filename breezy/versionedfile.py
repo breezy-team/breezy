@@ -44,6 +44,8 @@ from breezy import (
 from .registry import Registry
 from .sixish import (
     BytesIO,
+    viewitems,
+    viewvalues,
     zip,
     )
 from .textmerge import TextMerge
@@ -250,7 +252,7 @@ class _MPDiffGenerator(object):
         refcounts = {}
         setdefault = refcounts.setdefault
         just_parents = set()
-        for child_key, parent_keys in parent_map.iteritems():
+        for child_key, parent_keys in viewitems(parent_map):
             if not parent_keys:
                 # parent_keys may be None if a given VersionedFile claims to
                 # not support graph operations.
@@ -491,7 +493,7 @@ class VersionedFile(object):
             except KeyError:
                 raise errors.RevisionNotPresent(version_id, self)
         # We need to filter out ghosts, because we can't diff against them.
-        knit_versions = set(self.get_parent_map(knit_versions).keys())
+        knit_versions = set(self.get_parent_map(knit_versions))
         lines = dict(zip(knit_versions,
             self._get_lf_split_line_list(knit_versions)))
         diffs = []
@@ -535,7 +537,7 @@ class VersionedFile(object):
         for version, parent_ids, expected_sha1, mpdiff in records:
             needed_parents.update(p for p in parent_ids
                                   if not mpvf.has_version(p))
-        present_parents = set(self.get_parent_map(needed_parents).keys())
+        present_parents = set(self.get_parent_map(needed_parents))
         for parent_id, lines in zip(present_parents,
                 self._get_lf_split_line_list(present_parents)):
             mpvf.add_version(lines, parent_id, [])
@@ -1095,7 +1097,7 @@ class VersionedFiles(object):
             this_parent_map = self.get_parent_map(pending)
             parent_map.update(this_parent_map)
             pending = set(itertools.chain.from_iterable(
-                this_parent_map.itervalues()))
+                viewvalues(this_parent_map)))
             pending.difference_update(parent_map)
         kg = _mod_graph.KnownGraph(parent_map)
         return kg
@@ -1297,11 +1299,11 @@ class ThunkedVersionedFiles(VersionedFiles):
         """
         prefixes = self._partition_keys(keys)
         result = {}
-        for prefix, suffixes in prefixes.items():
+        for prefix, suffixes in viewitems(prefixes):
             path = self._mapper.map(prefix)
             vf = self._get_vf(path)
             parent_map = vf.get_parent_map(suffixes)
-            for key, parents in parent_map.items():
+            for key, parents in viewitems(parent_map):
                 result[prefix + (key,)] = tuple(
                     prefix + (parent,) for parent in parents)
         return result
@@ -1353,7 +1355,7 @@ class ThunkedVersionedFiles(VersionedFiles):
     def _iter_keys_vf(self, keys):
         prefixes = self._partition_keys(keys)
         sha1s = {}
-        for prefix, suffixes in prefixes.items():
+        for prefix, suffixes in viewitems(prefixes):
             path = self._mapper.map(prefix)
             vf = self._get_vf(path)
             yield prefix, suffixes, vf
@@ -1363,7 +1365,7 @@ class ThunkedVersionedFiles(VersionedFiles):
         sha1s = {}
         for prefix,suffixes, vf in self._iter_keys_vf(keys):
             vf_sha1s = vf.get_sha1s(suffixes)
-            for suffix, sha1 in vf_sha1s.iteritems():
+            for suffix, sha1 in viewitems(vf_sha1s):
                 sha1s[prefix + (suffix,)] = sha1
         return sha1s
 
@@ -1553,7 +1555,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
         result.update(
             _mod_graph.StackedParentsProvider(
                 self._providers).get_parent_map(keys))
-        for key, parents in result.iteritems():
+        for key, parents in viewitems(result):
             if parents == ():
                 result[key] = (revision.NULL_REVISION,)
         return result
@@ -1732,8 +1734,8 @@ class VirtualVersionedFiles(VersionedFiles):
 
     def get_parent_map(self, keys):
         """See VersionedFiles.get_parent_map."""
-        return dict([((k,), tuple([(p,) for p in v]))
-            for k,v in self._get_parent_map([k for (k,) in keys]).iteritems()])
+        parent_view = viewitems(self._get_parent_map(k for (k,) in keys))
+        return dict(((k,), tuple((p,) for p in v)) for k, v in parent_view)
 
     def get_sha1s(self, keys):
         """See VersionedFiles.get_sha1s."""
@@ -1889,7 +1891,7 @@ def sort_groupcompress(parent_map):
     # gc-optimal ordering is approximately reverse topological,
     # properly grouped by file-id.
     per_prefix_map = {}
-    for item in parent_map.iteritems():
+    for item in viewitems(parent_map):
         key = item[0]
         if isinstance(key, str) or len(key) == 1:
             prefix = ''
@@ -1936,9 +1938,9 @@ class _KeyRefs(object):
 
     def get_new_keys(self):
         return self.new_keys
-    
+
     def get_unsatisfied_refs(self):
-        return self.refs.iterkeys()
+        return self.refs.keys()
 
     def _satisfy_refs_for_key(self, key):
         try:
@@ -1958,10 +1960,7 @@ class _KeyRefs(object):
             self._satisfy_refs_for_key(key)
 
     def get_referrers(self):
-        result = set()
-        for referrers in self.refs.itervalues():
-            result.update(referrers)
-        return result
+        return set(itertools.chain.from_iterable(viewvalues(self.refs)))
 
 
 

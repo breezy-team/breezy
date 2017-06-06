@@ -1288,10 +1288,10 @@ class RepositoryPackCollection(object):
 
     def _remove_pack_indices(self, pack, ignore_missing=False):
         """Remove the indices for pack from the aggregated indices.
-        
+
         :param ignore_missing: Suppress KeyErrors from calling remove_index.
         """
-        for index_type in Pack.index_definitions.keys():
+        for index_type in Pack.index_definitions:
             attr_name = index_type + '_index'
             aggregate_index = getattr(self, attr_name)
             if aggregate_index is not None:
@@ -1344,7 +1344,7 @@ class RepositoryPackCollection(object):
 
         # do a two-way diff against our original content
         current_nodes = set()
-        for name, sizes in self._names.iteritems():
+        for name, sizes in self._names.items():
             current_nodes.add(
                 ((name, ), ' '.join(str(size) for size in sizes)))
 
