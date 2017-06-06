@@ -31,6 +31,9 @@ from .repository import (
     Repository,
     RepositoryFormat,
     )
+from .sixish import (
+    viewvalues,
+    )
 
 
 class MetaDirRepository(Repository):
