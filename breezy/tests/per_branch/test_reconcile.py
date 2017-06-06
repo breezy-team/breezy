@@ -17,7 +17,7 @@
 """Tests for branch implementations - test reconcile() functionality"""
 
 from breezy import errors, reconcile
-from breezy.branch import BzrBranch
+from breezy.bzrbranch import BzrBranch
 from breezy.symbol_versioning import deprecated_in
 from breezy.tests.per_branch import TestCaseWithBranch
 from breezy.tests import TestNotApplicable

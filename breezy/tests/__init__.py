@@ -29,6 +29,7 @@ import copy
 import difflib
 import doctest
 import errno
+import functools
 import itertools
 import logging
 import math
@@ -4211,11 +4212,11 @@ def multiply_scenarios(*scenarios):
 
     It is safe to pass scenario generators or iterators.
 
-    :returns: A list of compound scenarios: the cross-product of all 
+    :returns: A list of compound scenarios: the cross-product of all
         scenarios, with the names concatenated and the parameters
         merged together.
     """
-    return reduce(_multiply_two_scenarios, map(list, scenarios))
+    return functools.reduce(_multiply_two_scenarios, map(list, scenarios))
 
 
 def _multiply_two_scenarios(scenarios_left, scenarios_right):
@@ -4227,7 +4228,7 @@ def _multiply_two_scenarios(scenarios_left, scenarios_right):
     """
     return [
         ('%s,%s' % (left_name, right_name),
-         dict(left_dict.items() + right_dict.items()))
+         dict(left_dict, **right_dict))
         for left_name, left_dict in scenarios_left
         for right_name, right_dict in scenarios_right]
 

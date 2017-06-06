@@ -52,10 +52,10 @@ def best_format_for_objects_in_a_repository(repo):
     from ... import bzrdir
     repo_format = repo._format
     candidates  = []
-    non_aliases = set(bzrdir.format_registry.keys())
-    non_aliases.difference_update(bzrdir.format_registry.aliases())
+    non_aliases = set(controldir.format_registry.keys())
+    non_aliases.difference_update(controldir.format_registry.aliases())
     for key in non_aliases:
-        format = bzrdir.format_registry.make_bzrdir(key)
+        format = controldir.format_registry.make_bzrdir(key)
         # LocalGitBzrDirFormat has no repository_format
         if hasattr(format, "repository_format"):
             if format.repository_format == repo_format:
@@ -105,7 +105,7 @@ def open_destination_directory(location, format=None, verbose=True):
     # Create a repository for the nominated format.
     trace.note("Creating destination repository ...")
     if format is None:
-        format = bzrdir.format_registry.make_bzrdir('default')
+        format = controldir.format_registry.make_bzrdir('default')
     to_transport = transport.get_transport(location)
     to_transport.ensure_base()
     control = format.initialize_on_transport(to_transport)

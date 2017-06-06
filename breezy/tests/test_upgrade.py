@@ -24,6 +24,7 @@ and then upgraded to the new format."""
 
 from .. import (
     branch,
+    bzrbranch,
     controldir,
     tests,
     upgrade,
@@ -49,7 +50,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
         converter = b.bzrdir._format.get_converter(target)
         converter.convert(b.bzrdir, None)
         new_branch = branch.Branch.open(self.get_url('branch'))
-        self.assertIs(new_branch.__class__, branch.BzrBranch6)
+        self.assertIs(new_branch.__class__, bzrbranch.BzrBranch6)
         self.assertEqual('CD', new_branch.last_revision())
         self.assertEqual('file:///EF', new_branch.get_parent())
         self.assertEqual('file:///GH', new_branch.get_bound_location())
@@ -60,16 +61,16 @@ class TestUpgrade(tests.TestCaseWithTransport):
         converter = b2.bzrdir._format.get_converter(target)
         converter.convert(b2.bzrdir, None)
         b2 = branch.Branch.open(self.get_url('branch'))
-        self.assertIs(b2.__class__, branch.BzrBranch6)
+        self.assertIs(b2.__class__, bzrbranch.BzrBranch6)
 
     def test_convert_branch7_branch8(self):
         b = self.make_branch('branch', format='1.9')
         target = controldir.format_registry.make_bzrdir('1.9')
-        target.set_branch_format(branch.BzrBranchFormat8())
+        target.set_branch_format(bzrbranch.BzrBranchFormat8())
         converter = b.bzrdir._format.get_converter(target)
         converter.convert(b.bzrdir, None)
         b = branch.Branch.open(self.get_url('branch'))
-        self.assertIs(b.__class__, branch.BzrBranch8)
+        self.assertIs(b.__class__, bzrbranch.BzrBranch8)
         self.assertEqual({}, b._get_all_reference_info())
 
     def test_convert_knit_dirstate_empty(self):
