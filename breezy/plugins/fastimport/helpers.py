@@ -19,6 +19,10 @@ from __future__ import absolute_import
 
 import stat
 
+from ... import (
+    controldir,
+    )
+
 
 def escape_commit_message(message):
     """Replace xml-incompatible control characters."""
