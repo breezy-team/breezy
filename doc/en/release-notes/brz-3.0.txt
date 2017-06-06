@@ -91,6 +91,13 @@ API Changes
  * Renamed ``breezy.delta.report_delta`` parameter ``filter=`` to
    ``predicate=``. (Martin Packman)
 
+ * ``BzrBranch`` and the various bzr branch format implementations
+   have been moved to ``breezy.bzr``. (Jelmer Vernooĳ)
+
+ * ``MetaDirBranchFormatFactory`` has been removed.
+   Use lazy registration on ``breezy.branch.format_registry``
+   instead. (Jelmer Vernooĳ)
+
  * ``breezy.bzrdir.format_registry`` has been removed; use
    ``breezy.controldir.format_registry`` instead.
    (Jelmer Vernooij)
