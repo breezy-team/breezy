@@ -185,26 +185,21 @@ from distutils.errors import CCompilerError, DistutilsPlatformError
 from distutils.extension import Extension
 ext_modules = []
 try:
-    try:
-        from Cython.Distutils import build_ext
-        from Cython.Compiler.Version import version as pyrex_version
-    except ImportError:
-        print("No Cython, trying Pyrex...")
-        from Pyrex.Distutils import build_ext
-        from Pyrex.Compiler.Version import version as pyrex_version
+    from Cython.Distutils import build_ext
+    from Cython.Compiler.Version import version as cython_version
 except ImportError:
-    have_pyrex = False
+    have_cython = False
     # try to build the extension from the prior generated source.
     print("")
-    print("The python package 'Pyrex' is not available."
+    print("The python package 'Cython' is not available."
           " If the .c files are available,")
     print("they will be built,"
           " but modifying the .pyx files will not rebuild them.")
     print("")
     from distutils.command.build_ext import build_ext
 else:
-    have_pyrex = True
-    pyrex_version_info = LooseVersion(pyrex_version)
+    have_cython = True
+    cython_version_info = LooseVersion(cython_version)
 
 
 class build_ext_if_possible(build_ext):
@@ -248,15 +243,15 @@ class build_ext_if_possible(build_ext):
                      % (ext.name,))
 
 
-# Override the build_ext if we have Pyrex available
+# Override the build_ext if we have Cython available
 command_classes['build_ext'] = build_ext_if_possible
 unavailable_files = []
 
 
-def add_pyrex_extension(module_name, libraries=None, extra_source=[]):
-    """Add a pyrex module to build.
+def add_cython_extension(module_name, libraries=None, extra_source=[]):
+    """Add a cython module to build.
 
-    This will use Pyrex to auto-generate the .c file if it is available.
+    This will use Cython to auto-generate the .c file if it is available.
     Otherwise it will fall back on the .c file. If the .c file is not
     available, it will warn, and not add anything.
 
@@ -267,16 +262,16 @@ def add_pyrex_extension(module_name, libraries=None, extra_source=[]):
         determine the .pyx and .c files to use.
     """
     path = module_name.replace('.', '/')
-    pyrex_name = path + '.pyx'
+    cython_name = path + '.pyx'
     c_name = path + '.c'
     define_macros = []
     if sys.platform == 'win32':
-        # pyrex uses the macro WIN32 to detect the platform, even though it
+        # cython uses the macro WIN32 to detect the platform, even though it
         # should be using something like _WIN32 or MS_WINDOWS, oh well, we can
         # give it the right value.
         define_macros.append(('WIN32', None))
-    if have_pyrex:
-        source = [pyrex_name]
+    if have_cython:
+        source = [cython_name]
     else:
         if not os.path.isfile(c_name):
             unavailable_files.append(c_name)
@@ -288,52 +283,39 @@ def add_pyrex_extension(module_name, libraries=None, extra_source=[]):
         define_macros=define_macros, libraries=libraries))
 
 
-add_pyrex_extension('breezy._annotator_pyx')
-add_pyrex_extension('breezy._bencode_pyx')
-add_pyrex_extension('breezy._chunks_to_lines_pyx')
-add_pyrex_extension('breezy._groupcompress_pyx',
+add_cython_extension('breezy._annotator_pyx')
+add_cython_extension('breezy._bencode_pyx')
+add_cython_extension('breezy._chunks_to_lines_pyx')
+add_cython_extension('breezy._groupcompress_pyx',
                     extra_source=['breezy/diff-delta.c'])
-add_pyrex_extension('breezy._knit_load_data_pyx')
-add_pyrex_extension('breezy._known_graph_pyx')
-add_pyrex_extension('breezy._rio_pyx')
+add_cython_extension('breezy._knit_load_data_pyx')
+add_cython_extension('breezy._known_graph_pyx')
+add_cython_extension('breezy._rio_pyx')
 if sys.platform == 'win32':
-    add_pyrex_extension('breezy._dirstate_helpers_pyx',
+    add_cython_extension('breezy._dirstate_helpers_pyx',
                         libraries=['Ws2_32'])
-    add_pyrex_extension('breezy._walkdirs_win32')
+    add_cython_extension('breezy._walkdirs_win32')
 else:
-    if have_pyrex and pyrex_version_info == LooseVersion("0.9.4.1"):
-        # Pyrex 0.9.4.1 fails to compile this extension correctly
-        # The code it generates re-uses a "local" pointer and
-        # calls "PY_DECREF" after having set it to NULL. (It mixes PY_XDECREF
-        # which is NULL safe with PY_DECREF which is not.)
-        # <https://bugs.launchpad.net/bzr/+bug/449372>
-        # <https://bugs.launchpad.net/bzr/+bug/276868>
-        print('Cannot build extension "breezy._dirstate_helpers_pyx" using')
-        print(('your version of pyrex "%s". Please upgrade your pyrex'
-              % (pyrex_version,)))
-        print('install. For now, the non-compiled (python) version will')
-        print('be used instead.')
-    else:
-        add_pyrex_extension('breezy._dirstate_helpers_pyx')
-    add_pyrex_extension('breezy._readdir_pyx')
-add_pyrex_extension('breezy._chk_map_pyx')
+    add_cython_extension('breezy._dirstate_helpers_pyx')
+    add_cython_extension('breezy._readdir_pyx')
+add_cython_extension('breezy._chk_map_pyx')
 ext_modules.append(Extension('breezy._patiencediff_c',
                              ['breezy/_patiencediff_c.c']))
-if have_pyrex and pyrex_version_info < LooseVersion("0.9.6.3"):
+if have_cython and cython_version_info < LooseVersion("0.9.6.3"):
     print("")
-    print(('Your Pyrex/Cython version %s is too old to build the simple_set' % (
-        pyrex_version)))
+    print(('Your Cython version %s is too old to build the simple_set' % (
+        cython_version)))
     print('and static_tuple extensions.')
-    print('Please upgrade to at least Pyrex 0.9.6.3')
+    print('Please upgrade to at least Cython 0.9.6.3')
     print("")
     # TODO: Should this be a fatal error?
 else:
     # We only need 0.9.6.3 to build _simple_set_pyx, but static_tuple depends
     # on simple_set
-    add_pyrex_extension('breezy._simple_set_pyx')
+    add_cython_extension('breezy._simple_set_pyx')
     ext_modules.append(Extension('breezy._static_tuple_c',
                                  ['breezy/_static_tuple_c.c']))
-add_pyrex_extension('breezy._btree_serializer_pyx')
+add_cython_extension('breezy._btree_serializer_pyx')
 
 
 if unavailable_files:
@@ -518,7 +500,7 @@ if 'bdist_wininst' in sys.argv:
             'ext_modules': ext_modules,
             # help pages
             'data_files': find_docs(),
-            # for building pyrex extensions
+            # for building cython extensions
             'cmdclass': command_classes,
            }
 

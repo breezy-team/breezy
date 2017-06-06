@@ -34,6 +34,9 @@ External Compatibility Breaks
    (https://help.launchpad.net/VcsImports).
    (Colin Watson, #254567, #483689)
 
+ * brz no longer supports building the C extensions using Pyrex.
+   Only Cython is supported. (Jelmer Vernooĳ)
+
 New Features
 ************
 
