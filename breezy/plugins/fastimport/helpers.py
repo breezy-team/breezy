@@ -81,9 +81,9 @@ def open_destination_directory(location, format=None, verbose=True):
     :return: BzrDir for the destination
     """
     import os
-    from ... import bzrdir, errors, trace, transport
+    from ... import controldir, errors, trace, transport
     try:
-        control, relpath = bzrdir.BzrDir.open_containing(location)
+        control, relpath = controldir.ControlDir.open_containing(location)
         # XXX: Check the relpath is None here?
         return control
     except errors.NotBranchError:
