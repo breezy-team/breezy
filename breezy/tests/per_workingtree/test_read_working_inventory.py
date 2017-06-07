@@ -19,7 +19,7 @@
 from breezy import errors, inventory
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
-from breezy.workingtree import InventoryWorkingTree
+from breezy.bzrworkingtree import InventoryWorkingTree
 
 
 class TestReadWorkingInventory(TestCaseWithWorkingTree):
