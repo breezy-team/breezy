@@ -301,20 +301,9 @@ else:
 add_cython_extension('breezy._chk_map_pyx')
 ext_modules.append(Extension('breezy._patiencediff_c',
                              ['breezy/_patiencediff_c.c']))
-if have_cython and cython_version_info < LooseVersion("0.9.6.3"):
-    print("")
-    print(('Your Cython version %s is too old to build the simple_set' % (
-        cython_version)))
-    print('and static_tuple extensions.')
-    print('Please upgrade to at least Cython 0.9.6.3')
-    print("")
-    # TODO: Should this be a fatal error?
-else:
-    # We only need 0.9.6.3 to build _simple_set_pyx, but static_tuple depends
-    # on simple_set
-    add_cython_extension('breezy._simple_set_pyx')
-    ext_modules.append(Extension('breezy._static_tuple_c',
-                                 ['breezy/_static_tuple_c.c']))
+add_cython_extension('breezy._simple_set_pyx')
+ext_modules.append(Extension('breezy._static_tuple_c',
+                             ['breezy/_static_tuple_c.c']))
 add_cython_extension('breezy._btree_serializer_pyx')
 
 
