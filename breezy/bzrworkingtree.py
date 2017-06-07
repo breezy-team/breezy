@@ -39,12 +39,11 @@ import stat
 
 # Explicitly import breezy.bzrdir so that the BzrProber
 # is guaranteed to be registered.
-import breezy.bzrdir
+from . import bzrdir
 
 from . import lazy_import
 lazy_import.lazy_import(globals(), """
 from breezy import (
-    bzrdir,
     cache_utf8,
     conflicts as _mod_conflicts,
     errors,
