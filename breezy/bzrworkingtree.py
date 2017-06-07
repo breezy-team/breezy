@@ -1,3 +1,36 @@
+# Copyright (C) 2005-2011 Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+"""InventoryWorkingTree object and friends.
+
+A WorkingTree represents the editable working copy of a branch.
+Operations which represent the WorkingTree are also done here,
+such as renaming or adding files.  The WorkingTree has an inventory
+which is updated by these operations.  A commit produces a
+new revision based on the workingtree and its inventory.
+
+At the moment every WorkingTree has its own branch.  Remote
+WorkingTrees aren't supported.
+
+To get a WorkingTree, call bzrdir.open_workingtree() or
+WorkingTree.open(dir).
+"""
+
+
+
 from __future__ import absolute_import
 
 import collections
@@ -8,7 +41,9 @@ import stat
 # is guaranteed to be registered.
 import breezy.bzrdir
 
-from . import (
+from . import lazy_import
+lazy_import.lazy_import(globals(), """
+from breezy import (
     bzrdir,
     cache_utf8,
     conflicts as _mod_conflicts,
@@ -24,6 +59,8 @@ from . import (
     xml5,
     xml7,
     )
+""")
+
 from .decorators import needs_write_lock, needs_read_lock
 from .lock import _RelockDebugMixin, LogicalLockResult
 from .mutabletree import needs_tree_write_lock
@@ -621,9 +658,9 @@ class InventoryWorkingTree(WorkingTree,
     @needs_tree_write_lock
     def set_merge_modified(self, modified_hashes):
         def iter_stanzas():
-            for file_id, hash in modified_hashes.iteritems():
+            for file_id in modified_hashes:
                 yield _mod_rio.Stanza(file_id=file_id.decode('utf8'),
-                    hash=hash)
+                    hash=modified_hashes[file_id])
         self._put_rio('merge-hashes', iter_stanzas(), MERGE_MODIFIED_HEADER_1)
 
     @needs_read_lock
