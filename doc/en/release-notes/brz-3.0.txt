@@ -111,10 +111,9 @@ Internals
 Testing
 *******
 
-.. Fixes and changes that are only relevant to brz's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
-
+ * A test isolation issue in ``breezy.tests.test_ui`` was fixed,
+   which caused ``output_encoding = iso-8859-1`` to be added to the
+   users' bazaar.conf. (Jelmer Vernooĳ)
 
 ..
    vim: tw=74 ft=rst ff=unix
