@@ -56,6 +56,7 @@ from breezy import (
     revision as _mod_revision,
     shelf,
     transform,
+    transport,
     ui,
     views,
     )
