@@ -30,17 +30,13 @@ import stat
 import sys
 
 from breezy import (
-    bzrdir,
+    controldir,
     errors,
     globbing,
     ignores,
-    osutils,
     revision,
-    revisionspec,
-    trace,
     transport,
     urlutils,
-    workingtree,
     )
 """)
 
@@ -478,7 +474,8 @@ class cmd_upload(commands.Command):
             directory = u'.'
 
         (wt, branch,
-         relpath) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
+         relpath) = controldir.ControlDir.open_containing_tree_or_branch(
+             directory)
 
         if wt:
             wt.lock_read()
@@ -510,7 +507,8 @@ class cmd_upload(commands.Command):
 
             # Check that we are not uploading to a existing working tree.
             try:
-                to_bzr_dir = bzrdir.BzrDir.open_from_transport(to_transport)
+                to_bzr_dir = controldir.ControlDir.open_from_transport(
+                        to_transport)
                 has_wt = to_bzr_dir.has_workingtree()
             except errors.NotBranchError:
                 has_wt = False

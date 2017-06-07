@@ -20,7 +20,7 @@ from __future__ import absolute_import
 
 import sys
 import os
-from ...bzrdir import BzrDir
+from ...controldir import ControlDir
 from ... import revision as _mod_revision
 from ...commands import Command
 from ...errors import BzrCommandError
@@ -36,7 +36,7 @@ class BisectCurrent(object):
 
     def __init__(self, filename = bisect_rev_path):
         self._filename = filename
-        self._bzrdir = BzrDir.open_containing(".")[0]
+        self._bzrdir = ControlDir.open_containing(".")[0]
         self._bzrbranch = self._bzrdir.open_branch()
         if os.path.exists(filename):
             revid_file = open(filename)
@@ -132,7 +132,7 @@ class BisectLog(object):
     def _load_bzr_tree(self):
         """Load bzr information."""
         if not self._bzrdir:
-            self._bzrdir = BzrDir.open_containing('.')[0]
+            self._bzrdir = ControlDir.open_containing('.')[0]
             self._bzrbranch = self._bzrdir.open_branch()
 
     def _find_range_and_middle(self, branch_last_rev = None):
