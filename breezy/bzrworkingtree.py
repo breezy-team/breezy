@@ -34,6 +34,7 @@ WorkingTree.open(dir).
 from __future__ import absolute_import
 
 import collections
+import errno
 import os
 import stat
 
