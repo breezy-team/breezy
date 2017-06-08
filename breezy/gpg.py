@@ -449,7 +449,7 @@ def verbose_missing_key_message(result):
             signers.setdefault(fingerprint, 0)
             signers[fingerprint] += 1
     result = []
-    for fingerprint, number in signers.items():
+    for fingerprint, number in list(signers.items()):
         result.append(ngettext(u"Unknown key {0} signed {1} commit",
                                u"Unknown key {0} signed {1} commits",
                                number).format(fingerprint, number))

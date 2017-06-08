@@ -23,6 +23,9 @@ useless stuff.
 from __future__ import absolute_import
 
 from . import osutils
+from .sixish import (
+    range,
+    )
 
 
 class _OutputHandler(object):
@@ -38,7 +41,7 @@ class _OutputHandler(object):
     def add_copy(self, start_byte, end_byte):
         # The data stream allows >64kB in a copy, but to match the compiled
         # code, we will also limit it to a 64kB copy
-        for start_byte in xrange(start_byte, end_byte, 64*1024):
+        for start_byte in range(start_byte, end_byte, 64*1024):
             num_bytes = min(64*1024, end_byte - start_byte)
             copy_bytes = encode_copy_instruction(start_byte, num_bytes)
             self.out_lines.append(copy_bytes)
@@ -64,7 +67,7 @@ class _OutputHandler(object):
         # Flush out anything pending
         self._flush_insert()
         line_len = len(line)
-        for start_index in xrange(0, line_len, 127):
+        for start_index in range(0, line_len, 127):
             next_len = min(127, line_len - start_index)
             self.out_lines.append(chr(next_len))
             self.index_lines.append(False)
@@ -256,7 +259,7 @@ class LinesDeltaIndex(object):
         bytes_to_insert = ''.join(new_lines[start_linenum:end_linenum])
         insert_length = len(bytes_to_insert)
         # Each insert instruction is at most 127 bytes long
-        for start_byte in xrange(0, insert_length, 127):
+        for start_byte in range(0, insert_length, 127):
             insert_count = min(insert_length - start_byte, 127)
             out_lines.append(chr(insert_count))
             # Don't index the 'insert' instruction
@@ -276,7 +279,7 @@ class LinesDeltaIndex(object):
         num_bytes = stop_byte - first_byte
         # The data stream allows >64kB in a copy, but to match the compiled
         # code, we will also limit it to a 64kB copy
-        for start_byte in xrange(first_byte, stop_byte, 64*1024):
+        for start_byte in range(first_byte, stop_byte, 64*1024):
             num_bytes = min(64*1024, stop_byte - start_byte)
             copy_bytes = encode_copy_instruction(start_byte, num_bytes)
             out_lines.append(copy_bytes)

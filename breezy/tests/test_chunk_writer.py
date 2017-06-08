@@ -72,7 +72,7 @@ class TestWriter(TestCaseWithTransport):
         lines = []
         for group in range(48):
             offset = group * 50
-            numbers = range(offset, offset + 50)
+            numbers = list(range(offset, offset + 50))
             # Create a line with this group
             lines.append(''.join(map(str, numbers)) + '\n')
         writer = chunk_writer.ChunkWriter(4096)
@@ -93,7 +93,7 @@ class TestWriter(TestCaseWithTransport):
         lines = []
         for group in range(48):
             offset = group * 50
-            numbers = range(offset, offset + 50)
+            numbers = list(range(offset, offset + 50))
             # Create a line with this group
             lines.append(''.join(map(str, numbers)) + '\n')
         writer = chunk_writer.ChunkWriter(4096, 256)

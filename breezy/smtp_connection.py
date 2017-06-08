@@ -183,7 +183,7 @@ class SMTPConnection(object):
                                       message.as_string())
         except smtplib.SMTPRecipientsRefused as e:
             raise SMTPError('server refused recipient: %d %s' %
-                    e.recipients.values()[0])
+                    next(iter(e.recipients.values())))
         except smtplib.SMTPResponseException as e:
             raise SMTPError('%d %s' % (e.smtp_code, e.smtp_error))
         except smtplib.SMTPException as e:

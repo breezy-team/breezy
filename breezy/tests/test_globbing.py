@@ -304,7 +304,7 @@ class TestGlobster(TestCase):
         This test assumes the globs are broken into regexs containing 99
         groups.
         """
-        patterns = [ u'*.%03d' % i for i in xrange(0,300) ]
+        patterns = [u'*.%03d' % i for i in range(300)]
         globster = Globster(patterns)
         # test the fence posts
         for x in (0,98,99,197,198,296,297,299):

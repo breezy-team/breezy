@@ -27,7 +27,7 @@ import tarfile
 import zipfile
 
 from . import generate_ids, urlutils
-from .bzrdir import BzrDir
+from .controldir import ControlDir
 from .errors import (BzrError, NoSuchFile, BzrCommandError, NotBranchError)
 from .osutils import (pathjoin, isdir, file_iterator, basename,
                       file_kind, splitpath)
@@ -310,7 +310,7 @@ def do_import(source, tree_directory=None):
         except NotBranchError:
             if not os.path.exists(tree_directory):
                 os.mkdir(tree_directory)
-            branch = BzrDir.create_branch_convenience(tree_directory)
+            branch = ControlDir.create_branch_convenience(tree_directory)
             tree = branch.bzrdir.open_workingtree()
     else:
         tree = WorkingTree.open_containing('.')[0]

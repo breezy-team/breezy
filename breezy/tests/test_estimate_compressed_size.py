@@ -47,7 +47,7 @@ class TestZLibEstimator(tests.TestCase):
         ze = estimate_compressed_size.ZLibEstimator(32000)
         raw_data = self.get_slightly_random_content(60000)
         block_size = 1000
-        for start in xrange(0, len(raw_data), block_size):
+        for start in range(0, len(raw_data), block_size):
             ze.add_content(raw_data[start:start+block_size])
             if ze.full():
                 break
@@ -65,7 +65,7 @@ class TestZLibEstimator(tests.TestCase):
         ze = estimate_compressed_size.ZLibEstimator(64000)
         raw_data = self.get_slightly_random_content(150000)
         block_size = 1000
-        for start in xrange(0, len(raw_data), block_size):
+        for start in range(0, len(raw_data), block_size):
             ze.add_content(raw_data[start:start+block_size])
             if ze.full():
                 break

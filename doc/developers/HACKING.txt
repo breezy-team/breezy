@@ -201,7 +201,7 @@ The key tools we use to enable these practices are:
 
 * Launchpad - https://launchpad.net/
 
-* Bazaar - http://bazaar.canonical.com/
+* Breezy - https://www.breezy-vcs.org/
 
 * Patch Queue Manager - https://launchpad.net/pqm/
 

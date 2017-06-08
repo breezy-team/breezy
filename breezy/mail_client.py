@@ -252,7 +252,7 @@ class Evolution(BodyExternalMailClient):
         if body is not None:
             message_options['body'] = body
         options_list = ['%s=%s' % (k, urlutils.escape(v)) for (k, v) in
-                        sorted(message_options.iteritems())]
+                        sorted(message_options.items())]
         return ['mailto:%s?%s' % (self._encode_safe(to or ''),
             '&'.join(options_list))]
 mail_client_registry.register('evolution', Evolution,
@@ -316,7 +316,7 @@ class Thunderbird(BodyExternalMailClient):
         else:
             options_list = []
         options_list.extend(["%s='%s'" % (k, v) for k, v in
-                        sorted(message_options.iteritems())])
+                        sorted(message_options.items())])
         return ['-compose', ','.join(options_list)]
 mail_client_registry.register('thunderbird', Thunderbird,
                               help=Thunderbird.__doc__)

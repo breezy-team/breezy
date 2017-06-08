@@ -184,8 +184,8 @@ class TestDiff(DiffBase):
         out, err = self.run_bzr(cmd, retcode=1)
         self.assertEqual('', err)
         self.assertEqual("=== modified file 'file'\n"
-                          "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                          "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                          "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                          "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
                           "@@ -1,1 +1,1 @@\n"
                           "-new content\n"
                           "+contents of branch1/file\n"
@@ -196,8 +196,8 @@ class TestDiff(DiffBase):
         out, err = self.run_bzr(cmd, retcode=1)
         self.assertEqual('', err)
         self.assertEqualDiff("=== modified file 'file'\n"
-                              "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
                               "@@ -1,1 +1,1 @@\n"
                               "-contents of branch1/file\n"
                               "+new content\n"
@@ -261,8 +261,8 @@ class TestDiff(DiffBase):
                                 retcode=1)
         self.assertEqual('', err)
         self.assertEqualDiff("=== modified file 'file'\n"
-                              "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
                               "@@ -1,1 +1,1 @@\n"
                               "-new content\n"
                               "+contents of branch1/file\n"
@@ -397,9 +397,11 @@ class TestExternalDiff(DiffBase):
         self.assertEqual('', err)
         # We have to skip the stuff in the middle, because it depends
         # on time.time()
-        self.assertStartsWith(out, "=== added file 'goodbye'\n"
-                                   "--- goodbye\t1970-01-01 00:00:00 +0000\n"
-                                   "+++ goodbye\t")
+        self.assertStartsWith(
+            out,
+            "=== added file 'goodbye'\n"
+            "--- old/goodbye\t1970-01-01 00:00:00 +0000\n"
+            "+++ new/goodbye\t")
         self.assertEndsWith(out, "\n@@ -0,0 +1 @@\n"
                                  "+baz\n\n")
 
