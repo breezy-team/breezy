@@ -326,7 +326,7 @@ def _posix_path_from_environ(key):
     so a path that raises BadFilenameEncoding here may still be accessible.
     """
     val = os.environ.get(key, None)
-    if val is None:
+    if PY3 or val is None:
         return val
     try:
         return val.decode(_fs_enc)
@@ -373,33 +373,6 @@ def _win32_fixdrive(path):
 def _win32_abspath(path):
     # Real ntpath.abspath doesn't have a problem with a unicode cwd
     return _win32_fixdrive(ntpath.abspath(unicode(path)).replace('\\', '/'))
-
-
-def _win98_abspath(path):
-    """Return the absolute version of a path.
-    Windows 98 safe implementation (python reimplementation
-    of Win32 API function GetFullPathNameW)
-    """
-    # Corner cases:
-    #   C:\path     => C:/path
-    #   C:/path     => C:/path
-    #   \\HOST\path => //HOST/path
-    #   //HOST/path => //HOST/path
-    #   path        => C:/cwd/path
-    #   /path       => C:/path
-    path = unicode(path)
-    # check for absolute path
-    drive = ntpath.splitdrive(path)[0]
-    if drive == '' and path[:2] not in('//','\\\\'):
-        cwd = _getcwd()
-        # we cannot simply os.path.join cwd and path
-        # because os.path.join('C:','/path') produce '/path'
-        # and this is incorrect
-        if path[:1] in ('/','\\'):
-            cwd = ntpath.splitdrive(cwd)[0]
-            path = path[1:]
-        path = cwd + '\\' + path
-    return _win32_fixdrive(ntpath.normpath(path).replace('\\', '/'))
 
 
 def _win32_realpath(path):
@@ -503,10 +476,7 @@ MIN_ABS_PATHLENGTH = 1
 
 
 if sys.platform == 'win32':
-    if win32utils.winver == 'Windows 98':
-        abspath = _win98_abspath
-    else:
-        abspath = _win32_abspath
+    abspath = _win32_abspath
     realpath = _win32_realpath
     pathjoin = _win32_pathjoin
     normpath = _win32_normpath
@@ -1836,12 +1806,7 @@ def _walkdirs_utf8(top, prefix=""):
     """
     global _selected_dir_reader
     if _selected_dir_reader is None:
-        if sys.platform == "win32" and win32utils.winver == 'Windows NT':
-            # Win98 doesn't have unicode apis like FindFirstFileW
-            # TODO: We possibly could support Win98 by falling back to the
-            #       original FindFirstFile, and using TCHAR instead of WCHAR,
-            #       but that gets a bit tricky, and requires custom compiling
-            #       for win98 anyway.
+        if sys.platform == "win32":
             try:
                 from ._walkdirs_win32 import Win32ReadDir
                 _selected_dir_reader = Win32ReadDir()

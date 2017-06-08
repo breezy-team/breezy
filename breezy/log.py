@@ -87,6 +87,7 @@ from .osutils import (
     )
 from breezy.sixish import (
     BytesIO,
+    range,
     zip,
     )
 
@@ -863,7 +864,7 @@ def _make_search_filter(branch, generate_delta, match, log_rev_iterator):
     if match is None:
         return log_rev_iterator
     searchRE = [(k, [re.compile(x, re.IGNORECASE) for x in v])
-                for (k,v) in match.iteritems()]
+                for k, v in match.items()]
     return _filter_re(searchRE, log_rev_iterator)
 
 
@@ -880,7 +881,7 @@ def _match_filter(searchRE, rev):
                'author': (rev.get_apparent_authors()),
                'bugs': list(rev.iter_bugs())
                }
-    strings[''] = [item for inner_list in strings.itervalues()
+    strings[''] = [item for inner_list in strings.values()
                    for item in inner_list]
     for (k,v) in searchRE:
         if k in strings and not _match_any_filter(strings[k], v):
@@ -1212,7 +1213,7 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
     #       rate). This particular access is clustered with a low success rate.
     modified_text_revisions = set()
     chunk_size = 1000
-    for start in xrange(0, len(text_keys), chunk_size):
+    for start in range(0, len(text_keys), chunk_size):
         next_keys = text_keys[start:start + chunk_size]
         # Only keep the revision_id portion of the key
         modified_text_revisions.update(
@@ -1233,7 +1234,7 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
 
         if rev_id in modified_text_revisions:
             # This needs to be logged, along with the extra revisions
-            for idx in xrange(len(current_merge_stack)):
+            for idx in range(len(current_merge_stack)):
                 node = current_merge_stack[idx]
                 if node is not None:
                     if include_merges or node[2] == 0:
@@ -1866,8 +1867,7 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
     # This is the first index which is different between
     # old and new
     base_idx = None
-    for i in xrange(max(len(new_rh),
-                        len(old_rh))):
+    for i in range(max(len(new_rh), len(old_rh))):
         if (len(new_rh) <= i
             or len(old_rh) <= i
             or new_rh[i] != old_rh[i]):

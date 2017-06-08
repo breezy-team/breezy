@@ -190,7 +190,7 @@ class addinfourl(urllib2.addinfourl):
     def getheaders(self):
         if self.headers is None:
             raise httplib.ResponseNotReady()
-        return self.headers.items()
+        return list(self.headers.items())
 
 
 class _ReportingFileSocket(object):
@@ -455,9 +455,9 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
                     "'bzr help ssl.ca_certs' for more information on setting "
                     "trusted CAs.")
         try:
-            ssl_sock = ssl.wrap_socket(
-                self.sock, self.key_file, self.cert_file,
-                cert_reqs=cert_reqs, ca_certs=ca_certs)
+            ssl_sock = ssl.SSLSocket(self.sock, self.key_file, self.cert_file,
+                                     cert_reqs=cert_reqs, ca_certs=ca_certs,
+                                     server_hostname=self.host)
         except ssl.SSLError:
             trace.note(
                 "\n"
@@ -466,12 +466,12 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
                 "Pass -Ossl.cert_reqs=none to disable certificate "
                 "verification entirely.\n")
             raise
+        # Wrap the ssl socket before anybody use it
+        self._wrap_socket_for_reporting(ssl_sock)
+
         if cert_reqs == ssl.CERT_REQUIRED:
             peer_cert = ssl_sock.getpeercert()
             ssl.match_hostname(peer_cert, host)
-
-        # Wrap the ssl socket before anybody use it
-        self._wrap_socket_for_reporting(ssl_sock)
 
 
 class Request(urllib2.Request):
@@ -761,7 +761,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
         # before sending the request. And not all versions of python 2.5 do
         # that. Since we replace urllib2.AbstractHTTPHandler.do_open we do it
         # ourself below.
-        headers = dict((name.title(), val) for name, val in headers.iteritems())
+        headers = dict((name.title(), val) for name, val in headers.items())
 
         try:
             method = request.get_method()
@@ -774,7 +774,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
             if 'http' in debug.debug_flags:
                 trace.mutter('> %s %s' % (method, url))
                 hdrs = []
-                for k,v in headers.iteritems():
+                for k,v in headers.items():
                     # People are often told to paste -Dhttp output to help
                     # debug. Don't compromise credentials.
                     if k in ('Authorization', 'Proxy-Authorization'):

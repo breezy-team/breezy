@@ -642,6 +642,8 @@ class TransportTests(TestTransportImplementation):
                                               transport_from, f)
 
         t = self.get_transport()
+        if t.__class__.__name__ == "SFTPTransport":
+            self.skipTest("SFTP copy_to currently too flakey to use")
         temp_transport = MemoryTransport('memory:///')
         simple_copy_files(t, temp_transport)
         if not t.is_readonly():

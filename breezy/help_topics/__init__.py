@@ -233,7 +233,7 @@ def _help_on_transport(name):
 
     protl = []
     decl = []
-    protos = transport_list_registry.keys( )
+    protos = transport_list_registry.keys()
     protos.sort(sort_func)
     for proto in protos:
         shorthelp = transport_list_registry.get_help(proto)
@@ -281,7 +281,7 @@ See :doc:`location-alias-help` and :doc:`url-special-chars-help`.
 
 _basic_help = \
 """Breezy %s -- a free distributed version-control tool
-http://bazaar.canonical.com/
+https://www.breezy-vcs.org/
 
 Basic commands:
   brz init           makes this directory a versioned branch

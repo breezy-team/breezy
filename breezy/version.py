@@ -84,7 +84,7 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
     if show_copyright:
         to_file.write('\n')
         to_file.write(breezy.__copyright__ + '\n')
-        to_file.write("http://bazaar.canonical.com/\n")
+        to_file.write("https://www.breezy-vcs.org/\n")
         to_file.write('\n')
         to_file.write("brz comes with ABSOLUTELY NO WARRANTY.  brz is free software, and\n")
         to_file.write("you may use, modify and redistribute it under the terms of the GNU\n")

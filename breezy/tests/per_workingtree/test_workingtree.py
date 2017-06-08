@@ -47,11 +47,13 @@ from .. import (
     TestNotApplicable,
     )
 from .  import TestCaseWithWorkingTree
+from ...bzrworkingtree import (
+    InventoryWorkingTree,
+    )
 from ...workingtree import (
     TreeDirectory,
     TreeFile,
     TreeLink,
-    InventoryWorkingTree,
     WorkingTree,
     )
 from ...conflicts import ConflictList, TextConflict, ContentsConflict

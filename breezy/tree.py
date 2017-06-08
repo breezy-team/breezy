@@ -42,6 +42,9 @@ from breezy.i18n import gettext
 
 from .decorators import needs_read_lock
 from .inter import InterObject
+from .sixish import (
+    viewvalues,
+    )
 
 
 class Tree(object):
@@ -864,12 +867,12 @@ class InventoryTree(Tree):
     @needs_read_lock
     def iter_child_entries(self, file_id, path=None):
         inv, inv_file_id = self._unpack_file_id(file_id)
-        return inv[inv_file_id].children.itervalues()
+        return iter(viewvalues(inv[inv_file_id].children))
 
     def iter_children(self, file_id, path=None):
         """See Tree.iter_children."""
         entry = self.iter_entries_by_dir([file_id]).next()[1]
-        for child in getattr(entry, 'children', {}).itervalues():
+        for child in viewvalues(getattr(entry, 'children', {})):
             yield child.file_id
 
 
@@ -1512,7 +1515,7 @@ class MultiWalker(object):
                          for other in self._other_trees]
         other_entries = [self._step_one(walker) for walker in other_walkers]
         # Track extra nodes in the other trees
-        others_extra = [{} for i in xrange(len(self._other_trees))]
+        others_extra = [{} for _ in range(len(self._other_trees))]
 
         master_has_more = True
         step_one = self._step_one
@@ -1592,7 +1595,7 @@ class MultiWalker(object):
         #       might ensure better ordering, in case a caller strictly
         #       requires parents before children.
         for idx, other_extra in enumerate(self._others_extra):
-            others = sorted(other_extra.itervalues(),
+            others = sorted(viewvalues(other_extra),
                             key=lambda x: self._path_to_key(x[0]))
             for other_path, other_ie in others:
                 file_id = other_ie.file_id
@@ -1600,7 +1603,7 @@ class MultiWalker(object):
                 # the lookup_by_file_id will be removing anything processed
                 # from the extras cache
                 other_extra.pop(file_id)
-                other_values = [(None, None) for i in xrange(idx)]
+                other_values = [(None, None)] * idx
                 other_values.append((other_path, other_ie))
                 for alt_idx, alt_extra in enumerate(self._others_extra[idx+1:]):
                     alt_idx = alt_idx + idx + 1

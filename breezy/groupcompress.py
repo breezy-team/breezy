@@ -44,6 +44,8 @@ from .btree_index import BTreeBuilder
 from .lru_cache import LRUSizeCache
 from .sixish import (
     map,
+    range,
+    viewitems,
     )
 from .versionedfile import (
     _KeyRefs,
@@ -72,7 +74,7 @@ def sort_gc_optimal(parent_map):
     # groupcompress ordering is approximately reverse topological,
     # properly grouped by file-id.
     per_prefix_map = {}
-    for key, value in parent_map.iteritems():
+    for key, value in viewitems(parent_map):
         if isinstance(key, str) or len(key) == 1:
             prefix = ''
         else:
@@ -767,7 +769,7 @@ class _LazyGroupContentManager(object):
         block = GroupCompressBlock.from_bytes(block_bytes)
         del block_bytes
         result = cls(block)
-        for start in xrange(0, len(header_lines), 4):
+        for start in range(0, len(header_lines), 4):
             # intern()?
             key = tuple(header_lines[start].split('\x00'))
             parents_line = header_lines[start+1]
@@ -1540,10 +1542,10 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             # This is the group the bytes are stored in, followed by the
             # location in the group
             return locations[key][0]
-        present_keys = sorted(locations.iterkeys(), key=get_group)
         # We don't have an ordering for keys in the in-memory object, but
         # lets process the in-memory ones first.
-        present_keys = list(unadded_keys) + present_keys
+        present_keys = list(unadded_keys)
+        present_keys.extend(sorted(locations, key=get_group))
         # Now grab all of the ones from other sources
         source_keys = [(self, present_keys)]
         source_keys.extend(source_result)
@@ -1573,7 +1575,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             # start with one key, recurse to its oldest parent, then grab
             # everything in the same group, etc.
             parent_map = dict((key, details[2]) for key, details in
-                locations.iteritems())
+                viewitems(locations))
             for key in unadded_keys:
                 parent_map[key] = self._unadded_refs[key]
             parent_map.update(fallback_parent_map)
@@ -2031,10 +2033,10 @@ class _GCGraphIndex(object):
         if changed:
             result = []
             if self._parents:
-                for key, (value, node_refs) in keys.iteritems():
+                for key, (value, node_refs) in viewitems(keys):
                     result.append((key, value, node_refs))
             else:
-                for key, (value, node_refs) in keys.iteritems():
+                for key, (value, node_refs) in viewitems(keys):
                     result.append((key, value))
             records = result
         key_dependencies = self._key_dependencies

@@ -188,54 +188,9 @@ class TestAppPaths(TestCase):
         self.assertEqual('not-existing', p)
 
 
-class TestLocations(TestCase):
-    """Tests for windows specific path and name retrieving functions"""
-
-    def test__ensure_unicode_deprecated(self):
-        s = "text"
-        u1 = self.applyDeprecated(symbol_versioning.deprecated_in((2, 5, 0)),
-            win32utils._ensure_unicode, s)
-        self.assertEqual(s, u1)
-        self.assertIsInstance(u1, unicode)
-        u2 = self.applyDeprecated(symbol_versioning.deprecated_in((2, 5, 0)),
-            win32utils._ensure_unicode, u1)
-        self.assertIs(u1, u2)
-    
-    def test_appdata_unicode_deprecated(self):
-        self.overrideEnv("APPDATA", "fakepath")
-        s = win32utils.get_appdata_location()
-        u = self.applyDeprecated(symbol_versioning.deprecated_in((2, 5, 0)),
-            win32utils.get_appdata_location_unicode)
-        self.assertEqual(s, u)
-        self.assertIsInstance(s, unicode)
-
-    def test_home_unicode_deprecated(self):
-        s = win32utils.get_home_location()
-        u = self.applyDeprecated(symbol_versioning.deprecated_in((2, 5, 0)),
-            win32utils.get_home_location_unicode)
-        self.assertEqual(s, u)
-        self.assertIsInstance(s, unicode)
-
-    def test_user_unicode_deprecated(self):
-        self.overrideEnv("USERNAME", "alien")
-        s = win32utils.get_user_name()
-        u = self.applyDeprecated(symbol_versioning.deprecated_in((2, 5, 0)),
-            win32utils.get_user_name_unicode)
-        self.assertEqual(s, u)
-        self.assertIsInstance(s, unicode)
-
-    def test_host_unicode_deprecated(self):
-        self.overrideEnv("COMPUTERNAME", "alienbox")
-        s = win32utils.get_host_name()
-        u = self.applyDeprecated(symbol_versioning.deprecated_in((2, 5, 0)),
-            win32utils.get_host_name_unicode)
-        self.assertEqual(s, u)
-        self.assertIsInstance(s, unicode)
-
-
 class TestLocationsCtypes(TestCase):
 
-    _test_needs_features = [CtypesFeature]
+    _test_needs_features = [CtypesFeature, features.win32_feature]
 
     def assertPathsEqual(self, p1, p2):
         # TODO: The env var values in particular might return the "short"

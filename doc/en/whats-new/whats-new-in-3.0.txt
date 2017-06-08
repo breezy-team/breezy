@@ -1,8 +1,8 @@
 *************************
-What's New in Breezy 2.8?
+What's New in Breezy 3.0?
 *************************
 
-Breezy 2.8 is still under development, and will be released in Month Year.
+Breezy 3.0 is still under development, and will be released when it is ready.
 This document accumulates a high level summary of what's changed.  See the
 :doc:`../release-notes/index` for a full list.
 

@@ -42,6 +42,7 @@ from ..osutils import sha_string, pathjoin
 from ..revision import Revision, NULL_REVISION
 from ..sixish import (
     BytesIO,
+    viewitems,
     )
 from ..testament import StrictTestament
 from ..trace import mutter, warning
@@ -106,7 +107,7 @@ class RevisionInfo(object):
         revision_info.timestamp = revision.timestamp
         revision_info.message = revision.message.split('\n')
         revision_info.properties = [': '.join(p) for p in
-                                    revision.properties.iteritems()]
+                                    viewitems(revision.properties)]
         return revision_info
 
 
@@ -252,7 +253,7 @@ class BundleInfo(object):
 
         count = 0
         missing = {}
-        for revision_id, sha1 in rev_to_sha.iteritems():
+        for revision_id, sha1 in viewitems(rev_to_sha):
             if repository.has_revision(revision_id):
                 testament = StrictTestament.from_revision(repository,
                                                           revision_id)
@@ -772,7 +773,7 @@ class BundleTree(Tree):
 
     def sorted_path_id(self):
         paths = []
-        for result in self._new_id.iteritems():
+        for result in viewitems(self._new_id):
             paths.append(result)
         for id in self.base_tree.all_file_ids():
             path = self.id2path(id)

@@ -25,18 +25,6 @@
 #ifndef _BZR_PYTHON_COMPAT_H
 #define _BZR_PYTHON_COMPAT_H
 
-/* http://www.python.org/dev/peps/pep-0353/ */
-#if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
-    typedef int Py_ssize_t;
-    typedef Py_ssize_t (*lenfunc)(PyObject *);
-    typedef PyObject * (*ssizeargfunc)(PyObject *, Py_ssize_t);
-    typedef PyObject * (*ssizessizeargfunc)(PyObject *, Py_ssize_t, Py_ssize_t);
-    #define PY_SSIZE_T_MAX INT_MAX
-    #define PY_SSIZE_T_MIN INT_MIN
-    #define PyInt_FromSsize_t(z) PyInt_FromLong(z)
-    #define PyInt_AsSsize_t(o) PyInt_AsLong(o)
-#endif
-
 #if defined(_WIN32) || defined(WIN32)
     /* Defining WIN32_LEAN_AND_MEAN makes including windows quite a bit
      * lighter weight.
@@ -77,14 +65,6 @@
 /* gcc (mingw32) has strtoll, while the MSVC compiler uses _strtoi64 */
 #define strtoll _strtoi64
 #define strtoull _strtoui64
-#endif
-
-/* Introduced in Python 2.6 */
-#ifndef Py_TYPE
-#  define Py_TYPE(o) ((o)->ob_type)
-#endif
-#ifndef Py_REFCNT
-#  define Py_REFCNT(o) ((o)->ob_refcnt)
 #endif
 
 #endif /* _BZR_PYTHON_COMPAT_H */

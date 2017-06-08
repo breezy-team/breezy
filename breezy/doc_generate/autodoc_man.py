@@ -247,7 +247,7 @@ commit = commit --strict
 .br
 log10 = log --short -r -10..-1
 .SH "SEE ALSO"
-.UR http://bazaar.canonical.com/
-.BR http://bazaar.canonical.com/
+.UR https://www.breezy-vcs.org/
+.BR https://www.breezy-vcs.org/
 """
 
