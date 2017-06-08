@@ -45,7 +45,7 @@ from breezy.tests import (
     multiply_tests,
     )
 from breezy.tests.per_controldir.test_controldir import TestCaseWithControlDir
-from breezy.vf_repository import (
+from breezy.bzr.vf_repository import (
     InterDifferingSerializer,
     )
 

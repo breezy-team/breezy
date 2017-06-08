@@ -20,8 +20,8 @@ import breezy
 from breezy import (
     errors,
     )
-from breezy.bzrdir import BzrDir
-from breezy.inventory import Inventory
+from breezy.bzr.bzrdir import BzrDir
+from breezy.bzr.inventory import Inventory
 from breezy.reconcile import reconcile, Reconciler
 from breezy.revision import Revision
 from breezy.tests import TestSkipped

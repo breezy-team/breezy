@@ -20,7 +20,6 @@ import os
 
 from ... import (
     branch,
-    bzrbranch,
     builtins,
     controldir,
     check,
@@ -30,6 +29,9 @@ from ... import (
     revision,
     tests,
     transport,
+    )
+from ...bzr import (
+    branch as bzrbranch,
     )
 from ...sixish import (
     BytesIO,

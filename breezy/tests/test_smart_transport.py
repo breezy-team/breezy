@@ -30,26 +30,28 @@ from testtools.matchers import DocTestMatches
 
 import breezy
 from .. import (
-        bzrdir,
-        controldir,
-        debug,
-        errors,
-        osutils,
-        tests,
-        transport as _mod_transport,
-        urlutils,
-        )
+    controldir,
+    debug,
+    errors,
+    osutils,
+    tests,
+    transport as _mod_transport,
+    urlutils,
+    )
+from ..bzr import (
+    bzrdir,
+    )
 from ..sixish import (
     BytesIO,
     )
 from ..smart import (
-        client,
-        medium,
-        message,
-        protocol,
-        request as _mod_request,
-        server as _mod_server,
-        vfs,
+    client,
+    medium,
+    message,
+    protocol,
+    request as _mod_request,
+    server as _mod_server,
+    vfs,
     )
 from . import (
     features,
@@ -57,12 +59,12 @@ from . import (
     test_server,
     )
 from ..transport import (
-        http,
-        local,
-        memory,
-        remote,
-        ssh,
-        )
+    http,
+    local,
+    memory,
+    remote,
+    ssh,
+    )
 
 
 def create_file_pipes():

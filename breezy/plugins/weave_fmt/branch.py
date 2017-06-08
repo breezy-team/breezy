@@ -35,7 +35,7 @@ from ...branch import (
     BranchFormat,
     BranchWriteLockResult,
     )
-from ...branchfmt.fullhistory import (
+from ...bzr.fullhistory import (
     FullHistoryBzrBranch,
     )
 

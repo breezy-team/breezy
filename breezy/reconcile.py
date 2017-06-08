@@ -35,7 +35,7 @@ from . import (
     )
 from .trace import mutter
 from .tsort import topo_sort
-from .versionedfile import AdapterFactory, FulltextContentFactory
+from .bzr.versionedfile import AdapterFactory, FulltextContentFactory
 from .i18n import gettext
 
 

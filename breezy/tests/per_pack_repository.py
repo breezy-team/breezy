@@ -21,18 +21,20 @@ These tests are repeated for all pack-based repository formats.
 
 from stat import S_ISDIR
 
-from ..btree_index import BTreeGraphIndex
-from ..index import GraphIndex
+from ..bzr.btree_index import BTreeGraphIndex
+from ..bzr.index import GraphIndex
 from .. import (
     controldir,
     errors,
-    inventory,
     osutils,
     repository,
     revision as _mod_revision,
     tests,
     transport,
     ui,
+    )
+from ..bzr import (
+    inventory,
     )
 from ..repofmt.groupcompress_repo import RepositoryFormat2a
 from ..smart import (

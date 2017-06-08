@@ -31,7 +31,7 @@ from ... import (
     serializer,
     workingtree as _mod_workingtree,
     )
-from ...bzrdir import (
+from ...bzr.bzrdir import (
     BzrProber,
     register_metadir,
     )
@@ -86,8 +86,8 @@ controldir.format_registry.register_lazy('weave',
 register_metadir(controldir.format_registry, 'metaweave',
     'breezy.plugins.weave_fmt.repository.RepositoryFormat7',
     'Transitional format in 0.8.  Slower than knit.',
-    branch_format='breezy.branchfmt.fullhistory.BzrBranchFormat5',
-    tree_format='breezy.workingtree_3.WorkingTreeFormat3',
+    branch_format='breezy.bzr.fullhistory.BzrBranchFormat5',
+    tree_format='breezy.bzr.workingtree_3.WorkingTreeFormat3',
     hidden=True,
     deprecated=True)
 

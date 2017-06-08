@@ -30,14 +30,16 @@ import zlib
 from breezy import (
     bencode,
     branch as _mod_branch,
-    bzrbranch as _mod_bzrbranch,
     controldir,
     errors,
     gpg,
-    inventory_delta,
     tests,
     transport,
     urlutils,
+    )
+from breezy.bzr import (
+    branch as _mod_bzrbranch,
+    inventory_delta,
     versionedfile,
     )
 from breezy.smart import (

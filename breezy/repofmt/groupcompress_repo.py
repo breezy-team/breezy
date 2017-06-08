@@ -22,25 +22,27 @@ import time
 
 from .. import (
     controldir,
-    chk_map,
-    chk_serializer,
     debug,
     errors,
-    index as _mod_index,
-    inventory,
     osutils,
-    pack,
     revision as _mod_revision,
     trace,
     ui,
+    )
+from ..bzr import (
+    chk_map,
+    chk_serializer,
+    index as _mod_index,
+    inventory,
+    pack,
     versionedfile,
     )
-from ..btree_index import (
+from ..bzr.btree_index import (
     BTreeGraphIndex,
     BTreeBuilder,
     )
 from ..decorators import needs_write_lock
-from ..groupcompress import (
+from ..bzr.groupcompress import (
     _GCGraphIndex,
     GroupCompressVersionedFiles,
     )
@@ -55,7 +57,7 @@ from .pack_repo import (
     ResumedPack,
     Packer,
     )
-from ..vf_repository import (
+from ..bzr.vf_repository import (
     StreamSource,
     )
 from ..sixish import (

@@ -24,10 +24,12 @@ and then upgraded to the new format."""
 
 from .. import (
     branch,
-    bzrbranch,
     controldir,
     tests,
     upgrade,
+    )
+from ..bzr import (
+    branch as bzrbranch,
     workingtree,
     workingtree_4,
     )

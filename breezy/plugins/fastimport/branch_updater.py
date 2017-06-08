@@ -19,7 +19,8 @@ from __future__ import absolute_import
 
 from operator import itemgetter
 
-from ... import bzrdir, errors, osutils, transport
+from ... import errors, osutils, transport
+from ...bzr import bzrdir
 from ...trace import show_error, note
 
 from .helpers import (

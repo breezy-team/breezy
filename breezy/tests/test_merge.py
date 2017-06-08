@@ -21,14 +21,16 @@ from .. import (
     cleanup,
     conflicts,
     errors,
-    inventory,
-    knit,
     memorytree,
     merge as _mod_merge,
     option,
     revision as _mod_revision,
     tests,
     transform,
+    )
+from ..bzr import (
+    inventory,
+    knit,
     versionedfile,
     )
 from ..conflicts import ConflictList, TextConflict

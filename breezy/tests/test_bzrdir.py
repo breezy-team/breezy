@@ -25,8 +25,6 @@ import sys
 
 from .. import (
     branch,
-    bzrbranch,
-    bzrdir,
     config,
     controldir,
     errors,
@@ -39,12 +37,16 @@ from .. import (
     transport as _mod_transport,
     urlutils,
     win32utils,
+    )
+from ..bzr import (
+    branch as bzrbranch,
+    bzrdir,
     workingtree_3,
     workingtree_4,
     )
 import breezy.branch
-import breezy.bzrbranch
-from ..branchfmt.fullhistory import BzrBranchFormat5
+import breezy.bzr.branch
+from ..bzr.fullhistory import BzrBranchFormat5
 from ..errors import (
     NotBranchError,
     NoColocatedBranchSupport,
@@ -111,13 +113,13 @@ class TestFormatRegistry(TestCase):
             'branch6',
             'breezy.repofmt.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
-            branch_format='breezy.bzrbranch.BzrBranchFormat6',
+            branch_format='breezy.bzr.branch.BzrBranchFormat6',
             experimental=True)
         bzrdir.register_metadir(my_format_registry,
             'hidden format',
             'breezy.repofmt.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
-            branch_format='breezy.bzrbranch.BzrBranchFormat6', hidden=True)
+            branch_format='breezy.bzr.branch.BzrBranchFormat6', hidden=True)
         my_format_registry.register('hiddendeprecated', DeprecatedBzrDirFormat,
             'Old format.  Slower and does not support things. ', hidden=True)
         my_format_registry.register_lazy('hiddenlazy', 'breezy.tests.test_bzrdir',
@@ -139,7 +141,7 @@ class TestFormatRegistry(TestCase):
             knitrepo.RepositoryFormatKnit1)
         my_bzrdir = my_format_registry.make_bzrdir('branch6')
         self.assertIsInstance(my_bzrdir.get_branch_format(),
-                              breezy.bzrbranch.BzrBranchFormat6)
+                              breezy.bzr.branch.BzrBranchFormat6)
 
     def test_get_help(self):
         my_format_registry = self.make_format_registry()
@@ -510,7 +512,7 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         # Make stackable source branch with an unstackable repo format.
         source_bzrdir = self.make_bzrdir('source')
         knitpack_repo.RepositoryFormatKnitPack1().initialize(source_bzrdir)
-        source_branch = breezy.bzrbranch.BzrBranchFormat7().initialize(
+        source_branch = breezy.bzr.branch.BzrBranchFormat7().initialize(
             source_bzrdir)
         # Make a directory with a default stacking policy
         parent_bzrdir = self.make_bzrdir('parent')

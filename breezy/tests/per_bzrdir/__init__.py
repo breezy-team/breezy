@@ -26,7 +26,7 @@ rather than in tests/per_branch/*.py. Generic control directory tests not
 specific to BzrDir are in tests/per_controldir/*.py.
 """
 
-from breezy.bzrdir import BzrDirFormat
+from breezy.bzr.bzrdir import BzrDirFormat
 from breezy.controldir import ControlDirFormat
 from breezy.tests import (
     default_transport,

@@ -22,8 +22,8 @@ from ...xml_serializer import (
     XMLSerializer,
     escape_invalid_chars,
     )
-from ...inventory import ROOT_ID, Inventory
-import breezy.inventory as inventory
+from ...bzr.inventory import ROOT_ID, Inventory
+import ...bzr.inventory as inventory
 from ...revision import Revision
 from ...errors import BzrError
 

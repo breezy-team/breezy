@@ -22,12 +22,14 @@ import cStringIO
 from ... import (
     errors,
     graph as _mod_graph,
-    inventory,
-    knit,
     lru_cache,
     osutils,
     revision as _mod_revision,
     trace,
+    )
+from ...bzr import (
+    knit,
+    inventory,
     )
 
 

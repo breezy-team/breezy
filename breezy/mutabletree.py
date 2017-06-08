@@ -32,12 +32,15 @@ from breezy import (
     controldir,
     errors,
     hooks,
-    inventory as _mod_inventory,
     osutils,
     revisiontree,
     trace,
     transport as _mod_transport,
     tree,
+    )
+
+from breezy.bzr import (
+    inventory as _mod_inventory,
     )
 """)
 
@@ -659,7 +662,7 @@ class _SmartAddHelper(object):
             self.conflicts_related = conflicts_related
 
     def add(self, file_list, recurse=True):
-        from breezy.inventory import InventoryEntry
+        from breezy.bzr.inventory import InventoryEntry
         if not file_list:
             # no paths supplied: add the entire tree.
             # FIXME: this assumes we are running in a working tree subdir :-/

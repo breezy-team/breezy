@@ -22,15 +22,12 @@ import zlib
 from . import (
     bencode,
     branch,
-    bzrbranch,
-    bzrdir as _mod_bzrdir,
     config as _mod_config,
     controldir,
     debug,
     errors,
     gpg,
     graph,
-    inventory_delta,
     lock,
     lockdir,
     osutils,
@@ -40,10 +37,15 @@ from . import (
     static_tuple,
     testament as _mod_testament,
     urlutils,
+    )
+from .bzr import (
+    branch as bzrbranch,
+    bzrdir as _mod_bzrdir,
+    inventory_delta,
     vf_repository,
     vf_search,
     )
-from .bzrbranch import BranchReferenceFormat
+from .bzr.branch import BranchReferenceFormat
 from .branch import BranchWriteLockResult
 from .decorators import needs_read_lock, needs_write_lock, only_raises
 from .errors import (
@@ -51,7 +53,7 @@ from .errors import (
     SmartProtocolError,
     )
 from .i18n import gettext
-from .inventory import Inventory
+from .bzr.inventory import Inventory
 from .lockable_files import LockableFiles
 from .sixish import (
     viewitems,
@@ -64,7 +66,7 @@ from .revisiontree import InventoryRevisionTree
 from .repository import RepositoryWriteLockResult, _LazyListJoin
 from .serializer import format_registry as serializer_format_registry
 from .trace import mutter, note, warning, log_exception_quietly
-from .versionedfile import FulltextContentFactory
+from .bzr.versionedfile import FulltextContentFactory
 
 
 _DEFAULT_SEARCH_DEPTH = 100

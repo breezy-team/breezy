@@ -34,15 +34,17 @@ from .. import (
     bencode,
     errors,
     estimate_compressed_size,
-    inventory as _mod_inventory,
-    inventory_delta,
     osutils,
-    pack,
     trace,
     ui,
+    )
+from ..bzr import (
+    inventory as _mod_inventory,
+    inventory_delta,
+    pack,
     vf_search,
     )
-from ..bzrdir import BzrDir
+from ..bzr.bzrdir import BzrDir
 from ..sixish import (
     reraise,
 )
@@ -53,7 +55,7 @@ from .request import (
     )
 from ..repository import _strip_NULL_ghosts, network_format_registry
 from .. import revision as _mod_revision
-from ..versionedfile import (
+from ..bzr.versionedfile import (
     ChunkedContentFactory,
     NetworkRecordStream,
     record_to_fulltext_bytes,

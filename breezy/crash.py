@@ -226,7 +226,7 @@ def _write_apport_report_to_file(exc_info):
 
 def _attach_log_tail(pr):
     try:
-        bzr_log = open(trace._get_bzr_log_filename(), 'rt')
+        bzr_log = open(trace._get_brz_log_filename(), 'rt')
     except (IOError, OSError) as e:
         pr['BzrLogTail'] = repr(e)
         return

@@ -18,9 +18,11 @@
 
 
 from breezy import (
-    bzrdir,
     errors,
     tests,
+    )
+from breezy.bzr import (
+    bzrdir,
     )
 from breezy.reconcile import reconcile, Reconciler
 from breezy.tests import per_repository

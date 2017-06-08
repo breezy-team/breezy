@@ -18,12 +18,14 @@ import sys
 
 from .. import (
     branch as _mod_branch,
-    bzrbranch as _mod_bzrbranch,
     controldir,
     info,
     tests,
     workingtree,
     repository as _mod_repository,
+    )
+from ..bzr import (
+    branch as _mod_bzrbranch,
     )
 
 

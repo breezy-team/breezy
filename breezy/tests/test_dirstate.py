@@ -21,14 +21,16 @@ import tempfile
 
 from .. import (
     controldir,
-    dirstate,
     errors,
-    inventory,
     memorytree,
     osutils,
     revision as _mod_revision,
     revisiontree,
     tests,
+    )
+from ..bzr import (
+    dirstate,
+    inventory,
     workingtree_4,
     )
 from . import (

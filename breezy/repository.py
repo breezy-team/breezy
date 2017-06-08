@@ -37,7 +37,6 @@ from breezy.i18n import gettext
 """)
 
 from . import (
-    bzrdir,
     errors,
     registry,
     ui,

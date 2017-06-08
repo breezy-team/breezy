@@ -41,7 +41,6 @@ import testtools.testresult.doubles
 import breezy
 from .. import (
     branchbuilder,
-    bzrdir,
     controldir,
     errors,
     hooks,
@@ -54,6 +53,9 @@ from .. import (
     tests,
     transport,
     workingtree,
+    )
+from ..bzr import (
+    bzrdir,
     workingtree_3,
     workingtree_4,
     )

@@ -38,8 +38,8 @@ from breezy.tests.per_tree import (
     TestCaseWithTree,
     )
 from breezy.tree import InterTree
-from breezy.workingtree_3 import WorkingTreeFormat3
-from breezy.workingtree_4 import WorkingTreeFormat4
+from breezy.bzr.workingtree_3 import WorkingTreeFormat3
+from breezy.bzr.workingtree_4 import WorkingTreeFormat4
 
 
 def return_provided_trees(test_case, source, target):
@@ -142,7 +142,7 @@ def load_tests(loader, standard_tests, pattern):
                  chk_tree_format,
                  chk_tree_format,
                  mutable_trees_to_revision_trees))
-        elif optimiser is breezy.workingtree_4.InterDirStateTree:
+        elif optimiser is breezy.bzr.workingtree_4.InterDirStateTree:
             # Its a little ugly to be conditional here, but less so than having
             # the optimiser listed twice.
             # Add once, compiled version

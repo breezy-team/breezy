@@ -20,8 +20,6 @@
 
 from .. import (
     branch,
-    bzrbranch,
-    bzrdir,
     controldir,
     errors,
     foreign,
@@ -31,6 +29,10 @@ from .. import (
     revision,
     tests,
     trace,
+    )
+from ..bzr import (
+    branch as bzrbranch,
+    bzrdir,
     vf_repository,
     )
 

@@ -20,12 +20,14 @@ import sys
 
 from breezy import (
     branch,
-    bzrbranch,
     controldir,
     errors,
     memorytree,
     remote,
     tests,
+    )
+from breezy.bzr import (
+    bzrbranch,
     versionedfile,
     )
 from breezy.tests.per_repository_vf import (

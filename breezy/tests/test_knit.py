@@ -21,19 +21,21 @@ import sys
 
 from .. import (
     errors,
-    knit,
     multiparent,
     osutils,
-    pack,
     tests,
     transport,
+    )
+from ..bzr import (
+    knit,
+    pack,
     )
 from ..errors import (
     KnitHeaderError,
     NoSuchFile,
     )
-from ..index import *
-from ..knit import (
+from ..bzr.index import *
+from ..bzr.knit import (
     AnnotatedKnitContent,
     KnitContent,
     KnitVersionedFiles,
@@ -58,7 +60,7 @@ from . import (
     TestCaseWithTransport,
     TestNotApplicable,
     )
-from ..versionedfile import (
+from ..bzr.versionedfile import (
     AbsentContentFactory,
     ConstantMapper,
     network_bytes_to_kind_and_offset,
@@ -70,7 +72,7 @@ from . import (
 
 
 compiled_knit_feature = features.ModuleAvailableFeature(
-    'breezy._knit_load_data_pyx')
+    'breezy.bzr._knit_load_data_pyx')
 
 
 class KnitContentTestsMixin(object):
@@ -893,7 +895,7 @@ class LowLevelKnitIndexTests(TestCase):
 
     def get_knit_index(self, transport, name, mode):
         mapper = ConstantMapper(name)
-        from breezy._knit_load_data_py import _load_data_py
+        from ._knit_load_data_py import _load_data_py
         self.overrideAttr(knit, '_load_data', _load_data_py)
         allow_writes = lambda: 'w' in mode
         return _KndxIndex(transport, mapper, lambda:None, allow_writes, lambda:True)
@@ -1324,7 +1326,7 @@ class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
 
     def get_knit_index(self, transport, name, mode):
         mapper = ConstantMapper(name)
-        from breezy._knit_load_data_pyx import _load_data_c
+        from ._knit_load_data_pyx import _load_data_c
         self.overrideAttr(knit, '_load_data', _load_data_c)
         allow_writes = lambda: mode == 'w'
         return _KndxIndex(transport, mapper, lambda:None,

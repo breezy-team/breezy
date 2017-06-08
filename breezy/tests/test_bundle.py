@@ -22,15 +22,17 @@ except ImportError:
 import sys
 
 from .. import (
-    bzrdir,
     diff,
     errors,
-    inventory,
     merge,
     osutils,
     revision as _mod_revision,
     tests,
     treebuilder,
+    )
+from ..bzr import (
+    bzrdir,
+    inventory,
     )
 from ..bundle import read_mergeable_from_url
 from ..bundle.apply_bundle import install_bundle, merge_bundle

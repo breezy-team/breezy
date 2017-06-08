@@ -17,8 +17,10 @@
 """Tests for _chk_map_*."""
 
 from .. import (
-    chk_map,
     tests,
+    )
+from ..bzr import (
+    chk_map,
     )
 from ..static_tuple import StaticTuple
 stuple = StaticTuple

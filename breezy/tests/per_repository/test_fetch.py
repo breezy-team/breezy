@@ -23,7 +23,7 @@ from breezy import (
     remote,
     repository,
     )
-from breezy.inventory import ROOT_ID
+from breezy.bzr.inventory import ROOT_ID
 from breezy.tests import (
     TestNotApplicable,
     TestSkipped,

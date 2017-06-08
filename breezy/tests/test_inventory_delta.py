@@ -14,17 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for breezy.inventory_delta.
+"""Tests for breezy.bzr.inventory_delta.
 
 See doc/developer/inventory.txt for more information.
 """
 
-from .. import (
+from ..bzr import (
     inventory,
     inventory_delta,
     )
-from ..inventory_delta import InventoryDeltaError
-from ..inventory import Inventory
+from ..bzr.inventory_delta import InventoryDeltaError
+from ..bzr.inventory import Inventory
 from ..revision import NULL_REVISION
 from ..sixish import (
     BytesIO,

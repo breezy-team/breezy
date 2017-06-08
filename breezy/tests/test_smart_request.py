@@ -22,7 +22,7 @@ from breezy import (
     errors,
     transport,
     )
-from breezy.bzrdir import BzrDir
+from breezy.bzr.bzrdir import BzrDir
 from breezy.smart import request
 from breezy.tests import TestCase, TestCaseWithMemoryTransport
 

@@ -29,27 +29,29 @@ import zlib
 from .. import (
     bencode,
     branch,
-    bzrdir,
     config,
     controldir,
     errors,
-    inventory,
-    inventory_delta,
     remote,
     repository,
     tests,
     transport,
     treebuilder,
+    )
+from ..branch import Branch
+from ..bzr import (
+    bzrdir,
+    inventory,
+    inventory_delta,
     versionedfile,
     vf_search,
     )
-from ..branch import Branch
-from ..bzrdir import (
+from ..bzr.bzrdir import (
     BzrDir,
     BzrDirFormat,
     RemoteBzrProber,
     )
-from ..chk_serializer import chk_bencode_serializer
+from ..bzr.chk_serializer import chk_bencode_serializer
 from ..remote import (
     RemoteBranch,
     RemoteBranchFormat,

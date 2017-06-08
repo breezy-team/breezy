@@ -25,27 +25,31 @@ from itertools import izip
 import time
 
 from breezy import (
-    chk_map,
     cleanup,
     config,
     debug,
     graph,
     osutils,
-    pack,
     transactions,
     tsort,
     ui,
     )
-from breezy.index import (
+from breezy.bzr import (
+    chk_map,
+    pack,
+    )
+from breezy.bzr.index import (
     CombinedGraphIndex,
     GraphIndexPrefixAdapter,
     )
 """)
 from .. import (
-    btree_index,
     errors,
     lockable_files,
     lockdir,
+    )
+from ..bzr import (
+    btree_index,
     )
 
 from ..decorators import (
@@ -58,14 +62,14 @@ from ..repository import (
     _LazyListJoin,
     RepositoryWriteLockResult,
     )
-from ..bzrrepository import (
+from ..bzr.repository import (
     MetaDirRepository,
     RepositoryFormatMetaDir,
     )
 from ..sixish import (
     reraise,
     )
-from ..vf_repository import (
+from ..bzr.vf_repository import (
     MetaDirVersionedFileRepository,
     MetaDirVersionedFileRepositoryFormat,
     VersionedFileCommitBuilder,

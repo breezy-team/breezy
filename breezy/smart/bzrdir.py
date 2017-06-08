@@ -25,7 +25,7 @@ from .. import (
     repository,
     urlutils,
     )
-from ..bzrdir import (
+from ..bzr.bzrdir import (
     BzrDir,
     BzrDirFormat,
     BzrProber,

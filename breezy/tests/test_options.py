@@ -17,12 +17,14 @@
 import re
 
 from .. import (
-    bzrdir,
     commands,
     controldir,
     errors,
     option,
     registry,
+    )
+from ..bzr import (
+    bzrdir,
     )
 from ..builtins import cmd_commit
 from ..commands import parse_args

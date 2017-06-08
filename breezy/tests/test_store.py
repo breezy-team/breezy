@@ -31,7 +31,7 @@ from . import TestCase, TestCaseInTempDir, TestCaseWithTransport
 from .. import transactions as transactions
 from .. import transport as transport
 from ..transport.memory import MemoryTransport
-from ..weave import WeaveFile
+from ..bzr.weave import WeaveFile
 
 
 class TestStores(object):

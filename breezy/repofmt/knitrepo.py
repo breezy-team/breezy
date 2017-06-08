@@ -23,13 +23,15 @@ import itertools
 from breezy import (
     controldir,
     errors,
-    knit as _mod_knit,
     lockable_files,
     lockdir,
     osutils,
     revision as _mod_revision,
     trace,
     transactions,
+    )
+from breezy.bzr import (
+    knit as _mod_knit,
     versionedfile,
     xml5,
     xml6,
@@ -41,10 +43,10 @@ from ..repository import (
     InterRepository,
     IsInWriteGroupError,
     )
-from ..bzrrepository import (
+from ..bzr.repository import (
     RepositoryFormatMetaDir,
     )
-from ..vf_repository import (
+from ..bzr.vf_repository import (
     InterSameDataRepository,
     MetaDirVersionedFileRepository,
     MetaDirVersionedFileRepositoryFormat,

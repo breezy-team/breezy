@@ -16,14 +16,16 @@
 
 from breezy import (
     branch as _mod_branch,
-    bzrbranch as _mod_bzrbranch,
     controldir,
     errors,
     reconfigure,
     repository,
     tests,
-    vf_repository,
     workingtree,
+    )
+from breezy.bzr import (
+    branch as _mod_bzrbranch,
+    vf_repository,
     )
 
 

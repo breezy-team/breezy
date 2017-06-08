@@ -46,7 +46,7 @@ from .. import (
     )
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
-from breezy import bzrdir
+from breezy.bzr import bzrdir
 from breezy.bundle import serializer
 
 import tempfile

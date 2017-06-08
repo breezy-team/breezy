@@ -23,12 +23,14 @@ from testtools.matchers import (
 
 from ... import (
     branch,
-    bzrbranch,
     check,
     controldir,
     errors,
     push,
     tests,
+    )
+from ...bzr import (
+    branch as bzrbranch,
     vf_repository,
     )
 from ...branch import Branch

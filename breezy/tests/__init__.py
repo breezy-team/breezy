@@ -62,7 +62,6 @@ import breezy
 from .. import (
     branchbuilder,
     controldir,
-    chk_map,
     commands as _mod_commands,
     config,
     i18n,
@@ -82,6 +81,9 @@ from .. import (
     trace,
     transport as _mod_transport,
     workingtree,
+    )
+from breezy.bzr import (
+    chk_map,
     )
 try:
     import breezy.lsprof
@@ -4087,8 +4089,8 @@ def _test_suite_modules_to_doctest():
     return [
         'breezy',
         'breezy.branchbuilder',
+        'breezy.bzr.inventory',
         'breezy.decorators',
-        'breezy.inventory',
         'breezy.iterablefile',
         'breezy.lockdir',
         'breezy.merge3',

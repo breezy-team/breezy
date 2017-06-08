@@ -24,8 +24,6 @@ also see this file.
 
 from .. import (
     branch as _mod_branch,
-    bzrbranch as _mod_bzrbranch,
-    bzrdir,
     config,
     controldir,
     errors,
@@ -33,7 +31,11 @@ from .. import (
     trace,
     urlutils,
     )
-from ..branchfmt.fullhistory import (
+from ..bzr import (
+    branch as _mod_bzrbranch,
+    bzrdir,
+    )
+from ..bzr.fullhistory import (
     BzrBranch5,
     BzrBranchFormat5,
     )

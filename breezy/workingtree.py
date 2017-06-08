@@ -1824,11 +1824,11 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
 
 
 format_registry.register_lazy("Bazaar Working Tree Format 4 (bzr 0.15)\n",
-    "breezy.workingtree_4", "WorkingTreeFormat4")
+    "breezy.bzr.workingtree_4", "WorkingTreeFormat4")
 format_registry.register_lazy("Bazaar Working Tree Format 5 (bzr 1.11)\n",
-    "breezy.workingtree_4", "WorkingTreeFormat5")
+    "breezy.bzr.workingtree_4", "WorkingTreeFormat5")
 format_registry.register_lazy("Bazaar Working Tree Format 6 (bzr 1.14)\n",
-    "breezy.workingtree_4", "WorkingTreeFormat6")
+    "breezy.bzr.workingtree_4", "WorkingTreeFormat6")
 format_registry.register_lazy("Bazaar-NG Working Tree format 3",
-    "breezy.workingtree_3", "WorkingTreeFormat3")
+    "breezy.bzr.workingtree_3", "WorkingTreeFormat3")
 format_registry.set_default_key("Bazaar Working Tree Format 6 (bzr 1.14)\n")

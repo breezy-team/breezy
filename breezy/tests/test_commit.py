@@ -24,7 +24,7 @@ from .. import (
     errors,
     )
 from ..branch import Branch
-from ..bzrdir import BzrDirMetaFormat1
+from ..bzr.bzrdir import BzrDirMetaFormat1
 from ..commit import Commit, NullCommitReporter
 from ..errors import (
     PointlessCommit,

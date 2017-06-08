@@ -21,10 +21,12 @@ import os
 import time
 
 from .. import (
-    dirstate,
     errors,
     osutils,
     tests,
+    )
+from ..bzr import (
+    dirstate,
     _dirstate_helpers_py,
     )
 from . import (

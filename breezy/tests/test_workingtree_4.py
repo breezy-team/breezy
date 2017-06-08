@@ -21,11 +21,13 @@ import os
 import time
 
 from .. import (
+    errors,
+    osutils,
+    )
+from ..bzr import (
     bzrdir,
     dirstate,
-    errors,
     inventory,
-    osutils,
     workingtree_4,
     )
 from ..lockdir import LockDir

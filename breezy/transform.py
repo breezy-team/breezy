@@ -37,19 +37,21 @@ from breezy import (
     commit,
     conflicts,
     delta,
-    inventory,
     multiparent,
     osutils,
     revision as _mod_revision,
     ui,
     urlutils,
     )
+from breezy.bzr import (
+    inventory,
+    )
 from breezy.i18n import gettext
 """)
 from .errors import (DuplicateKey, MalformedTransform,
-                           ReusingTransform, CantMoveRoot,
-                           ImmortalLimbo, NoFinalPath,
-                           UnableCreateSymlink)
+                     ReusingTransform, CantMoveRoot,
+                     ImmortalLimbo, NoFinalPath,
+                     UnableCreateSymlink)
 from .filters import filtered_output_bytes, ContentFilterContext
 from .mutabletree import MutableTree
 from .osutils import (

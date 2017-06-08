@@ -26,9 +26,11 @@ from breezy import (
     errors,
     merge,
     merge3,
-    pack,
     transform,
 )
+from breezy.bzr import (
+    pack,
+    )
 """)
 
 

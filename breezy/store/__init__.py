@@ -30,6 +30,8 @@ import os
 
 from .. import (
     errors,
+    )
+from ..bzr import (
     versionedfile,
     )
 from ..errors import BzrError, UnlistableStore

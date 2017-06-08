@@ -93,11 +93,11 @@ class SerializerRegistry(registry.Registry):
 
 
 format_registry = SerializerRegistry()
-format_registry.register_lazy('5', 'breezy.xml5', 'serializer_v5')
-format_registry.register_lazy('6', 'breezy.xml6', 'serializer_v6')
-format_registry.register_lazy('7', 'breezy.xml7', 'serializer_v7')
-format_registry.register_lazy('8', 'breezy.xml8', 'serializer_v8')
-format_registry.register_lazy('9', 'breezy.chk_serializer',
+format_registry.register_lazy('5', 'breezy.bzr.xml5', 'serializer_v5')
+format_registry.register_lazy('6', 'breezy.bzr.xml6', 'serializer_v6')
+format_registry.register_lazy('7', 'breezy.bzr.xml7', 'serializer_v7')
+format_registry.register_lazy('8', 'breezy.bzr.xml8', 'serializer_v8')
+format_registry.register_lazy('9', 'breezy.bzr.chk_serializer',
     'chk_serializer_255_bigpage')
-format_registry.register_lazy('10', 'breezy.chk_serializer',
+format_registry.register_lazy('10', 'breezy.bzr.chk_serializer',
     'chk_bencode_serializer')

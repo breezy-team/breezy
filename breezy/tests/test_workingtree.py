@@ -16,12 +16,14 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from .. import (
-    bzrdir,
-    bzrworkingtree,
     conflicts,
     errors,
     transport,
     workingtree,
+    )
+from ..bzr import (
+    bzrdir,
+    workingtree as bzrworkingtree,
     workingtree_3,
     workingtree_4,
     )

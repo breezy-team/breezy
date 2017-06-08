@@ -1928,20 +1928,20 @@ format_registry = BranchFormatRegistry(network_format_registry)
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
 format_registry.register_lazy(
-    "Bazaar-NG branch format 5\n", "breezy.branchfmt.fullhistory",
+    "Bazaar-NG branch format 5\n", "breezy.bzr.fullhistory",
     "BzrBranchFormat5")
 format_registry.register_lazy(
     "Bazaar Branch Format 6 (bzr 0.15)\n",
-    "breezy.bzrbranch", "BzrBranchFormat6")
+    "breezy.bzr.branch", "BzrBranchFormat6")
 format_registry.register_lazy(
     "Bazaar Branch Format 7 (needs bzr 1.6)\n",
-    "breezy.bzrbranch", "BzrBranchFormat7")
+    "breezy.bzr.branch", "BzrBranchFormat7")
 format_registry.register_lazy(
     "Bazaar Branch Format 8 (needs bzr 1.15)\n",
-    "breezy.bzrbranch", "BzrBranchFormat8")
+    "breezy.bzr.branch", "BzrBranchFormat8")
 format_registry.register_lazy(
     "Bazaar-NG Branch Reference Format 1\n",
-    "breezy.bzrbranch", "BranchReferenceFormat")
+    "breezy.bzr.branch", "BranchReferenceFormat")
 
 format_registry.set_default_key("Bazaar Branch Format 7 (needs bzr 1.6)\n")
 

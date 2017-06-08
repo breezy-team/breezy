@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 
-from ...bzrdir import (
+from ...bzr.bzrdir import (
     BzrDir,
     BzrDirFormat,
     BzrDirMetaFormat1,
@@ -43,6 +43,8 @@ from breezy import (
     trace,
     ui,
     urlutils,
+    )
+from breezy.bzr import (
     versionedfile,
     weave,
     xml5,
@@ -545,7 +547,7 @@ class ConvertBzrDir6ToMeta(Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         from .repository import RepositoryFormat7
-        from ...branchfmt.fullhistory import BzrBranchFormat5
+        from ...bzr.fullhistory import BzrBranchFormat5
         self.bzrdir = to_convert
         self.pb = ui.ui_factory.nested_progress_bar()
         self.count = 0
@@ -616,7 +618,7 @@ class ConvertBzrDir6ToMeta(Converter):
                 if name in bzrcontents:
                     self.bzrdir.transport.delete(name)
         else:
-            from ...workingtree_3 import WorkingTreeFormat3
+            from ...bzr.workingtree_3 import WorkingTreeFormat3
             self.step(gettext('Upgrading working tree'))
             self.bzrdir.transport.mkdir('checkout', mode=self.dir_mode)
             self.make_lock('checkout')
@@ -925,7 +927,7 @@ class BzrDirPreSplitOut(BzrDir):
         return result
 
     def set_branch_reference(self, target_branch, name=None):
-        from ...bzrbranch import BranchReferenceFormat
+        from ...bzr.branch import BranchReferenceFormat
         if name is not None:
             raise errors.NoColocatedBranchSupport(self)
         raise errors.IncompatibleFormat(BranchReferenceFormat, self._format)

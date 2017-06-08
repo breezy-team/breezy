@@ -291,13 +291,13 @@ def add_pyrex_extension(module_name, libraries=None, extra_source=[]):
 add_pyrex_extension('breezy._annotator_pyx')
 add_pyrex_extension('breezy._bencode_pyx')
 add_pyrex_extension('breezy._chunks_to_lines_pyx')
-add_pyrex_extension('breezy._groupcompress_pyx',
-                    extra_source=['breezy/diff-delta.c'])
-add_pyrex_extension('breezy._knit_load_data_pyx')
+add_pyrex_extension('breezy.bzr._groupcompress_pyx',
+                    extra_source=['breezy/bzr/diff-delta.c'])
+add_pyrex_extension('breezy.bzr._knit_load_data_pyx')
 add_pyrex_extension('breezy._known_graph_pyx')
 add_pyrex_extension('breezy._rio_pyx')
 if sys.platform == 'win32':
-    add_pyrex_extension('breezy._dirstate_helpers_pyx',
+    add_pyrex_extension('breezy.bzr._dirstate_helpers_pyx',
                         libraries=['Ws2_32'])
     add_pyrex_extension('breezy._walkdirs_win32')
 else:
@@ -308,15 +308,15 @@ else:
         # which is NULL safe with PY_DECREF which is not.)
         # <https://bugs.launchpad.net/bzr/+bug/449372>
         # <https://bugs.launchpad.net/bzr/+bug/276868>
-        print('Cannot build extension "breezy._dirstate_helpers_pyx" using')
+        print('Cannot build extension "breezy.bzr._dirstate_helpers_pyx" using')
         print(('your version of pyrex "%s". Please upgrade your pyrex'
               % (pyrex_version,)))
         print('install. For now, the non-compiled (python) version will')
         print('be used instead.')
     else:
-        add_pyrex_extension('breezy._dirstate_helpers_pyx')
+        add_pyrex_extension('breezy.bzr._dirstate_helpers_pyx')
     add_pyrex_extension('breezy._readdir_pyx')
-add_pyrex_extension('breezy._chk_map_pyx')
+add_pyrex_extension('breezy.bzr._chk_map_pyx')
 ext_modules.append(Extension('breezy._patiencediff_c',
                              ['breezy/_patiencediff_c.c']))
 if have_pyrex and pyrex_version_info < LooseVersion("0.9.6.3"):
@@ -333,7 +333,7 @@ else:
     add_pyrex_extension('breezy._simple_set_pyx')
     ext_modules.append(Extension('breezy._static_tuple_c',
                                  ['breezy/_static_tuple_c.c']))
-add_pyrex_extension('breezy._btree_serializer_pyx')
+add_pyrex_extension('breezy.bzr._btree_serializer_pyx')
 
 
 if unavailable_files:

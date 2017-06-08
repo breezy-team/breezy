@@ -26,28 +26,30 @@ from breezy import (
     controldir,
     debug,
     errors,
-    knit,
     osutils,
-    pack,
     revision as _mod_revision,
     trace,
     tsort,
     ui,
+    )
+from breezy.bzr import (
+    knit,
+    pack,
     xml5,
     xml6,
     xml7,
     )
-from breezy.knit import (
+from breezy.bzr.knit import (
     _KnitGraphIndex,
     KnitPlainFactory,
     KnitVersionedFiles,
     )
 """)
 
-from .. import (
+from ..bzr import (
     btree_index,
     )
-from ..index import (
+from ..bzr.index import (
     CombinedGraphIndex,
     GraphIndex,
     GraphIndexPrefixAdapter,
@@ -71,7 +73,7 @@ from ..sixish import (
     viewitems,
     zip
     )
-from ..vf_repository import (
+from ..bzr.vf_repository import (
     StreamSource,
     )
 

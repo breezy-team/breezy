@@ -16,17 +16,19 @@
 
 
 from .. import (
-    chk_map,
-    groupcompress,
     errors,
-    inventory,
     osutils,
     repository,
     revision,
     tests,
     workingtree,
     )
-from ..inventory import (
+from ..bzr import (
+    chk_map,
+    groupcompress,
+    inventory,
+    )
+from ..bzr.inventory import (
     CHKInventory,
     Inventory,
     ROOT_ID,
