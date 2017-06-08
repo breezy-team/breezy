@@ -134,17 +134,3 @@ class HTTPSServer_urllib(HTTPSServer):
 
     # urls returned by this server should require the urllib client impl
     _url_protocol = 'https+urllib'
-
-
-class HTTPSServer_PyCurl(HTTPSServer):
-    """Subclass of HTTPSServer that gives http+pycurl urls.
-
-    This is for use in testing: connections to this server will always go
-    through pycurl where possible.
-    """
-
-    # We don't care about checking the pycurl availability as
-    # this server will be required only when pycurl is present
-
-    # urls returned by this server should require the pycurl client impl
-    _url_protocol = 'https+pycurl'

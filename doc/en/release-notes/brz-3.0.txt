@@ -34,6 +34,10 @@ External Compatibility Breaks
    (https://help.launchpad.net/VcsImports).
    (Colin Watson, #254567, #483689)
 
+ * Support for HTTP support using "pycurl" and the associated
+   URL schemes "http+pycurl://" and "https+pycurl://" has been dropped.
+   (Jelmer Vernooij, #82086, #377389, #122258, #516222, #545776, #1696602)
+
 New Features
 ************
 
