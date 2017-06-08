@@ -63,7 +63,6 @@ from . import(
     http_server,
     http_utils,
     )
-from .test_http import TestWithTransport_pycurl
 from ..transport import (
     memory,
     pathfilter,
@@ -1179,17 +1178,6 @@ class TestHTTPRedirections_urllib(TestHTTPRedirections,
         self.permit_url(result)
         return result
 
-
-
-class TestHTTPRedirections_pycurl(TestWithTransport_pycurl,
-                                  TestHTTPRedirections,
-                                  http_utils.TestCaseWithTwoWebservers):
-    """Tests redirections for pycurl implementation"""
-
-    def _qualified_url(self, host, port):
-        result = 'http+pycurl://%s:%s' % (host, port)
-        self.permit_url(result)
-        return result
 
 
 class TestHTTPRedirections_nosmart(TestHTTPRedirections,
