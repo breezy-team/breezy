@@ -1,5 +1,3 @@
 01_selftest_package
 03_spurious_test_failure
 13_spurious_test_failure
-17_reproducible_makefile
-22_test_copy_to
