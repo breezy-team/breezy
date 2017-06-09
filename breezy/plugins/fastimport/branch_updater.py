@@ -141,9 +141,10 @@ class BranchUpdater(object):
         to_transport = transport.get_transport(location)
         to_transport.create_prefix()
         try:
-            return bzrdir.BzrDir.open(location).open_branch()
+            return controldir.ControlDir.open(location).open_branch()
         except errors.NotBranchError, ex:
-            return bzrdir.BzrDir.create_branch_convenience(location,
+            return controldir.ControlDir.create_branch_convenience(
+                location,
                 format=self._branch_format,
                 possible_transports=[to_transport])
 

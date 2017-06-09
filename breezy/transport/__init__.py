@@ -103,10 +103,10 @@ class TransportListRegistry(registry.Registry):
     register_transport_provider( ) ( and the "lazy" variant )
 
     This is needed because:
-    a) a single provider can support multiple protocols ( like the ftp
-    provider which supports both the ftp:// and the aftp:// protocols )
-    b) a single protocol can have multiple providers ( like the http://
-    protocol which is supported by both the urllib and pycurl provider )
+    a) a single provider can support multiple protocols (like the ftp
+    provider which supports both the ftp:// and the aftp:// protocols)
+    b) a single protocol can have multiple providers (like the http://
+    protocol which was supported by both the urllib and pycurl providers)
     """
 
     def register_transport_provider(self, key, obj):
@@ -1752,28 +1752,14 @@ register_transport_proto(b'https+urllib://',
                          register_netloc=True)
 register_lazy_transport(b'https+urllib://', 'breezy.transport.http._urllib',
                         'HttpTransport_urllib')
-register_transport_proto(b'http+pycurl://',
-#                help="Read-only access of branches exported on the web."
-                         register_netloc=True)
-register_lazy_transport(b'http+pycurl://', 'breezy.transport.http._pycurl',
-                        'PyCurlTransport')
-register_transport_proto(b'https+pycurl://',
-#                help="Read-only access of branches exported on the web using SSL."
-                         register_netloc=True)
-register_lazy_transport(b'https+pycurl://', 'breezy.transport.http._pycurl',
-                        'PyCurlTransport')
 # Default http transports (last declared wins (if it can be imported))
 register_transport_proto(b'http://',
                  help="Read-only access of branches exported on the web.")
 register_transport_proto(b'https://',
             help="Read-only access of branches exported on the web using SSL.")
 # The default http implementation is urllib
-register_lazy_transport(b'http://', 'breezy.transport.http._pycurl',
-                        'PyCurlTransport')
 register_lazy_transport(b'http://', 'breezy.transport.http._urllib',
                         'HttpTransport_urllib')
-register_lazy_transport(b'https://', 'breezy.transport.http._pycurl',
-                        'PyCurlTransport')
 register_lazy_transport(b'https://', 'breezy.transport.http._urllib',
                         'HttpTransport_urllib')
 

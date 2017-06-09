@@ -36,7 +36,7 @@ from .testui import (
     )
 
 
-class TestUIConfiguration(tests.TestCase):
+class TestUIConfiguration(tests.TestCaseInTempDir):
 
     def test_output_encoding_configuration(self):
         enc = next(fixtures.generate_unicode_encodings())

@@ -38,7 +38,7 @@ from .lockable_files import LockableFiles
 from .lockdir import LockDir
 from .mutabletree import MutableTree
 from .transport.local import LocalTransport
-from .workingtree import (
+from .bzrworkingtree import (
     InventoryWorkingTree,
     WorkingTreeFormatMetaDir,
     )

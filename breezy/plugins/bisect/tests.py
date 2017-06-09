@@ -25,7 +25,7 @@ import sys
 import shutil
 
 import breezy
-from ...bzrdir import BzrDir
+from ...controldir import ControlDir
 from .. import bisect
 from . import cmds
 from ...tests import (
@@ -75,8 +75,8 @@ class BisectTestCase(TestCaseWithTransport):
                                                      'test_file_append')))
         self.tree.commit(message = "add test files")
 
-        BzrDir.open(".").sprout("../temp-clone")
-        clone_bzrdir = BzrDir.open("../temp-clone")
+        ControlDir.open(".").sprout("../temp-clone")
+        clone_bzrdir = ControlDir.open("../temp-clone")
         clone_tree = clone_bzrdir.open_workingtree()
         for content in ["one dot one", "one dot two", "one dot three"]:
             test_file = open("../temp-clone/test_file", "w")

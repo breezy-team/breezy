@@ -56,13 +56,15 @@ from ..decorators import (
 from ..lock import LogicalLockResult
 from ..repository import (
     _LazyListJoin,
+    RepositoryWriteLockResult,
+    )
+from ..bzrrepository import (
     MetaDirRepository,
     RepositoryFormatMetaDir,
-    RepositoryWriteLockResult,
     )
 from ..sixish import (
     reraise,
-)
+    )
 from ..vf_repository import (
     MetaDirVersionedFileRepository,
     MetaDirVersionedFileRepositoryFormat,

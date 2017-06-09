@@ -18,22 +18,24 @@
 
 from __future__ import absolute_import
 
-from breezy import (
+from .. import (
     debug,
     errors,
     revision as _mod_revision,
     )
 
-from breezy.branch import (
+from ..branch import (
     Branch,
-    BranchFormatMetadir,
+    )
+from ..bzrbranch import (
     BzrBranch,
+    BranchFormatMetadir,
     )
 
-from breezy.decorators import (
+from ..decorators import (
     needs_write_lock,
     )
-from breezy.trace import mutter_callsite
+from ..trace import mutter_callsite
 
 
 class FullHistoryBzrBranch(BzrBranch):
