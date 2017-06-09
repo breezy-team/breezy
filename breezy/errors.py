@@ -195,12 +195,11 @@ class DisabledMethod(InternalBzrError):
 class IncompatibleAPI(BzrError):
 
     _fmt = 'The API for "%(api)s" is not compatible with "%(wanted)s". '\
-        'It supports versions "%(minimum)s" to "%(current)s".'
+        'It supports versions "%(current)r".'
 
-    def __init__(self, api, wanted, minimum, current):
+    def __init__(self, api, wanted, current):
         self.api = api
         self.wanted = wanted
-        self.minimum = minimum
         self.current = current
 
 

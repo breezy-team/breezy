@@ -74,7 +74,7 @@ def check_launchpadlib_compatibility():
     if installed_version < MINIMUM_LAUNCHPADLIB_VERSION:
         raise errors.IncompatibleAPI(
             'launchpadlib', MINIMUM_LAUNCHPADLIB_VERSION,
-            installed_version, installed_version)
+            installed_version)
 
 
 def lookup_service_root(service_root):

@@ -36,108 +36,35 @@ class APITests(TestCase):
         self.assertEqual(len(breezy.version_info), 5)
 
 
-class TrivialObject(object):
-    """This class allows assignment to any attribute."""
-
-
 class TestAPIVersioning(TestCase):
 
-    def test_get_minimum_api_version_reads_api_minimum_version(self):
-        an_object = TrivialObject()
-        an_object.api_minimum_version = (0, 1, 2)
-        self.assertEqual((0, 1, 2),
-            breezy.api.get_minimum_api_version(an_object))
-
-    def test_get_minimum_api_version_fallsback_to_bzr_minimum_version(self):
-        an_object = TrivialObject()
-        self.assertEqual(breezy.api_minimum_version,
-            breezy.api.get_minimum_api_version(an_object))
-
-    def test_get_current_api_version_reads_api_current_version(self):
-        an_object = TrivialObject()
-        an_object.api_current_version = (3, 2, 1)
-        an_object.version_info = (1, 2, 3, "final", 0)
-        self.assertEqual((3, 2, 1),
-            breezy.api.get_current_api_version(an_object))
-
-    def test_get_current_api_version_fallsback_to_version_info(self):
-        an_object = TrivialObject()
-        an_object.version_info = (1, 2, 3, "final", 0)
-        self.assertEqual((1, 2, 3),
-            breezy.api.get_current_api_version(an_object))
-
-    def test_get_current_api_version_fallsback_to_breezy_version_info(self):
-        an_object = TrivialObject()
+    def test_get_current_api_version_uses_breezy_version_info(self):
         self.assertEqual(breezy.version_info[0:3],
-            breezy.api.get_current_api_version(an_object))
+            breezy.api.get_current_api_version())
 
     def test_require_any_api_wanted_one(self):
-        an_object = TrivialObject()
-        an_object.api_minimum_version = (1, 2, 3)
-        an_object.api_current_version = (4, 5, 6)
-        breezy.api.require_any_api(an_object, [(1, 2, 3)])
+        breezy.api.require_any_api([breezy.version_info[:3]])
 
     def test_require_any_api_wanted_first_compatible(self):
-        an_object = TrivialObject()
-        an_object.api_minimum_version = (1, 2, 3)
-        an_object.api_current_version = (4, 5, 6)
-        breezy.api.require_any_api(an_object, [(1, 2, 3), (5, 6, 7)])
+        breezy.api.require_any_api([breezy.version_info[:3], (5, 6, 7)])
 
     def test_require_any_api_wanted_second_compatible(self):
-        an_object = TrivialObject()
-        an_object.api_minimum_version = (1, 2, 3)
-        an_object.api_current_version = (4, 5, 6)
-        breezy.api.require_any_api(an_object, [(5, 6, 7), (1, 2, 3)])
+        breezy.api.require_any_api([(5, 6, 7), breezy.version_info[:3]])
 
     def test_require_any_api_wanted_none_compatible(self):
-        an_object = TrivialObject()
-        an_object.api_minimum_version = (1, 2, 3)
-        an_object.api_current_version = (4, 5, 6)
-        self.assertRaises(IncompatibleAPI, breezy.api.require_any_api,
-            an_object, [(1, 2, 2), (5, 6, 7)])
-
-    def test_require_api_wanted_is_minimum_is_ok(self):
-        an_object = TrivialObject()
-        an_object.api_minimum_version = (1, 2, 3)
-        an_object.api_current_version = (4, 5, 6)
-        breezy.api.require_api(an_object, (1, 2, 3))
+        err = self.assertRaises(IncompatibleAPI, breezy.api.require_any_api,
+            [(1, 2, 2), (5, 6, 7)])
+        self.assertEqual(err.api, breezy)
+        self.assertEqual(err.wanted, (5, 6, 7))
+        self.assertEqual(err.current, breezy.version_info[:3])
 
     def test_require_api_wanted_is_current_is_ok(self):
-        an_object = TrivialObject()
-        an_object.api_minimum_version = (1, 2, 3)
-        an_object.api_current_version = (4, 5, 6)
-        breezy.api.require_api(an_object, (4, 5, 6))
+        breezy.api.require_api(breezy.version_info[:3])
 
-    def test_require_api_wanted_is_above_minimum_is_ok(self):
-        an_object = TrivialObject()
-        an_object.api_minimum_version = (1, 2, 3)
-        an_object.api_current_version = (4, 5, 6)
-        breezy.api.require_api(an_object, (1, 2, 4))
-
-    def test_require_api_wanted_is_below_current_is_ok(self):
-        an_object = TrivialObject()
-        an_object.api_minimum_version = (1, 2, 3)
-        an_object.api_current_version = (4, 5, 6)
-        breezy.api.require_api(an_object, (4, 5, 5))
-
-    def test_require_api_wanted_is_below_minimum_raises(self):
-        an_object = TrivialObject()
-        an_object.api_minimum_version = (1, 2, 3)
-        an_object.api_current_version = (4, 5, 6)
+    def test_require_api_wanted_is_not_ok(self):
         err = self.assertRaises(IncompatibleAPI,
-            breezy.api.require_api, an_object, (1, 2, 2))
-        self.assertEqual(err.api, an_object)
-        self.assertEqual(err.wanted, (1, 2, 2))
-        self.assertEqual(err.minimum, (1, 2, 3))
-        self.assertEqual(err.current, (4, 5, 6))
+            breezy.api.require_api, (1, 1, 1))
+        self.assertEqual(err.api, breezy)
+        self.assertEqual(err.wanted, (1, 1, 1))
+        self.assertEqual(err.current, breezy.version_info[:3])
 
-    def test_require_api_wanted_is_above_current_raises(self):
-        an_object = TrivialObject()
-        an_object.api_minimum_version = (1, 2, 3)
-        an_object.api_current_version = (4, 5, 6)
-        err = self.assertRaises(IncompatibleAPI,
-            breezy.api.require_api, an_object, (4, 5, 7))
-        self.assertEqual(err.api, an_object)
-        self.assertEqual(err.wanted, (4, 5, 7))
-        self.assertEqual(err.minimum, (1, 2, 3))
-        self.assertEqual(err.current, (4, 5, 6))
