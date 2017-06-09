@@ -58,7 +58,7 @@ class TestErrors(tests.TestCase):
 
     def test_bad_filename_encoding(self):
         error = errors.BadFilenameEncoding(b'bad/filen\xe5me', 'UTF-8')
-        self.assertRegexpMatches(
+        self.assertContainsRe(
             str(error),
             "^Filename b?'bad/filen\\\\xe5me' is not valid in your current"
             " filesystem encoding UTF-8$")
@@ -291,7 +291,7 @@ class TestErrors(tests.TestCase):
         # a unicode path to check that %r is being used.
         path = u'a path'
         error = errors.ReadError(path)
-        self.assertRegexpMatches(str(error), "Error reading from u?'a path'.")
+        self.assertContainsRe(str(error), "^Error reading from u?'a path'.$")
 
     def test_bad_index_format_signature(self):
         error = errors.BadIndexFormatSignature("foo", "bar")
