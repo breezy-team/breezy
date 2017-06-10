@@ -4237,7 +4237,7 @@ class ProcessEntryPython(object):
                                 current_block = None
                         if current_block is not None:
                             for entry in current_block[1]:
-                                if entry[1][self.source_index][0] in b('a', b'r'):
+                                if entry[1][self.source_index][0] in (b'a', b'r'):
                                     # Not in the source tree, so doesn't have to be
                                     # included.
                                     continue
