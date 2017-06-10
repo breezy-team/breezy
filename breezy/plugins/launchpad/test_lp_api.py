@@ -61,12 +61,12 @@ class TestDependencyManagement(TestCase):
     def test_unsupported_launchpadlib_version(self):
         # If the installed version of launchpadlib is less than the minimum
         # required version of launchpadlib, check_launchpadlib_compatibility
-        # raises an IncompatibleAPI error.
+        # raises an DependencyNotPresent error.
         launchpadlib = launchpadlib_feature.module
         self.patch(launchpadlib, '__version__', '1.5.0')
         self.lp_api.MINIMUM_LAUNCHPADLIB_VERSION = (1, 5, 1)
         self.assertRaises(
-            errors.IncompatibleAPI,
+            errors.DependencyNotPresent,
             self.lp_api.check_launchpadlib_compatibility)
 
 

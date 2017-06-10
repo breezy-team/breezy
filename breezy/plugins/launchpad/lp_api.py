@@ -72,9 +72,10 @@ def check_launchpadlib_compatibility():
     """Raise an error if launchpadlib has the wrong version number."""
     installed_version = parse_launchpadlib_version(launchpadlib.__version__)
     if installed_version < MINIMUM_LAUNCHPADLIB_VERSION:
-        raise errors.IncompatibleAPI(
-            'launchpadlib', MINIMUM_LAUNCHPADLIB_VERSION,
-            installed_version, installed_version)
+        raise errors.DependencyNotPresent(
+            'launchpadlib',
+            'At least launchpadlib %s is required, but installed version is %s'
+            % (MINIMUM_LAUNCHPADLIB_VERSION, installed_version))
 
 
 def lookup_service_root(service_root):
