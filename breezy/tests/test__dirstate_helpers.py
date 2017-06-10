@@ -644,7 +644,7 @@ class TestCompiledCmpPathByDirblock(TestCmpPathByDirblock):
 
     _test_needs_features = [compiled_dirstate_helpers_feature]
 
-    def get_cmp_by_dirs(self):
+    def get_cmp_path_by_dirblock(self):
         from breezy._dirstate_helpers_pyx import _cmp_path_by_dirblock
         return _cmp_path_by_dirblock
 
