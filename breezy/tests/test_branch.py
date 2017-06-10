@@ -584,7 +584,7 @@ class TestHooks(tests.TestCaseWithTransport):
         self.assertLength(1, calls)
         params = calls[0]
         self.assertIsInstance(params, _mod_branch.BranchInitHookParams)
-        self.assertTrue(hasattr(params, 'bzrdir'))
+        self.assertTrue(hasattr(params, 'controldir'))
         self.assertTrue(hasattr(params, 'branch'))
 
     def test_post_branch_init_hook_repr(self):

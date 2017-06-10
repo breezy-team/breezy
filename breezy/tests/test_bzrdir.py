@@ -1379,7 +1379,7 @@ class TestBzrDirHooks(TestCaseWithMemoryTransport):
         self.assertLength(1, calls)
         params = calls[0]
         self.assertIsInstance(params, RepoInitHookParams)
-        self.assertTrue(hasattr(params, 'bzrdir'))
+        self.assertTrue(hasattr(params, 'controldir'))
         self.assertTrue(hasattr(params, 'repository'))
 
     def test_post_repo_init_hook_repr(self):
