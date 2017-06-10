@@ -57,6 +57,7 @@ from .decorators import needs_read_lock, needs_write_lock
 from .inventory import Inventory, ROOT_ID, entry_factory
 from .inventorytree import (
     InventoryTree,
+    InventoryRevisionTree,
     )
 from .lock import LogicalLockResult
 from .lockable_files import LockableFiles
@@ -1134,8 +1135,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         if (len(real_trees) == 1
             and not ghosts
             and self.branch.repository._format.fast_deltas
-            and isinstance(real_trees[0][1],
-                revisiontree.InventoryRevisionTree)
+            and isinstance(real_trees[0][1], InventoryRevisionTree)
             and self.get_parent_ids()):
             rev_id, rev_tree = real_trees[0]
             basis_id = self.get_parent_ids()[0]

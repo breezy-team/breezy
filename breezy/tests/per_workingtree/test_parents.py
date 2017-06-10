@@ -28,7 +28,7 @@ from ...inventory import (
     InventoryDirectory,
     InventoryLink,
     )
-from ...revisiontree import InventoryRevisionTree
+from ...inventorytree import InventoryRevisionTree
 from ...sixish import (
     BytesIO,
     )

@@ -62,7 +62,7 @@ from breezy import (
 
 from .decorators import needs_write_lock, needs_read_lock
 from .lock import _RelockDebugMixin, LogicalLockResult
-from .inventorytree import MutableInventoryTree
+from .inventorytree import InventoryRevisionTree, MutableInventoryTree
 from .mutabletree import needs_tree_write_lock
 from .sixish import (
     BytesIO,
@@ -590,7 +590,7 @@ class InventoryWorkingTree(WorkingTree,MutableInventoryTree):
                     # dont use the repository revision_tree api because we want
                     # to supply the inventory.
                     if inv.revision_id == revision_id:
-                        return revisiontree.InventoryRevisionTree(
+                        return InventoryRevisionTree(
                             self.branch.repository, inv, revision_id)
                 except errors.BadInventoryFormat:
                     pass

@@ -52,6 +52,7 @@ from .errors import (
     )
 from .i18n import gettext
 from .inventory import Inventory
+from .inventorytree import InventoryRevisionTree
 from .lockable_files import LockableFiles
 from .sixish import (
     viewitems,
@@ -60,7 +61,6 @@ from .sixish import (
 from .smart import client, vfs, repository as smart_repo
 from .smart.client import _SmartClient
 from .revision import NULL_REVISION
-from .revisiontree import InventoryRevisionTree
 from .repository import RepositoryWriteLockResult, _LazyListJoin
 from .serializer import format_registry as serializer_format_registry
 from .trace import mutter, note, warning, log_exception_quietly
