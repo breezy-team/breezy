@@ -68,29 +68,26 @@ like::
 from __future__ import absolute_import
 
 from ...config import option_registry
-from ...lazy_import import lazy_import
-
-# lazy_import emailer so that it doesn't get loaded if it isn't used
-lazy_import(globals(), """\
-from breezy.plugins.email import emailer as _emailer
-""")
 
 
 def post_commit(branch, revision_id):
     """This is the post_commit hook that should get run after commit."""
-    _emailer.EmailSender(branch, revision_id, branch.get_config_stack()).send_maybe()
+    from . import emailer
+    emailer.EmailSender(branch, revision_id, branch.get_config_stack()).send_maybe()
 
 
 def branch_commit_hook(local, master, old_revno, old_revid, new_revno, new_revid):
     """This is the post_commit hook that runs after commit."""
-    _emailer.EmailSender(master, new_revid, master.get_config_stack(),
-                         local_branch=local).send_maybe()
+    from . import emailer
+    emailer.EmailSender(master, new_revid, master.get_config_stack(),
+                        local_branch=local).send_maybe()
 
 
 def branch_post_change_hook(params):
     """This is the post_change_branch_tip hook."""
     # (branch, old_revno, new_revno, old_revid, new_revid)
-    _emailer.EmailSender(params.branch, params.new_revid,
+    from . import emailer
+    emailer.EmailSender(params.branch, params.new_revid,
         params.branch.get_config_stack(), local_branch=None, op='change').send_maybe()
 
 
@@ -123,14 +120,8 @@ option_registry.register_lazy("post_commit_mailer",
 option_registry.register_lazy("revision_mail_headers",
     "breezy.plugins.email.emailer", "opt_revision_mail_headers")
 
-try:
-    from ...hooks import install_lazy_named_hook
-except ImportError:
-    from ...branch import Branch
-    Branch.hooks.install_named_hook('post_commit', branch_commit_hook, 'bzr-email')
-    Branch.hooks.install_named_hook('post_change_branch_tip', branch_post_change_hook, 'bzr-email')
-else:
-    install_lazy_named_hook("breezy.branch", "Branch.hooks", 'post_commit',
-        branch_commit_hook, 'bzr-email')
-    install_lazy_named_hook("breezy.branch", "Branch.hooks",
-        'post_change_branch_tip', branch_post_change_hook, 'bzr-email')
+from ...hooks import install_lazy_named_hook
+install_lazy_named_hook("breezy.branch", "Branch.hooks", 'post_commit',
+    branch_commit_hook, 'bzr-email')
+install_lazy_named_hook("breezy.branch", "Branch.hooks",
+    'post_change_branch_tip', branch_post_change_hook, 'bzr-email')

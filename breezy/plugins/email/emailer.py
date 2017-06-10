@@ -244,10 +244,10 @@ class EmailSender(object):
         to_addrs = self.to()
         if isinstance(to_addrs, basestring):
             to_addrs = [to_addrs]
-        header = self.extra_headers()            
-        
+        header = self.extra_headers()
+
         msg = EmailMessage(from_addr, to_addrs, subject, body)
-        
+
         if diff:
             msg.add_inline_attachment(diff, self.diff_filename())
 
@@ -255,7 +255,7 @@ class EmailSender(object):
         if header != None:
             for k, v in header.items():
                 msg[k] = v
-        
+
         smtp = self._smtplib_implementation(self.config)
         smtp.send_email(msg)
 
