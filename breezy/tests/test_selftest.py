@@ -631,7 +631,7 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         # Guard against regression into MemoryTransport leaking
         # files to disk instead of keeping them in memory.
         self.assertFalse(osutils.lexists('dir'))
-        dir_format = controldir.format_registry.make_bzrdir('knit')
+        dir_format = controldir.format_registry.make_controldir('knit')
         self.assertEqual(dir_format.repository_format.__class__,
                          the_branch.repository._format.__class__)
         self.assertEqual('Bazaar-NG Knit Repository Format 1',
@@ -715,9 +715,9 @@ class TestTestCaseTransports(tests.TestCaseWithTransport):
         super(TestTestCaseTransports, self).setUp()
         self.vfs_transport_factory = memory.MemoryServer
 
-    def test_make_bzrdir_preserves_transport(self):
+    def test_make_controldir_preserves_transport(self):
         t = self.get_transport()
-        result_bzrdir = self.make_bzrdir('subdir')
+        result_bzrdir = self.make_controldir('subdir')
         self.assertIsInstance(result_bzrdir.transport,
                               memory.MemoryTransport)
         # should not be on disk, should only be in memory
@@ -2018,12 +2018,12 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
         self.transport_server = test_server.FakeVFATServer
         self.assertFalse(self.get_url('t1').startswith('file://'))
         tree = self.make_branch_and_tree('t1')
-        base = tree.bzrdir.root_transport.base
+        base = tree.controldir.root_transport.base
         self.assertStartsWith(base, 'file://')
-        self.assertEqual(tree.bzrdir.root_transport,
-                tree.branch.bzrdir.root_transport)
-        self.assertEqual(tree.bzrdir.root_transport,
-                tree.branch.repository.bzrdir.root_transport)
+        self.assertEqual(tree.controldir.root_transport,
+                tree.branch.controldir.root_transport)
+        self.assertEqual(tree.controldir.root_transport,
+                tree.branch.repository.controldir.root_transport)
 
 
 class SelfTestHelper(object):

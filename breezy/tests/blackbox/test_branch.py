@@ -65,7 +65,7 @@ class TestBranch(tests.TestCaseWithTransport):
         self.run_bzr('branch a c -r 1')
         # previously was erroneously created by branching
         self.assertFalse(b._transport.has('branch-name'))
-        b.bzrdir.open_workingtree().commit(message='foo', allow_pointless=True)
+        b.controldir.open_workingtree().commit(message='foo', allow_pointless=True)
 
     def test_branch_no_to_location(self):
         """The to_location is derived from the source branch name."""
@@ -99,7 +99,7 @@ class TestBranch(tests.TestCaseWithTransport):
     def test_from_colocated(self):
         """Branch from a colocated branch into a regular branch."""
         tree = self.example_branch('a', format='development-colo')
-        tree.bzrdir.create_branch(name='somecolo')
+        tree.controldir.create_branch(name='somecolo')
         out, err = self.run_bzr('branch %s,branch=somecolo' %
             local_path_to_url('a'))
         self.assertEqual('', out)
@@ -169,7 +169,7 @@ class TestBranch(tests.TestCaseWithTransport):
 
     def test_branch_into_empty_dir(self):
         t = self.example_branch('source')
-        self.make_bzrdir('target')
+        self.make_controldir('target')
         self.run_bzr("branch source target")
         self.assertEqual(2, len(t.branch.repository.all_revision_ids()))
 
@@ -210,7 +210,7 @@ class TestBranch(tests.TestCaseWithTransport):
         shared_repo.set_make_working_trees(True)
 
         def make_shared_tree(path):
-            shared_repo.bzrdir.root_transport.mkdir(path)
+            shared_repo.controldir.root_transport.mkdir(path)
             controldir.ControlDir.create_branch_convenience('repo/' + path)
             return WorkingTree.open('repo/' + path)
         tree_a = make_shared_tree('a')
@@ -265,7 +265,7 @@ class TestBranch(tests.TestCaseWithTransport):
         self.build_tree(['source/file1'])
         source.add('file1')
         source.commit('added file')
-        source.bzrdir.sprout('second')
+        source.controldir.sprout('second')
         out, err = self.run_bzr('branch source target --files-from second'
                                 ' --hardlink')
         source_stat = os.stat('source/file1')
@@ -389,7 +389,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
             format='1.9')
         branch_tree.branch.set_stacked_on_url(trunk_tree.branch.base)
         # with some work on it
-        work_tree = trunk_tree.branch.bzrdir.sprout('local').open_workingtree()
+        work_tree = trunk_tree.branch.controldir.sprout('local').open_workingtree()
         work_tree.commit('moar work plz')
         work_tree.branch.push(branch_tree.branch)
         # branching our local branch gives us a new stacked branch pointing at
@@ -415,7 +415,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
             format='1.9')
         branch_tree.branch.set_stacked_on_url(trunk_tree.branch.base)
         # with some work on it
-        work_tree = trunk_tree.branch.bzrdir.sprout('local').open_workingtree()
+        work_tree = trunk_tree.branch.controldir.sprout('local').open_workingtree()
         branch_revid = work_tree.commit('moar work plz')
         work_tree.branch.push(branch_tree.branch)
         # you can chain branches on from there
@@ -531,9 +531,9 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
         t = self.make_branch_and_tree('trunk')
         for count in range(8):
             t.commit(message='commit %d' % count)
-        tree2 = t.branch.bzrdir.sprout('feature', stacked=True
+        tree2 = t.branch.controldir.sprout('feature', stacked=True
             ).open_workingtree()
-        local_tree = t.branch.bzrdir.sprout('local-working').open_workingtree()
+        local_tree = t.branch.controldir.sprout('local-working').open_workingtree()
         local_tree.commit('feature change')
         local_tree.branch.push(tree2.branch)
         self.reset_smart_call_log()

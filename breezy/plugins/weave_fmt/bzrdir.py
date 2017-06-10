@@ -234,16 +234,16 @@ class ConvertBzrDir4To5(Converter):
 
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
-        self.bzrdir = to_convert
+        self.controldir = to_convert
         if pb is not None:
             warnings.warn(gettext("pb parameter to convert() is deprecated"))
         self.pb = ui.ui_factory.nested_progress_bar()
         try:
             ui.ui_factory.note(gettext('starting upgrade from format 4 to 5'))
-            if isinstance(self.bzrdir.transport, local.LocalTransport):
-                self.bzrdir.get_workingtree_transport(None).delete('stat-cache')
+            if isinstance(self.controldir.transport, local.LocalTransport):
+                self.controldir.get_workingtree_transport(None).delete('stat-cache')
             self._convert_to_weaves()
-            return ControlDir.open(self.bzrdir.user_url)
+            return ControlDir.open(self.controldir.user_url)
         finally:
             self.pb.finished()
 
@@ -252,18 +252,18 @@ class ConvertBzrDir4To5(Converter):
           'note: upgrade may be faster if all store files are ungzipped first'))
         try:
             # TODO permissions
-            stat = self.bzrdir.transport.stat('weaves')
+            stat = self.controldir.transport.stat('weaves')
             if not S_ISDIR(stat.st_mode):
-                self.bzrdir.transport.delete('weaves')
-                self.bzrdir.transport.mkdir('weaves')
+                self.controldir.transport.delete('weaves')
+                self.controldir.transport.mkdir('weaves')
         except errors.NoSuchFile:
-            self.bzrdir.transport.mkdir('weaves')
+            self.controldir.transport.mkdir('weaves')
         # deliberately not a WeaveFile as we want to build it up slowly.
         self.inv_weave = weave.Weave('inventory')
         # holds in-memory weaves for all files
         self.text_weaves = {}
-        self.bzrdir.transport.delete('branch-format')
-        self.branch = self.bzrdir.open_branch()
+        self.controldir.transport.delete('branch-format')
+        self.branch = self.controldir.open_branch()
         self._convert_working_inv()
         rev_history = self.branch._revision_history()
         # to_read is a stack holding the revisions we still need to process;
@@ -293,30 +293,30 @@ class ConvertBzrDir4To5(Converter):
         self.branch._transport.put_bytes(
             'branch-format',
             BzrDirFormat5().get_format_string(),
-            mode=self.bzrdir._get_file_mode())
+            mode=self.controldir._get_file_mode())
 
     def _cleanup_spare_files_after_format4(self):
         # FIXME working tree upgrade foo.
         for n in 'merged-patches', 'pending-merged-patches':
             try:
                 ## assert os.path.getsize(p) == 0
-                self.bzrdir.transport.delete(n)
+                self.controldir.transport.delete(n)
             except errors.NoSuchFile:
                 pass
-        self.bzrdir.transport.delete_tree('inventory-store')
-        self.bzrdir.transport.delete_tree('text-store')
+        self.controldir.transport.delete_tree('inventory-store')
+        self.controldir.transport.delete_tree('text-store')
 
     def _convert_working_inv(self):
         inv = xml4.serializer_v4.read_inventory(
                 self.branch._transport.get('inventory'))
         new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv, working=True)
         self.branch._transport.put_bytes('inventory', new_inv_xml,
-            mode=self.bzrdir._get_file_mode())
+            mode=self.controldir._get_file_mode())
 
     def _write_all_weaves(self):
-        controlweaves = VersionedFileStore(self.bzrdir.transport, prefixed=False,
+        controlweaves = VersionedFileStore(self.controldir.transport, prefixed=False,
             versionedfile_class=weave.WeaveFile)
-        weave_transport = self.bzrdir.transport.clone('weaves')
+        weave_transport = self.controldir.transport.clone('weaves')
         weaves = VersionedFileStore(weave_transport, prefixed=False,
                 versionedfile_class=weave.WeaveFile)
         transaction = WriteTransaction()
@@ -336,9 +336,9 @@ class ConvertBzrDir4To5(Converter):
 
     def _write_all_revs(self):
         """Write all revisions out in new form."""
-        self.bzrdir.transport.delete_tree('revision-store')
-        self.bzrdir.transport.mkdir('revision-store')
-        revision_transport = self.bzrdir.transport.clone('revision-store')
+        self.controldir.transport.delete_tree('revision-store')
+        self.controldir.transport.mkdir('revision-store')
+        revision_transport = self.controldir.transport.clone('revision-store')
         # TODO permissions
         from ...xml5 import serializer_v5
         from .repository import RevisionTextStore
@@ -503,21 +503,21 @@ class ConvertBzrDir5To6(Converter):
 
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
-        self.bzrdir = to_convert
+        self.controldir = to_convert
         pb = ui.ui_factory.nested_progress_bar()
         try:
             ui.ui_factory.note(gettext('starting upgrade from format 5 to 6'))
             self._convert_to_prefixed()
-            return ControlDir.open(self.bzrdir.user_url)
+            return ControlDir.open(self.controldir.user_url)
         finally:
             pb.finished()
 
     def _convert_to_prefixed(self):
         from ...store import TransportStore
-        self.bzrdir.transport.delete('branch-format')
+        self.controldir.transport.delete('branch-format')
         for store_name in ["weaves", "revision-store"]:
             ui.ui_factory.note(gettext("adding prefixes to %s") % store_name)
-            store_transport = self.bzrdir.transport.clone(store_name)
+            store_transport = self.controldir.transport.clone(store_name)
             store = TransportStore(store_transport, prefixed=True)
             for urlfilename in store_transport.list_dir('.'):
                 filename = urlutils.unescape(urlfilename)
@@ -535,10 +535,10 @@ class ConvertBzrDir5To6(Converter):
                 except errors.NoSuchFile: # catches missing dirs strangely enough
                     store_transport.mkdir(osutils.dirname(new_name))
                     store_transport.move(filename, new_name)
-        self.bzrdir.transport.put_bytes(
+        self.controldir.transport.put_bytes(
             'branch-format',
             BzrDirFormat6().get_format_string(),
-            mode=self.bzrdir._get_file_mode())
+            mode=self.controldir._get_file_mode())
 
 
 class ConvertBzrDir6ToMeta(Converter):
@@ -548,16 +548,16 @@ class ConvertBzrDir6ToMeta(Converter):
         """See Converter.convert()."""
         from .repository import RepositoryFormat7
         from ...bzr.fullhistory import BzrBranchFormat5
-        self.bzrdir = to_convert
+        self.controldir = to_convert
         self.pb = ui.ui_factory.nested_progress_bar()
         self.count = 0
         self.total = 20 # the steps we know about
         self.garbage_inventories = []
-        self.dir_mode = self.bzrdir._get_dir_mode()
-        self.file_mode = self.bzrdir._get_file_mode()
+        self.dir_mode = self.controldir._get_dir_mode()
+        self.file_mode = self.controldir._get_file_mode()
 
         ui.ui_factory.note(gettext('starting upgrade from format 6 to metadir'))
-        self.bzrdir.transport.put_bytes(
+        self.controldir.transport.put_bytes(
                 'branch-format',
                 "Converting to format 6",
                 mode=self.file_mode)
@@ -565,13 +565,13 @@ class ConvertBzrDir6ToMeta(Converter):
         # first off, nuke ancestry.weave, it was never used.
         try:
             self.step(gettext('Removing ancestry.weave'))
-            self.bzrdir.transport.delete('ancestry.weave')
+            self.controldir.transport.delete('ancestry.weave')
         except errors.NoSuchFile:
             pass
         # find out whats there
         self.step(gettext('Finding branch files'))
-        last_revision = self.bzrdir.open_branch().last_revision()
-        bzrcontents = self.bzrdir.transport.list_dir('.')
+        last_revision = self.controldir.open_branch().last_revision()
+        bzrcontents = self.controldir.transport.list_dir('.')
         for name in bzrcontents:
             if name.startswith('basis-inventory.'):
                 self.garbage_inventories.append(name)
@@ -580,7 +580,7 @@ class ConvertBzrDir6ToMeta(Converter):
                             ('revision-store', True),
                             ('weaves', True)]
         self.step(gettext('Upgrading repository') + '  ')
-        self.bzrdir.transport.mkdir('repository', mode=self.dir_mode)
+        self.controldir.transport.mkdir('repository', mode=self.dir_mode)
         self.make_lock('repository')
         # we hard code the formats here because we are converting into
         # the meta format. The meta format upgrader can take this to a
@@ -590,7 +590,7 @@ class ConvertBzrDir6ToMeta(Converter):
             self.move_entry('repository', entry)
 
         self.step(gettext('Upgrading branch') + '      ')
-        self.bzrdir.transport.mkdir('branch', mode=self.dir_mode)
+        self.controldir.transport.mkdir('branch', mode=self.dir_mode)
         self.make_lock('branch')
         self.put_format('branch', BzrBranchFormat5())
         branch_files = [('revision-history', True),
@@ -616,32 +616,32 @@ class ConvertBzrDir6ToMeta(Converter):
             # If some checkout files are there, we may as well get rid of them.
             for name, mandatory in checkout_files:
                 if name in bzrcontents:
-                    self.bzrdir.transport.delete(name)
+                    self.controldir.transport.delete(name)
         else:
             from ...bzr.workingtree_3 import WorkingTreeFormat3
             self.step(gettext('Upgrading working tree'))
-            self.bzrdir.transport.mkdir('checkout', mode=self.dir_mode)
+            self.controldir.transport.mkdir('checkout', mode=self.dir_mode)
             self.make_lock('checkout')
             self.put_format(
                 'checkout', WorkingTreeFormat3())
-            self.bzrdir.transport.delete_multi(
+            self.controldir.transport.delete_multi(
                 self.garbage_inventories, self.pb)
             for entry in checkout_files:
                 self.move_entry('checkout', entry)
             if last_revision is not None:
-                self.bzrdir.transport.put_bytes(
+                self.controldir.transport.put_bytes(
                     'checkout/last-revision', last_revision)
-        self.bzrdir.transport.put_bytes(
+        self.controldir.transport.put_bytes(
             'branch-format',
             BzrDirMetaFormat1().get_format_string(),
             mode=self.file_mode)
         self.pb.finished()
-        return ControlDir.open(self.bzrdir.user_url)
+        return ControlDir.open(self.controldir.user_url)
 
     def make_lock(self, name):
         """Make a lock for the new control dir name."""
         self.step(gettext('Make %s lock') % name)
-        ld = lockdir.LockDir(self.bzrdir.transport,
+        ld = lockdir.LockDir(self.controldir.transport,
                              '%s/lock' % name,
                              file_modebits=self.file_mode,
                              dir_modebits=self.dir_mode)
@@ -653,13 +653,13 @@ class ConvertBzrDir6ToMeta(Converter):
         mandatory = entry[1]
         self.step(gettext('Moving %s') % name)
         try:
-            self.bzrdir.transport.move(name, '%s/%s' % (new_dir, name))
+            self.controldir.transport.move(name, '%s/%s' % (new_dir, name))
         except errors.NoSuchFile:
             if mandatory:
                 raise
 
     def put_format(self, dirname, format):
-        self.bzrdir.transport.put_bytes('%s/format' % dirname,
+        self.controldir.transport.put_bytes('%s/format' % dirname,
             format.get_format_string(),
             self.file_mode)
 
@@ -747,7 +747,7 @@ class BzrDirPreSplitOut(BzrDir):
     def cloning_metadir(self, require_stacking=False):
         """Produce a metadir suitable for cloning with."""
         if require_stacking:
-            return format_registry.make_bzrdir('1.6')
+            return format_registry.make_controldir('1.6')
         return self._format.__class__()
 
     def clone(self, url, revision_id=None, force_new_repo=False,

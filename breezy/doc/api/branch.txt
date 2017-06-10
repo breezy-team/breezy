@@ -16,12 +16,12 @@ Branches are created by ControlDir's:
 
 Existing Branches can be opened directly:
 
-   >>> transport = new_branch.bzrdir.transport
+   >>> transport = new_branch.controldir.transport
    >>> another_instance = Branch.open(transport.clone('..').base)
 
 or via the ControlDir:
 
-   >>> still_the_same_branch = new_branch.bzrdir.open_branch()
+   >>> still_the_same_branch = new_branch.controldir.open_branch()
 
 A branch has a history of revisions on it:
 

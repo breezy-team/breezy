@@ -49,7 +49,7 @@ class TestBreakLock(per_branch.TestCaseWithBranch):
                 'Repository does not use physical locks.')
         self.branch.repository.leave_lock_in_place()
         self.branch.repository.unlock()
-        other_instance = self.branch.repository.bzrdir.open_repository()
+        other_instance = self.branch.repository.controldir.open_repository()
         if not other_instance.get_physical_lock_status():
             raise tests.TestNotApplicable(
                 'Repository does not lock persistently.')

@@ -42,8 +42,8 @@ class TestSprout(TestCaseWithBranch):
 
     def test_sprout_branch_parent(self):
         source = self.make_branch('source')
-        target = source.bzrdir.sprout(self.get_url('target')).open_branch()
-        self.assertEqual(source.bzrdir.root_transport.base, target.get_parent())
+        target = source.controldir.sprout(self.get_url('target')).open_branch()
+        self.assertEqual(source.controldir.root_transport.base, target.get_parent())
 
     def test_sprout_uses_bzrdir_branch_format(self):
         # branch.sprout(bzrdir) is defined as using the branch format selected
@@ -60,7 +60,7 @@ class TestSprout(TestCaseWithBranch):
         # We call the super class to allow overriding the format of creation)
         source = tests.TestCaseWithTransport.make_branch(self, 'old-branch',
                                                          format='knit')
-        target_bzrdir = self.make_bzrdir('target')
+        target_bzrdir = self.make_controldir('target')
         target_bzrdir.create_repository()
         result_format = self.branch_format
         if isinstance(target_bzrdir, remote.RemoteBzrDir):
@@ -95,7 +95,7 @@ class TestSprout(TestCaseWithBranch):
         repo_b = self.make_repository('b')
         repo_a = wt_a.branch.repository
         repo_a.copy_content_into(repo_b)
-        br_b = wt_a.branch.sprout(repo_b.bzrdir, revision_id='1')
+        br_b = wt_a.branch.sprout(repo_b.controldir, revision_id='1')
         self.assertEqual('1', br_b.last_revision())
 
     def test_sprout_partial_not_in_revision_history(self):
@@ -113,7 +113,7 @@ class TestSprout(TestCaseWithBranch):
 
         repo = self.make_repository('target')
         repo.fetch(wt.branch.repository)
-        branch2 = wt.branch.sprout(repo.bzrdir, revision_id='rev2-alt')
+        branch2 = wt.branch.sprout(repo.controldir, revision_id='rev2-alt')
         self.assertEqual((2, 'rev2-alt'), branch2.last_revision_info())
         self.assertEqual('rev2-alt', branch2.last_revision())
 
@@ -131,7 +131,7 @@ class TestSprout(TestCaseWithBranch):
             raise tests.TestNotApplicable(
                 'Branch format does not support tags or tags to ghosts.')
         # Now source has a tag pointing to an absent revision.  Sprout it.
-        target_bzrdir = self.make_repository('target').bzrdir
+        target_bzrdir = self.make_repository('target').controldir
         new_branch = source.sprout(target_bzrdir)
         # The tag is present in the target
         self.assertEqual('missing-rev', new_branch.tags.lookup_tag('tag-a'))
@@ -147,7 +147,7 @@ class TestSprout(TestCaseWithBranch):
         wt.set_last_revision(_mod_revision.NULL_REVISION)
         wt.revert()
         wt.commit('rev1b', rev_id='rev1b')
-        wt2 = wt.bzrdir.sprout('target',
+        wt2 = wt.controldir.sprout('target',
             revision_id='rev1a').open_workingtree()
         self.assertEqual('rev1a', wt2.last_revision())
         self.assertPathExists('target/a')
@@ -171,7 +171,7 @@ class TestSprout(TestCaseWithBranch):
         tree.add([link_name],['link-id'])
 
         revision = tree.commit('added a link to a Unicode target')
-        tree.bzrdir.sprout('dest')
+        tree.controldir.sprout('dest')
         self.assertEqual(target, osutils.readlink('dest/' + link_name))
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -189,7 +189,7 @@ class TestSprout(TestCaseWithBranch):
         tree.add('')
         tree.commit('msg1', rev_id='rev1')
         tree.commit('msg2', rev_id='rev2')
-        tree.bzrdir.sprout('target', revision_id='rev1')
+        tree.controldir.sprout('target', revision_id='rev1')
 
     def assertBranchHookBranchIsStacked(self, pre_change_params):
         # Just calling will either succeed or fail.
@@ -206,7 +206,7 @@ class TestSprout(TestCaseWithBranch):
         _mod_branch.Branch.hooks.install_named_hook("pre_change_branch_tip",
             self.assertBranchHookBranchIsStacked, None)
         try:
-            dir = source.bzrdir.sprout(target_transport.base,
+            dir = source.controldir.sprout(target_transport.base,
                 source.last_revision(), possible_transports=[target_transport],
                 source_branch=source, stacked=True)
         except errors.UnstackableBranchFormat:

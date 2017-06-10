@@ -66,7 +66,7 @@ class TestHasSameLocation(TestCaseWithRepository):
     def test_same_repo_location(self):
         """Different repository objects for the same location are the same."""
         repo = self.make_repository('.')
-        reopened_repo = repo.bzrdir.open_repository()
+        reopened_repo = repo.controldir.open_repository()
         self.assertFalse(
             repo is reopened_repo,
             "This test depends on reopened_repo being a different instance of "
@@ -87,7 +87,7 @@ class TestHasSameLocation(TestCaseWithRepository):
         CopyConverter creates a second repository in one bzrdir.
         """
         repo = self.make_repository('repo')
-        if repo.control_transport.base == repo.bzrdir.control_transport.base:
+        if repo.control_transport.base == repo.controldir.control_transport.base:
             raise TestNotApplicable(
                 "%r has repository files directly in the bzrdir"
                 % (repo,))
@@ -99,7 +99,7 @@ class TestHasSameLocation(TestCaseWithRepository):
         if isinstance(repo._format, RemoteRepositoryFormat):
             raise TestNotApplicable("remote repositories don't support overriding "
                                     "transport")
-        backup_repo = repo._format.open(repo.bzrdir,
+        backup_repo = repo._format.open(repo.controldir,
                                         _override_transport=backup_transport)
         self.assertDifferentRepo(repo, backup_repo)
 

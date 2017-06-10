@@ -62,7 +62,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
     def setUp(self):
         super(TestCaseWithComplexRepository, self).setUp()
         tree_a = self.make_branch_and_tree('a')
-        self.bzrdir = tree_a.branch.bzrdir
+        self.controldir = tree_a.branch.controldir
         # add a corrupt inventory 'orphan'
         tree_a.branch.repository.lock_write()
         tree_a.branch.repository.start_write_group()
@@ -88,7 +88,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         # as some formats keyed off inventory data in the past.)
         # make a repository to compare against that claims to have rev1
         repo_b = self.make_to_repository('rev1_only')
-        repo_a = self.bzrdir.open_repository()
+        repo_a = self.controldir.open_repository()
         repo_b.fetch(repo_a, 'rev1')
         # check the test will be valid
         self.assertFalse(repo_b.has_revision('rev2'))
@@ -101,7 +101,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         # Asking for missing revisions with a tip that is itself absent in the
         # source raises NoSuchRevision.
         repo_b = self.make_to_repository('target')
-        repo_a = self.bzrdir.open_repository()
+        repo_a = self.controldir.open_repository()
         # No pizza revisions anywhere
         self.assertFalse(repo_a.has_revision('pizza'))
         self.assertFalse(repo_b.has_revision('pizza'))
@@ -118,7 +118,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         # requested revision are not returned.
         # make a repository to compare against that is empty
         repo_b = self.make_to_repository('empty')
-        repo_a = self.bzrdir.open_repository()
+        repo_a = self.controldir.open_repository()
         result = repo_b.search_missing_revision_ids(
             repo_a, revision_ids=['rev1'])
         self.assertEqual({'rev1'}, result.get_keys())
@@ -129,7 +129,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         # The limit= argument makes fetch() limit
         # the results to the first X topo-sorted revisions.
         repo_b = self.make_to_repository('rev1_only')
-        repo_a = self.bzrdir.open_repository()
+        repo_a = self.controldir.open_repository()
         # check the test will be valid
         self.assertFalse(repo_b.has_revision('rev2'))
         result = repo_b.search_missing_revision_ids(repo_a, limit=1)
@@ -137,7 +137,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
             result.get_recipe())
 
     def test_fetch_fetches_signatures_too(self):
-        from_repo = self.bzrdir.open_repository()
+        from_repo = self.controldir.open_repository()
         from_signature = from_repo.get_signature_text('rev2')
         to_repo = self.make_to_repository('target')
         to_repo.fetch(from_repo)

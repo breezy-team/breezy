@@ -122,9 +122,9 @@ class KnitRepository(MetaDirVersionedFileRepository):
     _commit_builder_class = None
     _serializer = None
 
-    def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
+    def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
         _serializer):
-        super(KnitRepository, self).__init__(_format, a_bzrdir, control_files)
+        super(KnitRepository, self).__init__(_format, a_controldir, control_files)
         self._commit_builder_class = _commit_builder_class
         self._serializer = _serializer
         self._reconcile_fixes_text_parents = True
@@ -289,25 +289,25 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
         return _mod_knit.KnitVersionedFiles(index, access, max_delta_chain=200,
             annotated=True)
 
-    def initialize(self, a_bzrdir, shared=False):
+    def initialize(self, a_controldir, shared=False):
         """Create a knit format 1 repository.
 
-        :param a_bzrdir: bzrdir to contain the new repository; must already
+        :param a_controldir: bzrdir to contain the new repository; must already
             be initialized.
         :param shared: If true the repository will be initialized as a shared
                        repository.
         """
-        trace.mutter('creating repository in %s.', a_bzrdir.transport.base)
+        trace.mutter('creating repository in %s.', a_controldir.transport.base)
         dirs = ['knits']
         files = []
         utf8_files = [('format', self.get_format_string())]
 
-        self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
-        repo_transport = a_bzrdir.get_repository_transport(None)
+        self._upload_blank_content(a_controldir, dirs, files, utf8_files, shared)
+        repo_transport = a_controldir.get_repository_transport(None)
         control_files = lockable_files.LockableFiles(repo_transport,
                                 'lock', lockdir.LockDir)
         transaction = transactions.WriteTransaction()
-        result = self.open(a_bzrdir=a_bzrdir, _found=True)
+        result = self.open(a_controldir=a_controldir, _found=True)
         result.lock_write()
         # the revision id here is irrelevant: it will not be stored, and cannot
         # already exist, we do this to create files on disk for older clients.
@@ -315,10 +315,10 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
         result.revisions.get_parent_map([('A',)])
         result.signatures.get_parent_map([('A',)])
         result.unlock()
-        self._run_post_repo_init_hooks(result, a_bzrdir, shared)
+        self._run_post_repo_init_hooks(result, a_controldir, shared)
         return result
 
-    def open(self, a_bzrdir, _found=False, _override_transport=None):
+    def open(self, a_controldir, _found=False, _override_transport=None):
         """See RepositoryFormat.open().
 
         :param _override_transport: INTERNAL USE ONLY. Allows opening the
@@ -326,15 +326,15 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
                                     than normal. I.e. during 'upgrade'.
         """
         if not _found:
-            format = RepositoryFormatMetaDir.find_format(a_bzrdir)
+            format = RepositoryFormatMetaDir.find_format(a_controldir)
         if _override_transport is not None:
             repo_transport = _override_transport
         else:
-            repo_transport = a_bzrdir.get_repository_transport(None)
+            repo_transport = a_controldir.get_repository_transport(None)
         control_files = lockable_files.LockableFiles(repo_transport,
                                 'lock', lockdir.LockDir)
         repo = self.repository_class(_format=self,
-                              a_bzrdir=a_bzrdir,
+                              a_controldir=a_controldir,
                               control_files=control_files,
                               _commit_builder_class=self._commit_builder_class,
                               _serializer=self._serializer)
@@ -408,7 +408,7 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
         return xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir('dirstate-with-subtree')
+        return controldir.format_registry.make_controldir('dirstate-with-subtree')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -450,7 +450,7 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
         return xml6.serializer_v6
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir('rich-root')
+        return controldir.format_registry.make_controldir('rich-root')
 
     def _ignore_setting_bzrdir(self, format):
         pass

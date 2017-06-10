@@ -61,7 +61,7 @@ class VersionInfoTestCase(TestCaseWithTransport):
         wt.add('a')
         wt.commit('a', rev_id='r1')
 
-        other = wt.bzrdir.sprout('other').open_workingtree()
+        other = wt.controldir.sprout('other').open_workingtree()
         self.build_tree(['other/b.a'])
         other.add(['b.a'])
         other.commit('b.a', rev_id='o2')

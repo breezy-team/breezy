@@ -255,7 +255,7 @@ class NoPublicBranch(BzrError):
     _fmt = 'There is no public branch set for "%(branch_url)s".'
 
     def __init__(self, branch):
-        import breezy.urlutils as urlutils
+        from . import urlutils
         public_location = urlutils.unescape_for_display(branch.base, 'ascii')
         BzrError.__init__(self, branch_url=public_location)
 
@@ -647,13 +647,13 @@ class NotBranchError(PathError):
 
     _fmt = 'Not a branch: "%(path)s"%(detail)s.'
 
-    def __init__(self, path, detail=None, bzrdir=None):
-       import breezy.urlutils as urlutils
+    def __init__(self, path, detail=None, controldir=None):
+       from . import urlutils
        path = urlutils.unescape_for_display(path, 'ascii')
        if detail is not None:
            detail = ': ' + detail
        self.detail = detail
-       self.bzrdir = bzrdir
+       self.controldir = controldir
        PathError.__init__(self, path=path)
 
     def __repr__(self):
@@ -666,9 +666,9 @@ class NotBranchError(PathError):
         return super(NotBranchError, self)._get_format_string()
 
     def _get_detail(self):
-        if self.bzrdir is not None:
+        if self.controldir is not None:
             try:
-                self.bzrdir.open_repository()
+                self.controldir.open_repository()
             except NoRepositoryPresent:
                 return ''
             except Exception as e:
@@ -690,7 +690,7 @@ class NoSubmitBranch(PathError):
     _fmt = 'No submit branch available for branch "%(path)s"'
 
     def __init__(self, branch):
-       import breezy.urlutils as urlutils
+       from . import urlutils
        self.path = urlutils.unescape_for_display(branch.base, 'ascii')
 
 
@@ -747,9 +747,9 @@ class InaccessibleParent(PathError):
 class NoRepositoryPresent(BzrError):
 
     _fmt = 'No repository present: "%(path)s"'
-    def __init__(self, bzrdir):
+    def __init__(self, controldir):
         BzrError.__init__(self)
-        self.path = bzrdir.transport.clone('..').base
+        self.path = controldir.transport.clone('..').base
 
 
 class UnsupportedFormatError(BzrError):
@@ -768,12 +768,12 @@ class UnknownFormatError(BzrError):
 
 class IncompatibleFormat(BzrError):
 
-    _fmt = "Format %(format)s is not compatible with .bzr version %(bzrdir)s."
+    _fmt = "Format %(format)s is not compatible with .bzr version %(controldir)s."
 
-    def __init__(self, format, bzrdir_format):
+    def __init__(self, format, controldir_format):
         BzrError.__init__(self)
         self.format = format
-        self.bzrdir = bzrdir_format
+        self.controldir = controldir_format
 
 
 class ParseFormatError(BzrError):
@@ -2789,11 +2789,11 @@ class DefaultSMTPConnectionRefused(SMTPConnectionRefused):
 
 class BzrDirError(BzrError):
 
-    def __init__(self, bzrdir):
-        import breezy.urlutils as urlutils
-        display_url = urlutils.unescape_for_display(bzrdir.user_url,
+    def __init__(self, controldir):
+        from . import urlutils
+        display_url = urlutils.unescape_for_display(controldir.user_url,
                                                     'ascii')
-        BzrError.__init__(self, bzrdir=bzrdir, display_url=display_url)
+        BzrError.__init__(self, controldir=controldir, display_url=display_url)
 
 
 class UnsyncedBranches(BzrDirError):
@@ -2801,9 +2801,9 @@ class UnsyncedBranches(BzrDirError):
     _fmt = ("'%(display_url)s' is not in sync with %(target_url)s.  See"
             " brz help sync-for-reconfigure.")
 
-    def __init__(self, bzrdir, target_branch):
-        BzrDirError.__init__(self, bzrdir)
-        import breezy.urlutils as urlutils
+    def __init__(self, controldir, target_branch):
+        BzrError.__init__(self, controldir)
+        from . import urlutils
         self.target_url = urlutils.unescape_for_display(target_branch.base,
                                                         'ascii')
 
@@ -3193,10 +3193,10 @@ class FileTimestampUnavailable(BzrError):
 
 class NoColocatedBranchSupport(BzrError):
 
-    _fmt = ("%(bzrdir)r does not support co-located branches.")
+    _fmt = ("%(controldir)r does not support co-located branches.")
 
-    def __init__(self, bzrdir):
-        self.bzrdir = bzrdir
+    def __init__(self, controldir):
+        self.controldir = controldir
 
 
 class NoWhoami(BzrError):

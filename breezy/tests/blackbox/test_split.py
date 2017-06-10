@@ -33,7 +33,7 @@ class TestSplit(tests.TestCaseWithTransport):
 
     def test_split_repo_failure(self):
         repo = self.make_repository('branch', shared=True, format='knit')
-        a_branch = repo.bzrdir.create_branch()
+        a_branch = repo.controldir.create_branch()
         self.build_tree(['a/', 'a/b/', 'a/b/c/', 'a/b/c/d'])
         wt = a_branch.create_checkout('a', lightweight=True)
         wt.add(['b', 'b/c', 'b/c/d'], ['b-id', 'c-id', 'd-id'])

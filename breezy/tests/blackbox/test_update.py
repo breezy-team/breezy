@@ -200,7 +200,7 @@ Your local commits will now show as pending merges with 'brz status', and can be
         checkout1 = checkout_dir.create_workingtree('m1')
 
         # Create a second branch, with an extra commit
-        other = master.bzrdir.sprout('other').open_workingtree()
+        other = master.controldir.sprout('other').open_workingtree()
         self.build_tree(['other/file2'])
         other.add(['file2'])
         other.commit('other2', rev_id='o2')
@@ -256,7 +256,7 @@ Updated to revision 2 of branch %s
         checkout1 = checkout_dir.create_workingtree('m1')
 
         # Create a second branch, with an extra commit
-        other = master.bzrdir.sprout('other').open_workingtree()
+        other = master.controldir.sprout('other').open_workingtree()
         self.build_tree(['other/file2'])
         other.add(['file2'])
         other.commit('other2', rev_id='o2')
@@ -311,7 +311,7 @@ $ brz update -r 1
         master.commit('one', rev_id='m1')
 
         # Create a second branch, with extra commits
-        other = master.bzrdir.sprout('other').open_workingtree()
+        other = master.controldir.sprout('other').open_workingtree()
         self.build_tree(['other/file2', 'other/file3'])
         other.add(['file2'])
         other.commit('other2', rev_id='o2')

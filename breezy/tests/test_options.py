@@ -162,7 +162,7 @@ class OptionTests(TestCase):
 
     def test_registry_converter(self):
         options = [option.RegistryOption('format', '',
-                   controldir.format_registry, controldir.format_registry.make_bzrdir)]
+                   controldir.format_registry, controldir.format_registry.make_controldir)]
         opts, args = self.parse(options, ['--format', 'knit'])
         self.assertIsInstance(opts.format.repository_format,
                               knitrepo.RepositoryFormatKnit1)

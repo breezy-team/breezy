@@ -193,7 +193,7 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         b1 = self.make_branch_with_revisions('b',
             ['rev-1', 'rev-1-changed', 'rev-2'])
         b1.tags.set_tag('one', 'rev-1')
-        b2 = b1.bzrdir.open_branch()
+        b2 = b1.controldir.open_branch()
         self.assertEqual({'one': 'rev-1'}, b1.tags.get_tag_dict())
         # Add a tag and modify a tag in b2.  b1 isn't locked, so it will
         # immediately return the new tags too.

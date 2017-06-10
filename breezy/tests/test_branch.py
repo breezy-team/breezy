@@ -122,10 +122,10 @@ class SampleBranchFormat(_mod_bzrbranch.BranchFormatMetadir):
         """See BzrBranchFormat.get_format_string()."""
         return "Sample branch format."
 
-    def initialize(self, a_bzrdir, name=None, repository=None,
+    def initialize(self, a_controldir, name=None, repository=None,
                    append_revisions_only=None):
         """Format 4 branches cannot be created."""
-        t = a_bzrdir.get_branch_transport(self, name=name)
+        t = a_controldir.get_branch_transport(self, name=name)
         t.put_bytes('format', self.get_format_string())
         return 'A branch'
 
@@ -150,8 +150,8 @@ class SampleSupportedBranchFormat(_mod_bzrbranch.BranchFormatMetadir):
         """See BzrBranchFormat.get_format_string()."""
         return SampleSupportedBranchFormatString
 
-    def initialize(self, a_bzrdir, name=None, append_revisions_only=None):
-        t = a_bzrdir.get_branch_transport(self, name=name)
+    def initialize(self, a_controldir, name=None, append_revisions_only=None):
+        t = a_controldir.get_branch_transport(self, name=name)
         t.put_bytes('format', self.get_format_string())
         return 'A branch'
 
@@ -171,7 +171,7 @@ class SampleExtraBranchFormat(_mod_branch.BranchFormat):
         # Network name always has to be provided.
         return "extra"
 
-    def initialize(self, a_bzrdir, name=None):
+    def initialize(self, a_controldir, name=None):
         raise NotImplementedError(self.initialize)
 
     def open(self, transport, name=None, _found=False, ignore_fallbacks=False,
@@ -218,7 +218,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
     def test_find_format_with_features(self):
         tree = self.make_branch_and_tree('.', format='2a')
         tree.branch.update_feature_flags({"name": "optional"})
-        found_format = _mod_bzrbranch.BranchFormatMetadir.find_format(tree.bzrdir)
+        found_format = _mod_bzrbranch.BranchFormatMetadir.find_format(tree.controldir)
         self.assertIsInstance(found_format, _mod_bzrbranch.BranchFormatMetadir)
         self.assertEqual(found_format.features.get("name"), "optional")
         tree.branch.update_feature_flags({"name": None})
@@ -377,7 +377,7 @@ class TestBranch7(TestBranch67, tests.TestCaseWithTransport):
 
     def test_set_stacked_on_url_unstackable_repo(self):
         repo = self.make_repository('a', format='dirstate-tags')
-        control = repo.bzrdir
+        control = repo.controldir
         branch = _mod_bzrbranch.BzrBranchFormat7().initialize(control)
         target = self.make_branch('b')
         self.assertRaises(errors.UnstackableRepositoryFormat,
@@ -385,7 +385,7 @@ class TestBranch7(TestBranch67, tests.TestCaseWithTransport):
 
     def test_clone_stacked_on_unstackable_repo(self):
         repo = self.make_repository('a', format='dirstate-tags')
-        control = repo.bzrdir
+        control = repo.controldir
         branch = _mod_bzrbranch.BzrBranchFormat7().initialize(control)
         # Calling clone should not raise UnstackableRepositoryFormat.
         cloned_bzrdir = control.clone('cloned')
@@ -409,7 +409,7 @@ class TestBranch7(TestBranch67, tests.TestCaseWithTransport):
         branch = self.make_branch('a', format=self.get_format_name())
         target = self.make_branch_and_tree('b', format=self.get_format_name())
         branch.set_stacked_on_url(target.branch.base)
-        branch = branch.bzrdir.open_branch()
+        branch = branch.controldir.open_branch()
         revid = target.commit('foo')
         self.assertTrue(branch.repository.has_revision(revid))
 
@@ -418,7 +418,7 @@ class BzrBranch8(tests.TestCaseWithTransport):
 
     def make_branch(self, location, format=None):
         if format is None:
-            format = controldir.format_registry.make_bzrdir('1.9')
+            format = controldir.format_registry.make_controldir('1.9')
             format.set_branch_format(_mod_bzrbranch.BzrBranchFormat8())
         return tests.TestCaseWithTransport.make_branch(
             self, location, format=format)
@@ -508,12 +508,12 @@ class TestBranchReference(tests.TestCaseWithTransport):
         """For a BranchReference, get_reference should return the location."""
         branch = self.make_branch('target')
         checkout = branch.create_checkout('checkout', lightweight=True)
-        reference_url = branch.bzrdir.root_transport.abspath('') + '/'
+        reference_url = branch.controldir.root_transport.abspath('') + '/'
         # if the api for create_checkout changes to return different checkout types
         # then this file read will fail.
         self.assertFileEqual(reference_url, 'checkout/.bzr/branch/location')
         self.assertEqual(reference_url,
-            _mod_bzrbranch.BranchReferenceFormat().get_reference(checkout.bzrdir))
+            _mod_bzrbranch.BranchReferenceFormat().get_reference(checkout.controldir))
 
 
 class TestHooks(tests.TestCaseWithTransport):
@@ -549,7 +549,7 @@ class TestHooks(tests.TestCaseWithTransport):
         self.assertLength(1, calls)
         params = calls[0]
         self.assertIsInstance(params, _mod_branch.BranchInitHookParams)
-        self.assertTrue(hasattr(params, 'bzrdir'))
+        self.assertTrue(hasattr(params, 'controldir'))
         self.assertTrue(hasattr(params, 'branch'))
 
     def test_post_branch_init_hook_repr(self):
@@ -570,14 +570,14 @@ class TestHooks(tests.TestCaseWithTransport):
         self.build_tree(['branch-1/file-1'])
         tree.add('file-1')
         tree.commit('rev1')
-        to_branch = tree.bzrdir.sprout('branch-2').open_branch()
+        to_branch = tree.controldir.sprout('branch-2').open_branch()
         self.build_tree(['branch-1/file-2'])
         tree.add('file-2')
         tree.remove('file-1')
         tree.commit('rev2')
         checkout = tree.branch.create_checkout('checkout')
         self.assertLength(0, calls)
-        switch.switch(checkout.bzrdir, to_branch)
+        switch.switch(checkout.controldir, to_branch)
         self.assertLength(1, calls)
         params = calls[0]
         self.assertIsInstance(params, _mod_branch.SwitchHookParams)

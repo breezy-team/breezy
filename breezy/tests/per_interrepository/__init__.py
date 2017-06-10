@@ -167,9 +167,9 @@ class TestCaseWithInterRepository(TestCaseWithControlDir):
 
     def make_branch(self, relpath, format=None):
         repo = self.make_repository(relpath, format=format)
-        return repo.bzrdir.create_branch()
+        return repo.controldir.create_branch()
 
-    def make_bzrdir(self, relpath, format=None):
+    def make_controldir(self, relpath, format=None):
         try:
             url = self.get_url(relpath)
             segments = url.split('/')
@@ -187,11 +187,11 @@ class TestCaseWithInterRepository(TestCaseWithControlDir):
             raise TestSkipped("Format %s is not initializable." % format)
 
     def make_repository(self, relpath, format=None):
-        made_control = self.make_bzrdir(relpath, format=format)
+        made_control = self.make_controldir(relpath, format=format)
         return self.repository_format.initialize(made_control)
 
     def make_to_repository(self, relpath):
-        made_control = self.make_bzrdir(relpath,
+        made_control = self.make_controldir(relpath,
             self.repository_format_to._matchingbzrdir)
         return self.repository_format_to.initialize(made_control)
 

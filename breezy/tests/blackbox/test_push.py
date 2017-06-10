@@ -87,9 +87,9 @@ class TestPush(tests.TestCaseWithTransport):
         self.build_tree(['branch_a/a'])
         tree_a.add('a')
         tree_a.commit('commit a')
-        tree_b = branch_a.bzrdir.sprout('branch_b').open_workingtree()
+        tree_b = branch_a.controldir.sprout('branch_b').open_workingtree()
         branch_b = tree_b.branch
-        tree_c = branch_a.bzrdir.sprout('branch_c').open_workingtree()
+        tree_c = branch_a.controldir.sprout('branch_c').open_workingtree()
         branch_c = tree_c.branch
         self.build_tree(['branch_a/b'])
         tree_a.add('b')
@@ -120,16 +120,16 @@ class TestPush(tests.TestCaseWithTransport):
                 ('','brz: ERROR: These branches have diverged.  '
                  'See "brz help diverged-branches" for more information.\n'))
         # Refresh the branch as 'push' modified it
-        branch_a = branch_a.bzrdir.open_branch()
+        branch_a = branch_a.controldir.open_branch()
         self.assertEqual(osutils.abspath(branch_a.get_push_location()),
-                          osutils.abspath(branch_b.bzrdir.root_transport.base))
+                          osutils.abspath(branch_b.controldir.root_transport.base))
 
         # test implicit --remember after resolving previous failure
         uncommit.uncommit(branch=branch_b, tree=tree_b)
         transport.delete('branch_b/c')
         out, err = self.run_bzr('push', working_dir='branch_a')
         # Refresh the branch as 'push' modified it
-        branch_a = branch_a.bzrdir.open_branch()
+        branch_a = branch_a.controldir.open_branch()
         path = branch_a.get_push_location()
         self.assertEqual(err,
                          'Using saved push location: %s\n'
@@ -137,13 +137,13 @@ class TestPush(tests.TestCaseWithTransport):
                          'Pushed up to revision 2.\n'
                          % urlutils.local_path_from_url(path))
         self.assertEqual(path,
-                         branch_b.bzrdir.root_transport.base)
+                         branch_b.controldir.root_transport.base)
         # test explicit --remember
         self.run_bzr('push ../branch_c --remember', working_dir='branch_a')
         # Refresh the branch as 'push' modified it
-        branch_a = branch_a.bzrdir.open_branch()
+        branch_a = branch_a.controldir.open_branch()
         self.assertEqual(branch_a.get_push_location(),
-                          branch_c.bzrdir.root_transport.base)
+                          branch_c.controldir.root_transport.base)
 
     def test_push_without_tree(self):
         # brz push from a branch that does not have a checkout should work.
@@ -185,7 +185,7 @@ class TestPush(tests.TestCaseWithTransport):
         t.commit('commit 1')
         self.run_bzr('push -d tree pushed-to')
         # Refresh the branch as 'push' modified it and get the push location
-        push_loc = t.branch.bzrdir.open_branch().get_push_location()
+        push_loc = t.branch.controldir.open_branch().get_push_location()
         out, err = self.run_bzr('push', working_dir="tree")
         self.assertEqual('Using saved push location: %s\n'
                          'No new revisions or tags to push.\n' %
@@ -202,7 +202,7 @@ class TestPush(tests.TestCaseWithTransport):
         shared_repo.set_make_working_trees(True)
 
         def make_shared_tree(path):
-            shared_repo.bzrdir.root_transport.mkdir(path)
+            shared_repo.controldir.root_transport.mkdir(path)
             controldir.ControlDir.create_branch_convenience('repo/' + path)
             return workingtree.WorkingTree.open('repo/' + path)
         tree_a = make_shared_tree('a')
@@ -284,7 +284,7 @@ class TestPush(tests.TestCaseWithTransport):
         self.setup_smart_server_with_call_log()
         parent = self.make_branch_and_tree('parent', format='1.9')
         parent.commit(message='first commit')
-        local = parent.bzrdir.sprout('local').open_workingtree()
+        local = parent.controldir.sprout('local').open_workingtree()
         local.commit(message='local commit')
         self.reset_smart_call_log()
         self.run_bzr(['push', '--stacked', '--stacked-on', '../parent',
@@ -340,7 +340,7 @@ class TestPush(tests.TestCaseWithTransport):
         # stacked_on_url is that exact path segment. Added to nail bug 385132.
         self.setup_smart_server_with_call_log()
         self.make_branch('stack-on', format='1.9')
-        self.make_bzrdir('.').get_config().set_default_stack_on(
+        self.make_controldir('.').get_config().set_default_stack_on(
             '/stack-on')
         self.make_branch('from', format='1.9')
         out, err = self.run_bzr(['push', '-d', 'from', self.get_url('to')])
@@ -353,7 +353,7 @@ class TestPush(tests.TestCaseWithTransport):
         # stacked_on_url is a relative path. Added to nail bug 385132.
         self.setup_smart_server_with_call_log()
         self.make_branch('stack-on', format='1.9')
-        self.make_bzrdir('.').get_config().set_default_stack_on('stack-on')
+        self.make_controldir('.').get_config().set_default_stack_on('stack-on')
         self.make_branch('from', format='1.9')
         out, err = self.run_bzr(['push', '-d', 'from', self.get_url('to')])
         b = branch.Branch.open(self.get_url('to'))
@@ -435,7 +435,7 @@ class TestPush(tests.TestCaseWithTransport):
         # TODO: jam 20070109 Maybe it would be better to create the repository
         #       if at this point
         tree = self.create_simple_tree()
-        a_bzrdir = self.make_bzrdir('dir')
+        a_controldir = self.make_controldir('dir')
 
         self.run_bzr_error(['At ../dir you have a valid .bzr control'],
                 'push ../dir',
@@ -541,7 +541,7 @@ class TestPush(tests.TestCaseWithTransport):
 
     def test_push_notifies_default_stacking(self):
         self.make_branch('stack_on', format='1.6')
-        self.make_bzrdir('.').get_config().set_default_stack_on('stack_on')
+        self.make_controldir('.').get_config().set_default_stack_on('stack_on')
         self.make_branch('from', format='1.6')
         out, err = self.run_bzr('push -d from to')
         self.assertContainsRe(err,
@@ -549,7 +549,7 @@ class TestPush(tests.TestCaseWithTransport):
 
     def test_push_stacks_with_default_stacking_if_target_is_stackable(self):
         self.make_branch('stack_on', format='1.6')
-        self.make_bzrdir('.').get_config().set_default_stack_on('stack_on')
+        self.make_controldir('.').get_config().set_default_stack_on('stack_on')
         self.make_branch('from', format='pack-0.92')
         out, err = self.run_bzr('push -d from to')
         b = branch.Branch.open('to')
@@ -557,7 +557,7 @@ class TestPush(tests.TestCaseWithTransport):
 
     def test_push_does_not_change_format_with_default_if_target_cannot(self):
         self.make_branch('stack_on', format='pack-0.92')
-        self.make_bzrdir('.').get_config().set_default_stack_on('stack_on')
+        self.make_controldir('.').get_config().set_default_stack_on('stack_on')
         self.make_branch('from', format='pack-0.92')
         out, err = self.run_bzr('push -d from to')
         b = branch.Branch.open('to')
@@ -586,7 +586,7 @@ class TestPush(tests.TestCaseWithTransport):
         self.run_bzr('push -d repo/local trunk -r 1')
         # Set a default stacking policy so that new branches will automatically
         # stack on trunk.
-        self.make_bzrdir('.').get_config().set_default_stack_on('trunk')
+        self.make_controldir('.').get_config().set_default_stack_on('trunk')
         # Push rev-2 to a new branch "remote".  It will be stacked on "trunk".
         out, err = self.run_bzr('push -d repo/local remote -r 2')
         self.assertContainsRe(
@@ -825,7 +825,7 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
     def _pending_merges(self):
         self.make_local_branch_and_tree()
         # Create 'other' branch containing a new file
-        other_bzrdir = self.tree.bzrdir.sprout('other')
+        other_bzrdir = self.tree.controldir.sprout('other')
         other_tree = other_bzrdir.open_workingtree()
         self.build_tree_contents([('other/other-file', 'other')])
         other_tree.add('other-file')

@@ -520,7 +520,7 @@ create_signatures=always
         bound_tree.add(['content_file'])
         bound_tree.commit(message='woo!')
 
-        other_bzrdir = master_branch.bzrdir.sprout('other')
+        other_bzrdir = master_branch.controldir.sprout('other')
         other_tree = other_bzrdir.open_workingtree()
 
         # do a commit to the other branch changing the content file so
@@ -567,7 +567,7 @@ create_signatures=always
             'filetoleave']
             )
         this_tree.commit('create_files')
-        other_dir = this_tree.bzrdir.sprout('other')
+        other_dir = this_tree.controldir.sprout('other')
         other_tree = other_dir.open_workingtree()
         other_tree.lock_write()
         # perform the needed actions on the files and dirs.

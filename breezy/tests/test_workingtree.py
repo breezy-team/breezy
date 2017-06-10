@@ -142,10 +142,10 @@ class SampleTreeFormat(bzrworkingtree.WorkingTreeFormatMetaDir):
         """See WorkingTreeFormat.get_format_string()."""
         return "Sample tree format."
 
-    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+    def initialize(self, a_controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
         """Sample branches cannot be created."""
-        t = a_bzrdir.get_workingtree_transport(self)
+        t = a_controldir.get_workingtree_transport(self)
         t.put_bytes('format', self.get_format_string())
         return 'A tree'
 
@@ -165,7 +165,7 @@ class SampleExtraTreeFormat(workingtree.WorkingTreeFormat):
         # Not usable in a metadir, so no format string
         return None
 
-    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+    def initialize(self, a_controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
         raise NotImplementedError(self.initialize)
 
@@ -183,14 +183,14 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
         # is the right format object found for a working tree?
         branch = self.make_branch('branch')
         self.assertRaises(errors.NoWorkingTree,
-            bzrworkingtree.WorkingTreeFormatMetaDir.find_format_string, branch.bzrdir)
-        transport = branch.bzrdir.get_workingtree_transport(None)
+            bzrworkingtree.WorkingTreeFormatMetaDir.find_format_string, branch.controldir)
+        transport = branch.controldir.get_workingtree_transport(None)
         transport.mkdir('.')
         transport.put_bytes("format", "some format name")
         # The format does not have to be known by Bazaar,
         # find_format_string just retrieves the name
         self.assertEqual("some format name",
-            bzrworkingtree.WorkingTreeFormatMetaDir.find_format_string(branch.bzrdir))
+            bzrworkingtree.WorkingTreeFormatMetaDir.find_format_string(branch.controldir))
 
     def test_find_format(self):
         # is the right format object found for a working tree?
@@ -225,7 +225,7 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.', format='2a')
         tree.update_feature_flags({"name": "necessity"})
         found_format = bzrworkingtree.WorkingTreeFormatMetaDir.find_format(
-            tree.bzrdir)
+            tree.controldir)
         self.assertIsInstance(found_format, workingtree.WorkingTreeFormat)
         self.assertEqual(found_format.features.get("name"), "necessity")
         self.assertRaises(errors.MissingFeature, found_format.check_support_status,
@@ -428,7 +428,7 @@ class TestRevert(TestCaseWithTransport):
                                   ('this-tree/foo/bar', 'bar')])
         this_tree.add(['foo', 'foo/bar'])
         this_tree.commit('created foo/bar')
-        other_tree = this_tree.bzrdir.sprout('other-tree').open_workingtree()
+        other_tree = this_tree.controldir.sprout('other-tree').open_workingtree()
         self.build_tree_contents([('other-tree/foo/bar', 'baz')])
         other_tree.commit('changed bar')
         self.build_tree_contents([('this-tree/foo/bar', 'qux')])
@@ -446,10 +446,10 @@ class TestAutoResolve(TestCaseWithTransport):
         self.build_tree_contents([('base/hello', 'Hello')])
         base.add('hello', 'hello_id')
         base.commit('Hello')
-        other = base.bzrdir.sprout('other').open_workingtree()
+        other = base.controldir.sprout('other').open_workingtree()
         self.build_tree_contents([('other/hello', 'hELLO')])
         other.commit('Case switch')
-        this = base.bzrdir.sprout('this').open_workingtree()
+        this = base.controldir.sprout('this').open_workingtree()
         self.assertPathExists('this/hello')
         self.build_tree_contents([('this/hello', 'Hello World')])
         this.commit('Add World')

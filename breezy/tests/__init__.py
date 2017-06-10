@@ -2643,8 +2643,7 @@ class TestCaseWithMemoryTransport(TestCase):
     def make_branch(self, relpath, format=None, name=None):
         """Create a branch on the transport at relpath."""
         repo = self.make_repository(relpath, format=format)
-        return repo.bzrdir.create_branch(append_revisions_only=False,
-                                         name=name)
+        return repo.controldir.create_branch(append_revisions_only=False, name=name)
 
     def get_default_format(self):
         return 'default'
@@ -2662,10 +2661,10 @@ class TestCaseWithMemoryTransport(TestCase):
         if format is None:
             format = self.get_default_format()
         if isinstance(format, str):
-            format = controldir.format_registry.make_bzrdir(format)
+            format = controldir.format_registry.make_controldir(format)
         return format
 
-    def make_bzrdir(self, relpath, format=None):
+    def make_controldir(self, relpath, format=None):
         try:
             # might be a relative or absolute path
             maybe_a_url = self.get_url(relpath)
@@ -2687,7 +2686,7 @@ class TestCaseWithMemoryTransport(TestCase):
         # real format, which is incorrect.  Actually we should make sure that
         # RemoteBzrDir returns a RemoteRepository.
         # maybe  mbp 20070410
-        made_control = self.make_bzrdir(relpath, format=format)
+        made_control = self.make_controldir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
     def make_smart_server(self, path, backing_server=None):
@@ -2948,7 +2947,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
             return b.create_checkout(relpath, lightweight=True)
         b = self.make_branch(relpath, format=format)
         try:
-            return b.bzrdir.create_workingtree()
+            return b.controldir.create_workingtree()
         except errors.NotLocalUrl:
             # We can only make working trees locally at the moment.  If the
             # transport can't support them, then we keep the non-disk-backed

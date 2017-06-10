@@ -107,7 +107,7 @@ def apply_inventory_WT(self, basis, delta, invalid_delta=True):
     :param delta: The inventory delta to apply:
     :return: An inventory resulting from the application.
     """
-    control = self.make_bzrdir('tree', format=self.format._matchingbzrdir)
+    control = self.make_controldir('tree', format=self.format._matchingbzrdir)
     control.create_repository()
     control.create_branch()
     tree = self.format.initialize(control)
@@ -117,14 +117,14 @@ def apply_inventory_WT(self, basis, delta, invalid_delta=True):
     finally:
         tree.unlock()
     # Fresh object, reads disk again.
-    tree = tree.bzrdir.open_workingtree()
+    tree = tree.controldir.open_workingtree()
     tree.lock_write()
     try:
         tree.apply_inventory_delta(delta)
     finally:
         tree.unlock()
     # reload tree - ensure we get what was written.
-    tree = tree.bzrdir.open_workingtree()
+    tree = tree.controldir.open_workingtree()
     tree.lock_read()
     self.addCleanup(tree.unlock)
     if not invalid_delta:
@@ -198,7 +198,7 @@ def apply_inventory_WT_basis(test, basis, delta, invalid_delta=True):
     :param delta: The inventory delta to apply:
     :return: An inventory resulting from the application.
     """
-    control = test.make_bzrdir('tree', format=test.format._matchingbzrdir)
+    control = test.make_controldir('tree', format=test.format._matchingbzrdir)
     control.create_repository()
     control.create_branch()
     tree = test.format.initialize(control)
@@ -222,7 +222,7 @@ def apply_inventory_WT_basis(test, basis, delta, invalid_delta=True):
     finally:
         tree.unlock()
     # reload tree - ensure we get what was written.
-    tree = tree.bzrdir.open_workingtree()
+    tree = tree.controldir.open_workingtree()
     basis_tree = tree.basis_tree()
     basis_tree.lock_read()
     test.addCleanup(basis_tree.unlock)
@@ -245,7 +245,7 @@ def apply_inventory_Repository_add_inventory_by_delta(self, basis, delta,
     :return: An inventory resulting from the application.
     """
     format = self.format()
-    control = self.make_bzrdir('tree', format=format._matchingbzrdir)
+    control = self.make_controldir('tree', format=format._matchingbzrdir)
     repo = format.initialize(control)
     repo.lock_write()
     try:
@@ -276,7 +276,7 @@ def apply_inventory_Repository_add_inventory_by_delta(self, basis, delta,
     finally:
         repo.unlock()
     # Fresh lock, reads disk again.
-    repo = repo.bzrdir.open_repository()
+    repo = repo.controldir.open_repository()
     repo.lock_read()
     self.addCleanup(repo.unlock)
     return repo.get_inventory('result')

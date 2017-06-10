@@ -416,7 +416,7 @@ class TestExport(TestCaseWithTransport):
     def test_export_uncommitted_no_tree(self):
         """Test --uncommitted option only works with a working tree."""
         tree = self.example_branch()
-        tree.bzrdir.destroy_workingtree()
+        tree.controldir.destroy_workingtree()
         os.chdir('branch')
         self.run_bzr_error(
             ['brz: ERROR: --uncommitted requires a working tree'],

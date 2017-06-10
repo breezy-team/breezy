@@ -35,7 +35,7 @@ class TestPull(TestCaseWithInterBranch):
         # become the revision-history.
         parent = self.make_from_branch_and_tree('parent')
         parent.commit('1st post', rev_id='P1', allow_pointless=True)
-        mine = self.sprout_to(parent.bzrdir, 'mine').open_workingtree()
+        mine = self.sprout_to(parent.controldir, 'mine').open_workingtree()
         mine.commit('my change', rev_id='M1', allow_pointless=True)
         parent.merge_from_branch(mine.branch)
         parent.commit('merge my change', rev_id='P2')
@@ -49,9 +49,9 @@ class TestPull(TestCaseWithInterBranch):
         # directly accessible.
         parent = self.make_from_branch_and_tree('parent')
         parent.commit('1st post', rev_id='P1', allow_pointless=True)
-        mine = self.sprout_to(parent.bzrdir, 'mine').open_workingtree()
+        mine = self.sprout_to(parent.controldir, 'mine').open_workingtree()
         mine.commit('my change', rev_id='M1', allow_pointless=True)
-        other = self.sprout_to(parent.bzrdir, 'other').open_workingtree()
+        other = self.sprout_to(parent.controldir, 'other').open_workingtree()
         other.merge_from_branch(mine.branch)
         other.commit('merge my change', rev_id='O2')
         parent.merge_from_branch(other.branch)
@@ -64,7 +64,7 @@ class TestPull(TestCaseWithInterBranch):
         master_tree = self.make_from_branch_and_tree('master')
         rev1 = master_tree.commit('master')
         checkout = master_tree.branch.create_checkout('checkout')
-        other = self.sprout_to(master_tree.branch.bzrdir, 'other').open_workingtree()
+        other = self.sprout_to(master_tree.branch.controldir, 'other').open_workingtree()
         rev2 = other.commit('other commit')
         # now pull, which should update both checkout and master.
         checkout.branch.pull(other.branch)
@@ -74,10 +74,10 @@ class TestPull(TestCaseWithInterBranch):
     def test_pull_raises_specific_error_on_master_connection_error(self):
         master_tree = self.make_from_branch_and_tree('master')
         checkout = master_tree.branch.create_checkout('checkout')
-        other = self.sprout_to(master_tree.branch.bzrdir, 'other').open_branch()
+        other = self.sprout_to(master_tree.branch.controldir, 'other').open_branch()
         # move the branch out of the way on disk to cause a connection
         # error.
-        master_tree.branch.bzrdir.destroy_branch()
+        master_tree.branch.controldir.destroy_branch()
         # try to pull, which should raise a BoundBranchConnectionFailure.
         self.assertRaises(errors.BoundBranchConnectionFailure,
                 checkout.branch.pull, other)
@@ -85,7 +85,7 @@ class TestPull(TestCaseWithInterBranch):
     def test_pull_returns_result(self):
         parent = self.make_from_branch_and_tree('parent')
         parent.commit('1st post', rev_id='P1')
-        mine = self.sprout_to(parent.bzrdir, 'mine').open_workingtree()
+        mine = self.sprout_to(parent.controldir, 'mine').open_workingtree()
         mine.commit('my change', rev_id='M1')
         result = parent.branch.pull(mine.branch)
         self.assertIsNot(None, result)
@@ -102,7 +102,7 @@ class TestPull(TestCaseWithInterBranch):
     def test_pull_overwrite(self):
         tree_a = self.make_from_branch_and_tree('tree_a')
         tree_a.commit('message 1')
-        tree_b = self.sprout_to(tree_a.bzrdir, 'tree_b').open_workingtree()
+        tree_b = self.sprout_to(tree_a.controldir, 'tree_b').open_workingtree()
         tree_a.commit('message 2', rev_id='rev2a')
         tree_b.commit('message 2', rev_id='rev2b')
         self.assertRaises(errors.DivergedBranches, tree_a.pull, tree_b.branch)
@@ -195,7 +195,7 @@ class TestPullHook(TestCaseWithInterBranch):
         target.add('')
         rev1 = target.commit('rev 1')
         target.unlock()
-        sourcedir = target.bzrdir.clone(self.get_url('source'))
+        sourcedir = target.controldir.clone(self.get_url('source'))
         source = MemoryTree.create_on_branch(sourcedir.open_branch())
         rev2 = source.commit('rev 2')
         Branch.hooks.install_named_hook('post_pull',

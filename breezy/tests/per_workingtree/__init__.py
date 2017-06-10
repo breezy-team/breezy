@@ -88,7 +88,7 @@ def wt_scenarios():
 class TestCaseWithWorkingTree(per_controldir.TestCaseWithControlDir):
 
     def make_branch_and_tree(self, relpath, format=None):
-        made_control = self.make_bzrdir(relpath, format=format)
+        made_control = self.make_controldir(relpath, format=format)
         made_control.create_repository()
         b = made_control.create_branch()
         if getattr(self, 'repo_is_remote', False):

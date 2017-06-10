@@ -669,7 +669,7 @@ class ControlDir(ControlComponent):
             raise errors.NotLocalUrl(base)
         controldir = klass.create_branch_and_repo(base,
                                                force_new_repo=True,
-                                               format=format).bzrdir
+                                               format=format).controldir
         return controldir.create_workingtree()
 
     @classmethod
@@ -1344,7 +1344,7 @@ class ControlDirFormatRegistry(registry.Registry):
         self.set_default(key)
         format = self.get('default')()
 
-    def make_bzrdir(self, key):
+    def make_controldir(self, key):
         return self.get(key)()
 
     def help_topic(self, topic):
@@ -1431,7 +1431,7 @@ class RepoInitHookParams(object):
         """
         self.repository = repository
         self.format = format
-        self.bzrdir = controldir
+        self.controldir = controldir
         self.shared = shared
 
     def __eq__(self, other):
@@ -1443,7 +1443,7 @@ class RepoInitHookParams(object):
                 self.repository)
         else:
             return "<%s for %s>" % (self.__class__.__name__,
-                self.bzrdir)
+                self.controldir)
 
 
 # Please register new formats after old formats so that formats

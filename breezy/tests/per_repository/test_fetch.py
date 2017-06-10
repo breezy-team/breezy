@@ -67,7 +67,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         tree_a.add('foo', 'file1')
         tree_a.commit('rev1', rev_id='rev1')
         # create a knit-3 based format to fetch into
-        f = controldir.format_registry.make_bzrdir('development-subtree')
+        f = controldir.format_registry.make_controldir('development-subtree')
         try:
             format = tree_a.branch.repository._format
             format.check_conversion_target(f.repository_format)
@@ -247,14 +247,14 @@ class TestFetchSameRepository(TestCaseWithRepository):
         rev_id = tree.commit('one')
         # This needs to be a new copy of the repository, if this changes, the
         # test needs to be rewritten
-        repo = tree.branch.repository.bzrdir.open_repository()
+        repo = tree.branch.repository.controldir.open_repository()
         # This fetch should be a no-op see bug #158333
         tree.branch.repository.fetch(repo, None)
 
     def test_fetch_from_self(self):
         tree = self.make_branch_and_tree('.')
         rev_id = tree.commit('one')
-        repo = tree.branch.repository.bzrdir.open_repository()
+        repo = tree.branch.repository.controldir.open_repository()
         # This fetch should be a no-op see bug #158333
         tree.branch.repository.fetch(repo, rev_id)
 
@@ -263,7 +263,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         rev_id = tree.commit('one')
         # Even though the fetch() is a NO-OP it should assert the revision id
         # is present
-        repo = tree.branch.repository.bzrdir.open_repository()
+        repo = tree.branch.repository.controldir.open_repository()
         self.assertRaises(errors.NoSuchRevision, tree.branch.repository.fetch,
                           repo, 'no-such-revision')
 
@@ -337,7 +337,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
     def test_fetch_into_smart_with_ghost(self):
         trans = self.make_smart_server('target')
         source_b = self.make_simple_branch_with_ghost()
-        if not source_b.bzrdir._format.supports_transport(trans):
+        if not source_b.controldir._format.supports_transport(trans):
             raise TestNotApplicable("format does not support transport")
         target = self.make_repository('target')
         # Re-open the repository over the smart protocol
@@ -356,7 +356,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
     def test_fetch_from_smart_with_ghost(self):
         trans = self.make_smart_server('source')
         source_b = self.make_simple_branch_with_ghost()
-        if not source_b.bzrdir._format.supports_transport(trans):
+        if not source_b.controldir._format.supports_transport(trans):
             raise TestNotApplicable("format does not support transport")
         target = self.make_repository('target')
         target.lock_write()

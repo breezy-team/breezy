@@ -61,7 +61,7 @@ class TestPackRepository(TestCaseWithTransport):
     """
 
     def get_format(self):
-        return controldir.format_registry.make_bzrdir(self.format_name)
+        return controldir.format_registry.make_controldir(self.format_name)
 
     def test_attribute__fetch_order(self):
         """Packs do not need ordered data retrieval."""
@@ -88,7 +88,7 @@ class TestPackRepository(TestCaseWithTransport):
         # in case of side effects of locking.
         repo.lock_write()
         repo.unlock()
-        t = repo.bzrdir.get_repository_transport(None)
+        t = repo.controldir.get_repository_transport(None)
         self.check_format(t)
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
@@ -130,7 +130,7 @@ class TestPackRepository(TestCaseWithTransport):
         format = self.get_format()
         repo = self.make_repository('.', shared=True, format=format)
         # we want:
-        t = repo.bzrdir.get_repository_transport(None)
+        t = repo.controldir.get_repository_transport(None)
         self.check_format(t)
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
@@ -143,7 +143,7 @@ class TestPackRepository(TestCaseWithTransport):
         repo = self.make_repository('.', shared=True, format=format)
         repo.set_make_working_trees(False)
         # we want:
-        t = repo.bzrdir.get_repository_transport(None)
+        t = repo.controldir.get_repository_transport(None)
         self.check_format(t)
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
@@ -159,7 +159,7 @@ class TestPackRepository(TestCaseWithTransport):
     def test_adding_revision_creates_pack_indices(self):
         format = self.get_format()
         tree = self.make_branch_and_tree('.', format=format)
-        trans = tree.branch.repository.bzrdir.get_repository_transport(None)
+        trans = tree.branch.repository.controldir.get_repository_transport(None)
         self.assertEqual([],
             list(self.index_class(trans, 'pack-names', None).iter_all_entries()))
         tree.commit('foobarbaz')
@@ -180,14 +180,14 @@ class TestPackRepository(TestCaseWithTransport):
         tree1 = self.make_branch_and_tree('1', format=format)
         tree2 = self.make_branch_and_tree('2', format=format)
         tree1.branch.repository.fetch(tree2.branch.repository)
-        trans = tree1.branch.repository.bzrdir.get_repository_transport(None)
+        trans = tree1.branch.repository.controldir.get_repository_transport(None)
         self.assertEqual([],
             list(self.index_class(trans, 'pack-names', None).iter_all_entries()))
 
     def test_commit_across_pack_shape_boundary_autopacks(self):
         format = self.get_format()
         tree = self.make_branch_and_tree('.', format=format)
-        trans = tree.branch.repository.bzrdir.get_repository_transport(None)
+        trans = tree.branch.repository.controldir.get_repository_transport(None)
         # This test could be a little cheaper by replacing the packs
         # attribute on the repository to allow a different pack distribution
         # and max packs policy - so we are checking the policy is honoured
@@ -206,7 +206,7 @@ class TestPackRepository(TestCaseWithTransport):
         index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(1, len(list(index.iter_all_entries())))
         # packing should not damage data
-        tree = tree.bzrdir.open_workingtree()
+        tree = tree.controldir.open_workingtree()
         check_result = tree.branch.repository.check(
             [tree.branch.last_revision()])
         nb_files = 5 # .pack, .rix, .iix, .tix, .six
@@ -299,7 +299,7 @@ class TestPackRepository(TestCaseWithTransport):
     def test_pack_after_two_commits_packs_everything(self):
         format = self.get_format()
         tree = self.make_branch_and_tree('.', format=format)
-        trans = tree.branch.repository.bzrdir.get_repository_transport(None)
+        trans = tree.branch.repository.controldir.get_repository_transport(None)
         tree.commit('start')
         tree.commit('more work')
         tree.branch.repository.pack()
@@ -348,7 +348,7 @@ class TestPackRepository(TestCaseWithTransport):
         # tip->ancestor
         format = self.get_format()
         tree = self.make_branch_and_tree('.', format=format)
-        trans = tree.branch.repository.bzrdir.get_repository_transport(None)
+        trans = tree.branch.repository.controldir.get_repository_transport(None)
         tree.commit('start', rev_id='1')
         tree.commit('more work', rev_id='2')
         tree.branch.repository.pack()
@@ -783,7 +783,7 @@ class TestPackRepository(TestCaseWithTransport):
         key = ('sha1:' + osutils.sha_string(text),)
         repo.chk_bytes.add_lines(key, (), [text])
         wg_tokens = repo.suspend_write_group()
-        same_repo = repo.bzrdir.open_repository()
+        same_repo = repo.controldir.open_repository()
         same_repo.lock_write()
         self.addCleanup(same_repo.unlock)
         same_repo.resume_write_group(wg_tokens)
@@ -804,7 +804,7 @@ class TestPackRepository(TestCaseWithTransport):
         repo.texts.add_lines(text_key, (), ['lines'])
         wg_tokens = repo.suspend_write_group()
         # Get a fresh repository object for the repo on the filesystem.
-        same_repo = repo.bzrdir.open_repository()
+        same_repo = repo.controldir.open_repository()
         # Resume
         same_repo.lock_write()
         self.addCleanup(same_repo.unlock)
@@ -824,7 +824,7 @@ class TestPackRepository(TestCaseWithTransport):
         repo.texts.add_lines(text_key, (), ['lines'])
         wg_tokens = repo.suspend_write_group()
         # Get a fresh repository object for the repo on the filesystem.
-        same_repo = repo.bzrdir.open_repository()
+        same_repo = repo.controldir.open_repository()
         # Resume
         same_repo.lock_write()
         self.addCleanup(same_repo.unlock)
@@ -872,7 +872,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         super(TestPackRepositoryStacking, self).setUp()
 
     def get_format(self):
-        return controldir.format_registry.make_bzrdir(self.format_name)
+        return controldir.format_registry.make_controldir(self.format_name)
 
     def test_stack_checks_rich_root_compatibility(self):
         # early versions of the packing code relied on pack internals to
@@ -949,7 +949,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         referencing.branch.repository.add_fallback_repository(base.branch.repository)
         local_tree = referencing.branch.create_checkout('local')
         local_tree.commit('bar')
-        new_instance = referencing.bzrdir.open_repository()
+        new_instance = referencing.controldir.open_repository()
         new_instance.lock_read()
         self.addCleanup(new_instance.unlock)
         new_instance._pack_collection.ensure_loaded()
@@ -961,7 +961,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         base.commit('foo')
         tree = self.make_branch_and_tree('repo', format=format)
         tree.branch.repository.add_fallback_repository(base.branch.repository)
-        trans = tree.branch.repository.bzrdir.get_repository_transport(None)
+        trans = tree.branch.repository.controldir.get_repository_transport(None)
         # This test could be a little cheaper by replacing the packs
         # attribute on the repository to allow a different pack distribution
         # and max packs policy - so we are checking the policy is honoured
@@ -978,7 +978,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(1, len(list(index.iter_all_entries())))
         # packing should not damage data
-        tree = tree.bzrdir.open_workingtree()
+        tree = tree.controldir.open_workingtree()
         check_result = tree.branch.repository.check(
             [tree.branch.last_revision()])
         nb_files = 5 # .pack, .rix, .iix, .tix, .six
@@ -1003,7 +1003,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
 class TestKeyDependencies(TestCaseWithTransport):
 
     def get_format(self):
-        return controldir.format_registry.make_bzrdir(self.format_name)
+        return controldir.format_registry.make_controldir(self.format_name)
 
     def create_source_and_target(self):
         builder = self.make_branch_builder('source', format=self.get_format())
@@ -1088,7 +1088,7 @@ class TestSmartServerAutopack(TestCaseWithTransport):
         self.hpss_calls.append(params.method)
 
     def get_format(self):
-        return controldir.format_registry.make_bzrdir(self.format_name)
+        return controldir.format_registry.make_controldir(self.format_name)
 
     def test_autopack_or_streaming_rpc_is_used_when_using_hpss(self):
         # Make local and remote repos

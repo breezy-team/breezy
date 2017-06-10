@@ -1085,7 +1085,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
     def _commit_sprout(self, tree, name):
         tree.add([name], [name + 'id'])
         rev_id = tree.commit('')
-        return rev_id, tree.bzrdir.sprout('t2').open_workingtree()
+        return rev_id, tree.controldir.sprout('t2').open_workingtree()
 
     def _rename_in_tree(self, tree, name):
         tree.rename_one(name, 'new_' + name)
@@ -1180,7 +1180,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # Part 2: change in the merged into branch - we use tree2 that has a
         # change to name, branch tree1 and give it an unrelated change, then
         # merge that to t2.
-        other_tree = tree1.bzrdir.sprout('t3').open_workingtree()
+        other_tree = tree1.controldir.sprout('t3').open_workingtree()
         other_rev = other_tree.commit('')
         tree2.merge_from_branch(other_tree.branch)
         _check_graph(tree2, False)
@@ -1190,7 +1190,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # another branch. The per-file graph shows no additional change
         # in the merge because its a straight line.
         rev1 = tree1.commit('')
-        tree2 = tree1.bzrdir.sprout('t2').open_workingtree()
+        tree2 = tree1.controldir.sprout('t2').open_workingtree()
         # make and commit on the other side to merge back
         make('t2/name')
         file_id = 'nameid'

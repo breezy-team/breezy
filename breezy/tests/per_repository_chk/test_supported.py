@@ -65,7 +65,7 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
         finally:
             repo.unlock()
         # and reopening
-        repo = repo.bzrdir.open_repository()
+        repo = repo.controldir.open_repository()
         repo.lock_read()
         try:
             self.assertEqual(
@@ -107,7 +107,7 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
         finally:
             repo.unlock()
         # and reopening
-        repo = repo.bzrdir.open_repository()
+        repo = repo.controldir.open_repository()
         repo.lock_read()
         try:
             self.assertEqual(expected_set, repo.chk_bytes.keys())
@@ -156,7 +156,7 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
     def reopen_repo_and_resume_write_group(self, repo):
         resume_tokens = repo.suspend_write_group()
         repo.unlock()
-        reopened_repo = repo.bzrdir.open_repository()
+        reopened_repo = repo.controldir.open_repository()
         reopened_repo.lock_write()
         self.addCleanup(reopened_repo.unlock)
         reopened_repo.resume_write_group(resume_tokens)

@@ -545,7 +545,7 @@ class TestBoundBranch(TestCaseWithTransport):
         self.build_tree(['master/', 'child/'])
         self.make_branch_and_tree('master')
         self.make_branch_and_tree('child',
-                        format=controldir.format_registry.make_bzrdir('weave'))
+                        format=controldir.format_registry.make_controldir('weave'))
         os.chdir('child')
 
     def test_bind_format_6_bzrdir(self):

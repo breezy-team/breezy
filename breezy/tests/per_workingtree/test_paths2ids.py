@@ -69,7 +69,7 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
 
     def test_find_tree_and_clone_roots(self):
         tree = self.make_branch_and_tree('tree')
-        clone = tree.bzrdir.clone('clone').open_workingtree()
+        clone = tree.controldir.clone('clone').open_workingtree()
         clone.lock_tree_write()
         clone_root_id = 'new-id'
         clone.set_root_id(clone_root_id)

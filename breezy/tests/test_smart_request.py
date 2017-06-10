@@ -259,7 +259,7 @@ class TestJailHook(TestCaseWithMemoryTransport):
         breezy.smart.request._pre_open_hook, which uses a threading.local(),
         works in a newly created thread.
         """
-        bzrdir = self.make_bzrdir('.')
+        bzrdir = self.make_controldir('.')
         transport = bzrdir.root_transport
         thread_result = []
         def t():

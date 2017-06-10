@@ -77,7 +77,7 @@ class TestInit(TestCaseWithTransport):
         self.assertEqual("""Created a repository tree (format: %s)
 Using shared repository: %s
 """ % (self._default_label, urlutils.local_path_from_url(
-            repo.bzrdir.root_transport.external_url())), out)
+            repo.controldir.root_transport.external_url())), out)
         cwd = osutils.getcwd()
         self.assertEndsWith(out, cwd + '/repo/\n')
         self.assertEqual('', err)

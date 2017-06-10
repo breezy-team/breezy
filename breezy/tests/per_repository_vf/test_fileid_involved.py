@@ -124,7 +124,7 @@ class FileIdInvolvedBase(TestCaseWithRepository):
 
     def touch(self, tree, filename):
         # use the trees transport to not depend on the tree's location or type.
-        tree.bzrdir.root_transport.append_bytes(filename, "appended line\n")
+        tree.controldir.root_transport.append_bytes(filename, "appended line\n")
 
     def compare_tree_fileids(self, branch, old_rev, new_rev):
         old_tree = self.branch.repository.revision_tree(old_rev)
@@ -384,7 +384,7 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
 
         branch2_wt = self.make_branch_and_tree('branch2')
         branch2_wt.pull(main_branch)
-        branch2_bzrdir = branch2_wt.bzrdir
+        branch2_bzrdir = branch2_wt.controldir
         branch2_branch = branch2_bzrdir.open_branch()
         set_executability(branch2_wt, 'b', True)
         branch2_wt.commit("branch2, Commit one", rev_id="rev-J")

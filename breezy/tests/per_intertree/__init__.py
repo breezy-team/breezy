@@ -68,7 +68,7 @@ class TestCaseWithTwoTrees(TestCaseWithTree):
 
     def make_to_branch_and_tree(self, relpath):
         """Make a to_workingtree_format branch and tree."""
-        made_control = self.make_bzrdir(relpath,
+        made_control = self.make_controldir(relpath,
             format=self.workingtree_format_to._matchingbzrdir)
         made_control.create_repository()
         made_control.create_branch()
@@ -135,7 +135,7 @@ def load_tests(loader, standard_tests, pattern):
             # -- vila 20090311
             chk_tree_format = WorkingTreeFormat4()
             chk_tree_format._get_matchingbzrdir = \
-                lambda:breezy.controldir.format_registry.make_bzrdir('2a')
+                lambda:breezy.controldir.format_registry.make_controldir('2a')
             test_intertree_permutations.append(
                 (InterTree.__name__ + "(CHKInventory)",
                  InterTree,

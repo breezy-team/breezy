@@ -83,15 +83,15 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         transport.put_file('inventory', sio, file_mode)
         transport.put_bytes('pending-merges', '', file_mode)
 
-    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+    def initialize(self, a_controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
         """See WorkingTreeFormat.initialize()."""
-        if not isinstance(a_bzrdir.transport, LocalTransport):
-            raise errors.NotLocalUrl(a_bzrdir.transport.base)
+        if not isinstance(a_controldir.transport, LocalTransport):
+            raise errors.NotLocalUrl(a_controldir.transport.base)
         if from_branch is not None:
             branch = from_branch
         else:
-            branch = a_bzrdir.open_branch()
+            branch = a_controldir.open_branch()
         if revision_id is None:
             revision_id = _mod_revision.ensure_null(branch.last_revision())
         branch.lock_write()
@@ -100,12 +100,12 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         finally:
             branch.unlock()
         inv = inventory.Inventory()
-        wt = WorkingTree2(a_bzrdir.root_transport.local_abspath('.'),
+        wt = WorkingTree2(a_controldir.root_transport.local_abspath('.'),
                          branch,
                          inv,
                          _internal=True,
                          _format=self,
-                         _bzrdir=a_bzrdir,
+                         _bzrdir=a_controldir,
                          _control_files=branch.control_files)
         basis_tree = branch.repository.revision_tree(revision_id)
         if basis_tree.get_root_id() is not None:
@@ -126,8 +126,8 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         from breezy.plugins.weave_fmt.bzrdir import BzrDirFormat6
         self._matchingbzrdir = BzrDirFormat6()
 
-    def open(self, a_bzrdir, _found=False):
-        """Return the WorkingTree object for a_bzrdir
+    def open(self, a_controldir, _found=False):
+        """Return the WorkingTree object for a_controldir
 
         _found is a private parameter, do not use it. It is used to indicate
                if format probing has already been done.
@@ -135,13 +135,13 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         if not _found:
             # we are being called directly and must probe.
             raise NotImplementedError
-        if not isinstance(a_bzrdir.transport, LocalTransport):
-            raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        wt = WorkingTree2(a_bzrdir.root_transport.local_abspath('.'),
+        if not isinstance(a_controldir.transport, LocalTransport):
+            raise errors.NotLocalUrl(a_controldir.transport.base)
+        wt = WorkingTree2(a_controldir.root_transport.local_abspath('.'),
                            _internal=True,
                            _format=self,
-                           _bzrdir=a_bzrdir,
-                           _control_files=a_bzrdir.open_branch().control_files)
+                           _bzrdir=a_controldir,
+                           _control_files=a_controldir.open_branch().control_files)
         return wt
 
 

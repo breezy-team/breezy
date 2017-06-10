@@ -369,7 +369,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         repo = b.repository
         collection = repo._pack_collection
         # Concurrently repack the repo.
-        reopened_repo = repo.bzrdir.open_repository()
+        reopened_repo = repo.controldir.open_repository()
         reopened_repo.pack()
         # Pack the new pack.
         collection.pack()

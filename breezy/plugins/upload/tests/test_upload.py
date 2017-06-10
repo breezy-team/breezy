@@ -120,9 +120,9 @@ class UploadUtilsMixin(object):
         t.ensure_base()
         branch = controldir.ControlDir.create_branch_convenience(
             t.base,
-            format=controldir.format_registry.make_bzrdir('default'),
+            format=controldir.format_registry.make_controldir('default'),
             force_new_tree=False)
-        self.tree = branch.bzrdir.create_workingtree()
+        self.tree = branch.controldir.create_workingtree()
         self.tree.commit('initial empty tree')
 
     def assertUpFileEqual(self, content, path, base=upload_dir):
@@ -819,7 +819,7 @@ class TestUploadDiverged(tests.TestCaseWithTransport, UploadUtilsMixin):
         tree_a = self.make_branch_and_tree('tree_a')
         tree_a.commit('message 1', rev_id='rev1')
         tree_a.commit('message 2', rev_id='rev2a')
-        tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
+        tree_b = tree_a.controldir.sprout('tree_b').open_workingtree()
         uncommit.uncommit(tree_b.branch, tree=tree_b)
         tree_b.commit('message 2', rev_id='rev2b')
         # upload tree a

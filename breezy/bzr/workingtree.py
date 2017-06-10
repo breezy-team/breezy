@@ -141,7 +141,7 @@ class InventoryWorkingTree(WorkingTree,
         self._inventory_is_modified = dirty
 
     def _detect_case_handling(self):
-        wt_trans = self.bzrdir.get_workingtree_transport(None)
+        wt_trans = self.controldir.get_workingtree_transport(None)
         try:
             wt_trans.stat(self._format.case_sensitive_filename)
         except errors.NoSuchFile:
@@ -262,7 +262,7 @@ class InventoryWorkingTree(WorkingTree,
         path = self._basis_inventory_name()
         sio = BytesIO(xml)
         self._transport.put_file(path, sio,
-            mode=self.bzrdir._get_file_mode())
+            mode=self.controldir._get_file_mode())
 
     def _reset_data(self):
         """Reset transient data that cannot be revalidated."""
@@ -522,7 +522,7 @@ class InventoryWorkingTree(WorkingTree,
         self._serialize(self._inventory, sio)
         sio.seek(0)
         self._transport.put_file('inventory', sio,
-            mode=self.bzrdir._get_file_mode())
+            mode=self.controldir._get_file_mode())
         self._inventory_is_modified = False
 
     def get_file_mtime(self, file_id, path=None):
@@ -655,7 +655,7 @@ class InventoryWorkingTree(WorkingTree,
         self._must_be_locked()
         my_file = _mod_rio.rio_file(stanzas, header.encode('ascii'))
         self._transport.put_file(filename, my_file,
-            mode=self.bzrdir._get_file_mode())
+            mode=self.controldir._get_file_mode())
 
     @needs_tree_write_lock
     def set_merge_modified(self, modified_hashes):
@@ -739,7 +739,7 @@ class InventoryWorkingTree(WorkingTree,
                 self.add_parent_tree_id(parent_id)
         finally:
             other_tree.unlock()
-        other_tree.bzrdir.retire_bzrdir()
+        other_tree.controldir.retire_bzrdir()
 
     @needs_tree_write_lock
     def extract(self, file_id, format=None):
@@ -750,7 +750,7 @@ class InventoryWorkingTree(WorkingTree,
         self.flush()
         def mkdirs(path):
             segments = osutils.splitpath(path)
-            transport = self.branch.bzrdir.root_transport
+            transport = self.branch.controldir.root_transport
             for name in segments:
                 transport = transport.clone(name)
                 transport.ensure_base()
@@ -759,7 +759,7 @@ class InventoryWorkingTree(WorkingTree,
         sub_path = self.id2path(file_id)
         branch_transport = mkdirs(sub_path)
         if format is None:
-            format = self.bzrdir.cloning_metadir()
+            format = self.controldir.cloning_metadir()
         branch_transport.ensure_base()
         branch_bzrdir = format.initialize_on_transport(branch_transport)
         try:
@@ -772,7 +772,7 @@ class InventoryWorkingTree(WorkingTree,
         new_branch.pull(self.branch)
         for parent_id in self.get_parent_ids():
             new_branch.fetch(self.branch, parent_id)
-        tree_transport = self.bzrdir.root_transport.clone(sub_path)
+        tree_transport = self.controldir.root_transport.clone(sub_path)
         if tree_transport.base != branch_transport.base:
             tree_bzrdir = format.initialize_on_transport(tree_transport)
             tree_bzrdir.set_branch_reference(new_branch)
@@ -815,7 +815,7 @@ class InventoryWorkingTree(WorkingTree,
 
         # transport.base ends in a slash, we want the piece
         # between the last two slashes
-        transport_base_dir = self.bzrdir.transport.base.rsplit('/', 2)[1]
+        transport_base_dir = self.controldir.transport.base.rsplit('/', 2)[1]
 
         fk_entries = {'directory':TreeDirectory, 'file':TreeFile, 'symlink':TreeLink}
 
@@ -1272,7 +1272,7 @@ class InventoryWorkingTree(WorkingTree,
 
             fl = []
             for subf in os.listdir(dirabs):
-                if self.bzrdir.is_control_filename(subf):
+                if self.controldir.is_control_filename(subf):
                     continue
                 if subf not in dir_entry.children:
                     try:

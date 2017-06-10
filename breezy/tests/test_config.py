@@ -163,7 +163,7 @@ def build_remote_control_stack(test):
     # creating a dedicated helper to create only the bzrdir
     build_backing_branch(test, 'branch', transport_class, server_class)
     b = branch.Branch.open(test.get_url('branch'))
-    return config.RemoteControlStack(b.bzrdir)
+    return config.RemoteControlStack(b.controldir)
 config.test_stack_builder_registry.register('remote_control',
                                             build_remote_control_stack)
 
@@ -1654,7 +1654,7 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertEqual(value, 'value3-section')
 
     def test_set_unset_default_stack_on(self):
-        my_dir = self.make_bzrdir('.')
+        my_dir = self.make_controldir('.')
         bzrdir_config = config.BzrDirConfig(my_dir)
         self.assertIs(None, bzrdir_config.get_default_stack_on())
         bzrdir_config.set_default_stack_on('Foo')

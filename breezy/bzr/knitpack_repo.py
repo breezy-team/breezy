@@ -80,9 +80,9 @@ from ..bzr.vf_repository import (
 
 class KnitPackRepository(PackRepository, KnitRepository):
 
-    def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
+    def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
         _serializer):
-        PackRepository.__init__(self, _format, a_bzrdir, control_files,
+        PackRepository.__init__(self, _format, a_controldir, control_files,
             _commit_builder_class, _serializer)
         if self._format.supports_chks:
             raise AssertionError("chk not supported")
@@ -160,7 +160,7 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
     index_class = GraphIndex
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir('pack-0.92')
+        return controldir.format_registry.make_controldir('pack-0.92')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -200,7 +200,7 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     index_class = GraphIndex
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir(
+        return controldir.format_registry.make_controldir(
             'pack-0.92-subtree')
 
     def _ignore_setting_bzrdir(self, format):
@@ -239,7 +239,7 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
     index_class = GraphIndex
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir(
+        return controldir.format_registry.make_controldir(
             'rich-root-pack')
 
     def _ignore_setting_bzrdir(self, format):
@@ -279,7 +279,7 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
         return xml5.serializer_v5
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir('1.6')
+        return controldir.format_registry.make_controldir('1.6')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -319,7 +319,7 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
         return xml6.serializer_v6
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir(
+        return controldir.format_registry.make_controldir(
             '1.6.1-rich-root')
 
     def _ignore_setting_bzrdir(self, format):
@@ -364,7 +364,7 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
         return xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
-        matching = controldir.format_registry.make_bzrdir(
+        matching = controldir.format_registry.make_controldir(
             '1.6.1-rich-root')
         matching.repository_format = self
         return matching
@@ -406,7 +406,7 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
         return xml5.serializer_v5
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir('1.9')
+        return controldir.format_registry.make_controldir('1.9')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -443,7 +443,7 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
         return xml6.serializer_v6
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir(
+        return controldir.format_registry.make_controldir(
             '1.9-rich-root')
 
     def _ignore_setting_bzrdir(self, format):
@@ -484,7 +484,7 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
         return xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
-        return controldir.format_registry.make_bzrdir(
+        return controldir.format_registry.make_controldir(
             'development5-subtree')
 
     def _ignore_setting_bzrdir(self, format):
