@@ -271,7 +271,7 @@ def lt_by_dirs(path1, path2):
                               PyString_Size(path2))
 
 
-def _cmp_path_by_dirblock(path1, path2):
+def _lt_path_by_dirblock(path1, path2):
     """Compare two paths based on what directory they are in.
 
     This generates a sort order, such that all children of a directory are
@@ -283,9 +283,7 @@ def _cmp_path_by_dirblock(path1, path2):
 
     :param path1: first path
     :param path2: the second path
-    :return: negative number if ``path1`` comes first,
-        0 if paths are equal
-        and a positive number if ``path2`` sorts first
+    :return: True if path1 comes first, otherwise False.
     """
     if not PyString_CheckExact(path1):
         raise TypeError("'path1' must be a plain string, not %s: %r"
@@ -293,10 +291,11 @@ def _cmp_path_by_dirblock(path1, path2):
     if not PyString_CheckExact(path2):
         raise TypeError("'path2' must be a plain string, not %s: %r"
                         % (type(path2), path2))
-    return _cmp_path_by_dirblock_intern(PyString_AsString(path1),
-                                        PyString_Size(path1),
-                                        PyString_AsString(path2),
-                                        PyString_Size(path2))
+    # GZ 2017-06-09: This internal function really only needs lt as well.
+    return (_cmp_path_by_dirblock_intern(PyString_AsString(path1),
+                                         PyString_Size(path1),
+                                         PyString_AsString(path2),
+                                         PyString_Size(path2)) < 0)
 
 
 cdef int _cmp_path_by_dirblock_intern(char *path1, int path1_len,

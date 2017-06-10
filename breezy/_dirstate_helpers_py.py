@@ -94,7 +94,7 @@ def _bisect_path_left(paths, path):
         mid = (lo + hi) // 2
         # Grab the dirname for the current dirblock
         cur = paths[mid]
-        if _cmp_path_by_dirblock(cur, path) < 0:
+        if _lt_path_by_dirblock(cur, path):
             lo = mid + 1
         else:
             hi = mid
@@ -125,7 +125,7 @@ def _bisect_path_right(paths, path):
         mid = (lo+hi)//2
         # Grab the dirname for the current dirblock
         cur = paths[mid]
-        if _cmp_path_by_dirblock(path, cur) < 0:
+        if _lt_path_by_dirblock(path, cur):
             hi = mid
         else:
             lo = mid + 1
@@ -187,7 +187,7 @@ def lt_by_dirs(path1, path2):
     return path1.split('/') < path2.split('/')
 
 
-def _cmp_path_by_dirblock(path1, path2):
+def _lt_path_by_dirblock(path1, path2):
     """Compare two paths based on what directory they are in.
 
     This generates a sort order, such that all children of a directory are
@@ -196,9 +196,7 @@ def _cmp_path_by_dirblock(path1, path2):
 
     :param path1: first path
     :param path2: the second path
-    :return: negative number if ``path1`` comes first,
-        0 if paths are equal
-        and a positive number if ``path2`` sorts first
+    :return: True if path1 comes first, otherwise False
     """
     if not isinstance(path1, str):
         raise TypeError("'path1' must be a plain string, not %s: %r"
@@ -210,7 +208,7 @@ def _cmp_path_by_dirblock(path1, path2):
     key1 = (dirname1.split('/'), basename1)
     dirname2, basename2 = os.path.split(path2)
     key2 = (dirname2.split('/'), basename2)
-    return cmp(key1, key2)
+    return key1 < key2
 
 
 def _read_dirblocks(state):
