@@ -22,7 +22,6 @@ from __future__ import absolute_import
 import os
 import sys
 
-#python2.4 support
 cdef extern from "python-compat.h":
     pass
 

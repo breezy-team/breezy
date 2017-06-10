@@ -42,7 +42,6 @@ ERROR_PATH_NOT_FOUND = 3
 cdef int ERROR_DIRECTORY
 ERROR_DIRECTORY = 267
 
-#python2.4 support, and other platform-dependent includes
 cdef extern from "python-compat.h":
     unsigned long htonl(unsigned long)
 

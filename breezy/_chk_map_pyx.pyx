@@ -17,7 +17,8 @@
 from __future__ import absolute_import
 
 
-#python2.4 support
+from __future__ import absolute_import
+
 cdef extern from "python-compat.h":
     pass
 

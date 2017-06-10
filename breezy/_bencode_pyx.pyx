@@ -60,8 +60,6 @@ cdef extern from "_bencode_pyx.h":
     void D_UPDATE_TAIL(Decoder, int n)
     void E_UPDATE_TAIL(Encoder, int n)
 
-# To maintain compatibility with older versions of pyrex, we have to use the
-# relative import here, rather than 'breezy._static_tuple_c'
 from ._static_tuple_c cimport StaticTuple, StaticTuple_CheckExact, \
     import_static_tuple_c
 
