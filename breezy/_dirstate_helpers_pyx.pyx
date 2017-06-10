@@ -19,6 +19,8 @@
 This is the python implementation for DirState functions.
 """
 
+from __future__ import absolute_import
+
 import binascii
 import bisect
 import errno
@@ -26,9 +28,9 @@ import os
 import stat
 import sys
 
-from breezy import cache_utf8, errors, osutils
-from breezy.dirstate import DirState
-from breezy.osutils import parent_directories, pathjoin, splitpath
+from . import cache_utf8, errors, osutils
+from .dirstate import DirState
+from .osutils import parent_directories, pathjoin, splitpath
 
 
 # This is the Windows equivalent of ENOTDIR
@@ -40,7 +42,6 @@ ERROR_PATH_NOT_FOUND = 3
 cdef int ERROR_DIRECTORY
 ERROR_DIRECTORY = 267
 
-#python2.4 support, and other platform-dependent includes
 cdef extern from "python-compat.h":
     unsigned long htonl(unsigned long)
 
@@ -120,7 +121,7 @@ cdef extern from "string.h":
     # void *memrchr(void *s, int c, size_t len)
 
 # cimport all of the definitions we will need to access
-from _static_tuple_c cimport import_static_tuple_c, StaticTuple, \
+from ._static_tuple_c cimport import_static_tuple_c, StaticTuple, \
     StaticTuple_New, StaticTuple_SET_ITEM
 
 import_static_tuple_c()

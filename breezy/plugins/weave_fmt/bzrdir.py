@@ -435,7 +435,7 @@ class ConvertBzrDir4To5(Converter):
             self.text_weaves[file_id] = w
         text_changed = False
         parent_candiate_entries = ie.parent_candidates(parent_invs)
-        heads = graph.Graph(self).heads(parent_candiate_entries.keys())
+        heads = graph.Graph(self).heads(parent_candiate_entries)
         # XXX: Note that this is unordered - and this is tolerable because
         # the previous code was also unordered.
         previous_entries = dict((head, parent_candiate_entries[head]) for head
@@ -457,7 +457,7 @@ class ConvertBzrDir4To5(Converter):
         # save against.
         #ie.snapshot(rev, PATH, previous_revisions, REVISION_TREE, InMemoryWeaveStore(self.text_weaves))
         if len(previous_revisions) == 1:
-            previous_ie = previous_revisions.values()[0]
+            previous_ie = next(iter(previous_revisions.values()))
             if ie._unchanged(previous_ie):
                 ie.revision = previous_ie.revision
                 return
@@ -479,7 +479,7 @@ class ConvertBzrDir4To5(Converter):
         The order must be such that an revision is imported after all
         its (present) parents.
         """
-        todo = set(self.revisions.keys())
+        todo = set(self.revisions)
         done = self.absent_revisions.copy()
         order = []
         while todo:
@@ -925,7 +925,7 @@ class BzrDirPreSplitOut(BzrDir):
         return result
 
     def set_branch_reference(self, target_branch, name=None):
-        from ...branch import BranchReferenceFormat
+        from ...bzrbranch import BranchReferenceFormat
         if name is not None:
             raise errors.NoColocatedBranchSupport(self)
         raise errors.IncompatibleFormat(BranchReferenceFormat, self._format)

@@ -18,6 +18,7 @@ import sys
 
 from .. import (
     branch as _mod_branch,
+    bzrbranch as _mod_bzrbranch,
     controldir,
     info,
     tests,
@@ -197,7 +198,7 @@ class TestInfo(tests.TestCaseWithTransport):
             self.assertRepoDescription(key, expected)
 
         format = controldir.format_registry.make_bzrdir('knit')
-        format.set_branch_format(_mod_branch.BzrBranchFormat6())
+        format.set_branch_format(_mod_bzrbranch.BzrBranchFormat6())
         tree = self.make_branch_and_tree('unknown', format=format)
         self.assertEqual('unnamed', info.describe_format(tree.controldir,
             tree.branch.repository, tree.branch, tree))

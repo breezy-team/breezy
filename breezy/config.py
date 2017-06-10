@@ -1722,7 +1722,7 @@ class AuthenticationConfig(object):
              certificate should be verified, False otherwise.
         """
         credentials = None
-        for auth_def_name, auth_def in self._get_config().items():
+        for auth_def_name, auth_def in self._get_config().iteritems():
             if not isinstance(auth_def, configobj.Section):
                 raise ValueError("%s defined outside a section" % auth_def_name)
 
@@ -1824,7 +1824,7 @@ class AuthenticationConfig(object):
             values['realm'] = realm
         config = self._get_config()
         for_deletion = []
-        for section, existing_values in config.items():
+        for section, existing_values in config.iteritems():
             for key in ('scheme', 'host', 'port', 'path', 'realm'):
                 if existing_values.get(key) != values.get(key):
                     break
@@ -2854,7 +2854,7 @@ class Section(object):
         return self.options.get(name, default)
 
     def iter_option_names(self):
-        for k in self.options.iterkeys():
+        for k in self.options.keys():
             yield k
 
     def __repr__(self):
@@ -2901,7 +2901,7 @@ class MutableSection(Section):
 
         :param store: the store containing the section
         """
-        for k, expected in dirty.orig.iteritems():
+        for k, expected in dirty.orig.items():
             actual = dirty.get(k, _DeletedOption)
             reloaded = self.get(k, _NewlyCreatedOption)
             if actual is _DeletedOption:
@@ -3009,7 +3009,7 @@ class Store(object):
         # get_mutable_section() call below.
         self.unload()
         # Apply the changes from the preserved dirty sections
-        for section_id, dirty in dirty_sections.iteritems():
+        for section_id, dirty in dirty_sections.items():
             clean = self.get_mutable_section(section_id)
             clean.apply_changes(dirty, self)
         # Everything is clean now
@@ -3153,7 +3153,7 @@ class IniFileStore(Store):
         if not self._need_saving():
             return
         # Preserve the current version
-        dirty_sections = dict(self.dirty_sections.items())
+        dirty_sections = self.dirty_sections.copy()
         self.apply_changes(dirty_sections)
         # Save to the persistent storage
         self.save()
@@ -3780,7 +3780,7 @@ class Stack(object):
             global _shared_stores_at_exit_installed
             stores = _shared_stores
             def save_config_changes():
-                for k, store in stores.items():
+                for k, store in stores.iteritems():
                     store.save_changes()
             if not _shared_stores_at_exit_installed:
                 # FIXME: Ugly hack waiting for library_state to always be

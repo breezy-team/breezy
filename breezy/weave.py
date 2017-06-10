@@ -990,7 +990,7 @@ def _reweave(wa, wb, pb=None, msg=None):
     # map from version name -> all parent names
     combined_parents = _reweave_parent_graphs(wa, wb)
     mutter("combined parents: %r", combined_parents)
-    order = tsort.topo_sort(combined_parents.iteritems())
+    order = tsort.topo_sort(combined_parents.items())
     mutter("order to reweave: %r", order)
 
     if pb and not msg:

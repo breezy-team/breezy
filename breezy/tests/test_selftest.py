@@ -61,7 +61,7 @@ from ..repofmt import (
     groupcompress_repo,
     )
 from ..sixish import (
-    BytesIO,
+    StringIO,
     )
 from ..symbol_versioning import (
     deprecated_function,
@@ -753,10 +753,7 @@ class TestProfileResult(tests.TestCase):
 class TestTestResult(tests.TestCase):
 
     def check_timing(self, test_case, expected_re):
-        result = breezy.tests.TextTestResult(self._log_file,
-                descriptions=0,
-                verbosity=1,
-                )
+        result = tests.TextTestResult(StringIO(), descriptions=0, verbosity=1)
         capture = testtools.testresult.doubles.ExtendedTestResult()
         test_case.run(MultiTestResult(result, capture))
         run_case = capture._events[0][1]
@@ -795,7 +792,7 @@ class TestTestResult(tests.TestCase):
     def test_lsprofiling(self):
         """Verbose test result prints lsprof statistics from test cases."""
         self.requireFeature(features.lsprof_feature)
-        result_stream = BytesIO()
+        result_stream = StringIO()
         result = breezy.tests.VerboseTestResult(
             result_stream,
             descriptions=0,
@@ -840,7 +837,7 @@ class TestTestResult(tests.TestCase):
                 self.time(datetime.datetime.utcfromtimestamp(51.147))
                 super(TimeAddedVerboseTestResult, self).addSuccess(test)
             def report_tests_starting(self): pass
-        sio = BytesIO()
+        sio = StringIO()
         self.get_passing_test().run(TimeAddedVerboseTestResult(sio, 0, 2))
         self.assertEndsWith(sio.getvalue(), "OK    50002ms\n")
 
@@ -870,7 +867,7 @@ class TestTestResult(tests.TestCase):
 
     def test_verbose_report_known_failure(self):
         # verbose test output formatting
-        result_stream = BytesIO()
+        result_stream = StringIO()
         result = breezy.tests.VerboseTestResult(
             result_stream,
             descriptions=0,
@@ -917,7 +914,7 @@ class TestTestResult(tests.TestCase):
 
     def test_verbose_report_unsupported(self):
         # verbose test output formatting
-        result_stream = BytesIO()
+        result_stream = StringIO()
         result = breezy.tests.VerboseTestResult(
             result_stream,
             descriptions=0,
@@ -957,8 +954,7 @@ class TestTestResult(tests.TestCase):
         self.assertEqual(0, result.error_count)
 
     def test_strict_with_unsupported_feature(self):
-        result = breezy.tests.TextTestResult(self._log_file, descriptions=0,
-                                             verbosity=1)
+        result = tests.TextTestResult(StringIO(), descriptions=0, verbosity=1)
         test = self.get_passing_test()
         feature = "Unsupported Feature"
         result.addNotSupported(test, feature)
@@ -966,16 +962,14 @@ class TestTestResult(tests.TestCase):
         self.assertEqual(None, result._extractBenchmarkTime(test))
 
     def test_strict_with_known_failure(self):
-        result = breezy.tests.TextTestResult(self._log_file, descriptions=0,
-                                             verbosity=1)
+        result = tests.TextTestResult(StringIO(), descriptions=0, verbosity=1)
         test = _get_test("test_xfail")
         test.run(result)
         self.assertFalse(result.wasStrictlySuccessful())
         self.assertEqual(None, result._extractBenchmarkTime(test))
 
     def test_strict_with_success(self):
-        result = breezy.tests.TextTestResult(self._log_file, descriptions=0,
-                                             verbosity=1)
+        result = tests.TextTestResult(StringIO(), descriptions=0, verbosity=1)
         test = self.get_passing_test()
         result.addSuccess(test)
         self.assertTrue(result.wasStrictlySuccessful())
@@ -1040,7 +1034,7 @@ class TestRunner(tests.TestCase):
         def failing_test():
             raise AssertionError('foo')
         test.addTest(unittest.FunctionTestCase(failing_test))
-        stream = BytesIO()
+        stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)
         lines = stream.getvalue().splitlines()
@@ -1066,7 +1060,7 @@ class TestRunner(tests.TestCase):
             def known_failure_test(self):
                 self.knownFailure("Never works...")
         test = Test("known_failure_test")
-        stream = BytesIO()
+        stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)
         self.assertContainsRe(stream.getvalue(),
@@ -1080,7 +1074,7 @@ class TestRunner(tests.TestCase):
         class Test(tests.TestCase):
             def test_truth(self):
                 self.expectFailure("No absolute truth", self.assertTrue, True)
-        runner = tests.TextTestRunner(stream=BytesIO())
+        runner = tests.TextTestRunner(stream=StringIO())
         result = self.run_test_runner(runner, Test("test_truth"))
         self.assertContainsRe(runner.stream.getvalue(),
             "=+\n"
@@ -1105,7 +1099,7 @@ class TestRunner(tests.TestCase):
                 ExtendedToOriginalDecorator.startTest(self, test)
                 calls.append('start')
         test = unittest.FunctionTestCase(lambda:None)
-        stream = BytesIO()
+        stream = StringIO()
         runner = tests.TextTestRunner(stream=stream,
             result_decorators=[LoggingDecorator])
         result = self.run_test_runner(runner, test)
@@ -1118,7 +1112,7 @@ class TestRunner(tests.TestCase):
         class SkippingTest(tests.TestCase):
             def skipping_test(self):
                 raise tests.TestSkipped('test intentionally skipped')
-        runner = tests.TextTestRunner(stream=self._log_file)
+        runner = tests.TextTestRunner(stream=StringIO())
         test = SkippingTest("skipping_test")
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
@@ -1138,7 +1132,7 @@ class TestRunner(tests.TestCase):
             def cleanup(self):
                 calls.append('cleanup')
 
-        runner = tests.TextTestRunner(stream=self._log_file)
+        runner = tests.TextTestRunner(stream=StringIO())
         test = SkippedSetupTest('test_skip')
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
@@ -1160,7 +1154,7 @@ class TestRunner(tests.TestCase):
             def cleanup(self):
                 calls.append('cleanup')
 
-        runner = tests.TextTestRunner(stream=self._log_file)
+        runner = tests.TextTestRunner(stream=StringIO())
         test = SkippedTest('test_skip')
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
@@ -1172,15 +1166,15 @@ class TestRunner(tests.TestCase):
         class Test(tests.TestCase):
             def not_applicable_test(self):
                 raise tests.TestNotApplicable('this test never runs')
-        out = BytesIO()
+        out = StringIO()
         runner = tests.TextTestRunner(stream=out, verbosity=2)
         test = Test("not_applicable_test")
         result = self.run_test_runner(runner, test)
-        self._log_file.write(out.getvalue())
+        self.log(out.getvalue())
         self.assertTrue(result.wasSuccessful())
         self.assertTrue(result.wasStrictlySuccessful())
         self.assertContainsRe(out.getvalue(),
-                r'(?m)not_applicable_test   * N/A')
+                r'(?m)not_applicable_test  * N/A')
         self.assertContainsRe(out.getvalue(),
                 r'(?m)^    this test never runs')
 
@@ -1198,7 +1192,7 @@ class TestRunner(tests.TestCase):
         test = unittest.TestSuite()
         test.addTest(test1)
         test.addTest(test2)
-        stream = BytesIO()
+        stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)
         lines = stream.getvalue().splitlines()
@@ -1215,7 +1209,7 @@ class TestRunner(tests.TestCase):
             unittest.FunctionTestCase(lambda:None),
             unittest.FunctionTestCase(lambda:None)])
         self.assertEqual(suite.countTestCases(), 2)
-        stream = BytesIO()
+        stream = StringIO()
         runner = tests.TextTestRunner(stream=stream, verbosity=2)
         # Need to use the CountingDecorator as that's what sets num_tests
         result = self.run_test_runner(runner, tests.CountingDecorator(suite))
@@ -1229,7 +1223,7 @@ class TestRunner(tests.TestCase):
                 ExtendedToOriginalDecorator.startTestRun(self)
                 calls.append('startTestRun')
         test = unittest.FunctionTestCase(lambda:None)
-        stream = BytesIO()
+        stream = StringIO()
         runner = tests.TextTestRunner(stream=stream,
             result_decorators=[LoggingDecorator])
         result = self.run_test_runner(runner, test)
@@ -1243,7 +1237,7 @@ class TestRunner(tests.TestCase):
                 ExtendedToOriginalDecorator.stopTestRun(self)
                 calls.append('stopTestRun')
         test = unittest.FunctionTestCase(lambda:None)
-        stream = BytesIO()
+        stream = StringIO()
         runner = tests.TextTestRunner(stream=stream,
             result_decorators=[LoggingDecorator])
         result = self.run_test_runner(runner, test)
@@ -1255,7 +1249,7 @@ class TestRunner(tests.TestCase):
             def test_log_unicode(self):
                 self.log(u"\u2606")
                 self.fail("Now print that log!")
-        out = BytesIO()
+        out = StringIO()
         self.overrideAttr(osutils, "get_terminal_encoding",
             lambda trace=False: "ascii")
         result = self.run_test_runner(tests.TextTestRunner(stream=out),
@@ -1402,8 +1396,8 @@ class TestTestCase(tests.TestCase):
         self.assertEqual({'original-state'}, breezy.debug.debug_flags)
 
     def make_test_result(self):
-        """Get a test result that writes to the test log file."""
-        return tests.TextTestResult(self._log_file, descriptions=0, verbosity=1)
+        """Get a test result that writes to a StringIO."""
+        return tests.TextTestResult(StringIO(), descriptions=0, verbosity=1)
 
     def inner_test(self):
         # the inner child test
@@ -1444,7 +1438,7 @@ class TestTestCase(tests.TestCase):
     def test_time_creates_benchmark_in_result(self):
         """Test that the TestCase.time() method accumulates a benchmark time."""
         sample_test = TestTestCase("method_that_times_a_bit_twice")
-        output_stream = BytesIO()
+        output_stream = StringIO()
         result = breezy.tests.VerboseTestResult(
             output_stream,
             descriptions=0,
@@ -1773,6 +1767,11 @@ def _get_test(name):
     return ExampleTests(name)
 
 
+def _get_skip_reasons(result):
+    # GZ 2017-06-06: Newer testtools doesn't have this, uses detail instead
+    return result.skip_reasons
+
+
 class TestTestCaseLogDetails(tests.TestCase):
 
     def _run_test(self, test_name):
@@ -1799,8 +1798,9 @@ class TestTestCaseLogDetails(tests.TestCase):
 
     def test_skip_has_no_log(self):
         result = self._run_test('test_skip')
-        self.assertEqual(['reason'], result.skip_reasons.keys())
-        skips = result.skip_reasons['reason']
+        reasons = _get_skip_reasons(result)
+        self.assertEqual({'reason'}, set(reasons))
+        skips = reasons['reason']
         self.assertEqual(1, len(skips))
         test = skips[0]
         self.assertFalse('log' in test.getDetails())
@@ -1809,8 +1809,9 @@ class TestTestCaseLogDetails(tests.TestCase):
         # testtools doesn't know about addNotSupported, so it just gets
         # considered as a skip
         result = self._run_test('test_missing_feature')
-        self.assertEqual([missing_feature], result.skip_reasons.keys())
-        skips = result.skip_reasons[missing_feature]
+        reasons = _get_skip_reasons(result)
+        self.assertEqual({missing_feature}, set(reasons))
+        skips = reasons[missing_feature]
         self.assertEqual(1, len(skips))
         test = skips[0]
         self.assertFalse('log' in test.getDetails())
@@ -2027,7 +2028,7 @@ class SelfTestHelper(object):
 
     def run_selftest(self, **kwargs):
         """Run selftest returning its output."""
-        output = BytesIO()
+        output = StringIO()
         old_transport = breezy.tests.default_transport
         old_root = tests.TestCaseWithMemoryTransport.TEST_ROOT
         tests.TestCaseWithMemoryTransport.TEST_ROOT = None
@@ -2048,8 +2049,8 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         def factory():
             factory_called.append(True)
             return TestUtil.TestSuite()
-        out = BytesIO()
-        err = BytesIO()
+        out = StringIO()
+        err = StringIO()
         self.apply_redirected(out, err, None, breezy.tests.selftest,
             test_suite_factory=factory)
         self.assertEqual([True], factory_called)
@@ -2211,8 +2212,9 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         content, result = self.run_subunit_stream('test_skip')
         self.assertNotContainsRe(content, '(?m)^log$')
         self.assertNotContainsRe(content, 'this test will be skipped')
-        self.assertEqual(['reason'], result.skip_reasons.keys())
-        skips = result.skip_reasons['reason']
+        reasons = _get_skip_reasons(result)
+        self.assertEqual({'reason'}, set(reasons))
+        skips = reasons['reason']
         self.assertEqual(1, len(skips))
         test = skips[0]
         # RemotedTestCase doesn't preserve the "details"
@@ -2222,8 +2224,9 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         content, result = self.run_subunit_stream('test_missing_feature')
         self.assertNotContainsRe(content, '(?m)^log$')
         self.assertNotContainsRe(content, 'missing the feature')
-        self.assertEqual(['_MissingFeature\n'], result.skip_reasons.keys())
-        skips = result.skip_reasons['_MissingFeature\n']
+        reasons = _get_skip_reasons(result)
+        self.assertEqual({'_MissingFeature\n'}, set(reasons))
+        skips = reasons['_MissingFeature\n']
         self.assertEqual(1, len(skips))
         test = skips[0]
         # RemotedTestCase doesn't preserve the "details"
@@ -2373,7 +2376,7 @@ class TestRunBzrCaptured(tests.TestCaseWithTransport):
 
     def test_stdin(self):
         # test that the stdin keyword to _run_bzr_core is passed through to
-        # apply_redirected as a BytesIO. We do this by overriding
+        # apply_redirected as a StringIO. We do this by overriding
         # apply_redirected in this class, and then calling _run_bzr_core,
         # which calls apply_redirected.
         self.run_bzr(['foo', 'bar'], stdin='gam')
@@ -2466,12 +2469,12 @@ class TestRunBzrSubprocess(TestWithFakedStartBzrSubprocess):
             result = self.run_bzr_subprocess(*args, **kwargs)
         except:
             self.next_subprocess = None
-            for key, expected in expected_args.iteritems():
+            for key, expected in expected_args.items():
                 self.assertEqual(expected, self.subprocess_calls[-1][key])
             raise
         else:
             self.next_subprocess = None
-            for key, expected in expected_args.iteritems():
+            for key, expected in expected_args.items():
                 self.assertEqual(expected, self.subprocess_calls[-1][key])
             return result
 
@@ -3190,7 +3193,7 @@ class TestThreadLeakDetection(tests.TestCase):
 
     class LeakRecordingResult(tests.ExtendedTestResult):
         def __init__(self):
-            tests.ExtendedTestResult.__init__(self, BytesIO(), 0, 1)
+            tests.ExtendedTestResult.__init__(self, StringIO(), 0, 1)
             self.leaks = []
         def _report_thread_leak(self, test, leaks, alive):
             self.leaks.append((test, leaks))
@@ -3276,7 +3279,7 @@ class TestPostMortemDebugging(tests.TestCase):
 
     class TracebackRecordingResult(tests.ExtendedTestResult):
         def __init__(self):
-            tests.ExtendedTestResult.__init__(self, BytesIO(), 0, 1)
+            tests.ExtendedTestResult.__init__(self, StringIO(), 0, 1)
             self.postcode = None
         def _post_mortem(self, tb=None):
             """Record the code object at the end of the current traceback"""
@@ -3331,7 +3334,7 @@ class TestPostMortemDebugging(tests.TestCase):
     def test_env_var_triggers_post_mortem(self):
         """Check pdb.post_mortem is called iff BRZ_TEST_PDB is set"""
         import pdb
-        result = tests.ExtendedTestResult(BytesIO(), 0, 1)
+        result = tests.ExtendedTestResult(StringIO(), 0, 1)
         post_mortem_calls = []
         self.overrideAttr(pdb, "post_mortem", post_mortem_calls.append)
         self.overrideEnv('BRZ_TEST_PDB', None)
@@ -3355,7 +3358,7 @@ class TestRunSuite(tests.TestCase):
                 calls.append(test)
                 return tests.ExtendedTestResult(self.stream, self.descriptions,
                                                 self.verbosity)
-        tests.run_suite(suite, runner_class=MyRunner, stream=BytesIO())
+        tests.run_suite(suite, runner_class=MyRunner, stream=StringIO())
         self.assertLength(1, calls)
 
 
@@ -3366,7 +3369,7 @@ class _Selftest(object):
         """To be overridden by subclasses that run tests out of process"""
 
     def _run_selftest(self, **kwargs):
-        sio = BytesIO()
+        sio = StringIO()
         self._inject_stream_into_subunit(sio)
         tests.selftest(stream=sio, stop_on_failure=False, **kwargs)
         return sio.getvalue()
@@ -3515,7 +3518,7 @@ class TestEnvironHandling(tests.TestCase):
                 # Make sure we can call it twice
                 self.overrideEnv('MYVAR', None)
                 self.assertEqual(None, os.environ.get('MYVAR'))
-        output = BytesIO()
+        output = StringIO()
         result = tests.TextTestResult(output, 0, 1)
         Test('test_me').run(result)
         if not result.wasStrictlySuccessful():
@@ -3603,7 +3606,7 @@ class TestDocTestSuiteIsolation(tests.TestCase):
 
     def run_doctest_suite_for_string(self, klass, string):
         suite = self.get_doctest_suite_for_string(klass, string)
-        output = BytesIO()
+        output = StringIO()
         result = tests.TextTestResult(output, 0, 1)
         suite.run(result)
         return result, output

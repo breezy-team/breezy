@@ -51,7 +51,7 @@ class _Cleanup(object):
 
     def finalize(self):
         if self.disk_blobs is not None:
-            for info in self.disk_blobs.itervalues():
+            for info in self.disk_blobs.values():
                 if info[-1] is not None:
                     os.unlink(info[-1])
             self.disk_blobs = None
@@ -145,17 +145,17 @@ class CacheManager(object):
         #self._show_stats_for(self._blobs, "other blobs", note=note)
         #self.reftracker.dump_stats(note=note)
 
-    def _show_stats_for(self, dict, label, note=trace.note, tuple_key=False):
+    def _show_stats_for(self, a_dict, label, note, tuple_key=False):
         """Dump statistics about a given dictionary.
 
         By the key and value need to support len().
         """
-        count = len(dict)
+        count = len(a_dict)
         if tuple_key:
-            size = sum(map(len, (''.join(k) for k in dict.keys())))
+            size = sum(map(len, (''.join(k) for k in a_dict)))
         else:
-            size = sum(map(len, dict.keys()))
-        size += sum(map(len, dict.values()))
+            size = sum(map(len, a_dict))
+        size += sum(map(len, a_dict.values()))
         size = size * 1.0 / 1024
         unit = 'K'
         if size > 1024:
@@ -176,7 +176,7 @@ class CacheManager(object):
         self.inventories.clear()
 
     def _flush_blobs_to_disk(self):
-        blobs = self._sticky_blobs.keys()
+        blobs = list(self._sticky_blobs)
         sticky_blobs = self._sticky_blobs
         total_blobs = len(sticky_blobs)
         blobs.sort(key=lambda k:len(sticky_blobs[k]))
@@ -275,16 +275,3 @@ class CacheManager(object):
         if self._decref(id, self._sticky_blobs, None):
             self._sticky_memory_bytes -= len(content)
         return content
-
-
-def invert_dictset(d):
-    """Invert a dictionary with keys matching a set of values, turned into lists."""
-    # Based on recipe from ASPN
-    result = {}
-    for k, c in d.iteritems():
-        for v in c:
-            keys = result.setdefault(v, [])
-            keys.append(k)
-    return result
-
-

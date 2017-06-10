@@ -24,6 +24,7 @@ also see this file.
 
 from .. import (
     branch as _mod_branch,
+    bzrbranch as _mod_bzrbranch,
     bzrdir,
     config,
     controldir,
@@ -46,7 +47,7 @@ class TestDefaultFormat(tests.TestCase):
     def test_default_format(self):
         # update this if you change the default branch format
         self.assertIsInstance(_mod_branch.format_registry.get_default(),
-                _mod_branch.BzrBranchFormat7)
+                _mod_bzrbranch.BzrBranchFormat7)
 
     def test_default_format_is_same_as_bzrdir_default(self):
         # XXX: it might be nice if there was only one place the default was
@@ -59,7 +60,8 @@ class TestDefaultFormat(tests.TestCase):
     def test_get_set_default_format(self):
         # set the format and then set it back again
         old_format = _mod_branch.format_registry.get_default()
-        _mod_branch.format_registry.set_default(SampleBranchFormat())
+        _mod_branch.format_registry.set_default(
+            SampleBranchFormat())
         try:
             # the default branch format is used by the meta dir format
             # which is not the default bzrdir format at this point
@@ -106,7 +108,7 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
     # recursive section - that is, it appends the branch name.
 
 
-class SampleBranchFormat(_mod_branch.BranchFormatMetadir):
+class SampleBranchFormat(_mod_bzrbranch.BranchFormatMetadir):
     """A sample format
 
     this format is initializable, unsupported to aid in testing the
@@ -138,7 +140,7 @@ class SampleBranchFormat(_mod_branch.BranchFormatMetadir):
 SampleSupportedBranchFormatString = "Sample supported branch format."
 
 # And the format class can then reference the constant to avoid skew.
-class SampleSupportedBranchFormat(_mod_branch.BranchFormatMetadir):
+class SampleSupportedBranchFormat(_mod_bzrbranch.BranchFormatMetadir):
     """A sample supported format."""
 
     @classmethod
@@ -187,20 +189,9 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
             dir = format._matchingbzrdir.initialize(url)
             dir.create_repository()
             format.initialize(dir)
-            found_format = _mod_branch.BranchFormatMetadir.find_format(dir)
+            found_format = _mod_bzrbranch.BranchFormatMetadir.find_format(dir)
             self.assertIsInstance(found_format, format.__class__)
         check_format(BzrBranchFormat5(), "bar")
-
-    def test_find_format_factory(self):
-        dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        SampleSupportedBranchFormat().initialize(dir)
-        factory = _mod_branch.MetaDirBranchFormatFactory(
-            SampleSupportedBranchFormatString,
-            "breezy.tests.test_branch", "SampleSupportedBranchFormat")
-        _mod_branch.format_registry.register(factory)
-        self.addCleanup(_mod_branch.format_registry.remove, factory)
-        b = _mod_branch.Branch.open(self.get_url())
-        self.assertEqual(b, "opened supported branch.")
 
     def test_from_string(self):
         self.assertIsInstance(
@@ -212,21 +203,21 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
     def test_find_format_not_branch(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         self.assertRaises(errors.NotBranchError,
-                          _mod_branch.BranchFormatMetadir.find_format,
+                          _mod_bzrbranch.BranchFormatMetadir.find_format,
                           dir)
 
     def test_find_format_unknown_format(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         SampleBranchFormat().initialize(dir)
         self.assertRaises(errors.UnknownFormatError,
-                          _mod_branch.BranchFormatMetadir.find_format,
+                          _mod_bzrbranch.BranchFormatMetadir.find_format,
                           dir)
 
     def test_find_format_with_features(self):
         tree = self.make_branch_and_tree('.', format='2a')
         tree.branch.update_feature_flags({"name": "optional"})
-        found_format = _mod_branch.BranchFormatMetadir.find_format(tree.controldir)
-        self.assertIsInstance(found_format, _mod_branch.BranchFormatMetadir)
+        found_format = _mod_bzrbranch.BranchFormatMetadir.find_format(tree.controldir)
+        self.assertIsInstance(found_format, _mod_bzrbranch.BranchFormatMetadir)
         self.assertEqual(found_format.features.get("name"), "optional")
         tree.branch.update_feature_flags({"name": None})
         branch = _mod_branch.Branch.open('.')
@@ -275,34 +266,6 @@ class TestBranchFormatRegistry(tests.TestCase):
         self.assertIsInstance(formats[0], SampleExtraBranchFormat)
 
 
-#Used by TestMetaDirBranchFormatFactory 
-FakeLazyFormat = None
-
-
-class TestMetaDirBranchFormatFactory(tests.TestCase):
-
-    def test_get_format_string_does_not_load(self):
-        """Formats have a static format string."""
-        factory = _mod_branch.MetaDirBranchFormatFactory("yo", None, None)
-        self.assertEqual("yo", factory.get_format_string())
-
-    def test_call_loads(self):
-        # __call__ is used by the network_format_registry interface to get a
-        # Format.
-        global FakeLazyFormat
-        del FakeLazyFormat
-        factory = _mod_branch.MetaDirBranchFormatFactory(None,
-            "breezy.tests.test_branch", "FakeLazyFormat")
-        self.assertRaises(AttributeError, factory)
-
-    def test_call_returns_call_of_referenced_object(self):
-        global FakeLazyFormat
-        FakeLazyFormat = lambda:'called'
-        factory = _mod_branch.MetaDirBranchFormatFactory(None,
-            "breezy.tests.test_branch", "FakeLazyFormat")
-        self.assertEqual('called', factory())
-
-
 class TestBranch67(object):
     """Common tests for both branch 6 and 7 which are mostly the same."""
 
@@ -317,7 +280,7 @@ class TestBranch67(object):
 
     def test_creation(self):
         format = bzrdir.BzrDirMetaFormat1()
-        format.set_branch_format(_mod_branch.BzrBranchFormat6())
+        format.set_branch_format(_mod_bzrbranch.BzrBranchFormat6())
         branch = self.make_branch('a', format=format)
         self.assertIsInstance(branch, self.get_class())
         branch = self.make_branch('b', format=self.get_format_name())
@@ -381,7 +344,7 @@ class TestBranch67(object):
 class TestBranch6(TestBranch67, tests.TestCaseWithTransport):
 
     def get_class(self):
-        return _mod_branch.BzrBranch6
+        return _mod_bzrbranch.BzrBranch6
 
     def get_format_name(self):
         return "dirstate-tags"
@@ -402,7 +365,7 @@ class TestBranch6(TestBranch67, tests.TestCaseWithTransport):
 class TestBranch7(TestBranch67, tests.TestCaseWithTransport):
 
     def get_class(self):
-        return _mod_branch.BzrBranch7
+        return _mod_bzrbranch.BzrBranch7
 
     def get_format_name(self):
         return "1.9"
@@ -413,7 +376,7 @@ class TestBranch7(TestBranch67, tests.TestCaseWithTransport):
     def test_set_stacked_on_url_unstackable_repo(self):
         repo = self.make_repository('a', format='dirstate-tags')
         control = repo.controldir
-        branch = _mod_branch.BzrBranchFormat7().initialize(control)
+        branch = _mod_bzrbranch.BzrBranchFormat7().initialize(control)
         target = self.make_branch('b')
         self.assertRaises(errors.UnstackableRepositoryFormat,
             branch.set_stacked_on_url, target.base)
@@ -421,7 +384,7 @@ class TestBranch7(TestBranch67, tests.TestCaseWithTransport):
     def test_clone_stacked_on_unstackable_repo(self):
         repo = self.make_repository('a', format='dirstate-tags')
         control = repo.controldir
-        branch = _mod_branch.BzrBranchFormat7().initialize(control)
+        branch = _mod_bzrbranch.BzrBranchFormat7().initialize(control)
         # Calling clone should not raise UnstackableRepositoryFormat.
         cloned_bzrdir = control.clone('cloned')
 
@@ -454,7 +417,7 @@ class BzrBranch8(tests.TestCaseWithTransport):
     def make_branch(self, location, format=None):
         if format is None:
             format = controldir.format_registry.make_bzrdir('1.9')
-            format.set_branch_format(_mod_branch.BzrBranchFormat8())
+            format.set_branch_format(_mod_bzrbranch.BzrBranchFormat8())
         return tests.TestCaseWithTransport.make_branch(
             self, location, format=format)
 
@@ -533,7 +496,7 @@ class TestBranchReference(tests.TestCaseWithTransport):
         target_branch = dir.create_branch()
         t.mkdir('branch')
         branch_dir = bzrdirformat.initialize(self.get_url('branch'))
-        made_branch = _mod_branch.BranchReferenceFormat().initialize(
+        made_branch = _mod_bzrbranch.BranchReferenceFormat().initialize(
             branch_dir, target_branch=target_branch)
         self.assertEqual(made_branch.base, target_branch.base)
         opened_branch = branch_dir.open_branch()
@@ -548,7 +511,7 @@ class TestBranchReference(tests.TestCaseWithTransport):
         # then this file read will fail.
         self.assertFileEqual(reference_url, 'checkout/.bzr/branch/location')
         self.assertEqual(reference_url,
-            _mod_branch.BranchReferenceFormat().get_reference(checkout.controldir))
+            _mod_bzrbranch.BranchReferenceFormat().get_reference(checkout.controldir))
 
 
 class TestHooks(tests.TestCaseWithTransport):

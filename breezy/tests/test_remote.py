@@ -3928,13 +3928,13 @@ class TestStacking(tests.TestCaseWithTransport):
         # the public implementation of get_parent_map obeys stacking
         _, branch = self.prepare_stacked_remote_branch()
         repo = branch.repository
-        self.assertEqual(['rev1'], repo.get_parent_map(['rev1']).keys())
+        self.assertEqual({'rev1'}, set(repo.get_parent_map(['rev1'])))
 
     def test_unstacked_get_parent_map(self):
         # _unstacked_provider.get_parent_map ignores stacking
         _, branch = self.prepare_stacked_remote_branch()
         provider = branch.repository._unstacked_provider
-        self.assertEqual([], provider.get_parent_map(['rev1']).keys())
+        self.assertEqual(set(), set(provider.get_parent_map(['rev1'])))
 
     def fetch_stream_to_rev_order(self, stream):
         result = []

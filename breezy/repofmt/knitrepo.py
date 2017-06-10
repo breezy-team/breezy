@@ -40,6 +40,8 @@ from ..decorators import needs_read_lock, needs_write_lock
 from ..repository import (
     InterRepository,
     IsInWriteGroupError,
+    )
+from ..bzrrepository import (
     RepositoryFormatMetaDir,
     )
 from ..vf_repository import (

@@ -68,6 +68,7 @@ from .pack_repo import (
     RepositoryPackCollection,
     )
 from ..sixish import (
+    viewitems,
     zip
     )
 from ..vf_repository import (
@@ -642,7 +643,7 @@ class KnitPacker(Packer):
             request_groups[index].append((key, value))
         record_index = 0
         pb.update("Copied record", record_index, len(nodes))
-        for index, items in request_groups.iteritems():
+        for index, items in viewitems(request_groups):
             pack_readv_requests = []
             for key, value in items:
                 # ---- KnitGraphIndex.get_position
@@ -740,7 +741,7 @@ class KnitPacker(Packer):
         fileid_revisions = repo._find_file_ids_from_xml_inventory_lines(
             inv_lines, self.revision_keys)
         text_filter = []
-        for fileid, file_revids in fileid_revisions.iteritems():
+        for fileid, file_revids in viewitems(fileid_revisions):
             text_filter.extend([(fileid, file_revid) for file_revid in file_revids])
         self._text_filter = text_filter
 
@@ -934,7 +935,7 @@ class KnitPacker(Packer):
                 request_groups[index] = []
             request_groups[index].append((key, value, references))
         result = []
-        for index, items in request_groups.iteritems():
+        for index, items in viewitems(request_groups):
             pack_readv_requests = []
             for key, value, references in items:
                 # ---- KnitGraphIndex.get_position

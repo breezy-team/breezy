@@ -345,12 +345,7 @@ if have_fcntl:
 
 
 if have_pywin32 and sys.platform == 'win32':
-    if os.path.supports_unicode_filenames:
-        # for Windows NT/2K/XP/etc
-        win32file_CreateFile = win32file.CreateFileW
-    else:
-        # for Windows 98
-        win32file_CreateFile = win32file.CreateFile
+    win32file_CreateFile = win32file.CreateFileW
 
     class _w32c_FileLock(_OSLock):
 
@@ -423,19 +418,12 @@ if have_ctypes_win32:
     from ctypes.wintypes import DWORD, LPCSTR, LPCWSTR
     LPSECURITY_ATTRIBUTES = ctypes.c_void_p # used as NULL no need to declare
     HANDLE = ctypes.c_int # rather than unsigned as in ctypes.wintypes
-    if os.path.supports_unicode_filenames:
-        _function_name = "CreateFileW"
-        LPTSTR = LPCWSTR
-    else:
-        _function_name = "CreateFileA"
-        class LPTSTR(LPCSTR):
-            def __new__(cls, obj):
-                return LPCSTR.__new__(cls, obj.encode("mbcs"))
+    _function_name = "CreateFileW"
 
     # CreateFile <http://msdn.microsoft.com/en-us/library/aa363858.aspx>
     _CreateFile = ctypes.WINFUNCTYPE(
             HANDLE,                # return value
-            LPTSTR,                # lpFileName
+            LPWSTR,                # lpFileName
             DWORD,                 # dwDesiredAccess
             DWORD,                 # dwShareMode
             LPSECURITY_ATTRIBUTES, # lpSecurityAttributes

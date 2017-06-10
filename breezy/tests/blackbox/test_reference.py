@@ -16,7 +16,7 @@
 
 
 from breezy import (
-    branch as _mod_branch,
+    bzrbranch as _mod_bzrbranch,
     controldir,
     )
 from breezy.tests import TestCaseWithTransport
@@ -26,7 +26,7 @@ class TestReference(TestCaseWithTransport):
 
     def get_default_format(self):
         format = controldir.format_registry.make_bzrdir('1.9')
-        format.set_branch_format(_mod_branch.BzrBranchFormat8())
+        format.set_branch_format(_mod_bzrbranch.BzrBranchFormat8())
         return format
 
     def test_no_args_lists(self):

@@ -441,7 +441,7 @@ class SmartServerBzrDirRequestGetBranches(SmartServerRequestBzrDir):
         """
         branches = self._bzrdir.get_branches()
         ret = {}
-        for name, b in branches.iteritems():
+        for name, b in branches.items():
             if name is None:
                 name = ""
             ret[name] = ("branch", b._format.network_name())

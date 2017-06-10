@@ -23,6 +23,7 @@ from testtools.matchers import (
 
 from ... import (
     branch,
+    bzrbranch,
     check,
     controldir,
     errors,
@@ -198,7 +199,7 @@ class TestPush(TestCaseWithInterBranch):
         default for the branch), and will be stacked when the repo format
         allows (which means that the branch format isn't necessarly preserved).
         """
-        if isinstance(self.branch_format_from, branch.BranchReferenceFormat):
+        if isinstance(self.branch_format_from, bzrbranch.BranchReferenceFormat):
             # This test could in principle apply to BranchReferenceFormat, but
             # make_branch_builder doesn't support it.
             raise tests.TestSkipped(
@@ -239,7 +240,7 @@ class TestPush(TestCaseWithInterBranch):
         # Make a local branch with four revisions.  Four revisions because:
         # one to push, one there for _walk_to_common_revisions to find, one we
         # don't want to access, one for luck :)
-        if isinstance(self.branch_format_from, branch.BranchReferenceFormat):
+        if isinstance(self.branch_format_from, bzrbranch.BranchReferenceFormat):
             # This test could in principle apply to BranchReferenceFormat, but
             # make_branch_builder doesn't support it.
             raise tests.TestSkipped(

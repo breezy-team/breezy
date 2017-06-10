@@ -20,6 +20,7 @@ import contextlib
 
 from breezy import (
     branch as _mod_branch,
+    bzrbranch as _mod_bzrbranch,
     controldir,
     config,
     delta as _mod_delta,
@@ -246,7 +247,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         """
         t = self.get_transport()
         branch = self.make_branch('bzr.dev')
-        if not isinstance(branch, _mod_branch.BzrBranch):
+        if not isinstance(branch, _mod_bzrbranch.BzrBranch):
             raise tests.TestNotApplicable("not a bzr branch format")
         # The nick will be 'bzr.dev', because there is no explicit nick set.
         self.assertEqual(branch.nick, 'bzr.dev')

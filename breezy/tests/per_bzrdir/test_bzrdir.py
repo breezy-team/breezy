@@ -160,7 +160,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                 self.assertEqual(text_index,
                     right_repo._generate_text_key_index())
                 desired_files = []
-                for file_id, revision_id in text_index.iterkeys():
+                for file_id, revision_id in text_index:
                     desired_files.append(
                         (file_id, revision_id, (file_id, revision_id)))
                 left_texts = [(identifier, "".join(bytes_iterator)) for

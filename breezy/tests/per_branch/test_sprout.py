@@ -19,6 +19,7 @@
 import os
 from breezy import (
     branch as _mod_branch,
+    bzrbranch as _mod_bzrbranch,
     errors,
     osutils,
     remote,
@@ -51,7 +52,7 @@ class TestSprout(TestCaseWithBranch):
         # branch is being created in, rather than testing that the result is
         # in the format that we are testing (which is what would happen if
         # the branch did not delegate appropriately).
-        if isinstance(self.branch_format, _mod_branch.BranchReferenceFormat):
+        if isinstance(self.branch_format, _mod_bzrbranch.BranchReferenceFormat):
             raise tests.TestNotApplicable('cannot sprout to a reference')
         # Start with a format that is unlikely to be the target format
         # We call the super class to allow overriding the format of creation)
@@ -66,7 +67,7 @@ class TestSprout(TestCaseWithBranch):
             # do not have one unless a branch was created at the time.
             # We use branch format 6 because its not the default, and its not
             # metaweave either.
-            target_bzrdir._format.set_branch_format(_mod_branch.BzrBranchFormat6())
+            target_bzrdir._format.set_branch_format(_mod_bzrbranch.BzrBranchFormat6())
             result_format = target_bzrdir._format.get_branch_format()
         target = source.sprout(target_bzrdir)
         if isinstance(target, remote.RemoteBranch):

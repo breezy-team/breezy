@@ -1043,7 +1043,7 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
 
     def assertPruneTails(self, pruned_map, tails, parent_map):
         child_map = {}
-        for key, parent_keys in parent_map.iteritems():
+        for key, parent_keys in parent_map.items():
             child_map.setdefault(key, [])
             for pkey in parent_keys:
                 child_map.setdefault(pkey, []).append(key)

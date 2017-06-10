@@ -939,7 +939,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
         root_entry = new_inv[inv.root.file_id]
         self.assertEqual(None, root_entry._children)
-        self.assertEqual(['file'], root_entry.children.keys())
+        self.assertEqual({'file'}, set(root_entry.children))
         file_direct = new_inv["fileid"]
         file_found = root_entry.children['file']
         self.assertEqual(file_direct.kind, file_found.kind)
@@ -1472,9 +1472,9 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
             s = expected_children.setdefault(entry.parent_id, [])
             s.append(entry.file_id)
         val_children = dict((k, sorted(v)) for k, v
-                            in val_children.iteritems())
+                            in val_children.items())
         expected_children = dict((k, sorted(v)) for k, v
-                            in expected_children.iteritems())
+                            in expected_children.items())
         self.assertEqual(expected_children, val_children)
 
     def test_make_simple_inventory(self):

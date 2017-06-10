@@ -108,7 +108,7 @@ class ControlDir(ControlComponent):
         """Return a sequence of all branches local to this control directory.
 
         """
-        return self.get_branches().values()
+        return list(self.get_branches().values())
 
     def get_branches(self):
         """Get all branches in this control directory, as a dictionary.
