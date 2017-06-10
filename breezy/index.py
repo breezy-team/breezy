@@ -50,10 +50,10 @@ from .sixish import (
 from .static_tuple import StaticTuple
 
 _HEADER_READV = (0, 200)
-_OPTION_KEY_ELEMENTS = "key_elements="
-_OPTION_LEN = "len="
-_OPTION_NODE_REFS = "node_ref_lists="
-_SIGNATURE = "Bazaar Graph Index 1\n"
+_OPTION_KEY_ELEMENTS = b"key_elements="
+_OPTION_LEN = b"len="
+_OPTION_NODE_REFS = b"node_ref_lists="
+_SIGNATURE = b"Bazaar Graph Index 1\n"
 
 
 _whitespace_re = re.compile('[\t\n\x0b\x0c\r\x00 ]')
@@ -257,10 +257,10 @@ class GraphIndexBuilder(object):
         should be written to disk.
         """
         lines = [_SIGNATURE]
-        lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
-        lines.append(_OPTION_KEY_ELEMENTS + str(self._key_length) + '\n')
+        lines.append(b'%s%d\n' % (_OPTION_NODE_REFS, self.reference_lists))
+        lines.append(b'%s%d\n' % (_OPTION_KEY_ELEMENTS, self._key_length))
         key_count = len(self._nodes) - len(self._absent_keys)
-        lines.append(_OPTION_LEN + str(key_count) + '\n')
+        lines.append(b'%s%d\n' % (_OPTION_LEN, key_count))
         prefix_length = sum(len(x) for x in lines)
         # references are byte offsets. To avoid having to do nasty
         # polynomial work to resolve offsets (references to later in the
@@ -323,19 +323,19 @@ class GraphIndexBuilder(object):
             for key, non_ref_bytes, total_references in key_offset_info:
                 key_addresses[key] = non_ref_bytes + total_references*digits
             # serialise
-            format_string = '%%0%sd' % digits
+            format_string = b'%%0%dd' % digits
         for key, (absent, references, value) in nodes:
             flattened_references = []
             for ref_list in references:
                 ref_addresses = []
                 for reference in ref_list:
                     ref_addresses.append(format_string % key_addresses[reference])
-                flattened_references.append('\r'.join(ref_addresses))
-            string_key = '\x00'.join(key)
-            lines.append("%s\x00%s\x00%s\x00%s\n" % (string_key, absent,
-                '\t'.join(flattened_references), value))
-        lines.append('\n')
-        result = BytesIO(''.join(lines))
+                flattened_references.append(b'\r'.join(ref_addresses))
+            string_key = b'\x00'.join(key)
+            lines.append(b"%s\x00%s\x00%s\x00%s\n" % (string_key, absent,
+                b'\t'.join(flattened_references), value))
+        lines.append(b'\n')
+        result = BytesIO(b''.join(lines))
         if expected_bytes and len(result.getvalue()) != expected_bytes:
             raise errors.BzrError('Failed index creation. Internal error:'
                 ' mismatched output length and expected length: %d %d' %

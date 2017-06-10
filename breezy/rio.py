@@ -36,6 +36,9 @@ import re
 
 from . import osutils
 from .iterablefile import IterableFile
+from .sixish import (
+    text_type,
+    )
 
 # XXX: some redundancy is allowing to write stanzas in isolation as well as
 # through a writer object.
@@ -74,11 +77,11 @@ def rio_file(stanzas, header=None):
     """Produce a rio IterableFile from an iterable of stanzas"""
     def str_iter():
         if header is not None:
-            yield header + '\n'
+            yield header + b'\n'
         first_stanza = True
         for s in stanzas:
             if first_stanza is not True:
-                yield '\n'
+                yield b'\n'
             for line in s.to_lines():
                 yield line
             first_stanza = False
@@ -121,12 +124,10 @@ class Stanza(object):
         """Append a name and value to the stanza."""
         if not valid_tag(tag):
             raise ValueError("invalid tag %r" % (tag,))
-        if isinstance(value, str):
-            value = unicode(value)
-        elif isinstance(value, unicode):
+        if isinstance(value, bytes):
+            value = value.decode('ascii')
+        elif isinstance(value, text_type):
             pass
-        ## elif isinstance(value, (int, long)):
-        ##    value = str(value)           # XXX: python2.4 without L-suffix
         else:
             raise TypeError("invalid type for rio value: %r of type %s"
                             % (value, type(value)))
@@ -175,20 +176,20 @@ class Stanza(object):
         result = []
         for tag, value in self.items:
             if value == '':
-                result.append(tag + ': \n')
+                result.append(tag.encode('ascii') + b': \n')
             elif '\n' in value:
                 # don't want splitlines behaviour on empty lines
                 val_lines = value.split('\n')
-                result.append(tag + ': ' + val_lines[0].encode('utf-8') + '\n')
+                result.append(tag + b': ' + val_lines[0].encode('utf-8') + b'\n')
                 for line in val_lines[1:]:
-                    result.append('\t' + line.encode('utf-8') + '\n')
+                    result.append(b'\t' + line.encode('utf-8') + b'\n')
             else:
-                result.append(tag + ': ' + value.encode('utf-8') + '\n')
+                result.append(tag.encode('ascii') + b': ' + value.encode('utf-8') + b'\n')
         return result
 
     def to_string(self):
         """Return stanza as a single string"""
-        return ''.join(self.to_lines())
+        return b''.join(self.to_lines())
 
     def to_unicode(self):
         """Return stanza as a single Unicode string.

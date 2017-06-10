@@ -50,15 +50,15 @@ class LocalTransport(transport.Transport):
 
     def __init__(self, base):
         """Set the base path where files will be stored."""
-        if not base.startswith(b'file://'):
+        if not base.startswith('file://'):
             raise AssertionError("not a file:// url: %r" % base)
-        if base[-1] != b'/':
-            base = base + b'/'
+        if base[-1] != '/':
+            base = base + '/'
 
         # Special case : windows has no "root", but does have
         # multiple lettered drives inside it. #240910
-        if sys.platform == 'win32' and base == b'file:///':
-            base = b''
+        if sys.platform == 'win32' and base == 'file:///':
+            base = ''
             self._local_base = ''
             super(LocalTransport, self).__init__(base)
             return
@@ -189,7 +189,7 @@ class LocalTransport(transport.Transport):
         :param relpath: Location to put the contents, relative to base.
         :param raw_bytes:   String
         """
-        if not isinstance(raw_bytes, str):
+        if not isinstance(raw_bytes, bytes):
             raise TypeError(
                 'raw_bytes must be a plain string, not %s' % type(raw_bytes))
         path = relpath

@@ -29,8 +29,8 @@ from . import (
     )
 from .osutils import contains_whitespace
 
-NULL_REVISION="null:"
-CURRENT_REVISION="current:"
+NULL_REVISION=b"null:"
+CURRENT_REVISION=b"current:"
 
 
 class Revision(object):
