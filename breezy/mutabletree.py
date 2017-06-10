@@ -21,23 +21,15 @@ See MutableTree for more details.
 
 from __future__ import absolute_import
 
-from .lazy_import import lazy_import
-lazy_import(globals(), """
 import operator
 import os
-
-from breezy import (
-    add,
-    controldir,
+from . import (
     errors,
     hooks,
     osutils,
-    revisiontree,
     trace,
-    transport as _mod_transport,
     tree,
     )
-""")
 
 from .decorators import needs_read_lock, needs_write_lock
 from .sixish import (
@@ -442,4 +434,3 @@ class PostCommitHookParams(object):
     def __init__(self, mutable_tree):
         """Create the parameters for the post_commit hook."""
         self.mutable_tree = mutable_tree
-
