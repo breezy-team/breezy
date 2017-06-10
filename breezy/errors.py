@@ -255,7 +255,7 @@ class NoPublicBranch(BzrError):
     _fmt = 'There is no public branch set for "%(branch_url)s".'
 
     def __init__(self, branch):
-        import breezy.urlutils as urlutils
+        from . import urlutils
         public_location = urlutils.unescape_for_display(branch.base, 'ascii')
         BzrError.__init__(self, branch_url=public_location)
 
@@ -648,7 +648,7 @@ class NotBranchError(PathError):
     _fmt = 'Not a branch: "%(path)s"%(detail)s.'
 
     def __init__(self, path, detail=None, controldir=None):
-       import breezy.urlutils as urlutils
+       from . import urlutils
        path = urlutils.unescape_for_display(path, 'ascii')
        if detail is not None:
            detail = ': ' + detail
@@ -690,7 +690,7 @@ class NoSubmitBranch(PathError):
     _fmt = 'No submit branch available for branch "%(path)s"'
 
     def __init__(self, branch):
-       import .urlutils as urlutils
+       from . import urlutils
        self.path = urlutils.unescape_for_display(branch.base, 'ascii')
 
 
@@ -2790,7 +2790,7 @@ class DefaultSMTPConnectionRefused(SMTPConnectionRefused):
 class BzrDirError(BzrError):
 
     def __init__(self, controldir):
-        import .urlutils as urlutils
+        from . import urlutils
         display_url = urlutils.unescape_for_display(controldir.user_url,
                                                     'ascii')
         BzrError.__init__(self, controldir=controldir, display_url=display_url)
@@ -2802,8 +2802,8 @@ class UnsyncedBranches(BzrDirError):
             " brz help sync-for-reconfigure.")
 
     def __init__(self, controldir, target_branch):
-        controldirError.__init__(self, controldir)
-        import .urlutils as urlutils
+        BzrError.__init__(self, controldir)
+        from . import urlutils
         self.target_url = urlutils.unescape_for_display(target_branch.base,
                                                         'ascii')
 

@@ -613,8 +613,8 @@ class TestErrors(tests.TestCase):
             def open_repository(self):
                 # str() on the NotBranchError will trigger a call to this,
                 # which in turn will another, identical NotBranchError.
-                raise errors.NotBranchError('path', bzrdir=FakeBzrDir())
-        err = errors.NotBranchError('path', bzrdir=FakeBzrDir())
+                raise errors.NotBranchError('path', controldir=FakeBzrDir())
+        err = errors.NotBranchError('path', controldir=FakeBzrDir())
         self.assertEqual('Not a branch: "path": NotBranchError.', str(err))
 
     def test_invalid_pattern(self):
@@ -720,7 +720,7 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
         error = errors.CorruptRepository(repo)
         self.assertEqualDiff("An error has been detected in the repository %s.\n"
                              "Please run brz reconcile on this repository." %
-                             repo.bzrdir.root_transport.base,
+                             repo.controldir.root_transport.base,
                              str(error))
 
     def test_unknown_bug_tracker_abbreviation(self):
@@ -732,14 +732,14 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
             str(error))
 
     def test_not_branch_bzrdir_with_repo(self):
-        bzrdir = self.make_repository('repo').bzrdir
-        err = errors.NotBranchError('path', bzrdir=bzrdir)
+        controldir = self.make_repository('repo').controldir
+        err = errors.NotBranchError('path', controldir=controldir)
         self.assertEqual(
             'Not a branch: "path": location is a repository.', str(err))
 
     def test_not_branch_bzrdir_without_repo(self):
-        bzrdir = self.make_controldir('bzrdir')
-        err = errors.NotBranchError('path', bzrdir=bzrdir)
+        controldir = self.make_controldir('bzrdir')
+        err = errors.NotBranchError('path', controldir=controldir)
         self.assertEqual('Not a branch: "path".', str(err))
 
     def test_not_branch_laziness(self):
@@ -751,7 +751,7 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
                 self.calls.append('open_repository')
                 raise errors.NoRepositoryPresent(real_bzrdir)
         fake_bzrdir = FakeBzrDir()
-        err = errors.NotBranchError('path', bzrdir=fake_bzrdir)
+        err = errors.NotBranchError('path', controldir=fake_bzrdir)
         self.assertEqual([], fake_bzrdir.calls)
         str(err)
         self.assertEqual(['open_repository'], fake_bzrdir.calls)

@@ -882,7 +882,7 @@ class BzrDirMeta1(BzrDir):
             self.transport.delete_tree(path)
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=urlutils.join(self.transport.base,
-                path), bzrdir=self)
+                path), controldir=self)
 
     def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
