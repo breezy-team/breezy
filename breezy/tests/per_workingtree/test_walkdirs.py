@@ -101,9 +101,9 @@ class TestWalkdirs(TestCaseWithWorkingTree):
 
         if file_status == self.missing:
             # now make the files be missing
-            tree.bzrdir.root_transport.delete(dirblocks[0].relpath)
-            tree.bzrdir.root_transport.delete_tree(dirblocks[1].relpath)
-            tree.bzrdir.root_transport.delete_tree(dirblocks[3].relpath)
+            tree.controldir.root_transport.delete(dirblocks[0].relpath)
+            tree.controldir.root_transport.delete_tree(dirblocks[1].relpath)
+            tree.controldir.root_transport.delete_tree(dirblocks[3].relpath)
 
         expected_dirblocks = [
             (('', tree.path2id('')),
@@ -177,12 +177,12 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         tt.new_symlink('link2',
             root_transaction_id, 'link-target', 'link2')
         tt.apply()
-        tree.bzrdir.root_transport.delete_tree('dir1')
-        tree.bzrdir.root_transport.delete_tree('dir2')
-        tree.bzrdir.root_transport.delete('file1')
-        tree.bzrdir.root_transport.delete('file2')
-        tree.bzrdir.root_transport.delete('link1')
-        tree.bzrdir.root_transport.delete('link2')
+        tree.controldir.root_transport.delete_tree('dir1')
+        tree.controldir.root_transport.delete_tree('dir2')
+        tree.controldir.root_transport.delete('file1')
+        tree.controldir.root_transport.delete('file2')
+        tree.controldir.root_transport.delete('link1')
+        tree.controldir.root_transport.delete('link2')
         changed_paths = ['dir1', 'file1/', 'link1', 'link2/']
         self.build_tree(changed_paths)
         os.symlink('target', 'dir2')
@@ -236,8 +236,8 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         ids = ['file1', 'dir1']
         self.build_tree(paths)
         tree.add(paths, ids)
-        tree.bzrdir.root_transport.delete_tree('dir1')
-        tree.bzrdir.root_transport.delete('file1')
+        tree.controldir.root_transport.delete_tree('dir1')
+        tree.controldir.root_transport.delete('file1')
         changed_paths = ['dir1', 'file1/']
         self.build_tree(changed_paths)
         dir1_stat = os.lstat('dir1')

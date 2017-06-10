@@ -225,7 +225,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         self.assertPathExists(fname2)
 
         # After 'mv' we need to re-open the working tree
-        self.wt = self.wt.bzrdir.open_workingtree()
+        self.wt = self.wt.controldir.open_workingtree()
         self.wt.commit('renamed to non-ascii')
 
         os.mkdir(dirname)
@@ -255,7 +255,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         dirname2 = self.info['directory'] + '2'
         url1 = urlutils.local_path_to_url(dirname1)
         url2 = urlutils.local_path_to_url(dirname2)
-        out_bzrdir = self.wt.bzrdir.sprout(url1)
+        out_bzrdir = self.wt.controldir.sprout(url1)
         out_bzrdir.sprout(url2)
 
         self.build_tree_contents(
@@ -417,7 +417,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         url = urlutils.local_path_to_url(dirname)
         self.run_bzr_decode('root')
 
-        self.wt.bzrdir.sprout(url)
+        self.wt.controldir.sprout(url)
 
         txt = self.run_bzr_decode('root', working_dir=dirname)
         self.assertTrue(txt.endswith(dirname+'\n'))

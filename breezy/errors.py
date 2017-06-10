@@ -659,7 +659,7 @@ class NotBranchError(PathError):
        if detail is not None:
            detail = ': ' + detail
        self.detail = detail
-       self.bzrdir = bzrdir
+       self.controldir = bzrdir
        PathError.__init__(self, path=path)
 
     def __repr__(self):
@@ -670,9 +670,9 @@ class NotBranchError(PathError):
         # Python 2.4 have to be old-style classes so properties don't work.
         # Instead we override _format.
         if self.detail is None:
-            if self.bzrdir is not None:
+            if self.controldir is not None:
                 try:
-                    self.bzrdir.open_repository()
+                    self.controldir.open_repository()
                 except NoRepositoryPresent:
                     self.detail = ''
                 except Exception:
@@ -779,7 +779,7 @@ class IncompatibleFormat(BzrError):
     def __init__(self, format, bzrdir_format):
         BzrError.__init__(self)
         self.format = format
-        self.bzrdir = bzrdir_format
+        self.controldir = bzrdir_format
 
 
 class ParseFormatError(BzrError):
@@ -3202,7 +3202,7 @@ class NoColocatedBranchSupport(BzrError):
     _fmt = ("%(bzrdir)r does not support co-located branches.")
 
     def __init__(self, bzrdir):
-        self.bzrdir = bzrdir
+        self.controldir = bzrdir
 
 
 class NoWhoami(BzrError):

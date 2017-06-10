@@ -310,7 +310,7 @@ class TestErrors(TestCaseWithTransport):
         error = errors.CorruptRepository(repo)
         self.assertEqualDiff("An error has been detected in the repository %s.\n"
                              "Please run brz reconcile on this repository." %
-                             repo.bzrdir.root_transport.base,
+                             repo.controldir.root_transport.base,
                              str(error))
 
     def test_read_error(self):
@@ -648,7 +648,7 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual('Not a branch: "path".', str(err))
 
     def test_not_branch_bzrdir_with_repo(self):
-        bzrdir = self.make_repository('repo').bzrdir
+        bzrdir = self.make_repository('repo').controldir
         err = errors.NotBranchError('path', bzrdir=bzrdir)
         self.assertEqual(
             'Not a branch: "path": location is a repository.', str(err))

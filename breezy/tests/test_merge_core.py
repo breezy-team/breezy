@@ -463,7 +463,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         tree.commit("start branch.", verbose=False)
         # Mary branches it.
         self.build_tree(("mary/",))
-        branch.bzrdir.clone("mary")
+        branch.controldir.clone("mary")
         # Now John commits a change
         file = open("original/file1", "wt")
         file.write("John\n")
@@ -488,7 +488,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.build_tree_contents([('a/file', 'contents\n')])
         wta.add('file')
         wta.commit('base revision', allow_pointless=False)
-        d_b = wta.branch.bzrdir.clone('b')
+        d_b = wta.branch.controldir.clone('b')
         self.build_tree_contents([('a/file', 'other contents\n')])
         wta.commit('other revision', allow_pointless=False)
         self.build_tree_contents([('b/file', 'this contents contents\n')])
@@ -765,7 +765,7 @@ class TestMerger(TestCaseWithTransport):
     def set_up_trees(self):
         this = self.make_branch_and_tree('this')
         this.commit('rev1', rev_id='rev1')
-        other = this.bzrdir.sprout('other').open_workingtree()
+        other = this.controldir.sprout('other').open_workingtree()
         this.commit('rev2a', rev_id='rev2a')
         other.commit('rev2b', rev_id='rev2b')
         return this, other

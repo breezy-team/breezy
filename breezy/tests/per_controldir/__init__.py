@@ -60,12 +60,12 @@ class TestCaseWithControlDir(TestCaseWithTransport):
 
     def setUp(self):
         super(TestCaseWithControlDir, self).setUp()
-        self.bzrdir = None
+        self.controldir = None
 
     def get_bzrdir(self):
-        if self.bzrdir is None:
-            self.bzrdir = self.make_bzrdir(None)
-        return self.bzrdir
+        if self.controldir is None:
+            self.controldir = self.make_bzrdir(None)
+        return self.controldir
 
     def get_default_format(self):
         return self.bzrdir_format

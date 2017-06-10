@@ -211,11 +211,11 @@ def iter_sibling_branches(control_dir, possible_transports=None):
         ref_branch = None
     if ref_branch is None or ref_branch.name:
         if ref_branch is not None:
-            control_dir = ref_branch.bzrdir
+            control_dir = ref_branch.controldir
         for name, branch in control_dir.get_branches().iteritems():
             yield name, branch
     else:
-        repo = ref_branch.bzrdir.find_repository()
+        repo = ref_branch.controldir.find_repository()
         for branch in repo.find_branches(using=True):
             name = urlutils.relative_url(repo.user_url,
                 branch.user_url).rstrip("/")
@@ -1499,16 +1499,15 @@ class cmd_branch(Command):
         if to_dir is None:
             try:
                 # preserve whatever source format we have.
-                to_dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
-                                            possible_transports=[to_transport],
-                                            accelerator_tree=accelerator_tree,
-                                            hardlink=hardlink, stacked=stacked,
-                                            force_new_repo=standalone,
-                                            create_tree_if_local=not no_tree,
-                                            source_branch=br_from)
+                to_dir = br_from.controldir.sprout(
+                    to_transport.base, revision_id,
+                    possible_transports=[to_transport],
+                    accelerator_tree=accelerator_tree, hardlink=hardlink,
+                    stacked=stacked, force_new_repo=standalone,
+                    create_tree_if_local=not no_tree, source_branch=br_from)
                 branch = to_dir.open_branch(
                     possible_transports=[
-                        br_from.bzrdir.root_transport, to_transport])
+                        br_from.controldir.root_transport, to_transport])
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
                 msg = gettext("The branch {0} has no revision {1}.").format(
@@ -1540,7 +1539,7 @@ class cmd_branch(Command):
         if switch:
             # Switch to the new branch
             wt, _ = WorkingTree.open_containing('.')
-            _mod_switch.switch(wt.bzrdir, branch)
+            _mod_switch.switch(wt.controldir, branch)
             note(gettext('Switched to branch: %s'),
                 urlutils.unescape_for_display(branch.base, 'utf-8'))
 
@@ -1661,9 +1660,9 @@ class cmd_checkout(Command):
         if (osutils.abspath(to_location) ==
             osutils.abspath(branch_location)):
             try:
-                source.bzrdir.open_workingtree()
+                source.controldir.open_workingtree()
             except errors.NoWorkingTree:
-                source.bzrdir.create_workingtree(revision_id)
+                source.controldir.create_workingtree(revision_id)
                 return
         source.create_checkout(to_location, revision_id, lightweight,
                                accelerator_tree, hardlink)
@@ -2105,7 +2104,7 @@ class cmd_init(Command):
             to_transport.create_prefix()
 
         try:
-            a_bzrdir = controldir.ControlDir.open_from_transport(to_transport)
+            a_controldir = controldir.ControlDir.open_from_transport(to_transport)
         except errors.NotBranchError:
             # really a NotBzrDir error...
             create_branch = controldir.ControlDir.create_branch_convenience
@@ -2116,17 +2115,17 @@ class cmd_init(Command):
             branch = create_branch(to_transport.base, format=format,
                                    possible_transports=[to_transport],
                                    force_new_tree=force_new_tree)
-            a_bzrdir = branch.bzrdir
+            a_controldir = branch.controldir
         else:
             from .transport.local import LocalTransport
-            if a_bzrdir.has_branch():
+            if a_controldir.has_branch():
                 if (isinstance(to_transport, LocalTransport)
-                    and not a_bzrdir.has_workingtree()):
+                    and not a_controldir.has_workingtree()):
                         raise errors.BranchExistsWithoutWorkingTree(location)
                 raise errors.AlreadyBranchError(location)
-            branch = a_bzrdir.create_branch()
-            if not no_tree and not a_bzrdir.has_workingtree():
-                a_bzrdir.create_workingtree()
+            branch = a_controldir.create_branch()
+            if not no_tree and not a_controldir.has_workingtree():
+                a_controldir.create_workingtree()
         if append_revisions_only:
             try:
                 branch.set_append_revisions_only(True)
@@ -2136,17 +2135,17 @@ class cmd_init(Command):
         if not is_quiet():
             from .info import describe_layout, describe_format
             try:
-                tree = a_bzrdir.open_workingtree(recommend_upgrade=False)
+                tree = a_controldir.open_workingtree(recommend_upgrade=False)
             except (errors.NoWorkingTree, errors.NotLocalUrl):
                 tree = None
             repository = branch.repository
             layout = describe_layout(repository, branch, tree).lower()
-            format = describe_format(a_bzrdir, repository, branch, tree)
+            format = describe_format(a_controldir, repository, branch, tree)
             self.outf.write(gettext("Created a {0} (format: {1})\n").format(
                   layout, format))
             if repository.is_shared():
                 #XXX: maybe this can be refactored into transport.path_or_url()
-                url = repository.bzrdir.root_transport.external_url()
+                url = repository.controldir.root_transport.external_url()
                 try:
                     url = urlutils.local_path_from_url(url)
                 except errors.InvalidURL:
@@ -6236,7 +6235,7 @@ class cmd_switch(Command):
                     gettext('cannot create branch without source branch'))
             to_location = lookup_new_sibling_branch(control_dir, to_location,
                  possible_transports=possible_transports)
-            to_branch = branch.bzrdir.sprout(to_location,
+            to_branch = branch.controldir.sprout(to_location,
                  possible_transports=possible_transports,
                  source_branch=branch).open_branch()
         else:
@@ -6456,16 +6455,16 @@ class cmd_remove_branch(Command):
 
     def run(self, directory=None, location=None, force=False):
         br = open_nearby_branch(near=directory, location=location)
-        if not force and br.bzrdir.has_workingtree():
+        if not force and br.controldir.has_workingtree():
             try:
-                active_branch = br.bzrdir.open_branch(name="")
+                active_branch = br.controldir.open_branch(name="")
             except errors.NotBranchError:
                 active_branch = None
             if (active_branch is not None and
                 br.control_url == active_branch.control_url):
                 raise errors.BzrCommandError(
                     gettext("Branch is active. Use --force to remove it."))
-        br.bzrdir.destroy_branch(br.name)
+        br.controldir.destroy_branch(br.name)
 
 
 class cmd_shelve(Command):

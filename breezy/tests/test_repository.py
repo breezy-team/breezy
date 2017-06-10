@@ -104,16 +104,16 @@ class SampleRepositoryFormat(repository.RepositoryFormatMetaDir):
         """See RepositoryFormat.get_format_string()."""
         return "Sample .bzr repository format."
 
-    def initialize(self, a_bzrdir, shared=False):
+    def initialize(self, a_controldir, shared=False):
         """Initialize a repository in a BzrDir"""
-        t = a_bzrdir.get_repository_transport(self)
+        t = a_controldir.get_repository_transport(self)
         t.put_bytes('format', self.get_format_string())
         return 'A bzr repository dir'
 
     def is_supported(self):
         return False
 
-    def open(self, a_bzrdir, _found=False):
+    def open(self, a_controldir, _found=False):
         return "opened repository."
 
 
@@ -167,7 +167,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
     def test_find_format_with_features(self):
         tree = self.make_branch_and_tree('.', format='2a')
         tree.branch.repository.update_feature_flags({"name": "necessity"})
-        found_format = repository.RepositoryFormatMetaDir.find_format(tree.bzrdir)
+        found_format = repository.RepositoryFormatMetaDir.find_format(tree.controldir)
         self.assertIsInstance(found_format, repository.RepositoryFormatMetaDir)
         self.assertEqual(found_format.features.get("name"), "necessity")
         self.assertRaises(errors.MissingFeature, found_format.check_support_status,
@@ -543,7 +543,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         index = mt.branch.repository.chk_bytes._index._graph_index._indices[0]
         self.assertEqual(btree_index._gcchk_factory, index._leaf_factory)
         # It should also work if we re-open the repo
-        repo = mt.branch.repository.bzrdir.open_repository()
+        repo = mt.branch.repository.controldir.open_repository()
         repo.lock_read()
         self.addCleanup(repo.unlock)
         index = repo.chk_bytes._index._graph_index._indices[0]
@@ -1540,14 +1540,14 @@ class TestGCCHKPacker(TestCaseWithTransport):
                   pack_name_with_rev_C_content)
         """
         b_source = self.make_abc_branch()
-        b_base = b_source.bzrdir.sprout('base', revision_id='A').open_branch()
-        b_stacked = b_base.bzrdir.sprout('stacked', stacked=True).open_branch()
+        b_base = b_source.controldir.sprout('base', revision_id='A').open_branch()
+        b_stacked = b_base.controldir.sprout('stacked', stacked=True).open_branch()
         b_stacked.lock_write()
         self.addCleanup(b_stacked.unlock)
         b_stacked.fetch(b_source, 'B')
         # Now re-open the stacked repo directly (no fallbacks) so that we can
         # fill in the A rev.
-        repo_not_stacked = b_stacked.bzrdir.open_repository()
+        repo_not_stacked = b_stacked.controldir.open_repository()
         repo_not_stacked.lock_write()
         self.addCleanup(repo_not_stacked.unlock)
         # Now we should have a pack file with A's inventory, but not its

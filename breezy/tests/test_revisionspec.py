@@ -52,7 +52,7 @@ class TestRevisionSpec(TestCaseWithTransport):
         self.tree.add(['a'])
         self.tree.commit('a', rev_id='r1')
 
-        self.tree2 = self.tree.bzrdir.sprout('tree2').open_workingtree()
+        self.tree2 = self.tree.controldir.sprout('tree2').open_workingtree()
         self.tree2.commit('alt', rev_id='alt_r2')
 
         self.tree.merge_from_branch(self.tree2.branch)
@@ -597,7 +597,7 @@ class TestRevisionSpec_ancestor(TestRevisionSpec):
                           'ancestor:')
 
         # Create a branch with a parent to default to
-        tree3 = self.tree.bzrdir.sprout('tree3').open_workingtree()
+        tree3 = self.tree.controldir.sprout('tree3').open_workingtree()
         tree3.commit('foo', rev_id='r3')
         self.tree = tree3
         self.assertInHistoryIs(2, 'r2', 'ancestor:')

@@ -2015,12 +2015,12 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
         self.transport_server = test_server.FakeVFATServer
         self.assertFalse(self.get_url('t1').startswith('file://'))
         tree = self.make_branch_and_tree('t1')
-        base = tree.bzrdir.root_transport.base
+        base = tree.controldir.root_transport.base
         self.assertStartsWith(base, 'file://')
-        self.assertEqual(tree.bzrdir.root_transport,
-                tree.branch.bzrdir.root_transport)
-        self.assertEqual(tree.bzrdir.root_transport,
-                tree.branch.repository.bzrdir.root_transport)
+        self.assertEqual(tree.controldir.root_transport,
+                tree.branch.controldir.root_transport)
+        self.assertEqual(tree.controldir.root_transport,
+                tree.branch.repository.controldir.root_transport)
 
 
 class SelfTestHelper(object):

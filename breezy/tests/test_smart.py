@@ -251,7 +251,7 @@ class TestSmartServerBzrDirRequestDestroyBranch(
     def test_destroy_branch_default(self):
         """The default branch can be removed."""
         backing = self.get_transport()
-        dir = self.make_branch('.').bzrdir
+        dir = self.make_branch('.').controldir
         request_class = smart_dir.SmartServerBzrDirRequestDestroyBranch
         request = request_class(backing)
         expected = smart_req.SuccessfulSmartServerResponse(('ok',))
@@ -260,7 +260,7 @@ class TestSmartServerBzrDirRequestDestroyBranch(
     def test_destroy_branch_named(self):
         """A named branch can be removed."""
         backing = self.get_transport()
-        dir = self.make_repository('.', format="development-colo").bzrdir
+        dir = self.make_repository('.', format="development-colo").controldir
         dir.create_branch(name="branchname")
         request_class = smart_dir.SmartServerBzrDirRequestDestroyBranch
         request = request_class(backing)
@@ -284,7 +284,7 @@ class TestSmartServerBzrDirRequestHasWorkingTree(
     def test_has_workingtree_yes(self):
         """A working tree is present."""
         backing = self.get_transport()
-        dir = self.make_branch_and_tree('.').bzrdir
+        dir = self.make_branch_and_tree('.').controldir
         request_class = smart_dir.SmartServerBzrDirRequestHasWorkingTree
         request = request_class(backing)
         expected = smart_req.SuccessfulSmartServerResponse(('yes',))
@@ -307,7 +307,7 @@ class TestSmartServerBzrDirRequestDestroyRepository(
     def test_destroy_repository_default(self):
         """The repository can be removed."""
         backing = self.get_transport()
-        dir = self.make_repository('.').bzrdir
+        dir = self.make_repository('.').controldir
         request_class = smart_dir.SmartServerBzrDirRequestDestroyRepository
         request = request_class(backing)
         expected = smart_req.SuccessfulSmartServerResponse(('ok',))
@@ -651,7 +651,7 @@ class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('reference',lightweight=True)
         reference_url = _mod_branch.BranchReferenceFormat().get_reference(
-            checkout.bzrdir)
+            checkout.controldir)
         self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
         self.assertEqual(smart_req.SmartServerResponse(('ok', reference_url)),
             request.execute('reference'))
@@ -692,7 +692,7 @@ class TestSmartServerRequestOpenBranchV2(TestCaseWithChrootedTransport):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('reference',lightweight=True)
         reference_url = _mod_branch.BranchReferenceFormat().get_reference(
-            checkout.bzrdir)
+            checkout.controldir)
         self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(
                 ('ref', reference_url)),
@@ -755,7 +755,7 @@ class TestSmartServerRequestOpenBranchV3(TestCaseWithChrootedTransport):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('reference',lightweight=True)
         reference_url = _mod_branch.BranchReferenceFormat().get_reference(
-            checkout.bzrdir)
+            checkout.controldir)
         self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(
                 ('ref', reference_url)),
@@ -955,7 +955,7 @@ class TestSmartServerBranchRequestSetConfigOption(TestLockedBranch):
     def test_value_name(self):
         branch = self.make_branch('.')
         request = smart_branch.SmartServerBranchRequestSetConfigOption(
-            branch.bzrdir.root_transport)
+            branch.controldir.root_transport)
         branch_token, repo_token = self.get_lock_tokens(branch)
         config = branch._get_config()
         result = request.execute('', branch_token, repo_token, 'bar', 'foo',
@@ -968,7 +968,7 @@ class TestSmartServerBranchRequestSetConfigOption(TestLockedBranch):
     def test_value_name_section(self):
         branch = self.make_branch('.')
         request = smart_branch.SmartServerBranchRequestSetConfigOption(
-            branch.bzrdir.root_transport)
+            branch.controldir.root_transport)
         branch_token, repo_token = self.get_lock_tokens(branch)
         config = branch._get_config()
         result = request.execute('', branch_token, repo_token, 'bar', 'foo',
@@ -993,7 +993,7 @@ class TestSmartServerBranchRequestSetConfigOptionDict(TestLockedBranch):
     def test_value_name(self):
         branch = self.make_branch('.')
         request = smart_branch.SmartServerBranchRequestSetConfigOptionDict(
-            branch.bzrdir.root_transport)
+            branch.controldir.root_transport)
         branch_token, repo_token = self.get_lock_tokens(branch)
         config = branch._get_config()
         result = request.execute('', branch_token, repo_token,
@@ -1006,7 +1006,7 @@ class TestSmartServerBranchRequestSetConfigOptionDict(TestLockedBranch):
     def test_value_name_section(self):
         branch = self.make_branch('.')
         request = smart_branch.SmartServerBranchRequestSetConfigOptionDict(
-            branch.bzrdir.root_transport)
+            branch.controldir.root_transport)
         branch_token, repo_token = self.get_lock_tokens(branch)
         config = branch._get_config()
         result = request.execute('', branch_token, repo_token,
@@ -1324,7 +1324,7 @@ class TestSmartServerBranchRequestSetParent(TestLockedBranch):
             branch.unlock()
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(()), response)
         # Refresh branch as SetParentLocation modified it
-        branch = branch.bzrdir.open_branch()
+        branch = branch.controldir.open_branch()
         self.assertEqual(None, branch.get_parent())
 
     def test_set_parent_something(self):
@@ -1386,7 +1386,7 @@ class TestSmartServerBranchRequestLockWrite(TestLockedBranch):
                          response)
         # The branch (and associated repository) is now locked.  Verify that
         # with a new branch object.
-        new_branch = repository.bzrdir.open_branch()
+        new_branch = repository.controldir.open_branch()
         self.assertRaises(errors.LockContention, new_branch.lock_write)
         # Cleanup
         request = smart_branch.SmartServerBranchRequestUnlock(backing)
@@ -1520,7 +1520,7 @@ class TestSmartServerBranchRequestUnlock(TestLockedBranch):
             smart_req.SmartServerResponse(('ok',)), response)
         # The branch is now unlocked.  Verify that with a new branch
         # object.
-        new_branch = branch.bzrdir.open_branch()
+        new_branch = branch.controldir.open_branch()
         new_branch.lock_write()
         new_branch.unlock()
 
@@ -2112,7 +2112,7 @@ class TestSmartServerRepositoryLockWrite(tests.TestCaseWithMemoryTransport):
         self.assertEqual(smart_req.SmartServerResponse(('ok', nonce)), response)
         # The repository is now locked.  Verify that with a new repository
         # object.
-        new_repo = repository.bzrdir.open_repository()
+        new_repo = repository.controldir.open_repository()
         self.assertRaises(errors.LockContention, new_repo.lock_write)
         # Cleanup
         request = smart_repo.SmartServerRepositoryUnlock(backing)
@@ -2204,7 +2204,7 @@ class TestSmartServerRepositoryUnlock(tests.TestCaseWithMemoryTransport):
             smart_req.SmartServerResponse(('ok',)), response)
         # The repository is now unlocked.  Verify that with a new repository
         # object.
-        new_repo = repository.bzrdir.open_repository()
+        new_repo = repository.controldir.open_repository()
         new_repo.lock_write()
         new_repo.unlock()
 
@@ -2289,7 +2289,7 @@ class TestSmartServerRepositorySetMakeWorkingTrees(
         request = request_class(backing)
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(('ok',)),
             request.execute('', 'False'))
-        repo = repo.bzrdir.open_repository()
+        repo = repo.controldir.open_repository()
         self.assertFalse(repo.make_working_trees())
 
     def test_set_true(self):
@@ -2300,7 +2300,7 @@ class TestSmartServerRepositorySetMakeWorkingTrees(
         request = request_class(backing)
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(('ok',)),
             request.execute('', 'True'))
-        repo = repo.bzrdir.open_repository()
+        repo = repo.controldir.open_repository()
         self.assertTrue(repo.make_working_trees())
 
 

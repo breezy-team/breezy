@@ -132,7 +132,7 @@ class TestCaseWithInterBranch(TestCaseWithTransport):
         newbranch.repository.fetch(origbranch.repository)
         origbranch.copy_content_into(newbranch)
         if format.supports_workingtrees:
-            wt = newbranch.bzrdir.create_workingtree()
+            wt = newbranch.controldir.create_workingtree()
         else:
             wt = newbranch.create_checkout(to_url, lightweight=True)
         return wt
@@ -141,14 +141,14 @@ class TestCaseWithInterBranch(TestCaseWithTransport):
         """Sprout a bzrdir, using to_format for the new branch."""
         wt = self._sprout(origdir, to_url, self.branch_format_to._matchingbzrdir)
         self.assertEqual(wt.branch._format, self.branch_format_to)
-        return wt.bzrdir
+        return wt.controldir
 
     def sprout_from(self, origdir, to_url):
         """Sprout a bzrdir, using from_format for the new bzrdir."""
         wt = self._sprout(origdir, to_url,
             self.branch_format_from._matchingbzrdir)
         self.assertEqual(wt.branch._format, self.branch_format_from)
-        return wt.bzrdir
+        return wt.controldir
 
 
 class StubWithFormat(object):

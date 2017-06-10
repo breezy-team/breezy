@@ -1156,7 +1156,7 @@ class BundleTester(object):
         self.tree1.add('file3', 'file3-id')
         self.tree1.commit('rev2')
         # Updating file2 should not cause an attempt to add to file1's vf
-        target = self.tree1.bzrdir.sprout('target').open_workingtree()
+        target = self.tree1.controldir.sprout('target').open_workingtree()
         self.build_tree_contents([('tree/file2', 'contents3')])
         self.tree1.commit('rev3', rev_id='rev3')
         bundle = self.get_valid_bundle('reva', 'rev3')
@@ -1638,7 +1638,7 @@ class V4_2aBundleTester(V4BundleTester):
 
     def test_creating_bundle_preserves_chk_pages(self):
         self.make_merged_branch()
-        target = self.b1.bzrdir.sprout('target',
+        target = self.b1.controldir.sprout('target',
                                        revision_id='a@cset-0-2a').open_branch()
         bundle_txt, rev_ids = self.create_bundle_text('a@cset-0-2a',
                                                       'a@cset-0-3')

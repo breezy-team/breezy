@@ -46,8 +46,8 @@ class TestUpgrade(tests.TestCaseWithTransport):
         b.set_bound_location('file:///GH')
         b.set_push_location('file:///IJ')
         target = controldir.format_registry.make_bzrdir('dirstate-with-subtree')
-        converter = b.bzrdir._format.get_converter(target)
-        converter.convert(b.bzrdir, None)
+        converter = b.controldir._format.get_converter(target)
+        converter.convert(b.controldir, None)
         new_branch = branch.Branch.open(self.get_url('branch'))
         self.assertIs(new_branch.__class__, branch.BzrBranch6)
         self.assertEqual('CD', new_branch.last_revision())
@@ -57,8 +57,8 @@ class TestUpgrade(tests.TestCaseWithTransport):
         self.assertEqual('file:///IJ', branch_config.get('push_location'))
 
         b2 = self.make_branch('branch2', format='knit')
-        converter = b2.bzrdir._format.get_converter(target)
-        converter.convert(b2.bzrdir, None)
+        converter = b2.controldir._format.get_converter(target)
+        converter.convert(b2.controldir, None)
         b2 = branch.Branch.open(self.get_url('branch'))
         self.assertIs(b2.__class__, branch.BzrBranch6)
 
@@ -66,8 +66,8 @@ class TestUpgrade(tests.TestCaseWithTransport):
         b = self.make_branch('branch', format='1.9')
         target = controldir.format_registry.make_bzrdir('1.9')
         target.set_branch_format(branch.BzrBranchFormat8())
-        converter = b.bzrdir._format.get_converter(target)
-        converter.convert(b.bzrdir, None)
+        converter = b.controldir._format.get_converter(target)
+        converter.convert(b.controldir, None)
         b = branch.Branch.open(self.get_url('branch'))
         self.assertIs(b.__class__, branch.BzrBranch8)
         self.assertEqual({}, b._get_all_reference_info())
@@ -76,8 +76,8 @@ class TestUpgrade(tests.TestCaseWithTransport):
         # test that asking for an upgrade from knit to dirstate works.
         tree = self.make_branch_and_tree('tree', format='knit')
         target = controldir.format_registry.make_bzrdir('dirstate')
-        converter = tree.bzrdir._format.get_converter(target)
-        converter.convert(tree.bzrdir, None)
+        converter = tree.controldir._format.get_converter(target)
+        converter.convert(tree.controldir, None)
         new_tree = workingtree.WorkingTree.open('tree')
         self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
         self.assertEqual('null:', new_tree.last_revision())
@@ -89,8 +89,8 @@ class TestUpgrade(tests.TestCaseWithTransport):
         self.build_tree(['tree/file'])
         tree.add(['file'], ['file-id'])
         target = controldir.format_registry.make_bzrdir('dirstate')
-        converter = tree.bzrdir._format.get_converter(target)
-        converter.convert(tree.bzrdir, None)
+        converter = tree.controldir._format.get_converter(target)
+        converter.convert(tree.controldir, None)
         new_tree = workingtree.WorkingTree.open('tree')
         self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
         self.assertEqual('null:', new_tree.last_revision())
@@ -100,8 +100,8 @@ class TestUpgrade(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree', format='knit')
         rev_id = tree.commit('first post')
         target = controldir.format_registry.make_bzrdir('dirstate')
-        converter = tree.bzrdir._format.get_converter(target)
-        converter.convert(tree.bzrdir, None)
+        converter = tree.controldir._format.get_converter(target)
+        converter.convert(tree.controldir, None)
         new_tree = workingtree.WorkingTree.open('tree')
         self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
         self.assertEqual(rev_id, new_tree.last_revision())
@@ -112,13 +112,13 @@ class TestUpgrade(tests.TestCaseWithTransport):
     def test_convert_knit_merges_dirstate(self):
         tree = self.make_branch_and_tree('tree', format='knit')
         rev_id = tree.commit('first post')
-        merge_tree = tree.bzrdir.sprout('tree2').open_workingtree()
+        merge_tree = tree.controldir.sprout('tree2').open_workingtree()
         rev_id2 = tree.commit('second post')
         rev_id3 = merge_tree.commit('second merge post')
         tree.merge_from_branch(merge_tree.branch)
         target = controldir.format_registry.make_bzrdir('dirstate')
-        converter = tree.bzrdir._format.get_converter(target)
-        converter.convert(tree.bzrdir, None)
+        converter = tree.controldir._format.get_converter(target)
+        converter.convert(tree.controldir, None)
         new_tree = workingtree.WorkingTree.open('tree')
         self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
         self.assertEqual(rev_id2, new_tree.last_revision())
@@ -135,7 +135,7 @@ class TestSmartUpgrade(tests.TestCaseWithTransport):
 
     def make_standalone_branch(self):
         wt = self.make_branch_and_tree("branch1", format=self.from_format)
-        return wt.bzrdir
+        return wt.controldir
 
     def test_upgrade_standalone_branch(self):
         control = self.make_standalone_branch()
@@ -174,7 +174,7 @@ class TestSmartUpgrade(tests.TestCaseWithTransport):
             format=self.from_format)
         b2 = controldir.ControlDir.create_branch_convenience("repo/branch2",
             format=self.from_format)
-        return repo.bzrdir
+        return repo.controldir
 
     def test_upgrade_repo_with_branches(self):
         control = self.make_repo_with_branches()

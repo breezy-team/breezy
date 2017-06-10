@@ -142,7 +142,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         """setup an abc content tree."""
         files = ['a', 'b/', 'b/c']
         self.build_tree(files, line_endings='binary',
-                        transport=tree.bzrdir.root_transport)
+                        transport=tree.controldir.root_transport)
         tree.set_root_id('root-id')
         tree.add(files, ['a-id', 'b-id', 'c-id'])
 
@@ -219,7 +219,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         This variation adds a dir 'd' ('d-id'), renames b to d/e.
         """
         self._make_abc_tree(tree)
-        self.build_tree(['d/'], transport=tree.bzrdir.root_transport)
+        self.build_tree(['d/'], transport=tree.controldir.root_transport)
         tree.add(['d'], ['d-id'])
         tt = transform.TreeTransform(tree)
         trans_id = tt.trans_id_tree_path('b')
@@ -324,7 +324,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
     def get_tree_with_merged_utf8(self, tree):
         """Generate a tree with utf8 ancestors."""
         self._create_tree_with_utf8(tree)
-        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        tree2 = tree.controldir.sprout('tree2').open_workingtree()
         self.build_tree([u'tree2/ba\N{Euro Sign}r/qu\N{Euro Sign}x'])
         tree2.add([u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'],
                   [u'qu\N{Euro Sign}x-id'.encode('utf-8')])

@@ -53,7 +53,7 @@ class TestNoColocatedSupport(per_controldir.TestCaseWithControlDir):
         # destroy_branch should not be supported at all
         self.assertRaises(
             (errors.NoColocatedBranchSupport, errors.UnsupportedOperation),
-            branch.bzrdir.destroy_branch, 'colo')
+            branch.controldir.destroy_branch, 'colo')
 
     def test_create_colo_branch(self):
         made_control = self.make_bzrdir_with_repo()

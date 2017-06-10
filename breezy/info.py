@@ -345,21 +345,21 @@ def _show_repository_stats(repository, stats, outfile):
         outfile.write(f.getvalue())
 
 
-def show_bzrdir_info(a_bzrdir, verbose=False, outfile=None):
-    """Output to stdout the 'info' for a_bzrdir."""
+def show_bzrdir_info(a_controldir, verbose=False, outfile=None):
+    """Output to stdout the 'info' for a_controldir."""
     if outfile is None:
         outfile = sys.stdout
     try:
-        tree = a_bzrdir.open_workingtree(
+        tree = a_controldir.open_workingtree(
             recommend_upgrade=False)
     except (NoWorkingTree, NotLocalUrl, NotBranchError):
         tree = None
         try:
-            branch = a_bzrdir.open_branch(name="")
+            branch = a_controldir.open_branch(name="")
         except NotBranchError:
             branch = None
             try:
-                repository = a_bzrdir.open_repository()
+                repository = a_controldir.open_repository()
             except NoRepositoryPresent:
                 lockable = None
                 repository = None
@@ -376,7 +376,7 @@ def show_bzrdir_info(a_bzrdir, verbose=False, outfile=None):
     if lockable is not None:
         lockable.lock_read()
     try:
-        show_component_info(a_bzrdir, repository, branch, tree, verbose,
+        show_component_info(a_controldir, repository, branch, tree, verbose,
                             outfile)
     finally:
         if lockable is not None:

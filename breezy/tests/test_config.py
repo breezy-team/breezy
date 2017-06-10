@@ -163,7 +163,7 @@ def build_remote_control_stack(test):
     # creating a dedicated helper to create only the bzrdir
     build_backing_branch(test, 'branch', transport_class, server_class)
     b = branch.Branch.open(test.get_url('branch'))
-    return config.RemoteControlStack(b.bzrdir)
+    return config.RemoteControlStack(b.controldir)
 config.test_stack_builder_registry.register('remote_control',
                                             build_remote_control_stack)
 

@@ -63,7 +63,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         test_branch = self.make_branch('test-branch')
         try:
             # if there is a working tree now, this is not supported.
-            test_branch.bzrdir.open_workingtree()
+            test_branch.controldir.open_workingtree()
             raise TestNotApplicable("only on trees that can be separate"
                 " from their branch.")
         except (errors.NoWorkingTree, errors.NotLocalUrl):
@@ -141,7 +141,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_open_containing(self):
         local_wt = self.make_branch_and_tree('.')
-        local_url = local_wt.bzrdir.root_transport.base
+        local_url = local_wt.controldir.root_transport.base
         local_base = urlutils.local_path_from_url(local_url)
         del local_wt
 
@@ -330,13 +330,13 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_clone_trivial(self):
         wt = self.make_branch_and_tree('source')
-        cloned_dir = wt.bzrdir.clone('target')
+        cloned_dir = wt.controldir.clone('target')
         cloned = cloned_dir.open_workingtree()
         self.assertEqual(cloned.get_parent_ids(), wt.get_parent_ids())
 
     def test_clone_empty(self):
         wt = self.make_branch_and_tree('source')
-        cloned_dir = wt.bzrdir.clone('target', revision_id=_mod_revision.NULL_REVISION)
+        cloned_dir = wt.controldir.clone('target', revision_id=_mod_revision.NULL_REVISION)
         cloned = cloned_dir.open_workingtree()
         self.assertEqual(cloned.get_parent_ids(), wt.get_parent_ids())
 
@@ -394,7 +394,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_clone_and_commit_preserves_last_revision(self):
         """Doing a commit into a clone tree does not affect the source."""
         wt = self.make_branch_and_tree('source')
-        cloned_dir = wt.bzrdir.clone('target')
+        cloned_dir = wt.controldir.clone('target')
         wt.commit('A', allow_pointless=True, rev_id='A')
         self.assertNotEqual(cloned_dir.open_workingtree().get_parent_ids(),
                             wt.get_parent_ids())
@@ -402,14 +402,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_clone_preserves_content(self):
         wt = self.make_branch_and_tree('source')
         self.build_tree(['added', 'deleted', 'notadded'],
-                        transport=wt.bzrdir.transport.clone('..'))
+                        transport=wt.controldir.transport.clone('..'))
         wt.add('deleted', 'deleted')
         wt.commit('add deleted')
         wt.remove('deleted')
         wt.add('added', 'added')
-        cloned_dir = wt.bzrdir.clone('target')
+        cloned_dir = wt.controldir.clone('target')
         cloned = cloned_dir.open_workingtree()
-        cloned_transport = cloned.bzrdir.transport.clone('..')
+        cloned_transport = cloned.controldir.transport.clone('..')
         self.assertFalse(cloned_transport.has('deleted'))
         self.assertTrue(cloned_transport.has('added'))
         self.assertFalse(cloned_transport.has('notadded'))
@@ -575,9 +575,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree_contents([('b1/a', 'a test\n'), ('b1/b', 'b test\n')])
         this.add(['a', 'b'])
         this.commit(message='')
-        base = this.bzrdir.clone('b2').open_workingtree()
+        base = this.controldir.clone('b2').open_workingtree()
         self.build_tree_contents([('b2/a', 'b test\n')])
-        other = this.bzrdir.clone('b3').open_workingtree()
+        other = this.controldir.clone('b3').open_workingtree()
         self.build_tree_contents([('b3/a', 'c test\n'), ('b3/c', 'c test\n')])
         other.add('c')
 
@@ -966,14 +966,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             raise TestNotApplicable("get_format_string is only available "
                                     "on bzr working trees")
         # now we cheat, and make a file that matches the case-sensitive name
-        t = tree.bzrdir.get_workingtree_transport(None)
+        t = tree.controldir.get_workingtree_transport(None)
         try:
             content = tree._format.get_format_string()
         except NotImplementedError:
             # All-in-one formats didn't have a separate format string.
-            content = tree.bzrdir._format.get_format_string()
+            content = tree.controldir._format.get_format_string()
         t.put_bytes(tree._format.case_sensitive_filename, content)
-        tree = tree.bzrdir.open_workingtree()
+        tree = tree.controldir.open_workingtree()
         self.assertFalse(tree.case_sensitive)
 
     def test_supports_executable(self):
@@ -1020,7 +1020,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             # or may not raise an exception.  But if it does, it must be
             # HardLinkNotSupported
             try:
-                source.bzrdir.sprout('target', accelerator_tree=source,
+                source.controldir.sprout('target', accelerator_tree=source,
                                      hardlink=True)
             except errors.HardLinkNotSupported:
                 pass
@@ -1075,7 +1075,7 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
             branch_revid = master_revid
         final_branch = builder.get_branch()
         # The master branch
-        master = final_branch.bzrdir.sprout(master_path,
+        master = final_branch.controldir.sprout(master_path,
                                             master_revid).open_branch()
         # The checkout
         wt = self.make_branch_and_tree(wt_path)

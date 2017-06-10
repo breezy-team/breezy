@@ -50,7 +50,7 @@ class TestPlanFileMerge(TestCaseWithTree):
         self.build_tree_contents([('wta/file', 'a\nb\nc\nd\n')])
         work_a.add('file', 'file-id')
         work_a.commit('base version')
-        work_b = work_a.bzrdir.sprout('wtb').open_workingtree()
+        work_b = work_a.controldir.sprout('wtb').open_workingtree()
         self.build_tree_contents([('wta/file', 'b\nc\nd\ne\n')])
         tree_a = self.workingtree_to_test_tree(work_a)
         tree_a.lock_read()

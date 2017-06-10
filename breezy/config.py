@@ -3968,7 +3968,7 @@ class RemoteControlStack(Stack):
         super(RemoteControlStack, self).__init__(
             [NameMatcher(cstore, None).get_sections],
             cstore)
-        self.bzrdir = bzrdir
+        self.controldir = bzrdir
 
 
 class BranchOnlyStack(Stack):

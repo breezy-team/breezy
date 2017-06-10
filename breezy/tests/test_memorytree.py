@@ -29,7 +29,7 @@ class TestMemoryTree(TestCaseWithTransport):
         """Creating a mutable tree on a trivial branch works."""
         branch = self.make_branch('branch')
         tree = MemoryTree.create_on_branch(branch)
-        self.assertEqual(branch.bzrdir, tree.bzrdir)
+        self.assertEqual(branch.controldir, tree.controldir)
         self.assertEqual(branch, tree.branch)
         self.assertEqual([], tree.get_parent_ids())
 

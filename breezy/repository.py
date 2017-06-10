@@ -363,7 +363,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         super(Repository, self).__init__()
         self._format = _format
         # the following are part of the public API for Repository:
-        self.bzrdir = controldir
+        self.controldir = controldir
         self.control_files = control_files
         # for tests
         self._write_group = None
@@ -372,7 +372,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
 
     @property
     def user_transport(self):
-        return self.bzrdir.user_transport
+        return self.controldir.user_transport
 
     @property
     def control_transport(self):
@@ -545,7 +545,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         :param using: If True, list only branches using this repository.
         """
         if using and not self.is_shared():
-            return self.bzrdir.list_branches()
+            return self.controldir.list_branches()
         class Evaluator(object):
 
             def __init__(self):
@@ -788,17 +788,17 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         dest_repo.fetch(self, revision_id=revision_id)
         return dest_repo
 
-    def _create_sprouting_repo(self, a_bzrdir, shared):
-        if not isinstance(a_bzrdir._format, self.bzrdir._format.__class__):
+    def _create_sprouting_repo(self, a_controldir, shared):
+        if not isinstance(a_controldir._format, self.controldir._format.__class__):
             # use target default format.
-            dest_repo = a_bzrdir.create_repository()
+            dest_repo = a_controldir.create_repository()
         else:
             # Most control formats need the repository to be specifically
             # created, but on some old all-in-one formats it's not needed
             try:
-                dest_repo = self._format.initialize(a_bzrdir, shared=shared)
+                dest_repo = self._format.initialize(a_controldir, shared=shared)
             except errors.UninitializableFormat:
-                dest_repo = a_bzrdir.open_repository()
+                dest_repo = a_controldir.open_repository()
         return dest_repo
 
     @needs_read_lock
@@ -1186,7 +1186,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                 return
             warning("Format %s for %s is deprecated -"
                     " please use 'brz upgrade' to get better performance"
-                    % (self._format, self.bzrdir.transport.base))
+                    % (self._format, self.controldir.transport.base))
         finally:
             _deprecation_warning_done = True
 
@@ -1217,8 +1217,8 @@ class MetaDirRepository(Repository):
         typically pointing to .bzr/repository.
     """
 
-    def __init__(self, _format, a_bzrdir, control_files):
-        super(MetaDirRepository, self).__init__(_format, a_bzrdir, control_files)
+    def __init__(self, _format, a_controldir, control_files):
+        super(MetaDirRepository, self).__init__(_format, a_controldir, control_files)
         self._transport = control_files._transport
 
     def is_shared(self):
@@ -1242,7 +1242,7 @@ class MetaDirRepository(Repository):
                 pass
         else:
             self._transport.put_bytes('no-working-trees', '',
-                mode=self.bzrdir._get_file_mode())
+                mode=self.controldir._get_file_mode())
 
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
@@ -1465,47 +1465,47 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
         RepositoryFormat.__init__(self)
         bzrdir.BzrFormat.__init__(self)
 
-    def _create_control_files(self, a_bzrdir):
+    def _create_control_files(self, a_controldir):
         """Create the required files and the initial control_files object."""
         # FIXME: RBC 20060125 don't peek under the covers
         # NB: no need to escape relative paths that are url safe.
-        repository_transport = a_bzrdir.get_repository_transport(self)
+        repository_transport = a_controldir.get_repository_transport(self)
         control_files = lockable_files.LockableFiles(repository_transport,
                                 'lock', lockdir.LockDir)
         control_files.create_lock()
         return control_files
 
-    def _upload_blank_content(self, a_bzrdir, dirs, files, utf8_files, shared):
+    def _upload_blank_content(self, a_controldir, dirs, files, utf8_files, shared):
         """Upload the initial blank content."""
-        control_files = self._create_control_files(a_bzrdir)
+        control_files = self._create_control_files(a_controldir)
         control_files.lock_write()
         transport = control_files._transport
         if shared == True:
             utf8_files += [('shared-storage', '')]
         try:
-            transport.mkdir_multi(dirs, mode=a_bzrdir._get_dir_mode())
+            transport.mkdir_multi(dirs, mode=a_controldir._get_dir_mode())
             for (filename, content_stream) in files:
                 transport.put_file(filename, content_stream,
-                    mode=a_bzrdir._get_file_mode())
+                    mode=a_controldir._get_file_mode())
             for (filename, content_bytes) in utf8_files:
                 transport.put_bytes_non_atomic(filename, content_bytes,
-                    mode=a_bzrdir._get_file_mode())
+                    mode=a_controldir._get_file_mode())
         finally:
             control_files.unlock()
 
     @classmethod
-    def find_format(klass, a_bzrdir):
-        """Return the format for the repository object in a_bzrdir.
+    def find_format(klass, a_controldir):
+        """Return the format for the repository object in a_controldir.
 
         This is used by brz native formats that have a "format" file in
         the repository.  Other methods may be used by different types of
         control directory.
         """
         try:
-            transport = a_bzrdir.get_repository_transport(None)
+            transport = a_controldir.get_repository_transport(None)
             format_string = transport.get_bytes("format")
         except errors.NoSuchFile:
-            raise errors.NoRepositoryPresent(a_bzrdir)
+            raise errors.NoRepositoryPresent(a_controldir)
         return klass._find_format(format_registry, 'repository', format_string)
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
@@ -1719,7 +1719,7 @@ class CopyConverter(object):
         # this is only useful with metadir layouts - separated repo content.
         # trigger an assertion if not such
         repo._format.get_format_string()
-        self.repo_dir = repo.bzrdir
+        self.repo_dir = repo.controldir
         pb.update(gettext('Moving repository to repository.backup'))
         self.repo_dir.transport.move('repository', 'repository.backup')
         backup_transport =  self.repo_dir.transport.clone('repository.backup')

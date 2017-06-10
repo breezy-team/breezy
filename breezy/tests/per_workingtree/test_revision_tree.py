@@ -52,7 +52,7 @@ class TestRevisionTree(per_workingtree.TestCaseWithWorkingTree):
     def test_get_pending_merge_revision_tree(self):
         tree = self.make_branch_and_tree('tree1')
         tree.commit('first post')
-        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        tree2 = tree.controldir.sprout('tree2').open_workingtree()
         revision1 = tree2.commit('commit in branch', allow_pointless=True)
         tree.merge_from_branch(tree2.branch)
         try:
@@ -94,11 +94,11 @@ class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree(relpath)
         files = ['a', 'b/', 'b/c']
         self.build_tree(files, line_endings='binary',
-                        transport=tree.bzrdir.root_transport)
+                        transport=tree.controldir.root_transport)
         tree.set_root_id('root-id')
         tree.add(files, ['a-id', 'b-id', 'c-id'])
         tree.commit('a, b and b/c', rev_id='base')
-        tree2 = tree.bzrdir.sprout(relpath + '2').open_workingtree()
+        tree2 = tree.controldir.sprout(relpath + '2').open_workingtree()
         # Delete 'a' in tree
         tree.remove('a', keep_files=False)
         tree.commit('remove a', rev_id='this')

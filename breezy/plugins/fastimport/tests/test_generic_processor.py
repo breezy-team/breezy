@@ -60,7 +60,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
             generic_processor,
             )
         branch = self.make_branch('.', format=self.branch_format)
-        handler = generic_processor.GenericProcessor(branch.bzrdir)
+        handler = generic_processor.GenericProcessor(branch.controldir)
         return handler, branch
 
     # FIXME: [] as a default is bad, as it is mutable, but I want

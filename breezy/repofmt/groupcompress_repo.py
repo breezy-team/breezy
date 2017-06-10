@@ -801,10 +801,10 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
 class CHKInventoryRepository(PackRepository):
     """subclass of PackRepository that uses CHK based inventories."""
 
-    def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
+    def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
         _serializer):
         """Overridden to change pack collection class."""
-        super(CHKInventoryRepository, self).__init__(_format, a_bzrdir,
+        super(CHKInventoryRepository, self).__init__(_format, a_controldir,
             control_files, _commit_builder_class, _serializer)
         index_transport = self._transport.clone('indices')
         self._pack_collection = GCRepositoryPackCollection(self,

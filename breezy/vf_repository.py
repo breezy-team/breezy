@@ -1198,7 +1198,7 @@ class VersionedFileRepository(Repository):
         # The old API returned a list, should this actually be a set?
         return parent_map.keys()
 
-    def __init__(self, _format, a_bzrdir, control_files):
+    def __init__(self, _format, a_controldir, control_files):
         """Instantiate a VersionedFileRepository.
 
         :param _format: The format of the repository on disk.
@@ -1208,7 +1208,7 @@ class VersionedFileRepository(Repository):
         # In the future we will have a single api for all stores for
         # getting file texts, inventories and revisions, then
         # this construct will accept instances of those things.
-        super(VersionedFileRepository, self).__init__(_format, a_bzrdir,
+        super(VersionedFileRepository, self).__init__(_format, a_controldir,
             control_files)
         self._transport = control_files._transport
         self.base = self._transport.base
@@ -2001,8 +2001,8 @@ class MetaDirVersionedFileRepository(MetaDirRepository,
                                      VersionedFileRepository):
     """Repositories in a meta-dir, that work via versioned file objects."""
 
-    def __init__(self, _format, a_bzrdir, control_files):
-        super(MetaDirVersionedFileRepository, self).__init__(_format, a_bzrdir,
+    def __init__(self, _format, a_controldir, control_files):
+        super(MetaDirVersionedFileRepository, self).__init__(_format, a_controldir,
             control_files)
 
 
@@ -2753,9 +2753,9 @@ class InterDifferingSerializer(InterVersionedFileRepository):
             return True
         # Only use this code path for local source and target.  IDS does far
         # too much IO (both bandwidth and roundtrips) over a network.
-        if not source.bzrdir.transport.base.startswith('file:///'):
+        if not source.controldir.transport.base.startswith('file:///'):
             return False
-        if not target.bzrdir.transport.base.startswith('file:///'):
+        if not target.controldir.transport.base.startswith('file:///'):
             return False
         return True
 

@@ -167,7 +167,7 @@ class TestCaseWithInterRepository(TestCaseWithControlDir):
 
     def make_branch(self, relpath, format=None):
         repo = self.make_repository(relpath, format=format)
-        return repo.bzrdir.create_branch()
+        return repo.controldir.create_branch()
 
     def make_bzrdir(self, relpath, format=None):
         try:

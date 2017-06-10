@@ -112,7 +112,7 @@ def open_destination_directory(location, format=None, verbose=True):
     repo = control.create_repository(shared=True)
     if verbose:
         from ...info import show_bzrdir_info
-        show_bzrdir_info(repo.bzrdir, verbose=0)
+        show_bzrdir_info(repo.controldir, verbose=0)
     return control
 
 

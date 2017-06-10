@@ -49,7 +49,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         # become the revision-history.
         mine = self.make_branch_and_tree('mine')
         mine.commit('1st post', rev_id='P1', allow_pointless=True)
-        other = mine.bzrdir.sprout('other').open_workingtree()
+        other = mine.controldir.sprout('other').open_workingtree()
         other.commit('my change', rev_id='M1', allow_pointless=True)
         mine.merge_from_branch(other.branch)
         mine.commit('merge my change', rev_id='P2')
@@ -66,9 +66,9 @@ class TestPush(per_branch.TestCaseWithBranch):
         # directly accessible.
         mine = self.make_branch_and_tree('mine')
         mine.commit('1st post', rev_id='P1', allow_pointless=True)
-        target = mine.bzrdir.sprout('target').open_workingtree()
+        target = mine.controldir.sprout('target').open_workingtree()
         target.commit('my change', rev_id='M1', allow_pointless=True)
-        other = mine.bzrdir.sprout('other').open_workingtree()
+        other = mine.controldir.sprout('other').open_workingtree()
         other.merge_from_branch(target.branch)
         other.commit('merge my change', rev_id='O2')
         mine.merge_from_branch(other.branch)
@@ -87,7 +87,7 @@ class TestPush(per_branch.TestCaseWithBranch):
             return
         rev1 = checkout.commit('master')
 
-        other = master_tree.branch.bzrdir.sprout('other').open_workingtree()
+        other = master_tree.branch.controldir.sprout('other').open_workingtree()
         rev2 = other.commit('other commit')
         # now push, which should update both checkout and master.
         other.branch.push(checkout.branch)
@@ -102,7 +102,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         except errors.UpgradeRequired:
             # cant bind this format, the test is irrelevant.
             return
-        other = master_tree.branch.bzrdir.sprout('other').open_workingtree()
+        other = master_tree.branch.controldir.sprout('other').open_workingtree()
         # move the branch out of the way on disk to cause a connection
         # error.
         os.rename('master', 'master_gone')
@@ -118,7 +118,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         except errors.UpgradeRequired:
             raise tests.TestNotApplicable(
                 'Format does not support bound branches')
-        other = bound.bzrdir.sprout('other').open_branch()
+        other = bound.controldir.sprout('other').open_branch()
         try:
             other.tags.set_tag('new-tag', 'some-rev')
         except errors.TagsNotSupported:
@@ -157,14 +157,14 @@ class TestPush(per_branch.TestCaseWithBranch):
             return
         # This is a little bit trickier because make_branch_and_tree will not
         # re-use a shared repository.
-        a_bzrdir = self.make_bzrdir('repo/tree')
+        a_controldir = self.make_bzrdir('repo/tree')
         try:
-            a_branch = self.branch_format.initialize(a_bzrdir)
+            a_branch = self.branch_format.initialize(a_controldir)
         except (errors.UninitializableFormat):
             # Cannot create these branches
             return
         try:
-            tree = a_branch.bzrdir.create_workingtree()
+            tree = a_branch.controldir.create_workingtree()
         except errors.NotLocalUrl:
             if self.vfs_transport_factory is test_server.LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
@@ -283,7 +283,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         builder.finish_series()
         trunk = builder.get_branch()
         # Sprout rev-1 to "trunk", so that we can stack on it.
-        trunk.bzrdir.sprout(self.get_url('trunk'), revision_id='rev-1')
+        trunk.controldir.sprout(self.get_url('trunk'), revision_id='rev-1')
         # Set a default stacking policy so that new branches will automatically
         # stack on trunk.
         self.make_bzrdir('.').get_config().set_default_stack_on('trunk')
@@ -372,7 +372,7 @@ class TestPushHook(per_branch.TestCaseWithBranch):
         target.add('')
         rev1 = target.commit('rev 1')
         target.unlock()
-        sourcedir = target.bzrdir.clone(self.get_url('source'))
+        sourcedir = target.controldir.clone(self.get_url('source'))
         source = memorytree.MemoryTree.create_on_branch(sourcedir.open_branch())
         rev2 = source.commit('rev 2')
         branch.Branch.hooks.install_named_hook(

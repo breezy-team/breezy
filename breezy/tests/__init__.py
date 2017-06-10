@@ -2642,8 +2642,7 @@ class TestCaseWithMemoryTransport(TestCase):
     def make_branch(self, relpath, format=None, name=None):
         """Create a branch on the transport at relpath."""
         repo = self.make_repository(relpath, format=format)
-        return repo.bzrdir.create_branch(append_revisions_only=False,
-                                         name=name)
+        return repo.controldir.create_branch(append_revisions_only=False, name=name)
 
     def get_default_format(self):
         return 'default'
@@ -2953,7 +2952,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
             return b.create_checkout(relpath, lightweight=True)
         b = self.make_branch(relpath, format=format)
         try:
-            return b.bzrdir.create_workingtree()
+            return b.controldir.create_workingtree()
         except errors.NotLocalUrl:
             # We can only make working trees locally at the moment.  If the
             # transport can't support them, then we keep the non-disk-backed

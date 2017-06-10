@@ -41,7 +41,7 @@ class TestSetRootId(TestCaseWithWorkingTree):
             self.assertEqual(root_id, tree.get_root_id())
             # set root id should not have triggered a flush of the tree,
             # so check a new tree sees the old state.
-            reference_tree = tree.bzrdir.open_workingtree()
+            reference_tree = tree.controldir.open_workingtree()
             self.assertEqual(old_id, reference_tree.get_root_id())
         finally:
             tree.unlock()
@@ -51,7 +51,7 @@ class TestSetRootId(TestCaseWithWorkingTree):
         self.assertEqual(root_id, tree.get_root_id())
         # and if we get a new working tree instance, then the value
         # should still be retained
-        tree = tree.bzrdir.open_workingtree()
+        tree = tree.controldir.open_workingtree()
         self.assertEqual(root_id, tree.get_root_id())
         tree._validate()
 

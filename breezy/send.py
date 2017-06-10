@@ -85,7 +85,7 @@ def send(target_branch, revision, public_branch, remember,
 
         submit_branch = Branch.open(target_branch,
             possible_transports=possible_transports)
-        possible_transports.append(submit_branch.bzrdir.root_transport)
+        possible_transports.append(submit_branch.controldir.root_transport)
         if mail_to is None or format is None:
             if mail_to is None:
                 mail_to = submit_branch.get_config_stack().get(
