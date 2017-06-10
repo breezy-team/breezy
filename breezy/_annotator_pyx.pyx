@@ -16,6 +16,8 @@
 
 """Functionality for doing annotations in the 'optimal' way"""
 
+from __future__ import absolute_import
+
 cdef extern from "python-compat.h":
     pass
 
@@ -55,7 +57,7 @@ cdef extern from "Python.h":
         PyObject *, PyObject *, int opid)
 
 
-from breezy import _annotator_py
+from . import _annotator_py
 
 
 cdef int _check_annotations_are_lists(annotations,
@@ -269,7 +271,7 @@ class Annotator(_annotator_py.Annotator):
         """
         cdef Py_ssize_t pos, num_lines
 
-        from breezy import annotate
+        from . import annotate
 
         custom_tiebreaker = annotate._break_annotation_tie
         annotations, lines = self.annotate(key)

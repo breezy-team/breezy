@@ -413,8 +413,8 @@ Making the source tarball
      PYTHONPATH=$TTPATH:$SUPATH/python PATH=$SUPATH/filters:${PATH} BRZ_PLUGIN_PATH=-site make check-dist-tarball PYTHON=python2.6 | subunit2pyunit
 
    Remember that PQM has just tested everything too, this step is
-   particularly testing that the pyrex extensions, which are updated
-   by your local pyrex version when you run make dist, are in good
+   particularly testing that the cython extensions, which are updated
+   by your local cython version when you run make dist, are in good
    shape.
 
 
