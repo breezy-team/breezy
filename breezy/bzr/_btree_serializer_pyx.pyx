@@ -17,7 +17,9 @@
 
 """Pyrex extensions to btree node parsing."""
 
-#python2.4 support
+from __future__ import absolute_import
+
+
 cdef extern from "python-compat.h":
     pass
 
@@ -67,7 +69,7 @@ cdef extern from "string.h":
 
 # It seems we need to import the definitions so that the pyrex compiler has
 # local names to access them.
-from .._static_tuple_c cimport StaticTuple, \
+from ._static_tuple_c cimport StaticTuple, \
     import_static_tuple_c, StaticTuple_New, \
     StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact, \
     StaticTuple_GET_SIZE, StaticTuple_GET_ITEM

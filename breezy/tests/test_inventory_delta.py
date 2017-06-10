@@ -354,7 +354,7 @@ class TestSerialization(TestCase):
             versioned_root=True, tree_references=True)
         err = self.assertRaises(InventoryDeltaError,
             serializer.delta_to_lines, NULL_REVISION, 'entry-version', delta)
-        self.assertEqual(str(err), 'no version for fileid id')
+        self.assertContainsRe(str(err), "^no version for fileid b?'id'$")
 
     def test_richroot_unversioned_root_errors(self):
         old_inv = Inventory(None)
@@ -366,7 +366,8 @@ class TestSerialization(TestCase):
             versioned_root=True, tree_references=True)
         err = self.assertRaises(InventoryDeltaError,
             serializer.delta_to_lines, NULL_REVISION, 'entry-version', delta)
-        self.assertEqual(str(err), 'no version for fileid TREE_ROOT')
+        self.assertContainsRe(
+            str(err), "no version for fileid b?'TREE_ROOT'$")
 
     def test_nonrichroot_versioned_root_errors(self):
         old_inv = Inventory(None)
@@ -379,7 +380,8 @@ class TestSerialization(TestCase):
             versioned_root=False, tree_references=True)
         err = self.assertRaises(InventoryDeltaError,
             serializer.delta_to_lines, NULL_REVISION, 'entry-version', delta)
-        self.assertStartsWith(str(err), 'Version present for / in TREE_ROOT')
+        self.assertContainsRe(
+            str(err), "^Version present for / in b?'TREE_ROOT'")
 
     def test_unknown_kind_errors(self):
         old_inv = Inventory(None)
