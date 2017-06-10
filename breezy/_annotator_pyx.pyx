@@ -18,6 +18,7 @@
 
 from __future__ import absolute_import
 
+
 cdef extern from "python-compat.h":
     pass
 

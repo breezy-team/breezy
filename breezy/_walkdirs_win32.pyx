@@ -18,6 +18,7 @@
 
 from __future__ import absolute_import
 
+
 cdef extern from "python-compat.h":
     struct _HANDLE:
         pass
@@ -188,7 +189,7 @@ cdef class Win32ReadDir:
         """See DirReader.top_prefix_to_starting_dir."""
         global osutils
         if osutils is None:
-            from breezy import osutils
+            from . import osutils
         return (osutils.safe_utf8(prefix), None, None, None,
                 osutils.safe_unicode(top))
 
