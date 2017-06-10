@@ -1182,7 +1182,8 @@ class BzrFormat(object):
         lines = [self.get_format_string()]
         lines.extend([("%s %s\n" % (item[1], item[0])) for item in
             self.features.items()])
-        return "".join(lines)
+        # GZ 2016-07-09: Should push byte-ness up a level perhaps?
+        return "".join(lines).encode('ascii')
 
     @classmethod
     def _find_format(klass, registry, kind, format_string):
@@ -1233,17 +1234,19 @@ class BzrProber(controldir.Prober):
         """Return the .bzrdir style format present in a directory."""
         try:
             format_string = transport.get_bytes(".bzr/branch-format")
+            # GZ 2017-06-09: Where should format strings get decoded...
+            format_text = format_string.decode("ascii")
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
         try:
-            first_line = format_string[:format_string.index("\n")+1]
+            first_line = format_text[:format_text.index("\n")+1]
         except ValueError:
-            first_line = format_string
+            first_line = format_text
         try:
             cls = klass.formats.get(first_line)
         except KeyError:
             raise errors.UnknownFormatError(format=first_line, kind='bzrdir')
-        return cls.from_string(format_string)
+        return cls.from_string(format_text)
 
     @classmethod
     def known_formats(cls):
@@ -1449,9 +1452,9 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         del temp_control
         bzrdir_transport = transport.clone('.bzr')
         utf8_files = [('README',
-                       "This is a Bazaar control directory.\n"
-                       "Do not change any files in this directory.\n"
-                       "See http://bazaar.canonical.com/ for more information about Bazaar.\n"),
+                       b"This is a Bazaar control directory.\n"
+                       b"Do not change any files in this directory.\n"
+                       b"See http://bazaar.canonical.com/ for more information about Bazaar.\n"),
                       ('branch-format', self.as_string()),
                       ]
         # NB: no need to escape relative paths that are url safe.

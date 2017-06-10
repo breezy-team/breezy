@@ -653,7 +653,7 @@ class InventoryWorkingTree(WorkingTree,
 
     def _put_rio(self, filename, stanzas, header):
         self._must_be_locked()
-        my_file = _mod_rio.rio_file(stanzas, header)
+        my_file = _mod_rio.rio_file(stanzas, header.encode('ascii'))
         self._transport.put_file(filename, my_file,
             mode=self.bzrdir._get_file_mode())
 
@@ -1424,7 +1424,8 @@ class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
         """Return format name for the working tree object in controldir."""
         try:
             transport = controldir.get_workingtree_transport(None)
-            return transport.get_bytes("format")
+            # GZ 2017-06-09: When do decode format strings?
+            return transport.get_bytes("format").decode('ascii')
         except errors.NoSuchFile:
             raise errors.NoWorkingTree(base=transport.base)
 

@@ -52,11 +52,11 @@ from ..sixish import (
     )
 
 
-_BTSIGNATURE = "B+Tree Graph Index 2\n"
-_OPTION_ROW_LENGTHS = "row_lengths="
-_LEAF_FLAG = "type=leaf\n"
-_INTERNAL_FLAG = "type=internal\n"
-_INTERNAL_OFFSET = "offset="
+_BTSIGNATURE = b"B+Tree Graph Index 2\n"
+_OPTION_ROW_LENGTHS = b"row_lengths="
+_LEAF_FLAG = b"type=leaf\n"
+_INTERNAL_FLAG = b"type=internal\n"
+_INTERNAL_OFFSET = b"offset="
 
 _RESERVED_HEADER_BYTES = 120
 _PAGE_SIZE = 4096
@@ -408,11 +408,12 @@ class BTreeBuilder(index.GraphIndexBuilder):
             pad = (not isinstance(row, _LeafBuilderRow))
             row.finish_node(pad=pad)
         lines = [_BTSIGNATURE]
-        lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
-        lines.append(_OPTION_KEY_ELEMENTS + str(self._key_length) + '\n')
-        lines.append(_OPTION_LEN + str(key_count) + '\n')
+        lines.append(b'%s%d\n' % (_OPTION_NODE_REFS, self.reference_lists))
+        lines.append(b'%s%d\n' % (_OPTION_KEY_ELEMENTS, self._key_length))
+        lines.append(b'%s%d\n' % (_OPTION_LEN, key_count))
         row_lengths = [row.nodes for row in rows]
-        lines.append(_OPTION_ROW_LENGTHS + ','.join(map(str, row_lengths)) + '\n')
+        lines.append(_OPTION_ROW_LENGTHS + ','.join(
+            map(str, row_lengths)).encode('ascii') + b'\n')
         if row_lengths and row_lengths[-1] > 1:
             result = tempfile.NamedTemporaryFile(prefix='bzr-index-')
         else:
@@ -1436,7 +1437,7 @@ class BTreeGraphIndex(object):
             raise errors.BadIndexOptions(self)
         try:
             self._row_lengths = [int(length) for length in
-                options_line[len(_OPTION_ROW_LENGTHS):].split(',')
+                options_line[len(_OPTION_ROW_LENGTHS):].split(b',')
                 if length]
         except ValueError:
             raise errors.BadIndexOptions(self)

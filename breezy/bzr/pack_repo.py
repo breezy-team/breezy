@@ -1916,7 +1916,8 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
         dirs = ['indices', 'obsolete_packs', 'packs', 'upload']
         builder = self.index_builder_class()
         files = [('pack-names', builder.finish())]
-        utf8_files = [('format', self.get_format_string())]
+        # GZ 2017-06-09: Where should format strings get decoded...
+        utf8_files = [('format', self.get_format_string().encode('ascii'))]
 
         self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
         repository = self.open(a_bzrdir=a_bzrdir, _found=True)
