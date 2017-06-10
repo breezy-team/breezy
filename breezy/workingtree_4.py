@@ -55,6 +55,9 @@ from breezy import (
 
 from .decorators import needs_read_lock, needs_write_lock
 from .inventory import Inventory, ROOT_ID, entry_factory
+from .inventorytree import (
+    InventoryTree,
+    )
 from .lock import LogicalLockResult
 from .lockable_files import LockableFiles
 from .lockdir import LockDir
@@ -76,7 +79,6 @@ from .sixish import (
 from .transport.local import LocalTransport
 from .tree import (
     InterTree,
-    InventoryTree,
     )
 from .workingtree import (
     WorkingTree,

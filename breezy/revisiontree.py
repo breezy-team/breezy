@@ -20,6 +20,7 @@ from __future__ import absolute_import
 
 from . import (
     errors,
+    inventorytree,
     revision,
     tree,
     )
@@ -97,7 +98,7 @@ class RevisionTree(tree.Tree):
         return self._rules_searcher
 
 
-class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
+class InventoryRevisionTree(RevisionTree,inventorytree.InventoryTree):
 
     def __init__(self, repository, inv, revision_id):
         RevisionTree.__init__(self, repository, revision_id)

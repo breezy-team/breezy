@@ -41,6 +41,8 @@ from breezy import (
     )
 """)
 
+from . import inventorytree
+
 from .decorators import needs_read_lock, needs_write_lock
 from .sixish import (
     viewvalues,
@@ -396,7 +398,7 @@ class MutableTree(tree.Tree):
         raise NotImplementedError(self.smart_add)
 
 
-class MutableInventoryTree(MutableTree, tree.InventoryTree):
+class MutableInventoryTree(MutableTree, inventorytree.InventoryTree):
 
     @needs_tree_write_lock
     def apply_inventory_delta(self, changes):
