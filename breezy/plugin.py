@@ -442,11 +442,13 @@ def plugins():
     return result
 
 
-def format_concise_plugin_list():
+def format_concise_plugin_list(state=None):
     """Return a string holding a concise list of plugins and their version.
     """
+    if state is None:
+        state = breezy.global_state
     items = []
-    for name, a_plugin in sorted(plugins().items()):
+    for name, a_plugin in sorted(state.plugins.items()):
         items.append("%s[%s]" %
             (name, a_plugin.__version__))
     return ', '.join(items)
