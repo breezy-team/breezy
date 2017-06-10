@@ -68,7 +68,7 @@ class TestApportReporting(tests.TestCaseInTempDir):
             crash_file.close()
 
         self.assertContainsRe(report,
-            '(?m)^BzrVersion:') # should be in the traceback
+            '(?m)^BrzVersion:') # should be in the traceback
         self.assertContainsRe(report, 'my error')
         self.assertContainsRe(report, 'AssertionError')
         # see https://bugs.launchpad.net/bzr/+bug/528114

@@ -58,7 +58,7 @@ def clean_tree(directory, unknown=False, ignored=False, detritus=False,
     try:
         deletables = list(iter_deletables(tree, unknown=unknown,
             ignored=ignored, detritus=detritus))
-        deletables = _filter_out_nested_bzrdirs(deletables)
+        deletables = _filter_out_nested_controldirs(deletables)
         if len(deletables) == 0:
             note(gettext('Nothing to delete.'))
             return 0
@@ -74,7 +74,7 @@ def clean_tree(directory, unknown=False, ignored=False, detritus=False,
         tree.unlock()
 
 
-def _filter_out_nested_bzrdirs(deletables):
+def _filter_out_nested_controldirs(deletables):
     result = []
     for path, subp in deletables:
         # bzr won't recurse into unknowns/ignored directories by default

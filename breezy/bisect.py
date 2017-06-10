@@ -27,6 +27,7 @@ from .errors import BzrCommandError
 from .option import Option
 from .trace import note
 
+# TODO(jelmer): don't hardcode ".bzr" here.
 bisect_info_path = ".bzr/bisect"
 bisect_rev_path = ".bzr/bisect_revid"
 
@@ -36,14 +37,14 @@ class BisectCurrent(object):
 
     def __init__(self, filename=bisect_rev_path):
         self._filename = filename
-        self._bzrdir = ControlDir.open_containing(".")[0]
-        self._bzrbranch = self._bzrdir.open_branch()
+        self._controldir = ControlDir.open_containing(".")[0]
+        self._branch = self._controldir.open_branch()
         if os.path.exists(filename):
             revid_file = open(filename)
             self._revid = revid_file.read().strip()
             revid_file.close()
         else:
-            self._revid = self._bzrbranch.last_revision()
+            self._revid = self._branch.last_revision()
 
     def _save(self):
         """Save the current revision."""
@@ -58,12 +59,12 @@ class BisectCurrent(object):
 
     def get_current_revno(self):
         """Return the current revision number as a tuple."""
-        revdict = self._bzrbranch.get_revision_id_to_revno_map()
+        revdict = self._branch.get_revision_id_to_revno_map()
         return revdict[self.get_current_revid()]
 
     def get_parent_revids(self):
         """Return the IDs of the current revision's predecessors."""
-        repo = self._bzrbranch.repository
+        repo = self._branch.repository
         repo.lock_read()
         retval = repo.get_parent_map([self._revid]).get(self._revid, None)
         repo.unlock()
@@ -75,16 +76,16 @@ class BisectCurrent(object):
 
     def show_rev_log(self, out = sys.stdout):
         """Write the current revision's log entry to a file."""
-        rev = self._bzrbranch.repository.get_revision(self._revid)
+        rev = self._branch.repository.get_revision(self._revid)
         revno = ".".join([str(x) for x in self.get_current_revno()])
         out.write("On revision %s (%s):\n%s\n" % (revno, rev.revision_id,
                                                   rev.message))
 
     def switch(self, revid):
         """Switch the current revision to the given revid."""
-        working = self._bzrdir.open_workingtree()
+        working = self._controldir.open_workingtree()
         if isinstance(revid, int):
-            revid = self._bzrbranch.get_rev_id(revid)
+            revid = self._branch.get_rev_id(revid)
         elif isinstance(revid, list):
             revid = revid[0].in_history(working.branch).rev_id
         working.revert(None, working.branch.repository.revision_tree(revid),
@@ -94,7 +95,7 @@ class BisectCurrent(object):
 
     def reset(self):
         """Revert bisection, setting the working tree to normal."""
-        working = self._bzrdir.open_workingtree()
+        working = self._controldir.open_workingtree()
         last_rev = working.branch.last_revision()
         rev_tree = working.branch.repository.revision_tree(last_rev)
         working.revert(None, rev_tree, False)
@@ -105,10 +106,10 @@ class BisectCurrent(object):
 class BisectLog(object):
     """Bisect log file handler."""
 
-    def __init__(self, filename = bisect_info_path):
+    def __init__(self, filename=bisect_info_path):
         self._items = []
         self._current = BisectCurrent()
-        self._bzrdir = None
+        self._controldir = None
         self._high_revid = None
         self._low_revid = None
         self._middle_revid = None
@@ -129,23 +130,23 @@ class BisectLog(object):
         else:
             return sys.stdout
 
-    def _load_bzr_tree(self):
+    def _load_tree(self):
         """Load bzr information."""
-        if not self._bzrdir:
-            self._bzrdir = ControlDir.open_containing('.')[0]
-            self._bzrbranch = self._bzrdir.open_branch()
+        if not self._controldir:
+            self._controldir = ControlDir.open_containing('.')[0]
+            self._branch = self._controldir.open_branch()
 
     def _find_range_and_middle(self, branch_last_rev = None):
         """Find the current revision range, and the midpoint."""
-        self._load_bzr_tree()
+        self._load_tree()
         self._middle_revid = None
 
         if not branch_last_rev:
-            last_revid = self._bzrbranch.last_revision()
+            last_revid = self._branch.last_revision()
         else:
             last_revid = branch_last_rev
 
-        repo = self._bzrbranch.repository
+        repo = self._branch.repository
         repo.lock_read()
         try:
             graph = repo.get_graph()
@@ -173,7 +174,7 @@ class BisectLog(object):
             if not high_revid:
                 high_revid = last_revid
             if not low_revid:
-                low_revid = self._bzrbranch.get_rev_id(1)
+                low_revid = self._branch.get_rev_id(1)
         finally:
             repo.unlock()
 
@@ -233,8 +234,8 @@ class BisectLog(object):
 
     def set_status_from_revspec(self, revspec, status):
         """Set the bisection status for the revision in revspec."""
-        self._load_bzr_tree()
-        revid = revspec[0].in_history(self._bzrbranch).rev_id
+        self._load_tree()
+        revid = revspec[0].in_history(self._branch).rev_id
         self._set_status(revid, status)
 
     def set_current(self, status):
@@ -245,7 +246,7 @@ class BisectLog(object):
         return len(self.get_parent_revids(revid)) > 1
 
     def get_parent_revids(self, revid):
-        repo = self._bzrbranch.repository
+        repo = self._branch.repository
         repo.lock_read()
         try:
             retval = repo.get_parent_map([revid]).get(revid, None)
