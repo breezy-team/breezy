@@ -567,7 +567,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 return True, value
 
         ret = []
-        for branches, repository in controldir.ControlDir.find_bzrdirs(
+        for branches, repository in controldir.ControlDir.find_controldirs(
                 self.user_transport, evaluate=Evaluator()):
             if branches is not None:
                 ret.extend(branches)

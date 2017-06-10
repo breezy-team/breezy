@@ -515,7 +515,7 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.clone_on_transport)
 
     @classmethod
-    def find_bzrdirs(klass, transport, evaluate=None, list_current=None):
+    def find_controldirs(klass, transport, evaluate=None, list_current=None):
         """Find control dirs recursively from current location.
 
         This is intended primarily as a building block for more sophisticated
@@ -576,7 +576,7 @@ class ControlDir(ControlComponent):
                 return False, ([], repository)
             return True, (controldir.list_branches(), None)
         ret = []
-        for branches, repo in klass.find_bzrdirs(
+        for branches, repo in klass.find_controldirs(
                 transport, evaluate=evaluate):
             if repo is not None:
                 ret.extend(repo.find_branches())

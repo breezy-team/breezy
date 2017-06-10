@@ -350,7 +350,7 @@ class WorkingTree(mutabletree.MutableTree,
             else:
                 return True, tree
         t = transport.get_transport(location)
-        iterator = controldir.ControlDir.find_bzrdirs(t, evaluate=evaluate,
+        iterator = controldir.ControlDir.find_controldirs(t, evaluate=evaluate,
                                               list_current=list_current)
         return [tr for tr in iterator if tr is not None]
 

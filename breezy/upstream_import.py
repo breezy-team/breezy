@@ -204,6 +204,7 @@ def names_of_files(tar_file):
 
 
 def should_ignore(relative_path):
+    # TODO(jelmer): Perhaps call ControlDir.is_control_filename ?
     return top_path(relative_path) == '.bzr'
 
 

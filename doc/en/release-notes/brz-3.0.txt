@@ -116,6 +116,9 @@ API Changes
 
  * ``breezy.api`` has been removed.  (Jelmer Vernooĳ, #742192)
 
+ * ``ControlDir.find_bzrdirs`` has been renamed to
+   ``ControlDir.find_controldirs``. (Jelmer Vernooĳ)
+
 Internals
 *********
 
