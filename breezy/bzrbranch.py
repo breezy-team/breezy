@@ -370,7 +370,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
 
     def _read_last_revision_info(self):
         revision_string = self._transport.get_bytes('last-revision')
-        revno, revision_id = revision_string.rstrip('\n').split(' ', 1)
+        revno, revision_id = revision_string.rstrip(b'\n').split(b' ', 1)
         revision_id = cache_utf8.get_cached_utf8(revision_id)
         revno = int(revno)
         return revno, revision_id
@@ -670,9 +670,12 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
             raise errors.NotBranchError(path=name, controldir=controldir)
         try:
             format_string = transport.get_bytes("format")
+            # GZ 2017-06-09: Where should format strings get decoded...
+            format_text = format_string.decode("ascii")
         except errors.NoSuchFile:
-            raise errors.NotBranchError(path=transport.base, controldir=controldir)
-        return klass._find_format(format_registry, 'branch', format_string)
+            raise errors.NotBranchError(
+                path=transport.base, controldir=controldir)
+        return klass._find_format(format_registry, 'branch', format_text)
 
     def _branch_class(self):
         """What class to instantiate on open calls."""
@@ -680,11 +683,11 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
 
     def _get_initial_config(self, append_revisions_only=None):
         if append_revisions_only:
-            return "append_revisions_only = True\n"
+            return b"append_revisions_only = True\n"
         else:
             # Avoid writing anything if append_revisions_only is disabled,
             # as that is the default.
-            return ""
+            return b""
 
     def _initialize_helper(self, a_controldir, utf8_files, name=None,
                            repository=None):
@@ -856,10 +859,10 @@ class BzrBranchFormat7(BranchFormatMetadir):
     def initialize(self, a_controldir, name=None, repository=None,
                    append_revisions_only=None):
         """Create a branch of this format in a_controldir."""
-        utf8_files = [('last-revision', '0 null:\n'),
+        utf8_files = [('last-revision', b'0 null:\n'),
                       ('branch.conf',
                           self._get_initial_config(append_revisions_only)),
-                      ('tags', ''),
+                      ('tags', b''),
                       ]
         return self._initialize_helper(a_controldir, utf8_files, name, repository)
 

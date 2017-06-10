@@ -27,7 +27,7 @@ from __future__ import absolute_import
 
 # This should really be an id randomly assigned when the tree is
 # created, but it's not for now.
-ROOT_ID = "TREE_ROOT"
+ROOT_ID = b"TREE_ROOT"
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """

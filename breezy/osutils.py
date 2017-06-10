@@ -349,6 +349,8 @@ def _posix_get_home_dir():
 def _posix_getuser_unicode():
     """Get username from environment or password database as unicode"""
     name = getpass.getuser()
+    if PY3:
+        return name
     user_encoding = get_user_encoding()
     try:
         return name.decode(user_encoding)
@@ -994,7 +996,10 @@ def rand_chars(num):
     """
     s = ''
     for raw_byte in rand_bytes(num):
-        s += ALNUM[ord(raw_byte) % 36]
+        if not PY3:
+            s += ALNUM[ord(raw_byte) % 36]
+        else:
+            s += ALNUM[raw_byte % 36]
     return s
 
 
@@ -1106,8 +1111,9 @@ def _split_lines(s):
 
     This supports Unicode or plain string objects.
     """
-    lines = s.split('\n')
-    result = [line + '\n' for line in lines[:-1]]
+    nl = b'\n' if isinstance(s, bytes) else u'\n'
+    lines = s.split(nl)
+    result = [line + nl for line in lines[:-1]]
     if lines[-1]:
         result.append(lines[-1])
     return result
@@ -2038,6 +2044,8 @@ def get_host_name():
         return win32utils.get_host_name()
     else:
         import socket
+        if PY3:
+            return socket.gethostname()
         return socket.gethostname().decode(get_user_encoding())
 
 
