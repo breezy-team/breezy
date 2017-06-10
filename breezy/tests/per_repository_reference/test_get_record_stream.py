@@ -18,6 +18,8 @@
 
 from breezy import (
     errors,
+    )
+from breezy.bzr import (
     knit,
     )
 from breezy.tests.per_repository_reference import (

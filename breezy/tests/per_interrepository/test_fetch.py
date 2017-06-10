@@ -19,15 +19,17 @@ import sys
 
 from breezy import (
     errors,
-    inventory,
     osutils,
     repository,
+    )
+from breezy.bzr import (
+    inventory,
     versionedfile,
     )
 from breezy.errors import (
     NoSuchRevision,
     )
-from breezy.vf_search import (
+from breezy.bzr.vf_search import (
     SearchResult,
     )
 from breezy.revision import (

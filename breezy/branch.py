@@ -33,6 +33,8 @@ from breezy import (
     transport,
     ui,
     urlutils,
+    )
+from breezy.bzr import (
     vf_search,
     )
 from breezy.i18n import gettext, ngettext

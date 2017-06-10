@@ -22,7 +22,7 @@ from ... import (
     errors,
     revision as _mod_revision,
     )
-from ...inventory import (
+from ...bzr.inventory import (
     Inventory,
     InventoryFile,
     InventoryDirectory,

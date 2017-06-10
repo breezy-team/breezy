@@ -1799,7 +1799,7 @@ class ConvertMetaToMeta(controldir.Converter):
             pass
         else:
             if not isinstance(repo._format, self.target_format.repository_format.__class__):
-                from .repository import CopyConverter
+                from ..repository import CopyConverter
                 ui.ui_factory.note(gettext('starting repository conversion'))
                 converter = CopyConverter(self.target_format.repository_format)
                 converter.convert(repo, pb)

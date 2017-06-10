@@ -21,11 +21,13 @@ import os
 
 from breezy import (
     branch,
-    bzrdir,
     controldir,
     errors,
     revision as _mod_revision,
     tests,
+    )
+from breezy.bzr import (
+    bzrdir,
     )
 from breezy.repofmt.knitrepo import RepositoryFormatKnit1
 from breezy.tests import (

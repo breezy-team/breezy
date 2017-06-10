@@ -16,7 +16,7 @@
 
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
-import breezy.xml6
+import breezy.bzr.xml6
 
 
 class TestBasisInventory(TestCaseWithWorkingTree):
@@ -53,7 +53,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         self.assertTrue(t._transport.has('basis-inventory-cache'))
 
         basis_inv_txt = t.read_basis_inventory()
-        basis_inv = breezy.xml7.serializer_v7.read_inventory_from_string(basis_inv_txt)
+        basis_inv = breezy.bzr.xml7.serializer_v7.read_inventory_from_string(basis_inv_txt)
         self.assertEqual('r2', basis_inv.revision_id)
         store_inv = b.repository.get_inventory('r2')
 

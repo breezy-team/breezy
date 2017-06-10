@@ -37,8 +37,10 @@ from breezy import (
     tree as _mod_tree,
     tsort,
     ui,
-    versionedfile,
     workingtree,
+    )
+from breezy.bzr import (
+    versionedfile,
     )
 from breezy.i18n import gettext
 """)
@@ -2348,7 +2350,7 @@ class _PlanMerge(_PlanMergeBase):
         return all_texts
 
     def _build_weave(self):
-        from breezy import weave
+        from .bzr import weave
         self._weave = weave.Weave(weave_name='in_memory_weave',
                                   allow_reserved=True)
         parent_map = self._find_recursive_lcas()

@@ -20,10 +20,12 @@ import os
 
 from breezy import (
     branch as _mod_branch,
-    bzrdir,
     controldir,
     errors,
     workingtree,
+    )
+from breezy.bzr import (
+    bzrdir,
     )
 from breezy.tests import (
     TestCaseWithTransport,

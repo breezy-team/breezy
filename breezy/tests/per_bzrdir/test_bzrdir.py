@@ -21,13 +21,15 @@ from stat import S_ISDIR
 
 import breezy.branch
 from breezy import (
-    bzrdir,
     controldir,
     errors,
     repository,
     revision as _mod_revision,
     transport,
     workingtree,
+    )
+from breezy.bzr import (
+    bzrdir,
     )
 from breezy.remote import RemoteBzrDirFormat
 from breezy.tests import (

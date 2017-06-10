@@ -54,20 +54,20 @@ from ..textmerge import TextMerge
 
 
 adapter_registry = Registry()
-adapter_registry.register_lazy(('knit-delta-gz', 'fulltext'), 'breezy.knit',
+adapter_registry.register_lazy(('knit-delta-gz', 'fulltext'), 'breezy.bzr.knit',
     'DeltaPlainToFullText')
-adapter_registry.register_lazy(('knit-ft-gz', 'fulltext'), 'breezy.knit',
+adapter_registry.register_lazy(('knit-ft-gz', 'fulltext'), 'breezy.bzr.knit',
     'FTPlainToFullText')
 adapter_registry.register_lazy(('knit-annotated-delta-gz', 'knit-delta-gz'),
-    'breezy.knit', 'DeltaAnnotatedToUnannotated')
+    'breezy.bzr.knit', 'DeltaAnnotatedToUnannotated')
 adapter_registry.register_lazy(('knit-annotated-delta-gz', 'fulltext'),
-    'breezy.knit', 'DeltaAnnotatedToFullText')
+    'breezy.bzr.knit', 'DeltaAnnotatedToFullText')
 adapter_registry.register_lazy(('knit-annotated-ft-gz', 'knit-ft-gz'),
-    'breezy.knit', 'FTAnnotatedToUnannotated')
+    'breezy.bzr.knit', 'FTAnnotatedToUnannotated')
 adapter_registry.register_lazy(('knit-annotated-ft-gz', 'fulltext'),
-    'breezy.knit', 'FTAnnotatedToFullText')
+    'breezy.bzr.knit', 'FTAnnotatedToFullText')
 # adapter_registry.register_lazy(('knit-annotated-ft-gz', 'chunked'),
-#     'breezy.knit', 'FTAnnotatedToChunked')
+#     'breezy.bzr.knit', 'FTAnnotatedToChunked')
 
 
 class ContentFactory(object):

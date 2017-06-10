@@ -19,12 +19,14 @@
 import os
 from breezy import (
     branch as _mod_branch,
-    bzrbranch as _mod_bzrbranch,
     errors,
     osutils,
     remote,
     revision as _mod_revision,
     tests,
+    )
+from breezy.bzr import (
+    branch as _mod_bzrbranch,
     )
 from breezy.tests import (
     features,

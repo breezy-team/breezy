@@ -26,7 +26,7 @@ from breezy import (
     osutils,
     urlutils,
     )
-from breezy.bzrdir import BzrDirMetaFormat1
+from breezy.bzr.bzrdir import BzrDirMetaFormat1
 from breezy.tests import TestSkipped
 from breezy.tests import TestCaseWithTransport
 from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer

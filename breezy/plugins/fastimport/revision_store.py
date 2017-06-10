@@ -194,7 +194,7 @@ class AbstractRevisionStore(object):
 
     def _init_chk_inventory(self, revision_id, root_id):
         """Generate a CHKInventory for a parentless revision."""
-        from ... import chk_map
+        from ...bzr import chk_map
         # Get the creation parameters
         chk_store = self.repo.chk_bytes
         serializer = self.repo._format._serializer

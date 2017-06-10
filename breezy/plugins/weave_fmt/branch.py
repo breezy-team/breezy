@@ -96,7 +96,7 @@ class BzrBranch4(FullHistoryBzrBranch):
         """Return the most suitable metadir for a checkout of this branch.
         """
         from .repository import RepositoryFormat7
-        from ...bzrdir import BzrDirMetaFormat1
+        from ...bzr.bzrdir import BzrDirMetaFormat1
         format = BzrDirMetaFormat1()
         if lightweight:
             format.set_branch_format(self._format)

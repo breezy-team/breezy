@@ -74,7 +74,7 @@ def get_inventory_text(repo, revision_id):
 class MockTree(object):
 
     def __init__(self):
-        from ..inventory import InventoryDirectory, ROOT_ID
+        from ..bzr.inventory import InventoryDirectory, ROOT_ID
         object.__init__(self)
         self.paths = {ROOT_ID: ""}
         self.ids = {"": ROOT_ID}
@@ -118,7 +118,7 @@ class MockTree(object):
         return kind
 
     def make_entry(self, file_id, path):
-        from ..inventory import (InventoryFile , InventoryDirectory,
+        from ..bzr.inventory import (InventoryFile , InventoryDirectory,
             InventoryLink)
         name = os.path.basename(path)
         kind = self.kind(file_id)

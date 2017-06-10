@@ -20,13 +20,15 @@ import os
 import re
 
 from breezy import (
-    bzrdir,
     config,
     controldir,
     errors,
     osutils,
     repository,
     tests,
+    )
+from breezy.bzr import (
+    bzrdir,
     )
 from breezy.repofmt.groupcompress_repo import RepositoryFormat2a
 

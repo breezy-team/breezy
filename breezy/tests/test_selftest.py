@@ -483,8 +483,8 @@ class TestInterTreeScenarios(tests.TestCase):
         from .per_intertree import (
             make_scenarios,
             )
-        from ..workingtree_3 import WorkingTreeFormat3
-        from ..workingtree_4 import WorkingTreeFormat4
+        from ..bzr.workingtree_3 import WorkingTreeFormat3
+        from ..bzr.workingtree_4 import WorkingTreeFormat4
         input_test = TestInterTreeScenarios(
             "test_scenarios")
         server1 = "a"
@@ -2001,9 +2001,9 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
 
     def test_make_branch_and_tree_with_format(self):
         # we should be able to supply a format to make_branch_and_tree
-        self.make_branch_and_tree('a', format=breezy.bzrdir.BzrDirMetaFormat1())
+        self.make_branch_and_tree('a', format=breezy.bzr.bzrdir.BzrDirMetaFormat1())
         self.assertIsInstance(breezy.controldir.ControlDir.open('a')._format,
-                              breezy.bzrdir.BzrDirMetaFormat1)
+                              breezy.bzr.bzrdir.BzrDirMetaFormat1)
 
     def test_make_branch_and_memory_tree(self):
         # we should be able to get a new branch and a mutable tree from

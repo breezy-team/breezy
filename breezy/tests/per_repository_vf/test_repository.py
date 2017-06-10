@@ -19,10 +19,12 @@
 from breezy import (
     errors,
     gpg,
-    inventory,
     repository as _mod_repository,
     revision as _mod_revision,
     tests,
+    )
+from breezy.bzr import (
+    inventory,
     versionedfile,
     vf_repository,
     )

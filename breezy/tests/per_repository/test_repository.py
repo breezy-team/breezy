@@ -20,14 +20,11 @@ import re
 
 from ... import (
     branch as _mod_branch,
-    bzrbranch as _mod_bzrbranch,
-    bzrrepository,
     controldir,
     delta as _mod_delta,
     errors,
     gpg,
     info,
-    inventory,
     remote,
     repository,
     revision as _mod_revision,
@@ -35,6 +32,11 @@ from ... import (
     transport,
     upgrade,
     workingtree,
+    )
+from ...bzr import (
+    branch as _mod_bzrbranch,
+    inventory,
+    repository as bzrrepository,
     )
 from ...repofmt import (
     knitpack_repo,

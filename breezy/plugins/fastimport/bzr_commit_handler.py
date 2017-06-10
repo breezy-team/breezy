@@ -21,10 +21,12 @@ from ... import (
     debug,
     errors,
     generate_ids,
-    inventory,
     osutils,
     revision,
     serializer,
+    )
+from ...bzr import (
+    inventory,
     )
 from ...trace import (
     mutter,

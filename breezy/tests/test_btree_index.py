@@ -53,7 +53,7 @@ def btreeparser_scenarios():
 
 
 compiled_btreeparser_feature = features.ModuleAvailableFeature(
-    'breezy._btree_serializer_pyx')
+    'breezy.bzr._btree_serializer_pyx')
 
 
 class BTreeTestCase(TestCaseWithTransport):

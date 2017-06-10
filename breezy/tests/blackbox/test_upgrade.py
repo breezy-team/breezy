@@ -19,11 +19,13 @@ import os
 import stat
 
 from breezy import (
-    bzrdir,
     controldir,
     lockable_files,
     ui,
     urlutils,
+    )
+from breezy.bzr import (
+    bzrdir,
     )
 from breezy.tests import (
     features,

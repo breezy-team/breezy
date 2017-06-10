@@ -27,7 +27,7 @@ from breezy import (
     tests,
     )
 from breezy.bzr import (
-    bzrbranch,
+    branch as bzrbranch,
     versionedfile,
     )
 from breezy.tests.per_repository_vf import (

@@ -60,7 +60,7 @@ cdef extern from "_bencode_pyx.h":
 
 # To maintain compatibility with older versions of pyrex, we have to use the
 # relative import here, rather than 'breezy._static_tuple_c'
-from _static_tuple_c cimport StaticTuple, StaticTuple_CheckExact, \
+from _static_tuple_c cimport StaticTuple_CheckExact, \
     import_static_tuple_c
 
 import_static_tuple_c()

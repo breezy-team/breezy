@@ -28,7 +28,7 @@ stuple = StaticTuple
 
 def load_tests(loader, standard_tests, pattern):
     suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
-        'breezy._chk_map_py', 'breezy._chk_map_pyx')
+        'breezy.bzr._chk_map_py', 'breezy.bzr._chk_map_pyx')
     return suite
 
 

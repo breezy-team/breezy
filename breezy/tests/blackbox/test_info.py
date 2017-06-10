@@ -22,7 +22,6 @@ import sys
 
 from breezy import (
     branch,
-    bzrdir,
     controldir,
     errors,
     info,
@@ -30,6 +29,9 @@ from breezy import (
     tests,
     upgrade,
     urlutils,
+    )
+from breezy.bzr import (
+    bzrdir,
     )
 from breezy.tests.matchers import ContainsNoVfsCalls
 from breezy.transport import memory

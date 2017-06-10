@@ -17,9 +17,11 @@
 """Helper classes for repository implementation tests."""
 
 from ... import (
-    inventory,
     osutils,
     revision as _mod_revision,
+    )
+from ...bzr import (
+    inventory,
     )
 from ...repofmt.knitrepo import RepositoryFormatKnit
 from ..per_repository import TestCaseWithRepository
