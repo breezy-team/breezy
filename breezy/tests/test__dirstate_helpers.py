@@ -376,20 +376,20 @@ class TestCompiledBisectDirblock(TestBisectDirblock):
         return bisect_dirblock
 
 
-class TestCmpByDirs(tests.TestCase):
-    """Test an implementation of cmp_by_dirs()
+class TestLtByDirs(tests.TestCase):
+    """Test an implementation of lt_by_dirs()
 
-    cmp_by_dirs() compares 2 paths by their directory sections, rather than as
+    lt_by_dirs() compares 2 paths by their directory sections, rather than as
     plain strings.
 
-    Child test cases can override ``get_cmp_by_dirs`` to test a specific
+    Child test cases can override ``get_lt_by_dirs`` to test a specific
     implementation.
     """
 
-    def get_cmp_by_dirs(self):
-        """Get a specific implementation of cmp_by_dirs."""
-        from breezy._dirstate_helpers_py import cmp_by_dirs
-        return cmp_by_dirs
+    def get_lt_by_dirs(self):
+        """Get a specific implementation of lt_by_dirs."""
+        from breezy._dirstate_helpers_py import lt_by_dirs
+        return lt_by_dirs
 
     def assertCmpByDirs(self, expected, str1, str2):
         """Compare the two strings, in both directions.
@@ -399,17 +399,17 @@ class TestCmpByDirs(tests.TestCase):
         :param str1: string to compare
         :param str2: string to compare
         """
-        cmp_by_dirs = self.get_cmp_by_dirs()
+        lt_by_dirs = self.get_lt_by_dirs()
         if expected == 0:
             self.assertEqual(str1, str2)
-            self.assertEqual(0, cmp_by_dirs(str1, str2))
-            self.assertEqual(0, cmp_by_dirs(str2, str1))
+            self.assertFalse(lt_by_dirs(str1, str2))
+            self.assertFalse(lt_by_dirs(str2, str1))
         elif expected > 0:
-            self.assertPositive(cmp_by_dirs(str1, str2))
-            self.assertNegative(cmp_by_dirs(str2, str1))
+            self.assertFalse(lt_by_dirs(str1, str2))
+            self.assertTrue(lt_by_dirs(str2, str1))
         else:
-            self.assertNegative(cmp_by_dirs(str1, str2))
-            self.assertPositive(cmp_by_dirs(str2, str1))
+            self.assertTrue(lt_by_dirs(str1, str2))
+            self.assertFalse(lt_by_dirs(str2, str1))
 
     def test_cmp_empty(self):
         """Compare against the empty string."""
@@ -475,10 +475,10 @@ class TestCmpByDirs(tests.TestCase):
         self.assertCmpByDirs(-1, 'ab/cd', 'ab-cd')
 
     def test_cmp_unicode_not_allowed(self):
-        cmp_by_dirs = self.get_cmp_by_dirs()
-        self.assertRaises(TypeError, cmp_by_dirs, u'Unicode', 'str')
-        self.assertRaises(TypeError, cmp_by_dirs, 'str', u'Unicode')
-        self.assertRaises(TypeError, cmp_by_dirs, u'Unicode', u'Unicode')
+        lt_by_dirs = self.get_lt_by_dirs()
+        self.assertRaises(TypeError, lt_by_dirs, u'Unicode', 'str')
+        self.assertRaises(TypeError, lt_by_dirs, 'str', u'Unicode')
+        self.assertRaises(TypeError, lt_by_dirs, u'Unicode', u'Unicode')
 
     def test_cmp_non_ascii(self):
         self.assertCmpByDirs(-1, '\xc2\xb5', '\xc3\xa5') # u'\xb5', u'\xe5'
@@ -488,14 +488,14 @@ class TestCmpByDirs(tests.TestCase):
         self.assertCmpByDirs(-1, 'b/a', 'b/\xc2\xb5') # u'b/a', u'b/\xb5'
 
 
-class TestCompiledCmpByDirs(TestCmpByDirs):
-    """Test the pyrex implementation of cmp_by_dirs"""
+class TestCompiledLtByDirs(TestLtByDirs):
+    """Test the pyrex implementation of lt_by_dirs"""
 
     _test_needs_features = [compiled_dirstate_helpers_feature]
 
-    def get_cmp_by_dirs(self):
-        from breezy._dirstate_helpers_pyx import cmp_by_dirs
-        return cmp_by_dirs
+    def get_lt_by_dirs(self):
+        from breezy._dirstate_helpers_pyx import lt_by_dirs
+        return lt_by_dirs
 
 
 class TestCmpPathByDirblock(tests.TestCase):
@@ -778,12 +778,12 @@ class TestUsingCompiledIfAvailable(tests.TestCase):
             from breezy._dirstate_helpers_py import _bisect_path_right
         self.assertIs(_bisect_path_right, dirstate._bisect_path_right)
 
-    def test_cmp_by_dirs(self):
+    def test_lt_by_dirs(self):
         if compiled_dirstate_helpers_feature.available():
-            from breezy._dirstate_helpers_pyx import cmp_by_dirs
+            from breezy._dirstate_helpers_pyx import lt_by_dirs
         else:
-            from breezy._dirstate_helpers_py import cmp_by_dirs
-        self.assertIs(cmp_by_dirs, dirstate.cmp_by_dirs)
+            from breezy._dirstate_helpers_py import lt_by_dirs
+        self.assertIs(lt_by_dirs, dirstate.lt_by_dirs)
 
     def test__read_dirblocks(self):
         if compiled_dirstate_helpers_feature.available():

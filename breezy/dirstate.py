@@ -2861,7 +2861,7 @@ class DirState(object):
                 # both sides are dealt with, move on
                 current_old = advance(old_iterator)
                 current_new = advance(new_iterator)
-            elif (cmp_by_dirs(new_dirname, current_old[0][0]) < 0
+            elif (lt_by_dirs(new_dirname, current_old[0][0])
                   or (new_dirname == current_old[0][0]
                       and new_entry_key[1:] < current_old[0][1:])):
                 # new comes before:
@@ -3803,7 +3803,7 @@ class ProcessEntryPython(object):
     def iter_changes(self):
         """Iterate over the changes."""
         utf8_decode = cache_utf8._utf8_decode
-        _cmp_by_dirs = cmp_by_dirs
+        _lt_by_dirs = lt_by_dirs
         _process_entry = self._process_entry
         search_specific_files = self.search_specific_files
         searched_specific_files = self.searched_specific_files
@@ -3947,7 +3947,7 @@ class ProcessEntryPython(object):
                    current_block is not None):
                 if (current_dir_info and current_block
                     and current_dir_info[0][0] != current_block[0]):
-                    if _cmp_by_dirs(current_dir_info[0][0], current_block[0]) < 0:
+                    if _lt_by_dirs(current_dir_info[0][0], current_block[0]):
                         # filesystem data refers to paths not covered by the dirblock.
                         # this has two possibilities:
                         # A) it is versioned but empty, so there is no block for it
@@ -4269,7 +4269,7 @@ try:
         bisect_dirblock,
         _bisect_path_left,
         _bisect_path_right,
-        cmp_by_dirs,
+        lt_by_dirs,
         pack_stat,
         ProcessEntryC as _process_entry,
         update_entry as update_entry,
@@ -4281,7 +4281,7 @@ except ImportError as e:
         bisect_dirblock,
         _bisect_path_left,
         _bisect_path_right,
-        cmp_by_dirs,
+        lt_by_dirs,
         pack_stat,
         )
     # FIXME: It would be nice to be able to track moved lines so that the

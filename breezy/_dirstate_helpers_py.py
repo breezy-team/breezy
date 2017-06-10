@@ -163,22 +163,20 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
     return lo
 
 
-def cmp_by_dirs(path1, path2):
+def lt_by_dirs(path1, path2):
     """Compare two paths directory by directory.
 
     This is equivalent to doing::
 
-       cmp(path1.split('/'), path2.split('/'))
+       operator.lt(path1.split('/'), path2.split('/'))
 
     The idea is that you should compare path components separately. This
-    differs from plain ``cmp(path1, path2)`` for paths like ``'a-b'`` and
-    ``a/b``. "a-b" comes after "a" but would come before "a/b" lexically.
+    differs from plain ``path1 < path2`` for paths like ``'a-b'`` and ``a/b``.
+    "a-b" comes after "a" but would come before "a/b" lexically.
 
     :param path1: first path
     :param path2: second path
-    :return: negative number if ``path1`` comes first,
-        0 if paths are equal,
-        and positive number if ``path2`` sorts first
+    :return: True if path1 comes first, otherwise False
     """
     if not isinstance(path1, str):
         raise TypeError("'path1' must be a plain string, not %s: %r"
@@ -186,7 +184,7 @@ def cmp_by_dirs(path1, path2):
     if not isinstance(path2, str):
         raise TypeError("'path2' must be a plain string, not %s: %r"
                         % (type(path2), path2))
-    return cmp(path1.split('/'), path2.split('/'))
+    return path1.split('/') < path2.split('/')
 
 
 def _cmp_path_by_dirblock(path1, path2):

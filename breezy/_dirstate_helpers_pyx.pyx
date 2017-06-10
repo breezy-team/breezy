@@ -244,22 +244,20 @@ cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2): # cannot_
     return 0
 
 
-def cmp_by_dirs(path1, path2):
+def lt_by_dirs(path1, path2):
     """Compare two paths directory by directory.
 
     This is equivalent to doing::
 
-       cmp(path1.split('/'), path2.split('/'))
+       operator.lt(path1.split('/'), path2.split('/'))
 
     The idea is that you should compare path components separately. This
-    differs from plain ``cmp(path1, path2)`` for paths like ``'a-b'`` and
-    ``a/b``. "a-b" comes after "a" but would come before "a/b" lexically.
+    differs from plain ``path1 < path2`` for paths like ``'a-b'`` and ``a/b``.
+    "a-b" comes after "a" but would come before "a/b" lexically.
 
     :param path1: first path
     :param path2: second path
-    :return: negative number if ``path1`` comes first,
-        0 if paths are equal,
-        and positive number if ``path2`` sorts first
+    :return: True if path1 comes first, otherwise False
     """
     if not PyString_CheckExact(path1):
         raise TypeError("'path1' must be a plain string, not %s: %r"
@@ -267,10 +265,10 @@ def cmp_by_dirs(path1, path2):
     if not PyString_CheckExact(path2):
         raise TypeError("'path2' must be a plain string, not %s: %r"
                         % (type(path2), path2))
-    return _cmp_by_dirs(PyString_AsString(path1),
-                        PyString_Size(path1),
-                        PyString_AsString(path2),
-                        PyString_Size(path2))
+    return -1 == _cmp_by_dirs(PyString_AsString(path1),
+                              PyString_Size(path1),
+                              PyString_AsString(path2),
+                              PyString_Size(path2))
 
 
 def _cmp_path_by_dirblock(path1, path2):
